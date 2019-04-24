@@ -36,7 +36,7 @@
 		B8EBA514227002CA0098F863 /* LKTunnel+Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EBA513227002CA0098F863 /* LKTunnel+Configuration.swift */; };
 		B8EBA58A22701FE70098F863 /* INIParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EBA58922701FE70098F863 /* INIParser.swift */; };
 		B8F79879225DBCC500003DE6 /* LKDaemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* LKDaemon.swift */; };
-		B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* PacketTunnelProvider.swift */; };
+		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3CBFB652256D47400F34631 /* lokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKViewController.swift */; };
@@ -459,7 +459,7 @@
 		B8F79878225DBCC500003DE6 /* LKDaemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKDaemon.swift; sourceTree = "<group>"; };
 		B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Packet Tunnel Provider.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8F79887226056DD00003DE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B8F798912260579100003DE6 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKPacketTunnelProvider.swift; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "lokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* lokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "lokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
@@ -627,7 +627,7 @@
 		B8F79884226056DD00003DE6 /* Packet Tunnel Provider */ = {
 			isa = PBXGroup;
 			children = (
-				B8F798912260579100003DE6 /* PacketTunnelProvider.swift */,
+				B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */,
 				B8F798902260573500003DE6 /* Meta */,
 			);
 			path = "Packet Tunnel Provider";
@@ -1198,7 +1198,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */,
+				B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

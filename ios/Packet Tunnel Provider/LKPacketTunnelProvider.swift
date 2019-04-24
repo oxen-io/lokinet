@@ -1,6 +1,6 @@
 import NetworkExtension
 
-final class PacketTunnelProvider : NEPacketTunnelProvider {
+final class LKPacketTunnelProvider : NEPacketTunnelProvider {
     
     override func startTunnel(options: [String:NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {
         print("startTunnel(...)")
