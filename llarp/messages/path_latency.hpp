@@ -24,7 +24,7 @@ namespace llarp
       {
         T = 0;
         L = 0;
-      };
+      }
 
       bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;

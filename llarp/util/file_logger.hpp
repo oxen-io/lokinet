@@ -7,7 +7,7 @@
 
 namespace llarp
 {
-  /// fluhsable file based log stream
+  /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
     FileLogStream(llarp_threadpool* disk, FILE* f, llarp_time_t flushInterval);
@@ -25,7 +25,9 @@ namespace llarp
     Tick(llarp_time_t now) override;
 
     void
-    PostLog(std::stringstream&) const override{};
+    PostLog(std::stringstream&) const override
+    {
+    }
 
    private:
     struct FlushEvent

@@ -113,7 +113,9 @@ namespace llarp
 
     struct IHopHandler
     {
-      virtual ~IHopHandler(){};
+      virtual ~IHopHandler()
+      {
+      }
 
       virtual bool
       Expired(llarp_time_t now) const = 0;

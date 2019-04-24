@@ -101,7 +101,9 @@ namespace llarp
     {
       ListDecoder(const Key_t &from,
                   std::vector< std::unique_ptr< IMessage > > &list)
-          : From(from), l(list){};
+          : From(from), l(list)
+      {
+      }
 
       bool relayed = false;
       const Key_t &From;

@@ -383,14 +383,14 @@ namespace llarp
            __attribute__((unused)) size_t sz)
     {
       return -1;
-    };
+    }
 
     /// return false if we want to deregister and remove ourselves
     virtual bool
     tick()
     {
       return true;
-    };
+    }
 
     /// used for tun interface and tcp conn
     virtual ssize_t
@@ -423,7 +423,9 @@ namespace llarp
     }
 
     virtual void
-    before_flush_write(){};
+    before_flush_write()
+    {
+    }
 
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
@@ -505,7 +507,7 @@ namespace llarp
     virtual ~posix_ev_io()
     {
       close(fd);
-    };
+    }
   };
 #endif
 
@@ -755,7 +757,9 @@ struct llarp_ev_loop
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
 
-  virtual ~llarp_ev_loop(){};
+  virtual ~llarp_ev_loop()
+  {
+  }
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 

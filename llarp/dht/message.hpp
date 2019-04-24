@@ -16,7 +16,9 @@ namespace llarp
 
     struct IMessage : public IBEncodeMessage
     {
-      virtual ~IMessage(){};
+      virtual ~IMessage()
+      {
+      }
 
       /// construct
       IMessage(const Key_t& from) : From(from)
