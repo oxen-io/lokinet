@@ -2,34 +2,48 @@ import Foundation
 
 final class LKDaemon {
     
+    // MARK: Types
+    struct Configuration {
+        let isDebuggingEnabled: Bool
+        let directoryPath: String
+        let configurationFileName: String
+        let bootstrapFileURL: URL
+        let bootstrapFileName: String
+    }
+    
+    typealias LLARPContext = OpaquePointer
+    
     // MARK: Lifecycle
     static let shared = LKDaemon()
     
     private init() { }
     
     // MARK: Configuration
-    func configure(isDebuggingEnabled: Bool = false, completionHandler: @escaping (Error?) -> Void) {
-        // Prepare
-        let directoryPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.path
+    func configure(with configuration: Configuration, completionHandler: @escaping (Result<(configurationFilePath: String, context: LLARPContext), Error>) -> Void) {
         // Enable debugging mode if needed
-        if isDebuggingEnabled { llarp_enable_debug_mode() }
+        if configuration.isDebuggingEnabled { llarp_enable_debug_mode() }
         // Generate configuration file
-        let configurationFilePath = directoryPath + "/" + "lokinet-configuration.ini"
-        llarp_ensure_config(configurationFilePath, directoryPath, true, false)
+        let configurationFilePath = configuration.directoryPath + "/" + configuration.configurationFileName
+        llarp_ensure_config(configurationFilePath, configuration.directoryPath, true, false)
         // Download bootstrap file
-        let remoteBootstrapFilePath = "https://i2p.rocks/i2procks.signed"
-        let downloadTask = URLSession.shared.dataTask(with: URL(string: remoteBootstrapFilePath)!) { data, _, error in
-            guard let data = data else { return completionHandler(error) }
-            let localBootstrapFilePath = directoryPath + "/" + "bootstrap.signed"
-            try! data.write(to: URL(fileURLWithPath: localBootstrapFilePath))
+        let downloadTask = URLSession.shared.dataTask(with: configuration.bootstrapFileURL) { data, _, error in
+            guard let data = data else { return completionHandler(.failure(error ?? LKError.generic)) }
+            let bootstrapFilePath = configuration.directoryPath + "/" + configuration.bootstrapFileName
+            do {
+                try data.write(to: URL(fileURLWithPath: bootstrapFilePath))
+            } catch let error {
+                completionHandler(.failure(error))
+            }
             // Perform main setup
-            guard let context = llarp_main_init(configurationFilePath, false) else { return completionHandler(LKError(description: "LLARP initialization failed.")) }
+            guard let context = llarp_main_init(configurationFilePath, false) else { return completionHandler(.failure(LKError.generic)) }
             llarp_main_setup(context)
-            // Run
-            llarp_main_run(context)
             // Invoke completion handler
-            completionHandler(nil)
+            completionHandler(.success((configurationFilePath: configurationFilePath, context: context)))
         }
         downloadTask.resume()
+    }
+    
+    func run(with context: LLARPContext) {
+        llarp_main_run(context)
     }
 }

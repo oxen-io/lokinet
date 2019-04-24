@@ -15,44 +15,42 @@ final class LKTunnel {
     }
     
     // MARK: Configuration
-    func configure(completionHandler: @escaping (Error?) -> Void) {
-        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, e0 in
-            if let e0 = e0 {
-                return completionHandler(e0)
+    func configure(with configuration: Configuration, completionHandler: @escaping (Error?) -> Void) {
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, error in
+            if let error = error {
+                return completionHandler(error)
             } else {
                 func connect(using manager: NETunnelProviderManager) {
                     self?.manager = manager
                     do {
                         try manager.connection.startVPNTunnel()
                         return completionHandler(nil)
-                    } catch let e3 {
-                        return completionHandler(e3)
+                    } catch let error {
+                        return completionHandler(error)
                     }
                 }
                 if let manager = managers?.first {
                     connect(using: manager)
                 } else {
                     let manager = NETunnelProviderManager()
-                    let configuration = NETunnelProviderProtocol()
-                    configuration.providerBundleIdentifier = ""
-                    configuration.providerConfiguration = [
-                        "port" : "",
-                        "server" : "",
-                        "ip" : "",
-                        "subnet" : "",
-                        "mtu" : "",
-                        "dns" : ""
+                    let p = NETunnelProviderProtocol()
+                    p.providerBundleIdentifier = Bundle.main.bundleIdentifier!
+                    p.providerConfiguration = [
+                        "port" : configuration.port,
+                        "server" : configuration.server,
+                        "subnet" : configuration.subnet,
+                        "dns" : configuration.dns
                     ]
-                    configuration.serverAddress = ""
-                    configuration.disconnectOnSleep = false
-                    manager.protocolConfiguration = configuration
-                    manager.saveToPreferences { e1 in
-                        if let e1 = e1 {
-                            return completionHandler(e1)
+                    p.serverAddress = configuration.server
+                    p.disconnectOnSleep = false
+                    manager.protocolConfiguration = p
+                    manager.saveToPreferences { error in
+                        if let error = error {
+                            return completionHandler(error)
                         } else {
-                            manager.loadFromPreferences { e2 in
-                                if let e2 = e2 {
-                                    return completionHandler(e2)
+                            manager.loadFromPreferences { error in
+                                if let error = error {
+                                    return completionHandler(error)
                                 } else {
                                     connect(using: manager)
                                 }

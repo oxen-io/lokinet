@@ -3,7 +3,5 @@ import Foundation
 struct LKError : LocalizedError {
     let errorDescription: String
     
-    init(description: String) {
-        errorDescription = description
-    }
+    static let generic = LKError(errorDescription: "An error occurred.")
 }

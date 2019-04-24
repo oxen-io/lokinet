@@ -4,17 +4,23 @@ final class LKViewController : UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        LKTunnel.shared.configure() { error in
-            if let error = error {
-                print(error)
-            } else {
-                LKDaemon.shared.configure(isDebuggingEnabled: false) { error in
+        let directoryPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.path
+        let configurationFileName = "lokinet-configuration.ini"
+        let bootstrapFileURL = URL(string: "https://i2p.rocks/i2procks.signed")!
+        let bootstrapFileName = "bootstrap.signed"
+        let daemonConfiguration = LKDaemon.Configuration(isDebuggingEnabled: false, directoryPath: directoryPath, configurationFileName: configurationFileName, bootstrapFileURL: bootstrapFileURL, bootstrapFileName: bootstrapFileName)
+        LKDaemon.shared.configure(with: daemonConfiguration) { result in
+            switch result {
+            case .success(let configurationFilePath, let context):
+                let tunnelConfiguration = LKTunnel.Configuration(fromFileAt: configurationFilePath)
+                LKTunnel.shared.configure(with: tunnelConfiguration) { error in
                     if let error = error {
                         print(error)
                     } else {
-                        // TODO: Implement
+                        LKDaemon.shared.run(with: context)
                     }
                 }
+            case .failure(let error): print(error)
             }
         }
     }
