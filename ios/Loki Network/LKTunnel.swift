@@ -36,12 +36,10 @@ final class LKTunnel {
                     let p = NETunnelProviderProtocol()
                     p.providerBundleIdentifier = Bundle.main.bundleIdentifier!
                     p.providerConfiguration = [
-                        "port" : configuration.port,
-                        "server" : configuration.server,
-                        "subnet" : configuration.subnet,
+                        "ifaddr" : configuration.ifaddr,
                         "dns" : configuration.dns
                     ]
-                    p.serverAddress = configuration.server
+                    p.serverAddress = configuration.ifaddr
                     p.disconnectOnSleep = false
                     manager.protocolConfiguration = p
                     manager.saveToPreferences { error in

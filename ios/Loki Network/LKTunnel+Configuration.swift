@@ -2,20 +2,26 @@
 extension LKTunnel {
     
     struct Configuration {
-        let port: String
-        let subnet: String
         let dns: String
-        let server: String
+        let ifaddr: String
         
-        init(port: String, subnet: String, dns: String, server: String) {
-            self.port = port
-            self.subnet = subnet
+        init(dns: String, ifaddr: String) {
             self.dns = dns
-            self.server = server
+            self.ifaddr = ifaddr
         }
         
-        init(fromFileAt path: String) {
-            fatalError("not implemented")
+        init(fromFileAt path: String) throws {
+            let contents = try INIParser(path).sections
+            if let dns = contents["dns"]?["bind"] {
+                self.dns = dns
+            } else {
+                throw LKError.incompleteConfigurationFile(missingEntry: "dns")
+            }
+            if let ifaddr = contents["network"]?["ifaddr"] {
+                self.ifaddr = ifaddr
+            } else {
+                throw LKError.incompleteConfigurationFile(missingEntry: "ifaddr")
+            }
         }
     }
 }

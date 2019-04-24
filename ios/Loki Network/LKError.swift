@@ -1,7 +1,13 @@
 import Foundation
 
-struct LKError : LocalizedError {
-    let errorDescription: String
+enum LKError : LocalizedError {
+    case generic
+    case incompleteConfigurationFile(missingEntry: String)
     
-    static let generic = LKError(errorDescription: "An error occurred.")
+    var errorDescription: String {
+        switch self {
+        case .generic: return "An error occurred."
+        case .incompleteConfigurationFile(let missingEntry): return "No configuration file entry found for: \"\(missingEntry)\"."
+        }
+    }
 }
