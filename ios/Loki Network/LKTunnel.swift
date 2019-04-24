@@ -20,34 +20,41 @@ final class LKTunnel {
             if let e0 = e0 {
                 return completionHandler(e0)
             } else {
-                let manager = managers?.first ?? NETunnelProviderManager()
-                self?.manager = manager
-                let _protocol = NETunnelProviderProtocol()
-                _protocol.providerBundleIdentifier = ""
-                _protocol.providerConfiguration = [
-                    "port" : "",
-                    "server" : "",
-                    "ip" : "",
-                    "subnet" : "",
-                    "mtu" : "",
-                    "dns" : ""
-                ]
-                _protocol.serverAddress = ""
-                manager.protocolConfiguration = _protocol
-                manager.isEnabled = true
-                manager.saveToPreferences { e1 in
-                    if let e1 = e1 {
-                        return completionHandler(e1)
-                    } else {
-                        manager.loadFromPreferences { e2 in
-                            if let e2 = e2 {
-                                return completionHandler(e2)
-                            } else {
-                                do {
-                                    try manager.connection.startVPNTunnel()
-                                    return completionHandler(nil)
-                                } catch let e3 {
-                                    return completionHandler(e3)
+                func connect(using manager: NETunnelProviderManager) {
+                    self?.manager = manager
+                    do {
+                        try manager.connection.startVPNTunnel()
+                        return completionHandler(nil)
+                    } catch let e3 {
+                        return completionHandler(e3)
+                    }
+                }
+                if let manager = managers?.first {
+                    connect(using: manager)
+                } else {
+                    let manager = NETunnelProviderManager()
+                    let configuration = NETunnelProviderProtocol()
+                    configuration.providerBundleIdentifier = ""
+                    configuration.providerConfiguration = [
+                        "port" : "",
+                        "server" : "",
+                        "ip" : "",
+                        "subnet" : "",
+                        "mtu" : "",
+                        "dns" : ""
+                    ]
+                    configuration.serverAddress = ""
+                    configuration.disconnectOnSleep = false
+                    manager.protocolConfiguration = configuration
+                    manager.saveToPreferences { e1 in
+                        if let e1 = e1 {
+                            return completionHandler(e1)
+                        } else {
+                            manager.loadFromPreferences { e2 in
+                                if let e2 = e2 {
+                                    return completionHandler(e2)
+                                } else {
+                                    connect(using: manager)
                                 }
                             }
                         }
