@@ -6,13 +6,10 @@ RUN apt update && \
 WORKDIR /src/
 COPY . /src/
 
-# 12p/24l cores takes 8gb
-ARG BIG_AND_FAST="false"
-
-RUN if [ "false$BIG_AND_FAST" = "false" ] ; then make ; else make NINJA=ninja ; fi
-RUN find . -name lokinet
-RUN ./lokinet -g -f
-RUN ./lokinet-bootstrap http://206.81.100.174/n-st-1.signed
+RUN make NINJA=ninja
+#RUN ./lokinet -r -f
+COPY lokinet-docker.ini /root/.lokinet/lokinet.ini
+RUN ./lokinet-bootstrap
 
 CMD ["./lokinet"]
-EXPOSE 1090/udp
+EXPOSE 1090/udp 1190/tcp
