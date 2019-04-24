@@ -12,7 +12,7 @@ namespace llarp
     /// base type for serializable dns entities
     struct Serialize
     {
-      virtual ~Serialize() = default;
+      virtual ~Serialize() = 0;
 
       /// encode entity to buffer
       virtual bool

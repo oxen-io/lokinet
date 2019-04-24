@@ -1,5 +1,5 @@
-#ifndef __ABYSS_SERVER_HPP__
-#define __ABYSS_SERVER_HPP__
+#ifndef ABYSS_SERVER_HPP
+#define ABYSS_SERVER_HPP
 
 #include <ev/ev.h>
 #include <util/json.hpp>

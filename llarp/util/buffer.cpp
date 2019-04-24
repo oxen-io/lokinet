@@ -27,7 +27,7 @@ llarp_buffer_t::writef(const char* fmt, ...)
   va_end(args);
   if(written <= 0)
     return false;
-  if(sz < written)
+  if(sz < static_cast< size_t >(written))
     return false;
   cur += written;
   return true;

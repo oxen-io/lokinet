@@ -46,12 +46,11 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization absl::hash)
-target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings cppbackport)
+  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -259,6 +258,12 @@ if(WITH_SHARED)
   add_log_tag(${SHARED_LIB})
 endif()
 
+if (WARNINGS_AS_ERRORS)
+  set(WARN_FLAGS -Wall -Wextra -Wextra-semi -Werror)
+  target_compile_options(${UTIL_LIB} PUBLIC ${WARN_FLAGS})
+  target_compile_options(${PLATFORM_LIB} PUBLIC ${WARN_FLAGS})
+  target_compile_options(${STATIC_LIB} PUBLIC ${WARN_FLAGS})
+endif()
 add_log_tag(${UTIL_LIB})
 add_log_tag(${PLATFORM_LIB})
 add_log_tag(${STATIC_LIB})

@@ -21,6 +21,8 @@ option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 
+include(cmake/target_link_libraries_system.cmake)
+
 # Basic definitions
 get_filename_component(CORE_INCLUDE include ABSOLUTE)
 get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/${ABYSS}/include" ABSOLUTE)
@@ -86,7 +88,7 @@ endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
 add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
-include_directories(vendor/cxxopts/include)
+include_directories(SYSTEM vendor/cxxopts/include)
 
 # still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)
@@ -372,7 +374,7 @@ set(ABYSS_SRC
 add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
 
 add_subdirectory(${ABSEIL_DIR})
-include_directories(${ABSEIL_DIR})
+include_directories(SYSTEM ${ABSEIL_DIR})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)
@@ -396,7 +398,7 @@ target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${AB
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_include_directories(${ABYSS_LIB} PUBLIC /usr/local/include)
+  target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 add_log_tag(${ABYSS_EXE})
 add_log_tag(${ABYSS_LIB})
@@ -419,7 +421,7 @@ else()
     add_executable(${EXE} ${EXE_SRC})
   elseif(NOT MSVC_VERSION)
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
-  else() 
+  else()
     add_executable(${EXE} ${EXE_SRC})
   endif(NOT WIN32)
 

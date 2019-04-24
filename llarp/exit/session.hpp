@@ -145,9 +145,11 @@ namespace llarp
       ExitSession(const llarp::RouterID& snodeRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,
                   AbstractRouter* r, size_t numpaths, size_t hoplen)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen){};
+          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+      {
+      }
 
-      ~ExitSession(){};
+      ~ExitSession() = default;
 
       std::string
       Name() const override;
@@ -169,7 +171,7 @@ namespace llarp
                    AbstractRouter* r, size_t numpaths, size_t hoplen,
                    bool useRouterSNodeKey = false);
 
-      ~SNodeSession(){};
+      ~SNodeSession() = default;
 
       std::string
       Name() const override;

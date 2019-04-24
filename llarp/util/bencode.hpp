@@ -227,7 +227,9 @@ namespace llarp
   /// bencode serializable message
   struct IBEncodeMessage
   {
-    virtual ~IBEncodeMessage(){};
+    virtual ~IBEncodeMessage()
+    {
+    }
 
     IBEncodeMessage(uint64_t v = LLARP_PROTO_VERSION)
     {

@@ -13,7 +13,9 @@ namespace llarp
       uint64_t pathCreated;
       PathConfirmMessage();
       PathConfirmMessage(uint64_t lifetime);
-      ~PathConfirmMessage(){};
+      ~PathConfirmMessage()
+      {
+      }
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -29,7 +31,7 @@ namespace llarp
       {
         pathLifetime = 0;
         pathCreated  = 0;
-      };
+      }
     };
   }  // namespace routing
 }  // namespace llarp

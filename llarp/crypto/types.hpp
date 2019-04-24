@@ -78,7 +78,9 @@ namespace llarp
 
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
-    SecretKey() : AlignedBuffer< SECKEYSIZE >(){};
+    SecretKey() : AlignedBuffer< SECKEYSIZE >()
+    {
+    }
 
     explicit SecretKey(const SecretKey &k) : AlignedBuffer< SECKEYSIZE >(k)
     {
@@ -127,7 +129,9 @@ namespace llarp
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer< 32 >
   {
-    IdentitySecret() : AlignedBuffer< 32 >(){};
+    IdentitySecret() : AlignedBuffer< 32 >()
+    {
+    }
 
     friend std::ostream &
     operator<<(std::ostream &out, const IdentitySecret &)

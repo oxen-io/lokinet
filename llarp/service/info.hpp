@@ -98,7 +98,7 @@ namespace llarp
         version = other.version;
         UpdateAddr();
         return *this;
-      };
+      }
 
       bool
       operator<(const ServiceInfo& other) const

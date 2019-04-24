@@ -11,7 +11,9 @@ namespace llarp
   /// logger stream interface
   struct ILogStream
   {
-    virtual ~ILogStream(){};
+    virtual ~ILogStream()
+    {
+    }
 
     virtual void
     PreLog(std::stringstream& out, LogLevel lvl, const char* fname,
