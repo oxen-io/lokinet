@@ -64,8 +64,9 @@ resolvePath(std::string conffname)
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
   if(!resolvedPath)
   {
-    llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
-    return "";
+    // relative paths don't need to be resolved
+    // llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
+    return conffname;
   }
   return resolvedPath;
 #else
