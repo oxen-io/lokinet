@@ -265,8 +265,8 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
   // better to let the routers auto-configure
-  f << "ifaddr=auto" << std::endl;
-  f << "ifname=auto" << std::endl;
+  // f << "ifaddr=auto" << std::endl;
+  // f << "ifname=auto" << std::endl;
   f << "enabled=true" << std::endl;
   f << "exit=false" << std::endl;
   f << "#exit-blacklist=tcp:25" << std::endl;
@@ -349,8 +349,8 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 
   // better to set them to auto then to hard code them now
   // operating environment may change over time and this will help adapt
-  f << "ifname=auto" << std::endl;
-  f << "ifaddr=auto" << std::endl;
+  // f << "ifname=auto" << std::endl;
+  // f << "ifaddr=auto" << std::endl;
 
   // should this also be auto? or not declared?
   // probably auto in case they want to set up a hidden service
