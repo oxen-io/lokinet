@@ -16,7 +16,7 @@ see the [documentation](https://loki-project.github.io/loki-docs/Lokinet/Lokinet
 
 Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
 
-## Running on Linux/UNIX/BSD (Except MacOS)
+## Running on Linux
 
 **DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
 
@@ -32,7 +32,7 @@ to run as relay:
     $ lokinet-bootstrap
     $ lokinet
 
-## Running on MacOS
+## Running on MacOS/UNIX/BSD
 
 **YOU HAVE TO RUN AS ROOT**, run using sudo. Elevated privileges are needed to create the virtual tunnel interface.
 
