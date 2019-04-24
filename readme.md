@@ -14,6 +14,8 @@ You can view documentation on how to get started [here](https://loki-project.git
 
 see the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
 
+Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
+
 ## Running on Linux/UNIX/BSD (Except MacOS)
 
 **DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
