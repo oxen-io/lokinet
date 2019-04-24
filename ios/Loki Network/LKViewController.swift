@@ -13,11 +13,10 @@ final class LKViewController : UIViewController {
             switch result {
             case .success(let configurationFilePath, let context):
                 let tunnelConfiguration = LKTunnel.Configuration(fromFileAt: configurationFilePath)
-                LKTunnel.shared.configure(with: tunnelConfiguration) { error in
-                    if let error = error {
-                        print(error)
-                    } else {
-                        LKDaemon.shared.run(with: context)
+                LKTunnel.shared.configure(with: tunnelConfiguration) { result in
+                    switch result {
+                    case .success: LKDaemon.shared.run(with: context)
+                    case .failure(let error): print(error)
                     }
                 }
             case .failure(let error): print(error)

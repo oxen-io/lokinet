@@ -15,18 +15,18 @@ final class LKTunnel {
     }
     
     // MARK: Configuration
-    func configure(with configuration: Configuration, completionHandler: @escaping (Error?) -> Void) {
+    func configure(with configuration: Configuration, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, error in
             if let error = error {
-                return completionHandler(error)
+                return completionHandler(.failure(error))
             } else {
                 func connect(using manager: NETunnelProviderManager) {
                     self?.manager = manager
                     do {
                         try manager.connection.startVPNTunnel()
-                        return completionHandler(nil)
+                        return completionHandler(.success(()))
                     } catch let error {
-                        return completionHandler(error)
+                        return completionHandler(.failure(error))
                     }
                 }
                 if let manager = managers?.first {
@@ -46,11 +46,11 @@ final class LKTunnel {
                     manager.protocolConfiguration = p
                     manager.saveToPreferences { error in
                         if let error = error {
-                            return completionHandler(error)
+                            return completionHandler(.failure(error))
                         } else {
                             manager.loadFromPreferences { error in
                                 if let error = error {
-                                    return completionHandler(error)
+                                    return completionHandler(.failure(error))
                                 } else {
                                     connect(using: manager)
                                 }
