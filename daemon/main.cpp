@@ -152,6 +152,9 @@ main(int argc, char *argv[])
     if(result.count("router") > 0)
     {
       asRouter = true;
+      // we should generate and exit (docker needs this, so we don't write a
+      // config each time on startup)
+      genconfigOnly = true;
     }
 
     if(result.count("config") > 0)
