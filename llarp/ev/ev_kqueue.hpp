@@ -22,7 +22,9 @@ namespace llarp
   {
     llarp_udp_io* udp;
 
-    udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
+    udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u)
+    {
+    }
 
     ~udp_listener()
     {
@@ -45,7 +47,9 @@ namespace llarp
     tun(llarp_tun_io* tio, llarp_ev_loop_ptr l)
         : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l, l))
         , t(tio)
-        , tunif(tuntap_init()){};
+        , tunif(tuntap_init())
+    {
+    }
 
     int
     sendto(__attribute__((unused)) const sockaddr* to,

@@ -47,7 +47,7 @@ namespace llarp
       {
         (void)rebuild;
         return true;
-      };
+      }
 
       virtual void
       UpdateIntroSet(bool randomizePath = false) = 0;

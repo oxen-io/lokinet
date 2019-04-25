@@ -13,7 +13,9 @@ namespace llarp
     {
       NullEndpoint(const std::string &name, AbstractRouter *r,
                    llarp::service::Context *parent)
-          : llarp::service::Endpoint(name, r, parent){};
+          : llarp::service::Endpoint(name, r, parent)
+      {
+      }
 
       bool
       HandleWriteIPPacket(const llarp_buffer_t &,

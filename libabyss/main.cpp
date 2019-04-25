@@ -84,7 +84,7 @@ struct DemoClient : public abyss::http::JSONRPC
     QueueRPC("test", nlohmann::json::object(),
              std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
     Flush();
-  };
+  }
 };
 
 struct DemoServer : public abyss::httpd::BaseReqHandler

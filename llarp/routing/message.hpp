@@ -21,7 +21,9 @@ namespace llarp
       {
       }
 
-      virtual ~IMessage(){};
+      virtual ~IMessage()
+      {
+      }
 
       virtual bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const = 0;

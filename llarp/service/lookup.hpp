@@ -24,7 +24,9 @@ namespace llarp
     struct IServiceLookup
     {
       IServiceLookup() = delete;
-      virtual ~IServiceLookup(){};
+      virtual ~IServiceLookup()
+      {
+      }
 
       /// handle lookup result
       virtual bool

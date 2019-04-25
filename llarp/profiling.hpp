@@ -21,9 +21,11 @@ namespace llarp
     llarp_time_t lastUpdated        = 0;
     llarp_time_t lastDecay          = 0;
 
-    RouterProfile() : IBEncodeMessage(){};
+    RouterProfile() : IBEncodeMessage()
+    {
+    }
 
-    ~RouterProfile(){};
+    ~RouterProfile() = default;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;

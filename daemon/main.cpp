@@ -27,14 +27,6 @@ handle_signal(int sig)
     llarp_main_signal(ctx, sig);
 }
 
-int
-printHelp(const char *argv0, int code = 1)
-{
-  std::cout << "usage: " << argv0 << " [-h] [-v] [-g|-c] config.ini"
-            << std::endl;
-  return code;
-}
-
 #ifdef _WIN32
 int
 startWinsock()
@@ -72,8 +64,9 @@ resolvePath(std::string conffname)
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
   if(!resolvedPath)
   {
-    llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
-    return "";
+    // relative paths don't need to be resolved
+    // llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
+    return conffname;
   }
   return resolvedPath;
 #else
@@ -106,13 +99,13 @@ main(int argc, char *argv[])
   // clang-format off
   cxxopts::Options options(
 		"lokinet",
-		"Lokinet is a private, decentralized and IP based overlay network for the internet"
+		"LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
     );
   options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
 		("h,help", "help", cxxopts::value<bool>())
-		("g,generate", "generate config", cxxopts::value<bool>())
-		("r,router", "run as router", cxxopts::value<bool>())
+		("g,generate", "generate client config", cxxopts::value<bool>())
+		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
     ("config","path to configuration file", cxxopts::value<std::string>());
 
@@ -136,7 +129,8 @@ main(int argc, char *argv[])
 
     if(result.count("help"))
     {
-      return printHelp(argv[0], 0);
+      std::cout << options.help() << std::endl;
+      return 0;
     }
 
     if(result.count("generate") > 0)
@@ -152,6 +146,9 @@ main(int argc, char *argv[])
     if(result.count("router") > 0)
     {
       asRouter = true;
+      // we should generate and exit (docker needs this, so we don't write a
+      // config each time on startup)
+      genconfigOnly = true;
     }
 
     if(result.count("config") > 0)
@@ -166,7 +163,8 @@ main(int argc, char *argv[])
   catch(const cxxopts::option_not_exists_exception &ex)
   {
     std::cerr << ex.what();
-    return printHelp(argv[0]);
+    std::cout << options.help() << std::endl;
+    return 1;
   }
 
   if(!conffname.empty())

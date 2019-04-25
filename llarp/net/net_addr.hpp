@@ -131,7 +131,7 @@ namespace llarp
       in_addr_t addr = this->addr4()->s_addr;
       uint32_t byte  = ntohl(addr);
       return byte;
-    };
+    }
 
     bool
     isTenPrivate(uint32_t byte);

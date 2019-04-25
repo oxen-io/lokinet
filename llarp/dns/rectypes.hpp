@@ -28,7 +28,9 @@ namespace llarp
     {
       huint32_t ipaddr;
 
-      virtual ~type_1a(){};
+      virtual ~type_1a()
+      {
+      }
       type_1a();
 
       bool
@@ -42,7 +44,9 @@ namespace llarp
     {
       std::string ns;
 
-      virtual ~type_2ns(){};
+      virtual ~type_2ns()
+      {
+      }
       type_2ns();
 
       bool
@@ -62,7 +66,9 @@ namespace llarp
       uint32_t expire;
       uint32_t minimum;
 
-      virtual ~type_6soa(){};
+      virtual ~type_6soa()
+      {
+      }
       type_6soa();
 
       bool
@@ -76,7 +82,9 @@ namespace llarp
     {
       std::string cname;
 
-      virtual ~type_5cname(){};
+      virtual ~type_5cname()
+      {
+      }
       type_5cname();
 
       bool
@@ -90,7 +98,9 @@ namespace llarp
     {
       std::string revname;
 
-      virtual ~type_12ptr(){};
+      virtual ~type_12ptr()
+      {
+      }
       type_12ptr();
 
       bool
@@ -105,7 +115,9 @@ namespace llarp
       std::string mx;
       uint16_t priority;
 
-      virtual ~type_15mx(){};
+      virtual ~type_15mx()
+      {
+      }
       type_15mx();
 
       bool
@@ -119,7 +131,9 @@ namespace llarp
     {
       std::string txt;
 
-      virtual ~type_16txt(){};
+      virtual ~type_16txt()
+      {
+      }
       type_16txt();
 
       bool
