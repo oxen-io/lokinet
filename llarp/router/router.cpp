@@ -1878,7 +1878,7 @@ namespace llarp
       {
         if(!link->Configure(netloop(), "*", af, m_OutboundPort))
           continue;
-        AddLink(std::move(link), true);
+        AddLink(std::move(link), false);
         break;
       }
     }
