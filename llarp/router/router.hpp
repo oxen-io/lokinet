@@ -341,7 +341,7 @@ namespace llarp
                                 const llarp_buffer_t &msg) override;
 
     void
-    AddInboundLink(std::unique_ptr< ILinkLayer > &link);
+    AddLink(std::unique_ptr< ILinkLayer > link, bool outbound = false);
 
     bool
     InitOutboundLinks();

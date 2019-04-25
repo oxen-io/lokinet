@@ -211,9 +211,17 @@ namespace llarp
                   service::Context *c) -> service::Endpoint_ptr {
                  return std::make_shared< handlers::TunEndpoint >(nick, r, c);
                }},
+              {"android-tun",
+               [](const std::string &, AbstractRouter *,
+                  service::Context *) -> service::Endpoint_ptr {
+                 return nullptr;
+                 /// SOOOOOOON (tm)
+                 // return std::make_shared<handlers::AndroidTunEndpoint>(nick,
+                 // r, c);
+               }},
               {"ios-tun",
-               [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> service::Endpoint_ptr {
+               [](const std::string &, AbstractRouter *,
+                  service::Context *) -> service::Endpoint_ptr {
                  return nullptr;
                  /// SOOOOOOON (tm)
                  // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,

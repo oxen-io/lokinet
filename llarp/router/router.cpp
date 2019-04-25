@@ -395,7 +395,7 @@ namespace llarp
   void
   Router::ForEachPeer(std::function< void(ILinkSession *) > visit)
   {
-    for(const auto &link : inboundLinks)
+    for(const auto &link : outboundLinks)
     {
       link->ForEachSession([visit](ILinkSession *peer) { visit(peer); });
     }
@@ -447,9 +447,12 @@ namespace llarp
   }
 
   void
-  Router::AddInboundLink(std::unique_ptr< ILinkLayer > &link)
+  Router::AddLink(std::unique_ptr< ILinkLayer > link, bool inbound)
   {
-    inboundLinks.emplace(std::move(link));
+    if(inbound)
+      inboundLinks.emplace(std::move(link));
+    else
+      outboundLinks.emplace(std::move(link));
   }
 
   bool
@@ -731,7 +734,8 @@ namespace llarp
     llarp::LogDebug(section, " ", key, "=", val);
 
     int af;
-    uint16_t proto;
+    uint16_t proto = 0;
+    std::set< std::string > opts;
     if(StrEq(val, "eth"))
     {
 #ifdef AF_LINK
@@ -742,11 +746,39 @@ namespace llarp
 #endif
       proto = LLARP_ETH_PROTO;
     }
-    else
+    else if(StrEq(section, "bind"))
     {
       // try IPv4 first
-      af    = AF_INET;
-      proto = std::atoi(val);
+      af = AF_INET;
+      std::set< std::string > parsed_opts;
+      std::string v = val;
+      std::string::size_type idx;
+      do
+      {
+        idx = v.find_first_of(',');
+        if(idx != std::string::npos)
+        {
+          parsed_opts.insert(v.substr(0, idx));
+          v = v.substr(idx + 1);
+        }
+        else
+          parsed_opts.insert(v);
+      } while(idx != std::string::npos);
+
+      /// for each option
+      for(const auto &item : parsed_opts)
+      {
+        /// see if it's a number
+        auto port = std::atoi(item.c_str());
+        if(port > 0)
+        {
+          /// set port
+          if(proto == 0)
+            proto = port;
+        }  /// otherwise add to opts
+        else
+          opts.insert(item);
+      }
     }
 
     if(StrEq(section, "bind"))
@@ -765,14 +797,27 @@ namespace llarp
         }
         if(server->Configure(netloop(), key, af, proto))
         {
-          AddInboundLink(server);
+          AddLink(std::move(server), false);
           return;
         }
-        LogError("failed to bind inbound link on ", key, " port ", val);
+        LogError("failed to bind inbound link on ", key, " port ", proto);
       }
     }
     else if(StrEq(section, "network"))
     {
+      if(StrEq(key, "profiling"))
+      {
+        if(IsTrueValue(val))
+        {
+          routerProfiling().Enable();
+          LogInfo("router profiling explicitly enabled");
+        }
+        else if(IsFalseValue(val))
+        {
+          routerProfiling().Disable();
+          LogInfo("router profiling explicitly disabled");
+        }
+      }
       if(StrEq(key, "profiles"))
       {
         routerProfilesFile = val;
@@ -1176,14 +1221,11 @@ namespace llarp
       else
         LogError("we have no bootstrap nodes specified");
     }
-    else
+    if(connected < minConnectedRouters)
     {
-      if(connected < minConnectedRouters)
-      {
-        size_t dlt = minConnectedRouters - connected;
-        LogInfo("connecting to ", dlt, " random routers to keep alive");
-        ConnectToRandomRouters(dlt);
-      }
+      size_t dlt = minConnectedRouters - connected;
+      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      ConnectToRandomRouters(dlt);
     }
 
     if(!IsServiceNode())
@@ -1821,7 +1863,7 @@ namespace llarp
 
     for(const auto &factory : linkFactories)
     {
-      auto link = factory(this);
+      std::unique_ptr< ILinkLayer > link = factory(this);
       if(!link)
         continue;
       if(!link->EnsureKeys(transport_keyfile.string().c_str()))
@@ -1836,7 +1878,7 @@ namespace llarp
       {
         if(!link->Configure(netloop(), "*", af, m_OutboundPort))
           continue;
-        outboundLinks.insert(std::move(link));
+        AddLink(std::move(link), true);
         break;
       }
     }
