@@ -88,8 +88,6 @@ namespace llarp
 
     // use file based logging?
     bool m_UseFileLogging = false;
-    // default log file path
-    fs::path logfile = "lokinet.log";
 
     // our router contact
     RouterContact _rc;

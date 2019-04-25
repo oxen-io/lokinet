@@ -233,7 +233,7 @@ namespace llarp
         return false;
       const auto dlt = parent->Now() - lastActive;
       return dlt >= 10000;
-    };
+    }
 
     ILinkLayer*
     Session::GetLinkLayer() const

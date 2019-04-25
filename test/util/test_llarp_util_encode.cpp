@@ -18,4 +18,4 @@ TEST_F(Base32Test, Serialize)
   std::string encoded = llarp::Base32Encode(addr, tmp);
   ASSERT_TRUE(llarp::Base32Decode(tmp, otherAddr));
   ASSERT_TRUE(otherAddr == addr);
-};
+}

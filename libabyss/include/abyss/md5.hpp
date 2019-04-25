@@ -29,9 +29,9 @@ struct MD5
     std::string hex;
     std::for_each(digest.begin(), digest.end(),
                   [&hex](const unsigned char& ch) {
-                    char buf[4] = {0};
-                    std::snprintf(buf, sizeof(buf), "%.2x", ch);
-                    hex += std::string(buf);
+                    char tmpbuf[4] = {0};
+                    std::snprintf(tmpbuf, sizeof(tmpbuf), "%.2x", ch);
+                    hex += std::string(tmpbuf);
                   });
     return hex;
   }

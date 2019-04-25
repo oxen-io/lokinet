@@ -63,4 +63,4 @@ TEST_F(FrameTest, TestFrameCrypto)
   LRCR otherRecord;
   ASSERT_TRUE(otherRecord.BDecode(buf));
   ASSERT_TRUE(otherRecord == record);
-};
+}
