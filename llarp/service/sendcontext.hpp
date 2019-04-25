@@ -1,11 +1,12 @@
 #ifndef LLARP_SERVICE_SENDCONTEXT_HPP
 #define LLARP_SERVICE_SENDCONTEXT_HPP
-
+#include <messages/path_transfer.hpp>
 #include <path/pathset.hpp>
 #include <service/intro.hpp>
 #include <service/protocol.hpp>
 #include <util/buffer.hpp>
 #include <util/types.hpp>
+#include <deque>
 
 namespace llarp
 {
@@ -23,10 +24,15 @@ namespace llarp
       void
       AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 
-      /// send a fully encrypted hidden service frame
+      /// queue send a fully encrypted hidden service frame
       /// via a path
       bool
-      Send(const ProtocolFrame& f, path::Path_ptr path);
+      Send(const ProtocolFrame& f, path::Path_ptr path)
+          LOCKS_EXCLUDED(m_SendQueueMutex);
+
+      /// flush send when in router thread
+      void
+      FlushSend() LOCKS_EXCLUDED(m_SendQueueMutex);
 
       SharedSecret sharedKey;
       ServiceInfo remoteIdent;
@@ -41,6 +47,10 @@ namespace llarp
       llarp_time_t sendTimeout    = 40 * 1000;
       llarp_time_t connectTimeout = 60 * 1000;
       bool markedBad              = false;
+      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
+      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
+      util::Mutex m_SendQueueMutex;
+      std::deque< SendEvent_t > m_SendQueue;
 
       virtual bool
       ShiftIntroduction(bool rebuild = true)

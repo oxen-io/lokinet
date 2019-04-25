@@ -1122,6 +1122,17 @@ namespace llarp
       return false;
     }
 
+    void
+    Endpoint::Pump(llarp_time_t now)
+    {
+      auto itr = m_RemoteSessions.begin();
+      while(itr != m_RemoteSessions.end())
+      {
+        itr->second->Pump(now);
+        ++itr;
+      }
+    }
+
     bool
     Endpoint::SendToServiceOrQueue(const RouterID& addr,
                                    const llarp_buffer_t& data, ProtocolType t)

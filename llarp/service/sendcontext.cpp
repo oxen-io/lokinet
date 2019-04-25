@@ -27,16 +27,36 @@ namespace llarp
     {
       auto transfer = std::make_shared< const routing::PathTransferMessage >(
           msg, remoteIntro.pathID);
-      m_Endpoint->RouterLogic()->queue_func([=]() {
-        if(path->SendRoutingMessage(*transfer, m_Endpoint->Router()))
+      {
+        util::Lock lock(&m_SendQueueMutex);
+        const auto sz = m_SendQueue.size();
+        m_SendQueue.emplace_back(transfer, path);
+        if(sz == 0)
         {
-          lastGoodSend = m_Endpoint->Now();
+          // TODO: use shared_from_this()
+          m_Endpoint->RouterLogic()->queue_func(
+              std::bind(&SendContext::FlushSend, this));
+        }
+      }
+      return true;
+    }
+
+    void
+    SendContext::FlushSend()
+    {
+      auto r = m_Endpoint->Router();
+      util::Lock lock(&m_SendQueueMutex);
+      for(const auto& item : m_SendQueue)
+      {
+        if(item.second->SendRoutingMessage(*item.first, r))
+        {
+          lastGoodSend = r->Now();
           ++sequenceNo;
         }
         else
           LogError("Failed to send frame on path");
-      });
-      return true;
+      }
+      m_SendQueue.clear();
     }
 
     /// send on an established convo tag

@@ -14,7 +14,9 @@ namespace llarp
   {
     struct IParser
     {
-      virtual ~IParser(){}
+      virtual ~IParser()
+      {
+      }
 
       /// result from feeding data to parser
       enum Result

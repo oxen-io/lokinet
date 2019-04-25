@@ -182,6 +182,10 @@ namespace llarp
       bool
       LookupRouterAnon(RouterID router);
 
+      /// called on event loop pump
+      virtual void
+      Pump(llarp_time_t now);
+
       /// stop this endpoint
       bool
       Stop() override;
