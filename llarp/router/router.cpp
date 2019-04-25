@@ -797,7 +797,7 @@ namespace llarp
         }
         if(server->Configure(netloop(), key, af, proto))
         {
-          AddLink(std::move(server), false);
+          AddLink(std::move(server), true);
           return;
         }
         LogError("failed to bind inbound link on ", key, " port ", proto);
