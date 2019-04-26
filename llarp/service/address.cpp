@@ -42,7 +42,7 @@ namespace llarp
         std::transform(s.begin(), s.end(), ret.begin(),
                        [stripDots](const char& ch) -> char {
                          if(ch == '.' && stripDots)
-                           return 0;
+                           return ' ';
                          return ::tolower(ch);
                        });
         return ret.substr(0, ret.find_last_of(' '));
