@@ -107,7 +107,7 @@ struct LinkLayerTest : public ::testing::Test
   bool success = false;
 
   llarp_ev_loop_ptr netLoop;
-  std::unique_ptr< llarp::Logic > logic;
+  std::unique_ptr< llarp::Logic > m_logic;
 
   llarp_time_t oldRCLifetime;
 
@@ -122,7 +122,7 @@ struct LinkLayerTest : public ::testing::Test
     llarp::RouterContact::IgnoreBogons = true;
     llarp::RouterContact::Lifetime     = 500;
     netLoop                            = llarp_make_ev_loop();
-    logic.reset(new llarp::Logic());
+    m_logic.reset(new llarp::Logic());
   }
 
   void
@@ -130,7 +130,7 @@ struct LinkLayerTest : public ::testing::Test
   {
     Alice.TearDown();
     Bob.TearDown();
-    logic.reset();
+    m_logic.reset();
     netLoop.reset();
     llarp::RouterContact::IgnoreBogons = false;
     llarp::RouterContact::Lifetime     = oldRCLifetime;
@@ -147,8 +147,8 @@ struct LinkLayerTest : public ::testing::Test
   void
   RunMainloop()
   {
-    logic->call_later({5000, this, &OnTimeout});
-    llarp_ev_loop_run_single_process(netLoop, logic->thread, logic.get());
+    m_logic->call_later({5000, this, &OnTimeout});
+    llarp_ev_loop_run_single_process(netLoop, m_logic->thread, m_logic.get());
   }
 
   void
@@ -247,8 +247,8 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       },
       [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
-  ASSERT_TRUE(Alice.Start(logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(logic.get(), netLoop, BobPort));
+  ASSERT_TRUE(Alice.Start(m_logic.get(), netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(m_logic.get(), netLoop, BobPort));
 
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 
@@ -313,18 +313,18 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         llarp::LogInfo("bob established with alice");
-        logic->queue_job({s, [](void* u) {
-                            llarp::ILinkSession* self =
-                                static_cast< llarp::ILinkSession* >(u);
-                            std::array< byte_t, 32 > tmp;
-                            llarp_buffer_t otherBuf(tmp);
-                            llarp::DiscardMessage discard;
-                            if(!discard.BEncode(&otherBuf))
-                              return;
-                            otherBuf.sz  = otherBuf.cur - otherBuf.base;
-                            otherBuf.cur = otherBuf.base;
-                            self->SendMessageBuffer(otherBuf);
-                          }});
+        m_logic->queue_job({s, [](void* u) {
+                              llarp::ILinkSession* self =
+                                  static_cast< llarp::ILinkSession* >(u);
+                              std::array< byte_t, 32 > tmp;
+                              llarp_buffer_t otherBuf(tmp);
+                              llarp::DiscardMessage discard;
+                              if(!discard.BEncode(&otherBuf))
+                                return;
+                              otherBuf.sz  = otherBuf.cur - otherBuf.base;
+                              otherBuf.cur = otherBuf.base;
+                              self->SendMessageBuffer(otherBuf);
+                            }});
         return true;
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
@@ -336,8 +336,8 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
       },
       [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
-  ASSERT_TRUE(Alice.Start(logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(logic.get(), netLoop, BobPort));
+  ASSERT_TRUE(Alice.Start(m_logic.get(), netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(m_logic.get(), netLoop, BobPort));
 
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 
@@ -424,8 +424,8 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
       },
       [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
-  ASSERT_TRUE(Alice.Start(logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(logic.get(), netLoop, BobPort));
+  ASSERT_TRUE(Alice.Start(m_logic.get(), netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(m_logic.get(), netLoop, BobPort));
 
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 

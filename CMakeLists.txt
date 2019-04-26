@@ -96,12 +96,6 @@ if (NOT WIN32)
   add_compile_options(-fPIC)
 endif(NOT WIN32)
 
-# turns off those annoying warnings for
-# target-specific crypto code paths not
-# applicable to the host's FPU -rick
-if (WARNINGS_AS_ERRORS)
-  add_compile_options(-Werror)
-endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unknown-warning-option)
 endif()

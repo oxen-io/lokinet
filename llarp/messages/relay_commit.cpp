@@ -384,10 +384,12 @@ namespace llarp
         context->Crypto(), context->EncryptionSecretKey(),
         &LRCMFrameDecrypt::HandleDecrypted);
     // copy frames so we own them
-    LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(context, decrypter, this);
+    LRCMFrameDecrypt* frameDecrypt =
+        new LRCMFrameDecrypt(context, decrypter, this);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(context->Worker(), frames->frames[0], frames);
+    decrypter->AsyncDecrypt(context->Worker(), frameDecrypt->frames[0],
+                            frameDecrypt);
     return true;
   }
 }  // namespace llarp

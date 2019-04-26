@@ -296,9 +296,9 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const WriteBuffer& buf) const
+        operator()(const WriteBuffer& writebuf) const
         {
-          return buf.timestamp;
+          return writebuf.timestamp;
         }
       };
 
@@ -323,9 +323,9 @@ namespace llarp
         {
         }
         void
-        operator()(WriteBuffer& buf)
+        operator()(WriteBuffer& writebuf)
         {
-          buf.timestamp = llarp_ev_loop_time_now_ms(loop);
+          writebuf.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
       };
 
@@ -656,7 +656,7 @@ namespace llarp
     read(byte_t*, size_t);
   };
 
-};  // namespace llarp
+}  // namespace llarp
 
 #ifdef _WIN32
 struct llarp_fd_promise

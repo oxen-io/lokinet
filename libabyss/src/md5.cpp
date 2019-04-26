@@ -65,9 +65,8 @@ MD5::MD5()
 void
 MD5::Update(const unsigned char *inBuf, uint32_t inLen)
 {
-  UINT4 in[16];
+  UINT4 input[16];
   int mdi;
-  unsigned int i, ii;
 
   /* compute number of bytes mod 64 */
   mdi = (int)((this->i[0] >> 3) & 0x3F);
@@ -81,16 +80,17 @@ MD5::Update(const unsigned char *inBuf, uint32_t inLen)
   while(inLen--)
   {
     /* add new character to buffer, increment mdi */
-    this->in[mdi++] = *inBuf++;
+    in[mdi++] = *inBuf++;
 
     /* transform if necessary */
     if(mdi == 0x40)
     {
-      for(i = 0, ii = 0; i < 16; i++, ii += 4)
-        in[i] = (((UINT4)this->in[ii + 3]) << 24)
-            | (((UINT4)this->in[ii + 2]) << 16)
-            | (((UINT4)this->in[ii + 1]) << 8) | ((UINT4)this->in[ii]);
-      Transform(this->buf, in);
+      for(unsigned int j = 0, jj = 0; j < 16; j++, jj += 4)
+      {
+        input[j] = (((UINT4)in[jj + 3]) << 24) | (((UINT4)in[jj + 2]) << 16)
+            | (((UINT4)in[jj + 1]) << 8) | ((UINT4)in[jj]);
+      }
+      Transform(this->buf, input);
       mdi = 0;
     }
   }
@@ -99,36 +99,36 @@ MD5::Update(const unsigned char *inBuf, uint32_t inLen)
 void
 MD5::Final(uint8_t *digest)
 {
-  UINT4 in[16];
+  UINT4 input[16];
   int mdi;
-  unsigned int i, ii;
   unsigned int padLen;
 
   /* save number of bits */
-  in[14] = this->i[0];
-  in[15] = this->i[1];
+  input[14] = i[0];
+  input[15] = i[1];
 
   /* compute number of bytes mod 64 */
-  mdi = (int)((this->i[0] >> 3) & 0x3F);
+  mdi = (int)((i[0] >> 3) & 0x3F);
 
   /* pad out to 56 mod 64 */
   padLen = (mdi < 56) ? (56 - mdi) : (120 - mdi);
   this->Update(PADDING, padLen);
 
   /* append length in bits and transform */
-  for(i = 0, ii = 0; i < 14; i++, ii += 4)
-    in[i] = (((UINT4)this->in[ii + 3]) << 24)
-        | (((UINT4)this->in[ii + 2]) << 16) | (((UINT4)this->in[ii + 1]) << 8)
-        | ((UINT4)this->in[ii]);
-  Transform(this->buf, in);
+  for(unsigned int j = 0, jj = 0; j < 14; j++, jj += 4)
+  {
+    input[j] = (((UINT4)in[jj + 3]) << 24) | (((UINT4)in[jj + 2]) << 16)
+        | (((UINT4)in[jj + 1]) << 8) | ((UINT4)in[jj]);
+  }
+  Transform(this->buf, input);
 
   /* store buffer in digest */
-  for(i = 0, ii = 0; i < 4; i++, ii += 4)
+  for(unsigned int j = 0, jj = 0; j < 4; j++, jj += 4)
   {
-    digest[ii]     = (unsigned char)(this->buf[i] & 0xFF);
-    digest[ii + 1] = (unsigned char)((this->buf[i] >> 8) & 0xFF);
-    digest[ii + 2] = (unsigned char)((this->buf[i] >> 16) & 0xFF);
-    digest[ii + 3] = (unsigned char)((this->buf[i] >> 24) & 0xFF);
+    digest[jj]     = (unsigned char)(this->buf[j] & 0xFF);
+    digest[jj + 1] = (unsigned char)((this->buf[j] >> 8) & 0xFF);
+    digest[jj + 2] = (unsigned char)((this->buf[j] >> 16) & 0xFF);
+    digest[jj + 3] = (unsigned char)((this->buf[j] >> 24) & 0xFF);
   }
 }
 

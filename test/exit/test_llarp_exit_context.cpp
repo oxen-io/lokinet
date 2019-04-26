@@ -28,4 +28,4 @@ TEST_F(ExitTest, AddMultipleIP)
   ASSERT_TRUE(r.exitContext().ObtainNewExit(pk, secondPath, true));
   ASSERT_TRUE(r.exitContext().FindEndpointForPath(firstPath)->LocalIP()
               == r.exitContext().FindEndpointForPath(secondPath)->LocalIP());
-};
+}

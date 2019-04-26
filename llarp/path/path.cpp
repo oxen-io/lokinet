@@ -567,7 +567,7 @@ namespace llarp
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
-        auto dlt = now - m_LastLatencyTestTime;
+        const auto dlt = now - m_LastLatencyTestTime;
         if(dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
           routing::PathLatencyMessage latency;
@@ -590,8 +590,8 @@ namespace llarp
         }
         if(m_LastRecvMessage && now > m_LastRecvMessage)
         {
-          auto dlt = now - m_LastRecvMessage;
-          if(m_CheckForDead && m_CheckForDead(this, dlt))
+          const auto delay = now - m_LastRecvMessage;
+          if(m_CheckForDead && m_CheckForDead(this, delay))
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);

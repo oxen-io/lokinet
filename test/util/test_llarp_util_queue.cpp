@@ -85,7 +85,7 @@ bool
 waitFunc(CondArgs* a)
 {
   return a->first->count != a->second;
-};
+}
 
 void
 popFrontTester(Args& args)

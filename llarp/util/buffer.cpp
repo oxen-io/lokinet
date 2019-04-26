@@ -20,14 +20,14 @@ bool
 llarp_buffer_t::writef(const char* fmt, ...)
 {
   int written;
-  size_t sz = size_left();
+  size_t toWrite = size_left();
   va_list args;
   va_start(args, fmt);
-  written = vsnprintf(reinterpret_cast< char* >(cur), sz, fmt, args);
+  written = vsnprintf(reinterpret_cast< char* >(cur), toWrite, fmt, args);
   va_end(args);
   if(written <= 0)
     return false;
-  if(sz < static_cast< size_t >(written))
+  if(toWrite < static_cast< size_t >(written))
     return false;
   cur += written;
   return true;

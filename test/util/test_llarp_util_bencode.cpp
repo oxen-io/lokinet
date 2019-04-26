@@ -450,4 +450,4 @@ TEST(TestBencode, ReadDictEmptyBuffer)
   reader.on_key = [](dict_reader*, llarp_buffer_t*) -> bool { return true; };
   reader.user   = nullptr;
   ASSERT_FALSE(bencode_read_dict(&buf, &reader));
-};
+}

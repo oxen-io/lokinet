@@ -5,22 +5,22 @@ namespace llarp
 {
   namespace dns
   {
-    record::~record(){
-
-    };
+    record::~record()
+    {
+    }
 
     bool
     record::parse(std::vector< byte_t > bytes)
     {
       return bytes.size() ? true : false;
-    };
+    }
 
     std::vector< byte_t >
     record::to_bytes()
     {
       std::vector< byte_t > retval;
       return retval;
-    };
+    }
 
     type_1a::type_1a() : record()
     {
@@ -45,7 +45,7 @@ namespace llarp
       this->ipaddr = ipaddr_ipv4_bits(bytes[3], bytes[2], bytes[1], bytes[0]);
       // LogDebug("Test ", this->ipaddr);
       return bytes.size() ? true : false;
-    };
+    }
 
     std::vector< byte_t >
     type_1a::to_bytes()
@@ -54,9 +54,11 @@ namespace llarp
       vput16bits(retval, 4);               // rdLength
       vput32bits(retval, this->ipaddr.h);  // write IP
       return retval;
-    };
+    }
 
-    type_2ns::type_2ns() : record(){};
+    type_2ns::type_2ns() : record()
+    {
+    }
 
     bool
     type_2ns::parse(std::vector< byte_t > bytes)
@@ -65,7 +67,7 @@ namespace llarp
       this->ns = std::string(reinterpret_cast< char* >(bytes.data()),
                              bytes.size() - 2);
       return true;
-    };
+    }
 
     std::vector< byte_t >
     type_2ns::to_bytes()
@@ -74,9 +76,11 @@ namespace llarp
       vput16bits(retval, 2 + this->ns.length());  // rdLength
       vcode_domain(retval, this->ns);
       return retval;
-    };
+    }
 
-    type_5cname::type_5cname() : record(){};
+    type_5cname::type_5cname() : record()
+    {
+    }
 
     bool
     type_5cname::parse(std::vector< byte_t > bytes)
@@ -86,7 +90,7 @@ namespace llarp
           std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       // LogDebug("type5 parsed ", this->cname);
       return true;
-    };
+    }
 
     std::vector< byte_t >
     type_5cname::to_bytes()
@@ -95,7 +99,7 @@ namespace llarp
       vput16bits(retval, 2 + this->cname.length());  // rdLength
       vcode_domain(retval, this->cname);
       return retval;
-    };
+    }
 
     type_6soa::type_6soa() : record()
     {
@@ -113,7 +117,7 @@ namespace llarp
       // this->cname = std::string(reinterpret_cast<char *>(bytes.data()),
       // bytes.size());
       return bytes.size() ? true : false;
-    };
+    }
 
     std::vector< byte_t >
     type_6soa::to_bytes()
@@ -131,9 +135,11 @@ namespace llarp
       vput32bits(retval, this->minimum);
 
       return retval;
-    };
+    }
 
-    type_12ptr::type_12ptr() : record(){};
+    type_12ptr::type_12ptr() : record()
+    {
+    }
 
     bool
     type_12ptr::parse(std::vector< byte_t > bytes)
@@ -141,7 +147,7 @@ namespace llarp
       this->revname =
           std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       return bytes.size() ? true : false;
-    };
+    }
 
     std::vector< byte_t >
     type_12ptr::to_bytes()
@@ -154,7 +160,7 @@ namespace llarp
       // vcode_domain(retval, this->revname.substr(0, this->revname.size() -
       // 2));
       return retval;
-    };
+    }
 
     type_15mx::type_15mx() : record()
     {
@@ -168,7 +174,7 @@ namespace llarp
           std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       // LogInfo("parsed ", this->mx);
       return true;
-    };
+    }
 
     std::vector< byte_t >
     type_15mx::to_bytes()
@@ -178,9 +184,11 @@ namespace llarp
       vput16bits(retval, this->priority);               // priority
       vcode_domain(retval, this->mx);
       return retval;
-    };
+    }
 
-    type_16txt::type_16txt() : record(){};
+    type_16txt::type_16txt() : record()
+    {
+    }
 
     bool
     type_16txt::parse(std::vector< byte_t > bytes)
@@ -188,7 +196,7 @@ namespace llarp
       this->txt = std::string(reinterpret_cast< char* >(bytes.data()),
                               bytes.size() - 1);
       return true;
-    };
+    }
 
     std::vector< byte_t >
     type_16txt::to_bytes()
@@ -201,7 +209,7 @@ namespace llarp
         retval.push_back(it);
       }
       return retval;
-    };
+    }
 
   }  // namespace dns
 }  // namespace llarp
