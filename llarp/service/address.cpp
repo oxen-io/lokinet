@@ -6,17 +6,14 @@ namespace llarp
 {
   namespace service
   {
-    const std::vector< std::string > Address::AllowedTLDs = {".loki", ".snode"};
+    const std::set< std::string > Address::AllowedTLDs = {".loki", ".snode"};
 
     bool
     Address::PermitTLD(const char* tld)
     {
       std::string gtld(tld);
       std::transform(gtld.begin(), gtld.end(), gtld.begin(), ::tolower);
-      for(const auto& allowed : AllowedTLDs)
-        if(allowed == tld)
-          return true;
-      return false;
+      return AllowedTLDs.count(gtld) != 0;
     }
 
     std::string

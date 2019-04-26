@@ -8,6 +8,7 @@
 #include <functional>
 #include <numeric>
 #include <string>
+#include <set>
 
 namespace llarp
 {
@@ -21,7 +22,7 @@ namespace llarp
       std::string subdomain;
 
       /// list of whitelisted gtld to permit
-      static const std::vector< std::string > AllowedTLDs;
+      static const std::set< std::string > AllowedTLDs;
 
       /// return true if we permit using this tld
       /// otherwise return false
