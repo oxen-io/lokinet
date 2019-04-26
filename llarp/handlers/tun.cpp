@@ -233,15 +233,13 @@ namespace llarp
     static bool
     is_random_snode(const dns::Message &msg)
     {
-      return msg.questions[0].qname == "random.snode"
-          || msg.questions[0].qname == "random.snode.";
+      return msg.questions[0].IsName("random.snode");
     }
 
     static bool
     is_localhost_loki(const dns::Message &msg)
     {
-      return msg.questions[0].qname == "localhost.loki"
-          || msg.questions[0].qname == "localhost.loki.";
+      return msg.questions[0].IsName("localhost.loki");
     }
 
     bool
@@ -255,7 +253,7 @@ namespace llarp
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      std::string qname = msg.questions[0].qname;
+      const std::string qname = msg.questions[0].Name();
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
@@ -340,8 +338,8 @@ namespace llarp
             using service::OutboundContext;
             return EnsurePathToService(
                 addr,
-                [=](const Address &remote, OutboundContext *ctx) {
-                  SendDNSReply(remote, ctx, replyMsg, reply, false, isV6);
+                [=](const Address &, OutboundContext *ctx) {
+                  SendDNSReply(addr, ctx, replyMsg, reply, false, isV6);
                 },
                 2000);
           }
@@ -350,9 +348,8 @@ namespace llarp
         {
           dns::Message *replyMsg = new dns::Message(std::move(msg));
           EnsurePathToSNode(
-              addr.as_array(),
-              [=](const RouterID &remote, exit::BaseSession_ptr s) {
-                SendDNSReply(remote, s, replyMsg, reply, true, isV6);
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
+                SendDNSReply(addr, s, replyMsg, reply, true, isV6);
               });
           return true;
         }
@@ -407,18 +404,17 @@ namespace llarp
       if(msg.questions.size() == 1)
       {
         // hook random.snode
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(msg.questions[0].IsName("random.snode"))
           return true;
         // hook localhost.loki
-        if(msg.questions[0].qname == "localhost.loki"
-           || msg.questions[0].qname == "localhost.loki.")
+        if(msg.questions[0].IsName("localhost.loki"))
           return true;
+        const std::string name = msg.questions[0].Name();
         // hook .loki
-        if(addr.FromString(msg.questions[0].qname, ".loki"))
+        if(addr.FromString(name, ".loki"))
           return true;
         // hook .snode
-        if(addr.FromString(msg.questions[0].qname, ".snode"))
+        if(addr.FromString(name, ".snode"))
           return true;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
