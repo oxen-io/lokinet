@@ -73,12 +73,11 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeCNAME
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        // hook for forward dns or cname when using snode tld
-        if(msg.questions[0].qname.find(".snode.")
-           == (msg.questions[0].qname.size() - 7))
+        if(msg.questions[0].IsName("localhost.loki")
+           || msg.questions[0].IsName("random.snode"))
           return true;
-        return msg.questions[0].qname == "localhost.loki"
-            || msg.questions[0].qname == "localhost.loki.";
+        service::Address addr;
+        return addr.FromString(msg.questions[0].Name(), ".snode");
       }
       else
         return false;
@@ -113,8 +112,7 @@ namespace llarp
       }
       else if(msg.questions[0].qtype == dns::qTypeCNAME)
       {
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if(GetRouter()->GetRandomGoodRouter(random))
@@ -122,8 +120,7 @@ namespace llarp
           else
             msg.AddNXReply();
         }
-        else if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+        else if(msg.questions[0].IsName("localhost.loki"))
         {
           RouterID us = m_Router->pubkey();
           msg.AddAReply(us.ToString(), 1);
@@ -135,8 +132,7 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if(GetRouter()->GetRandomGoodRouter(random))
@@ -146,8 +142,7 @@ namespace llarp
           reply(msg);
           return true;
         }
-        if(msg.questions[0].qname == "localhost.loki."
-           || msg.questions[0].qname == "localhost.loki")
+        if(msg.questions[0].IsName("localhost.loki"))
         {
           msg.AddINReply(GetIfAddr(), isV6);
           reply(msg);
@@ -155,7 +150,7 @@ namespace llarp
         }
         // forward dns for snode
         RouterID r;
-        if(r.FromString(msg.questions[0].qname))
+        if(r.FromString(msg.questions[0].Name()))
         {
           huint32_t ip;
           PubKey pubKey(r);

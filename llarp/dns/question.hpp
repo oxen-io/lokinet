@@ -36,6 +36,14 @@ namespace llarp
       Name_t qname;
       QType_t qtype;
       QClass_t qclass;
+
+      /// determine if we match a name
+      bool
+      IsName(const std::string& other) const;
+
+      /// return qname with no trailing .
+      std::string
+      Name() const;
     };
 
     inline std::ostream&

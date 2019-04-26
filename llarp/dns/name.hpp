@@ -14,7 +14,7 @@ namespace llarp
 
     /// decode name from buffer
     bool
-    DecodeName(llarp_buffer_t* buf, Name_t& name);
+    DecodeName(llarp_buffer_t* buf, Name_t& name, bool trimTrailingDot = false);
 
     /// encode name to buffer
     bool

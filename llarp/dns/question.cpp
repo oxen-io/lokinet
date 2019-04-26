@@ -49,6 +49,22 @@ namespace llarp
       return true;
     }
 
+    bool
+    Question::IsName(const std::string& other) const
+    {
+      // does other have a . at the end?
+      if(other.find_last_of('.') == (other.size() - 1))
+        return other == qname;
+      else  // no, add it and retry
+        return IsName(other + ".");
+    }
+
+    std::string
+    Question::Name() const
+    {
+      return qname.substr(0, qname.find_last_of('.'));
+    }
+
     std::ostream&
     Question::print(std::ostream& stream, int level, int spaces) const
     {

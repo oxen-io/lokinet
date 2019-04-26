@@ -8,6 +8,7 @@
 #include <functional>
 #include <numeric>
 #include <string>
+#include <set>
 
 namespace llarp
 {
@@ -16,6 +17,18 @@ namespace llarp
     /// Snapp/Snode Address
     struct Address : public AlignedBuffer< 32 >
     {
+      /// if parsed using FromString this contains the subdomain
+      /// this member is not used when comparing it's extra data for dns
+      std::string subdomain;
+
+      /// list of whitelisted gtld to permit
+      static const std::set< std::string > AllowedTLDs;
+
+      /// return true if we permit using this tld
+      /// otherwise return false
+      static bool
+      PermitTLD(const char* tld);
+
       std::string
       ToString(const char* tld = ".loki") const;
 
@@ -30,7 +43,8 @@ namespace llarp
       {
       }
 
-      Address(const Address& other) : AlignedBuffer< SIZE >(other.as_array())
+      Address(const Address& other)
+          : AlignedBuffer< SIZE >(other.as_array()), subdomain(other.subdomain)
       {
       }
 
