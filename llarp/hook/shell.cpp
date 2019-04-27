@@ -2,6 +2,10 @@
 #include <util/threadpool.h>
 #include <util/logger.hpp>
 #include <sys/wait.h>
+#include <unistd.h>
+#if defined(Darwin)
+#include <crt_externs.h>
+#endif
 
 namespace llarp
 {
@@ -23,28 +27,23 @@ namespace llarp
       {
         ExecShellHookJob *self = static_cast< ExecShellHookJob * >(user);
         std::vector< std::string > _args;
+        std::vector< char * > args;
         std::istringstream s(self->m_File);
         for(std::string arg; std::getline(s, arg, ' ');)
         {
           _args.emplace_back(std::move(arg));
+          char * ptr = (char *) _args.back().c_str();
+          args.push_back(ptr);
         }
-        std::vector< char * > args;
-        if(_args.size() > 1)
-        {
-          auto itr = _args.begin();
-          ++itr;
-
-          while(itr != _args.end())
-          {
-            args.emplace_back(itr->c_str());
-            ++itr;
-          }
-        }
-        args.emplace_back(0);
+        args.push_back(0);
         std::vector< std::string > _env(self->m_env.size() + 1);
         std::vector< char * > env;
         // copy environ
+#if defined(Darwin)
+        char **ptr = *_NSGetEnviron();
+#else
         char **ptr = environ;
+#endif
         do
         {
           env.emplace_back(*ptr);
@@ -54,9 +53,10 @@ namespace llarp
         for(const auto &item : self->m_env)
         {
           _env.emplace_back(item.first + "=" + item.second);
-          env.emplace_back(_env.back().c_str());
+          char * ptr = (char *) _env.back().c_str();
+          env.push_back(ptr);
         }
-        env.emplace_back(0);
+        env.push_back(0);
         pid_t child_process = ::fork();
         if(child_process == -1)
         {
@@ -71,7 +71,7 @@ namespace llarp
           LogInfo(_args[0], " exit code: ", status);
           delete self;
         }
-        else if(::execvpe(_args[0].c_str(), args.data(), env.data()) == -1)
+        else if(::execve(_args[0].c_str(), args.data(), env.data()) == -1)
         {
           LogError("failed to exec ", _args[0], " : ", strerror(errno));
         }
