@@ -49,7 +49,6 @@ spec:
     metadata:
       annotations:
         description: loki-network lokinet
-        prometheus.io/scrape: "true"
       creationTimestamp: null
       labels:
         app: loki-network
@@ -70,7 +69,6 @@ spec:
             - protocol: UDP 
               containerPort: 1190 
               name: udp-2
-      dnsPolicy: ClusterFirst
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
