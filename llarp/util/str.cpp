@@ -12,7 +12,7 @@ namespace llarp
     std::string value = str;
     std::transform(value.begin(), value.end(), value.begin(),
                    [](char ch) -> char { return std::tolower(ch); });
-    return value == "no" || value == "false" || value == "0";
+    return value == "no" || value == "false" || value == "0" || value == "off";
   }
 
   bool
@@ -21,7 +21,7 @@ namespace llarp
     std::string value = str;
     std::transform(value.begin(), value.end(), value.begin(),
                    [](char ch) -> char { return std::tolower(ch); });
-    return value == "yes" || value == "true" || value == "1";
+    return value == "yes" || value == "true" || value == "1" || value == "on";
   }
 
   bool
