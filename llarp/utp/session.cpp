@@ -603,8 +603,9 @@ namespace llarp
       OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
       remoteRC.Clear();
 
+      ABSL_ATTRIBUTE_UNUSED void* res = utp_set_userdata(sock, this);
+      assert(res == this);
       assert(s == sock);
-      assert(utp_set_userdata(sock, this) == this);
       GotLIM = std::bind(&InboundSession::InboundLIM, this, _1);
     }
 
@@ -693,7 +694,8 @@ namespace llarp
       rid = p->GetOurRC().pubkey;
       OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
 
-      assert(utp_set_userdata(sock, this) == this);
+      ABSL_ATTRIBUTE_UNUSED void* res = utp_set_userdata(sock, this);
+      assert(res == this);
       assert(s == sock);
 
       GotLIM = std::bind(&OutboundSession::OutboundLIM, this, _1);
