@@ -897,14 +897,14 @@ namespace llarp
         if(!GetSenderFor(frame.T, si))
           return false;
         // verify source
-        if(!frame.Verify(Crypto(), si))
+        if(!frame.Verify(crypto(), si))
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);
         RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
+      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), crypto(), p, Worker(),
                                       m_Identity, m_DataHandler))
       {
         // send discard
@@ -912,7 +912,7 @@ namespace llarp
         f.R = 1;
         f.T = frame.T;
         f.F = p->intro.pathID;
-        if(!f.Sign(Crypto(), m_Identity))
+        if(!f.Sign(crypto(), m_Identity))
           return false;
         const routing::PathTransferMessage d(f, frame.F);
         return p->SendRoutingMessage(d, router);
@@ -1197,7 +1197,7 @@ namespace llarp
     }
 
     Crypto*
-    Endpoint::Crypto()
+    Endpoint::crypto()
     {
       return m_Router->crypto();
     }

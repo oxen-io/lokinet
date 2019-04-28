@@ -26,7 +26,7 @@ tmp=/tmp/bootstrap.tmp
 
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
-curl "$url" > "$tmp" && \
+curl -o "$tmp" "$url" && \
     (mv "$tmp" "$HOME/.lokinet/bootstrap.signed" && echo -e "${GREEN}lokinet successfully bootstrapped${NC}" ) \
         || echo -e "${RED}failed to download bootstrap from $url${NC}"
 rm -f "$tmp"

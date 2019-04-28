@@ -675,7 +675,7 @@ namespace llarp
       Crypto();
 
       Logic*
-      Logic();
+      logic();
 
       AbstractRouter*
       Router();

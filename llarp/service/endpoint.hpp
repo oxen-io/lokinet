@@ -82,7 +82,7 @@ namespace llarp
       EndpointNetLoop();
 
       Crypto*
-      Crypto();
+      crypto();
 
       llarp_threadpool*
       Worker();

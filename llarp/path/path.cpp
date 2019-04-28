@@ -64,7 +64,7 @@ namespace llarp
     }
 
     Logic*
-    PathContext::Logic()
+    PathContext::logic()
     {
       return m_Router->logic();
     }
