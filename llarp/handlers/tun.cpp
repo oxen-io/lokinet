@@ -348,7 +348,7 @@ namespace llarp
         {
           dns::Message *replyMsg = new dns::Message(std::move(msg));
           EnsurePathToSNode(
-              addr.as_array(), [=](const RouterID &, exit::BaseSession * s) {
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
                 SendDNSReply(addr, s, replyMsg, reply, true, isV6);
               });
           return true;

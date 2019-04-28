@@ -237,7 +237,7 @@ namespace llarp
           // ... and it's valid
           const auto now = self->context->Router()->Now();
           if(self->record.nextRC->IsPublicRouter()
-             && self->record.nextRC->Verify(self->context->GetCrypto(), now))
+             && self->record.nextRC->Verify(self->context->crypto(), now))
           {
             llarp_nodedb* n        = self->context->Router()->nodedb();
             const RouterContact rc = std::move(*self->record.nextRC);
@@ -314,7 +314,7 @@ namespace llarp
         return;
       }
       // generate path key as we are in a worker thread
-      auto crypto = self->context->GetCrypto();
+      auto crypto = self->context->crypto();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
                             self->context->EncryptionSecretKey(),
                             self->record.tunnelNonce))
