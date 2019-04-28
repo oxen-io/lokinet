@@ -49,7 +49,7 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
   }
   ASSERT_TRUE(ident.SignIntroSet(I, Crypto(), now));
   ASSERT_TRUE(I.Verify(Crypto(), now));
-};
+}
 
 TEST_F(HiddenServiceTest, TestAddressToFromString)
 {

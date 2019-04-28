@@ -33,7 +33,7 @@ TEST_F(DNSLibTest, TestPTR)
   llarp::huint32_t expected = llarp::ipaddr_ipv4_bits(10, 10, 10, 1);
   ASSERT_TRUE(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
   ASSERT_EQ(ip, expected);
-};
+}
 
 TEST_F(DNSLibTest, TestSerializeHeader)
 {
@@ -51,7 +51,7 @@ TEST_F(DNSLibTest, TestSerializeHeader)
   ASSERT_TRUE(hdr == other);
   ASSERT_TRUE(other.id == 0x1234);
   ASSERT_TRUE(other.fields == (1 << 15));
-};
+}
 
 TEST_F(DNSLibTest, TestSerializeName)
 {
@@ -77,7 +77,7 @@ TEST_F(DNSLibTest, TestSerializeName)
   ASSERT_EQ(buf.base[13], 0);
   ASSERT_TRUE(llarp::dns::DecodeName(&buf, other));
   ASSERT_EQ(expected, other);
-};
+}
 
 TEST_F(DNSLibTest, TestSerializeQuestion)
 {
@@ -93,7 +93,7 @@ TEST_F(DNSLibTest, TestSerializeQuestion)
   ASSERT_EQ(other.qname, expected_name);
   ASSERT_EQ(q.qclass, other.qclass);
   ASSERT_EQ(q.qtype, other.qtype);
-};
+}
 
 TEST_F(DNSLibTest, TestSerializeMessage)
 {
@@ -133,7 +133,7 @@ TEST_F(DNSLibTest, TestSerializeMessage)
   ASSERT_TRUE(expected_question == other.questions[0]);
   ASSERT_EQ(other.answers.size(), 1U);
   ASSERT_EQ(other.answers[0].rData.size(), 4U);
-};
+}
 
 TEST_F(DNSLibTest, TestEncodeDecode_RData)
 {
@@ -148,4 +148,4 @@ TEST_F(DNSLibTest, TestEncodeDecode_RData)
   Rewind();
   ASSERT_TRUE(llarp::dns::DecodeRData(&buf, other_rdata));
   ASSERT_TRUE(rdata == other_rdata);
-};
+}

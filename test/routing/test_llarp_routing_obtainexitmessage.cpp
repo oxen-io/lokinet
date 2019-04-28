@@ -39,4 +39,4 @@ TEST_F(ObtainExitTest, TestSignVerify)
   EXPECT_TRUE(msg.I == llarp::PubKey(llarp::seckey_topublic(alice)));
   EXPECT_FALSE(msg.version != LLARP_PROTO_VERSION);
   EXPECT_FALSE(msg.Z.IsZero());
-};
+}

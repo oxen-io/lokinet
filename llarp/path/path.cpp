@@ -58,13 +58,13 @@ namespace llarp
     }
 
     Crypto*
-    PathContext::GetCrypto()
+    PathContext::crypto()
     {
       return m_Router->crypto();
     }
 
     Logic*
-    PathContext::GetLogic()
+    PathContext::logic()
     {
       return m_Router->logic();
     }
@@ -538,7 +538,7 @@ namespace llarp
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
-        auto dlt = now - m_LastLatencyTestTime;
+        const auto dlt = now - m_LastLatencyTestTime;
         if(dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
           routing::PathLatencyMessage latency;
@@ -550,8 +550,8 @@ namespace llarp
         }
         if(m_LastRecvMessage && now > m_LastRecvMessage)
         {
-          auto dlt = now - m_LastRecvMessage;
-          if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
+          const auto delay = now - m_LastRecvMessage;
+          if(m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);

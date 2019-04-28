@@ -27,7 +27,7 @@ namespace llarp
   string_view_string(const string_view& v)
   {
     return std::string(v);
-  };
+  }
 }  // namespace llarp
 #endif
 #endif

@@ -54,7 +54,7 @@ namespace llarp
     bootstrap = find_section(parser, "bootstrap", section_t{});
     logging   = find_section(parser, "logging", section_t{});
     return true;
-  };
+  }
 
   void
   Config::visit(const Visitor &functor)

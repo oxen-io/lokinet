@@ -132,4 +132,4 @@ TEST_F(EventLoopTest, PipeWrite1K)
   ASSERT_TRUE(loop->add_ev(testpipe, false));
   testpipe->PumpIt();
   RunLoop();
-};
+}

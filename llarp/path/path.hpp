@@ -660,10 +660,10 @@ namespace llarp
       Worker();
 
       llarp::Crypto*
-      GetCrypto();
+      crypto();
 
       Logic*
-      GetLogic();
+      logic();
 
       AbstractRouter*
       Router();

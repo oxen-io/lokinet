@@ -192,9 +192,9 @@ namespace llarp
   {
     iovec vecs[2];
     // TODO: IPV6
-    uint32_t t       = htonl(AF_INET);
-    vecs[0].iov_base = &t;
-    vecs[0].iov_len  = sizeof(t);
+    uint32_t val     = htonl(AF_INET);
+    vecs[0].iov_base = &val;
+    vecs[0].iov_len  = sizeof(val);
     vecs[1].iov_base = buf;
     vecs[1].iov_len  = sz;
     return writev(fd, vecs, 2);
@@ -259,7 +259,7 @@ namespace llarp
     return fd != -1;
   }
 
-};  // namespace llarp
+}  // namespace llarp
 
 llarp::ev_io*
 llarp_kqueue_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)

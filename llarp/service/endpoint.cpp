@@ -963,24 +963,23 @@ namespace llarp
         if(!GetSenderFor(frame.T, si))
           return false;
         // verify source
-        if(!frame.Verify(GetCrypto(), si))
+        if(!frame.Verify(crypto(), si))
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);
         RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
-                                      CryptoWorker(), m_Identity,
-                                      m_DataHandler))
-
+      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), crypto(), p, Worker(),
+                                      m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;
         f.R = 1;
         f.T = frame.T;
         f.F = p->intro.pathID;
-        if(!f.Sign(GetCrypto(), m_Identity))
+
+        if(!f.Sign(crypto(), m_Identity))
           return false;
         auto d =
             std::make_shared< const routing::PathTransferMessage >(f, frame.F);
@@ -1279,7 +1278,7 @@ namespace llarp
     }
 
     Crypto*
-    Endpoint::GetCrypto()
+    Endpoint::crypto()
     {
       return m_Router->crypto();
     }

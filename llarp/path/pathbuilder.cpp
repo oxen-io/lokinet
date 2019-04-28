@@ -140,9 +140,9 @@ namespace llarp
       result = func;
       worker = pool;
 
-      for(size_t idx = 0; idx < path::max_len; ++idx)
+      for(size_t i = 0; i < path::max_len; ++i)
       {
-        LRCM.frames[idx].Randomize();
+        LRCM.frames[i].Randomize();
       }
       llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
     }

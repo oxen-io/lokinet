@@ -52,8 +52,12 @@ llarp::Addr::operator==(const Addr& other) const
 
 namespace llarp
 {
-  Addr::Addr(){};
-  Addr::~Addr(){};
+  Addr::Addr()
+  {
+  }
+  Addr::~Addr()
+  {
+  }
 
   Addr::Addr(const Addr& other)
   {

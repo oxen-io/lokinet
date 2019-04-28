@@ -366,13 +366,13 @@ namespace llarp
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRAM down the path
-        self->context->GetLogic()->queue_job({self, &SendPathConfirm});
+        self->context->logic()->queue_job({self, &SendPathConfirm});
       }
       else
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        self->context->GetLogic()->queue_job({self, &SendLRCM});
+        self->context->logic()->queue_job({self, &SendLRCM});
       }
     }
   };
@@ -381,13 +381,15 @@ namespace llarp
   LR_CommitMessage::AsyncDecrypt(llarp::path::PathContext* context) const
   {
     LRCMFrameDecrypt::Decrypter* decrypter = new LRCMFrameDecrypt::Decrypter(
-        context->GetCrypto(), context->EncryptionSecretKey(),
+        context->crypto(), context->EncryptionSecretKey(),
         &LRCMFrameDecrypt::HandleDecrypted);
     // copy frames so we own them
-    LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(context, decrypter, this);
+    LRCMFrameDecrypt* frameDecrypt =
+        new LRCMFrameDecrypt(context, decrypter, this);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(context->Worker(), frames->frames[0], frames);
+    decrypter->AsyncDecrypt(context->Worker(), frameDecrypt->frames[0],
+                            frameDecrypt);
     return true;
   }
 }  // namespace llarp

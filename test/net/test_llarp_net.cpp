@@ -29,32 +29,32 @@ TEST_F(TestNet, TestIPv4Netmask)
 {
   ASSERT_TRUE(llarp::netmask_ipv4_bits(8) == llarp::huint32_t{0xFF000000});
   ASSERT_TRUE(llarp::netmask_ipv4_bits(24) == llarp::huint32_t{0xFFFFFF00});
-};
+}
 
 TEST_F(TestNet, TestBogon_10_8)
 {
   ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
-};
+}
 
 TEST_F(TestNet, TestBogon_192_168_16)
 {
   ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(192, 168, 1, 111)));
-};
+}
 
 TEST_F(TestNet, TestBogon_DoD_8)
 {
   ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(21, 3, 37, 70)));
-};
+}
 
 TEST_F(TestNet, TestBogon_127_8)
 {
   ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(127, 0, 0, 1)));
-};
+}
 
 TEST_F(TestNet, TestBogon_0_8)
 {
   ASSERT_TRUE(llarp::IsIPv4Bogon(llarp::ipaddr_ipv4_bits(0, 0, 0, 0)));
-};
+}
 
 TEST_F(TestNet, TestBogon_NonBogon)
 {

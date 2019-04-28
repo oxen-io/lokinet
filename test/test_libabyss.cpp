@@ -190,4 +190,4 @@ TEST_F(AbyssTest, TestClientAndServer)
   AsyncFlush();
   RunLoop();
   ASSERT_TRUE(called);
-};
+}
