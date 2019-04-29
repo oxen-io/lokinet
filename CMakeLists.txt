@@ -22,17 +22,32 @@ option(WITH_COVERAGE "generate coverage data")
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 
 include(cmake/target_link_libraries_system.cmake)
+include(cmake/add_import_library.cmake)
+include(cmake/add_log_tag.cmake)
 
 # Basic definitions
-get_filename_component(CORE_INCLUDE include ABSOLUTE)
-get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/${ABYSS}/include" ABSOLUTE)
+set(LIB lokinet)
+set(SHARED_LIB ${LIB}-shared)
+set(STATIC_LIB ${LIB}-static)
+set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(UTIL_LIB ${LIB}-util)
+set(PLATFORM_LIB ${LIB}-platform)
+set(ANDROID_LIB ${LIB}android)
+set(ABYSS libabyss)
+set(ABYSS_LIB abyss)
+set(ABYSS_EXE ${ABYSS_LIB}-main)
+get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
+add_definitions(-D${CMAKE_SYSTEM_NAME})
+
+get_filename_component(CORE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include" ABSOLUTE)
+get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" ABSOLUTE)
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
 endif()
 
-if (MSVC_VERSION)
+if(MSVC_VERSION)
   enable_language(ASM_MASM)
   list(APPEND CMAKE_ASM_MASM_SOURCE_FILE_EXTENSIONS s)
   add_definitions(/D_WIN32_WINNT=0x0600 /DNOMINMAX /DSODIUM_STATIC)
@@ -44,8 +59,6 @@ include(cmake/solaris.cmake)
 
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
-  ENABLE_LANGUAGE(RC)
-  set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lshlwapi")
 else()
   set(CMAKE_CXX_STANDARD 14)
 endif(WIN32)
@@ -57,19 +70,13 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
-if (WIN32 AND NOT STATIC_LINK_RUNTIME)
-  if(NOT MSVC)
-    message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
-    message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
-  endif()
-endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
-
+set(ABSEIL_DIR vendor/abseil-cpp)
+add_subdirectory(${ABSEIL_DIR})
+include_directories(SYSTEM ${ABSEIL_DIR})
 add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
 include_directories(SYSTEM vendor/cxxopts/include)
 
-# still need the headers unconditionally
-set(ABSEIL_DIR vendor/abseil-cpp)
 if (NOT WIN32)
   add_compile_options(-fPIC)
 endif(NOT WIN32)
@@ -94,30 +101,8 @@ include(cmake/coverage.cmake)
 
 # these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
-# dynamic linking does this all the time
-  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    option(NO_LIBGCC "use libunwind+compiler-rt instead, must already be installed in mingw-w64 sysroot" OFF)
-    add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
-    add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-    if (NO_LIBGCC)
-      set(CMAKE_CXX_STANDARD_LIBRARIES "-lunwind -lpsapi ${CMAKE_CXX_STANDARD_LIBRARIES}")
-      set(CMAKE_C_STANDARD_LIBRARIES "-lunwind -lpsapi ${CMAKE_C_STANDARD_LIBRARIES}")
-    endif(NO_LIBGCC)
-  else()
-    # found it. this is GNU only
-    add_compile_options(-Wno-cast-function-type)
-  endif()
+  include(cmake/cross_compile.cmake)
 endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
-
-if(WIN32 AND NOT MSVC_VERSION)
-  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
-  # unlike unix where you get a *single* compiler ID string in .comment
-  # GNU ld sees fit to merge *all* the .ident sections in object files
-  # to .r[o]data section one after the other!
-  add_compile_options(-fno-ident)
-  set(FS_LIB stdc++fs)
-endif()
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -185,11 +170,6 @@ if(SHADOW)
   include(cmake/shadow.cmake)
 endif(SHADOW)
 
-# if(CMAKE_BUILD_TYPE MATCHES Release AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GCC")
-#   set(OPTIMIZE_FLAGS -UNDEBUG)
-# endif()
-
-
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
   add_definitions(-DLOKINET_DEBUG=1)
@@ -211,13 +191,6 @@ if(NOT GIT_VERSION)
   string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
   add_definitions("-DGIT_REV=\"${GIT_VERSION}\"")
 endif(NOT GIT_VERSION)
-
-if(RELEASE_MOTTO)
-  add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-  if(WIN32)
-    add_definitions(-DRELEASE_MOTTO=${RELEASE_MOTTO})
-  endif(WIN32)
-endif(RELEASE_MOTTO)
 
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
@@ -242,35 +215,13 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
-set(LIB lokinet)
-set(SHARED_LIB ${LIB}-shared)
-set(STATIC_LIB ${LIB}-static)
-set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
-set(UTIL_LIB ${LIB}-util)
-set(PLATFORM_LIB ${LIB}-platform)
-set(ANDROID_LIB ${LIB}android)
-set(ABYSS libabyss)
-set(ABYSS_LIB abyss)
-set(ABYSS_EXE ${ABYSS_LIB}-main)
-get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
-add_definitions(-D${CMAKE_SYSTEM_NAME})
-
-function(add_import_library libname)
-  add_library(libname SHARED IMPORTED)
-  if(NOT TARGET libname)
-    message(FATAL "unable to find library ${libname}")
-  endif()
-endfunction()
-
 if(UNIX)
   include(cmake/unix.cmake)
 elseif(WIN32)
-    get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
-    get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
+  include(cmake/win32.cmake)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
-endif(UNIX)
+endif()
 
 set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.cpp
@@ -281,34 +232,16 @@ if(UNIX)
   set(LIBTUNTAP_SRC ${TT_ROOT}/tuntap-unix.c ${LIBTUNTAP_SRC_BASE})
 else()
   set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
-endif(UNIX)
+endif()
 
 if(NOT WIN32)
   add_subdirectory(vendor)
-endif(NOT WIN32)
-
-function(add_log_tag target)
-  get_target_property(TARGET_SRCS ${target} SOURCES)
-  foreach(F ${TARGET_SRCS})
-    set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
-  endforeach(F)
-endfunction()
-
-set(ABYSS_SRC
-  ${ABYSS}/src/md5.cpp
-  ${ABYSS}/src/http.cpp
-  ${ABYSS}/src/client.cpp
-  ${ABYSS}/src/server.cpp)
-add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-
-add_subdirectory(${ABSEIL_DIR})
-include_directories(SYSTEM ${ABSEIL_DIR})
+endif()
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
-
-target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
+add_subdirectory(libabyss)
 
 if (NOT WIN32)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
@@ -330,12 +263,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 add_log_tag(${ABYSS_EXE})
 add_log_tag(${ABYSS_LIB})
-
-if (WIN32)
-  set(EXE_LIBS ${STATIC_LIB} ws2_32 iphlpapi)
-else()
-  set(EXE_LIBS ${STATIC_LIB} cppbackport libutp)
-endif(WIN32)
 
 
 if(SHADOW)
