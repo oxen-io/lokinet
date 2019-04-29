@@ -255,9 +255,6 @@ namespace llarp
     {
       if(sendq.size() >= MaxSendQueueSize)
         return false;
-      // preemptive pump
-      if(sendq.size() >= MaxSendQueueSize / 8)
-        PumpWrite();
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
@@ -273,6 +270,7 @@ namespace llarp
         ptr += s;
         sz -= s;
       }
+      PumpWrite();
       return true;
     }
 
