@@ -13,7 +13,7 @@ namespace llarp
 
   static constexpr size_t EncryptedFrameOverheadSize =
       PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
-  static constexpr size_t EncryptedFrameBodySize = 1024;
+  static constexpr size_t EncryptedFrameBodySize = 128 * 6;
   static constexpr size_t EncryptedFrameSize =
       EncryptedFrameOverheadSize + EncryptedFrameBodySize;
 

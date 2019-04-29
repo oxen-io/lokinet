@@ -244,7 +244,7 @@ namespace llarp
             // store it into netdb if we don't have it
             if(!n->Has(rc.pubkey))
             {
-              std::function< void(std::shared_ptr< LRCMFrameDecrypt >) > cb =
+              static std::function< void(std::shared_ptr< LRCMFrameDecrypt >) > cb =
                   [](std::shared_ptr< LRCMFrameDecrypt > ctx) {
                     ctx->context->ForwardLRCM(ctx->hop->info.upstream,
                                               ctx->frames);
