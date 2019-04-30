@@ -45,7 +45,7 @@ namespace llarp
       ShouldBundleRC() const override
       {
         // TODO: make configurable
-        return true;
+        return false;
       }
 
       void
@@ -67,9 +67,13 @@ namespace llarp
       bool
       QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
 
-      /// flush upstream and downstream traffic
+      /// flush upstream to exit via paths
       bool
-      Flush();
+      FlushUpstream();
+
+      /// flush downstream to user via tun
+      void
+      FlushDownstream();
 
       path::PathRole
       GetRoles() const override

@@ -247,11 +247,13 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(!itr->second->Flush())
+          // TODO: move flush upstream to router event loop
+          if(!itr->second->FlushUpstream())
           {
             LogWarn("failed to flush snode traffic to ", itr->first,
                     " via outbound session");
           }
+          itr->second->FlushDownstream();
           ++itr;
         }
       }

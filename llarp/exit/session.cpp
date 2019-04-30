@@ -231,7 +231,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::Flush()
+    BaseSession::FlushUpstream()
     {
       auto now  = router->Now();
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
@@ -259,13 +259,18 @@ namespace llarp
           item.second.clear();
         m_Upstream.clear();
       }
+      return true;
+    }
+
+    void
+    BaseSession::FlushDownstream()
+    {
       while(m_Downstream.size())
       {
         if(m_WritePacket)
           m_WritePacket(m_Downstream.top().second.ConstBuffer());
         m_Downstream.pop();
       }
-      return true;
     }
 
     SNodeSession::SNodeSession(

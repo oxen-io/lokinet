@@ -12,6 +12,7 @@
 #include <ev/ev.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -228,6 +229,11 @@ namespace llarp
     TunEndpoint::Flush()
     {
       FlushSend();
+      if(m_Exit)
+      {
+        llarp::exit::BaseSession_ptr ex = m_Exit;
+        RouterLogic()->queue_func([=] { ex->FlushUpstream(); });
+      }
     }
 
     static bool
@@ -772,14 +778,13 @@ namespace llarp
       self->FlushSend();
       // flush exit traffic queues if it's there
       if(self->m_Exit)
-        self->m_Exit->Flush();
-      // flush snode traffic
-      self->FlushSNodeTraffic();
+        self->m_Exit->FlushDownstream();
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
+      self->Pump(self->Now());
     }
 
     void

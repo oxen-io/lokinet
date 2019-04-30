@@ -169,17 +169,6 @@ namespace llarp
       }
     }
 
-    void
-    Endpoint::FlushSNodeTraffic()
-    {
-      auto itr = m_SNodeSessions.begin();
-      while(itr != m_SNodeSessions.end())
-      {
-        itr->second->Flush();
-        ++itr;
-      }
-    }
-
     bool
     Endpoint::IsReady() const
     {
@@ -1131,6 +1120,24 @@ namespace llarp
         itr->second->Pump(now);
         ++itr;
       }
+
+      RouterLogic()->queue_func([&]() {
+        for(const auto& item : m_SNodeSessions)
+          item.second->FlushUpstream();
+      });
+
+      EndpointLogic()->queue_func([&]() {
+        for(const auto& item : m_SNodeSessions)
+          item.second->FlushDownstream();
+      });
+
+      RouterLogic()->queue_func([&]() {
+        auto router = Router();
+        util::Lock lock(&m_SendQueueMutex);
+        for(const auto& item : m_SendQueue)
+          item.second->SendRoutingMessage(*item.first, router);
+        m_SendQueue.clear();
+      });
     }
 
     bool
@@ -1193,9 +1200,10 @@ namespace llarp
                 return false;
               }
               LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-              auto router = Router();
-              RouterLogic()->queue_func(
-                  [=]() { p->SendRoutingMessage(*transfer, router); });
+              {
+                util::Lock lock(&m_SendQueueMutex);
+                m_SendQueue.emplace_back(transfer, p);
+              }
               return true;
             }
           }

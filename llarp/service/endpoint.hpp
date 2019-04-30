@@ -209,9 +209,6 @@ namespace llarp
       bool
       SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
 
-      void
-      FlushSNodeTraffic();
-
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
@@ -365,6 +362,11 @@ namespace llarp
       std::string m_NetNS;
       bool m_BundleRC = false;
 
+      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
+      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
+      util::Mutex m_SendQueueMutex;
+      std::deque< SendEvent_t > m_SendQueue;
+
       using PendingTraffic =
           std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
 
@@ -379,7 +381,7 @@ namespace llarp
 
       using SNodeSessions = std::unordered_multimap<
           RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
-
+      util::Mutex m_SNodeSessionsMutex;
       SNodeSessions m_SNodeSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
