@@ -1020,27 +1020,18 @@ namespace llarp
     }
 
     void
-    Endpoint::Pump(llarp_time_t now)
+    Endpoint::Pump(llarp_time_t)
     {
-      auto itr = m_RemoteSessions.begin();
-      while(itr != m_RemoteSessions.end())
-      {
-        itr->second->Pump(now);
-        ++itr;
-      }
-
-      RouterLogic()->queue_func([&]() {
-        for(const auto& item : m_SNodeSessions)
-          item.second->FlushUpstream();
-      });
-
       EndpointLogic()->queue_func([&]() {
         for(const auto& item : m_SNodeSessions)
           item.second->FlushDownstream();
       });
-
       RouterLogic()->queue_func([&]() {
         auto router = Router();
+        for(const auto & item : m_RemoteSessions)
+          item.second->FlushUpstream();
+        for(const auto& item : m_SNodeSessions)
+          item.second->FlushUpstream();
         util::Lock lock(&m_SendQueueMutex);
         for(const auto& item : m_SendQueue)
           item.second->SendRoutingMessage(*item.first, router);

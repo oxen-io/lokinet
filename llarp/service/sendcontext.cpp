@@ -29,20 +29,13 @@ namespace llarp
           msg, remoteIntro.pathID);
       {
         util::Lock lock(&m_SendQueueMutex);
-        const auto sz = m_SendQueue.size();
         m_SendQueue.emplace_back(transfer, path);
-        if(sz == 0)
-        {
-          // TODO: use shared_from_this()
-          m_Endpoint->RouterLogic()->queue_func(
-              std::bind(&SendContext::FlushSend, this));
-        }
       }
       return true;
     }
 
     void
-    SendContext::FlushSend()
+    SendContext::FlushUpstream()
     {
       auto r = m_Endpoint->Router();
       util::Lock lock(&m_SendQueueMutex);

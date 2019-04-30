@@ -90,7 +90,7 @@ namespace llarp
       auto itr = remoteSessions.begin();
       while(itr != remoteSessions.end())
       {
-        if(itr->second->Tick(now))
+        if(itr->second->Pump(now))
         {
           itr->second->Stop();
           deadSessions.emplace(std::move(*itr));

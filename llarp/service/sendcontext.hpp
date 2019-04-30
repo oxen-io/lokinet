@@ -30,9 +30,9 @@ namespace llarp
       Send(const ProtocolFrame& f, path::Path_ptr path)
           LOCKS_EXCLUDED(m_SendQueueMutex);
 
-      /// flush send when in router thread
+      /// flush upstream traffic when in router thread
       void
-      FlushSend() LOCKS_EXCLUDED(m_SendQueueMutex);
+      FlushUpstream() LOCKS_EXCLUDED(m_SendQueueMutex);
 
       SharedSecret sharedKey;
       ServiceInfo remoteIdent;
