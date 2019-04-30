@@ -217,6 +217,7 @@ namespace llarp
         // we are not allowed to forward it ... now what?
         llarp::LogError("path to ", self->hop->info.upstream,
                         "not allowed, dropping build request on the floor");
+        self->hop = nullptr;
         return;
       }
       // persist sessions to upstream and downstream routers until the commit
