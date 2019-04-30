@@ -332,6 +332,8 @@ namespace llarp
       std::unique_ptr< exit::BaseSession > m_Exit;
 
      private:
+      friend struct EndpointUtil;
+
       AbstractRouter* m_Router;
       llarp_threadpool* m_IsolatedWorker  = nullptr;
       Logic* m_IsolatedLogic              = nullptr;
@@ -387,8 +389,9 @@ namespace llarp
         }
       };
 
-      std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >
-          m_PendingRouters;
+      using PendingRouters =
+          std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
+      PendingRouters m_PendingRouters;
 
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
@@ -397,8 +400,10 @@ namespace llarp
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
-      std::unordered_map< uint64_t, std::unique_ptr< service::IServiceLookup > >
-          m_PendingLookups;
+      using PendingLookups =
+          std::unordered_map< uint64_t,
+                              std::unique_ptr< service::IServiceLookup > >;
+      PendingLookups m_PendingLookups;
       /// prefetch remote address list
       std::set< Address > m_PrefetchAddrs;
       /// hidden service tag
@@ -409,10 +414,9 @@ namespace llarp
       std::list< std::function< bool(void) > > m_OnInit;
 
       /// conversations
-      using ConvoMap_t =
-          std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
-      ConvoMap_t m_Sessions;
+      ConvoMap m_Sessions;
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
