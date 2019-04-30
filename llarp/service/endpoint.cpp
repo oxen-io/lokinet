@@ -1129,7 +1129,7 @@ namespace llarp
             if(c)
             {
               c->UpdateIntroSet(true);
-              for(auto & pending :  m_PendingTraffic[r] )
+              for(auto& pending : m_PendingTraffic[r])
                 c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
             }
             m_PendingTraffic.erase(r);

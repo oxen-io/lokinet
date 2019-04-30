@@ -57,6 +57,10 @@ namespace llarp
           env.push_back(ptr);
         }
         env.push_back(0);
+        const auto exe  = _args[0].c_str();
+        const auto argv = args.data();
+        const auto argp = env.data();
+
         pid_t child_process = ::fork();
         if(child_process == -1)
         {
@@ -71,7 +75,7 @@ namespace llarp
           LogInfo(_args[0], " exit code: ", status);
           delete self;
         }
-        else if(::execve(_args[0].c_str(), args.data(), env.data()) == -1)
+        else if(::execve(exe, argv, argp) == -1)
         {
           LogError("failed to exec ", _args[0], " : ", strerror(errno));
         }
