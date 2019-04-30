@@ -1121,12 +1121,18 @@ namespace llarp
           ++itr;
         }
       }
+      m_PendingTraffic[remote].emplace_back(data, t);
       // no converstation
       return EnsurePathToService(
           remote,
-          [](Address, OutboundContext* c) {
+          [&](Address r, OutboundContext* c) {
             if(c)
+            {
               c->UpdateIntroSet(true);
+              for(auto & pending :  m_PendingTraffic[r] )
+                c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
+            }
+            m_PendingTraffic.erase(r);
           },
           5000, true);
     }

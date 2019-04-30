@@ -90,6 +90,7 @@ namespace llarp
       auto itr = remoteSessions.begin();
       while(itr != remoteSessions.end())
       {
+        itr->second->Tick(now);
         if(itr->second->Pump(now))
         {
           itr->second->Stop();
