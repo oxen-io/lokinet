@@ -970,8 +970,9 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), crypto(), p, CryptoWorker(),
-                                      m_Identity, m_DataHandler))
+      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), crypto(), p,
+                                      CryptoWorker(), m_Identity,
+                                      m_DataHandler))
       {
         // send discard
         ProtocolFrame f;

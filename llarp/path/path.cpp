@@ -87,8 +87,7 @@ namespace llarp
                              const std::array< EncryptedFrame, 8 >& frames)
     {
       LogDebug("forwarding LRCM to ", nextHop);
-      LR_CommitMessage msg;
-      msg.frames = frames;
+      const LR_CommitMessage msg(frames);
       return m_Router->SendToOrQueue(nextHop, &msg);
     }
     template < typename Map_t, typename Key_t, typename CheckValue_t,

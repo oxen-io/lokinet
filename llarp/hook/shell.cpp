@@ -32,7 +32,7 @@ namespace llarp
         for(std::string arg; std::getline(s, arg, ' ');)
         {
           _args.emplace_back(std::move(arg));
-          char * ptr = (char *) _args.back().c_str();
+          char *ptr = (char *)_args.back().c_str();
           args.push_back(ptr);
         }
         args.push_back(0);
@@ -53,7 +53,7 @@ namespace llarp
         for(const auto &item : self->m_env)
         {
           _env.emplace_back(item.first + "=" + item.second);
-          char * ptr = (char *) _env.back().c_str();
+          char *ptr = (char *)_env.back().c_str();
           env.push_back(ptr);
         }
         env.push_back(0);
