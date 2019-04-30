@@ -293,6 +293,19 @@ namespace llarp
     return true;
   }
 
+  void
+  Router::PumpLL()
+  {
+    for(const auto &link : inboundLinks)
+    {
+      link->Pump();
+    }
+    for(const auto &link : outboundLinks)
+    {
+      link->Pump();
+    }
+  }
+
   constexpr size_t MaxPendingSendQueueSize = 8;
 
   bool

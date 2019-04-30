@@ -1019,24 +1019,22 @@ namespace llarp
       return false;
     }
 
-    void
-    Endpoint::Pump(llarp_time_t)
+    void Endpoint::Pump(llarp_time_t)
     {
       EndpointLogic()->queue_func([&]() {
         for(const auto& item : m_SNodeSessions)
           item.second->FlushDownstream();
       });
-      RouterLogic()->queue_func([&]() {
-        auto router = Router();
-        for(const auto & item : m_RemoteSessions)
-          item.second->FlushUpstream();
-        for(const auto& item : m_SNodeSessions)
-          item.second->FlushUpstream();
-        util::Lock lock(&m_SendQueueMutex);
-        for(const auto& item : m_SendQueue)
-          item.second->SendRoutingMessage(*item.first, router);
-        m_SendQueue.clear();
-      });
+
+      auto router = Router();
+      for(const auto& item : m_RemoteSessions)
+        item.second->FlushUpstream();
+      for(const auto& item : m_SNodeSessions)
+        item.second->FlushUpstream();
+      util::Lock lock(&m_SendQueueMutex);
+      for(const auto& item : m_SendQueue)
+        item.second->SendRoutingMessage(*item.first, router);
+      m_SendQueue.clear();
     }
 
     bool

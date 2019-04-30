@@ -228,12 +228,19 @@ namespace llarp
     void
     TunEndpoint::Flush()
     {
+      auto self = shared_from_this();
       FlushSend();
       if(m_Exit)
       {
-        llarp::exit::BaseSession_ptr ex = m_Exit;
-        RouterLogic()->queue_func([=] { ex->FlushUpstream(); });
+        RouterLogic()->queue_func([=] {
+          self->m_Exit->FlushUpstream();
+          self->Router()->PumpLL();
+        });
       }
+      RouterLogic()->queue_func([=]() {
+        self->Pump(self->Now());
+        self->Router()->PumpLL();
+      });
     }
 
     static bool
@@ -778,13 +785,14 @@ namespace llarp
       self->FlushSend();
       // flush exit traffic queues if it's there
       if(self->m_Exit)
+      {
         self->m_Exit->FlushDownstream();
+      }
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
-      self->Pump(self->Now());
     }
 
     void

@@ -271,6 +271,9 @@ namespace llarp
       return IsTrueValue(itr->second.c_str());
     }
 
+    void
+    PumpLL() override;
+
     bool
     CreateDefaultHiddenService();
 

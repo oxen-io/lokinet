@@ -257,6 +257,7 @@ namespace llarp
           ++itr;
         }
       }
+      m_Router->PumpLL();
     }
 
     bool

@@ -117,6 +117,10 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    /// pump low level links
+    virtual void
+    PumpLL() = 0;
+
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;
 

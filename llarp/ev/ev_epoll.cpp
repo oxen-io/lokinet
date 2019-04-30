@@ -337,8 +337,9 @@ llarp_epoll_loop::tick(int ms)
 {
   epoll_event events[1024];
   int result;
-  result     = epoll_wait(epollfd, events, 1024, ms);
-  bool didIO = false;
+  result        = epoll_wait(epollfd, events, 1024, ms);
+  bool didRead  = false;
+  bool didWrite = false;
   if(result > 0)
   {
     int idx = 0;
@@ -362,6 +363,7 @@ llarp_epoll_loop::tick(int ms)
           // write THEN READ don't revert me
           if(events[idx].events & EPOLLOUT)
           {
+            didWrite = true;
             IO([&]() -> ssize_t {
               llarp::LogDebug("epoll out");
               ev->flush_write();
@@ -370,12 +372,11 @@ llarp_epoll_loop::tick(int ms)
           }
           if(events[idx].events & EPOLLIN)
           {
-            ssize_t amount = IO([&]() -> ssize_t {
+            didRead = true;
+            IO([&]() -> ssize_t {
               llarp::LogDebug("epoll in");
               return ev->read(readbuf, sizeof(readbuf));
             });
-            if(amount > 0)
-              didIO = true;
           }
         }
       }
@@ -385,7 +386,7 @@ llarp_epoll_loop::tick(int ms)
   if(result != -1)
     tick_listeners();
   /// if we didn't get an io events we sleep to avoid 100% cpu use
-  if(!didIO)
+  if(didWrite && !didRead)
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   return result;
 }
