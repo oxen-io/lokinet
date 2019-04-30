@@ -10,6 +10,7 @@
 #include <nodedb.hpp>
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
+#include <service/endpoint_util.hpp>
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
 #include <service/protocol.hpp>
@@ -147,12 +148,8 @@ namespace llarp
     void
     Endpoint::FlushSNodeTraffic()
     {
-      auto itr = m_SNodeSessions.begin();
-      while(itr != m_SNodeSessions.end())
-      {
-        itr->second->Flush();
-        ++itr;
-      }
+      std::for_each(m_SNodeSessions.begin(), m_SNodeSessions.end(),
+                    [](auto& x) { x.second->Flush(); });
     }
 
     util::StatusObject
@@ -210,53 +207,11 @@ namespace llarp
       }
 
       // expire snode sessions
-      {
-        auto itr = m_SNodeSessions.begin();
-        while(itr != m_SNodeSessions.end())
-        {
-          if(itr->second->ShouldRemove() && itr->second->IsStopped())
-          {
-            itr = m_SNodeSessions.erase(itr);
-            continue;
-          }
-          // expunge next tick
-          if(itr->second->IsExpired(now))
-            itr->second->Stop();
-
-          ++itr;
-        }
-      }
+      EndpointUtil::ExpireSNodeSessions(now, m_SNodeSessions);
       // expire pending tx
-      {
-        auto itr = m_PendingLookups.begin();
-        while(itr != m_PendingLookups.end())
-        {
-          if(itr->second->IsTimedOut(now))
-          {
-            std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
-
-            LogInfo(lookup->name, " timed out txid=", lookup->txid);
-            lookup->HandleResponse({});
-            itr = m_PendingLookups.erase(itr);
-          }
-          else
-            ++itr;
-        }
-      }
+      EndpointUtil::ExpirePendingTx(now, m_PendingLookups);
       // expire pending router lookups
-      {
-        auto itr = m_PendingRouters.begin();
-        while(itr != m_PendingRouters.end())
-        {
-          if(itr->second.IsExpired(now))
-          {
-            LogInfo("lookup for ", itr->first, " timed out");
-            itr = m_PendingRouters.erase(itr);
-          }
-          else
-            ++itr;
-        }
-      }
+      EndpointUtil::ExpirePendingRouterLookups(now, m_PendingRouters);
 
       // prefetch addrs
       for(const auto& addr : m_PrefetchAddrs)
@@ -265,8 +220,8 @@ namespace llarp
         {
           if(!EnsurePathToService(
                  addr,
-                 [](__attribute__((unused)) Address addr,
-                    __attribute__((unused)) OutboundContext* ctx) {},
+                 [](ABSL_ATTRIBUTE_UNUSED Address addr,
+                    ABSL_ATTRIBUTE_UNUSED OutboundContext* ctx) {},
                  10000))
           {
             LogWarn("failed to ensure path to ", addr);
@@ -316,57 +271,20 @@ namespace llarp
 #endif
 
       // deregister dead sessions
-      {
-        auto itr = m_DeadSessions.begin();
-        while(itr != m_DeadSessions.end())
-        {
-          if(itr->second->IsDone(now))
-            itr = m_DeadSessions.erase(itr);
-          else
-            ++itr;
-        }
-      }
+      EndpointUtil::DeregisterDeadSessions(now, m_DeadSessions);
       // tick remote sessions
-      {
-        auto itr = m_RemoteSessions.begin();
-        while(itr != m_RemoteSessions.end())
-        {
-          if(itr->second->Tick(now))
-          {
-            itr->second->Stop();
-            m_DeadSessions.emplace(itr->first, std::move(itr->second));
-            itr = m_RemoteSessions.erase(itr);
-          }
-          else
-            ++itr;
-        }
-      }
+      EndpointUtil::TickRemoteSessions(now, m_RemoteSessions, m_DeadSessions);
       // expire convotags
-      {
-        auto itr = m_Sessions.begin();
-        while(itr != m_Sessions.end())
-        {
-          if(itr->second.IsExpired(now))
-            itr = m_Sessions.erase(itr);
-          else
-            ++itr;
-        }
-      }
+      EndpointUtil::ExpireConvoSessions(now, m_Sessions);
     }
 
     bool
     Endpoint::Stop()
     {
       // stop remote sessions
-      for(auto& item : m_RemoteSessions)
-      {
-        item.second->Stop();
-      }
+      EndpointUtil::StopRemoteSessions(m_RemoteSessions);
       // stop snode sessions
-      for(auto& item : m_SNodeSessions)
-      {
-        item.second->Stop();
-      }
+      EndpointUtil::StopSnodeSessions(m_SNodeSessions);
       return path::Builder::Stop();
     }
 
@@ -388,15 +306,7 @@ namespace llarp
     bool
     Endpoint::HasPathToService(const Address& addr) const
     {
-      auto range                   = m_RemoteSessions.equal_range(addr);
-      Sessions::const_iterator itr = range.first;
-      while(itr != range.second)
-      {
-        if(itr->second->ReadyToSend())
-          return true;
-        ++itr;
-      }
-      return false;
+      return EndpointUtil::HasPathToService(addr, m_RemoteSessions);
     }
 
     void
@@ -958,8 +868,7 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
-                                  __attribute__((unused))
-                                  llarp_time_t timeoutMS,
+                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
                                   bool randomPath)
     {
       path::Path* path = nullptr;

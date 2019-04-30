@@ -217,6 +217,7 @@ set(LIB_SRC
   service/async_key_exchange.cpp
   service/config.cpp
   service/context.cpp
+  service/endpoint_util.cpp
   service/endpoint.cpp
   service/handler.cpp
   service/hidden_service_address_lookup.cpp
