@@ -64,7 +64,10 @@ namespace llarp
     {
       if(hop == numHops - 1)
       {
-        return db->Get(m_ExitRouter, cur);
+        if(db->Get(m_ExitRouter, cur))
+          return true;
+        router->LookupRouter(m_ExitRouter);
+        return false;
       }
       else if(hop == numHops - 2)
       {
@@ -124,9 +127,10 @@ namespace llarp
     {
       m_LastUse = router->Now();
       if(b == 0)
+      {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
-      if(IsReady())
         CallPendingCallbacks(true);
+      }
       return true;
     }
 

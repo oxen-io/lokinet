@@ -24,6 +24,10 @@ namespace llarp
         {
           itr->second->Stop();
         }
+        else
+        {
+          itr->second->Tick(now);
+        }
 
         ++itr;
       }

@@ -981,9 +981,10 @@ namespace llarp
             snode,
             std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
                       [themIP]() -> huint32_t { return themIP; }),
-            m_Router, 2, numHops);
+            m_Router, m_NumPaths, numHops);
         m_SNodeSessions.emplace(snode, session);
       }
+      EnsureRouterIsKnown(snode);
       auto range = m_SNodeSessions.equal_range(snode);
       auto itr   = range.first;
       while(itr != range.second)
@@ -991,7 +992,10 @@ namespace llarp
         if(itr->second->IsReady())
           h(snode, itr->second);
         else
+        {
           itr->second->AddReadyHook(std::bind(h, snode, _1));
+          itr->second->BuildOne();
+        }
         ++itr;
       }
     }
@@ -1000,23 +1004,14 @@ namespace llarp
     Endpoint::SendToSNodeOrQueue(const RouterID& addr,
                                  const llarp_buffer_t& buf)
     {
-      net::IPv4Packet pkt;
-      if(!pkt.Load(buf))
+      auto pkt = std::make_shared< net::IPv4Packet >();
+      if(!pkt->Load(buf))
         return false;
-      auto range = m_SNodeSessions.equal_range(addr);
-      auto itr   = range.first;
-      while(itr != range.second)
-      {
-        if(itr->second->IsReady())
-        {
-          if(itr->second->QueueUpstreamTraffic(pkt, routing::ExitPadSize))
-          {
-            return true;
-          }
-        }
-        ++itr;
-      }
-      return false;
+      EnsurePathToSNode(addr, [pkt](RouterID, exit::BaseSession_ptr s) {
+        if(s)
+          s->QueueUpstreamTraffic(*pkt, routing::ExitPadSize);
+      });
+      return true;
     }
 
     void Endpoint::Pump(llarp_time_t)
@@ -1123,18 +1118,18 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace_back(data, t);
       // no converstation
-      return EnsurePathToService(
-          remote,
-          [&](Address r, OutboundContext* c) {
-            if(c)
-            {
-              c->UpdateIntroSet(true);
-              for(auto& pending : m_PendingTraffic[r])
-                c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
-            }
-            m_PendingTraffic.erase(r);
-          },
-          5000, true);
+      return EnsurePathToService(remote,
+                                 [&](Address r, OutboundContext* c) {
+                                   if(c)
+                                   {
+                                     c->UpdateIntroSet(true);
+                                     for(auto& pending : m_PendingTraffic[r])
+                                       c->AsyncEncryptAndSendTo(
+                                           pending.Buffer(), pending.protocol);
+                                   }
+                                   m_PendingTraffic.erase(r);
+                                 },
+                                 5000, true);
     }
 
     void
