@@ -1,8 +1,12 @@
 #include <hook/shell.hpp>
+#if defined(_WIN32)
+/** put win32 stuff here */
+#else
 #include <util/threadpool.h>
 #include <util/logger.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 #if defined(Darwin)
 #include <crt_externs.h>
 #endif
@@ -11,6 +15,13 @@ namespace llarp
 {
   namespace hooks
   {
+#if defined(_WIN32)
+    Backend_ptr
+    ExecShellBackend(std::string)
+    {
+      return nullptr;
+    }
+#else
     struct ExecShellHookJob
     {
       const std::string &m_File;
@@ -132,5 +143,6 @@ namespace llarp
         return nullptr;
       return ptr;
     }
+#endif
   }  // namespace hooks
 }  // namespace llarp
