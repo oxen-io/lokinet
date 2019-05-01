@@ -78,8 +78,7 @@ namespace llarp
         if(msg.questions[0].HasTLD(".snode"))
           return true;
       }
-      else
-        return false;
+      return false;
     }
 
     bool
