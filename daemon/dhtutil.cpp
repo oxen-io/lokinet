@@ -1,21 +1,27 @@
-#include <util/buffer.hpp>
+#include "../llarp/util/buffer.hpp"
 #include <crypto/crypto.hpp>
-#include <crypto/crypto_libsodium.hpp>
-#include <util/fs.hpp>
+#include "../llarp/util/fs.hpp"
 #include <llarp.h>
-#include <util/logger.hpp>
+#include "../llarp/util/logger.hpp"
 #include <messages/dht.hpp>
-#include <net/net.hpp>
+#include "../llarp/net/net.hpp"
 #include <nodedb.hpp>
-#include <router/router.hpp>
+#include <router.hpp>
 #include <router_contact.hpp>
-#include <util/time.hpp>
-#include <util/types.hpp> // for crytpo
-#include <llarp.hpp> // for crytpo
+#include <time.hpp>
 
 #include <fstream>
 #include <getopt.h>
 #include <signal.h>
+
+struct llarp_main *ctx = 0;
+
+void
+handle_signal(int sig)
+{
+  if(ctx)
+    llarp_main_signal(ctx, sig);
+}
 
 #ifndef TESTNET
 #define TESTNET 0
@@ -24,76 +30,70 @@
 void
 displayRC(const llarp::RouterContact &rc)
 {
-  //std::cout << rc.pubkey << std::endl;
-  std::cout << "router identity and dht routing key: " << rc.pubkey
-  << std::endl;
-  
-  std::cout << "router encryption key: " << rc.enckey << std::endl;
-  
-  if(rc.HasNick())
-    std::cout << "router nickname: " << rc.Nick() << std::endl;
-  
-  std::cout << "advertised addresses: " << std::endl;
+  std::cout << rc.pubkey << std::endl;
   for(const auto &addr : rc.addrs)
   {
-    std::cout << addr << std::endl;
+    std::cout << "AddressInfo: " << addr << std::endl;
   }
-  std::cout << std::endl;
-  
-  std::cout << "advertised exits: ";
-  if(rc.exits.size())
+}
+
+// fwd declr
+struct check_online_request;
+
+void
+HandleDHTLocate(llarp_router_lookup_job *job)
+{
+  llarp::LogInfo("DHT result: ", job->found ? "found" : "not found");
+  if(job->found)
   {
-    for(const auto &exit : rc.exits)
-    {
-      std::cout << exit << std::endl;
-    }
+    // save to nodedb?
+    displayRC(job->result);
   }
-  else
-  {
-    std::cout << "none";
-  }
-  std::cout << std::endl;
-  
+  // shutdown router
+
+  // well because we're in the gotroutermessage, we can't sigint because we'll
+  // deadlock because we're session locked
+  // llarp_main_signal(ctx, SIGINT);
+
+  // llarp_timer_run(logic->timer, logic->thread);
+  // we'll we don't want logic thread
+  // but we want to switch back to the main thread
+  // llarp_logic_stop();
+  // still need to exit this logic thread...
+  llarp_main_abort(ctx);
 }
 
 int
 main(int argc, char *argv[])
 {
-  // general options
   // take -c to set location of daemon.ini
   // take -o to set log level
-  // force or overwrite option in case RC already exists (on creation)
-  // --ekey /path/to/long_term_encryption.key
-  // --ikey /path/to/long_term_identity.key
+  // --generate-blank /path/to/file.signed
+  // --update-ifs /path/to/file.signed
+  // --key /path/to/long_term_identity.key
+  // --import
+  // --export
 
-  // util tops
-    // --localInfo
-    // --b32
-    // --hex
-  // rc file ops
-    // --generate-blank /path/to/file.signed
-    // --generate /path/to/file.signed
-    // --update-ifs /path/to/file.signed
-    // --update /path/to/file.signed
-    // --verify /path/to/file.signed
-  // nodedb ops
-    // --import
-    // --export
+  // --generate /path/to/file.signed
+  // --update /path/to/file.signed
+  // --verify /path/to/file.signed
   // printf("has [%d]options\n", argc);
   if(argc < 2)
   {
     printf(
         "please specify: \n"
-        "--localInfo \n"
-        "--list      path to nodedb skiplist\n"
         "--generate  with a path to a router contact file\n"
-        "--read      with a path to a router contact file\n"
-        "--verify    with a path to a router contact file\n"
         "--update    with a path to a router contact file\n"
+        "--list      path to nodedb skiplist\n"
         "--import    with a path to a router contact file\n"
         "--export    a hex formatted public key\n"
+        "--locate    a hex formatted public key\n"
+        "--find      a base32 formatted service address\n"
         "--b32       a hex formatted public key\n"
         "--hex       a base32 formatted public key\n"
+        "--localInfo \n"
+        "--read      with a path to a router contact file\n"
+        "--verify    with a path to a router contact file\n"
         "\n");
     return 0;
   }
@@ -103,6 +103,8 @@ main(int argc, char *argv[])
   bool listMode            = false;
   bool importMode          = false;
   bool exportMode          = false;
+  bool locateMode          = false;
+  bool findMode            = false;
   bool localMode           = false;
   bool verifyMode          = false;
   bool readMode            = false;
@@ -110,11 +112,12 @@ main(int argc, char *argv[])
   bool toB32Mode           = false;
   int c;
   char *conffname;
-  char defaultConfName[] = "/Users/admin/.lokinet/lokinet.ini";
+  char defaultConfName[] = "daemon.ini";
   conffname              = defaultConfName;
   char *rcfname          = nullptr;
   char *nodesdir         = nullptr;
 
+  llarp::RouterContact rc;
   while(1)
   {
     static struct option long_options[] = {
@@ -184,7 +187,6 @@ main(int argc, char *argv[])
       case 'l':
         nodesdir = optarg;
         listMode = true;
-        haveRequiredOptions = true;
         break;
       case 'i':
         // printf ("option -g with value `%s'\n", optarg);
@@ -196,25 +198,28 @@ main(int argc, char *argv[])
         rcfname    = optarg;
         exportMode = true;
         break;
+      case 'q':
+        // printf ("option -g with value `%s'\n", optarg);
+        rcfname    = optarg;
+        locateMode = true;
+        break;
+      case 'F':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        findMode            = true;
+        break;
       case 'g':
         // printf ("option -g with value `%s'\n", optarg);
         rcfname = optarg;
-        if (rcfname) {
-          haveRequiredOptions = true;
-        }
         genMode = true;
         break;
       case 'u':
         // printf ("option -u with value `%s'\n", optarg);
         rcfname = optarg;
-        if (rcfname) {
-          haveRequiredOptions = true;
-        }
         updMode = true;
         break;
       case 'n':
         localMode = true;
-        haveRequiredOptions = true;
         break;
       case 'r':
         rcfname  = optarg;
@@ -235,11 +240,6 @@ main(int argc, char *argv[])
         return -1;
     }
   }
-  if (importMode) {
-    if (rcfname && nodesdir) {
-      haveRequiredOptions = true;
-    }
-  }
 #undef MIN
   if(!haveRequiredOptions)
   {
@@ -249,7 +249,7 @@ main(int argc, char *argv[])
   // printf("parsed options\n");
 
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
-    && !localMode && !readMode && !toB32Mode
+     && !locateMode && !localMode && !readMode && !findMode && !toB32Mode
      && !toHexMode && !verifyMode)
   {
     llarp::LogError(
@@ -261,49 +261,17 @@ main(int argc, char *argv[])
   absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
 #endif
 
-  llarp::RouterContact rc;
+  llarp::RouterContact tmp;
 
-  // llarp::SetLogLevel(llarp::eLogError);
-  std::unique_ptr< llarp::Context > n_ctx = std::make_unique< llarp::Context >();
-  n_ctx->LoadConfig(conffname);
-  // probably should just set up here..
-
-  // restore log level
-  // llarp::SetLogLevel();
-
-  if(readMode)
-  {
-    n_ctx->Setup(); // will set up router, we can use Now()
-    std::unique_ptr< llarp::Crypto > crypto = std::make_unique< llarp::sodium::CryptoLibSodium >();
-    if(!rc.Read(rcfname))
-    {
-      std::cout << "failed to read " << rcfname << std::endl;
-      return 1;
-    }
-    if(!rc.IsPublicRouter())
-    {
-      std::cout << rcfname << " is not a public router";
-      if(rc.addrs.size() == 0)
-      {
-        std::cout << " because it has no public addresses";
-      }
-      std::cout << std::endl;
-      return 1;
-    }
-    displayRC(rc);
-    return 0;
-  }
   if(verifyMode)
   {
-    n_ctx->Setup(); // will set up router, we can use Now()
-    std::unique_ptr< llarp::Crypto > crypto = std::make_unique< llarp::sodium::CryptoLibSodium >();
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
     if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << std::endl;
       return 1;
     }
-    llarp_time_t now = n_ctx->router->Now();
-    if(!rc.Verify(crypto.get(), now))
+    if(!rc.Verify(&crypto))
     {
       std::cout << rcfname << " is invalid" << std::endl;
       return 1;
@@ -318,25 +286,60 @@ main(int argc, char *argv[])
       std::cout << std::endl;
       return 1;
     }
-    
-    displayRC(rc);
 
+    std::cout << "router identity and dht routing key: " << rc.pubkey
+              << std::endl;
+
+    std::cout << "router encryption key: " << rc.enckey << std::endl;
+
+    if(rc.HasNick())
+      std::cout << "router nickname: " << rc.Nick() << std::endl;
+
+    std::cout << "advertised addresses: " << std::endl;
+    for(const auto &addr : rc.addrs)
+    {
+      std::cout << addr << std::endl;
+    }
+    std::cout << std::endl;
+
+    std::cout << "advertised exits: ";
+    if(rc.exits.size())
+    {
+      for(const auto &exit : rc.exits)
+      {
+        std::cout << exit << std::endl;
+      }
+    }
+    else
+    {
+      std::cout << "none";
+    }
+    std::cout << std::endl;
     return 0;
   }
+
+  ctx = llarp_main_init(conffname, !TESTNET);
+  if(!ctx)
+  {
+    llarp::LogError("Cant set up context");
+    return 1;
+  }
+  signal(SIGINT, handle_signal);
+
+  // is this Neuro or Jeff's?
+  // this is the only one...
   if(listMode)
   {
-    n_ctx->Setup(); // will load the nodedb
-    //n_ctx->LoadDatabase(); // can't use this because diskworker isn't set up
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
+    auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
     itr.visit = [](llarp_nodedb_iter *i) -> bool {
-      // is going to output the key in hex
-      std::cout << llarp::RouterID(i->rc->pubkey) << std::endl;
+      std::cout << i->rc->pubkey << std::endl;
       return true;
     };
-    if (n_ctx->nodedb->num_loaded() > 0) {
-      std::cout << "has nodes" << std::endl;
-      n_ctx->nodedb->iterate_all(itr);
-    }
+    if(llarp_nodedb_load_dir(nodedb, nodesdir) > 0)
+      llarp_nodedb_iterate_all(nodedb, itr);
+    llarp_nodedb_free(&nodedb);
     return 0;
   }
 
@@ -347,61 +350,66 @@ main(int argc, char *argv[])
       std::cout << "no file to import" << std::endl;
       return 1;
     }
-    std::unique_ptr< llarp::Crypto > crypto = std::make_unique< llarp::sodium::CryptoLibSodium >();
-    n_ctx->Setup(); // will load the nodedb
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
+    auto nodedb = llarp_nodedb_new(&crypto);
+    if(!llarp_nodedb_ensure_dir(nodesdir))
+    {
+      std::cout << "failed to ensure " << nodesdir << strerror(errno)
+                << std::endl;
+      return 1;
+    }
+    llarp_nodedb_set_dir(nodedb, nodesdir);
     if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << " " << strerror(errno)
                 << std::endl;
       return 1;
     }
-    
-    if(!rc.Verify(crypto.get(), n_ctx->router->Now()))
+
+    if(!rc.Verify(&crypto))
     {
       std::cout << rcfname << " is invalid" << std::endl;
       return 1;
     }
-    if (n_ctx->nodedb->Insert(rc)) {
+
+    if(!llarp_nodedb_put_rc(nodedb, rc))
+    {
       std::cout << "failed to store " << strerror(errno) << std::endl;
       return 1;
     }
+
     std::cout << "imported " << rc.pubkey << std::endl;
+
     return 0;
   }
+
   if(genMode)
   {
-    if(rcfname == nullptr)
-    {
-      std::cout << "no path to create" << std::endl;
-      return 1;
-    }
     printf("Creating [%s]\n", rcfname);
-
     // if we zero it out then
-    //rc.Clear();
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
     // load longterm identity
-    std::unique_ptr< llarp::Crypto > crypto = std::make_unique< llarp::sodium::CryptoLibSodium >();
-    //llarp::Crypto crypt(llarp::Crypto::sodium{});
-    
-    // which is in lokinet.ini config: router.encryption-privkey (defaults
+    llarp::Crypto crypt(llarp::Crypto::sodium{});
+
+    // which is in daemon.ini config: router.encryption-privkey (defaults
     // "encryption.key")
     fs::path encryption_keyfile = "encryption.key";
     llarp::SecretKey encryption;
 
-    llarp_findOrCreateEncryption(crypto.get(), encryption_keyfile, encryption);
+    llarp_findOrCreateEncryption(&crypt, encryption_keyfile, encryption);
 
     rc.enckey = llarp::seckey_topublic(encryption);
 
     // get identity public sig key
     fs::path ident_keyfile = "identity.key";
     llarp::SecretKey identity;
-    llarp_findOrCreateIdentity(crypto.get(), ident_keyfile, identity);
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile, identity);
 
     rc.pubkey = llarp::seckey_topublic(identity);
 
-    if(!rc.Sign(crypto.get(), identity))
+    // this causes a segfault
+    if(!rc.Sign(&crypt, identity))
     {
       std::cout << "failed to sign" << std::endl;
       return 1;
@@ -409,90 +417,154 @@ main(int argc, char *argv[])
     // set filename
     fs::path our_rc_file = rcfname;
     // write file
-    if (!rc.Write(our_rc_file.string().c_str())) {
-      std::cout << "failed to write" << std::endl;
-      return 1;
-    }
-    displayRC(rc);
+    rc.Write(our_rc_file.string().c_str());
+
+    // llarp_rc_write(&tmp, our_rc_file.string().c_str());
+
+    // release memory for tmp lists
+    // llarp_rc_free(&tmp);
   }
   if(updMode)
   {
-    llarp::LogInfo("Loading ", rcfname);
-
-    if (!rc.Read(rcfname)) {
-      std::cout << "failed to read " << rcfname << " " << strerror(errno)
-      << std::endl;
-      return 1;
-    }
-    displayRC(rc);
+    printf("rcutil.cpp - Loading [%s]\n", rcfname);
+    llarp::RouterContact tmp;
+    // llarp_rc_clear(&rc);
+    rc.Clear();
+    // FIXME: new rc api
+    // llarp_rc_read(rcfname, &rc);
 
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
-    llarp::LogInfo("Updating timestamp ", rc.last_updated);
-
     // load longterm identity
-    std::unique_ptr< llarp::Crypto > crypto = std::make_unique< llarp::sodium::CryptoLibSodium >();
+    llarp::Crypto crypt(llarp::Crypto::sodium{});
 
+    // no longer used?
+    // llarp_crypto_libsodium_init(&crypt);
+    llarp::SecretKey identityKey;  // FIXME: Jeff requests we use this
     fs::path ident_keyfile = "identity.key";
     llarp::SecretKey identity;
-    llarp_findOrCreateIdentity(crypto.get(), ident_keyfile, identity);
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile, identity);
 
-    // set identity public key
-    rc.pubkey = llarp::seckey_topublic(identity);
+    // FIXME: update RC API
+    // get identity public key
+    // const uint8_t *pubkey = llarp::seckey_topublic(identity);
 
-    // sign RC
-    if(!rc.Sign(crypto.get(), identity))
-    {
-      std::cout << "failed to sign" << std::endl;
-      return 1;
-    }
+    // FIXME: update RC API
+    // llarp_rc_set_pubsigkey(&rc, pubkey);
+    // // FIXME: update RC API
+    // llarp_rc_sign(&crypt, identity, &rc);
 
     // set filename
     fs::path our_rc_file_out = "update_debug.rc";
-
     // write file
-    llarp::LogInfo("Writing ", our_rc_file_out.string().c_str());
-    if (!rc.Write(our_rc_file_out.string().c_str())) {
-      std::cout << "failed to write " << our_rc_file_out << " " << strerror(errno)
-      << std::endl;
-      return 1;
-    }
-    displayRC(rc);
+    // FIXME: update RC API
+    // rc.Write(our_rc_file.string().c_str());
+    // llarp_rc_write(&tmp, our_rc_file_out.string().c_str());
   }
 
+  if(listMode)
+  {
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
+    auto nodedb = llarp_nodedb_new(&crypto);
+    llarp_nodedb_iter itr;
+    itr.visit = [](llarp_nodedb_iter *i) -> bool {
+      std::cout << llarp::PubKey(i->rc->pubkey) << std::endl;
+      return true;
+    };
+    if(llarp_nodedb_load_dir(nodedb, nodesdir) > 0)
+      llarp_nodedb_iterate_all(nodedb, itr);
+    llarp_nodedb_free(&nodedb);
+    return 0;
+  }
   if(exportMode)
   {
-    // UNTESTED
-    //llarp_main_loadDatabase(ctx);
-    n_ctx->Setup(); // will load the nodedb
+    llarp_main_loadDatabase(ctx);
     // llarp::LogInfo("Looking for string: ", rcfname);
 
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data(), binaryPK.size());
 
     llarp::LogInfo("Looking for binary: ", binaryPK);
-    //llarp::RouterContact *rc2 = llarp_main_getDatabase(ctx, binaryPK.data());
-    if(!n_ctx->nodedb->Get(binaryPK.data(), rc))
+    llarp::RouterContact *rc = llarp_main_getDatabase(ctx, binaryPK.data());
+    if(!rc)
     {
       llarp::LogError("Can't load RC from database");
     }
     std::string filename(rcfname);
     filename.append(".signed");
     llarp::LogInfo("Writing out: ", filename);
-    rc.Write(filename.c_str());
     // FIXME: update RC API
     // rc.Write(our_rc_file.string().c_str());
     // llarp_rc_write(rc, filename.c_str());
   }
+  if(locateMode)
+  {
+    llarp::LogInfo("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data(), binaryPK.size());
+
+    llarp::LogInfo("Queueing job");
+    llarp_router_lookup_job *job = new llarp_router_lookup_job;
+    job->iterative               = true;
+    job->found                   = false;
+    job->hook                    = &HandleDHTLocate;
+    // llarp_rc_new(&job->result);
+    job->target = binaryPK;  // set job's target
+
+    // create query DHT request
+    check_online_request *request = new check_online_request;
+    request->ptr                  = ctx;
+    request->job                  = job;
+    request->online               = false;
+    request->nodes                = 0;
+    request->first                = false;
+    llarp_main_queryDHT(request);
+
+    llarp::LogInfo("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
+  }
+  if(findMode)
+  {
+    llarp::LogInfo("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::LogInfo("Please find ", rcfname);
+    std::string str(rcfname);
+
+    llarp::service::Tag tag(rcfname);
+    llarp::LogInfo("Tag ", tag);
+
+    llarp::service::Address addr;
+    str = str.append(".loki");
+    llarp::LogInfo("Prestring ", str);
+    bool res = addr.FromString(str.c_str());
+    llarp::LogInfo(res ? "Success" : "not a base32 string");
+
+    // Base32Decode(rcfname, addr);
+    llarp::LogInfo("Addr ", addr);
+
+    // uint64_t txid, const llarp::service::Address& addr
+    // FIXME: new API?
+    // msg->M.push_back(new llarp::dht::FindIntroMessage(tag, 1));
+
+    // I guess we may need a router to get any replies
+    llarp::LogInfo("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
+  }
   if(localMode)
   {
-    // FIXME:
-    n_ctx->Setup(); // will load the nodedb
-    // any way to get the self path?
-    // it'll be 0
-    //n_ctx->Run();
-    rc = n_ctx->router->rc();
-    displayRC(rc);
+    // FIXME: update llarp_main_getLocalRC
+    // llarp::RouterContact *rc = llarp_main_getLocalRC(ctx);
+    // displayRC(rc);
+    // delete it
+  }
+  {
+    if(rc.Read(rcfname))
+      displayRC(rc);
   }
 
   if(toB32Mode)
@@ -520,6 +592,7 @@ main(int argc, char *argv[])
 
     llarp::LogInfo("to hex ", hexname);
   }
-
+  // it's a unique_ptr, should clean up itself
+  // llarp_main_free(ctx);
   return 0;  // success
 }

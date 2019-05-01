@@ -194,6 +194,8 @@ endif(NOT GIT_VERSION)
 
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
+set(RCEXE_SRC daemon/rcutil.cpp)
+set(DHTEXE_SRC daemon/dhtutil.cpp)
 
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
@@ -274,15 +276,21 @@ if(SHADOW)
 else()
   if(NOT WIN32)
     add_executable(${EXE} ${EXE_SRC})
+    add_executable(rcutil ${RCEXE_SRC})
+    add_executable(dhtutil ${DHTEXE_SRC})
   elseif(NOT MSVC_VERSION)
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
+    add_executable(rcutil ${RCEXE_SRC})
+    add_executable(dhtutil ${DHTEXE_SRC})
   else()
     add_executable(${EXE} ${EXE_SRC})
+    add_executable(rcutil ${RCEXE_SRC})
+    add_executable(dhtutil ${DHTEXE_SRC})
   endif(NOT WIN32)
 
   add_log_tag(${EXE})
 
-  install(TARGETS ${EXE} RUNTIME DESTINATION bin)
+  install(TARGETS ${EXE} rcutil dhtutil RUNTIME DESTINATION bin)
   if(WIN32)
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)
   else()
@@ -294,6 +302,8 @@ else()
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   target_link_libraries(${EXE} PUBLIC ${EXE_LIBS})
+  target_link_libraries(${RCEXE} PUBLIC ${EXE_LIBS})
+  target_link_libraries(${DHTEXE} PUBLIC ${EXE_LIBS})
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
