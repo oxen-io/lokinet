@@ -12,6 +12,7 @@
 #include <ev/ev.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -102,11 +103,11 @@ namespace llarp
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
         }
-        m_Exit.reset(new llarp::exit::ExitSession(
+        m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
             std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
                       std::placeholders::_1),
-            router, m_NumPaths, numHops));
+            router, m_NumPaths, numHops);
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")
@@ -227,7 +228,19 @@ namespace llarp
     void
     TunEndpoint::Flush()
     {
+      auto self = shared_from_this();
       FlushSend();
+      if(m_Exit)
+      {
+        RouterLogic()->queue_func([=] {
+          self->m_Exit->FlushUpstream();
+          self->Router()->PumpLL();
+        });
+      }
+      RouterLogic()->queue_func([=]() {
+        self->Pump(self->Now());
+        self->Router()->PumpLL();
+      });
     }
 
     static bool
@@ -280,7 +293,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 service::Address addr = service->GetIdentity().pub.Addr();
                 msg.AddCNAMEReply(addr.ToString(), 1);
                 ++counter;
@@ -312,7 +325,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 huint32_t ip = service->GetIfAddr();
                 if(ip.h)
                 {
@@ -348,13 +361,12 @@ namespace llarp
         {
           dns::Message *replyMsg = new dns::Message(std::move(msg));
           EnsurePathToSNode(
-              addr.as_array(), [=](const RouterID &, exit::BaseSession * s) {
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
                 SendDNSReply(addr, s, replyMsg, reply, true, isV6);
               });
           return true;
         }
         else
-          // forward dns
           msg.AddNXReply();
 
         reply(msg);
@@ -403,18 +415,11 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
-        // hook random.snode
-        if(msg.questions[0].IsName("random.snode"))
+        /// hook every .loki
+        if(msg.questions[0].HasTLD(".loki"))
           return true;
-        // hook localhost.loki
-        if(msg.questions[0].IsName("localhost.loki"))
-          return true;
-        const std::string name = msg.questions[0].Name();
-        // hook .loki
-        if(addr.FromString(name, ".loki"))
-          return true;
-        // hook .snode
-        if(addr.FromString(name, ".snode"))
+        /// hook every .snode
+        if(msg.questions[0].HasTLD(".snode"))
           return true;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
@@ -535,7 +540,21 @@ namespace llarp
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
       MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
+      if(m_OnUp)
+      {
+        m_OnUp->NotifyAsync(NotifyParams());
+      }
       return true;
+    }
+
+    std::unordered_map< std::string, std::string >
+    TunEndpoint::NotifyParams() const
+    {
+      auto env = Endpoint::NotifyParams();
+      env.emplace("IP_ADDR", m_OurIP.ToString());
+      env.emplace("IF_ADDR", m_OurRange.ToString());
+      env.emplace("IF_NAME", tunif.ifname);
+      return env;
     }
 
     bool
@@ -562,7 +581,10 @@ namespace llarp
       // call tun code in endpoint logic in case of network isolation
       // EndpointLogic()->queue_job({this, handleTickTun});
       if(m_Exit)
+      {
         EnsureRouterIsKnown(m_Exit->Endpoint());
+        m_Exit->Tick(now);
+      }
       Endpoint::Tick(now);
     }
 
@@ -755,9 +777,9 @@ namespace llarp
       self->FlushSend();
       // flush exit traffic queues if it's there
       if(self->m_Exit)
-        self->m_Exit->Flush();
-      // flush snode traffic
-      self->FlushSNodeTraffic();
+      {
+        self->m_Exit->FlushDownstream();
+      }
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))

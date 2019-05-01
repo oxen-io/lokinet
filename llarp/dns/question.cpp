@@ -65,6 +65,12 @@ namespace llarp
       return qname.substr(0, qname.find_last_of('.'));
     }
 
+    bool
+    Question::HasTLD(const std::string& tld) const
+    {
+      return qname.rfind(tld) == (qname.size() - tld.size()) - 1;
+    }
+
     std::ostream&
     Question::print(std::ostream& stream, int level, int spaces) const
     {

@@ -117,6 +117,10 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    /// pump low level links
+    virtual void
+    PumpLL() = 0;
+
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;
 
@@ -143,8 +147,13 @@ namespace llarp
     virtual void
     SessionClosed(RouterID remote) = 0;
 
+    /// returns system clock milliseconds since epoch
     virtual llarp_time_t
     Now() const = 0;
+
+    /// returns milliseconds since started
+    virtual llarp_time_t
+    Uptime() const = 0;
 
     virtual bool
     GetRandomGoodRouter(RouterID &r) = 0;

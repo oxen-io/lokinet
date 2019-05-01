@@ -53,13 +53,8 @@ namespace llarp
 
   struct Profiling final : public IBEncodeMessage
   {
-    Profiling() : IBEncodeMessage()
-    {
-    }
-
-    ~Profiling()
-    {
-    }
+    Profiling();
+    ~Profiling();
 
     /// generic variant
     bool
@@ -110,6 +105,12 @@ namespace llarp
     bool
     ShouldSave(llarp_time_t now) const;
 
+    void
+    Disable();
+
+    void
+    Enable();
+
    private:
     bool
     BEncodeNoLock(llarp_buffer_t* buf) const
@@ -118,6 +119,7 @@ namespace llarp
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map< RouterID, RouterProfile > m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0;
+    std::atomic< bool > m_DisableProfiling;
   };
 
 }  // namespace llarp

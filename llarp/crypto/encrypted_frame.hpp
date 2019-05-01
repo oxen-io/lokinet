@@ -107,7 +107,8 @@ namespace llarp
   template < typename User >
   struct AsyncFrameDecrypter
   {
-    using DecryptHandler = std::function< void(llarp_buffer_t*, User*) >;
+    using User_ptr       = std::shared_ptr< User >;
+    using DecryptHandler = std::function< void(llarp_buffer_t*, User_ptr) >;
 
     static void
     Decrypt(void* user)
@@ -119,10 +120,11 @@ namespace llarp
       {
         auto buf = ctx->target.Buffer();
         buf->cur = buf->base + EncryptedFrameOverheadSize;
-        ctx->result(buf, ctx->context);
+        ctx->result(buf, ctx->user);
       }
       else
-        ctx->result(nullptr, ctx->context);
+        ctx->result(nullptr, ctx->user);
+      ctx->user = nullptr;
     }
 
     AsyncFrameDecrypter(llarp::Crypto* c, const SecretKey& secretkey,
@@ -132,17 +134,17 @@ namespace llarp
     }
 
     DecryptHandler result;
-    User* context;
+    User_ptr user;
     llarp::Crypto* crypto;
     const SecretKey& seckey;
     EncryptedFrame target;
 
     void
     AsyncDecrypt(llarp_threadpool* worker, const EncryptedFrame& frame,
-                 User* user)
+                 User_ptr u)
     {
-      target  = frame;
-      context = user;
+      target = frame;
+      user   = u;
       llarp_threadpool_queue_job(worker, {this, &Decrypt});
     }
   };

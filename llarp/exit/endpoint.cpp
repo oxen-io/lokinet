@@ -190,7 +190,7 @@ namespace llarp
       return sent;
     }
 
-    llarp::path::IHopHandler*
+    llarp::path::HopHandler_ptr
     Endpoint::GetCurrentPath() const
     {
       auto router = m_Parent->GetRouter();

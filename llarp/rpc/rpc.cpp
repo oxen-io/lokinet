@@ -1,6 +1,7 @@
 #include <rpc/rpc.hpp>
 
 #include <router/abstractrouter.hpp>
+#include <service/context.hpp>
 #include <util/logger.hpp>
 #include <router_id.hpp>
 #include <exit/context.hpp>
@@ -206,7 +207,7 @@ namespace llarp
       Response
       DumpState() const
       {
-        util::StatusObject dump = router->ExtractStatus();
+        const util::StatusObject dump = router->ExtractStatus();
         return dump.get();
       }
 
@@ -243,6 +244,32 @@ namespace llarp
         return resp;
       }
 
+      Response
+      DumpStatus() const
+      {
+        size_t numServices      = 0;
+        size_t numServicesReady = 0;
+        Response services       = Response::array();
+        auto visitor =
+            [&](const std::string& name,
+                const std::shared_ptr< service::Endpoint >& ptr) -> bool {
+          numServices++;
+          if(ptr->IsReady())
+            numServicesReady++;
+          const Response status{{"ready", ptr->IsReady()},
+                                {"stopped", ptr->IsStopped()},
+                                {"stale", ptr->IntrosetIsStale()}};
+          services.emplace_back(Response{name, status});
+          return true;
+        };
+        router->hiddenServiceContext().ForEachService(visitor);
+        const Response resp{{"uptime", router->Uptime()},
+                            {"servicesTotal", numServices},
+                            {"servicesReady", numServicesReady},
+                            {"services", services}};
+        return resp;
+      }
+
       absl::optional< Response >
       HandleJSONRPC(Method_t method,
                     __attribute__((unused)) const Params& params)
@@ -258,6 +285,10 @@ namespace llarp
         else if(method == "llarp.admin.dumpstate")
         {
           return DumpState();
+        }
+        else if(method == "llarp.admin.status")
+        {
+          return DumpStatus();
         }
         return false;
       }

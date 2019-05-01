@@ -11,6 +11,7 @@
 
 struct DNSLibTest : public ::testing::Test
 {
+  const std::string tld = ".loki";
   std::array< byte_t, 1500 > mem;
   llarp_buffer_t buf;
 
@@ -25,6 +26,23 @@ struct DNSLibTest : public ::testing::Test
   {
     buf.cur = buf.base;
   }
+};
+
+TEST_F(DNSLibTest, TestHasTLD)
+{
+  llarp::dns::Question question;
+  question.qname = "a.loki.";
+  ASSERT_TRUE(question.HasTLD(tld));
+  question.qname = "a.loki..";
+  ASSERT_FALSE(question.HasTLD(tld));
+  question.qname = "bepis.loki.";
+  ASSERT_TRUE(question.HasTLD(tld));
+  question.qname = "bepis.logi.";
+  ASSERT_FALSE(question.HasTLD(tld));
+  question.qname = "a.net.";
+  ASSERT_FALSE(question.HasTLD(tld));
+  question.qname = "a.boki.";
+  ASSERT_FALSE(question.HasTLD(tld));
 };
 
 TEST_F(DNSLibTest, TestPTR)

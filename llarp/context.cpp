@@ -4,7 +4,6 @@
 #include <config.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
-#include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
 #include <metrics/metrictank_publisher.hpp>
@@ -464,18 +463,6 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
-  void
-  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int rfd, int wfd)
-  {
-    llarp::handlers::TunEndpoint *tun =
-        ptr->ctx->router->hiddenServiceContext().getFirstTun();
-    if(!tun)
-      return;
-    if(!tun->Promise)
-      return;
-    tun->Promise->Set({rfd, wfd});
-  }
-
   int
   llarp_main_setup(struct llarp_main *ptr)
   {
@@ -538,6 +525,7 @@ extern "C"
     return ptr->ctx->LoadDatabase();
   }
 
+  /*
   int
   llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
   {
@@ -611,13 +599,6 @@ extern "C"
     // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
   }
 
-  bool
-  main_router_prefetch(struct llarp_main *ptr,
-                       const llarp::service::Address &addr)
-  {
-    auto &endpoint = ptr->ctx->router->hiddenServiceContext();
-    return endpoint.Prefetch(addr);
-  }
 
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
@@ -640,11 +621,12 @@ extern "C"
     return ptr->ctx->router->hiddenServiceContext().getRange();
   }
 
+  */
+
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {
-
-	// clang-format off
+    // clang-format off
     cxxopts::Options options(
 		"lokinet",
 		"Lokinet is a private, decentralized and IP based overlay network for the internet"
@@ -652,9 +634,9 @@ extern "C"
     options.add_options()
 		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
 		("o,logLevel", "logging level");
-	// clang-format on
+    // clang-format on
 
-    auto result = options.parse(argc, argv);
+    auto result          = options.parse(argc, argv);
     std::string logLevel = result["logLevel"].as< std::string >();
 
     if(logLevel == "debug")
@@ -674,9 +656,10 @@ extern "C"
       cSetLogLevel(eLogError);
     }
 
-	// this isn't thread safe, but reconfiguring during run is likely unsafe either way
-	static std::string confname = result["config"].as< std::string >();
+    // this isn't thread safe, but reconfiguring during run is likely unsafe
+    // either way
+    static std::string confname = result["config"].as< std::string >();
 
-	return confname.c_str();
+    return confname.c_str();
   }
 }

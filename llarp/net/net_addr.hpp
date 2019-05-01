@@ -5,15 +5,12 @@
 #include <net/net.h>
 #include <net/net.hpp>
 #include <util/string_view.hpp>
+#include <net/net_int.hpp>
 
 #include <string>
 
 namespace llarp
 {
-  // fwd declr
-  struct huint32_t;
-  struct nuint32_t;
-
   // real work
   struct Addr
   {

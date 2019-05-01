@@ -108,9 +108,7 @@ if(WIN32)
   target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
 set(DNSLIB_SRC
-  dns/dotlokilookup.cpp
   dns/dns.cpp
-  dns/iptracker.cpp
   dns/message.cpp
   dns/name.cpp
   dns/query.cpp
@@ -172,6 +170,7 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
+  hook/shell.cpp
   iwp/linklayer.cpp
   iwp/outermessage.cpp
   iwp/iwp.cpp

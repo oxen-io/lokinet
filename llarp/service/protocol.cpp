@@ -363,7 +363,7 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(Logic* logic, Crypto* c,
-                                         path::Path* recvPath,
+                                         path::Path_ptr recvPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const

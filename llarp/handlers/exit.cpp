@@ -73,14 +73,12 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeCNAME
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        if(msg.questions[0].IsName("localhost.loki")
-           || msg.questions[0].IsName("random.snode"))
+        if(msg.questions[0].IsName("localhost.loki"))
           return true;
-        service::Address addr;
-        return addr.FromString(msg.questions[0].Name(), ".snode");
+        if(msg.questions[0].HasTLD(".snode"))
+          return true;
       }
-      else
-        return false;
+      return false;
     }
 
     bool
@@ -247,14 +245,17 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(!itr->second->Flush())
+          // TODO: move flush upstream to router event loop
+          if(!itr->second->FlushUpstream())
           {
             LogWarn("failed to flush snode traffic to ", itr->first,
                     " via outbound session");
           }
+          itr->second->FlushDownstream();
           ++itr;
         }
       }
+      m_Router->PumpLL();
     }
 
     bool
@@ -547,14 +548,13 @@ namespace llarp
       huint32_t ip = GetIPForIdent(pubKey);
       if(m_SNodeKeys.emplace(pubKey).second)
       {
-        // this is a new service node make an outbound session to them
-        m_SNodeSessions.emplace(
+        auto session = std::make_shared< exit::SNodeSession >(
             other,
-            std::unique_ptr< exit::SNodeSession >(new exit::SNodeSession(
-                other,
-                std::bind(&ExitEndpoint::QueueSNodePacket, this,
-                          std::placeholders::_1, ip),
-                GetRouter(), 2, 1, true)));
+            std::bind(&ExitEndpoint::QueueSNodePacket, this,
+                      std::placeholders::_1, ip),
+            GetRouter(), 2, 1, true);
+        // this is a new service node make an outbound session to them
+        m_SNodeSessions.emplace(other, session);
       }
       return ip;
     }
@@ -620,7 +620,10 @@ namespace llarp
           if(itr->second->IsExpired(now))
             itr = m_SNodeSessions.erase(itr);
           else
+          {
+            itr->second->Tick(now);
             ++itr;
+          }
         }
       }
       {

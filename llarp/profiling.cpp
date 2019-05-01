@@ -96,9 +96,32 @@ namespace llarp
     return checkIsGood(pathFailCount, pathSuccessCount, chances);
   }
 
+  Profiling::Profiling() : IBEncodeMessage()
+  {
+    m_DisableProfiling.store(false);
+  }
+
+  Profiling::~Profiling()
+  {
+  }
+
+  void
+  Profiling::Disable()
+  {
+    m_DisableProfiling.store(true);
+  }
+
+  void
+  Profiling::Enable()
+  {
+    m_DisableProfiling.store(false);
+  }
+
   bool
   Profiling::IsBadForConnect(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
@@ -109,6 +132,8 @@ namespace llarp
   bool
   Profiling::IsBadForPath(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
@@ -119,6 +144,8 @@ namespace llarp
   bool
   Profiling::IsBad(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())

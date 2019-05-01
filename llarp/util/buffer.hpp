@@ -128,7 +128,7 @@ struct llarp_buffer_t
 #ifndef _WIN32
   bool
   writef(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-  
+
 #elif defined(__MINGW64__) || defined(__MINGW32__)
   bool
   writef(const char *fmt, ...)

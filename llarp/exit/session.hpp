@@ -15,10 +15,13 @@ namespace llarp
   {
     struct BaseSession;
 
-    using SessionReadyFunc = std::function< void(BaseSession*) >;
+    using BaseSession_ptr = std::shared_ptr< BaseSession >;
+
+    using SessionReadyFunc = std::function< void(BaseSession_ptr) >;
 
     /// a persisting exit session with an exit router
-    struct BaseSession : public llarp::path::Builder
+    struct BaseSession : public llarp::path::Builder,
+                         public std::enable_shared_from_this< BaseSession >
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
       static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
@@ -28,6 +31,12 @@ namespace llarp
                   AbstractRouter* r, size_t numpaths, size_t hoplen);
 
       virtual ~BaseSession();
+
+      std::shared_ptr< path::PathSet >
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
       util::StatusObject
       ExtractStatus() const;
@@ -40,10 +49,10 @@ namespace llarp
       }
 
       void
-      HandlePathDied(llarp::path::Path* p) override;
+      HandlePathDied(llarp::path::Path_ptr p) override;
 
       bool
-      CheckPathDead(path::Path* p, llarp_time_t dlt);
+      CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
@@ -53,14 +62,18 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       void
-      HandlePathBuilt(llarp::path::Path* p) override;
+      HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
       QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
 
-      /// flush upstream and downstream traffic
+      /// flush upstream to exit via paths
       bool
-      Flush();
+      FlushUpstream();
+
+      /// flush downstream to user via tun
+      void
+      FlushDownstream();
 
       path::PathRole
       GetRoles() const override
@@ -99,14 +112,14 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
 
       bool
-      HandleTrafficDrop(llarp::path::Path* p, const llarp::PathID_t& path,
+      HandleTrafficDrop(llarp::path::Path_ptr p, const llarp::PathID_t& path,
                         uint64_t s);
 
       bool
-      HandleGotExit(llarp::path::Path* p, llarp_time_t b);
+      HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+      HandleTraffic(llarp::path::Path_ptr p, const llarp_buffer_t& buf,
                     uint64_t seqno);
 
      private:

@@ -70,7 +70,7 @@ namespace llarp
       bool
       UpdateLocalPath(const llarp::PathID_t& nextPath);
 
-      llarp::path::IHopHandler*
+      llarp::path::HopHandler_ptr
       GetCurrentPath() const;
 
       const llarp::PubKey&

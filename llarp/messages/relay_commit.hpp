@@ -49,6 +49,11 @@ namespace llarp
   {
     std::array< EncryptedFrame, 8 > frames;
 
+    LR_CommitMessage(const std::array< EncryptedFrame, 8 > &_frames)
+        : ILinkMessage(), frames(_frames)
+    {
+    }
+
     LR_CommitMessage() : ILinkMessage()
     {
     }

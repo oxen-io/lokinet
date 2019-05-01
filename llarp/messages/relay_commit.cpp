@@ -184,7 +184,8 @@ namespace llarp
     typedef llarp::path::PathContext Context;
     typedef llarp::path::TransitHop Hop;
     typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
-    std::unique_ptr< Decrypter > decrypter;
+    using Decrypter_ptr = std::unique_ptr< Decrypter >;
+    Decrypter_ptr decrypter;
     std::array< EncryptedFrame, 8 > frames;
     Context* context;
     // decrypted record
@@ -192,9 +193,9 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
-    LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
+    LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec)
+        : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
         , hop(std::make_shared< Hop >())
@@ -208,16 +209,15 @@ namespace llarp
 
     /// this is done from logic thread
     static void
-    SendLRCM(void* user)
+    SendLRCM(std::shared_ptr< LRCMFrameDecrypt > self)
     {
-      std::shared_ptr< LRCMFrameDecrypt > self(
-          static_cast< LRCMFrameDecrypt* >(user));
       if(!self->context->Router()->ConnectionToRouterAllowed(
              self->hop->info.upstream))
       {
         // we are not allowed to forward it ... now what?
         llarp::LogError("path to ", self->hop->info.upstream,
                         "not allowed, dropping build request on the floor");
+        self->hop = nullptr;
         return;
       }
       // persist sessions to upstream and downstream routers until the commit
@@ -237,21 +237,19 @@ namespace llarp
           // ... and it's valid
           const auto now = self->context->Router()->Now();
           if(self->record.nextRC->IsPublicRouter()
-             && self->record.nextRC->Verify(self->context->Crypto(), now))
+             && self->record.nextRC->Verify(self->context->crypto(), now))
           {
             llarp_nodedb* n        = self->context->Router()->nodedb();
-            const RouterContact rc = std::move(*self->record.nextRC);
+            const RouterContact rc = *self->record.nextRC;
             // store it into netdb if we don't have it
             if(!n->Has(rc.pubkey))
             {
-              static std::function< void(std::shared_ptr< LRCMFrameDecrypt >) > cb =
-                  [](std::shared_ptr< LRCMFrameDecrypt > ctx) {
-                    ctx->context->ForwardLRCM(ctx->hop->info.upstream,
-                                              ctx->frames);
-                    ctx->hop = nullptr;
-                  };
               llarp::Logic* logic = self->context->Router()->logic();
-              n->InsertAsync(rc, logic, std::bind(cb, self));
+              n->InsertAsync(rc, logic, [=]() {
+                self->context->ForwardLRCM(self->hop->info.upstream,
+                                           self->frames);
+                self->hop = nullptr;
+              });
               return;
             }
           }
@@ -264,17 +262,15 @@ namespace llarp
 
     // this is called from the logic thread
     static void
-    SendPathConfirm(void* user)
+    SendPathConfirm(std::shared_ptr< LRCMFrameDecrypt > self)
     {
-      std::unique_ptr< LRCMFrameDecrypt > self(
-          static_cast< LRCMFrameDecrypt* >(user));
       // persist session to downstream until path expiration
       self->context->Router()->PersistSessionUntil(
           self->hop->info.downstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
       // send path confirmation
-      llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
+      const llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
       if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
       {
         llarp::LogError("failed to send path confirmation for ",
@@ -284,14 +280,15 @@ namespace llarp
     }
 
     static void
-    HandleDecrypted(llarp_buffer_t* buf, LRCMFrameDecrypt* self)
+    HandleDecrypted(llarp_buffer_t* buf,
+                    std::shared_ptr< LRCMFrameDecrypt > self)
     {
       auto now   = self->context->Router()->Now();
       auto& info = self->hop->info;
       if(!buf)
       {
         llarp::LogError("LRCM decrypt failed from ", info.downstream);
-        delete self;
+        self->decrypter = nullptr;
         return;
       }
       buf->cur = buf->base + EncryptedFrameOverheadSize;
@@ -300,7 +297,7 @@ namespace llarp
       if(!self->record.BDecode(buf))
       {
         llarp::LogError("malformed frame inside LRCM from ", info.downstream);
-        delete self;
+        self->decrypter = nullptr;
         return;
       }
 
@@ -310,17 +307,17 @@ namespace llarp
       if(self->context->HasTransitHop(info))
       {
         llarp::LogError("duplicate transit hop ", info);
-        delete self;
+        self->decrypter = nullptr;
         return;
       }
       // generate path key as we are in a worker thread
-      auto crypto = self->context->Crypto();
+      auto crypto = self->context->crypto();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
                             self->context->EncryptionSecretKey(),
                             self->record.tunnelNonce))
       {
         llarp::LogError("LRCM DH Failed ", info);
-        delete self;
+        self->decrypter = nullptr;
         return;
       }
       // generate hash of hop key for nonce mutation
@@ -366,13 +363,19 @@ namespace llarp
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRAM down the path
-        self->context->logic()->queue_job({self, &SendPathConfirm});
+        self->context->logic()->queue_func([=]() {
+          SendPathConfirm(self);
+          self->decrypter = nullptr;
+        });
       }
       else
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        self->context->logic()->queue_job({self, &SendLRCM});
+        self->context->logic()->queue_func([=]() {
+          SendLRCM(self);
+          self->decrypter = nullptr;
+        });
       }
     }
   };
@@ -380,16 +383,16 @@ namespace llarp
   bool
   LR_CommitMessage::AsyncDecrypt(llarp::path::PathContext* context) const
   {
-    LRCMFrameDecrypt::Decrypter* decrypter = new LRCMFrameDecrypt::Decrypter(
-        context->Crypto(), context->EncryptionSecretKey(),
+    auto decrypter = std::make_unique< LRCMFrameDecrypt::Decrypter >(
+        context->crypto(), context->EncryptionSecretKey(),
         &LRCMFrameDecrypt::HandleDecrypted);
     // copy frames so we own them
-    LRCMFrameDecrypt* frameDecrypt =
-        new LRCMFrameDecrypt(context, decrypter, this);
+    auto frameDecrypt = std::make_shared< LRCMFrameDecrypt >(
+        context, std::move(decrypter), this);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(context->Worker(), frameDecrypt->frames[0],
-                            frameDecrypt);
+    frameDecrypt->decrypter->AsyncDecrypt(
+        context->Worker(), frameDecrypt->frames[0], frameDecrypt);
     return true;
   }
 }  // namespace llarp

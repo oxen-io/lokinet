@@ -52,9 +52,9 @@ namespace llarp
      private:
       AbstractRouter *m_Router;
       std::unordered_map< std::string,
-                          std::unique_ptr< llarp::handlers::ExitEndpoint > >
+                          std::shared_ptr< llarp::handlers::ExitEndpoint > >
           m_Exits;
-      std::list< std::unique_ptr< llarp::handlers::ExitEndpoint > > m_Closed;
+      std::list< std::shared_ptr< llarp::handlers::ExitEndpoint > > m_Closed;
     };
   }  // namespace exit
 }  // namespace llarp

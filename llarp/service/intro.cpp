@@ -70,7 +70,7 @@ namespace llarp
     Introduction::print(std::ostream& stream, int level, int spaces) const
     {
       Printer printer(stream, level, spaces);
-      printer.printAttribute("k", router);
+      printer.printAttribute("k", RouterID(router));
       printer.printAttribute("p", pathID);
       printer.printAttribute("v", version);
       printer.printAttribute("x", expiresAt);

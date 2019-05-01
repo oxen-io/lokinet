@@ -57,7 +57,8 @@ namespace llarp
       (void)ts;
       return out << time_now_ms();
 #else
-      return out << absl::FormatTime(ts.format, absl::Now(), absl::LocalTimeZone());
+      return out << absl::FormatTime(ts.format, absl::Now(),
+                                     absl::LocalTimeZone());
 #endif
     }
   };

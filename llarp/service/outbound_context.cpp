@@ -32,7 +32,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleDataDrop(path::Path* p, const PathID_t& dst,
+    OutboundContext::HandleDataDrop(path::Path_ptr p, const PathID_t& dst,
                                     uint64_t seq)
     {
       // pick another intro
@@ -122,7 +122,7 @@ namespace llarp
     }
 
     void
-    OutboundContext::HandlePathBuilt(path::Path* p)
+    OutboundContext::HandlePathBuilt(path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
       /// don't use it if we are marked bad
@@ -178,9 +178,9 @@ namespace llarp
 
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
-                                   __attribute__((unused)) ProtocolType t)
+                                   ProtocolType t)
     {
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(path == nullptr)
       {
         // try parent as fallback
@@ -199,12 +199,14 @@ namespace llarp
           m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
           m_DataHandler, currentConvoTag);
 
-      ex->hook = std::bind(&OutboundContext::Send, this, std::placeholders::_1);
+      ex->hook =
+          std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
+      ex->msg.proto      = t;
       ex->msg.introReply = path->intro;
       ex->frame.F        = ex->msg.introReply.pathID;
-      llarp_threadpool_queue_job(m_Endpoint->Worker(),
+      llarp_threadpool_queue_job(m_Endpoint->CryptoWorker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
 
@@ -222,7 +224,7 @@ namespace llarp
         return;
       auto addr = currentIntroSet.A.Addr();
 
-      path::Path* path = nullptr;
+      path::Path_ptr path = nullptr;
       if(randomizePath)
         path = m_Endpoint->PickRandomEstablishedPath();
       else
@@ -274,7 +276,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::Tick(llarp_time_t now)
+    OutboundContext::Pump(llarp_time_t now)
     {
       // we are probably dead af
       if(m_LookupFails > 16 || m_BuildFails > 10)
@@ -470,7 +472,7 @@ namespace llarp
     }
 
     void
-    OutboundContext::HandlePathDied(path::Path* path)
+    OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
       UpdateIntroSet(true);
@@ -480,7 +482,7 @@ namespace llarp
       {
         // figure out how many paths to this router we have
         size_t num = 0;
-        ForEachPath([&](path::Path* p) {
+        ForEachPath([&](const path::Path_ptr& p) {
           if(p->Endpoint() == endpoint && p->IsReady())
             ++num;
         });
@@ -491,7 +493,7 @@ namespace llarp
         if(num == 1)
         {
           num = 0;
-          ForEachPath([&](path::Path* p) {
+          ForEachPath([&](const path::Path_ptr& p) {
             if(p->Endpoint() == endpoint)
               ++num;
           });
@@ -521,7 +523,7 @@ namespace llarp
           m_NextIntro = picked;
           // check if we have a path to this router
           num = 0;
-          ForEachPath([&](path::Path* p) {
+          ForEachPath([&](const path::Path_ptr& p) {
             if(p->Endpoint() == m_NextIntro.router)
               ++num;
           });
@@ -534,7 +536,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleHiddenServiceFrame(path::Path* p,
+    OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p,
                                               const ProtocolFrame& frame)
     {
       return m_Endpoint->HandleHiddenServiceFrame(p, frame);

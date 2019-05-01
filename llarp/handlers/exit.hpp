@@ -147,7 +147,7 @@ namespace llarp
       SNodes_t m_SNodeKeys;
 
       using SNodeSessions_t =
-          std::unordered_map< RouterID, std::unique_ptr< exit::SNodeSession >,
+          std::unordered_map< RouterID, std::shared_ptr< exit::SNodeSession >,
                               RouterID::Hash >;
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;

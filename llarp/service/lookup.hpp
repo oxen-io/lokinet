@@ -3,6 +3,7 @@
 
 #include <routing/message.hpp>
 #include <service/intro_set.hpp>
+#include <path/pathset.hpp>
 
 #include <set>
 
@@ -45,12 +46,12 @@ namespace llarp
       }
 
       /// build request message for service lookup
-      virtual std::unique_ptr< routing::IMessage >
+      virtual std::shared_ptr< routing::IMessage >
       BuildRequestMessage() = 0;
 
       /// build a new request message and send it via a path
       bool
-      SendRequestViaPath(path::Path* p, AbstractRouter* r);
+      SendRequestViaPath(path::Path_ptr p, AbstractRouter* r);
 
       ILookupHolder* parent;
       uint64_t txid;

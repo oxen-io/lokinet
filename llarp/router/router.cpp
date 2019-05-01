@@ -293,6 +293,19 @@ namespace llarp
     return true;
   }
 
+  void
+  Router::PumpLL()
+  {
+    for(const auto &link : inboundLinks)
+    {
+      link->Pump();
+    }
+    for(const auto &link : outboundLinks)
+    {
+      link->Pump();
+    }
+  }
+
   constexpr size_t MaxPendingSendQueueSize = 8;
 
   bool
@@ -395,7 +408,7 @@ namespace llarp
   void
   Router::ForEachPeer(std::function< void(ILinkSession *) > visit)
   {
-    for(const auto &link : inboundLinks)
+    for(const auto &link : outboundLinks)
     {
       link->ForEachSession([visit](ILinkSession *peer) { visit(peer); });
     }
@@ -447,9 +460,12 @@ namespace llarp
   }
 
   void
-  Router::AddInboundLink(std::unique_ptr< ILinkLayer > &link)
+  Router::AddLink(std::unique_ptr< ILinkLayer > link, bool inbound)
   {
-    inboundLinks.emplace(std::move(link));
+    if(inbound)
+      inboundLinks.emplace(std::move(link));
+    else
+      outboundLinks.emplace(std::move(link));
   }
 
   bool
@@ -731,7 +747,8 @@ namespace llarp
     llarp::LogDebug(section, " ", key, "=", val);
 
     int af;
-    uint16_t proto;
+    uint16_t proto = 0;
+    std::set< std::string > opts;
     if(StrEq(val, "eth"))
     {
 #ifdef AF_LINK
@@ -742,11 +759,39 @@ namespace llarp
 #endif
       proto = LLARP_ETH_PROTO;
     }
-    else
+    else if(StrEq(section, "bind"))
     {
       // try IPv4 first
-      af    = AF_INET;
-      proto = std::atoi(val);
+      af = AF_INET;
+      std::set< std::string > parsed_opts;
+      std::string v = val;
+      std::string::size_type idx;
+      do
+      {
+        idx = v.find_first_of(',');
+        if(idx != std::string::npos)
+        {
+          parsed_opts.insert(v.substr(0, idx));
+          v = v.substr(idx + 1);
+        }
+        else
+          parsed_opts.insert(v);
+      } while(idx != std::string::npos);
+
+      /// for each option
+      for(const auto &item : parsed_opts)
+      {
+        /// see if it's a number
+        auto port = std::atoi(item.c_str());
+        if(port > 0)
+        {
+          /// set port
+          if(proto == 0)
+            proto = port;
+        }  /// otherwise add to opts
+        else
+          opts.insert(item);
+      }
     }
 
     if(StrEq(section, "bind"))
@@ -765,14 +810,27 @@ namespace llarp
         }
         if(server->Configure(netloop(), key, af, proto))
         {
-          AddInboundLink(server);
+          AddLink(std::move(server), true);
           return;
         }
-        LogError("failed to bind inbound link on ", key, " port ", val);
+        LogError("failed to bind inbound link on ", key, " port ", proto);
       }
     }
     else if(StrEq(section, "network"))
     {
+      if(StrEq(key, "profiling"))
+      {
+        if(IsTrueValue(val))
+        {
+          routerProfiling().Enable();
+          LogInfo("router profiling explicitly enabled");
+        }
+        else if(IsFalseValue(val))
+        {
+          routerProfiling().Disable();
+          LogInfo("router profiling explicitly disabled");
+        }
+      }
       if(StrEq(key, "profiles"))
       {
         routerProfilesFile = val;
@@ -1073,13 +1131,11 @@ namespace llarp
       ServiceNodeLookupRouterWhenExpired(remote);
       return;
     }
-    auto ep = hiddenServiceContext().getFirstEndpoint();
-    if(ep == nullptr)
-    {
-      LogError("cannot lookup ", remote, " no service endpoints available");
-      return;
-    }
-    ep->LookupRouterAnon(remote);
+    _hiddenServiceContext.ForEachService(
+        [=](const std::string &,
+            const std::shared_ptr< service::Endpoint > &ep) -> bool {
+          return !ep->LookupRouterAnon(remote);
+        });
   }
 
   bool
@@ -1096,6 +1152,8 @@ namespace llarp
   void
   Router::Tick()
   {
+    if(_stopping)
+      return;
     // LogDebug("tick router");
     auto now = Now();
 
@@ -1129,7 +1187,7 @@ namespace llarp
         return !IsBootstrapNode(rc.pubkey);
       });
     }
-    paths.TickPaths(now);
+    // expire transit paths
     paths.ExpirePaths(now);
 
     {
@@ -1176,20 +1234,18 @@ namespace llarp
       else
         LogError("we have no bootstrap nodes specified");
     }
-    else
+    if(connected < minConnectedRouters)
     {
-      if(connected < minConnectedRouters)
-      {
-        size_t dlt = minConnectedRouters - connected;
-        LogInfo("connecting to ", dlt, " random routers to keep alive");
-        ConnectToRandomRouters(dlt);
-      }
+      size_t dlt = minConnectedRouters - connected;
+      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      ConnectToRandomRouters(dlt);
     }
 
     if(!IsServiceNode())
+    {
       _hiddenServiceContext.Tick(now);
+    }
 
-    paths.BuildPaths(now);
     _exitContext.Tick(now);
     if(rpcCaller)
       rpcCaller->Tick(now);
@@ -1569,7 +1625,17 @@ namespace llarp
     llarp_dht_context_start(dht(), pubkey());
     ScheduleTicker(1000);
     _running.store(true);
+    _startedAt = Now();
     return _running;
+  }
+
+  llarp_time_t
+  Router::Uptime() const
+  {
+    const llarp_time_t _now = Now();
+    if(_startedAt && _now > _startedAt)
+      return _now - _startedAt;
+    return 0;
   }
 
   static void
@@ -1715,8 +1781,10 @@ namespace llarp
               || self->HasPendingConnectJob(other.pubkey)))
       {
         if(!self->IsBootstrapNode(other.pubkey))
-          self->TryConnectAsync(other, 5);
-        --want;
+        {
+          if(self->TryConnectAsync(other, 5))
+            --want;
+        }
       }
       return want > 0;
     });
@@ -1808,7 +1876,7 @@ namespace llarp
 
     for(const auto &factory : linkFactories)
     {
-      auto link = factory(this);
+      std::unique_ptr< ILinkLayer > link = factory(this);
       if(!link)
         continue;
       if(!link->EnsureKeys(transport_keyfile.string().c_str()))
@@ -1823,7 +1891,7 @@ namespace llarp
       {
         if(!link->Configure(netloop(), "*", af, m_OutboundPort))
           continue;
-        outboundLinks.insert(std::move(link));
+        AddLink(std::move(link), false);
         break;
       }
     }

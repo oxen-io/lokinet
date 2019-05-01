@@ -204,6 +204,10 @@ namespace llarp
     llarp_threadpool *disk;
     llarp_dht_context *_dht = nullptr;
     llarp_nodedb *_nodedb;
+    llarp_time_t _startedAt;
+
+    llarp_time_t
+    Uptime() const override;
 
     bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;
@@ -266,6 +270,9 @@ namespace llarp
         return false;
       return IsTrueValue(itr->second.c_str());
     }
+
+    void
+    PumpLL() override;
 
     bool
     CreateDefaultHiddenService();
@@ -335,7 +342,7 @@ namespace llarp
                                 const llarp_buffer_t &msg) override;
 
     void
-    AddInboundLink(std::unique_ptr< ILinkLayer > &link);
+    AddLink(std::unique_ptr< ILinkLayer > link, bool outbound = false);
 
     bool
     InitOutboundLinks();

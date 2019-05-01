@@ -15,10 +15,10 @@ namespace llarp
   template < typename User >
   struct AsyncPathKeyExchangeContext
   {
-    typedef path::Path Path_t;
-    typedef path::Builder PathSet_t;
-    PathSet_t* pathset = nullptr;
-    Path_t* path       = nullptr;
+    typedef path::Path_ptr Path_t;
+    typedef path::PathSet_ptr PathSet_t;
+    PathSet_t pathset = nullptr;
+    Path_t path       = nullptr;
     typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
     User* user = nullptr;
 
@@ -32,8 +32,6 @@ namespace llarp
 
     ~AsyncPathKeyExchangeContext()
     {
-      if(path)
-        delete path;
     }
 
     static void
@@ -81,9 +79,8 @@ namespace llarp
       else
       {
         hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
-        if(ctx->pathset->ShouldBundleRC())
-          record.nextRC =
-              std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
+        record.nextRC =
+            std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
       }
       // build record
 
@@ -134,7 +131,7 @@ namespace llarp
 
     /// Generate all keys asynchronously and call handler when done
     void
-    AsyncGenerateKeys(Path_t* p, Logic* l, llarp_threadpool* pool, User* u,
+    AsyncGenerateKeys(Path_t p, Logic* l, llarp_threadpool* pool, User* u,
                       Handler func)
     {
       path   = p;
@@ -164,13 +161,10 @@ namespace llarp
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
         // add own path
         ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-        ctx->path = nullptr;
       }
       else
         LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
     }
-    // decrement keygen counter
-    ctx->pathset->keygens--;
   }
 
   namespace path
@@ -179,22 +173,27 @@ namespace llarp
                      size_t pathNum, size_t hops)
         : path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
     {
-      p_router->pathContext().AddPathBuilder(this);
       p_router->crypto()->encryption_keygen(enckey);
       _run.store(true);
-      keygens.store(0);
     }
 
     Builder::~Builder()
     {
-      router->pathContext().RemovePathBuilder(this);
+    }
+
+    void
+    Builder::Tick(llarp_time_t now)
+    {
+      ExpirePaths(now);
+      if(ShouldBuildMore(now))
+        BuildOne();
+      TickPaths(now, router);
     }
 
     util::StatusObject
     Builder::ExtractStatus() const
     {
-      util::StatusObject obj{{"keygens", uint64_t(keygens.load())},
-                             {"numHops", uint64_t(numHops)},
+      util::StatusObject obj{{"numHops", uint64_t(numHops)},
                              {"numPaths", uint64_t(m_NumPaths)}};
       std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
@@ -259,9 +258,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      if(!IsStopped())
-        return false;
-      return keygens.load() > 0;
+      return IsStopped();
     }
 
     const SecretKey&
@@ -340,30 +337,30 @@ namespace llarp
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(router->crypto());
       ctx->router  = router;
-      ctx->pathset = this;
-      auto path    = new path::Path(hops, this, roles);
-      path->SetBuildResultHook([this](Path* p) { this->HandlePathBuilt(p); });
-      ++keygens;
+      ctx->pathset = GetSelf();
+      auto path    = std::make_shared< path::Path >(hops, this, roles);
+      path->SetBuildResultHook(
+          [this](Path_ptr p) { this->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
                              &PathBuilderKeysGenerated);
     }
 
     void
-    Builder::HandlePathBuilt(Path* p)
+    Builder::HandlePathBuilt(Path_ptr p)
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-      router->routerProfiling().MarkPathSuccess(p);
+      router->routerProfiling().MarkPathSuccess(p.get());
       LogInfo(p->Name(), " built latency=", p->intro.latency);
     }
 
     void
-    Builder::HandlePathBuildTimeout(Path* p)
+    Builder::HandlePathBuildTimeout(Path_ptr p)
     {
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit =
           std::min(1000 + buildIntervalLimit, MaxBuildInterval);
-      router->routerProfiling().MarkPathFail(p);
+      router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildTimeout(p);
     }
 

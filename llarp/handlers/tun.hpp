@@ -20,11 +20,19 @@ namespace llarp
     static const char DefaultTunDstAddr[] = "10.10.0.1";
     static const char DefaultTunSrcAddr[] = "10.10.0.2";
 
-    struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
+    struct TunEndpoint : public service::Endpoint,
+                         public dns::IQueryHandler,
+                         public std::enable_shared_from_this< TunEndpoint >
     {
       TunEndpoint(const std::string& nickname, AbstractRouter* r,
                   llarp::service::Context* parent);
       ~TunEndpoint();
+
+      path::PathSet_ptr
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
       virtual bool
       SetOption(const std::string& k, const std::string& v) override;
@@ -34,6 +42,9 @@ namespace llarp
 
       util::StatusObject
       ExtractStatus() const;
+
+      std::unordered_map< std::string, std::string >
+      NotifyParams() const override;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
@@ -195,7 +206,7 @@ namespace llarp
 
       template < typename Addr_t, typename Endpoint_t >
       void
-      SendDNSReply(Addr_t addr, Endpoint_t* ctx, dns::Message* query,
+      SendDNSReply(Addr_t addr, Endpoint_t ctx, dns::Message* query,
                    std::function< void(dns::Message) > reply, bool snode,
                    bool sendIPv6)
       {

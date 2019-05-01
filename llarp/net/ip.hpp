@@ -82,6 +82,26 @@ namespace llarp
 {
   namespace net
   {
+    /// a network layer packet
+    struct NetPacket
+    {
+      virtual ~NetPacket(){};
+
+      virtual byte_t
+      Version() const = 0;
+
+      virtual byte_t
+      IPProto() const = 0;
+
+      virtual llarp_buffer_t
+      Buffer() = 0;
+
+      virtual llarp_buffer_t
+      ConstBuffer() const = 0;
+    };
+
+    /// an IPv4 Packet
+    /// TODO: make it implement NetPacket
     struct IPv4Packet
     {
       static constexpr size_t MaxSize = 1500;

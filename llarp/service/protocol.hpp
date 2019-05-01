@@ -11,6 +11,7 @@
 #include <service/handler.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>
+#include <path/pathset.hpp>
 
 #include <vector>
 
@@ -118,7 +119,7 @@ namespace llarp
       Sign(Crypto* c, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(Logic* logic, Crypto* c, path::Path* fromPath,
+      AsyncDecryptAndVerify(Logic* logic, Crypto* c, path::Path_ptr fromPath,
                             llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;

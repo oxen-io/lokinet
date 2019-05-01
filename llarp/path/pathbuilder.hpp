@@ -29,9 +29,6 @@ namespace llarp
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
-      // how many keygens are currently happening
-      std::atomic< uint8_t > keygens;
-
       /// construct
       Builder(AbstractRouter* p_router, llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
@@ -75,8 +72,11 @@ namespace llarp
       llarp_time_t
       Now() const override;
 
+      virtual void
+      Tick(llarp_time_t now) override;
+
       void
-      BuildOne(PathRole roles = ePathRoleAny);
+      BuildOne(PathRole roles = ePathRoleAny) override;
 
       void
       Build(const std::vector< RouterContact >& hops,
@@ -93,11 +93,14 @@ namespace llarp
       GetTunnelEncryptionSecretKey() const;
 
       virtual void
-      HandlePathBuilt(Path* p) override;
+      HandlePathBuilt(Path_ptr p) override;
 
       virtual void
-      HandlePathBuildTimeout(Path* p) override;
+      HandlePathBuildTimeout(Path_ptr p) override;
     };
+
+    using Builder_ptr = std::shared_ptr< Builder >;
+
   }  // namespace path
 
 }  // namespace llarp
