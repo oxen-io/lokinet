@@ -73,11 +73,10 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeCNAME
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        if(msg.questions[0].IsName("localhost.loki")
-           || msg.questions[0].IsName("random.snode"))
+        if(msg.questions[0].IsName("localhost.loki"))
           return true;
-        service::Address addr;
-        return addr.FromString(msg.questions[0].Name(), ".snode");
+        if(msg.questions[0].HasTLD(".snode"))
+          return true;
       }
       else
         return false;

@@ -367,7 +367,6 @@ namespace llarp
           return true;
         }
         else
-          // forward dns
           msg.AddNXReply();
 
         reply(msg);
@@ -416,18 +415,11 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
-        // hook random.snode
-        if(msg.questions[0].IsName("random.snode"))
+        /// hook every .loki
+        if(msg.questions[0].HasTLD(".loki"))
           return true;
-        // hook localhost.loki
-        if(msg.questions[0].IsName("localhost.loki"))
-          return true;
-        const std::string name = msg.questions[0].Name();
-        // hook .loki
-        if(addr.FromString(name, ".loki"))
-          return true;
-        // hook .snode
-        if(addr.FromString(name, ".snode"))
+        /// hook every .snode
+        if(msg.questions[0].HasTLD(".snode"))
           return true;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)

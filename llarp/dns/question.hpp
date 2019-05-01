@@ -44,6 +44,10 @@ namespace llarp
       /// return qname with no trailing .
       std::string
       Name() const;
+
+      /// determine if we are using this TLD
+      bool
+      HasTLD(const std::string& tld) const;
     };
 
     inline std::ostream&

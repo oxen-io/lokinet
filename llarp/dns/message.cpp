@@ -178,7 +178,7 @@ namespace llarp
         if(isV6)
         {
           rec.rr_type = qTypeAAAA;
-          ip.SIIT(rec.rData);
+          ip.ToV6(rec.rData);
         }
         else
         {
