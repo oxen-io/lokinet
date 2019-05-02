@@ -1170,7 +1170,7 @@ namespace llarp
       const auto dlt = intro.expiresAt - now;
       return should
           || (  // try spacing tunnel builds out evenly in time
-                 (dlt > (path::default_lifetime / 4))
+                 (dlt < (path::default_lifetime / 4))
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths)
                  && (dlt >= buildIntervalLimit));
     }
