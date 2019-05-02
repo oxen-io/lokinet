@@ -143,15 +143,15 @@ namespace llarp
         return;
       }
       m_IntroSet.I.clear();
-      for(const auto& intro : I)
+      for(auto& intro : I)
       {
-        if(router->routerProfiling().IsBadForPath(intro.router))
-          continue;
-        m_IntroSet.I.push_back(intro);
+        m_IntroSet.I.emplace_back(std::move(intro));
       }
       if(m_IntroSet.I.size() == 0)
       {
         LogWarn("not enough intros to publish introset for ", Name());
+        if(ShouldBuildMore(now) || forceRebuild)
+          ManualRebuild(1);
         return;
       }
       m_IntroSet.topic = m_Tag;

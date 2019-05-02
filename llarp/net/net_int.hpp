@@ -55,7 +55,7 @@ namespace llarp
       ++h;
       return *this;
     }
-    
+
     inline huint_t
     operator--()
     {
@@ -98,9 +98,8 @@ namespace llarp
     }
   };
 
-  using huint128_t = huint_t< __uint128_t >;
-  using huint32_t  = huint_t< uint32_t >;
-  using huint16_t  = huint_t< uint16_t >;
+  using huint32_t = huint_t< uint32_t >;
+  using huint16_t = huint_t< uint16_t >;
 
   template < typename UInt_t >
   struct nuint_t
