@@ -552,7 +552,7 @@ namespace llarp
             other,
             std::bind(&ExitEndpoint::QueueSNodePacket, this,
                       std::placeholders::_1, ip),
-            GetRouter(), 2, 1, true);
+            GetRouter(), 2, 1, true, false);
         // this is a new service node make an outbound session to them
         m_SNodeSessions.emplace(other, session);
       }

@@ -107,7 +107,7 @@ namespace llarp
             exitRouter,
             std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
                       std::placeholders::_1),
-            router, m_NumPaths, numHops);
+            router, m_NumPaths, numHops, ShouldBundleRC());
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")

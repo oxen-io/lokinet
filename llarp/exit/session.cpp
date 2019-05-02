@@ -11,12 +11,13 @@ namespace llarp
     BaseSession::BaseSession(
         const llarp::RouterID& router,
         std::function< bool(const llarp_buffer_t&) > writepkt,
-        AbstractRouter* r, size_t numpaths, size_t hoplen)
+        AbstractRouter* r, size_t numpaths, size_t hoplen, bool bundleRC)
         : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
         , m_Counter(0)
         , m_LastUse(0)
+        , m_BundleRC(bundleRC)
     {
       r->crypto()->identity_keygen(m_ExitIdentity);
     }
@@ -281,8 +282,8 @@ namespace llarp
         const llarp::RouterID& snodeRouter,
         std::function< bool(const llarp_buffer_t&) > writepkt,
         AbstractRouter* r, size_t numpaths, size_t hoplen,
-        bool useRouterSNodeKey)
-        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+        bool useRouterSNodeKey, bool bundleRC)
+        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
     {
       if(useRouterSNodeKey)
       {

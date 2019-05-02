@@ -984,7 +984,7 @@ namespace llarp
             snode,
             std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
                       [themIP]() -> huint32_t { return themIP; }),
-            m_Router, m_NumPaths, numHops);
+            m_Router, m_NumPaths, numHops, false, ShouldBundleRC());
         m_SNodeSessions.emplace(snode, session);
       }
       EnsureRouterIsKnown(snode);
