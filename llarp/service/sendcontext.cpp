@@ -101,7 +101,6 @@ namespace llarp
         LogError("No cached session key");
         return;
       }
-      ++sequenceNo;
       Send(f, path);
     }
 

@@ -298,8 +298,7 @@ namespace llarp
         }
       }
       // lookup router in intro if set and unknown
-      if(!remoteIntro.router.IsZero())
-        m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+      m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
       // expire bad intros
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
@@ -322,7 +321,6 @@ namespace llarp
           tmp.Randomize();
           llarp_buffer_t buf(tmp.data(), tmp.size());
           AsyncEncryptAndSendTo(buf, eProtocolControl);
-          SharedSecret k;
           if(currentConvoTag.IsZero())
             return false;
           return !m_DataHandler->HasConvoTag(currentConvoTag);

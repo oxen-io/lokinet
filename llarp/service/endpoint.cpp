@@ -741,8 +741,7 @@ namespace llarp
     {
       if(router.IsZero())
         return;
-      RouterContact rc;
-      if(!m_Router->nodedb()->Get(router, rc))
+      if(!m_Router->nodedb()->Has(router))
       {
         LookupRouterAnon(router);
       }
@@ -880,9 +879,13 @@ namespace llarp
 
         if(!f.Sign(crypto(), m_Identity))
           return false;
-        auto d =
-            std::make_shared< const routing::PathTransferMessage >(f, frame.F);
-        RouterLogic()->queue_func([=]() { p->SendRoutingMessage(*d, router); });
+        {
+          util::Lock lock(&m_SendQueueMutex);
+          m_SendQueue.emplace_back(
+              std::make_shared< const routing::PathTransferMessage >(f,
+                                                                     frame.F),
+              p);
+        }
         return true;
       }
       return true;
@@ -1156,20 +1159,20 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      bool should = path::Builder::ShouldBuildMore(now);
+      const bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
         return should;
       // time from now that the newest intro expires at
-      if(now >= intro.expiresAt)
+      if(intro.ExpiresSoon(now))
         return should;
-      auto dlt = now - intro.expiresAt;
+      const auto dlt = now - intro.expiresAt;
       return should
           || (  // try spacing tunnel builds out evenly in time
-                 (dlt < (path::default_lifetime / 2))
+                 (dlt > (path::default_lifetime / 4))
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths)
-                 && (dlt > buildIntervalLimit));
+                 && (dlt >= buildIntervalLimit));
     }
 
     Logic*
