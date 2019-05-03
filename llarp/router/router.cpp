@@ -1124,17 +1124,20 @@ namespace llarp
   }
 
   void
-  Router::LookupRouter(RouterID remote)
+  Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
   {
     if(IsServiceNode())
     {
-      ServiceNodeLookupRouterWhenExpired(remote);
+      if(resultHandler)
+        dht()->impl->LookupRouter(remote, resultHandler);
+      else
+        ServiceNodeLookupRouterWhenExpired(remote);
       return;
     }
     _hiddenServiceContext.ForEachService(
         [=](const std::string &,
             const std::shared_ptr< service::Endpoint > &ep) -> bool {
-          return !ep->LookupRouterAnon(remote);
+          return !ep->LookupRouterAnon(remote, resultHandler);
         });
   }
 

@@ -177,7 +177,6 @@ namespace llarp
     }
   };
 
-  using nuint128_t = nuint_t< __uint128_t >;
   using nuint32_t  = nuint_t< uint32_t >;
   using nuint16_t  = nuint_t< uint16_t >;
 

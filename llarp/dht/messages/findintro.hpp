@@ -54,9 +54,8 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage::Ptr_t >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

@@ -3,6 +3,7 @@
 
 #include <dht/message.hpp>
 #include <service/intro_set.hpp>
+#include <util/copy_or_nullptr.hpp>
 
 #include <vector>
 
@@ -24,6 +25,15 @@ namespace llarp
       {
       }
 
+      GotIntroMessage(const GotIntroMessage& other)
+          : IMessage(other.From)
+          , I(other.I)
+          , T(other.T)
+          , K(copy_or_nullptr(other.K))
+      {
+        version = other.version;
+      }
+
       /// for iterative reply
       GotIntroMessage(const Key_t& from, const Key_t& closer, uint64_t txid)
           : IMessage(from), T(txid), K(new Key_t(closer))
@@ -43,9 +53,8 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       virtual bool
-      HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage::Ptr_t >& replies) const override;
     };
 
     struct RelayedGotIntroMessage final : public GotIntroMessage
@@ -55,10 +64,11 @@ namespace llarp
       }
 
       bool
-      HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage::Ptr_t >& replies) const override;
     };
+
+    using GotIntroMessage_constptr = std::shared_ptr< const GotIntroMessage >;
   }  // namespace dht
 }  // namespace llarp
 #endif

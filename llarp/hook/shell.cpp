@@ -16,8 +16,7 @@ namespace llarp
   namespace hooks
   {
 #if defined(_WIN32)
-    Backend_ptr
-    ExecShellBackend(std::string)
+    Backend_ptr ExecShellBackend(std::string)
     {
       return nullptr;
     }

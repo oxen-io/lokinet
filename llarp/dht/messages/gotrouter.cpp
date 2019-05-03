@@ -90,7 +90,8 @@ namespace llarp
       {
         auto pathset =
             ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
-        return pathset && pathset->HandleGotRouterMessage(this);
+        auto copy = std::make_shared< const GotRouterMessage >(*this);
+        return pathset && pathset->HandleGotRouterMessage(copy);
       }
       // not relayed
       const TXOwner owner(From, txid);

@@ -2,6 +2,7 @@
 #define LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
 #include <dht/message.hpp>
 #include <router_contact.hpp>
+#include <util/copy_or_nullptr.hpp>
 
 namespace llarp
 {
@@ -32,6 +33,17 @@ namespace llarp
       {
       }
 
+      GotRouterMessage(const GotRouterMessage& other)
+          : IMessage(other.From)
+          , R(other.R)
+          , N(other.N)
+          , K(copy_or_nullptr(other.K))
+          , txid(other.txid)
+          , relayed(other.relayed)
+      {
+        version = other.version;
+      }
+
       ~GotRouterMessage();
 
       bool
@@ -48,10 +60,11 @@ namespace llarp
       std::vector< RouterContact > R;
       std::vector< RouterID > N;
       std::unique_ptr< Key_t > K;
-      uint64_t txid    = 0;
-      uint64_t version = 0;
-      bool relayed     = false;
+      uint64_t txid = 0;
+      bool relayed  = false;
     };
+
+    using GotRouterMessage_constptr = std::shared_ptr< const GotRouterMessage >;
   }  // namespace dht
 }  // namespace llarp
 #endif

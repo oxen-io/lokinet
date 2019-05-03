@@ -11,12 +11,13 @@ namespace llarp
     BaseSession::BaseSession(
         const llarp::RouterID& router,
         std::function< bool(const llarp_buffer_t&) > writepkt,
-        AbstractRouter* r, size_t numpaths, size_t hoplen)
+        AbstractRouter* r, size_t numpaths, size_t hoplen, bool bundleRC)
         : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
         , m_Counter(0)
         , m_LastUse(0)
+        , m_BundleRC(bundleRC)
     {
       r->crypto()->identity_keygen(m_ExitIdentity);
     }
@@ -66,7 +67,7 @@ namespace llarp
       {
         if(db->Get(m_ExitRouter, cur))
           return true;
-        router->LookupRouter(m_ExitRouter);
+        router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
       else if(hop == numHops - 2)
@@ -262,6 +263,15 @@ namespace llarp
         for(auto& item : m_Upstream)
           item.second.clear();
         m_Upstream.clear();
+        if(numHops == 1)
+        {
+          auto r = router;
+          r->LookupRouter(m_ExitRouter,
+                          [r](const std::vector< RouterContact > results) {
+                            if(results.size())
+                              r->TryConnectAsync(results[0], 5);
+                          });
+        }
       }
       return true;
     }
@@ -281,8 +291,8 @@ namespace llarp
         const llarp::RouterID& snodeRouter,
         std::function< bool(const llarp_buffer_t&) > writepkt,
         AbstractRouter* r, size_t numpaths, size_t hoplen,
-        bool useRouterSNodeKey)
-        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+        bool useRouterSNodeKey, bool bundleRC)
+        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
     {
       if(useRouterSNodeKey)
       {

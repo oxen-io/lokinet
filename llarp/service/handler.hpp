@@ -5,6 +5,7 @@
 #include <path/path_types.hpp>
 #include <service/intro_set.hpp>
 #include <util/aligned.hpp>
+#include <memory>
 
 namespace llarp
 {
@@ -16,7 +17,8 @@ namespace llarp
     struct IDataHandler
     {
       virtual bool
-      HandleDataMessage(const PathID_t&, ProtocolMessage* msg) = 0;
+      HandleDataMessage(const PathID_t&,
+                        std::shared_ptr< ProtocolMessage > msg) = 0;
 
       virtual bool
       GetCachedSessionKeyFor(const ConvoTag& remote,

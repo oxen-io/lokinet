@@ -63,7 +63,7 @@ namespace llarp
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(void* user);
+      ProcessAsync(std::shared_ptr< ProtocolMessage > self);
     };
 
     /// outer message

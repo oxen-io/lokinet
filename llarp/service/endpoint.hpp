@@ -135,10 +135,12 @@ namespace llarp
       PublishIntroSetVia(AbstractRouter* r, path::Path_ptr p);
 
       bool
-      HandleGotIntroMessage(const dht::GotIntroMessage* msg) override;
+      HandleGotIntroMessage(
+          std::shared_ptr< const dht::GotIntroMessage > msg) override;
 
       bool
-      HandleGotRouterMessage(const dht::GotRouterMessage* msg) override;
+      HandleGotRouterMessage(
+          std::shared_ptr< const dht::GotRouterMessage > msg) override;
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p,
@@ -165,14 +167,15 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(const PathID_t&, ProtocolMessage* msg) override;
+      HandleDataMessage(const PathID_t&,
+                        std::shared_ptr< ProtocolMessage > msg) override;
 
       virtual bool
       HandleWriteIPPacket(const llarp_buffer_t& pkt,
                           std::function< huint32_t(void) > getFromIP) = 0;
 
       bool
-      ProcessDataMessage(ProtocolMessage* msg);
+      ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg);
 
       /// ensure that we know a router, looks up if it doesn't
       void
@@ -180,7 +183,7 @@ namespace llarp
 
       /// lookup a router via closest path
       bool
-      LookupRouterAnon(RouterID router);
+      LookupRouterAnon(RouterID router, RouterLookupHandler handler);
 
       /// called on event loop pump
       virtual void
@@ -397,12 +400,13 @@ namespace llarp
 
       struct RouterLookupJob
       {
-        RouterLookupJob(Endpoint* p)
+        RouterLookupJob(Endpoint* p, RouterLookupHandler h) : handler(h)
         {
           started = p->Now();
           txid    = p->GenTXID();
         }
 
+        RouterLookupHandler handler;
         uint64_t txid;
         llarp_time_t started;
 
@@ -412,6 +416,13 @@ namespace llarp
           if(now < started)
             return false;
           return now - started > 5000;
+        }
+
+        void
+        InformResult(const std::vector< RouterContact >& result)
+        {
+          if(handler)
+            handler(result);
         }
       };
 
