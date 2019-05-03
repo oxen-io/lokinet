@@ -68,7 +68,7 @@ namespace llarp
     bool
     Question::HasTLD(const std::string& tld) const
     {
-      return qname.rfind(tld) == (qname.size() - tld.size()) - 1;
+      return qname.find(tld) != std::string::npos && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
     }
 
     std::ostream&
