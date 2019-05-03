@@ -67,7 +67,7 @@ namespace llarp
       {
         if(db->Get(m_ExitRouter, cur))
           return true;
-        router->LookupRouter(m_ExitRouter);
+        router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
       else if(hop == numHops - 2)
@@ -263,6 +263,15 @@ namespace llarp
         for(auto& item : m_Upstream)
           item.second.clear();
         m_Upstream.clear();
+        if(numHops == 1)
+        {
+          auto r = router;
+          r->LookupRouter(m_ExitRouter,
+                          [r](const std::vector< RouterContact > results) {
+                            if(results.size())
+                              r->TryConnectAsync(results[0], 5);
+                          });
+        }
       }
       return true;
     }

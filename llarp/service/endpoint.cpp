@@ -357,7 +357,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleGotIntroMessage(const dht::GotIntroMessage* msg)
+    Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
       auto crypto = m_Router->crypto();
       std::set< IntroSet > remote;
@@ -716,21 +716,33 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleGotRouterMessage(const dht::GotRouterMessage* msg)
+    Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
     {
+      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
+      if(itr == m_PendingRouters.end())
+        return false;
       if(msg->R.size() == 1)
       {
-        auto itr = m_PendingRouters.find(msg->R[0].pubkey);
-        if(itr == m_PendingRouters.end())
-          return false;
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->threadpool();
         job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
-        job->hook                  = nullptr;
-        job->rc                    = msg->R[0];
+        job->hook                  = [=](llarp_async_verify_rc* j) {
+          auto i = m_PendingRouters.find(msg->R[0].pubkey);
+          if(j->valid)
+            i->second.InformResult(msg->R);
+          else
+            i->second.InformResult({});
+          m_PendingRouters.erase(i);
+          delete j;
+        };
+        job->rc = msg->R[0];
         llarp_nodedb_async_verify(job);
+      }
+      else
+      {
+        itr->second.InformResult({});
         m_PendingRouters.erase(itr);
       }
       return true;
@@ -743,12 +755,12 @@ namespace llarp
         return;
       if(!m_Router->nodedb()->Has(router))
       {
-        LookupRouterAnon(router);
+        LookupRouterAnon(router, nullptr);
       }
     }
 
     bool
-    Endpoint::LookupRouterAnon(RouterID router)
+    Endpoint::LookupRouterAnon(RouterID router, RouterLookupHandler handler)
     {
       if(m_PendingRouters.find(router) == m_PendingRouters.end())
       {
@@ -761,7 +773,7 @@ namespace llarp
         if(path && path->SendRoutingMessage(msg, m_Router))
         {
           LogInfo(Name(), " looking up ", router);
-          m_PendingRouters.emplace(router, RouterLookupJob(this));
+          m_PendingRouters.emplace(router, RouterLookupJob(this, handler));
           return true;
         }
         else
@@ -797,7 +809,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
+    Endpoint::HandleDataMessage(const PathID_t& src,
+                                std::shared_ptr< ProtocolMessage > msg)
     {
       auto path = GetPathByID(src);
       if(path)
@@ -825,7 +838,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::ProcessDataMessage(ProtocolMessage* msg)
+    Endpoint::ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg)
     {
       if(msg->proto == eProtocolTraffic)
       {

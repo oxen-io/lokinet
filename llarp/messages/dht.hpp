@@ -12,7 +12,7 @@ namespace llarp
   {
     struct DHTMessage final : public IMessage
     {
-      std::vector< std::unique_ptr< llarp::dht::IMessage > > M;
+      std::vector< llarp::dht::IMessage::Ptr_t > M;
       uint64_t V = 0;
 
       ~DHTMessage();

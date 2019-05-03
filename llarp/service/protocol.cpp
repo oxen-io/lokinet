@@ -30,12 +30,10 @@ namespace llarp
     }
 
     void
-    ProtocolMessage::ProcessAsync(void* user)
+    ProtocolMessage::ProcessAsync(std::shared_ptr< ProtocolMessage > self)
     {
-      ProtocolMessage* self = static_cast< ProtocolMessage* >(user);
       if(!self->handler->HandleDataMessage(self->srcPath, self))
         LogWarn("failed to handle data message from ", self->srcPath);
-      delete self;
     }
 
     bool
@@ -245,14 +243,15 @@ namespace llarp
     {
       Crypto* crypto;
       Logic* logic;
-      ProtocolMessage* msg;
+      std::shared_ptr< ProtocolMessage > msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(Logic* l, Crypto* c, const Identity& localIdent,
-                        IDataHandler* h, ProtocolMessage* m,
+                        IDataHandler* h,
+                        const std::shared_ptr< ProtocolMessage >& m,
                         const ProtocolFrame& f, const Introduction& recvIntro)
           : crypto(c)
           , logic(l)
@@ -277,7 +276,7 @@ namespace llarp
                                 pq_keypair_to_secret(self->m_LocalIdentity.pq)))
         {
           LogError("pqke failed C=", self->frame.C);
-          delete self->msg;
+          self->msg.reset();
           delete self;
           return;
         }
@@ -288,7 +287,7 @@ namespace llarp
         {
           LogError("failed to decode inner protocol message");
           DumpBuffer(*buf);
-          delete self->msg;
+          self->msg.reset();
           delete self;
           return;
         }
@@ -299,7 +298,7 @@ namespace llarp
                    " from ", self->msg->sender.Addr());
           self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
-          delete self->msg;
+          self->msg.reset();
           delete self;
           return;
         }
@@ -308,7 +307,7 @@ namespace llarp
         {
           LogError("dropping duplicate convo tag T=", self->msg->tag);
           // TODO: send convotag reset
-          delete self->msg;
+          self->msg.reset();
           delete self;
           return;
         }
@@ -324,7 +323,7 @@ namespace llarp
         {
           LogError("x25519 key exchange failed");
           self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
-          delete self->msg;
+          self->msg.reset();
           delete self;
           return;
         }
@@ -340,8 +339,9 @@ namespace llarp
         self->handler->PutSenderFor(self->msg->tag, self->msg->sender);
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
-        self->msg->handler = self->handler;
-        self->logic->queue_job({self->msg, &ProtocolMessage::ProcessAsync});
+        self->msg->handler                     = self->handler;
+        std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
+        self->logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
         delete self;
       }
     };
@@ -368,11 +368,11 @@ namespace llarp
                                          const Identity& localIdent,
                                          IDataHandler* handler) const
     {
+      auto msg = std::make_shared< ProtocolMessage >();
       if(T.IsZero())
       {
         LogInfo("Got protocol frame with new convo");
-        ProtocolMessage* msg = new ProtocolMessage();
-        msg->srcPath         = recvPath->RXID();
+        msg->srcPath = recvPath->RXID();
         // we need to dh
         auto dh = new AsyncFrameDecrypt(logic, c, localIdent, handler, msg,
                                         *this, recvPath->intro);
@@ -396,16 +396,14 @@ namespace llarp
         LogError("Signature failure from ", si.Addr());
         return false;
       }
-      ProtocolMessage* msg = new ProtocolMessage();
       if(!DecryptPayloadInto(c, shared, *msg))
       {
         LogError("failed to decrypt message");
-        delete msg;
         return false;
       }
       msg->srcPath = recvPath->RXID();
       msg->handler = handler;
-      logic->queue_job({msg, &ProtocolMessage::ProcessAsync});
+      logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
       return true;
     }
 

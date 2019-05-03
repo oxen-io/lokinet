@@ -159,16 +159,14 @@ namespace llarp
 
       /// override me in subtype
       virtual bool
-      HandleGotIntroMessage(__attribute__((unused))
-                            const dht::GotIntroMessage* msg)
+      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
       {
         return false;
       }
 
       /// override me in subtype
       virtual bool
-      HandleGotRouterMessage(__attribute__((unused))
-                             const dht::GotRouterMessage* msg)
+      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
       {
         return false;
       }

@@ -107,7 +107,7 @@ namespace llarp
         // TODO: we need to stop looking up service nodes that are gone forever
         // how do?
         for(const auto &k : expired)
-          if(!ep->LookupRouterAnon(k))
+          if(!ep->LookupRouterAnon(k, nullptr))
             return false;
         return true;
       });

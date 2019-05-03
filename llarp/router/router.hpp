@@ -442,7 +442,7 @@ namespace llarp
     FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
 
     void
-    LookupRouter(RouterID remote) override;
+    LookupRouter(RouterID remote, RouterLookupHandler handler) override;
 
     /// manually discard all pending messages to remote router
     void
@@ -517,7 +517,7 @@ namespace llarp
     NumberOfConnectedRouters() const override;
 
     bool
-    TryConnectAsync(RouterContact rc, uint16_t tries);
+    TryConnectAsync(RouterContact rc, uint16_t tries) override;
 
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;

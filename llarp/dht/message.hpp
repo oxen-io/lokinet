@@ -25,21 +25,22 @@ namespace llarp
       {
       }
 
+      using Ptr_t = std::unique_ptr< IMessage >;
+
       virtual bool
-      HandleMessage(
-          struct llarp_dht_context* dht,
-          std::vector< std::unique_ptr< IMessage > >& replies) const = 0;
+      HandleMessage(struct llarp_dht_context* dht,
+                    std::vector< Ptr_t >& replies) const = 0;
 
       Key_t From;
       PathID_t pathID;
     };
 
-    std::unique_ptr< IMessage >
+    IMessage::Ptr_t
     DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false);
 
     bool
     DecodeMesssageList(Key_t from, llarp_buffer_t* buf,
-                       std::vector< std::unique_ptr< IMessage > >& dst,
+                       std::vector< IMessage::Ptr_t >& dst,
                        bool relayed = false);
   }  // namespace dht
 }  // namespace llarp

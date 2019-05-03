@@ -73,8 +73,7 @@ namespace llarp
 
     bool
     FindIntroMessage::HandleMessage(
-        llarp_dht_context* ctx,
-        std::vector< std::unique_ptr< IMessage > >& replies) const
+        llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
       if(R > 5)
       {
