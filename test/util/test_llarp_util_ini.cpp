@@ -51,6 +51,11 @@ TEST_F(TestINIParser, TestParseSectionDuplicateKeys)
   ASSERT_EQ(num, size_t(2));
 }
 
+TEST_F(TestINIParser, TestNoKey)
+{
+  ASSERT_FALSE(parser.LoadString("[test]\n=1090\n"));
+}
+
 TEST_F(TestINIParser, TestParseInvalid)
 {
   ASSERT_FALSE(
