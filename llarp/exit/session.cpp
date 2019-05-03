@@ -266,8 +266,12 @@ namespace llarp
         if(numHops == 1)
         {
           auto r = router;
-          r->LookupRouter(m_ExitRouter,
-                          [r](const std::vector< RouterContact > results) {
+          RouterContact rc;
+          if(r->nodedb()->Get(m_ExitRouter, rc))
+            r->TryConnectAsync(rc, 5);
+          else
+            r->LookupRouter(m_ExitRouter,
+                          [r](const std::vector< RouterContact > & results) {
                             if(results.size())
                               r->TryConnectAsync(results[0], 5);
                           });
