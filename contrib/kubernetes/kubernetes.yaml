@@ -69,7 +69,11 @@ spec:
             - protocol: UDP 
               containerPort: 1190 
               name: udp-2
-      dnsPolicy: ClusterFirst
+      dnsPolicy: "None"
+        dnsConfig:
+          nameservers:
+            - 127.0.0.1
+            - 1.1.1.1
       restartPolicy: Always
       schedulerName: default-scheduler
       terminationGracePeriodSeconds: 30
