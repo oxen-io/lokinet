@@ -271,7 +271,7 @@ namespace llarp
             r->TryConnectAsync(rc, 5);
           else
             r->LookupRouter(m_ExitRouter,
-                          [r](const std::vector< RouterContact > results) {
+                          [r](const std::vector< RouterContact > & results) {
                             if(results.size())
                               r->TryConnectAsync(results[0], 5);
                           });
