@@ -122,7 +122,7 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DSTATIC_LINK_RUNTIME=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
@@ -131,8 +131,8 @@ debug: debug-configure
 
 release-compile: release-configure
 	$(MAKE) -C $(BUILD_ROOT)
+	strip $(EXE)
 	cp $(EXE) $(REPO)/lokinet
-	strip $(TARGETS)
 
 $(TARGETS): release-compile
 
@@ -263,7 +263,7 @@ docker-fedora:
 
 debian-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)"
+	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
