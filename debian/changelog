@@ -1,5 +1,7 @@
-lokinet (0.4.0) UNRELEASED; urgency=medium
+lokinet (0.4.1) UNRELEASED; urgency=medium
 
+
+  [ Jeff Becker (probably not evil) ]
   * MANDITORY UPGRADE FOR TOYNET (again)
   
   * crypto protocol fixes in utp preventing fragment replaying
@@ -12,7 +14,7 @@ lokinet (0.4.0) UNRELEASED; urgency=medium
 
   * localhost.loki A and CNAME records for giving IP and Hostnames (respectively) for all locally owned endpoints
 
-  * stability fixes
+  * stability tweaks
 
   * crash fixes
 
@@ -24,9 +26,9 @@ lokinet (0.4.0) UNRELEASED; urgency=medium
 
   * very vendor updates
 
-  * wow
+  * wow !
 
- -- jeff <jeff@i2p.rocks>  Thu, 28 Feb 2019 08:45:04 -0500
+ -- Jeff Becker (probably not evil) <jeff@i2p.rocks>  Sat, 04 May 2019 08:34:37 -0400
 
 lokinet (0.2.3) bionic; urgency=medium
 
