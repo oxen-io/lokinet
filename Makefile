@@ -4,7 +4,7 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-prefix = $(DESTDIR)/usr/local
+DESTDIR ?=
 
 CC ?= cc
 CXX ?= c++
@@ -273,6 +273,6 @@ debian-test:
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 install:
-	$(MAKE) -C '$(BUILD_ROOT)' install
+	DESTDIR=$(DESTDIR) $(MAKE) -C '$(BUILD_ROOT)' install
 
 .PHONY: debian-install
