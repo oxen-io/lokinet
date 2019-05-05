@@ -24,7 +24,7 @@ namespace llarp
       Stop() = 0;
     };
 
-    using Backend_ptr = std::unique_ptr< IBackend >;
+    using Backend_ptr = std::shared_ptr< IBackend >;
   }  // namespace hooks
 }  // namespace llarp
 
