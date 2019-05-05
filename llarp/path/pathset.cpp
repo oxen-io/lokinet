@@ -287,7 +287,7 @@ namespace llarp
     void
     PathSet::HandlePathBuildTimeout(Path_ptr p)
     {
-      LogInfo(Name(), " path build ", p->HopsString(), " timed out");
+      LogWarn(Name(), " path build ", p->HopsString(), " timed out");
     }
 
     bool
