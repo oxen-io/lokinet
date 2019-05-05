@@ -1,0 +1,21 @@
+# Last Modified: Sat May  4 18:48:24 2019
+#include <tunables/global>
+
+/usr/local/bin/lokinet {
+  #include <abstractions/base>
+
+  capability net_admin,
+  capability net_bind_service,
+
+  network inet dgram,
+  network inet6 dgram,
+  network netlink raw,
+
+  /dev/net/tun rw,
+  /lib/@{multiarch}/ld-*.so mr,
+  /usr/local/bin/lokinet mr,
+
+  owner @{HOME}/.lokinet/ rw,
+  owner @{HOME}/.lokinet/** rwk,
+
+}
