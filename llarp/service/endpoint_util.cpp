@@ -64,6 +64,7 @@ namespace llarp
           continue;
         }
         LogWarn("lookup for ", itr->first, " timed out");
+        itr->second.InformResult({});
         itr = routers.erase(itr);
       }
     }
