@@ -248,9 +248,11 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(msg, router))
+            if(path && path->SendRoutingMessage(msg, router))
               m_LastUse = now;
             queue.pop_front();
+            // spread across all paths
+            path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
           }
         }
       }
