@@ -8,7 +8,7 @@ npm install
 npm start
 ```
 
-and wait 30s for final score
+and wait 30 minutes for final score
 
 # Scoring
 
