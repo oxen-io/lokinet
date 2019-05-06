@@ -516,6 +516,16 @@ namespace llarp
     }
 
     void
+    Path::Rebuild()
+    {
+      std::vector< RouterContact > newHops;
+      for(const auto& hop : hops)
+        newHops.emplace_back(hop.rc);
+      LogInfo(Name(), " rebuilding on ", HopsString());
+      m_PathSet->Build(newHops);
+    }
+
+    void
     Path::Tick(llarp_time_t now, AbstractRouter* r)
     {
       if(Expired(now))

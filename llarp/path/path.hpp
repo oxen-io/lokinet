@@ -435,6 +435,11 @@ namespace llarp
       bool
       Expired(llarp_time_t now) const override;
 
+      /// build a new path on the same set of hops as us
+      /// regenerates keys
+      void
+      Rebuild();
+
       void
       Tick(llarp_time_t now, AbstractRouter* r);
 

@@ -76,6 +76,11 @@ namespace llarp
       virtual void
       BuildOne(PathRole roles = ePathRoleAny) = 0;
 
+      /// manual build on these hops
+      virtual void
+      Build(const std::vector< RouterContact >& hops,
+            PathRole roles = ePathRoleAny) = 0;
+
       /// tick owned paths
       virtual void
       Tick(llarp_time_t now) = 0;
