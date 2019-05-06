@@ -39,18 +39,18 @@ OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.4.0
+VersionInfoVersion=0.4.1
 VersionInfoCompany=Loki Project
 VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
 #ifndef RELEASE
-VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
-VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
+VersionInfoTextVersion=0.4.1-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.4.1-dev-{#VCSRev}
 #else
-VersionInfoTextVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0 ({#Codename})
+VersionInfoTextVersion=0.4.1
+VersionInfoProductTextVersion=0.4.1 ({#Codename})
 #endif
 VersionInfoProductName=LokiNET
-VersionInfoProductVersion=0.4.0
+VersionInfoProductVersion=0.4.1
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64

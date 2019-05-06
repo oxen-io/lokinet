@@ -6,6 +6,10 @@
 #include <util/logger.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
+#if !defined(__linux__) || !defined(_GNU_SOURCE)
+// Not all systems declare this variable
+extern char **environ;
+#endif
 #endif
 #if defined(Darwin)
 #include <crt_externs.h>
