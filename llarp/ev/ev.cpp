@@ -121,9 +121,7 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
   return ret;
 }
 
-#ifndef _WIN32
 #include <string.h>
-
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
@@ -166,24 +164,14 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   llarp::LogDebug("IfAddr: ", tun->ifaddr);
   llarp::LogDebug("IfName: ", tun->ifname);
   llarp::LogDebug("IfNMsk: ", tun->netmask);
+#ifndef _WIN32  
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
   if(dev)
   {
     return loop->add_ev(dev, false);
   }
-  llarp::LogWarn("Loop could not create tun");
-  return false;
-}
 #else
-// OK, now it's time to do it my way.
-// we're not even going to use the existing llarp::tun
-// we still use the llarp_tun_io struct
-// since we still need to branch to the
-// packet processing functions
-bool
-llarp_ev_add_tun(llarp_ev_loop *loop, llarp_tun_io *tun)
-{
   UNREFERENCED_PARAMETER(loop);
   auto dev = new win32_tun_io(tun);
   tun->impl = dev;
@@ -193,11 +181,11 @@ llarp_ev_add_tun(llarp_ev_loop *loop, llarp_tun_io *tun)
     dev->setup();
     return dev->add_ev();  // start up tun and add to event queue
   }
+#endif  
+  llarp::LogWarn("Loop could not create tun");
   return false;
 }
-#endif
 
-#ifndef _WIN32
 bool
 llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
 {
@@ -206,21 +194,13 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
     llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
+#ifndef _WIN32  
   return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
-}
 #else
-bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
-{
-  if(buf.sz > EV_WRITE_BUF_SZ)
-  {
-    llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
-    return false;
-  }
   return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base,
                                                                buf.sz);
-}
 #endif
+}
 
 bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
