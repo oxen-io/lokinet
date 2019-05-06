@@ -856,7 +856,10 @@ namespace llarp
         else if(snode.FromString(val))
         {
           if(strictConnectPubkeys.insert(snode).second)
+          {
             llarp::LogInfo("added ", snode, " to strict connect list");
+            netConfig.emplace(key, val);
+          }
           else
             llarp::LogWarn("duplicate key for strict connect: ", snode);
         }
