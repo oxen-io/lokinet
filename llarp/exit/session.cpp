@@ -26,9 +26,10 @@ namespace llarp
     {
     }
 
-    void BaseSession::HandlePathDied(path::Path_ptr)
+    void
+    BaseSession::HandlePathDied(path::Path_ptr p)
     {
-      BuildOne();
+      p->Rebuild();
     }
 
     util::StatusObject
