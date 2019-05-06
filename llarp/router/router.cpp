@@ -856,7 +856,10 @@ namespace llarp
         else if(snode.FromString(val))
         {
           if(strictConnectPubkeys.insert(snode).second)
+          {
             llarp::LogInfo("added ", snode, " to strict connect list");
+            netConfig.emplace(key, val);
+          }
           else
             llarp::LogWarn("duplicate key for strict connect: ", snode);
         }
@@ -1590,6 +1593,8 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
+      // relays do not use profiling
+      routerProfiling().Disable();
     }
     else
     {

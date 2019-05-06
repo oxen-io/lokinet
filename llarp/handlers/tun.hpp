@@ -244,6 +244,8 @@ namespace llarp
       std::vector< llarp::Addr > m_UpstreamResolvers;
       /// local dns
       llarp::Addr m_LocalResolverAddr;
+      /// list of strict connect addresses for hooks
+      std::vector< llarp::Addr > m_StrictConnectAddrs;
     };
   }  // namespace handlers
 }  // namespace llarp

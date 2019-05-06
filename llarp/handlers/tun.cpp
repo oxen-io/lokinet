@@ -13,6 +13,7 @@
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
 #include <util/logic.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -92,6 +93,30 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "strict-connect")
+      {
+        RouterID connect;
+        if(!connect.FromString(v))
+        {
+          LogError(Name(), " invalid snode for strict-connect: ", v);
+          return false;
+        }
+
+        RouterContact rc;
+        if(!router->nodedb()->Get(connect, rc))
+        {
+          LogError(Name(), " we don't have the RC for ", v,
+                   " so we can't use it in strict-connect");
+          return false;
+        }
+        for(const auto &ai : rc.addrs)
+        {
+          m_StrictConnectAddrs.emplace_back(ai);
+          LogInfo(Name(), " added ", m_StrictConnectAddrs.back(),
+                  " to strict connect");
+        }
+        return true;
+      }
       // Name won't be set because we need to read the config before we can read
       // the keyfile
       if(k == "exit-node")
@@ -554,6 +579,10 @@ namespace llarp
       env.emplace("IP_ADDR", m_OurIP.ToString());
       env.emplace("IF_ADDR", m_OurRange.ToString());
       env.emplace("IF_NAME", tunif.ifname);
+      std::string strictConnect;
+      for(const auto &addr : m_StrictConnectAddrs)
+        strictConnect += addr.ToString() + " ";
+      env.emplace("STRICT_CONNECT_ADDRS", strictConnect);
       return env;
     }
 
