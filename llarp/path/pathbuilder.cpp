@@ -278,9 +278,7 @@ namespace llarp
     {
       if(IsStopped())
         return false;
-      if(llarp::randint() % 3 >= 1)
-        return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
-      return false;
+      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
     }
 
     void
