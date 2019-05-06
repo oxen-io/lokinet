@@ -5,7 +5,7 @@ after building lokinet
 ```
 cd contrib/node-monitor
 npm install
-npm start
+sudo node monitor_client.js
 ```
 
 and wait 30 minutes for final score
