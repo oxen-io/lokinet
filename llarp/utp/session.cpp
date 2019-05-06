@@ -36,7 +36,7 @@ namespace llarp
       for(const auto& vec : vecq)
       {
         expect += vec.iov_len;
-        vecs.push_back(vec);
+        vecs.emplace_back(vec);
       }
       if(expect)
       {
