@@ -1593,6 +1593,8 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
+      // relays do not use profiling
+      routerProfiling().Disable();
     }
     else
     {

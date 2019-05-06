@@ -527,16 +527,13 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive)
+    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool)
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
-      if(keepalive)
-      {
-        auto now = Now();
-        router->PersistSessionUntil(peer, now + 10000);
-      }
+      auto now = Now();
+      router->PersistSessionUntil(peer, now + 60000);
     }
 
     bool
