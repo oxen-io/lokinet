@@ -13,7 +13,7 @@ namespace llarp
   namespace path
   {
     // milliseconds waiting between builds on a path
-    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
+    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 500;
 
     struct Builder : public PathSet
     {
@@ -80,7 +80,7 @@ namespace llarp
 
       void
       Build(const std::vector< RouterContact >& hops,
-            PathRole roles = ePathRoleAny);
+            PathRole roles = ePathRoleAny) override;
 
       bool
       SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops,
