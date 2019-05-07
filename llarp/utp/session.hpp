@@ -120,9 +120,9 @@ namespace llarp
       SendKeepAlive() override;
 
       bool
-      IsEstablished() override
+      IsEstablished() const override
       {
-        return state == eSessionReady || state == eLinkEstablished;
+        return state == eSessionReady;
       }
 
       bool

@@ -277,7 +277,7 @@ namespace llarp
                                 r->TryConnectAsync(results[0], 5);
                             });
         }
-        else if(!BuildCooldownHit(now))
+        else if(ShouldBuildMore(now))
           BuildOneAlignedTo(m_ExitRouter);
       }
       return true;

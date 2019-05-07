@@ -221,12 +221,15 @@ namespace llarp
         }
         bool got = false;
         router->ForEachPeer(
-            [&](const ILinkSession* s, bool) {
-              const PubKey k(s->GetPubKey());
-              if(got || router->IsBootstrapNode(k))
-                return;
-              cur = s->GetRemoteRC();
-              got = true;
+            [&](const ILinkSession* s, bool isOutbound) {
+              if(s && s->IsEstablished() && isOutbound && !got)
+              {
+                const RouterContact rc = s->GetRemoteRC();
+                if(got || router->IsBootstrapNode(rc.pubkey))
+                  return;
+                cur = rc;
+                got = true;
+              }
             },
             true);
         return got;
@@ -328,7 +331,8 @@ namespace llarp
       }
       if(hops.size() == 0)
       {
-        LogInfo(Name(), " building path to ", remote);
+        hops.resize(numHops);
+
         auto nodedb = router->nodedb();
         for(size_t hop = 0; hop < numHops; ++hop)
         {
@@ -362,6 +366,7 @@ namespace llarp
           return false;
         }
       }
+      LogInfo(Name(), " building path to ", remote);
       Build(hops);
       return true;
     }

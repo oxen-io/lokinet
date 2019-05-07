@@ -47,7 +47,7 @@ namespace llarp
 
     /// return true if we are established
     virtual bool
-    IsEstablished() = 0;
+    IsEstablished() const = 0;
 
     /// return true if this session has timed out
     virtual bool
