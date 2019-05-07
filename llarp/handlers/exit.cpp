@@ -185,6 +185,21 @@ namespace llarp
       return m_Router->Now();
     }
 
+    bool
+    ExitEndpoint::VisitEndpointsFor(const PubKey & pk, std::function<bool(exit::Endpoint * const)> visit)
+    {
+      auto range = m_ActiveExits.equal_range(pk);
+      auto itr = range.first;
+      while(itr != range.second)
+      {
+        if(visit(itr->second.get()))
+          ++itr;
+        else
+          return true;
+      }
+      return false;
+    }
+
     void
     ExitEndpoint::Flush()
     {
@@ -213,21 +228,22 @@ namespace llarp
               return;
           }
         }
-        exit::Endpoint *ep = m_ChosenExits[pk];
-
-        if(ep == nullptr)
-        {
-          // we may have all dead sessions, wtf now?
-          LogWarn(Name(), " dropped inbound traffic for session ", pk,
-                  " as we have no working endpoints");
-        }
-        else
+        if(!VisitEndpointsFor(pk, [&](exit::Endpoint * const ep) -> bool
         {
           if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
           {
             LogWarn(Name(), " dropped inbound traffic for session ", pk,
                     " as we are overloaded (probably)");
+            // continue iteration
+            return true;
           }
+          // break iteration
+          return false;
+        }))
+        {
+          // we may have all dead sessions, wtf now?
+          LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                  " as we have no working endpoints");
         }
       });
       {
