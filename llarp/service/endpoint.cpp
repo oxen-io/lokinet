@@ -200,20 +200,10 @@ namespace llarp
       if(!m_Tag.IsZero())
         obj.Put("tag", m_Tag.ToString());
 
-      auto putContainer = [](util::StatusObject& o, const std::string& keyname,
-                             const auto& container) {
-        std::vector< util::StatusObject > objs;
-        std::transform(container.begin(), container.end(),
-                       std::back_inserter(objs),
-                       [](const auto& item) -> util::StatusObject {
-                         return item.second->ExtractStatus();
-                       });
-        o.Put(keyname, objs);
-      };
-      putContainer(obj, "deadSessions", m_DeadSessions);
-      putContainer(obj, "remoteSessions", m_RemoteSessions);
-      putContainer(obj, "snodeSessions", m_SNodeSessions);
-      putContainer(obj, "lookups", m_PendingLookups);
+      obj.PutContainer("deadSessions", m_DeadSessions);
+      obj.PutContainer("remoteSessions", m_RemoteSessions);
+      obj.PutContainer("snodeSessions", m_SNodeSessions);
+      obj.PutContainer("lookups", m_PendingLookups);
 
       util::StatusObject sessionObj{};
 
@@ -252,7 +242,7 @@ namespace llarp
       // prefetch addrs
       for(const auto& addr : m_PrefetchAddrs)
       {
-        if(!HasPathToService(addr))
+        if(!EndpointUtil::HasPathToService(addr, m_RemoteSessions))
         {
           if(!EnsurePathToService(
                  addr,
@@ -339,12 +329,6 @@ namespace llarp
     Endpoint::Name() const
     {
       return m_Name + ":" + m_Identity.pub.Name();
-    }
-
-    bool
-    Endpoint::HasPathToService(const Address& addr) const
-    {
-      return EndpointUtil::HasPathToService(addr, m_RemoteSessions);
     }
 
     void
@@ -465,17 +449,7 @@ namespace llarp
     Endpoint::GetConvoTagsForService(const ServiceInfo& info,
                                      std::set< ConvoTag >& tags) const
     {
-      bool inserted = false;
-      auto itr      = m_Sessions.begin();
-      while(itr != m_Sessions.end())
-      {
-        if(itr->second.remote == info)
-        {
-          inserted |= tags.insert(itr->first).second;
-        }
-        ++itr;
-      }
-      return inserted;
+      return EndpointUtil::GetConvoTagsForService(m_Sessions, info, tags);
     }
 
     bool
@@ -1118,7 +1092,7 @@ namespace llarp
         }
       }
       // outbound converstation
-      if(HasPathToService(remote))
+      if(EndpointUtil::HasPathToService(remote, m_RemoteSessions))
       {
         auto range = m_RemoteSessions.equal_range(remote);
         auto itr   = range.first;

@@ -155,5 +155,26 @@ namespace llarp
       }
       return false;
     }
+
+    bool
+    EndpointUtil::GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
+                                         const ServiceInfo& info,
+                                         std::set< ConvoTag >& tags)
+    {
+      bool inserted = false;
+      auto itr      = sessions.begin();
+      while(itr != sessions.end())
+      {
+        if(itr->second.remote == info)
+        {
+          if(tags.insert(itr->first).second)
+          {
+            inserted = true;
+          }
+        }
+        ++itr;
+      }
+      return inserted;
+    }
   }  // namespace service
 }  // namespace llarp
