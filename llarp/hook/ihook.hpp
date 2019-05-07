@@ -11,7 +11,7 @@ namespace llarp
     /// base type for event hook handlers
     struct IBackend
     {
-      ~IBackend(){};
+      virtual ~IBackend() = 0;
       virtual void
       NotifyAsync(std::unordered_map< std::string, std::string > params) = 0;
 
@@ -25,6 +25,10 @@ namespace llarp
     };
 
     using Backend_ptr = std::shared_ptr< IBackend >;
+
+    inline IBackend::~IBackend()
+    {
+    }
   }  // namespace hooks
 }  // namespace llarp
 
