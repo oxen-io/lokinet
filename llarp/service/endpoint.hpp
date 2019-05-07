@@ -146,10 +146,6 @@ namespace llarp
       HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
 
-      /// return true if we have an established path to a hidden service
-      bool
-      HasPathToService(const Address& remote) const;
-
       virtual huint32_t
       ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
@@ -358,46 +354,6 @@ namespace llarp
      private:
       friend struct EndpointUtil;
 
-      AbstractRouter* m_Router;
-      llarp_threadpool* m_IsolatedWorker  = nullptr;
-      Logic* m_IsolatedLogic              = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
-      std::string m_Keyfile;
-      std::string m_Name;
-      std::string m_NetNS;
-      bool m_BundleRC = false;
-
-      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
-      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
-      util::Mutex m_SendQueueMutex;
-      std::deque< SendEvent_t > m_SendQueue;
-
-      using PendingTraffic =
-          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
-
-      PendingTraffic m_PendingTraffic;
-
-      using Sessions =
-          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
-                                   Address::Hash >;
-      Sessions m_RemoteSessions;
-
-      Sessions m_DeadSessions;
-
-      using SNodeSessions = std::unordered_multimap<
-          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
-      util::Mutex m_SNodeSessionsMutex;
-      SNodeSessions m_SNodeSessions;
-
-      std::unordered_map< Address, ServiceInfo, Address::Hash >
-          m_AddressToService;
-
-      std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
-          m_PendingServiceLookups;
-
-      std::unordered_map< RouterID, uint32_t, RouterID::Hash >
-          m_ServiceLookupFails;
-
       struct RouterLookupJob
       {
         RouterLookupJob(Endpoint* p, RouterLookupHandler h) : handler(h)
@@ -426,8 +382,55 @@ namespace llarp
         }
       };
 
+      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
+      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
+      using PendingTraffic =
+          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
+
       using PendingRouters =
           std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
+
+      using PendingLookups =
+          std::unordered_map< uint64_t,
+                              std::unique_ptr< service::IServiceLookup > >;
+
+      using Sessions =
+          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
+                                   Address::Hash >;
+
+      using SNodeSessions = std::unordered_multimap<
+          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
+
+      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+
+      AbstractRouter* m_Router;
+      llarp_threadpool* m_IsolatedWorker  = nullptr;
+      Logic* m_IsolatedLogic              = nullptr;
+      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
+      std::string m_Keyfile;
+      std::string m_Name;
+      std::string m_NetNS;
+      bool m_BundleRC = false;
+
+      util::Mutex m_SendQueueMutex;
+      std::deque< SendEvent_t > m_SendQueue GUARDED_BY(m_SendQueueMutex);
+
+      PendingTraffic m_PendingTraffic;
+
+      Sessions m_RemoteSessions;
+      Sessions m_DeadSessions;
+
+      SNodeSessions m_SNodeSessions;
+
+      std::unordered_map< Address, ServiceInfo, Address::Hash >
+          m_AddressToService;
+
+      std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
+          m_PendingServiceLookups;
+
+      std::unordered_map< RouterID, uint32_t, RouterID::Hash >
+          m_ServiceLookupFails;
+
       PendingRouters m_PendingRouters;
 
       uint64_t m_CurrentPublishTX       = 0;
@@ -437,9 +440,6 @@ namespace llarp
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
-      using PendingLookups =
-          std::unordered_map< uint64_t,
-                              std::unique_ptr< service::IServiceLookup > >;
       PendingLookups m_PendingLookups;
       /// prefetch remote address list
       std::set< Address > m_PrefetchAddrs;
@@ -451,8 +451,6 @@ namespace llarp
       std::list< std::function< bool(void) > > m_OnInit;
 
       /// conversations
-      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
-
       ConvoMap m_Sessions;
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
