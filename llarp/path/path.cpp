@@ -88,7 +88,7 @@ namespace llarp
       EndpointPathPtrSet found;
       m_OurPaths.ForEach([&](const PathSet_ptr& set) {
         set->ForEachPath([&](const Path_ptr& p) {
-          if(p->Endpoint() == r)
+          if(p->Endpoint() == r && p->IsReady())
             found.insert(p);
         });
       });
