@@ -604,7 +604,6 @@ namespace llarp
         std::for_each(container.begin(), container.end(),
                       [](auto& item) { item.second->ResetInternalState(); });
       };
-
       resetState(m_RemoteSessions);
       resetState(m_SNodeSessions);
     }

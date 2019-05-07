@@ -153,7 +153,7 @@ namespace llarp
       void
       Flush();
 
-      void
+      virtual void
       ResetInternalState() override;
 
      protected:

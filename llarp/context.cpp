@@ -355,6 +355,7 @@ __        ___    ____  _   _ ___ _   _  ____
               llarp::LogInfo("Reset internal state for ", name);
               return true;
             });
+        router->PumpLL();
         Config newconfig;
         if(!newconfig.Load(configfile.c_str()))
         {

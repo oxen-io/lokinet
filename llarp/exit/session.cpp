@@ -151,6 +151,23 @@ namespace llarp
       m_PendingCallbacks.clear();
     }
 
+    void
+    BaseSession::ResetInternalState()
+    {
+      auto sendExitClose = [&](const llarp::path::Path_ptr p) {
+        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC))
+        {
+          llarp::LogInfo(p->Name(), " closing exit path");
+          llarp::routing::CloseExitMessage msg;
+          if(!(msg.Sign(router->crypto(), m_ExitIdentity)
+               && p->SendExitClose(msg, router)))
+            llarp::LogWarn(p->Name(), " failed to send exit close message");
+        }
+      };
+      ForEachPath(sendExitClose);
+      path::Builder::ResetInternalState();
+    }
+
     bool
     BaseSession::Stop()
     {

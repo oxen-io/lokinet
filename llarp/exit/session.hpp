@@ -48,6 +48,9 @@ namespace llarp
         return m_BundleRC;
       }
 
+      virtual void
+      ResetInternalState() override;
+
       bool UrgentBuild(llarp_time_t) const override;
 
       void
