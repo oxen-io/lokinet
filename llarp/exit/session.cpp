@@ -235,6 +235,14 @@ namespace llarp
     }
 
     bool
+    BaseSession::UrgentBuild(llarp_time_t now) const
+    {
+      if(!IsReady())
+        return NumInStatus(path::ePathBuilding) < m_NumPaths;
+      return path::Builder::UrgentBuild(now);
+    }
+
+    bool
     BaseSession::FlushUpstream()
     {
       auto now  = router->Now();
