@@ -21,6 +21,9 @@ namespace llarp
       /// flag for PathSet::Stop()
       std::atomic< bool > _run;
 
+      virtual bool
+      UrgentBuild(llarp_time_t now) const;
+
      public:
       AbstractRouter* router;
       llarp_dht_context* dht;
@@ -77,6 +80,9 @@ namespace llarp
 
       void
       BuildOne(PathRole roles = ePathRoleAny) override;
+
+      bool
+      BuildOneAlignedTo(const RouterID endpoint) override;
 
       void
       Build(const std::vector< RouterContact >& hops,

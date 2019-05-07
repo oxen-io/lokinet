@@ -55,19 +55,6 @@ struct TryConnectJob;
 
 namespace llarp
 {
-  template < typename T >
-  struct CompareLinks
-  {
-    bool
-    operator()(const std::unique_ptr< T > &left,
-               const std::unique_ptr< T > &right) const
-    {
-      const std::string leftName  = left->Name();
-      const std::string rightName = right->Name();
-      return left->Rank() < right->Rank() || leftName < rightName;
-    }
-  };
-
   struct Router final : public AbstractRouter
   {
     bool ready;
@@ -292,10 +279,11 @@ namespace llarp
     std::string lokidRPCUser     = "";
     std::string lokidRPCPassword = "";
 
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        outboundLinks;
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        inboundLinks;
+    using LinkLayer_ptr = std::unique_ptr< ILinkLayer >;
+    using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
+
+    LinkSet outboundLinks;
+    LinkSet inboundLinks;
 
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";

@@ -188,11 +188,16 @@ namespace llarp
   Profiling::MarkPathFail(path::Path* p)
   {
     lock_t lock(&m_ProfilesMutex);
+    size_t idx = 0;
     for(const auto& hop : p->hops)
     {
-      // TODO: also mark bad?
-      m_Profiles[hop.rc.pubkey].pathFailCount += 1;
-      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      // don't mark first hop as failure because we are connected to it directly
+      if(idx)
+      {
+        m_Profiles[hop.rc.pubkey].pathFailCount += 1;
+        m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      }
+      ++idx;
     }
   }
 

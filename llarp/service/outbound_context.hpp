@@ -82,9 +82,6 @@ namespace llarp
       void
       UpdateIntroSet(bool randomizePath) override;
 
-      bool
-      BuildOneAlignedTo(const RouterID& remote);
-
       void
       HandlePathBuilt(path::Path_ptr path) override;
 

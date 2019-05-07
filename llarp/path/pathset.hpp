@@ -220,11 +220,8 @@ namespace llarp
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, PathRole roles) = 0;
 
-     protected:
-      size_t m_NumPaths;
-
-      void
-      TickPaths(llarp_time_t now, AbstractRouter* r);
+      virtual bool
+      BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       void
       ForEachPath(std::function< void(const Path_ptr&) > visit) const
@@ -237,6 +234,12 @@ namespace llarp
           ++itr;
         }
       }
+
+     protected:
+      size_t m_NumPaths;
+
+      void
+      TickPaths(llarp_time_t now, AbstractRouter* r);
 
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 
