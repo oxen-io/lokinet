@@ -142,6 +142,9 @@ namespace llarp
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
                                    ProtocolType t)
     {
+      if(remoteIntro.router.IsZero())
+        SwapIntros();
+
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(path == nullptr)
       {
