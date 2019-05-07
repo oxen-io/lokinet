@@ -52,6 +52,9 @@ namespace llarp
       virtual bool
       ShouldBundleRC() const = 0;
 
+      virtual void
+      ResetInternalState() override;
+
       /// return true if we hit our soft limit for building paths too fast
       bool
       BuildCooldownHit(llarp_time_t now) const;

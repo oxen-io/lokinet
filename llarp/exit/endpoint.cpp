@@ -141,7 +141,7 @@ namespace llarp
       uint8_t queue_idx            = pktbuf.sz / llarp::routing::ExitPadSize;
       if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
-      auto& queue                  = m_DownstreamQueues[queue_idx];
+      auto& queue = m_DownstreamQueues[queue_idx];
       if(queue.size() == 0)
       {
         queue.emplace_back();

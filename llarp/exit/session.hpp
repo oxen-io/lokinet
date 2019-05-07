@@ -48,8 +48,7 @@ namespace llarp
         return m_BundleRC;
       }
 
-      bool
-      UrgentBuild(llarp_time_t) const override;
+      bool UrgentBuild(llarp_time_t) const override;
 
       void
       HandlePathDied(llarp::path::Path_ptr p) override;

@@ -348,8 +348,15 @@ __        ___    ____  _   _ ___ _   _  ____
       llarp::LogInfo("SIGHUP");
       if(router)
       {
+        router->hiddenServiceContext().ForEachService(
+            [](const std::string &name,
+               const llarp::service::Endpoint_ptr &ep) -> bool {
+              ep->ResetInternalState();
+              llarp::LogInfo("Reset internal state for ", name);
+              return true;
+            });
         Config newconfig;
-        if(newconfig.Load(configfile.c_str()))
+        if(!newconfig.Load(configfile.c_str()))
         {
           llarp::LogError("failed to load config file ", configfile);
           return;

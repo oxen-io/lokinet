@@ -216,6 +216,10 @@ namespace llarp
         return false;
       }
 
+      /// reset all cooldown timers
+      virtual void
+      ResetInternalState() = 0;
+
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, PathRole roles) = 0;

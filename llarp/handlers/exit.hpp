@@ -26,7 +26,8 @@ namespace llarp
       Name() const;
 
       bool
-      VisitEndpointsFor(const PubKey & pk, std::function<bool(exit::Endpoint * const)> visit);
+      VisitEndpointsFor(const PubKey& pk,
+                        std::function< bool(exit::Endpoint* const) > visit);
 
       util::StatusObject
       ExtractStatus() const;

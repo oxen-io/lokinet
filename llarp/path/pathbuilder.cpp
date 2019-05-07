@@ -182,6 +182,12 @@ namespace llarp
     }
 
     void
+    Builder::ResetInternalState()
+    {
+      buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+    }
+
+    void
     Builder::Tick(llarp_time_t now)
     {
       ExpirePaths(now);
