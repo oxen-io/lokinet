@@ -48,10 +48,7 @@ add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash nlohmann_json::nlohmann_json)
 
-# cut back on fluff
-if (NOT WIN32)
-  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings cppbackport)
-endif(NOT WIN32)
+target_link_libraries_system(${UTIL_LIB} ${UTIL_EXTRA_LIBS})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC linux/netns.cpp)
@@ -73,26 +70,11 @@ set(LIB_PLATFORM_SRC
 # tun
   ${LIBTUNTAP_SRC}
   ${EV_SRC}
+  ${LIB_PLATFORM_EXTRA_SRC}
 )
-
-if (WIN32)
-set(LIB_PLATFORM_SRC
-${LIB_PLATFORM_SRC}
-win32/win32_inet.c
-win32/win32_intrnl.c
-win32/win32_upoll.c
-)
-endif(WIN32)
-
-if (SOLARIS)
-set(LIB_PLATFORM_SRC
-${LIB_PLATFORM_SRC}
-ev/upoll_sun.c
-)
-endif(SOLARIS)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads)
+target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads ${LIB_PLATFORM_EXTRA_LIBS})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   if(NON_PC_TARGET)
@@ -104,9 +86,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   endif()
 endif()
 
-if(WIN32)
-  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
-endif()
 set(DNSLIB_SRC
   dns/dns.cpp
   dns/message.cpp
@@ -249,10 +228,8 @@ target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} 
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})
   set(LIBS ${LIBS} Threads::Threads)
-  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
-  if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ${FS_LIB} ws2_32 iphlpapi)
-  else()
+  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS} ${SHARED_LIB_EXTRA_LIBS})
+  if (NOT WIN32)
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()
   add_log_tag(${SHARED_LIB})
@@ -264,6 +241,7 @@ if (WARNINGS_AS_ERRORS)
   target_compile_options(${PLATFORM_LIB} PUBLIC ${WARN_FLAGS})
   target_compile_options(${STATIC_LIB} PUBLIC ${WARN_FLAGS})
 endif()
+
 add_log_tag(${UTIL_LIB})
 add_log_tag(${PLATFORM_LIB})
 add_log_tag(${STATIC_LIB})

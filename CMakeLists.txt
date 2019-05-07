@@ -245,24 +245,16 @@ add_subdirectory(libutp)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 
-if (NOT WIN32)
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads)
-elseif(NOT MSVC_VERSION)
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-else()
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-endif(NOT WIN32)
+add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp ${ABYSS_EXTRA_FILES})
+target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${ABYSS_EXTRA_LIBS})
 
-target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
 target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+
 add_log_tag(${ABYSS_EXE})
 add_log_tag(${ABYSS_LIB})
 
@@ -274,13 +266,7 @@ if(SHADOW)
   target_link_libraries(${LOKINET_SHADOW} ${LOKINET_SHADOW_LIBS})
   target_include_directories(${LOKINET_SHADOW} PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/llarp ${PROJECT_SOURCE_DIR}/crypto/include ${PROJECT_SOURCE_DIR}/vendor/cppbackport-master/lib)
 else()
-  if(NOT WIN32)
-    add_executable(${EXE} ${EXE_SRC})
-  elseif(NOT MSVC_VERSION)
-    add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
-  else()
-    add_executable(${EXE} ${EXE_SRC})
-  endif(NOT WIN32)
+  add_executable(${EXE} ${EXE_SRC} ${EXE_EXTRA_FILES})
 
   add_log_tag(${EXE})
 

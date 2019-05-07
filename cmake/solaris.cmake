@@ -20,4 +20,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
           set(SOLARIS_HAVE_EPOLL OFF)
 	  message(STATUS "Falling back to poll(2)-based event loop.")
   endif()
+
+  set(LIB_PLATFORM_EXTRA_SRC ev/upoll_sun.c)
 endif()

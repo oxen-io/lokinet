@@ -30,7 +30,9 @@ else()
   message(FATAL_ERROR "Your operating system is not supported yet")
 endif()
 
+set(UTIL_EXTRA_LIBS absl::optional absl::variant absl::strings cppbackport)
 set(EXE_LIBS ${STATIC_LIB} cppbackport libutp)
+set(ABYSS_EXTRA_LIBS Threads::Threads)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")

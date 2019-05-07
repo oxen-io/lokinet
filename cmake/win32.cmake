@@ -25,3 +25,13 @@ if (NOT STATIC_LINK_RUNTIME AND NOT MSVC)
   message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
 endif()
+
+if(NOT MSVC_VERSION)
+  set(ABYSS_EXTRA_FILES llarp/win32/abyss.rc)
+  set(EXE_EXTRA_FILES llarp/win32/version.rc)
+endif()
+
+set(ABYSS_EXTRA_LIBS ws2_32)
+set(LIB_PLATFORM_EXTRA_SRC win32/win32_inet.c win32/win32_intrnl.c win32/win32_upoll.c)
+set(LIB_PLATFORM_EXTRA_LIBS iphlpapi)
+set(SHARED_LIB_EXTRA_LIBS ws2_32 iphlpapi)
