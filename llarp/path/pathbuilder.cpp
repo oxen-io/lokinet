@@ -312,7 +312,7 @@ namespace llarp
     bool
     Builder::BuildOneAlignedTo(const RouterID remote)
     {
-      std::vector< RouterContact > hops;
+      std::vector< RouterContact > hops(0);
       std::set< RouterID > routers = {remote};
       /// if we really need this path build it "dangerously"
       if(UrgentBuild(router->Now()))
@@ -334,7 +334,11 @@ namespace llarp
         if(p)
         {
           for(const auto& hop : p->hops)
+          {
+            if(hop.rc.pubkey.IsZero())
+              return false;
             hops.emplace_back(hop.rc);
+          }
         }
       }
       if(hops.size() == 0)
@@ -345,12 +349,7 @@ namespace llarp
         for(size_t idx = 0; idx < hops.size(); idx++)
         {
           hops[idx].Clear();
-          if(idx == 0)
-          {
-            if(!SelectHop(nodedb, routers, hops[idx], 0, path::ePathRoleAny))
-              return false;
-          }
-          else if(idx == numHops - 1)
+          if(idx == numHops - 1)
           {
             // last hop
             if(!nodedb->Get(remote, hops[idx]))
@@ -359,25 +358,13 @@ namespace llarp
               return false;
             }
           }
-          // middle hop
           else
           {
-            size_t tries = 5;
-
-            do
-            {
-              if(!hops[idx].pubkey.IsZero())
-                routers.insert(hops[idx].pubkey);
-              --tries;
-              if(!nodedb->select_random_hop_excluding(hops[idx], routers))
-              {
-                continue;
-              }
-            } while(router->routerProfiling().IsBadForPath(hops[idx].pubkey)
-                    && tries > 0);
-            if(tries == 0)
+            if(!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
               return false;
           }
+          if(hops[idx].pubkey.IsZero())
+            return false;
           routers.insert(hops[idx].pubkey);
         }
       }
@@ -398,7 +385,7 @@ namespace llarp
         size_t tries = 4;
         while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
           --tries;
-        if(tries == 0)
+        if(tries == 0 || hops[idx].pubkey.IsZero())
         {
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
@@ -427,6 +414,7 @@ namespace llarp
       ctx->router  = router;
       ctx->pathset = GetSelf();
       auto path    = std::make_shared< path::Path >(hops, this, roles);
+      LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [this](Path_ptr p) { this->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
