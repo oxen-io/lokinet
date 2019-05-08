@@ -385,6 +385,13 @@ namespace llarp
         return roles == ePathRoleAny || (_role | roles) != 0;
       }
 
+      /// clear role bits
+      void
+      ClearRoles(PathRole roles)
+      {
+        _role &= ~roles;
+      }
+
       PathStatus
       Status() const
       {

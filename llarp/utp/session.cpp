@@ -254,7 +254,16 @@ namespace llarp
     Session::SendMessageBuffer(const llarp_buffer_t& buf)
     {
       if(sendq.size() >= MaxSendQueueSize)
+      {
+        // pump write queue if we seem to be full
+        PumpWrite();
+      }
+      if(sendq.size() >= MaxSendQueueSize)
+      {
+        // we didn't pump anything wtf
+        // this means we're stalled
         return false;
+      }
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
@@ -270,7 +279,6 @@ namespace llarp
         ptr += s;
         sz -= s;
       }
-      PumpWrite();
       return true;
     }
 
