@@ -313,10 +313,7 @@ namespace llarp
         ++m_BuildFails;
         return false;
       }
-      else if(hop == 0)
-        return path::Builder::SelectHop(db, prev, cur, hop, roles);
-      else
-        return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool
