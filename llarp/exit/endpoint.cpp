@@ -138,10 +138,10 @@ namespace llarp
         src = pkt.src();
       pkt.UpdateIPv4PacketOnDst(src, m_IP);
       const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
-      uint8_t queue_idx            = pktbuf.sz / llarp::routing::ExitPadSize;
+      const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
       if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
-      auto& queue = m_DownstreamQueues[queue_idx];
+      auto& queue = m_DownstreamQueues.at(queue_idx);
       if(queue.size() == 0)
       {
         queue.emplace_back();
