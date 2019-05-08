@@ -32,15 +32,15 @@ namespace llarp
       if(!sock)
         return;
       ssize_t expect = 0;
-      std::vector< utp_iovec > vecs;
+      std::vector< utp_iovec > send;
       for(const auto& vec : vecq)
       {
         expect += vec.iov_len;
-        vecs.emplace_back(vec);
+        send.emplace_back(vec);
       }
       if(expect)
       {
-        ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
+        ssize_t s = utp_writev(sock, send.data(), send.size());
         if(s < 0)
           return;
         if(s > 0)

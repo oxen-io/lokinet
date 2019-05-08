@@ -154,6 +154,17 @@ extern "C"
   // For utp_writev, to writes data from multiple buffers
   struct utp_iovec
   {
+#ifdef __cplusplus
+    utp_iovec() : iov_base(nullptr), iov_len(0)
+    {
+    }
+
+    utp_iovec(const utp_iovec &other)
+        : iov_base(other.iov_base), iov_len(other.iov_len)
+    {
+    }
+#endif
+
     void *iov_base;
     size_t iov_len;
   };
