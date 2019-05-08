@@ -6,7 +6,7 @@ namespace llarp
 {
   /// type for comparing smart pointer's managed values
   template < typename Ptr_t,
-             typename Compare = std::less< typename Ptr_t::element_type > >
+             typename Compare = std::less<> >
   struct ComparePtr
   {
     bool
@@ -14,7 +14,8 @@ namespace llarp
     {
       if(left && right)
         return Compare()(*left, *right);
-      return false;
+      else
+        return Compare()(left, right);
     }
   };
 }  // namespace llarp
