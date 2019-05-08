@@ -58,10 +58,12 @@ namespace llarp
     }
 
     bool
-    BaseSession::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    BaseSession::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
     {
+      std::set< RouterID > exclude = prev;
+      exclude.insert(m_ExitRouter);
       if(hop == numHops - 1)
       {
         if(db->Get(m_ExitRouter, cur))
@@ -69,13 +71,8 @@ namespace llarp
         router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
-      else if(hop == numHops - 2)
-      {
-        return db->select_random_hop_excluding(cur,
-                                               {prev.pubkey, m_ExitRouter});
-      }
       else
-        return path::Builder::SelectHop(db, prev, cur, hop, roles);
+        return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool

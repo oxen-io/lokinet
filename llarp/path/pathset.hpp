@@ -221,8 +221,8 @@ namespace llarp
       ResetInternalState() = 0;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) = 0;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) = 0;
 
       virtual bool
       BuildOneAlignedTo(const RouterID endpoint) = 0;

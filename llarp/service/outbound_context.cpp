@@ -293,7 +293,8 @@ namespace llarp
     }
 
     bool
-    OutboundContext::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    OutboundContext::SelectHop(llarp_nodedb* db,
+                               const std::set< RouterID >& prev,
                                RouterContact& cur, size_t hop,
                                path::PathRole roles)
     {
@@ -302,6 +303,8 @@ namespace llarp
         if(!ShiftIntroduction(false))
           return false;
       }
+      std::set< RouterID > exclude = prev;
+      exclude.insert(m_NextIntro.router);
       if(hop == numHops - 1)
       {
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
@@ -310,12 +313,7 @@ namespace llarp
         ++m_BuildFails;
         return false;
       }
-      else if(hop == numHops - 2)
-      {
-        return db->select_random_hop_excluding(
-            cur, {prev.pubkey, m_NextIntro.router});
-      }
-      return path::Builder::SelectHop(db, prev, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool

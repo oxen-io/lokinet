@@ -213,7 +213,7 @@ namespace llarp
     }
 
     bool
-    Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    Builder::SelectHop(llarp_nodedb* db, const std::set< RouterID >& exclude,
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
@@ -232,7 +232,8 @@ namespace llarp
               if(s && s->IsEstablished() && isOutbound && !got)
               {
                 const RouterContact rc = s->GetRemoteRC();
-                if(got || router->IsBootstrapNode(rc.pubkey))
+                if(got || router->IsBootstrapNode(rc.pubkey)
+                   || exclude.count(rc.pubkey))
                   return;
                 cur = rc;
                 got = true;
@@ -241,16 +242,16 @@ namespace llarp
             true);
         return got;
       }
-      std::set< RouterID > exclude = {prev.pubkey};
       do
       {
         cur.Clear();
         --tries;
-        if(db->select_random_hop_excluding(cur, exclude))
+        std::set< RouterID > excluding = exclude;
+        if(db->select_random_hop_excluding(cur, excluding))
         {
           if(!router->routerProfiling().IsBadForPath(cur.pubkey))
             return true;
-          exclude.insert(cur.pubkey);
+          excluding.insert(cur.pubkey);
         }
       } while(tries > 0);
       return tries > 0;
@@ -312,7 +313,7 @@ namespace llarp
     Builder::BuildOneAlignedTo(const RouterID remote)
     {
       std::vector< RouterContact > hops;
-
+      std::set< RouterID > routers = {remote};
       /// if we really need this path build it "dangerously"
       if(UrgentBuild(router->Now()))
       {
@@ -345,7 +346,7 @@ namespace llarp
         {
           if(hop == 0)
           {
-            if(!SelectHop(nodedb, hops[0], hops[0], 0, path::ePathRoleAny))
+            if(!SelectHop(nodedb, routers, hops[0], 0, path::ePathRoleAny))
               return false;
           }
           else if(hop == numHops - 1)
@@ -363,14 +364,14 @@ namespace llarp
             size_t tries = 5;
             do
             {
-              nodedb->select_random_hop_excluding(
-                  hops[hop], {hops[hop - 1].pubkey, remote});
+              nodedb->select_random_hop_excluding(hops[hop], routers);
               --tries;
             } while(router->routerProfiling().IsBadForPath(hops[hop].pubkey)
                     && tries > 0);
-            return tries > 0;
+            if(tries == 0)
+              return false;
           }
-          return false;
+          routers.insert(hops[hop].pubkey);
         }
       }
       LogInfo(Name(), " building path to ", remote);
@@ -384,25 +385,18 @@ namespace llarp
     {
       hops.resize(numHops);
       size_t idx = 0;
+      std::set< RouterID > exclude;
       while(idx < numHops)
       {
         size_t tries = 4;
-        if(idx == 0)
-        {
-          while(tries > 0 && !SelectHop(nodedb, hops[0], hops[0], 0, roles))
-            --tries;
-        }
-        else
-        {
-          while(tries > 0
-                && !SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
-            --tries;
-        }
+        while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
+          --tries;
         if(tries == 0)
         {
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
         }
+        exclude.insert(hops[idx].pubkey);
         ++idx;
       }
       return true;

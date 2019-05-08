@@ -42,8 +42,8 @@ namespace llarp
       ExtractStatus() const;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) override;
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
