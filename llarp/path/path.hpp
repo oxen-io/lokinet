@@ -309,8 +309,9 @@ namespace llarp
       bool
       operator<(const PathHopConfig& other) const
       {
-        return txID < other.txID || rxID < other.rxID || rc < other.rc
-            || upstream < other.upstream || lifetime < other.lifetime;
+        return std::tie(txID, rxID, rc, upstream, lifetime)
+            < std::tie(other.txID, other.rxID, other.rc, other.upstream,
+                       other.lifetime);
       }
     };
 
@@ -356,13 +357,7 @@ namespace llarp
       bool
       operator<(const Path& other) const
       {
-        const auto sz = hops.size();
-        if(sz > other.hops.size())
-          return false;
-        for(size_t idx = 0; idx < sz; ++idx)
-          if(!(hops[idx] < other.hops[idx]))
-            return false;
-        return true;
+        return hops < other.hops;
       }
 
       void

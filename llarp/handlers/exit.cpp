@@ -229,17 +229,18 @@ namespace llarp
               return;
           }
         }
-        if(!VisitEndpointsFor(pk, [&](exit::Endpoint *const ep) -> bool {
-             if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
-             {
-               LogWarn(Name(), " dropped inbound traffic for session ", pk,
-                       " as we are overloaded (probably)");
-               // continue iteration
-               return true;
-             }
-             // break iteration
-             return false;
-           }))
+        auto tryFlushingTraffic = [&](exit::Endpoint *const ep) -> bool {
+          if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
+          {
+            LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                    " as we are overloaded (probably)");
+            // continue iteration
+            return true;
+          }
+          // break iteration
+          return false;
+        };
+        if(!VisitEndpointsFor(pk, tryFlushingTraffic))
         {
           // we may have all dead sessions, wtf now?
           LogWarn(Name(), " dropped inbound traffic for session ", pk,
