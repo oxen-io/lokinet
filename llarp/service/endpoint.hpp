@@ -82,6 +82,9 @@ namespace llarp
         return huint32_t{0};
       }
 
+      virtual void
+      ResetInternalState() override;
+
       /// router's logic
       /// use when sending any data on a path
       Logic*

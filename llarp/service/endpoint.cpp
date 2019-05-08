@@ -596,6 +596,18 @@ namespace llarp
       return false;
     }
 
+    void
+    Endpoint::ResetInternalState()
+    {
+      path::Builder::ResetInternalState();
+      static auto resetState = [](auto& container) {
+        std::for_each(container.begin(), container.end(),
+                      [](auto& item) { item.second->ResetInternalState(); });
+      };
+      resetState(m_RemoteSessions);
+      resetState(m_SNodeSessions);
+    }
+
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {

@@ -32,15 +32,15 @@ namespace llarp
       if(!sock)
         return;
       ssize_t expect = 0;
-      std::vector< utp_iovec > vecs;
+      std::vector< utp_iovec > send;
       for(const auto& vec : vecq)
       {
         expect += vec.iov_len;
-        vecs.push_back(vec);
+        send.emplace_back(vec);
       }
       if(expect)
       {
-        ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
+        ssize_t s = utp_writev(sock, send.data(), send.size());
         if(s < 0)
           return;
         if(s > 0)
@@ -189,7 +189,7 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if(state == eInitial)
+      if(state == eInitial || state == eLinkEstablished)
         return false;
       if(sendq.size() >= MaxSendQueueSize)
       {
@@ -254,7 +254,16 @@ namespace llarp
     Session::SendMessageBuffer(const llarp_buffer_t& buf)
     {
       if(sendq.size() >= MaxSendQueueSize)
+      {
+        // pump write queue if we seem to be full
+        PumpWrite();
+      }
+      if(sendq.size() >= MaxSendQueueSize)
+      {
+        // we didn't pump anything wtf
+        // this means we're stalled
         return false;
+      }
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
@@ -270,7 +279,6 @@ namespace llarp
         ptr += s;
         sz -= s;
       }
-      PumpWrite();
       return true;
     }
 

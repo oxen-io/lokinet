@@ -82,6 +82,19 @@ namespace llarp
                         k.begin());
     }
 
+    PathContext::EndpointPathPtrSet
+    PathContext::FindOwnedPathsWithEndpoint(const RouterID& r)
+    {
+      EndpointPathPtrSet found;
+      m_OurPaths.ForEach([&](const PathSet_ptr& set) {
+        set->ForEachPath([&](const Path_ptr& p) {
+          if(p->Endpoint() == r && p->IsReady())
+            found.insert(p);
+        });
+      });
+      return found;
+    }
+
     bool
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              const std::array< EncryptedFrame, 8 >& frames)

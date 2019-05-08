@@ -202,6 +202,13 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
 
+    bool
+    operator<(const ILinkLayer& other) const
+    {
+      return Rank() < other.Rank() || Name() < other.Name()
+          || m_ourAddr < other.m_ourAddr;
+    }
+
     /// called by link session to remove a pending session who is timed out
     // void
     // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);

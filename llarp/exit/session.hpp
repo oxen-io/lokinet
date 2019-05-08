@@ -48,6 +48,11 @@ namespace llarp
         return m_BundleRC;
       }
 
+      virtual void
+      ResetInternalState() override;
+
+      bool UrgentBuild(llarp_time_t) const override;
+
       void
       HandlePathDied(llarp::path::Path_ptr p) override;
 
@@ -55,8 +60,9 @@ namespace llarp
       CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
       bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, llarp::path::PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop,
+                llarp::path::PathRole roles) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;

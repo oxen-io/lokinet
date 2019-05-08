@@ -58,10 +58,12 @@ namespace llarp
     }
 
     bool
-    BaseSession::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    BaseSession::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
     {
+      std::set< RouterID > exclude = prev;
+      exclude.insert(m_ExitRouter);
       if(hop == numHops - 1)
       {
         if(db->Get(m_ExitRouter, cur))
@@ -69,13 +71,8 @@ namespace llarp
         router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
-      else if(hop == numHops - 2)
-      {
-        return db->select_random_hop_excluding(cur,
-                                               {prev.pubkey, m_ExitRouter});
-      }
       else
-        return path::Builder::SelectHop(db, prev, cur, hop, roles);
+        return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool
@@ -149,6 +146,29 @@ namespace llarp
           f(nullptr);
       }
       m_PendingCallbacks.clear();
+    }
+
+    void
+    BaseSession::ResetInternalState()
+    {
+      auto sendExitClose = [&](const llarp::path::Path_ptr p) {
+        const static auto roles =
+            llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
+        if(p->SupportsAnyRoles(roles))
+        {
+          llarp::LogInfo(p->Name(), " closing exit path");
+          llarp::routing::CloseExitMessage msg;
+          if(msg.Sign(router->crypto(), m_ExitIdentity)
+             && p->SendExitClose(msg, router))
+          {
+            p->ClearRoles(roles);
+          }
+          else
+            llarp::LogWarn(p->Name(), " failed to send exit close message");
+        }
+      };
+      ForEachPath(sendExitClose);
+      path::Builder::ResetInternalState();
     }
 
     bool
@@ -235,6 +255,14 @@ namespace llarp
     }
 
     bool
+    BaseSession::UrgentBuild(llarp_time_t now) const
+    {
+      if(!IsReady())
+        return NumInStatus(path::ePathBuilding) < m_NumPaths;
+      return path::Builder::UrgentBuild(now);
+    }
+
+    bool
     BaseSession::FlushUpstream()
     {
       auto now  = router->Now();
@@ -248,9 +276,11 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(msg, router))
+            if(path && path->SendRoutingMessage(msg, router))
               m_LastUse = now;
             queue.pop_front();
+            // spread across all paths
+            path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
           }
         }
       }
@@ -275,6 +305,8 @@ namespace llarp
                                 r->TryConnectAsync(results[0], 5);
                             });
         }
+        else if(UrgentBuild(now))
+          BuildOneAlignedTo(m_ExitRouter);
       }
       return true;
     }

@@ -82,15 +82,12 @@ namespace llarp
       void
       UpdateIntroSet(bool randomizePath) override;
 
-      bool
-      BuildOneAlignedTo(const RouterID& remote);
-
       void
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, path::PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, path::PathRole roles) override;
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);

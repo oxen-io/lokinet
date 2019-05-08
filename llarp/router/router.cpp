@@ -358,8 +358,7 @@ namespace llarp
     if(nodedb()->Get(remote, remoteRC))
     {
       // try connecting directly as the rc is loaded from disk
-      TryConnectAsync(remoteRC, 10);
-      return true;
+      return TryConnectAsync(remoteRC, 10);
     }
 
     // we don't have the RC locally so do a dht lookup
@@ -1796,9 +1795,8 @@ namespace llarp
       }
       return want > 0;
     });
-    if(wanted != want)
-      LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
-              " random routers");
+    LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
+            " random routers");
   }
 
   bool

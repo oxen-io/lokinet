@@ -104,10 +104,9 @@ namespace llarp
         {
           LogWarn("failed to pick new intro during introset update");
         }
-        if(GetPathByRouter(m_NextIntro.router) == nullptr)
+        if(GetPathByRouter(m_NextIntro.router) == nullptr
+           && !BuildCooldownHit(Now()))
           BuildOneAlignedTo(m_NextIntro.router);
-        else
-          SwapIntros();
       }
       else
         ++m_LookupFails;
@@ -134,52 +133,18 @@ namespace llarp
       p->SetDropHandler(std::bind(&OutboundContext::HandleDataDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
-    }
-
-    bool
-    OutboundContext::BuildOneAlignedTo(const RouterID& remote)
-    {
-      LogInfo(Name(), " building path to ", remote);
-      auto nodedb = m_Endpoint->Router()->nodedb();
-      std::vector< RouterContact > hops;
-      hops.resize(numHops);
-      for(size_t hop = 0; hop < numHops; ++hop)
-      {
-        if(hop == 0)
-        {
-          if(!SelectHop(nodedb, hops[0], hops[0], 0, path::ePathRoleAny))
-            return false;
-        }
-        else if(hop == numHops - 1)
-        {
-          // last hop
-          if(!nodedb->Get(remote, hops[hop]))
-            return false;
-        }
-        // middle hop
-        else
-        {
-          size_t tries = 5;
-          do
-          {
-            nodedb->select_random_hop_excluding(hops[hop],
-                                                {hops[hop - 1].pubkey, remote});
-            --tries;
-          } while(m_Endpoint->Router()->routerProfiling().IsBadForPath(
-                      hops[hop].pubkey)
-                  && tries > 0);
-          return tries > 0;
-        }
-        return false;
-      }
-      Build(hops);
-      return true;
+      // we now have a path to the next intro, swap intros
+      if(p->Endpoint() == m_NextIntro.router && remoteIntro != m_NextIntro)
+        SwapIntros();
     }
 
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
                                    ProtocolType t)
     {
+      if(remoteIntro.router.IsZero())
+        SwapIntros();
+
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(path == nullptr)
       {
@@ -187,7 +152,8 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
         if(path == nullptr)
         {
-          BuildOneAlignedTo(remoteIntro.router);
+          if(!BuildCooldownHit(Now()))
+            BuildOneAlignedTo(remoteIntro.router);
           LogWarn(Name(), " dropping intro frame, no path to ",
                   remoteIntro.router);
           return;
@@ -287,16 +253,6 @@ namespace llarp
         // shift intro if it expires "soon"
         ShiftIntroduction();
       }
-      // swap if we can
-      if(remoteIntro != m_NextIntro)
-      {
-        if(GetPathByRouter(m_NextIntro.router) != nullptr)
-        {
-          // we can safely set remoteIntro to the next one
-          SwapIntros();
-          LogInfo(Name(), " swapped intro");
-        }
-      }
       // lookup router in intro if set and unknown
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
       // expire bad intros
@@ -315,15 +271,19 @@ namespace llarp
         {
           if(!GetNewestPathByRouter(remoteIntro.router))
           {
-            BuildOneAlignedTo(remoteIntro.router);
+            if(!BuildCooldownHit(now))
+              BuildOneAlignedTo(remoteIntro.router);
           }
-          Encrypted< 64 > tmp;
-          tmp.Randomize();
-          llarp_buffer_t buf(tmp.data(), tmp.size());
-          AsyncEncryptAndSendTo(buf, eProtocolControl);
-          if(currentConvoTag.IsZero())
-            return false;
-          return !m_DataHandler->HasConvoTag(currentConvoTag);
+          else
+          {
+            Encrypted< 64 > tmp;
+            tmp.Randomize();
+            llarp_buffer_t buf(tmp.data(), tmp.size());
+            AsyncEncryptAndSendTo(buf, eProtocolControl);
+            if(currentConvoTag.IsZero())
+              return false;
+            return !m_DataHandler->HasConvoTag(currentConvoTag);
+          }
         }
       }
       // if we are dead return true so we are removed
@@ -333,28 +293,27 @@ namespace llarp
     }
 
     bool
-    OutboundContext::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    OutboundContext::SelectHop(llarp_nodedb* db,
+                               const std::set< RouterID >& prev,
                                RouterContact& cur, size_t hop,
                                path::PathRole roles)
     {
-      if(remoteIntro.router.IsZero())
+      if(m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
       {
-        SwapIntros();
+        if(!ShiftIntroduction(false))
+          return false;
       }
+      std::set< RouterID > exclude = prev;
+      exclude.insert(m_NextIntro.router);
       if(hop == numHops - 1)
       {
-        m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-        if(db->Get(remoteIntro.router, cur))
+        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
+        if(db->Get(m_NextIntro.router, cur))
           return true;
         ++m_BuildFails;
         return false;
       }
-      else if(hop == numHops - 2)
-      {
-        return db->select_random_hop_excluding(
-            cur, {prev.pubkey, remoteIntro.router});
-      }
-      return path::Builder::SelectHop(db, prev, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool
@@ -411,13 +370,10 @@ namespace llarp
       if(shiftedRouter)
       {
         lastShift = now;
-        BuildOneAlignedTo(m_NextIntro.router);
+        if(!BuildCooldownHit(now))
+          BuildOneAlignedTo(m_NextIntro.router);
       }
-      else if(shiftedIntro)
-      {
-        SwapIntros();
-      }
-      else
+      else if(!shiftedIntro)
       {
         LogInfo(Name(), " updating introset");
         UpdateIntroSet(true);
@@ -433,7 +389,7 @@ namespace llarp
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
       bool shifted = false;
-      // to find a intro on the same router as before
+      // to find a intro on the same router as before that is newer
       for(const auto& intro : currentIntroSet.I)
       {
         if(intro.ExpiresSoon(now))
@@ -441,10 +397,14 @@ namespace llarp
         if(m_BadIntros.find(intro) == m_BadIntros.end()
            && remoteIntro.router == intro.router)
         {
-          m_NextIntro = intro;
-          return true;
+          if(intro.expiresAt > m_NextIntro.expiresAt)
+          {
+            m_NextIntro = intro;
+            return true;
+          }
         }
       }
+      /// pick newer intro not on same router
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(intro.router);
@@ -452,19 +412,21 @@ namespace llarp
           continue;
         if(m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
         {
-          shifted = intro.router != m_NextIntro.router
-              || (now < intro.expiresAt
-                  && intro.expiresAt - now
-                      > 10 * 1000);  // TODO: hardcoded value
-          m_NextIntro = intro;
-          success     = true;
-          break;
+          shifted = intro.router != m_NextIntro.router;
+          if(intro.expiresAt > m_NextIntro.expiresAt)
+          {
+            m_NextIntro = intro;
+            success     = true;
+          }
         }
       }
-      if(shifted && rebuild)
+      if(m_NextIntro.router.IsZero())
+        return false;
+      if(shifted)
       {
         lastShift = now;
-        BuildOneAlignedTo(m_NextIntro.router);
+        if(rebuild && !BuildCooldownHit(Now()))
+          BuildOneAlignedTo(m_NextIntro.router);
       }
       return success;
     }
@@ -526,9 +488,7 @@ namespace llarp
               ++num;
           });
           // build a path if one isn't already pending build or established
-          if(num == 0)
-            BuildOneAlignedTo(m_NextIntro.router);
-          SwapIntros();
+          BuildOneAlignedTo(m_NextIntro.router);
         }
       }
     }

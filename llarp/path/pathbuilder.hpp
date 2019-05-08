@@ -21,6 +21,9 @@ namespace llarp
       /// flag for PathSet::Stop()
       std::atomic< bool > _run;
 
+      virtual bool
+      UrgentBuild(llarp_time_t now) const;
+
      public:
       AbstractRouter* router;
       llarp_dht_context* dht;
@@ -39,8 +42,8 @@ namespace llarp
       ExtractStatus() const;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) override;
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -48,6 +51,9 @@ namespace llarp
       /// should we bundle RCs in builds?
       virtual bool
       ShouldBundleRC() const = 0;
+
+      virtual void
+      ResetInternalState() override;
 
       /// return true if we hit our soft limit for building paths too fast
       bool
@@ -77,6 +83,9 @@ namespace llarp
 
       void
       BuildOne(PathRole roles = ePathRoleAny) override;
+
+      bool
+      BuildOneAlignedTo(const RouterID endpoint) override;
 
       void
       Build(const std::vector< RouterContact >& hops,

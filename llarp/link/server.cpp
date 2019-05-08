@@ -5,6 +5,8 @@
 
 namespace llarp
 {
+  static constexpr size_t MaxSessionsPerKey = 16;
+
   ILinkLayer::ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
@@ -152,7 +154,6 @@ namespace llarp
   bool
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
-    static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(&m_AuthedLinksMutex);
     Lock l_pending(&m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
@@ -220,10 +221,20 @@ namespace llarp
   bool
   ILinkLayer::TryEstablishTo(RouterContact rc)
   {
+    {
+      Lock l(&m_AuthedLinksMutex);
+      if(m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
+        return false;
+    }
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
     llarp::Addr addr(to);
+    {
+      Lock l(&m_PendingMutex);
+      if(m_Pending.count(addr) >= MaxSessionsPerKey)
+        return false;
+    }
     std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
     {

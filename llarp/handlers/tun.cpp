@@ -433,6 +433,14 @@ namespace llarp
       return true;
     }
 
+    void
+    TunEndpoint::ResetInternalState()
+    {
+      service::Endpoint::ResetInternalState();
+      if(m_Exit)
+        m_Exit->ResetInternalState();
+    }
+
     // FIXME: pass in which question it should be addressing
     bool
     TunEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
