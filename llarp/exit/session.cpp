@@ -155,7 +155,8 @@ namespace llarp
     BaseSession::ResetInternalState()
     {
       auto sendExitClose = [&](const llarp::path::Path_ptr p) {
-        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC))
+        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit
+                               | llarp::path::ePathRoleSVC))
         {
           llarp::LogInfo(p->Name(), " closing exit path");
           llarp::routing::CloseExitMessage msg;

@@ -189,7 +189,7 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if(state == eInitial)
+      if(state == eInitial || state == eLinkEstablished)
         return false;
       if(sendq.size() >= MaxSendQueueSize)
       {

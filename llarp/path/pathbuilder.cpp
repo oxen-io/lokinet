@@ -185,7 +185,7 @@ namespace llarp
     Builder::ResetInternalState()
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-      lastBuild = 0;
+      lastBuild          = 0;
     }
 
     void
