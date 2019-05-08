@@ -298,7 +298,7 @@ namespace llarp
                                RouterContact& cur, size_t hop,
                                path::PathRole roles)
     {
-      if(m_NextIntro.router.IsZero())
+      if(m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
       {
         if(!ShiftIntroduction(false))
           return false;
