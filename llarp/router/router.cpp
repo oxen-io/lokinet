@@ -282,6 +282,17 @@ namespace llarp
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
+    if(whitelistRouters)
+    {
+      const auto sz = lokinetRouters.size();
+      auto itr = lokinetRouters.begin();
+      if(sz == 0)
+        return false;
+      if(sz > 1)
+        std::advance(itr, randint() % sz);
+      router = itr->first;
+      return true;
+    }
     absl::ReaderMutexLock l(&nodedb()->access);
     auto sz = nodedb()->entries.size();
     if(sz == 0)
