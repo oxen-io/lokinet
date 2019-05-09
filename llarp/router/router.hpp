@@ -246,7 +246,7 @@ namespace llarp
     std::set< RouterID > strictConnectPubkeys;
 
     /// bootstrap RCs
-    std::list< RouterContact > bootstrapRCList;
+    std::set< RouterContact > bootstrapRCList;
 
     bool
     ExitEnabled() const
@@ -501,8 +501,23 @@ namespace llarp
     void
     ConnectToRandomRouters(int N) override;
 
+    /// count the number of unique service nodes connected via pubkey
     size_t
     NumberOfConnectedRouters() const override;
+
+    /// count the number of unique clients connected by pubkey
+    size_t
+    NumberOfConnectedClients() const override;
+
+    /// count unique router id's given filter to match session
+    size_t
+    NumberOfRoutersMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
+
+    /// count the number of connections that match filter
+    size_t
+    NumberOfConnectionsMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
 
     bool
     TryConnectAsync(RouterContact rc, uint16_t tries) override;
