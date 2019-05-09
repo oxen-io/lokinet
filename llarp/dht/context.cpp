@@ -631,12 +631,12 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > >& reply)
     {
       std::vector< RouterID > closer;
-      Key_t t(target.as_array());
+      const Key_t t(target.as_array());
       std::set< Key_t > found;
       if(!_nodes)
         return false;
 
-      size_t nodeCount = _nodes->size();
+      const size_t nodeCount = _nodes->size();
       if(nodeCount == 0)
       {
         llarp::LogError(
@@ -648,7 +648,7 @@ namespace llarp
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      size_t want = std::min(size_t(4), nodeCount - 1);
+      const size_t want = std::min(size_t(4), nodeCount - 1);
       llarp::LogDebug("We want ", want, " connected nodes in the DHT");
       if(!_nodes->GetManyNearExcluding(t, found, want,
                                        std::set< Key_t >{ourKey, requester}))
@@ -660,7 +660,11 @@ namespace llarp
         return false;
       }
       for(const auto& f : found)
-        closer.emplace_back(f.as_array());
+      {
+        const RouterID r(f.as_array());
+        if(GetRouter()->ConnectionToRouterAllowed(r))
+          closer.emplace_back(r);
+      }
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }

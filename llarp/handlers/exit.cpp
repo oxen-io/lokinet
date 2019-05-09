@@ -134,7 +134,11 @@ namespace llarp
         {
           RouterID random;
           if(GetRouter()->GetRandomGoodRouter(random))
+          {
             msg.AddCNAMEReply(random.ToString(), 1);
+            auto ip = ObtainServiceNodeIP(random);
+            msg.AddINReply(ip, false);
+          }
           else
             msg.AddNXReply();
           reply(msg);
