@@ -39,6 +39,7 @@ namespace llarp
 
 struct TryConnectJob
 {
+  llarp_time_t lastAttempt = 0;
   llarp::RouterContact rc;
   llarp::ILinkLayer *link;
   llarp::Router *router;
@@ -51,6 +52,13 @@ struct TryConnectJob
 
   ~TryConnectJob()
   {
+  }
+
+  bool
+  TimeoutReached() const
+  {
+    const auto now = router->Now();
+    return now > lastAttempt && now - lastAttempt > 5000;
   }
 
   void
@@ -69,13 +77,12 @@ struct TryConnectJob
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
-  void
-  AttemptTimedout()
+  bool
+  Timeout()
   {
     if(ShouldRetry())
     {
-      Attempt();
-      return;
+      return Attempt();
     }
     router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
@@ -83,19 +90,19 @@ struct TryConnectJob
       if(!router->IsBootstrapNode(rc.pubkey))
         router->nodedb()->Remove(rc.pubkey);
     }
-    // delete this
-    router->pendingEstablishJobs.erase(rc.pubkey);
+    return true;
   }
 
-  void
+  bool
   Attempt()
   {
     --triesLeft;
     if(!link->TryEstablishTo(rc))
     {
-      // delete this
-      router->pendingEstablishJobs.erase(rc.pubkey);
+      return true;
     }
+    lastAttempt = router->Now();
+    return false;
   }
 
   bool
@@ -110,7 +117,8 @@ on_try_connecting(void *u)
 {
   TryConnectJob *j = static_cast< TryConnectJob * >(u);
 
-  j->Attempt();
+  if(!j->Attempt())
+    j->router->pendingEstablishJobs.erase(j->rc.pubkey);
 }
 
 bool
@@ -689,7 +697,8 @@ namespace llarp
     auto itr = pendingEstablishJobs.find(session->GetPubKey());
     if(itr != pendingEstablishJobs.end())
     {
-      itr->second->AttemptTimedout();
+      if(itr->second->Timeout())
+        pendingEstablishJobs.erase(itr);
     }
   }
 
@@ -1249,6 +1258,16 @@ namespace llarp
     }
     // expire transit paths
     paths.ExpirePaths(now);
+    {
+      auto itr = pendingEstablishJobs.begin();
+      while(itr != pendingEstablishJobs.end())
+      {
+        if(itr->second->TimeoutReached() && itr->second->Timeout())
+          itr = pendingEstablishJobs.erase(itr);
+        else
+          ++itr;
+      }
+    }
 
     {
       auto itr = m_PersistingSessions.begin();

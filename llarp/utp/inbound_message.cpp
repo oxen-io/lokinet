@@ -7,13 +7,13 @@ namespace llarp
   namespace utp
   {
     bool
-    InboundMessage::IsExpired(llarp_time_t now) const
+    _InboundMessage::IsExpired(llarp_time_t now) const
     {
       return now > lastActive && now - lastActive >= 2000;
     }
 
     bool
-    InboundMessage::AppendData(const byte_t* ptr, uint16_t sz)
+    _InboundMessage::AppendData(const byte_t* ptr, uint16_t sz)
     {
       if(buffer.size_left() < sz)
         return false;
@@ -21,6 +21,8 @@ namespace llarp
       buffer.cur += sz;
       return true;
     }
+    IBMsgPool_t IBPool;
+
   }  // namespace utp
 
 }  // namespace llarp

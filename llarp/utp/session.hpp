@@ -14,6 +14,8 @@ namespace llarp
   {
     struct LinkLayer;
 
+    using SendFragmentBuffer = std::shared_ptr< FragmentBuffer >;
+
     struct Session : public ILinkSession
     {
       /// remote router's rc
@@ -42,7 +44,7 @@ namespace llarp
       /// send queue for utp
       std::deque< utp_iovec > vecq;
       /// tx fragment queue
-      std::deque< FragmentBuffer > sendq;
+      std::deque< SendFragmentBuffer > sendq;
       /// current rx fragment buffer
       FragmentBuffer recvBuf;
       /// current offset in current rx fragment buffer

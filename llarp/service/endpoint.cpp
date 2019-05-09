@@ -701,6 +701,22 @@ namespace llarp
       m_PendingServiceLookups.erase(addr);
     }
 
+    void
+    Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg,
+                                    llarp_async_verify_rc* j)
+    {
+      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
+      if(itr != m_PendingRouters.end())
+      {
+        if(j->valid)
+          itr->second.InformResult(msg->R);
+        else
+          itr->second.InformResult({});
+        m_PendingRouters.erase(itr);
+      }
+      delete j;
+    }
+
     bool
     Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
     {
@@ -711,16 +727,9 @@ namespace llarp
         job->cryptoworker          = m_Router->threadpool();
         job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
-        job->hook                  = [=](llarp_async_verify_rc* j) {
-          auto itr = m_PendingRouters.find(msg->R[0].pubkey);
-          if(j->valid)
-            itr->second.InformResult(msg->R);
-          else
-            itr->second.InformResult({});
-          m_PendingRouters.erase(itr);
-          delete j;
-        };
-        job->rc = msg->R[0];
+        job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
+                              std::placeholders::_1);
+        job->rc   = msg->R[0];
         llarp_nodedb_async_verify(job);
       }
       else

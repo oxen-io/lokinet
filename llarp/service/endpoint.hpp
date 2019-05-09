@@ -1,6 +1,7 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 
+#include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
 #include <net/net.hpp>
@@ -20,6 +21,8 @@
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL (5 * 1000)
 #endif
+
+struct llarp_async_verify_rc;
 
 namespace llarp
 {
@@ -322,6 +325,10 @@ namespace llarp
       RunIsolatedMainLoop(void*);
 
      private:
+      void
+      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg,
+                            llarp_async_verify_rc* j);
+
       bool
       OnLookup(const service::Address& addr, const IntroSet* i,
                const RouterID& endpoint); /*  */
@@ -374,11 +381,11 @@ namespace llarp
         {
           if(now < started)
             return false;
-          return now - started > 5000;
+          return now - started > 30000;
         }
 
         void
-        InformResult(const std::vector< RouterContact >& result)
+        InformResult(std::vector< RouterContact > result)
         {
           if(handler)
             handler(result);
