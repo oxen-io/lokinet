@@ -704,11 +704,9 @@ namespace llarp
     bool
     Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
     {
-      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
-      if(itr == m_PendingRouters.end())
-        return false;
-      if(msg->R.size() == 1)
+      if(msg->R.size())
       {
+        auto itr                   = m_PendingRouters.find(msg->R[0].pubkey);
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->threadpool();
@@ -728,8 +726,17 @@ namespace llarp
       }
       else
       {
-        itr->second.InformResult({});
-        m_PendingRouters.erase(itr);
+        auto itr = m_PendingRouters.begin();
+        while(itr != m_PendingRouters.end())
+        {
+          if(itr->second.txid == msg->txid)
+          {
+            itr->second.InformResult({});
+            itr = m_PendingRouters.erase(itr);
+          }
+          else
+            ++itr;
+        }
       }
       return true;
     }
