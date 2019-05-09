@@ -706,19 +706,18 @@ namespace llarp
     {
       if(msg->R.size())
       {
-        auto itr                   = m_PendingRouters.find(msg->R[0].pubkey);
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->threadpool();
         job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
         job->hook                  = [=](llarp_async_verify_rc* j) {
-          auto i = m_PendingRouters.find(msg->R[0].pubkey);
+          auto itr = m_PendingRouters.find(msg->R[0].pubkey);
           if(j->valid)
-            i->second.InformResult(msg->R);
+            itr->second.InformResult(msg->R);
           else
-            i->second.InformResult({});
-          m_PendingRouters.erase(i);
+            itr->second.InformResult({});
+          m_PendingRouters.erase(itr);
           delete j;
         };
         job->rc = msg->R[0];
