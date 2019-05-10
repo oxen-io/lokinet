@@ -495,6 +495,11 @@ namespace llarp
         llarp::LogWarn("Couldn't start endpoint");
         return false;
       }
+      if(m_Exit)
+      {
+        for(const auto &snode : m_SnodeBlacklist)
+          m_Exit->BlacklistSnode(snode);
+      }
       return SetupNetworking();
     }
 

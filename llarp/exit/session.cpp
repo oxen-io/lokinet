@@ -57,12 +57,23 @@ namespace llarp
       return NumPathsExistingAt(future) < expect && !BuildCooldownHit(now);
     }
 
+    void
+    BaseSession::BlacklistSnode(const RouterID snode)
+    {
+      m_SnodeBlacklist.insert(std::move(snode));
+    }
+
     bool
     BaseSession::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
     {
       std::set< RouterID > exclude = prev;
+      for(const auto& snode : m_SnodeBlacklist)
+      {
+        if(snode != m_ExitRouter)
+          exclude.insert(snode);
+      }
       exclude.insert(m_ExitRouter);
       if(hop == numHops - 1)
       {

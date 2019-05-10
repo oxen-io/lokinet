@@ -65,6 +65,22 @@ namespace llarp
       {
         m_BundleRC = IsTrueValue(v.c_str());
       }
+      if(k == "blacklist-snode")
+      {
+        RouterID snode;
+        if(!snode.FromString(v))
+        {
+          LogError(Name(), " invalid snode value: ", v);
+          return false;
+        }
+        const auto result = m_SnodeBlacklist.insert(std::move(snode));
+        if(!result.second)
+        {
+          LogError(Name(), " duplicate blacklist-snode: ", snode.ToString());
+          return false;
+        }
+        LogInfo(Name(), " adding ", snode.ToString(), " to blacklist");
+      }
       if(k == "on-up")
       {
         m_OnUp = hooks::ExecShellBackend(v);
@@ -660,6 +676,17 @@ namespace llarp
     }
 
     bool
+    Endpoint::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                        RouterContact& cur, size_t hop, path::PathRole roles)
+
+    {
+      std::set< RouterID > exclude = prev;
+      for(const auto& snode : m_SnodeBlacklist)
+        exclude.insert(snode);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    bool
     Endpoint::ShouldBundleRC() const
     {
       return m_BundleRC;
@@ -1135,18 +1162,18 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace_back(data, t);
       // no converstation
-      return EnsurePathToService(
-          remote,
-          [&](Address r, OutboundContext* c) {
-            if(c)
-            {
-              c->UpdateIntroSet(true);
-              for(auto& pending : m_PendingTraffic[r])
-                c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
-            }
-            m_PendingTraffic.erase(r);
-          },
-          5000, true);
+      return EnsurePathToService(remote,
+                                 [&](Address r, OutboundContext* c) {
+                                   if(c)
+                                   {
+                                     c->UpdateIntroSet(true);
+                                     for(auto& pending : m_PendingTraffic[r])
+                                       c->AsyncEncryptAndSendTo(
+                                           pending.Buffer(), pending.protocol);
+                                   }
+                                   m_PendingTraffic.erase(r);
+                                 },
+                                 5000, true);
     }
 
     void

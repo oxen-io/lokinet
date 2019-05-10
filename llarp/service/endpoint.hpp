@@ -294,6 +294,10 @@ namespace llarp
       uint64_t
       GetSeqNoForConvo(const ConvoTag& tag);
 
+      virtual bool
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, path::PathRole roles) override;
+
       virtual void
       IntroSetPublishFail();
       virtual void
@@ -352,6 +356,9 @@ namespace llarp
         // XXX: override me
         return false;
       }
+
+     public:
+      std::set< RouterID > m_SnodeBlacklist;
 
      protected:
       IDataHandler* m_DataHandler = nullptr;
