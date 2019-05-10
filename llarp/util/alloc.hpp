@@ -29,7 +29,7 @@ namespace llarp
       NewPtr()
       {
         void *ptr = mem->allocate();
-        new(ptr) Value_t;
+        ::new(ptr) Value_t;
         return static_cast<Ptr_t>(ptr);
       }
 
