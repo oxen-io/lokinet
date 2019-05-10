@@ -1,7 +1,5 @@
 #ifndef LLARP_UTIL_ALLOC_HPP
 #define LLARP_UTIL_ALLOC_HPP
-#include <memory>
-#include <experimental/memory_resource>
 #include <bitset>
 #include <array>
 
@@ -28,9 +26,9 @@ namespace llarp
       Ptr_t
       NewPtr()
       {
-        void *ptr = mem->allocate();
+        Ptr_t ptr = mem->allocate();
         ::new(ptr) Value_t;
-        return static_cast<Ptr_t>(ptr);
+        return ptr;
       }
 
       void
@@ -81,7 +79,7 @@ namespace llarp
           _allocated.reset(_idx);
         }
 
-        [[nodiscard]] void *
+        [[nodiscard]] Ptr_t
         allocate()
         {
           const std::size_t _started = _pos;
@@ -95,7 +93,7 @@ namespace llarp
             }
           }
           _allocated.set(_pos);
-          return (Value_t *)&_buffer[_pos * sizeof(Value_t)];
+          return (Ptr_t)&_buffer[_pos * sizeof(Value_t)];
         }
       };
 
