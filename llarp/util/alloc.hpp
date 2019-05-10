@@ -29,7 +29,8 @@ namespace llarp
       NewPtr()
       {
         void *ptr = mem->allocate();
-        return new(ptr) Value_t();
+        new(ptr) Value_t;
+        return static_cast<Ptr_t>(ptr);
       }
 
       void
@@ -94,9 +95,7 @@ namespace llarp
             }
           }
           _allocated.set(_pos);
-          Value_t *ptr = (Value_t *)&_buffer[_pos * sizeof(Value_t)];
-          _pos         = (_pos + 1) % maxEntries;
-          return ptr;
+          return (Value_t *)&_buffer[_pos * sizeof(Value_t)];
         }
       };
 
