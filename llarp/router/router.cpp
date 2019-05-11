@@ -1040,7 +1040,7 @@ namespace llarp
       }
       if(rc.Verify(crypto(), Now()))
       {
-        const auto result = bootstrapRCList.insert(std::move(rc));
+        const auto result = bootstrapRCList.insert(rc);
         if(result.second)
           llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
         else
@@ -1578,7 +1578,16 @@ namespace llarp
     llarp_threadpool_start(disk);
 
     for(const auto &rc : bootstrapRCList)
-      this->nodedb()->Insert(rc);
+    {
+      if(this->nodedb()->Insert(rc))
+      {
+        LogInfo("added bootstrap node ", RouterID(rc.pubkey));
+      }
+      else
+      {
+        LogError("Failed to add bootstrap node ", RouterID(rc.pubkey));
+      }
+    }
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
