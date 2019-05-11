@@ -1578,7 +1578,7 @@ namespace llarp
     llarp_threadpool_start(disk);
 
     for(const auto &rc : bootstrapRCList)
-      this->nodedb()->InsertAsync(rc);
+      this->nodedb()->Insert(rc);
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
