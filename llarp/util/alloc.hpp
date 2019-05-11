@@ -21,7 +21,7 @@ namespace llarp
       ~AllocPool()
       {
         // delete mem;
-      } 
+      }
 
       Ptr_t
       NewPtr()

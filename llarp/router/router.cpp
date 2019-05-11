@@ -736,6 +736,8 @@ namespace llarp
   Router::NumberOfConnectedRouters() const
   {
     return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      if(!link->IsEstablished())
+        return false;
       const RouterContact rc(link->GetRemoteRC());
       return rc.IsPublicRouter() && ConnectionToRouterAllowed(rc.pubkey);
     });
@@ -745,6 +747,8 @@ namespace llarp
   Router::NumberOfConnectedClients() const
   {
     return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      if(!link->IsEstablished())
+        return false;
       const RouterContact rc(link->GetRemoteRC());
       return !rc.IsPublicRouter();
     });
