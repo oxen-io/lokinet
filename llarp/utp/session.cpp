@@ -83,7 +83,6 @@ namespace llarp
       {
         if(itr->second->IsExpired(now))
         {
-          IBPool.DelPtr(itr->second);
           itr = m_RecvMsgs.erase(itr);
         }
         else
@@ -374,8 +373,6 @@ namespace llarp
         utp_set_userdata(sock, nullptr);
         sock = nullptr;
       }
-      for(auto& item : m_RecvMsgs)
-        IBPool.DelPtr(item.second);
     }
 
     bool
@@ -564,7 +561,10 @@ namespace llarp
           LogError("inbound buffer mempool full");
           return false;
         }
-        m_RecvMsgs.emplace(msgid, IBPool.NewPtr());
+        m_RecvMsgs.emplace(
+            msgid, InboundMessage(IBPool.NewPtr(), [](_InboundMessage* m) {
+              IBPool.DelPtr(m);
+            }));
       }
 
       auto itr = m_RecvMsgs.find(msgid);
