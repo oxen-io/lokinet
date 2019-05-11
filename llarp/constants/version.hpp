@@ -10,7 +10,7 @@
 #endif
 
 #ifndef LLARP_VERSION_PATCH
-#define LLARP_VERSION_PATCH "1"
+#define LLARP_VERSION_PATCH "2"
 #endif
 
 #ifndef LLARP_VERSION_NUM
