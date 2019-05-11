@@ -526,7 +526,7 @@ namespace llarp
     GetRandomConnectedRouter(RouterContact &result) const override;
 
     bool
-    async_verify_RC(const RouterContact &rc);
+    async_verify_RC(const RouterContact rc);
 
     void
     HandleDHTLookupForSendTo(RouterID remote,

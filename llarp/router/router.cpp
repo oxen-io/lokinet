@@ -1478,7 +1478,7 @@ namespace llarp
   }
 
   bool
-  Router::async_verify_RC(const RouterContact &rc)
+  Router::async_verify_RC(const RouterContact rc)
   {
     if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
