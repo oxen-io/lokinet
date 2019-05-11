@@ -73,7 +73,7 @@ namespace llarp
           LogError(Name(), " invalid snode value: ", v);
           return false;
         }
-        const auto result = m_SnodeBlacklist.insert(std::move(snode));
+        const auto result = m_SnodeBlacklist.insert(snode);
         if(!result.second)
         {
           LogError(Name(), " duplicate blacklist-snode: ", snode.ToString());
