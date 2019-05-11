@@ -1300,10 +1300,10 @@ namespace llarp
           LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
           // close all the session because the commit to this router expired
-          ForEachPeer([&](ILinkSession *s) {
-            if(s->GetPubKey() == r)
-              s->Close();
-          });
+          // ForEachPeer([&](ILinkSession *s) {
+          //   if(s->GetPubKey() == r)
+          //    s->Close();
+          // });
         }
       }
     }
