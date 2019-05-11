@@ -80,10 +80,7 @@ namespace llarp
       return lhs.buffer.base == rhs.buffer.base;
     }
 
-    using IBMsgPool_t = util::AllocPool< _InboundMessage, 1024 >;
-    extern IBMsgPool_t IBPool;
-
-    using InboundMessage = _InboundMessage*;
+    using InboundMessage = std::shared_ptr< _InboundMessage >;
 
   }  // namespace utp
 

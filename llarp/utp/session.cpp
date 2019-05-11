@@ -10,8 +10,10 @@ namespace llarp
   namespace utp
   {
     using SendBufferPool = util::AllocPool< FragmentBuffer, 1024 * 4 >;
+    using RecvBufferPool = util::AllocPool< _InboundMessage, 1024 >;
 
     static SendBufferPool OBPool;
+    static RecvBufferPool IBPool;
 
     using namespace std::placeholders;
 

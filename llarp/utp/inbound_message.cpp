@@ -21,7 +21,6 @@ namespace llarp
       buffer.cur += sz;
       return true;
     }
-    IBMsgPool_t IBPool;
 
   }  // namespace utp
 
