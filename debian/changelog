@@ -1,4 +1,10 @@
-lokinet (0.4.1) UNRELEASED; urgency=medium
+lokinet (0.4.2) UNRELEASED; urgency=medium
+
+  * bug fix release
+
+ -- Jeff Becker (probably not evil) <jeff@i2p.rocks>  Sat, 11 May 2019 10:45:49 -0400
+
+lokinet (0.4.1) disco; urgency=medium
 
 
   [ Jeff Becker (probably not evil) ]
@@ -28,7 +34,7 @@ lokinet (0.4.1) UNRELEASED; urgency=medium
 
   * wow !
 
- -- Jeff Becker (probably not evil) <jeff@i2p.rocks>  Sat, 04 May 2019 08:34:37 -0400
+ -- Jeff Becker (probably not evil) <jeff@i2p.rocks>  Sat, 11 May 2019 10:45:46 -0400
 
 lokinet (0.2.3) bionic; urgency=medium
 
