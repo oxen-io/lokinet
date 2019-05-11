@@ -1871,11 +1871,8 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
-        if(!self->IsBootstrapNode(other.pubkey))
-        {
-          if(self->TryConnectAsync(other, 5))
-            --want;
-        }
+        if(self->TryConnectAsync(other, 5))
+          --want;
       }
       return want > 0;
     });
