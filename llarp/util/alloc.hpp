@@ -15,39 +15,49 @@ namespace llarp
 
       AllocPool()
       {
-        mem = new Memory();
+        mem = nullptr;
       }
 
       ~AllocPool()
       {
-        delete mem;
-      }
+        // delete mem;
+      } 
 
       Ptr_t
       NewPtr()
       {
+        /*
         Ptr_t ptr = mem->allocate();
         ::new(ptr) Value_t;
         return ptr;
+        */
+        return new Value_t();
       }
 
       void
       DelPtr(Ptr_t p)
       {
+        /*
         p->~Value_t();
         mem->deallocate(p);
+        */
+        delete p;
       }
 
       bool
       Full() const
       {
+        /*
         return mem->full();
+        */
+        return false;
       }
 
       bool
       HasRoomFor(size_t numItems)
       {
-        return mem->hasRoomFor(numItems);
+        return true;
+        /* return mem->hasRoomFor(numItems); */
       }
 
      private:
