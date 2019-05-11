@@ -1234,6 +1234,8 @@ namespace llarp
 
       // kill nodes that are not allowed by network policy
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(IsBootstrapNode(rc.pubkey))
+          return false;
         return !ConnectionToRouterAllowed(rc.pubkey);
       });
 
