@@ -65,6 +65,22 @@ namespace llarp
       {
         m_BundleRC = IsTrueValue(v.c_str());
       }
+      if(k == "blacklist-snode")
+      {
+        RouterID snode;
+        if(!snode.FromString(v))
+        {
+          LogError(Name(), " invalid snode value: ", v);
+          return false;
+        }
+        const auto result = m_SnodeBlacklist.insert(snode);
+        if(!result.second)
+        {
+          LogError(Name(), " duplicate blacklist-snode: ", snode.ToString());
+          return false;
+        }
+        LogInfo(Name(), " adding ", snode.ToString(), " to blacklist");
+      }
       if(k == "on-up")
       {
         m_OnUp = hooks::ExecShellBackend(v);
@@ -660,6 +676,17 @@ namespace llarp
     }
 
     bool
+    Endpoint::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                        RouterContact& cur, size_t hop, path::PathRole roles)
+
+    {
+      std::set< RouterID > exclude = prev;
+      for(const auto& snode : m_SnodeBlacklist)
+        exclude.insert(snode);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    bool
     Endpoint::ShouldBundleRC() const
     {
       return m_BundleRC;
@@ -701,35 +728,50 @@ namespace llarp
       m_PendingServiceLookups.erase(addr);
     }
 
+    void
+    Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg,
+                                    llarp_async_verify_rc* j)
+    {
+      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
+      if(itr != m_PendingRouters.end())
+      {
+        if(j->valid)
+          itr->second.InformResult(msg->R);
+        else
+          itr->second.InformResult({});
+        m_PendingRouters.erase(itr);
+      }
+      delete j;
+    }
+
     bool
     Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
     {
-      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
-      if(itr == m_PendingRouters.end())
-        return false;
-      if(msg->R.size() == 1)
+      if(msg->R.size())
       {
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->threadpool();
         job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
-        job->hook                  = [=](llarp_async_verify_rc* j) {
-          auto i = m_PendingRouters.find(msg->R[0].pubkey);
-          if(j->valid)
-            i->second.InformResult(msg->R);
-          else
-            i->second.InformResult({});
-          m_PendingRouters.erase(i);
-          delete j;
-        };
-        job->rc = msg->R[0];
+        job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
+                              std::placeholders::_1);
+        job->rc   = msg->R[0];
         llarp_nodedb_async_verify(job);
       }
       else
       {
-        itr->second.InformResult({});
-        m_PendingRouters.erase(itr);
+        auto itr = m_PendingRouters.begin();
+        while(itr != m_PendingRouters.end())
+        {
+          if(itr->second.txid == msg->txid)
+          {
+            itr->second.InformResult({});
+            itr = m_PendingRouters.erase(itr);
+          }
+          else
+            ++itr;
+        }
       }
       return true;
     }

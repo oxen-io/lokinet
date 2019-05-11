@@ -173,8 +173,13 @@ namespace llarp
                               routing::IMessageHandler *h,
                               const PathID_t &rxid) = 0;
 
+    /// count the number of service nodes we are connected to
     virtual size_t
     NumberOfConnectedRouters() const = 0;
+
+    /// count the number of clients that are connected to us
+    virtual size_t
+    NumberOfConnectedClients() const = 0;
 
     virtual bool
     GetRandomConnectedRouter(RouterContact &result) const = 0;

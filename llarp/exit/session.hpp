@@ -39,6 +39,9 @@ namespace llarp
         return shared_from_this();
       }
 
+      void
+      BlacklistSnode(const RouterID snode);
+
       util::StatusObject
       ExtractStatus() const;
 
@@ -129,6 +132,8 @@ namespace llarp
                     uint64_t seqno);
 
      private:
+      std::set< RouterID > m_SnodeBlacklist;
+
       using UpstreamTrafficQueue_t =
           std::deque< llarp::routing::TransferTrafficMessage >;
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;

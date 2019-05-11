@@ -9,6 +9,12 @@ namespace llarp
 {
   namespace utp
   {
+    using SendBufferPool = util::AllocPool< FragmentBuffer, 1024 * 4 >;
+    using RecvBufferPool = util::AllocPool< _InboundMessage, 1024 >;
+
+    static SendBufferPool OBPool;
+    static RecvBufferPool IBPool;
+
     using namespace std::placeholders;
 
     void
@@ -35,8 +41,11 @@ namespace llarp
       std::vector< utp_iovec > send;
       for(const auto& vec : vecq)
       {
-        expect += vec.iov_len;
-        send.emplace_back(vec);
+        if(vec.iov_len)
+        {
+          expect += vec.iov_len;
+          send.emplace_back(vec);
+        }
       }
       if(expect)
       {
@@ -72,8 +81,10 @@ namespace llarp
       auto itr = m_RecvMsgs.begin();
       while(itr != m_RecvMsgs.end())
       {
-        if(itr->second.IsExpired(now))
+        if(itr->second->IsExpired(now))
+        {
           itr = m_RecvMsgs.erase(itr);
+        }
         else
           ++itr;
       }
@@ -264,7 +275,12 @@ namespace llarp
         // this means we're stalled
         return false;
       }
-      size_t sz      = buf.sz;
+      size_t sz = buf.sz;
+      if(!OBPool.HasRoomFor(sz / FragmentBodyPayloadSize))
+      {
+        LogError("Send buffers are full");
+        return false;
+      }
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
       while(sz)
@@ -364,14 +380,15 @@ namespace llarp
                              uint16_t remaining)
 
     {
-      sendq.emplace_back();
+      sendq.emplace_back(OBPool.NewPtr(),
+                         [](FragmentBuffer* ptr) { OBPool.DelPtr(ptr); });
       auto& buf = sendq.back();
       vecq.emplace_back();
       auto& vec    = vecq.back();
-      vec.iov_base = buf.data();
+      vec.iov_base = buf->data();
       vec.iov_len  = FragmentBufferSize;
-      buf.Randomize();
-      byte_t* noncePtr = buf.data() + FragmentHashSize;
+      buf->Randomize();
+      byte_t* noncePtr = buf->data() + FragmentHashSize;
       byte_t* body     = noncePtr + FragmentNonceSize;
       byte_t* base     = body;
       AlignedBuffer< 24 > A(base);
@@ -402,7 +419,7 @@ namespace llarp
       payload.cur  = payload.base;
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
-      if(!OurCrypto()->hmac(buf.data(), payload, txKey))
+      if(!OurCrypto()->hmac(buf->data(), payload, txKey))
         return false;
       return MutateKey(txKey, A);
     }
@@ -539,14 +556,22 @@ namespace llarp
       // get message
       if(m_RecvMsgs.find(msgid) == m_RecvMsgs.end())
       {
-        m_RecvMsgs.emplace(msgid, InboundMessage{});
+        if(IBPool.Full())
+        {
+          LogError("inbound buffer mempool full");
+          return false;
+        }
+        m_RecvMsgs.emplace(
+            msgid, InboundMessage(IBPool.NewPtr(), [](_InboundMessage* m) {
+              IBPool.DelPtr(m);
+            }));
       }
 
       auto itr = m_RecvMsgs.find(msgid);
       // add message activity
-      itr->second.lastActive = parent->Now();
+      itr->second->lastActive = parent->Now();
       // append data
-      if(!itr->second.AppendData(out.cur, length))
+      if(!itr->second->AppendData(out.cur, length))
       {
         LogError("inbound buffer is full");
         return false;  // not enough room
@@ -561,8 +586,8 @@ namespace llarp
       if(remaining == 0)
       {
         // we done with this guy, prune next tick
-        itr->second.lastActive = 0;
-        ManagedBuffer buf(itr->second.buffer);
+        itr->second->lastActive = 0;
+        ManagedBuffer buf(itr->second->buffer);
         // resize
         buf.underlying.sz = buf.underlying.cur - buf.underlying.base;
         // rewind

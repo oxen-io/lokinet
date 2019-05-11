@@ -648,7 +648,7 @@ namespace llarp
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      const size_t want = std::min(size_t(4), nodeCount - 1);
+      const size_t want = std::min(size_t(4), nodeCount);
       llarp::LogDebug("We want ", want, " connected nodes in the DHT");
       if(!_nodes->GetManyNearExcluding(t, found, want,
                                        std::set< Key_t >{ourKey, requester}))

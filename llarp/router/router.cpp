@@ -39,6 +39,7 @@ namespace llarp
 
 struct TryConnectJob
 {
+  llarp_time_t lastAttempt = 0;
   llarp::RouterContact rc;
   llarp::ILinkLayer *link;
   llarp::Router *router;
@@ -51,6 +52,13 @@ struct TryConnectJob
 
   ~TryConnectJob()
   {
+  }
+
+  bool
+  TimeoutReached() const
+  {
+    const auto now = router->Now();
+    return now > lastAttempt && now - lastAttempt > 5000;
   }
 
   void
@@ -69,13 +77,12 @@ struct TryConnectJob
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
-  void
-  AttemptTimedout()
+  bool
+  Timeout()
   {
     if(ShouldRetry())
     {
-      Attempt();
-      return;
+      return Attempt();
     }
     router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
@@ -83,19 +90,19 @@ struct TryConnectJob
       if(!router->IsBootstrapNode(rc.pubkey))
         router->nodedb()->Remove(rc.pubkey);
     }
-    // delete this
-    router->pendingEstablishJobs.erase(rc.pubkey);
+    return true;
   }
 
-  void
+  bool
   Attempt()
   {
     --triesLeft;
     if(!link->TryEstablishTo(rc))
     {
-      // delete this
-      router->pendingEstablishJobs.erase(rc.pubkey);
+      return true;
     }
+    lastAttempt = router->Now();
+    return false;
   }
 
   bool
@@ -110,7 +117,8 @@ on_try_connecting(void *u)
 {
   TryConnectJob *j = static_cast< TryConnectJob * >(u);
 
-  j->Attempt();
+  if(!j->Attempt())
+    j->router->pendingEstablishJobs.erase(j->rc.pubkey);
 }
 
 bool
@@ -285,7 +293,7 @@ namespace llarp
     if(whitelistRouters)
     {
       const auto sz = lokinetRouters.size();
-      auto itr = lokinetRouters.begin();
+      auto itr      = lokinetRouters.begin();
       if(sz == 0)
         return false;
       if(sz > 1)
@@ -689,7 +697,8 @@ namespace llarp
     auto itr = pendingEstablishJobs.find(session->GetPubKey());
     if(itr != pendingEstablishJobs.end())
     {
-      itr->second->AttemptTimedout();
+      if(itr->second->Timeout())
+        pendingEstablishJobs.erase(itr);
     }
   }
 
@@ -712,11 +721,45 @@ namespace llarp
   }
 
   size_t
+  Router::NumberOfRoutersMatchingFilter(
+      std::function< bool(const ILinkSession *) > filter) const
+  {
+    std::set< RouterID > connected;
+    ForEachPeer([&](const auto *link, bool) {
+      if(filter(link))
+        connected.insert(link->GetPubKey());
+    });
+    return connected.size();
+  }
+
+  size_t
   Router::NumberOfConnectedRouters() const
   {
-    size_t s = 0;
-    ForEachPeer([&s](const auto *, bool) { ++s; });
-    return s;
+    return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      const RouterContact rc(link->GetRemoteRC());
+      return rc.IsPublicRouter() && ConnectionToRouterAllowed(rc.pubkey);
+    });
+  }
+
+  size_t
+  Router::NumberOfConnectedClients() const
+  {
+    return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      const RouterContact rc(link->GetRemoteRC());
+      return !rc.IsPublicRouter();
+    });
+  }
+
+  size_t
+  Router::NumberOfConnectionsMatchingFilter(
+      std::function< bool(const ILinkSession *) > filter) const
+  {
+    size_t sz = 0;
+    ForEachPeer([&](const auto *link, bool) {
+      if(filter(link))
+        ++sz;
+    });
+    return sz;
   }
 
   bool
@@ -922,7 +965,7 @@ namespace llarp
       if(StrEq(key, "file"))
       {
         LogInfo("open log file: ", val);
-        FILE *logfile = ::fopen(val, "a");
+        FILE *const logfile = ::fopen(val, "a");
         if(logfile)
         {
           LogContext::Instance().logStream =
@@ -983,18 +1026,21 @@ namespace llarp
             || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
       // llarp::LogDebug("connect section has ", key, "=", val);
-      bootstrapRCList.emplace_back();
-      auto &rc = bootstrapRCList.back();
+      RouterContact rc;
       if(!rc.Read(val))
       {
         llarp::LogWarn("failed to decode bootstrap RC, file='", val,
                        "' rc=", rc);
-        bootstrapRCList.pop_back();
+        ;
         return;
       }
       if(rc.Verify(crypto(), Now()))
       {
-        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+        const auto result = bootstrapRCList.insert(std::move(rc));
+        if(result.second)
+          llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+        else
+          llarp::LogWarn("Duplicate bootstrap node ", RouterID(rc.pubkey));
       }
       else
       {
@@ -1007,7 +1053,6 @@ namespace llarp
         {
           llarp::LogError("malformed rc file='", val, "' rc=", rc);
         }
-        bootstrapRCList.pop_back();
       }
     }
     else if(StrEq(section, "router"))
@@ -1155,14 +1200,12 @@ namespace llarp
   }
 
   bool
-  Router::IsBootstrapNode(RouterID r) const
+  Router::IsBootstrapNode(const RouterID r) const
   {
-    for(const auto &rc : bootstrapRCList)
-    {
-      if(rc.pubkey == r)
-        return true;
-    }
-    return false;
+    return std::count_if(
+               bootstrapRCList.begin(), bootstrapRCList.end(),
+               [r](const RouterContact &rc) -> bool { return rc.pubkey == r; })
+        > 0;
   }
 
   void
@@ -1185,6 +1228,11 @@ namespace llarp
           LogError("Failed to update our RC");
       }
 
+      // kill nodes that are not allowed by network policy
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        return !ConnectionToRouterAllowed(rc.pubkey);
+      });
+
       // only do this as service node
       // client endpoints do this on their own
       nodedb()->visit([&](const RouterContact &rc) -> bool {
@@ -1197,14 +1245,29 @@ namespace llarp
     {
       // kill dead nodes if client
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        // don't kill first hop nodes
+        if(strictConnectPubkeys.count(rc.pubkey))
+          return false;
+        // don't kill "non-bad" nodes
         if(!routerProfiling().IsBad(rc.pubkey))
           return false;
         routerProfiling().ClearProfile(rc.pubkey);
+        // don't kill bootstrap nodes
         return !IsBootstrapNode(rc.pubkey);
       });
     }
     // expire transit paths
     paths.ExpirePaths(now);
+    {
+      auto itr = pendingEstablishJobs.begin();
+      while(itr != pendingEstablishJobs.end())
+      {
+        if(itr->second->TimeoutReached() && itr->second->Timeout())
+          itr = pendingEstablishJobs.erase(itr);
+        else
+          ++itr;
+      }
+    }
 
     {
       auto itr = m_PersistingSessions.begin();
@@ -1227,8 +1290,14 @@ namespace llarp
         }
         else
         {
-          LogInfo("commit to ", itr->first, " expired");
+          const RouterID r(itr->first);
+          LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
+          // close all the session because the commit to this router expired
+          ForEachPeer([&](ILinkSession *s) {
+            if(s->GetPubKey() == r)
+              s->Close();
+          });
         }
       }
     }
