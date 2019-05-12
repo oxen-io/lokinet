@@ -1232,12 +1232,14 @@ namespace llarp
           LogError("Failed to update our RC");
       }
 
+      /*
       // kill nodes that are not allowed by network policy
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
         if(IsBootstrapNode(rc.pubkey))
           return false;
         return !ConnectionToRouterAllowed(rc.pubkey);
       });
+      */
 
       // only do this as service node
       // client endpoints do this on their own
