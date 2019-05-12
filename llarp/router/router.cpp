@@ -1269,7 +1269,10 @@ namespace llarp
       while(itr != pendingEstablishJobs.end())
       {
         if(itr->second->TimeoutReached() && itr->second->Timeout())
+        {
+          LogWarn("failed to connect to ", itr->first);
           itr = pendingEstablishJobs.erase(itr);
+        }
         else
           ++itr;
       }
@@ -1282,7 +1285,7 @@ namespace llarp
         auto link = GetLinkWithSessionByPubkey(itr->first);
         if(now < itr->second)
         {
-          if(link)
+          if(link && link->HasSessionTo(itr->first))
           {
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
@@ -1299,11 +1302,6 @@ namespace llarp
           const RouterID r(itr->first);
           LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
-          // close all the session because the commit to this router expired
-          // ForEachPeer([&](ILinkSession *s) {
-          //   if(s->GetPubKey() == r)
-          //    s->Close();
-          // });
         }
       }
     }
