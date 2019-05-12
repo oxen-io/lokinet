@@ -65,7 +65,8 @@ struct TryConnectJob
   Failed()
   {
     llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
-    link->CloseSessionTo(rc.pubkey);
+    if(link)
+      link->CloseSessionTo(rc.pubkey);
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
   }
@@ -97,6 +98,8 @@ struct TryConnectJob
   Attempt()
   {
     --triesLeft;
+    if(!link)
+      return false;
     if(!link->TryEstablishTo(rc))
     {
       return true;
