@@ -287,34 +287,31 @@ namespace llarp
   void
   Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
   {
-    LogDebug("persist session to ", remote, " until ", until);
     m_PersistingSessions[remote] =
         std::max(until, m_PersistingSessions[remote]);
+    LogDebug("persist session to ", remote, " until ",
+             m_PersistingSessions[remote]);
   }
 
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
-    if(whitelistRouters)
-    {
-      const auto sz = lokinetRouters.size();
-      auto itr      = lokinetRouters.begin();
+    auto pick_router = [&](auto &collection) -> bool {
+      const auto sz = collection.size();
+      auto itr      = collection.begin();
       if(sz == 0)
         return false;
       if(sz > 1)
         std::advance(itr, randint() % sz);
       router = itr->first;
       return true;
+    };
+    if(whitelistRouters)
+    {
+      pick_router(lokinetRouters);
     }
     absl::ReaderMutexLock l(&nodedb()->access);
-    auto sz = nodedb()->entries.size();
-    if(sz == 0)
-      return false;
-    auto itr = nodedb()->entries.begin();
-    if(sz > 1)
-      std::advance(itr, randint() % sz);
-    router = itr->first;
-    return true;
+    return pick_router(nodedb()->entries);
   }
 
   void
