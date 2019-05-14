@@ -40,7 +40,7 @@ namespace llarp
 struct TryConnectJob
 {
   llarp_time_t lastAttempt = 0;
-  llarp::RouterContact rc;
+  const llarp::RouterContact rc;
   llarp::ILinkLayer *link;
   llarp::Router *router;
   uint16_t triesLeft;
@@ -103,9 +103,7 @@ struct TryConnectJob
     if(!link)
       return true;
     if(!link->TryEstablishTo(rc))
-    {
       return true;
-    }
     lastAttempt = router->Now();
     return false;
   }

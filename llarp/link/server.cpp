@@ -229,7 +229,7 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::Addr addr(to);
+    const llarp::Addr addr(to);
     {
       Lock l(&m_PendingMutex);
       if(m_Pending.count(addr) >= MaxSessionsPerKey)
