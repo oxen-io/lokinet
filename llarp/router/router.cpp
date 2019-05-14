@@ -78,6 +78,7 @@ struct TryConnectJob
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
+  /// return true to remove
   bool
   Timeout()
   {
@@ -94,12 +95,13 @@ struct TryConnectJob
     return true;
   }
 
+  /// return true to remove
   bool
   Attempt()
   {
     --triesLeft;
     if(!link)
-      return false;
+      return true;
     if(!link->TryEstablishTo(rc))
     {
       return true;
@@ -120,7 +122,7 @@ on_try_connecting(void *u)
 {
   TryConnectJob *j = static_cast< TryConnectJob * >(u);
 
-  if(!j->Attempt())
+  if(j->Attempt())
     j->router->pendingEstablishJobs.erase(j->rc.pubkey);
 }
 
