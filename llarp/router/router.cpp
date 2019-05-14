@@ -206,6 +206,10 @@ namespace llarp
         _logic->queue_job({job, &on_try_connecting});
         return true;
       }
+      else
+      {
+        itr.first->second->Attempt();
+      }
     }
     return false;
   }
