@@ -102,7 +102,6 @@ namespace llarp
         delete ctx;
         return;
       }
-      frame.Resize(buf.cur - buf.base);
       // use ephemeral keypair for frame
       SecretKey framekey;
       ctx->crypto->encryption_keygen(framekey);
@@ -116,6 +115,7 @@ namespace llarp
       if(isFarthestHop)
       {
         // farthest hop
+        // TODO: encrypt junk frames because our public keys are not eligator
         ctx->logic->queue_job({ctx, &HandleDone});
       }
       else
