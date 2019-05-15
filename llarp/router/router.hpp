@@ -279,7 +279,6 @@ namespace llarp
     std::string lokidRPCUser     = "";
     std::string lokidRPCPassword = "";
 
-    using LinkLayer_ptr = std::unique_ptr< ILinkLayer >;
     using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
 
     LinkSet outboundLinks;
@@ -298,7 +297,7 @@ namespace llarp
     std::unordered_map< RouterID, RouterContact, RouterID::Hash > validRouters;
 
     // pending establishing session with routers
-    std::unordered_map< RouterID, std::unique_ptr< TryConnectJob >,
+    std::unordered_map< RouterID, std::shared_ptr< TryConnectJob >,
                         RouterID::Hash >
         pendingEstablishJobs;
 

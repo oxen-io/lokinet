@@ -41,10 +41,10 @@ struct TryConnectJob
 {
   llarp_time_t lastAttempt = 0;
   const llarp::RouterContact rc;
-  llarp::ILinkLayer *link;
+  llarp::LinkLayer_ptr link;
   llarp::Router *router;
   uint16_t triesLeft;
-  TryConnectJob(const llarp::RouterContact &remote, llarp::ILinkLayer *l,
+  TryConnectJob(const llarp::RouterContact &remote, llarp::LinkLayer_ptr l,
                 uint16_t tries, llarp::Router *r)
       : rc(remote), link(l), router(r), triesLeft(tries)
   {
@@ -116,10 +116,8 @@ struct TryConnectJob
 };
 
 static void
-on_try_connecting(void *u)
+on_try_connecting(std::shared_ptr<TryConnectJob> j)
 {
-  TryConnectJob *j = static_cast< TryConnectJob * >(u);
-
   if(j->Attempt())
     j->router->pendingEstablishJobs.erase(j->rc.pubkey);
 }
@@ -193,15 +191,13 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
-      std::unique_ptr< TryConnectJob > j = std::make_unique< TryConnectJob >(
-          remote, link.get(), numretries, this);
-      auto itr = pendingEstablishJobs.emplace(remote.pubkey, std::move(j));
+      std::shared_ptr< TryConnectJob > job = std::make_shared< TryConnectJob >(
+          remote, link, numretries, this);
+      auto itr = pendingEstablishJobs.emplace(remote.pubkey, job);
       if(itr.second)
       {
-        // only try establishing if we inserted a new element
-        TryConnectJob *job = itr.first->second.get();
         // try establishing async
-        _logic->queue_job({job, &on_try_connecting});
+        _logic->queue_func(std::bind(&on_try_connecting, job));
         return true;
       }
       else
@@ -1973,12 +1969,12 @@ namespace llarp
     if(outboundLinks.size() > 0)
       return true;
 
-    static std::list< std::function< std::unique_ptr< ILinkLayer >(Router *) > >
+    static std::list< std::function< LinkLayer_ptr(Router *) > >
         linkFactories = {utp::NewServerFromRouter, iwp::NewServerFromRouter};
 
     for(const auto &factory : linkFactories)
     {
-      std::unique_ptr< ILinkLayer > link = factory(this);
+      auto link = factory(this);
       if(!link)
         continue;
       if(!link->EnsureKeys(transport_keyfile.string().c_str()))

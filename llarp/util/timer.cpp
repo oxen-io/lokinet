@@ -176,9 +176,11 @@ llarp_timer_stop(struct llarp_timer_context* t)
 {
   // destroy all timers
   // don't call callbacks on timers
-  llarp::util::Lock lock(&t->timersMutex);
-  t->timers.clear();
-  t->stop();
+  {
+    llarp::util::Lock lock(&t->timersMutex);
+    t->timers.clear();
+    t->stop();
+  }
   if(t->ticker)
     t->ticker->SignalAll();
 }

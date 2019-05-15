@@ -9,18 +9,17 @@ namespace llarp
   {
     using namespace std::placeholders;
 
-    std::unique_ptr< ILinkLayer >
+    LinkLaye_ptr
     NewServer(Crypto* crypto, const SecretKey& routerEncSecret, GetRCFunc getrc,
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed)
     {
-      return std::unique_ptr< ILinkLayer >(
-          new LinkLayer(crypto, routerEncSecret, getrc, h, sign, est, reneg,
-                        timeout, closed));
+      return std::make_shared< LinkLayer >(crypto, routerEncSecret, getrc, h, sign, est, reneg,
+                        timeout, closed);
     }
 
-    std::unique_ptr< ILinkLayer >
+    LinkLayer_ptr
     NewServerFromRouter(AbstractRouter* r)
     {
       using namespace std::placeholders;
