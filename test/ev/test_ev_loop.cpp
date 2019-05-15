@@ -55,7 +55,7 @@ struct EventLoopTest : public ::testing::Test
   void
   RunLoop()
   {
-    llarp_ev_loop_run_single_process(loop, _logic.thread, &_logic);
+    //llarp_ev_loop_run_single_process(loop, _logic.thread, &_logic);
   }
 };
 
