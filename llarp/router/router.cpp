@@ -75,7 +75,7 @@ struct TryConnectJob
   Success()
   {
     router->routerProfiling().MarkConnectSuccess(rc.pubkey);
-    router->FlushOutboundFor(rc.pubkey, link);
+    router->FlushOutboundFor(rc.pubkey, link.get());
   }
 
   /// return true to remove
@@ -478,12 +478,12 @@ namespace llarp
   }
 
   void
-  Router::AddLink(std::unique_ptr< ILinkLayer > link, bool inbound)
+  Router::AddLink(std::shared_ptr< ILinkLayer > link, bool inbound)
   {
     if(inbound)
-      inboundLinks.emplace(std::move(link));
+      inboundLinks.emplace(link);
     else
-      outboundLinks.emplace(std::move(link));
+      outboundLinks.emplace(link);
   }
 
   bool

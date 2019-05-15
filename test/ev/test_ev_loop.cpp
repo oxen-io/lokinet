@@ -28,6 +28,7 @@ struct EventLoopTest : public ::testing::Test
   SetUp()
   {
     loop = llarp_make_ev_loop();
+    _logic.start();
     _logic.call_later({10000, this, &OnTimeout});
   }
 

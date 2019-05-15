@@ -9,7 +9,7 @@ namespace llarp
   {
     using namespace std::placeholders;
 
-    LinkLaye_ptr
+    LinkLayer_ptr
     NewServer(Crypto* crypto, const SecretKey& routerEncSecret, GetRCFunc getrc,
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
