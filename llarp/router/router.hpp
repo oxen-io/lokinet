@@ -8,6 +8,7 @@
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
+#include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
