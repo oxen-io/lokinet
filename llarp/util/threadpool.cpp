@@ -61,7 +61,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
   {
     while(!pool->impl->tryAddJob(std::bind(job.work, job.user)))
     {
-      ::usleep(1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
   }
   else

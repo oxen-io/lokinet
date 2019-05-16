@@ -1,5 +1,7 @@
 #include <net/net_int.hpp>
 
+#include <string>
+
 namespace llarp
 {
   template <>
