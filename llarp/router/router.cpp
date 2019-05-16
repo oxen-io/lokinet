@@ -361,17 +361,9 @@ namespace llarp
     // queue buffer
     auto &q = outboundMessageQueue[remote];
 
-    if(q.size() < MaxPendingSendQueueSize)
-    {
-      buf.sz = buf.cur - buf.base;
-      q.emplace(buf.sz);
-      memcpy(q.back().data(), buf.base, buf.sz);
-    }
-    else
-    {
-      LogWarn("tried to queue a message to ", remote,
-              " but the queue is full so we drop it like it's hawt");
-    }
+    buf.sz = buf.cur - buf.base;
+    q.emplace(buf.sz);
+    memcpy(q.back().data(), buf.base, buf.sz);
     RouterContact remoteRC;
     // we don't have an open session to that router right now
     if(nodedb()->Get(remote, remoteRC))
