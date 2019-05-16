@@ -346,9 +346,12 @@ namespace llarp
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)
         {
-          shiftedIntro = true;
-          m_NextIntro  = intro;
-          break;
+          if(intro.expiresAt > m_NextIntro.expiresAt)
+          {
+            shiftedIntro = true;
+            m_NextIntro  = intro;
+            break;
+          }
         }
       }
       if(!shiftedIntro)
@@ -362,10 +365,13 @@ namespace llarp
           if(itr == m_BadIntros.end())
           {
             // TODO: this should always be true but idk if it really is
-            shiftedRouter = m_NextIntro.router != intro.router;
-            shiftedIntro  = true;
-            m_NextIntro   = intro;
-            break;
+            if(intro.expiresAt > m_NextIntro.expiresAt)
+            {
+              shiftedRouter = m_NextIntro.router != intro.router;
+              shiftedIntro  = true;
+              m_NextIntro   = intro;
+              break;
+            }
           }
         }
       }
