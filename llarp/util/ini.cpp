@@ -4,6 +4,10 @@
 #include <iostream>
 #include <util/logger.hpp>
 
+#ifdef LoadString
+#undef LoadString
+#endif
+
 namespace llarp
 {
   bool
