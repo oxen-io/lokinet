@@ -348,7 +348,10 @@ llarp_kqueue_loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
   }
 
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
-  add_ev(conn, true);
+  if (!add_ev(conn, true))
+  {
+    return false;
+  }
   conn->connect();
   return true;
 }
