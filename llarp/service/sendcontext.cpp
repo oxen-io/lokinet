@@ -111,7 +111,7 @@ namespace llarp
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
-        if(!ShiftIntroduction(now))
+        if(!ShiftIntroduction())
         {
           LogWarn("no good path yet, your message may drop");
         }
