@@ -805,7 +805,11 @@ namespace llarp
           return true;
         }
         else
-          LogError("failed to send request for router lookup");
+          LogError("failed to send request for router lookup for ", router);
+      }
+      else
+      {
+        LogWarn("no pending routers for router lookup for", router);
       }
       return false;
     }
