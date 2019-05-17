@@ -8,6 +8,7 @@
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
+#include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
@@ -55,19 +56,6 @@ struct TryConnectJob;
 
 namespace llarp
 {
-  template < typename T >
-  struct CompareLinks
-  {
-    bool
-    operator()(const std::unique_ptr< T > &left,
-               const std::unique_ptr< T > &right) const
-    {
-      const std::string leftName  = left->Name();
-      const std::string rightName = right->Name();
-      return left->Rank() < right->Rank() || leftName < rightName;
-    }
-  };
-
   struct Router final : public AbstractRouter
   {
     bool ready;
@@ -259,7 +247,7 @@ namespace llarp
     std::set< RouterID > strictConnectPubkeys;
 
     /// bootstrap RCs
-    std::list< RouterContact > bootstrapRCList;
+    std::set< RouterContact > bootstrapRCList;
 
     bool
     ExitEnabled() const
@@ -292,10 +280,10 @@ namespace llarp
     std::string lokidRPCUser     = "";
     std::string lokidRPCPassword = "";
 
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        outboundLinks;
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        inboundLinks;
+    using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
+
+    LinkSet outboundLinks;
+    LinkSet inboundLinks;
 
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";
@@ -310,7 +298,7 @@ namespace llarp
     std::unordered_map< RouterID, RouterContact, RouterID::Hash > validRouters;
 
     // pending establishing session with routers
-    std::unordered_map< RouterID, std::unique_ptr< TryConnectJob >,
+    std::unordered_map< RouterID, std::shared_ptr< TryConnectJob >,
                         RouterID::Hash >
         pendingEstablishJobs;
 
@@ -342,7 +330,7 @@ namespace llarp
                                 const llarp_buffer_t &msg) override;
 
     void
-    AddLink(std::unique_ptr< ILinkLayer > link, bool outbound = false);
+    AddLink(std::shared_ptr< ILinkLayer > link, bool outbound = false);
 
     bool
     InitOutboundLinks();
@@ -442,7 +430,7 @@ namespace llarp
     FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
 
     void
-    LookupRouter(RouterID remote) override;
+    LookupRouter(RouterID remote, RouterLookupHandler handler) override;
 
     /// manually discard all pending messages to remote router
     void
@@ -513,17 +501,32 @@ namespace llarp
     void
     ConnectToRandomRouters(int N) override;
 
+    /// count the number of unique service nodes connected via pubkey
     size_t
     NumberOfConnectedRouters() const override;
 
+    /// count the number of unique clients connected by pubkey
+    size_t
+    NumberOfConnectedClients() const override;
+
+    /// count unique router id's given filter to match session
+    size_t
+    NumberOfRoutersMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
+
+    /// count the number of connections that match filter
+    size_t
+    NumberOfConnectionsMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
+
     bool
-    TryConnectAsync(RouterContact rc, uint16_t tries);
+    TryConnectAsync(RouterContact rc, uint16_t tries) override;
 
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;
 
     bool
-    async_verify_RC(const RouterContact &rc);
+    async_verify_RC(const RouterContact rc);
 
     void
     HandleDHTLookupForSendTo(RouterID remote,

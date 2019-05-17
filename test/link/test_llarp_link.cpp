@@ -54,7 +54,7 @@ struct LinkLayerTest : public ::testing::Test
       return rc.Sign(crypto, signingKey);
     }
 
-    std::unique_ptr< llarp::ILinkLayer > link;
+    std::shared_ptr< llarp::ILinkLayer > link;
 
     static std::string
     localLoopBack()

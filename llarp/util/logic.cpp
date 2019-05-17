@@ -55,10 +55,10 @@ namespace llarp
     llarp_timer_run(this->timer, this->thread);
   }
 
-  void
+  bool
   Logic::queue_func(std::function< void(void) > f)
   {
-    this->thread->QueueFunc(f);
+    return this->thread->QueueFunc(f);
   }
 
   uint32_t

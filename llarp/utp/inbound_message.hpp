@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+#include <util/alloc.hpp>
+
 namespace llarp
 {
   namespace utp
@@ -46,7 +48,7 @@ namespace llarp
     using MessageBuffer = AlignedBuffer< MAX_LINK_MSG_SIZE >;
 
     /// pending inbound message being received
-    struct InboundMessage
+    struct _InboundMessage
     {
       /// timestamp of last activity
       llarp_time_t lastActive;
@@ -55,17 +57,6 @@ namespace llarp
 
       /// for accessing message buffer
       llarp_buffer_t buffer;
-
-      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
-      {
-      }
-
-      InboundMessage(const InboundMessage& other)
-          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
-      {
-        buffer.cur = buffer.base + (other.buffer.cur - other.buffer.base);
-        buffer.sz  = other.buffer.sz;
-      }
 
       /// return true if this inbound message can be removed due to expiration
       bool
@@ -77,13 +68,20 @@ namespace llarp
       /// return true on success
       bool
       AppendData(const byte_t* ptr, uint16_t sz);
+
+      _InboundMessage() : lastActive(0), _msg(), buffer(_msg)
+      {
+      }
     };
 
     inline bool
-    operator==(const InboundMessage& lhs, const InboundMessage& rhs)
+    operator==(const _InboundMessage& lhs, const _InboundMessage& rhs)
     {
       return lhs.buffer.base == rhs.buffer.base;
     }
+
+    using InboundMessage = std::shared_ptr< _InboundMessage >;
+
   }  // namespace utp
 
 }  // namespace llarp

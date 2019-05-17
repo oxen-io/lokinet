@@ -2,6 +2,11 @@
 #include <fstream>
 #include <list>
 #include <iostream>
+#include <util/logger.hpp>
+
+#ifdef LoadString
+#undef LoadString
+#endif
 
 namespace llarp
 {
@@ -19,6 +24,7 @@ namespace llarp
         return false;
       f.read(m_Data.data(), m_Data.size());
     }
+    m_FileName = fname;
     return Parse();
   }
 
@@ -27,6 +33,7 @@ namespace llarp
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());
+    m_FileName = "<anonymous string>";
     return Parse();
   }
 
@@ -63,9 +70,10 @@ namespace llarp
     }
 
     String_t sectName;
-
+    size_t lineno = 0;
     for(const auto& line : lines)
     {
+      lineno++;
       String_t realLine;
       auto comment = line.find_first_of(';');
       if(comment == String_t::npos)
@@ -114,13 +122,21 @@ namespace llarp
           --v_end;
 
         // sect.k = v
-        String_t k      = realLine.substr(k_start, k_end - k_start);
-        String_t v      = realLine.substr(v_start, 1 + (v_end - v_start));
+        String_t k = realLine.substr(k_start, k_end - k_start);
+        String_t v = realLine.substr(v_start, 1 + (v_end - v_start));
+        if(k.size() == 0 || v.size() == 0)
+        {
+          LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
+          return false;
+        }
         Section_t& sect = m_Config[sectName];
         sect.emplace(k, v);
       }
       else  // malformed?
+      {
+        LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
         return false;
+      }
     }
     return true;
   }

@@ -101,7 +101,6 @@ namespace llarp
         LogError("No cached session key");
         return;
       }
-      ++sequenceNo;
       Send(f, path);
     }
 
@@ -112,7 +111,7 @@ namespace llarp
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
-        if(!MarkCurrentIntroBad(now))
+        if(!ShiftIntroduction())
         {
           LogWarn("no good path yet, your message may drop");
         }

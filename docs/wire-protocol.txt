@@ -5,17 +5,21 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in RFC 2119 [RFC2119].
 
-LLARP supports by default an authenticated message transport over a
-datagram based network layer.
+LLARP's wire protocol is Internet Wire Protocol (IWP)
 
+The main goal of iwp is to provide an authenticated encrypted
+reliable semi-ordered durable datagram transfer protocol supporting
+datagrams of larger size than link mtu.
 
-protocol phases:
+in iwp there is an initiator who initiates a session to a recipiant.
 
-first phase: proof of flow
-second phase: session handshake
-thrid phase: data transmission
+iwp has 3 phases. the first phase is the proof of flow phase.
+the second is a session handshake phase, the third is data transmission.
 
 proof of flow:
+
+the purpose of the proof of flow phase is to verify the existence
+of the initiator's endpoint.
 
 At any time before the data transfer phase a reject message
 is sent the session is reset.

@@ -28,7 +28,8 @@ namespace llarp
 
       BaseSession(const llarp::RouterID& exitRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,
-                  AbstractRouter* r, size_t numpaths, size_t hoplen);
+                  AbstractRouter* r, size_t numpaths, size_t hoplen,
+                  bool bundleRC);
 
       virtual ~BaseSession();
 
@@ -38,15 +39,22 @@ namespace llarp
         return shared_from_this();
       }
 
+      void
+      BlacklistSnode(const RouterID snode);
+
       util::StatusObject
       ExtractStatus() const;
 
       bool
       ShouldBundleRC() const override
       {
-        // TODO: make configurable
-        return false;
+        return m_BundleRC;
       }
+
+      virtual void
+      ResetInternalState() override;
+
+      bool UrgentBuild(llarp_time_t) const override;
 
       void
       HandlePathDied(llarp::path::Path_ptr p) override;
@@ -55,8 +63,9 @@ namespace llarp
       CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
       bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, llarp::path::PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop,
+                llarp::path::PathRole roles) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -123,6 +132,8 @@ namespace llarp
                     uint64_t seqno);
 
      private:
+      std::set< RouterID > m_SnodeBlacklist;
+
       using UpstreamTrafficQueue_t =
           std::deque< llarp::routing::TransferTrafficMessage >;
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;
@@ -148,6 +159,7 @@ namespace llarp
       llarp_time_t m_LastUse;
 
       std::vector< SessionReadyFunc > m_PendingCallbacks;
+      const bool m_BundleRC;
 
       void
       CallPendingCallbacks(bool success);
@@ -157,8 +169,9 @@ namespace llarp
     {
       ExitSession(const llarp::RouterID& snodeRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,
-                  AbstractRouter* r, size_t numpaths, size_t hoplen)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+                  AbstractRouter* r, size_t numpaths, size_t hoplen,
+                  bool bundleRC)
+          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
       {
       }
 
@@ -182,7 +195,7 @@ namespace llarp
       SNodeSession(const llarp::RouterID& snodeRouter,
                    std::function< bool(const llarp_buffer_t&) > writepkt,
                    AbstractRouter* r, size_t numpaths, size_t hoplen,
-                   bool useRouterSNodeKey = false);
+                   bool useRouterSNodeKey, bool bundleRC);
 
       ~SNodeSession() = default;
 

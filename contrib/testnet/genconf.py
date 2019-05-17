@@ -45,7 +45,8 @@ def main():
         config['router'] = {
             'net-threads': '1',
             'worker-threads': '4',
-            'nickname': svcNodeName(nodeid)
+            'nickname': svcNodeName(nodeid),
+            'min-connections': "{}".format(args.connect)
         }
         if args.netid:
             config['router']['netid'] = args.netid
@@ -72,11 +73,8 @@ def main():
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            if nodeid == 0:
-                otherID = 1
-            else:
-                otherID = nodeid - 1
-            f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
+            for n in range(args.connect):
+                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName((nodeid + 1 + n) % args.svc), 'rc.signed')))
 
         
     for nodeid in range(args.clients):
@@ -106,14 +104,12 @@ def main():
         config['services'] = {
             'testnet': hiddenservice
         }
-        fp = os.path.join(d, 'daemon.ini')
+        fp = os.path.join(d, 'client.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            if nodeid == 0:
-                otherID = 1
-            else:
-                otherID = nodeid - 1
-            f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
+            for n in range(args.connect):
+                otherID = (n + nodeid) % args.svc
+                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
         with open(hiddenservice, 'w') as f:
             f.write('''[test-service]
 tag=test
@@ -133,9 +129,9 @@ stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
 '''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), exe, args.dir, args.svc))
-        f.write('''[program:client-node]
+        f.write('''[program:Client-node]
 directory = {}
-command = {} daemon.ini
+command = bash -c "sleep 5 && {} client.ini"
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1

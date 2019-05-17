@@ -13,7 +13,7 @@ namespace llarp
     struct MessageDecoder
     {
       const Key_t &From;
-      std::unique_ptr< IMessage > msg;
+      IMessage::Ptr_t msg;
       bool firstKey = true;
       bool relayed  = false;
 
@@ -83,7 +83,7 @@ namespace llarp
       }
     };
 
-    std::unique_ptr< IMessage >
+    IMessage::Ptr_t
     DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
     {
       MessageDecoder dec(from);
@@ -94,20 +94,19 @@ namespace llarp
       if(!bencode_read_dict(buf, &r))
         return nullptr;
 
-      return std::unique_ptr< IMessage >(std::move(dec.msg));
+      return std::move(dec.msg);
     }
 
     struct ListDecoder
     {
-      ListDecoder(const Key_t &from,
-                  std::vector< std::unique_ptr< IMessage > > &list)
+      ListDecoder(const Key_t &from, std::vector< IMessage::Ptr_t > &list)
           : From(from), l(list)
       {
       }
 
       bool relayed = false;
       const Key_t &From;
-      std::vector< std::unique_ptr< IMessage > > &l;
+      std::vector< IMessage::Ptr_t > &l;
 
       static bool
       on_item(list_reader *r, bool has)
@@ -128,8 +127,7 @@ namespace llarp
 
     bool
     DecodeMesssageList(Key_t from, llarp_buffer_t *buf,
-                       std::vector< std::unique_ptr< IMessage > > &list,
-                       bool relayed)
+                       std::vector< IMessage::Ptr_t > &list, bool relayed)
     {
       ListDecoder dec(from, list);
       dec.relayed = relayed;

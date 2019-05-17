@@ -46,7 +46,7 @@ namespace llarp
         }
         std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
 
-        LogInfo(lookup->name, " timed out txid=", lookup->txid);
+        LogWarn(lookup->name, " timed out txid=", lookup->txid);
         lookup->HandleResponse({});
         itr = lookups.erase(itr);
       }
@@ -63,7 +63,8 @@ namespace llarp
           ++itr;
           continue;
         }
-        LogInfo("lookup for ", itr->first, " timed out");
+        LogWarn("lookup for ", itr->first, " timed out");
+        itr->second.InformResult({});
         itr = routers.erase(itr);
       }
     }
@@ -153,6 +154,27 @@ namespace llarp
         ++itr;
       }
       return false;
+    }
+
+    bool
+    EndpointUtil::GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
+                                         const ServiceInfo& info,
+                                         std::set< ConvoTag >& tags)
+    {
+      bool inserted = false;
+      auto itr      = sessions.begin();
+      while(itr != sessions.end())
+      {
+        if(itr->second.remote == info)
+        {
+          if(tags.insert(itr->first).second)
+          {
+            inserted = true;
+          }
+        }
+        ++itr;
+      }
+      return inserted;
     }
   }  // namespace service
 }  // namespace llarp

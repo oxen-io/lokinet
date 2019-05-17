@@ -202,6 +202,13 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
 
+    bool
+    operator<(const ILinkLayer& other) const
+    {
+      return Rank() < other.Rank() || Name() < other.Name()
+          || m_ourAddr < other.m_ourAddr;
+    }
+
     /// called by link session to remove a pending session who is timed out
     // void
     // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
@@ -250,6 +257,8 @@ namespace llarp
     Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
     Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
+
+  using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;
 }  // namespace llarp
 
 #endif

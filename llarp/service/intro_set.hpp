@@ -48,6 +48,9 @@ namespace llarp
       GetNewestIntroExpiration() const;
 
       bool
+      GetNewestIntro(Introduction& intro) const;
+
+      bool
       HasExpiredIntros(llarp_time_t now) const;
 
       bool

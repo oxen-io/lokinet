@@ -75,7 +75,8 @@ namespace llarp
           ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
       if(pathset)
       {
-        return pathset->HandleGotIntroMessage(this);
+        auto copy = std::make_shared< const RelayedGotIntroMessage >(*this);
+        return pathset->HandleGotIntroMessage(copy);
       }
       llarp::LogWarn("No path for got intro message pathid=", pathID);
       return false;

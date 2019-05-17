@@ -65,6 +65,22 @@ namespace llarp
       {
         m_BundleRC = IsTrueValue(v.c_str());
       }
+      if(k == "blacklist-snode")
+      {
+        RouterID snode;
+        if(!snode.FromString(v))
+        {
+          LogError(Name(), " invalid snode value: ", v);
+          return false;
+        }
+        const auto result = m_SnodeBlacklist.insert(snode);
+        if(!result.second)
+        {
+          LogError(Name(), " duplicate blacklist-snode: ", snode.ToString());
+          return false;
+        }
+        LogInfo(Name(), " adding ", snode.ToString(), " to blacklist");
+      }
       if(k == "on-up")
       {
         m_OnUp = hooks::ExecShellBackend(v);
@@ -143,15 +159,15 @@ namespace llarp
         return;
       }
       m_IntroSet.I.clear();
-      for(const auto& intro : I)
+      for(auto& intro : I)
       {
-        if(router->routerProfiling().IsBadForPath(intro.router))
-          continue;
-        m_IntroSet.I.push_back(intro);
+        m_IntroSet.I.emplace_back(std::move(intro));
       }
       if(m_IntroSet.I.size() == 0)
       {
         LogWarn("not enough intros to publish introset for ", Name());
+        if(ShouldBuildMore(now) || forceRebuild)
+          ManualRebuild(1);
         return;
       }
       m_IntroSet.topic = m_Tag;
@@ -200,20 +216,10 @@ namespace llarp
       if(!m_Tag.IsZero())
         obj.Put("tag", m_Tag.ToString());
 
-      auto putContainer = [](util::StatusObject& o, const std::string& keyname,
-                             const auto& container) {
-        std::vector< util::StatusObject > objs;
-        std::transform(container.begin(), container.end(),
-                       std::back_inserter(objs),
-                       [](const auto& item) -> util::StatusObject {
-                         return item.second->ExtractStatus();
-                       });
-        o.Put(keyname, objs);
-      };
-      putContainer(obj, "deadSessions", m_DeadSessions);
-      putContainer(obj, "remoteSessions", m_RemoteSessions);
-      putContainer(obj, "snodeSessions", m_SNodeSessions);
-      putContainer(obj, "lookups", m_PendingLookups);
+      obj.PutContainer("deadSessions", m_DeadSessions);
+      obj.PutContainer("remoteSessions", m_RemoteSessions);
+      obj.PutContainer("snodeSessions", m_SNodeSessions);
+      obj.PutContainer("lookups", m_PendingLookups);
 
       util::StatusObject sessionObj{};
 
@@ -252,7 +258,7 @@ namespace llarp
       // prefetch addrs
       for(const auto& addr : m_PrefetchAddrs)
       {
-        if(!HasPathToService(addr))
+        if(!EndpointUtil::HasPathToService(addr, m_RemoteSessions))
         {
           if(!EnsurePathToService(
                  addr,
@@ -341,12 +347,6 @@ namespace llarp
       return m_Name + ":" + m_Identity.pub.Name();
     }
 
-    bool
-    Endpoint::HasPathToService(const Address& addr) const
-    {
-      return EndpointUtil::HasPathToService(addr, m_RemoteSessions);
-    }
-
     void
     Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
     {
@@ -357,7 +357,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleGotIntroMessage(const dht::GotIntroMessage* msg)
+    Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
       auto crypto = m_Router->crypto();
       std::set< IntroSet > remote;
@@ -465,17 +465,7 @@ namespace llarp
     Endpoint::GetConvoTagsForService(const ServiceInfo& info,
                                      std::set< ConvoTag >& tags) const
     {
-      bool inserted = false;
-      auto itr      = m_Sessions.begin();
-      while(itr != m_Sessions.end())
-      {
-        if(itr->second.remote == info)
-        {
-          inserted |= tags.insert(itr->first).second;
-        }
-        ++itr;
-      }
-      return inserted;
+      return EndpointUtil::GetConvoTagsForService(m_Sessions, info, tags);
     }
 
     bool
@@ -622,6 +612,18 @@ namespace llarp
       return false;
     }
 
+    void
+    Endpoint::ResetInternalState()
+    {
+      path::Builder::ResetInternalState();
+      static auto resetState = [](auto& container) {
+        std::for_each(container.begin(), container.end(),
+                      [](auto& item) { item.second->ResetInternalState(); });
+      };
+      resetState(m_RemoteSessions);
+      resetState(m_SNodeSessions);
+    }
+
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
@@ -674,6 +676,17 @@ namespace llarp
     }
 
     bool
+    Endpoint::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                        RouterContact& cur, size_t hop, path::PathRole roles)
+
+    {
+      std::set< RouterID > exclude = prev;
+      for(const auto& snode : m_SnodeBlacklist)
+        exclude.insert(snode);
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    bool
     Endpoint::ShouldBundleRC() const
     {
       return m_BundleRC;
@@ -715,23 +728,50 @@ namespace llarp
       m_PendingServiceLookups.erase(addr);
     }
 
-    bool
-    Endpoint::HandleGotRouterMessage(const dht::GotRouterMessage* msg)
+    void
+    Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg,
+                                    llarp_async_verify_rc* j)
     {
-      if(msg->R.size() == 1)
+      auto itr = m_PendingRouters.find(msg->R[0].pubkey);
+      if(itr != m_PendingRouters.end())
       {
-        auto itr = m_PendingRouters.find(msg->R[0].pubkey);
-        if(itr == m_PendingRouters.end())
-          return false;
+        if(j->valid)
+          itr->second.InformResult(msg->R);
+        else
+          itr->second.InformResult({});
+        m_PendingRouters.erase(itr);
+      }
+      delete j;
+    }
+
+    bool
+    Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
+    {
+      if(msg->R.size())
+      {
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->threadpool();
         job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
-        job->hook                  = nullptr;
-        job->rc                    = msg->R[0];
+        job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
+                              std::placeholders::_1);
+        job->rc   = msg->R[0];
         llarp_nodedb_async_verify(job);
-        m_PendingRouters.erase(itr);
+      }
+      else
+      {
+        auto itr = m_PendingRouters.begin();
+        while(itr != m_PendingRouters.end())
+        {
+          if(itr->second.txid == msg->txid)
+          {
+            itr->second.InformResult({});
+            itr = m_PendingRouters.erase(itr);
+          }
+          else
+            ++itr;
+        }
       }
       return true;
     }
@@ -741,15 +781,14 @@ namespace llarp
     {
       if(router.IsZero())
         return;
-      RouterContact rc;
-      if(!m_Router->nodedb()->Get(router, rc))
+      if(!m_Router->nodedb()->Has(router))
       {
-        LookupRouterAnon(router);
+        LookupRouterAnon(router, nullptr);
       }
     }
 
     bool
-    Endpoint::LookupRouterAnon(RouterID router)
+    Endpoint::LookupRouterAnon(RouterID router, RouterLookupHandler handler)
     {
       if(m_PendingRouters.find(router) == m_PendingRouters.end())
       {
@@ -762,7 +801,7 @@ namespace llarp
         if(path && path->SendRoutingMessage(msg, m_Router))
         {
           LogInfo(Name(), " looking up ", router);
-          m_PendingRouters.emplace(router, RouterLookupJob(this));
+          m_PendingRouters.emplace(router, RouterLookupJob(this, handler));
           return true;
         }
         else
@@ -798,7 +837,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
+    Endpoint::HandleDataMessage(const PathID_t& src,
+                                std::shared_ptr< ProtocolMessage > msg)
     {
       auto path = GetPathByID(src);
       if(path)
@@ -826,7 +866,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::ProcessDataMessage(ProtocolMessage* msg)
+    Endpoint::ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg)
     {
       if(msg->proto == eProtocolTraffic)
       {
@@ -880,9 +920,13 @@ namespace llarp
 
         if(!f.Sign(crypto(), m_Identity))
           return false;
-        auto d =
-            std::make_shared< const routing::PathTransferMessage >(f, frame.F);
-        RouterLogic()->queue_func([=]() { p->SendRoutingMessage(*d, router); });
+        {
+          util::Lock lock(&m_SendQueueMutex);
+          m_SendQueue.emplace_back(
+              std::make_shared< const routing::PathTransferMessage >(f,
+                                                                     frame.F),
+              p);
+        }
         return true;
       }
       return true;
@@ -981,7 +1025,7 @@ namespace llarp
             snode,
             std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
                       [themIP]() -> huint32_t { return themIP; }),
-            m_Router, m_NumPaths, numHops);
+            m_Router, m_NumPaths, numHops, false, ShouldBundleRC());
         m_SNodeSessions.emplace(snode, session);
       }
       EnsureRouterIsKnown(snode);
@@ -1102,7 +1146,7 @@ namespace llarp
         }
       }
       // outbound converstation
-      if(HasPathToService(remote))
+      if(EndpointUtil::HasPathToService(remote, m_RemoteSessions))
       {
         auto range = m_RemoteSessions.equal_range(remote);
         auto itr   = range.first;
@@ -1156,20 +1200,19 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      bool should = path::Builder::ShouldBuildMore(now);
+      const bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
         return should;
       // time from now that the newest intro expires at
-      if(now >= intro.expiresAt)
+      if(intro.ExpiresSoon(now))
         return should;
-      auto dlt = now - intro.expiresAt;
+      const auto dlt = intro.expiresAt - now;
       return should
           || (  // try spacing tunnel builds out evenly in time
-                 (dlt < (path::default_lifetime / 2))
-                 && (NumInStatus(path::ePathBuilding) < m_NumPaths)
-                 && (dlt > buildIntervalLimit));
+                 (dlt <= (path::default_lifetime / 4)) &&
+                 (NumInStatus(path::ePathBuilding) < m_NumPaths));
     }
 
     Logic*

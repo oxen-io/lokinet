@@ -38,6 +38,11 @@ namespace llarp
       static bool
       HasPathToService(const Address& addr,
                        const Endpoint::Sessions& remoteSessions);
+
+      static bool
+      GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
+                             const ServiceInfo& info,
+                             std::set< ConvoTag >& tags);
     };
   }  // namespace service
 

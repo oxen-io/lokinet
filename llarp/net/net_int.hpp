@@ -55,7 +55,7 @@ namespace llarp
       ++h;
       return *this;
     }
-    
+
     inline huint_t
     operator--()
     {
@@ -98,9 +98,8 @@ namespace llarp
     }
   };
 
-  using huint128_t = huint_t< __uint128_t >;
-  using huint32_t  = huint_t< uint32_t >;
-  using huint16_t  = huint_t< uint16_t >;
+  using huint32_t = huint_t< uint32_t >;
+  using huint16_t = huint_t< uint16_t >;
 
   template < typename UInt_t >
   struct nuint_t
@@ -178,9 +177,8 @@ namespace llarp
     }
   };
 
-  using nuint128_t = nuint_t< __uint128_t >;
-  using nuint32_t  = nuint_t< uint32_t >;
-  using nuint16_t  = nuint_t< uint16_t >;
+  using nuint32_t = nuint_t< uint32_t >;
+  using nuint16_t = nuint_t< uint16_t >;
 
   static inline nuint32_t
   xhtonl(huint32_t x)

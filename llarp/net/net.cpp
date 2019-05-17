@@ -37,7 +37,7 @@ operator==(const sockaddr& a, const sockaddr& b)
 bool
 operator<(const sockaddr_in6& a, const sockaddr_in6& b)
 {
-  return memcmp(&a, &b, sizeof(sockaddr_in6)) < 0;
+  return a.sin6_addr < b.sin6_addr || a.sin6_port < b.sin6_port;
 }
 
 bool

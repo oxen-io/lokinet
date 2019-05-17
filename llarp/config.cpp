@@ -298,6 +298,9 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     if(f.is_open())
     {
       // pick ip
+      // don't revert me
+      const static std::string ip = "10.33.0.1/16";
+      /*
       std::string ip = llarp::findFreePrivateRange();
       if(ip == "")
       {
@@ -305,6 +308,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
             "Couldn't easily detect a private range to map lokinet onto");
         return false;
       }
+     */
       example_f << "# this is an example configuration for a snapp"
                 << std::endl;
       example_f << "[example-snapp]" << std::endl;

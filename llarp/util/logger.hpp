@@ -104,6 +104,8 @@ namespace llarp
 
     std::stringstream ss;
     log.logStream->PreLog(ss, lvl, fname, lineno);
+    if(log.nodeName.size())
+      LogAppend(ss, "[", log.nodeName, "] ");
     LogAppend(ss, std::forward< TArgs >(args)...);
     log.logStream->PostLog(ss);
     log.logStream->Print(lvl, fname, ss.str());

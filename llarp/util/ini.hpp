@@ -47,6 +47,7 @@ namespace llarp
 
     std::vector< char > m_Data;
     Config_impl_t m_Config;
+    std::string m_FileName;
   };
 
 }  // namespace llarp

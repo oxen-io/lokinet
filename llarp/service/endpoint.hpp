@@ -1,6 +1,7 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 
+#include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
 #include <net/net.hpp>
@@ -20,6 +21,8 @@
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL (5 * 1000)
 #endif
+
+struct llarp_async_verify_rc;
 
 namespace llarp
 {
@@ -82,6 +85,9 @@ namespace llarp
         return huint32_t{0};
       }
 
+      virtual void
+      ResetInternalState() override;
+
       /// router's logic
       /// use when sending any data on a path
       Logic*
@@ -135,18 +141,16 @@ namespace llarp
       PublishIntroSetVia(AbstractRouter* r, path::Path_ptr p);
 
       bool
-      HandleGotIntroMessage(const dht::GotIntroMessage* msg) override;
+      HandleGotIntroMessage(
+          std::shared_ptr< const dht::GotIntroMessage > msg) override;
 
       bool
-      HandleGotRouterMessage(const dht::GotRouterMessage* msg) override;
+      HandleGotRouterMessage(
+          std::shared_ptr< const dht::GotRouterMessage > msg) override;
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
-
-      /// return true if we have an established path to a hidden service
-      bool
-      HasPathToService(const Address& remote) const;
 
       virtual huint32_t
       ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
@@ -165,14 +169,15 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(const PathID_t&, ProtocolMessage* msg) override;
+      HandleDataMessage(const PathID_t&,
+                        std::shared_ptr< ProtocolMessage > msg) override;
 
       virtual bool
       HandleWriteIPPacket(const llarp_buffer_t& pkt,
                           std::function< huint32_t(void) > getFromIP) = 0;
 
       bool
-      ProcessDataMessage(ProtocolMessage* msg);
+      ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg);
 
       /// ensure that we know a router, looks up if it doesn't
       void
@@ -180,7 +185,7 @@ namespace llarp
 
       /// lookup a router via closest path
       bool
-      LookupRouterAnon(RouterID router);
+      LookupRouterAnon(RouterID router, RouterLookupHandler handler);
 
       /// called on event loop pump
       virtual void
@@ -289,6 +294,10 @@ namespace llarp
       uint64_t
       GetSeqNoForConvo(const ConvoTag& tag);
 
+      virtual bool
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, path::PathRole roles) override;
+
       virtual void
       IntroSetPublishFail();
       virtual void
@@ -320,6 +329,10 @@ namespace llarp
       RunIsolatedMainLoop(void*);
 
      private:
+      void
+      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg,
+                            llarp_async_verify_rc* j);
+
       bool
       OnLookup(const service::Address& addr, const IntroSet* i,
                const RouterID& endpoint); /*  */
@@ -344,6 +357,9 @@ namespace llarp
         return false;
       }
 
+     public:
+      std::set< RouterID > m_SnodeBlacklist;
+
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
@@ -355,6 +371,55 @@ namespace llarp
      private:
       friend struct EndpointUtil;
 
+      struct RouterLookupJob
+      {
+        RouterLookupJob(Endpoint* p, RouterLookupHandler h) : handler(h)
+        {
+          started = p->Now();
+          txid    = p->GenTXID();
+        }
+
+        RouterLookupHandler handler;
+        uint64_t txid;
+        llarp_time_t started;
+
+        bool
+        IsExpired(llarp_time_t now) const
+        {
+          if(now < started)
+            return false;
+          return now - started > 30000;
+        }
+
+        void
+        InformResult(std::vector< RouterContact > result)
+        {
+          if(handler)
+            handler(result);
+        }
+      };
+
+      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
+      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
+      using PendingTraffic =
+          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
+
+      using PendingRouters =
+          std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
+
+      using PendingLookups =
+          std::unordered_map< uint64_t,
+                              std::unique_ptr< service::IServiceLookup > >;
+
+      using Sessions =
+          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
+                                   Address::Hash >;
+
+      using SNodeSessions = std::unordered_multimap<
+          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
+
+      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+
       AbstractRouter* m_Router;
       llarp_threadpool* m_IsolatedWorker  = nullptr;
       Logic* m_IsolatedLogic              = nullptr;
@@ -364,26 +429,14 @@ namespace llarp
       std::string m_NetNS;
       bool m_BundleRC = false;
 
-      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
-      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
       util::Mutex m_SendQueueMutex;
-      std::deque< SendEvent_t > m_SendQueue;
-
-      using PendingTraffic =
-          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
+      std::deque< SendEvent_t > m_SendQueue GUARDED_BY(m_SendQueueMutex);
 
       PendingTraffic m_PendingTraffic;
 
-      using Sessions =
-          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
-                                   Address::Hash >;
       Sessions m_RemoteSessions;
-
       Sessions m_DeadSessions;
 
-      using SNodeSessions = std::unordered_multimap<
-          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
-      util::Mutex m_SNodeSessionsMutex;
       SNodeSessions m_SNodeSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
@@ -395,28 +448,6 @@ namespace llarp
       std::unordered_map< RouterID, uint32_t, RouterID::Hash >
           m_ServiceLookupFails;
 
-      struct RouterLookupJob
-      {
-        RouterLookupJob(Endpoint* p)
-        {
-          started = p->Now();
-          txid    = p->GenTXID();
-        }
-
-        uint64_t txid;
-        llarp_time_t started;
-
-        bool
-        IsExpired(llarp_time_t now) const
-        {
-          if(now < started)
-            return false;
-          return now - started > 5000;
-        }
-      };
-
-      using PendingRouters =
-          std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
       PendingRouters m_PendingRouters;
 
       uint64_t m_CurrentPublishTX       = 0;
@@ -426,9 +457,6 @@ namespace llarp
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
-      using PendingLookups =
-          std::unordered_map< uint64_t,
-                              std::unique_ptr< service::IServiceLookup > >;
       PendingLookups m_PendingLookups;
       /// prefetch remote address list
       std::set< Address > m_PrefetchAddrs;
@@ -440,8 +468,6 @@ namespace llarp
       std::list< std::function< bool(void) > > m_OnInit;
 
       /// conversations
-      using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
-
       ConvoMap m_Sessions;
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;

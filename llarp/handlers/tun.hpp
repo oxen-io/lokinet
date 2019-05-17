@@ -153,6 +153,9 @@ namespace llarp
       void
       Flush();
 
+      virtual void
+      ResetInternalState() override;
+
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
@@ -244,6 +247,8 @@ namespace llarp
       std::vector< llarp::Addr > m_UpstreamResolvers;
       /// local dns
       llarp::Addr m_LocalResolverAddr;
+      /// list of strict connect addresses for hooks
+      std::vector< llarp::Addr > m_StrictConnectAddrs;
     };
   }  // namespace handlers
 }  // namespace llarp

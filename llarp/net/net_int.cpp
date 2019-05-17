@@ -1,5 +1,7 @@
 #include <net/net_int.hpp>
 
+#include <string>
+
 namespace llarp
 {
   template <>
@@ -32,15 +34,15 @@ namespace llarp
       return "";
     return tmp;
   }
-  template<>
-  std::string 
+  template <>
+  std::string
   huint16_t::ToString() const
   {
     return std::to_string(h);
   }
 
-  template<>
-  std::string 
+  template <>
+  std::string
   nuint16_t::ToString() const
   {
     return std::to_string(ntohs(n));

@@ -527,16 +527,13 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive)
+    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool)
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
-      if(keepalive)
-      {
-        auto now = Now();
-        router->PersistSessionUntil(peer, now + 10000);
-      }
+      auto now = Now();
+      router->PersistSessionUntil(peer, now + 60000);
     }
 
     bool
@@ -634,12 +631,12 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > >& reply)
     {
       std::vector< RouterID > closer;
-      Key_t t(target.as_array());
+      const Key_t t(target.as_array());
       std::set< Key_t > found;
       if(!_nodes)
         return false;
 
-      size_t nodeCount = _nodes->size();
+      const size_t nodeCount = _nodes->size();
       if(nodeCount == 0)
       {
         llarp::LogError(
@@ -651,19 +648,20 @@ namespace llarp
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      size_t want = std::min(size_t(4), nodeCount - 1);
-      llarp::LogDebug("We want ", want, " connected nodes in the DHT");
-      if(!_nodes->GetManyNearExcluding(t, found, want,
+      if(!_nodes->GetManyNearExcluding(t, found, 1,
                                        std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
             "not enough dht nodes to handle exploritory router lookup, "
-            "need a minimum of ",
-            want, " dht peers");
+            "have ", nodeCount, " dht peers");
         return false;
       }
       for(const auto& f : found)
-        closer.emplace_back(f.as_array());
+      {
+        const RouterID r(f.as_array());
+        if(GetRouter()->ConnectionToRouterAllowed(r))
+          closer.emplace_back(r);
+      }
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }

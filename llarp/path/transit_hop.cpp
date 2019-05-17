@@ -193,16 +193,22 @@ namespace llarp
     TransitHop::HandleCloseExitMessage(
         const llarp::routing::CloseExitMessage& msg, AbstractRouter* r)
     {
-      llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
+      const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       auto ep = r->exitContext().FindEndpointForPath(info.rxID);
       if(ep && msg.Verify(r->crypto(), ep->PubKey()))
       {
-        ep->Close();
-        // ep is now gone af
         llarp::routing::CloseExitMessage reply;
+        reply.Y = msg.Y;
         reply.S = NextSeqNo();
         if(reply.Sign(r->crypto(), r->identity()))
-          return SendRoutingMessage(reply, r);
+        {
+          if(SendRoutingMessage(reply, r))
+          {
+            r->PumpLL();
+            ep->Close();
+            return true;
+          }
+        }
       }
       return SendRoutingMessage(discard, r);
     }

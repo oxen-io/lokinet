@@ -102,7 +102,6 @@ namespace llarp
         delete ctx;
         return;
       }
-      frame.Resize(buf.cur - buf.base);
       // use ephemeral keypair for frame
       SecretKey framekey;
       ctx->crypto->encryption_keygen(framekey);
@@ -116,6 +115,7 @@ namespace llarp
       if(isFarthestHop)
       {
         // farthest hop
+        // TODO: encrypt junk frames because our public keys are not eligator
         ctx->logic->queue_job({ctx, &HandleDone});
       }
       else
@@ -182,6 +182,13 @@ namespace llarp
     }
 
     void
+    Builder::ResetInternalState()
+    {
+      buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+      lastBuild          = 0;
+    }
+
+    void
     Builder::Tick(llarp_time_t now)
     {
       ExpirePaths(now);
@@ -206,7 +213,7 @@ namespace llarp
     }
 
     bool
-    Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    Builder::SelectHop(llarp_nodedb* db, const std::set< RouterID >& exclude,
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
@@ -214,29 +221,36 @@ namespace llarp
       if(hop == 0)
       {
         if(router->NumberOfConnectedRouters() == 0)
+        {
+          // persist connection
+          router->ConnectToRandomRouters(1);
           return false;
+        }
         bool got = false;
         router->ForEachPeer(
-            [&](const ILinkSession* s, bool) {
-              const PubKey k(s->GetPubKey());
-              if(got || router->IsBootstrapNode(k))
-                return;
-              cur = s->GetRemoteRC();
-              got = true;
+            [&](const ILinkSession* s, bool isOutbound) {
+              if(s && s->IsEstablished() && isOutbound && !got)
+              {
+                const RouterContact rc = s->GetRemoteRC();
+                if(got || exclude.count(rc.pubkey))
+                  return;
+                cur = rc;
+                got = true;
+              }
             },
             true);
         return got;
       }
-      std::set< RouterID > exclude = {prev.pubkey};
       do
       {
         cur.Clear();
         --tries;
-        if(db->select_random_hop_excluding(cur, exclude))
+        std::set< RouterID > excluding = exclude;
+        if(db->select_random_hop_excluding(cur, excluding))
         {
+          excluding.insert(cur.pubkey);
           if(!router->routerProfiling().IsBadForPath(cur.pubkey))
             return true;
-          exclude.insert(cur.pubkey);
         }
       } while(tries > 0);
       return tries > 0;
@@ -278,44 +292,104 @@ namespace llarp
     {
       if(IsStopped())
         return false;
-      if(llarp::randint() % 3 >= 1)
-        return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
-      return false;
+      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
     }
 
     void
     Builder::BuildOne(PathRole roles)
     {
-      std::vector< RouterContact > hops;
+      std::vector< RouterContact > hops(numHops);
       if(SelectHops(router->nodedb(), hops, roles))
         Build(hops, roles);
+    }
+
+    bool Builder::UrgentBuild(llarp_time_t) const
+    {
+      return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
+    }
+
+    bool
+    Builder::BuildOneAlignedTo(const RouterID remote)
+    {
+      std::vector< RouterContact > hops(0);
+      std::set< RouterID > routers = {remote};
+      /// if we really need this path build it "dangerously"
+      if(UrgentBuild(router->Now()))
+      {
+        const auto aligned =
+            router->pathContext().FindOwnedPathsWithEndpoint(remote);
+        /// pick the lowest latency path that aligns to remote
+        /// note: peer exuastion is made worse happen here
+        Path_ptr p;
+        llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
+        for(const auto& path : aligned)
+        {
+          if(path->intro.latency < min && path->hops.size() == numHops)
+          {
+            p   = path;
+            min = path->intro.latency;
+          }
+        }
+        if(p)
+        {
+          for(const auto& hop : p->hops)
+          {
+            if(hop.rc.pubkey.IsZero())
+              return false;
+            hops.emplace_back(hop.rc);
+          }
+        }
+      }
+      if(hops.size() == 0)
+      {
+        hops.resize(numHops);
+
+        auto nodedb = router->nodedb();
+        for(size_t idx = 0; idx < hops.size(); idx++)
+        {
+          hops[idx].Clear();
+          if(idx == numHops - 1)
+          {
+            // last hop
+            if(!nodedb->Get(remote, hops[idx]))
+            {
+              router->LookupRouter(remote, nullptr);
+              return false;
+            }
+          }
+          else
+          {
+            if(!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
+              return false;
+          }
+          if(hops[idx].pubkey.IsZero())
+            return false;
+          routers.insert(hops[idx].pubkey);
+        }
+      }
+      LogInfo(Name(), " building path to ", remote);
+      Build(hops);
+      return true;
     }
 
     bool
     Builder::SelectHops(llarp_nodedb* nodedb,
                         std::vector< RouterContact >& hops, PathRole roles)
     {
-      hops.resize(numHops);
       size_t idx = 0;
-      while(idx < numHops)
+      std::set< RouterID > exclude;
+      while(idx < hops.size())
       {
+        hops[idx].Clear();
         size_t tries = 4;
-        if(idx == 0)
-        {
-          while(tries > 0 && !SelectHop(nodedb, hops[0], hops[0], 0, roles))
-            --tries;
-        }
-        else
-        {
-          while(tries > 0
-                && !SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
-            --tries;
-        }
-        if(tries == 0)
+        while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
+          --tries;
+        if(tries == 0 || hops[idx].pubkey.IsZero())
         {
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
         }
+        exclude.insert(hops[idx].pubkey);
         ++idx;
       }
       return true;
@@ -339,6 +413,7 @@ namespace llarp
       ctx->router  = router;
       ctx->pathset = GetSelf();
       auto path    = std::make_shared< path::Path >(hops, this, roles);
+      LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [this](Path_ptr p) { this->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
@@ -358,10 +433,11 @@ namespace llarp
     {
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
-      buildIntervalLimit =
-          std::min(1000 + buildIntervalLimit, MaxBuildInterval);
+      buildIntervalLimit                             = std::min(
+          MIN_PATH_BUILD_INTERVAL + buildIntervalLimit, MaxBuildInterval);
       router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildTimeout(p);
+      LogWarn(Name(), " build interval is now ", buildIntervalLimit);
     }
 
     void

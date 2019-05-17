@@ -43,6 +43,8 @@ TEST_F(DNSLibTest, TestHasTLD)
   ASSERT_FALSE(question.HasTLD(tld));
   question.qname = "a.boki.";
   ASSERT_FALSE(question.HasTLD(tld));
+  question.qname = "t.co.";
+  ASSERT_FALSE(question.HasTLD(tld));
 };
 
 TEST_F(DNSLibTest, TestPTR)

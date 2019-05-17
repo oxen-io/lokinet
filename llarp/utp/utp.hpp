@@ -10,13 +10,13 @@ namespace llarp
 
   namespace utp
   {
-    std::unique_ptr< ILinkLayer >
+    LinkLayer_ptr
     NewServer(Crypto* crypto, const SecretKey& routerEncSecret, GetRCFunc getrc,
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed);
 
-    std::unique_ptr< ILinkLayer >
+    LinkLayer_ptr
     NewServerFromRouter(AbstractRouter* r);
   }  // namespace utp
 }  // namespace llarp

@@ -35,6 +35,19 @@ namespace llarp
       void
       Put(const value_type& value);
 
+      template < typename Container >
+      void
+      PutContainer(String_t keyname, const Container& container)
+      {
+        std::vector< util::StatusObject > objs;
+        std::transform(container.begin(), container.end(),
+                       std::back_inserter(objs),
+                       [](const auto& item) -> util::StatusObject {
+                         return item.second->ExtractStatus();
+                       });
+        Put(keyname, objs);
+      }
+
       nlohmann::json
       get() const
       {

@@ -39,11 +39,12 @@ namespace llarp
 
 struct TryConnectJob
 {
-  llarp::RouterContact rc;
-  llarp::ILinkLayer *link;
+  llarp_time_t lastAttempt = 0;
+  const llarp::RouterContact rc;
+  llarp::LinkLayer_ptr link;
   llarp::Router *router;
   uint16_t triesLeft;
-  TryConnectJob(const llarp::RouterContact &remote, llarp::ILinkLayer *l,
+  TryConnectJob(const llarp::RouterContact &remote, llarp::LinkLayer_ptr l,
                 uint16_t tries, llarp::Router *r)
       : rc(remote), link(l), router(r), triesLeft(tries)
   {
@@ -53,11 +54,19 @@ struct TryConnectJob
   {
   }
 
+  bool
+  TimeoutReached() const
+  {
+    const auto now = router->Now();
+    return now > lastAttempt && now - lastAttempt > 5000;
+  }
+
   void
   Failed()
   {
     llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
-    link->CloseSessionTo(rc.pubkey);
+    if(link)
+      link->CloseSessionTo(rc.pubkey);
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
   }
@@ -66,16 +75,16 @@ struct TryConnectJob
   Success()
   {
     router->routerProfiling().MarkConnectSuccess(rc.pubkey);
-    router->FlushOutboundFor(rc.pubkey, link);
+    router->FlushOutboundFor(rc.pubkey, link.get());
   }
 
-  void
-  AttemptTimedout()
+  /// return true to remove
+  bool
+  Timeout()
   {
     if(ShouldRetry())
     {
-      Attempt();
-      return;
+      return Attempt();
     }
     router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
@@ -83,19 +92,20 @@ struct TryConnectJob
       if(!router->IsBootstrapNode(rc.pubkey))
         router->nodedb()->Remove(rc.pubkey);
     }
-    // delete this
-    router->pendingEstablishJobs.erase(rc.pubkey);
+    return true;
   }
 
-  void
+  /// return true to remove
+  bool
   Attempt()
   {
     --triesLeft;
+    if(!link)
+      return true;
     if(!link->TryEstablishTo(rc))
-    {
-      // delete this
-      router->pendingEstablishJobs.erase(rc.pubkey);
-    }
+      return true;
+    lastAttempt = router->Now();
+    return false;
   }
 
   bool
@@ -106,11 +116,10 @@ struct TryConnectJob
 };
 
 static void
-on_try_connecting(void *u)
+on_try_connecting(std::shared_ptr<TryConnectJob> j)
 {
-  TryConnectJob *j = static_cast< TryConnectJob * >(u);
-
-  j->Attempt();
+  if(j->Attempt())
+    j->router->pendingEstablishJobs.erase(j->rc.pubkey);
 }
 
 bool
@@ -182,16 +191,18 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
-      std::unique_ptr< TryConnectJob > j = std::make_unique< TryConnectJob >(
-          remote, link.get(), numretries, this);
-      auto itr = pendingEstablishJobs.emplace(remote.pubkey, std::move(j));
+      std::shared_ptr< TryConnectJob > job = std::make_shared< TryConnectJob >(
+          remote, link, numretries, this);
+      auto itr = pendingEstablishJobs.emplace(remote.pubkey, job);
       if(itr.second)
       {
-        // only try establishing if we inserted a new element
-        TryConnectJob *job = itr.first->second.get();
         // try establishing async
-        _logic->queue_job({job, &on_try_connecting});
+        _logic->queue_func(std::bind(&on_try_connecting, job));
         return true;
+      }
+      else
+      {
+        itr.first->second->Attempt();
       }
     }
     return false;
@@ -274,23 +285,31 @@ namespace llarp
   void
   Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
   {
-    LogDebug("persist session to ", remote, " until ", until);
     m_PersistingSessions[remote] =
         std::max(until, m_PersistingSessions[remote]);
+    LogDebug("persist session to ", remote, " until ",
+             m_PersistingSessions[remote]);
   }
 
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
+    auto pick_router = [&](auto &collection) -> bool {
+      const auto sz = collection.size();
+      auto itr      = collection.begin();
+      if(sz == 0)
+        return false;
+      if(sz > 1)
+        std::advance(itr, randint() % sz);
+      router = itr->first;
+      return true;
+    };
+    if(whitelistRouters)
+    {
+      pick_router(lokinetRouters);
+    }
     absl::ReaderMutexLock l(&nodedb()->access);
-    auto sz = nodedb()->entries.size();
-    if(sz == 0)
-      return false;
-    auto itr = nodedb()->entries.begin();
-    if(sz > 1)
-      std::advance(itr, randint() % sz);
-    router = itr->first;
-    return true;
+    return pick_router(nodedb()->entries);
   }
 
   void
@@ -342,24 +361,15 @@ namespace llarp
     // queue buffer
     auto &q = outboundMessageQueue[remote];
 
-    if(q.size() < MaxPendingSendQueueSize)
-    {
-      buf.sz = buf.cur - buf.base;
-      q.emplace(buf.sz);
-      memcpy(q.back().data(), buf.base, buf.sz);
-    }
-    else
-    {
-      LogWarn("tried to queue a message to ", remote,
-              " but the queue is full so we drop it like it's hawt");
-    }
+    buf.sz = buf.cur - buf.base;
+    q.emplace(buf.sz);
+    memcpy(q.back().data(), buf.base, buf.sz);
     RouterContact remoteRC;
     // we don't have an open session to that router right now
     if(nodedb()->Get(remote, remoteRC))
     {
       // try connecting directly as the rc is loaded from disk
-      TryConnectAsync(remoteRC, 10);
-      return true;
+      return TryConnectAsync(remoteRC, 10);
     }
 
     // we don't have the RC locally so do a dht lookup
@@ -460,12 +470,12 @@ namespace llarp
   }
 
   void
-  Router::AddLink(std::unique_ptr< ILinkLayer > link, bool inbound)
+  Router::AddLink(std::shared_ptr< ILinkLayer > link, bool inbound)
   {
     if(inbound)
-      inboundLinks.emplace(std::move(link));
+      inboundLinks.emplace(link);
     else
-      outboundLinks.emplace(std::move(link));
+      outboundLinks.emplace(link);
   }
 
   bool
@@ -679,7 +689,8 @@ namespace llarp
     auto itr = pendingEstablishJobs.find(session->GetPubKey());
     if(itr != pendingEstablishJobs.end())
     {
-      itr->second->AttemptTimedout();
+      if(itr->second->Timeout())
+        pendingEstablishJobs.erase(itr);
     }
   }
 
@@ -702,11 +713,49 @@ namespace llarp
   }
 
   size_t
+  Router::NumberOfRoutersMatchingFilter(
+      std::function< bool(const ILinkSession *) > filter) const
+  {
+    std::set< RouterID > connected;
+    ForEachPeer([&](const auto *link, bool) {
+      if(filter(link))
+        connected.insert(link->GetPubKey());
+    });
+    return connected.size();
+  }
+
+  size_t
   Router::NumberOfConnectedRouters() const
   {
-    size_t s = 0;
-    ForEachPeer([&s](const auto *, bool) { ++s; });
-    return s;
+    return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      if(!link->IsEstablished())
+        return false;
+      const RouterContact rc(link->GetRemoteRC());
+      return rc.IsPublicRouter() && ConnectionToRouterAllowed(rc.pubkey);
+    });
+  }
+
+  size_t
+  Router::NumberOfConnectedClients() const
+  {
+    return NumberOfRoutersMatchingFilter([&](const ILinkSession *link) -> bool {
+      if(!link->IsEstablished())
+        return false;
+      const RouterContact rc(link->GetRemoteRC());
+      return !rc.IsPublicRouter();
+    });
+  }
+
+  size_t
+  Router::NumberOfConnectionsMatchingFilter(
+      std::function< bool(const ILinkSession *) > filter) const
+  {
+    size_t sz = 0;
+    ForEachPeer([&](const auto *link, bool) {
+      if(filter(link))
+        ++sz;
+    });
+    return sz;
   }
 
   bool
@@ -856,7 +905,10 @@ namespace llarp
         else if(snode.FromString(val))
         {
           if(strictConnectPubkeys.insert(snode).second)
+          {
             llarp::LogInfo("added ", snode, " to strict connect list");
+            netConfig.emplace(key, val);
+          }
           else
             llarp::LogWarn("duplicate key for strict connect: ", snode);
         }
@@ -909,7 +961,7 @@ namespace llarp
       if(StrEq(key, "file"))
       {
         LogInfo("open log file: ", val);
-        FILE *logfile = ::fopen(val, "a");
+        FILE *const logfile = ::fopen(val, "a");
         if(logfile)
         {
           LogContext::Instance().logStream =
@@ -970,18 +1022,21 @@ namespace llarp
             || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
       // llarp::LogDebug("connect section has ", key, "=", val);
-      bootstrapRCList.emplace_back();
-      auto &rc = bootstrapRCList.back();
+      RouterContact rc;
       if(!rc.Read(val))
       {
         llarp::LogWarn("failed to decode bootstrap RC, file='", val,
                        "' rc=", rc);
-        bootstrapRCList.pop_back();
+        ;
         return;
       }
       if(rc.Verify(crypto(), Now()))
       {
-        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+        const auto result = bootstrapRCList.insert(rc);
+        if(result.second)
+          llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+        else
+          llarp::LogWarn("Duplicate bootstrap node ", RouterID(rc.pubkey));
       }
       else
       {
@@ -994,7 +1049,6 @@ namespace llarp
         {
           llarp::LogError("malformed rc file='", val, "' rc=", rc);
         }
-        bootstrapRCList.pop_back();
       }
     }
     else if(StrEq(section, "router"))
@@ -1124,29 +1178,30 @@ namespace llarp
   }
 
   void
-  Router::LookupRouter(RouterID remote)
+  Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
   {
     if(IsServiceNode())
     {
-      ServiceNodeLookupRouterWhenExpired(remote);
+      if(resultHandler)
+        dht()->impl->LookupRouter(remote, resultHandler);
+      else
+        ServiceNodeLookupRouterWhenExpired(remote);
       return;
     }
     _hiddenServiceContext.ForEachService(
         [=](const std::string &,
             const std::shared_ptr< service::Endpoint > &ep) -> bool {
-          return !ep->LookupRouterAnon(remote);
+          return !ep->LookupRouterAnon(remote, resultHandler);
         });
   }
 
   bool
-  Router::IsBootstrapNode(RouterID r) const
+  Router::IsBootstrapNode(const RouterID r) const
   {
-    for(const auto &rc : bootstrapRCList)
-    {
-      if(rc.pubkey == r)
-        return true;
-    }
-    return false;
+    return std::count_if(
+               bootstrapRCList.begin(), bootstrapRCList.end(),
+               [r](const RouterContact &rc) -> bool { return rc.pubkey == r; })
+        > 0;
   }
 
   void
@@ -1169,6 +1224,15 @@ namespace llarp
           LogError("Failed to update our RC");
       }
 
+      /*
+      // kill nodes that are not allowed by network policy
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(IsBootstrapNode(rc.pubkey))
+          return false;
+        return !ConnectionToRouterAllowed(rc.pubkey);
+      });
+      */
+
       // only do this as service node
       // client endpoints do this on their own
       nodedb()->visit([&](const RouterContact &rc) -> bool {
@@ -1181,14 +1245,32 @@ namespace llarp
     {
       // kill dead nodes if client
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        // don't kill first hop nodes
+        if(strictConnectPubkeys.count(rc.pubkey))
+          return false;
+        // don't kill "non-bad" nodes
         if(!routerProfiling().IsBad(rc.pubkey))
           return false;
         routerProfiling().ClearProfile(rc.pubkey);
+        // don't kill bootstrap nodes
         return !IsBootstrapNode(rc.pubkey);
       });
     }
     // expire transit paths
     paths.ExpirePaths(now);
+    {
+      auto itr = pendingEstablishJobs.begin();
+      while(itr != pendingEstablishJobs.end())
+      {
+        if(itr->second->TimeoutReached() && itr->second->Timeout())
+        {
+          LogWarn("failed to connect to ", itr->first);
+          itr = pendingEstablishJobs.erase(itr);
+        }
+        else
+          ++itr;
+      }
+    }
 
     {
       auto itr = m_PersistingSessions.begin();
@@ -1197,7 +1279,7 @@ namespace llarp
         auto link = GetLinkWithSessionByPubkey(itr->first);
         if(now < itr->second)
         {
-          if(link)
+          if(link && link->HasSessionTo(itr->first))
           {
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
@@ -1211,7 +1293,8 @@ namespace llarp
         }
         else
         {
-          LogInfo("commit to ", itr->first, " expired");
+          const RouterID r(itr->first);
+          LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
         }
       }
@@ -1387,7 +1470,7 @@ namespace llarp
   }
 
   bool
-  Router::async_verify_RC(const RouterContact &rc)
+  Router::async_verify_RC(const RouterContact rc)
   {
     if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
@@ -1489,7 +1572,16 @@ namespace llarp
     llarp_threadpool_start(disk);
 
     for(const auto &rc : bootstrapRCList)
-      this->nodedb()->InsertAsync(rc);
+    {
+      if(this->nodedb()->Insert(rc))
+      {
+        LogInfo("added bootstrap node ", RouterID(rc.pubkey));
+      }
+      else
+      {
+        LogError("Failed to add bootstrap node ", RouterID(rc.pubkey));
+      }
+    }
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
@@ -1587,6 +1679,8 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
+      // relays do not use profiling
+      routerProfiling().Disable();
     }
     else
     {
@@ -1780,17 +1874,13 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
-        if(!self->IsBootstrapNode(other.pubkey))
-        {
-          if(self->TryConnectAsync(other, 5))
-            --want;
-        }
+        if(self->TryConnectAsync(other, 5))
+          --want;
       }
       return want > 0;
     });
-    if(wanted != want)
-      LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
-              " random routers");
+    LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
+            " random routers");
   }
 
   bool
@@ -1871,12 +1961,12 @@ namespace llarp
     if(outboundLinks.size() > 0)
       return true;
 
-    static std::list< std::function< std::unique_ptr< ILinkLayer >(Router *) > >
+    static std::list< std::function< LinkLayer_ptr(Router *) > >
         linkFactories = {utp::NewServerFromRouter, iwp::NewServerFromRouter};
 
     for(const auto &factory : linkFactories)
     {
-      std::unique_ptr< ILinkLayer > link = factory(this);
+      auto link = factory(this);
       if(!link)
         continue;
       if(!link->EnsureKeys(transport_keyfile.string().c_str()))

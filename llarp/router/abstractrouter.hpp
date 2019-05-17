@@ -5,6 +5,8 @@
 #include <util/status.hpp>
 #include <vector>
 #include <ev/ev.h>
+#include <functional>
+#include <router_contact.hpp>
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
@@ -16,7 +18,6 @@ namespace llarp
   class Logic;
   struct Config;
   struct Crypto;
-  struct RouterContact;
   struct RouterID;
   struct ILinkMessage;
   struct ILinkSession;
@@ -137,6 +138,9 @@ namespace llarp
     virtual bool
     Reconfigure(Config *conf) = 0;
 
+    virtual bool
+    TryConnectAsync(RouterContact rc, uint16_t tries) = 0;
+
     /// validate new configuration against old one
     /// return true on 100% valid
     /// return false if not 100% valid
@@ -169,8 +173,13 @@ namespace llarp
                               routing::IMessageHandler *h,
                               const PathID_t &rxid) = 0;
 
+    /// count the number of service nodes we are connected to
     virtual size_t
     NumberOfConnectedRouters() const = 0;
+
+    /// count the number of clients that are connected to us
+    virtual size_t
+    NumberOfConnectedClients() const = 0;
 
     virtual bool
     GetRandomConnectedRouter(RouterContact &result) const = 0;
@@ -183,7 +192,7 @@ namespace llarp
     /// if we are a service node this is done direct otherwise it's done via
     /// path
     virtual void
-    LookupRouter(RouterID remote) = 0;
+    LookupRouter(RouterID remote, RouterLookupHandler resultHandler) = 0;
 
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid

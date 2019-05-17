@@ -33,15 +33,16 @@ struct llarp_threadpool
     return jobs.size();
   }
 
-  void
+  bool
   QueueFunc(std::function< void(void) > f) LOCKS_EXCLUDED(m_access)
   {
     if(impl)
-      impl->addJob(f);
+      return impl->tryAddJob(f);
     else
     {
       llarp::util::Lock lock(&m_access);
       jobs.emplace(f);
+      return true;
     }
   }
 };

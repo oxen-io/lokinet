@@ -13,13 +13,16 @@ namespace llarp
   namespace path
   {
     // milliseconds waiting between builds on a path
-    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
+    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 500;
 
     struct Builder : public PathSet
     {
      protected:
       /// flag for PathSet::Stop()
       std::atomic< bool > _run;
+
+      virtual bool
+      UrgentBuild(llarp_time_t now) const;
 
      public:
       AbstractRouter* router;
@@ -39,8 +42,8 @@ namespace llarp
       ExtractStatus() const;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) override;
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -48,6 +51,9 @@ namespace llarp
       /// should we bundle RCs in builds?
       virtual bool
       ShouldBundleRC() const = 0;
+
+      virtual void
+      ResetInternalState() override;
 
       /// return true if we hit our soft limit for building paths too fast
       bool
@@ -78,9 +84,12 @@ namespace llarp
       void
       BuildOne(PathRole roles = ePathRoleAny) override;
 
+      bool
+      BuildOneAlignedTo(const RouterID endpoint) override;
+
       void
       Build(const std::vector< RouterContact >& hops,
-            PathRole roles = ePathRoleAny);
+            PathRole roles = ePathRoleAny) override;
 
       bool
       SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops,

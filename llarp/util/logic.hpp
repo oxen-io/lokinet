@@ -43,7 +43,7 @@ namespace llarp
     void
     queue_job(struct llarp_thread_job job);
 
-    void
+    bool
     queue_func(std::function< void(void) > func);
 
     uint32_t

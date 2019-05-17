@@ -76,6 +76,11 @@ namespace llarp
       virtual void
       BuildOne(PathRole roles = ePathRoleAny) = 0;
 
+      /// manual build on these hops
+      virtual void
+      Build(const std::vector< RouterContact >& hops,
+            PathRole roles = ePathRoleAny) = 0;
+
       /// tick owned paths
       virtual void
       Tick(llarp_time_t now) = 0;
@@ -159,16 +164,14 @@ namespace llarp
 
       /// override me in subtype
       virtual bool
-      HandleGotIntroMessage(__attribute__((unused))
-                            const dht::GotIntroMessage* msg)
+      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
       {
         return false;
       }
 
       /// override me in subtype
       virtual bool
-      HandleGotRouterMessage(__attribute__((unused))
-                             const dht::GotRouterMessage* msg)
+      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
       {
         return false;
       }
@@ -213,15 +216,16 @@ namespace llarp
         return false;
       }
 
+      /// reset all cooldown timers
+      virtual void
+      ResetInternalState() = 0;
+
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) = 0;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) = 0;
 
-     protected:
-      size_t m_NumPaths;
-
-      void
-      TickPaths(llarp_time_t now, AbstractRouter* r);
+      virtual bool
+      BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       void
       ForEachPath(std::function< void(const Path_ptr&) > visit) const
@@ -234,6 +238,12 @@ namespace llarp
           ++itr;
         }
       }
+
+     protected:
+      size_t m_NumPaths;
+
+      void
+      TickPaths(llarp_time_t now, AbstractRouter* r);
 
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 

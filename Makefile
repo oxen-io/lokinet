@@ -4,7 +4,7 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-prefix = $(DESTDIR)/usr/local
+DESTDIR ?=
 
 CC ?= cc
 CXX ?= c++
@@ -122,7 +122,7 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DSTATIC_LINK_RUNTIME=ON -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
@@ -131,8 +131,8 @@ debug: debug-configure
 
 release-compile: release-configure
 	$(MAKE) -C $(BUILD_ROOT)
+	strip $(EXE)
 	cp $(EXE) $(REPO)/lokinet
-	strip $(TARGETS)
 
 $(TARGETS): release-compile
 
@@ -171,7 +171,7 @@ testnet-build: testnet-configure
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	$(PYTHON) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4 --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
+	$(PYTHON) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 $(TEST_EXE): debug
@@ -263,7 +263,7 @@ docker-fedora:
 
 debian-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)"
+	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
@@ -273,6 +273,6 @@ debian-test:
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 install:
-	$(MAKE) -C '$(BUILD_ROOT)' install
+	DESTDIR=$(DESTDIR) $(MAKE) -C '$(BUILD_ROOT)' install
 
 .PHONY: debian-install

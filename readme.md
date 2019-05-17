@@ -66,7 +66,6 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
-* IMPORTANT NOTE: To use the optimiser, make sure the default -DNDEBUG macro is removed before generating (see #400)
 
 ### Linux
 
