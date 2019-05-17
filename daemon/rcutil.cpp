@@ -110,7 +110,7 @@ main(int argc, char *argv[])
   bool toB32Mode           = false;
   int c;
   char *conffname;
-  char defaultConfName[] = "/Users/admin/.lokinet/lokinet.ini";
+  char defaultConfName[] = "lokinet.ini";
   conffname              = defaultConfName;
   char *rcfname          = nullptr;
   char *nodesdir         = nullptr;
