@@ -30,7 +30,8 @@ namespace llarp
 
   Context::~Context()
   {
-    m_scheduler->stop();
+    if (this->m_scheduler)
+      m_scheduler->stop();
   }
 
   void
