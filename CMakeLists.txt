@@ -304,8 +304,8 @@ else()
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   target_link_libraries(${EXE} PUBLIC ${EXE_LIBS})
-  target_link_libraries(${RCEXE} PUBLIC ${EXE_LIBS})
-  target_link_libraries(${DHTEXE} PUBLIC ${EXE_LIBS})
+  target_link_libraries(rcutil PUBLIC ${EXE_LIBS})
+  target_link_libraries(dhtutil PUBLIC ${EXE_LIBS})
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
