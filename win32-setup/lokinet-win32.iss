@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "loki-network"
-#define MyAppVersion "0.4.0"
+#define MyAppVersion "0.4.3"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://loki.network"
 #define MyAppExeName "lokinetui.exe"
@@ -39,18 +39,18 @@ OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.4.1
+VersionInfoVersion=0.4.3
 VersionInfoCompany=Loki Project
 VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
 #ifndef RELEASE
-VersionInfoTextVersion=0.4.1-dev-{#VCSRev}
-VersionInfoProductTextVersion=0.4.1-dev-{#VCSRev}
+VersionInfoTextVersion=0.4.3-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.4.3-dev-{#VCSRev}
 #else
-VersionInfoTextVersion=0.4.1
-VersionInfoProductTextVersion=0.4.1 ({#Codename})
+VersionInfoTextVersion=0.4.3
+VersionInfoProductTextVersion=0.4.3 ({#Codename})
 #endif
 VersionInfoProductName=LokiNET
-VersionInfoProductVersion=0.4.1
+VersionInfoProductVersion=0.4.3
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
