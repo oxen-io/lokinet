@@ -529,6 +529,8 @@ namespace llarp
     llarp_ev_loop_stop(_netloop.get());
     inboundLinks.clear();
     outboundLinks.clear();
+    disk.stop();
+    disk.shutdown();
   }
 
   void
