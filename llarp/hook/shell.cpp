@@ -2,7 +2,7 @@
 #if defined(_WIN32)
 /** put win32 stuff here */
 #else
-#include <util/threadpool.h>
+#include <util/thread_pool.hpp>
 #include <util/logger.hpp>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -29,13 +29,12 @@ namespace llarp
         : public IBackend,
           public std::enable_shared_from_this< ExecShellHookBackend >
     {
-      llarp_threadpool *m_ThreadPool;
+      thread::ThreadPool m_ThreadPool;
 
       std::vector< std::string > _args;
       std::vector< char * > args;
 
-      ExecShellHookBackend(std::string script)
-          : m_ThreadPool(llarp_init_threadpool(1, script.c_str()))
+      ExecShellHookBackend(std::string script) : m_ThreadPool(1, 1000)
       {
         do
         {
@@ -55,21 +54,20 @@ namespace llarp
 
       ~ExecShellHookBackend()
       {
-        llarp_threadpool_stop(m_ThreadPool);
-        llarp_free_threadpool(&m_ThreadPool);
+        m_ThreadPool.shutdown();
       }
 
       bool
       Start() override
       {
-        llarp_threadpool_start(m_ThreadPool);
+        m_ThreadPool.start();
         return true;
       }
 
       bool
       Stop() override
       {
-        llarp_threadpool_stop(m_ThreadPool);
+        m_ThreadPool.stop();
         return true;
       }
 
@@ -123,8 +121,8 @@ namespace llarp
         return _m_env.data();
       }
 
-      static void
-      Exec(std::shared_ptr< ExecShellHookJob > self)
+      void
+      Exec()
       {
         std::thread t([&]() {
           int result        = 0;
@@ -134,8 +132,7 @@ namespace llarp
           if(child)
             ::waitpid(child, &result, 0);
           else
-            ::execve(self->m_Parent->Exe(), self->m_Parent->Args(),
-                     self->Env());
+            ::execve(m_Parent->Exe(), m_Parent->Args(), Env());
         });
         t.join();
       }
@@ -147,7 +144,8 @@ namespace llarp
     {
       auto job = std::make_shared< ExecShellHookJob >(shared_from_this(),
                                                       std::move(params));
-      m_ThreadPool->QueueFunc([=]() { ExecShellHookJob::Exec(job); });
+
+      m_ThreadPool.addJob(std::bind(&ExecShellHookJob::Exec, job));
     }
 
     Backend_ptr
