@@ -10,6 +10,41 @@ namespace llarp
 {
   namespace service
   {
+    namespace
+    {
+      using EndpointConstructor  = std::function< service::Endpoint_ptr(
+          const std::string &, AbstractRouter *, service::Context *) >;
+      using EndpointConstructors = std::map< std::string, EndpointConstructor >;
+
+      static EndpointConstructors endpointConstructors = {
+          {"tun",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::TunEndpoint >(nick, r, c);
+           }},
+          {"android-tun",
+           [](const std::string &, AbstractRouter *,
+              service::Context *) -> service::Endpoint_ptr {
+             return nullptr;
+             /// SOOOOOOON (tm)
+             // return std::make_shared<handlers::AndroidTunEndpoint>(nick,
+             // r, c);
+           }},
+          {"ios-tun",
+           [](const std::string &, AbstractRouter *,
+              service::Context *) -> service::Endpoint_ptr {
+             return nullptr;
+             /// SOOOOOOON (tm)
+             // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,
+             // c);
+           }},
+          {"null",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::NullEndpoint >(nick, r, c);
+           }}};
+
+    }  // namespace
     Context::Context(AbstractRouter *r) : m_Router(r)
     {
     }
@@ -190,7 +225,7 @@ namespace llarp
       }
       // extract type
       std::string endpointType = "tun";
-      std::string keyfile      = "";
+      std::string keyfile;
       for(const auto &option : conf.second)
       {
         if(option.first == "type")
@@ -201,41 +236,9 @@ namespace llarp
 
       service::Endpoint_ptr service;
 
-      static std::map<
-          std::string,
-          std::function< service::Endpoint_ptr(
-              const std::string &, AbstractRouter *, service::Context *) > >
-          endpointConstructors = {
-              {"tun",
-               [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> service::Endpoint_ptr {
-                 return std::make_shared< handlers::TunEndpoint >(nick, r, c);
-               }},
-              {"android-tun",
-               [](const std::string &, AbstractRouter *,
-                  service::Context *) -> service::Endpoint_ptr {
-                 return nullptr;
-                 /// SOOOOOOON (tm)
-                 // return std::make_shared<handlers::AndroidTunEndpoint>(nick,
-                 // r, c);
-               }},
-              {"ios-tun",
-               [](const std::string &, AbstractRouter *,
-                  service::Context *) -> service::Endpoint_ptr {
-                 return nullptr;
-                 /// SOOOOOOON (tm)
-                 // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,
-                 // c);
-               }},
-              {"null",
-               [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> service::Endpoint_ptr {
-                 return std::make_shared< handlers::NullEndpoint >(nick, r, c);
-               }}};
-
       {
         // detect type
-        auto itr = endpointConstructors.find(endpointType);
+        const auto itr = endpointConstructors.find(endpointType);
         if(itr == endpointConstructors.end())
         {
           LogError("no such endpoint type: ", endpointType);
@@ -248,7 +251,7 @@ namespace llarp
         {
           // if ephemeral, then we need to regen key
           // if privkey file, then set it and load it
-          if(keyfile != "")
+          if(!keyfile.empty())
           {
             service->SetOption("keyfile", keyfile);
             // load keyfile, so we have the correct name for logging
