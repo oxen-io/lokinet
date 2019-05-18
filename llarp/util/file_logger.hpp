@@ -2,15 +2,18 @@
 #define LLARP_UTIL_FILE_LOGGER_HPP
 
 #include <util/logstream.hpp>
-#include <util/threadpool.h>
+#include <util/thread_pool.hpp>
 #include <util/time.hpp>
+
+#include <deque>
 
 namespace llarp
 {
   /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
-    FileLogStream(llarp_threadpool* disk, FILE* f, llarp_time_t flushInterval);
+    FileLogStream(thread::ThreadPool* disk, FILE* f,
+                  llarp_time_t flushInterval);
 
     ~FileLogStream();
 
@@ -30,29 +33,13 @@ namespace llarp
     }
 
    private:
-    struct FlushEvent
-    {
-      FlushEvent(std::deque< std::string > l, FILE* file)
-          : lines(std::move(l)), f(file)
-      {
-      }
-
-      const std::deque< std::string > lines;
-      FILE* const f;
-
-      void
-      Flush();
-      static void
-      HandleFlush(void*);
-    };
-
     bool
     ShouldFlush(llarp_time_t now) const;
 
     void
     FlushLinesToDisk(llarp_time_t now);
 
-    llarp_threadpool* m_Disk;
+    thread::ThreadPool* m_Disk;
     FILE* m_File;
     const llarp_time_t m_FlushInterval;
     llarp_time_t m_LastFlush = 0;

@@ -170,10 +170,10 @@ namespace llarp
       return tp;
     }
 
-    llarp_threadpool *
+    thread::ThreadPool *
     diskworker() override
     {
-      return disk;
+      return &disk;
     }
 
     // our ipv4 public setting
@@ -189,7 +189,7 @@ namespace llarp
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    llarp_threadpool *disk;
+    thread::ThreadPool disk;
     llarp_dht_context *_dht = nullptr;
     llarp_nodedb *_nodedb;
     llarp_time_t _startedAt;
@@ -384,6 +384,9 @@ namespace llarp
 
     bool
     ConnectionToRouterAllowed(const RouterID &router) const override;
+
+    void
+    HandleSaveRC() const;
 
     bool
     SaveRC();
