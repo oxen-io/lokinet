@@ -46,22 +46,26 @@ namespace llarp
   {
     const char* format;
 
-    log_timestamp(const char* fmt = "%c %Z") : format(fmt)
+    log_timestamp() : format("%c %Z")
     {
     }
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const log_timestamp& ts)
+    explicit log_timestamp(const char* fmt) : format(fmt)
     {
-#if defined(ANDROID) || defined(RPI)
-      (void)ts;
-      return out << time_now_ms();
-#else
-      return out << absl::FormatTime(ts.format, absl::Now(),
-                                     absl::LocalTimeZone());
-#endif
     }
   };
+
+  inline std::ostream&
+  operator<<(std::ostream& out, const log_timestamp& ts)
+  {
+#if defined(ANDROID) || defined(RPI)
+    (void)ts;
+    return out << time_now_ms();
+#else
+    absl::TimeZone tz = absl::LocalTimeZone();
+    return out << absl::FormatTime(ts.format, absl::Now(), tz);
+#endif
+  }
 
 }  // namespace llarp
 

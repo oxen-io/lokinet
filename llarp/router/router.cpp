@@ -325,8 +325,6 @@ namespace llarp
     }
   }
 
-  constexpr size_t MaxPendingSendQueueSize = 8;
-
   bool
   Router::SendToOrQueue(const RouterID &remote, const ILinkMessage *msg)
   {
