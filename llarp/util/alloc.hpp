@@ -3,6 +3,8 @@
 #include <bitset>
 #include <array>
 
+#include <absl/base/attributes.h>
+
 namespace llarp
 {
   namespace util
@@ -54,7 +56,7 @@ namespace llarp
       }
 
       bool
-      HasRoomFor(size_t numItems)
+      HasRoomFor(ABSL_ATTRIBUTE_UNUSED size_t numItems)
       {
         return true;
         /* return mem->hasRoomFor(numItems); */
