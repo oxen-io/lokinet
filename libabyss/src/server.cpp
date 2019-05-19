@@ -54,9 +54,7 @@ namespace abyss
         m_State       = eReadHTTPMethodLine;
       }
 
-      ~ConnImpl()
-      {
-      }
+      ~ConnImpl() = default;
 
       bool
       FeedLine(std::string& line)

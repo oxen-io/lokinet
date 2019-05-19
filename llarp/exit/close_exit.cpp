@@ -66,16 +66,6 @@ namespace llarp
       return c->sign(Z, sk, buf);
     }
 
-    CloseExitMessage&
-    CloseExitMessage::operator=(const CloseExitMessage& other)
-    {
-      S       = other.S;
-      version = other.version;
-      Y       = other.Y;
-      Z       = other.Z;
-      return *this;
-    }
-
     bool
     CloseExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {

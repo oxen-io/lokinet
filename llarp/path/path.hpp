@@ -53,7 +53,6 @@ namespace llarp
     struct TransitHopInfo
     {
       TransitHopInfo() = default;
-      TransitHopInfo(const TransitHopInfo& other);
       TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
 
       PathID_t txID, rxID;
@@ -157,8 +156,6 @@ namespace llarp
     struct TransitHop : public IHopHandler, public routing::IMessageHandler
     {
       TransitHop();
-
-      TransitHop(const TransitHop& other);
 
       TransitHopInfo info;
       SharedSecret pathKey;

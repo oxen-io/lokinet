@@ -32,29 +32,12 @@ namespace llarp
       return started + lifetime;
     }
 
-    TransitHopInfo::TransitHopInfo(const TransitHopInfo& other)
-        : txID(other.txID)
-        , rxID(other.rxID)
-        , upstream(other.upstream)
-        , downstream(other.downstream)
-    {
-    }
-
     TransitHopInfo::TransitHopInfo(const RouterID& down,
                                    const LR_CommitRecord& record)
         : txID(record.txid)
         , rxID(record.rxid)
         , upstream(record.nextHop)
         , downstream(down)
-    {
-    }
-
-    TransitHop::TransitHop(const TransitHop& other)
-        : info(other.info)
-        , pathKey(other.pathKey)
-        , started(other.started)
-        , lifetime(other.lifetime)
-        , version(other.version)
     {
     }
 

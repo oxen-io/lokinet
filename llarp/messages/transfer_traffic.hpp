@@ -31,9 +31,6 @@ namespace llarp
         return _size;
       }
 
-      TransferTrafficMessage&
-      operator=(const TransferTrafficMessage& other);
-
       /// append buffer to X
       bool
       PutBuffer(const llarp_buffer_t& buf, uint64_t counter);

@@ -91,6 +91,7 @@ namespace llarp
           break;
         }
         assert(false && "Invalid publication type");
+        return {};
       }
 
       std::string

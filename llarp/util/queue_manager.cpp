@@ -178,7 +178,7 @@ namespace llarp
 
     QueueManager::~QueueManager()
     {
-      delete m_states;
+      delete[] m_states;
     }
 
     QueueReturn
