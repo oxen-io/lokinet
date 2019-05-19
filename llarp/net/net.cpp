@@ -992,7 +992,7 @@ namespace llarp
   bool
   IsBogon(const in6_addr& addr)
   {
-#ifdef TESTNET
+#if defined(TESTNET)
     (void)addr;
     return false;
 #else
@@ -1022,12 +1022,15 @@ namespace llarp
         iprange_ipv4(192, 168, 0, 0, 16),  iprange_ipv4(198, 18, 0, 0, 15),
         iprange_ipv4(198, 51, 100, 0, 24), iprange_ipv4(203, 0, 113, 0, 24),
         iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
-
     for(const auto& bogon : bogonRanges)
     {
       if(bogon.Contains(addr))
       {
+#if defined(TESTNET)
+        return false;
+#else
         return true;
+#endif
       }
     }
     return false;
