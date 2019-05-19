@@ -116,7 +116,7 @@ struct TryConnectJob
 };
 
 static void
-on_try_connecting(std::shared_ptr<TryConnectJob> j)
+on_try_connecting(std::shared_ptr< TryConnectJob > j)
 {
   if(j->Attempt())
     j->router->pendingEstablishJobs.erase(j->rc.pubkey);
@@ -191,8 +191,8 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
-      std::shared_ptr< TryConnectJob > job = std::make_shared< TryConnectJob >(
-          remote, link, numretries, this);
+      std::shared_ptr< TryConnectJob > job =
+          std::make_shared< TryConnectJob >(remote, link, numretries, this);
       auto itr = pendingEstablishJobs.emplace(remote.pubkey, job);
       if(itr.second)
       {
@@ -223,6 +223,7 @@ namespace llarp
       , _crypto(std::make_unique< sodium::CryptoLibSodium >())
       , paths(this)
       , _exitContext(this)
+      , disk(1, 1000)
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
@@ -231,11 +232,6 @@ namespace llarp
     this->ip4addr.sin_family = AF_INET;
     this->ip4addr.sin_port   = htons(1090);
 
-#ifdef TESTNET
-    disk = tp;
-#else
-    disk = llarp_init_threadpool(1, "llarp-diskio");
-#endif
     _stopping.store(false);
     _running.store(false);
   }
@@ -497,12 +493,11 @@ namespace llarp
   }
 
   /// called in disk worker thread
-  static void
-  HandleSaveRC(void *u)
+  void
+  Router::HandleSaveRC() const
   {
-    Router *self      = static_cast< Router * >(u);
-    std::string fname = self->our_rc_file.string();
-    self->_rc.Write(fname.c_str());
+    std::string fname = our_rc_file.string();
+    _rc.Write(fname.c_str());
   }
 
   bool
@@ -515,7 +510,7 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    llarp_threadpool_queue_job(diskworker(), {this, &HandleSaveRC});
+    diskworker()->addJob(std::bind(&Router::HandleSaveRC, this));
     return true;
   }
 
@@ -532,6 +527,8 @@ namespace llarp
     llarp_ev_loop_stop(_netloop.get());
     inboundLinks.clear();
     outboundLinks.clear();
+    disk.stop();
+    disk.shutdown();
   }
 
   void
@@ -1333,14 +1330,10 @@ namespace llarp
     // save profiles async
     if(routerProfiling().ShouldSave(now))
     {
-      llarp_threadpool_queue_job(
-          diskworker(),
-          {this, [](void *u) {
-             Router *self = static_cast< Router * >(u);
-             self->routerProfiling().Save(self->routerProfilesFile.c_str());
-           }});
+      diskworker()->addJob(
+          [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
-  }
+  }  // namespace llarp
 
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
@@ -1504,7 +1497,7 @@ namespace llarp
     job->nodedb       = _nodedb;
     job->logic        = _logic;
     job->cryptoworker = tp;
-    job->diskworker   = disk;
+    job->diskworker   = &disk;
     if(rc.IsPublicRouter())
       job->hook = &Router::on_verify_server_rc;
     else
@@ -1567,7 +1560,7 @@ namespace llarp
     }
 
     llarp_threadpool_start(tp);
-    llarp_threadpool_start(disk);
+    disk.start();
 
     for(const auto &rc : bootstrapRCList)
     {
@@ -1959,8 +1952,8 @@ namespace llarp
     if(outboundLinks.size() > 0)
       return true;
 
-    static std::list< std::function< LinkLayer_ptr(Router *) > >
-        linkFactories = {utp::NewServerFromRouter, iwp::NewServerFromRouter};
+    static std::list< std::function< LinkLayer_ptr(Router *) > > linkFactories =
+        {utp::NewServerFromRouter, iwp::NewServerFromRouter};
 
     for(const auto &factory : linkFactories)
     {

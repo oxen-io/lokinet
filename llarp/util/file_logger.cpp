@@ -3,7 +3,17 @@
 
 namespace llarp
 {
-  FileLogStream::FileLogStream(llarp_threadpool *disk, FILE *f,
+  namespace
+  {
+    static void
+    Flush(const std::deque< std::string > &lines, FILE *const f)
+    {
+      for(const auto &line : lines)
+        fprintf(f, "%s\n", line.c_str());
+      fflush(f);
+    }
+  }  // namespace
+  FileLogStream::FileLogStream(thread::ThreadPool *disk, FILE *f,
                                llarp_time_t flushInterval)
       : m_Disk(disk), m_File(f), m_FlushInterval(flushInterval)
   {
@@ -66,24 +76,7 @@ namespace llarp
   void
   FileLogStream::FlushLinesToDisk(llarp_time_t now)
   {
-    FlushEvent *ev = new FlushEvent(std::move(m_Lines), m_File);
-    llarp_threadpool_queue_job(m_Disk, {ev, &FlushEvent::HandleFlush});
+    m_Disk->addJob(std::bind(&Flush, std::move(m_Lines), m_File));
     m_LastFlush = now;
   }
-
-  void
-  FileLogStream::FlushEvent::HandleFlush(void *user)
-  {
-    static_cast< FileLogStream::FlushEvent * >(user)->Flush();
-  }
-
-  void
-  FileLogStream::FlushEvent::Flush()
-  {
-    for(const auto &line : lines)
-      fprintf(f, "%s\n", line.c_str());
-    fflush(f);
-    delete this;
-  }
-
 }  // namespace llarp

@@ -28,6 +28,11 @@ namespace llarp
 {
   struct Crypto;
   class Logic;
+
+  namespace thread
+  {
+    class ThreadPool;
+  }
 }  // namespace llarp
 
 struct llarp_nodedb_iter
@@ -40,7 +45,7 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  llarp_nodedb(llarp::Crypto *c, llarp_threadpool *diskworker)
+  llarp_nodedb(llarp::Crypto *c, llarp::thread::ThreadPool *diskworker)
       : crypto(c), disk(diskworker)
   {
   }
@@ -51,7 +56,7 @@ struct llarp_nodedb
   }
 
   llarp::Crypto *crypto;
-  llarp_threadpool *disk;
+  llarp::thread::ThreadPool *disk;
   mutable llarp::util::Mutex access;  // protects entries
   std::unordered_map< llarp::RouterID, llarp::RouterContact,
                       llarp::RouterID::Hash >
@@ -146,13 +151,11 @@ struct llarp_async_verify_rc
   /// async_verify_context
   void *user;
   /// nodedb storage
-  struct llarp_nodedb *nodedb;
+  llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
   llarp::Logic *logic;  // includes a llarp_threadpool
-  // struct llarp::Crypto *crypto; // probably don't need this because we have
-  // it in the nodedb
-  struct llarp_threadpool *cryptoworker;
-  struct llarp_threadpool *diskworker;
+  llarp_threadpool *cryptoworker;
+  llarp::thread::ThreadPool *diskworker;
 
   /// router contact
   llarp::RouterContact rc;
@@ -181,11 +184,11 @@ struct llarp_async_load_rc
   /// async_verify_context
   void *user;
   /// nodedb storage
-  struct llarp_nodedb *nodedb;
+  llarp_nodedb *nodedb;
   /// llarp::Logic for calling hook
   llarp::Logic *logic;
   /// disk worker threadpool
-  struct llarp_threadpool *diskworker;
+  llarp::thread::ThreadPool *diskworker;
   /// target pubkey
   llarp::PubKey pubkey;
   /// router contact result

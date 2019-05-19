@@ -8,6 +8,7 @@
 #include <util/logger.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
+#include <util/thread_pool.hpp>
 
 #include <fstream>
 #include <unordered_map>
@@ -48,31 +49,18 @@ llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
   return true;
 }
 
-// kill rcs from disk async
-struct AsyncKillRCJobs
+void
+KillRCJobs(const std::set< std::string > &files)
 {
-  std::set< std::string > files;
-
-  static void
-  Work(void *u)
-  {
-    static_cast< AsyncKillRCJobs * >(u)->Kill();
-  }
-
-  void
-  Kill()
-  {
-    for(const auto &file : files)
-      fs::remove(file);
-    delete this;
-  }
-};
+  for(const auto &file : files)
+    fs::remove(file);
+}
 
 void
 llarp_nodedb::RemoveIf(
     std::function< bool(const llarp::RouterContact &rc) > filter)
 {
-  AsyncKillRCJobs *job = new AsyncKillRCJobs();
+  std::set< std::string > files;
   {
     llarp::util::Lock l(&access);
     auto itr = entries.begin();
@@ -80,14 +68,15 @@ llarp_nodedb::RemoveIf(
     {
       if(filter(itr->second))
       {
-        job->files.insert(getRCFilePath(itr->second.pubkey));
+        files.insert(getRCFilePath(itr->second.pubkey));
         itr = entries.erase(itr);
       }
       else
         ++itr;
     }
   }
-  llarp_threadpool_queue_job(disk, {job, &AsyncKillRCJobs::Work});
+
+  disk->addJob(std::bind(&KillRCJobs, files));
 }
 
 bool
@@ -118,38 +107,24 @@ llarp_nodedb::getRCFilePath(const llarp::RouterID &pubkey) const
   return filepath.string();
 }
 
-struct async_insert_rc
-{
-  llarp_nodedb *nodedb;
-  llarp::RouterContact rc;
-  llarp::Logic *logic;
-  std::function< void(void) > completedHook;
-  async_insert_rc(llarp_nodedb *n, const llarp::RouterContact &r)
-      : nodedb(n), rc(r)
-  {
-  }
-};
-
 static void
-handle_async_insert_rc(void *u)
+handle_async_insert_rc(llarp_nodedb *nodedb, const llarp::RouterContact &rc,
+                       llarp::Logic *logic,
+                       const std::function< void(void) > &completedHook)
 {
-  async_insert_rc *job = static_cast< async_insert_rc * >(u);
-  job->nodedb->Insert(job->rc);
-  if(job->logic && job->completedHook)
+  nodedb->Insert(rc);
+  if(logic && completedHook)
   {
-    job->logic->queue_func(job->completedHook);
+    logic->queue_func(completedHook);
   }
-  delete job;
 }
 
 void
 llarp_nodedb::InsertAsync(llarp::RouterContact rc, llarp::Logic *logic,
                           std::function< void(void) > completionHandler)
 {
-  async_insert_rc *ctx = new async_insert_rc(this, rc);
-  ctx->completedHook   = completionHandler;
-  ctx->logic           = logic;
-  llarp_threadpool_queue_job(disk, {ctx, &handle_async_insert_rc});
+  disk->addJob(
+      std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler));
 }
 
 /// insert and write to disk
@@ -304,10 +279,8 @@ logic_threadworker_callback(void *user)
 
 // write it to disk
 void
-disk_threadworker_setRC(void *user)
+disk_threadworker_setRC(llarp_async_verify_rc *verify_request)
 {
-  llarp_async_verify_rc *verify_request =
-      static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid = verify_request->nodedb->Insert(verify_request->rc);
   if(verify_request->logic)
     verify_request->logic->queue_job(
@@ -327,8 +300,8 @@ crypto_threadworker_verifyrc(void *user)
   if(verify_request->valid && rc.IsPublicRouter())
   {
     llarp::LogDebug("RC is valid, saving to disk");
-    llarp_threadpool_queue_job(verify_request->diskworker,
-                               {verify_request, &disk_threadworker_setRC});
+    verify_request->diskworker->addJob(
+        std::bind(&disk_threadworker_setRC, verify_request));
   }
   else
   {

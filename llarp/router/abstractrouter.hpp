@@ -46,6 +46,11 @@ namespace llarp
     struct Context;
   }
 
+  namespace thread
+  {
+    class ThreadPool;
+  }
+
   struct AbstractRouter
   {
     virtual ~AbstractRouter() = 0;
@@ -96,7 +101,7 @@ namespace llarp
     virtual llarp_threadpool *
     threadpool() = 0;
 
-    virtual llarp_threadpool *
+    virtual thread::ThreadPool *
     diskworker() = 0;
 
     virtual service::Context &
