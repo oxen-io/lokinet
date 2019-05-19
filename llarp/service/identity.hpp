@@ -7,6 +7,8 @@
 #include <service/vanity.hpp>
 #include <util/bencode.hpp>
 
+#include <tuple>
+
 namespace llarp
 {
   struct Crypto;
@@ -25,15 +27,9 @@ namespace llarp
       // public service info
       ServiceInfo pub;
 
-      ~Identity();
-
       // regenerate secret keys
       void
       RegenerateKeys(Crypto* c);
-
-      // load from file
-      bool
-      LoadFromFile(const std::string& fpath);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -54,6 +50,13 @@ namespace llarp
       bool
       Sign(Crypto*, Signature& sig, const llarp_buffer_t& buf) const;
     };
+
+    inline bool
+    operator==(const Identity& lhs, const Identity& rhs)
+    {
+      return std::tie(lhs.enckey, lhs.signkey, lhs.pq, lhs.version, lhs.vanity)
+          == std::tie(rhs.enckey, rhs.signkey, rhs.pq, rhs.version, rhs.vanity);
+    }
   }  // namespace service
 }  // namespace llarp
 
