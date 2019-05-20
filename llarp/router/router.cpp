@@ -116,7 +116,7 @@ struct TryConnectJob
 };
 
 static void
-on_try_connecting(std::shared_ptr<TryConnectJob> j)
+on_try_connecting(std::shared_ptr< TryConnectJob > j)
 {
   if(j->Attempt())
     j->router->pendingEstablishJobs.erase(j->rc.pubkey);
@@ -191,8 +191,8 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
-      std::shared_ptr< TryConnectJob > job = std::make_shared< TryConnectJob >(
-          remote, link, numretries, this);
+      std::shared_ptr< TryConnectJob > job =
+          std::make_shared< TryConnectJob >(remote, link, numretries, this);
       auto itr = pendingEstablishJobs.emplace(remote.pubkey, job);
       if(itr.second)
       {
@@ -1961,8 +1961,8 @@ namespace llarp
     if(outboundLinks.size() > 0)
       return true;
 
-    static std::list< std::function< LinkLayer_ptr(Router *) > >
-        linkFactories = {utp::NewServerFromRouter, iwp::NewServerFromRouter};
+    static std::list< std::function< LinkLayer_ptr(Router *) > > linkFactories =
+        {utp::NewServerFromRouter, iwp::NewServerFromRouter};
 
     for(const auto &factory : linkFactories)
     {

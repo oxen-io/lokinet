@@ -6,10 +6,7 @@
 #include <util/types.hpp>
 
 #include <utp_types.h>  // for uint32
-
-#include <string.h>
-
-#include <util/alloc.hpp>
+#include <cstring>
 
 namespace llarp
 {
@@ -48,7 +45,7 @@ namespace llarp
     using MessageBuffer = AlignedBuffer< MAX_LINK_MSG_SIZE >;
 
     /// pending inbound message being received
-    struct _InboundMessage
+    struct InboundMessage
     {
       /// timestamp of last activity
       llarp_time_t lastActive;
@@ -69,18 +66,21 @@ namespace llarp
       bool
       AppendData(const byte_t* ptr, uint16_t sz);
 
-      _InboundMessage() : lastActive(0), _msg(), buffer(_msg)
+      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
+      {
+      }
+
+      InboundMessage(const InboundMessage& other)
+          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
       {
       }
     };
 
     inline bool
-    operator==(const _InboundMessage& lhs, const _InboundMessage& rhs)
+    operator==(const InboundMessage& lhs, const InboundMessage& rhs)
     {
       return lhs.buffer.base == rhs.buffer.base;
     }
-
-    using InboundMessage = std::shared_ptr< _InboundMessage >;
 
   }  // namespace utp
 

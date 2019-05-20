@@ -15,8 +15,8 @@ namespace llarp
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed)
     {
-      return std::make_shared< LinkLayer >(crypto, routerEncSecret, getrc, h, sign, est, reneg,
-                        timeout, closed);
+      return std::make_shared< LinkLayer >(crypto, routerEncSecret, getrc, h,
+                                           sign, est, reneg, timeout, closed);
     }
 
     LinkLayer_ptr

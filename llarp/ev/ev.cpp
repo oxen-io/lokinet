@@ -164,7 +164,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   llarp::LogDebug("IfAddr: ", tun->ifaddr);
   llarp::LogDebug("IfName: ", tun->ifname);
   llarp::LogDebug("IfNMsk: ", tun->netmask);
-#ifndef _WIN32  
+#ifndef _WIN32
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
   if(dev)
@@ -173,7 +173,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   }
 #else
   UNREFERENCED_PARAMETER(loop);
-  auto dev = new win32_tun_io(tun);
+  auto dev  = new win32_tun_io(tun);
   tun->impl = dev;
   // We're not even going to add this to the socket event loop
   if(dev)
@@ -181,7 +181,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
     dev->setup();
     return dev->add_ev();  // start up tun and add to event queue
   }
-#endif  
+#endif
   llarp::LogWarn("Loop could not create tun");
   return false;
 }
@@ -194,7 +194,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
     llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
-#ifndef _WIN32  
+#ifndef _WIN32
   return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
 #else
   return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base,

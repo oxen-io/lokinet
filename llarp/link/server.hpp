@@ -258,7 +258,7 @@ namespace llarp
     Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
 
-  using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;
+  using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;
 }  // namespace llarp
 
 #endif
