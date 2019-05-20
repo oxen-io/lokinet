@@ -253,7 +253,7 @@ namespace llarp
             return true;
         }
       } while(tries > 0);
-      return tries > 0;
+      return false;
     }
 
     bool

@@ -70,6 +70,33 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
+if(NOT DEBIAN AND NOT MSVC_VERSION)
+  set(OPTIMIZE_FLAGS -O3)
+  set(DEBUG_FLAGS -O0 -g3)
+endif()
+
+if(ASAN)
+  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
+  set(OPTIMIZE_FLAGS "-O0")
+endif(ASAN)
+
+if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(OPTIMIZE_FLAGS "")
+  add_definitions(-DLOKINET_DEBUG=1)
+  set(CRYPTO_FLAGS "")
+  add_compile_options( ${DEBUG_FLAGS} )
+  link_libraries( ${DEBUG_FLAGS} )
+endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+
+# Add non-386 target-specific options here
+if(NON_PC_TARGET)
+  add_definitions(-DRPI)
+  set(WITH_STATIC ON)
+endif(NON_PC_TARGET)
+
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
+
+
 set(ABSEIL_DIR vendor/abseil-cpp)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(SYSTEM ${ABSEIL_DIR})
@@ -156,35 +183,9 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif(TESTNET)
 
-if(NOT DEBIAN AND NOT MSVC_VERSION)
-  set(OPTIMIZE_FLAGS -O3)
-  set(DEBUG_FLAGS -O0 -g3)
-endif()
-
-if(ASAN)
-  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
-  set(OPTIMIZE_FLAGS "-O0")
-endif(ASAN)
-
 if(SHADOW)
   include(cmake/shadow.cmake)
 endif(SHADOW)
-
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  set(OPTIMIZE_FLAGS "")
-  add_definitions(-DLOKINET_DEBUG=1)
-  set(CRYPTO_FLAGS "")
-  add_compile_options( ${DEBUG_FLAGS} )
-  link_libraries( ${DEBUG_FLAGS} )
-endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-
-# Add non-386 target-specific options here
-if(NON_PC_TARGET)
-  add_definitions(-DRPI)
-  set(WITH_STATIC ON)
-endif(NON_PC_TARGET)
-
-add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION_UNSTRIP)

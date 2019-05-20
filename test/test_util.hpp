@@ -35,7 +35,7 @@ namespace llarp
       {
         if(fs::exists(fs::status(p)))
         {
-          fs::remove(p);
+          fs::remove_all(p);
         }
       }
     };

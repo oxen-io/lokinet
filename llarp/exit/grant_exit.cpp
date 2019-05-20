@@ -71,17 +71,6 @@ namespace llarp
       return c->sign(Z, sk, buf);
     }
 
-    GrantExitMessage&
-    GrantExitMessage::operator=(const GrantExitMessage& other)
-    {
-      S       = other.S;
-      T       = other.T;
-      version = other.version;
-      Y       = other.Y;
-      Z       = other.Z;
-      return *this;
-    }
-
     bool
     GrantExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {

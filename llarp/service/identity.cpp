@@ -6,10 +6,6 @@ namespace llarp
 {
   namespace service
   {
-    Identity::~Identity()
-    {
-    }
-
     bool
     Identity::BEncode(llarp_buffer_t* buf) const
     {
@@ -107,6 +103,13 @@ namespace llarp
           return false;
         f.write((char*)buf.cur, buf.sz);
       }
+
+      if(!fs::is_regular_file(fname))
+      {
+        LogError("keyfile ", fname, " is not a regular file");
+        return false;
+      }
+
       // read file
       std::ifstream inf(fname, std::ios::binary);
       inf.seekg(0, std::ios::end);

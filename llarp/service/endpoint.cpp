@@ -495,11 +495,11 @@ namespace llarp
     Endpoint::LoadKeyFile()
     {
       auto crypto = m_Router->crypto();
-      if(m_Keyfile.size())
+      if(!m_Keyfile.empty())
       {
         if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
         {
-          LogWarn("Can't ensure keyfile [", m_Keyfile, "]");
+          LogError("Can't ensure keyfile [", m_Keyfile, "]");
           return false;
         }
       }
@@ -514,7 +514,6 @@ namespace llarp
     Endpoint::Start()
     {
       // how can I tell if a m_Identity isn't loaded?
-      // this->LoadKeyFile();
       if(!m_DataHandler)
       {
         m_DataHandler = this;

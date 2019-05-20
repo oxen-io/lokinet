@@ -52,19 +52,6 @@ namespace llarp
       return read;
     }
 
-    RejectExitMessage&
-    RejectExitMessage::operator=(const RejectExitMessage& other)
-    {
-      B       = other.B;
-      R       = other.R;
-      S       = other.S;
-      T       = other.T;
-      version = other.version;
-      Y       = other.Y;
-      Z       = other.Z;
-      return *this;
-    }
-
     bool
     RejectExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {

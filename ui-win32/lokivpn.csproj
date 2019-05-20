@@ -120,6 +120,7 @@
     <Content Include="lokinet.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+<!--
   <PropertyGroup>
     <PreBuildEvent>$(SolutionDir)versioning\NetRevisionTool /info /patch "$(ProjectDir)"
 $(SolutionDir)versioning\release.bat</PreBuildEvent>
@@ -128,4 +129,5 @@ $(SolutionDir)versioning\release.bat</PreBuildEvent>
     <PostBuildEvent>$(SolutionDir)versioning\NetRevisionTool /restore "$(ProjectDir)"
 $(SolutionDir)versioning\unpatch.bat</PostBuildEvent>
   </PropertyGroup>
+-->
 </Project>
