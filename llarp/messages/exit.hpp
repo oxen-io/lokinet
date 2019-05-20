@@ -62,19 +62,10 @@ namespace llarp
     struct GrantExitMessage final : public IMessage
     {
       using Nonce_t = llarp::AlignedBuffer< 16 >;
+
       uint64_t T;
       Nonce_t Y;
       llarp::Signature Z;
-      GrantExitMessage() : IMessage()
-      {
-      }
-
-      ~GrantExitMessage()
-      {
-      }
-
-      GrantExitMessage&
-      operator=(const GrantExitMessage& other);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -109,14 +100,6 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
-      RejectExitMessage() : IMessage()
-      {
-      }
-
-      ~RejectExitMessage()
-      {
-      }
-
       void
       Clear() override
       {
@@ -126,9 +109,6 @@ namespace llarp
         Y.Zero();
         Z.Zero();
       }
-
-      RejectExitMessage&
-      operator=(const RejectExitMessage& other);
 
       bool
       Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
@@ -196,17 +176,6 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
-      UpdateExitMessage() : IMessage()
-      {
-      }
-
-      ~UpdateExitMessage()
-      {
-      }
-
-      UpdateExitMessage&
-      operator=(const UpdateExitMessage& other);
-
       bool
       Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
 
@@ -238,17 +207,6 @@ namespace llarp
 
       Nonce_t Y;
       llarp::Signature Z;
-
-      CloseExitMessage() : IMessage()
-      {
-      }
-
-      ~CloseExitMessage()
-      {
-      }
-
-      CloseExitMessage&
-      operator=(const CloseExitMessage& other);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

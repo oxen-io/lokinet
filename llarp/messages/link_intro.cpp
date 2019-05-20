@@ -8,10 +8,6 @@
 
 namespace llarp
 {
-  LinkIntroMessage::~LinkIntroMessage()
-  {
-  }
-
   bool
   LinkIntroMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
@@ -102,17 +98,6 @@ namespace llarp
       return false;
 
     return bencode_end(buf);
-  }
-
-  LinkIntroMessage&
-  LinkIntroMessage::operator=(const LinkIntroMessage& msg)
-  {
-    version = msg.version;
-    Z       = msg.Z;
-    rc      = msg.rc;
-    N       = msg.N;
-    P       = msg.P;
-    return *this;
   }
 
   bool

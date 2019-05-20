@@ -59,18 +59,6 @@ namespace llarp
       return c->verify(pk, buf, Z);
     }
 
-    UpdateExitMessage&
-    UpdateExitMessage::operator=(const UpdateExitMessage& other)
-    {
-      P       = other.P;
-      S       = other.S;
-      T       = other.T;
-      version = other.version;
-      Y       = other.Y;
-      Z       = other.Z;
-      return *this;
-    }
-
     bool
     UpdateExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {

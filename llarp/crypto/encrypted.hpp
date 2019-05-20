@@ -59,10 +59,6 @@ namespace llarp
     {
     }
 
-    ~Encrypted()
-    {
-    }
-
     bool
     BEncode(llarp_buffer_t* buf) const
     {

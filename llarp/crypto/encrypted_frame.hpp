@@ -27,16 +27,6 @@ namespace llarp
         : Encrypted< EncryptedFrameSize >(std::min(sz, EncryptedFrameBodySize)
                                           + EncryptedFrameOverheadSize)
     {
-      UpdateBuffer();
-    }
-
-    EncryptedFrame&
-    operator=(const EncryptedFrame& other)
-    {
-      _sz = other._sz;
-      memcpy(data(), other.data(), size());
-      UpdateBuffer();
-      return *this;
     }
 
     void

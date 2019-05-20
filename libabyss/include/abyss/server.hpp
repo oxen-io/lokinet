@@ -42,7 +42,7 @@ namespace abyss
     struct BaseReqHandler
     {
       BaseReqHandler(llarp_time_t req_timeout);
-      ~BaseReqHandler();
+      virtual ~BaseReqHandler();
 
       bool
       ServeAsync(llarp_ev_loop_ptr loop, llarp::Logic* logic,

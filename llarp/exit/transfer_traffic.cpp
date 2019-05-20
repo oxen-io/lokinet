@@ -7,15 +7,6 @@ namespace llarp
 {
   namespace routing
   {
-    TransferTrafficMessage&
-    TransferTrafficMessage::operator=(const TransferTrafficMessage& other)
-    {
-      S       = other.S;
-      version = other.version;
-      X       = other.X;
-      return *this;
-    }
-
     bool
     TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf,
                                       uint64_t counter)

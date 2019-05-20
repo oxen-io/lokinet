@@ -39,12 +39,6 @@ namespace llarp
     bool
     FromString(const std::string &str);
 
-    friend std::ostream &
-    operator<<(std::ostream &out, const PubKey &k)
-    {
-      return out << k.ToString();
-    }
-
     operator RouterID() const
     {
       return RouterID(as_array());
@@ -57,6 +51,12 @@ namespace llarp
       return *this;
     }
   };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const PubKey &k)
+  {
+    return out << k.ToString();
+  }
 
   inline bool
   operator==(const PubKey &lhs, const PubKey &rhs)
@@ -82,20 +82,8 @@ namespace llarp
     {
     }
 
-    explicit SecretKey(const SecretKey &k) : AlignedBuffer< SECKEYSIZE >(k)
-    {
-    }
-
     explicit SecretKey(const byte_t *ptr) : AlignedBuffer< SECKEYSIZE >(ptr)
     {
-    }
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const SecretKey &)
-    {
-      // return out << k.ToHex();
-      // make sure we never print out secret keys
-      return out << "[secretkey]";
     }
 
     std::ostream &
@@ -117,28 +105,21 @@ namespace llarp
 
     bool
     SaveToFile(const char *fname) const;
-
-    SecretKey &
-    operator=(const byte_t *ptr)
-    {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
   };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const SecretKey &)
+  {
+    // return out << k.ToHex();
+    // make sure we never print out secret keys
+    return out << "[secretkey]";
+  }
 
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer< 32 >
   {
     IdentitySecret() : AlignedBuffer< 32 >()
     {
-    }
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const IdentitySecret &)
-    {
-      // return out << k.ToHex();
-      // make sure we never print out secret keys
-      return out << "[secretkey]";
     }
 
     /// no copy constructor
@@ -150,6 +131,13 @@ namespace llarp
     bool
     LoadFromFile(const char *fname);
   };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const IdentitySecret &)
+  {
+    // make sure we never print out secret keys
+    return out << "[IdentitySecret]";
+  }
 
   using ShortHash = AlignedBuffer< SHORTHASHSIZE >;
   using LongHash  = AlignedBuffer< HASHSIZE >;

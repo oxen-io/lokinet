@@ -17,18 +17,9 @@ namespace llarp
       PubKey router;
       PathID_t pathID;
       uint64_t latency   = 0;
-      uint64_t version   = 0;
       uint64_t expiresAt = 0;
 
       Introduction() = default;
-      Introduction(const Introduction& other) : IBEncodeMessage(other.version)
-      {
-        router    = other.router;
-        pathID    = other.pathID;
-        latency   = other.latency;
-        version   = other.version;
-        expiresAt = other.expiresAt;
-      }
 
       util::StatusObject
       ExtractStatus() const;
