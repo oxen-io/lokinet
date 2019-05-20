@@ -104,7 +104,7 @@ namespace llarp
         return false;
     }
     else if(!GetIFAddr(ifname, m_ourAddr, af))
-      return false;
+      m_ourAddr = ifname;
     m_ourAddr.port(port);
     return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr) != -1;
   }
