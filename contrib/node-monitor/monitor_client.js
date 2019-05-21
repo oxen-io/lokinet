@@ -1,13 +1,13 @@
 const lokinet = require('./lokinet') // currently using the 0.5 api
-const fs      = require('fs')
-const ping    = require ("net-ping")
+const fs = require('fs')
+const ping = require("net-ping")
 // horrible library that shells out to use ping...
 //const ping    = require('ping')
 
 // score successful actions
 // while we monitor snode and loki addresses
 
-var session = ping.createSession ()
+var session = ping.createSession()
 
 // probably should nuke profiles.dat each round to level the playing field
 if (fs.existsSync('profiles.dat')) {
@@ -21,35 +21,37 @@ if (fs.existsSync('profiles.dat')) {
 
 // FIXME: take in a binary_path as an option...
 var lokinet_config = {
-  binary_path : '../../lokinet',
-// clients will default to i2p.rocks
-//  bootstrap_url   : 'http://206.81.100.174/n-st-1.signed',
-//  rpc_ip          : '127.0.0.1',
-//  rpc_port        : 28082,
-//  auto_config_test_host: 'www.google.com',
-//  auto_config_test_port: 80,
-//  testnet         : true,
-//  verbose         : true,
+  binary_path: '../../lokinet',
+  // clients will default to i2p.rocks
+  //  bootstrap_url   : 'http://206.81.100.174/n-st-1.signed',
+  //  rpc_ip          : '127.0.0.1',
+  //  rpc_port        : 28082,
+  //  auto_config_test_host: 'www.google.com',
+  //  auto_config_test_port: 80,
+  //  testnet         : true,
+  //  verbose         : true,
 }
 
-score_time  = null
+score_time = null
 score_total = 0
 
 var lokinet_version = 'unknown'
 
 var known_snodes = []
 var snodes_stats = {}
+
 function addSnode(snode) {
   var idx = known_snodes.indexOf(snode)
   if (idx == -1) {
     known_snodes.push(snode)
+
     function lookupSnode(snode) {
-      lokinet.lookup(snode, function(records) {
+      lokinet.lookup(snode, function (records) {
         console.log(snode, 'mapped to', records)
         // if no response or not found, retry
         if (records === undefined || records === null) {
           // failure retry
-          setTimeout(function() {
+          setTimeout(function () {
             console.log('retry lookup for', snode)
             lookupSnode(snode)
           }, 5000)
@@ -70,7 +72,7 @@ function addSnode(snode) {
           offlines: 0,
         }
         // trigger monitor update?
-        var snodeMonitor = setInterval(function() {
+        setInterval(function () {
           /*
           ping.sys.probe(ip, function(isAlive){
             if (isAlive) {
@@ -83,7 +85,7 @@ function addSnode(snode) {
             }
           })
           */
-          session.pingHost(ip, function(err, target) {
+          session.pingHost(ip, function (err, target) {
             if (err) {
               console.warn(target, 'ping err', err);
               console.log(snode, ip, 'is offline')
@@ -102,10 +104,10 @@ function addSnode(snode) {
   }
 }
 
-setInterval(function() {
+setInterval(function () {
   // can be known but not mapped yet...
   console.log('snode score card,', known_snodes.length, 'known routers')
-  for(var snode in snodes_stats) {
+  for (var snode in snodes_stats) {
     var stats = snodes_stats[snode]
     var total = stats.onlines + stats.offlines
     var onlinePer = (stats.onlines / total) * 100
@@ -113,10 +115,10 @@ setInterval(function() {
   }
 }, 30 * 1000)
 
-lokinet.onMessage = function(data) {
+lokinet.onMessage = function (data) {
   console.log(`monitor: ${data}`)
   var lines = data.split(/\n/)
-  for(var i in lines) {
+  for (var i in lines) {
     var tline = lines[i].trim()
     // 	lokinet-0.4.0-59e6a4bc (dev build)
     if (tline.match('lokinet-0.')) {
@@ -181,16 +183,16 @@ lokinet.onMessage = function(data) {
       // path TX=8826efd28bede66c59782af9894eed08 RX=a994770a8c6d61700b8ca65e4a3adea3 on OBContext:default:3y3ch3m6c8xgmutxwe8fger6n963hn3mkn6tk14j67w1zdxj1n1y.loki-icxqqcpd3sfkjbqifn53h7rmusqa1fyxwqyfrrcgkd37xcikwa7y.loki is built, took 2321 ms
       var parts = tline.split('path TX=')
       if (parts.length > 1) {
-        var two     = parts[1].split(' RX=')
+        var two = parts[1].split(' RX=')
         if (two.length > 1) {
-          var tx      = two[0]
-          var three   = two[1].split(' on OBContext:')
+          var tx = two[0]
+          var three = two[1].split(' on OBContext:')
           if (three.length > 1) {
-            var rx      = three[0]
-            var four    = three[1].split(' is built, took ')
+            var rx = three[0]
+            var four = three[1].split(' is built, took ')
             if (four.length > 1) {
               var context = four[0]
-              var ms      = four[1]
+              var ms = four[1]
               console.log('PATH BUILT', tx, rx, context, ms)
             }
           }
@@ -211,7 +213,6 @@ lokinet.onMessage = function(data) {
       if (parts.length > 1) {
         var two = parts[1].split(' failed to select hop ')
         if (two.length) {
-          var snode = two[0]
           var hops = two[1]
           //console.log('hopSelectionFailure', snode, hops)
         }
@@ -222,7 +223,7 @@ lokinet.onMessage = function(data) {
       var parts = tline.split('obtained an exit via ')
       if (parts.length > 1) {
         var two = parts[1].split('.snode')
-        var snode = two[0]+'.snode'
+        var snode = two[0] + '.snode'
         addSnode(snode)
       }
       score_total++
@@ -235,8 +236,8 @@ lokinet.onMessage = function(data) {
         if (two.length > 1) {
           var three = two[1].split(' on SNode::')
           if (three.length > 1) {
-            var tx    = two[0]
-            var rx    = three[0]
+            var tx = two[0]
+            var rx = three[0]
             console.log('EXIT', tx, rx, 'rest', three[1])
           }
         }
@@ -249,13 +250,13 @@ lokinet.onMessage = function(data) {
     }
   }
 }
-lokinet.onError = function(data) {
+lokinet.onError = function (data) {
   console.log(`monitorerr: ${data}`)
   // start on 2019-04-30T15:40:55.540314745-07:00 X Records
   // buffer until
   // end on \n\n
   var lines = data.toString().split(/\n/)
-  for(var i in lines) {
+  for (var i in lines) {
     var tline = lines[i].trim()
     if (tline.match('utp.session.sendq.')) {
       //console.log('sendq')
@@ -290,7 +291,7 @@ lokinet.onError = function(data) {
 //
 
 function checkIP(cb) {
-  lokinet.getLokiNetIP(function(ip) {
+  lokinet.getLokiNetIP(function (ip) {
     if (ip === undefined) {
       checkIP(cb)
       return
@@ -300,21 +301,21 @@ function checkIP(cb) {
   })
 }
 
-lokinet.startClient(lokinet_config, function() {
+lokinet.startClient(lokinet_config, function () {
   // lokinet isn't necessarily running at this point
   console.log('Starting monitor')
   score_time = Date.now()
-  checkIP(function(ip) {
+  checkIP(function (ip) {
     console.log('lokinet interface ip', ip)
-    lokinet.findLokiNetDNS(function(servers) {
+    lokinet.findLokiNetDNS(function (servers) {
       console.log('monitor detected DNS Servers', servers)
     })
-    setInterval(function() {
-      console.log('score', score_total, 'time', ((Date.now() -  score_time)/1000))
+    setInterval(function () {
+      console.log('score', score_total, 'time', ((Date.now() - score_time) / 1000))
     }, 30000)
     // maybe run until a specific time and quit for comparison
     // 1200s (two 10min sessions)
-    setTimeout(function() {
+    setTimeout(function () {
       console.log(lokinet_config.binary_path, 'version', lokinet_version, 'final score', score_total)
       process.exit()
     }, 3 * 600 * 1000) // 3x 10m sessions worth
