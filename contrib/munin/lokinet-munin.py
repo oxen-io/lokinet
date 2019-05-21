@@ -6,6 +6,8 @@ import requests
 import json
 import sys
 
+from requests.exceptions import RequestException
+
 
 def jsonrpc(method, **args):
     return requests.post('http://127.0.0.1:1190/', data=json.dumps(
@@ -25,9 +27,9 @@ def exit_sessions_main():
         try:
             j = jsonrpc("llarp.admin.exit.list")
             count = len(j['result'])
-        except:
+        except RequestException:
             pass
-        print("lokinet.exit.sessions {}".format(outbound))
+        print("lokinet.exit.sessions {}".format(count))
 
 
 def peers_main():
@@ -50,7 +52,7 @@ def peers_main():
                     outbound += 1
                 else:
                     inbound += 1
-        except:
+        except RequestException:
             pass
 
         print("lokinet.peers.outbound {}".format(outbound))
