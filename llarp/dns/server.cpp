@@ -12,8 +12,8 @@ namespace llarp
                  llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
                  IQueryHandler* h)
         : m_ServerLoop(serverLoop)
-        , m_ServerLogic(serverLogic)
         , m_ClientLoop(clientLoop)
+        , m_ServerLogic(serverLogic)
         , m_ClientLogic(clientLogic)
         , m_QueryHandler(h)
     {
