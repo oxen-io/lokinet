@@ -83,7 +83,7 @@ namespace llarp
         LogError("No cached session key");
         return;
       }
-      
+
       ProtocolMessage m;
       m_DataHandler->PutIntroFor(f.T, remoteIntro);
       m_DataHandler->PutReplyIntroFor(f.T, path->intro);
@@ -98,7 +98,7 @@ namespace llarp
       {
         LogError("failed to sign");
         return;
-      }  
+      }
       Send(f, path);
     }
 

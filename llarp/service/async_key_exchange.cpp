@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace service
   {
-    AsyncKeyExchange::AsyncKeyExchange(std::shared_ptr<Logic> l, Crypto* c,
+    AsyncKeyExchange::AsyncKeyExchange(std::shared_ptr< Logic > l, Crypto* c,
                                        const ServiceInfo& r,
                                        const Identity& localident,
                                        const PQPubKey& introsetPubKey,

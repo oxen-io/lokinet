@@ -62,7 +62,7 @@ namespace llarp
     HandleRecvLinkMessageBuffer(ILinkSession *from,
                                 const llarp_buffer_t &msg) = 0;
 
-    virtual std::shared_ptr<Logic>
+    virtual std::shared_ptr< Logic >
     logic() const = 0;
 
     virtual llarp_dht_context *

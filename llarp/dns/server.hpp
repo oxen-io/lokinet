@@ -30,11 +30,12 @@ namespace llarp
                              std::function< void(Message) > sendReply) = 0;
     };
 
-    struct Proxy : public std::enable_shared_from_this<Proxy>
+    struct Proxy : public std::enable_shared_from_this< Proxy >
     {
-      using Logic_ptr = std::shared_ptr<Logic>;
-      Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic, llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic, IQueryHandler * handler);
-
+      using Logic_ptr = std::shared_ptr< Logic >;
+      Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic,
+            llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
+            IQueryHandler* handler);
 
       bool
       Start(const llarp::Addr addr,

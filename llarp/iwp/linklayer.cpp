@@ -44,7 +44,7 @@ namespace llarp
     }
 
     bool
-    LinkLayer::Start(std::shared_ptr<Logic> l)
+    LinkLayer::Start(std::shared_ptr< Logic > l)
     {
       if(!ILinkLayer::Start(l))
         return false;

@@ -246,15 +246,15 @@ namespace llarp
     struct AsyncFrameDecrypt
     {
       Crypto* crypto;
-      std::shared_ptr<Logic> logic;
+      std::shared_ptr< Logic > logic;
       std::shared_ptr< ProtocolMessage > msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
       const Introduction fromIntro;
 
-      AsyncFrameDecrypt(std::shared_ptr<Logic> l, Crypto* c, const Identity& localIdent,
-                        IDataHandler* h,
+      AsyncFrameDecrypt(std::shared_ptr< Logic > l, Crypto* c,
+                        const Identity& localIdent, IDataHandler* h,
                         const std::shared_ptr< ProtocolMessage >& m,
                         const ProtocolFrame& f, const Introduction& recvIntro)
           : crypto(c)
@@ -366,8 +366,8 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(std::shared_ptr<Logic> logic, Crypto* c,
-                                         path::Path_ptr recvPath,
+    ProtocolFrame::AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
+                                         Crypto* c, path::Path_ptr recvPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const

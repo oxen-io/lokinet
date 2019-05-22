@@ -333,7 +333,8 @@ namespace abyss
     }
 
     bool
-    BaseReqHandler::ServeAsync(llarp_ev_loop_ptr loop, std::shared_ptr<llarp::Logic> logic,
+    BaseReqHandler::ServeAsync(llarp_ev_loop_ptr loop,
+                               std::shared_ptr< llarp::Logic > logic,
                                const sockaddr* bindaddr)
     {
       m_loop  = loop;

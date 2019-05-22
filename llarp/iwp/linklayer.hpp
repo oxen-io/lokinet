@@ -31,7 +31,7 @@ namespace llarp
       }
 
       bool
-      Start(std::shared_ptr<Logic> l) override;
+      Start(std::shared_ptr< Logic > l) override;
 
       std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,

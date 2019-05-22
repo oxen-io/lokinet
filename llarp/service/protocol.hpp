@@ -66,12 +66,11 @@ namespace llarp
       static void
       ProcessAsync(std::shared_ptr< ProtocolMessage > self);
 
-      bool 
-      operator<(const ProtocolMessage & other) const
+      bool
+      operator<(const ProtocolMessage& other) const
       {
         return seqno < other.seqno;
       }
-
     };
 
     /// outer message
@@ -127,8 +126,8 @@ namespace llarp
       Sign(Crypto* c, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(std::shared_ptr<Logic> logic, Crypto* c, path::Path_ptr fromPath,
-                            llarp_threadpool* worker,
+      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic, Crypto* c,
+                            path::Path_ptr fromPath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 

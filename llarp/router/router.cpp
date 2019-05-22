@@ -215,7 +215,7 @@ namespace llarp
   }
 
   Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
-                 std::shared_ptr<Logic> l)
+                 std::shared_ptr< Logic > l)
       : ready(false)
       , _netloop(__netloop)
       , tp(_tp)

@@ -648,11 +648,10 @@ namespace llarp
     Endpoint::IsolatedNetworkMainLoop()
     {
       m_IsolatedNetLoop = llarp_make_ev_loop();
-      m_IsolatedLogic = std::make_shared<llarp::Logic>();
+      m_IsolatedLogic   = std::make_shared< llarp::Logic >();
       if(SetupNetworking())
-        llarp_ev_loop_run_single_process(m_IsolatedNetLoop,
-                                       m_IsolatedLogic->thread,
-                                       m_IsolatedLogic);
+        llarp_ev_loop_run_single_process(
+            m_IsolatedNetLoop, m_IsolatedLogic->thread, m_IsolatedLogic);
       else
       {
         m_IsolatedNetLoop.reset();
@@ -1043,14 +1042,14 @@ namespace llarp
     void Endpoint::Pump(llarp_time_t)
     {
       EndpointLogic()->queue_func([&]() {
-         // send downstream packets to user for snode
+        // send downstream packets to user for snode
         for(const auto& item : m_SNodeSessions)
           item.second->FlushDownstream();
         // send downstrream traffic to user for hidden service
         util::Lock lock(&m_InboundTrafficQueueMutex);
         while(m_InboundTrafficQueue.size())
         {
-          const auto & msg = m_InboundTrafficQueue.top();
+          const auto& msg = m_InboundTrafficQueue.top();
           llarp_buffer_t buf(msg->payload);
           HandleWriteIPPacket(buf, [&]() -> huint32_t {
             return ObtainIPForAddr(msg->sender.Addr(), false);
@@ -1212,13 +1211,13 @@ namespace llarp
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths));
     }
 
-    std::shared_ptr<Logic>
+    std::shared_ptr< Logic >
     Endpoint::RouterLogic()
     {
       return m_Router->logic();
     }
 
-    std::shared_ptr<Logic>
+    std::shared_ptr< Logic >
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();

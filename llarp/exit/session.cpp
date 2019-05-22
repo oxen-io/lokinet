@@ -288,7 +288,7 @@ namespace llarp
             auto& msg = queue.front();
             if(path)
             {
-              msg.S     = path->NextSeqNo();
+              msg.S = path->NextSeqNo();
               if(path->SendRoutingMessage(msg, router))
                 m_LastUse = now;
             }

@@ -242,7 +242,7 @@ namespace llarp
             // store it into netdb if we don't have it
             if(!n->Has(rc.pubkey))
             {
-              std::shared_ptr<Logic> l = self->context->Router()->logic();
+              std::shared_ptr< Logic > l = self->context->Router()->logic();
               n->InsertAsync(rc, l, [=]() {
                 self->context->ForwardLRCM(self->hop->info.upstream,
                                            self->frames);

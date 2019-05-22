@@ -96,19 +96,20 @@ namespace llarp
     {
       if(k == "isolate-network" && IsTrueValue(v.c_str()))
       {
-        #if defined(__linux__)
-          LogInfo(Name(), " isolating network...");
-          if(!SpawnIsolatedNetwork())
-          {
-            LogError(Name(), " failed to spawn isolated network");
-            return false;
-          }
-          LogInfo(Name(), " booyeah network isolation succeeded");
-          return true;
-        #else
-          LogError(Name(), " network isolation is not supported on your platform");
+#if defined(__linux__)
+        LogInfo(Name(), " isolating network...");
+        if(!SpawnIsolatedNetwork())
+        {
+          LogError(Name(), " failed to spawn isolated network");
           return false;
-        #endif
+        }
+        LogInfo(Name(), " booyeah network isolation succeeded");
+        return true;
+#else
+        LogError(Name(),
+                 " network isolation is not supported on your platform");
+        return false;
+#endif
       }
       if(k == "strict-connect")
       {

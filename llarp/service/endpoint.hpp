@@ -92,12 +92,12 @@ namespace llarp
 
       /// router's logic
       /// use when sending any data on a path
-      std::shared_ptr<Logic>
+      std::shared_ptr< Logic >
       RouterLogic();
 
       /// endpoint's logic
       /// use when writing any data to local network interfaces
-      std::shared_ptr<Logic>
+      std::shared_ptr< Logic >
       EndpointLogic();
 
       /// borrow endpoint's net loop for sending data to user on local network
@@ -323,7 +323,7 @@ namespace llarp
 
       /// spawn a new process that contains a network isolated process
       /// return true if we set up isolation and the event loop is up
-      /// otherwise return false 
+      /// otherwise return false
       virtual bool
       SpawnIsolatedNetwork()
       {
@@ -410,12 +410,16 @@ namespace llarp
       using PendingTraffic =
           std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
 
-      using ProtocolMessagePtr = std::shared_ptr<ProtocolMessage>;
-      using RecvPacketQueue_t = std::priority_queue<ProtocolMessagePtr, std::vector<ProtocolMessagePtr>, ComparePtr<ProtocolMessagePtr> >;
+      using ProtocolMessagePtr = std::shared_ptr< ProtocolMessage >;
+      using RecvPacketQueue_t =
+          std::priority_queue< ProtocolMessagePtr,
+                               std::vector< ProtocolMessagePtr >,
+                               ComparePtr< ProtocolMessagePtr > >;
 
       util::Mutex m_InboundTrafficQueueMutex;
       /// ordered queue for inbound hidden service traffic
-      RecvPacketQueue_t m_InboundTrafficQueue GUARDED_BY(m_InboundTrafficQueueMutex);
+      RecvPacketQueue_t m_InboundTrafficQueue
+          GUARDED_BY(m_InboundTrafficQueueMutex);
 
       using PendingRouters =
           std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
@@ -434,8 +438,8 @@ namespace llarp
       using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
       AbstractRouter* m_Router;
-      std::shared_ptr<Logic> m_IsolatedLogic              = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
+      std::shared_ptr< Logic > m_IsolatedLogic = nullptr;
+      llarp_ev_loop_ptr m_IsolatedNetLoop      = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
