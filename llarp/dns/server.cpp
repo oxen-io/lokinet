@@ -129,7 +129,7 @@ namespace llarp
 
       const Addr requester = itr->second;
       std::vector< byte_t > tmp(pkt->sz);
-      std::copy_n(pkt->cur, pkt->sz, tmp.begin());
+      std::copy_n(pkt->base, pkt->sz, tmp.begin());
       auto self = shared_from_this();
       m_ServerLogic->queue_func([=]() {
         // forward reply to requester via server
@@ -182,7 +182,7 @@ namespace llarp
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
         std::vector< byte_t > tmp(pkt->sz);
-        std::copy_n(pkt->cur, pkt->sz, tmp.begin());
+        std::copy_n(pkt->base, pkt->sz, tmp.begin());
 
         m_ClientLogic->queue_func([=] {
           // do query
