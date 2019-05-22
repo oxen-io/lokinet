@@ -94,7 +94,7 @@ namespace llarp
   ILinkLayer::Configure(llarp_ev_loop_ptr loop, const std::string& ifname,
                         int af, uint16_t port)
   {
-    m_Loop         = std::move(loop);
+    m_Loop         = loop;
     m_udp.user     = this;
     m_udp.recvfrom = &ILinkLayer::udp_recv_from;
     m_udp.tick     = &ILinkLayer::udp_tick;
@@ -104,7 +104,7 @@ namespace llarp
         return false;
     }
     else if(!GetIFAddr(ifname, m_ourAddr, af))
-      return false;
+      m_ourAddr = ifname;
     m_ourAddr.port(port);
     return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr) != -1;
   }

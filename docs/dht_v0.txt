@@ -1,11 +1,10 @@
 DHT messages
 
-these messages can be either wrapped in a LIDM message or sent anonymously over a path
+DHT messages can be either wrapped in a LIDM message or sent anonymously over a path inside a DHT routing message
 
-The distance function is distance = A ^ B
+The distance function is A xor B (traditional kademlia)
 
-This document is currently out of date (probably)
-
+The dht implements both iterative and recursive lookups.
 
 find introduction message (FIM)
 
@@ -13,7 +12,7 @@ variant 1: find an IS by SA
 
 {
   A: "F",
-  R: 0 or 1 if recurisve request,
+  R: 0 for iterative and 1 for recurisve,
   S: "<32 bytes SA>",
   T: transaction_id_uint64,
   V: 0
@@ -24,10 +23,18 @@ variant 2: recursively find many IS in a tag
 {
   A: "F",
   E: [list, of, excluded, SA],
-  R: 0 or 1 if recurisve request,
+  R:  0 for iterative and 1 for recurisve,
   N: "<16 bytes topic tag>",
   T: transaction_id_uint64,
   V: 0
+}
+
+variant 3: find many IS by what services they advertise
+
+{ 
+  A: "F",
+  H: 
+  R: 0 for iterative and 1 for recurisve,
 }
 
 exclude adding service addresses in E if present
@@ -77,8 +84,8 @@ As of protocol version 0, R is always 0.
 
 If S is provided store the IS for later lookup unconditionally, 
 decrement S by 1 and forward to dht peer who is next closest to 
-the SA of the IS. If S is greater than 3, don't store and discard
-this message.
+the SA of the IS. If S is greater than 3, don't store the IS and 
+discard this message.
 
 
 find router contact message (FRCM)

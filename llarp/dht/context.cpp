@@ -653,7 +653,8 @@ namespace llarp
       {
         llarp::LogError(
             "not enough dht nodes to handle exploritory router lookup, "
-            "have ", nodeCount, " dht peers");
+            "have ",
+            nodeCount, " dht peers");
         return false;
       }
       for(const auto& f : found)

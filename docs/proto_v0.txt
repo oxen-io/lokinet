@@ -73,11 +73,11 @@ An address info (AI) defines a publically reachable endpoint
   v: 0
 }
 
-example iwp address info:
+example wank address info:
 
 {
   c: 1,
-  d: "iwp",
+  d: "wank",
   e: "<32 bytes of 0x61>",
   i: "123.123.123.123",
   p: 1234,
@@ -86,7 +86,7 @@ example iwp address info:
 
 bencoded form:
 
-d1:ci1e1:d3:iwp1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
+d1:ci1e1:d4:wank1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
 
 Traffic Policy (TP)
 
@@ -135,15 +135,29 @@ router's full identity
 
 {
   a: [ one, or, many, AI, here ... ],
+  e: extensions_supported,
   i: "<max 8 bytes network identifier>",
   k: "<32 bytes public long term identity signing key>",
   n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   
+  s: [services, supported],
   u: time_signed_at_milliseconds_since_epoch_uint64,
   v: 0,
   x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
 }
+
+e is a dict containing key/value of supported protocol extensions on this service node, keys are strings, values MUST be 0 or 1.
+
+s is a list of services on this service node:
+
+each service is a 6 item long, list of the following:
+
+["_service", "_proto", ttl_uint, priority_uint, weight_uint, port_uint]
+
+with the corrisponding SRV record: 
+
+<_service>.<_proto>.router_pubkey_goes_here.snode. <ttl_uint> IN SRV <priority_uint> <weight_uint> <port_uint> router_pubkey_goes_here.snode
 
 
 RC.t is the timestamp of when this RC was signed.
@@ -206,8 +220,9 @@ x is the timestamp milliseconds since epoch that this introduction expires at
 
 introduction set (IS)
 
-a signed set of introductions for a hidden service
+and introset is a signed set of introductions for a hidden service
 a is the service info of the publisher
+h is a list of srv records in same format as in RCs
 i is the list of introductions that this service is advertising with
 k is the public key to use when doing encryption to this hidden service
 n is a 16 byte null padded utf-8 encoded string tagging the hidden service in 
@@ -219,6 +234,7 @@ service's signing key.
 
 {
   a: SI,
+  h: [list, of, advertised, services],
   i: [ I, I, I, ... ],
   k: "<1218 bytes sntrup4591761 public key block>",
   n: "<16 bytes service topic (optional)>",
@@ -228,6 +244,17 @@ service's signing key.
   z: "<64 bytes signature using service info signing key>"
 }
 
+h is a list of services on this endpoint
+
+each service is a 7 item long, list of the following:
+
+["_service", "_proto", ttl_uint, priority_uint, weight_uint, port_uint, "<32 bytes SA of the service>"]
+
+with the corrisponding SRV record: 
+
+<_service>.<_proto>.<service_address>.loki. <ttl_uint> IN SRV <priority_uint> <weight_uint> <port_uint> <SA of sub service>.loki.
+
+recursion on SRV records is NOT permitted.
 
 ---
 
@@ -328,7 +355,7 @@ link relay commit record (LRCR)
 
 record requesting relaying messages for 600 seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
-PKE(n, rc.K, c) as symettric key for encryption and decryption.
+PKE(n, rc.p, c) as symettric key for encryption and decryption.
 
 if l is provided and is less than 600 and greater than 10 then that lifespan 
 is used (in seconds) instead of 600 seconds.
@@ -338,6 +365,7 @@ the path is extended by w.y seconds
 
 {
   c: "<32 byte public encryption key used for upstream>",
+  d: uint_optional_ms_delay,
   i: "<32 byte RC.k of next hop>",
   l: uint_optional_lifespan,
   n: "<32 bytes nounce for key exchange>",
@@ -446,6 +474,10 @@ transfer a state message between nodes
 
 state message:
 
+NOTE: this message type is currently a documentation stub and remains unimplemented.
+
+state messages propagate changes to the service nodes concensous to thin clients.
+
 service node joined network
 
 {
@@ -464,11 +496,11 @@ service node parted network
 
 service node list request
 
-request the service node list starting at index O containing R entries
+request the service node list starting at index I containing R entries
 
 {
   A: "R",
-  O: starting_offset_int, 
+  I: starting_offset_int, 
   R: number_of_entires_to_request_int,
   V: 0
 }
@@ -480,8 +512,8 @@ response to service node list request
 {
   A: "L",
   S: {
-     "<32 bytes pubkey>" : first_seen_time_uint64,
-     "<32 bytes pubkey>" : first_seen_time_uint64,
+     "<32 bytes pubkey>" : 1,
+     "<32 bytes pubkey>" : 1,
      ....
   },
   V: 0
@@ -640,9 +672,9 @@ hidden service frame (HSF)
 
 TODO: document this better
 
-intro message (variant 1)
+establish converstation tag message (variant 1)
 
-start a new session
+generate a new convotag that is contained inside an encrypted HSD
 
 {
   A: "H",
@@ -650,6 +682,7 @@ start a new session
   D: "<N bytes encrypted HSD>",
   F: "<16 bytes source path_id>",
   N: "<32 bytes nonce for key exchange>",
+  S: sequence_number,
   V: 0,
   Z: "<64 bytes signature of entire message using sender's signing key>"
 }
@@ -657,7 +690,7 @@ start a new session
 alice (A) wants to talk to bob (B) over the network, both have hidden services
 set up and are online on the network. 
 
-A and B are both SI.
+A and B are both referring to alice and bob's SI respectively.
 A_sk is alice's private signing key.
 
 for alice (A) to send the string "beep" to bob (B), alice picks an introduction
@@ -732,13 +765,12 @@ S = HS(K + PKE(A, B, sk, N))
 given sk is the local secret encryption key used by the current hidden service
 
 please note:
-signature verification can only be done after decryption
-
-TODO: explain bob's side too (it's invsere of alice's process)
+signature verification of the outer message can only be done after decryption
+because the signing keys are inside the encrypted HSD.
 
 data from a previously made session (variant 2)
 
-transfer data on a session previously made
+transfer data on a converstation previously made
 
 {
   A: "H",
@@ -759,13 +791,13 @@ transfer ip traffic
   A: "I",
   S: uint64_sequence_number,
   V: 0,
-  X: "<list of ip packet buffers>",
+  X: [list, of, ip, packet, buffers],
 }
 
 an ip packet buffer is prefixed with a 64 bit big endian unsigned integer 
 denoting the sequence number for re-ordering followed by the ip packet itself.
 
-X is parsed as a alist of IP packet buffers.
+X is parsed as a list of IP packet buffers.
 for each ip packet the source addresss is extracted and sent on the 
 appropriate network interface.
 

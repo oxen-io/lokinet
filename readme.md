@@ -80,6 +80,13 @@ install:
 
     $ sudo make install
 
+
+alternatively make a debian package with:
+
+    $ debuild -uc -us -b
+
+this puts the built files in `../`
+
 ### MacOS
 
 build:
