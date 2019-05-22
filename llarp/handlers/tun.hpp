@@ -230,7 +230,7 @@ namespace llarp
 #endif
 
       /// our dns resolver
-      dns::Proxy m_Resolver;
+      std::shared_ptr<dns::Proxy> m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >

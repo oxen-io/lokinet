@@ -63,7 +63,7 @@ namespace llarp
       return m_Router->crypto();
     }
 
-    Logic*
+    std::shared_ptr<Logic>
     PathContext::logic()
     {
       return m_Router->logic();

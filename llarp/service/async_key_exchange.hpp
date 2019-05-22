@@ -14,7 +14,7 @@ namespace llarp
   {
     struct AsyncKeyExchange
     {
-      Logic* logic;
+      std::shared_ptr<Logic> logic;
       Crypto* crypto;
       SharedSecret sharedKey;
       ServiceInfo remote;
@@ -28,7 +28,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(Logic* l, Crypto* c, const ServiceInfo& r,
+      AsyncKeyExchange(std::shared_ptr<Logic> l, Crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,

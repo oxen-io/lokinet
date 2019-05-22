@@ -6,6 +6,12 @@ The distance function is A xor B (traditional kademlia)
 
 The dht implements both iterative and recursive lookups.
 
+Recursive lookups forward the request to a node closer if not found.
+Iterative lookups return the key and of the DHT node who is closer.
+
+In the case of iterative FRCM the RC of the closer router is provided.
+In the case of iterative FIM the pubkey of a dht node who is closer is provided in the GIM.
+
 find introduction message (FIM)
 
 variant 1: find an IS by SA
@@ -29,20 +35,13 @@ variant 2: recursively find many IS in a tag
   V: 0
 }
 
-variant 3: find many IS by what services they advertise
-
-{ 
-  A: "F",
-  H: 
-  R: 0 for iterative and 1 for recurisve,
-}
-
 exclude adding service addresses in E if present
 
 
 got introduction message (GIM)
 
-sent in reply to FIM and PIM
+sent in reply to FIM containing the result of the search
+sent in reply to PIM to acknoledge the publishing of an IS
 
 {
   A: "G",
@@ -53,7 +52,7 @@ sent in reply to FIM and PIM
 }
 
 The I value MUST NOT contain more than 4 IS.
-The I value contain either 1 or 0 IS for PIM and FIM variant 1.
+The I value MUST contain either 1 or 0 IS for PIM and FIM variant 1.
 
 
 publish introduction message (PIM)
@@ -71,18 +70,17 @@ R is currently set to 0 by the sender.
 {
   A: "I",
   I: IS,
-  R: r_counter,
+  R: random_walk_counter,
   S: optional member 0 for immediate store otherwise non zero,
   T: transaction_id_uint64,
   V: 0
 }
 
-if R is greater than 0, do a random walk, otherwise if we are
-closer to the SA of the IS than anyone else we know in the DHT 
-store the IS for later lookup. 
+if R is greater than 0, decrement R and forward the request to a random DHT
+node without storing the IS.
 As of protocol version 0, R is always 0.
 
-If S is provided store the IS for later lookup unconditionally, 
+If S is provided store the IS for later lookup unconditionally, then
 decrement S by 1 and forward to dht peer who is next closest to 
 the SA of the IS. If S is greater than 3, don't store the IS and 
 discard this message.
@@ -101,7 +99,15 @@ find a router by long term RC.k public key
   V: 0
 }
 
-TODO: document me
+if E is provided and non zero then return E dht nodes that are closest to K
+if I is provided and non zero then this request is considered an iterative lookup
+during an iterative lookup the response's GRCM.K is set to the pubkey of the router closer in key space.
+during a recursive lookup the request is forwarded to a router who is closer in 
+keyspace to K.
+If we have no peers that are closer to K and we don't have the RC known locally 
+we reply with a GRCM whose R value is emtpy.
+In any case if we have a locally known RC with pubkey equal to K reply with 
+a GRCM with 1 RC in the R value corrisponding to that locally known RC.
 
 got router contact message (GRCM)
 
@@ -116,12 +122,11 @@ sent in reply to FRCM only
   V: 0
 }
 
-in response to an exploritory FRCM if the target router is not found the form
+in response to an exploritory router lookup, where FRCM.E is provided and non zero. 
 
 {
   A: "S",
-  N: [list, of, router, publickeys, near, target],
-  R: [],
+  N: [list, of, router, publickeys, near, K],
   T: transaction_id_uint64,
   V: 0
 }

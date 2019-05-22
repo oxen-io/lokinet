@@ -245,7 +245,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(Logic* l)
+  ILinkLayer::Start(std::shared_ptr<Logic> l)
   {
     m_Logic = l;
     ScheduleTick(100);

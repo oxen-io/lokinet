@@ -25,9 +25,9 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
 struct DemoCall : public abyss::http::IRPCClientHandler
 {
   std::function< void(void) > m_Callback;
-  llarp::Logic* m_Logic;
+  std::shared_ptr<llarp::Logic> m_Logic;
 
-  DemoCall(abyss::http::ConnImpl* impl, llarp::Logic* logic,
+  DemoCall(abyss::http::ConnImpl* impl, std::shared_ptr<llarp::Logic> logic,
            std::function< void(void) > callback)
       : abyss::http::IRPCClientHandler(impl)
       , m_Callback(callback)
@@ -36,16 +36,10 @@ struct DemoCall : public abyss::http::IRPCClientHandler
     llarp::LogInfo("new call");
   }
 
-  static void
-  CallCallback(void* u)
-  {
-    static_cast< DemoCall* >(u)->m_Callback();
-  }
-
   bool HandleResponse(abyss::http::RPC_Response) override
   {
     llarp::LogInfo("response get");
-    m_Logic->queue_job({this, &CallCallback});
+    m_Logic->queue_func(m_Callback);
     return true;
   }
 
@@ -64,9 +58,9 @@ struct DemoCall : public abyss::http::IRPCClientHandler
 struct DemoClient : public abyss::http::JSONRPC
 {
   llarp_ev_loop_ptr m_Loop;
-  llarp::Logic* m_Logic;
+  std::shared_ptr<llarp::Logic> m_Logic;
 
-  DemoClient(llarp_ev_loop_ptr l, llarp::Logic* logic)
+  DemoClient(llarp_ev_loop_ptr l, std::shared_ptr<llarp::Logic> logic)
       : abyss::http::JSONRPC(), m_Loop(std::move(l)), m_Logic(logic)
   {
   }
@@ -125,7 +119,7 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
   llarp::SetLogLevel(llarp::eLogDebug);
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   llarp_ev_loop_ptr loop       = llarp_make_ev_loop();
-  llarp::Logic* logic          = new llarp::Logic(threadpool);
+  auto logic          = std::make_shared<llarp::Logic>(threadpool);
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port        = htons(1222);

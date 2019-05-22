@@ -109,7 +109,7 @@ llarp_nodedb::getRCFilePath(const llarp::RouterID &pubkey) const
 
 static void
 handle_async_insert_rc(llarp_nodedb *nodedb, const llarp::RouterContact &rc,
-                       llarp::Logic *logic,
+                       std::shared_ptr<llarp::Logic> logic,
                        const std::function< void(void) > &completedHook)
 {
   nodedb->Insert(rc);
@@ -120,7 +120,7 @@ handle_async_insert_rc(llarp_nodedb *nodedb, const llarp::RouterContact &rc,
 }
 
 void
-llarp_nodedb::InsertAsync(llarp::RouterContact rc, llarp::Logic *logic,
+llarp_nodedb::InsertAsync(llarp::RouterContact rc, std::shared_ptr<llarp::Logic> logic,
                           std::function< void(void) > completionHandler)
 {
   disk->addJob(

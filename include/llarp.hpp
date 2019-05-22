@@ -57,7 +57,7 @@ namespace llarp
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
-    std::unique_ptr< Logic > logic;
+    std::shared_ptr< Logic > logic;
     std::unique_ptr< Config > config;
     std::unique_ptr< llarp_nodedb > nodedb;
     llarp_ev_loop_ptr mainloop;

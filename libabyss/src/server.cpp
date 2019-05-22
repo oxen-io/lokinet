@@ -326,8 +326,6 @@ namespace abyss
     BaseReqHandler::BaseReqHandler(llarp_time_t reqtimeout)
         : m_ReqTimeout(reqtimeout)
     {
-      m_loop              = nullptr;
-      m_Logic             = nullptr;
       m_acceptor.accepted = &BaseReqHandler::OnAccept;
       m_acceptor.user     = this;
       m_acceptor.tick     = &OnTick;
@@ -335,10 +333,10 @@ namespace abyss
     }
 
     bool
-    BaseReqHandler::ServeAsync(llarp_ev_loop_ptr loop, llarp::Logic* logic,
+    BaseReqHandler::ServeAsync(llarp_ev_loop_ptr loop, std::shared_ptr<llarp::Logic> logic,
                                const sockaddr* bindaddr)
     {
-      m_loop  = std::move(loop);
+      m_loop  = loop;
       m_Logic = logic;
       return llarp_tcp_serve(m_loop.get(), &m_acceptor, bindaddr);
     }

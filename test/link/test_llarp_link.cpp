@@ -68,7 +68,7 @@ struct LinkLayerTest : public ::testing::Test
     }
 
     bool
-    Start(llarp::Logic* logic, llarp_ev_loop_ptr loop, uint16_t port)
+    Start(std::shared_ptr<llarp::Logic> logic, llarp_ev_loop_ptr loop, uint16_t port)
     {
       if(!link)
         return false;
@@ -107,7 +107,7 @@ struct LinkLayerTest : public ::testing::Test
   bool success = false;
 
   llarp_ev_loop_ptr netLoop;
-  std::unique_ptr< llarp::Logic > m_logic;
+  std::shared_ptr< llarp::Logic > m_logic;
 
   llarp_time_t oldRCLifetime;
 
@@ -148,7 +148,7 @@ struct LinkLayerTest : public ::testing::Test
   RunMainloop()
   {
     m_logic->call_later({5000, this, &OnTimeout});
-    llarp_ev_loop_run_single_process(netLoop, m_logic->thread, m_logic.get());
+    llarp_ev_loop_run_single_process(netLoop, m_logic->thread, m_logic);
   }
 
   void
@@ -247,8 +247,8 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       },
       [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
-  ASSERT_TRUE(Alice.Start(m_logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(m_logic.get(), netLoop, BobPort));
+  ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 
@@ -336,8 +336,8 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
       },
       [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
-  ASSERT_TRUE(Alice.Start(m_logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(m_logic.get(), netLoop, BobPort));
+  ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 
