@@ -855,6 +855,7 @@ namespace llarp
       if(msg->proto == eProtocolTraffic)
       {
         m_InboundTrafficQueue.emplace(msg);
+        return true;
       }
       else if(msg->proto == eProtocolControl)
       {
