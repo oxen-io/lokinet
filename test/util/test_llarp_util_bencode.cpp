@@ -387,15 +387,15 @@ TEST_P(DictReadTest, readtest)
 
   std::vector< std::string > result;
 
-  dict_reader reader{nullptr, nullptr, [&](dict_reader*, llarp_buffer_t* buf) {
-                       if(buf)
-                       {
-                         result.emplace_back(buf->base, buf->base + buf->sz);
-                       }
-                       return true;
-                     }};
-
-  ASSERT_TRUE(bencode_read_dict(&buffer, &reader));
+  ASSERT_TRUE(llarp::bencode_read_dict(
+      [&](llarp_buffer_t*, llarp_buffer_t* key) {
+        if(key)
+        {
+          result.emplace_back(key->base, key->base + key->sz);
+        }
+        return true;
+      },
+      &buffer));
   ASSERT_EQ(result, d.output);
 }
 
@@ -422,18 +422,17 @@ TEST_P(ListReadTest, readtest)
 
   std::vector< std::string > result;
 
-  list_reader reader{nullptr, nullptr, [&](list_reader* r, bool cont) {
-                       if(cont)
-                       {
-                         auto b = r->buffer;
-                         llarp_buffer_t tmp;
-                         bencode_read_string(b, &tmp);
-                         result.emplace_back(tmp.base, tmp.base + tmp.sz);
-                       }
-                       return true;
-                     }};
-
-  ASSERT_TRUE(bencode_read_list(&buffer, &reader));
+  ASSERT_TRUE(llarp::bencode_read_list(
+      [&](llarp_buffer_t* b, bool cont) {
+        if(cont)
+        {
+          llarp_buffer_t tmp;
+          bencode_read_string(b, &tmp);
+          result.emplace_back(tmp.base, tmp.base + tmp.sz);
+        }
+        return true;
+      },
+      &buffer));
   ASSERT_EQ(result, d.output);
 }
 
@@ -446,8 +445,6 @@ INSTANTIATE_TEST_CASE_P(TestBencode, ListReadTest,
 TEST(TestBencode, ReadDictEmptyBuffer)
 {
   llarp_buffer_t buf((byte_t*)nullptr, 0);
-  dict_reader reader;
-  reader.on_key = [](dict_reader*, llarp_buffer_t*) -> bool { return true; };
-  reader.user   = nullptr;
-  ASSERT_FALSE(bencode_read_dict(&buf, &reader));
+  ASSERT_FALSE(llarp::bencode_read_dict(
+      [](llarp_buffer_t*, llarp_buffer_t*) { return true; }, &buf));
 }

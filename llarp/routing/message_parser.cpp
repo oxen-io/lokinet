@@ -32,12 +32,10 @@ namespace llarp
 
     InboundMessageParser::InboundMessageParser()
         : firstKey(false)
-        , key('\0')
+        , ourKey('\0')
         , msg(nullptr)
         , m_Holder(std::make_unique< MessageHolder >())
     {
-      reader.user   = this;
-      reader.on_key = &OnKey;
     }
 
     InboundMessageParser::~InboundMessageParser()
@@ -45,76 +43,74 @@ namespace llarp
     }
 
     bool
-    InboundMessageParser::OnKey(dict_reader* r, llarp_buffer_t* key)
+    InboundMessageParser::operator()(llarp_buffer_t* buffer,
+                                     llarp_buffer_t* key)
     {
-      InboundMessageParser* self =
-          static_cast< InboundMessageParser* >(r->user);
-
-      if(key == nullptr && self->firstKey)
+      if(key == nullptr && firstKey)
       {
         // empty dict
         return false;
       }
       if(!key)
         return true;
-      if(self->firstKey)
+      if(firstKey)
       {
         llarp_buffer_t strbuf;
         if(!(*key == "A"))
           return false;
-        if(!bencode_read_string(r->buffer, &strbuf))
+        if(!bencode_read_string(buffer, &strbuf))
           return false;
         if(strbuf.sz != 1)
           return false;
-        self->key = *strbuf.cur;
-        LogDebug("routing message '", self->key, "'");
-        switch(self->key)
+        ourKey = *strbuf.cur;
+        LogDebug("routing message '", key, "'");
+        switch(ourKey)
         {
           case 'D':
-            self->msg = &self->m_Holder->D;
+            msg = &m_Holder->D;
             break;
           case 'L':
-            self->msg = &self->m_Holder->L;
+            msg = &m_Holder->L;
             break;
           case 'M':
-            self->msg = &self->m_Holder->M;
+            msg = &m_Holder->M;
             break;
           case 'P':
-            self->msg = &self->m_Holder->P;
+            msg = &m_Holder->P;
             break;
           case 'T':
-            self->msg = &self->m_Holder->T;
+            msg = &m_Holder->T;
             break;
           case 'H':
-            self->msg = &self->m_Holder->H;
+            msg = &m_Holder->H;
             break;
           case 'I':
-            self->msg = &self->m_Holder->I;
+            msg = &m_Holder->I;
             break;
           case 'G':
-            self->msg = &self->m_Holder->G;
+            msg = &m_Holder->G;
             break;
           case 'J':
-            self->msg = &self->m_Holder->J;
+            msg = &m_Holder->J;
             break;
           case 'O':
-            self->msg = &self->m_Holder->O;
+            msg = &m_Holder->O;
             break;
           case 'U':
-            self->msg = &self->m_Holder->U;
+            msg = &m_Holder->U;
             break;
           case 'C':
-            self->msg = &self->m_Holder->C;
+            msg = &m_Holder->C;
             break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
         }
-        self->firstKey = false;
-        return self->msg != nullptr;
+        firstKey = false;
+        return msg != nullptr;
       }
       else
       {
-        return self->msg->DecodeKey(*key, r->buffer);
+        return msg->DecodeKey(*key, buffer);
       }
     }
 
@@ -129,13 +125,13 @@ namespace llarp
       firstKey    = true;
       ManagedBuffer copiedBuf(buf);
       auto& copy = copiedBuf.underlying;
-      if(bencode_read_dict(&copy, &reader))
+      if(bencode_read_dict(*this, &copy))
       {
         msg->from = from;
         result    = msg->HandleMessage(h, r);
         if(!result)
         {
-          llarp::LogWarn("Failed to handle inbound routing message ", key);
+          llarp::LogWarn("Failed to handle inbound routing message ", ourKey);
         }
       }
       else

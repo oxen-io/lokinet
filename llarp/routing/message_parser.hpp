@@ -25,13 +25,12 @@ namespace llarp
       ParseMessageBuffer(const llarp_buffer_t& buf, IMessageHandler* handler,
                          const PathID_t& from, AbstractRouter* r);
 
-     private:
-      static bool
-      OnKey(dict_reader* r, llarp_buffer_t* key);
+      bool
+      operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
 
+     private:
       bool firstKey;
-      char key;
-      dict_reader reader;
+      char ourKey;
 
       struct MessageHolder;
 

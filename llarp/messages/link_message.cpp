@@ -38,13 +38,10 @@ namespace llarp
   }
 
   bool
-  InboundMessageParser::OnKey(dict_reader* r, llarp_buffer_t* key)
+  InboundMessageParser::operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
   {
-    InboundMessageParser* handler =
-        static_cast< InboundMessageParser* >(r->user);
-
     // we are reading the first key
-    if(handler->firstkey)
+    if(firstkey)
     {
       llarp_buffer_t strbuf;
       // check for empty dict
@@ -57,7 +54,7 @@ namespace llarp
         return false;
       }
 
-      if(!bencode_read_string(r->buffer, &strbuf))
+      if(!bencode_read_string(buffer, &strbuf))
       {
         llarp::LogWarn("could not read value of message type");
         return false;
@@ -74,23 +71,23 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg = &handler->holder->i;
-          isLIM        = true;
+          msg   = &holder->i;
+          isLIM = true;
           break;
         case 'd':
-          handler->msg = &handler->holder->d;
+          msg = &holder->d;
           break;
         case 'u':
-          handler->msg = &handler->holder->u;
+          msg = &holder->u;
           break;
         case 'm':
-          handler->msg = &handler->holder->m;
+          msg = &holder->m;
           break;
         case 'c':
-          handler->msg = &handler->holder->c;
+          msg = &holder->c;
           break;
         case 'x':
-          handler->msg = &handler->holder->x;
+          msg = &holder->x;
           break;
         default:
           return false;
@@ -98,20 +95,19 @@ namespace llarp
 
       if(!isLIM)
       {
-        const std::string host =
-            "RX_" + RouterID(handler->from->GetPubKey()).ToString();
-        METRICS_DYNAMIC_INCREMENT(handler->msg->Name(), host.c_str());
+        const std::string host = "RX_" + RouterID(from->GetPubKey()).ToString();
+        METRICS_DYNAMIC_INCREMENT(msg->Name(), host.c_str());
       }
 
-      handler->msg->session = handler->from;
-      handler->firstkey     = false;
+      msg->session = from;
+      firstkey     = false;
       return true;
     }
     // check for last element
     if(!key)
-      return handler->MessageDone();
+      return MessageDone();
 
-    return handler->msg->DecodeKey(*key, r->buffer);
+    return msg->DecodeKey(*key, buffer);
   }
 
   bool
@@ -135,12 +131,11 @@ namespace llarp
       llarp::LogWarn("no link session");
       return false;
     }
-    reader.user   = this;
-    reader.on_key = &OnKey;
-    from          = src;
-    firstkey      = true;
+
+    from     = src;
+    firstkey = true;
     ManagedBuffer copy(buf);
-    return bencode_read_dict(&copy.underlying, &reader);
+    return bencode_read_dict(*this, &copy.underlying);
   }
 
   void

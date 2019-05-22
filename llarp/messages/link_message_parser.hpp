@@ -16,10 +16,9 @@ namespace llarp
   {
     InboundMessageParser(AbstractRouter* router);
     ~InboundMessageParser();
-    dict_reader reader;
 
-    static bool
-    OnKey(dict_reader* r, llarp_buffer_t* buf);
+    bool
+    operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
 
     /// start processig message from a link session
     bool

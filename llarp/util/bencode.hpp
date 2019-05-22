@@ -140,28 +140,6 @@ namespace llarp
     return bencode_end(buf);
   }
 
-  template < typename Array >
-  bool
-  BEncodeReadArray(Array& array, llarp_buffer_t* buf)
-  {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    size_t idx = 0;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      if(idx >= array.size())
-        return false;
-      if(!array[idx++].BDecode(buf))
-        return false;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
-  }
-
   template < typename Iter >
   bool
   BEncodeWriteList(Iter itr, Iter end, llarp_buffer_t* buf)
@@ -176,44 +154,97 @@ namespace llarp
     return bencode_end(buf);
   }
 
+  template < typename Sink >
+  bool
+  bencode_read_dict(Sink&& sink, llarp_buffer_t* buffer)
+  {
+    if(buffer->size_left() < 2)  // minimum case is 'de'
+      return false;
+    if(*buffer->cur != 'd')  // ensure is a dictionary
+      return false;
+    buffer->cur++;
+    while(buffer->size_left() && *buffer->cur != 'e')
+    {
+      llarp_buffer_t strbuf;  // temporary buffer for current element
+      if(bencode_read_string(buffer, &strbuf))
+      {
+        if(!sink(buffer, &strbuf))  // check for early abort
+          return false;
+      }
+      else
+        return false;
+    }
+
+    if(*buffer->cur != 'e')
+    {
+      llarp::LogWarn("reading dict not ending on 'e'");
+      // make sure we're at dictionary end
+      return false;
+    }
+    buffer->cur++;
+    return sink(buffer, nullptr);
+  }
+
+  template < typename Sink >
+  bool
+  bencode_read_list(Sink&& sink, llarp_buffer_t* buffer)
+  {
+    if(buffer->size_left() < 2)  // minimum case is 'le'
+      return false;
+    if(*buffer->cur != 'l')  // ensure is a list
+    {
+      llarp::LogWarn("bencode::bencode_read_list - expecting list got ",
+                     *buffer->cur);
+      return false;
+    }
+
+    buffer->cur++;
+    while(buffer->size_left() && *buffer->cur != 'e')
+    {
+      if(!sink(buffer, true))  // check for early abort
+        return false;
+    }
+    if(*buffer->cur != 'e')  // make sure we're at a list end
+      return false;
+    buffer->cur++;
+    return sink(buffer, false);
+  }
+
+  template < typename Array >
+  bool
+  BEncodeReadArray(Array& array, llarp_buffer_t* buf)
+  {
+    size_t idx = 0;
+    return bencode_read_list(
+        [&array, &idx](llarp_buffer_t* buffer, bool has) {
+          if(has)
+          {
+            if(idx >= array.size())
+              return false;
+            if(!array[idx++].BDecode(buffer))
+              return false;
+          }
+          return true;
+        },
+        buf);
+  }
+
   template < typename List_t >
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf)
   {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      if(!result.emplace(result.end())->BDecode(buf))
-        return false;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
-  }
-
-  template < typename T >
-  bool
-  BEncodeReadSet(std::set< T >& result, llarp_buffer_t* buf)
-  {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      T item;
-      if(!item.BDecode(buf))
-        return false;
-      return result.insert(item).second;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
+    return bencode_read_list(
+        [&result](llarp_buffer_t* buffer, bool has) {
+          if(has)
+          {
+            if(!result.emplace(result.end())->BDecode(buffer))
+            {
+              return false;
+            }
+          }
+          return true;
+        },
+        buf);
   }
 
   template < typename List_t >
@@ -245,19 +276,16 @@ namespace llarp
     virtual bool
     BDecode(llarp_buffer_t* buf)
     {
-      dict_reader r;
-      r.user   = this;
-      r.on_key = &OnKey;
-      return bencode_read_dict(buf, &r);
+      return bencode_read_dict(*this, buf);
     }
 
     // TODO: check for shadowed values elsewhere
     uint64_t version = 0;
 
-    static bool
-    OnKey(dict_reader* r, llarp_buffer_t* k)
+    bool
+    operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
     {
-      return static_cast< IBEncodeMessage* >(r->user)->HandleKey(k, r->buffer);
+      return HandleKey(key, buffer);
     }
 
     bool
