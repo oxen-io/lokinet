@@ -854,6 +854,7 @@ namespace llarp
     {
       if(msg->proto == eProtocolTraffic)
       {
+        util::Lock l(&m_InboundTrafficQueueMutex);
         m_InboundTrafficQueue.emplace(msg);
         return true;
       }
