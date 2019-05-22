@@ -52,6 +52,7 @@ namespace llarp
       /// local path we got this message from
       PathID_t srcPath;
       ConvoTag tag;
+      uint64_t seqno = 0;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
@@ -64,6 +65,12 @@ namespace llarp
 
       static void
       ProcessAsync(std::shared_ptr< ProtocolMessage > self);
+
+      bool
+      operator<(const ProtocolMessage& other) const
+      {
+        return seqno < other.seqno;
+      }
     };
 
     /// outer message
@@ -119,8 +126,8 @@ namespace llarp
       Sign(Crypto* c, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(Logic* logic, Crypto* c, path::Path_ptr fromPath,
-                            llarp_threadpool* worker,
+      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic, Crypto* c,
+                            path::Path_ptr fromPath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 

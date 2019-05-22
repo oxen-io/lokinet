@@ -44,7 +44,6 @@ namespace llarp
         if(item.second->SendRoutingMessage(*item.first, r))
         {
           lastGoodSend = r->Now();
-          ++sequenceNo;
         }
         else
           LogError("Failed to send frame on path");
@@ -79,26 +78,25 @@ namespace llarp
         return;
       }
 
-      if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
-      {
-        ProtocolMessage m;
-        m_DataHandler->PutIntroFor(f.T, remoteIntro);
-        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-        m.proto      = t;
-        m.introReply = path->intro;
-        f.F          = m.introReply.pathID;
-        m.sender     = m_Endpoint->GetIdentity().pub;
-        m.tag        = f.T;
-        m.PutBuffer(payload);
-        if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->GetIdentity()))
-        {
-          LogError("failed to sign");
-          return;
-        }
-      }
-      else
+      if(!m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         LogError("No cached session key");
+        return;
+      }
+
+      ProtocolMessage m;
+      m_DataHandler->PutIntroFor(f.T, remoteIntro);
+      m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+      m.proto      = t;
+      m.seqno      = sequenceNo++;
+      m.introReply = path->intro;
+      f.F          = m.introReply.pathID;
+      m.sender     = m_Endpoint->GetIdentity().pub;
+      m.tag        = f.T;
+      m.PutBuffer(payload);
+      if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->GetIdentity()))
+      {
+        LogError("failed to sign");
         return;
       }
       Send(f, path);
@@ -116,7 +114,7 @@ namespace llarp
           LogWarn("no good path yet, your message may drop");
         }
       }
-      if(sequenceNo)
+      if(lastGoodSend)
       {
         EncryptAndSendTo(data, protocol);
       }

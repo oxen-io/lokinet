@@ -52,6 +52,8 @@ namespace llarp
       }
       if(!BEncodeMaybeReadDictEntry("i", introReply, read, k, buf))
         return false;
+      if(!BEncodeMaybeReadDictInt("n", seqno, read, k, buf))
+        return false;
       if(!BEncodeMaybeReadDictEntry("s", sender, read, k, buf))
         return false;
       if(!BEncodeMaybeReadDictEntry("t", tag, read, k, buf))
@@ -73,6 +75,8 @@ namespace llarp
       if(!bencode_write_bytestring(buf, payload.data(), payload.size()))
         return false;
       if(!BEncodeWriteDictEntry("i", introReply, buf))
+        return false;
+      if(!BEncodeWriteDictInt("n", seqno, buf))
         return false;
       if(!BEncodeWriteDictEntry("s", sender, buf))
         return false;
@@ -242,15 +246,15 @@ namespace llarp
     struct AsyncFrameDecrypt
     {
       Crypto* crypto;
-      Logic* logic;
+      std::shared_ptr< Logic > logic;
       std::shared_ptr< ProtocolMessage > msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
       const Introduction fromIntro;
 
-      AsyncFrameDecrypt(Logic* l, Crypto* c, const Identity& localIdent,
-                        IDataHandler* h,
+      AsyncFrameDecrypt(std::shared_ptr< Logic > l, Crypto* c,
+                        const Identity& localIdent, IDataHandler* h,
                         const std::shared_ptr< ProtocolMessage >& m,
                         const ProtocolFrame& f, const Introduction& recvIntro)
           : crypto(c)
@@ -362,8 +366,8 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(Logic* logic, Crypto* c,
-                                         path::Path_ptr recvPath,
+    ProtocolFrame::AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
+                                         Crypto* c, path::Path_ptr recvPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const

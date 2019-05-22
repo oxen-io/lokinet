@@ -13,7 +13,7 @@ using TestPipeReadFunc = std::function< bool(const llarp_buffer_t) >;
 struct EventLoopTest : public ::testing::Test
 {
   llarp_ev_loop_ptr loop;
-  llarp::Logic _logic;
+  std::shared_ptr<llarp::Logic> _logic;
   llarp::sodium::CryptoLibSodium crypto;
 
   static void
@@ -28,7 +28,8 @@ struct EventLoopTest : public ::testing::Test
   SetUp()
   {
     loop = llarp_make_ev_loop();
-    _logic.call_later({10000, this, &OnTimeout});
+    _logic = std::make_shared<llarp::Logic>();
+    _logic->call_later({10000, this, &OnTimeout});
   }
 
   void
@@ -42,7 +43,6 @@ struct EventLoopTest : public ::testing::Test
   Stop()
   {
     llarp_ev_loop_stop(loop.get());
-    _logic.stop();
   }
 
   void
@@ -50,12 +50,13 @@ struct EventLoopTest : public ::testing::Test
   {
     Stop();
     loop.reset();
+    _logic.reset();
   }
 
   void
   RunLoop()
   {
-    llarp_ev_loop_run_single_process(loop, _logic.thread, &_logic);
+    llarp_ev_loop_run_single_process(loop, _logic->thread, _logic);
   }
 };
 

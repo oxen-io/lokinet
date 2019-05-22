@@ -23,11 +23,11 @@ namespace llarp
     User* user = nullptr;
 
     Handler result;
-    size_t idx               = 0;
-    AbstractRouter* router   = nullptr;
-    llarp_threadpool* worker = nullptr;
-    Logic* logic             = nullptr;
-    Crypto* crypto           = nullptr;
+    size_t idx                     = 0;
+    AbstractRouter* router         = nullptr;
+    llarp_threadpool* worker       = nullptr;
+    std::shared_ptr< Logic > logic = nullptr;
+    Crypto* crypto                 = nullptr;
     LR_CommitMessage LRCM;
 
     ~AsyncPathKeyExchangeContext()
@@ -131,8 +131,8 @@ namespace llarp
 
     /// Generate all keys asynchronously and call handler when done
     void
-    AsyncGenerateKeys(Path_t p, Logic* l, llarp_threadpool* pool, User* u,
-                      Handler func)
+    AsyncGenerateKeys(Path_t p, std::shared_ptr< Logic > l,
+                      llarp_threadpool* pool, User* u, Handler func)
     {
       path   = p;
       logic  = l;

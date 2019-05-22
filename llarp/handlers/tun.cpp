@@ -15,6 +15,8 @@
 #include <util/logic.hpp>
 #include <nodedb.hpp>
 
+#include <util/str.hpp>
+
 namespace llarp
 {
   namespace handlers
@@ -39,7 +41,7 @@ namespace llarp
                                   r->netloop())
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop(),
                                   r->netloop())
-        , m_Resolver(r->netloop(), this)
+        , m_Resolver(std::make_shared<dns::Proxy>(r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
 #ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;
@@ -93,6 +95,23 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "isolate-network" && IsTrueValue(v.c_str()))
+      {
+#if defined(__linux__)
+        LogInfo(Name(), " isolating network...");
+        if(!SpawnIsolatedNetwork())
+        {
+          LogError(Name(), " failed to spawn isolated network");
+          return false;
+        }
+        LogInfo(Name(), " booyeah network isolation succeeded");
+        return true;
+#else
+        LogError(Name(),
+                 " network isolation is not supported on your platform");
+        return false;
+#endif
+      }
       if(k == "strict-connect")
       {
         RouterID connect;
@@ -608,7 +627,7 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
-      if(!m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers))
+      if(!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
         // downgrade DNS server failure to a warning
         llarp::LogWarn(Name(), " failed to start dns server");

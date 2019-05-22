@@ -41,6 +41,8 @@ llarp_threadpool_stop(struct llarp_threadpool *pool)
   llarp::LogDebug("threadpool stop");
   if(pool->impl)
     pool->impl->stop();
+  if(pool->jobs)
+    pool->jobs->disable();
 }
 
 void
@@ -67,8 +69,16 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
   else
   {
     // single threaded mode
-    llarp::util::Lock lock(&pool->m_access);
-    pool->jobs.emplace(std::bind(job.work, job.user));
+    while(pool->jobs->tryPushBack(std::bind(job.work, job.user))
+          != llarp::thread::QueueReturn::Success)
+    {
+      if(!pool->jobs->enabled())
+        return;
+      if(::getpid() == pool->callingPID)
+        llarp_threadpool_tick(pool);
+      else
+        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
   }
 }
 
@@ -77,15 +87,10 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
 {
   while(pool->size())
   {
-    std::function< void(void) > job;
-    {
-      llarp::util::Lock lock(&pool->m_access);
-      job = std::move(pool->jobs.front());
-      pool->jobs.pop();
-    }
+    auto job = pool->jobs->tryPopFront();
     if(job)
     {
-      job();
+      (*job)();
     }
   }
 }

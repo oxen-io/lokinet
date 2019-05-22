@@ -130,7 +130,7 @@ namespace llarp
       KickIdentOffExit(const PubKey& pk);
 
       AbstractRouter* m_Router;
-      dns::Proxy m_Resolver;
+      std::shared_ptr< dns::Proxy > m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;

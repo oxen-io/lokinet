@@ -682,7 +682,6 @@ generate a new convotag that is contained inside an encrypted HSD
   D: "<N bytes encrypted HSD>",
   F: "<16 bytes source path_id>",
   N: "<32 bytes nonce for key exchange>",
-  S: sequence_number,
   V: 0,
   Z: "<64 bytes signature of entire message using sender's signing key>"
 }
@@ -777,6 +776,18 @@ transfer data on a converstation previously made
   D: "<N bytes encrypted HSD>",
   F: "<16 bytes path id of soruce>",
   N: "<32 bytes nonce for symettric cipher>",
+  T: "<16 bytes converstation tag>",
+  V: 0,
+  Z: "<64 bytes signature using sender's signing key>"
+}
+
+reject a message sent on a convo tag, when a remote endpoint
+sends this message a new converstation SHOULD be established.
+
+{
+  A: "H",
+  F: "<16 bytes path id of soruce>",
+  R: 1,
   T: "<16 bytes converstation tag>",
   V: 0,
   Z: "<64 bytes signature using sender's signing key>"

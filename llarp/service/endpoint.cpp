@@ -108,12 +108,6 @@ namespace llarp
       return true;
     }
 
-    bool
-    Endpoint::IsolateNetwork()
-    {
-      return false;
-    }
-
     llarp_ev_loop_ptr
     Endpoint::EndpointNetLoop()
     {
@@ -126,13 +120,7 @@ namespace llarp
     bool
     Endpoint::NetworkIsIsolated() const
     {
-      return m_IsolatedLogic && m_IsolatedWorker;
-    }
-
-    bool
-    Endpoint::SetupIsolatedNetwork(void* user, bool failed)
-    {
-      return static_cast< Endpoint* >(user)->DoNetworkIsolation(!failed);
+      return m_IsolatedLogic.get() != nullptr && m_IsolatedNetLoop != nullptr;
     }
 
     bool
@@ -656,22 +644,19 @@ namespace llarp
       m_OnReady = nullptr;
     }
 
-    bool
-    Endpoint::DoNetworkIsolation(bool failed)
-    {
-      if(failed)
-        return IsolationFailed();
-      m_IsolatedNetLoop = llarp_make_ev_loop();
-      return SetupNetworking();
-    }
-
     void
-    Endpoint::RunIsolatedMainLoop(void* user)
+    Endpoint::IsolatedNetworkMainLoop()
     {
-      Endpoint* self = static_cast< Endpoint* >(user);
-      llarp_ev_loop_run_single_process(self->m_IsolatedNetLoop,
-                                       self->m_IsolatedWorker,
-                                       self->m_IsolatedLogic);
+      m_IsolatedNetLoop = llarp_make_ev_loop();
+      m_IsolatedLogic   = std::make_shared< llarp::Logic >();
+      if(SetupNetworking())
+        llarp_ev_loop_run_single_process(
+            m_IsolatedNetLoop, m_IsolatedLogic->thread, m_IsolatedLogic);
+      else
+      {
+        m_IsolatedNetLoop.reset();
+        m_IsolatedLogic.reset();
+      }
     }
 
     bool
@@ -869,10 +854,8 @@ namespace llarp
     {
       if(msg->proto == eProtocolTraffic)
       {
-        llarp_buffer_t buf(msg->payload);
-        return HandleWriteIPPacket(buf,
-                                   std::bind(&Endpoint::ObtainIPForAddr, this,
-                                             msg->sender.Addr(), false));
+        m_InboundTrafficQueue.emplace(msg);
+        return true;
       }
       else if(msg->proto == eProtocolControl)
       {
@@ -1060,16 +1043,31 @@ namespace llarp
     void Endpoint::Pump(llarp_time_t)
     {
       EndpointLogic()->queue_func([&]() {
+        // send downstream packets to user for snode
         for(const auto& item : m_SNodeSessions)
           item.second->FlushDownstream();
+        // send downstrream traffic to user for hidden service
+        util::Lock lock(&m_InboundTrafficQueueMutex);
+        while(m_InboundTrafficQueue.size())
+        {
+          const auto& msg = m_InboundTrafficQueue.top();
+          llarp_buffer_t buf(msg->payload);
+          HandleWriteIPPacket(buf, [&]() -> huint32_t {
+            return ObtainIPForAddr(msg->sender.Addr(), false);
+          });
+          m_InboundTrafficQueue.pop();
+        }
       });
 
       auto router = Router();
+      // TODO: locking on this container
       for(const auto& item : m_RemoteSessions)
         item.second->FlushUpstream();
+      // TODO: locking on this container
       for(const auto& item : m_SNodeSessions)
         item.second->FlushUpstream();
       util::Lock lock(&m_SendQueueMutex);
+      // send outbound traffic
       for(const auto& item : m_SendQueue)
         item.second->SendRoutingMessage(*item.first, router);
       m_SendQueue.clear();
@@ -1214,13 +1212,13 @@ namespace llarp
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths));
     }
 
-    Logic*
+    std::shared_ptr< Logic >
     Endpoint::RouterLogic()
     {
       return m_Router->logic();
     }
 
-    Logic*
+    std::shared_ptr< Logic >
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();

@@ -16,6 +16,8 @@
 #include <service/session.hpp>
 #include <service/tag_lookup_job.hpp>
 #include <hook/ihook.hpp>
+#include <util/compare_ptr.hpp>
+#include <util/logic.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -90,12 +92,12 @@ namespace llarp
 
       /// router's logic
       /// use when sending any data on a path
-      Logic*
+      std::shared_ptr< Logic >
       RouterLogic();
 
       /// endpoint's logic
       /// use when writing any data to local network interfaces
-      Logic*
+      std::shared_ptr< Logic >
       EndpointLogic();
 
       /// borrow endpoint's net loop for sending data to user on local network
@@ -319,14 +321,21 @@ namespace llarp
       void
       PrefetchServicesByTag(const Tag& tag);
 
-      bool
-      IsolateNetwork();
+      /// spawn a new process that contains a network isolated process
+      /// return true if we set up isolation and the event loop is up
+      /// otherwise return false
+      virtual bool
+      SpawnIsolatedNetwork()
+      {
+        return false;
+      }
 
       bool
       NetworkIsIsolated() const;
 
-      static void
-      RunIsolatedMainLoop(void*);
+      /// this runs in the isolated network process
+      void
+      IsolatedNetworkMainLoop();
 
      private:
       void
@@ -336,9 +345,6 @@ namespace llarp
       bool
       OnLookup(const service::Address& addr, const IntroSet* i,
                const RouterID& endpoint); /*  */
-
-      static bool
-      SetupIsolatedNetwork(void* user, bool success);
 
       bool
       DoNetworkIsolation(bool failed);
@@ -404,6 +410,17 @@ namespace llarp
       using PendingTraffic =
           std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
 
+      using ProtocolMessagePtr = std::shared_ptr< ProtocolMessage >;
+      using RecvPacketQueue_t =
+          std::priority_queue< ProtocolMessagePtr,
+                               std::vector< ProtocolMessagePtr >,
+                               ComparePtr< ProtocolMessagePtr > >;
+
+      util::Mutex m_InboundTrafficQueueMutex;
+      /// ordered queue for inbound hidden service traffic
+      RecvPacketQueue_t m_InboundTrafficQueue
+          GUARDED_BY(m_InboundTrafficQueueMutex);
+
       using PendingRouters =
           std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
 
@@ -421,9 +438,8 @@ namespace llarp
       using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
       AbstractRouter* m_Router;
-      llarp_threadpool* m_IsolatedWorker  = nullptr;
-      Logic* m_IsolatedLogic              = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
+      std::shared_ptr< Logic > m_IsolatedLogic = nullptr;
+      llarp_ev_loop_ptr m_IsolatedNetLoop      = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

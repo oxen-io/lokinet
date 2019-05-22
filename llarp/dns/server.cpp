@@ -1,15 +1,21 @@
 #include <dns/server.hpp>
 
 #include <crypto/crypto.hpp>
-
+#include <util/logic.hpp>
 #include <array>
 
 namespace llarp
 {
   namespace dns
   {
-    Proxy::Proxy(llarp_ev_loop_ptr loop, IQueryHandler* h)
-        : m_Loop(std::move(loop)), m_QueryHandler(h)
+    Proxy::Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic,
+                 llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
+                 IQueryHandler* h)
+        : m_ServerLoop(serverLoop)
+        , m_ClientLoop(clientLoop)
+        , m_ServerLogic(serverLogic)
+        , m_ClientLogic(clientLogic)
+        , m_QueryHandler(h)
     {
       m_Client.user     = this;
       m_Server.user     = this;
@@ -25,14 +31,20 @@ namespace llarp
     }
 
     bool
-    Proxy::Start(const llarp::Addr& addr,
+    Proxy::Start(const llarp::Addr addr,
                  const std::vector< llarp::Addr >& resolvers)
     {
       m_Resolvers.clear();
       m_Resolvers = resolvers;
-      llarp::Addr any("0.0.0.0", 0);
-      return llarp_ev_add_udp(m_Loop.get(), &m_Server, addr) == 0
-          && llarp_ev_add_udp(m_Loop.get(), &m_Client, any) == 0;
+      const llarp::Addr any("0.0.0.0", 0);
+      auto self = shared_from_this();
+      m_ClientLogic->queue_func([=]() {
+        llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any);
+      });
+      m_ServerLogic->queue_func([=]() {
+        llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr);
+      });
+      return true;
     }
 
     void
@@ -66,18 +78,39 @@ namespace llarp
     }
 
     void
-    Proxy::SendMessageTo(llarp::Addr to, Message msg)
+    Proxy::SendServerMessageTo(llarp::Addr to, Message msg)
     {
-      std::array< byte_t, 1500 > tmp = {{0}};
-      llarp_buffer_t buf(tmp);
-      if(msg.Encode(&buf))
-      {
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        llarp_ev_udp_sendto(&m_Server, to, buf);
-      }
-      else
-        llarp::LogWarn("failed to encode dns message when sending");
+      auto self = shared_from_this();
+      m_ServerLogic->queue_func([to, msg, self]() {
+        std::array< byte_t, 1500 > tmp = {{0}};
+        llarp_buffer_t buf(tmp);
+        if(msg.Encode(&buf))
+        {
+          buf.sz  = buf.cur - buf.base;
+          buf.cur = buf.base;
+          llarp_ev_udp_sendto(&self->m_Server, to, buf);
+        }
+        else
+          llarp::LogWarn("failed to encode dns message when sending");
+      });
+    }
+
+    void
+    Proxy::SendClientMessageTo(llarp::Addr to, Message msg)
+    {
+      auto self = shared_from_this();
+      m_ClientLogic->queue_func([to, msg, self]() {
+        std::array< byte_t, 1500 > tmp = {{0}};
+        llarp_buffer_t buf(tmp);
+        if(msg.Encode(&buf))
+        {
+          buf.sz  = buf.cur - buf.base;
+          buf.cur = buf.base;
+          llarp_ev_udp_sendto(&self->m_Client, to, buf);
+        }
+        else
+          llarp::LogWarn("failed to encode dns message when sending");
+      });
     }
 
     void
@@ -91,17 +124,20 @@ namespace llarp
       }
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
-      if(itr != m_Forwarded.end())
-      {
-        llarp_buffer_t buf;
-        buf.sz   = pkt->sz;
-        buf.base = pkt->base;
-        buf.cur  = buf.base;
-        // forward reply
-        llarp_ev_udp_sendto(&m_Server, itr->second, buf);
-        // remove pending
-        m_Forwarded.erase(itr);
-      }
+      if(itr == m_Forwarded.end())
+        return;
+
+      const Addr requester = itr->second;
+      std::vector< byte_t > tmp(pkt->sz);
+      std::copy_n(pkt->base, pkt->sz, tmp.begin());
+      auto self = shared_from_this();
+      m_ServerLogic->queue_func([=]() {
+        // forward reply to requester via server
+        llarp_buffer_t tmpbuf(tmp);
+        llarp_ev_udp_sendto(&self->m_Server, requester, tmpbuf);
+      });
+      // remove pending
+      m_Forwarded.erase(itr);
     }
 
     void
@@ -121,12 +157,12 @@ namespace llarp
         llarp::LogWarn("failed to parse dns message from ", from);
         return;
       }
-
+      auto self = shared_from_this();
       if(m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
       {
         if(!m_QueryHandler->HandleHookedDNSMessage(
                std::move(msg),
-               std::bind(&Proxy::SendMessageTo, this, from,
+               std::bind(&Proxy::SendServerMessageTo, self, from,
                          std::placeholders::_1)))
         {
           llarp::LogWarn("failed to handle hooked dns");
@@ -137,19 +173,22 @@ namespace llarp
         // no upstream resolvers
         // let's serv fail it
         msg.AddServFail();
-        SendMessageTo(from, std::move(msg));
+
+        SendServerMessageTo(from, std::move(msg));
       }
       else if(itr == m_Forwarded.end())
       {
         // new forwarded query
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
-        llarp_buffer_t buf;
-        buf.sz   = pkt->sz;
-        buf.base = pkt->base;
-        buf.cur  = buf.base;
-        // do query
-        llarp_ev_udp_sendto(&m_Client, tx.from, buf);
+        std::vector< byte_t > tmp(pkt->sz);
+        std::copy_n(pkt->base, pkt->sz, tmp.begin());
+
+        m_ClientLogic->queue_func([=] {
+          // do query
+          llarp_buffer_t buf(tmp);
+          llarp_ev_udp_sendto(&self->m_Client, tx.from, buf);
+        });
       }
       else
       {

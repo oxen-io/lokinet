@@ -89,7 +89,8 @@ struct llarp_nodedb
 
   /// insert and write to disk in background
   void
-  InsertAsync(llarp::RouterContact rc, llarp::Logic *l = nullptr,
+  InsertAsync(llarp::RouterContact rc,
+              std::shared_ptr< llarp::Logic > l             = nullptr,
               std::function< void(void) > completionHandler = nullptr);
 
   ssize_t
@@ -153,7 +154,7 @@ struct llarp_async_verify_rc
   /// nodedb storage
   llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
-  llarp::Logic *logic;  // includes a llarp_threadpool
+  std::shared_ptr< llarp::Logic > logic;  // includes a llarp_threadpool
   llarp_threadpool *cryptoworker;
   llarp::thread::ThreadPool *diskworker;
 

@@ -86,7 +86,7 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
-    Logic *
+    std::shared_ptr< Logic >
     logic() const override
     {
       return _logic;
@@ -183,7 +183,7 @@ namespace llarp
 
     llarp_ev_loop_ptr _netloop;
     llarp_threadpool *tp;
-    Logic *_logic;
+    std::shared_ptr< Logic > _logic;
     std::unique_ptr< Crypto > _crypto;
     path::PathContext paths;
     exit::Context _exitContext;
@@ -318,7 +318,7 @@ namespace llarp
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
     Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
-           Logic *logic);
+           std::shared_ptr< Logic > logic);
 
     ~Router();
 

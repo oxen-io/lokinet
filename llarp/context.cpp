@@ -265,12 +265,12 @@ __        ___    ____  _   _ ___ _   _  ____
     // ensure netio thread
     if(singleThreaded)
     {
-      logic = std::make_unique< Logic >(worker.get());
+      logic = std::make_shared< Logic >(worker.get());
     }
     else
-      logic = std::make_unique< Logic >();
+      logic = std::make_shared< Logic >();
 
-    router = std::make_unique< Router >(worker.get(), mainloop, logic.get());
+    router = std::make_unique< Router >(worker.get(), mainloop, logic);
     if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
@@ -301,7 +301,7 @@ __        ___    ____  _   _ ___ _   _  ____
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic.get());
+    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic);
     // waits for router graceful stop
     return 0;
   }
@@ -422,7 +422,7 @@ __        ___    ____  _   _ ___ _   _  ____
     router.release();
 
     llarp::LogDebug("free logic");
-    logic.release();
+    logic.reset();
 
     RemovePIDFile();
   }

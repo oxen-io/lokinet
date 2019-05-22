@@ -708,7 +708,7 @@ namespace llarp
       llarp::Crypto*
       crypto();
 
-      Logic*
+      std::shared_ptr< Logic >
       logic();
 
       AbstractRouter*
