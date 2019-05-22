@@ -41,8 +41,8 @@ namespace llarp
     operator==(const LR_CommitRecord &other) const;
 
    private:
-    static bool
-    OnKey(dict_reader *r, llarp_buffer_t *buf);
+    bool
+    OnKey(llarp_buffer_t *buffer, llarp_buffer_t *key);
   };
 
   struct LR_CommitMessage : public ILinkMessage

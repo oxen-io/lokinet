@@ -1,5 +1,6 @@
 #include <dht/context.hpp>
 
+#include <util/bencode.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
@@ -17,57 +18,57 @@ namespace llarp
       bool firstKey = true;
       bool relayed  = false;
 
-      MessageDecoder(const Key_t &from) : From(from)
+      MessageDecoder(const Key_t &from, bool wasRelayed)
+          : From(from), relayed(wasRelayed)
       {
       }
 
-      static bool
-      on_key(dict_reader *r, llarp_buffer_t *key)
+      bool
+      operator()(llarp_buffer_t *buffer, llarp_buffer_t *key)
       {
         llarp_buffer_t strbuf;
-        MessageDecoder *dec = static_cast< MessageDecoder * >(r->user);
         // check for empty dict
         if(!key)
-          return !dec->firstKey;
+          return !firstKey;
 
         // first key
-        if(dec->firstKey)
+        if(firstKey)
         {
           if(!(*key == "A"))
             return false;
-          if(!bencode_read_string(r->buffer, &strbuf))
+          if(!bencode_read_string(buffer, &strbuf))
             return false;
           // bad msg size?
           if(strbuf.sz != 1)
             return false;
           llarp::LogInfo("Handle DHT message ", *strbuf.base,
-                         " relayed=", dec->relayed);
+                         " relayed=", relayed);
           switch(*strbuf.base)
           {
             case 'F':
-              dec->msg.reset(new FindIntroMessage(dec->From, dec->relayed));
+              msg.reset(new FindIntroMessage(From, relayed));
               break;
             case 'R':
-              if(dec->relayed)
-                dec->msg.reset(new RelayedFindRouterMessage(dec->From));
+              if(relayed)
+                msg.reset(new RelayedFindRouterMessage(From));
               else
-                dec->msg.reset(new FindRouterMessage(dec->From));
+                msg.reset(new FindRouterMessage(From));
               break;
             case 'S':
-              dec->msg.reset(new GotRouterMessage(dec->From, dec->relayed));
+              msg.reset(new GotRouterMessage(From, relayed));
               break;
             case 'I':
-              dec->msg.reset(new PublishIntroMessage());
+              msg.reset(new PublishIntroMessage());
               break;
             case 'G':
-              if(dec->relayed)
+              if(relayed)
               {
-                dec->msg.reset(new RelayedGotIntroMessage());
+                msg.reset(new RelayedGotIntroMessage());
                 break;
               }
               else
               {
-                dec->msg.reset(new GotIntroMessage(dec->From));
+                msg.reset(new GotIntroMessage(From));
                 break;
               }
             default:
@@ -75,23 +76,19 @@ namespace llarp
               // bad msg type
               return false;
           }
-          dec->firstKey = false;
-          return dec->msg != nullptr;
+          firstKey = false;
+          return msg != nullptr;
         }
         else
-          return dec->msg->DecodeKey(*key, r->buffer);
+          return msg->DecodeKey(*key, buffer);
       }
     };
 
     IMessage::Ptr_t
     DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
     {
-      MessageDecoder dec(from);
-      dec.relayed = relayed;
-      dict_reader r;
-      r.user   = &dec;
-      r.on_key = &MessageDecoder::on_key;
-      if(!bencode_read_dict(buf, &r))
+      MessageDecoder dec(from, relayed);
+      if(!bencode_read_dict(dec, buf))
         return nullptr;
 
       return std::move(dec.msg);
@@ -99,25 +96,25 @@ namespace llarp
 
     struct ListDecoder
     {
-      ListDecoder(const Key_t &from, std::vector< IMessage::Ptr_t > &list)
-          : From(from), l(list)
+      ListDecoder(bool hasRelayed, const Key_t &from,
+                  std::vector< IMessage::Ptr_t > &list)
+          : relayed(hasRelayed), From(from), l(list)
       {
       }
 
-      bool relayed = false;
+      bool relayed;
       const Key_t &From;
       std::vector< IMessage::Ptr_t > &l;
 
-      static bool
-      on_item(list_reader *r, bool has)
+      bool
+      operator()(llarp_buffer_t *buffer, bool has)
       {
-        ListDecoder *dec = static_cast< ListDecoder * >(r->user);
         if(!has)
           return true;
-        auto msg = DecodeMesssage(dec->From, r->buffer, dec->relayed);
+        auto msg = DecodeMesssage(From, buffer, relayed);
         if(msg)
         {
-          dec->l.emplace_back(std::move(msg));
+          l.emplace_back(std::move(msg));
           return true;
         }
         else
@@ -129,12 +126,8 @@ namespace llarp
     DecodeMesssageList(Key_t from, llarp_buffer_t *buf,
                        std::vector< IMessage::Ptr_t > &list, bool relayed)
     {
-      ListDecoder dec(from, list);
-      dec.relayed = relayed;
-      list_reader r;
-      r.user    = &dec;
-      r.on_item = &ListDecoder::on_item;
-      return bencode_read_list(buf, &r);
+      ListDecoder dec(relayed, from, list);
+      return bencode_read_list(dec, buf);
     }
   }  // namespace dht
 }  // namespace llarp

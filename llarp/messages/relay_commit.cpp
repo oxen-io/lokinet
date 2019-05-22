@@ -9,6 +9,8 @@
 #include <util/logic.hpp>
 #include <nodedb.hpp>
 
+#include <functional>
+
 namespace llarp
 {
   LR_CommitMessage::~LR_CommitMessage()
@@ -113,47 +115,44 @@ namespace llarp
   }
 
   bool
-  LR_CommitRecord::OnKey(dict_reader* r, llarp_buffer_t* key)
+  LR_CommitRecord::OnKey(llarp_buffer_t* buffer, llarp_buffer_t* key)
   {
     if(!key)
       return true;
 
-    LR_CommitRecord* self = static_cast< LR_CommitRecord* >(r->user);
-
     bool read = false;
 
-    if(!BEncodeMaybeReadDictEntry("c", self->commkey, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("c", commkey, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadDictEntry("i", self->nextHop, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("i", nextHop, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadDictInt("l", self->lifetime, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictInt("l", lifetime, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key,
-                                  r->buffer))
+    if(!BEncodeMaybeReadDictEntry("n", tunnelNonce, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadDictEntry("r", self->rxid, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("r", rxid, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadDictEntry("t", self->txid, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("t", txid, read, *key, buffer))
       return false;
     if(*key == "u")
     {
-      self->nextRC = std::make_unique< RouterContact >();
-      return self->nextRC->BDecode(r->buffer);
+      nextRC = std::make_unique< RouterContact >();
+      return nextRC->BDecode(buffer);
     }
-    if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
-                                *key, r->buffer))
+    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+                                buffer))
       return false;
     if(*key == "w")
     {
       // check for duplicate
-      if(self->work)
+      if(work)
       {
         llarp::LogWarn("duplicate POW in LRCR");
         return false;
       }
 
-      self->work = std::make_unique< PoW >();
-      return self->work->BDecode(r->buffer);
+      work = std::make_unique< PoW >();
+      return work->BDecode(buffer);
     }
     return read;
   }
@@ -161,10 +160,9 @@ namespace llarp
   bool
   LR_CommitRecord::BDecode(llarp_buffer_t* buf)
   {
-    dict_reader r;
-    r.user   = this;
-    r.on_key = &OnKey;
-    return bencode_read_dict(buf, &r);
+    using namespace std::placeholders;
+    return bencode_read_dict(std::bind(&LR_CommitRecord::OnKey, this, _1, _2),
+                             buf);
   }
 
   bool
