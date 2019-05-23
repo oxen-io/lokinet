@@ -349,7 +349,8 @@ namespace llarp
       {
         // we didn't shift check if we should update introset
         if(now - lastShift >= MIN_SHIFT_INTERVAL
-           || currentIntroSet.HasExpiredIntros(now))
+           || currentIntroSet.HasExpiredIntros(now)
+           || currentIntroSet.IsExpired(now))
         {
           // update introset
           LogInfo(Name(), " updating introset");
@@ -470,7 +471,9 @@ namespace llarp
           // check if we have a path to this router
           num = 0;
           ForEachPath([&](const path::Path_ptr& p) {
-            if(p->Endpoint() == m_NextIntro.router)
+            // don't count timed out paths
+            if(p->Status() != path::ePathTimeout
+               && p->Endpoint() == m_NextIntro.router)
               ++num;
           });
           // build a path if one isn't already pending build or established
