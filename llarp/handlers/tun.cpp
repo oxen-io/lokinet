@@ -41,7 +41,8 @@ namespace llarp
                                   r->netloop())
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop(),
                                   r->netloop())
-        , m_Resolver(std::make_shared<dns::Proxy>(r->netloop(), r->logic(), r->netloop(), r->logic(), this))
+        , m_Resolver(std::make_shared< dns::Proxy >(
+              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
 #ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;

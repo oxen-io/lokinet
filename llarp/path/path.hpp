@@ -42,7 +42,7 @@ namespace llarp
     /// default path lifetime in ms
     constexpr llarp_time_t default_lifetime = 10 * 60 * 1000;
     /// after this many ms a path build times out
-    constexpr llarp_time_t build_timeout = 15000;
+    constexpr llarp_time_t build_timeout = 30000;
 
     /// measure latency every this interval ms
     constexpr llarp_time_t latency_interval = 5000;
