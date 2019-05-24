@@ -310,9 +310,6 @@ namespace llarp
     std::unordered_map< RouterID, llarp_time_t, RouterID::Hash >
         m_PersistingSessions;
 
-    // RCs of connected clients
-    std::set< RouterID > m_Clients;
-
     // lokinet routers from lokid, maps pubkey to when we think it will expire,
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;

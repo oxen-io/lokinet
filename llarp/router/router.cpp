@@ -359,9 +359,11 @@ namespace llarp
     }
 
     // we don't have the RC locally so do a dht lookup
+    /*
     _dht->impl->LookupRouter(remote,
-                             std::bind(&Router::HandleDHTLookupForSendTo, this,
-                                       remote, std::placeholders::_1));
+                            std::bind(&Router::HandleDHTLookupForSendTo, this,
+                            remote, std::placeholders::_1));
+                            */
     return true;
   }
 
@@ -530,7 +532,6 @@ namespace llarp
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
     const PubKey pk(job->rc.pubkey);
-    router->m_Clients.insert(pk);
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
     router->pendingVerifyRC.erase(pk);
@@ -560,7 +561,7 @@ namespace llarp
       router->validRouters.erase(pk);
     }
 
-    RouterContact rc = job->rc;
+    const RouterContact rc = job->rc;
 
     router->validRouters.emplace(pk, rc);
 
@@ -1265,10 +1266,17 @@ namespace llarp
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
           }
-          else if(m_Clients.count(itr->first) == 0)
+          else
           {
-            LogDebug("establish to ", itr->first);
-            TryEstablishTo(itr->first);
+            RouterContact rc;
+            if(nodedb()->Get(itr->first, rc))
+            {
+              if(rc.IsPublicRouter())
+              {
+                LogDebug("establish to ", itr->first);
+                TryConnectAsync(rc, 5);
+              }
+            }
           }
           ++itr;
         }
@@ -1376,7 +1384,6 @@ namespace llarp
     dht()->impl->Nodes()->DelNode(k);
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
-    m_Clients.erase(remote);
     LogInfo("Session to ", remote, " fully closed");
   }
 
@@ -1410,7 +1417,7 @@ namespace llarp
     // if for some reason we don't provide a link layer pick one that has it
     if(!chosen)
     {
-      for(const auto & link : inboundLinks)
+      for(const auto &link : inboundLinks)
       {
         if(link->HasSessionTo(remote))
         {
@@ -1418,7 +1425,7 @@ namespace llarp
           break;
         }
       }
-      for(const auto & link : outboundLinks)
+      for(const auto &link : outboundLinks)
       {
         if(link->HasSessionTo(remote))
         {
