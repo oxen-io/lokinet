@@ -1350,12 +1350,12 @@ namespace llarp
       if(selected->SendTo(remote, buf))
         return;
     }
-    for(const auto &link : outboundLinks)
+    for(const auto &link : inboundLinks)
     {
       if(link->SendTo(remote, buf))
         return;
     }
-    for(const auto &link : inboundLinks)
+    for(const auto &link : outboundLinks)
     {
       if(link->SendTo(remote, buf))
         return;
@@ -1407,22 +1407,37 @@ namespace llarp
       pendingEstablishJobs.erase(remote);
       return;
     }
+    // if for some reason we don't provide a link layer pick one that has it
     if(!chosen)
     {
-      DiscardOutboundFor(remote);
-      pendingEstablishJobs.erase(remote);
-      return;
+      for(const auto & link : inboundLinks)
+      {
+        if(link->HasSessionTo(remote))
+        {
+          chosen = link.get();
+          break;
+        }
+      }
+      for(const auto & link : outboundLinks)
+      {
+        if(link->HasSessionTo(remote))
+        {
+          chosen = link.get();
+          break;
+        }
+      }
     }
     while(itr->second.size())
     {
       llarp_buffer_t buf(itr->second.front());
       if(!chosen->SendTo(remote, buf))
-        LogWarn("failed to send outbound message to ", remote, " via ",
+        LogWarn("failed to send queued outbound message to ", remote, " via ",
                 chosen->Name());
 
       itr->second.pop();
     }
     pendingEstablishJobs.erase(remote);
+    outboundMessageQueue.erase(itr);
   }
 
   void
