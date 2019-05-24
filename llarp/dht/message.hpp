@@ -14,7 +14,7 @@ namespace llarp
   {
     constexpr size_t MAX_MSG_SIZE = 2048;
 
-    struct IMessage : public IBEncodeMessage
+    struct IMessage
     {
       virtual ~IMessage()
       {
@@ -31,8 +31,15 @@ namespace llarp
       HandleMessage(struct llarp_dht_context* dht,
                     std::vector< Ptr_t >& replies) const = 0;
 
+      virtual bool
+      BEncode(llarp_buffer_t* buf) const = 0;
+
+      virtual bool
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
+
       Key_t From;
       PathID_t pathID;
+      uint64_t version = LLARP_PROTO_VERSION;
     };
 
     IMessage::Ptr_t

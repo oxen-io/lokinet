@@ -38,7 +38,7 @@ namespace llarp
     constexpr ProtocolType eProtocolTraffic = 1UL;
 
     /// inner message
-    struct ProtocolMessage final : public IBEncodeMessage
+    struct ProtocolMessage
     {
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
@@ -52,13 +52,14 @@ namespace llarp
       /// local path we got this message from
       PathID_t srcPath;
       ConvoTag tag;
-      uint64_t seqno = 0;
+      uint64_t seqno   = 0;
+      uint64_t version = LLARP_PROTO_VERSION;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val);
 
       bool
-      BEncode(llarp_buffer_t* buf) const override;
+      BEncode(llarp_buffer_t* buf) const;
 
       void
       PutBuffer(const llarp_buffer_t& payload);
@@ -140,6 +141,12 @@ namespace llarp
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
+
+      bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        return bencode_decode_dict(*this, buf);
+      }
 
       void
       Clear() override

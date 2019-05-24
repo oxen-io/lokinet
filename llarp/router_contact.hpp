@@ -65,29 +65,16 @@ namespace llarp
   }
 
   /// RouterContact
-  struct RouterContact final : public IBEncodeMessage
+  struct RouterContact
   {
     /// for unit tests
     static bool IgnoreBogons;
 
     static llarp_time_t Lifetime;
 
-    RouterContact() : IBEncodeMessage()
+    RouterContact()
     {
       Clear();
-    }
-
-    RouterContact(const RouterContact &other)
-        : IBEncodeMessage(other.version)
-        , addrs(other.addrs)
-        , netID(other.netID)
-        , enckey(other.enckey)
-        , pubkey(other.pubkey)
-        , exits(other.exits)
-        , signature(other.signature)
-        , nickname(other.nickname)
-        , last_updated(other.last_updated)
-    {
     }
 
     struct Hash
@@ -115,12 +102,13 @@ namespace llarp
     llarp::AlignedBuffer< NICKLEN > nickname;
 
     uint64_t last_updated = 0;
+    uint64_t version      = LLARP_PROTO_VERSION;
 
     util::StatusObject
     ExtractStatus() const;
 
     bool
-    BEncode(llarp_buffer_t *buf) const override;
+    BEncode(llarp_buffer_t *buf) const;
 
     bool
     operator==(const RouterContact &other) const
@@ -153,14 +141,14 @@ namespace llarp
     }
 
     bool
-    BDecode(llarp_buffer_t *buf) override
+    BDecode(llarp_buffer_t *buf)
     {
       Clear();
-      return IBEncodeMessage::BDecode(buf);
+      return bencode_decode_dict(*this, buf);
     }
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf) override;
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
 
     RouterContact &
     operator=(const RouterContact &other);

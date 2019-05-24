@@ -179,7 +179,7 @@ namespace llarp
       Encrypted_t tmp = D;
       auto buf        = tmp.Buffer();
       crypto->xchacha20(*buf, sharedkey, N);
-      return msg.BDecode(buf);
+      return bencode_decode_dict(msg, buf);
     }
 
     bool
@@ -287,7 +287,7 @@ namespace llarp
         // decrypt
         auto buf = frame.D.Buffer();
         crypto->xchacha20(*buf, K, self->frame.N);
-        if(!self->msg->BDecode(buf))
+        if(!bencode_decode_dict(*self->msg, buf))
         {
           LogError("failed to decode inner protocol message");
           DumpBuffer(*buf);
@@ -300,8 +300,8 @@ namespace llarp
         {
           LogError("intro frame has invalid signature Z=", self->frame.Z,
                    " from ", self->msg->sender.Addr());
-          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
-          self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          Dump< MAX_PROTOCOL_MESSAGE_SIZE >(self->frame);
+          Dump< MAX_PROTOCOL_MESSAGE_SIZE >(*self->msg);
           self->msg.reset();
           delete self;
           return;
@@ -326,7 +326,7 @@ namespace llarp
                                               self->msg->sender, self->frame.N))
         {
           LogError("x25519 key exchange failed");
-          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          Dump< MAX_PROTOCOL_MESSAGE_SIZE >(self->frame);
           self->msg.reset();
           delete self;
           return;

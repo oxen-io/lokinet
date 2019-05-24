@@ -14,7 +14,7 @@ namespace llarp
 
   namespace service
   {
-    struct ServiceInfo final : public IBEncodeMessage
+    struct ServiceInfo
     {
      private:
       PubKey enckey;
@@ -22,29 +22,10 @@ namespace llarp
 
      public:
       VanityNonce vanity;
+      Address m_CachedAddr;
+      uint64_t version = LLARP_PROTO_VERSION;
 
       using OptNonce = absl::optional< VanityNonce >;
-
-      ServiceInfo() = default;
-
-      ServiceInfo(ServiceInfo&& other)
-      {
-        enckey       = std::move(other.enckey);
-        signkey      = std::move(other.signkey);
-        version      = std::move(other.version);
-        vanity       = std::move(other.vanity);
-        m_CachedAddr = std::move(other.m_CachedAddr);
-      }
-
-      ServiceInfo(const ServiceInfo& other)
-          : IBEncodeMessage(other.version)
-          , enckey(other.enckey)
-          , signkey(other.signkey)
-          , vanity(other.vanity)
-          , m_CachedAddr(other.m_CachedAddr)
-      {
-        version = other.version;
-      }
 
       void
       RandomizeVanity()
@@ -126,21 +107,18 @@ namespace llarp
       bool CalculateAddress(std::array< byte_t, 32 >& data) const;
 
       bool
-      BDecode(llarp_buffer_t* buf) override
+      BDecode(llarp_buffer_t* buf)
       {
-        if(IBEncodeMessage::BDecode(buf))
+        if(bencode_decode_dict(*this, buf))
           return CalculateAddress(m_CachedAddr.as_array());
         return false;
       }
 
       bool
-      BEncode(llarp_buffer_t* buf) const override;
+      BEncode(llarp_buffer_t* buf) const;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
-
-     private:
-      Address m_CachedAddr;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
     };
 
     inline std::ostream&

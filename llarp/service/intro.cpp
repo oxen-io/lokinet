@@ -4,10 +4,6 @@ namespace llarp
 {
   namespace service
   {
-    Introduction::~Introduction()
-    {
-    }
-
     util::StatusObject
     Introduction::ExtractStatus() const
     {

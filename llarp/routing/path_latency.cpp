@@ -1,5 +1,6 @@
 #include <messages/path_latency.hpp>
 #include <routing/handler.hpp>
+#include <util/bencode.hpp>
 
 namespace llarp
 {

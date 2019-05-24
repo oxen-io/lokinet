@@ -44,7 +44,7 @@ namespace llarp
       if(key == "w")
       {
         W = absl::make_optional< PoW >();
-        return W->BDecode(buf);
+        return bencode_decode_dict(*W, buf);
       }
 
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))

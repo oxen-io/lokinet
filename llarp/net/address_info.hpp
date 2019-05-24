@@ -19,38 +19,26 @@
 /// address information model
 namespace llarp
 {
-  struct AddressInfo final : public IBEncodeMessage
+  struct AddressInfo
   {
     uint16_t rank;
     std::string dialect;
     llarp::PubKey pubkey;
     struct in6_addr ip;
     uint16_t port;
-
-    AddressInfo() : IBEncodeMessage()
-    {
-    }
-
-    AddressInfo(const AddressInfo& other)
-        : IBEncodeMessage(other.version)
-        , rank(other.rank)
-        , dialect(other.dialect)
-        , pubkey(other.pubkey)
-        , port(other.port)
-    {
-      memcpy(ip.s6_addr, other.ip.s6_addr, 16);
-    }
-
-    ~AddressInfo();
-
-    AddressInfo&
-    operator=(const AddressInfo& other);
+    uint64_t version = LLARP_PROTO_VERSION;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
+    BDecode(llarp_buffer_t* buf)
+    {
+      return bencode_decode_dict(*this, buf);
+    }
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;

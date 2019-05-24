@@ -12,6 +12,10 @@
 
 namespace llarp
 {
+  template < typename List_t >
+  bool
+  BEncodeReadList(List_t& result, llarp_buffer_t* buf);
+
   inline bool
   BEncodeWriteDictMsgType(llarp_buffer_t* buf, const char* k, const char* t)
   {
@@ -187,6 +191,24 @@ namespace llarp
 
   template < typename Sink >
   bool
+  bencode_decode_dict(Sink&& sink, llarp_buffer_t* buff)
+  {
+    return bencode_read_dict(
+        [&](llarp_buffer_t* buffer, llarp_buffer_t* key) {
+          if(key == nullptr)
+            return true;
+          if(sink.DecodeKey(*key, buffer))
+            return true;
+          llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *key->cur,
+                            "' for entry in dict");
+
+          return false;
+        },
+        buff);
+  }
+
+  template < typename Sink >
+  bool
   bencode_read_list(Sink&& sink, llarp_buffer_t* buffer)
   {
     if(buffer->size_left() < 2)  // minimum case is 'le'
@@ -255,64 +277,17 @@ namespace llarp
         && BEncodeWriteList(list.begin(), list.end(), buf);
   }
 
-  /// bencode serializable message
-  struct IBEncodeMessage
+  template < size_t bufsz, typename T >
+  void
+  Dump(const T& val)
   {
-    virtual ~IBEncodeMessage()
+    std::array< byte_t, bufsz > tmp;
+    llarp_buffer_t buf(tmp);
+    if(val.BEncode(&buf))
     {
+      llarp::DumpBuffer< decltype(buf), 128 >(buf);
     }
-
-    IBEncodeMessage(uint64_t v = LLARP_PROTO_VERSION)
-    {
-      version = v;
-    }
-
-    virtual bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
-
-    virtual bool
-    BEncode(llarp_buffer_t* buf) const = 0;
-
-    virtual bool
-    BDecode(llarp_buffer_t* buf)
-    {
-      return bencode_read_dict(*this, buf);
-    }
-
-    // TODO: check for shadowed values elsewhere
-    uint64_t version = 0;
-
-    bool
-    operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
-    {
-      return HandleKey(key, buffer);
-    }
-
-    bool
-    HandleKey(llarp_buffer_t* k, llarp_buffer_t* val)
-    {
-      if(k == nullptr)
-        return true;
-      if(DecodeKey(*k, val))
-        return true;
-      llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *k->cur,
-                        "' for entry in dict");
-
-      return false;
-    }
-
-    template < size_t bufsz, size_t align = 128 >
-    void
-    Dump() const
-    {
-      std::array< byte_t, bufsz > tmp;
-      llarp_buffer_t buf(tmp);
-      if(BEncode(&buf))
-      {
-        llarp::DumpBuffer< decltype(buf), align >(buf);
-      }
-    }
-  };
+  }
 
   /// read entire file and decode its contents into t
   template < typename T >
@@ -335,6 +310,34 @@ namespace llarp
     }
     llarp_buffer_t buf(ptr);
     auto result = t.BDecode(&buf);
+    if(!result)
+    {
+      DumpBuffer(buf);
+    }
+    return result;
+  }
+
+  /// read entire file and decode its contents into t
+  template < typename T >
+  bool
+  BDecodeReadFromFile(const char* fpath, T& t)
+  {
+    std::vector< byte_t > ptr;
+    {
+      std::ifstream f;
+      f.open(fpath);
+      if(!f.is_open())
+      {
+        return false;
+      }
+      f.seekg(0, std::ios::end);
+      const std::streampos sz = f.tellg();
+      f.seekg(0, std::ios::beg);
+      ptr.resize(sz);
+      f.read((char*)ptr.data(), sz);
+    }
+    llarp_buffer_t buf(ptr);
+    auto result = bencode_decode_dict(t, &buf);
     if(!result)
     {
       DumpBuffer(buf);

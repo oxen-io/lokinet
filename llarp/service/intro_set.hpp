@@ -25,7 +25,7 @@ namespace llarp
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
     // 10 seconds clock skew permitted for introset expiration
     constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
-    struct IntroSet final : public IBEncodeMessage
+    struct IntroSet
     {
       ServiceInfo A;
       std::vector< Introduction > I;
@@ -34,6 +34,7 @@ namespace llarp
       llarp_time_t T = 0;
       absl::optional< PoW > W;
       Signature Z;
+      uint64_t version = LLARP_PROTO_VERSION;
 
       bool
       OtherIsNewer(const IntroSet& other) const
@@ -57,10 +58,16 @@ namespace llarp
       IsExpired(llarp_time_t now) const;
 
       bool
-      BEncode(llarp_buffer_t* buf) const override;
+      BEncode(llarp_buffer_t* buf) const;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+      BDecode(llarp_buffer_t* buf)
+      {
+        return bencode_decode_dict(*this, buf);
+      }
+
+      bool
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
       bool
       Verify(Crypto* crypto, llarp_time_t now) const;
