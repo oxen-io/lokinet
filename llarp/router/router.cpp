@@ -62,16 +62,6 @@ struct TryConnectJob
   }
 
   void
-  Failed()
-  {
-    llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
-    if(link)
-      link->CloseSessionTo(rc.pubkey);
-    // delete this
-    router->pendingEstablishJobs.erase(rc.pubkey);
-  }
-
-  void
   Success()
   {
     router->routerProfiling().MarkConnectSuccess(rc.pubkey);
@@ -86,6 +76,8 @@ struct TryConnectJob
     {
       return Attempt();
     }
+    // discard pending traffic on timeout
+    router->DiscardOutboundFor(rc.pubkey);
     router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
     {
@@ -537,7 +529,7 @@ namespace llarp
     async_verify_context *ctx =
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
-    PubKey pk(job->rc.pubkey);
+    const PubKey pk(job->rc.pubkey);
     router->m_Clients.insert(pk);
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
@@ -551,18 +543,12 @@ namespace llarp
     async_verify_context *ctx =
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
-    PubKey pk(job->rc.pubkey);
+    const PubKey pk(job->rc.pubkey);
     if(!job->valid)
     {
-      if(ctx->establish_job)
-      {
-        // was an outbound attempt
-        ctx->establish_job->Failed();
-      }
       delete ctx;
       router->DiscardOutboundFor(pk);
       router->pendingVerifyRC.erase(pk);
-
       return;
     }
     // we're valid, which means it's already been committed to the nodedb
