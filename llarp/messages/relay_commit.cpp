@@ -152,7 +152,7 @@ namespace llarp
       }
 
       work = std::make_unique< PoW >();
-      return work->BDecode(buffer);
+      return bencode_decode_dict(*work, buffer);
     }
     return read;
   }

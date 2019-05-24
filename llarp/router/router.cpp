@@ -506,7 +506,7 @@ namespace llarp
     LogDebug("verify RC signature");
     if(!_rc.Verify(crypto(), Now()))
     {
-      rc().Dump< MAX_RC_SIZE >();
+      Dump< MAX_RC_SIZE >(rc());
       LogError("RC is invalid, not saving");
       return false;
     }

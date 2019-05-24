@@ -1,6 +1,7 @@
 #include <messages/transfer_traffic.hpp>
 
 #include <routing/handler.hpp>
+#include <util/bencode.hpp>
 #include <util/endian.hpp>
 
 namespace llarp

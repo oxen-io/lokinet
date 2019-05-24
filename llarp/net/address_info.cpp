@@ -12,22 +12,6 @@
 
 namespace llarp
 {
-  AddressInfo::~AddressInfo()
-  {
-  }
-
-  AddressInfo &
-  AddressInfo::operator=(const AddressInfo &other)
-  {
-    rank    = other.rank;
-    dialect = other.dialect;
-    pubkey  = other.pubkey;
-    memcpy(ip.s6_addr, other.ip.s6_addr, 16);
-    port    = other.port;
-    version = other.version;
-    return *this;
-  }
-
   bool
   operator==(const AddressInfo &lhs, const AddressInfo &rhs)
   {

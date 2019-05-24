@@ -120,7 +120,7 @@ namespace llarp
         return false;
       // decode
       inf.read((char*)buf.base, sz);
-      if(!BDecode(&buf))
+      if(!bencode_decode_dict(*this, &buf))
         return false;
 
       ServiceInfo::OptNonce van;

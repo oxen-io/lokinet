@@ -96,12 +96,7 @@ namespace llarp
     return checkIsGood(pathFailCount, pathSuccessCount, chances);
   }
 
-  Profiling::Profiling() : IBEncodeMessage()
-  {
-    m_DisableProfiling.store(false);
-  }
-
-  Profiling::~Profiling()
+  Profiling::Profiling() : m_DisableProfiling(false)
   {
   }
 
@@ -267,7 +262,7 @@ namespace llarp
     if(k.sz != 32)
       return false;
     RouterProfile profile;
-    if(!profile.BDecode(buf))
+    if(!bencode_decode_dict(profile, buf))
       return false;
     RouterID pk = k.base;
     return m_Profiles.emplace(pk, profile).second;
@@ -278,7 +273,7 @@ namespace llarp
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles.clear();
-    if(!BDecodeReadFile(fname, *this))
+    if(!BDecodeReadFromFile(fname, *this))
     {
       llarp::LogWarn("failed to load router profiles from ", fname);
       return false;

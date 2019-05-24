@@ -12,20 +12,6 @@
 
 namespace llarp
 {
-  ExitInfo::~ExitInfo()
-  {
-  }
-
-  ExitInfo&
-  ExitInfo::operator=(const ExitInfo& other)
-  {
-    memcpy(address.s6_addr, other.address.s6_addr, 16);
-    memcpy(netmask.s6_addr, other.netmask.s6_addr, 16);
-    pubkey  = other.pubkey;
-    version = other.version;
-    return *this;
-  }
-
   bool
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {

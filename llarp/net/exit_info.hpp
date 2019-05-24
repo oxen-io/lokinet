@@ -16,14 +16,18 @@
 /// Exit info model
 namespace llarp
 {
-  struct ExitInfo final : public IBEncodeMessage
+  struct ExitInfo
   {
     struct in6_addr address;
     struct in6_addr netmask;
     PubKey pubkey;
+    uint64_t version = LLARP_PROTO_VERSION;
 
-    ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit)
-        : IBEncodeMessage(), pubkey(pk)
+    ExitInfo()
+    {
+    }
+
+    ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit) : pubkey(pk)
     {
       memset(address.s6_addr, 0, 16);
       address.s6_addr[11] = 0xff;
@@ -32,27 +36,17 @@ namespace llarp
       memset(netmask.s6_addr, 0xff, 16);
     }
 
-    ExitInfo() : IBEncodeMessage()
-    {
-    }
-
-    ExitInfo(const ExitInfo &other)
-        : IBEncodeMessage(other.version), pubkey(other.pubkey)
-    {
-      memcpy(address.s6_addr, other.address.s6_addr, 16);
-      memcpy(netmask.s6_addr, other.netmask.s6_addr, 16);
-    }
-
-    ~ExitInfo();
+    bool
+    BEncode(llarp_buffer_t *buf) const;
 
     bool
-    BEncode(llarp_buffer_t *buf) const override;
+    BDecode(llarp_buffer_t *buf)
+    {
+      return bencode_decode_dict(*this, buf);
+    }
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf) override;
-
-    ExitInfo &
-    operator=(const ExitInfo &other);
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
 
     std::ostream &
     print(std::ostream &stream, int level, int spaces) const;

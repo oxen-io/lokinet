@@ -12,14 +12,13 @@ namespace llarp
 {
   namespace service
   {
-    struct Introduction final : public IBEncodeMessage
+    struct Introduction
     {
       PubKey router;
       PathID_t pathID;
       uint64_t latency   = 0;
       uint64_t expiresAt = 0;
-
-      Introduction() = default;
+      uint64_t version   = LLARP_PROTO_VERSION;
 
       util::StatusObject
       ExtractStatus() const;
@@ -38,16 +37,20 @@ namespace llarp
         return IsExpired(now);
       }
 
-      ~Introduction();
-
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
 
       bool
-      BEncode(llarp_buffer_t* buf) const override;
+      BEncode(llarp_buffer_t* buf) const;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
+      BDecode(llarp_buffer_t* buf)
+      {
+        return bencode_decode_dict(*this, buf);
+      }
+
+      bool
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
       void
       Clear();

@@ -11,7 +11,7 @@
 
 namespace llarp
 {
-  struct RouterProfile final : public IBEncodeMessage
+  struct RouterProfile
   {
     static constexpr size_t MaxSize = 256;
     uint64_t connectTimeoutCount    = 0;
@@ -20,18 +20,13 @@ namespace llarp
     uint64_t pathFailCount          = 0;
     llarp_time_t lastUpdated        = 0;
     llarp_time_t lastDecay          = 0;
-
-    RouterProfile() : IBEncodeMessage()
-    {
-    }
-
-    ~RouterProfile() = default;
+    uint64_t version                = LLARP_PROTO_VERSION;
 
     bool
-    BEncode(llarp_buffer_t* buf) const override;
+    BEncode(llarp_buffer_t* buf) const;
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
     IsGood(uint64_t chances) const;
@@ -51,17 +46,16 @@ namespace llarp
     Tick();
   };
 
-  struct Profiling final : public IBEncodeMessage
+  struct Profiling
   {
     Profiling();
-    ~Profiling();
 
     /// generic variant
     bool
     IsBad(const RouterID& r, uint64_t chances = 8)
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
-    /// check if this rotuer should have paths built over it
+    /// check if this router should have paths built over it
     bool
     IsBadForPath(const RouterID& r, uint64_t chances = 8)
         LOCK_RETURNED(m_ProfilesMutex);
@@ -90,11 +84,12 @@ namespace llarp
     Tick() LOCKS_EXCLUDED(m_ProfilesMutex);
 
     bool
-    BEncode(llarp_buffer_t* buf) const override LOCKS_EXCLUDED(m_ProfilesMutex);
+    BEncode(llarp_buffer_t* buf) const LOCKS_EXCLUDED(m_ProfilesMutex);
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override
-        SHARED_LOCKS_REQUIRED(m_ProfilesMutex);
+    DecodeKey(const llarp_buffer_t& k,
+              llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
+    // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
 
     bool
     Load(const char* fname) LOCKS_EXCLUDED(m_ProfilesMutex);
