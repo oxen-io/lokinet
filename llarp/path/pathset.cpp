@@ -54,7 +54,7 @@ namespace llarp
       Lock_t l(&m_PathsMutex);
       for(const auto& item : m_Paths)
       {
-        if(!item.second->Expired(futureTime))
+        if(item.second->IsReady() && !item.second->Expired(futureTime))
           ++num;
       }
       return num;
