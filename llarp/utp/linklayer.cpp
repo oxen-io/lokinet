@@ -330,7 +330,7 @@ namespace llarp
                                   const AddressInfo& addr)
     {
       return std::make_shared< OutboundSession >(
-          this, utp_create_socket(_utp_ctx), rc, addr);
+          this, NewSocket(), rc, addr);
     }
 
     uint64

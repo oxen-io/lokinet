@@ -194,10 +194,12 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if(state == eInitial || state == eLinkEstablished)
-        return false;
+      if(state == eConnecting)
+        return now - lastActive > 5000;
       if(sendq.size() >= MaxSendQueueSize)
       {
+        if(now <= lastSend)
+          return false;
         return now - lastSend > 5000;
       }
       // let utp manage this
