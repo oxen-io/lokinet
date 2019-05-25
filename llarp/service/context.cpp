@@ -123,14 +123,11 @@ namespace llarp
         }
       }
       // tick active endpoints
+      for(const auto & item : m_Endpoints)
       {
-        auto itr = m_Endpoints.begin();
-        while(itr != m_Endpoints.end())
-        {
-          itr->second->Tick(now);
-          ++itr;
-        }
+          item.second->Tick(now);
       }
+      /*
       std::vector< RouterID > expired;
       m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
         if(rc.IsExpired(now))
@@ -146,6 +143,7 @@ namespace llarp
             return false;
         return true;
       });
+      */
     }
 
     bool
