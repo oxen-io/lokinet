@@ -127,6 +127,7 @@ namespace llarp
         {
           llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()),
                          " timed out");
+          itr->second->Close();
           itr = m_AuthedLinks.erase(itr);
         }
       }
@@ -145,6 +146,7 @@ namespace llarp
         else
         {
           LogInfo("pending session at ", itr->first, " timed out");
+          itr->second->Close();
           itr = m_Pending.erase(itr);
         }
       }

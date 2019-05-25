@@ -48,7 +48,6 @@ namespace llarp
     {
       if(!ILinkLayer::Start(l))
         return false;
-      /// TODO: change me to true when done
       return false;
     }
 
