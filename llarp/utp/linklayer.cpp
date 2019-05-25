@@ -125,10 +125,8 @@ namespace llarp
         if(arg->error_code == UTP_ETIMEDOUT)
         {
           link->HandleTimeout(session);
-          utp_close(arg->socket);
         }
-        else
-          session->Close();
+        session->Close();
       }
       return 0;
     }
@@ -353,6 +351,7 @@ namespace llarp
           return 0;
         }
         utp_read_drained(arg->socket);
+        utp_issue_deferred_acks(arg->context);
       }
       else
       {
@@ -398,7 +397,6 @@ namespace llarp
       {
         session->OnLinkEstablished(self);
       }
-
       return 0;
     }
 
