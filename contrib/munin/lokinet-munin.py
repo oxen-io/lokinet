@@ -23,7 +23,6 @@ def exit_sessions_main(exe):
         print("graph_vlabel sessions")
         print("graph_category network")
         print("graph_info This graph shows the number of exit sessions on a lokinet exit")
-        print("{}.label lokinet exit".format(exe))
         print("{}.sessions.info Number of exit sessions".format(exe))
         print("{}.sessions.label sessions".format(exe))
     else:
@@ -33,7 +32,7 @@ def exit_sessions_main(exe):
             count = len(j['result'])
         except RequestException:
             pass
-        print("{}.sessions {}".format(exe, count))
+        print("{}.sessions.value {}".format(exe, count))
 
 
 def peers_main(exe):
@@ -42,7 +41,6 @@ def peers_main(exe):
         print("graph_vlabel peers")
         print("graph_category network")
         print("graph_info This graph shows the number of node to node sessions of this lokinet router")
-        print("{}.label lokinet peers".format(exe))
         print("{}.outbound.info Number of outbound lokinet peers".format(exe))
         print("{}.inbound.info Number of inbound lokinet peers".format(exe))
         print("{}.outbound.label outbound peers".format(exe))
@@ -60,8 +58,8 @@ def peers_main(exe):
         except RequestException:
             pass
 
-        print("{}.outbound {}".format(exe, len(outbound)))
-        print("{}.inbound {}".format(exe, len(inbound)))
+        print("{}.outbound.value {}".format(exe, len(outbound)))
+        print("{}.inbound.value {}".format(exe, len(inbound)))
 
 
 if __name__ == '__main__':
