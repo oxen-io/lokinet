@@ -6,12 +6,14 @@ import requests
 import json
 import sys
 
+from collections import defaultdict as Dict
+
 from requests.exceptions import RequestException
 
 
 def jsonrpc(method, **args):
     return requests.post('http://127.0.0.1:1190/', data=json.dumps(
-        {'method': method, 'params': args, 'id': 0}), headers={'content-type': 'application/json'}).json()
+        {'method': method, 'params': args, 'id': 'munin'}), headers={'content-type': 'application/json'}).json()
 
 
 def exit_sessions_main():
@@ -43,20 +45,20 @@ def peers_main():
         print("lokinet.peers.outbound.label outbound peers")
         print("lokinet.peers.inbound.label inbound peers")
     else:
-        inbound = 0
-        outbound = 0
+        inbound = Dict(int)
+        outbound = Dict(int)
         try:
             j = jsonrpc("llarp.admin.link.neighboors")
             for peer in j['result']:
                 if peer["outbound"]:
-                    outbound += 1
+                    outbound[peer['ident']] += 1
                 else:
-                    inbound += 1
+                    inbound[peer['ident']] += 1
         except RequestException:
             pass
 
-        print("lokinet.peers.outbound {}".format(outbound))
-        print("lokinet.peers.inbound {}".format(inbound))
+        print("lokinet.peers.outbound {}".format(len(outbound)))
+        print("lokinet.peers.inbound {}".format(len(inbound)))
 
 
 if __name__ == '__main__':
