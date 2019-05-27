@@ -64,10 +64,10 @@ def peers_main(exe):
 
 if __name__ == '__main__':
     exe = os.path.basename(sys.argv[0]).lower()
-    if exe == 'lokinet-peers':
+    if exe == 'lokinet_peers':
         peers_main(exe)
-    elif exe == 'lokinet-exit':
+    elif exe == 'lokinet_exit':
         exit_sessions_main(exe)
     else:
         print(
-            'please symlink this as `lokinet-peers` or `lokinet-exit` in munin plugins dir')
+            'please symlink this as `lokinet_peers` or `lokinet_exit` in munin plugins dir')
