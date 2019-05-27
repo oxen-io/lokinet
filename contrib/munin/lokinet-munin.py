@@ -4,6 +4,7 @@
 #
 import requests
 import json
+import os
 import sys
 
 from collections import defaultdict as Dict
@@ -62,9 +63,10 @@ def peers_main():
 
 
 if __name__ == '__main__':
-    if sys.argv[0] == 'lokinet-peers':
+    exe = os.path.basename(sys.argv[0]).lower()
+    if exe == 'lokinet-peers':
         peers_main()
-    elif sys.argv[0] == 'lokinet-exit':
+    elif exe == 'lokinet-exit':
         exit_sessions_main()
     else:
         print(
