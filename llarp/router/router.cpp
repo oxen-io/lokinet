@@ -359,11 +359,9 @@ namespace llarp
     }
 
     // we don't have the RC locally so do a dht lookup
-    /*
     _dht->impl->LookupRouter(remote,
                             std::bind(&Router::HandleDHTLookupForSendTo, this,
                             remote, std::placeholders::_1));
-                            */
     return true;
   }
 
