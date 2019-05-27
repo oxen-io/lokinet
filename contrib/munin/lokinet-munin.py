@@ -45,22 +45,28 @@ def peers_main():
         print("_peers_inbound.info Number of inbound lokinet peers")
         print("_peers_outbound.label outbound peers")
         print("_peers_inbound.label inbound peers")
+        print("_peers_clients.info Number of lokinet client peers")
+        print("_peers_clients.label lokinet client peers")
     else:
         inbound = Dict(int)
         outbound = Dict(int)
+        clients = Dict(int)
         try:
             j = jsonrpc("llarp.admin.link.neighboors")
             for peer in j['result']:
-                if peer["outbound"]:
-                    outbound[peer['ident']] += 1
+                if peer["svcnode"]:
+                    if peer["outbound"]:
+                        outbound[peer['ident']] += 1
+                    else:
+                        inbound[peer['ident']] += 1
                 else:
-                    inbound[peer['ident']] += 1
+                    clients[peer['ident']] += 1
         except RequestException:
             pass
 
         print("_peers_outbound.value {}".format(len(outbound)))
         print("_peers_inbound.value {}".format(len(inbound)))
-
+        print("_peers_clients.value {}".format(len(clients)))
 
 if __name__ == '__main__':
     exe = os.path.basename(sys.argv[0]).lower()
