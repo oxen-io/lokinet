@@ -329,8 +329,7 @@ namespace llarp
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& addr)
     {
-      return std::make_shared< OutboundSession >(
-          this, NewSocket(), rc, addr);
+      return std::make_shared< OutboundSession >(this, NewSocket(), rc, addr);
     }
 
     uint64

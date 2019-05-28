@@ -535,8 +535,6 @@ namespace llarp
     bool
     HasSessionTo(const RouterID &remote) const override;
 
-
-
     void
     HandleDHTLookupForTryEstablishTo(
         RouterID remote, const std::vector< RouterContact > &results);

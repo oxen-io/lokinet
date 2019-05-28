@@ -123,9 +123,9 @@ namespace llarp
         }
       }
       // tick active endpoints
-      for(const auto & item : m_Endpoints)
+      for(const auto &item : m_Endpoints)
       {
-          item.second->Tick(now);
+        item.second->Tick(now);
       }
       /*
       std::vector< RouterID > expired;
