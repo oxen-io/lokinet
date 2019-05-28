@@ -12,23 +12,23 @@ import os
 import sys
 import requests
 
-from pylokinet import rc 
+from pylokinet import rc
 
 lib_file = os.path.join(os.path.realpath('.'), 'liblokinet-shared.so')
-
 
 
 def log(msg):
     sys.stderr.write("lokinet: {}\n".format(msg))
     sys.stderr.flush()
-    
+
+
 class LokiNET(threading.Thread):
 
     lib = None
     ctx = 0
     failed = False
     up = False
-    
+
     asRouter = True
 
     def configure(self, lib, conf, ip=None, port=None, ifname=None, seedfile=None, lokid_host=None, lokid_port=None):
@@ -43,7 +43,8 @@ class LokiNET(threading.Thread):
         if self.lib.llarp_ensure_config(conf.encode('utf-8'), os.path.dirname(conf).encode('utf-8'), True, self.asRouter):
             config = configparser.ConfigParser()
             config.read(conf)
-            log('overwrite ip="{}" port="{}" ifname="{}" seedfile="{}" lokid=("{}", "{}")'.format(ip, port, ifname, seedfile, lokid_host, lokid_port))
+            log('overwrite ip="{}" port="{}" ifname="{}" seedfile="{}" lokid=("{}", "{}")'.format(
+                ip, port, ifname, seedfile, lokid_host, lokid_port))
             if seedfile and lokid_host and lokid_port:
                 if not os.path.exists(seedfile):
                     log('cannot access service node seed at "{}"'.format(seedfile))
@@ -66,8 +67,7 @@ class LokiNET(threading.Thread):
             self.ctx = self.lib.llarp_main_init(conf.encode('utf-8'))
         else:
             return False
-        return self.lib.llarp_main_setup(self.ctx) == 0
-
+        return self.lib.llarp_main_setup(self.ctx, False) == 0
 
     def inform_fail(self):
         """
@@ -79,7 +79,7 @@ class LokiNET(threading.Thread):
     def inform_up(self):
         self.up = True
         self._inform()
-        
+
     def _inform(self):
         """
         inform waiter
@@ -105,13 +105,15 @@ class LokiNET(threading.Thread):
             self.inform_fail()
         self.up = False
         # self._up.release()
-            
+
     def close(self):
         if self.lib and self.ctx:
             self.lib.llarp_main_free(self.ctx)
 
+
 def getconf(name, fallback=None):
     return name in os.environ and os.environ[name] or fallback
+
 
 def run_main(args):
     seedfile = getconf("LOKI_SEED_FILE")
@@ -126,12 +128,12 @@ def run_main(args):
     if root is None:
         print("LOKINET_ROOT was not set")
         return
-    
+
     rc_callback = getconf("LOKINET_SUBMIT_URL")
     if rc_callback is None:
         print("LOKINET_SUBMIT_URL was not set")
         return
-    
+
     bootstrap = getconf("LOKINET_BOOTSTRAP_URL")
     if bootstrap is None:
         print("LOKINET_BOOTSTRAP_URL was not set")
@@ -172,7 +174,7 @@ def run_main(args):
         return
     if loki.configure(lib, conf, ip, port, ifname, seedfile, lokid_host, lokid_port):
         log("configured")
-        
+
         loki.start()
         try:
             log("waiting for spawn")
@@ -187,7 +189,8 @@ def run_main(args):
                 log("submitting rc")
                 try:
                     with open(os.path.join(root, 'self.signed'), 'rb') as f:
-                        r = requests.put(rc_callback, data=f.read(), headers={"content-type": "application/octect-stream"})
+                        r = requests.put(rc_callback, data=f.read(), headers={
+                                         "content-type": "application/octect-stream"})
                         log('submit rc reply: HTTP {}'.format(r.status_code))
                 except Exception as ex:
                     log("failed to submit rc: {}".format(ex))
@@ -212,8 +215,10 @@ def run_main(args):
     else:
         loki.close()
 
+
 def main():
     run_main(sys.argv[1:])
+
 
 if __name__ == "__main__":
     main()

@@ -114,6 +114,13 @@ struct llarp_buffer_t
   {
   }
 
+  // clang-format off
+  byte_t * begin()       { return base; }
+  byte_t * begin() const { return base; }
+  byte_t * end()         { return base + sz; }
+  byte_t * end()   const { return base + sz; }
+  // clang-format on
+
   size_t
   size_left() const;
 
