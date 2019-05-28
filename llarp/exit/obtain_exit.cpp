@@ -8,7 +8,7 @@ namespace llarp
   namespace routing
   {
     bool
-    ObtainExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
+    ObtainExitMessage::Sign(const llarp::SecretKey& sk)
     {
       std::array< byte_t, 1024 > tmp;
       llarp_buffer_t buf(tmp);
@@ -19,11 +19,11 @@ namespace llarp
         return false;
       }
       buf.sz = buf.cur - buf.base;
-      return c->sign(Z, sk, buf);
+      return CryptoManager::instance()->sign(Z, sk, buf);
     }
 
     bool
-    ObtainExitMessage::Verify(llarp::Crypto* c) const
+    ObtainExitMessage::Verify() const
     {
       std::array< byte_t, 1024 > tmp;
       llarp_buffer_t buf(tmp);
@@ -36,7 +36,7 @@ namespace llarp
       }
       // rewind buffer
       buf.sz = buf.cur - buf.base;
-      return c->verify(I, buf, Z);
+      return CryptoManager::instance()->verify(I, buf, Z);
     }
 
     bool

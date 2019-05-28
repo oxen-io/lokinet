@@ -64,7 +64,7 @@ namespace llarp
       {
         dlt = pad_size - dlt;
         // randomize padding
-        r->crypto()->randbytes(buf.cur, dlt);
+        CryptoManager::instance()->randbytes(buf.cur, dlt);
         buf.sz += dlt;
       }
       buf.cur = buf.base;
@@ -78,7 +78,7 @@ namespace llarp
       RelayDownstreamMessage msg;
       msg.pathid = info.rxID;
       msg.Y      = Y ^ nonceXOR;
-      r->crypto()->xchacha20(buf, pathKey, Y);
+      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
       msg.X = buf;
       llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
                       info.upstream, " to ", info.downstream);
@@ -89,7 +89,7 @@ namespace llarp
     TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                                AbstractRouter* r)
     {
-      r->crypto()->xchacha20(buf, pathKey, Y);
+      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
       if(IsEndpoint(r->pubkey()))
       {
         m_LastActivity = r->Now();
@@ -146,13 +146,13 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage& msg, AbstractRouter* r)
     {
-      if(msg.Verify(r->crypto())
+      if(msg.Verify()
          && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg.T;
-        if(!grant.Sign(r->crypto(), r->identity()))
+        if(!grant.Sign(r->identity()))
         {
           llarp::LogError("Failed to sign grant exit message");
           return false;
@@ -164,7 +164,7 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg.T;
-      if(!reject.Sign(r->crypto(), r->identity()))
+      if(!reject.Sign(r->identity()))
       {
         llarp::LogError("Failed to sign reject exit message");
         return false;
@@ -178,12 +178,12 @@ namespace llarp
     {
       const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       auto ep = r->exitContext().FindEndpointForPath(info.rxID);
-      if(ep && msg.Verify(r->crypto(), ep->PubKey()))
+      if(ep && msg.Verify(ep->PubKey()))
       {
         llarp::routing::CloseExitMessage reply;
         reply.Y = msg.Y;
         reply.S = NextSeqNo();
-        if(reply.Sign(r->crypto(), r->identity()))
+        if(reply.Sign(r->identity()))
         {
           if(SendRoutingMessage(reply, r))
           {
@@ -213,7 +213,7 @@ namespace llarp
       auto ep = r->exitContext().FindEndpointForPath(msg.P);
       if(ep)
       {
-        if(!msg.Verify(r->crypto(), ep->PubKey()))
+        if(!msg.Verify(ep->PubKey()))
           return false;
 
         if(ep->UpdateLocalPath(info.rxID))

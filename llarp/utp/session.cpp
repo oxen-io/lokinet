@@ -19,12 +19,6 @@ namespace llarp
       LogDebug("link established with ", remoteAddr);
     }
 
-    Crypto*
-    Session::OurCrypto()
-    {
-      return parent->OurCrypto();
-    }
-
     /// pump tx queue
     void
     Session::PumpWrite()
@@ -91,10 +85,11 @@ namespace llarp
       OutboundHandshake();
     }
 
+    template < bool (Crypto::*dh_func)(SharedSecret&, const PubKey&,
+                                       const SecretKey&, const TunnelNonce&) >
     bool
-    Session::DoKeyExchange(transport_dh_func dh, SharedSecret& K,
-                           const KeyExchangeNonce& n, const PubKey& other,
-                           const SecretKey& secret)
+    Session::DoKeyExchange(SharedSecret& K, const KeyExchangeNonce& n,
+                           const PubKey& other, const SecretKey& secret)
     {
       ShortHash t_h;
       static constexpr size_t TMP_SIZE = 64;
@@ -105,14 +100,14 @@ namespace llarp
       std::copy(K.begin(), K.end(), tmp.begin());
       std::copy(n.begin(), n.end(), tmp.begin() + K.size());
       // t_h = HS(K + L.n)
-      if(!OurCrypto()->shorthash(t_h, llarp_buffer_t(tmp)))
+      if(!CryptoManager::instance()->shorthash(t_h, llarp_buffer_t(tmp)))
       {
         LogError("failed to mix key to ", remoteAddr);
         return false;
       }
 
       // K = TKE(a.p, B_a.e, sk, t_h)
-      if(!dh(K, other, secret, t_h))
+      if(!(CryptoManager::instance()->*dh_func)(K, other, secret, t_h))
       {
         LogError("key exchange with ", other, " failed");
         return false;
@@ -130,7 +125,7 @@ namespace llarp
       buf.cur += K.size();
       std::copy(A.begin(), A.end(), buf.cur);
       buf.cur = buf.base;
-      return OurCrypto()->shorthash(K, buf);
+      return CryptoManager::instance()->shorthash(K, buf);
     }
 
     void
@@ -312,7 +307,7 @@ namespace llarp
       // build our RC
       LinkIntroMessage msg;
       msg.rc = parent->GetOurRC();
-      if(!msg.rc.Verify(OurCrypto(), parent->Now()))
+      if(!msg.rc.Verify(parent->Now()))
       {
         LogError("our RC is invalid? closing session to", remoteAddr);
         Close();
@@ -344,10 +339,8 @@ namespace llarp
         return;
       }
 
-      if(!DoKeyExchange(std::bind(&Crypto::transport_dh_client, OurCrypto(), _1,
-                                  _2, _3, _4),
-                        txKey, msg.N, remoteTransportPubKey,
-                        parent->RouterEncryptionSecret()))
+      if(!DoClientKeyExchange(txKey, msg.N, remoteTransportPubKey,
+                              parent->RouterEncryptionSecret()))
       {
         LogError("failed to mix keys for outbound session to ", remoteAddr);
         Close();
@@ -400,14 +393,14 @@ namespace llarp
       TunnelNonce nonce(noncePtr);
 
       // encrypt
-      if(!OurCrypto()->xchacha20(payload, txKey, nonce))
+      if(!CryptoManager::instance()->xchacha20(payload, txKey, nonce))
         return false;
 
       payload.base = noncePtr;
       payload.cur  = payload.base;
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
-      if(!OurCrypto()->hmac(buf.data(), payload, txKey))
+      if(!CryptoManager::instance()->hmac(buf.data(), payload, txKey))
         return false;
       return MutateKey(txKey, A);
     }
@@ -449,9 +442,8 @@ namespace llarp
       // set remote rc
       remoteRC = msg->rc;
       // recalculate rx key
-      return DoKeyExchange(
-          std::bind(&Crypto::transport_dh_server, OurCrypto(), _1, _2, _3, _4),
-          rxKey, msg->N, remoteRC.enckey, parent->RouterEncryptionSecret());
+      return DoServerKeyExchange(rxKey, msg->N, remoteRC.enckey,
+                                 parent->RouterEncryptionSecret());
     }
 
     bool
@@ -475,9 +467,8 @@ namespace llarp
       if(!SendMessageBuffer(buf))
         return false;
       // regen our tx Key
-      return DoKeyExchange(
-          std::bind(&Crypto::transport_dh_client, OurCrypto(), _1, _2, _3, _4),
-          txKey, lim.N, remoteRC.enckey, parent->RouterEncryptionSecret());
+      return DoClientKeyExchange(txKey, lim.N, remoteRC.enckey,
+                                 parent->RouterEncryptionSecret());
     }
 
     bool
@@ -488,7 +479,7 @@ namespace llarp
 
       llarp_buffer_t hbuf(ptr + FragmentHashSize,
                           FragmentBufferSize - FragmentHashSize);
-      if(!OurCrypto()->hmac(digest.data(), hbuf, rxKey))
+      if(!CryptoManager::instance()->hmac(digest.data(), hbuf, rxKey))
       {
         LogError("keyed hash failed");
         return false;
@@ -508,7 +499,8 @@ namespace llarp
       llarp_buffer_t out(rxFragBody);
 
       // decrypt
-      if(!OurCrypto()->xchacha20_alt(out, in, rxKey, ptr + FragmentHashSize))
+      if(!CryptoManager::instance()->xchacha20_alt(out, in, rxKey,
+                                                   ptr + FragmentHashSize))
       {
         LogError("failed to decrypt message from ", remoteAddr);
         return false;
@@ -611,7 +603,7 @@ namespace llarp
       sock         = s;
       remoteAddr   = addr;
       RouterID rid = p->GetOurRC().pubkey;
-      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
+      CryptoManager::instance()->shorthash(rxKey, llarp_buffer_t(rid));
       remoteRC.Clear();
 
       ABSL_ATTRIBUTE_UNUSED void* res = utp_set_userdata(sock, this);
@@ -631,19 +623,18 @@ namespace llarp
       if(!gotLIM)
       {
         remoteRC = msg->rc;
-        OurCrypto()->shorthash(txKey, llarp_buffer_t(remoteRC.pubkey));
+        CryptoManager::instance()->shorthash(txKey,
+                                             llarp_buffer_t(remoteRC.pubkey));
 
-        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(),
-                                    _1, _2, _3, _4),
-                          rxKey, msg->N, remoteRC.enckey,
-                          parent->TransportSecretKey()))
+        if(!DoServerKeyExchange(rxKey, msg->N, remoteRC.enckey,
+                                parent->TransportSecretKey()))
           return false;
 
         std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
         llarp_buffer_t buf(tmp);
         LinkIntroMessage replymsg;
         replymsg.rc = parent->GetOurRC();
-        if(!replymsg.rc.Verify(OurCrypto(), parent->Now()))
+        if(!replymsg.rc.Verify(parent->Now()))
         {
           LogError("our RC is invalid? closing session to", remoteAddr);
           Close();
@@ -675,10 +666,8 @@ namespace llarp
           Close();
           return false;
         }
-        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_client, OurCrypto(),
-                                    _1, _2, _3, _4),
-                          txKey, replymsg.N, remoteRC.enckey,
-                          parent->RouterEncryptionSecret()))
+        if(!DoClientKeyExchange(txKey, replymsg.N, remoteRC.enckey,
+                                parent->RouterEncryptionSecret()))
 
           return false;
         LogDebug("Sent reply LIM");
@@ -701,9 +690,9 @@ namespace llarp
       remoteAddr            = addr;
 
       RouterID rid = remoteRC.pubkey;
-      OurCrypto()->shorthash(txKey, llarp_buffer_t(rid));
+      CryptoManager::instance()->shorthash(txKey, llarp_buffer_t(rid));
       rid = p->GetOurRC().pubkey;
-      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
+      CryptoManager::instance()->shorthash(rxKey, llarp_buffer_t(rid));
 
       ABSL_ATTRIBUTE_UNUSED void* res = utp_set_userdata(sock, this);
       assert(res == this);
@@ -729,10 +718,8 @@ namespace llarp
       remoteRC = msg->rc;
       gotLIM   = true;
 
-      if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(), _1,
-                                  _2, _3, _4),
-                        rxKey, msg->N, remoteRC.enckey,
-                        parent->RouterEncryptionSecret()))
+      if(!DoServerKeyExchange(rxKey, msg->N, remoteRC.enckey,
+                              parent->RouterEncryptionSecret()))
       {
         Close();
         return false;

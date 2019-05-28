@@ -12,8 +12,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   namespace service
   {
     // private keys
@@ -30,13 +28,13 @@ namespace llarp
 
       // regenerate secret keys
       void
-      RegenerateKeys(Crypto* c);
+      RegenerateKeys();
 
       bool
       BEncode(llarp_buffer_t* buf) const;
 
       bool
-      EnsureKeys(const std::string& fpath, Crypto* c);
+      EnsureKeys(const std::string& fpath);
 
       bool
       KeyExchange(path_dh_func dh, SharedSecret& sharedkey,
@@ -46,10 +44,10 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
       bool
-      SignIntroSet(IntroSet& i, Crypto* c, llarp_time_t now) const;
+      SignIntroSet(IntroSet& i, llarp_time_t now) const;
 
       bool
-      Sign(Crypto*, Signature& sig, const llarp_buffer_t& buf) const;
+      Sign(Signature& sig, const llarp_buffer_t& buf) const;
     };
 
     inline bool

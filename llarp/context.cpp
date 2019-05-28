@@ -203,9 +203,7 @@ __        ___    ____  _   _ ___ _   _  ____
   int
   Context::LoadDatabase()
   {
-    crypto = std::make_unique< sodium::CryptoLibSodium >();
-    nodedb =
-        std::make_unique< llarp_nodedb >(crypto.get(), router->diskworker());
+    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -269,6 +267,9 @@ __        ___    ____  _   _ ___ _   _  ____
     }
     else
       logic = std::make_shared< Logic >();
+
+    crypto        = std::make_unique< sodium::CryptoLibSodium >();
+    cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
     router = std::make_unique< Router >(worker.get(), mainloop, logic);
     if(!router->Configure(config.get()))

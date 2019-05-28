@@ -10,8 +10,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   namespace service
   {
     struct ServiceInfo
@@ -34,8 +32,7 @@ namespace llarp
       }
 
       bool
-      Verify(Crypto* crypto, const llarp_buffer_t& payload,
-             const Signature& sig) const;
+      Verify(const llarp_buffer_t& payload, const Signature& sig) const;
 
       const PubKey&
       EncryptionPublicKey() const

@@ -1,5 +1,6 @@
 #include <path/pathbuilder.hpp>
 
+#include <crypto/crypto.hpp>
 #include <messages/relay_commit.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
@@ -27,7 +28,6 @@ namespace llarp
     AbstractRouter* router         = nullptr;
     llarp_threadpool* worker       = nullptr;
     std::shared_ptr< Logic > logic = nullptr;
-    Crypto* crypto                 = nullptr;
     LR_CommitMessage LRCM;
 
     ~AsyncPathKeyExchangeContext()
@@ -53,12 +53,13 @@ namespace llarp
       auto& hop   = ctx->path->hops[ctx->idx];
       auto& frame = ctx->LRCM.frames[ctx->idx];
 
+      auto crypto = CryptoManager::instance();
+
       // generate key
-      ctx->crypto->encryption_keygen(hop.commkey);
+      crypto->encryption_keygen(hop.commkey);
       hop.nonce.Randomize();
       // do key exchange
-      if(!ctx->crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey,
-                                 hop.nonce))
+      if(!crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey, hop.nonce))
       {
         LogError(ctx->pathset->Name(),
                  " Failed to generate shared key for path build");
@@ -66,7 +67,7 @@ namespace llarp
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
-      ctx->crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
+      crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();
@@ -104,8 +105,8 @@ namespace llarp
       }
       // use ephemeral keypair for frame
       SecretKey framekey;
-      ctx->crypto->encryption_keygen(framekey);
-      if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
+      crypto->encryption_keygen(framekey);
+      if(!frame.EncryptInPlace(framekey, hop.rc.enckey))
       {
         LogError(ctx->pathset->Name(), " Failed to encrypt LRCR");
         delete ctx;
@@ -123,10 +124,6 @@ namespace llarp
         // next hop
         llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
       }
-    }
-
-    AsyncPathKeyExchangeContext(Crypto* c) : crypto(c)
-    {
     }
 
     /// Generate all keys asynchronously and call handler when done
@@ -173,7 +170,7 @@ namespace llarp
                      size_t pathNum, size_t hops)
         : path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
     {
-      p_router->crypto()->encryption_keygen(enckey);
+      CryptoManager::instance()->encryption_keygen(enckey);
       _run.store(true);
     }
 
@@ -319,7 +316,7 @@ namespace llarp
         const auto aligned =
             router->pathContext().FindOwnedPathsWithEndpoint(remote);
         /// pick the lowest latency path that aligns to remote
-        /// note: peer exuastion is made worse happen here
+        /// note: peer exhaustion is made worse happen here
         Path_ptr p;
         llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
         for(const auto& path : aligned)
@@ -409,7 +406,7 @@ namespace llarp
       lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
-          new AsyncPathKeyExchangeContext< Builder >(router->crypto());
+          new AsyncPathKeyExchangeContext< Builder >();
       ctx->router  = router;
       ctx->pathset = GetSelf();
       auto path    = std::make_shared< path::Path >(hops, this, roles);

@@ -9,8 +9,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   static constexpr size_t EncryptedFrameOverheadSize =
       PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
   static constexpr size_t EncryptedFrameBodySize = 128 * 6;
@@ -40,57 +38,10 @@ namespace llarp
     }
 
     bool
-    DecryptInPlace(const SecretKey& seckey, llarp::Crypto* crypto);
+    DecryptInPlace(const SecretKey& seckey);
 
     bool
-    EncryptInPlace(const SecretKey& seckey, const PubKey& other,
-                   llarp::Crypto* crypto);
-  };
-
-  /// TODO: can only handle 1 frame at a time
-  template < typename User >
-  struct AsyncFrameEncrypter
-  {
-    using EncryptHandler = std::function< void(EncryptedFrame*, User*) >;
-
-    static void
-    Encrypt(void* user)
-    {
-      AsyncFrameEncrypter< User >* ctx =
-          static_cast< AsyncFrameEncrypter< User >* >(user);
-
-      if(ctx->frame.EncryptInPlace(ctx->seckey, ctx->otherKey, ctx->crypto))
-        ctx->handler(&ctx->frame, ctx->user);
-      else
-      {
-        ctx->handler(nullptr, ctx->user);
-      }
-    }
-
-    llarp::Crypto* crypto;
-    byte_t* secretkey;
-    EncryptHandler handler;
-    EncryptedFrame frame;
-    User* user;
-    byte_t* otherKey;
-
-    AsyncFrameEncrypter(llarp::Crypto* c, byte_t* seckey, EncryptHandler h)
-        : crypto(c), secretkey(seckey), handler(h)
-    {
-    }
-
-    void
-    AsyncEncrypt(llarp_threadpool* worker, llarp_buffer_t buf, byte_t* other,
-                 User* u)
-    {
-      // TODO: should we own otherKey?
-      otherKey = other;
-      if(buf.sz > EncryptedFrameBodySize)
-        return;
-      memcpy(frame.data() + EncryptedFrameOverheadSize, buf.base, buf.sz);
-      user = u;
-      llarp_threadpool_queue_job(worker, {this, &Encrypt});
-    }
+    EncryptInPlace(const SecretKey& seckey, const PubKey& other);
   };
 
   /// TODO: can only handle 1 frame at a time
@@ -106,7 +57,7 @@ namespace llarp
       AsyncFrameDecrypter< User >* ctx =
           static_cast< AsyncFrameDecrypter< User >* >(user);
 
-      if(ctx->target.DecryptInPlace(ctx->seckey, ctx->crypto))
+      if(ctx->target.DecryptInPlace(ctx->seckey))
       {
         auto buf = ctx->target.Buffer();
         buf->cur = buf->base + EncryptedFrameOverheadSize;
@@ -117,15 +68,13 @@ namespace llarp
       ctx->user = nullptr;
     }
 
-    AsyncFrameDecrypter(llarp::Crypto* c, const SecretKey& secretkey,
-                        DecryptHandler h)
-        : result(h), crypto(c), seckey(secretkey)
+    AsyncFrameDecrypter(const SecretKey& secretkey, DecryptHandler h)
+        : result(h), seckey(secretkey)
     {
     }
 
     DecryptHandler result;
     User_ptr user;
-    llarp::Crypto* crypto;
     const SecretKey& seckey;
     EncryptedFrame target;
 

@@ -1,5 +1,6 @@
 #include <messages/relay_commit.hpp>
 
+#include <crypto/crypto.hpp>
 #include <messages/path_confirm.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
@@ -235,7 +236,7 @@ namespace llarp
           // ... and it's valid
           const auto now = self->context->Router()->Now();
           if(self->record.nextRC->IsPublicRouter()
-             && self->record.nextRC->Verify(self->context->crypto(), now))
+             && self->record.nextRC->Verify(now))
           {
             llarp_nodedb* n        = self->context->Router()->nodedb();
             const RouterContact rc = *self->record.nextRC;
@@ -309,7 +310,7 @@ namespace llarp
         return;
       }
       // generate path key as we are in a worker thread
-      auto crypto = self->context->crypto();
+      auto crypto = CryptoManager::instance();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
                             self->context->EncryptionSecretKey(),
                             self->record.tunnelNonce))
@@ -321,10 +322,7 @@ namespace llarp
       // generate hash of hop key for nonce mutation
       crypto->shorthash(self->hop->nonceXOR,
                         llarp_buffer_t(self->hop->pathKey));
-      using namespace std::placeholders;
-      if(self->record.work
-         && self->record.work->IsValid(
-             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+      if(self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",
@@ -382,8 +380,7 @@ namespace llarp
   LR_CommitMessage::AsyncDecrypt(llarp::path::PathContext* context) const
   {
     auto decrypter = std::make_unique< LRCMFrameDecrypt::Decrypter >(
-        context->crypto(), context->EncryptionSecretKey(),
-        &LRCMFrameDecrypt::HandleDecrypted);
+        context->EncryptionSecretKey(), &LRCMFrameDecrypt::HandleDecrypted);
     // copy frames so we own them
     auto frameDecrypt = std::make_shared< LRCMFrameDecrypt >(
         context, std::move(decrypter), this);

@@ -18,8 +18,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   namespace service
   {
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
@@ -70,7 +68,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
       bool
-      Verify(Crypto* crypto, llarp_time_t now) const;
+      Verify(llarp_time_t now) const;
 
       util::StatusObject
       ExtractStatus() const;

@@ -41,9 +41,6 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
-      llarp::Crypto*
-      Crypto() const override;
-
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       void
@@ -694,12 +691,6 @@ namespace llarp
             peer, asker, target,
             new RecursiveRouterLookup(asker, target, this, handler));
       }
-    }
-
-    llarp::Crypto*
-    Context::Crypto() const
-    {
-      return router->crypto();
     }
 
     llarp_time_t

@@ -53,7 +53,7 @@ namespace llarp
         return false;
       }
       auto &dht = *ctx->impl;
-      if(!I.Verify(dht.Crypto(), now))
+      if(!I.Verify(now))
       {
         llarp::LogWarn("invalid introset: ", I);
         // don't propogate or store
@@ -61,10 +61,7 @@ namespace llarp
         return true;
       }
 
-      using namespace std::placeholders;
-      shorthash_func shorthash =
-          std::bind(&Crypto::shorthash, dht.Crypto(), _1, _2);
-      if(I.W && !I.W->IsValid(shorthash, now))
+      if(I.W && !I.W->IsValid(now))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
         // don't propogate or store

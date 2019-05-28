@@ -304,12 +304,6 @@ namespace llarp
       return m_Router;
     }
 
-    Crypto *
-    ExitEndpoint::GetCrypto()
-    {
-      return m_Router->crypto();
-    }
-
     huint32_t
     ExitEndpoint::GetIfAddr() const
     {

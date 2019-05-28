@@ -9,7 +9,6 @@
 
 namespace llarp
 {
-  struct Crypto;
   namespace routing
   {
     struct ObtainExitMessage final : public IMessage
@@ -44,10 +43,10 @@ namespace llarp
 
       /// populates I and signs
       bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
+      Sign(const llarp::SecretKey& sk);
 
       bool
-      Verify(llarp::Crypto* c) const;
+      Verify() const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -71,10 +70,10 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
+      Sign(const llarp::SecretKey& sk);
 
       bool
-      Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
+      Verify(const llarp::PubKey& pk) const;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
@@ -111,10 +110,10 @@ namespace llarp
       }
 
       bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
+      Sign(const llarp::SecretKey& sk);
 
       bool
-      Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
+      Verify(const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -133,13 +132,7 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
-      UpdateExitVerifyMessage() : IMessage()
-      {
-      }
-
-      ~UpdateExitVerifyMessage()
-      {
-      }
+      ~UpdateExitVerifyMessage() = default;
 
       void
       Clear() override
@@ -148,15 +141,6 @@ namespace llarp
         Y.Zero();
         Z.Zero();
       }
-
-      UpdateExitVerifyMessage&
-      operator=(const UpdateExitVerifyMessage& other);
-
-      bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
-
-      bool
-      Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -177,10 +161,10 @@ namespace llarp
       llarp::Signature Z;
 
       bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
+      Sign(const llarp::SecretKey& sk);
 
       bool
-      Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
+      Verify(const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -218,10 +202,10 @@ namespace llarp
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
 
       bool
-      Sign(llarp::Crypto* c, const llarp::SecretKey& sk);
+      Sign(const llarp::SecretKey& sk);
 
       bool
-      Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
+      Verify(const llarp::PubKey& pk) const;
 
       void
       Clear() override

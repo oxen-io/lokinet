@@ -123,7 +123,7 @@ on_try_connecting(std::shared_ptr< TryConnectJob > j)
 }
 
 bool
-llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
+llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
                                  llarp::SecretKey &secret)
 {
   std::string path = fpath.string();
@@ -132,12 +132,11 @@ llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
   if(!ident.LoadFromFile(path.c_str()))
     return false;
 
-  return crypto->seed_to_secretkey(secret, ident);
+  return llarp::CryptoManager::instance()->seed_to_secretkey(secret, ident);
 }
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
-                           llarp::SecretKey &secretkey)
+llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey)
 {
   std::string fpath = path.string();
   llarp::LogDebug("find or create ", fpath);
@@ -145,7 +144,7 @@ llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new identity key");
-    crypto->identity_keygen(secretkey);
+    llarp::CryptoManager::instance()->identity_keygen(secretkey);
     if(!secretkey.SaveToFile(fpath.c_str()))
       return false;
   }
@@ -154,8 +153,7 @@ llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
 
 // C++ ...
 bool
-llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
-                             llarp::SecretKey &encryption)
+llarp_findOrCreateEncryption(const fs::path &path, llarp::SecretKey &encryption)
 {
   std::string fpath = path.string();
   llarp::LogDebug("find or create ", fpath);
@@ -163,7 +161,7 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new encryption key");
-    crypto->encryption_keygen(encryption);
+    llarp::CryptoManager::instance()->encryption_keygen(encryption);
     if(!encryption.SaveToFile(fpath.c_str()))
       return false;
   }
@@ -220,7 +218,6 @@ namespace llarp
       , _netloop(__netloop)
       , tp(_tp)
       , _logic(l)
-      , _crypto(std::make_unique< sodium::CryptoLibSodium >())
       , paths(this)
       , _exitContext(this)
       , disk(1, 1000)
@@ -384,7 +381,7 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(crypto(), Now()))
+      if(results[0].Verify(Now()))
       {
         TryConnectAsync(results[0], 10);
         return;
@@ -431,7 +428,7 @@ namespace llarp
       LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(crypto(), Now()))
+    if(remote.Verify(Now()))
     {
       LogDebug("verified signature");
       if(!TryConnectAsync(remote, 10))
@@ -450,17 +447,15 @@ namespace llarp
     if(!EnsureEncryptionKey())
       return false;
     if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(crypto(), ident_keyfile,
-                                              _identity);
+      return llarp_loadServiceNodeIdentityKey(ident_keyfile, _identity);
     else
-      return llarp_findOrCreateIdentity(crypto(), ident_keyfile, _identity);
+      return llarp_findOrCreateIdentity(ident_keyfile, _identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
-    return llarp_findOrCreateEncryption(crypto(), encryption_keyfile,
-                                        _encryption);
+    return llarp_findOrCreateEncryption(encryption_keyfile, _encryption);
   }
 
   void
@@ -504,7 +499,7 @@ namespace llarp
   Router::SaveRC()
   {
     LogDebug("verify RC signature");
-    if(!_rc.Verify(crypto(), Now()))
+    if(!_rc.Verify(Now()))
     {
       Dump< MAX_RC_SIZE >(rc());
       LogError("RC is invalid, not saving");
@@ -632,7 +627,7 @@ namespace llarp
     const auto numConnected = NumberOfConnectedRouters();
     for(const auto &rc : results)
     {
-      if(!rc.Verify(crypto(), Now()))
+      if(!rc.Verify(Now()))
         continue;
       nodedb()->InsertAsync(rc);
 
@@ -760,7 +755,7 @@ namespace llarp
     RouterContact nextRC = _rc;
     if(rotateKeys)
     {
-      crypto()->encryption_keygen(nextOnionKey);
+      CryptoManager::instance()->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
       // TODO: use disk worker
       if(nextOnionKey.SaveToFile(f.c_str()))
@@ -770,7 +765,7 @@ namespace llarp
       }
     }
     nextRC.last_updated = Now();
-    if(!nextRC.Sign(crypto(), identity()))
+    if(!nextRC.Sign(identity()))
       return false;
     _rc = nextRC;
     // propagate RC by renegotiating sessions
@@ -1025,7 +1020,7 @@ namespace llarp
         ;
         return;
       }
-      if(rc.Verify(crypto(), Now()))
+      if(rc.Verify(Now()))
       {
         const auto result = bootstrapRCList.insert(rc);
         if(result.second)
@@ -1339,7 +1334,7 @@ namespace llarp
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
     METRICS_TIME_BLOCK("Router", "Sign");
-    return crypto()->sign(sig, identity(), buf);
+    return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
   void
@@ -1620,7 +1615,7 @@ namespace llarp
     _rc.enckey = seckey_topublic(encryption());
 
     LogInfo("Signing rc...");
-    if(!_rc.Sign(crypto(), identity()))
+    if(!_rc.Sign(identity()))
     {
       LogError("failed to sign rc");
       return false;
@@ -1678,11 +1673,11 @@ namespace llarp
       maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
-      crypto()->identity_keygen(_identity);
-      crypto()->encryption_keygen(_encryption);
+      CryptoManager::instance()->identity_keygen(_identity);
+      CryptoManager::instance()->encryption_keygen(_encryption);
       _rc.pubkey = seckey_topublic(identity());
       _rc.enckey = seckey_topublic(encryption());
-      if(!_rc.Sign(crypto(), identity()))
+      if(!_rc.Sign(identity()))
       {
         LogError("failed to regenerate keys and sign RC");
         return false;

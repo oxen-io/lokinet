@@ -159,7 +159,7 @@ namespace llarp
         return;
       }
       m_IntroSet.topic = m_Tag;
-      if(!m_Identity.SignIntroSet(m_IntroSet, m_Router->crypto(), now))
+      if(!m_Identity.SignIntroSet(m_IntroSet, now))
       {
         LogWarn("failed to sign introset for endpoint ", Name());
         return;
@@ -347,11 +347,10 @@ namespace llarp
     bool
     Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
-      auto crypto = m_Router->crypto();
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
-        if(!introset.Verify(crypto, Now()))
+        if(!introset.Verify(Now()))
         {
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
             IntroSetPublishFail();
@@ -482,10 +481,9 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
-      auto crypto = m_Router->crypto();
       if(!m_Keyfile.empty())
       {
-        if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
+        if(!m_Identity.EnsureKeys(m_Keyfile))
         {
           LogError("Can't ensure keyfile [", m_Keyfile, "]");
           return false;
@@ -493,7 +491,7 @@ namespace llarp
       }
       else
       {
-        m_Identity.RegenerateKeys(crypto);
+        m_Identity.RegenerateKeys();
       }
       return true;
     }
@@ -884,16 +882,15 @@ namespace llarp
         if(!GetSenderFor(frame.T, si))
           return false;
         // verify source
-        if(!frame.Verify(crypto(), si))
+        if(!frame.Verify(si))
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);
         RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), crypto(), p,
-                                      CryptoWorker(), m_Identity,
-                                      m_DataHandler))
+      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), p, CryptoWorker(),
+                                      m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;
@@ -901,7 +898,7 @@ namespace llarp
         f.T = frame.T;
         f.F = p->intro.pathID;
 
-        if(!f.Sign(crypto(), m_Identity))
+        if(!f.Sign(m_Identity))
           return false;
         {
           util::Lock lock(&m_SendQueueMutex);
@@ -1047,7 +1044,7 @@ namespace llarp
         // send downstream packets to user for snode
         for(const auto& item : m_SNodeSessions)
           item.second->FlushDownstream();
-        // send downstrream traffic to user for hidden service
+        // send downstream traffic to user for hidden service
         util::Lock lock(&m_InboundTrafficQueueMutex);
         while(m_InboundTrafficQueue.size())
         {
@@ -1128,7 +1125,7 @@ namespace llarp
               f.F         = m.introReply.pathID;
               f.S         = GetSeqNoForConvo(f.T);
               transfer->P = remoteIntro.pathID;
-              if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
+              if(!f.EncryptAndSign(m, K, m_Identity))
               {
                 LogError("failed to encrypt and sign");
                 return false;
@@ -1223,12 +1220,6 @@ namespace llarp
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();
-    }
-
-    Crypto*
-    Endpoint::crypto()
-    {
-      return m_Router->crypto();
     }
 
     llarp_threadpool*

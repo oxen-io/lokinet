@@ -56,7 +56,7 @@ namespace llarp
 
       MOCK_METHOD1(randomize, void(const llarp_buffer_t &));
 
-      MOCK_METHOD2(randbytes, void(void *, size_t));
+      MOCK_METHOD2(randbytes, void(byte_t *, size_t));
 
       MOCK_METHOD1(identity_keygen, void(SecretKey &));
 

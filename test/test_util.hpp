@@ -40,6 +40,26 @@ namespace llarp
       }
     };
 
+    inline void
+    randbytes_impl(byte_t *ptr, size_t sz)
+    {
+      std::fill_n(ptr, sz, 0xAA);
+    }
+
+    template < typename T >
+    inline void
+    keygen_val(T &val, byte_t x)
+    {
+      val.Fill(x);
+    }
+
+    template < typename T >
+    inline void
+    keygen(T &val)
+    {
+      keygen_val(val, 0xAA);
+    }
+
     template < typename T >
     struct CombinationIterator
     {
