@@ -17,7 +17,6 @@ namespace llarp
     struct LinkLayer final : public ILinkLayer
     {
       utp_context* _utp_ctx = nullptr;
-      Crypto* _crypto       = nullptr;
 
       // low level read callback
       static uint64
@@ -47,8 +46,8 @@ namespace llarp
       OnLog(utp_callback_arguments* arg);
 
       /// construct
-      LinkLayer(Crypto* crypto, const SecretKey& routerEncSecret,
-                GetRCFunc getrc, LinkMessageHandler h, SignBufferFunc sign,
+      LinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                LinkMessageHandler h, SignBufferFunc sign,
                 SessionEstablishedHandler established,
                 SessionRenegotiateHandler reneg, TimeoutHandler timeout,
                 SessionClosedHandler closed);
@@ -69,12 +68,6 @@ namespace llarp
       void
       ProcessICMP();
 #endif
-
-      Crypto*
-      OurCrypto() override
-      {
-        return _crypto;
-      }
 
       /// pump sessions
       void

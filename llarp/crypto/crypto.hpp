@@ -20,18 +20,6 @@
 
 namespace llarp
 {
-  /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func = std::function< bool(
-      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
-
-  /// TKE(result, publickey, secretkey, nonce)
-  using transport_dh_func = std::function< bool(
-      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
-
-  /// SH(result, body)
-  using shorthash_func =
-      std::function< bool(ShortHash &, const llarp_buffer_t &) >;
-
   /// library crypto configuration
   struct Crypto
   {

@@ -61,9 +61,6 @@ namespace llarp
       return llarp_ev_loop_time_now_ms(m_Loop);
     }
 
-    virtual Crypto*
-    OurCrypto() = 0;
-
     bool
     HasSessionTo(const RouterID& pk);
 

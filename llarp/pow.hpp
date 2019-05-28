@@ -1,7 +1,6 @@
 #ifndef LLARP_POW_HPP
 #define LLARP_POW_HPP
 
-#include <crypto/crypto.hpp>
 #include <router_id.hpp>
 #include <util/buffer.hpp>
 
@@ -19,7 +18,7 @@ namespace llarp
     ~PoW();
 
     bool
-    IsValid(shorthash_func hashfunc, llarp_time_t now) const;
+    IsValid(llarp_time_t now) const;
 
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val);

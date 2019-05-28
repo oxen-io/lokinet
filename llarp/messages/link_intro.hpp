@@ -35,7 +35,7 @@ namespace llarp
     Sign(std::function< bool(Signature&, const llarp_buffer_t&) > signer);
 
     bool
-    Verify(llarp::Crypto* c) const;
+    Verify() const;
 
     void
     Clear() override;

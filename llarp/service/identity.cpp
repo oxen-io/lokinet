@@ -1,5 +1,6 @@
 #include <service/identity.hpp>
 
+#include <crypto/crypto.hpp>
 #include <util/fs.hpp>
 
 namespace llarp
@@ -53,8 +54,9 @@ namespace llarp
     }
 
     void
-    Identity::RegenerateKeys(Crypto* crypto)
+    Identity::RegenerateKeys()
     {
+      auto crypto = CryptoManager::instance();
       crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
       pub.Update(seckey_topublic(enckey), seckey_topublic(signkey));
@@ -70,13 +72,13 @@ namespace llarp
     }
 
     bool
-    Identity::Sign(Crypto* c, Signature& sig, const llarp_buffer_t& buf) const
+    Identity::Sign(Signature& sig, const llarp_buffer_t& buf) const
     {
-      return c->sign(sig, signkey, buf);
+      return CryptoManager::instance()->sign(sig, signkey, buf);
     }
 
     bool
-    Identity::EnsureKeys(const std::string& fname, Crypto* c)
+    Identity::EnsureKeys(const std::string& fname)
     {
       std::array< byte_t, 4096 > tmp;
       llarp_buffer_t buf(tmp);
@@ -90,7 +92,7 @@ namespace llarp
           return false;
         }
         // regen and encode
-        RegenerateKeys(c);
+        RegenerateKeys();
         if(!BEncode(&buf))
           return false;
         // rewind
@@ -132,7 +134,7 @@ namespace llarp
     }
 
     bool
-    Identity::SignIntroSet(IntroSet& i, Crypto* crypto, llarp_time_t now) const
+    Identity::SignIntroSet(IntroSet& i, llarp_time_t now) const
     {
       if(i.I.size() == 0)
         return false;
@@ -152,7 +154,7 @@ namespace llarp
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return Sign(crypto, i.Z, buf);
+      return Sign(i.Z, buf);
     }
   }  // namespace service
 }  // namespace llarp

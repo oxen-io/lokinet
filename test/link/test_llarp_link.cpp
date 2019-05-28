@@ -15,11 +15,10 @@ struct LinkLayerTest : public ::testing::Test
 
   struct Context
   {
-    Context(llarp::Crypto& c)
+    Context()
     {
-      crypto = &c;
-      crypto->identity_keygen(signingKey);
-      crypto->encryption_keygen(encryptionKey);
+      llarp::CryptoManager::instance()->identity_keygen(signingKey);
+      llarp::CryptoManager::instance()->encryption_keygen(encryptionKey);
       rc.pubkey = signingKey.toPublic();
       rc.enckey = encryptionKey.toPublic();
     }
@@ -28,8 +27,6 @@ struct LinkLayerTest : public ::testing::Test
     llarp::SecretKey encryptionKey;
 
     llarp::RouterContact rc;
-
-    llarp::Crypto* crypto;
 
     bool gotLIM = false;
 
@@ -49,9 +46,9 @@ struct LinkLayerTest : public ::testing::Test
     bool
     Regen()
     {
-      crypto->encryption_keygen(encryptionKey);
+      llarp::CryptoManager::instance()->encryption_keygen(encryptionKey);
       rc.enckey = llarp::seckey_topublic(encryptionKey);
-      return rc.Sign(crypto, signingKey);
+      return rc.Sign(signingKey);
     }
 
     std::shared_ptr< llarp::ILinkLayer > link;
@@ -68,7 +65,8 @@ struct LinkLayerTest : public ::testing::Test
     }
 
     bool
-    Start(std::shared_ptr<llarp::Logic> logic, llarp_ev_loop_ptr loop, uint16_t port)
+    Start(std::shared_ptr< llarp::Logic > logic, llarp_ev_loop_ptr loop,
+          uint16_t port)
     {
       if(!link)
         return false;
@@ -79,7 +77,7 @@ struct LinkLayerTest : public ::testing::Test
       rc.addrs.emplace_back();
       if(!link->GetOurAddressInfo(rc.addrs[0]))
         return false;
-      if(!rc.Sign(crypto, signingKey))
+      if(!rc.Sign(signingKey))
         return false;
       return link->Start(logic);
     }
@@ -100,6 +98,7 @@ struct LinkLayerTest : public ::testing::Test
   };
 
   llarp::sodium::CryptoLibSodium crypto;
+  llarp::CryptoManager cm;
 
   Context Alice;
   Context Bob;
@@ -111,7 +110,7 @@ struct LinkLayerTest : public ::testing::Test
 
   llarp_time_t oldRCLifetime;
 
-  LinkLayerTest() : Alice(crypto), Bob(crypto), netLoop(nullptr)
+  LinkLayerTest() : cm(&crypto), netLoop(nullptr)
   {
   }
 
@@ -169,7 +168,7 @@ struct LinkLayerTest : public ::testing::Test
 TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
 {
   Alice.link = llarp::utp::NewServer(
-      &crypto, Alice.encryptionKey,
+      Alice.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         if(Alice.gotLIM)
@@ -216,7 +215,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
   };
 
   Bob.link = llarp::utp::NewServer(
-      &crypto, Bob.encryptionKey,
+      Bob.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
@@ -260,7 +259,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
 TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
 {
   Alice.link = llarp::utp::NewServer(
-      &crypto, Alice.encryptionKey,
+      Alice.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage lim;
@@ -293,7 +292,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
       [&](llarp::RouterID router) { ASSERT_EQ(router, Bob.GetRouterID()); });
 
   Bob.link = llarp::utp::NewServer(
-      &crypto, Bob.encryptionKey,
+      Bob.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage lim;

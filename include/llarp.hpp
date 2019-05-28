@@ -20,6 +20,7 @@ namespace llarp
 {
   struct Config;
   struct Crypto;
+  struct CryptoManager;
   class Logic;
   struct AbstractRouter;
   struct RouterContact;
@@ -55,6 +56,7 @@ namespace llarp
     std::map< std::string, std::string > metricTags;
 
     std::unique_ptr< Crypto > crypto;
+    std::unique_ptr< CryptoManager > cryptoManager;
     std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
     std::shared_ptr< Logic > logic;

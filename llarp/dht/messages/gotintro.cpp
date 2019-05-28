@@ -25,12 +25,11 @@ namespace llarp
         __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht   = *ctx->impl;
-      auto crypto = dht.GetRouter()->crypto();
+      auto &dht = *ctx->impl;
 
       for(const auto &introset : I)
       {
-        if(!introset.Verify(crypto, dht.Now()))
+        if(!introset.Verify(dht.Now()))
         {
           llarp::LogWarn(
               "Invalid introset while handling direct GotIntro "

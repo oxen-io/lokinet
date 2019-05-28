@@ -101,9 +101,10 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::HandleMessage(AbstractRouter* router) const
+  LinkIntroMessage::HandleMessage(
+      ABSL_ATTRIBUTE_UNUSED AbstractRouter* router) const
   {
-    if(!Verify(router->crypto()))
+    if(!Verify())
       return false;
     return session->GotLIM(this);
   }
@@ -132,7 +133,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Verify(llarp::Crypto* c) const
+  LinkIntroMessage::Verify() const
   {
     LinkIntroMessage copy;
     copy = *this;
@@ -144,13 +145,13 @@ namespace llarp
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
     // outer signature
-    if(!c->verify(rc.pubkey, buf, Z))
+    if(!CryptoManager::instance()->verify(rc.pubkey, buf, Z))
     {
       llarp::LogError("outer signature failure");
       return false;
     }
     // verify RC
-    if(!rc.Verify(c, llarp::time_now_ms()))
+    if(!rc.Verify(llarp::time_now_ms()))
     {
       llarp::LogError("invalid RC in link intro");
       return false;

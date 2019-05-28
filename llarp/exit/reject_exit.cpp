@@ -53,7 +53,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
+    RejectExitMessage::Sign(const llarp::SecretKey& sk)
     {
       std::array< byte_t, 512 > tmp;
       llarp_buffer_t buf(tmp);
@@ -62,11 +62,11 @@ namespace llarp
       if(!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
-      return c->sign(Z, sk, buf);
+      return CryptoManager::instance()->sign(Z, sk, buf);
     }
 
     bool
-    RejectExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
+    RejectExitMessage::Verify(const llarp::PubKey& pk) const
     {
       std::array< byte_t, 512 > tmp;
       llarp_buffer_t buf(tmp);
@@ -76,7 +76,7 @@ namespace llarp
       if(!copy.BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
-      return c->verify(pk, buf, Z);
+      return CryptoManager::instance()->verify(pk, buf, Z);
     }
 
     bool

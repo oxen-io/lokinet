@@ -11,7 +11,7 @@ struct RCTest : public ::testing::Test
   using RC_t     = llarp::RouterContact;
   using SecKey_t = llarp::SecretKey;
 
-  RCTest() : oldval(llarp::NetID::DefaultValue())
+  RCTest() : cm(&crypto), oldval(llarp::NetID::DefaultValue())
   {
     llarp::NetID::DefaultValue() = llarp::NetID(DEF_VALUE);
   }
@@ -22,6 +22,7 @@ struct RCTest : public ::testing::Test
   }
 
   llarp::sodium::CryptoLibSodium crypto;
+  llarp::CryptoManager cm;
   const llarp::NetID oldval;
 };
 
@@ -39,6 +40,6 @@ TEST_F(RCTest, TestSignVerify)
   rc.exits.emplace_back(rc.pubkey, llarp::nuint32_t{50000});
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == llarp::NetID::DefaultValue());
-  ASSERT_TRUE(rc.Sign(&crypto, sign));
-  ASSERT_TRUE(rc.Verify(&crypto, llarp::time_now_ms()));
+  ASSERT_TRUE(rc.Sign(sign));
+  ASSERT_TRUE(rc.Verify(llarp::time_now_ms()));
 }

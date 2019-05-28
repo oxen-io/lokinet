@@ -19,7 +19,6 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  struct Crypto;
   class Logic;
 
   namespace path
@@ -120,20 +119,20 @@ namespace llarp
       operator=(const ProtocolFrame& other);
 
       bool
-      EncryptAndSign(Crypto* c, const ProtocolMessage& msg,
-                     const SharedSecret& sharedkey, const Identity& localIdent);
+      EncryptAndSign(const ProtocolMessage& msg, const SharedSecret& sharedkey,
+                     const Identity& localIdent);
 
       bool
-      Sign(Crypto* c, const Identity& localIdent);
+      Sign(const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic, Crypto* c,
+      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
                             path::Path_ptr fromPath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(Crypto* c, const SharedSecret& sharedkey,
+      DecryptPayloadInto(const SharedSecret& sharedkey,
                          ProtocolMessage& into) const;
 
       bool
@@ -161,7 +160,7 @@ namespace llarp
       }
 
       bool
-      Verify(Crypto* c, const ServiceInfo& from) const;
+      Verify(const ServiceInfo& from) const;
 
       bool
       HandleMessage(routing::IMessageHandler* h,

@@ -13,10 +13,10 @@ namespace llarp
   namespace service
   {
     bool
-    ServiceInfo::Verify(Crypto* crypto, const llarp_buffer_t& payload,
+    ServiceInfo::Verify(const llarp_buffer_t& payload,
                         const Signature& sig) const
     {
-      return crypto->verify(signkey, payload, sig);
+      return CryptoManager::instance()->verify(signkey, payload, sig);
     }
 
     bool

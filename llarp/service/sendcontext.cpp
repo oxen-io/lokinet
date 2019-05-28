@@ -55,7 +55,6 @@ namespace llarp
     void
     SendContext::EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t)
     {
-      auto crypto = m_Endpoint->Router()->crypto();
       SharedSecret shared;
       ProtocolFrame f;
       f.N.Randomize();
@@ -94,7 +93,7 @@ namespace llarp
       m.sender     = m_Endpoint->GetIdentity().pub;
       m.tag        = f.T;
       m.PutBuffer(payload);
-      if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->GetIdentity()))
+      if(!f.EncryptAndSign(m, shared, m_Endpoint->GetIdentity()))
       {
         LogError("failed to sign");
         return;

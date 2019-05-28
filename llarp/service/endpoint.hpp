@@ -105,9 +105,6 @@ namespace llarp
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
-      Crypto*
-      crypto();
-
       /// crypto worker threadpool
       llarp_threadpool*
       CryptoWorker();

@@ -17,8 +17,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   /// NetID
   struct NetID final : public AlignedBuffer< 8 >
   {
@@ -166,10 +164,10 @@ namespace llarp
     SetNick(const std::string &nick);
 
     bool
-    Verify(llarp::Crypto *crypto, llarp_time_t now) const;
+    Verify(llarp_time_t now) const;
 
     bool
-    Sign(llarp::Crypto *crypto, const llarp::SecretKey &secret);
+    Sign(const llarp::SecretKey &secret);
 
     /// does this RC expire soon? default delta is 1 minute
     bool
@@ -195,7 +193,7 @@ namespace llarp
 
    private:
     bool
-    VerifySignature(llarp::Crypto *crypto) const;
+    VerifySignature() const;
   };
 
   inline std::ostream &

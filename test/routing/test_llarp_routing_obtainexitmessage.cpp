@@ -11,18 +11,10 @@ class ObtainExitTest : public ::testing::Test
 {
  public:
   llarp::sodium::CryptoLibSodium crypto;
+  llarp::CryptoManager cm;
   llarp::SecretKey alice;
 
-  ObtainExitTest()
-  {
-  }
-
-  ~ObtainExitTest()
-  {
-  }
-
-  void
-  SetUp()
+  ObtainExitTest() : cm(&crypto)
   {
     crypto.identity_keygen(alice);
   }
@@ -34,8 +26,8 @@ TEST_F(ObtainExitTest, TestSignVerify)
   msg.Z.Zero();
   msg.S = llarp::randint();
   msg.T = llarp::randint();
-  EXPECT_TRUE(msg.Sign(&crypto, alice));
-  EXPECT_TRUE(msg.Verify(&crypto));
+  EXPECT_TRUE(msg.Sign(alice));
+  EXPECT_TRUE(msg.Verify());
   EXPECT_TRUE(msg.I == llarp::PubKey(llarp::seckey_topublic(alice)));
   EXPECT_FALSE(msg.version != LLARP_PROTO_VERSION);
   EXPECT_FALSE(msg.Z.IsZero());

@@ -15,26 +15,13 @@ class FrameTest : public ::testing::Test
 {
  public:
   llarp::sodium::CryptoLibSodium crypto;
+  llarp::CryptoManager cm;
   SecretKey alice, bob;
 
-  FrameTest()
-  {
-  }
-
-  ~FrameTest()
-  {
-  }
-
-  void
-  SetUp()
+  FrameTest() : cm(&crypto)
   {
     crypto.encryption_keygen(alice);
     crypto.encryption_keygen(bob);
-  }
-
-  void
-  TearDown()
-  {
   }
 };
 
@@ -56,9 +43,9 @@ TEST_F(FrameTest, TestFrameCrypto)
   // rewind buffer
   buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
   // encrypt to alice
-  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic(), &crypto));
+  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic()));
   // decrypt from alice
-  ASSERT_TRUE(f.DecryptInPlace(bob, &crypto));
+  ASSERT_TRUE(f.DecryptInPlace(bob));
 
   LRCR otherRecord;
   ASSERT_TRUE(otherRecord.BDecode(buf));

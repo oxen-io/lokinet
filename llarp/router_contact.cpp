@@ -263,7 +263,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Sign(llarp::Crypto *crypto, const SecretKey &secretkey)
+  RouterContact::Sign(const SecretKey &secretkey)
   {
     pubkey = llarp::seckey_topublic(secretkey);
     std::array< byte_t, MAX_RC_SIZE > tmp;
@@ -274,11 +274,11 @@ namespace llarp
       return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return crypto->sign(signature, secretkey, buf);
+    return CryptoManager::instance()->sign(signature, secretkey, buf);
   }
 
   bool
-  RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
+  RouterContact::Verify(llarp_time_t now) const
   {
     if(netID != NetID::DefaultValue())
     {
@@ -307,7 +307,7 @@ namespace llarp
         return false;
       }
     }
-    if(!VerifySignature(crypto))
+    if(!VerifySignature())
     {
       llarp::LogError("invalid signature");
       return false;
@@ -316,7 +316,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::VerifySignature(llarp::Crypto *crypto) const
+  RouterContact::VerifySignature() const
   {
     RouterContact copy;
     copy = *this;
@@ -330,7 +330,7 @@ namespace llarp
     }
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return crypto->verify(pubkey, buf, signature);
+    return CryptoManager::instance()->verify(pubkey, buf, signature);
   }
 
   bool

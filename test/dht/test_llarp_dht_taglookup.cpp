@@ -18,6 +18,7 @@ static constexpr uint64_t EXPIRY = 1548503831ull;
 struct TestDhtTagLookup : public ::testing::Test
 {
   test::MockCrypto crypto;
+  CryptoManager cm;
   dht::Key_t txKey;
   uint64_t txId;
   dht::TXOwner txOwner;
@@ -28,7 +29,8 @@ struct TestDhtTagLookup : public ::testing::Test
   dht::TagLookup tagLookup;
 
   TestDhtTagLookup()
-      : txKey(makeBuf< dht::Key_t >(0x01))
+      : cm(&crypto)
+      , txKey(makeBuf< dht::Key_t >(0x01))
       , txId(2)
       , txOwner(txKey, txId)
       , tag(makeBuf< service::Tag >(0x03))
@@ -47,7 +49,6 @@ TEST_F(TestDhtTagLookup, validate)
 
   {
     service::IntroSet introset;
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(false));
 
@@ -65,7 +66,6 @@ TEST_F(TestDhtTagLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
 
@@ -83,7 +83,6 @@ TEST_F(TestDhtTagLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
 

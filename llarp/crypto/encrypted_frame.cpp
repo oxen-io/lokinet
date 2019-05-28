@@ -8,8 +8,7 @@ namespace llarp
 {
   bool
   EncryptedFrame::EncryptInPlace(const SecretKey& ourSecretKey,
-                                 const PubKey& otherPubkey,
-                                 llarp::Crypto* crypto)
+                                 const PubKey& otherPubkey)
   {
     // format of frame is
     // <32 bytes keyed hash of following data>
@@ -28,6 +27,8 @@ namespace llarp
     buf.base = body;
     buf.cur  = buf.base;
     buf.sz   = size() - EncryptedFrameOverheadSize;
+
+    auto crypto = CryptoManager::instance();
 
     // set our pubkey
     memcpy(pubkey, ourSecretKey.toPublic().data(), PUBKEYSIZE);
@@ -63,8 +64,7 @@ namespace llarp
   }
 
   bool
-  EncryptedFrame::DecryptInPlace(const SecretKey& ourSecretKey,
-                                 llarp::Crypto* crypto)
+  EncryptedFrame::DecryptInPlace(const SecretKey& ourSecretKey)
   {
     // format of frame is
     // <32 bytes keyed hash of following data>
@@ -79,6 +79,8 @@ namespace llarp
     PubKey otherPubkey(noncePtr + TUNNONCESIZE);
 
     SharedSecret shared;
+
+    auto crypto = CryptoManager::instance();
 
     // use dh_server because we are not the creator of this message
     if(!crypto->dh_server(shared, otherPubkey, ourSecretKey, nonce))

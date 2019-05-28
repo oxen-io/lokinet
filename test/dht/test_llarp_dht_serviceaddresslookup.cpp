@@ -24,6 +24,7 @@ static constexpr uint64_t EXPIRY = 1548503831ull;
 struct TestDhtServiceAddressLookup : public ::testing::Test
 {
   test::MockCrypto crypto;
+  CryptoManager cm;
   MockIntroSetHandler introsetHandler;
 
   dht::Key_t ourKey;
@@ -37,7 +38,8 @@ struct TestDhtServiceAddressLookup : public ::testing::Test
   std::unique_ptr< dht::ServiceAddressLookup > serviceAddressLookup;
 
   TestDhtServiceAddressLookup()
-      : ourKey(makeBuf< dht::Key_t >(0xFF))
+      : cm(&crypto)
+      , ourKey(makeBuf< dht::Key_t >(0xFF))
       , txKey(makeBuf< dht::Key_t >(0x01))
       , txId(2)
       , txOwner(txKey, txId)
@@ -62,7 +64,6 @@ TEST_F(TestDhtServiceAddressLookup, validate)
 
   {
     service::IntroSet introset;
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(false));
 
@@ -78,7 +79,6 @@ TEST_F(TestDhtServiceAddressLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
 
@@ -97,7 +97,6 @@ TEST_F(TestDhtServiceAddressLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
 

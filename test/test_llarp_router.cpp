@@ -9,16 +9,17 @@
 #include <test_util.hpp>
 #include <gtest/gtest.h>
 
-using FindOrCreateFunc = std::function< bool(llarp::Crypto *, const fs::path &,
-                                             llarp::SecretKey &) >;
+using FindOrCreateFunc =
+    std::function< bool(const fs::path &, llarp::SecretKey &) >;
 
 struct FindOrCreate : public ::testing::TestWithParam< FindOrCreateFunc >
 {
-  FindOrCreate()
+  FindOrCreate() : cm(&crypto)
   {
   }
 
   llarp::sodium::CryptoLibSodium crypto;
+  llarp::CryptoManager cm;
 };
 
 // Concerns
@@ -35,7 +36,7 @@ TEST_P(FindOrCreate, find_file_missing)
 
   llarp::test::FileGuard guard(p);
 
-  ASSERT_TRUE(GetParam()(&crypto, p, key));
+  ASSERT_TRUE(GetParam()(p, key));
   ASSERT_TRUE(fs::exists(fs::status(p)));
   ASSERT_FALSE(key.IsZero());
 }
@@ -53,7 +54,7 @@ TEST_P(FindOrCreate, find_file_empty)
 
   llarp::test::FileGuard guard(p);
 
-  ASSERT_FALSE(GetParam()(&crypto, p, key));
+  ASSERT_FALSE(GetParam()(p, key));
   // Verify we didn't delete an invalid file
   ASSERT_TRUE(fs::exists(fs::status(p)));
 }
@@ -72,7 +73,7 @@ TEST_P(FindOrCreate, happy_path)
 
   llarp::test::FileGuard guard(p);
 
-  ASSERT_TRUE(GetParam()(&crypto, p, key));
+  ASSERT_TRUE(GetParam()(p, key));
   // Verify we didn't delete the file
   ASSERT_TRUE(fs::exists(fs::status(p)));
 }
