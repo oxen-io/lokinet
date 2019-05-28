@@ -18,6 +18,7 @@ list(APPEND TEST_SRC
     ev/test_ev_loop.cpp
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
+    llarp_test.cpp
     metrics/test_llarp_metrics_metricktank.cpp
     metrics/test_llarp_metrics_publisher.cpp
     net/test_llarp_net_inaddr.cpp

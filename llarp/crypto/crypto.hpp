@@ -51,9 +51,6 @@ namespace llarp
     virtual bool
     transport_dh_server(SharedSecret &, const PubKey &, const SecretKey &,
                         const TunnelNonce &) = 0;
-    /// blake2b 512 bit
-    virtual bool
-    hash(byte_t *, const llarp_buffer_t &) = 0;
     /// blake2b 256 bit
     virtual bool
     shorthash(ShortHash &, const llarp_buffer_t &) = 0;
@@ -74,7 +71,7 @@ namespace llarp
     randomize(const llarp_buffer_t &) = 0;
     /// randomizer memory
     virtual void
-    randbytes(void *, size_t) = 0;
+    randbytes(byte_t *, size_t) = 0;
     /// generate signing keypair
     virtual void
     identity_keygen(SecretKey &) = 0;

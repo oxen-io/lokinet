@@ -1,5 +1,6 @@
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <llarp_test.hpp>
 #include <path/path.hpp>
 #include <service/address.hpp>
 #include <service/identity.hpp>
@@ -15,23 +16,9 @@
 using namespace llarp;
 using namespace testing;
 
-struct HiddenServiceTest : public ::testing::Test
+struct HiddenServiceTest : public test::LlarpTest<>
 {
-  sodium::CryptoLibSodium crypto;
-  CryptoManager cm;
   service::Identity ident;
-
-  HiddenServiceTest() : cm(&crypto)
-  {
-    ident.RegenerateKeys();
-    ident.pub.RandomizeVanity();
-    ident.pub.UpdateAddr();
-  }
-
-  void
-  SetUp()
-  {
-  }
 };
 
 TEST_F(HiddenServiceTest, TestGenerateIntroSet)
@@ -49,6 +36,10 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
     intro.pathID.Randomize();
     I.I.emplace_back(std::move(intro));
   }
+
+  EXPECT_CALL(m_crypto, sign(I.Z, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
+
   ASSERT_TRUE(ident.SignIntroSet(I, now));
   ASSERT_TRUE(I.Verify(now));
 }
@@ -61,11 +52,9 @@ TEST_F(HiddenServiceTest, TestAddressToFromString)
   ASSERT_TRUE(addr == ident.pub.Addr());
 }
 
-struct ServiceIdentityTest : public ::testing::Test
+struct ServiceIdentityTest : public test::LlarpTest<>
 {
-  test::MockCrypto crypto;
-  CryptoManager cm;
-  ServiceIdentityTest() : cm(&crypto)
+  ServiceIdentityTest()
   {
   }
 };
@@ -84,13 +73,13 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
 
   test::FileGuard guard(p);
 
-  EXPECT_CALL(crypto, encryption_keygen(_))
+  EXPECT_CALL(m_crypto, encryption_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x01)));
 
-  EXPECT_CALL(crypto, identity_keygen(_))
+  EXPECT_CALL(m_crypto, identity_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));
 
-  EXPECT_CALL(crypto, pqe_keygen(_))
+  EXPECT_CALL(m_crypto, pqe_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< PQKeyPair >(0x03)));
 
   service::Identity identity;

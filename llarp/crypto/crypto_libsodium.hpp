@@ -41,9 +41,6 @@ namespace llarp
       bool
       transport_dh_server(SharedSecret &, const PubKey &, const SecretKey &,
                           const TunnelNonce &) override;
-      /// blake2b 512 bit
-      bool
-      hash(byte_t *, const llarp_buffer_t &) override;
       /// blake2b 256 bit
       bool
       shorthash(ShortHash &, const llarp_buffer_t &) override;
@@ -66,7 +63,7 @@ namespace llarp
       randomize(const llarp_buffer_t &) override;
       /// randomizer memory
       void
-      randbytes(void *, size_t) override;
+      randbytes(byte_t *, size_t) override;
       /// generate signing keypair
       void
       identity_keygen(SecretKey &) override;

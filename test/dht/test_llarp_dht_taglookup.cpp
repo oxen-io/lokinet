@@ -3,6 +3,7 @@
 #include <crypto/mock_crypto.hpp>
 #include <dht/mock_context.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <llarp_test.hpp>
 #include <service/intro_set.hpp>
 #include <test_util.hpp>
 
@@ -15,10 +16,8 @@ using test::makeBuf;
 
 static constexpr uint64_t EXPIRY = 1548503831ull;
 
-struct TestDhtTagLookup : public ::testing::Test
+struct TestDhtTagLookup : public test::LlarpTest<>
 {
-  test::MockCrypto crypto;
-  CryptoManager cm;
   dht::Key_t txKey;
   uint64_t txId;
   dht::TXOwner txOwner;
@@ -29,8 +28,7 @@ struct TestDhtTagLookup : public ::testing::Test
   dht::TagLookup tagLookup;
 
   TestDhtTagLookup()
-      : cm(&crypto)
-      , txKey(makeBuf< dht::Key_t >(0x01))
+      : txKey(makeBuf< dht::Key_t >(0x01))
       , txId(2)
       , txOwner(txKey, txId)
       , tag(makeBuf< service::Tag >(0x03))
@@ -50,7 +48,7 @@ TEST_F(TestDhtTagLookup, validate)
   {
     service::IntroSet introset;
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(false));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(false));
 
     ASSERT_FALSE(tagLookup.Validate(introset));
   }
@@ -67,7 +65,7 @@ TEST_F(TestDhtTagLookup, validate)
 
     // Set expectations
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_FALSE(tagLookup.Validate(introset));
   }
@@ -84,7 +82,7 @@ TEST_F(TestDhtTagLookup, validate)
 
     // Set expectations
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_TRUE(tagLookup.Validate(introset));
   }

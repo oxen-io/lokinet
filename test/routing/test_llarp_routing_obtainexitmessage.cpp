@@ -2,33 +2,45 @@
 
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <llarp_test.hpp>
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
-using ObtainExitMessage = llarp::routing::ObtainExitMessage;
+using namespace ::testing;
+using namespace ::llarp;
 
-class ObtainExitTest : public ::testing::Test
+using ObtainExitMessage = routing::ObtainExitMessage;
+
+class ObtainExitTest : public test::LlarpTest<>
 {
  public:
-  llarp::sodium::CryptoLibSodium crypto;
-  llarp::CryptoManager cm;
-  llarp::SecretKey alice;
+  SecretKey alice;
 
-  ObtainExitTest() : cm(&crypto)
+  ObtainExitTest()
   {
-    crypto.identity_keygen(alice);
+    // m_crypto.identity_keygen(alice);
   }
 };
 
+void
+fill(Signature& s)
+{
+  s.Fill(0xFF);
+}
+
 TEST_F(ObtainExitTest, TestSignVerify)
 {
+  EXPECT_CALL(m_crypto, sign(_, alice, _))
+      .WillOnce(DoAll(WithArg< 0 >(Invoke(&fill)), Return(true)));
+  EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
   ObtainExitMessage msg;
   msg.Z.Zero();
-  msg.S = llarp::randint();
-  msg.T = llarp::randint();
+  msg.S = randint();
+  msg.T = randint();
   EXPECT_TRUE(msg.Sign(alice));
   EXPECT_TRUE(msg.Verify());
-  EXPECT_TRUE(msg.I == llarp::PubKey(llarp::seckey_topublic(alice)));
+  EXPECT_TRUE(msg.I == PubKey(seckey_topublic(alice)));
   EXPECT_FALSE(msg.version != LLARP_PROTO_VERSION);
   EXPECT_FALSE(msg.Z.IsZero());
 }
