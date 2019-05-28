@@ -41,7 +41,7 @@ extern "C"
 
   /// setup main context, returns 0 on success
   int
-  llarp_main_setup(struct llarp_main *ptr, bool debugMode);
+  llarp_main_setup(struct llarp_main *ptr);
 
   /// run main context, returns 0 on success, blocks until program end
   int
