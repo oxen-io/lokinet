@@ -6,6 +6,7 @@
 
 #include <util/buffer.hpp>
 
+#include <absl/base/optimization.h>
 #include <functional>
 #include <stdbool.h>
 #include <stdint.h>
@@ -119,6 +120,36 @@ namespace llarp
 
   const byte_t *
   pq_keypair_to_secret(const PQKeyPair &keypair);
+
+  struct CryptoManager
+  {
+   private:
+    static Crypto *m_crypto;
+
+    Crypto *m_prevCrypto;
+
+   public:
+    CryptoManager(Crypto *crypto) : m_prevCrypto(m_crypto)
+    {
+      m_crypto = crypto;
+    }
+
+    ~CryptoManager()
+    {
+      m_crypto = m_prevCrypto;
+    }
+
+    static Crypto *
+    instance() ABSL_ATTRIBUTE_RETURNS_NONNULL
+    {
+      if(ABSL_PREDICT_TRUE(m_crypto))
+      {
+        return m_crypto;
+      }
+
+      throw std::logic_error("Cryptomanager::instance() was undefined");
+    }
+  };
 
 }  // namespace llarp
 
