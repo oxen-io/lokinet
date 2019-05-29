@@ -189,10 +189,12 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      if(state == eInitial || state == eLinkEstablished)
-        return false;
+      if(state == eConnecting)
+        return now - lastActive > 5000;
       if(sendq.size() >= MaxSendQueueSize)
       {
+        if(now <= lastSend)
+          return false;
         return now - lastSend > 5000;
       }
       // let utp manage this
@@ -546,6 +548,7 @@ namespace llarp
       if(!itr->second.AppendData(out.cur, length))
       {
         LogError("inbound buffer is full");
+        m_RecvMsgs.erase(itr);
         return false;  // not enough room
       }
       // mutate key
@@ -557,8 +560,6 @@ namespace llarp
 
       if(remaining == 0)
       {
-        // we done with this guy, prune next tick
-        itr->second.lastActive = 0;
         ManagedBuffer buf{itr->second.buffer};
         // resize
         buf.underlying.sz = buf.underlying.cur - buf.underlying.base;
@@ -567,6 +568,7 @@ namespace llarp
         // process buffer
         LogDebug("got message ", msgid, " from ", remoteAddr);
         parent->HandleMessage(this, buf.underlying);
+        m_RecvMsgs.erase(itr);
       }
       return true;
     }
@@ -580,10 +582,12 @@ namespace llarp
         {
           if(state == eLinkEstablished || state == eSessionReady)
           {
-            // only call shutdown and close when we are actually connected
+            // only call shutdown when we are actually connected
             utp_shutdown(sock, SHUT_RDWR);
-            utp_close(sock);
           }
+          utp_close(sock);
+          utp_set_userdata(sock, nullptr);
+          sock = nullptr;
           LogDebug("utp_close ", remoteAddr);
         }
       }

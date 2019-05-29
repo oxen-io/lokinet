@@ -237,7 +237,7 @@ namespace llarp
             [&](const ILinkSession* session, bool outbound) {
               resp.emplace_back(
                   Response{{"ident", RouterID(session->GetPubKey()).ToString()},
-                           {"addr", session->GetRemoteEndpoint().ToString()},
+                           {"svcnode", session->GetRemoteRC().IsPublicRouter()},
                            {"outbound", outbound}});
             },
             false);

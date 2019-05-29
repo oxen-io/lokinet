@@ -93,9 +93,29 @@ namespace llarp
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              const std::array< EncryptedFrame, 8 >& frames)
     {
+      auto msg = std::make_shared< const LR_CommitMessage >(frames);
+
       LogDebug("forwarding LRCM to ", nextHop);
-      const LR_CommitMessage msg(frames);
-      return m_Router->SendToOrQueue(nextHop, &msg);
+      if(m_Router->HasSessionTo(nextHop))
+      {
+        return m_Router->SendToOrQueue(nextHop, msg.get());
+      }
+      const RouterID router   = nextHop;
+      AbstractRouter* const r = m_Router;
+      m_Router->EnsureRouter(
+          nextHop, [msg, r, router](const std::vector< RouterContact >& found) {
+            if(found.size())
+            {
+              r->TryConnectAsync(found[0], 1);
+              r->SendToOrQueue(router, msg.get());
+            }
+            else
+              LogError("dropped LRCM to ", router,
+                       " as we cannot find in via DHT");
+          });
+      LogInfo("we are not directly connected to ", router,
+              " so we need to do a lookup");
+      return true;
     }
     template < typename Map_t, typename Key_t, typename CheckValue_t,
                typename GetFunc_t >

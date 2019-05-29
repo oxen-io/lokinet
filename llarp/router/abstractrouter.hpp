@@ -214,8 +214,16 @@ namespace llarp
     virtual bool
     ConnectionToRouterAllowed(const RouterID &router) const = 0;
 
+    /// return true if we have at least 1 session to this router in either
+    /// direction
+    virtual bool
+    HasSessionTo(const RouterID &router) const = 0;
+
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    void
+    EnsureRouter(RouterID router, RouterLookupHandler handler);
   };
 }  // namespace llarp
 

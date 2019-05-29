@@ -85,6 +85,19 @@ decrement S by 1 and forward to dht peer who is next closest to
 the SA of the IS. If S is greater than 3, don't store the IS and 
 discard this message.
 
+acknoledge introduction message (AIM)
+
+acknoledge the publishing of an introduction 
+
+{
+  A: "A",
+  P: published_to_counter,
+  T: transaction_id_uint64,
+  V: 0
+}
+
+increment P by 1 and forward to requester
+
 
 find router contact message (FRCM)
 
@@ -127,6 +140,14 @@ in response to an exploritory router lookup, where FRCM.E is provided and non ze
 {
   A: "S",
   N: [list, of, router, publickeys, near, K],
+  T: transaction_id_uint64,
+  V: 0
+}
+
+sent in reply to a dht request to indicate transaction timeout
+
+{
+  A: "T",
   T: transaction_id_uint64,
   V: 0
 }

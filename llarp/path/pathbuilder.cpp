@@ -84,7 +84,7 @@ namespace llarp
             std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
       }
       // build record
-
+      record.lifetime    = path::default_lifetime;
       record.version     = LLARP_PROTO_VERSION;
       record.txid        = hop.txID;
       record.rxid        = hop.rxID;

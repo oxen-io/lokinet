@@ -62,16 +62,6 @@ struct TryConnectJob
   }
 
   void
-  Failed()
-  {
-    llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
-    if(link)
-      link->CloseSessionTo(rc.pubkey);
-    // delete this
-    router->pendingEstablishJobs.erase(rc.pubkey);
-  }
-
-  void
   Success()
   {
     router->routerProfiling().MarkConnectSuccess(rc.pubkey);
@@ -86,6 +76,8 @@ struct TryConnectJob
     {
       return Attempt();
     }
+    // discard pending traffic on timeout
+    router->DiscardOutboundFor(rc.pubkey);
     router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
     {
@@ -532,8 +524,7 @@ namespace llarp
     async_verify_context *ctx =
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
-    PubKey pk(job->rc.pubkey);
-    router->m_Clients.insert(pk);
+    const PubKey pk(job->rc.pubkey);
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
     router->pendingVerifyRC.erase(pk);
@@ -546,18 +537,12 @@ namespace llarp
     async_verify_context *ctx =
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
-    PubKey pk(job->rc.pubkey);
+    const PubKey pk(job->rc.pubkey);
     if(!job->valid)
     {
-      if(ctx->establish_job)
-      {
-        // was an outbound attempt
-        ctx->establish_job->Failed();
-      }
       delete ctx;
       router->DiscardOutboundFor(pk);
       router->pendingVerifyRC.erase(pk);
-
       return;
     }
     // we're valid, which means it's already been committed to the nodedb
@@ -569,7 +554,7 @@ namespace llarp
       router->validRouters.erase(pk);
     }
 
-    RouterContact rc = job->rc;
+    const RouterContact rc = job->rc;
 
     router->validRouters.emplace(pk, rc);
 
@@ -1274,10 +1259,17 @@ namespace llarp
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
           }
-          else if(m_Clients.count(itr->first) == 0)
+          else
           {
-            LogDebug("establish to ", itr->first);
-            TryEstablishTo(itr->first);
+            RouterContact rc;
+            if(nodedb()->Get(itr->first, rc))
+            {
+              if(rc.IsPublicRouter())
+              {
+                LogDebug("establish to ", itr->first);
+                TryConnectAsync(rc, 5);
+              }
+            }
           }
           ++itr;
         }
@@ -1359,12 +1351,12 @@ namespace llarp
       if(selected->SendTo(remote, buf))
         return;
     }
-    for(const auto &link : outboundLinks)
+    for(const auto &link : inboundLinks)
     {
       if(link->SendTo(remote, buf))
         return;
     }
-    for(const auto &link : inboundLinks)
+    for(const auto &link : outboundLinks)
     {
       if(link->SendTo(remote, buf))
         return;
@@ -1385,7 +1377,6 @@ namespace llarp
     dht()->impl->Nodes()->DelNode(k);
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
-    m_Clients.erase(remote);
     LogInfo("Session to ", remote, " fully closed");
   }
 
@@ -1416,22 +1407,37 @@ namespace llarp
       pendingEstablishJobs.erase(remote);
       return;
     }
+    // if for some reason we don't provide a link layer pick one that has it
     if(!chosen)
     {
-      DiscardOutboundFor(remote);
-      pendingEstablishJobs.erase(remote);
-      return;
+      for(const auto &link : inboundLinks)
+      {
+        if(link->HasSessionTo(remote))
+        {
+          chosen = link.get();
+          break;
+        }
+      }
+      for(const auto &link : outboundLinks)
+      {
+        if(link->HasSessionTo(remote))
+        {
+          chosen = link.get();
+          break;
+        }
+      }
     }
     while(itr->second.size())
     {
       llarp_buffer_t buf(itr->second.front());
       if(!chosen->SendTo(remote, buf))
-        LogWarn("failed to send outbound message to ", remote, " via ",
+        LogWarn("failed to send queued outbound message to ", remote, " via ",
                 chosen->Name());
 
       itr->second.pop();
     }
     pendingEstablishJobs.erase(remote);
+    outboundMessageQueue.erase(itr);
   }
 
   void
