@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: xenial
 os: linux
 language: minimal
 cache:
@@ -9,14 +9,14 @@ cache:
   - $HOME/.ccache
 env:
   global:
-    - MAKEJOBS=-j3
+    - MAKEJOBS=-j2
     - CCACHE_SIZE=100M
     - CCACHE_TEMPDIR=/tmp/.ccache-temp
     - CCACHE_COMPRESS=1
     - CCACHE_DIR=$HOME/.ccache
     - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
     - SDK_URL=https://bitcoincore.org/depends-sources/sdks
-    - DOCKER_PACKAGES="build-essential libtool cmake autotools-dev automake pkg-config bsdmainutils curl git ca-certificates ccache"
+    - DOCKER_PACKAGES="build-essential cmake git libcap-dev bsdmainutils curl git ca-certificates ccache"
   matrix:
       - HOST=x86_64-unknown-linux-gnu PACKAGES="gperf cmake"
 script:
