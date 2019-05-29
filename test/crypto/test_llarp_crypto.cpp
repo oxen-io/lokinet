@@ -13,12 +13,6 @@ namespace llarp
     IdentityKeyTest()
     {
     }
-
-    llarp::Crypto*
-    Crypto()
-    {
-      return &crypto;
-    }
   };
 
   TEST_F(IdentityKeyTest, TestSignVerify)
@@ -46,12 +40,6 @@ namespace llarp
     {
     }
 
-    llarp::Crypto*
-    Crypto()
-    {
-      return &crypto;
-    }
-
     void
     SetUp()
     {
@@ -63,7 +51,7 @@ namespace llarp
   {
     PQCipherBlock block;
     SharedSecret shared, otherShared;
-    auto c = Crypto();
+    auto c = &crypto;
 
     ASSERT_TRUE(keys.size() == PQ_KEYPAIRSIZE);
     ASSERT_TRUE(

@@ -62,9 +62,6 @@ namespace llarp
       llarp_time_t
       Now() const;
 
-      Crypto*
-      GetCrypto();
-
       template < typename Stats >
       void
       CalculateTrafficStats(Stats& stats)

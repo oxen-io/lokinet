@@ -26,7 +26,6 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  struct Crypto;
   class Logic;
 
   namespace thread
@@ -45,8 +44,8 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  llarp_nodedb(llarp::Crypto *c, llarp::thread::ThreadPool *diskworker)
-      : crypto(c), disk(diskworker)
+  explicit llarp_nodedb(llarp::thread::ThreadPool *diskworker)
+      : disk(diskworker)
   {
   }
 
@@ -55,7 +54,6 @@ struct llarp_nodedb
     Clear();
   }
 
-  llarp::Crypto *crypto;
   llarp::thread::ThreadPool *disk;
   mutable llarp::util::Mutex access;  // protects entries
   std::unordered_map< llarp::RouterID, llarp::RouterContact,

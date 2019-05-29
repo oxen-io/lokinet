@@ -129,9 +129,6 @@ namespace llarp
       virtual void
       ExploreNetworkVia(const Key_t& peer) = 0;
 
-      virtual llarp::Crypto*
-      Crypto() const = 0;
-
       virtual llarp::AbstractRouter*
       GetRouter() const = 0;
 

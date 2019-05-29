@@ -209,7 +209,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
     llarp::LogError("failed to read file ", fpath);
     return false;
   }
-  if(!rc.Verify(crypto, llarp::time_now_ms()))
+  if(!rc.Verify(llarp::time_now_ms()))
   {
     llarp::LogError(fpath, " contains invalid RC");
     return false;
@@ -295,8 +295,7 @@ crypto_threadworker_verifyrc(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   llarp::RouterContact rc = verify_request->rc;
-  verify_request->valid =
-      rc.Verify(verify_request->nodedb->crypto, llarp::time_now_ms());
+  verify_request->valid   = rc.Verify(llarp::time_now_ms());
   // if it's valid we need to set it
   if(verify_request->valid && rc.IsPublicRouter())
   {

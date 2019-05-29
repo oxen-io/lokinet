@@ -1,5 +1,6 @@
 #include <exit/session.hpp>
 
+#include <crypto/crypto.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
@@ -19,7 +20,7 @@ namespace llarp
         , m_LastUse(0)
         , m_BundleRC(bundleRC)
     {
-      r->crypto()->identity_keygen(m_ExitIdentity);
+      CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
 
     BaseSession::~BaseSession()
@@ -109,11 +110,11 @@ namespace llarp
       p->AddObtainExitHandler(std::bind(&BaseSession::HandleGotExit, this,
                                         std::placeholders::_1,
                                         std::placeholders::_2));
-      llarp::routing::ObtainExitMessage obtain;
+      routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp::randint();
       PopulateRequest(obtain);
-      if(!obtain.Sign(router->crypto(), m_ExitIdentity))
+      if(!obtain.Sign(m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
         return;
@@ -168,9 +169,8 @@ namespace llarp
         if(p->SupportsAnyRoles(roles))
         {
           llarp::LogInfo(p->Name(), " closing exit path");
-          llarp::routing::CloseExitMessage msg;
-          if(msg.Sign(router->crypto(), m_ExitIdentity)
-             && p->SendExitClose(msg, router))
+          routing::CloseExitMessage msg;
+          if(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router))
           {
             p->ClearRoles(roles);
           }
@@ -186,19 +186,18 @@ namespace llarp
     BaseSession::Stop()
     {
       CallPendingCallbacks(false);
-      auto sendExitClose = [&](const llarp::path::Path_ptr p) {
-        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
+      auto sendExitClose = [&](const path::Path_ptr p) {
+        if(p->SupportsAnyRoles(path::ePathRoleExit))
         {
-          llarp::LogInfo(p->Name(), " closing exit path");
-          llarp::routing::CloseExitMessage msg;
-          if(!(msg.Sign(router->crypto(), m_ExitIdentity)
-               && p->SendExitClose(msg, router)))
-            llarp::LogWarn(p->Name(), " failed to send exit close message");
+          LogInfo(p->Name(), " closing exit path");
+          routing::CloseExitMessage msg;
+          if(!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router)))
+            LogWarn(p->Name(), " failed to send exit close message");
         }
       };
       ForEachPath(sendExitClose);
       router->pathContext().RemovePathSet(shared_from_this());
-      return llarp::path::Builder::Stop();
+      return path::Builder::Stop();
     }
 
     bool

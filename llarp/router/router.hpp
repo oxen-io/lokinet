@@ -37,19 +37,17 @@
 namespace llarp
 {
   struct Config;
-  struct Crypto;
 }  // namespace llarp
 
 bool
-llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &fpath,
+llarp_findOrCreateEncryption(const fs::path &fpath,
                              llarp::SecretKey &encryption);
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
-                           llarp::SecretKey &secretkey);
+llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey);
 
 bool
-llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
+llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
                                  llarp::SecretKey &secretkey);
 
 struct TryConnectJob;
@@ -100,12 +98,6 @@ namespace llarp
 
     util::StatusObject
     ExtractStatus() const override;
-
-    Crypto *
-    crypto() const override
-    {
-      return _crypto.get();
-    }
 
     llarp_nodedb *
     nodedb() const override
@@ -184,7 +176,6 @@ namespace llarp
     llarp_ev_loop_ptr _netloop;
     llarp_threadpool *tp;
     std::shared_ptr< Logic > _logic;
-    std::unique_ptr< Crypto > _crypto;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;

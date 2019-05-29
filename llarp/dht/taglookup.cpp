@@ -10,7 +10,7 @@ namespace llarp
     bool
     TagLookup::Validate(const service::IntroSet &introset) const
     {
-      if(!introset.Verify(parent->Crypto(), parent->Now()))
+      if(!introset.Verify(parent->Now()))
       {
         llarp::LogWarn("got invalid introset from tag lookup");
         return false;

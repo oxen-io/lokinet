@@ -164,6 +164,18 @@ namespace llarp
   using PQCipherBlock = AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 >;
   using PQPubKey      = AlignedBuffer< PQ_PUBKEYSIZE >;
   using PQKeyPair     = AlignedBuffer< PQ_KEYPAIRSIZE >;
+
+  /// PKE(result, publickey, secretkey, nonce)
+  using path_dh_func = std::function< bool(
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
+
+  /// TKE(result, publickey, secretkey, nonce)
+  using transport_dh_func = std::function< bool(
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
+
+  /// SH(result, body)
+  using shorthash_func =
+      std::function< bool(ShortHash &, const llarp_buffer_t &) >;
 }  // namespace llarp
 
 #endif

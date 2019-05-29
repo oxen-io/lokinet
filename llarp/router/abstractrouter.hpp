@@ -17,7 +17,6 @@ namespace llarp
 {
   class Logic;
   struct Config;
-  struct Crypto;
   struct RouterID;
   struct ILinkMessage;
   struct ILinkSession;
@@ -67,9 +66,6 @@ namespace llarp
 
     virtual llarp_dht_context *
     dht() const = 0;
-
-    virtual Crypto *
-    crypto() const = 0;
 
     virtual llarp_nodedb *
     nodedb() const = 0;

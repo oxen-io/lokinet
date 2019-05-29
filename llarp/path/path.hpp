@@ -27,7 +27,6 @@ namespace llarp
 {
   class Logic;
   struct AbstractRouter;
-  struct Crypto;
   struct LR_CommitMessage;
   struct LR_CommitRecord;
 
@@ -704,9 +703,6 @@ namespace llarp
 
       llarp_threadpool*
       Worker();
-
-      llarp::Crypto*
-      crypto();
 
       std::shared_ptr< Logic >
       logic();

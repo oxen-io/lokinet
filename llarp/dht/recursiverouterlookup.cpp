@@ -22,7 +22,7 @@ namespace llarp
     bool
     RecursiveRouterLookup::Validate(const RouterContact &rc) const
     {
-      if(!rc.Verify(parent->Crypto(), parent->Now()))
+      if(!rc.Verify(parent->Now()))
       {
         llarp::LogWarn("rc from lookup result is invalid");
         return false;

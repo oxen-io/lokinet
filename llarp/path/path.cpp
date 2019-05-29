@@ -57,12 +57,6 @@ namespace llarp
       return m_Router->threadpool();
     }
 
-    Crypto*
-    PathContext::crypto()
-    {
-      return m_Router->crypto();
-    }
-
     std::shared_ptr< Logic >
     PathContext::logic()
     {
@@ -617,7 +611,7 @@ namespace llarp
       TunnelNonce n = Y;
       for(const auto& hop : hops)
       {
-        r->crypto()->xchacha20(buf, hop.shared, n);
+        CryptoManager::instance()->xchacha20(buf, hop.shared, n);
         n ^= hop.nonceXOR;
       }
       RelayUpstreamMessage msg;
@@ -659,7 +653,7 @@ namespace llarp
       for(const auto& hop : hops)
       {
         n ^= hop.nonceXOR;
-        r->crypto()->xchacha20(buf, hop.shared, n);
+        CryptoManager::instance()->xchacha20(buf, hop.shared, n);
       }
       if(!HandleRoutingMessage(buf, r))
         return false;
@@ -719,7 +713,7 @@ namespace llarp
       if(buf.sz < pad_size)
       {
         // randomize padding
-        r->crypto()->randbytes(buf.cur, pad_size - buf.sz);
+        CryptoManager::instance()->randbytes(buf.cur, pad_size - buf.sz);
         buf.sz = pad_size;
       }
       buf.cur = buf.base;
@@ -819,12 +813,12 @@ namespace llarp
 
     bool
     Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg,
-                                 AbstractRouter* r)
+                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
     {
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
       {
-        if(msg.Verify(r->crypto(), EndpointPubKey()))
+        if(msg.Verify(EndpointPubKey()))
         {
           LogInfo(Name(), " had its exit closed");
           _role &= ~ePathRoleExit;
@@ -882,7 +876,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg.T == m_ExitObtainTX)
       {
-        if(!msg.Verify(r->crypto(), EndpointPubKey()))
+        if(!msg.Verify(EndpointPubKey()))
         {
           LogError(Name(), "RXM invalid signature");
           return false;
@@ -901,7 +895,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg.T == m_ExitObtainTX)
       {
-        if(!msg.Verify(r->crypto(), EndpointPubKey()))
+        if(!msg.Verify(EndpointPubKey()))
         {
           LogError(Name(), " GXM signature failed");
           return false;

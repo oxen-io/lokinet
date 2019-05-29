@@ -3,6 +3,7 @@
 
 #include <config.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <crypto/crypto_noop.hpp>
 #include <dht/context.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
@@ -162,9 +163,9 @@ __        ___    ____  _   _ ___ _   _  ____
   \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
    \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
 
-This Lokinet session is not private
+This Lokinet session is not private!!
 
-Sending connection metrics to metrictank
+Sending connection metrics to metrictank!!
 __        ___    ____  _   _ ___ _   _  ____
 \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
  \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
@@ -203,9 +204,7 @@ __        ___    ____  _   _ ___ _   _  ____
   int
   Context::LoadDatabase()
   {
-    crypto = std::make_unique< sodium::CryptoLibSodium >();
-    nodedb =
-        std::make_unique< llarp_nodedb >(crypto.get(), router->diskworker());
+    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -248,7 +247,7 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   int
-  Context::Setup()
+  Context::Setup(bool debug)
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
@@ -269,6 +268,35 @@ __        ___    ____  _   _ ___ _   _  ____
     }
     else
       logic = std::make_shared< Logic >();
+
+    if(debug)
+    {
+      static std::string WARNING = R"(
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+This Lokinet session is not private!!
+
+Sending traffic unencrypted!!
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+        )";
+
+      std::cerr << WARNING << '\n';
+      crypto = std::make_unique< NoOpCrypto >();
+    }
+    else
+    {
+      crypto = std::make_unique< sodium::CryptoLibSodium >();
+    }
+    cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
     router = std::make_unique< Router >(worker.get(), mainloop, logic);
     if(!router->Configure(config.get()))
@@ -472,9 +500,9 @@ extern "C"
   }
 
   int
-  llarp_main_setup(struct llarp_main *ptr)
+  llarp_main_setup(struct llarp_main *ptr, bool debug)
   {
-    return ptr->ctx->Setup();
+    return ptr->ctx->Setup(debug);
   }
 
   int
@@ -532,104 +560,6 @@ extern "C"
   {
     return ptr->ctx->LoadDatabase();
   }
-
-  /*
-  int
-  llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
-  {
-    return ptr->ctx->IterateDatabase(i);
-  }
-
-  bool
-  llarp_main_putDatabase(struct llarp_main *ptr, llarp::RouterContact &rc)
-  {
-    return ptr->ctx->PutDatabase(rc);
-  }
-
-  llarp::RouterContact *
-  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
-  {
-    return ptr->ctx->GetDatabase(pk);
-  }
-
-  llarp::RouterContact *
-  llarp_main_getLocalRC(__attribute__((unused)) struct llarp_main *ptr)
-  {
-    return nullptr;
-  }
-
-  void
-  llarp_main_checkOnline(void *u, __attribute__((unused)) uint64_t orig,
-                         uint64_t left)
-  {
-    // llarp::Info("checkOnline - check ", left);
-    if(left)
-      return;
-    struct check_online_request *request =
-        static_cast< struct check_online_request * >(u);
-    // llarp::Debug("checkOnline - running");
-    // llarp::Info("checkOnline - DHT nodes ",
-    // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
-    request->online = false;
-    request->nodes =
-        request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size();
-    if(request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size())
-    {
-      // llarp::Info("checkOnline - Going to say we're online");
-      request->online = true;
-    }
-    request->hook(request);
-    // reschedue our self
-    llarp_main_queryDHT(request);
-  }
-
-  void
-  llarp_main_queryDHT_online(struct check_online_request *request)
-  {
-    // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
-    // "offline");
-    if(request->online && !request->first)
-    {
-      request->first = true;
-      llarp::LogInfo("llarp_main_queryDHT_online - We're online");
-      llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-      llarp_dht_lookup_router(request->ptr->ctx->router->dht(), request->job);
-    }
-  }
-
-  void
-  llarp_main_queryDHT(struct check_online_request *request)
-  {
-    // llarp::Info("llarp_main_queryDHT - setting up timer");
-    request->hook = &llarp_main_queryDHT_online;
-    request->ptr->ctx->router->logic()->call_later(
-        {1000, request, &llarp_main_checkOnline});
-    // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
-  }
-
-
-  llarp::handlers::TunEndpoint *
-  main_router_getFirstTunEndpoint(struct llarp_main *ptr)
-  {
-    if(ptr && ptr->ctx && ptr->ctx->router)
-      return ptr->ctx->router->hiddenServiceContext().getFirstTun();
-    return nullptr;
-  }
-
-  bool
-  main_router_endpoint_iterator(
-      struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)
-  {
-    return ptr->ctx->router->hiddenServiceContext().iterate(i);
-  }
-
-  llarp_tun_io *
-  main_router_getRange(struct llarp_main *ptr)
-  {
-    return ptr->ctx->router->hiddenServiceContext().getRange();
-  }
-
-  */
 
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])

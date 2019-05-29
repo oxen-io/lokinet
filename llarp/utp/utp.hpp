@@ -11,7 +11,7 @@ namespace llarp
   namespace utp
   {
     LinkLayer_ptr
-    NewServer(Crypto* crypto, const SecretKey& routerEncSecret, GetRCFunc getrc,
+    NewServer(const SecretKey& routerEncSecret, GetRCFunc getrc,
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed);

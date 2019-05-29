@@ -138,16 +138,14 @@ namespace llarp
       return 0;
     }
 
-    LinkLayer::LinkLayer(Crypto* crypto, const SecretKey& routerEncSecret,
-                         GetRCFunc getrc, LinkMessageHandler h,
-                         SignBufferFunc sign,
+    LinkLayer::LinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                         LinkMessageHandler h, SignBufferFunc sign,
                          SessionEstablishedHandler established,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed)
         : ILinkLayer(routerEncSecret, getrc, h, sign, established, reneg,
                      timeout, closed)
     {
-      _crypto  = crypto;
       _utp_ctx = utp_init(2);
       utp_context_set_userdata(_utp_ctx, this);
       utp_set_callback(_utp_ctx, UTP_SENDTO, &LinkLayer::SendTo);
@@ -302,7 +300,7 @@ namespace llarp
     bool
     LinkLayer::KeyGen(SecretKey& k)
     {
-      OurCrypto()->encryption_keygen(k);
+      CryptoManager::instance()->encryption_keygen(k);
       return true;
     }
 

@@ -161,9 +161,8 @@ namespace llarp
       }
       currentConvoTag.Randomize();
       AsyncKeyExchange* ex = new AsyncKeyExchange(
-          m_Endpoint->RouterLogic(), m_Endpoint->crypto(), remoteIdent,
-          m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
-          m_DataHandler, currentConvoTag);
+          m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
+          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag);
 
       ex->hook =
           std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);

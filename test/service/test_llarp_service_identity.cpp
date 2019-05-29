@@ -1,5 +1,6 @@
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <llarp_test.hpp>
 #include <path/path.hpp>
 #include <service/address.hpp>
 #include <service/identity.hpp>
@@ -15,28 +16,9 @@
 using namespace llarp;
 using namespace testing;
 
-struct HiddenServiceTest : public ::testing::Test
+struct HiddenServiceTest : public test::LlarpTest<>
 {
-  sodium::CryptoLibSodium crypto;
   service::Identity ident;
-
-  HiddenServiceTest()
-  {
-  }
-
-  llarp::Crypto*
-  Crypto()
-  {
-    return &crypto;
-  }
-
-  void
-  SetUp()
-  {
-    ident.RegenerateKeys(Crypto());
-    ident.pub.RandomizeVanity();
-    ident.pub.UpdateAddr();
-  }
 };
 
 TEST_F(HiddenServiceTest, TestGenerateIntroSet)
@@ -54,8 +36,12 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
     intro.pathID.Randomize();
     I.I.emplace_back(std::move(intro));
   }
-  ASSERT_TRUE(ident.SignIntroSet(I, Crypto(), now));
-  ASSERT_TRUE(I.Verify(Crypto(), now));
+
+  EXPECT_CALL(m_crypto, sign(I.Z, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
+
+  ASSERT_TRUE(ident.SignIntroSet(I, now));
+  ASSERT_TRUE(I.Verify(now));
 }
 
 TEST_F(HiddenServiceTest, TestAddressToFromString)
@@ -66,9 +52,11 @@ TEST_F(HiddenServiceTest, TestAddressToFromString)
   ASSERT_TRUE(addr == ident.pub.Addr());
 }
 
-struct ServiceIdentityTest : public ::testing::Test
+struct ServiceIdentityTest : public test::LlarpTest<>
 {
-  test::MockCrypto crypto;
+  ServiceIdentityTest()
+  {
+  }
 };
 
 template < typename Arg >
@@ -85,23 +73,23 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
 
   test::FileGuard guard(p);
 
-  EXPECT_CALL(crypto, encryption_keygen(_))
+  EXPECT_CALL(m_crypto, encryption_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x01)));
 
-  EXPECT_CALL(crypto, identity_keygen(_))
+  EXPECT_CALL(m_crypto, identity_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));
 
-  EXPECT_CALL(crypto, pqe_keygen(_))
+  EXPECT_CALL(m_crypto, pqe_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< PQKeyPair >(0x03)));
 
   service::Identity identity;
-  ASSERT_TRUE(identity.EnsureKeys(p.string(), &crypto));
+  ASSERT_TRUE(identity.EnsureKeys(p.string()));
   ASSERT_TRUE(fs::exists(fs::status(p)));
 
   // Verify what is on disk is what is what was generated
   service::Identity other;
   // No need to set more mocks, as we shouldn't need to re-keygen
-  ASSERT_TRUE(other.EnsureKeys(p.string(), &crypto));
+  ASSERT_TRUE(other.EnsureKeys(p.string()));
   ASSERT_EQ(identity, other);
 }
 
@@ -115,7 +103,7 @@ TEST_F(ServiceIdentityTest, EnsureKeysDir)
   ASSERT_TRUE(fs::create_directory(p, code)) << code;
 
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string(), &crypto));
+  ASSERT_FALSE(identity.EnsureKeys(p.string()));
 }
 
 TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
@@ -132,5 +120,5 @@ TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
   file.close();
 
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string(), &crypto));
+  ASSERT_FALSE(identity.EnsureKeys(p.string()));
 }

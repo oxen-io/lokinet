@@ -1,0 +1,60 @@
+sudo: required
+dist: xenial
+os: linux
+language: minimal
+cache:
+  directories:
+  - contrib/depends/built
+  - contrib/depends/sdk-sources
+  - $HOME/.ccache
+env:
+  global:
+    - MAKEJOBS=-j2
+    - CCACHE_SIZE=100M
+    - CCACHE_TEMPDIR=/tmp/.ccache-temp
+    - CCACHE_COMPRESS=1
+    - CCACHE_DIR=$HOME/.ccache
+    - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
+    - SDK_URL=https://bitcoincore.org/depends-sources/sdks
+    - DOCKER_PACKAGES="build-essential cmake git libcap-dev bsdmainutils curl git ca-certificates ccache"
+  matrix:
+      #- HOST=x86_64-w64-mingw32
+      - HOST=x86_64-unknown-linux-gnu
+      #- HOST=x86_64-apple-darwin11 OSX_SDK=10.12
+install:
+    - env | grep -E '^(CCACHE_|DISPLAY|CONFIG_SHELL)' | tee /tmp/env
+    - if [[ $HOST = *-mingw32 ]]; then DOCKER_ADMIN="--cap-add SYS_ADMIN"; fi
+    - DOCKER_ID=$(docker run $DOCKER_ADMIN -idt --mount type=bind,src=$TRAVIS_BUILD_DIR,dst=$TRAVIS_BUILD_DIR --mount type=bind,src=$CCACHE_DIR,dst=$CCACHE_DIR -w $TRAVIS_BUILD_DIR --env-file /tmp/env ubuntu:18.04)
+    - DOCKER_EXEC="docker exec $DOCKER_ID"
+    - if [ -n "$DPKG_ADD_ARCH" ]; then $DOCKER_EXEC dpkg --add-architecture "$DPKG_ADD_ARCH" ; fi
+    - travis_retry $DOCKER_EXEC apt-get update
+    - travis_retry $DOCKER_EXEC apt-get install --no-install-recommends --no-upgrade software-properties-common -qq $PACKAGES $DOCKER_PACKAGES
+#    - travis_retry $DOCKER_EXEC add-apt-repository ppa:ubuntu-toolchain-r/test
+#    - travis_retry $DOCKER_EXEC apt-get update
+#    - travis_retry $DOCKER_EXEC apt-get install --no-install-recommends --no-upgrade -qq gcc-6 g++-6
+script:
+  - export TRAVIS_COMMIT_LOG=`git log --format=fuller -1`
+  - OUTDIR=$BASE_OUTDIR/$TRAVIS_PULL_REQUEST/$TRAVIS_JOB_NUMBER-$HOST
+  - if [ -z "$NO_DEPENDS" ]; then $DOCKER_EXEC ccache --max-size=$CCACHE_SIZE; fi
+  #- $DOCKER_EXEC bash -c "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 60 --slave /usr/bin/g++ g++ /usr/bin/g++-6"
+  - $DOCKER_EXEC bash -c "mkdir build && cd build && cmake .. && make $MAKEJOBS && make test"
+after_script:
+  - echo $TRAVIS_COMMIT_RANGE
+  - echo $TRAVIS_COMMIT_LOG
+after_success:
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh success $WEBHOOK_URL
+after_failure:
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh failure $WEBHOOK_URL
+notifications:
+  irc:
+    on_success: change
+    on_failure: change
+    channels:
+      - "chat.freenode.net#llarp"
+    nick: lokinet-ci
+    template:
+      - "%{result} | %{repository}#%{build_number} (%{commit} : %{author}) | Build details : %{build_url}"

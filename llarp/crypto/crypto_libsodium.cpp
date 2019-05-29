@@ -85,7 +85,7 @@ namespace llarp
         ntru_init(0);
       }
       int seed = 0;
-      this->randbytes(&seed, sizeof(seed));
+      randombytes(reinterpret_cast< unsigned char * >(&seed), sizeof(seed));
       srand(seed);
     }
 
@@ -137,14 +137,6 @@ namespace llarp
                                          const TunnelNonce &n)
     {
       return dh_server_priv(shared, pk, sk, n);
-    }
-
-    bool
-    CryptoLibSodium::hash(uint8_t *result, const llarp_buffer_t &buff)
-    {
-      return crypto_generichash_blake2b(result, HASHSIZE, buff.base, buff.sz,
-                                        nullptr, 0)
-          != -1;
     }
 
     bool
@@ -249,6 +241,14 @@ namespace llarp
       return true;
     }
 
+    static bool
+    hash(uint8_t *result, const llarp_buffer_t &buff)
+    {
+      return crypto_generichash_blake2b(result, HASHSIZE, buff.base, buff.sz,
+                                        nullptr, 0)
+          != -1;
+    }
+
     bool
     CryptoLibSodium::sign(Signature &sig, const SecretKey &secret,
                           const llarp_buffer_t &buf)
@@ -327,7 +327,7 @@ namespace llarp
     }
 
     void
-    CryptoLibSodium::randbytes(void *ptr, size_t sz)
+    CryptoLibSodium::randbytes(byte_t *ptr, size_t sz)
     {
       randombytes((unsigned char *)ptr, sz);
     }
