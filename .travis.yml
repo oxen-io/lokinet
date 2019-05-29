@@ -1,0 +1,29 @@
+sudo: required
+dist: trusty
+os: linux
+language: minimal
+cache:
+  directories:
+  - contrib/depends/built
+  - contrib/depends/sdk-sources
+  - $HOME/.ccache
+env:
+  global:
+    - MAKEJOBS=-j3
+    - CCACHE_SIZE=100M
+    - CCACHE_TEMPDIR=/tmp/.ccache-temp
+    - CCACHE_COMPRESS=1
+    - CCACHE_DIR=$HOME/.ccache
+    - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
+    - SDK_URL=https://bitcoincore.org/depends-sources/sdks
+    - DOCKER_PACKAGES="build-essential libtool cmake autotools-dev automake pkg-config bsdmainutils curl git ca-certificates ccache"
+  matrix:
+      - HOST=x86_64-unknown-linux-gnu PACKAGES="gperf cmake"
+script:
+  - export TRAVIS_COMMIT_LOG=`git log --format=fuller -1`
+  - OUTDIR=$BASE_OUTDIR/$TRAVIS_PULL_REQUEST/$TRAVIS_JOB_NUMBER-$HOST
+  - if [ -z "$NO_DEPENDS" ]; then $DOCKER_EXEC ccache --max-size=$CCACHE_SIZE; fi
+  - $DOCKER_EXEC bash -c "mkdir build && cd build && cmake .. && make $MAKEJOBS"
+after_script:
+  - echo $TRAVIS_COMMIT_RANGE
+  - echo $TRAVIS_COMMIT_LOG
