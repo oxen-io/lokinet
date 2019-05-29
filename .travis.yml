@@ -16,7 +16,7 @@ env:
     - CCACHE_DIR=$HOME/.ccache
     - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
     - SDK_URL=https://bitcoincore.org/depends-sources/sdks
-    - DOCKER_PACKAGES="build-essential cmake git libcap-dev bsdmainutils curl git ca-certificates ccache"
+    - DOCKER_PACKAGES="build-essential gcc-6 g++-6 cmake git libcap-dev bsdmainutils curl git ca-certificates ccache"
   matrix:
       - HOST=x86_64-unknown-linux-gnu PACKAGES="gperf cmake"
 script:
