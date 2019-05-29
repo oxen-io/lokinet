@@ -1,4 +1,4 @@
-#include <crypto/crypto_libsodium.hpp>
+#include <crypto/crypto_noop.hpp>
 #include <ev/ev.h>
 #include <iwp/iwp.hpp>
 #include <llarp_test.hpp>
@@ -13,7 +13,7 @@
 using namespace ::llarp;
 using namespace ::testing;
 
-struct LinkLayerTest : public test::LlarpTest< sodium::CryptoLibSodium >
+struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
 {
   static constexpr uint16_t AlicePort = 5000;
   static constexpr uint16_t BobPort   = 6000;

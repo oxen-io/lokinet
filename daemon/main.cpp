@@ -107,6 +107,7 @@ main(int argc, char *argv[])
 		("g,generate", "generate client config", cxxopts::value<bool>())
 		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
+		("d,debug", "debug mode - UNENCRYPTED TRAFFIC", cxxopts::value<bool>())
     ("config","path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
@@ -115,6 +116,7 @@ main(int argc, char *argv[])
   bool genconfigOnly = false;
   bool asRouter      = false;
   bool overWrite     = false;
+  bool debugMode     = false;
   std::string conffname;  // suggestions: confFName? conf_fname?
 
   try
@@ -136,6 +138,11 @@ main(int argc, char *argv[])
     if(result.count("generate") > 0)
     {
       genconfigOnly = true;
+    }
+
+    if(result.count("debug") > 0)
+    {
+      debugMode = true;
     }
 
     if(result.count("force") > 0)
@@ -279,7 +286,7 @@ main(int argc, char *argv[])
     signal(SIGHUP, handle_signal);
 #endif
 
-    code = llarp_main_setup(ctx);
+    code = llarp_main_setup(ctx, debugMode);
     if(code == 0)
       code = llarp_main_run(ctx);
     llarp_main_free(ctx);
