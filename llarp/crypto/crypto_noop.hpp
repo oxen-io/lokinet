@@ -11,7 +11,7 @@ namespace llarp
   struct NoOpCrypto final : public Crypto
   {
    private:
-    std::atomic_uint64_t m_value;
+    std::atomic<uint64_t> m_value;
 
     static constexpr byte_t MAX_BYTE = std::numeric_limits< byte_t >::max();
 
