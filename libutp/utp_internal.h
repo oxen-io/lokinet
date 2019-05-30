@@ -108,9 +108,8 @@ struct UTPSocketKeyData
   UTPSocket *socket;
   utp_link_t link;
 };
-/** make it more for llarp */
-//#define UTP_SOCKET_BUCKETS 79
-#define UTP_SOCKET_BUCKETS ((100 * 8) - 1)
+
+#define UTP_SOCKET_BUCKETS 79
 #define UTP_SOCKET_INIT 15
 
 struct UTPSocketHT : utpHashTable< UTPSocketKey, UTPSocketKeyData >
