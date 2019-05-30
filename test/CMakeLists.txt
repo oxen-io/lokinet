@@ -1,6 +1,4 @@
 set(TEST_EXE testAll)
-set(GTEST_DIR gtest)
-add_subdirectory(${GTEST_DIR})
 
 list(APPEND TEST_SRC
     crypto/test_llarp_crypto_types.cpp
