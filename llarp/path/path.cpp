@@ -535,6 +535,8 @@ namespace llarp
         case ePathExpired:
           obj.Put("status", "expired");
           break;
+        case ePathIgnore:
+          obj.Put("status", "ignored");
         default:
           obj.Put("status", "unknown");
           break;

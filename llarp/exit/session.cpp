@@ -218,11 +218,12 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTrafficDrop(llarp::path::Path_ptr, const PathID_t& path,
-                                   uint64_t s)
+    BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p,
+                                   const PathID_t& path, uint64_t s)
     {
       llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s,
                       " P=", path);
+      p->EnterState(path::ePathIgnore);
       return true;
     }
 
