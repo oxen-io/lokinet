@@ -223,7 +223,7 @@ namespace llarp
     {
       llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s,
                       " P=", path);
-      p->EnterState(path::ePathIgnore);
+      p->EnterState(path::ePathIgnore, router->Now());
       return true;
     }
 
