@@ -121,7 +121,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
     oldRCLifetime               = RouterContact::Lifetime;
     RouterContact::IgnoreBogons = true;
     RouterContact::Lifetime     = 500;
-    netLoop                     = llarp_make_ev_loop();
+    netLoop                     = llarp_make_uv_loop();
     m_logic.reset(new Logic());
   }
 
@@ -141,6 +141,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
   {
     if(left)
       return;
+    llarp::LogInfo("timed out test");
     static_cast< LinkLayerTest* >(u)->Stop();
   }
 
@@ -154,7 +155,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
   void
   Stop()
   {
-    llarp_ev_loop_stop(netLoop.get());
+    llarp_ev_loop_stop(netLoop);
   }
 
   bool

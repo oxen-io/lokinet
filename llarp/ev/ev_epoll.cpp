@@ -309,12 +309,23 @@ llarp_epoll_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
   return new llarp::tcp_serv(this, fd, tcp);
 }
 
+static int
+llarp_ev_epoll_sendto(struct llarp_udp_io* udp, const struct sockaddr* to,
+                      const byte_t* pkt, size_t sz)
+{
+  const llarp::Addr toaddr(*to);
+  return ::sendto(udp->fd, pkt, sz, 0, toaddr, toaddr.SockLen());
+}
+
 bool
 llarp_epoll_loop::udp_listen(llarp_udp_io* l, const sockaddr* src)
 {
   auto ev = create_udp(l, src);
   if(ev)
-    l->fd = ev->fd;
+  {
+    l->fd     = ev->fd;
+    l->sendto = &llarp_ev_epoll_sendto;
+  }
   return ev && add_ev(ev, false);
 }
 

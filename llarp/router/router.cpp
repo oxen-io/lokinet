@@ -511,7 +511,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
-    llarp_ev_loop_stop(_netloop.get());
+    llarp_ev_loop_stop(_netloop);
     inboundLinks.clear();
     outboundLinks.clear();
     disk.stop();

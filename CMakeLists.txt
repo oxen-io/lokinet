@@ -210,7 +210,7 @@ endif(JEMALLOC)
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
-set(LIBS ${MALLOC_LIB} ${FS_LIB})
+set(LIBS ${MALLOC_LIB} ${FS_LIB} uv)
 
 if(ANDROID)
   list(APPEND LIBS log)
@@ -225,6 +225,7 @@ elseif(WIN32)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif()
+
 
 set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.cpp

@@ -57,6 +57,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }
+  ev->stopped();
 }
 
 int
@@ -78,7 +79,7 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
 }
 
 llarp_time_t
-llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &loop)
+llarp_ev_loop_time_now_ms(llarp_ev_loop_ptr loop)
 {
   if(loop)
     return loop->time_now();
@@ -86,7 +87,7 @@ llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &loop)
 }
 
 void
-llarp_ev_loop_stop(struct llarp_ev_loop *loop)
+llarp_ev_loop_stop(llarp_ev_loop_ptr loop)
 {
   loop->stop();
 }
@@ -95,30 +96,7 @@ int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     const llarp_buffer_t &buf)
 {
-  auto ret =
-      static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
-#ifndef _WIN32
-  if(ret == -1 && errno != 0)
-  {
-#else
-  if(ret == -1 && WSAGetLastError())
-  {
-#endif
-
-#ifndef _WIN32
-    llarp::LogWarn("sendto failed ", strerror(errno));
-    errno = 0;
-  }
-#else
-    char ebuf[1024];
-    int err = WSAGetLastError();
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
-                  1024, nullptr);
-    llarp::LogWarn("sendto failed: ", ebuf);
-    WSASetLastError(0);
-  }
-#endif
-  return ret;
+  return udp->sendto(udp, to, buf.base, buf.sz);
 }
 
 #include <string.h>
@@ -165,12 +143,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   llarp::LogDebug("IfName: ", tun->ifname);
   llarp::LogDebug("IfNMsk: ", tun->netmask);
 #ifndef _WIN32
-  auto dev  = loop->create_tun(tun);
-  tun->impl = dev;
-  if(dev)
-  {
-    return loop->add_ev(dev, false);
-  }
+  return loop->tun_listen(tun);
 #else
   UNREFERENCED_PARAMETER(loop);
   auto dev  = new win32_tun_io(tun);
@@ -267,13 +240,8 @@ bool
 llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
                 const struct sockaddr *bindaddr)
 {
-  tcp->loop          = loop;
-  llarp::ev_io *impl = loop->bind_tcp(tcp, bindaddr);
-  if(impl)
-  {
-    return loop->add_ev(impl, false);
-  }
-  return false;
+  tcp->loop = loop;
+  return loop->tcp_listen(tcp, bindaddr);
 }
 
 void
@@ -290,7 +258,7 @@ llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 void
 llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
 {
-  static_cast< llarp::tcp_conn * >(conn->impl)->_shouldClose = true;
+  conn->close(conn);
 }
 
 namespace llarp

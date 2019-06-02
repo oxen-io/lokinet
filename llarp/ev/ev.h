@@ -27,6 +27,8 @@ typedef SSIZE_T ssize_t;
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <uv.h>
+
 /**
  * ev.h
  *
@@ -47,8 +49,13 @@ namespace llarp
 
 using llarp_ev_loop_ptr = std::shared_ptr< llarp_ev_loop >;
 
+/// make an event loop using our baked in event loop, ew.
 llarp_ev_loop_ptr
 llarp_make_ev_loop();
+
+/// make an event loop using libuv
+llarp_ev_loop_ptr
+llarp_make_uv_loop();
 
 // run mainloop
 void
@@ -58,11 +65,11 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
 
 /// get the current time on the event loop
 llarp_time_t
-llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &ev);
+llarp_ev_loop_time_now_ms(llarp_ev_loop_ptr ev);
 
 /// stop event loop and wait for it to complete all jobs
 void
-llarp_ev_loop_stop(struct llarp_ev_loop *ev);
+llarp_ev_loop_stop(llarp_ev_loop_ptr ev);
 
 /// UDP handling configuration
 struct llarp_udp_io
@@ -78,6 +85,9 @@ struct llarp_udp_io
   /// sockaddr * is the source address
   void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *,
                    ManagedBuffer);
+  /// set by parent
+  int (*sendto)(struct llarp_udp_io *, const struct sockaddr *, const byte_t *,
+                size_t);
 };
 
 /// add UDP handler
@@ -110,6 +120,8 @@ struct llarp_tcp_conn
   void (*read)(struct llarp_tcp_conn *, const llarp_buffer_t &);
   /// handle close event (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_conn *);
+  /// explict close by user (set by parent)
+  void (*close)(struct llarp_tcp_conn *);
   /// handle event loop tick
   void (*tick)(struct llarp_tcp_conn *);
 };
@@ -132,6 +144,8 @@ struct llarp_tcp_connecter
   char remote[512];
   /// userdata pointer
   void *user;
+  /// private implementation (dont set me)
+  void *impl;
   /// parent event loop (dont set me)
   struct llarp_ev_loop *loop;
   /// handle outbound connection made

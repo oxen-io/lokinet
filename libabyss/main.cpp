@@ -68,8 +68,7 @@ struct DemoClient : public abyss::http::JSONRPC
   abyss::http::IRPCClientHandler*
   NewConn(abyss::http::ConnImpl* impl)
   {
-    return new DemoCall(impl, m_Logic,
-                        std::bind(&llarp_ev_loop_stop, m_Loop.get()));
+    return new DemoCall(impl, m_Logic, std::bind(&llarp_ev_loop_stop, m_Loop));
   }
 
   void

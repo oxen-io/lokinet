@@ -72,7 +72,7 @@ struct AbyssTestBase : public ::testing::Test
   Stop()
   {
     llarp::LogDebug("test case Stop() called");
-    llarp_ev_loop_stop(loop.get());
+    llarp_ev_loop_stop(loop);
   }
 
   void
