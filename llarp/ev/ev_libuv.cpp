@@ -176,17 +176,19 @@ namespace libuv
   struct udp_glue
   {
     uv_udp_t m_Handle;
-    uv_idle_t m_Ticker;
+    uv_timer_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::Addr m_Addr;
+    bool gotpkts;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
         : m_UDP(udp), m_Addr(*src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
+      gotpkts       = false;
       uv_udp_init(loop, &m_Handle);
-      uv_idle_init(loop, &m_Ticker);
+      uv_timer_init(loop, &m_Ticker);
     }
 
     static void
@@ -213,11 +215,12 @@ namespace libuv
         const size_t pktsz = sz;
         const llarp_buffer_t pkt{(const byte_t*)buf->base, pktsz};
         m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+        gotpkts = true;
       }
     }
 
     static void
-    OnTick(uv_idle_t* t)
+    OnTick(uv_timer_t* t)
     {
       static_cast< udp_glue* >(t->data)->Tick();
     }
@@ -225,9 +228,14 @@ namespace libuv
     void
     Tick()
     {
-      llarp::LogDebug("udp tick");
-      if(m_UDP && m_UDP->tick)
-        m_UDP->tick(m_UDP);
+      if(gotpkts)
+      {
+        llarp::LogDebug("udp tick");
+        if(m_UDP && m_UDP->tick)
+          m_UDP->tick(m_UDP);
+      }
+      gotpkts = false;
+      uv_timer_again(&m_Ticker);
     }
 
     static int
@@ -252,7 +260,7 @@ namespace libuv
         llarp::LogError("failed to start recving packets via ", m_Addr);
         return false;
       }
-      if(uv_idle_start(&m_Ticker, &OnTick))
+      if(uv_timer_start(&m_Ticker, &OnTick, 50, 50))
       {
         llarp::LogError("failed to start ticker");
         return false;
@@ -274,7 +282,7 @@ namespace libuv
     void
     Close()
     {
-      uv_idle_stop(&m_Ticker);
+      uv_timer_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
     }
   };
@@ -282,13 +290,17 @@ namespace libuv
   struct tun_glue
   {
     uv_poll_t m_Handle;
-    uv_idle_t m_Ticker;
+    uv_timer_t m_Ticker;
     llarp_tun_io* const m_Tun;
     device* const m_Device;
+    byte_t m_Buffer[1500];
+    bool readpkt;
+
     tun_glue(llarp_tun_io* tun) : m_Tun(tun), m_Device(tuntap_init())
     {
       m_Handle.data = this;
       m_Ticker.data = this;
+      readpkt       = false;
     }
 
     ~tun_glue()
@@ -302,13 +314,37 @@ namespace libuv
       static_cast< tun_glue* >(timer->data)->Tick();
     }
 
+    static void
+    OnPoll(uv_poll_t* h, int status, int)
+    {
+      if(status == 0)
+      {
+        static_cast< tun_glue* >(h->data)->Read();
+      }
+    }
+
+    void
+    Read()
+    {
+      auto sz = tuntap_read(m_Device, m_Buffer, sizeof(m_Buffer));
+      llarp_buffer_t pkt(m_Buffer, sz);
+      if(m_Tun && m_Tun->recvpkt)
+        m_Tun->recvpkt(m_Tun, pkt);
+      readpkt = true;
+    }
+
     void
     Tick()
     {
-      if(m_Tun->tick)
-        m_Tun->tick(m_Tun);
-      if(m_Tun->before_write)
-        m_Tun->before_write(m_Tun);
+      if(readpkt)
+      {
+        if(m_Tun->tick)
+          m_Tun->tick(m_Tun);
+        if(m_Tun->before_write)
+          m_Tun->before_write(m_Tun);
+      }
+      readpkt = false;
+      uv_timer_again(&m_Ticker);
     }
 
     static void
@@ -349,7 +385,13 @@ namespace libuv
         llarp::LogError("failed to start polling on ", m_Tun->ifname);
         return false;
       }
-      if(uv_idle_init(loop, &m_Ticker) == -1)
+      if(uv_poll_start(&m_Handle, UV_READABLE, &OnPoll))
+      {
+        llarp::LogError("failed to start polling on ", m_Tun->ifname);
+        return false;
+      }
+      if(uv_timer_init(loop, &m_Ticker) != 0
+         || uv_timer_start(&m_Ticker, &OnTick, 50, 50) != 0)
       {
         llarp::LogError("failed to set up tun interface timer for ",
                         m_Tun->ifname);
@@ -408,7 +450,7 @@ namespace libuv
   Loop::tick(int ms)
   {
     uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
-    uv_run(m_Impl.get(), UV_RUN_NOWAIT);
+    uv_run(m_Impl.get(), UV_RUN_ONCE);
     return 0;
   }
 
