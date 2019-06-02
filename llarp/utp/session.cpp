@@ -4,13 +4,12 @@
 #include <messages/discard.hpp>
 #include <messages/link_intro.hpp>
 #include <util/metrics.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
   namespace utp
   {
-    using namespace std::placeholders;
-
     void
     Session::OnLinkEstablished(ILinkLayer* p)
     {
@@ -613,7 +612,7 @@ namespace llarp
       ABSL_ATTRIBUTE_UNUSED void* res = utp_set_userdata(sock, this);
       assert(res == this);
       assert(s == sock);
-      GotLIM = std::bind(&InboundSession::InboundLIM, this, _1);
+      GotLIM = util::memFn(&InboundSession::InboundLIM, this);
     }
 
     bool
@@ -678,7 +677,7 @@ namespace llarp
         gotLIM = true;
         EnterState(eSessionReady);
         /// future LIM are used for session renegotiation
-        GotLIM = std::bind(&Session::GotSessionRenegotiate, this, _1);
+        GotLIM = util::memFn(&Session::GotSessionRenegotiate, this);
       }
       return true;
     }
@@ -702,7 +701,7 @@ namespace llarp
       assert(res == this);
       assert(s == sock);
 
-      GotLIM = std::bind(&OutboundSession::OutboundLIM, this, _1);
+      GotLIM = util::memFn(&OutboundSession::OutboundLIM, this);
     }
 
     void
@@ -729,7 +728,7 @@ namespace llarp
         return false;
       }
       /// future LIM are used for session renegotiation
-      GotLIM = std::bind(&Session::GotSessionRenegotiate, this, _1);
+      GotLIM = util::memFn(&Session::GotSessionRenegotiate, this);
       EnterState(eSessionReady);
       return true;
     }

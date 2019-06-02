@@ -6,6 +6,7 @@
 #include <service/endpoint.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -127,12 +128,9 @@ namespace llarp
       /// don't use it if we are marked bad
       if(markedBad)
         return;
-      p->SetDataHandler(std::bind(&OutboundContext::HandleHiddenServiceFrame,
-                                  this, std::placeholders::_1,
-                                  std::placeholders::_2));
-      p->SetDropHandler(std::bind(&OutboundContext::HandleDataDrop, this,
-                                  std::placeholders::_1, std::placeholders::_2,
-                                  std::placeholders::_3));
+      p->SetDataHandler(
+          util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
+      p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
       if(p->Endpoint() == m_NextIntro.router && remoteIntro != m_NextIntro)
         SwapIntros();
@@ -198,10 +196,7 @@ namespace llarp
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            m_Endpoint,
-            std::bind(&OutboundContext::OnIntroSetUpdate, this,
-                      std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3),
+            m_Endpoint, util::memFn(&OutboundContext::OnIntroSetUpdate, this),
             addr, m_Endpoint->GenTXID());
 
         updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());

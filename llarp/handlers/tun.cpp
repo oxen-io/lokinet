@@ -13,6 +13,7 @@
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
 #include <util/logic.hpp>
+#include <util/memfn.hpp>
 #include <nodedb.hpp>
 
 #include <util/str.hpp>
@@ -150,9 +151,8 @@ namespace llarp
         }
         m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
-            std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
-                      std::placeholders::_1),
-            router, m_NumPaths, numHops, ShouldBundleRC());
+            util::memFn(&TunEndpoint::QueueInboundPacketForExit, this), router,
+            m_NumPaths, numHops, ShouldBundleRC());
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")

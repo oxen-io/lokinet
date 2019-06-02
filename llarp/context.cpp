@@ -12,6 +12,7 @@
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
+#include <util/memfn.hpp>
 #include <util/metrics.hpp>
 #include <util/scheduler.hpp>
 
@@ -50,8 +51,7 @@ namespace llarp
       llarp::LogError("failed to load config file ", configfile);
       return false;
     }
-    using namespace std::placeholders;
-    config->visit(std::bind(&Context::iter_config, this, _1, _2, _3));
+    config->visit(util::memFn(&Context::iter_config, this));
 
     if(!disableMetrics)
     {

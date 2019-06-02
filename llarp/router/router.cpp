@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/memfn.hpp>
 #include <util/file_logger.hpp>
 #include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
@@ -462,8 +463,7 @@ namespace llarp
   bool
   Router::Configure(Config *conf)
   {
-    using namespace std::placeholders;
-    conf->visit(std::bind(&Router::router_iter_config, this, _1, _2, _3));
+    conf->visit(util::memFn(&Router::router_iter_config, this));
     if(!InitOutboundLinks())
       return false;
     if(!Ready())
@@ -1147,9 +1147,10 @@ namespace llarp
   void
   Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
   {
-    dht()->impl->LookupRouter(router,
-                              std::bind(&Router::HandleDHTLookupForExplore,
-                                        this, router, std::placeholders::_1));
+    using namespace std::placeholders;
+    dht()->impl->LookupRouter(
+        router,
+        std::bind(&Router::HandleDHTLookupForExplore, this, router, _1));
   }
 
   void
@@ -1926,9 +1927,7 @@ namespace llarp
     bool
     Validate()
     {
-      using namespace std::placeholders;
-      config->visit(
-          std::bind(&RouterConfigValidator::ValidateEntry, this, _1, _2, _3));
+      config->visit(util::memFn(&RouterConfigValidator::ValidateEntry, this));
       return valid;
     }
   };

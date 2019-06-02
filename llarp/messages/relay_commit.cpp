@@ -8,6 +8,7 @@
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/logic.hpp>
+#include <util/memfn.hpp>
 #include <nodedb.hpp>
 
 #include <functional>
@@ -161,9 +162,7 @@ namespace llarp
   bool
   LR_CommitRecord::BDecode(llarp_buffer_t* buf)
   {
-    using namespace std::placeholders;
-    return bencode_read_dict(std::bind(&LR_CommitRecord::OnKey, this, _1, _2),
-                             buf);
+    return bencode_read_dict(util::memFn(&LR_CommitRecord::OnKey, this), buf);
   }
 
   bool

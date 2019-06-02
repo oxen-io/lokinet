@@ -3,6 +3,7 @@
 #include <crypto/crypto.hpp>
 #include <crypto/types.hpp>
 #include <util/logic.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -50,9 +51,7 @@ namespace llarp
       // compure post handshake session key
       // PKE (A, B, N)
       SharedSecret sharedSecret;
-      using namespace std::placeholders;
-      path_dh_func dh_client =
-          std::bind(&Crypto::dh_client, crypto, _1, _2, _3, _4);
+      path_dh_func dh_client = util::memFn(&Crypto::dh_client, crypto);
       if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
                                             self->remote, self->frame.N))
       {
