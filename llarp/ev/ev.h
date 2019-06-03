@@ -178,6 +178,8 @@ struct llarp_tcp_acceptor
   void (*accepted)(struct llarp_tcp_acceptor *, struct llarp_tcp_conn *);
   /// handle after server socket closed (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_acceptor *);
+  /// set by impl
+  void (*close)(struct llarp_tcp_acceptor *);
 };
 
 /// bind to an address and start serving async

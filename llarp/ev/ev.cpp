@@ -186,11 +186,14 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
   {
     ssize_t amount = conn->write(conn, buf.underlying.cur, EV_WRITE_BUF_SZ);
     if(amount <= 0)
+    {
+      llarp::LogError("write underrun");
       return false;
+    }
     buf.underlying.cur += amount;
     sz -= amount;
   }
-  return conn->write(conn, buf.underlying.cur, sz);
+  return conn->write(conn, buf.underlying.cur, sz) > 0;
 }
 
 void
@@ -241,12 +244,7 @@ llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
 void
 llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 {
-  llarp::ev_io *impl = static_cast< llarp::ev_io * >(tcp->user);
-  tcp->impl          = nullptr;
-  tcp->loop->close_ev(impl);
-  if(tcp->closed)
-    tcp->closed(tcp);
-  // dont free acceptor because it may be stack allocated
+  tcp->close(tcp);
 }
 
 void
