@@ -11,7 +11,7 @@ build:linux:
     - linux
   stage: build
   before_script:
-    - apk add --update g++ make cmake linux-headers libcap-dev
+    - apk add --update g++ make cmake linux-headers libcap-dev libuv-dev
   script:
     - make STATIC_LINK=ON
   artifacts:
