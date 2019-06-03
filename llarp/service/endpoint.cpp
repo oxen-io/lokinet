@@ -17,6 +17,7 @@
 #include <util/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
+#include <util/memfn.hpp>
 #include <hook/shell.hpp>
 
 namespace llarp
@@ -795,11 +796,9 @@ namespace llarp
     void
     Endpoint::HandlePathBuilt(path::Path_ptr p)
     {
-      using namespace std::placeholders;
-      p->SetDataHandler(
-          std::bind(&Endpoint::HandleHiddenServiceFrame, this, _1, _2));
-      p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this, _1, _2, _3));
-      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this, _1, _2));
+      p->SetDataHandler(util::memFn(&Endpoint::HandleHiddenServiceFrame, this));
+      p->SetDropHandler(util::memFn(&Endpoint::HandleDataDrop, this));
+      p->SetDeadChecker(util::memFn(&Endpoint::CheckPathIsDead, this));
       path::Builder::HandlePathBuilt(p);
     }
 
@@ -982,8 +981,7 @@ namespace llarp
 
       using namespace std::placeholders;
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this, std::bind(&Endpoint::OnLookup, this, _1, _2, _3), remote,
-          GenTXID());
+          this, util::memFn(&Endpoint::OnLookup, this), remote, GenTXID());
       LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {

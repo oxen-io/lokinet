@@ -7,6 +7,7 @@
 #include <exit/context.hpp>
 
 #include <util/encode.hpp>
+#include <util/memfn.hpp>
 #include <libabyss.hpp>
 
 namespace llarp
@@ -151,8 +152,7 @@ namespace llarp
       {
         LogInfo("Updating service node list");
         QueueRPC("get_all_service_nodes_keys", nlohmann::json::object(),
-                 std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
-                           std::placeholders::_1));
+                 util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
       }
 
       bool
@@ -166,8 +166,7 @@ namespace llarp
       {
         return new GetServiceNodeListHandler(
             impl, this,
-            std::bind(&CallerImpl::HandleServiceNodeListUpdated, this,
-                      std::placeholders::_1, std::placeholders::_2));
+            util::memFn(&CallerImpl::HandleServiceNodeListUpdated, this));
       }
 
       void

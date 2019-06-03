@@ -57,6 +57,54 @@ namespace llarp
     };
 
     template < typename Value >
+    class Proxy
+    {
+      Buffer< Value > m_value;
+
+      Proxy&
+      operator=(const Proxy&) = delete;
+
+     public:
+      Proxy()
+      {
+        ::new(m_value.buffer()) Value();
+      }
+
+      Proxy(const Proxy& other)
+      {
+        ::new(m_value.buffer()) Value(other.value());
+      }
+
+      Proxy(const Value& value)
+      {
+        ::new(m_value.buffer()) Value(value);
+      }
+
+      // template < typename... Args >
+      // Proxy(Args&&... args)
+      // {
+      //   ::new(m_value.buffer()) Value(std::forward< Args >(args)...);
+      // }
+
+      ~Proxy()
+      {
+        m_value.address()->~Value();
+      }
+
+      Value&
+      value()
+      {
+        return m_value.value();
+      }
+
+      const Value&
+      value() const
+      {
+        return m_value.value();
+      }
+    };
+
+    template < typename Value >
     class Catalog;
     template < typename Value >
     class CatalogIterator;
