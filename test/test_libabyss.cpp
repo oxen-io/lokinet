@@ -48,7 +48,7 @@ struct AbyssTestBase : public ::testing::Test
   Start()
   {
     threadpool = llarp_init_same_process_threadpool();
-    loop       = llarp_make_ev_loop();
+    loop       = llarp_make_uv_loop();
     logic      = std::make_shared< llarp::Logic >(threadpool);
 
     sockaddr_in addr;

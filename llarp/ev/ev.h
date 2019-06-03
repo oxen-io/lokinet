@@ -118,6 +118,10 @@ struct llarp_tcp_conn
   struct llarp_ev_loop *loop;
   /// handle read event
   void (*read)(struct llarp_tcp_conn *, const llarp_buffer_t &);
+  //// set by parent
+  ssize_t (*write)(struct llarp_tcp_conn *, const byte_t *, size_t sz);
+  /// set by parent
+  bool (*is_open)(struct llarp_tcp_conn *);
   /// handle close event (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_conn *);
   /// explict close by user (set by parent)
@@ -218,6 +222,8 @@ struct llarp_tun_io
   /// called every event loop tick after reads
   void (*tick)(struct llarp_tun_io *);
   void (*recvpkt)(struct llarp_tun_io *, const llarp_buffer_t &);
+  /// set by parent
+  bool (*writepkt)(struct llarp_tun_io *, const byte_t *, size_t);
 };
 
 /// create tun interface with network interface name ifname

@@ -168,7 +168,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
     return false;
   }
 #ifndef _WIN32
-  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
+  return tun->writepkt(tun, buf.base, buf.sz);
 #else
   return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base,
                                                                buf.sz);
@@ -179,24 +179,18 @@ bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
 {
   ManagedBuffer buf{b};
-  llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
-  if(impl->_shouldClose)
-  {
-    llarp::LogError("write on closed connection");
-    return false;
-  }
+
   size_t sz          = buf.underlying.sz;
   buf.underlying.cur = buf.underlying.base;
   while(sz > EV_WRITE_BUF_SZ)
   {
-    if(!impl->queue_write(buf.underlying.cur, EV_WRITE_BUF_SZ))
-    {
+    ssize_t amount = conn->write(conn, buf.underlying.cur, EV_WRITE_BUF_SZ);
+    if(amount <= 0)
       return false;
-    }
-    buf.underlying.cur += EV_WRITE_BUF_SZ;
-    sz -= EV_WRITE_BUF_SZ;
+    buf.underlying.cur += amount;
+    sz -= amount;
   }
-  return impl->queue_write(buf.underlying.cur, sz);
+  return conn->write(conn, buf.underlying.cur, sz);
 }
 
 void

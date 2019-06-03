@@ -8,6 +8,7 @@ namespace libuv
   {
     uv_tcp_t m_Handle;
     uv_connect_t m_Connect;
+    uv_timer_t m_Ticker;
     llarp_tcp_connecter* const m_TCP;
     llarp_tcp_acceptor* const m_Accept;
     llarp_tcp_conn m_Conn;
@@ -19,6 +20,8 @@ namespace libuv
       m_Connect.data = this;
       m_Handle.data  = tcp;
       uv_tcp_init(loop, &m_Handle);
+      m_Ticker.data = this;
+      uv_timer_init(loop, &m_Ticker);
     }
 
     conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const sockaddr* addr)
@@ -26,11 +29,16 @@ namespace libuv
     {
       m_Handle.data = this;
       uv_tcp_init(loop, &m_Handle);
+      m_Ticker.data = this;
+      uv_timer_init(loop, &m_Ticker);
     }
 
     conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
     {
+      m_Handle.data = this;
       uv_tcp_init(parent->m_Handle.loop, &m_Handle);
+      m_Ticker.data = this;
+      uv_timer_init(parent->m_Handle.loop, &m_Ticker);
     }
 
     static void
@@ -51,6 +59,14 @@ namespace libuv
     ExplicitClose(llarp_tcp_conn* conn)
     {
       static_cast< conn_glue* >(conn->impl)->Close();
+    }
+
+    static ssize_t
+    ExplicitWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
+    {
+      if(static_cast< conn_glue* >(conn->impl)->WriteAsync(ptr, sz))
+        return sz;
+      return 0;
     }
 
     static void
@@ -84,8 +100,9 @@ namespace libuv
           m_Conn.impl  = this;
           m_Conn.loop  = m_TCP->loop;
           m_Conn.close = &ExplicitClose;
+          m_Conn.write = &ExplicitWrite;
           m_TCP->connected(m_TCP, &m_Conn);
-          uv_read_start(Stream(), &Alloc, &OnRead);
+          Start();
         }
         else if(m_TCP->error)
           m_TCP->error(m_TCP);
@@ -142,6 +159,7 @@ namespace libuv
     void
     Close()
     {
+      uv_timer_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
     }
 
@@ -154,6 +172,29 @@ namespace libuv
       }
     }
 
+    static void
+    OnTick(uv_timer_t* t)
+    {
+      static_cast< conn_glue* >(t->data)->Tick();
+      uv_timer_again(t);
+    }
+
+    void
+    Tick()
+    {
+      if(m_Accept && m_Accept->tick)
+        m_Accept->tick(m_Accept);
+      if(m_Conn.tick)
+        m_Conn.tick(&m_Conn);
+    }
+
+    void
+    Start()
+    {
+      uv_timer_start((uv_timer_t*)&m_Ticker, &OnTick, 10, 10);
+      uv_read_start(Stream(), &Alloc, &OnRead);
+    }
+
     void
     Accept()
     {
@@ -161,7 +202,12 @@ namespace libuv
       {
         conn_glue* child = new conn_glue(this);
         uv_accept(Stream(), child->Stream());
+        child->m_Conn.impl  = this;
+        child->m_Conn.loop  = m_Accept->loop;
+        child->m_Conn.close = &ExplicitClose;
+        child->m_Conn.write = &ExplicitWrite;
         m_Accept->accepted(m_Accept, &child->m_Conn);
+        child->Start();
       }
     }
 
@@ -228,13 +274,9 @@ namespace libuv
     void
     Tick()
     {
-      if(gotpkts)
-      {
-        llarp::LogDebug("udp tick");
-        if(m_UDP && m_UDP->tick)
-          m_UDP->tick(m_UDP);
-      }
-      gotpkts = false;
+      llarp::LogDebug("udp tick");
+      if(m_UDP && m_UDP->tick)
+        m_UDP->tick(m_UDP);
       uv_timer_again(&m_Ticker);
     }
 
@@ -315,9 +357,9 @@ namespace libuv
     }
 
     static void
-    OnPoll(uv_poll_t* h, int status, int)
+    OnPoll(uv_poll_t* h, int, int events)
     {
-      if(status == 0)
+      if(events & UV_READABLE)
       {
         static_cast< tun_glue* >(h->data)->Read();
       }
@@ -327,23 +369,22 @@ namespace libuv
     Read()
     {
       auto sz = tuntap_read(m_Device, m_Buffer, sizeof(m_Buffer));
-      llarp_buffer_t pkt(m_Buffer, sz);
-      if(m_Tun && m_Tun->recvpkt)
-        m_Tun->recvpkt(m_Tun, pkt);
-      readpkt = true;
+      if(sz > 0)
+      {
+        llarp::LogDebug("tun read ", sz);
+        llarp_buffer_t pkt(m_Buffer, sz);
+        if(m_Tun && m_Tun->recvpkt)
+          m_Tun->recvpkt(m_Tun, pkt);
+      }
     }
 
     void
     Tick()
     {
-      if(readpkt)
-      {
-        if(m_Tun->tick)
-          m_Tun->tick(m_Tun);
-        if(m_Tun->before_write)
-          m_Tun->before_write(m_Tun);
-      }
-      readpkt = false;
+      if(m_Tun->tick)
+        m_Tun->tick(m_Tun);
+      if(m_Tun->before_write)
+        m_Tun->before_write(m_Tun);
       uv_timer_again(&m_Ticker);
     }
 
@@ -361,12 +402,30 @@ namespace libuv
     }
 
     bool
+    Write(const byte_t* pkt, size_t sz)
+    {
+      return tuntap_write(m_Device, (void*)pkt, sz) != -1;
+    }
+
+    static bool
+    WritePkt(llarp_tun_io* tun, const byte_t* pkt, size_t sz)
+    {
+      return static_cast< tun_glue* >(tun->impl)->Write(pkt, sz);
+    }
+
+    bool
     Init(uv_loop_t* loop)
     {
       strncpy(m_Device->if_name, m_Tun->ifname, sizeof(m_Device->if_name));
       if(tuntap_start(m_Device, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
         llarp::LogError("failed to start up ", m_Tun->ifname);
+        return false;
+      }
+      if(tuntap_set_ip(m_Device, m_Tun->ifaddr, m_Tun->ifaddr, m_Tun->netmask)
+         == -1)
+      {
+        llarp::LogError("failed to set address on ", m_Tun->ifname);
         return false;
       }
       if(tuntap_up(m_Device) == -1)
@@ -397,6 +456,7 @@ namespace libuv
                         m_Tun->ifname);
         return false;
       }
+      m_Tun->writepkt = &WritePkt;
       return true;
     }
   };
