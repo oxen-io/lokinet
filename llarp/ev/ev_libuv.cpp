@@ -168,8 +168,8 @@ namespace libuv
     bool
     Server()
     {
-      return uv_tcp_bind(&m_Handle, m_Addr, 0) == -1
-          || uv_listen(Stream(), 5, &OnAccept) == -1;
+      return uv_tcp_bind(&m_Handle, m_Addr, 0) == 0
+          && uv_listen(Stream(), 5, &OnAccept) == 0;
     }
   };
 
@@ -435,6 +435,8 @@ namespace libuv
   {
     conn_glue* impl = new conn_glue(m_Impl.get(), tcp, addr);
     tcp->impl       = impl;
+    if(impl->ConnectAsync())
+      return true;
     delete impl;
     tcp->impl = nullptr;
     return false;
@@ -505,7 +507,11 @@ namespace libuv
   {
     conn_glue* glue = new conn_glue(m_Impl.get(), tcp, addr);
     tcp->impl       = glue;
-    return glue->Server();
+    if(glue->Server())
+      return true;
+    tcp->impl = nullptr;
+    delete glue;
+    return false;
   }
 
 }  // namespace libuv
