@@ -1106,7 +1106,6 @@ namespace llarp
                 if(p)
                 {
                   f.T = tag;
-                  break;
                 }
               }
             }
