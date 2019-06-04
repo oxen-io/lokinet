@@ -1,4 +1,5 @@
 #include <messages/relay_commit.hpp>
+#include <messages/relay_status.hpp>
 
 #include <crypto/crypto.hpp>
 #include <nodedb.hpp>
@@ -257,9 +258,17 @@ namespace llarp
           self->hop->info.downstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
+
       // send path confirmation
-      const llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
-      if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
+      //TODO: other status flags?
+      uint64_t status = LR_StatusRecord::SUCCESS;
+
+      if (!LR_StatusMessage::CreateAndSend(self->context->Router(),
+                                           self->hop->info.rxID,
+                                           self->hop->info.downstream,
+                                           self->hop->pathKey,
+                                           status)
+         )
       {
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);

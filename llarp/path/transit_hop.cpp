@@ -5,6 +5,7 @@
 #include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
+#include <messages/relay_status.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
@@ -44,6 +45,26 @@ namespace llarp
     TransitHop::ExpireTime() const
     {
       return started + lifetime;
+    }
+
+    bool
+    TransitHop::HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                           AbstractRouter* r)
+    {
+      auto msg = std::make_shared< LR_StatusMessage >(frames);
+      msg->status = status;
+      msg->pathid = info.rxID;
+
+      //TODO: add to IHopHandler some notion of "path status"
+
+      if(!msg->AddFrame(pathKey, status))
+      {
+        return false;
+      }
+
+      LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
+
+      return true;
     }
 
     TransitHopInfo::TransitHopInfo(const RouterID& down,

@@ -3,6 +3,7 @@
 #include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
+#include <messages/relay_status.hpp>
 #include <path/pathbuilder.hpp>
 #include <path/transit_hop.hpp>
 #include <profiling.hpp>
@@ -98,6 +99,61 @@ namespace llarp
       for(const auto& hop : hops)
         ss << RouterID(hop.rc.pubkey) << " -> ";
       return ss.str();
+    }
+
+    bool
+    Path::HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                           AbstractRouter* r)
+    {
+      uint64_t currentStatus = LR_StatusRecord::SUCCESS;
+
+      size_t index = 0;
+      while (index < hops.size())
+      {
+        if (!frames[index].DoDecrypt(hops[index].shared))
+        {
+          currentStatus = LR_StatusRecord::FAIL_DECRYPT_ERROR;
+          break;
+        }
+        llarp::LogDebug("decrypted LRSM frame from ", hops[index].rc.pubkey);
+
+        llarp_buffer_t *buf = frames[index].Buffer();
+        buf->cur = buf->base + EncryptedFrameOverheadSize;
+
+        LR_StatusRecord record;
+        // successful decrypt
+        if(!record.BDecode(buf))
+        {
+          llarp::LogError("malformed frame inside LRCM from ", hops[index].rc.pubkey);
+          currentStatus = LR_StatusRecord::FAIL_MALFORMED_RECORD;
+          break;
+        }
+        llarp::LogDebug("Decoded LR Status Record from ", hops[index].rc.pubkey);
+
+        currentStatus = record.status;
+
+        if ((currentStatus & LR_StatusRecord::SUCCESS) == 0)
+        {
+          break;
+        }
+
+        ++index;
+      }
+
+      if ((currentStatus & LR_StatusRecord::SUCCESS) == 1)
+      {
+        llarp::LogDebug("LR_Status message processed, path build successful");
+        HandlePathConfirmMessage(r);
+      }
+      else
+      {
+        llarp::LogInfo("LR_Status message processed, path build failed");
+        //TODO: handle fail cases
+      }
+
+
+      //TODO: meaningful return value?
+      return true;
     }
 
     void
@@ -384,10 +440,9 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathConfirmMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
-        AbstractRouter* r)
+    Path::HandlePathConfirmMessage(AbstractRouter* r)
     {
+      LogDebug("Path Build Confirm, path: ", HopsString());
       auto now = r->Now();
       if(_status == ePathBuilding)
       {
@@ -409,6 +464,14 @@ namespace llarp
       LogWarn("got unwarranted path confirm message on tx=", RXID(),
               " rx=", RXID());
       return false;
+    }
+
+    bool
+    Path::HandlePathConfirmMessage(
+        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
+        AbstractRouter* r)
+    {
+      return HandlePathConfirmMessage(r);
     }
 
     bool

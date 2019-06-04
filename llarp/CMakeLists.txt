@@ -182,6 +182,7 @@ set(LIB_SRC
   messages/link_message.cpp
   messages/relay.cpp
   messages/relay_commit.cpp
+  messages/relay_status.cpp
   net/address_info.cpp
   net/exit_info.cpp
   net/ip.cpp

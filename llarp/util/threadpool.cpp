@@ -59,9 +59,16 @@ void
 llarp_threadpool_queue_job(struct llarp_threadpool *pool,
                            struct llarp_thread_job job)
 {
+    return llarp_threadpool_queue_job(pool, (std::bind(job.work, job.user)));
+}
+
+void
+llarp_threadpool_queue_job(struct llarp_threadpool *pool,
+                           std::function<void()> func)
+{
   if(pool->impl)
   {
-    while(!pool->impl->tryAddJob(std::bind(job.work, job.user)))
+    while(!pool->impl->tryAddJob(func))
     {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
@@ -69,7 +76,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
   else
   {
     // single threaded mode
-    while(pool->jobs->tryPushBack(std::bind(job.work, job.user))
+    while(pool->jobs->tryPushBack(func)
           != llarp::thread::QueueReturn::Success)
     {
       if(!pool->jobs->enabled())

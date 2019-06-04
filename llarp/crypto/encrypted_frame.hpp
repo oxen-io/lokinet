@@ -38,7 +38,13 @@ namespace llarp
     }
 
     bool
+    DoEncrypt(const SharedSecret& shared, bool noDH = false);
+
+    bool
     DecryptInPlace(const SecretKey& seckey);
+
+    bool
+    DoDecrypt(const SharedSecret& shared);
 
     bool
     EncryptInPlace(const SecretKey& seckey, const PubKey& other);

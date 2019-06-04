@@ -5,6 +5,7 @@
 #include <messages/link_intro.hpp>
 #include <messages/link_message.hpp>
 #include <messages/relay_commit.hpp>
+#include <messages/relay_status.hpp>
 #include <messages/relay.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
@@ -22,6 +23,7 @@ namespace llarp
     RelayUpstreamMessage u;
     DHTImmediateMessage m;
     LR_CommitMessage c;
+    LR_StatusMessage s;
     DiscardMessage x;
 
     msg_holder_t() = default;
@@ -87,6 +89,9 @@ namespace llarp
           break;
         case 'c':
           msg = &holder->c;
+          break;
+        case 's':
+          msg = &holder->s;
           break;
         case 'x':
           msg = &holder->x;

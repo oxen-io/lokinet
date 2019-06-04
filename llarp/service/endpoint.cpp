@@ -280,7 +280,7 @@ namespace llarp
             continue;
           std::array< byte_t, 128 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(SendToServiceOrQueue(introset.A.Addr().data(), buf,
+          if(SendToServiceOrQueue(introset.A.Addr(), buf,
                                   eProtocolControl))
             LogInfo(Name(), " send message to ", introset.A.Addr(), " for tag ",
                     tag.ToString());
