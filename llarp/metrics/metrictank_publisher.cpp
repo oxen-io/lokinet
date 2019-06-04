@@ -197,6 +197,8 @@ namespace llarp
                   && (static_cast< size_t >(sentLen) < val.size()));
         }
 
+        LogInfo("Sent ", toSend.size(), " metrics to metrictank");
+
         shutdown(sock, SHUT_RDWR);
         close(sock);
       }
