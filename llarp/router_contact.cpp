@@ -239,7 +239,7 @@ namespace llarp
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
     const auto expiresAt = last_updated + Lifetime;
-    return expiresAt >= now || expiresAt - now <= dlt;
+    return expiresAt <= now || expiresAt - now <= dlt;
   }
 
   std::string

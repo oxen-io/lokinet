@@ -1165,8 +1165,15 @@ namespace llarp
         nodedb()->Remove(router);
       }
     }
-    if(result.size() == 1)
-      nodedb()->InsertAsync(result[0]);
+    if(result.size() == 1 && !result[0].IsExpired(now))
+    {
+      LogInfo("storing rc for ", router);
+      nodedb()->Insert(result[0]);
+    }
+    else
+    {
+      LogInfo("not storing rc for ", router);
+    }
   }
 
   void
@@ -1211,7 +1218,7 @@ namespace llarp
     routerProfiling().Tick();
     // update expired routers
     nodedb()->visit([&](const RouterContact &rc) -> bool {
-      if(rc.ExpiresSoon(now, randint() % 10000))
+      if(rc.IsExpired(now))
         LookupRouterWhenExpired(rc.pubkey);
       return true;
     });
