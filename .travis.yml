@@ -16,11 +16,25 @@ env:
     - CCACHE_DIR=$HOME/.ccache
     - BASE_OUTDIR=$TRAVIS_BUILD_DIR/out
     - SDK_URL=https://bitcoincore.org/depends-sources/sdks
-    - DOCKER_PACKAGES="build-essential cmake git libcap-dev bsdmainutils curl git ca-certificates ccache"
+    - DOCKER_PACKAGES="build-essential cmake git libcap-dev bsdmainutils ninja-build curl git ca-certificates ccache"
   matrix:
       #- HOST=x86_64-w64-mingw32
       - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF
       - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NINJA=ninja
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NINJA=ninja
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NETNS=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NETNS=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NINJA=ninja NETNS=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NINJA=ninja NETNS=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NINJA=ninja SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NINJA=ninja SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NETNS=ON SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NETNS=ON SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=OFF NINJA=ninja NETNS=ON SHARED_LIB=ON
+      - HOST=x86_64-unknown-linux-gnu STATIC_LINK=ON NINJA=ninja NETNS=ON SHARED_LIB=ON
       #- HOST=x86_64-apple-darwin11 OSX_SDK=10.12
 install:
     - env | grep -E '^(CCACHE_|DISPLAY|CONFIG_SHELL)' | tee /tmp/env
