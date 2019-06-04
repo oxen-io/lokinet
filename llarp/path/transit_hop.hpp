@@ -107,6 +107,10 @@ namespace llarp
         return m_LastActivity;
       }
 
+      bool
+      HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                 AbstractRouter* r) override;
+
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
 
@@ -131,6 +135,9 @@ namespace llarp
       bool
       HandleDataDiscardMessage(const routing::DataDiscardMessage& msg,
                                AbstractRouter* r) override;
+
+      bool
+      HandlePathConfirmMessage(AbstractRouter* r);
 
       bool
       HandlePathConfirmMessage(const routing::PathConfirmMessage& msg,

@@ -156,6 +156,10 @@ namespace llarp
         return m_LastRecvMessage;
       }
 
+      bool
+      HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                 AbstractRouter* r) override;
+
       void
       SetBuildResultHook(BuildResultHookFunc func);
 
@@ -254,6 +258,9 @@ namespace llarp
       bool
       HandleDataDiscardMessage(const routing::DataDiscardMessage& msg,
                                AbstractRouter* r) override;
+
+      bool
+      HandlePathConfirmMessage(AbstractRouter* r);
 
       bool
       HandlePathConfirmMessage(const routing::PathConfirmMessage& msg,
