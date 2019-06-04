@@ -52,7 +52,7 @@ script:
   - OUTDIR=$BASE_OUTDIR/$TRAVIS_PULL_REQUEST/$TRAVIS_JOB_NUMBER-$HOST
   - if [ -z "$NO_DEPENDS" ]; then $DOCKER_EXEC ccache --max-size=$CCACHE_SIZE; fi
   #- $DOCKER_EXEC bash -c "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-6 60 --slave /usr/bin/g++ g++ /usr/bin/g++-6"
-  - $DOCKER_EXEC bash -c "mkdir build && cd build && cmake .. && make $MAKEJOBS STATIC_LINK=$STATIC_LINK && make test"
+  - $DOCKER_EXEC bash -c "mkdir build && cd build && cmake .. && make $MAKEJOBS STATIC_LINK=$STATIC_LINK NINJA=$NINJA NETNS=$NETNS SHARED_LIB=$SHARED_LIB && make test"
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
   - echo $TRAVIS_COMMIT_LOG
