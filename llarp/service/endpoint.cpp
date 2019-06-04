@@ -1099,7 +1099,7 @@ namespace llarp
                 continue;
               if(!GetCachedSessionKeyFor(tag, K))
                 continue;
-              if(GetIntroFor(tag, remoteIntro))
+              if(GetReplyIntroFor(tag, remoteIntro))
               {
                 if(!remoteIntro.ExpiresSoon(now))
                   p = GetNewestPathByRouter(remoteIntro.router);
