@@ -1145,29 +1145,50 @@ namespace llarp
   }
 
   void
-  Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
+  Router::LookupRouterWhenExpired(RouterID router)
   {
-    dht()->impl->LookupRouter(router,
-                              std::bind(&Router::HandleDHTLookupForExplore,
-                                        this, router, std::placeholders::_1));
+    LookupRouter(router,
+                 std::bind(&Router::HandleRouterLookupForExpireUpdate, this,
+                           router, std::placeholders::_1));
+  }
+
+  void
+  Router::HandleRouterLookupForExpireUpdate(
+      RouterID router, const std::vector< RouterContact > &result)
+  {
+    const auto now = Now();
+    RouterContact current;
+    if(nodedb()->Get(router, current))
+    {
+      if(current.IsExpired(now))
+      {
+        nodedb()->Remove(router);
+      }
+    }
+    if(result.size() == 1)
+      nodedb()->InsertAsync(result[0]);
   }
 
   void
   Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
   {
+    if(!resultHandler)
+    {
+      resultHandler = std::bind(&Router::HandleRouterLookupForExpireUpdate,
+                                this, remote, std::placeholders::_1);
+    }
     if(IsServiceNode())
     {
-      if(resultHandler)
-        dht()->impl->LookupRouter(remote, resultHandler);
-      else
-        ServiceNodeLookupRouterWhenExpired(remote);
-      return;
+      dht()->impl->LookupRouter(remote, resultHandler);
     }
-    _hiddenServiceContext.ForEachService(
-        [=](const std::string &,
-            const std::shared_ptr< service::Endpoint > &ep) -> bool {
-          return !ep->LookupRouterAnon(remote, resultHandler);
-        });
+    else
+    {
+      _hiddenServiceContext.ForEachService(
+          [=](const std::string &,
+              const std::shared_ptr< service::Endpoint > &ep) -> bool {
+            return !ep->LookupRouterAnon(remote, resultHandler);
+          });
+    }
   }
 
   bool
@@ -1188,7 +1209,12 @@ namespace llarp
     auto now = Now();
 
     routerProfiling().Tick();
-
+    // update expired routers
+    nodedb()->visit([&](const RouterContact &rc) -> bool {
+      if(rc.ExpiresSoon(now, randint() % 10000))
+        LookupRouterWhenExpired(rc.pubkey);
+      return true;
+    });
     if(IsServiceNode())
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
@@ -1207,14 +1233,6 @@ namespace llarp
         return !ConnectionToRouterAllowed(rc.pubkey);
       });
       */
-
-      // only do this as service node
-      // client endpoints do this on their own
-      nodedb()->visit([&](const RouterContact &rc) -> bool {
-        if(rc.ExpiresSoon(now, randint() % 10000))
-          ServiceNodeLookupRouterWhenExpired(rc.pubkey);
-        return true;
-      });
     }
     else
     {

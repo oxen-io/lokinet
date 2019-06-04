@@ -164,7 +164,7 @@ namespace llarp
     SetNick(const std::string &nick);
 
     bool
-    Verify(llarp_time_t now) const;
+    Verify(llarp_time_t now, bool allowExpired = true) const;
 
     bool
     Sign(const llarp::SecretKey &secret);
