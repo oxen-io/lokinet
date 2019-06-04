@@ -279,7 +279,7 @@ namespace libuv
   struct udp_glue
   {
     uv_udp_t m_Handle;
-    uv_timer_t m_Ticker;
+    uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::Addr m_Addr;
     bool gotpkts;
@@ -291,7 +291,7 @@ namespace libuv
       m_Ticker.data = this;
       gotpkts       = false;
       uv_udp_init(loop, &m_Handle);
-      uv_timer_init(loop, &m_Ticker);
+      uv_check_init(loop, &m_Ticker);
     }
 
     static void
@@ -323,7 +323,7 @@ namespace libuv
     }
 
     static void
-    OnTick(uv_timer_t* t)
+    OnTick(uv_check_t* t)
     {
       static_cast< udp_glue* >(t->data)->Tick();
     }
@@ -333,7 +333,6 @@ namespace libuv
     {
       if(m_UDP && m_UDP->tick)
         m_UDP->tick(m_UDP);
-      uv_timer_again(&m_Ticker);
     }
 
     static int
@@ -358,7 +357,7 @@ namespace libuv
         llarp::LogError("failed to start recving packets via ", m_Addr);
         return false;
       }
-      if(uv_timer_start(&m_Ticker, &OnTick, 50, 50))
+      if(uv_check_start(&m_Ticker, &OnTick))
       {
         llarp::LogError("failed to start ticker");
         return false;
@@ -380,7 +379,7 @@ namespace libuv
     void
     Close()
     {
-      uv_timer_stop(&m_Ticker);
+      uv_check_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
     }
   };
@@ -388,7 +387,7 @@ namespace libuv
   struct tun_glue
   {
     uv_poll_t m_Handle;
-    uv_timer_t m_Ticker;
+    uv_check_t m_Ticker;
     llarp_tun_io* const m_Tun;
     device* const m_Device;
     byte_t m_Buffer[1500];
@@ -407,7 +406,7 @@ namespace libuv
     }
 
     static void
-    OnTick(uv_timer_t* timer)
+    OnTick(uv_check_t* timer)
     {
       static_cast< tun_glue* >(timer->data)->Tick();
     }
@@ -437,11 +436,10 @@ namespace libuv
     void
     Tick()
     {
-      if(m_Tun->tick)
-        m_Tun->tick(m_Tun);
       if(m_Tun->before_write)
         m_Tun->before_write(m_Tun);
-      uv_timer_again(&m_Ticker);
+      if(m_Tun->tick)
+        m_Tun->tick(m_Tun);
     }
 
     static void
@@ -505,8 +503,8 @@ namespace libuv
         llarp::LogError("failed to start polling on ", m_Tun->ifname);
         return false;
       }
-      if(uv_timer_init(loop, &m_Ticker) != 0
-         || uv_timer_start(&m_Ticker, &OnTick, 50, 50) != 0)
+      if(uv_check_init(loop, &m_Ticker) != 0
+         || uv_check_start(&m_Ticker, &OnTick) != 0)
       {
         llarp::LogError("failed to set up tun interface timer for ",
                         m_Tun->ifname);
