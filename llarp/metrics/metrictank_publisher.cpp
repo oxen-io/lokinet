@@ -44,7 +44,7 @@ namespace llarp
       }
 
       absl::optional< std::string >
-      formatValue(const Record &record, double elapsedTime,
+      formatValue(const Record< double > &record, double elapsedTime,
                   Publication::Type publicationType)
       {
         switch(publicationType)
@@ -101,8 +101,8 @@ namespace llarp
       }
 
       std::vector< MetricTankPublisherInterface::PublishData >
-      recordToData(const Record &record, absl::Time time, double elapsedTime,
-                   string_view suffix)
+      recordToData(const Record< double > &record, absl::Time time,
+                   double elapsedTime, string_view suffix)
       {
         std::vector< MetricTankPublisherInterface::PublishData > result;
 
@@ -127,14 +127,14 @@ namespace llarp
           result.emplace_back(addName(id, "total", suffix),
                               std::to_string(record.total()), time);
 
-          if(Record::DEFAULT_MIN != record.min() && !std::isnan(record.min())
-             && !std::isinf(record.min()))
+          if(Record< double >::DEFAULT_MIN() != record.min()
+             && !std::isnan(record.min()) && !std::isinf(record.min()))
           {
             result.emplace_back(addName(id, "min", suffix),
                                 std::to_string(record.min()), time);
           }
-          if(Record::DEFAULT_MAX == record.max() && !std::isnan(record.max())
-             && !std::isinf(record.max()))
+          if(Record< double >::DEFAULT_MAX() == record.max()
+             && !std::isnan(record.max()) && !std::isinf(record.max()))
           {
             result.emplace_back(addName(id, "max", suffix),
                                 std::to_string(record.max()), time);
@@ -318,7 +318,7 @@ namespace llarp
     }
 
     void
-    MetricTankPublisherInterface::publish(const Sample &values)
+    MetricTankPublisherInterface::publish(const Sample< double > &values)
     {
       if(values.recordCount() == 0)
       {

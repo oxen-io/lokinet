@@ -139,40 +139,6 @@ namespace llarp
 
       return stream;
     }
-
-    const double Record::DEFAULT_MIN = std::numeric_limits< double >::max() * 2;
-    const double Record::DEFAULT_MAX =
-        std::numeric_limits< double >::max() * -2;
-
-    std::ostream &
-    Record::print(std::ostream &stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("id", m_id);
-      printer.printAttribute("count", m_count);
-      printer.printAttribute("total", m_total);
-      printer.printAttribute("min", m_min);
-      printer.printAttribute("max", m_max);
-
-      return stream;
-    }
-
-    std::ostream &
-    SampleGroup::print(std::ostream &stream, int level, int spaces) const
-    {
-      Printer::PrintFunction< absl::Duration > durationPrinter =
-          [](std::ostream &stream, const absl::Duration &duration, int,
-             int) -> std::ostream & {
-        stream << duration;
-        return stream;
-      };
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("records", m_records);
-      printer.printForeignAttribute("samplePeriod", m_samplePeriod,
-                                    durationPrinter);
-
-      return stream;
-    }
   }  // namespace metrics
 
 }  // namespace llarp

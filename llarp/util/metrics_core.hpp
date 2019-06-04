@@ -14,96 +14,22 @@ namespace llarp
 {
   namespace metrics
   {
-    class IntCollector
+    template < typename Type >
+    class Collector
     {
-      const Id m_id;
-      size_t m_count GUARDED_BY(m_mutex);
-      int64_t m_total GUARDED_BY(m_mutex);
-      int m_min GUARDED_BY(m_mutex);
-      int m_max GUARDED_BY(m_mutex);
+     public:
+      using RecordType = Record< Type >;
+
+     private:
+      RecordType m_record GUARDED_BY(m_mutex);
       mutable util::Mutex m_mutex;
 
-      IntCollector(const IntCollector &) = delete;
-      IntCollector &
-      operator=(const IntCollector &) = delete;
+      Collector(const Collector &) = delete;
+      Collector &
+      operator=(const Collector &) = delete;
 
      public:
-      static constexpr int DEFAULT_MIN = std::numeric_limits< int >::max();
-      static constexpr int DEFAULT_MAX = std::numeric_limits< int >::min();
-
-      IntCollector(const Id &id)
-          : m_id(id)
-          , m_count(0)
-          , m_total(0)
-          , m_min(DEFAULT_MIN)
-          , m_max(DEFAULT_MAX)
-      {
-      }
-
-      const Id &
-      id() const
-      {
-        return m_id;
-      }
-
-      void
-      clear()
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        m_count = 0;
-        m_total = 0;
-        m_min   = DEFAULT_MIN;
-        m_max   = DEFAULT_MAX;
-      }
-
-      Record
-      loadAndClear();
-
-      Record
-      load();
-
-      void
-      tick(int value)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        m_count++;
-        m_total += value;
-        m_min = std::min(m_min, value);
-        m_max = std::max(m_max, value);
-      }
-
-      void
-      accumulate(size_t count, int total, int min, int max)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        m_count += count;
-        m_total += total;
-        m_min = std::min(m_min, min);
-        m_max = std::max(m_max, max);
-      }
-
-      void
-      set(size_t count, int total, int min, int max)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        m_count = count;
-        m_total = total;
-        m_min   = min;
-        m_max   = max;
-      }
-    };
-
-    class DoubleCollector
-    {
-      Record m_record GUARDED_BY(m_mutex);
-      mutable util::Mutex m_mutex;
-
-      DoubleCollector(const DoubleCollector &) = delete;
-      DoubleCollector &
-      operator=(const DoubleCollector &) = delete;
-
-     public:
-      DoubleCollector(const Id &id) : m_record(id)
+      Collector(const Id &id) : m_record(id)
       {
       }
 
@@ -111,26 +37,20 @@ namespace llarp
       clear()
       {
         absl::WriterMutexLock l(&m_mutex);
-        m_record.count() = 0;
-        m_record.total() = 0.0;
-        m_record.min()   = Record::DEFAULT_MIN;
-        m_record.max()   = Record::DEFAULT_MAX;
+        m_record.clear();
       }
 
-      Record
+      RecordType
       loadAndClear()
       {
         absl::WriterMutexLock l(&m_mutex);
-        Record rec       = m_record;
-        m_record.count() = 0;
-        m_record.total() = 0.0;
-        m_record.min()   = Record::DEFAULT_MIN;
-        m_record.max()   = Record::DEFAULT_MAX;
+        RecordType rec = m_record;
+        m_record.clear();
 
         return rec;
       }
 
-      Record
+      RecordType
       load()
       {
         absl::ReaderMutexLock l(&m_mutex);
@@ -138,7 +58,7 @@ namespace llarp
       }
 
       void
-      tick(double value)
+      tick(Type value)
       {
         absl::WriterMutexLock l(&m_mutex);
         m_record.count()++;
@@ -148,7 +68,7 @@ namespace llarp
       }
 
       void
-      accumulate(size_t count, double total, double min, double max)
+      accumulate(size_t count, Type total, Type min, Type max)
       {
         absl::WriterMutexLock l(&m_mutex);
         m_record.count() += count;
@@ -158,7 +78,7 @@ namespace llarp
       }
 
       void
-      set(size_t count, double total, double min, double max)
+      set(size_t count, Type total, Type min, Type max)
       {
         absl::WriterMutexLock l(&m_mutex);
         m_record.count() = count;
@@ -175,36 +95,38 @@ namespace llarp
       }
     };
 
+    using IntCollector    = Collector< int >;
+    using DoubleCollector = Collector< double >;
+
     class Publisher
     {
      public:
-      virtual ~Publisher() = 0;
+      virtual ~Publisher() = default;
 
       virtual void
-      publish(const Sample &sample) = 0;
+      publish(const Sample< double > &sample) = 0;
     };
 
-    inline Publisher::~Publisher()
-    {
-    }
-
+    template < typename LhsType, typename RhsType >
     static inline void
-    combine(Record &record, const Record &toAdd)
+    combine(Record< LhsType > &record, const Record< RhsType > &toAdd)
     {
+      static_assert(std::is_convertible< RhsType, LhsType >::value, "");
       record.id() = toAdd.id();
       record.count() += toAdd.count();
       record.total() += toAdd.total();
-      record.min() = std::min(record.min(), toAdd.min());
-      record.max() = std::max(record.max(), toAdd.max());
+      record.min() = std::min(record.min(), LhsType(toAdd.min()));
+      record.max() = std::max(record.max(), LhsType(toAdd.max()));
     }
 
-    template < typename Collector >
+    template < typename Type >
     class Collectors
     {
-      using CollectorPtr = std::shared_ptr< Collector >;
-      using CollectorSet = std::set< CollectorPtr >;
+      using CollectorType = Collector< Type >;
+      using CollectorPtr  = std::shared_ptr< CollectorType >;
+      using CollectorSet  = std::set< CollectorPtr >;
 
-      Collector m_default;
+      CollectorType m_default;
       CollectorSet m_collectors;
 
       Collectors(const Collectors &) = delete;
@@ -216,32 +138,32 @@ namespace llarp
       {
       }
 
-      Collector *
+      CollectorType *
       defaultCollector()
       {
         return &m_default;
       }
 
-      std::shared_ptr< Collector >
+      std::shared_ptr< CollectorType >
       add()
       {
-        auto ptr = std::make_shared< Collector >(m_default.id());
+        auto ptr = std::make_shared< CollectorType >(m_default.id());
         m_collectors.insert(ptr);
         return ptr;
       }
 
       bool
-      remove(Collector *collector)
+      remove(CollectorType *collector)
       {
-        std::shared_ptr< Collector > ptr(collector, [](Collector *) {});
+        std::shared_ptr< CollectorType > ptr(collector, [](CollectorType *) {});
         size_t count = m_collectors.erase(ptr);
         return count > 0;
       }
 
-      Record
+      Record< Type >
       combineAndClear()
       {
-        Record rec = m_default.loadAndClear();
+        Record< Type > rec = m_default.loadAndClear();
 
         for(auto &ptr : m_collectors)
         {
@@ -251,10 +173,10 @@ namespace llarp
         return rec;
       }
 
-      Record
+      Record< Type >
       combine()
       {
-        Record rec = m_default.load();
+        Record< Type > rec = m_default.load();
 
         for(auto &ptr : m_collectors)
         {
@@ -263,11 +185,11 @@ namespace llarp
         return rec;
       }
 
-      std::vector< std::shared_ptr< Collector > >
+      std::vector< std::shared_ptr< CollectorType > >
       collectors() const
       {
-        return std::vector< std::shared_ptr< Collector > >(m_collectors.begin(),
-                                                           m_collectors.end());
+        return std::vector< std::shared_ptr< CollectorType > >(
+            m_collectors.begin(), m_collectors.end());
       }
 
       const Id &
@@ -277,11 +199,12 @@ namespace llarp
       }
     };
 
+    using DoubleCollectors = Collectors< double >;
+    using IntCollectors    = Collectors< int >;
+
     class MetricCollectors
     {
-      using DoubleCollectors = Collectors< DoubleCollector >;
-      using IntCollectors    = Collectors< IntCollector >;
-
+     private:
       DoubleCollectors m_doubleCollectors;
       IntCollectors m_intCollectors;
 
@@ -295,42 +218,42 @@ namespace llarp
       {
       }
 
-      Collectors< DoubleCollector > &
+      DoubleCollectors &
       doubleCollectors()
       {
         return m_doubleCollectors;
       }
 
-      Collectors< IntCollector > &
+      IntCollectors &
       intCollectors()
       {
         return m_intCollectors;
       }
 
-      const Collectors< DoubleCollector > &
+      const DoubleCollectors &
       doubleCollectors() const
       {
         return m_doubleCollectors;
       }
 
-      const Collectors< IntCollector > &
+      const IntCollectors &
       intCollectors() const
       {
         return m_intCollectors;
       }
 
-      Record
+      Record< double >
       combineAndClear()
       {
-        Record res = m_doubleCollectors.combineAndClear();
+        Record< double > res = m_doubleCollectors.combineAndClear();
         metrics::combine(res, m_intCollectors.combineAndClear());
         return res;
       }
 
-      Record
+      Record< double >
       combine()
       {
-        Record res = m_doubleCollectors.combine();
+        Record< double > res = m_doubleCollectors.combine();
         metrics::combine(res, m_intCollectors.combine());
         return res;
       }
@@ -460,10 +383,10 @@ namespace llarp
       {
       }
 
-      std::vector< Record >
+      std::vector< Record< double > >
       collectAndClear(const Category *category);
 
-      std::vector< Record >
+      std::vector< Record< double > >
       collect(const Category *category);
 
       DoubleCollector *
@@ -679,10 +602,11 @@ namespace llarp
 
     class CallbackRegistry
     {
-      using Handle         = uint64_t;
-      using RecordCallback = std::function< std::vector< Record >(bool) >;
-      using CallbackMap    = std::multimap< const Category *, RecordCallback >;
-      using HandleMap      = std::map< Handle, CallbackMap::iterator >;
+      using Handle = uint64_t;
+      using RecordCallback =
+          std::function< std::vector< Record< double > >(bool) >;
+      using CallbackMap = std::multimap< const Category *, RecordCallback >;
+      using HandleMap   = std::map< Handle, CallbackMap::iterator >;
 
       Handle m_next;
       CallbackMap m_callbackMap;
@@ -772,7 +696,8 @@ namespace llarp
      public:
       // Public callback. If the bool flag is true, clear the metrics back to
       // their default state.
-      using RecordCallback = std::function< std::vector< Record >(bool) >;
+      using RecordCallback =
+          std::function< std::vector< Record< double > >(bool) >;
 
       using Handle = uint64_t;
 
@@ -869,15 +794,16 @@ namespace llarp
       // clang-format on
 
       /// Publish specific categories of metric matching the category/categories
-      Sample
-      collectSample(std::vector< Record > &records, bool clear = false)
+      Sample< double >
+      collectSample(std::vector< Record< double > > &records,
+                    bool clear = false)
       {
         std::vector< const Category * > allCategories = m_registry.getAll();
         return collectSample(
             records, absl::Span< const Category * >{allCategories}, clear);
       }
-      Sample
-      collectSample(std::vector< Record > &records,
+      Sample< double >
+      collectSample(std::vector< Record< double > > &records,
                     absl::Span< const Category * > categories,
                     bool clear = false);
 

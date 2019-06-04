@@ -1,16 +1,18 @@
 #ifndef LLARP_METRICS_TYPES_HPP
 #define LLARP_METRICS_TYPES_HPP
 
+#include <util/printer.hpp>
 #include <util/string_view.hpp>
 #include <util/threading.hpp>
 #include <util/types.hpp>
 
 #include <absl/types/span.h>
 #include <absl/types/optional.h>
-#include <set>
-#include <memory>
 #include <cstring>
 #include <iosfwd>
+#include <memory>
+#include <set>
+#include <vector>
 
 namespace llarp
 {
@@ -368,23 +370,46 @@ namespace llarp
       return id.print(stream, -1, -1);
     }
 
+    // clang-format off
+    // Forwarding class to specialise for metric types
+    template<typename Type>
+    struct RecordMax {
+    };
+
+    template<>
+    struct RecordMax<double> {
+      static constexpr double min() { return std::numeric_limits< double >::infinity(); }
+      static constexpr double max() { return -std::numeric_limits< double >::infinity(); }
+    };
+
+    template<>
+    struct RecordMax<int> {
+      static constexpr int min() { return std::numeric_limits< int >::max(); }
+      static constexpr int max() { return std::numeric_limits< int >::min(); }
+    };
+    // clang-format on
+
+    template < typename Type >
     class Record
     {
       Id m_id;
       size_t m_count;
-      double m_total;
-      double m_min;
-      double m_max;
+      Type m_total;
+      Type m_min;
+      Type m_max;
 
      public:
-      static const double DEFAULT_MIN;
-      static const double DEFAULT_MAX;
+      // clang-format off
+      static constexpr Type DEFAULT_MIN() { return RecordMax<Type>::min(); };
+      static constexpr Type DEFAULT_MAX() { return RecordMax<Type>::max(); };
+      // clang-format on
+
       Record()
           : m_id()
           , m_count(0)
           , m_total(0.0)
-          , m_min(DEFAULT_MIN)
-          , m_max(DEFAULT_MAX)
+          , m_min(DEFAULT_MIN())
+          , m_max(DEFAULT_MAX())
       {
       }
 
@@ -392,8 +417,8 @@ namespace llarp
           : m_id(id)
           , m_count(0)
           , m_total(0.0)
-          , m_min(DEFAULT_MIN)
-          , m_max(DEFAULT_MAX)
+          , m_min(DEFAULT_MIN())
+          , m_max(DEFAULT_MAX())
       {
       }
 
@@ -409,53 +434,77 @@ namespace llarp
       size_t count() const { return m_count; }
       size_t& count()      { return m_count; }
 
-      double total() const { return m_total; }
-      double& total()      { return m_total; }
+      Type total() const { return m_total; }
+      Type& total()      { return m_total; }
 
-      double min() const { return m_min; }
-      double& min()      { return m_min; }
+      Type min() const { return m_min; }
+      Type& min()      { return m_min; }
 
-      double max() const { return m_max; }
-      double& max()      { return m_max; }
+      Type max() const { return m_max; }
+      Type& max()      { return m_max; }
       // clang-format on
 
+      void
+      clear()
+      {
+        m_count = 0;
+        m_total = 0;
+        m_min   = DEFAULT_MIN();
+        m_max   = DEFAULT_MAX();
+      }
+
       std::ostream &
-      print(std::ostream &stream, int level, int spaces) const;
+      print(std::ostream &stream, int level, int spaces) const
+      {
+        Printer printer(stream, level, spaces);
+        printer.printAttribute("id", m_id);
+        printer.printAttribute("count", m_count);
+        printer.printAttribute("total", m_total);
+        printer.printAttribute("min", m_min);
+        printer.printAttribute("max", m_max);
+
+        return stream;
+      }
     };
 
+    template < typename Type >
     inline std::ostream &
-    operator<<(std::ostream &stream, const Record &rec)
+    operator<<(std::ostream &stream, const Record< Type > &rec)
     {
       return rec.print(stream, -1, -1);
     }
 
+    template < typename Type >
     inline bool
-    operator==(const Record &lhs, const Record &rhs)
+    operator==(const Record< Type > &lhs, const Record< Type > &rhs)
     {
       return (lhs.id() == rhs.id() && lhs.count() == rhs.count()
               && lhs.total() == rhs.total() && lhs.min() == rhs.min()
               && lhs.max() == rhs.max());
     }
 
+    template < typename Type >
     class SampleGroup
     {
-      absl::Span< const Record > m_records;
+      absl::Span< const Record< Type > > m_records;
       absl::Duration m_samplePeriod;
 
      public:
-      using const_iterator = absl::Span< const Record >::const_iterator;
+      using RecordType = Record< Type >;
+      using const_iterator =
+          typename absl::Span< const RecordType >::const_iterator;
 
       SampleGroup() : m_records(), m_samplePeriod()
       {
       }
 
-      SampleGroup(const Record *records, size_t size,
+      SampleGroup(const RecordType *records, size_t size,
                   absl::Duration samplePeriod)
           : m_records(records, size), m_samplePeriod(samplePeriod)
       {
       }
 
-      SampleGroup(const absl::Span< const Record > &records,
+      SampleGroup(const absl::Span< const RecordType > &records,
                   absl::Duration samplePeriod)
           : m_records(records), m_samplePeriod(samplePeriod)
       {
@@ -465,8 +514,8 @@ namespace llarp
       void samplePeriod(absl::Duration duration) { m_samplePeriod = duration; }
       absl::Duration samplePeriod() const { return m_samplePeriod; }
 
-      void records(absl::Span<const Record> recs) { m_records = recs; }
-      absl::Span<const Record> records() const { return m_records; }
+      void records(absl::Span<const RecordType> recs) { m_records = recs; }
+      absl::Span<const RecordType> records() const { return m_records; }
 
       bool empty() const { return m_records.empty(); }
       size_t size() const { return m_records.size(); }
@@ -476,30 +525,48 @@ namespace llarp
       // clang-format on
 
       std::ostream &
-      print(std::ostream &stream, int level, int spaces) const;
+      print(std::ostream &stream, int level, int spaces) const
+      {
+        Printer::PrintFunction< absl::Duration > durationPrinter =
+            [](std::ostream &stream, const absl::Duration &duration, int,
+               int) -> std::ostream & {
+          stream << duration;
+          return stream;
+        };
+        Printer printer(stream, level, spaces);
+        printer.printAttribute("records", m_records);
+        printer.printForeignAttribute("samplePeriod", m_samplePeriod,
+                                      durationPrinter);
+
+        return stream;
+      }
     };
 
+    template < typename Type >
     inline std::ostream &
-    operator<<(std::ostream &stream, const SampleGroup &group)
+    operator<<(std::ostream &stream, const SampleGroup< Type > &group)
     {
       return group.print(stream, -1, -1);
     }
 
+    template < typename Type >
     inline bool
-    operator==(const SampleGroup &lhs, const SampleGroup &rhs)
+    operator==(const SampleGroup< Type > &lhs, const SampleGroup< Type > &rhs)
     {
       return lhs.records() == rhs.records()
           && lhs.samplePeriod() == rhs.samplePeriod();
     }
 
+    template < typename Type >
     class Sample
     {
       absl::Time m_sampleTime;
-      std::vector< SampleGroup > m_samples;
+      std::vector< SampleGroup< Type > > m_samples;
       size_t m_recordCount;
 
      public:
-      using const_iterator = std::vector< SampleGroup >::const_iterator;
+      using const_iterator =
+          typename std::vector< SampleGroup< Type > >::const_iterator;
 
       Sample() : m_sampleTime(), m_recordCount(0)
       {
@@ -509,21 +576,21 @@ namespace llarp
       void sampleTime(const absl::Time& time) { m_sampleTime = time; }
       absl::Time sampleTime() const { return m_sampleTime; }
 
-      void pushGroup(const SampleGroup& group) {
+      void pushGroup(const SampleGroup<Type>& group) {
         if (!group.empty()) {
           m_samples.push_back(group);
           m_recordCount += group.size();
         }
       }
 
-      void pushGroup(const Record *records, size_t size, absl::Duration duration) {
+      void pushGroup(const Record<Type> *records, size_t size, absl::Duration duration) {
         if (size != 0) {
           m_samples.emplace_back(records, size, duration);
           m_recordCount += size;
         }
       }
 
-      void pushGroup(const absl::Span< const Record > &records,absl::Duration duration) {
+      void pushGroup(const absl::Span< const Record<Type> > &records,absl::Duration duration) {
         if (!records.empty()) {
           m_samples.emplace_back(records, duration);
           m_recordCount += records.size();
@@ -535,7 +602,7 @@ namespace llarp
         m_recordCount = 0;
       }
 
-      const SampleGroup& group(size_t index) {
+      const SampleGroup<Type>& group(size_t index) {
         assert(index < m_samples.size());
         return m_samples[index];
       }

@@ -41,19 +41,19 @@ TYPED_TEST_P(CollectorTest, Collector)
   ASSERT_EQ(METRIC_A, collector1.id().description());
   ASSERT_EQ(METRIC_B, collector2.id().description());
 
-  Record record1 = collector1.load();
+  typename TypeParam::RecordType record1 = collector1.load();
   ASSERT_EQ(METRIC_A, record1.id().description());
   ASSERT_EQ(0, record1.count());
   ASSERT_EQ(0, record1.total());
-  ASSERT_EQ(Record::DEFAULT_MAX, record1.max());
-  ASSERT_EQ(Record::DEFAULT_MIN, record1.min());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MAX(), record1.max());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MIN(), record1.min());
 
-  Record record2 = collector2.load();
+  typename TypeParam::RecordType record2 = collector2.load();
   ASSERT_EQ(METRIC_B, record2.id().description());
   ASSERT_EQ(0, record2.count());
   ASSERT_EQ(0, record2.total());
-  ASSERT_EQ(Record::DEFAULT_MIN, record2.min());
-  ASSERT_EQ(Record::DEFAULT_MAX, record2.max());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MIN(), record2.min());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MAX(), record2.max());
 
   collector1.tick(1);
   record1 = collector1.load();
@@ -84,8 +84,8 @@ TYPED_TEST_P(CollectorTest, Collector)
   ASSERT_EQ(METRIC_A, record1.id().description());
   ASSERT_EQ(0, record1.count());
   ASSERT_EQ(0, record1.total());
-  ASSERT_EQ(Record::DEFAULT_MIN, record1.min());
-  ASSERT_EQ(Record::DEFAULT_MAX, record1.max());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MIN(), record1.min());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MAX(), record1.max());
 
   collector1.tick(3);
   record1 = collector1.loadAndClear();
@@ -99,8 +99,8 @@ TYPED_TEST_P(CollectorTest, Collector)
   ASSERT_EQ(METRIC_A, record1.id().description());
   ASSERT_EQ(0, record1.count());
   ASSERT_EQ(0, record1.total());
-  ASSERT_EQ(Record::DEFAULT_MIN, record1.min());
-  ASSERT_EQ(Record::DEFAULT_MAX, record1.max());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MIN(), record1.min());
+  ASSERT_EQ(TypeParam::RecordType::DEFAULT_MAX(), record1.max());
 }
 
 REGISTER_TYPED_TEST_SUITE_P(CollectorTest, Collector);
@@ -330,7 +330,8 @@ TEST(MetricsCore, RepoBasic)
   intCollector1->tick(5);
   intCollector2->tick(6);
 
-  std::vector< Record > records = repo.collectAndClear(registry.get("Test"));
+  std::vector< Record< double > > records =
+      repo.collectAndClear(registry.get("Test"));
   ASSERT_THAT(records, SizeIs(4));
   // clang-format off
   ASSERT_THAT(
@@ -390,7 +391,7 @@ TEST(MetricsCore, RepoCollect)
       const char *CATEGORY     = CATEGORIES[i];
       const Category *category = registry.get(CATEGORY);
 
-      std::vector< Record > records = repo.collect(category);
+      std::vector< Record< double > > records = repo.collect(category);
 
       ASSERT_THAT(records, SizeIs(static_cast< int >(METRICS.size())));
       // clang-format off
@@ -414,11 +415,12 @@ TEST(MetricsCore, RepoCollect)
         const auto &intCols    = collectors.second;
         for(int k = 0; k < static_cast< int >(doubleCols.size()); ++k)
         {
-          Record E(metric, j, 2 * j, -j, j);
-          Record record1 = doubleCols[k]->load();
-          Record record2 = intCols[k]->load();
-          ASSERT_EQ(record1, E);
-          ASSERT_EQ(record2, E);
+          Record< double > ED(metric, j, 2 * j, -j, j);
+          Record< int > EI(metric, j, 2 * j, -j, j);
+          Record< double > record1 = doubleCols[k]->load();
+          Record< int > record2    = intCols[k]->load();
+          ASSERT_EQ(record1, ED);
+          ASSERT_EQ(record2, EI);
         }
       }
     }
@@ -441,9 +443,9 @@ TEST(MetricsCore, RepoCollect)
 
         for(int l = 0; l < static_cast< int >(doubleCols.size()); ++l)
         {
-          Record record1 = doubleCols[k]->load();
+          Record< double > record1 = doubleCols[k]->load();
           ASSERT_THAT(record1, RecordEq(metric, 100u, 100, 100, 100));
-          Record record2 = intCols[k]->load();
+          Record< int > record2 = intCols[k]->load();
           ASSERT_THAT(record2, RecordEq(metric, 100u, 100, 100, 100));
         }
       }
@@ -460,11 +462,11 @@ MATCHER_P2(WithinWindow, expectedTime, window, "")
 }
 
 const Category *
-firstCategory(const SampleGroup &group)
+firstCategory(const SampleGroup< double > &group)
 {
   EXPECT_THAT(group, Not(IsEmpty()));
   const Category *value = group.begin()->id().category();
-  for(const Record &record : group.records())
+  for(const Record< double > &record : group.records())
   {
     EXPECT_EQ(value, record.id().category());
   }
@@ -494,8 +496,8 @@ TEST(MetricsCore, ManagerCollectSample1)
   absl::Time start = absl::Now();
   std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
-  std::vector< Record > records;
-  Sample sample = manager.collectSample(records, false);
+  std::vector< Record< double > > records;
+  Sample< double > sample = manager.collectSample(records, false);
 
   absl::Duration window = absl::Now() - start;
   absl::Time now        = absl::Now();
@@ -506,14 +508,14 @@ TEST(MetricsCore, ManagerCollectSample1)
 
   for(size_t i = 0; i < sample.groupCount(); ++i)
   {
-    const SampleGroup &group = sample.group(i);
+    const SampleGroup< double > &group = sample.group(i);
     ASSERT_EQ(NUM_METRICS, group.size());
     ASSERT_THAT(group.samplePeriod(),
                 WithinWindow(window, absl::Milliseconds(10)))
         << group;
 
     const char *name = group.records()[0].id().categoryName();
-    for(const Record &record : group.records())
+    for(const Record< double > &record : group.records())
     {
       ASSERT_THAT(record, RecordCatEq(name, 1u, 1, 1, 1));
     }
@@ -524,7 +526,7 @@ TEST(MetricsCore, ManagerCollectSample1)
     {
       DoubleCollector *col =
           rep.defaultDoubleCollector(CATEGORIES[i], METRICS[j]);
-      Record record = col->load();
+      Record< double > record = col->load();
       ASSERT_THAT(record, RecordEq(1u, 1, 1, 1));
     }
   }
@@ -542,8 +544,8 @@ TEST(MetricsCore, ManagerCollectSample1)
     {
       DoubleCollector *col =
           rep.defaultDoubleCollector(CATEGORIES[i], METRICS[j]);
-      Record record = col->load();
-      ASSERT_EQ(Record(record.id()), record);
+      Record< double > record = col->load();
+      ASSERT_EQ(Record< double >(record.id()), record);
     }
   }
 }
@@ -584,8 +586,8 @@ TEST(MetricsCore, ManagerCollectSample2)
 
     // Test without a reset.
     std::vector< const Category * > cats = combIt.currentCombo;
-    std::vector< Record > records;
-    Sample sample = manager.collectSample(
+    std::vector< Record< double > > records;
+    Sample< double > sample = manager.collectSample(
         records, absl::Span< const Category * >{cats}, false);
 
     ASSERT_EQ(NUM_METRICS * cats.size(), sample.recordCount());
@@ -610,11 +612,11 @@ TEST(MetricsCore, ManagerCollectSample2)
       {
         DoubleCollector *col =
             rep.defaultDoubleCollector(CATEGORIES[i], METRICS[j]);
-        Record record = col->load();
+        Record< double > record = col->load();
         ASSERT_THAT(record, RecordEq(1u, 1, 1, 1));
       }
     }
-    std::vector< Record > records2;
+    std::vector< Record< double > > records2;
 
     // Test with a reset.
     sample = manager.collectSample(records2,
@@ -643,10 +645,10 @@ TEST(MetricsCore, ManagerCollectSample2)
       {
         DoubleCollector *col =
             rep.defaultDoubleCollector(CATEGORIES[i], METRICS[j]);
-        Record record = col->load();
+        Record< double > record = col->load();
         if(combIt.includesElement(i))
         {
-          ASSERT_EQ(Record(record.id()), record);
+          ASSERT_EQ(Record< double >(record.id()), record);
         }
         else
         {
@@ -661,14 +663,14 @@ TEST(MetricsCore, ManagerCollectSample2)
 struct MockPublisher : public Publisher
 {
   std::atomic_int invocations;
-  std::vector< Record > recordBuffer;
-  std::vector< Record > sortedRecords;
-  Sample m_sample;
+  std::vector< Record< double > > recordBuffer;
+  std::vector< Record< double > > sortedRecords;
+  Sample< double > m_sample;
 
   std::set< absl::Duration > times;
 
   void
-  publish(const Sample &sample) override
+  publish(const Sample< double > &sample) override
   {
     invocations++;
 
@@ -691,7 +693,7 @@ struct MockPublisher : public Publisher
       auto git = s.begin();
       ASSERT_NE(git, s.end());
       recordBuffer.push_back(*git);
-      Record *head = &recordBuffer.back();
+      Record< double > *head = &recordBuffer.back();
       for(++git; git != s.end(); ++git)
       {
         recordBuffer.push_back(*git);
@@ -719,7 +721,7 @@ struct MockPublisher : public Publisher
   int
   indexOf(const Id &id)
   {
-    Record searchRecord(id);
+    Record< double > searchRecord(id);
     auto it = std::lower_bound(
         sortedRecords.begin(), sortedRecords.end(), searchRecord,
         [](const auto &lhs, const auto &rhs) { return lhs.id() < rhs.id(); });

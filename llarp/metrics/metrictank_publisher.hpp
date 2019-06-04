@@ -40,7 +40,7 @@ namespace llarp
       makeSuffix(const Tags& tags);
 
       void
-      publish(const Sample& values) override;
+      publish(const Sample< double >& values) override;
 
       virtual void
       publish(const std::vector< PublishData >& data) = 0;

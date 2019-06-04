@@ -8,6 +8,8 @@
 using namespace llarp;
 using namespace ::testing;
 
+using RecordT = metrics::Record< double >;
+
 struct MetricFormatSpecTestData
 {
   float m_scale;
@@ -130,7 +132,7 @@ TEST(MetricsTypes, CatContainer)
 
 TEST(MetricsTypes, Record)
 {
-  metrics::Record r;
+  RecordT r;
   ASSERT_GT(r.min(), r.max());
 }
 
@@ -146,15 +148,15 @@ TEST(MetricsTypes, Sample)
   metrics::Id metricC(&descC);
 
   absl::Time timeStamp = absl::Now();
-  metrics::Record recordA(metricA, 0, 0, 0, 0);
-  metrics::Record recordB(metricB, 1, 2, 3, 4);
-  metrics::Record recordC(metricC, 4, 3, 2, 1);
+  RecordT recordA(metricA, 0, 0, 0, 0);
+  RecordT recordB(metricB, 1, 2, 3, 4);
+  RecordT recordC(metricC, 4, 3, 2, 1);
 
-  metrics::Record buffer1[] = {recordA, recordB};
-  std::vector< metrics::Record > buffer2;
+  RecordT buffer1[] = {recordA, recordB};
+  std::vector< RecordT > buffer2;
   buffer2.push_back(recordC);
 
-  metrics::Sample sample;
+  metrics::Sample< double > sample;
   sample.sampleTime(timeStamp);
   sample.pushGroup(buffer1, sizeof(buffer1) / sizeof(*buffer1),
                    absl::Seconds(1.0));
@@ -200,7 +202,7 @@ struct SampleTest
   metrics::Id id_F;
   metrics::Id id_G;
 
-  std::vector< metrics::Record > recordBuffer;
+  std::vector< RecordT > recordBuffer;
 
   SampleTest()
       : cat_A("A", true)
@@ -231,17 +233,17 @@ struct SampleTest
   }
 };
 
-std::pair< std::vector< metrics::SampleGroup >, size_t >
+std::pair< std::vector< metrics::SampleGroup< double > >, size_t >
 generate(const std::string &specification,
-         const std::vector< metrics::Record > &recordBuffer)
+         const std::vector< RecordT > &recordBuffer)
 {
   const char *c = specification.c_str();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size = 0;
 
-  const metrics::Record *head    = recordBuffer.data();
-  const metrics::Record *current = head;
+  const RecordT *head    = recordBuffer.data();
+  const RecordT *current = head;
   while(*c)
   {
     int numRecords = *(c + 1) - '0';
@@ -268,12 +270,12 @@ TEST_P(SampleTest, basics)
 
   std::tie(timestamp, spec) = GetParam();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size;
   std::tie(groups, size) = generate(spec, recordBuffer);
 
   // Create the sample.
-  metrics::Sample sample;
+  metrics::Sample< double > sample;
   sample.sampleTime(timestamp);
   for(size_t j = 0; j < groups.size(); ++j)
   {
@@ -297,12 +299,12 @@ TEST_P(SampleTest, append)
 
   std::tie(timestamp, spec) = GetParam();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size;
   std::tie(groups, size) = generate(spec, recordBuffer);
 
   // Create the sample.
-  metrics::Sample sample;
+  metrics::Sample< double > sample;
   sample.sampleTime(timestamp);
 
   std::for_each(groups.begin(), groups.end(), [&](const auto &group) {

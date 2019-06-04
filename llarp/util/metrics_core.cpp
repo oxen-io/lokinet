@@ -6,57 +6,6 @@ namespace llarp
 {
   namespace metrics
   {
-    Record
-    IntCollector::loadAndClear()
-    {
-      size_t count;
-      uint64_t total;
-      int min;
-      int max;
-
-      {
-        absl::WriterMutexLock l(&m_mutex);
-
-        count = m_count;
-        total = m_total;
-        min   = m_min;
-        max   = m_max;
-
-        m_count = 0;
-        m_total = 0;
-        m_min   = DEFAULT_MIN;
-        m_max   = DEFAULT_MAX;
-      }
-
-      return {m_id, count, static_cast< double >(total),
-              (min == DEFAULT_MIN) ? Record::DEFAULT_MIN
-                                   : static_cast< double >(min),
-              (max == DEFAULT_MAX) ? Record::DEFAULT_MAX
-                                   : static_cast< double >(max)};
-    }
-
-    Record
-    IntCollector::load()
-    {
-      size_t count;
-      int64_t total;
-      int min;
-      int max;
-
-      {
-        absl::ReaderMutexLock l(&m_mutex);
-
-        count = m_count;
-        total = m_total;
-        min   = m_min;
-        max   = m_max;
-      }
-
-      return {m_id, count, static_cast< double >(total),
-              (min == DEFAULT_MIN) ? Record::DEFAULT_MIN : min,
-              (max == DEFAULT_MAX) ? Record::DEFAULT_MAX : max};
-    }
-
     std::tuple< Id, bool >
     Registry::insert(const char *category, const char *name)
     {
@@ -259,12 +208,12 @@ namespace llarp
       return *it->second.get();
     }
 
-    std::vector< Record >
+    std::vector< Record< double > >
     CollectorRepo::collectAndClear(const Category *category)
     {
       absl::WriterMutexLock l(&m_mutex);
 
-      std::vector< Record > result;
+      std::vector< Record< double > > result;
 
       auto it = m_categories.find(category);
 
@@ -281,12 +230,12 @@ namespace llarp
       return result;
     }
 
-    std::vector< Record >
+    std::vector< Record< double > >
     CollectorRepo::collect(const Category *category)
     {
       absl::WriterMutexLock l(&m_mutex);
 
-      std::vector< Record > result;
+      std::vector< Record< double > > result;
 
       auto it = m_categories.find(category);
 
@@ -358,25 +307,26 @@ namespace llarp
 
     struct PublisherHelper
     {
-      using SampleCache = std::map< std::shared_ptr< Publisher >, Sample >;
+      using SampleCache =
+          std::map< std::shared_ptr< Publisher >, Sample< double > >;
 
       static void
       updateSampleCache(SampleCache &cache,
                         const std::shared_ptr< Publisher > &publisher,
-                        const SampleGroup &sampleGroup,
+                        const SampleGroup< double > &sampleGroup,
                         const absl::Time &timeStamp)
       {
         SampleCache::iterator it = cache.find(publisher);
         if(it == cache.end())
         {
-          Sample newSample;
+          Sample< double > newSample;
           newSample.sampleTime(timeStamp);
           it = cache.emplace(publisher, newSample).first;
         }
         it->second.pushGroup(sampleGroup);
       }
 
-      static std::pair< std::vector< Record >, absl::Duration >
+      static std::pair< std::vector< Record< double > >, absl::Duration >
       collect(Manager &manager, const Category *category,
               const absl::Duration &now, bool clear)
           EXCLUSIVE_LOCKS_REQUIRED(manager.m_mutex)
@@ -389,21 +339,23 @@ namespace llarp
         RegistryIterator begin = manager.m_callbacks.lowerBound(category);
         RegistryIterator end   = manager.m_callbacks.upperBound(category);
 
-        std::vector< Record > result;
+        std::vector< Record< double > > result;
         std::for_each(begin, end, [&](const auto &x) {
-          std::vector< Record > tmp = (x.second)(clear);
+          std::vector< Record< double > > tmp = (x.second)(clear);
           result.insert(result.end(), tmp.begin(), tmp.end());
         });
 
         // Collect records from the repo.
         if(clear)
         {
-          std::vector< Record > tmp = manager.m_repo.collectAndClear(category);
+          std::vector< Record< double > > tmp =
+              manager.m_repo.collectAndClear(category);
           result.insert(result.end(), tmp.begin(), tmp.end());
         }
         else
         {
-          std::vector< Record > tmp = manager.m_repo.collect(category);
+          std::vector< Record< double > > tmp =
+              manager.m_repo.collect(category);
           result.insert(result.end(), tmp.begin(), tmp.end());
         }
 
@@ -438,7 +390,7 @@ namespace llarp
           return;
         }
         using RecordBuffer =
-            std::vector< std::shared_ptr< std::vector< Record > > >;
+            std::vector< std::shared_ptr< std::vector< Record< double > > > >;
 
         RecordBuffer recordBuffer;
 
@@ -479,11 +431,11 @@ namespace llarp
             }
 
             // Append the collected records to the buffer of records.
-            auto records =
-                std::make_shared< std::vector< Record > >(result.first);
+            auto records = std::make_shared< std::vector< Record< double > > >(
+                result.first);
             recordBuffer.push_back(records);
-            SampleGroup sampleGroup(absl::Span< Record >(*records),
-                                    result.second);
+            SampleGroup< double > sampleGroup(
+                absl::Span< Record< double > >(*records), result.second);
 
             std::for_each(
                 manager.m_publishers.globalBegin(),
@@ -502,23 +454,23 @@ namespace llarp
 
         for(auto &entry : sampleCache)
         {
-          Publisher *publisher = entry.first.get();
-          Sample &sample       = entry.second;
+          Publisher *publisher     = entry.first.get();
+          Sample< double > &sample = entry.second;
 
           publisher->publish(sample);
         }
       }
     };
 
-    Sample
-    Manager::collectSample(std::vector< Record > &records,
+    Sample< double >
+    Manager::collectSample(std::vector< Record< double > > &records,
                            absl::Span< const Category * > categories,
                            bool clear)
     {
       absl::Time timeStamp = absl::Now();
       absl::Duration now   = timeStamp - absl::UnixEpoch();
 
-      Sample sample;
+      Sample< double > sample;
       sample.sampleTime(timeStamp);
 
       // Use a tuple to hold 'references' to the collected records
@@ -541,7 +493,7 @@ namespace llarp
         size_t beginIndex = records.size();
 
         // Collect the metrics.
-        std::vector< Record > catRecords;
+        std::vector< Record< double > > catRecords;
         absl::Duration elapsedTime;
         std::tie(catRecords, elapsedTime) =
             PublisherHelper::collect(*this, category, now, clear);

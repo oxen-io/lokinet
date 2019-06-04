@@ -26,7 +26,7 @@ namespace llarp
       }
 
       void
-      formatValue(std::ostream &stream, const Record &record,
+      formatValue(std::ostream &stream, const Record< double > &record,
                   double elapsedTime, Publication::Type publicationType,
                   const FormatSpec *formatSpec)
       {
@@ -76,7 +76,7 @@ namespace llarp
       }
 
       void
-      publishRecord(std::ostream &stream, const Record &record,
+      publishRecord(std::ostream &stream, const Record< double > &record,
                     double elapsedTime)
       {
         auto publicationType = record.id().description()->type();
@@ -111,7 +111,7 @@ namespace llarp
           formatValue(stream, record.count(), countSpec);
           stream << ", total = ";
           formatValue(stream, record.total(), totalSpec);
-          if(Record::DEFAULT_MIN == record.min())
+          if(Record< double >::DEFAULT_MIN() == record.min())
           {
             stream << ", min = undefined";
           }
@@ -120,7 +120,7 @@ namespace llarp
             stream << ", min = ";
             formatValue(stream, record.min(), minSpec);
           }
-          if(Record::DEFAULT_MAX == record.max())
+          if(Record< double >::DEFAULT_MAX() == record.max())
           {
             stream << ", max = undefined";
           }
@@ -134,7 +134,7 @@ namespace llarp
       }
 
       void
-      formatValue(nlohmann::json &result, const Record &record,
+      formatValue(nlohmann::json &result, const Record< double > &record,
                   double elapsedTime, Publication::Type publicationType)
       {
         switch(publicationType)
@@ -183,7 +183,7 @@ namespace llarp
       }
 
       nlohmann::json
-      recordToJson(const Record &record, double elapsedTime)
+      recordToJson(const Record< double > &record, double elapsedTime)
       {
         nlohmann::json result;
         result["id"] = record.id().toString();
@@ -200,11 +200,11 @@ namespace llarp
           result["count"] = record.count();
           result["total"] = record.total();
 
-          if(Record::DEFAULT_MIN != record.min())
+          if(Record< double >::DEFAULT_MIN() != record.min())
           {
             result["min"] = record.min();
           }
-          if(Record::DEFAULT_MAX == record.max())
+          if(Record< double >::DEFAULT_MAX() == record.max())
           {
             result["max"] = record.max();
           }
@@ -215,7 +215,7 @@ namespace llarp
     }  // namespace
 
     void
-    StreamPublisher::publish(const Sample &values)
+    StreamPublisher::publish(const Sample< double > &values)
     {
       if(values.recordCount() == 0)
       {
@@ -246,7 +246,7 @@ namespace llarp
     }
 
     void
-    JsonPublisher::publish(const Sample &values)
+    JsonPublisher::publish(const Sample< double > &values)
     {
       if(values.recordCount() == 0)
       {
