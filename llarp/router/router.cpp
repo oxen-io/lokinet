@@ -1872,7 +1872,13 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID &remote) const
   {
-    return validRouters.find(remote) != validRouters.end();
+    for(const auto & link : outboundLinks)
+      if(link->HasSessionTo(remote))
+        return true;
+    for(const auto & link : inboundLinks)
+      if(link->HasSessionTo(remote))
+        return true;
+    return false;
   }
 
   void
