@@ -821,11 +821,12 @@ namespace llarp
     Endpoint::HandleDataMessage(const PathID_t& src,
                                 std::shared_ptr< ProtocolMessage > msg)
     {
+      msg->sender.UpdateAddr();
       auto path = GetPathByID(src);
       if(path)
-        PutReplyIntroFor(msg->tag, path->intro);
-      msg->sender.UpdateAddr();
-      PutIntroFor(msg->tag, msg->introReply);
+        PutIntroFor(msg->tag, path->intro);
+      PutSenderFor(msg->tag, msg->sender);
+      PutReplyIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
@@ -1070,11 +1071,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(const RouterID& addr,
+    Endpoint::SendToServiceOrQueue(const service::Address& remote,
                                    const llarp_buffer_t& data, ProtocolType t)
     {
-      service::Address remote(addr.as_array());
-
       // inbound converstation
       auto now = Now();
 
@@ -1120,8 +1119,8 @@ namespace llarp
               m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
               m.sender    = m_Identity.pub;
+              m.seqno     = GetSeqNoForConvo(f.T);
               f.F         = m.introReply.pathID;
-              f.S         = GetSeqNoForConvo(f.T);
               transfer->P = remoteIntro.pathID;
               if(!f.EncryptAndSign(m, K, m_Identity))
               {

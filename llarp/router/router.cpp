@@ -1848,10 +1848,10 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID &remote) const
   {
-    for(const auto & link : outboundLinks)
+    for(const auto &link : outboundLinks)
       if(link->HasSessionTo(remote))
         return true;
-    for(const auto & link : inboundLinks)
+    for(const auto &link : inboundLinks)
       if(link->HasSessionTo(remote))
         return true;
     return false;

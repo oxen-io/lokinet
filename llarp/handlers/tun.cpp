@@ -684,9 +684,10 @@ namespace llarp
         }
         else
         {
-          sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
-                               itr->second.as_array(), std::placeholders::_1,
-                               service::eProtocolTraffic);
+          sendFunc =
+              std::bind(&TunEndpoint::SendToServiceOrQueue, this,
+                        service::Address(itr->second.as_array()),
+                        std::placeholders::_1, service::eProtocolTraffic);
         }
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
