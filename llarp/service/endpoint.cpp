@@ -17,6 +17,7 @@
 #include <util/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
+#include <util/memfn.hpp>
 #include <hook/shell.hpp>
 
 namespace llarp
@@ -795,11 +796,9 @@ namespace llarp
     void
     Endpoint::HandlePathBuilt(path::Path_ptr p)
     {
-      using namespace std::placeholders;
-      p->SetDataHandler(
-          std::bind(&Endpoint::HandleHiddenServiceFrame, this, _1, _2));
-      p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this, _1, _2, _3));
-      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this, _1, _2));
+      p->SetDataHandler(util::memFn(&Endpoint::HandleHiddenServiceFrame, this));
+      p->SetDropHandler(util::memFn(&Endpoint::HandleDataDrop, this));
+      p->SetDeadChecker(util::memFn(&Endpoint::CheckPathIsDead, this));
       path::Builder::HandlePathBuilt(p);
     }
 
@@ -822,11 +821,12 @@ namespace llarp
     Endpoint::HandleDataMessage(const PathID_t& src,
                                 std::shared_ptr< ProtocolMessage > msg)
     {
+      msg->sender.UpdateAddr();
       auto path = GetPathByID(src);
       if(path)
-        PutReplyIntroFor(msg->tag, path->intro);
-      msg->sender.UpdateAddr();
-      PutIntroFor(msg->tag, msg->introReply);
+        PutIntroFor(msg->tag, path->intro);
+      PutSenderFor(msg->tag, msg->sender);
+      PutReplyIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
@@ -982,8 +982,7 @@ namespace llarp
 
       using namespace std::placeholders;
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this, std::bind(&Endpoint::OnLookup, this, _1, _2, _3), remote,
-          GenTXID());
+          this, util::memFn(&Endpoint::OnLookup, this), remote, GenTXID());
       LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {
@@ -1072,11 +1071,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(const RouterID& addr,
+    Endpoint::SendToServiceOrQueue(const service::Address& remote,
                                    const llarp_buffer_t& data, ProtocolType t)
     {
-      service::Address remote(addr.as_array());
-
       // inbound converstation
       auto now = Now();
 
@@ -1121,8 +1118,8 @@ namespace llarp
               m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
               m.sender    = m_Identity.pub;
+              m.seqno     = GetSeqNoForConvo(f.T);
               f.F         = m.introReply.pathID;
-              f.S         = GetSeqNoForConvo(f.T);
               transfer->P = remoteIntro.pathID;
               if(!f.EncryptAndSign(m, K, m_Identity))
               {

@@ -96,8 +96,9 @@ endif(NON_PC_TARGET)
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
-
 set(ABSEIL_DIR vendor/abseil-cpp)
+
+add_subdirectory(vendor/gtest)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(SYSTEM ${ABSEIL_DIR})
 add_subdirectory(vendor/cxxopts)

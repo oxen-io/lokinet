@@ -1,6 +1,8 @@
 #ifndef LLARP_TRAITS_HPP
 #define LLARP_TRAITS_HPP
 
+#include <absl/meta/type_traits.h>
+
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -10,14 +12,39 @@ namespace llarp
 {
   namespace traits
   {
+    using absl::conjunction;
+    using absl::disjunction;
+    using absl::void_t;
+
     /// Represents the empty type
     struct Bottom
     {
     };
 
-    /// C++17 compatibility. template pack
-    template < class... >
-    using void_t = void;
+    /// Int tag
+    template < size_t N >
+    struct Tag
+    {
+      char arr[N + 1];
+    };
+
+    /// Type trait representing whether a type is pointer-like
+    template < typename T, typename _ = void >
+    struct is_pointy : public std::false_type
+    {
+    };
+
+    // We take the following things:
+    // - has element_type typedef
+    // - has dereference operator
+    // - has arrow operator
+    template < typename T >
+    struct is_pointy<
+        T,
+        std::conditional_t< false, void_t< decltype(*std::declval< T >()) >,
+                            void > > : public std::true_type
+    {
+    };
 
     /// Type trait representing whether a type is an STL-style container
     template < typename T, typename _ = void >

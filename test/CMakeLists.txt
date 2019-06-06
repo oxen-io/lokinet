@@ -1,6 +1,4 @@
 set(TEST_EXE testAll)
-set(GTEST_DIR gtest)
-add_subdirectory(${GTEST_DIR})
 
 list(APPEND TEST_SRC
     crypto/test_llarp_crypto_types.cpp
@@ -41,6 +39,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_ini.cpp
     util/test_llarp_util_metrics_core.cpp
     util/test_llarp_util_metrics_types.cpp
+    util/test_llarp_util_memfn.cpp
     util/test_llarp_util_object.cpp
     util/test_llarp_util_printer.cpp
     util/test_llarp_util_queue_manager.cpp

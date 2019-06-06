@@ -59,7 +59,7 @@ namespace llarp
       ProtocolFrame f;
       f.N.Randomize();
       f.T = currentConvoTag;
-      f.S = m_Endpoint->GetSeqNoForConvo(f.T);
+      f.S = ++sequenceNo;
 
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
@@ -87,7 +87,7 @@ namespace llarp
       m_DataHandler->PutIntroFor(f.T, remoteIntro);
       m_DataHandler->PutReplyIntroFor(f.T, path->intro);
       m.proto      = t;
-      m.seqno      = sequenceNo++;
+      m.seqno      = m_Endpoint->GetSeqNoForConvo(f.T);
       m.introReply = path->intro;
       f.F          = m.introReply.pathID;
       m.sender     = m_Endpoint->GetIdentity().pub;

@@ -4,6 +4,7 @@
 #include <nodedb.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -97,19 +98,11 @@ namespace llarp
     BaseSession::HandlePathBuilt(llarp::path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
-      p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
-                                  std::placeholders::_1, std::placeholders::_2,
-                                  std::placeholders::_3));
-      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2));
-      p->SetExitTrafficHandler(
-          std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3));
+      p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
+      p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
+      p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
+      p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
 
-      p->AddObtainExitHandler(std::bind(&BaseSession::HandleGotExit, this,
-                                        std::placeholders::_1,
-                                        std::placeholders::_2));
       routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp::randint();

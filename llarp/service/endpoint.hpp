@@ -207,8 +207,8 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SendToServiceOrQueue(const RouterID& addr, const llarp_buffer_t& payload,
-                           ProtocolType t);
+      SendToServiceOrQueue(const service::Address& addr,
+                           const llarp_buffer_t& payload, ProtocolType t);
 
       bool
       SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);

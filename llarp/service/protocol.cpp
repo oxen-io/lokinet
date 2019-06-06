@@ -4,6 +4,7 @@
 #include <util/buffer.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -315,9 +316,8 @@ namespace llarp
 
         // PKE (A, B, N)
         SharedSecret sharedSecret;
-        using namespace std::placeholders;
-        path_dh_func dh_server = std::bind(
-            &Crypto::dh_server, CryptoManager::instance(), _1, _2, _3, _4);
+        path_dh_func dh_server =
+            util::memFn(&Crypto::dh_server, CryptoManager::instance());
 
         if(!self->m_LocalIdentity.KeyExchange(dh_server, sharedSecret,
                                               self->msg->sender, self->frame.N))
