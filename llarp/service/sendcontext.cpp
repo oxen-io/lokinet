@@ -90,7 +90,6 @@ namespace llarp
       m.seqno      = m_Endpoint->GetSeqNoForConvo(f.T);
       m.introReply = path->intro;
       f.F          = m.introReply.pathID;
-      f.S          = 0;
       m.sender     = m_Endpoint->GetIdentity().pub;
       m.tag        = f.T;
       m.PutBuffer(payload);
