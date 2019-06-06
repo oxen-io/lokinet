@@ -824,9 +824,9 @@ namespace llarp
       msg->sender.UpdateAddr();
       auto path = GetPathByID(src);
       if(path)
-        PutIntroFor(msg->tag, path->intro);
+        PutReplyIntroFor(msg->tag, path->intro);
       PutSenderFor(msg->tag, msg->sender);
-      PutReplyIntroFor(msg->tag, msg->introReply);
+      PutIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
