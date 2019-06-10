@@ -113,7 +113,7 @@ struct llarp_kqueue_loop final
   int
   udp_bind(const sockaddr* addr);
 
-  virtual bool
+  bool
   udp_listen(llarp_udp_io* l, const sockaddr* src) override;
 
   bool
