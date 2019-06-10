@@ -283,6 +283,13 @@ namespace llarp
     bool
     ExitEndpoint::Start()
     {
+      // map our address
+      const PubKey us(m_Router->pubkey());
+      const huint32_t ip = GetIfAddr();
+      m_KeyToIP[us]      = ip;
+      m_IPToKey[ip]      = us;
+      m_IPActivity[ip]   = std::numeric_limits< llarp_time_t >::max();
+      m_SNodeKeys.insert(us);
       if(m_ShouldInitTun)
       {
         auto loop = GetRouter()->netloop();
@@ -560,7 +567,12 @@ namespace llarp
     huint32_t
     ExitEndpoint::ObtainServiceNodeIP(const RouterID &other)
     {
-      PubKey pubKey(other);
+      const PubKey pubKey(other);
+      const PubKey us(m_Router->pubkey());
+      // just in case
+      if(pubKey == us)
+        return m_IfAddr;
+
       huint32_t ip = GetIPForIdent(pubKey);
       if(m_SNodeKeys.emplace(pubKey).second)
       {
