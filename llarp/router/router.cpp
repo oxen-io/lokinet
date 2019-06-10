@@ -1239,12 +1239,12 @@ namespace llarp
             return;
           LookupRouter(rc.pubkey, nullptr);
         },
-        RouterContact::UpdateInterval);
+        RouterContact::UpdateInterval + now);
     std::set< RouterID > removeStale;
     // remove stale routers
     nodedb()->VisitInsertedAfter(
         [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
-        (RouterContact::UpdateInterval * 3) / 2);
+        ((RouterContact::UpdateInterval * 3) / 2) + now);
     nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
       return removeStale.count(rc.pubkey) > 0;
     });
