@@ -69,3 +69,7 @@ else()
     target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(${TEST_EXE} PUBLIC ${FS_LIB} ws2_32 iphlpapi shlwapi)
 endif(NOT WIN32)
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
+endif()
