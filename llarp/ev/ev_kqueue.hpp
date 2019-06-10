@@ -126,7 +126,7 @@ struct llarp_kqueue_loop final
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr) override;
 
   llarp::ev_io*
-  create_udp(llarp_udp_io* l, const sockaddr* src) override;
+  create_udp(llarp_udp_io* l, const sockaddr* src);
 
   bool
   add_ev(llarp::ev_io* ev, bool w) override;
