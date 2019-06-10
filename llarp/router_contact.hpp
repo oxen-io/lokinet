@@ -69,6 +69,7 @@ namespace llarp
     static bool IgnoreBogons;
 
     static llarp_time_t Lifetime;
+    static llarp_time_t UpdateInterval;
 
     RouterContact()
     {
@@ -173,6 +174,7 @@ namespace llarp
     bool
     ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 60000) const;
 
+    /// returns true if this RC is expired and should be removed
     bool
     IsExpired(llarp_time_t now) const;
 

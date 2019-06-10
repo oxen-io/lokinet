@@ -187,6 +187,12 @@ namespace llarp
     }
 
     bool
+    Endpoint::HasPendingRouterLookup(const RouterID remote) const
+    {
+      return m_PendingRouters.find(remote) != m_PendingRouters.end();
+    }
+
+    bool
     Endpoint::IntrosetIsStale() const
     {
       return m_IntroSet.HasExpiredIntros(Now());

@@ -56,9 +56,19 @@ struct llarp_nodedb
 
   llarp::thread::ThreadPool *disk;
   mutable llarp::util::Mutex access;  // protects entries
-  std::unordered_map< llarp::RouterID, llarp::RouterContact,
-                      llarp::RouterID::Hash >
-      entries GUARDED_BY(access);
+
+  struct NetDBEntry
+  {
+    const llarp::RouterContact rc;
+    const llarp_time_t inserted;
+
+    NetDBEntry(const llarp::RouterContact &data);
+  };
+
+  using NetDBMap_t =
+      std::unordered_map< llarp::RouterID, NetDBEntry, llarp::RouterID::Hash >;
+
+  NetDBMap_t entries GUARDED_BY(access);
   fs::path nodePath;
 
   bool
@@ -104,9 +114,6 @@ struct llarp_nodedb
   visit(std::function< bool(const llarp::RouterContact &) > visit)
       LOCKS_EXCLUDED(access);
 
-  bool
-  iterate(llarp_nodedb_iter &i) LOCKS_EXCLUDED(access);
-
   void
   set_dir(const char *dir);
 
@@ -115,8 +122,10 @@ struct llarp_nodedb
   ssize_t
   store_dir(const char *dir);
 
-  int
-  iterate_all(llarp_nodedb_iter i);
+  /// visit all entries inserted into nodedb cache after a timestamp
+  void
+  VisitInsertedAfter(std::function< void(const llarp::RouterContact &) > visit,
+                     llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
 
   size_t
   num_loaded() const LOCKS_EXCLUDED(access);

@@ -1176,6 +1176,21 @@ namespace llarp
     }
   }
 
+  bool
+  Router::HasPendingRouterLookup(const RouterID &remote) const
+  {
+    if(IsServiceNode())
+      return dht()->impl->HasRouterLookup(remote);
+    bool has = false;
+    _hiddenServiceContext.ForEachService(
+        [&has, remote](const std::string &,
+                       const std::shared_ptr< service::Endpoint > &ep) -> bool {
+          has |= ep->HasPendingRouterLookup(remote);
+          return true;
+        });
+    return has;
+  }
+
   void
   Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
   {
@@ -1216,11 +1231,22 @@ namespace llarp
     auto now = Now();
 
     routerProfiling().Tick();
-    // update expired routers
-    nodedb()->visit([&](const RouterContact &rc) -> bool {
-      if(rc.IsExpired(now))
-        LookupRouterWhenExpired(rc.pubkey);
-      return true;
+
+    // try looking up stale routers
+    nodedb()->VisitInsertedAfter(
+        [&](const RouterContact &rc) {
+          if(HasPendingRouterLookup(rc.pubkey))
+            return;
+          LookupRouter(rc.pubkey, nullptr);
+        },
+        RouterContact::UpdateInterval);
+    std::set< RouterID > removeStale;
+    // remove stale routers
+    nodedb()->VisitInsertedAfter(
+        [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
+        (RouterContact::UpdateInterval * 3) / 2);
+    nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
+      return removeStale.count(rc.pubkey) > 0;
     });
     if(IsServiceNode())
     {
@@ -1872,10 +1898,10 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID &remote) const
   {
-    for(const auto & link : outboundLinks)
+    for(const auto &link : outboundLinks)
       if(link->HasSessionTo(remote))
         return true;
-    for(const auto & link : inboundLinks)
+    for(const auto &link : inboundLinks)
       if(link->HasSessionTo(remote))
         return true;
     return false;

@@ -250,6 +250,10 @@ namespace llarp
       void
       EnsurePathToSNode(const RouterID& remote, SNodeEnsureHook h);
 
+      /// return true if this endpoint is trying to lookup this router right now
+      bool
+      HasPendingRouterLookup(const RouterID remote) const;
+
       bool
       HasPathToSNode(const RouterID& remote) const;
 

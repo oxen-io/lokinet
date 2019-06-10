@@ -391,6 +391,9 @@ namespace llarp
     bool
     HasPendingConnectJob(const RouterID &remote);
 
+    bool
+    HasPendingRouterLookup(const RouterID &remote) const override;
+
     void
     try_connect(fs::path rcfile);
 

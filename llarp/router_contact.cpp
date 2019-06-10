@@ -31,6 +31,8 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
+  /// every 30 minutes an RC is stale and needs updating
+  llarp_time_t RouterContact::UpdateInterval = 30 * 60 * 1000;
 
   NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {

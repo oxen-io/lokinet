@@ -224,12 +224,6 @@ __        ___    ____  _   _ ___ _   _  ____
     return 1;
   }
 
-  int
-  Context::IterateDatabase(llarp_nodedb_iter &i)
-  {
-    return nodedb->iterate_all(i);
-  }
-
   bool
   Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
   {
