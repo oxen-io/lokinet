@@ -17,7 +17,7 @@ TEST(MetricsPublisher, StreamPublisher)
   std::stringstream stream;
   metrics::StreamPublisher myPublisher(stream);
 
-  std::vector< metrics::Record > records;
+  std::vector< metrics::Record< double > > records;
 
   records.emplace_back(metricA, 5, 25.0, 6.0, 25.0);
   records.emplace_back(metricB, 2, 7.0, 3.0, 11.0);

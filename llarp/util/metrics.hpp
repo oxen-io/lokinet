@@ -41,14 +41,15 @@ namespace llarp
 
 #define METRICS_UNIQUE_NAME(X) METRICS_NAME_CAT(X, METRICS_UNIQ_NUMBER)
 
-#define METRICS_TIME_BLOCK_IMP(CAT, METRIC, VAR_NAME)                   \
-  llarp::metrics::DoubleCollector* VAR_NAME = nullptr;                  \
-  if(llarp::metrics::DefaultManager::instance())                        \
-  {                                                                     \
-    using namespace llarp::metrics;                                     \
-    CollectorRepo& repo = DefaultManager::instance()->collectorRepo();  \
-    VAR_NAME            = repo.defaultDoubleCollector((CAT), (METRIC)); \
-  }                                                                     \
+#define METRICS_TIME_BLOCK_IMP(CAT, METRIC, VAR_NAME)      \
+  llarp::metrics::DoubleCollector* VAR_NAME = nullptr;     \
+  if(llarp::metrics::DefaultManager::instance())           \
+  {                                                        \
+    using namespace llarp::metrics;                        \
+    CollectorRepo< double >& repo =                        \
+        DefaultManager::instance()->doubleCollectorRepo(); \
+    VAR_NAME = repo.defaultCollector((CAT), (METRIC));     \
+  }                                                        \
   llarp::metrics::TimerGuard METRICS_UNIQUE_NAME(timer_guard)(VAR_NAME);
 
 #define METRICS_TIME_BLOCK(CAT, METRIC) \
@@ -66,20 +67,20 @@ namespace llarp
   BALM_METRICS_IF_CATEGORY_ENABLED_IMP(CAT, METRICS_UNIQUE_NAME(Container))
 
 // For when the category/metric may change during the program run
-#define METRICS_DYNAMIC_INT_UPDATE(CAT, METRIC, VALUE)                         \
-  do                                                                           \
-  {                                                                            \
-    using namespace llarp::metrics;                                            \
-    if(DefaultManager::instance())                                             \
-    {                                                                          \
-      CollectorRepo& repository = DefaultManager::instance()->collectorRepo(); \
-      IntCollector* collector =                                                \
-          repository.defaultIntCollector((CAT), (METRIC));                     \
-      if(collector->id().category()->enabled())                                \
-      {                                                                        \
-        collector->tick((VALUE));                                              \
-      }                                                                        \
-    }                                                                          \
+#define METRICS_DYNAMIC_INT_UPDATE(CAT, METRIC, VALUE)                        \
+  do                                                                          \
+  {                                                                           \
+    using namespace llarp::metrics;                                           \
+    if(DefaultManager::instance())                                            \
+    {                                                                         \
+      CollectorRepo< int >& repository =                                      \
+          DefaultManager::instance()->intCollectorRepo();                     \
+      IntCollector* collector = repository.defaultCollector((CAT), (METRIC)); \
+      if(collector->id().category()->enabled())                               \
+      {                                                                       \
+        collector->tick((VALUE));                                             \
+      }                                                                       \
+    }                                                                         \
   } while(false)
 
 // For when the category/metric remain static
@@ -119,20 +120,21 @@ namespace llarp
   } while(false)
 
 // For when the category/metric may change during the program run
-#define METRICS_DYNAMIC_UPDATE(CAT, METRIC, VALUE)                             \
-  do                                                                           \
-  {                                                                            \
-    using namespace llarp::metrics;                                            \
-    if(DefaultManager::instance())                                             \
-    {                                                                          \
-      CollectorRepo& repository = DefaultManager::instance()->collectorRepo(); \
-      DoubleCollector* collector =                                             \
-          repository.defaultDoubleCollector((CAT), (METRIC));                  \
-      if(collector->id().category()->enabled())                                \
-      {                                                                        \
-        collector->tick((VALUE));                                              \
-      }                                                                        \
-    }                                                                          \
+#define METRICS_DYNAMIC_UPDATE(CAT, METRIC, VALUE)           \
+  do                                                         \
+  {                                                          \
+    using namespace llarp::metrics;                          \
+    if(DefaultManager::instance())                           \
+    {                                                        \
+      CollectorRepo< double >& repository =                  \
+          DefaultManager::instance()->doubleCollectorRepo(); \
+      DoubleCollector* collector =                           \
+          repository.defaultCollector((CAT), (METRIC));      \
+      if(collector->id().category()->enabled())              \
+      {                                                      \
+        collector->tick((VALUE));                            \
+      }                                                      \
+    }                                                        \
   } while(false)
 
 // For when the category/metric remain static
