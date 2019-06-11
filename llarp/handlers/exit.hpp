@@ -33,6 +33,9 @@ namespace llarp
       ExtractStatus() const;
 
       bool
+      SupportsV6() const;
+
+      bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 
       bool
@@ -177,6 +180,7 @@ namespace llarp
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;
+      bool m_UseV6;
     };
   }  // namespace handlers
 }  // namespace llarp

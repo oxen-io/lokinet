@@ -58,6 +58,12 @@ namespace llarp
     }
 
     bool
+    ExitEndpoint::SupportsV6() const
+    {
+      return m_UseV6;
+    }
+
+    bool
     ExitEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
     {
       if(msg.questions.size() == 0)
@@ -86,6 +92,7 @@ namespace llarp
     ExitEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
+     
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
         huint32_t ip;
@@ -132,6 +139,7 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
+        const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
@@ -158,7 +166,11 @@ namespace llarp
         {
           huint128_t ip;
           PubKey pubKey(r);
-          if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
+          if(isV4 && SupportsV6())
+          {
+            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
+          }
+          else if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped
             // map it
@@ -539,7 +551,13 @@ namespace llarp
         }
         else if(m_IfAddr.FromString(host_str))
         {
+          m_UseV6 = true;
           m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask);
+        }
+        else
+        {
+          LogError(Name(), " invalid ifaddr: ", v);
+          return false;
         }
         m_OurRange.addr = m_IfAddr;
         m_NextAddr      = m_IfAddr;
