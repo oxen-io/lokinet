@@ -8,7 +8,8 @@
 using namespace llarp;
 using namespace ::testing;
 
-using RecordT = metrics::Record< double >;
+using RecordT      = metrics::Record< double >;
+using SampleGroupT = metrics::SampleGroup< double >;
 
 struct MetricFormatSpecTestData
 {
@@ -156,7 +157,7 @@ TEST(MetricsTypes, Sample)
   std::vector< RecordT > buffer2;
   buffer2.push_back(recordC);
 
-  metrics::Sample< double > sample;
+  metrics::Sample sample;
   sample.sampleTime(timeStamp);
   sample.pushGroup(buffer1, sizeof(buffer1) / sizeof(*buffer1),
                    absl::Seconds(1.0));
@@ -165,17 +166,23 @@ TEST(MetricsTypes, Sample)
   ASSERT_EQ(timeStamp, sample.sampleTime());
   ASSERT_EQ(2u, sample.groupCount());
   ASSERT_EQ(3u, sample.recordCount());
-  ASSERT_EQ(absl::Seconds(1), sample.group(0).samplePeriod());
-  ASSERT_EQ(buffer1, sample.group(0).records().data());
-  ASSERT_EQ(2, sample.group(0).size());
-  ASSERT_EQ(absl::Seconds(2), sample.group(1).samplePeriod());
-  ASSERT_EQ(buffer2.data(), sample.group(1).records().data());
-  ASSERT_EQ(1, sample.group(1).size());
+  ASSERT_TRUE(absl::holds_alternative< SampleGroupT >(sample.group(0)));
+  ASSERT_TRUE(absl::holds_alternative< SampleGroupT >(sample.group(1)));
+
+  const SampleGroupT s0 = absl::get< SampleGroupT >(sample.group(0));
+  const SampleGroupT s1 = absl::get< SampleGroupT >(sample.group(1));
+  ASSERT_EQ(absl::Seconds(1), s0.samplePeriod());
+  ASSERT_EQ(buffer1, s0.records().data());
+  ASSERT_EQ(2, s0.size());
+
+  ASSERT_EQ(absl::Seconds(2), s1.samplePeriod());
+  ASSERT_EQ(buffer2.data(), s1.records().data());
+  ASSERT_EQ(1, s1.size());
 
   for(auto sampleIt = sample.begin(); sampleIt != sample.end(); ++sampleIt)
   {
-    ;
-    for(auto groupIt = sampleIt->begin(); groupIt != sampleIt->end(); ++groupIt)
+    const auto &s = absl::get< SampleGroupT >(*sampleIt);
+    for(auto groupIt = s.begin(); groupIt != s.end(); ++groupIt)
     {
       std::cout << *groupIt << std::endl;
     }
@@ -275,7 +282,7 @@ TEST_P(SampleTest, basics)
   std::tie(groups, size) = generate(spec, recordBuffer);
 
   // Create the sample.
-  metrics::Sample< double > sample;
+  metrics::Sample sample;
   sample.sampleTime(timestamp);
   for(size_t j = 0; j < groups.size(); ++j)
   {
@@ -288,7 +295,8 @@ TEST_P(SampleTest, basics)
   ASSERT_EQ(size, sample.recordCount());
   for(size_t j = 0; j < sample.groupCount(); ++j)
   {
-    ASSERT_EQ(groups[j], sample.group(j));
+    ASSERT_EQ(groups[j],
+              absl::get< metrics::SampleGroup< double > >(sample.group(j)));
   }
 }
 
@@ -304,7 +312,7 @@ TEST_P(SampleTest, append)
   std::tie(groups, size) = generate(spec, recordBuffer);
 
   // Create the sample.
-  metrics::Sample< double > sample;
+  metrics::Sample sample;
   sample.sampleTime(timestamp);
 
   std::for_each(groups.begin(), groups.end(), [&](const auto &group) {
@@ -318,7 +326,8 @@ TEST_P(SampleTest, append)
 
   for(size_t j = 0; j < sample.groupCount(); ++j)
   {
-    ASSERT_EQ(groups[j], sample.group(j));
+    ASSERT_EQ(groups[j],
+              absl::get< metrics::SampleGroup< double > >(sample.group(j)));
   }
 }
 

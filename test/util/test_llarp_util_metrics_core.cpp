@@ -441,16 +441,18 @@ MATCHER_P2(WithinWindow, expectedTime, window, "")
 }
 
 const Category *
-firstCategory(const SampleGroup< double > &group)
+firstCategory(
+    const absl::variant< SampleGroup< double >, SampleGroup< int > > &g)
 {
-  EXPECT_THAT(group, Not(IsEmpty()));
-  const Category *value = group.begin()->id().category();
-  for(const Record< double > &record : group.records())
-  {
-    EXPECT_EQ(value, record.id().category());
-  }
-
-  return value;
+  return forSampleGroup(g, [](const auto &group) {
+    EXPECT_THAT(group, Not(IsEmpty()));
+    const Category *value = group.begin()->id().category();
+    for(const auto &record : group.records())
+    {
+      EXPECT_EQ(value, record.id().category());
+    }
+    return value;
+  });
 }
 
 TEST(MetricsCore, ManagerCollectSample1)
@@ -476,19 +478,19 @@ TEST(MetricsCore, ManagerCollectSample1)
   std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
   Records records;
-  Samples sample = manager.collectSample(records, false);
+  Sample sample = manager.collectSample(records, false);
 
   absl::Duration window = absl::Now() - start;
   absl::Time now        = absl::Now();
   ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, records.doubleRecords.size());
-  ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, sample.doubleSample.recordCount());
-  ASSERT_EQ(NUM_CATEGORIES, sample.doubleSample.groupCount());
-  ASSERT_THAT(sample.doubleSample.sampleTime(),
-              WithinWindow(now, absl::Milliseconds(10)));
+  ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, sample.recordCount());
+  ASSERT_EQ(NUM_CATEGORIES, sample.groupCount());
+  ASSERT_THAT(sample.sampleTime(), WithinWindow(now, absl::Milliseconds(10)));
 
-  for(size_t i = 0; i < sample.doubleSample.groupCount(); ++i)
+  for(size_t i = 0; i < sample.groupCount(); ++i)
   {
-    const SampleGroup< double > &group = sample.doubleSample.group(i);
+    const SampleGroup< double > &group =
+        absl::get< SampleGroup< double > >(sample.group(i));
     ASSERT_EQ(NUM_METRICS, group.size());
     ASSERT_THAT(group.samplePeriod(),
                 WithinWindow(window, absl::Milliseconds(10)))
@@ -515,8 +517,8 @@ TEST(MetricsCore, ManagerCollectSample1)
   sample = manager.collectSample(records, true);
 
   ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, records.doubleRecords.size());
-  ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, sample.doubleSample.recordCount());
-  ASSERT_EQ(NUM_CATEGORIES, sample.doubleSample.groupCount());
+  ASSERT_EQ(NUM_CATEGORIES * NUM_METRICS, sample.recordCount());
+  ASSERT_EQ(NUM_CATEGORIES, sample.groupCount());
 
   for(size_t i = 0; i < NUM_CATEGORIES; ++i)
   {
@@ -565,19 +567,19 @@ TEST(MetricsCore, ManagerCollectSample2)
     // Test without a reset.
     std::vector< const Category * > cats = combIt.currentCombo;
     Records records;
-    Samples sample = manager.collectSample(
+    Sample sample = manager.collectSample(
         records, absl::Span< const Category * >{cats}, false);
 
-    ASSERT_EQ(NUM_METRICS * cats.size(), sample.doubleSample.recordCount());
-    ASSERT_EQ(cats.size(), sample.doubleSample.groupCount());
+    ASSERT_EQ(NUM_METRICS * cats.size(), sample.recordCount());
+    ASSERT_EQ(cats.size(), sample.groupCount());
     for(size_t i = 0; i < NUM_CATEGORIES; ++i)
     {
       // Verify the correct categories are in the sample (once)
       const Category *CATEGORY = allCategories[i];
       bool found               = false;
-      for(size_t j = 0; j < sample.doubleSample.groupCount(); ++j)
+      for(size_t j = 0; j < sample.groupCount(); ++j)
       {
-        if(CATEGORY == firstCategory(sample.doubleSample.group(j)))
+        if(CATEGORY == firstCategory(sample.group(j)))
         {
           found = true;
         }
@@ -599,17 +601,17 @@ TEST(MetricsCore, ManagerCollectSample2)
     sample = manager.collectSample(records2,
                                    absl::Span< const Category * >{cats}, true);
 
-    ASSERT_EQ(NUM_METRICS * cats.size(), sample.doubleSample.recordCount());
-    ASSERT_EQ(cats.size(), sample.doubleSample.groupCount());
+    ASSERT_EQ(NUM_METRICS * cats.size(), sample.recordCount());
+    ASSERT_EQ(cats.size(), sample.groupCount());
     ASSERT_EQ(records, records2);
     for(size_t i = 0; i < NUM_CATEGORIES; ++i)
     {
       // Verify the correct categories are in the sample
       const Category *CATEGORY = allCategories[i];
       bool found               = false;
-      for(size_t j = 0; j < sample.doubleSample.groupCount(); ++j)
+      for(size_t j = 0; j < sample.groupCount(); ++j)
       {
-        if(CATEGORY == firstCategory(sample.doubleSample.group(j)))
+        if(CATEGORY == firstCategory(sample.group(j)))
         {
           found = true;
         }
@@ -641,12 +643,12 @@ struct MockPublisher : public Publisher
   std::atomic_int invocations;
   std::vector< Record< double > > recordBuffer;
   std::vector< Record< double > > sortedRecords;
-  Sample< double > m_sample;
+  Sample m_sample;
 
   std::set< absl::Duration > times;
 
   void
-  publish(const Sample< double > &sample, const Sample< int > &) override
+  publish(const Sample &sample) override
   {
     invocations++;
 
@@ -664,9 +666,11 @@ struct MockPublisher : public Publisher
 
     recordBuffer.reserve(sample.recordCount());
 
-    for(const auto &s : sample)
+    for(const auto &_s : sample)
     {
-      auto git = s.begin();
+      ASSERT_TRUE(absl::holds_alternative< SampleGroup< double > >(_s));
+      const auto &s = absl::get< SampleGroup< double > >(_s);
+      auto git      = s.begin();
       ASSERT_NE(git, s.end());
       recordBuffer.push_back(*git);
       Record< double > *head = &recordBuffer.back();
@@ -674,7 +678,7 @@ struct MockPublisher : public Publisher
       {
         recordBuffer.push_back(*git);
       }
-      m_sample.pushGroup(head, s.size(), s.samplePeriod());
+      m_sample.pushGroup(head, s.size(), samplePeriod(s));
       times.insert(s.samplePeriod());
     }
 

@@ -25,8 +25,9 @@ namespace llarp
         }
       }
 
+      template < typename Value >
       void
-      formatValue(std::ostream &stream, const Record< double > &record,
+      formatValue(std::ostream &stream, const Record< Value > &record,
                   double elapsedTime, Publication::Type publicationType,
                   const FormatSpec *formatSpec)
       {
@@ -75,8 +76,9 @@ namespace llarp
         }
       }
 
+      template < typename Value >
       void
-      publishRecord(std::ostream &stream, const Record< double > &record,
+      publishRecord(std::ostream &stream, const Record< Value > &record,
                     double elapsedTime)
       {
         auto publicationType = record.id().description()->type();
@@ -111,7 +113,7 @@ namespace llarp
           formatValue(stream, record.count(), countSpec);
           stream << ", total = ";
           formatValue(stream, record.total(), totalSpec);
-          if(Record< double >::DEFAULT_MIN() == record.min())
+          if(Record< Value >::DEFAULT_MIN() == record.min())
           {
             stream << ", min = undefined";
           }
@@ -120,7 +122,7 @@ namespace llarp
             stream << ", min = ";
             formatValue(stream, record.min(), minSpec);
           }
-          if(Record< double >::DEFAULT_MAX() == record.max())
+          if(Record< Value >::DEFAULT_MAX() == record.max())
           {
             stream << ", max = undefined";
           }
@@ -133,8 +135,9 @@ namespace llarp
         stream << " ]\n";
       }
 
+      template < typename Value >
       void
-      formatValue(nlohmann::json &result, const Record< double > &record,
+      formatValue(nlohmann::json &result, const Record< Value > &record,
                   double elapsedTime, Publication::Type publicationType)
       {
         switch(publicationType)
@@ -182,8 +185,9 @@ namespace llarp
         }
       }
 
+      template < typename Value >
       nlohmann::json
-      recordToJson(const Record< double > &record, double elapsedTime)
+      recordToJson(const Record< Value > &record, double elapsedTime)
       {
         nlohmann::json result;
         result["id"] = record.id().toString();
@@ -200,11 +204,11 @@ namespace llarp
           result["count"] = record.count();
           result["total"] = record.total();
 
-          if(Record< double >::DEFAULT_MIN() != record.min())
+          if(Record< Value >::DEFAULT_MIN() != record.min())
           {
             result["min"] = record.min();
           }
-          if(Record< double >::DEFAULT_MAX() == record.max())
+          if(Record< Value >::DEFAULT_MAX() == record.max())
           {
             result["max"] = record.max();
           }
@@ -215,65 +219,69 @@ namespace llarp
     }  // namespace
 
     void
-    StreamPublisher::publish(const Sample< double > &doubleValues,
-                             const Sample< int > &)
+    StreamPublisher::publish(const Sample &values)
     {
-      if(doubleValues.recordCount() == 0)
+      if(values.recordCount() == 0)
       {
         // nothing to publish
         return;
       }
 
-      m_stream << doubleValues.sampleTime() << " " << doubleValues.recordCount()
+      m_stream << values.sampleTime() << " " << values.recordCount()
                << " Records\n";
 
-      auto gIt  = doubleValues.begin();
-      auto prev = doubleValues.begin();
-      for(; gIt != doubleValues.end(); ++gIt)
+      auto gIt  = values.begin();
+      auto prev = values.begin();
+      for(; gIt != values.end(); ++gIt)
       {
-        const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
+        const double elapsedTime = absl::ToDoubleSeconds(samplePeriod(*gIt));
 
-        if(gIt == prev || gIt->samplePeriod() != prev->samplePeriod())
+        if(gIt == prev || samplePeriod(*gIt) != samplePeriod(*prev))
         {
           m_stream << "\tElapsed Time: " << elapsedTime << "s\n";
         }
 
-        for(const auto &record : *gIt)
-        {
-          publishRecord(m_stream, record, elapsedTime);
-        }
+        forSampleGroup(*gIt, [&](const auto &x) {
+          for(const auto &record : x)
+          {
+            publishRecord(m_stream, record, elapsedTime);
+          }
+        });
+
         prev = gIt;
       }
     }
 
     void
-    JsonPublisher::publish(const Sample< double > &doubleValues,
-                           const Sample< int > &)
+    JsonPublisher::publish(const Sample &values)
     {
-      if(doubleValues.recordCount() == 0)
+      if(values.recordCount() == 0)
       {
         // nothing to publish
         return;
       }
 
       nlohmann::json result;
-      result["sampleTime"]  = absl::UnparseFlag(doubleValues.sampleTime());
-      result["recordCount"] = doubleValues.recordCount();
-      auto gIt              = doubleValues.begin();
-      auto prev             = doubleValues.begin();
-      for(; gIt != doubleValues.end(); ++gIt)
+      result["sampleTime"]  = absl::UnparseFlag(values.sampleTime());
+      result["recordCount"] = values.recordCount();
+      auto gIt              = values.begin();
+      auto prev             = values.begin();
+      for(; gIt != values.end(); ++gIt)
       {
-        const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
+        const double elapsedTime = absl::ToDoubleSeconds(samplePeriod(*gIt));
 
-        if(gIt == prev || gIt->samplePeriod() != prev->samplePeriod())
+        if(gIt == prev || samplePeriod(*gIt) != samplePeriod(*prev))
         {
           result["elapsedTime"] = elapsedTime;
         }
 
-        for(const auto &record : *gIt)
-        {
-          result["record"].emplace_back(recordToJson(record, elapsedTime));
-        }
+        forSampleGroup(*gIt, [&](const auto &x) {
+          for(const auto &record : x)
+          {
+            result["record"].emplace_back(recordToJson(record, elapsedTime));
+          }
+        });
+
         prev = gIt;
       }
 

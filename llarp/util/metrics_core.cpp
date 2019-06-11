@@ -191,9 +191,7 @@ namespace llarp
 
     struct PublisherHelper
     {
-      using SampleCache =
-          std::map< std::shared_ptr< Publisher >,
-                    std::pair< Sample< double >, Sample< int > > >;
+      using SampleCache = std::map< std::shared_ptr< Publisher >, Sample >;
 
       static void
       updateSampleCache(SampleCache &cache,
@@ -205,14 +203,12 @@ namespace llarp
         SampleCache::iterator it = cache.find(publisher);
         if(it == cache.end())
         {
-          Sample< double > dSample;
-          dSample.sampleTime(timeStamp);
-          Sample< int > iSample;
-          iSample.sampleTime(timeStamp);
-          it = cache.emplace(publisher, std::make_pair(dSample, iSample)).first;
+          Sample sample;
+          sample.sampleTime(timeStamp);
+          it = cache.emplace(publisher, sample).first;
         }
-        it->second.first.pushGroup(doubleGroup);
-        it->second.second.pushGroup(intGroup);
+        it->second.pushGroup(doubleGroup);
+        it->second.pushGroup(intGroup);
       }
 
       struct CollectResult
@@ -339,15 +335,13 @@ namespace llarp
         for(auto &entry : sampleCache)
         {
           Publisher *publisher = entry.first.get();
-          Sample< double > &is = entry.second.first;
-          Sample< int > &ds    = entry.second.second;
 
-          publisher->publish(is, ds);
+          publisher->publish(entry.second);
         }
       }
     };
 
-    Samples
+    Sample
     Manager::collectSample(Records &records,
                            absl::Span< const Category * > categories,
                            bool clear)
@@ -355,10 +349,8 @@ namespace llarp
       absl::Time timeStamp = absl::Now();
       absl::Duration now   = timeStamp - absl::UnixEpoch();
 
-      Sample< double > dSample;
-      Sample< int > iSample;
-      dSample.sampleTime(timeStamp);
-      iSample.sampleTime(timeStamp);
+      Sample sample;
+      sample.sampleTime(timeStamp);
 
       // Use a tuple to hold 'references' to the collected records
       using SampleDescription = std::tuple< size_t, size_t, absl::Duration >;
@@ -411,17 +403,17 @@ namespace llarp
       // Now that we have all the records, we can build our sample
       for(const SampleDescription &s : dSamples)
       {
-        dSample.pushGroup(&records.doubleRecords[std::get< 0 >(s)],
-                          std::get< 1 >(s), std::get< 2 >(s));
+        sample.pushGroup(&records.doubleRecords[std::get< 0 >(s)],
+                         std::get< 1 >(s), std::get< 2 >(s));
       }
 
       for(const SampleDescription &s : iSamples)
       {
-        iSample.pushGroup(&records.intRecords[std::get< 0 >(s)],
-                          std::get< 1 >(s), std::get< 2 >(s));
+        sample.pushGroup(&records.intRecords[std::get< 0 >(s)],
+                         std::get< 1 >(s), std::get< 2 >(s));
       }
 
-      return {dSample, iSample};
+      return sample;
     }
 
     void

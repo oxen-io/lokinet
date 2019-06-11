@@ -5,9 +5,11 @@
 #include <util/string_view.hpp>
 #include <util/threading.hpp>
 #include <util/types.hpp>
+#include <util/variant.hpp>
 
 #include <absl/types/span.h>
 #include <absl/types/optional.h>
+#include <absl/types/variant.h>
 #include <cstring>
 #include <iosfwd>
 #include <memory>
@@ -564,16 +566,15 @@ namespace llarp
           && lhs.samplePeriod() == rhs.samplePeriod();
     }
 
-    template < typename Type >
     class Sample
     {
       absl::Time m_sampleTime;
-      std::vector< SampleGroup< Type > > m_samples;
+      std::vector< absl::variant< SampleGroup< double >, SampleGroup< int > > >
+          m_samples;
       size_t m_recordCount;
 
      public:
-      using const_iterator =
-          typename std::vector< SampleGroup< Type > >::const_iterator;
+      using const_iterator = typename decltype(m_samples)::const_iterator;
 
       Sample() : m_sampleTime(), m_recordCount(0)
       {
@@ -583,23 +584,26 @@ namespace llarp
       void sampleTime(const absl::Time& time) { m_sampleTime = time; }
       absl::Time sampleTime() const { return m_sampleTime; }
 
+      template<typename Type>
       void pushGroup(const SampleGroup<Type>& group) {
         if (!group.empty()) {
-          m_samples.push_back(group);
+          m_samples.emplace_back(group);
           m_recordCount += group.size();
         }
       }
 
+      template<typename Type>
       void pushGroup(const Record<Type> *records, size_t size, absl::Duration duration) {
         if (size != 0) {
-          m_samples.emplace_back(records, size, duration);
+          m_samples.emplace_back(SampleGroup<Type>(records, size, duration));
           m_recordCount += size;
         }
       }
 
+      template<typename Type>
       void pushGroup(const absl::Span< const Record<Type> > &records,absl::Duration duration) {
         if (!records.empty()) {
-          m_samples.emplace_back(records, duration);
+          m_samples.emplace_back(SampleGroup<Type>(records, duration));
           m_recordCount += records.size();
         }
       }
@@ -609,7 +613,7 @@ namespace llarp
         m_recordCount = 0;
       }
 
-      const SampleGroup<Type>& group(size_t index) {
+      const absl::variant<SampleGroup<double>, SampleGroup<int> >& group(size_t index) {
         assert(index < m_samples.size());
         return m_samples[index];
       }
@@ -621,6 +625,36 @@ namespace llarp
       size_t recordCount() const { return m_recordCount; }
       // clang-format on
     };
+
+    template < typename T >
+    auto
+    forSampleGroup(
+        const absl::variant< SampleGroup< double >, SampleGroup< int > > &group,
+        const T &func)
+        -> decltype(func(std::declval< SampleGroup< double > >()))
+    {
+      return absl::visit(
+          util::overloaded(
+              [&](const SampleGroup< double > &d) { return func(d); },
+              [&](const SampleGroup< int > &i) { return func(i); }),
+          group);
+    }
+
+    inline absl::Duration
+    samplePeriod(
+        const absl::variant< SampleGroup< double >, SampleGroup< int > > &group)
+    {
+      return forSampleGroup(group,
+                            [](const auto &x) { return x.samplePeriod(); });
+    }
+
+    inline size_t
+    sampleSize(
+        const absl::variant< SampleGroup< double >, SampleGroup< int > > &group)
+    {
+      return forSampleGroup(group, [](const auto &x) { return x.size(); });
+    }
+
   }  // namespace metrics
 }  // namespace llarp
 

@@ -22,11 +22,11 @@ TEST(MetricsPublisher, StreamPublisher)
   records.emplace_back(metricA, 5, 25.0, 6.0, 25.0);
   records.emplace_back(metricB, 2, 7.0, 3.0, 11.0);
 
-  metrics::Sample< double > sample;
+  metrics::Sample sample;
   sample.sampleTime(absl::Now());
   sample.pushGroup(records.data(), records.size(), absl::Seconds(5));
 
-  myPublisher.publish(sample, metrics::Sample< int >());
+  myPublisher.publish(sample);
 
   std::cout << stream.str();
 }

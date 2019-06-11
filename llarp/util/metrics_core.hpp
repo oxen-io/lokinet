@@ -104,8 +104,7 @@ namespace llarp
       virtual ~Publisher() = default;
 
       virtual void
-      publish(const Sample< double > &doubleSample,
-              const Sample< int > &intSample) = 0;
+      publish(const Sample &sample) = 0;
     };
 
     template < typename LhsType, typename RhsType >
@@ -620,12 +619,6 @@ namespace llarp
 
     struct PublisherHelper;
 
-    struct Samples
-    {
-      Sample< double > doubleSample;
-      Sample< int > intSample;
-    };
-
     /// The big dog.
     /// This class owns everything else, and is responsible for managing the
     /// gathering and publishing of metrics
@@ -711,7 +704,7 @@ namespace llarp
       // clang-format on
 
       /// Publish specific categories of metric matching the category/categories
-      Samples
+      Sample
       collectSample(Records &records, bool clear = false)
       {
         std::vector< const Category * > allCategories = m_registry.getAll();
@@ -719,7 +712,7 @@ namespace llarp
             records, absl::Span< const Category * >{allCategories}, clear);
       }
 
-      Samples
+      Sample
       collectSample(Records &records, absl::Span< const Category * > categories,
                     bool clear = false);
 
