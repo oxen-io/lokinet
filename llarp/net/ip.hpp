@@ -78,7 +78,7 @@ struct ipv6_header
 {
   unsigned char version : 4;
   unsigned char pad_small : 4;
-  uint8_t pad [3];
+  uint8_t pad[3];
   uint16_t payload_len;
   uint8_t proto;
   uint8_t hoplimit;
@@ -249,10 +249,10 @@ namespace llarp
       dst4to6() const;
 
       void
-      UpdateV4Address(huint32_t src, huint32_t dst);
+      UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 
       void
-      UpdateV6Address(huint128_t src, huint128_t dst);
+      UpdateIPv6Address(huint128_t src, huint128_t dst);
     };
 
   }  // namespace net

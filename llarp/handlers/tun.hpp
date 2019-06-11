@@ -209,19 +209,20 @@ namespace llarp
               {
                 if(pkt.IsV4())
                 {
-                  pkt.UpdateV6Address(net::IPPacket::ExpandV4(pkt.srcv4()),
-                                      m_OurIP);
+                  pkt.UpdateIPv6Address(net::IPPacket::ExpandV4(pkt.srcv4()),
+                                        m_OurIP);
                 }
                 else
                 {
-                  pkt.UpdateV6Address(pkt.srcv6(), m_OurIP);
+                  pkt.UpdateIPv6Address(pkt.srcv6(), m_OurIP);
                 }
               }
               else
               {
                 if(pkt.IsV4())
-                  pkt.UpdateV4Address(pkt.srcv4(),
-                                      net::IPPacket::TruncateV6(m_OurIP));
+                  pkt.UpdateIPv4Address(
+                      xhtonl(pkt.srcv4()),
+                      xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
                 else
                   return false;
               }

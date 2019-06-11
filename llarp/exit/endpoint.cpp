@@ -127,7 +127,7 @@ namespace llarp
           dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
         else
           dst = pkt.dstv4();
-        pkt.UpdateV4Address(net::IPPacket::TruncateV6(m_IP), dst);
+        pkt.UpdateIPV4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
       }
       else
       {
@@ -151,7 +151,7 @@ namespace llarp
         src = m_Parent->GetIfAddr();
       else
         src = pkt.srcv6();
-      pkt.UpdateV6Address(src, m_IP);
+      pkt.UpdateIPv6Address(src, m_IP);
       const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
       const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
       if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())

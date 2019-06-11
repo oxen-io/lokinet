@@ -613,7 +613,7 @@ namespace libuv
       m_CloseFuncs.emplace_back(std::bind(&tun_glue ::Close, glue));
       return true;
     }
-    
+
     delete glue;
     return false;
   }
