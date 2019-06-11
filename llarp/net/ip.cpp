@@ -105,9 +105,22 @@ namespace llarp
     void
     IPPacket::UpdateV6Address(huint128_t src, huint128_t dst)
     {
+      if(sz <= 40)
+        return;
       auto hdr     = HeaderV6();
+      auto oldSrc = hdr->srcaddr;
+      auto oldDst = hdr->dstaddr;
       hdr->srcaddr = HUIntToIn6(src);
       hdr->dstaddr = HUIntToIn6(dst);
+      const size_t ihs = 40;
+      auto pld = buf + ihs;
+      auto psz = sz - ihs;
+      switch(hdr->proto)
+      {
+        //tcp
+        case 6:
+          return;
+      }
     }
 
 #if 0

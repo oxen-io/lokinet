@@ -399,7 +399,7 @@ namespace llarp
         {
           if(isV4 && SupportsV6())
           {
-            msg.AddNXReply();
+            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
           }
           else if(HasAddress(addr))
           {

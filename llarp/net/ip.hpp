@@ -78,7 +78,10 @@ struct ipv6_header
 {
   unsigned char version : 4;
   unsigned char pad_small : 4;
-  uint8_t pad [7];
+  uint8_t pad [3];
+  uint16_t payload_len;
+  uint8_t proto;
+  uint8_t hoplimit;
   in6_addr srcaddr;
   in6_addr dstaddr;
 };
