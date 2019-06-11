@@ -164,16 +164,16 @@ namespace llarp
         switch(hdr->protocol)
         {
           case 6:  // TCP
-            checksumDstIPv4TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
+            deltaChecksumIPv4TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
                                nDstIP);
             break;
           case 17:   // UDP
           case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-            checksumDstIPv4UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
+            deltaChecksumIPv4UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
                                nDstIP);
             break;
           case 33:  // DCCP
-            checksumDstIPv4TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
+            deltaChecksumIPv4TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
                                nDstIP);
             break;
         }
@@ -213,18 +213,18 @@ namespace llarp
       switch(hdr->proto)
       {
           case 6:  // TCP
-            checksumDstIPv6TCP(pld, psz, fragoff, 16, &oSrcIP.s6_addr32,
+            deltaChecksumIPv6TCP(pld, psz, fragoff, 16, &oSrcIP.s6_addr32,
                                &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
                                &hdr->dstaddr.s6_addr32);
             break;
           case 17:   // UDP
           case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-            checksumDstIPv6UDP(pld, psz, fragoff, &oSrcIP.s6_addr32,
+            deltaChecksumIPv6UDP(pld, psz, fragoff, &oSrcIP.s6_addr32,
                                &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
                                &hdr->dstaddr.s6_addr32);
             break;
           case 33:  // DCCP
-            checksumDstIPv6TCP(pld, psz, fragoff, 6, &oSrcIP.s6_addr32,
+            deltaChecksumIPv6TCP(pld, psz, fragoff, 6, &oSrcIP.s6_addr32,
                                &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
                                &hdr->dstaddr.s6_addr32);
             break;

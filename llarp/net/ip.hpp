@@ -249,10 +249,10 @@ namespace llarp
       dst4to6() const;
 
       void
-      UpdateV4Address(huint32_t src, huint32_t dst);
+      UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 
       void
-      UpdateV6Address(huint128_t src, huint128_t dst);
+      UpdateIPv6Address(huint128_t src, huint128_t dst);
     };
 
   }  // namespace net
