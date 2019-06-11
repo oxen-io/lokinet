@@ -19,6 +19,9 @@
 #include <util/endian.hpp>
 #include <vector>
 
+#include <absl/numeric/int128.h>
+#include <absl/hash/hash.h>
+
 namespace llarp
 {
   template < typename UInt_t >
@@ -28,25 +31,33 @@ namespace llarp
 
     constexpr huint_t operator&(huint_t x) const
     {
-      return huint_t{UInt_t(h & x.h)};
+      return huint_t{UInt_t{h & x.h}};
     }
 
     constexpr huint_t
     operator|(huint_t x) const
     {
-      return huint_t{UInt_t(h | x.h)};
+      return huint_t{UInt_t{h | x.h}};
     }
 
     constexpr huint_t
     operator^(huint_t x) const
     {
-      return huint_t{UInt_t(h ^ x.h)};
+      return huint_t{UInt_t{h ^ x.h}};
     }
 
     constexpr huint_t
     operator~() const
     {
-      return huint_t{UInt_t(~h)};
+      return huint_t{UInt_t{~h}};
+    }
+
+    constexpr huint_t
+    operator<<(int n) const
+    {
+      UInt_t v{h};
+      v <<= n;
+      return huint_t{v};
     }
 
     inline huint_t
@@ -70,19 +81,25 @@ namespace llarp
     }
 
     constexpr bool
+    operator!=(huint_t x) const
+    {
+      return h != x.h;
+    }
+
+    constexpr bool
     operator==(huint_t x) const
     {
       return h == x.h;
     }
 
-    struct Hash
+    using Hash = absl::Hash< huint_t< UInt_t > >;
+
+    template < typename H >
+    friend H
+    AbslHashValue(H h, const huint_t< UInt_t >& i)
     {
-      inline size_t
-      operator()(huint_t x) const
-      {
-        return std::hash< UInt_t >{}(x.h);
-      }
-    };
+      return H::combine(std::move(h), i.h);
+    }
 
     using V6Container = std::vector< uint8_t >;
     void
@@ -91,6 +108,9 @@ namespace llarp
     std::string
     ToString() const;
 
+    bool
+    FromString(const std::string&);
+
     friend std::ostream&
     operator<<(std::ostream& out, const huint_t& i)
     {
@@ -98,8 +118,9 @@ namespace llarp
     }
   };
 
-  using huint32_t = huint_t< uint32_t >;
-  using huint16_t = huint_t< uint16_t >;
+  using huint32_t  = huint_t< uint32_t >;
+  using huint16_t  = huint_t< uint16_t >;
+  using huint128_t = huint_t< absl::uint128 >;
 
   template < typename UInt_t >
   struct nuint_t
@@ -177,8 +198,9 @@ namespace llarp
     }
   };
 
-  using nuint32_t = nuint_t< uint32_t >;
-  using nuint16_t = nuint_t< uint16_t >;
+  using nuint32_t  = nuint_t< uint32_t >;
+  using nuint16_t  = nuint_t< uint16_t >;
+  using nuint128_t = nuint_t< absl::uint128 >;
 
   static inline nuint32_t
   xhtonl(huint32_t x)

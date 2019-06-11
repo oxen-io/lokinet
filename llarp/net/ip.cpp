@@ -15,8 +15,61 @@ namespace llarp
 {
   namespace net
   {
+    huint128_t
+    IPPacket::In6ToHUInt(in6_addr addr)
+    {
+#if __BYTE_ORDER == __BIG_ENDIAN
+      return huint128_t{addr.s6_addr32[0]}
+      | (huint128_t{addr.s6_addr32[1]} << 32)
+          | (huint128_t{addr.s6_addr32[2]} << 64)
+          | (huint128_t{addr.s6_addr32[3]} << 96);
+#else
+      return huint128_t{ntohl(addr.s6_addr32[3])}
+      | (huint128_t{ntohl(addr.s6_addr32[2])} << 32)
+          | (huint128_t{ntohl(addr.s6_addr32[1])} << 64)
+          | (huint128_t{ntohl(addr.s6_addr32[0])} << 96);
+#endif
+    }
+
+    in6_addr
+    IPPacket::HUIntToIn6(huint128_t x)
+    {
+      in6_addr addr;
+      auto i = ntoh128(x.h);
+      memcpy(&addr, &i, 16);
+      return addr;
+    }
+
+    huint128_t
+    IPPacket::ExpandV4(huint32_t i)
+    {
+      huint128_t ff = {0xff};
+      huint128_t expanded{i.h};
+      return (ff << 40) | (ff << 32) | expanded;
+    }
+
+    huint32_t
+    IPPacket::TruncateV6(huint128_t i)
+    {
+      huint32_t ret = {0};
+      ret.h         = (uint32_t)(i.h & (0x00000000ffffffffUL));
+      return ret;
+    }
+
+    huint128_t
+    IPPacket::srcv6() const
+    {
+      return In6ToHUInt(HeaderV6()->srcaddr);
+    }
+
+    huint128_t
+    IPPacket::dstv6() const
+    {
+      return In6ToHUInt(HeaderV6()->dstaddr);
+    }
+
     bool
-    IPv4Packet::Load(const llarp_buffer_t &pkt)
+    IPPacket::Load(const llarp_buffer_t &pkt)
     {
       if(pkt.sz > sizeof(buf))
         return false;
@@ -26,15 +79,35 @@ namespace llarp
     }
 
     llarp_buffer_t
-    IPv4Packet::ConstBuffer() const
+    IPPacket::ConstBuffer() const
     {
       return {buf, sz};
     }
 
     llarp_buffer_t
-    IPv4Packet::Buffer()
+    IPPacket::Buffer()
     {
       return {buf, sz};
+    }
+
+    huint32_t
+    IPPacket::srcv4() const
+    {
+      return huint32_t{ntohl(Header()->saddr)};
+    }
+
+    huint32_t
+    IPPacket::dstv4() const
+    {
+      return huint32_t{ntohl(Header()->daddr)};
+    }
+
+    void
+    IPPacket::UpdateV6Address(huint128_t src, huint128_t dst)
+    {
+      auto hdr     = HeaderV6();
+      hdr->srcaddr = HUIntToIn6(src);
+      hdr->dstaddr = HUIntToIn6(dst);
     }
 
 #if 0
@@ -140,8 +213,9 @@ namespace llarp
     }
 
     void
-    IPv4Packet::UpdateIPv4PacketOnDst(huint32_t newSrcIP, huint32_t newDstIP)
+    IPPacket::UpdateV4Address(huint32_t newSrcIP, huint32_t newDstIP)
     {
+      llarp::LogDebug("set src=", newSrcIP, " dst=", newDstIP);
       auto hdr = Header();
 
       auto oSrcIP = nuint32_t{hdr->saddr};
@@ -227,9 +301,9 @@ namespace llarp
       // if(check->n == 0x0000)
       //   check->n = 0xFFff;
     }
-
+    /*
     void
-    IPv4Packet::UpdateIPv4PacketOnSrc()
+    IPacket::UpdateIPv4PacketOnSrc()
     {
       auto hdr = Header();
 
@@ -269,5 +343,6 @@ namespace llarp
       hdr->saddr = 0;
       hdr->daddr = 0;
     }
+    */
   }  // namespace net
 }  // namespace llarp

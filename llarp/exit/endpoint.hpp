@@ -24,7 +24,7 @@ namespace llarp
       static constexpr size_t MaxUpstreamQueueSize = 256;
 
       Endpoint(const llarp::PubKey& remoteIdent,
-               const llarp::PathID_t& beginPath, bool rewriteIP, huint32_t ip,
+               const llarp::PathID_t& beginPath, bool rewriteIP, huint128_t ip,
                llarp::handlers::ExitEndpoint* parent);
 
       ~Endpoint();
@@ -97,7 +97,7 @@ namespace llarp
         return m_RxRate;
       }
 
-      huint32_t
+      huint128_t
       LocalIP() const
       {
         return m_IP;
@@ -109,7 +109,7 @@ namespace llarp
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;
       llarp::PathID_t m_CurrentPath;
-      llarp::huint32_t m_IP;
+      llarp::huint128_t m_IP;
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
@@ -121,12 +121,12 @@ namespace llarp
 
       struct UpstreamBuffer
       {
-        UpstreamBuffer(const llarp::net::IPv4Packet& p, uint64_t c)
+        UpstreamBuffer(const llarp::net::IPPacket& p, uint64_t c)
             : pkt(p), counter(c)
         {
         }
 
-        llarp::net::IPv4Packet pkt;
+        llarp::net::IPPacket pkt;
         uint64_t counter;
 
         bool

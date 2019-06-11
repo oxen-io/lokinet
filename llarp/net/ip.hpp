@@ -74,7 +74,17 @@ typedef struct ip_hdr
 
 #endif
 
+struct ipv6_header
+{
+  unsigned char version : 4;
+  unsigned char pad_small : 4;
+  uint8_t pad [7];
+  in6_addr srcaddr;
+  in6_addr dstaddr;
+};
+
 #include <memory>
+#include <service/protocol.hpp>
 
 struct llarp_ev_loop;
 
@@ -82,28 +92,21 @@ namespace llarp
 {
   namespace net
   {
-    /// a network layer packet
-    struct NetPacket
+    /// an Packet
+    struct IPPacket
     {
-      virtual ~NetPacket(){};
+      static huint128_t
+      In6ToHUInt(in6_addr addr);
 
-      virtual byte_t
-      Version() const = 0;
+      static in6_addr
+      HUIntToIn6(huint128_t x);
 
-      virtual byte_t
-      IPProto() const = 0;
+      static huint128_t
+      ExpandV4(huint32_t x);
 
-      virtual llarp_buffer_t
-      Buffer() = 0;
+      static huint32_t
+      TruncateV6(huint128_t x);
 
-      virtual llarp_buffer_t
-      ConstBuffer() const = 0;
-    };
-
-    /// an IPv4 Packet
-    /// TODO: make it implement NetPacket
-    struct IPv4Packet
-    {
       static constexpr size_t MaxSize = 1500;
       llarp_time_t timestamp;
       size_t sz;
@@ -121,7 +124,7 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const IPv4Packet& pkt) const
+        operator()(const IPPacket& pkt) const
         {
           return pkt.timestamp;
         }
@@ -134,7 +137,7 @@ namespace llarp
         {
         }
         void
-        operator()(IPv4Packet& pkt) const
+        operator()(IPPacket& pkt) const
         {
           pkt.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
@@ -156,7 +159,7 @@ namespace llarp
       struct CompareSize
       {
         bool
-        operator()(const IPv4Packet& left, const IPv4Packet& right)
+        operator()(const IPPacket& left, const IPPacket& right)
         {
           return left.sz < right.sz;
         }
@@ -165,7 +168,7 @@ namespace llarp
       struct CompareOrder
       {
         bool
-        operator()(const IPv4Packet& left, const IPv4Packet& right)
+        operator()(const IPPacket& left, const IPPacket& right)
         {
           return left.timestamp < right.timestamp;
         }
@@ -183,37 +186,70 @@ namespace llarp
         return (ip_header*)&buf[0];
       }
 
-      inline huint32_t
-      src()
+      inline ipv6_header*
+      HeaderV6()
       {
-        return huint32_t{ntohl(Header()->saddr)};
+        return (ipv6_header*)&buf[0];
       }
 
-      inline huint32_t
-      dst()
+      inline const ipv6_header*
+      HeaderV6() const
       {
-        return huint32_t{ntohl(Header()->daddr)};
+        return (ipv6_header*)&buf[0];
       }
 
-      inline void
-      src(huint32_t ip)
+      inline int
+      Version() const
       {
-        Header()->saddr = htonl(ip.h);
+        return Header()->version;
       }
 
-      inline void
-      dst(huint32_t ip)
+      inline bool
+      IsV4() const
       {
-        Header()->daddr = htonl(ip.h);
+        return Version() == 4;
       }
 
-      // update ip packet (after packet gets out of network)
+      inline bool
+      IsV6() const
+      {
+        return Version() == 6;
+      }
+
+      inline service::ProtocolType
+      ServiceProtocol() const
+      {
+        if(IsV4())
+          return service::eProtocolTrafficV4;
+        else if(IsV6())
+          return service::eProtocolTrafficV6;
+        else
+          return service::eProtocolControl;
+      }
+
+      huint128_t
+      srcv6() const;
+
+      huint128_t
+      dstv6() const;
+
+      huint32_t
+      srcv4() const;
+
+      huint32_t
+      dstv4() const;
+
+      huint128_t
+      src4to6() const;
+
+      huint128_t
+      dst4to6() const;
+
       void
-      UpdateIPv4PacketOnDst(huint32_t newSrcIP, huint32_t newDstIP);
+      UpdateV4Address(huint32_t src, huint32_t dst);
 
-      // update ip packet (before packet gets inserted into network)
       void
-      UpdateIPv4PacketOnSrc();
+      UpdateV6Address(huint128_t src, huint128_t dst);
     };
 
   }  // namespace net

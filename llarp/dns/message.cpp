@@ -5,6 +5,7 @@
 #include <util/endian.hpp>
 #include <util/logger.hpp>
 #include <util/printer.hpp>
+#include <net/ip.hpp>
 
 #include <array>
 
@@ -165,7 +166,7 @@ namespace llarp
     }
 
     void
-    Message::AddINReply(llarp::huint32_t ip, bool isV6, RR_TTL_t ttl)
+    Message::AddINReply(llarp::huint128_t ip, bool isV6, RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -182,9 +183,10 @@ namespace llarp
         }
         else
         {
-          rec.rr_type = qTypeA;
+          const auto addr = net::IPPacket::TruncateV6(ip);
+          rec.rr_type     = qTypeA;
           rec.rData.resize(4);
-          htobe32buf(rec.rData.data(), ip.h);
+          htobe32buf(rec.rData.data(), addr.h);
         }
         answers.emplace_back(std::move(rec));
       }

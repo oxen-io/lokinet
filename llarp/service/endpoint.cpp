@@ -856,7 +856,7 @@ namespace llarp
     bool
     Endpoint::ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg)
     {
-      if(msg->proto == eProtocolTraffic)
+      if(msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
         util::Lock l(&m_InboundTrafficQueueMutex);
         m_InboundTrafficQueue.emplace(msg);
@@ -1009,7 +1009,7 @@ namespace llarp
         auto session = std::make_shared< exit::SNodeSession >(
             snode,
             std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
-                      [themIP]() -> huint32_t { return themIP; }),
+                      [themIP]() -> huint128_t { return themIP; }),
             m_Router, m_NumPaths, numHops, false, ShouldBundleRC());
         m_SNodeSessions.emplace(snode, session);
       }
@@ -1033,7 +1033,7 @@ namespace llarp
     Endpoint::SendToSNodeOrQueue(const RouterID& addr,
                                  const llarp_buffer_t& buf)
     {
-      auto pkt = std::make_shared< net::IPv4Packet >();
+      auto pkt = std::make_shared< net::IPPacket >();
       if(!pkt->Load(buf))
         return false;
       EnsurePathToSNode(addr, [pkt](RouterID, exit::BaseSession_ptr s) {
@@ -1055,7 +1055,7 @@ namespace llarp
         {
           const auto& msg = m_InboundTrafficQueue.top();
           llarp_buffer_t buf(msg->payload);
-          HandleWriteIPPacket(buf, [&]() -> huint32_t {
+          HandleWriteIPPacket(buf, [&]() -> huint128_t {
             return ObtainIPForAddr(msg->sender.Addr(), false);
           });
           m_InboundTrafficQueue.pop();

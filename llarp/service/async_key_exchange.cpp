@@ -14,7 +14,8 @@ namespace llarp
                                        const Identity& localident,
                                        const PQPubKey& introsetPubKey,
                                        const Introduction& remote,
-                                       IDataHandler* h, const ConvoTag& t)
+                                       IDataHandler* h, const ConvoTag& t,
+                                       ProtocolType proto)
         : logic(l)
         , remote(r)
         , m_LocalIdentity(localident)
@@ -23,6 +24,7 @@ namespace llarp
         , handler(h)
         , tag(t)
     {
+      msg.proto = proto;
     }
 
     void
@@ -69,8 +71,6 @@ namespace llarp
       self->msg.sender = self->m_LocalIdentity.pub;
       // set version
       self->msg.version = LLARP_PROTO_VERSION;
-      // set protocol
-      self->msg.proto = eProtocolTraffic;
       // encrypt and sign
       if(self->frame.EncryptAndSign(self->msg, K, self->m_LocalIdentity))
         self->logic->queue_job({self, &Result});

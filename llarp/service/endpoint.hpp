@@ -81,10 +81,10 @@ namespace llarp
       }
 
       /// get our ifaddr if it is set
-      virtual huint32_t
+      virtual huint128_t
       GetIfAddr() const
       {
-        return huint32_t{0};
+        return huint128_t{0};
       }
 
       virtual void
@@ -151,7 +151,7 @@ namespace llarp
       HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
 
-      virtual huint32_t
+      virtual huint128_t
       ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
       virtual bool
@@ -173,7 +173,7 @@ namespace llarp
 
       virtual bool
       HandleWriteIPPacket(const llarp_buffer_t& pkt,
-                          std::function< huint32_t(void) > getFromIP) = 0;
+                          std::function< huint128_t(void) > getFromIP) = 0;
 
       bool
       ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg);
@@ -312,6 +312,9 @@ namespace llarp
      protected:
       /// parent context that owns this endpoint
       Context* const context;
+
+      virtual bool
+      SupportsV6() const = 0;
 
       void
       RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);

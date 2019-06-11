@@ -13,6 +13,7 @@
 #endif
 
 #include <net/net_addr.hpp>
+#include <net/ip.hpp>
 #include <util/logger.hpp>
 #include <util/str.hpp>
 
@@ -1011,6 +1012,37 @@ namespace llarp
   }
 
   bool
+  IPRange::ContainsV4(const huint32_t& ip) const
+  {
+    return Contains(net::IPPacket::ExpandV4(ip));
+  }
+
+  std::string
+  IPRange::ToString() const
+  {
+    char buf[INET6_ADDRSTRLEN + 1] = {0};
+    std::string str;
+    in6_addr inaddr;
+    size_t numset      = 0;
+    absl::uint128 bits = netmask_bits.h;
+    while(bits)
+    {
+      if(bits & 1)
+        numset++;
+      bits >>= 1;
+    }
+    str += inet_ntop(AF_INET6, &inaddr, buf, sizeof(buf));
+    return str + "/" + std::to_string(numset);
+  }
+
+  IPRange
+  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
+  {
+    return IPRange{net::IPPacket::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)),
+                   netmask_ipv6_bits(mask + 96)};
+  }
+
+  bool
   IsIPv4Bogon(const huint32_t& addr)
   {
     static std::vector< IPRange > bogonRanges = {
@@ -1024,7 +1056,7 @@ namespace llarp
         iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
     for(const auto& bogon : bogonRanges)
     {
-      if(bogon.Contains(addr))
+      if(bogon.ContainsV4(addr))
       {
 #if defined(TESTNET)
         return false;

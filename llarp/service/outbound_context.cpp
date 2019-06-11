@@ -160,13 +160,12 @@ namespace llarp
       currentConvoTag.Randomize();
       AsyncKeyExchange* ex = new AsyncKeyExchange(
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
-          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag);
+          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
 
       ex->hook =
           std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
-      ex->msg.proto      = t;
       ex->msg.introReply = path->intro;
       ex->frame.F        = ex->msg.introReply.pathID;
       llarp_threadpool_queue_job(m_Endpoint->CryptoWorker(),

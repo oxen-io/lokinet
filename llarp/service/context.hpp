@@ -33,7 +33,7 @@ namespace llarp
 
       bool
       FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
-                         huint32_t &);
+                         huint128_t &);
 
       /// function visitor returns false to prematurely break iteration
       void

@@ -65,9 +65,11 @@ set(LIB_PLATFORM_SRC
   ev/pipe.cpp
   metrics/metrictank_publisher.cpp
   metrics/publishers.cpp
+  net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp
+  net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -194,8 +196,6 @@ set(LIB_SRC
   messages/transfer_traffic.cpp
   net/address_info.cpp
   net/exit_info.cpp
-  net/ip.cpp
-  net/net_int.cpp
   nodedb.cpp
   path/path.cpp
   path/path_types.cpp

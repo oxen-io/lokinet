@@ -188,14 +188,50 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
   return 0;
 }
 
+struct in6_ifreq {
+  struct in6_addr ifr6_addr;
+  __u32 ifr6_prefixlen;
+  unsigned int ifr6_ifindex;
+};
+
+
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s6, uint32_t bits)
 {
-  (void)dev;
-  (void)s6;
-  (void)bits;
-  tuntap_log(TUNTAP_LOG_NOTICE, "IPv6 is not implemented on your system");
-  return -1;
+  struct ifreq ifr;
+  struct sockaddr_in6 sai;
+  int sockfd; 
+  struct in6_ifreq ifr6;
+
+  sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
+  if (sockfd == -1) {
+    return -1;
+  }
+
+  /* get interface name */
+  strncpy(ifr.ifr_name, dev->if_name, IFNAMSIZ);
+
+  memset(&sai, 0, sizeof(struct sockaddr));
+  sai.sin6_family = AF_INET6;
+  sai.sin6_port = 0;
+
+  memcpy((char *) &ifr6.ifr6_addr, (char *) s6,
+sizeof(struct in6_addr));
+
+  if (ioctl(sockfd, SIOGIFINDEX, &ifr) < 0) {
+    perror("SIOGIFINDEX");
+    close(sockfd);
+    return -1;
+  }
+  ifr6.ifr6_ifindex = ifr.ifr_ifindex;
+  ifr6.ifr6_prefixlen = bits;
+  if (ioctl(sockfd, SIOCSIFADDR, &ifr6) < 0) {
+    perror("SIOCSIFADDR");
+    close(sockfd);
+    return -1;
+  }
+  close(sockfd);
+  return 0;
 }
 
 int

@@ -161,7 +161,7 @@ extern "C"
         llarp::LogError("invalid ipv6 address: ", addr);
         return -1;
       }
-      return tuntap_sys_set_ipv6(dev, &baddr6, mask);
+      return tuntap_sys_set_ipv6(dev, &baddr6, netmask);
     }
     else if(errval == -1)
     {

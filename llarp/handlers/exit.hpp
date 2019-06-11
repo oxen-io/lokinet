@@ -99,29 +99,29 @@ namespace llarp
       bool
       HasLocalMappedAddrFor(const PubKey& pk) const;
 
-      huint32_t
+      huint128_t
       GetIfAddr() const;
 
       void
       Flush();
 
      private:
-      huint32_t
+      huint128_t
       GetIPForIdent(const PubKey pk);
 
-      huint32_t
+      huint128_t
       AllocateNewAddress();
 
       /// obtain ip for service node session, creates a new session if one does
       /// not existing already
-      huint32_t
+      huint128_t
       ObtainServiceNodeIP(const RouterID& router);
 
       bool
-      QueueSNodePacket(const llarp_buffer_t& buf, huint32_t from);
+      QueueSNodePacket(const llarp_buffer_t& buf, huint128_t from);
 
       void
-      MarkIPActive(huint32_t ip);
+      MarkIPActive(huint128_t ip);
 
       void
       KickIdentOffExit(const PubKey& pk);
@@ -139,7 +139,7 @@ namespace llarp
                                PubKey::Hash >
           m_ActiveExits;
 
-      using KeyMap_t = std::unordered_map< PubKey, huint32_t, PubKey::Hash >;
+      using KeyMap_t = std::unordered_map< PubKey, huint128_t, PubKey::Hash >;
 
       KeyMap_t m_KeyToIP;
 
@@ -153,14 +153,15 @@ namespace llarp
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;
 
-      std::unordered_map< huint32_t, PubKey, huint32_t::Hash > m_IPToKey;
+      std::unordered_map< huint128_t, PubKey, huint128_t::Hash > m_IPToKey;
 
-      huint32_t m_IfAddr;
-      huint32_t m_HigestAddr;
-      huint32_t m_NextAddr;
+      huint128_t m_IfAddr;
+      huint128_t m_HigestAddr;
+
+      huint128_t m_NextAddr;
       IPRange m_OurRange;
 
-      std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
+      std::unordered_map< huint128_t, llarp_time_t, huint128_t::Hash >
           m_IPActivity;
 
       llarp_tun_io m_Tun;
@@ -168,7 +169,7 @@ namespace llarp
       Addr m_LocalResolverAddr;
       std::vector< Addr > m_UpstreamResolvers;
 
-      using Pkt_t = net::IPv4Packet;
+      using Pkt_t = net::IPPacket;
       using PacketQueue_t =
           util::CoDelQueue< Pkt_t, Pkt_t::GetTime, Pkt_t::PutTime,
                             Pkt_t::CompareOrder, Pkt_t::GetNow, util::NullMutex,

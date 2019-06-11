@@ -33,8 +33,9 @@ namespace llarp
 
     using ProtocolType = uint64_t;
 
-    constexpr ProtocolType eProtocolControl = 0UL;
-    constexpr ProtocolType eProtocolTraffic = 1UL;
+    constexpr ProtocolType eProtocolControl   = 0UL;
+    constexpr ProtocolType eProtocolTrafficV4 = 1UL;
+    constexpr ProtocolType eProtocolTrafficV6 = 2UL;
 
     /// inner message
     struct ProtocolMessage
@@ -42,7 +43,7 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto  = eProtocolTraffic;
+      ProtocolType proto  = eProtocolTrafficV4;
       llarp_time_t queued = 0;
       std::vector< byte_t > payload;
       Introduction introReply;
