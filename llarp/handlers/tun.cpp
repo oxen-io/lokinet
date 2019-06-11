@@ -718,6 +718,12 @@ namespace llarp
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
           }
+          else if(m_Exit && pkt.IsV6())
+          {
+            pkt.UpdateV6Address({0}, pkt.dstv6());
+            m_Exit->QueueUpstreamTraffic(std::move(pkt),
+                                         llarp::routing::ExitPadSize);
+          }
           else
           {
             llarp::LogWarn(Name(), " has no endpoint for ", dst);

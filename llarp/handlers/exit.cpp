@@ -92,7 +92,6 @@ namespace llarp
     ExitEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
-     
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
         huint32_t ip;
@@ -551,7 +550,7 @@ namespace llarp
         }
         else if(m_IfAddr.FromString(host_str))
         {
-          m_UseV6 = true;
+          m_UseV6                 = true;
           m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask);
         }
         else
