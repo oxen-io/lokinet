@@ -366,7 +366,8 @@ namespace llarp
       else if(msg.questions[0].qtype == dns::qTypeA
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA && SupportsV6();
+        const bool isV6 =
+            msg.questions[0].qtype == dns::qTypeAAAA && SupportsV6();
         const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         llarp::service::Address addr;
         // on MacOS this is a typeA query
@@ -404,7 +405,7 @@ namespace llarp
           else if(HasAddress(addr))
           {
             huint128_t ip = ObtainIPForAddr(addr, false);
-            msg.AddINReply(ip, isV6); 
+            msg.AddINReply(ip, isV6);
           }
           else
           {
@@ -414,7 +415,8 @@ namespace llarp
             return EnsurePathToService(
                 addr,
                 [=](const Address &, OutboundContext *ctx) {
-                  SendDNSReply(addr, ctx, replyMsg, reply, false, isV6 || !isV4);
+                  SendDNSReply(addr, ctx, replyMsg, reply, false,
+                               isV6 || !isV4);
                 },
                 2000);
           }
@@ -778,9 +780,8 @@ namespace llarp
               {
                 return false;
               }
-              pkt.UpdateIPv4Address(
-					  xhtonl(net::IPPacket::TruncateV6(themIP)),
-						xhtonl(net::IPPacket::TruncateV6(usIP)));
+              pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(themIP)),
+                                    xhtonl(net::IPPacket::TruncateV6(usIP)));
             }
             else if(pkt.IsV6())
             {
@@ -873,7 +874,7 @@ namespace llarp
     void
     TunEndpoint::MarkIPActive(huint128_t ip)
     {
-      llarp::LogDebug(Name(), " address " , ip,  " is active");
+      llarp::LogDebug(Name(), " address ", ip, " is active");
       m_IPActivity[ip] = std::max(Now(), m_IPActivity[ip]);
     }
 

@@ -117,7 +117,8 @@ namespace llarp
         dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
       else
         dst = pkt.dstv4();
-      pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
+      pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)),
+                            xhtonl(dst));
       m_UpstreamQueue.emplace(pkt, counter);
       m_TxRate += buf.underlying.sz;
       m_LastActive = m_Parent->Now();

@@ -210,7 +210,7 @@ namespace llarp
                 if(pkt.IsV4())
                 {
                   pkt.UpdateIPv6Address(net::IPPacket::ExpandV4(pkt.srcv4()),
-                                      m_OurIP);
+                                        m_OurIP);
                 }
                 else
                 {
@@ -220,8 +220,9 @@ namespace llarp
               else
               {
                 if(pkt.IsV4())
-                  pkt.UpdateIPv4Address(xhtonl(pkt.srcv4()),
-                                      xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
+                  pkt.UpdateIPv4Address(
+                      xhtonl(pkt.srcv4()),
+                      xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
                 else
                   return false;
               }

@@ -20,12 +20,12 @@ namespace llarp
     {
 #if __BYTE_ORDER == __BIG_ENDIAN
       return huint128_t{addr.s6_addr32[0]}
-          | (huint128_t{addr.s6_addr32[1]} << 32)
+      | (huint128_t{addr.s6_addr32[1]} << 32)
           | (huint128_t{addr.s6_addr32[2]} << 64)
           | (huint128_t{addr.s6_addr32[3]} << 96);
 #else
       return huint128_t{ntohl(addr.s6_addr32[3])}
-          | (huint128_t{ntohl(addr.s6_addr32[2])} << 32)
+      | (huint128_t{ntohl(addr.s6_addr32[2])} << 32)
           | (huint128_t{ntohl(addr.s6_addr32[1])} << 64)
           | (huint128_t{ntohl(addr.s6_addr32[0])} << 96);
 #endif
@@ -102,7 +102,6 @@ namespace llarp
       return huint32_t{ntohl(Header()->daddr)};
     }
 
-
 #if 0
     static uint32_t
     ipchksum_pseudoIPv4(nuint32_t src_ip, nuint32_t dst_ip, uint8_t proto,
@@ -141,7 +140,6 @@ namespace llarp
     }
 #endif
 
-
 #define ADD32CS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
 #define SUB32CS(x) ((uint32_t)((~x) & 0xFFff) + (uint32_t)((~x) >> 16))
 
@@ -150,10 +148,9 @@ namespace llarp
                       nuint32_t old_dst_ip, nuint32_t new_src_ip,
                       nuint32_t new_dst_ip)
     {
-
-      uint32_t sum = uint32_t(old_sum.n) +
-        ADD32CS(old_src_ip.n) + ADD32CS(old_dst_ip.n) +
-        SUB32CS(new_src_ip.n) + SUB32CS(new_dst_ip.n);
+      uint32_t sum = uint32_t(old_sum.n) + ADD32CS(old_src_ip.n)
+          + ADD32CS(old_dst_ip.n) + SUB32CS(new_src_ip.n)
+          + SUB32CS(new_dst_ip.n);
 
       // only need to do it 2 times to be sure
       // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
@@ -164,19 +161,26 @@ namespace llarp
     }
 
     static nuint16_t
-    deltaIPv6Checksum(nuint16_t old_sum,
-                      const uint32_t old_src_ip[4], const uint32_t old_dst_ip[4],
-                      const uint32_t new_src_ip[4], const uint32_t new_dst_ip[4])
+    deltaIPv6Checksum(nuint16_t old_sum, const uint32_t old_src_ip[4],
+                      const uint32_t old_dst_ip[4],
+                      const uint32_t new_src_ip[4],
+                      const uint32_t new_dst_ip[4])
     {
-      /* we don't actually care in what way integers are arranged in memory internally */
-      /* as long as uint16 pairs are swapped in correct direction, result will be correct (assuming there are no gaps in structure) */
-      /* we represent 128bit stuff there as 4 32bit ints, that should be more or less correct */
-      /* we could do 64bit ints too but then we couldn't reuse 32bit macros and that'd suck for 32bit cpus */
-#define ADDN128CS(x) (ADD32CS(x[0]) + ADD32CS(x[1]) + ADD32CS(x[2]) + ADD32CS(x[3]))
-#define SUBN128CS(x) (SUB32CS(x[0]) + SUB32CS(x[1]) + SUB32CS(x[2]) + SUB32CS(x[3]))
-      uint32_t sum = uint32_t(old_sum.n) +
-        ADDN128CS(old_src_ip) + ADDN128CS(old_dst_ip) +
-        SUBN128CS(new_src_ip) + SUBN128CS(new_dst_ip);
+      /* we don't actually care in what way integers are arranged in memory
+       * internally */
+      /* as long as uint16 pairs are swapped in correct direction, result will
+       * be correct (assuming there are no gaps in structure) */
+      /* we represent 128bit stuff there as 4 32bit ints, that should be more or
+       * less correct */
+      /* we could do 64bit ints too but then we couldn't reuse 32bit macros and
+       * that'd suck for 32bit cpus */
+#define ADDN128CS(x) \
+  (ADD32CS(x[0]) + ADD32CS(x[1]) + ADD32CS(x[2]) + ADD32CS(x[3]))
+#define SUBN128CS(x) \
+  (SUB32CS(x[0]) + SUB32CS(x[1]) + SUB32CS(x[2]) + SUB32CS(x[3]))
+      uint32_t sum = uint32_t(old_sum.n) + ADDN128CS(old_src_ip)
+          + ADDN128CS(old_dst_ip) + SUBN128CS(new_src_ip)
+          + SUBN128CS(new_dst_ip);
 #undef ADDN128CS
 #undef SUBN128CS
 
@@ -191,11 +195,10 @@ namespace llarp
 #undef ADD32CS
 #undef SUB32CS
 
-
     static void
     deltaChecksumIPv4TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                       size_t fragoff, size_t chksumoff, nuint32_t oSrcIP,
-                       nuint32_t oDstIP, nuint32_t nSrcIP, nuint32_t nDstIP)
+                         size_t fragoff, size_t chksumoff, nuint32_t oSrcIP,
+                         nuint32_t oDstIP, nuint32_t nSrcIP, nuint32_t nDstIP)
     {
       if(fragoff > chksumoff)
         return;
@@ -213,9 +216,9 @@ namespace llarp
 
     static void
     deltaChecksumIPv6TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                       size_t fragoff, size_t chksumoff,
-                       const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
-                       const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
+                         size_t fragoff, size_t chksumoff,
+                         const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
+                         const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
     {
       if(fragoff > chksumoff)
         return;
@@ -231,11 +234,10 @@ namespace llarp
         check->n = 0x0000;
     }
 
-
     static void
     deltaChecksumIPv4UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                       size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
-                       nuint32_t nSrcIP, nuint32_t nDstIP)
+                         size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
+                         nuint32_t nSrcIP, nuint32_t nDstIP)
     {
       if(fragoff > 6)
         return;
@@ -257,9 +259,9 @@ namespace llarp
 
     static void
     deltaChecksumIPv6UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                       size_t fragoff,
-                       const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
-                       const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
+                         size_t fragoff, const uint32_t oSrcIP[4],
+                         const uint32_t oDstIP[4], const uint32_t nSrcIP[4],
+                         const uint32_t nDstIP[4])
     {
       if(fragoff > 6)
         return;
@@ -286,7 +288,6 @@ namespace llarp
       //   check->n = 0xFFff;
     }
 
-
     void
     IPPacket::UpdateIPv4Address(nuint32_t nSrcIP, nuint32_t nDstIP)
     {
@@ -310,16 +311,16 @@ namespace llarp
         {
           case 6:  // TCP
             deltaChecksumIPv4TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
+                                 nDstIP);
             break;
           case 17:   // UDP
           case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
             deltaChecksumIPv4UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
+                                 nDstIP);
             break;
           case 33:  // DCCP
             deltaChecksumIPv4TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
+                                 nDstIP);
             break;
         }
       }
@@ -342,36 +343,39 @@ namespace llarp
       if(sz <= ihs)
         return;
 
-      auto hdr     = HeaderV6();
+      auto hdr = HeaderV6();
 
-      const auto oldSrcIP = hdr->srcaddr;
-      const auto oldDstIP = hdr->dstaddr;
+      const auto oldSrcIP    = hdr->srcaddr;
+      const auto oldDstIP    = hdr->dstaddr;
       const uint32_t *oSrcIP = oldSrcIP.s6_addr32;
       const uint32_t *oDstIP = oldDstIP.s6_addr32;
 
       // IPv6 address
-      hdr->srcaddr = HUIntToIn6(src);
-      hdr->dstaddr = HUIntToIn6(dst);
+      hdr->srcaddr           = HUIntToIn6(src);
+      hdr->dstaddr           = HUIntToIn6(dst);
       const uint32_t *nSrcIP = hdr->srcaddr.s6_addr32;
       const uint32_t *nDstIP = hdr->dstaddr.s6_addr32;
 
       // TODO IPv6 header options
-      auto pld = buf + ihs;
-      auto psz = sz - ihs;
+      auto pld             = buf + ihs;
+      auto psz             = sz - ihs;
       const size_t fragoff = 0;
 
       switch(hdr->proto)
       {
-          case 6:  // TCP
-            deltaChecksumIPv6TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP, nDstIP);
-            break;
-          case 17:   // UDP
-          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-            deltaChecksumIPv6UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP, nDstIP);
-            break;
-          case 33:  // DCCP
-            deltaChecksumIPv6TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP, nDstIP);
-            break;
+        case 6:  // TCP
+          deltaChecksumIPv6TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+          break;
+        case 17:   // UDP
+        case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+          deltaChecksumIPv6UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+          break;
+        case 33:  // DCCP
+          deltaChecksumIPv6TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+          break;
       }
     }
   }  // namespace net
