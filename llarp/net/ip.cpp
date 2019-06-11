@@ -145,7 +145,7 @@ namespace llarp
     void
     IPPacket::UpdateIPv4Address(nuint32_t nSrcIP, nuint32_t nDstIP)
     {
-      llarp::LogDebug("set src=", newSrcIP, " dst=", newDstIP);
+      llarp::LogDebug("set src=", nSrcIP, " dst=", nDstIP);
 
       auto hdr = Header();
 
@@ -280,6 +280,26 @@ namespace llarp
     }
 
     static void
+    deltaChecksumIPv6TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
+                       size_t fragoff, size_t chksumoff,
+                       const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
+                       const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
+    {
+      if(fragoff > chksumoff)
+        return;
+
+      auto check = (nuint16_t *)(pld + chksumoff - fragoff);
+
+      *check = deltaIPv6Checksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
+      // usually, TCP checksum field cannot be 0xFFff,
+      // because one's complement addition cannot result in 0x0000,
+      // and there's inversion in the end;
+      // emulate that.
+      if(check->n == 0xFFff)
+        check->n = 0x0000;
+    }
+
+    static void
     deltaChecksumIPv4UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
                        size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
                        nuint32_t nSrcIP, nuint32_t nDstIP)
@@ -292,6 +312,35 @@ namespace llarp
         return;  // 0 is used to indicate "no checksum", don't change
 
       *check = deltaIPv4Checksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
+      // 0 is used to indicate "no checksum"
+      // 0xFFff and 0 are equivalent in one's complement math
+      // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
+      // infact it's impossible to get 0 with such addition,
+      // when starting from non-0 value.
+      // inside deltachksum we don't invert so it's safe to skip check there
+      // if(check->n == 0x0000)
+      //   check->n = 0xFFff;
+    }
+
+    static void
+    deltaChecksumIPv6UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
+                       size_t fragoff,
+                       const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
+                       const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
+    {
+      if(fragoff > 6)
+        return;
+
+      auto check = (nuint16_t *)(pld + 6);
+      // 0 is used to indicate "no checksum", don't change
+      // even tho this shouldn't happen for IPv6, handle it properly
+      // we actually should drop/log 0-checksum packets per spec
+      // but that should be done at upper level than this function
+      // it's better to do correct thing there regardless
+      if(check->n == 0x0000)
+        return;
+
+      *check = deltaIPv6Checksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
       // 0 is used to indicate "no checksum"
       // 0xFFff and 0 are equivalent in one's complement math
       // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
