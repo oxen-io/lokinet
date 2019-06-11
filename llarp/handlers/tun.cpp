@@ -712,7 +712,7 @@ namespace llarp
         {
           if(m_Exit && pkt.IsV4() && !llarp::IsIPv4Bogon(pkt.dstv4()))
           {
-            pkt.UpdateV4Address({0}, pkt.dstv4());
+            pkt.UpdateIPv4Address({0}, xhtonl(pkt.dstv4()));
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
           }
@@ -738,9 +738,9 @@ namespace llarp
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
         if(pkt.IsV4())
-          pkt.UpdateV4Address({0}, {0});
+          pkt.UpdateIPv4Address({0}, {0});
         else
-          pkt.UpdateV6Address({0}, {0});
+          pkt.UpdateIPv6Address({0}, {0});
 
         if(sendFunc && sendFunc(pkt.Buffer()))
           return;
@@ -778,13 +778,15 @@ namespace llarp
               {
                 return false;
               }
-              pkt.UpdateV4Address(net::IPPacket::TruncateV6(themIP), net::IPPacket::TruncateV6(usIP));
+              pkt.UpdateIPv4Address(
+					  xhtonl(net::IPPacket::TruncateV6(themIP)),
+						xhtonl(net::IPPacket::TruncateV6(usIP)));
             }
             else if(pkt.IsV6())
             {
               if(pkt.srcv6() != huint128_t{0} || pkt.dstv6() != huint128_t{0})
                 return false;
-              pkt.UpdateV6Address(themIP, usIP);
+              pkt.UpdateIPv6Address(themIP, usIP);
             }
             return true;
           });

@@ -440,7 +440,7 @@ namespace llarp
       if(!pkt.Load(buf))
         return false;
       // rewrite ip
-      pkt.UpdateV6Address(from, m_IfAddr);
+      pkt.UpdateIPv6Address(from, m_IfAddr);
       return llarp_ev_tun_async_write(&m_Tun, pkt.Buffer());
     }
 

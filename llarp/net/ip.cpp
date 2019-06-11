@@ -142,97 +142,6 @@ namespace llarp
 #endif
 
 
-    void
-    IPPacket::UpdateIPv4Address(nuint32_t nSrcIP, nuint32_t nDstIP)
-    {
-      llarp::LogDebug("set src=", nSrcIP, " dst=", nDstIP);
-
-      auto hdr = Header();
-
-      auto oSrcIP = nuint32_t{hdr->saddr};
-      auto oDstIP = nuint32_t{hdr->daddr};
-
-      // L4 checksum
-      auto ihs = size_t(hdr->ihl * 4);
-      if(ihs <= sz)
-      {
-        auto pld = buf + ihs;
-        auto psz = sz - ihs;
-
-        auto fragoff = size_t((ntohs(hdr->frag_off) & 0x1Fff) * 8);
-
-        switch(hdr->protocol)
-        {
-          case 6:  // TCP
-            deltaChecksumIPv4TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
-            break;
-          case 17:   // UDP
-          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-            deltaChecksumIPv4UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
-            break;
-          case 33:  // DCCP
-            deltaChecksumIPv4TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
-                               nDstIP);
-            break;
-        }
-      }
-
-      // IPv4 checksum
-      auto v4chk = (nuint16_t *)&(hdr->check);
-      *v4chk     = deltaIPv4Checksum(*v4chk, oSrcIP, oDstIP, nSrcIP, nDstIP);
-
-      // write new IP addresses
-      hdr->saddr = nSrcIP.n;
-      hdr->daddr = nDstIP.n;
-    }
-
-    void
-    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
-    {
-      const size_t ihs = 40;
-
-      // XXX should've been checked at upper level?
-      if(sz <= ihs)
-        return;
-
-      auto hdr     = HeaderV6();
-
-      const uint32_t oSrcIP = hdr->srcaddr;
-      const uint32_t oDstIP = hdr->dstaddr;
-
-      // IPv6 address
-      hdr->srcaddr = HUIntToIn6(src);
-      hdr->dstaddr = HUIntToIn6(dst);
-
-      // TODO IPv6 header options
-      auto pld = buf + ihs;
-      auto psz = sz - ihs;
-
-      switch(hdr->proto)
-      {
-          case 6:  // TCP
-            deltaChecksumIPv6TCP(pld, psz, fragoff, 16, &oSrcIP.s6_addr32,
-                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
-                               &hdr->dstaddr.s6_addr32);
-            break;
-          case 17:   // UDP
-          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
-            deltaChecksumIPv6UDP(pld, psz, fragoff, &oSrcIP.s6_addr32,
-                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
-                               &hdr->dstaddr.s6_addr32);
-            break;
-          case 33:  // DCCP
-            deltaChecksumIPv6TCP(pld, psz, fragoff, 6, &oSrcIP.s6_addr32,
-                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
-                               &hdr->dstaddr.s6_addr32);
-            break;
-      }
-    }
-
-
-
 #define ADD32CS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
 #define SUB32CS(x) ((uint32_t)((~x) & 0xFFff) + (uint32_t)((~x) >> 16))
 
@@ -256,8 +165,8 @@ namespace llarp
 
     static nuint16_t
     deltaIPv6Checksum(nuint16_t old_sum,
-                      const uint32 old_src_ip[4], const uint32 old_dst_ip[4],
-                      const uint32 new_src_ip[4], const uint32 new_dst_ip[4])
+                      const uint32_t old_src_ip[4], const uint32_t old_dst_ip[4],
+                      const uint32_t new_src_ip[4], const uint32_t new_dst_ip[4])
     {
       /* we don't actually care in what way integers are arranged in memory internally */
       /* as long as uint16 pairs are swapped in correct direction, result will be correct (assuming there are no gaps in structure) */
@@ -265,7 +174,7 @@ namespace llarp
       /* we could do 64bit ints too but then we couldn't reuse 32bit macros and that'd suck for 32bit cpus */
 #define ADDN128CS(x) (ADD32CS(x[0]) + ADD32CS(x[1]) + ADD32CS(x[2]) + ADD32CS(x[3]))
 #define SUBN128CS(x) (SUB32CS(x[0]) + SUB32CS(x[1]) + SUB32CS(x[2]) + SUB32CS(x[3]))
-      uint32_t sum = uint32_t(old_sum) +
+      uint32_t sum = uint32_t(old_sum.n) +
         ADDN128CS(old_src_ip) + ADDN128CS(old_dst_ip) +
         SUBN128CS(new_src_ip) + SUBN128CS(new_dst_ip);
 #undef ADDN128CS
@@ -375,6 +284,95 @@ namespace llarp
       // inside deltachksum we don't invert so it's safe to skip check there
       // if(check->n == 0x0000)
       //   check->n = 0xFFff;
+    }
+
+
+    void
+    IPPacket::UpdateIPv4Address(nuint32_t nSrcIP, nuint32_t nDstIP)
+    {
+      llarp::LogDebug("set src=", nSrcIP, " dst=", nDstIP);
+
+      auto hdr = Header();
+
+      auto oSrcIP = nuint32_t{hdr->saddr};
+      auto oDstIP = nuint32_t{hdr->daddr};
+
+      // L4 checksum
+      auto ihs = size_t(hdr->ihl * 4);
+      if(ihs <= sz)
+      {
+        auto pld = buf + ihs;
+        auto psz = sz - ihs;
+
+        auto fragoff = size_t((ntohs(hdr->frag_off) & 0x1Fff) * 8);
+
+        switch(hdr->protocol)
+        {
+          case 6:  // TCP
+            deltaChecksumIPv4TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+            break;
+          case 17:   // UDP
+          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+            deltaChecksumIPv4UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+            break;
+          case 33:  // DCCP
+            deltaChecksumIPv4TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
+                               nDstIP);
+            break;
+        }
+      }
+
+      // IPv4 checksum
+      auto v4chk = (nuint16_t *)&(hdr->check);
+      *v4chk     = deltaIPv4Checksum(*v4chk, oSrcIP, oDstIP, nSrcIP, nDstIP);
+
+      // write new IP addresses
+      hdr->saddr = nSrcIP.n;
+      hdr->daddr = nDstIP.n;
+    }
+
+    void
+    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
+    {
+      const size_t ihs = 40;
+
+      // XXX should've been checked at upper level?
+      if(sz <= ihs)
+        return;
+
+      auto hdr     = HeaderV6();
+
+      const auto oldSrcIP = hdr->srcaddr;
+      const auto oldDstIP = hdr->dstaddr;
+      const uint32_t *oSrcIP = oldSrcIP.s6_addr32;
+      const uint32_t *oDstIP = oldDstIP.s6_addr32;
+
+      // IPv6 address
+      hdr->srcaddr = HUIntToIn6(src);
+      hdr->dstaddr = HUIntToIn6(dst);
+      const uint32_t *nSrcIP = hdr->srcaddr.s6_addr32;
+      const uint32_t *nDstIP = hdr->dstaddr.s6_addr32;
+
+      // TODO IPv6 header options
+      auto pld = buf + ihs;
+      auto psz = sz - ihs;
+      const size_t fragoff = 0;
+
+      switch(hdr->proto)
+      {
+          case 6:  // TCP
+            deltaChecksumIPv6TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP, nDstIP);
+            break;
+          case 17:   // UDP
+          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+            deltaChecksumIPv6UDP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP, nDstIP);
+            break;
+          case 33:  // DCCP
+            deltaChecksumIPv6TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP, nDstIP);
+            break;
+      }
     }
   }  // namespace net
 }  // namespace llarp
