@@ -337,7 +337,7 @@ namespace llarp
     void
     IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
     {
-      const size_t ihs = 40;
+      const size_t ihs = 4 + 4 + 16 + 16;
 
       // XXX should've been checked at upper level?
       if(sz <= ihs)
@@ -357,11 +357,55 @@ namespace llarp
       const uint32_t *nDstIP = hdr->dstaddr.s6_addr32;
 
       // TODO IPv6 header options
-      auto pld             = buf + ihs;
-      auto psz             = sz - ihs;
-      const size_t fragoff = 0;
+      auto pld = buf + ihs;
+      auto psz = sz - ihs;
 
-      switch(hdr->proto)
+      size_t fragoff = 0;
+      auto nextproto = hdr->proto;
+      for(;;)
+      {
+        switch(nextproto)
+        {
+          case 0:   // Hop-by-Hop Options
+          case 43:  // Routing Header
+          case 60:  // Destination Options
+          {
+            nextproto   = pld[0];
+            auto addlen = (size_t(pld[1]) + 1) * 8;
+            if(psz < addlen)
+              return;
+            pld += addlen;
+            psz -= addlen;
+            break;
+          }
+
+          case 44:  // Fragment Header
+            /*
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Next Header  |   Reserved    |      Fragment Offset    |Res|M|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                         Identification                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+             */
+            nextproto = pld[0];
+            fragoff   = (uint16_t(pld[2]) << (8 - 3)) | (uint16_t(pld[3]) >> 3);
+            if(psz < 8)
+              return;
+            pld += 8;
+            psz -= 8;
+
+            // jump straight to payload processing
+            if(fragoff != 0)
+              goto endprotohdrs;
+            break;
+
+          default:
+            goto endprotohdrs;
+        }
+      }
+    endprotohdrs:;
+
+      switch(nextproto)
       {
         case 6:  // TCP
           deltaChecksumIPv6TCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
