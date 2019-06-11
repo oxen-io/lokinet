@@ -104,7 +104,8 @@ namespace llarp
       virtual ~Publisher() = default;
 
       virtual void
-      publish(const Sample< double > &sample) = 0;
+      publish(const Sample< double > &doubleSample,
+              const Sample< int > &intSample) = 0;
     };
 
     template < typename LhsType, typename RhsType >
@@ -202,69 +203,6 @@ namespace llarp
     using DoubleCollectors = Collectors< double >;
     using IntCollectors    = Collectors< int >;
 
-    class MetricCollectors
-    {
-     private:
-      DoubleCollectors m_doubleCollectors;
-      IntCollectors m_intCollectors;
-
-      MetricCollectors(const MetricCollectors &) = delete;
-      MetricCollectors &
-      operator=(const MetricCollectors &) = delete;
-
-     public:
-      MetricCollectors(const Id &id)
-          : m_doubleCollectors(id), m_intCollectors(id)
-      {
-      }
-
-      DoubleCollectors &
-      doubleCollectors()
-      {
-        return m_doubleCollectors;
-      }
-
-      IntCollectors &
-      intCollectors()
-      {
-        return m_intCollectors;
-      }
-
-      const DoubleCollectors &
-      doubleCollectors() const
-      {
-        return m_doubleCollectors;
-      }
-
-      const IntCollectors &
-      intCollectors() const
-      {
-        return m_intCollectors;
-      }
-
-      Record< double >
-      combineAndClear()
-      {
-        Record< double > res = m_doubleCollectors.combineAndClear();
-        metrics::combine(res, m_intCollectors.combineAndClear());
-        return res;
-      }
-
-      Record< double >
-      combine()
-      {
-        Record< double > res = m_doubleCollectors.combine();
-        metrics::combine(res, m_intCollectors.combine());
-        return res;
-      }
-
-      const Id &
-      id() const
-      {
-        return m_intCollectors.id();
-      }
-    };
-
     class Registry
     {
       using NamedCategory = std::tuple< const char *, const char * >;
@@ -359,83 +297,163 @@ namespace llarp
       getAll() const;
     };
 
+    using DoubleRecords = std::vector< Record< double > >;
+    using IntRecords    = std::vector< Record< int > >;
+
+    struct Records
+    {
+      DoubleRecords doubleRecords;
+      IntRecords intRecords;
+
+      Records()
+      {
+      }
+
+      Records(const DoubleRecords &d, const IntRecords &i)
+          : doubleRecords(d), intRecords(i)
+      {
+      }
+    };
+
+    inline bool
+    operator==(const Records &lhs, const Records &rhs)
+    {
+      return std::tie(lhs.doubleRecords, lhs.intRecords)
+          == std::tie(rhs.doubleRecords, rhs.intRecords);
+    }
+
+    template < typename Type >
     class CollectorRepo
     {
-      using MetricCollectorsPtr = std::shared_ptr< MetricCollectors >;
-      using IdCollectors        = std::map< Id, MetricCollectorsPtr >;
+      using CollectorsPtr = std::shared_ptr< Collectors< Type > >;
+      using IdCollectors  = std::map< Id, CollectorsPtr >;
       using CategoryCollectors =
-          std::map< const Category *, std::vector< MetricCollectors * > >;
+          std::map< const Category *, std::vector< Collectors< Type > * > >;
 
       Registry *m_registry;
       IdCollectors m_collectors;
       CategoryCollectors m_categories;
+
       mutable util::Mutex m_mutex;
 
       CollectorRepo(const CollectorRepo &) = delete;
       CollectorRepo &
       operator=(const CollectorRepo &) = delete;
 
-      MetricCollectors &
-      getCollectors(const Id &id);
+      Collectors< Type > &
+      getCollectors(const Id &id)
+      {
+        auto it = m_collectors.find(id);
+
+        if(it == m_collectors.end())
+        {
+          assert(id.valid());
+
+          const Category *cat = id.category();
+
+          auto ptr  = std::make_shared< Collectors< Type > >(id);
+          auto &vec = m_categories[cat];
+          vec.reserve(vec.size() + 1);
+
+          it = m_collectors.emplace(id, ptr).first;
+          vec.push_back(ptr.get());
+        }
+
+        return *it->second.get();
+      }
+
+      template < Record< Type > (Collectors< Type >::*func)() >
+      std::vector< Record< Type > >
+      collectOp(const Category *category)
+      {
+        absl::WriterMutexLock l(&m_mutex);
+
+        auto it = m_categories.find(category);
+
+        if(it == m_categories.end())
+        {
+          return {};
+        }
+
+        std::vector< Record< Type > > result;
+        auto &collectors = it->second;
+        result.reserve(collectors.size());
+
+        std::transform(collectors.begin(), collectors.end(),
+                       std::back_inserter(result),
+                       [](auto &collector) { return (collector->*func)(); });
+
+        return result;
+      }
 
      public:
-      CollectorRepo(Registry *registry) : m_registry(registry)
+      explicit CollectorRepo(Registry *registry) : m_registry(registry)
       {
       }
 
-      std::vector< Record< double > >
-      collectAndClear(const Category *category);
-
-      std::vector< Record< double > >
-      collect(const Category *category);
-
-      DoubleCollector *
-      defaultDoubleCollector(const char *category, const char *name)
+      std::vector< Record< Type > >
+      collectAndClear(const Category *category)
       {
-        return defaultDoubleCollector(m_registry->get(category, name));
+        return collectOp< &Collectors< Type >::combineAndClear >(category);
       }
 
-      DoubleCollector *
-      defaultDoubleCollector(const Id &id);
-
-      IntCollector *
-      defaultIntCollector(const char *category, const char *name)
+      std::vector< Record< Type > >
+      collect(const Category *category)
       {
-        return defaultIntCollector(m_registry->get(category, name));
+        return collectOp< &Collectors< Type >::combine >(category);
       }
 
-      IntCollector *
-      defaultIntCollector(const Id &id);
-
-      std::shared_ptr< DoubleCollector >
-      addDoubleCollector(const char *category, const char *name)
+      Collector< Type > *
+      defaultCollector(const char *category, const char *name)
       {
-        return addDoubleCollector(m_registry->get(category, name));
+        return defaultCollector(m_registry->get(category, name));
       }
 
-      std::shared_ptr< DoubleCollector >
-      addDoubleCollector(const Id &id)
+      Collector< Type > *
+      defaultCollector(const Id &id)
+      {
+        {
+          absl::ReaderMutexLock l(&m_mutex);
+          auto it = m_collectors.find(id);
+          if(it != m_collectors.end())
+          {
+            return it->second->defaultCollector();
+          }
+        }
+
+        {
+          absl::WriterMutexLock l(&m_mutex);
+          return getCollectors(id).defaultCollector();
+        }
+      }
+
+      std::shared_ptr< Collector< Type > >
+      addCollector(const char *category, const char *name)
+      {
+        return addCollector(m_registry->get(category, name));
+      }
+
+      std::shared_ptr< Collector< Type > >
+      addCollector(const Id &id)
       {
         absl::WriterMutexLock l(&m_mutex);
-        return getCollectors(id).doubleCollectors().add();
+        return getCollectors(id).add();
       }
 
-      std::shared_ptr< IntCollector >
-      addIntCollector(const char *category, const char *name)
+      std::vector< std::shared_ptr< Collector< Type > > >
+      allCollectors(const Id &id)
       {
-        return addIntCollector(m_registry->get(category, name));
-      }
+        absl::ReaderMutexLock l(&m_mutex);
 
-      std::shared_ptr< IntCollector >
-      addIntCollector(const Id &id)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        return getCollectors(id).intCollectors().add();
-      }
+        auto it = m_collectors.find(id);
 
-      std::pair< std::vector< std::shared_ptr< DoubleCollector > >,
-                 std::vector< std::shared_ptr< IntCollector > > >
-      allCollectors(const Id &id);
+        if(it == m_collectors.end())
+        {
+          return {};
+        }
+
+        return it->second->collectors();
+      }
 
       Registry &
       registry()
@@ -600,93 +618,13 @@ namespace llarp
       }
     };
 
-    class CallbackRegistry
-    {
-      using Handle = uint64_t;
-      using RecordCallback =
-          std::function< std::vector< Record< double > >(bool) >;
-      using CallbackMap = std::multimap< const Category *, RecordCallback >;
-      using HandleMap   = std::map< Handle, CallbackMap::iterator >;
-
-      Handle m_next;
-      CallbackMap m_callbackMap;
-      HandleMap m_handleMap;
-
-      CallbackRegistry(const CallbackRegistry &) = delete;
-      CallbackRegistry &
-      operator=(const CallbackRegistry &) = delete;
-
-     public:
-      using iterator = CallbackMap::iterator;
-
-      CallbackRegistry() : m_next(1)
-      {
-      }
-
-      Handle
-      registerCallback(const Category *category, const RecordCallback &callback)
-      {
-        Handle handle = m_next++;
-
-        auto it = m_callbackMap.emplace(category, callback);
-        m_handleMap.emplace(handle, it);
-
-        return handle;
-      }
-
-      bool
-      removeCallback(Handle handle)
-      {
-        auto it = m_handleMap.find(handle);
-
-        if(it == m_handleMap.end())
-        {
-          return false;
-        }
-
-        m_callbackMap.erase(it->second);
-        m_handleMap.erase(it);
-        return true;
-      }
-
-      iterator
-      begin()
-      {
-        return m_callbackMap.begin();
-      }
-      iterator
-      end()
-      {
-        return m_callbackMap.end();
-      }
-
-      iterator
-      lowerBound(const Category *category)
-      {
-        return m_callbackMap.lower_bound(category);
-      }
-      iterator
-      upperBound(const Category *category)
-      {
-        return m_callbackMap.upper_bound(category);
-      }
-
-      std::vector< const RecordCallback * >
-      callbacksFor(const Category *category) const
-      {
-        std::vector< const RecordCallback * > result;
-        auto beg = m_callbackMap.lower_bound(category);
-        auto end = m_callbackMap.upper_bound(category);
-
-        result.reserve(std::distance(beg, end));
-        std::transform(beg, end, std::back_inserter(result),
-                       [](const auto &x) { return &x.second; });
-
-        return result;
-      }
-    };
-
     struct PublisherHelper;
+
+    struct Samples
+    {
+      Sample< double > doubleSample;
+      Sample< int > intSample;
+    };
 
     /// The big dog.
     /// This class owns everything else, and is responsible for managing the
@@ -696,9 +634,6 @@ namespace llarp
      public:
       // Public callback. If the bool flag is true, clear the metrics back to
       // their default state.
-      using RecordCallback =
-          std::function< std::vector< Record< double > >(bool) >;
-
       using Handle = uint64_t;
 
      private:
@@ -708,8 +643,8 @@ namespace llarp
       friend struct PublisherHelper;
 
       Registry m_registry;
-      CollectorRepo m_repo;
-      CallbackRegistry m_callbacks GUARDED_BY(m_mutex);
+      CollectorRepo< double > m_doubleRepo;
+      CollectorRepo< int > m_intRepo;
       PublisherRegistry m_publishers GUARDED_BY(m_mutex);
 
       const absl::Duration m_createTime;
@@ -723,28 +658,10 @@ namespace llarp
           std::numeric_limits< Handle >::max();
 
       Manager()
-          : m_repo(&m_registry), m_createTime(absl::Now() - absl::UnixEpoch())
+          : m_doubleRepo(&m_registry)
+          , m_intRepo(&m_registry)
+          , m_createTime(absl::Now() - absl::UnixEpoch())
       {
-      }
-
-      /// Register a callback for
-      Handle
-      registerCallback(const char *categoryName, const RecordCallback &callback)
-      {
-        return registerCallback(m_registry.get(categoryName), callback);
-      }
-      Handle
-      registerCallback(const Category *category, const RecordCallback &callback)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        return m_callbacks.registerCallback(category, callback);
-      }
-
-      bool
-      removeCallback(Handle handle)
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        return m_callbacks.removeCallback(handle);
       }
 
       /// Add a `publisher` which will receive all events
@@ -787,24 +704,23 @@ namespace llarp
       }
 
       // clang-format off
-      CollectorRepo&       collectorRepo()       { return m_repo; }
-      const CollectorRepo& collectorRepo() const { return m_repo; }
+      CollectorRepo<double>&       doubleCollectorRepo()       { return m_doubleRepo; }
+      CollectorRepo<int>&       intCollectorRepo()       { return m_intRepo; }
       Registry&            registry()            { return m_registry; }
       const Registry&      registry() const      { return m_registry; }
       // clang-format on
 
       /// Publish specific categories of metric matching the category/categories
-      Sample< double >
-      collectSample(std::vector< Record< double > > &records,
-                    bool clear = false)
+      Samples
+      collectSample(Records &records, bool clear = false)
       {
         std::vector< const Category * > allCategories = m_registry.getAll();
         return collectSample(
             records, absl::Span< const Category * >{allCategories}, clear);
       }
-      Sample< double >
-      collectSample(std::vector< Record< double > > &records,
-                    absl::Span< const Category * > categories,
+
+      Samples
+      collectSample(Records &records, absl::Span< const Category * > categories,
                     bool clear = false);
 
       /// Publish specific categories of metric matching the category/categories
@@ -952,8 +868,7 @@ namespace llarp
     };
 
     template < typename Collector, typename Value,
-               Collector *(CollectorRepo::*catFunc)(const char *, const char *),
-               Collector *(CollectorRepo::*idFunc)(const Id &) >
+               CollectorRepo< Value > &(Manager::*repoFunc)() >
     class Metric
     {
       Collector *m_collector;  // can be null
@@ -964,7 +879,7 @@ namespace llarp
       lookup(const char *category, const char *name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
-        return manager ? (manager->collectorRepo().*catFunc)(category, name)
+        return manager ? (manager->*repoFunc)().defaultCollector(category, name)
                        : 0;
       }
 
@@ -972,7 +887,7 @@ namespace llarp
       lookup(const Id &id, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
-        return manager ? (manager->collectorRepo().*idFunc)(id) : 0;
+        return manager ? (manager->*repoFunc)().defaultCollector(id) : 0;
       }
 
       Metric(const char *category, const char *name, Manager *manager)
@@ -1061,7 +976,7 @@ namespace llarp
                    const char *category, const char *metric)
       {
         Manager *manager = DefaultManager::instance();
-        *collector       = manager->collectorRepo().*catFunc(category, metric);
+        *collector = (manager->*repoFunc().defaultCollector)(category, metric);
         manager->registry().registerContainer((*collector)->id().category(),
                                               container);
       }
@@ -1072,7 +987,7 @@ namespace llarp
                    Publication::Type type)
       {
         Manager *manager = DefaultManager::instance();
-        *collector       = manager->collectorRepo().*catFunc(category, metric);
+        *collector = (manager->*repoFunc().defaultCollector)(category, metric);
         manager->registry().registerContainer((*collector)->id().category(),
                                               container);
         manager->registry().publicationType((*collector)->id(), type);
@@ -1080,12 +995,9 @@ namespace llarp
     };
 
     using DoubleMetric =
-        Metric< DoubleCollector, double, &CollectorRepo::defaultDoubleCollector,
-                &CollectorRepo::defaultDoubleCollector >;
+        Metric< DoubleCollector, double, &Manager::doubleCollectorRepo >;
 
-    using IntMetric =
-        Metric< IntCollector, int, &CollectorRepo::defaultIntCollector,
-                &CollectorRepo::defaultIntCollector >;
+    using IntMetric = Metric< IntCollector, int, &Manager::intCollectorRepo >;
 
     class TimerGuard
     {

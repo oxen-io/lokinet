@@ -215,20 +215,21 @@ namespace llarp
     }  // namespace
 
     void
-    StreamPublisher::publish(const Sample< double > &values)
+    StreamPublisher::publish(const Sample< double > &doubleValues,
+                             const Sample< int > &)
     {
-      if(values.recordCount() == 0)
+      if(doubleValues.recordCount() == 0)
       {
         // nothing to publish
         return;
       }
 
-      m_stream << values.sampleTime() << " " << values.recordCount()
+      m_stream << doubleValues.sampleTime() << " " << doubleValues.recordCount()
                << " Records\n";
 
-      auto gIt  = values.begin();
-      auto prev = values.begin();
-      for(; gIt != values.end(); ++gIt)
+      auto gIt  = doubleValues.begin();
+      auto prev = doubleValues.begin();
+      for(; gIt != doubleValues.end(); ++gIt)
       {
         const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
 
@@ -246,20 +247,21 @@ namespace llarp
     }
 
     void
-    JsonPublisher::publish(const Sample< double > &values)
+    JsonPublisher::publish(const Sample< double > &doubleValues,
+                           const Sample< int > &)
     {
-      if(values.recordCount() == 0)
+      if(doubleValues.recordCount() == 0)
       {
         // nothing to publish
         return;
       }
 
       nlohmann::json result;
-      result["sampleTime"]  = absl::UnparseFlag(values.sampleTime());
-      result["recordCount"] = values.recordCount();
-      auto gIt              = values.begin();
-      auto prev             = values.begin();
-      for(; gIt != values.end(); ++gIt)
+      result["sampleTime"]  = absl::UnparseFlag(doubleValues.sampleTime());
+      result["recordCount"] = doubleValues.recordCount();
+      auto gIt              = doubleValues.begin();
+      auto prev             = doubleValues.begin();
+      for(; gIt != doubleValues.end(); ++gIt)
       {
         const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
 

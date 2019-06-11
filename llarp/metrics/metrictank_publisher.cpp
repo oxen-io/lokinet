@@ -318,7 +318,8 @@ namespace llarp
     }
 
     void
-    MetricTankPublisherInterface::publish(const Sample< double > &values)
+    MetricTankPublisherInterface::publish(const Sample< double > &values,
+                           const Sample< int > &)
     {
       if(values.recordCount() == 0)
       {

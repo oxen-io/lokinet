@@ -416,7 +416,7 @@ namespace llarp
       explicit Record(const Id &id)
           : m_id(id)
           , m_count(0)
-          , m_total(0.0)
+          , m_total()
           , m_min(DEFAULT_MIN())
           , m_max(DEFAULT_MAX())
       {
@@ -481,6 +481,13 @@ namespace llarp
       return (lhs.id() == rhs.id() && lhs.count() == rhs.count()
               && lhs.total() == rhs.total() && lhs.min() == rhs.min()
               && lhs.max() == rhs.max());
+    }
+
+    template < typename Type >
+    inline bool
+    operator!=(const Record< Type > &lhs, const Record< Type > &rhs)
+    {
+      return !(lhs == rhs);
     }
 
     template < typename Type >

@@ -26,7 +26,7 @@ TEST(MetricsPublisher, StreamPublisher)
   sample.sampleTime(absl::Now());
   sample.pushGroup(records.data(), records.size(), absl::Seconds(5));
 
-  myPublisher.publish(sample);
+  myPublisher.publish(sample, metrics::Sample< int >());
 
   std::cout << stream.str();
 }

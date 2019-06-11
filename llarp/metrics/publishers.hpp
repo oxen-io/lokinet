@@ -26,7 +26,8 @@ namespace llarp
       }
 
       void
-      publish(const Sample< double >& values) override;
+      publish(const Sample< double >& doubleValues,
+              const Sample< int >& intValues) override;
     };
 
     class JsonPublisher final : public Publisher
@@ -47,7 +48,8 @@ namespace llarp
       }
 
       void
-      publish(const Sample< double >& values) override;
+      publish(const Sample< double >& doubleValues,
+              const Sample< int >& intValues) override;
 
       static void
       directoryPublisher(const nlohmann::json& result, const fs::path& path);
