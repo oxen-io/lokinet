@@ -118,7 +118,7 @@ namespace llarp
           dst = m_Parent->GetIfAddr();
         else
           dst = pkt.dstv6();
-        pkt.UpdateV6Address(m_IP, dst);
+        pkt.UpdateIPv6Address(m_IP, dst);
       }
       else if(pkt.IsV4() && !m_Parent->SupportsV6())
       {
@@ -127,7 +127,7 @@ namespace llarp
           dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
         else
           dst = pkt.dstv4();
-        pkt.UpdateIPV4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
+        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
       }
       else
       {

@@ -720,7 +720,7 @@ namespace llarp
           }
           else if(m_Exit && pkt.IsV6())
           {
-            pkt.UpdateV6Address({0}, pkt.dstv6());
+            pkt.UpdateIPv6Address({0}, pkt.dstv6());
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
           }
