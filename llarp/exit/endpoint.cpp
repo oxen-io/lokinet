@@ -111,14 +111,28 @@ namespace llarp
       llarp::net::IPPacket pkt;
       if(!pkt.Load(buf.underlying))
         return false;
-
-      huint32_t dst;
-      if(m_RewriteSource)
-        dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
+      if(pkt.IsV6() && m_Parent->SupportsV6())
+      {
+        huint128_t dst;
+        if(m_RewriteSource)
+          dst = m_Parent->GetIfAddr();
+        else
+          dst = pkt.dstv6();
+        pkt.UpdateV6Address(m_IP, dst);
+      }
+      else if(pkt.IsV4() && !m_Parent->SupportsV6())
+      {
+        huint32_t dst;
+        if(m_RewriteSource)
+          dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
+        else
+          dst = pkt.dstv4();
+        pkt.UpdateIPV4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
+      }
       else
-        dst = pkt.dstv4();
-      pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)),
-                            xhtonl(dst));
+      {
+        return false;
+      }
       m_UpstreamQueue.emplace(pkt, counter);
       m_TxRate += buf.underlying.sz;
       m_LastActive = m_Parent->Now();
