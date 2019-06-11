@@ -188,6 +188,50 @@ namespace llarp
       hdr->daddr = nDstIP.n;
     }
 
+    void
+    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
+    {
+      const size_t ihs = 40;
+
+      // XXX should've been checked at upper level?
+      if(sz <= ihs)
+        return;
+
+      auto hdr     = HeaderV6();
+
+      const uint32_t oSrcIP = hdr->srcaddr;
+      const uint32_t oDstIP = hdr->dstaddr;
+
+      // IPv6 address
+      hdr->srcaddr = HUIntToIn6(src);
+      hdr->dstaddr = HUIntToIn6(dst);
+
+      // TODO IPv6 header options
+      auto pld = buf + ihs;
+      auto psz = sz - ihs;
+
+      switch(hdr->proto)
+      {
+          case 6:  // TCP
+            checksumDstIPv6TCP(pld, psz, fragoff, 16, &oSrcIP.s6_addr32,
+                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
+                               &hdr->dstaddr.s6_addr32);
+            break;
+          case 17:   // UDP
+          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
+            checksumDstIPv6UDP(pld, psz, fragoff, &oSrcIP.s6_addr32,
+                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
+                               &hdr->dstaddr.s6_addr32);
+            break;
+          case 33:  // DCCP
+            checksumDstIPv6TCP(pld, psz, fragoff, 6, &oSrcIP.s6_addr32,
+                               &oDstIP.s6_addr32, &hdr->srcaddr.s6_addr32,
+                               &hdr->dstaddr.s6_addr32);
+            break;
+      }
+    }
+
+
 
 #define ADD32CS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
 #define SUB32CS(x) ((uint32_t)((~x) & 0xFFff) + (uint32_t)((~x) >> 16))
@@ -238,27 +282,6 @@ namespace llarp
 #undef ADD32CS
 #undef SUB32CS
 
-    void
-    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
-    {
-      if(sz <= 40)
-        return;
-      auto hdr     = HeaderV6();
-      auto oldSrc = hdr->srcaddr;
-      auto oldDst = hdr->dstaddr;
-      hdr->srcaddr = HUIntToIn6(src);
-      hdr->dstaddr = HUIntToIn6(dst);
-      const size_t ihs = 40;
-      auto pld = buf + ihs;
-      auto psz = sz - ihs;
-      switch(hdr->proto)
-      {
-        //tcp
-        case 6:
-          return;
-      }
-    }
-
 
     static void
     deltaChecksumIPv4TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
@@ -299,6 +322,7 @@ namespace llarp
         check->n = 0x0000;
     }
 
+
     static void
     deltaChecksumIPv4UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
                        size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
@@ -337,6 +361,8 @@ namespace llarp
       // we actually should drop/log 0-checksum packets per spec
       // but that should be done at upper level than this function
       // it's better to do correct thing there regardless
+      // XXX or maybe we should change this function to be able to return error?
+      // either way that's not a priority
       if(check->n == 0x0000)
         return;
 
