@@ -44,6 +44,7 @@ set(LIB_UTIL_SRC
   util/timerqueue.cpp
   util/traits.cpp
   util/types.cpp
+  util/variant.cpp
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})

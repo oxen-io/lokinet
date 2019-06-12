@@ -1,6 +1,7 @@
 #include <metrics/metrictank_publisher.hpp>
 
 #include <util/logger.hpp>
+#include <util/variant.hpp>
 
 #include <cstdio>
 #include <absl/strings/str_cat.h>
@@ -44,7 +45,20 @@ namespace llarp
       }
 
       absl::optional< std::string >
-      formatValue(const Record &record, double elapsedTime,
+      makeStr(int i)
+      {
+        if(i == std::numeric_limits< int >::min()
+           || i == std::numeric_limits< int >::max())
+        {
+          return {};
+        }
+
+        return std::to_string(i);
+      }
+
+      template < typename Value >
+      absl::optional< std::string >
+      formatValue(const Record< Value > &record, double elapsedTime,
                   Publication::Type publicationType)
       {
         switch(publicationType)
@@ -76,7 +90,8 @@ namespace llarp
           break;
           case Publication::Type::Avg:
           {
-            return makeStr(record.total() / record.count());
+            return makeStr(static_cast< double >(record.total())
+                           / static_cast< double >(record.count()));
           }
           break;
           case Publication::Type::Rate:
@@ -100,9 +115,10 @@ namespace llarp
         return absl::StrCat(id, ".", name, suffix);
       }
 
+      template < typename Value >
       std::vector< MetricTankPublisherInterface::PublishData >
-      recordToData(const Record &record, absl::Time time, double elapsedTime,
-                   string_view suffix)
+      recordToData(const Record< Value > &record, absl::Time time,
+                   double elapsedTime, string_view suffix)
       {
         std::vector< MetricTankPublisherInterface::PublishData > result;
 
@@ -127,14 +143,14 @@ namespace llarp
           result.emplace_back(addName(id, "total", suffix),
                               std::to_string(record.total()), time);
 
-          if(Record::DEFAULT_MIN != record.min() && !std::isnan(record.min())
-             && !std::isinf(record.min()))
+          if(Record< Value >::DEFAULT_MIN() != record.min()
+             && !std::isnan(record.min()) && !std::isinf(record.min()))
           {
             result.emplace_back(addName(id, "min", suffix),
                                 std::to_string(record.min()), time);
           }
-          if(Record::DEFAULT_MAX == record.max() && !std::isnan(record.max())
-             && !std::isinf(record.max()))
+          if(Record< Value >::DEFAULT_MAX() == record.max()
+             && !std::isnan(record.max()) && !std::isinf(record.max()))
           {
             result.emplace_back(addName(id, "max", suffix),
                                 std::to_string(record.max()), time);
@@ -196,6 +212,8 @@ namespace llarp
           } while((0 <= sentLen)
                   && (static_cast< size_t >(sentLen) < val.size()));
         }
+
+        LogInfo("Sent ", toSend.size(), " metrics to metrictank");
 
         shutdown(sock, SHUT_RDWR);
         close(sock);
@@ -333,14 +351,17 @@ namespace llarp
       auto prev = values.begin();
       for(; gIt != values.end(); ++gIt)
       {
-        const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
+        const double elapsedTime = absl::ToDoubleSeconds(samplePeriod(*gIt));
 
-        for(const auto &record : *gIt)
-        {
-          auto partial =
-              recordToData(record, sampleTime, elapsedTime, m_suffix);
-          result.insert(result.end(), partial.begin(), partial.end());
-        }
+        forSampleGroup(*gIt, [&](const auto &d) {
+          for(const auto &record : d)
+          {
+            auto partial =
+                recordToData(record, sampleTime, elapsedTime, m_suffix);
+            result.insert(result.end(), partial.begin(), partial.end());
+          }
+        });
+
         prev = gIt;
       }
 
