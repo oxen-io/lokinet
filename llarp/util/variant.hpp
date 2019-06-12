@@ -11,26 +11,32 @@ namespace llarp
     struct _overloaded;
 
     template < typename T, typename... Ts >
-    struct _overloaded<T, Ts...> : T, _overloaded<Ts...>
+    struct _overloaded< T, Ts... > : T, _overloaded< Ts... >
     {
-      _overloaded(T&& t, Ts&&... ts) : T(t), _overloaded<Ts...>(std::forward<Ts>(ts)...) {}
+      _overloaded(T&& t, Ts&&... ts)
+          : T(t), _overloaded< Ts... >(std::forward< Ts >(ts)...)
+      {
+      }
       using T::operator();
 
       using _overloaded< Ts... >::operator();
     };
 
-    template<typename T>
-    struct _overloaded<T> : T
+    template < typename T >
+    struct _overloaded< T > : T
     {
-      _overloaded(T&& t) : T(t) {}
+      _overloaded(T&& t) : T(t)
+      {
+      }
 
       using T::operator();
     };
 
     template < typename... Ts >
-    constexpr auto overloaded(Ts&&... ts)->_overloaded< Ts... >
+    constexpr auto
+    overloaded(Ts&&... ts) -> _overloaded< Ts... >
     {
-      return _overloaded<Ts...>(std::forward<Ts>(ts)...);
+      return _overloaded< Ts... >(std::forward< Ts >(ts)...);
     }
 
   }  // namespace util
