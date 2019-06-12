@@ -76,16 +76,18 @@ set(LIB_PLATFORM_SRC
 # tun
   ${LIBTUNTAP_SRC}
   ${EV_SRC}
-  ev/ev_libuv.cpp
 )
 
 if (WIN32)
-set(LIB_PLATFORM_SRC
-${LIB_PLATFORM_SRC}
-win32/win32_inet.c
-win32/win32_intrnl.c
-win32/win32_upoll.c
-)
+  set(LIB_PLATFORM_SRC
+    ${LIB_PLATFORM_SRC}
+    win32/win32_inet.c
+    win32/win32_intrnl.c
+    win32/win32_upoll.c)
+else()
+  set(LIB_PLATFORM_SRC
+      ${LIB_PLATFORM_SRC}
+      ev/ev_libuv.cpp)
 endif(WIN32)
 
 if (SOLARIS)
