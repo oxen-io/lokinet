@@ -65,11 +65,11 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
 
 /// get the current time on the event loop
 llarp_time_t
-llarp_ev_loop_time_now_ms(llarp_ev_loop_ptr ev);
+llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &ev);
 
 /// stop event loop and wait for it to complete all jobs
 void
-llarp_ev_loop_stop(llarp_ev_loop_ptr ev);
+llarp_ev_loop_stop(const llarp_ev_loop_ptr &ev);
 
 /// UDP handling configuration
 struct llarp_udp_io

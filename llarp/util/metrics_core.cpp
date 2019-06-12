@@ -6,56 +6,8 @@ namespace llarp
 {
   namespace metrics
   {
-    Record
-    IntCollector::loadAndClear()
-    {
-      size_t count;
-      uint64_t total;
-      int min;
-      int max;
-
-      {
-        absl::WriterMutexLock l(&m_mutex);
-
-        count = m_count;
-        total = m_total;
-        min   = m_min;
-        max   = m_max;
-
-        m_count = 0;
-        m_total = 0;
-        m_min   = DEFAULT_MIN;
-        m_max   = DEFAULT_MAX;
-      }
-
-      return {m_id, count, static_cast< double >(total),
-              (min == DEFAULT_MIN) ? Record::DEFAULT_MIN
-                                   : static_cast< double >(min),
-              (max == DEFAULT_MAX) ? Record::DEFAULT_MAX
-                                   : static_cast< double >(max)};
-    }
-
-    Record
-    IntCollector::load()
-    {
-      size_t count;
-      int64_t total;
-      int min;
-      int max;
-
-      {
-        absl::ReaderMutexLock l(&m_mutex);
-
-        count = m_count;
-        total = m_total;
-        min   = m_min;
-        max   = m_max;
-      }
-
-      return {m_id, count, static_cast< double >(total),
-              (min == DEFAULT_MIN) ? Record::DEFAULT_MIN : min,
-              (max == DEFAULT_MAX) ? Record::DEFAULT_MAX : max};
-    }
+    using DoubleRecords = std::vector< Record< double > >;
+    using IntRecords    = std::vector< Record< int > >;
 
     std::tuple< Id, bool >
     Registry::insert(const char *category, const char *name)
@@ -237,125 +189,6 @@ namespace llarp
       return result;
     }
 
-    MetricCollectors &
-    CollectorRepo::getCollectors(const Id &id)
-    {
-      auto it = m_collectors.find(id);
-
-      if(it == m_collectors.end())
-      {
-        assert(id.valid());
-
-        const Category *cat = id.category();
-
-        auto ptr  = std::make_shared< MetricCollectors >(id);
-        auto &vec = m_categories[cat];
-        vec.reserve(vec.size() + 1);
-
-        it = m_collectors.emplace(id, ptr).first;
-        vec.push_back(ptr.get());
-      }
-
-      return *it->second.get();
-    }
-
-    std::vector< Record >
-    CollectorRepo::collectAndClear(const Category *category)
-    {
-      absl::WriterMutexLock l(&m_mutex);
-
-      std::vector< Record > result;
-
-      auto it = m_categories.find(category);
-
-      if(it != m_categories.end())
-      {
-        auto &collectors = it->second;
-        result.reserve(collectors.size());
-
-        std::transform(
-            collectors.begin(), collectors.end(), std::back_inserter(result),
-            [](MetricCollectors *c) { return c->combineAndClear(); });
-      }
-
-      return result;
-    }
-
-    std::vector< Record >
-    CollectorRepo::collect(const Category *category)
-    {
-      absl::WriterMutexLock l(&m_mutex);
-
-      std::vector< Record > result;
-
-      auto it = m_categories.find(category);
-
-      if(it != m_categories.end())
-      {
-        auto &collectors = it->second;
-        result.reserve(collectors.size());
-
-        std::transform(collectors.begin(), collectors.end(),
-                       std::back_inserter(result),
-                       [](MetricCollectors *c) { return c->combine(); });
-      }
-
-      return result;
-    }
-
-    DoubleCollector *
-    CollectorRepo::defaultDoubleCollector(const Id &id)
-    {
-      {
-        absl::ReaderMutexLock l(&m_mutex);
-        auto it = m_collectors.find(id);
-        if(it != m_collectors.end())
-        {
-          return it->second->doubleCollectors().defaultCollector();
-        }
-      }
-
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        return getCollectors(id).doubleCollectors().defaultCollector();
-      }
-    }
-
-    IntCollector *
-    CollectorRepo::defaultIntCollector(const Id &id)
-    {
-      {
-        absl::ReaderMutexLock l(&m_mutex);
-        auto it = m_collectors.find(id);
-        if(it != m_collectors.end())
-        {
-          return it->second->intCollectors().defaultCollector();
-        }
-      }
-
-      {
-        absl::WriterMutexLock l(&m_mutex);
-        return getCollectors(id).intCollectors().defaultCollector();
-      }
-    }
-
-    std::pair< std::vector< std::shared_ptr< DoubleCollector > >,
-               std::vector< std::shared_ptr< IntCollector > > >
-    CollectorRepo::allCollectors(const Id &id)
-    {
-      absl::ReaderMutexLock l(&m_mutex);
-
-      auto it = m_collectors.find(id);
-
-      if(it == m_collectors.end())
-      {
-        return {};
-      }
-
-      return {it->second->doubleCollectors().collectors(),
-              it->second->intCollectors().collectors()};
-    }
-
     struct PublisherHelper
     {
       using SampleCache = std::map< std::shared_ptr< Publisher >, Sample >;
@@ -363,49 +196,38 @@ namespace llarp
       static void
       updateSampleCache(SampleCache &cache,
                         const std::shared_ptr< Publisher > &publisher,
-                        const SampleGroup &sampleGroup,
+                        const SampleGroup< double > &doubleGroup,
+                        const SampleGroup< int > &intGroup,
                         const absl::Time &timeStamp)
       {
         SampleCache::iterator it = cache.find(publisher);
         if(it == cache.end())
         {
-          Sample newSample;
-          newSample.sampleTime(timeStamp);
-          it = cache.emplace(publisher, newSample).first;
+          Sample sample;
+          sample.sampleTime(timeStamp);
+          it = cache.emplace(publisher, sample).first;
         }
-        it->second.pushGroup(sampleGroup);
+        it->second.pushGroup(doubleGroup);
+        it->second.pushGroup(intGroup);
       }
 
-      static std::pair< std::vector< Record >, absl::Duration >
+      struct CollectResult
+      {
+        Records records;
+        absl::Duration samplePeriod;
+      };
+
+      static CollectResult
       collect(Manager &manager, const Category *category,
               const absl::Duration &now, bool clear)
           EXCLUSIVE_LOCKS_REQUIRED(manager.m_mutex)
       {
-        using Callback         = Manager::RecordCallback;
-        using CallbackVector   = std::vector< const Callback * >;
-        using RegistryIterator = CallbackRegistry::iterator;
-        CallbackVector callbacks;
-
-        RegistryIterator begin = manager.m_callbacks.lowerBound(category);
-        RegistryIterator end   = manager.m_callbacks.upperBound(category);
-
-        std::vector< Record > result;
-        std::for_each(begin, end, [&](const auto &x) {
-          std::vector< Record > tmp = (x.second)(clear);
-          result.insert(result.end(), tmp.begin(), tmp.end());
-        });
-
         // Collect records from the repo.
-        if(clear)
-        {
-          std::vector< Record > tmp = manager.m_repo.collectAndClear(category);
-          result.insert(result.end(), tmp.begin(), tmp.end());
-        }
-        else
-        {
-          std::vector< Record > tmp = manager.m_repo.collect(category);
-          result.insert(result.end(), tmp.begin(), tmp.end());
-        }
+        const Records result = clear
+            ? Records(manager.m_doubleRepo.collectAndClear(category),
+                      manager.m_intRepo.collectAndClear(category))
+            : Records(manager.m_doubleRepo.collect(category),
+                      manager.m_intRepo.collect(category));
 
         // Get the time since last reset, and clear if needed.
         Manager::ResetTimes::iterator it = manager.m_resetTimes.find(category);
@@ -428,6 +250,10 @@ namespace llarp
         }
       }
 
+      template < typename Type >
+      using RecordBuffer =
+          std::vector< std::shared_ptr< std::vector< Record< Type > > > >;
+
       template < typename CategoryIterator >
       static void
       publish(Manager &manager, const CategoryIterator &categoriesBegin,
@@ -437,10 +263,9 @@ namespace llarp
         {
           return;
         }
-        using RecordBuffer =
-            std::vector< std::shared_ptr< std::vector< Record > > >;
 
-        RecordBuffer recordBuffer;
+        RecordBuffer< double > doubleRecordBuffer;
+        RecordBuffer< int > intRecordBuffer;
 
         SampleCache sampleCache;
 
@@ -462,40 +287,47 @@ namespace llarp
               continue;
             }
             // Collect the metrics.
-            auto result = collect(manager, *catIt, now, clear);
+            auto result         = collect(manager, *catIt, now, clear);
+            const auto &records = result.records;
 
-            // If their are no collected records then this category can be
+            // If there are no collected records then this category can be
             // ignored.
-            if(result.first.empty())
+            if(records.doubleRecords.empty() && records.intRecords.empty())
             {
               continue;
             }
 
-            if(result.second == absl::Duration())
+            if(result.samplePeriod == absl::Duration())
             {
               std::cerr << "Invalid elapsed time interval of 0 for "
                            "published metrics.";
-              result.second += absl::Nanoseconds(1);
+              result.samplePeriod += absl::Nanoseconds(1);
             }
 
             // Append the collected records to the buffer of records.
-            auto records =
-                std::make_shared< std::vector< Record > >(result.first);
-            recordBuffer.push_back(records);
-            SampleGroup sampleGroup(absl::Span< Record >(*records),
-                                    result.second);
+            auto dRecords =
+                std::make_shared< DoubleRecords >(records.doubleRecords);
+            doubleRecordBuffer.push_back(dRecords);
+            SampleGroup< double > doubleGroup(
+                absl::Span< Record< double > >(*dRecords), result.samplePeriod);
 
-            std::for_each(
-                manager.m_publishers.globalBegin(),
-                manager.m_publishers.globalEnd(), [&](const auto &ptr) {
-                  updateSampleCache(sampleCache, ptr, sampleGroup, timeStamp);
-                });
+            auto iRecords = std::make_shared< IntRecords >(records.intRecords);
+            intRecordBuffer.push_back(iRecords);
+            SampleGroup< int > intGroup(absl::Span< Record< int > >(*iRecords),
+                                        result.samplePeriod);
+
+            std::for_each(manager.m_publishers.globalBegin(),
+                          manager.m_publishers.globalEnd(),
+                          [&](const auto &ptr) {
+                            updateSampleCache(sampleCache, ptr, doubleGroup,
+                                              intGroup, timeStamp);
+                          });
 
             std::for_each(manager.m_publishers.lowerBound(*catIt),
                           manager.m_publishers.upperBound(*catIt),
                           [&](const auto &val) {
                             updateSampleCache(sampleCache, val.second,
-                                              sampleGroup, timeStamp);
+                                              doubleGroup, intGroup, timeStamp);
                           });
           }
         }
@@ -503,15 +335,14 @@ namespace llarp
         for(auto &entry : sampleCache)
         {
           Publisher *publisher = entry.first.get();
-          Sample &sample       = entry.second;
 
-          publisher->publish(sample);
+          publisher->publish(entry.second);
         }
       }
     };
 
     Sample
-    Manager::collectSample(std::vector< Record > &records,
+    Manager::collectSample(Records &records,
                            absl::Span< const Category * > categories,
                            bool clear)
     {
@@ -523,8 +354,10 @@ namespace llarp
 
       // Use a tuple to hold 'references' to the collected records
       using SampleDescription = std::tuple< size_t, size_t, absl::Duration >;
-      std::vector< SampleDescription > samples;
-      samples.reserve(categories.size());
+      std::vector< SampleDescription > dSamples;
+      std::vector< SampleDescription > iSamples;
+      dSamples.reserve(categories.size());
+      iSamples.reserve(categories.size());
 
       // 1
       absl::WriterMutexLock publishGuard(&m_publishLock);
@@ -538,29 +371,46 @@ namespace llarp
           continue;
         }
 
-        size_t beginIndex = records.size();
+        size_t dBeginIndex = records.doubleRecords.size();
+        size_t iBeginIndex = records.intRecords.size();
 
         // Collect the metrics.
-        std::vector< Record > catRecords;
-        absl::Duration elapsedTime;
-        std::tie(catRecords, elapsedTime) =
-            PublisherHelper::collect(*this, category, now, clear);
-        records.insert(records.end(), catRecords.begin(), catRecords.end());
+        auto collectRes = PublisherHelper::collect(*this, category, now, clear);
+        DoubleRecords catDRecords = collectRes.records.doubleRecords;
+        IntRecords catIRecords    = collectRes.records.intRecords;
 
-        size_t size = records.size() - beginIndex;
+        absl::Duration elapsedTime = collectRes.samplePeriod;
+
+        records.doubleRecords.insert(records.doubleRecords.end(),
+                                     catDRecords.begin(), catDRecords.end());
+        records.intRecords.insert(records.intRecords.end(), catIRecords.begin(),
+                                  catIRecords.end());
+
+        size_t dSize = records.doubleRecords.size() - dBeginIndex;
+        size_t iSize = records.intRecords.size() - iBeginIndex;
 
         // If there are no collected records then this category can be ignored.
-        if(size != 0)
+        if(dSize != 0)
         {
-          samples.emplace_back(beginIndex, size, elapsedTime);
+          dSamples.emplace_back(dBeginIndex, dSize, elapsedTime);
+        }
+        if(iSize != 0)
+        {
+          iSamples.emplace_back(iBeginIndex, iSize, elapsedTime);
         }
       }
 
       // Now that we have all the records, we can build our sample
-      for(const SampleDescription &s : samples)
+      for(const SampleDescription &s : dSamples)
       {
-        sample.pushGroup(&records[std::get< 0 >(s)], std::get< 1 >(s),
-                         std::get< 2 >(s));
+        sample.pushGroup(&records.doubleRecords[std::get< 0 >(s)],
+                         std::get< 1 >(s), std::get< 2 >(s));
+      }
+
+      for(const SampleDescription &s : iSamples)
+      {
+        sample.pushGroup(&records.intRecords[std::get< 0 >(s)],
+                         std::get< 1 >(s), std::get< 2 >(s));
       }
 
       return sample;
