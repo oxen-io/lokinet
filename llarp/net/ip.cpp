@@ -196,11 +196,11 @@ namespace llarp
 #undef SUB32CS
 
     static void
-    deltaChecksumIPv4TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                         size_t fragoff, size_t chksumoff, nuint32_t oSrcIP,
-                         nuint32_t oDstIP, nuint32_t nSrcIP, nuint32_t nDstIP)
+    deltaChecksumIPv4TCP(byte_t *pld, size_t psz, size_t fragoff,
+                         size_t chksumoff, nuint32_t oSrcIP, nuint32_t oDstIP,
+                         nuint32_t nSrcIP, nuint32_t nDstIP)
     {
-      if(fragoff > chksumoff)
+      if(fragoff > chksumoff || psz < chksumoff - fragoff + 2)
         return;
 
       auto check = (nuint16_t *)(pld + chksumoff - fragoff);
@@ -215,12 +215,12 @@ namespace llarp
     }
 
     static void
-    deltaChecksumIPv6TCP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                         size_t fragoff, size_t chksumoff,
-                         const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
-                         const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
+    deltaChecksumIPv6TCP(byte_t *pld, size_t psz, size_t fragoff,
+                         size_t chksumoff, const uint32_t oSrcIP[4],
+                         const uint32_t oDstIP[4], const uint32_t nSrcIP[4],
+                         const uint32_t nDstIP[4])
     {
-      if(fragoff > chksumoff)
+      if(fragoff > chksumoff || psz < chksumoff - fragoff + 2)
         return;
 
       auto check = (nuint16_t *)(pld + chksumoff - fragoff);
@@ -235,11 +235,11 @@ namespace llarp
     }
 
     static void
-    deltaChecksumIPv4UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                         size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
-                         nuint32_t nSrcIP, nuint32_t nDstIP)
+    deltaChecksumIPv4UDP(byte_t *pld, size_t psz, size_t fragoff,
+                         nuint32_t oSrcIP, nuint32_t oDstIP, nuint32_t nSrcIP,
+                         nuint32_t nDstIP)
     {
-      if(fragoff > 6)
+      if(fragoff > 6 || psz < 6 + 2)
         return;
 
       auto check = (nuint16_t *)(pld + 6);
@@ -258,12 +258,11 @@ namespace llarp
     }
 
     static void
-    deltaChecksumIPv6UDP(byte_t *pld, ABSL_ATTRIBUTE_UNUSED size_t psz,
-                         size_t fragoff, const uint32_t oSrcIP[4],
-                         const uint32_t oDstIP[4], const uint32_t nSrcIP[4],
-                         const uint32_t nDstIP[4])
+    deltaChecksumIPv6UDP(byte_t *pld, size_t psz, size_t fragoff,
+                         const uint32_t oSrcIP[4], const uint32_t oDstIP[4],
+                         const uint32_t nSrcIP[4], const uint32_t nDstIP[4])
     {
-      if(fragoff > 6)
+      if(fragoff > 6 || psz < 6 + 2)
         return;
 
       auto check = (nuint16_t *)(pld + 6);
@@ -388,7 +387,7 @@ namespace llarp
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
              */
             nextproto = pld[0];
-            fragoff   = (uint16_t(pld[2]) << (8 - 3)) | (uint16_t(pld[3]) >> 3);
+            fragoff   = (uint16_t(pld[2]) << 8) | (uint16_t(pld[3]) & 0xFC);
             if(psz < 8)
               return;
             pld += 8;
@@ -403,7 +402,7 @@ namespace llarp
             goto endprotohdrs;
         }
       }
-    endprotohdrs:;
+    endprotohdrs:
 
       switch(nextproto)
       {
