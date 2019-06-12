@@ -43,6 +43,7 @@ namespace llarp
                 p->Endpoint(), " via ", dst);
         if(MarkCurrentIntroBad(Now()))
         {
+          SwapIntros();
           LogInfo(Name(), " switched intros to ", remoteIntro.router, " via ",
                   remoteIntro.pathID);
         }
