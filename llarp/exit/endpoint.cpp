@@ -127,7 +127,8 @@ namespace llarp
           dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
         else
           dst = pkt.dstv4();
-        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
+        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)),
+                              xhtonl(dst));
       }
       else
       {

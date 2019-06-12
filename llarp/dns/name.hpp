@@ -21,7 +21,7 @@ namespace llarp
     EncodeName(llarp_buffer_t* buf, const Name_t& name);
 
     bool
-    DecodePTR(const Name_t& name, huint32_t& ip);
+    DecodePTR(const Name_t& name, huint128_t& ip);
 
   }  // namespace dns
 }  // namespace llarp

@@ -71,10 +71,10 @@ namespace llarp
       // always hook ptr for ranges we own
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint32_t ip;
+        huint128_t ip;
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
           return false;
-        return m_OurRange.ContainsV4(ip);
+        return m_OurRange.Contains(ip);
       }
       else if(msg.questions[0].qtype == dns::qTypeA
               || msg.questions[0].qtype == dns::qTypeCNAME
@@ -94,18 +94,17 @@ namespace llarp
     {
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint32_t ip;
+        huint128_t ip;
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
           return false;
-        huint128_t ipv6 = net::IPPacket::ExpandV4(ip);
-        if(ipv6 == m_IfAddr)
+        if(ip == m_IfAddr)
         {
           RouterID us = GetRouter()->pubkey();
           msg.AddAReply(us.ToString(), 300);
         }
         else
         {
-          auto itr = m_IPToKey.find(ipv6);
+          auto itr = m_IPToKey.find(ip);
           if(itr != m_IPToKey.end()
              && m_SNodeKeys.find(itr->second) != m_SNodeKeys.end())
           {

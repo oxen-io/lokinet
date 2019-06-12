@@ -423,12 +423,20 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".snode"))
         {
-          dns::Message *replyMsg = new dns::Message(std::move(msg));
-          EnsurePathToSNode(
-              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
-                SendDNSReply(addr, s, replyMsg, reply, true, isV6);
-              });
-          return true;
+          if(isV4 && SupportsV6())
+          {
+            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
+          }
+          else
+          {
+            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            EnsurePathToSNode(addr.as_array(),
+                              [=](const RouterID &, exit::BaseSession_ptr s) {
+                                SendDNSReply(addr, s, replyMsg, reply, true,
+                                             isV6);
+                              });
+            return true;
+          }
         }
         else
           msg.AddNXReply();
@@ -438,24 +446,22 @@ namespace llarp
       else if(msg.questions[0].qtype == dns::qTypePTR)
       {
         // reverse dns
-        huint128_t ipv6 = {0};
-        huint32_t ip    = {0};
+        huint128_t ip = {0};
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
         {
           msg.AddNXReply();
           reply(msg);
           return true;
         }
-        ipv6 = net::IPPacket::ExpandV4(ip);
         llarp::service::Address addr(
-            ObtainAddrForIP< llarp::service::Address >(ipv6, true));
+            ObtainAddrForIP< llarp::service::Address >(ip, true));
         if(!addr.IsZero())
         {
           msg.AddAReply(addr.ToString(".snode"));
           reply(msg);
           return true;
         }
-        addr = ObtainAddrForIP< llarp::service::Address >(ipv6, false);
+        addr = ObtainAddrForIP< llarp::service::Address >(ip, false);
         if(!addr.IsZero())
         {
           msg.AddAReply(addr.ToString(".loki"));
@@ -504,10 +510,10 @@ namespace llarp
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
-          huint32_t ip = {0};
+          huint128_t ip = {0};
           if(!dns::DecodePTR(msg.questions[0].qname, ip))
             return false;
-          return m_OurRange.ContainsV4(ip);
+          return m_OurRange.Contains(ip);
         }
       }
       return false;
