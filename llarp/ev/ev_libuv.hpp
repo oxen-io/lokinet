@@ -6,7 +6,7 @@
 
 namespace libuv
 {
-  struct Loop : public llarp_ev_loop
+  struct Loop final : public llarp_ev_loop
   {
     bool
     init() override;
@@ -14,7 +14,7 @@ namespace libuv
     int
     run() override
     {
-      return -11;
+      return -1;
     }
 
     bool

@@ -79,7 +79,7 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
 }
 
 llarp_time_t
-llarp_ev_loop_time_now_ms(llarp_ev_loop_ptr loop)
+llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &loop)
 {
   if(loop)
     return loop->time_now();
@@ -87,7 +87,7 @@ llarp_ev_loop_time_now_ms(llarp_ev_loop_ptr loop)
 }
 
 void
-llarp_ev_loop_stop(llarp_ev_loop_ptr loop)
+llarp_ev_loop_stop(const llarp_ev_loop_ptr &loop)
 {
   loop->stop();
 }
