@@ -27,7 +27,9 @@ typedef SSIZE_T ssize_t;
 #include <stdint.h>
 #include <stdlib.h>
 
+#if !defined(WIN32)
 #include <uv.h>
+#endif
 
 /**
  * ev.h
