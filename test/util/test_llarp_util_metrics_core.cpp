@@ -192,8 +192,8 @@ TEST(MetricsCore, RegistryOps)
       ASSERT_TRUE(id.valid()) << id;
       ASSERT_NE(nullptr, id.description());
       ASSERT_NE(nullptr, id.category());
-      ASSERT_STREQ(id.metricName(), NAME);
-      ASSERT_STREQ(id.categoryName(), CATEGORY);
+      ASSERT_EQ(id.metricName(), NAME);
+      ASSERT_EQ(id.categoryName(), CATEGORY);
       ASSERT_TRUE(id.category()->enabled());
 
       // Attempt to find the id.
@@ -218,7 +218,7 @@ TEST(MetricsCore, RegistryOps)
 
     const Category *NEW_CAT = registry.add("NewCategory");
     ASSERT_NE(nullptr, NEW_CAT);
-    ASSERT_STREQ("NewCategory", NEW_CAT->name());
+    ASSERT_EQ("NewCategory", NEW_CAT->name());
     ASSERT_TRUE(NEW_CAT->enabled());
   }
 
@@ -232,7 +232,7 @@ TEST(MetricsCore, RegistryOps)
 
       const Category *cat = registry.add(CATEGORY);
       ASSERT_NE(nullptr, cat);
-      ASSERT_STREQ(cat->name(), CATEGORY);
+      ASSERT_EQ(cat->name(), CATEGORY);
       ASSERT_TRUE(cat->enabled());
 
       ASSERT_EQ(nullptr, registry.add(CATEGORY));
@@ -241,8 +241,8 @@ TEST(MetricsCore, RegistryOps)
       Id id = registry.add(CATEGORY, "Metric");
       ASSERT_TRUE(id.valid());
       ASSERT_EQ(cat, id.category());
-      ASSERT_STREQ(id.categoryName(), CATEGORY);
-      ASSERT_STREQ(id.metricName(), "Metric");
+      ASSERT_EQ(id.categoryName(), CATEGORY);
+      ASSERT_EQ(id.metricName(), "Metric");
 
       ASSERT_EQ(i + 1, registry.metricCount());
       ASSERT_EQ(i + 1, registry.categoryCount());
@@ -494,7 +494,7 @@ TEST(MetricsCore, ManagerCollectSample1)
                 WithinWindow(window, absl::Milliseconds(10)))
         << group;
 
-    const char *name = group.records()[0].id.categoryName();
+    string_view name = group.records()[0].id.categoryName();
     for(const auto &record : group.records())
     {
       ASSERT_THAT(record, RecordCatEq(name, 1u, 1, 1, 1));

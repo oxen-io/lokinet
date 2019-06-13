@@ -52,7 +52,7 @@ namespace llarp
     struct FormatSpec
     {
       float m_scale;
-      const char *m_format;
+      string_view m_format;
 
       static constexpr char DEFAULT_FORMAT[] = "%f";
 
@@ -60,7 +60,7 @@ namespace llarp
       {
       }
 
-      constexpr FormatSpec(float scale, const char *format)
+      constexpr FormatSpec(float scale, string_view format)
           : m_scale(scale), m_format(format)
       {
       }
@@ -72,8 +72,8 @@ namespace llarp
     inline bool
     operator==(const FormatSpec &lhs, const FormatSpec &rhs)
     {
-      return lhs.m_scale == rhs.m_scale
-          && std::strcmp(lhs.m_format, rhs.m_format) == 0;
+      return std::make_tuple(lhs.m_scale, lhs.m_format)
+          == std::make_tuple(rhs.m_scale, rhs.m_format);
     }
 
     struct Format
@@ -117,12 +117,12 @@ namespace llarp
     /// Represents a category of grouped metrics
     class Category
     {
-      const char *m_name;
+      string_view m_name;
       std::atomic_bool m_enabled;
       CategoryContainer *m_container;
 
      public:
-      Category(const char *name, bool enabled = true)
+      Category(string_view name, bool enabled = true)
           : m_name(name), m_enabled(enabled), m_container(nullptr)
       {
       }
@@ -141,7 +141,7 @@ namespace llarp
         return m_enabled;
       }
 
-      const char *
+      string_view
       name() const
       {
         return m_name;
@@ -183,7 +183,7 @@ namespace llarp
       mutable util::Mutex m_mutex;
 
       const Category *m_category GUARDED_BY(m_mutex);
-      const char *m_name GUARDED_BY(m_mutex);
+      string_view m_name GUARDED_BY(m_mutex);
       Publication::Type m_type GUARDED_BY(m_mutex);
       std::shared_ptr< Format > m_format GUARDED_BY(m_mutex);
 
@@ -192,7 +192,7 @@ namespace llarp
       operator=(const Description &) = delete;
 
      public:
-      Description(const Category *category, const char *name)
+      Description(const Category *category, string_view name)
           : m_category(category)
           , m_name(name)
           , m_type(Publication::Type::Unspecified)
@@ -214,13 +214,13 @@ namespace llarp
       }
 
       void
-      name(const char *n)
+      name(string_view n)
       {
         util::Lock l(&m_mutex);
         m_name = n;
       }
 
-      const char *
+      string_view
       name() const
       {
         util::Lock l(&m_mutex);
@@ -313,14 +313,14 @@ namespace llarp
         return m_description->category();
       }
 
-      const char *
+      string_view
       categoryName() const
       {
         assert(valid());
         return m_description->category()->name();
       }
 
-      const char *
+      string_view
       metricName() const
       {
         assert(valid());

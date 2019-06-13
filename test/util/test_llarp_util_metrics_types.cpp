@@ -62,11 +62,11 @@ TEST(MetricsTypes, Format)
   ASSERT_EQ(nullptr, format.specFor(metrics::Publication::Type::Avg));
   auto ptr = format.specFor(metrics::Publication::Type::Total);
   ASSERT_NE(nullptr, ptr);
-  ASSERT_STREQ("%0.3f", ptr->m_format);
+  ASSERT_EQ("%0.3f", ptr->m_format);
   ASSERT_DOUBLE_EQ(2.0, ptr->m_scale);
   ptr = format.specFor(metrics::Publication::Type::Max);
   ASSERT_NE(nullptr, ptr);
-  ASSERT_STREQ("%0.2f", ptr->m_format);
+  ASSERT_EQ("%0.2f", ptr->m_format);
   ASSERT_DOUBLE_EQ(1.0, ptr->m_scale);
 
   format.clear();

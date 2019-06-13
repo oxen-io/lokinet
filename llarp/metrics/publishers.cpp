@@ -91,11 +91,11 @@ namespace llarp
           return;
         }
 
-        stream << "\t\t" << taggedRecords.id << " [\n";
+        stream << "\t\t" << taggedRecords.id << " [";
 
         for(const auto &rec : taggedRecords.data)
         {
-          stream << "\t\t\t";
+          stream << "\n\t\t\t";
           const auto &tags   = rec.first;
           const auto &record = rec.second;
 

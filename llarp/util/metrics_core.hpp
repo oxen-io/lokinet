@@ -20,7 +20,7 @@ namespace llarp
     }
 
     template < typename K, typename V, typename... Args >
-    void
+    inline void
     packToTagsImpl(Tags &tags, const K &k, const V &v, const Args &... args)
     {
       static_assert(std::is_convertible< K, Tag >::value, "");
@@ -31,12 +31,19 @@ namespace llarp
     }
 
     template < typename... Args >
-    Tags
+    inline Tags
     packToTags(const Args &... args)
     {
       static_assert(sizeof...(args) % 2 == 0, "");
       Tags tags;
       packToTagsImpl(tags, args...);
+      return tags;
+    }
+
+    template <>
+    inline Tags
+    packToTags< Tags >(const Tags &tags)
+    {
       return tags;
     }
 
@@ -263,34 +270,11 @@ namespace llarp
 
     class Registry
     {
-      using NamedCategory = std::tuple< const char *, const char * >;
+      using NamedCategory = std::tuple< string_view, string_view >;
 
-      struct CmpNamedCategory
-      {
-        bool
-        operator()(const NamedCategory &lhs, const NamedCategory &rhs) const
-        {
-          int ret = std::strcmp(std::get< 0 >(lhs), std::get< 0 >(rhs));
-          if(ret == 0)
-          {
-            ret = std::strcmp(std::get< 1 >(lhs), std::get< 1 >(rhs));
-          }
-          return ret < 0;
-        }
-      };
-      struct StrCmp
-      {
-        bool
-        operator()(const char *lhs, const char *rhs) const
-        {
-          return std::strcmp(lhs, rhs) < 0;
-        }
-      };
-
-      using MetricMap = std::map< NamedCategory, std::shared_ptr< Description >,
-                                  CmpNamedCategory >;
-      using CategoryMap =
-          std::map< const char *, std::shared_ptr< Category >, StrCmp >;
+      using MetricMap =
+          std::map< NamedCategory, std::shared_ptr< Description > >;
+      using CategoryMap = std::map< string_view, std::shared_ptr< Category > >;
 
       std::set< std::string > m_stringmem GUARDED_BY(m_mutex);
       CategoryMap m_categories GUARDED_BY(m_mutex);
@@ -303,7 +287,7 @@ namespace llarp
       operator=(const Registry &) = delete;
 
       std::tuple< Id, bool >
-      insert(const char *category, const char *name)
+      insert(string_view category, string_view name)
           EXCLUSIVE_LOCKS_REQUIRED(m_mutex);
 
      public:
@@ -312,14 +296,14 @@ namespace llarp
       }
 
       Id
-      add(const char *category, const char *name) LOCKS_EXCLUDED(m_mutex);
+      add(string_view category, string_view name) LOCKS_EXCLUDED(m_mutex);
       Id
-      get(const char *category, const char *name) LOCKS_EXCLUDED(m_mutex);
+      get(string_view category, string_view name) LOCKS_EXCLUDED(m_mutex);
 
       const Category *
-      add(const char *category) LOCKS_EXCLUDED(m_mutex);
+      add(string_view category) LOCKS_EXCLUDED(m_mutex);
       const Category *
-      get(const char *category);
+      get(string_view category);
 
       void
       enable(const Category *category, bool value);
@@ -347,9 +331,9 @@ namespace llarp
       }
 
       const Category *
-      findCategory(const char *category) const;
+      findCategory(string_view category) const;
       Id
-      findId(const char *category, const char *name) const;
+      findId(string_view category, string_view name) const;
 
       std::vector< const Category * >
       getAll() const;
@@ -462,7 +446,7 @@ namespace llarp
       }
 
       Collector< Type > *
-      defaultCollector(const char *category, const char *name)
+      defaultCollector(string_view category, string_view name)
       {
         return defaultCollector(m_registry->get(category, name));
       }
@@ -486,7 +470,7 @@ namespace llarp
       }
 
       std::shared_ptr< Collector< Type > >
-      addCollector(const char *category, const char *name)
+      addCollector(string_view category, string_view name)
       {
         return addCollector(m_registry->get(category, name));
       }
@@ -727,7 +711,7 @@ namespace llarp
       /// Add a `publisher` which will receive events for the given
       /// `categoryName` only
       bool
-      addPublisher(const char *categoryName,
+      addPublisher(string_view categoryName,
                    const std::shared_ptr< Publisher > &publisher)
       {
         return addPublisher(m_registry.get(categoryName), publisher);
@@ -822,7 +806,7 @@ namespace llarp
       }
 
       void
-      enableCategory(const char *categoryName, bool enable = true)
+      enableCategory(string_view categoryName, bool enable = true)
       {
         m_registry.enable(m_registry.get(categoryName), enable);
       }
@@ -846,7 +830,7 @@ namespace llarp
       }
 
       std::vector< Publisher * >
-      publishersForCategory(const char *categoryName) const
+      publishersForCategory(string_view categoryName) const
       {
         const Category *category = m_registry.findCategory(categoryName);
         return category ? publishersForCategory(category)
@@ -928,7 +912,7 @@ namespace llarp
 
      public:
       static Collector *
-      lookup(const char *category, const char *name, Manager *manager = nullptr)
+      lookup(string_view category, string_view name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
         return manager ? (manager->*repoFunc)().defaultCollector(category, name)
@@ -942,7 +926,7 @@ namespace llarp
         return manager ? (manager->*repoFunc)().defaultCollector(id) : 0;
       }
 
-      Metric(const char *category, const char *name, Manager *manager)
+      Metric(string_view category, string_view name, Manager *manager)
           : m_collector(lookup(category, name, manager))
           , m_enabled(m_collector ? &m_collector->id().category()->enabledRaw()
                                   : nullptr)
@@ -1025,7 +1009,7 @@ namespace llarp
 
       static void
       getCollector(Collector **collector, CategoryContainer *container,
-                   const char *category, const char *metric)
+                   string_view category, string_view metric)
       {
         Manager *manager = DefaultManager::instance();
         *collector = (manager->*repoFunc().defaultCollector)(category, metric);
@@ -1035,7 +1019,7 @@ namespace llarp
 
       static void
       getCollector(Collector **collector, CategoryContainer *container,
-                   const char *category, const char *metric,
+                   string_view category, string_view metric,
                    Publication::Type type)
       {
         Manager *manager = DefaultManager::instance();
@@ -1054,6 +1038,7 @@ namespace llarp
     class TimerGuard
     {
      private:
+      Tags m_tags;
       util::Stopwatch m_stopwatch;
       DoubleCollector *m_collector;
 
@@ -1062,8 +1047,9 @@ namespace llarp
       operator=(const TimerGuard &) = delete;
 
      public:
-      TimerGuard(DoubleMetric *metric)
-          : m_stopwatch()
+      template < typename... TagVals >
+      TimerGuard(DoubleMetric *metric, TagVals &&... tags)
+          : m_tags(packToTags(tags...))
           , m_collector(metric->active() ? metric->collector() : nullptr)
       {
         if(m_collector)
@@ -1072,8 +1058,9 @@ namespace llarp
         }
       }
 
-      TimerGuard(DoubleCollector *collector)
-          : m_stopwatch()
+      template < typename... TagVals >
+      TimerGuard(DoubleCollector *collector, TagVals &&... tags)
+          : m_tags(packToTags(tags...))
           , m_collector(collector && collector->id().category()->enabled()
                             ? collector
                             : nullptr)
@@ -1084,8 +1071,10 @@ namespace llarp
         }
       }
 
-      TimerGuard(const char *category, const char *name, Manager *manager)
-          : m_stopwatch(), m_collector(nullptr)
+      template < typename... TagVals >
+      TimerGuard(string_view category, string_view name,
+                 Manager *manager = nullptr, TagVals &&... tags)
+          : m_tags(packToTags(tags...)), m_collector(nullptr)
       {
         DoubleCollector *collector =
             DoubleMetric::lookup(category, name, manager);
@@ -1097,8 +1086,10 @@ namespace llarp
           m_stopwatch.start();
         }
       }
-      TimerGuard(const Id &id, Manager *manager)
-          : m_stopwatch(), m_collector(nullptr)
+
+      template < typename... TagVals >
+      TimerGuard(const Id &id, Manager *manager = nullptr, TagVals &&... tags)
+          : m_tags(packToTags(tags...)), m_collector(nullptr)
       {
         DoubleCollector *collector = DoubleMetric::lookup(id, manager);
         m_collector = (collector && collector->id().category()->enabled())
@@ -1115,7 +1106,7 @@ namespace llarp
         if(active())
         {
           m_stopwatch.stop();
-          m_collector->tick(absl::ToDoubleSeconds(m_stopwatch.time()));
+          m_collector->tick(absl::ToDoubleSeconds(m_stopwatch.time()), m_tags);
         }
       }
 
@@ -1166,7 +1157,7 @@ namespace llarp
       }
 
       void
-      schedule(const char *categoryName, absl::Duration interval)
+      schedule(string_view categoryName, absl::Duration interval)
       {
         return schedule(m_manager->registry().get(categoryName), interval);
       }
@@ -1178,7 +1169,7 @@ namespace llarp
       setDefault(absl::Duration interval);
 
       bool
-      cancel(const char *categoryName)
+      cancel(string_view categoryName)
       {
         return cancel(m_manager->registry().get(categoryName));
       }
@@ -1204,7 +1195,7 @@ namespace llarp
       }
 
       absl::optional< absl::Duration >
-      find(const char *categoryName) const
+      find(string_view categoryName) const
       {
         return find(m_manager->registry().get(categoryName));
       }

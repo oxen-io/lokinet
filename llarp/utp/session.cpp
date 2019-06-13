@@ -42,8 +42,8 @@ namespace llarp
         if(s > 0)
           lastSend = parent->Now();
 
-        METRICS_DYNAMIC_INT_UPDATE(
-            "utp.session.tx", RouterID(remoteRC.pubkey).ToString().c_str(), s);
+        metrics::integerTick("utp.session.tx", "writes", s, "id",
+                             RouterID(remoteRC.pubkey).ToString());
         m_TXRate += s;
         size_t sz = s;
         while(vecq.size() && sz >= vecq.front().iov_len)
@@ -133,9 +133,8 @@ namespace llarp
       PruneInboundMessages(now);
       m_TXRate = 0;
       m_RXRate = 0;
-      METRICS_DYNAMIC_UPDATE("utp.session.sendq",
-                             RouterID(remoteRC.pubkey).ToString().c_str(),
-                             sendq.size());
+      metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
+                           RouterID(remoteRC.pubkey).ToString());
     }
 
     /// low level read
@@ -146,8 +145,8 @@ namespace llarp
       Alive();
       m_RXRate += sz;
       size_t s = sz;
-      METRICS_DYNAMIC_INT_UPDATE(
-          "utp.session.rx", RouterID(remoteRC.pubkey).ToString().c_str(), s);
+      metrics::integerTick("utp.session.rx", "size", s, "id",
+                           RouterID(remoteRC.pubkey).ToString());
       // process leftovers
       if(recvBufOffset)
       {
