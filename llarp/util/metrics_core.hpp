@@ -48,8 +48,7 @@ namespace llarp
       using TaggedRecordsType = TaggedRecords< Type >;
 
      private:
-      TaggedRecordsType m_record GUARDED_BY(m_mutex);
-      const Id m_id;
+      TaggedRecordsType m_records GUARDED_BY(m_mutex);
       mutable util::Mutex m_mutex;
 
       Collector(const Collector &) = delete;
@@ -60,16 +59,11 @@ namespace llarp
       RecordType &
       fetch(Args... args) EXCLUSIVE_LOCKS_REQUIRED(m_mutex)
       {
-        RecordType &rec = m_record[packToTags(args...)];
-        if(!rec.id().valid())
-        {
-          rec.id() = m_id;
-        }
-        return rec;
+        return m_records.data[packToTags(args...)];
       }
 
      public:
-      Collector(const Id &id) : m_id(id)
+      Collector(const Id &id) : m_records(id)
       {
       }
 
@@ -77,28 +71,24 @@ namespace llarp
       clear()
       {
         absl::MutexLock l(&m_mutex);
-        m_record.clear();
+        m_records.data.clear();
       }
 
-      template < typename... Args >
-      RecordType
-      loadAndClear(Args... args)
+      TaggedRecordsType
+      loadAndClear()
       {
         absl::MutexLock l(&m_mutex);
-        RecordType &rec   = fetch(args...);
-        RecordType result = rec;
-
-        rec.clear();
+        auto result = m_records;
+        m_records.data.clear();
 
         return result;
       }
 
-      template < typename... Args >
-      RecordType
-      load(Args... args)
+      TaggedRecordsType
+      load()
       {
         absl::MutexLock l(&m_mutex);
-        return fetch(args...);
+        return m_records;
       }
 
       template < typename... Args >
@@ -140,7 +130,7 @@ namespace llarp
       const Id &
       id() const
       {
-        return m_id;
+        return m_records.id;
       }
     };
 
@@ -156,16 +146,36 @@ namespace llarp
       publish(const Sample &sample) = 0;
     };
 
-    template < typename LhsType, typename RhsType >
+    template < typename Value >
     static inline void
-    combine(Record< LhsType > &record, const Record< RhsType > &toAdd)
+    combine(TaggedRecords< Value > &records,
+            const TaggedRecords< Value > &toAdd)
     {
-      static_assert(std::is_convertible< RhsType, LhsType >::value, "");
-      record.id() = toAdd.id();
-      record.count() += toAdd.count();
-      record.total() += toAdd.total();
-      record.min() = std::min(record.min(), LhsType(toAdd.min()));
-      record.max() = std::max(record.max(), LhsType(toAdd.max()));
+      records.id = toAdd.id;
+      for(auto &record : records.data)
+      {
+        auto it = toAdd.data.find(record.first);
+        if(it == toAdd.data.end())
+        {
+          continue;
+        }
+
+        record.second.count() += it->second.count();
+        record.second.total() += it->second.total();
+        record.second.min() = std::min(record.second.min(), it->second.min());
+        record.second.max() = std::max(record.second.max(), it->second.max());
+      }
+
+      for(const auto &record : toAdd.data)
+      {
+        auto it = records.data.find(record.first);
+        if(it != records.data.end())
+        {
+          continue;
+        }
+
+        records.data[record.first] = record.second;
+      }
     }
 
     template < typename Type >
@@ -209,10 +219,10 @@ namespace llarp
         return count > 0;
       }
 
-      Record< Type >
+      TaggedRecords< Type >
       combineAndClear()
       {
-        Record< Type > rec = m_default.loadAndClear();
+        TaggedRecords< Type > rec = m_default.loadAndClear();
 
         for(auto &ptr : m_collectors)
         {
@@ -222,10 +232,10 @@ namespace llarp
         return rec;
       }
 
-      Record< Type >
+      TaggedRecords< Type >
       combine()
       {
-        Record< Type > rec = m_default.load();
+        TaggedRecords< Type > rec = m_default.load();
 
         for(auto &ptr : m_collectors)
         {
@@ -345,8 +355,8 @@ namespace llarp
       getAll() const;
     };
 
-    using DoubleRecords = std::vector< Record< double > >;
-    using IntRecords    = std::vector< Record< int > >;
+    using DoubleRecords = std::vector< TaggedRecords< double > >;
+    using IntRecords    = std::vector< TaggedRecords< int > >;
 
     struct Records
     {
@@ -410,8 +420,8 @@ namespace llarp
         return *it->second.get();
       }
 
-      template < Record< Type > (Collectors< Type >::*func)() >
-      std::vector< Record< Type > >
+      template < TaggedRecords< Type > (Collectors< Type >::*func)() >
+      std::vector< TaggedRecords< Type > >
       collectOp(const Category *category)
       {
         absl::WriterMutexLock l(&m_mutex);
@@ -423,7 +433,7 @@ namespace llarp
           return {};
         }
 
-        std::vector< Record< Type > > result;
+        std::vector< TaggedRecords< Type > > result;
         auto &collectors = it->second;
         result.reserve(collectors.size());
 
@@ -439,13 +449,13 @@ namespace llarp
       {
       }
 
-      std::vector< Record< Type > >
+      std::vector< TaggedRecords< Type > >
       collectAndClear(const Category *category)
       {
         return collectOp< &Collectors< Type >::combineAndClear >(category);
       }
 
-      std::vector< Record< Type > >
+      std::vector< TaggedRecords< Type > >
       collect(const Category *category)
       {
         return collectOp< &Collectors< Type >::combine >(category);
@@ -913,11 +923,11 @@ namespace llarp
                CollectorRepo< Value > &(Manager::*repoFunc)() >
     class Metric
     {
-      Collector< Value > *m_collector;  // can be null
+      Collector *m_collector;  // can be null
       const std::atomic_bool *m_enabled;
 
      public:
-      static Collector< Value > *
+      static Collector *
       lookup(const char *category, const char *name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
@@ -925,7 +935,7 @@ namespace llarp
                        : 0;
       }
 
-      static Collector< Value > *
+      static Collector *
       lookup(const Id &id, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
@@ -946,7 +956,7 @@ namespace llarp
       {
       }
 
-      Metric(Collector< Value > *collector)
+      Metric(Collector *collector)
           : m_collector(collector)
           , m_enabled(m_collector ? &m_collector->id().category()->enabledRaw()
                                   : nullptr)
@@ -1001,20 +1011,20 @@ namespace llarp
         return m_collector ? m_collector->id() : Id();
       }
 
-      const Collector< Value > *
+      const Collector *
       collector() const
       {
         return m_collector;
       }
 
-      Collector< Value > *
+      Collector *
       collector()
       {
         return m_collector;
       }
 
       static void
-      getCollector(Collector< Value > **collector, CategoryContainer *container,
+      getCollector(Collector **collector, CategoryContainer *container,
                    const char *category, const char *metric)
       {
         Manager *manager = DefaultManager::instance();
@@ -1024,7 +1034,7 @@ namespace llarp
       }
 
       static void
-      getCollector(Collector< Value > **collector, CategoryContainer *container,
+      getCollector(Collector **collector, CategoryContainer *container,
                    const char *category, const char *metric,
                    Publication::Type type)
       {

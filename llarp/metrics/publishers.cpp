@@ -78,66 +78,100 @@ namespace llarp
 
       template < typename Value >
       void
-      publishRecord(std::ostream &stream, const Record< Value > &record,
+      publishRecord(std::ostream &stream,
+                    const TaggedRecords< Value > &taggedRecords,
                     double elapsedTime)
       {
-        auto publicationType = record.id().description()->type();
+        auto publicationType = taggedRecords.id.description()->type();
         std::shared_ptr< const Format > format =
-            record.id().description()->format();
+            taggedRecords.id.description()->format();
 
-        stream << "\t\t" << record.id() << " [ ";
-
-        if(publicationType != Publication::Type::Unspecified)
+        if(taggedRecords.data.empty())
         {
-          stream << Publication::repr(publicationType) << " = ";
-          const FormatSpec *formatSpec =
-              format ? format->specFor(publicationType) : nullptr;
-
-          formatValue(stream, record, elapsedTime, publicationType, formatSpec);
+          return;
         }
-        else
-        {
-          const FormatSpec *countSpec = nullptr;
-          const FormatSpec *totalSpec = nullptr;
-          const FormatSpec *minSpec   = nullptr;
-          const FormatSpec *maxSpec   = nullptr;
 
-          if(format)
+        stream << "\t\t" << taggedRecords.id << " [\n";
+
+        for(const auto &rec : taggedRecords.data)
+        {
+          stream << "\t\t\t";
+          const auto &tags   = rec.first;
+          const auto &record = rec.second;
+
           {
-            countSpec = format->specFor(Publication::Type::Count);
-            totalSpec = format->specFor(Publication::Type::Total);
-            minSpec   = format->specFor(Publication::Type::Min);
-            maxSpec   = format->specFor(Publication::Type::Max);
+            Printer printer(stream, -1, -1);
+            printer.printValue(tags);
           }
-          stream << "count = ";
-          formatValue(stream, record.count(), countSpec);
-          stream << ", total = ";
-          formatValue(stream, record.total(), totalSpec);
-          if(Record< Value >::DEFAULT_MIN() == record.min())
+
+          stream << " ";
+
+          if(publicationType != Publication::Type::Unspecified)
           {
-            stream << ", min = undefined";
+            stream << Publication::repr(publicationType) << " = ";
+            const FormatSpec *formatSpec =
+                format ? format->specFor(publicationType) : nullptr;
+
+            formatValue(stream, record, elapsedTime, publicationType,
+                        formatSpec);
           }
           else
           {
-            stream << ", min = ";
-            formatValue(stream, record.min(), minSpec);
-          }
-          if(Record< Value >::DEFAULT_MAX() == record.max())
-          {
-            stream << ", max = undefined";
-          }
-          else
-          {
-            stream << ", max = ";
-            formatValue(stream, record.max(), maxSpec);
+            const FormatSpec *countSpec = nullptr;
+            const FormatSpec *totalSpec = nullptr;
+            const FormatSpec *minSpec   = nullptr;
+            const FormatSpec *maxSpec   = nullptr;
+
+            if(format)
+            {
+              countSpec = format->specFor(Publication::Type::Count);
+              totalSpec = format->specFor(Publication::Type::Total);
+              minSpec   = format->specFor(Publication::Type::Min);
+              maxSpec   = format->specFor(Publication::Type::Max);
+            }
+            stream << "count = ";
+            formatValue(stream, record.count(), countSpec);
+            stream << ", total = ";
+            formatValue(stream, record.total(), totalSpec);
+            if(Record< Value >::DEFAULT_MIN() == record.min())
+            {
+              stream << ", min = undefined";
+            }
+            else
+            {
+              stream << ", min = ";
+              formatValue(stream, record.min(), minSpec);
+            }
+            if(Record< Value >::DEFAULT_MAX() == record.max())
+            {
+              stream << ", max = undefined";
+            }
+            else
+            {
+              stream << ", max = ";
+              formatValue(stream, record.max(), maxSpec);
+            }
           }
         }
-        stream << " ]\n";
+        stream << "\n\t\t]\n";
+      }
+
+      nlohmann::json
+      tagsToJson(const Tags &tags)
+      {
+        nlohmann::json result;
+
+        std::for_each(tags.begin(), tags.end(), [&](const auto &tag) {
+          absl::visit([&](const auto &t) { result[tag.first] = t; },
+                      tag.second);
+        });
+
+        return result;
       }
 
       template < typename Value >
-      void
-      formatValue(nlohmann::json &result, const Record< Value > &record,
+      nlohmann::json
+      formatValue(const Record< Value > &record, const Tags &tags,
                   double elapsedTime, Publication::Type publicationType)
       {
         switch(publicationType)
@@ -149,37 +183,40 @@ namespace llarp
           break;
           case Publication::Type::Total:
           {
-            result["total"] = record.total();
+            return {{"tags", tagsToJson(tags)}, {"total", record.total()}};
           }
           break;
           case Publication::Type::Count:
           {
-            result["count"] = record.count();
+            return {{"tags", tagsToJson(tags)}, {"count", record.count()}};
           }
           break;
           case Publication::Type::Min:
           {
-            result["min"] = record.min();
+            return {{"tags", tagsToJson(tags)}, {"min", record.min()}};
           }
           break;
           case Publication::Type::Max:
           {
-            result["max"] = record.max();
+            return {{"tags", tagsToJson(tags)}, {"max", record.max()}};
           }
           break;
           case Publication::Type::Avg:
           {
-            result["avg"] = record.total() / record.count();
+            return {{"tags", tagsToJson(tags)},
+                    {"avg", record.total() / record.count()}};
           }
           break;
           case Publication::Type::Rate:
           {
-            result["rate"] = record.total() / elapsedTime;
+            return {{"tags", tagsToJson(tags)},
+                    {"rate", record.total() / elapsedTime}};
           }
           break;
           case Publication::Type::RateCount:
           {
-            result["rateCount"] = record.count() / elapsedTime;
+            return {{"tags", tagsToJson(tags)},
+                    {"rateCount", record.count() / elapsedTime}};
           }
           break;
         }
@@ -187,30 +224,41 @@ namespace llarp
 
       template < typename Value >
       nlohmann::json
-      recordToJson(const Record< Value > &record, double elapsedTime)
+      recordToJson(const TaggedRecords< Value > &taggedRecord,
+                   double elapsedTime)
       {
         nlohmann::json result;
-        result["id"] = record.id().toString();
+        result["id"] = taggedRecord.id.toString();
 
-        auto publicationType = record.id().description()->type();
-        if(publicationType != Publication::Type::Unspecified)
+        auto publicationType = taggedRecord.id.description()->type();
+
+        for(const auto &rec : taggedRecord.data)
         {
-          result["publicationType"] = Publication::repr(publicationType);
-
-          formatValue(result, record, elapsedTime, publicationType);
-        }
-        else
-        {
-          result["count"] = record.count();
-          result["total"] = record.total();
-
-          if(Record< Value >::DEFAULT_MIN() != record.min())
+          const auto &record = rec.second;
+          if(publicationType != Publication::Type::Unspecified)
           {
-            result["min"] = record.min();
+            result["publicationType"] = Publication::repr(publicationType);
+
+            result["metrics"].push_back(
+                formatValue(record, rec.first, elapsedTime, publicationType));
           }
-          if(Record< Value >::DEFAULT_MAX() == record.max())
+          else
           {
-            result["max"] = record.max();
+            nlohmann::json tmp;
+            tmp["tags"]  = tagsToJson(rec.first);
+            tmp["count"] = record.count();
+            tmp["total"] = record.total();
+
+            if(Record< Value >::DEFAULT_MIN() != record.min())
+            {
+              tmp["min"] = record.min();
+            }
+            if(Record< Value >::DEFAULT_MAX() == record.max())
+            {
+              tmp["max"] = record.max();
+            }
+
+            result["metrics"].push_back(tmp);
           }
         }
 
@@ -241,12 +289,14 @@ namespace llarp
           m_stream << "\tElapsed Time: " << elapsedTime << "s\n";
         }
 
-        forSampleGroup(*gIt, [&](const auto &x) {
-          for(const auto &record : x)
-          {
-            publishRecord(m_stream, record, elapsedTime);
-          }
-        });
+        absl::visit(
+            [&](const auto &x) {
+              for(const auto &record : x)
+              {
+                publishRecord(m_stream, record, elapsedTime);
+              }
+            },
+            *gIt);
 
         prev = gIt;
       }
@@ -275,12 +325,15 @@ namespace llarp
           result["elapsedTime"] = elapsedTime;
         }
 
-        forSampleGroup(*gIt, [&](const auto &x) {
-          for(const auto &record : x)
-          {
-            result["record"].emplace_back(recordToJson(record, elapsedTime));
-          }
-        });
+        absl::visit(
+            [&](const auto &x) -> void {
+              for(const auto &record : x)
+              {
+                result["record"].emplace_back(
+                    recordToJson(record, elapsedTime));
+              }
+            },
+            *gIt);
 
         prev = gIt;
       }

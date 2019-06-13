@@ -6,9 +6,11 @@
 #include <gmock/gmock.h>
 
 using namespace llarp;
+using namespace metrics;
 using namespace ::testing;
 
 using RecordT      = metrics::Record< double >;
+using TagRecordT   = metrics::TaggedRecords< double >;
 using SampleGroupT = metrics::SampleGroup< double >;
 
 struct MetricFormatSpecTestData
@@ -149,13 +151,17 @@ TEST(MetricsTypes, Sample)
   metrics::Id metricC(&descC);
 
   absl::Time timeStamp = absl::Now();
-  RecordT recordA(metricA, 0, 0, 0, 0);
-  RecordT recordB(metricB, 1, 2, 3, 4);
-  RecordT recordC(metricC, 4, 3, 2, 1);
+  RecordT recordA(0, 0, 0, 0);
+  RecordT recordB(1, 2, 3, 4);
+  RecordT recordC(4, 3, 2, 1);
 
-  RecordT buffer1[] = {recordA, recordB};
-  std::vector< RecordT > buffer2;
-  buffer2.push_back(recordC);
+  TagRecordT tagRecordA(metricA, {{{}, recordA}});
+  TagRecordT tagRecordB(metricB, {{{}, recordB}});
+  TagRecordT tagRecordC(metricC, {{{}, recordC}});
+
+  TagRecordT buffer1[] = {tagRecordA, tagRecordB};
+  std::vector< TagRecordT > buffer2;
+  buffer2.push_back(tagRecordC);
 
   metrics::Sample sample;
   sample.sampleTime(timeStamp);
@@ -209,7 +215,7 @@ struct SampleTest
   metrics::Id id_F;
   metrics::Id id_G;
 
-  std::vector< RecordT > recordBuffer;
+  std::vector< TagRecordT > recordBuffer;
 
   SampleTest()
       : cat_A("A", true)
@@ -228,29 +234,47 @@ struct SampleTest
       , id_F(&DESC_F)
       , id_G(&DESC_G)
   {
-    recordBuffer.emplace_back(metrics::Id(0), 1, 1, 1, 1);
-    recordBuffer.emplace_back(id_A, 2, 2, 2, 2);
-    recordBuffer.emplace_back(id_B, 3, 3, 3, 3);
-    recordBuffer.emplace_back(id_C, 4, 4, 4, 4);
-    recordBuffer.emplace_back(id_D, 5, 5, 5, 5);
-    recordBuffer.emplace_back(id_E, 6, 6, 6, 6);
-    recordBuffer.emplace_back(id_F, 7, 7, 7, 7);
-    recordBuffer.emplace_back(id_G, 8, 8, 8, 8);
-    recordBuffer.emplace_back(id_A, 9, 9, 9, 9);
+    recordBuffer.emplace_back(
+        metrics::Id(0),
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(1, 1, 1, 1)}});
+    recordBuffer.emplace_back(
+        id_A,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(2, 2, 2, 2)}});
+    recordBuffer.emplace_back(
+        id_B,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(3, 3, 3, 3)}});
+    recordBuffer.emplace_back(
+        id_C,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(4, 4, 4, 4)}});
+    recordBuffer.emplace_back(
+        id_D,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(5, 5, 5, 5)}});
+    recordBuffer.emplace_back(
+        id_E,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(6, 6, 6, 6)}});
+    recordBuffer.emplace_back(
+        id_F,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(7, 7, 7, 7)}});
+    recordBuffer.emplace_back(
+        id_G,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(8, 8, 8, 8)}});
+    recordBuffer.emplace_back(
+        id_A,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(9, 9, 9, 9)}});
   }
 };
 
 std::pair< std::vector< metrics::SampleGroup< double > >, size_t >
 generate(const std::string &specification,
-         const std::vector< RecordT > &recordBuffer)
+         const std::vector< TagRecordT > &recordBuffer)
 {
   const char *c = specification.c_str();
 
   std::vector< metrics::SampleGroup< double > > groups;
   size_t size = 0;
 
-  const RecordT *head    = recordBuffer.data();
-  const RecordT *current = head;
+  const TagRecordT *head    = recordBuffer.data();
+  const TagRecordT *current = head;
   while(*c)
   {
     int numRecords = *(c + 1) - '0';

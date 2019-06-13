@@ -397,7 +397,6 @@ namespace llarp
     template < typename Type >
     class Record
     {
-      Id m_id;
       size_t m_count;
       Type m_total;
       Type m_min;
@@ -410,32 +409,16 @@ namespace llarp
       // clang-format on
 
       Record()
-          : m_id()
-          , m_count(0)
-          , m_total(0.0)
-          , m_min(DEFAULT_MIN())
-          , m_max(DEFAULT_MAX())
+          : m_count(0), m_total(0.0), m_min(DEFAULT_MIN()), m_max(DEFAULT_MAX())
       {
       }
 
-      explicit Record(const Id &id)
-          : m_id(id)
-          , m_count(0)
-          , m_total()
-          , m_min(DEFAULT_MIN())
-          , m_max(DEFAULT_MAX())
-      {
-      }
-
-      Record(const Id &id, size_t count, double total, double min, double max)
-          : m_id(id), m_count(count), m_total(total), m_min(min), m_max(max)
+      Record(size_t count, double total, double min, double max)
+          : m_count(count), m_total(total), m_min(min), m_max(max)
       {
       }
 
       // clang-format off
-      const Id& id() const { return m_id; }
-      Id& id()             { return m_id; }
-
       size_t count() const { return m_count; }
       size_t& count()      { return m_count; }
 
@@ -462,7 +445,6 @@ namespace llarp
       print(std::ostream &stream, int level, int spaces) const
       {
         Printer printer(stream, level, spaces);
-        printer.printAttribute("id", m_id);
         printer.printAttribute("count", m_count);
         printer.printAttribute("total", m_total);
         printer.printAttribute("min", m_min);
@@ -483,9 +465,8 @@ namespace llarp
     inline bool
     operator==(const Record< Type > &lhs, const Record< Type > &rhs)
     {
-      return (lhs.id() == rhs.id() && lhs.count() == rhs.count()
-              && lhs.total() == rhs.total() && lhs.min() == rhs.min()
-              && lhs.max() == rhs.max());
+      return std::make_tuple(lhs.count(), lhs.total(), lhs.min(), lhs.max())
+          == std::make_tuple(rhs.count(), rhs.total(), rhs.min(), rhs.max());
     }
 
     template < typename Type >
@@ -500,19 +481,62 @@ namespace llarp
     using Tags     = std::set< std::pair< Tag, TagValue > >;
 
     template < typename Type >
-    using TaggedRecords = absl::flat_hash_map< Tags, Record< Type > >;
+    using TaggedRecordsData = absl::flat_hash_map< Tags, Record< Type > >;
+
+    template < typename Type >
+    struct TaggedRecords
+    {
+      Id id;
+      TaggedRecordsData< Type > data;
+
+      explicit TaggedRecords(const Id &_id) : id(_id)
+      {
+      }
+
+      TaggedRecords(const Id &_id, const TaggedRecordsData< Type > &_data)
+          : id(_id), data(_data)
+      {
+      }
+
+      std::ostream &
+      print(std::ostream &stream, int level, int spaces) const
+      {
+        Printer printer(stream, level, spaces);
+        printer.printAttribute("id", id);
+        printer.printAttribute("data", data);
+
+        return stream;
+      }
+    };
+
+    template < typename Value >
+    bool
+    operator==(const TaggedRecords< Value > &lhs,
+               const TaggedRecords< Value > &rhs)
+    {
+      return std::tie(lhs.id, lhs.data) == std::tie(rhs.id, rhs.data);
+    }
+
+    template < typename Value >
+    std::ostream &
+    operator<<(std::ostream &stream, const TaggedRecords< Value > &rec)
+    {
+      return rec.print(stream, -1, -1);
+    }
 
     template < typename Type >
     class SampleGroup
     {
-      absl::Span< const Record< Type > > m_records;
-      absl::Duration m_samplePeriod;
-
      public:
-      using RecordType = Record< Type >;
+      using RecordType = TaggedRecords< Type >;
       using const_iterator =
           typename absl::Span< const RecordType >::const_iterator;
 
+     private:
+      absl::Span< const RecordType > m_records;
+      absl::Duration m_samplePeriod;
+
+     public:
       SampleGroup() : m_records(), m_samplePeriod()
       {
       }
@@ -603,7 +627,7 @@ namespace llarp
       }
 
       template<typename Type>
-      void pushGroup(const Record<Type> *records, size_t size, absl::Duration duration) {
+      void pushGroup(const TaggedRecords< Type > *records, size_t size, absl::Duration duration) {
         if (size != 0) {
           m_samples.emplace_back(SampleGroup<Type>(records, size, duration));
           m_recordCount += size;
@@ -611,7 +635,7 @@ namespace llarp
       }
 
       template<typename Type>
-      void pushGroup(const absl::Span< const Record<Type> > &records,absl::Duration duration) {
+      void pushGroup(const absl::Span< const TaggedRecords< Type > > &records,absl::Duration duration) {
         if (!records.empty()) {
           m_samples.emplace_back(SampleGroup<Type>(records, duration));
           m_recordCount += records.size();
@@ -636,33 +660,18 @@ namespace llarp
       // clang-format on
     };
 
-    template < typename T >
-    auto
-    forSampleGroup(
-        const absl::variant< SampleGroup< double >, SampleGroup< int > > &group,
-        const T &func)
-        -> decltype(func(std::declval< SampleGroup< double > >()))
-    {
-      return absl::visit(
-          util::overloaded(
-              [&](const SampleGroup< double > &d) { return func(d); },
-              [&](const SampleGroup< int > &i) { return func(i); }),
-          group);
-    }
-
     inline absl::Duration
     samplePeriod(
         const absl::variant< SampleGroup< double >, SampleGroup< int > > &group)
     {
-      return forSampleGroup(group,
-                            [](const auto &x) { return x.samplePeriod(); });
+      return absl::visit([](const auto &x) { return x.samplePeriod(); }, group);
     }
 
     inline size_t
     sampleSize(
         const absl::variant< SampleGroup< double >, SampleGroup< int > > &group)
     {
-      return forSampleGroup(group, [](const auto &x) { return x.size(); });
+      return absl::visit([](const auto &x) { return x.size(); }, group);
     }
   }  // namespace metrics
 }  // namespace llarp

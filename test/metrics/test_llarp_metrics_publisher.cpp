@@ -4,25 +4,30 @@
 #include <gmock/gmock.h>
 
 using namespace llarp;
+using namespace metrics;
 
 TEST(MetricsPublisher, StreamPublisher)
 {
-  metrics::Category myCategory("MyCategory");
-  metrics::Description descA(&myCategory, "MetricA");
-  metrics::Description descB(&myCategory, "MetricB");
+  Category myCategory("MyCategory");
+  Description descA(&myCategory, "MetricA");
+  Description descB(&myCategory, "MetricB");
 
-  metrics::Id metricA(&descA);
-  metrics::Id metricB(&descB);
+  Id metricA(&descA);
+  Id metricB(&descB);
 
   std::stringstream stream;
-  metrics::StreamPublisher myPublisher(stream);
+  StreamPublisher myPublisher(stream);
 
-  std::vector< metrics::Record< double > > records;
+  std::vector< TaggedRecords< double > > records;
 
-  records.emplace_back(metricA, 5, 25.0, 6.0, 25.0);
-  records.emplace_back(metricB, 2, 7.0, 3.0, 11.0);
+  records.emplace_back(
+      metricA,
+      TaggedRecordsData< double >{{{}, Record< double >(5, 25.0, 6.0, 25.0)}});
+  records.emplace_back(
+      metricB,
+      TaggedRecordsData< double >{{{}, Record< double >(2, 7.0, 3.0, 11.0)}});
 
-  metrics::Sample sample;
+  Sample sample;
   sample.sampleTime(absl::Now());
   sample.pushGroup(records.data(), records.size(), absl::Seconds(5));
 

@@ -6,9 +6,6 @@ namespace llarp
 {
   namespace metrics
   {
-    using DoubleRecords = std::vector< Record< double > >;
-    using IntRecords    = std::vector< Record< int > >;
-
     std::tuple< Id, bool >
     Registry::insert(const char *category, const char *name)
     {
@@ -251,8 +248,8 @@ namespace llarp
       }
 
       template < typename Type >
-      using RecordBuffer =
-          std::vector< std::shared_ptr< std::vector< Record< Type > > > >;
+      using RecordBuffer = std::vector<
+          std::shared_ptr< std::vector< TaggedRecords< Type > > > >;
 
       template < typename CategoryIterator >
       static void
@@ -309,12 +306,14 @@ namespace llarp
                 std::make_shared< DoubleRecords >(records.doubleRecords);
             doubleRecordBuffer.push_back(dRecords);
             SampleGroup< double > doubleGroup(
-                absl::Span< Record< double > >(*dRecords), result.samplePeriod);
+                absl::Span< const TaggedRecords< double > >(*dRecords),
+                result.samplePeriod);
 
             auto iRecords = std::make_shared< IntRecords >(records.intRecords);
             intRecordBuffer.push_back(iRecords);
-            SampleGroup< int > intGroup(absl::Span< Record< int > >(*iRecords),
-                                        result.samplePeriod);
+            SampleGroup< int > intGroup(
+                absl::Span< const TaggedRecords< int > >(*iRecords),
+                result.samplePeriod);
 
             std::for_each(manager.m_publishers.globalBegin(),
                           manager.m_publishers.globalEnd(),
