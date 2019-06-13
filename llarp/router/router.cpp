@@ -16,6 +16,7 @@
 #include <util/logger.hpp>
 #include <util/memfn.hpp>
 #include <util/file_logger.hpp>
+#include <util/json_logger.hpp>
 #include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
@@ -923,6 +924,19 @@ namespace llarp
     }
     else if(StrEq(section, "logging"))
     {
+      if(strlen(key) == 0 && strlen(val) == 0)
+      {
+        if(m_LogJSON)
+        {
+          LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
+              diskworker(), m_LogFile, 100, m_LogFile != stdout);
+        }
+        else if(m_LogFile != stdout)
+        {
+          LogContext::Instance().logStream = std::make_unique< FileLogStream >(
+              diskworker(), m_LogFile, 100, true);
+        }
+      }
       if(StrEq(key, "type") && StrEq(val, "syslog"))
       {
         // TODO(despair): write event log syslog class
@@ -933,15 +947,18 @@ namespace llarp
         LogContext::Instance().logStream = std::make_unique< SysLogStream >();
 #endif
       }
+      if(StrEq(key, "type") && StrEq(val, "json"))
+      {
+        m_LogJSON = true;
+      }
       if(StrEq(key, "file"))
       {
         LogInfo("open log file: ", val);
         FILE *const logfile = ::fopen(val, "a");
         if(logfile)
         {
-          LogContext::Instance().logStream =
-              std::make_unique< FileLogStream >(diskworker(), logfile, 500);
-          LogInfo("started logging to ", val);
+          m_LogFile = logfile;
+          LogInfo("will log to file ", val);
         }
         else if(errno)
         {

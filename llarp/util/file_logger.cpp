@@ -6,7 +6,7 @@ namespace llarp
   namespace
   {
     static void
-    Flush(const std::deque< std::string > &lines, FILE *const f)
+    Flush(std::deque< std::string > lines, FILE *const f)
     {
       for(const auto &line : lines)
         fprintf(f, "%s\n", line.c_str());
@@ -14,15 +14,19 @@ namespace llarp
     }
   }  // namespace
   FileLogStream::FileLogStream(thread::ThreadPool *disk, FILE *f,
-                               llarp_time_t flushInterval)
-      : m_Disk(disk), m_File(f), m_FlushInterval(flushInterval)
+                               llarp_time_t flushInterval, bool closeFile)
+      : m_Disk(disk)
+      , m_File(f)
+      , m_FlushInterval(flushInterval)
+      , m_Close(closeFile)
   {
   }
 
   FileLogStream::~FileLogStream()
   {
     fflush(m_File);
-    fclose(m_File);
+    if(m_Close)
+      fclose(m_File);
   }
 
   bool
@@ -36,27 +40,11 @@ namespace llarp
 
   void
   FileLogStream::PreLog(std::stringstream &ss, LogLevel lvl, const char *fname,
-                        int lineno) const
+                        int lineno, const std::string &nodename) const
   {
-    switch(lvl)
-    {
-      case eLogNone:
-        break;
-      case eLogDebug:
-        ss << "[DBG] ";
-        break;
-      case eLogInfo:
-        ss << "[NFO] ";
-        break;
-      case eLogWarn:
-
-        ss << "[WRN] ";
-        break;
-      case eLogError:
-        ss << "[ERR] ";
-        break;
-    }
-    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
+    ss << "[" << LogLevelToString(lvl) << "] ";
+    ss << "[" << nodename << "]"
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
        << ":" << lineno << "\t";
   }
 
@@ -76,7 +64,10 @@ namespace llarp
   void
   FileLogStream::FlushLinesToDisk(llarp_time_t now)
   {
-    m_Disk->addJob(std::bind(&Flush, std::move(m_Lines), m_File));
+    FILE *const f = m_File;
+    std::deque< std::string > lines(m_Lines);
+    m_Disk->addJob([=]() { Flush(lines, f); });
+    m_Lines.clear();
     m_LastFlush = now;
   }
 }  // namespace llarp

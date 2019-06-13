@@ -12,14 +12,14 @@ namespace llarp
   /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
-    FileLogStream(thread::ThreadPool* disk, FILE* f,
-                  llarp_time_t flushInterval);
+    FileLogStream(thread::ThreadPool* disk, FILE* f, llarp_time_t flushInterval,
+                  bool closefile = true);
 
     ~FileLogStream();
 
     void
-    PreLog(std::stringstream& out, LogLevel lvl, const char* fname,
-           int lineno) const override;
+    PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,
+           const std::string& nodename) const override;
 
     void
     Print(LogLevel, const char*, const std::string& msg) override;
@@ -32,6 +32,9 @@ namespace llarp
     {
     }
 
+   protected:
+    std::deque< std::string > m_Lines;
+
    private:
     bool
     ShouldFlush(llarp_time_t now) const;
@@ -40,10 +43,10 @@ namespace llarp
     FlushLinesToDisk(llarp_time_t now);
 
     thread::ThreadPool* m_Disk;
-    FILE* m_File;
+    FILE* const m_File;
     const llarp_time_t m_FlushInterval;
     llarp_time_t m_LastFlush = 0;
-    std::deque< std::string > m_Lines;
+    const bool m_Close;
   };
 }  // namespace llarp
 
