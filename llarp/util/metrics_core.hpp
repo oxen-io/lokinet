@@ -14,84 +14,133 @@ namespace llarp
 {
   namespace metrics
   {
+    inline void
+    packToTagsImpl(Tags &)
+    {
+    }
+
+    template < typename K, typename V, typename... Args >
+    void
+    packToTagsImpl(Tags &tags, const K &k, const V &v, const Args &... args)
+    {
+      static_assert(std::is_convertible< K, Tag >::value, "");
+      static_assert(std::is_convertible< V, TagValue >::value, "");
+
+      tags.emplace(k, v);
+      packToTagsImpl(tags, args...);
+    }
+
+    template < typename... Args >
+    Tags
+    packToTags(const Args &... args)
+    {
+      static_assert(sizeof...(args) % 2 == 0, "");
+      Tags tags;
+      packToTagsImpl(tags, args...);
+      return tags;
+    }
+
     template < typename Type >
     class Collector
     {
      public:
-      using RecordType = Record< Type >;
+      using RecordType        = Record< Type >;
+      using TaggedRecordsType = TaggedRecords< Type >;
 
      private:
-      RecordType m_record GUARDED_BY(m_mutex);
+      TaggedRecordsType m_record GUARDED_BY(m_mutex);
+      const Id m_id;
       mutable util::Mutex m_mutex;
 
       Collector(const Collector &) = delete;
       Collector &
       operator=(const Collector &) = delete;
 
+      template < typename... Args >
+      RecordType &
+      fetch(Args... args) EXCLUSIVE_LOCKS_REQUIRED(m_mutex)
+      {
+        RecordType &rec = m_record[packToTags(args...)];
+        if(!rec.id().valid())
+        {
+          rec.id() = m_id;
+        }
+        return rec;
+      }
+
      public:
-      Collector(const Id &id) : m_record(id)
+      Collector(const Id &id) : m_id(id)
       {
       }
 
       void
       clear()
       {
-        absl::WriterMutexLock l(&m_mutex);
+        absl::MutexLock l(&m_mutex);
         m_record.clear();
       }
 
+      template < typename... Args >
       RecordType
-      loadAndClear()
+      loadAndClear(Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        RecordType rec = m_record;
-        m_record.clear();
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec   = fetch(args...);
+        RecordType result = rec;
 
-        return rec;
+        rec.clear();
+
+        return result;
       }
 
+      template < typename... Args >
       RecordType
-      load()
+      load(Args... args)
       {
-        absl::ReaderMutexLock l(&m_mutex);
-        return m_record;
+        absl::MutexLock l(&m_mutex);
+        return fetch(args...);
       }
 
+      template < typename... Args >
       void
-      tick(Type value)
+      tick(Type value, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count()++;
-        m_record.total() += value;
-        m_record.min() = std::min(m_record.min(), value);
-        m_record.max() = std::max(m_record.max(), value);
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count()++;
+        rec.total() += value;
+        rec.min() = std::min(rec.min(), value);
+        rec.max() = std::max(rec.max(), value);
       }
 
+      template < typename... Args >
       void
-      accumulate(size_t count, Type total, Type min, Type max)
+      accumulate(size_t count, Type total, Type min, Type max, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count() += count;
-        m_record.total() += total;
-        m_record.min() = std::min(m_record.min(), min);
-        m_record.max() = std::max(m_record.max(), max);
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count() += count;
+        rec.total() += total;
+        rec.min() = std::min(rec.min(), min);
+        rec.max() = std::max(rec.max(), max);
       }
 
+      template < typename... Args >
       void
-      set(size_t count, Type total, Type min, Type max)
+      set(size_t count, Type total, Type min, Type max, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count() = count;
-        m_record.total() = total;
-        m_record.min()   = min;
-        m_record.max()   = max;
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count()     = count;
+        rec.total()     = total;
+        rec.min()       = min;
+        rec.max()       = max;
       }
 
       const Id &
       id() const
       {
-        absl::ReaderMutexLock l(&m_mutex);
-        return m_record.id();
+        return m_id;
       }
     };
 
@@ -864,11 +913,11 @@ namespace llarp
                CollectorRepo< Value > &(Manager::*repoFunc)() >
     class Metric
     {
-      Collector *m_collector;  // can be null
+      Collector< Value > *m_collector;  // can be null
       const std::atomic_bool *m_enabled;
 
      public:
-      static Collector *
+      static Collector< Value > *
       lookup(const char *category, const char *name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
@@ -876,7 +925,7 @@ namespace llarp
                        : 0;
       }
 
-      static Collector *
+      static Collector< Value > *
       lookup(const Id &id, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
@@ -897,7 +946,7 @@ namespace llarp
       {
       }
 
-      Metric(Collector *collector)
+      Metric(Collector< Value > *collector)
           : m_collector(collector)
           , m_enabled(m_collector ? &m_collector->id().category()->enabledRaw()
                                   : nullptr)
@@ -952,20 +1001,20 @@ namespace llarp
         return m_collector ? m_collector->id() : Id();
       }
 
-      const Collector *
+      const Collector< Value > *
       collector() const
       {
         return m_collector;
       }
 
-      Collector *
+      Collector< Value > *
       collector()
       {
         return m_collector;
       }
 
       static void
-      getCollector(Collector **collector, CategoryContainer *container,
+      getCollector(Collector< Value > **collector, CategoryContainer *container,
                    const char *category, const char *metric)
       {
         Manager *manager = DefaultManager::instance();
@@ -975,7 +1024,7 @@ namespace llarp
       }
 
       static void
-      getCollector(Collector **collector, CategoryContainer *container,
+      getCollector(Collector< Value > **collector, CategoryContainer *container,
                    const char *category, const char *metric,
                    Publication::Type type)
       {

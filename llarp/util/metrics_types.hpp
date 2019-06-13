@@ -7,8 +7,11 @@
 #include <util/types.hpp>
 #include <util/variant.hpp>
 
-#include <absl/types/span.h>
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/flat_hash_set.h>
+#include <absl/hash/hash.h>
 #include <absl/types/optional.h>
+#include <absl/types/span.h>
 #include <absl/types/variant.h>
 #include <cstring>
 #include <iosfwd>
@@ -492,6 +495,13 @@ namespace llarp
       return !(lhs == rhs);
     }
 
+    using Tag      = std::string;
+    using TagValue = absl::variant< std::string, double, std::int64_t >;
+    using Tags     = std::set< std::pair< Tag, TagValue > >;
+
+    template < typename Type >
+    using TaggedRecords = absl::flat_hash_map< Tags, Record< Type > >;
+
     template < typename Type >
     class SampleGroup
     {
@@ -654,7 +664,6 @@ namespace llarp
     {
       return forSampleGroup(group, [](const auto &x) { return x.size(); });
     }
-
   }  // namespace metrics
 }  // namespace llarp
 
