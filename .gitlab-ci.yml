@@ -23,7 +23,7 @@ build:freebsd:
      - freebsd
   stage: build
   script:
-    - make
+    - gmake
   artifacts:
     paths:
       - "lokint"
