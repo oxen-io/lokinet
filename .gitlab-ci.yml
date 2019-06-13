@@ -20,7 +20,7 @@ build:linux:
 
 build:freebsd:
   tags:
-     - fbsd-ci
+     - freebsd
   stage: build
   script:
     - make
