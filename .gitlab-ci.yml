@@ -18,6 +18,16 @@ build:linux:
     paths:
       - "lokinet"
 
+build:freebsd
+  tags:
+     - freebsd
+  stage: build
+  script:
+    - make
+  artifacts:
+    paths:
+      - "lokint"
+
 #build:windows:
 #  tags:
 #    - windows
