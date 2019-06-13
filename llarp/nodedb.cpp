@@ -16,6 +16,11 @@
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
+llarp_nodedb::NetDBEntry::NetDBEntry(const llarp::RouterContact &value)
+    : rc(value), inserted(llarp::time_now_ms())
+{
+}
+
 bool
 llarp_nodedb::Remove(const llarp::RouterID &pk)
 {
@@ -45,7 +50,7 @@ llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
-  result = itr->second;
+  result = itr->second.rc;
   return true;
 }
 
@@ -66,9 +71,9 @@ llarp_nodedb::RemoveIf(
     auto itr = entries.begin();
     while(itr != entries.end())
     {
-      if(filter(itr->second))
+      if(filter(itr->second.rc))
       {
-        files.insert(getRCFilePath(itr->second.pubkey));
+        files.insert(getRCFilePath(itr->second.rc.pubkey));
         itr = entries.erase(itr);
       }
       else
@@ -228,28 +233,25 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    if(!visit(itr->second))
+    if(!visit(itr->second.rc))
       return;
     ++itr;
   }
 }
 
-bool
-llarp_nodedb::iterate(llarp_nodedb_iter &i)
+void
+llarp_nodedb::VisitInsertedAfter(
+    std::function< void(const llarp::RouterContact &) > visit,
+    llarp_time_t insertedAfter)
 {
-  i.index = 0;
   llarp::util::Lock lock(&access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    i.rc = &itr->second;
-    i.visit(&i);
-
-    // advance
-    i.index++;
-    itr++;
+    if(itr->second.inserted > insertedAfter)
+      visit(itr->second.rc);
+    ++itr;
   }
-  return true;
 }
 
 /*
@@ -382,13 +384,6 @@ llarp_nodedb::load_dir(const char *dir)
   return Load(dir);
 }
 
-int
-llarp_nodedb::iterate_all(struct llarp_nodedb_iter i)
-{
-  iterate(i);
-  return num_loaded();
-}
-
 /// maybe rename to verify_and_set
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
@@ -429,9 +424,9 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
     std::advance(itr, idx - 1);
   while(itr != entries.end())
   {
-    if(itr->second.IsExit())
+    if(itr->second.rc.IsExit())
     {
-      result = itr->second;
+      result = itr->second.rc;
       return true;
     }
     ++itr;
@@ -440,9 +435,9 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
   itr = entries.begin();
   while(idx--)
   {
-    if(itr->second.IsExit())
+    if(itr->second.rc.IsExit())
     {
-      result = itr->second;
+      result = itr->second.rc;
       return true;
     }
     ++itr;
@@ -470,11 +465,11 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   auto start = itr;
   while(itr == entries.end())
   {
-    if(prev.pubkey != itr->second.pubkey)
+    if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -483,11 +478,11 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   itr = entries.begin();
   while(itr != start)
   {
-    if(prev.pubkey != itr->second.pubkey)
+    if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -518,9 +513,9 @@ llarp_nodedb::select_random_hop_excluding(
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -531,9 +526,9 @@ llarp_nodedb::select_random_hop_excluding(
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }

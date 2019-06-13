@@ -207,8 +207,8 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SendToServiceOrQueue(const RouterID& addr, const llarp_buffer_t& payload,
-                           ProtocolType t);
+      SendToServiceOrQueue(const service::Address& addr,
+                           const llarp_buffer_t& payload, ProtocolType t);
 
       bool
       SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
@@ -249,6 +249,10 @@ namespace llarp
       /// ensure a path to a service node by public key
       void
       EnsurePathToSNode(const RouterID& remote, SNodeEnsureHook h);
+
+      /// return true if this endpoint is trying to lookup this router right now
+      bool
+      HasPendingRouterLookup(const RouterID remote) const;
 
       bool
       HasPathToSNode(const RouterID& remote) const;

@@ -212,6 +212,9 @@ endif(JEMALLOC)
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
 set(LIBS ${MALLOC_LIB} ${FS_LIB})
+if(NOT WIN32)
+  set(LIBS ${LIBS} uv)
+endif()
 
 if(ANDROID)
   list(APPEND LIBS log)
@@ -226,6 +229,7 @@ elseif(WIN32)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif()
+
 
 set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.cpp
@@ -263,6 +267,7 @@ target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${AB
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  target_link_directories(${ABYSS_EXE} PRIVATE /usr/local/lib)
   target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 add_log_tag(${ABYSS_EXE})
@@ -296,7 +301,9 @@ else()
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    target_link_directories(${EXE} PRIVATE /usr/local/lib)
+  endif()
   target_link_libraries(${EXE} PUBLIC ${EXE_LIBS})
 
   if(ANDROID)

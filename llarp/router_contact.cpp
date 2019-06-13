@@ -31,6 +31,8 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
+  /// every 30 minutes an RC is stale and needs updating
+  llarp_time_t RouterContact::UpdateInterval = 30 * 60 * 1000;
 
   NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {
@@ -231,28 +233,15 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    /*
-    auto expiresAt = last_updated + Lifetime;
+    const auto expiresAt = last_updated + Lifetime;
     return now >= expiresAt;
-    */
-    (void)now;
-    return false;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
-    (void)now;
-    (void)dlt;
-    return false;
-    /*
-    if(IsExpired(now))
-    {
-      return true;
-    }
-    auto expiresAt = last_updated + Lifetime;
-    return expiresAt - now <= dlt;
-    */
+    const auto expiresAt = last_updated + Lifetime;
+    return expiresAt <= now || expiresAt - now <= dlt;
   }
 
   std::string
@@ -278,7 +267,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Verify(llarp_time_t now) const
+  RouterContact::Verify(llarp_time_t now, bool allowExpired) const
   {
     if(netID != NetID::DefaultValue())
     {
@@ -288,8 +277,12 @@ namespace llarp
     }
     if(IsExpired(now))
     {
-      llarp::LogError("RC is expired");
-      return false;
+      if(!allowExpired)
+      {
+        llarp::LogError("RC is expired");
+        return false;
+      }
+      llarp::LogWarn("RC is expired");
     }
     for(const auto &a : addrs)
     {

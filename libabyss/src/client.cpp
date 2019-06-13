@@ -63,6 +63,7 @@ namespace abyss
       static void
       OnClosed(llarp_tcp_conn* conn)
       {
+        llarp::LogDebug("connection closed");
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         self->state    = eCloseMe;
       }

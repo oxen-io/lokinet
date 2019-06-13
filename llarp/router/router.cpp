@@ -511,7 +511,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
-    llarp_ev_loop_stop(_netloop.get());
+    llarp_ev_loop_stop(_netloop);
     inboundLinks.clear();
     outboundLinks.clear();
     disk.stop();
@@ -1145,30 +1145,72 @@ namespace llarp
   }
 
   void
-  Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
+  Router::LookupRouterWhenExpired(RouterID router)
   {
-    using namespace std::placeholders;
-    dht()->impl->LookupRouter(
-        router,
-        std::bind(&Router::HandleDHTLookupForExplore, this, router, _1));
+    LookupRouter(router,
+                 std::bind(&Router::HandleRouterLookupForExpireUpdate, this,
+                           router, std::placeholders::_1));
+  }
+
+  void
+  Router::HandleRouterLookupForExpireUpdate(
+      RouterID router, const std::vector< RouterContact > &result)
+  {
+    const auto now = Now();
+    RouterContact current;
+    if(nodedb()->Get(router, current))
+    {
+      if(current.IsExpired(now))
+      {
+        nodedb()->Remove(router);
+      }
+    }
+    if(result.size() == 1 && !result[0].IsExpired(now))
+    {
+      LogInfo("storing rc for ", router);
+      nodedb()->Insert(result[0]);
+    }
+    else
+    {
+      LogInfo("not storing rc for ", router);
+    }
+  }
+
+  bool
+  Router::HasPendingRouterLookup(const RouterID &remote) const
+  {
+    if(IsServiceNode())
+      return dht()->impl->HasRouterLookup(remote);
+    bool has = false;
+    _hiddenServiceContext.ForEachService(
+        [&has, remote](const std::string &,
+                       const std::shared_ptr< service::Endpoint > &ep) -> bool {
+          has |= ep->HasPendingRouterLookup(remote);
+          return true;
+        });
+    return has;
   }
 
   void
   Router::LookupRouter(RouterID remote, RouterLookupHandler resultHandler)
   {
+    if(!resultHandler)
+    {
+      resultHandler = std::bind(&Router::HandleRouterLookupForExpireUpdate,
+                                this, remote, std::placeholders::_1);
+    }
     if(IsServiceNode())
     {
-      if(resultHandler)
-        dht()->impl->LookupRouter(remote, resultHandler);
-      else
-        ServiceNodeLookupRouterWhenExpired(remote);
-      return;
+      dht()->impl->LookupRouter(remote, resultHandler);
     }
-    _hiddenServiceContext.ForEachService(
-        [=](const std::string &,
-            const std::shared_ptr< service::Endpoint > &ep) -> bool {
-          return !ep->LookupRouterAnon(remote, resultHandler);
-        });
+    else
+    {
+      _hiddenServiceContext.ForEachService(
+          [=](const std::string &,
+              const std::shared_ptr< service::Endpoint > &ep) -> bool {
+            return !ep->LookupRouterAnon(remote, resultHandler);
+          });
+    }
   }
 
   bool
@@ -1190,6 +1232,22 @@ namespace llarp
 
     routerProfiling().Tick();
 
+    // try looking up stale routers
+    nodedb()->VisitInsertedAfter(
+        [&](const RouterContact &rc) {
+          if(HasPendingRouterLookup(rc.pubkey))
+            return;
+          LookupRouter(rc.pubkey, nullptr);
+        },
+        RouterContact::UpdateInterval + now);
+    std::set< RouterID > removeStale;
+    // remove stale routers
+    nodedb()->VisitInsertedAfter(
+        [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
+        ((RouterContact::UpdateInterval * 3) / 2) + now);
+    nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
+      return removeStale.count(rc.pubkey) > 0;
+    });
     if(IsServiceNode())
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
@@ -1208,14 +1266,6 @@ namespace llarp
         return !ConnectionToRouterAllowed(rc.pubkey);
       });
       */
-
-      // only do this as service node
-      // client endpoints do this on their own
-      nodedb()->visit([&](const RouterContact &rc) -> bool {
-        if(rc.ExpiresSoon(now, randint() % 10000))
-          ServiceNodeLookupRouterWhenExpired(rc.pubkey);
-        return true;
-      });
     }
     else
     {
@@ -1848,10 +1898,10 @@ namespace llarp
   bool
   Router::HasSessionTo(const RouterID &remote) const
   {
-    for(const auto & link : outboundLinks)
+    for(const auto &link : outboundLinks)
       if(link->HasSessionTo(remote))
         return true;
-    for(const auto & link : inboundLinks)
+    for(const auto &link : inboundLinks)
       if(link->HasSessionTo(remote))
         return true;
     return false;

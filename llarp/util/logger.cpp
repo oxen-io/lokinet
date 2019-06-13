@@ -25,6 +25,7 @@ namespace llarp
 
   LogContext::LogContext()
       : logStream(std::make_unique< Stream_t >(_LOGSTREAM_INIT))
+      , started(llarp::time_now_ms())
   {
   }
 
@@ -33,6 +34,17 @@ namespace llarp
   {
     static LogContext ctx;
     return ctx;
+  }
+
+  log_timestamp::log_timestamp() : log_timestamp("%c %Z")
+  {
+  }
+
+  log_timestamp::log_timestamp(const char* fmt)
+      : format(fmt)
+      , now(llarp::time_now_ms())
+      , delta(llarp::time_now_ms() - LogContext::Instance().started)
+  {
   }
 
   void

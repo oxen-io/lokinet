@@ -212,6 +212,7 @@ namespace abyss
       bool
       ProcessRead(const char* buf, size_t sz)
       {
+        llarp::LogDebug("http read ", sz, " bytes");
         if(m_Bad)
         {
           return false;
@@ -266,6 +267,7 @@ namespace abyss
       static void
       OnClosed(llarp_tcp_conn* conn)
       {
+        llarp::LogDebug("connection closed");
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         self->_conn    = nullptr;
       }
@@ -280,6 +282,8 @@ namespace abyss
       void
       Tick()
       {
+        if(m_Bad)
+          Close();
       }
 
       /// mark bad so next tick we are closed

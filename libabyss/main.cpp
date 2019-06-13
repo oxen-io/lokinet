@@ -68,8 +68,7 @@ struct DemoClient : public abyss::http::JSONRPC
   abyss::http::IRPCClientHandler*
   NewConn(abyss::http::ConnImpl* impl)
   {
-    return new DemoCall(impl, m_Logic,
-                        std::bind(&llarp_ev_loop_stop, m_Loop.get()));
+    return new DemoCall(impl, m_Logic, std::bind(&llarp_ev_loop_stop, m_Loop));
   }
 
   void
@@ -118,7 +117,7 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
 #endif
   llarp::SetLogLevel(llarp::eLogDebug);
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
-  llarp_ev_loop_ptr loop       = llarp_make_ev_loop();
+  llarp_ev_loop_ptr loop       = llarp_make_uv_loop();
   auto logic                   = std::make_shared< llarp::Logic >(threadpool);
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);

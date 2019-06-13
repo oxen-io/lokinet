@@ -531,6 +531,12 @@ namespace llarp
     // null if inbound otherwise outbound
     llarp_tcp_connecter* _conn;
 
+    static void
+    DoClose(llarp_tcp_conn* conn)
+    {
+      static_cast< tcp_conn* >(conn->impl)->_shouldClose = true;
+    }
+
     /// inbound
     tcp_conn(llarp_ev_loop* loop, int fd)
         : ev_io(fd, new LosslessWriteQueue_t{}), _conn(nullptr)
@@ -541,6 +547,7 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
+      tcp.close  = &DoClose;
     }
 
     /// outbound
@@ -560,6 +567,7 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
+      tcp.close  = &DoClose;
     }
 
     virtual ~tcp_conn()
@@ -713,7 +721,7 @@ struct llarp_ev_loop
   virtual bool
   running() const = 0;
 
-  void
+  virtual void
   update_time()
   {
     _now = llarp::time_now_ms();
@@ -724,6 +732,9 @@ struct llarp_ev_loop
   {
     return _now;
   }
+
+  virtual void
+  stopped(){};
 
   /// return false on socket error (non blocking)
   virtual bool
@@ -738,14 +749,23 @@ struct llarp_ev_loop
   virtual bool
   udp_listen(llarp_udp_io* l, const sockaddr* src) = 0;
 
-  virtual llarp::ev_io*
-  create_udp(llarp_udp_io* l, const sockaddr* src) = 0;
-
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
   /// deregister event listener
   virtual bool
   close_ev(llarp::ev_io* ev) = 0;
+
+  virtual bool
+  tun_listen(llarp_tun_io* tun)
+  {
+    auto dev  = create_tun(tun);
+    tun->impl = dev;
+    if(dev)
+    {
+      return add_ev(dev, false);
+    }
+    return false;
+  }
 
   virtual llarp::ev_io*
   create_tun(llarp_tun_io* tun) = 0;
@@ -756,6 +776,13 @@ struct llarp_ev_loop
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
+
+  virtual bool
+  tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+  {
+    auto conn = bind_tcp(tcp, addr);
+    return conn && add_ev(conn, true);
+  }
 
   virtual ~llarp_ev_loop()
   {

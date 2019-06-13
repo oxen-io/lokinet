@@ -86,6 +86,9 @@ namespace llarp
     LogLevel minLevel = eLogInfo;
     ILogStream_ptr logStream;
     std::string nodeName;
+
+    const llarp_time_t started;
+
     static LogContext&
     Instance();
   };

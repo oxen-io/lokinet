@@ -43,73 +43,7 @@ namespace llarp
       if(l == nullptr)
         return 0;
       LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len, " bytes");
-      // For whatever reason, the UTP_UDP_DONTFRAG flag is set
-      // on the socket itself....which isn't correct and causes
-      // winsock (at minimum) to reeee
-      // here, we check its value, then set fragmentation the _right_
-      // way. Naturally, Linux has its own special procedure.
-      // Of course, the flag itself is cleared. -rick
-#ifndef _WIN32
-      // No practical method of doing this on NetBSD or Darwin
-      // without resorting to raw sockets
-#if !(__NetBSD__ || __OpenBSD__ || (__APPLE__ && __MACH__))
-#ifndef __linux__
-      if(arg->flags == 2)
-      {
-        int val = 1;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val, sizeof(val));
-      }
-      else
-      {
-        int val = 0;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val, sizeof(val));
-      }
-#else
-      if(arg->flags == 2)
-      {
-        int val = IP_PMTUDISC_DO;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
-      }
-      else
-      {
-        int val = IP_PMTUDISC_DONT;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
-      }
-#endif
-#endif
-      arg->flags = 0;
-      if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
-                  arg->address, arg->address_len)
-             == -1
-         && errno)
-#else
-      if(arg->flags == 2)
-      {
-        char val = 1;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val, sizeof(val));
-      }
-      else
-      {
-        char val = 0;
-        setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val, sizeof(val));
-      }
-      arg->flags = 0;
-      if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
-                  arg->address, arg->address_len)
-         == -1)
-#endif
-      {
-#ifdef _WIN32
-        char buf[1024];
-        int err = WSAGetLastError();
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
-                      buf, 1024, nullptr);
-        LogError("sendto failed: ", buf);
-#else
-        LogError("sendto failed: ", strerror(errno));
-#endif
-      }
-      return 0;
+      return l->m_udp.sendto(&l->m_udp, arg->address, arg->buf, arg->len);
     }
 
     uint64

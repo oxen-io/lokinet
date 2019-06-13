@@ -219,6 +219,11 @@ namespace llarp
     virtual bool
     HasSessionTo(const RouterID &router) const = 0;
 
+    /// return true if we are currently looking up this router either directly
+    /// or via an anonymous endpoint
+    virtual bool
+    HasPendingRouterLookup(const RouterID &router) const = 0;
+
     virtual util::StatusObject
     ExtractStatus() const = 0;
 

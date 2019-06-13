@@ -492,12 +492,23 @@ llarp_kqueue_loop::udp_bind(const sockaddr* addr)
   return fd;
 }
 
+static int
+llarp_ev_kqueue_sendto(struct llarp_udp_io* udp, const struct sockaddr* to,
+                       const byte_t* pkt, size_t sz)
+{
+  const llarp::Addr toaddr(*to);
+  return ::sendto(udp->fd, pkt, sz, 0, toaddr, toaddr.SockLen());
+}
+
 bool
 llarp_kqueue_loop::udp_listen(llarp_udp_io* l, const sockaddr* src)
 {
   auto ev = create_udp(l, src);
   if(ev)
-    l->fd = ev->fd;
+  {
+    l->fd     = ev->fd;
+    l->sendto = &llarp_ev_kqueue_sendto;
+  }
   return ev && add_ev(ev, false);
 }
 

@@ -391,6 +391,9 @@ namespace llarp
     bool
     HasPendingConnectJob(const RouterID &remote);
 
+    bool
+    HasPendingRouterLookup(const RouterID &remote) const override;
+
     void
     try_connect(fs::path rcfile);
 
@@ -431,13 +434,17 @@ namespace llarp
     void
     TryEstablishTo(const RouterID &remote);
 
-    /// lookup a router by pubkey when it expires when we are a service node
+    /// lookup a router by pubkey when it expires
     void
-    ServiceNodeLookupRouterWhenExpired(RouterID remote);
+    LookupRouterWhenExpired(RouterID remote);
 
     void
     HandleDHTLookupForExplore(
         RouterID remote, const std::vector< RouterContact > &results) override;
+
+    void
+    HandleRouterLookupForExpireUpdate(
+        RouterID remote, const std::vector< RouterContact > &results);
 
     void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,

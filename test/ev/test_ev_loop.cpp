@@ -42,7 +42,7 @@ struct EventLoopTest : public ::testing::Test
   void
   Stop()
   {
-    llarp_ev_loop_stop(loop.get());
+    llarp_ev_loop_stop(loop);
   }
 
   void

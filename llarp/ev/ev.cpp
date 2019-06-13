@@ -57,6 +57,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }
+  ev->stopped();
 }
 
 int
@@ -86,7 +87,7 @@ llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &loop)
 }
 
 void
-llarp_ev_loop_stop(struct llarp_ev_loop *loop)
+llarp_ev_loop_stop(const llarp_ev_loop_ptr &loop)
 {
   loop->stop();
 }
@@ -95,30 +96,7 @@ int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     const llarp_buffer_t &buf)
 {
-  auto ret =
-      static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
-#ifndef _WIN32
-  if(ret == -1 && errno != 0)
-  {
-#else
-  if(ret == -1 && WSAGetLastError())
-  {
-#endif
-
-#ifndef _WIN32
-    llarp::LogWarn("sendto failed ", strerror(errno));
-    errno = 0;
-  }
-#else
-    char ebuf[1024];
-    int err = WSAGetLastError();
-    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
-                  1024, nullptr);
-    llarp::LogWarn("sendto failed: ", ebuf);
-    WSASetLastError(0);
-  }
-#endif
-  return ret;
+  return udp->sendto(udp, to, buf.base, buf.sz);
 }
 
 #include <string.h>
@@ -165,12 +143,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   llarp::LogDebug("IfName: ", tun->ifname);
   llarp::LogDebug("IfNMsk: ", tun->netmask);
 #ifndef _WIN32
-  auto dev  = loop->create_tun(tun);
-  tun->impl = dev;
-  if(dev)
-  {
-    return loop->add_ev(dev, false);
-  }
+  return loop->tun_listen(tun);
 #else
   UNREFERENCED_PARAMETER(loop);
   auto dev  = new win32_tun_io(tun);
@@ -195,7 +168,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
     return false;
   }
 #ifndef _WIN32
-  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
+  return tun->writepkt(tun, buf.base, buf.sz);
 #else
   return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base,
                                                                buf.sz);
@@ -206,24 +179,21 @@ bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
 {
   ManagedBuffer buf{b};
-  llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
-  if(impl->_shouldClose)
-  {
-    llarp::LogError("write on closed connection");
-    return false;
-  }
+
   size_t sz          = buf.underlying.sz;
   buf.underlying.cur = buf.underlying.base;
   while(sz > EV_WRITE_BUF_SZ)
   {
-    if(!impl->queue_write(buf.underlying.cur, EV_WRITE_BUF_SZ))
+    ssize_t amount = conn->write(conn, buf.underlying.cur, EV_WRITE_BUF_SZ);
+    if(amount <= 0)
     {
+      llarp::LogError("write underrun");
       return false;
     }
-    buf.underlying.cur += EV_WRITE_BUF_SZ;
-    sz -= EV_WRITE_BUF_SZ;
+    buf.underlying.cur += amount;
+    sz -= amount;
   }
-  return impl->queue_write(buf.underlying.cur, sz);
+  return conn->write(conn, buf.underlying.cur, sz) > 0;
 }
 
 void
@@ -267,30 +237,20 @@ bool
 llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
                 const struct sockaddr *bindaddr)
 {
-  tcp->loop          = loop;
-  llarp::ev_io *impl = loop->bind_tcp(tcp, bindaddr);
-  if(impl)
-  {
-    return loop->add_ev(impl, false);
-  }
-  return false;
+  tcp->loop = loop;
+  return loop->tcp_listen(tcp, bindaddr);
 }
 
 void
 llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 {
-  llarp::ev_io *impl = static_cast< llarp::ev_io * >(tcp->user);
-  tcp->impl          = nullptr;
-  tcp->loop->close_ev(impl);
-  if(tcp->closed)
-    tcp->closed(tcp);
-  // dont free acceptor because it may be stack allocated
+  tcp->close(tcp);
 }
 
 void
 llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
 {
-  static_cast< llarp::tcp_conn * >(conn->impl)->_shouldClose = true;
+  conn->close(conn);
 }
 
 namespace llarp

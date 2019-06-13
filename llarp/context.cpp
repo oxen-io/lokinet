@@ -224,12 +224,6 @@ __        ___    ____  _   _ ___ _   _  ____
     return 1;
   }
 
-  int
-  Context::IterateDatabase(llarp_nodedb_iter &i)
-  {
-    return nodedb->iterate_all(i);
-  }
-
   bool
   Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
   {
@@ -251,8 +245,11 @@ __        ___    ____  _   _ ___ _   _  ____
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
+#if defined(WIN32)
     mainloop = llarp_make_ev_loop();
-
+#else
+    mainloop = llarp_make_uv_loop();
+#endif
     // ensure worker thread pool
     if(!worker && !singleThreaded)
       worker.reset(llarp_init_threadpool(2, "llarp-worker"));
@@ -421,7 +418,7 @@ __        ___    ____  _   _ ___ _   _  ____
     {
       if(logic)
         logic->stop();
-      llarp_ev_loop_stop(mainloop.get());
+      llarp_ev_loop_stop(mainloop);
       Close();
     }
   }
