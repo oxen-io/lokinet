@@ -18,7 +18,7 @@ build:linux:
     paths:
       - "lokinet"
 
-build:freebsd
+build:freebsd:
   tags:
      - fbsd-ci
   stage: build
