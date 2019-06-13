@@ -67,12 +67,13 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
+* libuv >= 1.27.0 
 
 ### Linux
 
 build:
 
-    $ sudo apt install build-essential cmake git libcap-dev wget
+    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ make -j8
@@ -153,7 +154,7 @@ TODO: add pkgsrc instructions
 
 build:
 
-    # pkg_add wget cmake git (optional: ninja ccache)
+    # pkg_add curl cmake git (optional: ninja ccache)
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ gmake -j8
@@ -166,7 +167,7 @@ install (root):
 
 build:
 
-    $ pkg install wget cmake git
+    $ pkg install cmake git curl libuv-1.27.0
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ gmake -j8
