@@ -305,6 +305,11 @@ namespace llarp
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
+    // set to true if we are configured to run with json logging
+    bool m_LogJSON = false;
+    // the file we are logging to
+    FILE *m_LogFile = stdout;
+
     Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
            std::shared_ptr< Logic > logic);
 

@@ -18,11 +18,13 @@ set(LIB_UTIL_SRC
   util/android_logger.cpp
   util/file_logger.cpp
   util/logic.cpp
+  util/loglevel.cpp
   util/mem.cpp
   util/memfn_traits.cpp
   util/memfn.cpp
   util/metrics_core.cpp
   util/metrics_types.cpp
+  util/json_logger.cpp
   util/ostream_logger.cpp
   util/syslog_logger.cpp
   util/win32_logger.cpp
