@@ -2,36 +2,27 @@
 #include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
+#include "net/net_addr.hpp"
 
 #include <stddef.h>
 
-// apparently current Solaris will emulate epoll.
-#if __linux__ || SOLARIS_HAVE_EPOLL
-#include <ev/ev_epoll.hpp>
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
-#include <ev/ev_kqueue.hpp>
+// We libuv now
+#ifndef _WIN32
+#include <ev/ev_libuv.hpp>
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
 #define SHUT_RDWR SD_BOTH
 #include <ev/ev_win32.hpp>
-#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
-#include <ev/ev_sun.hpp>
 #else
-#error No async event loop for your platform, subclass llarp_ev_loop
+#error No async event loop for your platform, port libuv to your operating system
 #endif
 
 llarp_ev_loop_ptr
 llarp_make_ev_loop()
 {
-#if __linux__ || SOLARIS_HAVE_EPOLL
-  llarp_ev_loop_ptr r = std::make_shared< llarp_epoll_loop >();
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
-  llarp_ev_loop_ptr r = std::make_shared< llarp_kqueue_loop >();
+#ifndef _WIN32
+	llarp_ev_loop_ptr r = std::make_shared< libuv::Loop >();
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   llarp_ev_loop_ptr r = std::make_shared< llarp_win32_loop >();
-#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
-  llarp_ev_loop_ptr r = std::make_shared< llarp_poll_loop >();
 #else
 #error no event loop subclass
 #endif
