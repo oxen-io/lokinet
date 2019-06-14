@@ -130,9 +130,6 @@ namespace llarp
       void
       HandlePathDied(path::Path_ptr p) override;
 
-      void
-      EnsureReplyPath(const ServiceInfo& addr);
-
       bool
       PublishIntroSet(AbstractRouter* r) override;
 
@@ -258,7 +255,11 @@ namespace llarp
       HasPathToSNode(const RouterID& remote) const;
 
       void
-      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info) override;
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info,
+                   bool inbound) override;
+
+      bool
+      HasInboundConvo(const Address& addr) const override;
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
@@ -288,7 +289,7 @@ namespace llarp
                        Introduction& intro) const override;
 
       bool
-      GetConvoTagsForService(const ServiceInfo& si,
+      GetConvoTagsForService(const Address& si,
                              std::set< ConvoTag >& tag) const override;
 
       void
@@ -457,10 +458,9 @@ namespace llarp
       Sessions m_RemoteSessions;
       Sessions m_DeadSessions;
 
-      SNodeSessions m_SNodeSessions;
+      std::set< ConvoTag > m_InboundConvos;
 
-      std::unordered_map< Address, ServiceInfo, Address::Hash >
-          m_AddressToService;
+      SNodeSessions m_SNodeSessions;
 
       std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;

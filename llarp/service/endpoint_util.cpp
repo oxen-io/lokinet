@@ -117,7 +117,9 @@ namespace llarp
       while(itr != sessions.end())
       {
         if(itr->second.IsExpired(now))
+        {
           itr = sessions.erase(itr);
+        }
         else
           ++itr;
       }
@@ -158,14 +160,14 @@ namespace llarp
 
     bool
     EndpointUtil::GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
-                                         const ServiceInfo& info,
+                                         const Address& info,
                                          std::set< ConvoTag >& tags)
     {
       bool inserted = false;
       auto itr      = sessions.begin();
       while(itr != sessions.end())
       {
-        if(itr->second.remote == info)
+        if(itr->second.remote.Addr() == info)
         {
           if(tags.insert(itr->first).second)
           {

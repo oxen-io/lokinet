@@ -389,8 +389,20 @@ namespace llarp
       return true;
     }
 
+    bool
+    Endpoint::HasInboundConvo(const Address& addr) const
+    {
+      for(const auto& item : m_Sessions)
+      {
+        if(item.second.remote.Addr() == addr && item.second.inbound)
+          return true;
+      }
+      return false;
+    }
+
     void
-    Endpoint::PutSenderFor(const ConvoTag& tag, const ServiceInfo& info)
+    Endpoint::PutSenderFor(const ConvoTag& tag, const ServiceInfo& info,
+                           bool inbound)
     {
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
@@ -398,6 +410,7 @@ namespace llarp
         itr = m_Sessions.emplace(tag, Session{}).first;
       }
       itr->second.remote   = info;
+      itr->second.inbound  = inbound;
       itr->second.lastUsed = Now();
     }
 
@@ -417,7 +430,7 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.emplace(tag, Session{}).first;
+        return;
       }
       itr->second.intro    = intro;
       itr->second.lastUsed = Now();
@@ -439,7 +452,7 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.emplace(tag, Session{}).first;
+        return;
       }
       itr->second.replyIntro = intro;
       itr->second.lastUsed   = Now();
@@ -456,10 +469,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::GetConvoTagsForService(const ServiceInfo& info,
+    Endpoint::GetConvoTagsForService(const Address& addr,
                                      std::set< ConvoTag >& tags) const
     {
-      return EndpointUtil::GetConvoTagsForService(m_Sessions, info, tags);
+      return EndpointUtil::GetConvoTagsForService(m_Sessions, addr, tags);
     }
 
     bool
@@ -829,11 +842,11 @@ namespace llarp
     {
       msg->sender.UpdateAddr();
       auto path = GetPathByID(src);
-      if(path)
-        PutReplyIntroFor(msg->tag, path->intro);
-      PutSenderFor(msg->tag, msg->sender);
+      if(path == nullptr)
+        return false;
+      PutReplyIntroFor(msg->tag, path->intro);
+      PutSenderFor(msg->tag, msg->sender, true);
       PutIntroFor(msg->tag, msg->introReply);
-      EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
 
@@ -1083,66 +1096,64 @@ namespace llarp
       // inbound converstation
       auto now = Now();
 
+      if(HasInboundConvo(remote))
       {
-        auto itr = m_AddressToService.find(remote);
-        if(itr != m_AddressToService.end())
+        auto transfer    = std::make_shared< routing::PathTransferMessage >();
+        ProtocolFrame& f = transfer->T;
+        std::shared_ptr< path::Path > p;
+        std::set< ConvoTag > tags;
+        if(GetConvoTagsForService(remote, tags))
         {
-          auto transfer    = std::make_shared< routing::PathTransferMessage >();
-          ProtocolFrame& f = transfer->T;
-          std::shared_ptr< path::Path > p;
-          std::set< ConvoTag > tags;
-          if(GetConvoTagsForService(itr->second, tags))
+          Introduction remoteIntro;
+          SharedSecret K;
+          // pick tag
+          for(const auto& tag : tags)
           {
-            Introduction remoteIntro;
-            SharedSecret K;
-            // pick tag
-            for(const auto& tag : tags)
+            if(tag.IsZero())
+              continue;
+            if(!GetCachedSessionKeyFor(tag, K))
+              continue;
+            if(GetIntroFor(tag, remoteIntro))
             {
-              if(tag.IsZero())
-                continue;
-              if(!GetCachedSessionKeyFor(tag, K))
-                continue;
-              if(GetIntroFor(tag, remoteIntro))
+              if(!remoteIntro.ExpiresSoon(now))
+                p = GetNewestPathByRouter(remoteIntro.router);
+              if(p)
               {
-                if(!remoteIntro.ExpiresSoon(now))
-                  p = GetNewestPathByRouter(remoteIntro.router);
-                if(p)
-                {
-                  f.T = tag;
-                }
+                f.T = tag;
               }
             }
-            if(p)
+          }
+          if(p)
+          {
+            // TODO: check expiration of our end
+            ProtocolMessage m(f.T);
+            m.PutBuffer(data);
+            f.N.Randomize();
+            f.C.Zero();
+            transfer->Y.Randomize();
+            m.proto      = t;
+            m.introReply = p->intro;
+            PutReplyIntroFor(f.T, m.introReply);
+            m.sender    = m_Identity.pub;
+            m.seqno     = GetSeqNoForConvo(f.T);
+            f.S         = 1;
+            f.F         = m.introReply.pathID;
+            transfer->P = remoteIntro.pathID;
+            if(!f.EncryptAndSign(m, K, m_Identity))
             {
-              // TODO: check expiration of our end
-              ProtocolMessage m(f.T);
-              m.PutBuffer(data);
-              f.N.Randomize();
-              f.C.Zero();
-              transfer->Y.Randomize();
-              m.proto      = t;
-              m.introReply = p->intro;
-              PutReplyIntroFor(f.T, m.introReply);
-              m.sender    = m_Identity.pub;
-              m.seqno     = GetSeqNoForConvo(f.T);
-              f.S         = 1;
-              f.F         = m.introReply.pathID;
-              transfer->P = remoteIntro.pathID;
-              if(!f.EncryptAndSign(m, K, m_Identity))
-              {
-                LogError("failed to encrypt and sign");
-                return false;
-              }
-              LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-              {
-                util::Lock lock(&m_SendQueueMutex);
-                m_SendQueue.emplace_back(transfer, p);
-              }
-              return true;
+              LogError("failed to encrypt and sign");
+              return false;
             }
+            LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
+            {
+              util::Lock lock(&m_SendQueueMutex);
+              m_SendQueue.emplace_back(transfer, p);
+            }
+            return true;
           }
         }
       }
+
       // outbound converstation
       if(EndpointUtil::HasPathToService(remote, m_RemoteSessions))
       {
@@ -1172,12 +1183,6 @@ namespace llarp
             m_PendingTraffic.erase(r);
           },
           5000, true);
-    }
-
-    void
-    Endpoint::EnsureReplyPath(const ServiceInfo& ident)
-    {
-      m_AddressToService[ident.Addr()] = ident;
     }
 
     bool

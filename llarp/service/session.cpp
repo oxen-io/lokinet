@@ -14,5 +14,15 @@ namespace llarp
                              {"intro", intro.ExtractStatus()}};
       return obj;
     }
+
+    bool
+    Session::IsExpired(llarp_time_t now, llarp_time_t lifetime) const
+    {
+      if(now <= lastUsed)
+        return false;
+      return now - lastUsed > lifetime || intro.IsExpired(now)
+          || replyIntro.IsExpired(now);
+    }
+
   }  // namespace service
 }  // namespace llarp

@@ -41,8 +41,7 @@ namespace llarp
 
       static bool
       GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
-                             const ServiceInfo& info,
-                             std::set< ConvoTag >& tags);
+                             const Address& addr, std::set< ConvoTag >& tags);
     };
   }  // namespace service
 

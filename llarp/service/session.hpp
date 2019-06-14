@@ -20,18 +20,14 @@ namespace llarp
       Introduction intro;
       llarp_time_t lastUsed = 0;
       uint64_t seqno        = 0;
+      bool inbound          = false;
 
       util::StatusObject
       ExtractStatus() const;
 
       bool
       IsExpired(llarp_time_t now,
-                llarp_time_t lifetime = (path::default_lifetime * 2)) const
-      {
-        if(now <= lastUsed)
-          return false;
-        return now - lastUsed > lifetime;
-      }
+                llarp_time_t lifetime = (path::default_lifetime * 2)) const;
     };
 
   }  // namespace service
