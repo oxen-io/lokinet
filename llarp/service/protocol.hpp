@@ -49,8 +49,6 @@ namespace llarp
       Introduction introReply;
       ServiceInfo sender;
       IDataHandler* handler = nullptr;
-      /// local path we got this message from
-      PathID_t srcPath;
       ConvoTag tag;
       uint64_t seqno   = 0;
       uint64_t version = LLARP_PROTO_VERSION;
@@ -65,7 +63,7 @@ namespace llarp
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(std::shared_ptr< ProtocolMessage > self);
+      ProcessAsync(path::Path_ptr p, std::shared_ptr< ProtocolMessage > self);
 
       bool
       operator<(const ProtocolMessage& other) const

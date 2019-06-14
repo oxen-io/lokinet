@@ -837,13 +837,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(const PathID_t& src,
+    Endpoint::HandleDataMessage(path::Path_ptr path,
                                 std::shared_ptr< ProtocolMessage > msg)
     {
       msg->sender.UpdateAddr();
-      auto path = GetPathByID(src);
-      if(path == nullptr)
-        return false;
       PutReplyIntroFor(msg->tag, path->intro);
       PutSenderFor(msg->tag, msg->sender, true);
       PutIntroFor(msg->tag, msg->introReply);

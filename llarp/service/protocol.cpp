@@ -31,10 +31,11 @@ namespace llarp
     }
 
     void
-    ProtocolMessage::ProcessAsync(std::shared_ptr< ProtocolMessage > self)
+    ProtocolMessage::ProcessAsync(path::Path_ptr path,
+                                  std::shared_ptr< ProtocolMessage > self)
     {
-      if(!self->handler->HandleDataMessage(self->srcPath, self))
-        LogWarn("failed to handle data message from ", self->srcPath);
+      if(!self->handler->HandleDataMessage(path, self))
+        LogWarn("failed to handle data message from ", path->Name());
     }
 
     bool
@@ -245,6 +246,7 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
+      path::Path_ptr path;
       std::shared_ptr< Logic > logic;
       std::shared_ptr< ProtocolMessage > msg;
       const Identity& m_LocalIdentity;
@@ -342,7 +344,9 @@ namespace llarp
 
         self->msg->handler                     = self->handler;
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
-        self->logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
+        path::Path_ptr path                    = std::move(self->path);
+        self->logic->queue_func(
+            [=]() { ProtocolMessage::ProcessAsync(path, msg); });
         delete self;
       }
     };
@@ -373,10 +377,10 @@ namespace llarp
       if(T.IsZero())
       {
         LogInfo("Got protocol frame with new convo");
-        msg->srcPath = recvPath->RXID();
         // we need to dh
-        auto dh = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
+        auto dh  = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
                                         recvPath->intro);
+        dh->path = recvPath;
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
@@ -402,9 +406,9 @@ namespace llarp
         LogError("failed to decrypt message");
         return false;
       }
-      msg->srcPath = recvPath->RXID();
       msg->handler = handler;
-      logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
+      logic->queue_func(
+          [=]() { ProtocolMessage::ProcessAsync(recvPath, msg); });
       return true;
     }
 

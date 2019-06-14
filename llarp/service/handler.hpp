@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_HANDLER_HPP
 
 #include <crypto/types.hpp>
-#include <path/path_types.hpp>
+#include <path/path.hpp>
 #include <service/intro_set.hpp>
 #include <util/aligned.hpp>
 #include <memory>
@@ -17,7 +17,7 @@ namespace llarp
     struct IDataHandler
     {
       virtual bool
-      HandleDataMessage(const PathID_t&,
+      HandleDataMessage(path::Path_ptr path,
                         std::shared_ptr< ProtocolMessage > msg) = 0;
 
       virtual bool

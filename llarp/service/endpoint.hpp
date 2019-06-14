@@ -165,7 +165,7 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(const PathID_t&,
+      HandleDataMessage(path::Path_ptr path,
                         std::shared_ptr< ProtocolMessage > msg) override;
 
       virtual bool
