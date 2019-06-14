@@ -95,8 +95,8 @@ namespace llarp
 
       if(!isLIM)
       {
-        const std::string host = "RX_" + RouterID(from->GetPubKey()).ToString();
-        METRICS_DYNAMIC_INCREMENT(msg->Name(), host.c_str());
+        metrics::integerTick(msg->Name(), "RX", 1, "id",
+                             RouterID(from->GetPubKey()).ToString());
       }
 
       msg->session = from;

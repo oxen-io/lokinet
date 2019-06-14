@@ -110,50 +110,88 @@ namespace llarp
       }
 
       std::string
-      addName(string_view id, string_view name, string_view suffix)
+      makeTagStr(const Tags &tags)
       {
-        return absl::StrCat(id, ".", name, suffix);
+        std::string tagStr;
+
+        auto overloaded = util::overloaded(
+            [](const std::string &str) { return str; },
+            [](double d) { return std::to_string(d); },
+            [](const std::int64_t i) { return std::to_string(i); });
+
+        for(const auto &tag : tags)
+        {
+          absl::StrAppend(&tagStr, ";", tag.first, "=",
+                          absl::visit(overloaded, tag.second));
+        }
+        return tagStr;
+      }
+
+      std::string
+      addName(string_view id, string_view name, const Tags &tags,
+              string_view suffix)
+      {
+        return absl::StrCat(id, ".", name, makeTagStr(tags), suffix);
+      }
+
+      constexpr bool
+      isValid(int val)
+      {
+        return val != std::numeric_limits< int >::min()
+            && val != std::numeric_limits< int >::max();
+      }
+
+      constexpr bool
+      isValid(double val)
+      {
+        return Record< double >::DEFAULT_MIN() != val
+            && Record< double >::DEFAULT_MAX() != val && !std::isnan(val)
+            && !std::isinf(val);
       }
 
       template < typename Value >
       std::vector< MetricTankPublisherInterface::PublishData >
-      recordToData(const Record< Value > &record, absl::Time time,
+      recordToData(const TaggedRecords< Value > &taggedRecords, absl::Time time,
                    double elapsedTime, string_view suffix)
       {
         std::vector< MetricTankPublisherInterface::PublishData > result;
 
-        std::string id = record.id().toString();
+        std::string id = taggedRecords.id.toString();
 
-        auto publicationType = record.id().description()->type();
-        if(publicationType != Publication::Type::Unspecified)
+        auto publicationType = taggedRecords.id.description()->type();
+
+        for(const auto &record : taggedRecords.data)
         {
-          auto val = formatValue(record, elapsedTime, publicationType);
+          const auto &tags = record.first;
+          const auto &rec  = record.second;
+          if(publicationType != Publication::Type::Unspecified)
+          {
+            auto val = formatValue(rec, elapsedTime, publicationType);
 
-          if(val)
-          {
-            result.emplace_back(
-                addName(id, Publication::repr(publicationType), suffix),
-                val.value(), time);
+            if(val)
+            {
+              result.emplace_back(
+                  addName(id, Publication::repr(publicationType), tags, suffix),
+                  val.value(), time);
+            }
           }
-        }
-        else
-        {
-          result.emplace_back(addName(id, "count", suffix),
-                              std::to_string(record.count()), time);
-          result.emplace_back(addName(id, "total", suffix),
-                              std::to_string(record.total()), time);
+          else
+          {
+            result.emplace_back(addName(id, "count", tags, suffix),
+                                std::to_string(rec.count()), time);
+            result.emplace_back(addName(id, "total", tags, suffix),
+                                std::to_string(rec.total()), time);
 
-          if(Record< Value >::DEFAULT_MIN() != record.min()
-             && !std::isnan(record.min()) && !std::isinf(record.min()))
-          {
-            result.emplace_back(addName(id, "min", suffix),
-                                std::to_string(record.min()), time);
-          }
-          if(Record< Value >::DEFAULT_MAX() == record.max()
-             && !std::isnan(record.max()) && !std::isinf(record.max()))
-          {
-            result.emplace_back(addName(id, "max", suffix),
-                                std::to_string(record.max()), time);
+            if(isValid(rec.min()))
+            {
+              result.emplace_back(addName(id, "min", tags, suffix),
+                                  std::to_string(rec.min()), time);
+            }
+            if(isValid(rec.max()))
+            {
+              result.emplace_back(addName(id, "max", tags, suffix),
+                                  std::to_string(rec.max()), time);
+            }
           }
         }
         return result;
@@ -325,12 +363,7 @@ namespace llarp
     std::string
     MetricTankPublisherInterface::makeSuffix(const Tags &tags)
     {
-      std::string result;
-      for(const auto &tag : updateTags(tags))
-      {
-        absl::StrAppend(&result, ";", tag.first, "=", tag.second);
-      }
-      return result;
+      return absl::StrJoin(updateTags(tags), ";", absl::PairFormatter("="));
     }
 
     void
@@ -353,14 +386,16 @@ namespace llarp
       {
         const double elapsedTime = absl::ToDoubleSeconds(samplePeriod(*gIt));
 
-        forSampleGroup(*gIt, [&](const auto &d) {
-          for(const auto &record : d)
-          {
-            auto partial =
-                recordToData(record, sampleTime, elapsedTime, m_suffix);
-            result.insert(result.end(), partial.begin(), partial.end());
-          }
-        });
+        absl::visit(
+            [&](const auto &d) {
+              for(const auto &record : d)
+              {
+                auto partial =
+                    recordToData(record, sampleTime, elapsedTime, m_suffix);
+                result.insert(result.end(), partial.begin(), partial.end());
+              }
+            },
+            *gIt);
 
         prev = gIt;
       }

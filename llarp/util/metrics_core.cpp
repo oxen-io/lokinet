@@ -6,15 +6,12 @@ namespace llarp
 {
   namespace metrics
   {
-    using DoubleRecords = std::vector< Record< double > >;
-    using IntRecords    = std::vector< Record< int > >;
-
     std::tuple< Id, bool >
-    Registry::insert(const char *category, const char *name)
+    Registry::insert(string_view category, string_view name)
     {
       // avoid life time issues, putting strings in the stringmem set
-      const char *cStr = m_stringmem.emplace(category).first->c_str();
-      const char *nStr = m_stringmem.emplace(name).first->c_str();
+      string_view cStr = m_stringmem.emplace(category).first->c_str();
+      string_view nStr = m_stringmem.emplace(name).first->c_str();
 
       NamedCategory namedCategory(cStr, nStr);
       const auto it = m_metrics.find(namedCategory);
@@ -39,7 +36,7 @@ namespace llarp
     }
 
     Id
-    Registry::add(const char *category, const char *name)
+    Registry::add(string_view category, string_view name)
     {
       absl::WriterMutexLock l(&m_mutex);
       auto result = insert(category, name);
@@ -47,7 +44,7 @@ namespace llarp
     }
 
     Id
-    Registry::get(const char *category, const char *name)
+    Registry::get(string_view category, string_view name)
     {
       Id result = findId(category, name);
       if(result)
@@ -60,11 +57,11 @@ namespace llarp
     }
 
     const Category *
-    Registry::add(const char *category)
+    Registry::add(string_view category)
     {
       absl::WriterMutexLock l(&m_mutex);
 
-      const char *cStr = m_stringmem.emplace(category).first->c_str();
+      string_view cStr = m_stringmem.emplace(category).first->c_str();
       auto it          = m_categories.find(cStr);
       if(it == m_categories.end())
       {
@@ -76,7 +73,7 @@ namespace llarp
     }
 
     const Category *
-    Registry::get(const char *category)
+    Registry::get(string_view category)
     {
       const Category *cPtr = findCategory(category);
       if(cPtr)
@@ -85,7 +82,7 @@ namespace llarp
       }
 
       absl::WriterMutexLock l(&m_mutex);
-      const char *cStr = m_stringmem.emplace(category).first->c_str();
+      string_view cStr = m_stringmem.emplace(category).first->c_str();
       auto it          = m_categories.find(cStr);
       if(it == m_categories.end())
       {
@@ -150,7 +147,7 @@ namespace llarp
         const FormatSpec *spec = format.specFor(type);
         if(spec != nullptr)
         {
-          const char *fmt = m_stringmem.emplace(spec->m_format).first->c_str();
+          string_view fmt = m_stringmem.emplace(spec->m_format).first->c_str();
           fmtPtr->setSpec(type, FormatSpec(spec->m_scale, fmt));
         }
       }
@@ -159,7 +156,7 @@ namespace llarp
     }
 
     const Category *
-    Registry::findCategory(const char *category) const
+    Registry::findCategory(string_view category) const
     {
       absl::ReaderMutexLock l(&m_mutex);
       auto it = m_categories.find(category);
@@ -167,7 +164,7 @@ namespace llarp
     }
 
     Id
-    Registry::findId(const char *category, const char *name) const
+    Registry::findId(string_view category, string_view name) const
     {
       absl::ReaderMutexLock l(&m_mutex);
       auto it = m_metrics.find(std::make_tuple(category, name));
@@ -251,8 +248,8 @@ namespace llarp
       }
 
       template < typename Type >
-      using RecordBuffer =
-          std::vector< std::shared_ptr< std::vector< Record< Type > > > >;
+      using RecordBuffer = std::vector<
+          std::shared_ptr< std::vector< TaggedRecords< Type > > > >;
 
       template < typename CategoryIterator >
       static void
@@ -309,12 +306,14 @@ namespace llarp
                 std::make_shared< DoubleRecords >(records.doubleRecords);
             doubleRecordBuffer.push_back(dRecords);
             SampleGroup< double > doubleGroup(
-                absl::Span< Record< double > >(*dRecords), result.samplePeriod);
+                absl::Span< const TaggedRecords< double > >(*dRecords),
+                result.samplePeriod);
 
             auto iRecords = std::make_shared< IntRecords >(records.intRecords);
             intRecordBuffer.push_back(iRecords);
-            SampleGroup< int > intGroup(absl::Span< Record< int > >(*iRecords),
-                                        result.samplePeriod);
+            SampleGroup< int > intGroup(
+                absl::Span< const TaggedRecords< int > >(*iRecords),
+                result.samplePeriod);
 
             std::for_each(manager.m_publishers.globalBegin(),
                           manager.m_publishers.globalEnd(),

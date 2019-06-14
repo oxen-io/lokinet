@@ -1393,15 +1393,14 @@ namespace llarp
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
-    METRICS_TIME_BLOCK("Router", "Sign");
+    metrics::TimerGuard t("Router", "Sign");
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
   void
   Router::SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *selected)
   {
-    const std::string remoteName = "TX_" + remote.ToString();
-    METRICS_DYNAMIC_INCREMENT(msg->Name(), remoteName.c_str());
+    metrics::integerTick(msg->Name(), "to", 1, "tx", remote.ToString());
     llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))

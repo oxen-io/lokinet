@@ -14,84 +14,130 @@ namespace llarp
 {
   namespace metrics
   {
+    inline void
+    packToTagsImpl(Tags &)
+    {
+    }
+
+    template < typename K, typename V, typename... Args >
+    inline void
+    packToTagsImpl(Tags &tags, const K &k, const V &v, const Args &... args)
+    {
+      static_assert(std::is_convertible< K, Tag >::value, "");
+      static_assert(std::is_convertible< V, TagValue >::value, "");
+
+      tags.emplace(k, v);
+      packToTagsImpl(tags, args...);
+    }
+
+    template < typename... Args >
+    inline Tags
+    packToTags(const Args &... args)
+    {
+      static_assert(sizeof...(args) % 2 == 0, "");
+      Tags tags;
+      packToTagsImpl(tags, args...);
+      return tags;
+    }
+
+    template <>
+    inline Tags
+    packToTags< Tags >(const Tags &tags)
+    {
+      return tags;
+    }
+
     template < typename Type >
     class Collector
     {
      public:
-      using RecordType = Record< Type >;
+      using RecordType        = Record< Type >;
+      using TaggedRecordsType = TaggedRecords< Type >;
 
      private:
-      RecordType m_record GUARDED_BY(m_mutex);
+      TaggedRecordsType m_records GUARDED_BY(m_mutex);
       mutable util::Mutex m_mutex;
 
       Collector(const Collector &) = delete;
       Collector &
       operator=(const Collector &) = delete;
 
+      template < typename... Args >
+      RecordType &
+      fetch(Args... args) EXCLUSIVE_LOCKS_REQUIRED(m_mutex)
+      {
+        return m_records.data[packToTags(args...)];
+      }
+
      public:
-      Collector(const Id &id) : m_record(id)
+      Collector(const Id &id) : m_records(id)
       {
       }
 
       void
       clear()
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.clear();
+        absl::MutexLock l(&m_mutex);
+        m_records.data.clear();
       }
 
-      RecordType
+      TaggedRecordsType
       loadAndClear()
       {
-        absl::WriterMutexLock l(&m_mutex);
-        RecordType rec = m_record;
-        m_record.clear();
+        absl::MutexLock l(&m_mutex);
+        auto result = m_records;
+        m_records.data.clear();
 
-        return rec;
+        return result;
       }
 
-      RecordType
+      TaggedRecordsType
       load()
       {
-        absl::ReaderMutexLock l(&m_mutex);
-        return m_record;
+        absl::MutexLock l(&m_mutex);
+        return m_records;
       }
 
+      template < typename... Args >
       void
-      tick(Type value)
+      tick(Type value, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count()++;
-        m_record.total() += value;
-        m_record.min() = std::min(m_record.min(), value);
-        m_record.max() = std::max(m_record.max(), value);
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count()++;
+        rec.total() += value;
+        rec.min() = std::min(rec.min(), value);
+        rec.max() = std::max(rec.max(), value);
       }
 
+      template < typename... Args >
       void
-      accumulate(size_t count, Type total, Type min, Type max)
+      accumulate(size_t count, Type total, Type min, Type max, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count() += count;
-        m_record.total() += total;
-        m_record.min() = std::min(m_record.min(), min);
-        m_record.max() = std::max(m_record.max(), max);
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count() += count;
+        rec.total() += total;
+        rec.min() = std::min(rec.min(), min);
+        rec.max() = std::max(rec.max(), max);
       }
 
+      template < typename... Args >
       void
-      set(size_t count, Type total, Type min, Type max)
+      set(size_t count, Type total, Type min, Type max, Args... args)
       {
-        absl::WriterMutexLock l(&m_mutex);
-        m_record.count() = count;
-        m_record.total() = total;
-        m_record.min()   = min;
-        m_record.max()   = max;
+        absl::MutexLock l(&m_mutex);
+        RecordType &rec = fetch(args...);
+        rec.count()     = count;
+        rec.total()     = total;
+        rec.min()       = min;
+        rec.max()       = max;
       }
 
       const Id &
       id() const
       {
-        absl::ReaderMutexLock l(&m_mutex);
-        return m_record.id();
+        return m_records.id;
       }
     };
 
@@ -107,16 +153,36 @@ namespace llarp
       publish(const Sample &sample) = 0;
     };
 
-    template < typename LhsType, typename RhsType >
+    template < typename Value >
     static inline void
-    combine(Record< LhsType > &record, const Record< RhsType > &toAdd)
+    combine(TaggedRecords< Value > &records,
+            const TaggedRecords< Value > &toAdd)
     {
-      static_assert(std::is_convertible< RhsType, LhsType >::value, "");
-      record.id() = toAdd.id();
-      record.count() += toAdd.count();
-      record.total() += toAdd.total();
-      record.min() = std::min(record.min(), LhsType(toAdd.min()));
-      record.max() = std::max(record.max(), LhsType(toAdd.max()));
+      records.id = toAdd.id;
+      for(auto &record : records.data)
+      {
+        auto it = toAdd.data.find(record.first);
+        if(it == toAdd.data.end())
+        {
+          continue;
+        }
+
+        record.second.count() += it->second.count();
+        record.second.total() += it->second.total();
+        record.second.min() = std::min(record.second.min(), it->second.min());
+        record.second.max() = std::max(record.second.max(), it->second.max());
+      }
+
+      for(const auto &record : toAdd.data)
+      {
+        auto it = records.data.find(record.first);
+        if(it != records.data.end())
+        {
+          continue;
+        }
+
+        records.data[record.first] = record.second;
+      }
     }
 
     template < typename Type >
@@ -160,10 +226,10 @@ namespace llarp
         return count > 0;
       }
 
-      Record< Type >
+      TaggedRecords< Type >
       combineAndClear()
       {
-        Record< Type > rec = m_default.loadAndClear();
+        TaggedRecords< Type > rec = m_default.loadAndClear();
 
         for(auto &ptr : m_collectors)
         {
@@ -173,10 +239,10 @@ namespace llarp
         return rec;
       }
 
-      Record< Type >
+      TaggedRecords< Type >
       combine()
       {
-        Record< Type > rec = m_default.load();
+        TaggedRecords< Type > rec = m_default.load();
 
         for(auto &ptr : m_collectors)
         {
@@ -204,34 +270,11 @@ namespace llarp
 
     class Registry
     {
-      using NamedCategory = std::tuple< const char *, const char * >;
+      using NamedCategory = std::tuple< string_view, string_view >;
 
-      struct CmpNamedCategory
-      {
-        bool
-        operator()(const NamedCategory &lhs, const NamedCategory &rhs) const
-        {
-          int ret = std::strcmp(std::get< 0 >(lhs), std::get< 0 >(rhs));
-          if(ret == 0)
-          {
-            ret = std::strcmp(std::get< 1 >(lhs), std::get< 1 >(rhs));
-          }
-          return ret < 0;
-        }
-      };
-      struct StrCmp
-      {
-        bool
-        operator()(const char *lhs, const char *rhs) const
-        {
-          return std::strcmp(lhs, rhs) < 0;
-        }
-      };
-
-      using MetricMap = std::map< NamedCategory, std::shared_ptr< Description >,
-                                  CmpNamedCategory >;
-      using CategoryMap =
-          std::map< const char *, std::shared_ptr< Category >, StrCmp >;
+      using MetricMap =
+          std::map< NamedCategory, std::shared_ptr< Description > >;
+      using CategoryMap = std::map< string_view, std::shared_ptr< Category > >;
 
       std::set< std::string > m_stringmem GUARDED_BY(m_mutex);
       CategoryMap m_categories GUARDED_BY(m_mutex);
@@ -244,7 +287,7 @@ namespace llarp
       operator=(const Registry &) = delete;
 
       std::tuple< Id, bool >
-      insert(const char *category, const char *name)
+      insert(string_view category, string_view name)
           EXCLUSIVE_LOCKS_REQUIRED(m_mutex);
 
      public:
@@ -253,14 +296,14 @@ namespace llarp
       }
 
       Id
-      add(const char *category, const char *name) LOCKS_EXCLUDED(m_mutex);
+      add(string_view category, string_view name) LOCKS_EXCLUDED(m_mutex);
       Id
-      get(const char *category, const char *name) LOCKS_EXCLUDED(m_mutex);
+      get(string_view category, string_view name) LOCKS_EXCLUDED(m_mutex);
 
       const Category *
-      add(const char *category) LOCKS_EXCLUDED(m_mutex);
+      add(string_view category) LOCKS_EXCLUDED(m_mutex);
       const Category *
-      get(const char *category);
+      get(string_view category);
 
       void
       enable(const Category *category, bool value);
@@ -288,16 +331,16 @@ namespace llarp
       }
 
       const Category *
-      findCategory(const char *category) const;
+      findCategory(string_view category) const;
       Id
-      findId(const char *category, const char *name) const;
+      findId(string_view category, string_view name) const;
 
       std::vector< const Category * >
       getAll() const;
     };
 
-    using DoubleRecords = std::vector< Record< double > >;
-    using IntRecords    = std::vector< Record< int > >;
+    using DoubleRecords = std::vector< TaggedRecords< double > >;
+    using IntRecords    = std::vector< TaggedRecords< int > >;
 
     struct Records
     {
@@ -361,8 +404,8 @@ namespace llarp
         return *it->second.get();
       }
 
-      template < Record< Type > (Collectors< Type >::*func)() >
-      std::vector< Record< Type > >
+      template < TaggedRecords< Type > (Collectors< Type >::*func)() >
+      std::vector< TaggedRecords< Type > >
       collectOp(const Category *category)
       {
         absl::WriterMutexLock l(&m_mutex);
@@ -374,7 +417,7 @@ namespace llarp
           return {};
         }
 
-        std::vector< Record< Type > > result;
+        std::vector< TaggedRecords< Type > > result;
         auto &collectors = it->second;
         result.reserve(collectors.size());
 
@@ -390,20 +433,20 @@ namespace llarp
       {
       }
 
-      std::vector< Record< Type > >
+      std::vector< TaggedRecords< Type > >
       collectAndClear(const Category *category)
       {
         return collectOp< &Collectors< Type >::combineAndClear >(category);
       }
 
-      std::vector< Record< Type > >
+      std::vector< TaggedRecords< Type > >
       collect(const Category *category)
       {
         return collectOp< &Collectors< Type >::combine >(category);
       }
 
       Collector< Type > *
-      defaultCollector(const char *category, const char *name)
+      defaultCollector(string_view category, string_view name)
       {
         return defaultCollector(m_registry->get(category, name));
       }
@@ -427,7 +470,7 @@ namespace llarp
       }
 
       std::shared_ptr< Collector< Type > >
-      addCollector(const char *category, const char *name)
+      addCollector(string_view category, string_view name)
       {
         return addCollector(m_registry->get(category, name));
       }
@@ -668,7 +711,7 @@ namespace llarp
       /// Add a `publisher` which will receive events for the given
       /// `categoryName` only
       bool
-      addPublisher(const char *categoryName,
+      addPublisher(string_view categoryName,
                    const std::shared_ptr< Publisher > &publisher)
       {
         return addPublisher(m_registry.get(categoryName), publisher);
@@ -763,7 +806,7 @@ namespace llarp
       }
 
       void
-      enableCategory(const char *categoryName, bool enable = true)
+      enableCategory(string_view categoryName, bool enable = true)
       {
         m_registry.enable(m_registry.get(categoryName), enable);
       }
@@ -787,7 +830,7 @@ namespace llarp
       }
 
       std::vector< Publisher * >
-      publishersForCategory(const char *categoryName) const
+      publishersForCategory(string_view categoryName) const
       {
         const Category *category = m_registry.findCategory(categoryName);
         return category ? publishersForCategory(category)
@@ -869,7 +912,7 @@ namespace llarp
 
      public:
       static Collector *
-      lookup(const char *category, const char *name, Manager *manager = nullptr)
+      lookup(string_view category, string_view name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
         return manager ? (manager->*repoFunc)().defaultCollector(category, name)
@@ -883,7 +926,7 @@ namespace llarp
         return manager ? (manager->*repoFunc)().defaultCollector(id) : 0;
       }
 
-      Metric(const char *category, const char *name, Manager *manager)
+      Metric(string_view category, string_view name, Manager *manager)
           : m_collector(lookup(category, name, manager))
           , m_enabled(m_collector ? &m_collector->id().category()->enabledRaw()
                                   : nullptr)
@@ -966,7 +1009,7 @@ namespace llarp
 
       static void
       getCollector(Collector **collector, CategoryContainer *container,
-                   const char *category, const char *metric)
+                   string_view category, string_view metric)
       {
         Manager *manager = DefaultManager::instance();
         *collector = (manager->*repoFunc().defaultCollector)(category, metric);
@@ -976,7 +1019,7 @@ namespace llarp
 
       static void
       getCollector(Collector **collector, CategoryContainer *container,
-                   const char *category, const char *metric,
+                   string_view category, string_view metric,
                    Publication::Type type)
       {
         Manager *manager = DefaultManager::instance();
@@ -995,6 +1038,7 @@ namespace llarp
     class TimerGuard
     {
      private:
+      Tags m_tags;
       util::Stopwatch m_stopwatch;
       DoubleCollector *m_collector;
 
@@ -1003,8 +1047,9 @@ namespace llarp
       operator=(const TimerGuard &) = delete;
 
      public:
-      TimerGuard(DoubleMetric *metric)
-          : m_stopwatch()
+      template < typename... TagVals >
+      TimerGuard(DoubleMetric *metric, TagVals &&... tags)
+          : m_tags(packToTags(tags...))
           , m_collector(metric->active() ? metric->collector() : nullptr)
       {
         if(m_collector)
@@ -1013,8 +1058,9 @@ namespace llarp
         }
       }
 
-      TimerGuard(DoubleCollector *collector)
-          : m_stopwatch()
+      template < typename... TagVals >
+      TimerGuard(DoubleCollector *collector, TagVals &&... tags)
+          : m_tags(packToTags(tags...))
           , m_collector(collector && collector->id().category()->enabled()
                             ? collector
                             : nullptr)
@@ -1025,8 +1071,10 @@ namespace llarp
         }
       }
 
-      TimerGuard(const char *category, const char *name, Manager *manager)
-          : m_stopwatch(), m_collector(nullptr)
+      template < typename... TagVals >
+      TimerGuard(string_view category, string_view name,
+                 Manager *manager = nullptr, TagVals &&... tags)
+          : m_tags(packToTags(tags...)), m_collector(nullptr)
       {
         DoubleCollector *collector =
             DoubleMetric::lookup(category, name, manager);
@@ -1038,8 +1086,10 @@ namespace llarp
           m_stopwatch.start();
         }
       }
-      TimerGuard(const Id &id, Manager *manager)
-          : m_stopwatch(), m_collector(nullptr)
+
+      template < typename... TagVals >
+      TimerGuard(const Id &id, Manager *manager = nullptr, TagVals &&... tags)
+          : m_tags(packToTags(tags...)), m_collector(nullptr)
       {
         DoubleCollector *collector = DoubleMetric::lookup(id, manager);
         m_collector = (collector && collector->id().category()->enabled())
@@ -1056,7 +1106,7 @@ namespace llarp
         if(active())
         {
           m_stopwatch.stop();
-          m_collector->tick(absl::ToDoubleSeconds(m_stopwatch.time()));
+          m_collector->tick(absl::ToDoubleSeconds(m_stopwatch.time()), m_tags);
         }
       }
 
@@ -1107,7 +1157,7 @@ namespace llarp
       }
 
       void
-      schedule(const char *categoryName, absl::Duration interval)
+      schedule(string_view categoryName, absl::Duration interval)
       {
         return schedule(m_manager->registry().get(categoryName), interval);
       }
@@ -1119,7 +1169,7 @@ namespace llarp
       setDefault(absl::Duration interval);
 
       bool
-      cancel(const char *categoryName)
+      cancel(string_view categoryName)
       {
         return cancel(m_manager->registry().get(categoryName));
       }
@@ -1145,7 +1195,7 @@ namespace llarp
       }
 
       absl::optional< absl::Duration >
-      find(const char *categoryName) const
+      find(string_view categoryName) const
       {
         return find(m_manager->registry().get(categoryName));
       }

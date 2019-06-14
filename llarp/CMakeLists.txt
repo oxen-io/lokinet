@@ -51,7 +51,7 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash nlohmann_json::nlohmann_json)
+target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)
