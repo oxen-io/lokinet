@@ -77,7 +77,8 @@ namespace llarp
 
     std::for_each(logging.begin(), logging.end(),
                   std::bind(visitor, "logging", _1));
-
+    // end of logging section commit settings and go
+    functor("logging", "", "");
     std::for_each(lokid.begin(), lokid.end(), std::bind(visitor, "lokid", _1));
     std::for_each(router.begin(), router.end(),
                   std::bind(visitor, "router", _1));

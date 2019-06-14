@@ -18,11 +18,13 @@ set(LIB_UTIL_SRC
   util/android_logger.cpp
   util/file_logger.cpp
   util/logic.cpp
+  util/loglevel.cpp
   util/mem.cpp
   util/memfn_traits.cpp
   util/memfn.cpp
   util/metrics_core.cpp
   util/metrics_types.cpp
+  util/json_logger.cpp
   util/ostream_logger.cpp
   util/syslog_logger.cpp
   util/win32_logger.cpp
@@ -49,7 +51,7 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash nlohmann_json::nlohmann_json)
+target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)

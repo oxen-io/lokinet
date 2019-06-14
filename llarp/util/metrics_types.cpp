@@ -2,6 +2,8 @@
 
 #include <util/printer.hpp>
 
+#include <absl/strings/str_join.h>
+
 namespace llarp
 {
   namespace metrics
@@ -13,7 +15,8 @@ namespace llarp
       static constexpr size_t INIT_SIZE = 32;
 
       char buf[INIT_SIZE] = {0};
-      int rc = snprintf(buf, INIT_SIZE, format.m_format, data * format.m_scale);
+      int rc              = snprintf(buf, INIT_SIZE, format.m_format.data(),
+                        data * format.m_scale);
 
       if(rc < 0)
       {
@@ -28,7 +31,7 @@ namespace llarp
       }
 
       std::vector< char > vec(rc + 1);
-      rc = snprintf(vec.data(), vec.size(), format.m_format,
+      rc = snprintf(vec.data(), vec.size(), format.m_format.data(),
                     data * format.m_scale);
 
       if(static_cast< size_t >(rc) > vec.size())
@@ -127,7 +130,7 @@ namespace llarp
     Description::toString() const
     {
       util::Lock l(&m_mutex);
-      return m_category->name() + std::string(".") + m_name;
+      return absl::StrCat(m_category->name(), ".", m_name);
     }
 
     std::ostream &

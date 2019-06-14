@@ -28,7 +28,7 @@ namespace llarp
         , m_Resolver(std::make_shared< dns::Proxy >(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
+        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0, 0}
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
 

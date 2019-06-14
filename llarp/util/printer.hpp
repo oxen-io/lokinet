@@ -3,10 +3,12 @@
 
 #include <util/string_view.hpp>
 #include <util/traits.hpp>
+#include <util/variant.hpp>
 
+#include <absl/types/variant.h>
 #include <functional>
 #include <iostream>
-#include <assert.h>
+#include <cassert>
 
 namespace llarp
 {
@@ -193,6 +195,11 @@ namespace llarp
     template < typename... Types >
     static void
     printType(std::ostream& stream, const std::tuple< Types... >& value,
+              int level, int spaces, traits::select::Case<>);
+
+    template < typename... Types >
+    static void
+    printType(std::ostream& stream, const absl::variant< Types... >& value,
               int level, int spaces, traits::select::Case<>);
 
     // Default type
@@ -484,6 +491,17 @@ namespace llarp
     Printer print(stream, level, spaces);
     traits::for_each_in_tuple(value,
                               [&](const auto& x) { print.printValue(x); });
+  }
+
+  template < typename... Types >
+  inline void
+  PrintHelper::printType(std::ostream& stream,
+                         const absl::variant< Types... >& value, int level,
+                         int spaces, traits::select::Case<>)
+  {
+    Printer print(stream, level, spaces);
+
+    absl::visit([&](const auto& x) { print.printValue(x); }, value);
   }
 
   template < typename Type >

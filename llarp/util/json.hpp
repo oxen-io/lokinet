@@ -12,6 +12,8 @@ namespace llarp
 {
   namespace json
   {
+    using Object = nlohmann::json;
+
     struct IParser
     {
       virtual ~IParser()
@@ -34,7 +36,7 @@ namespace llarp
       FeedData(const char* buf, size_t sz) = 0;
       /// parse internal buffer
       virtual Result
-      Parse(nlohmann::json& obj) const = 0;
+      Parse(Object& obj) const = 0;
     };
 
     /// create new parser
