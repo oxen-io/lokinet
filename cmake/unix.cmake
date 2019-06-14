@@ -19,7 +19,7 @@ else()
   message(FATAL_ERROR "Your operating system is not supported yet")
 endif()
 
-set(EXE_LIBS ${STATIC_LIB} cppbackport libutp uv)
+set(EXE_LIBS ${STATIC_LIB} cppbackport libutp)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
