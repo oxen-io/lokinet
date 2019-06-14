@@ -212,9 +212,6 @@ endif(JEMALLOC)
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
 set(LIBS ${MALLOC_LIB} ${FS_LIB})
-if(NOT WIN32)
-  set(LIBS ${LIBS} uv)
-endif()
 
 if(ANDROID)
   list(APPEND LIBS log)
