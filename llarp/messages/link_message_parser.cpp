@@ -28,13 +28,15 @@ namespace llarp
   };
 
   InboundMessageParser::InboundMessageParser(AbstractRouter* _router)
-      : router(_router), from(nullptr), msg(nullptr), holder(new msg_holder_t())
+      : router(_router)
+      , from(nullptr)
+      , msg(nullptr)
+      , holder(std::make_unique< msg_holder_t >())
   {
   }
 
   InboundMessageParser::~InboundMessageParser()
   {
-    delete holder;
   }
 
   bool

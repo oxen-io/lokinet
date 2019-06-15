@@ -44,7 +44,8 @@ namespace llarp
     ILinkMessage* msg;
 
     struct msg_holder_t;
-    msg_holder_t* holder;
+
+    std::unique_ptr< msg_holder_t > holder;
   };
 }  // namespace llarp
 #endif
