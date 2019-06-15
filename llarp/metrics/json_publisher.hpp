@@ -1,34 +1,18 @@
-#ifndef LLARP_METRICS_PUBLISHERS_HPP
-#define LLARP_METRICS_PUBLISHERS_HPP
-
-#include <util/metrics_core.hpp>
+#ifndef LLARP_METRICS_JSON_PUBLISHER_HPP
+#define LLARP_METRICS_JSON_PUBLISHER_HPP
 
 #include <util/fs.hpp>
+#include <util/metrics_core.hpp>
 
-#include <iosfwd>
 #include <nlohmann/json.hpp>
+
+#include <functional>
+#include <iosfwd>
 
 namespace llarp
 {
   namespace metrics
   {
-    class StreamPublisher final : public Publisher
-    {
-      std::ostream& m_stream;
-
-     public:
-      StreamPublisher(std::ostream& stream) : m_stream(stream)
-      {
-      }
-
-      ~StreamPublisher()
-      {
-      }
-
-      void
-      publish(const Sample& values) override;
-    };
-
     class JsonPublisher final : public Publisher
     {
      public:
@@ -53,7 +37,5 @@ namespace llarp
       directoryPublisher(const nlohmann::json& result, const fs::path& path);
     };
   }  // namespace metrics
-
 }  // namespace llarp
-
 #endif
