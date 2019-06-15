@@ -2,11 +2,11 @@
 
 #include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/path_confirm.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
 #include <path/path_types.hpp>
 #include <routing/dht_message.hpp>
+#include <routing/path_confirm.hpp>
+#include <routing/path_latency.hpp>
+#include <routing/path_transfer.hpp>
 #include <routing/transfer_traffic.hpp>
 #include <util/mem.hpp>
 

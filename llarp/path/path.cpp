@@ -2,13 +2,13 @@
 
 #include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/path_latency.hpp>
 #include <messages/relay_commit.hpp>
 #include <path/pathbuilder.hpp>
 #include <path/transit_hop.hpp>
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
+#include <routing/path_latency.hpp>
 #include <routing/transfer_traffic.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>

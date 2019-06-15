@@ -180,9 +180,6 @@ set(LIB_SRC
   messages/link_intro.cpp
   messages/link_message_parser.cpp
   messages/link_message.cpp
-  messages/path_confirm.cpp
-  messages/path_latency.cpp
-  messages/path_transfer.cpp
   messages/relay.cpp
   messages/relay_commit.cpp
   net/address_info.cpp
@@ -207,6 +204,9 @@ set(LIB_SRC
   routing/handler.cpp
   routing/message_parser.cpp
   routing/message.cpp
+  routing/path_confirm.cpp
+  routing/path_latency.cpp
+  routing/path_transfer.cpp
   routing/transfer_traffic.cpp
   rpc/rpc.cpp
   service/address.cpp

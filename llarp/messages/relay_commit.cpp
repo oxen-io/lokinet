@@ -1,16 +1,15 @@
 #include <messages/relay_commit.hpp>
 
 #include <crypto/crypto.hpp>
-#include <messages/path_confirm.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_confirm.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/logic.hpp>
 #include <util/memfn.hpp>
-#include <nodedb.hpp>
 
 #include <functional>
 

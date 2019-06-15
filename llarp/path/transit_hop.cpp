@@ -4,12 +4,12 @@
 #include <exit/context.hpp>
 #include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
 #include <messages/relay_commit.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_latency.hpp>
+#include <routing/path_transfer.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
