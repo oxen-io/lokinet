@@ -161,16 +161,11 @@ set(LIB_SRC
   dns.cpp
   dnsc.cpp
   dnsd.cpp
-  exit/close_exit.cpp
   exit/context.cpp
   exit/endpoint.cpp
-  exit/grant_exit.cpp
-  exit/obtain_exit.cpp
   exit/policy.cpp
-  exit/reject_exit.cpp
   exit/session.cpp
   exit/transfer_traffic.cpp
-  exit/update_exit.cpp
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
