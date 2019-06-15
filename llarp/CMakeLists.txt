@@ -175,7 +175,6 @@ set(LIB_SRC
   link/server.cpp
   link/session.cpp
   messages/dht_immediate.cpp
-  messages/dht.cpp
   messages/discard.cpp
   messages/exit.cpp
   messages/link_intro.cpp
@@ -186,7 +185,6 @@ set(LIB_SRC
   messages/path_transfer.cpp
   messages/relay.cpp
   messages/relay_commit.cpp
-  messages/transfer_traffic.cpp
   net/address_info.cpp
   net/exit_info.cpp
   net/ip.cpp
@@ -205,9 +203,11 @@ set(LIB_SRC
   router/router.cpp
   router_contact.cpp
   router_id.cpp
+  routing/dht_message.cpp
   routing/handler.cpp
   routing/message_parser.cpp
   routing/message.cpp
+  routing/transfer_traffic.cpp
   rpc/rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp

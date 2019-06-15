@@ -1,4 +1,4 @@
-#include <messages/dht.hpp>
+#include <routing/dht_message.hpp>
 
 #include <router/abstractrouter.hpp>
 #include <routing/handler.hpp>

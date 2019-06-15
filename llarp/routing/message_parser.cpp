@@ -1,13 +1,13 @@
 #include <routing/message_parser.hpp>
 
-#include <messages/dht.hpp>
 #include <messages/discard.hpp>
 #include <messages/exit.hpp>
 #include <messages/path_confirm.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
-#include <messages/transfer_traffic.hpp>
 #include <path/path_types.hpp>
+#include <routing/dht_message.hpp>
+#include <routing/transfer_traffic.hpp>
 #include <util/mem.hpp>
 
 namespace llarp

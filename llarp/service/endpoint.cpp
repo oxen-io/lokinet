@@ -5,11 +5,11 @@
 #include <dht/messages/gotintro.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
-#include <messages/dht.hpp>
 #include <messages/path_transfer.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 #include <service/endpoint_util.hpp>
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
