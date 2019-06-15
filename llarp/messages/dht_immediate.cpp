@@ -4,10 +4,6 @@
 
 namespace llarp
 {
-  DHTImmediateMessage::~DHTImmediateMessage()
-  {
-  }
-
   void
   DHTImmediateMessage::Clear()
   {

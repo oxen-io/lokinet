@@ -9,13 +9,12 @@ namespace llarp
   {
     struct PathConfirmMessage final : public IMessage
     {
-      uint64_t pathLifetime;
-      uint64_t pathCreated;
-      PathConfirmMessage();
+      uint64_t pathLifetime = 0;
+      uint64_t pathCreated  = 0;
+
+      PathConfirmMessage() = default;
       PathConfirmMessage(uint64_t lifetime);
-      ~PathConfirmMessage()
-      {
-      }
+      ~PathConfirmMessage() = default;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

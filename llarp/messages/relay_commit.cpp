@@ -16,10 +16,6 @@
 
 namespace llarp
 {
-  LR_CommitMessage::~LR_CommitMessage()
-  {
-  }
-
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
@@ -38,14 +34,7 @@ namespace llarp
   void
   LR_CommitMessage::Clear()
   {
-    frames[0].Clear();
-    frames[1].Clear();
-    frames[2].Clear();
-    frames[3].Clear();
-    frames[4].Clear();
-    frames[5].Clear();
-    frames[6].Clear();
-    frames[7].Clear();
+    std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
   }
 
   bool

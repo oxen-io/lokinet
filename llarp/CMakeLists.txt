@@ -165,7 +165,6 @@ set(LIB_SRC
   exit/endpoint.cpp
   exit/policy.cpp
   exit/session.cpp
-  exit/transfer_traffic.cpp
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
@@ -180,6 +179,7 @@ set(LIB_SRC
   messages/discard.cpp
   messages/exit.cpp
   messages/link_intro.cpp
+  messages/link_message_parser.cpp
   messages/link_message.cpp
   messages/path_confirm.cpp
   messages/path_latency.cpp
@@ -205,13 +205,9 @@ set(LIB_SRC
   router/router.cpp
   router_contact.cpp
   router_id.cpp
-  routing/dht_message.cpp
   routing/handler.cpp
   routing/message_parser.cpp
   routing/message.cpp
-  routing/path_confirm.cpp
-  routing/path_latency.cpp
-  routing/path_transfer.cpp
   rpc/rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp

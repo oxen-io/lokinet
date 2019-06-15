@@ -57,9 +57,7 @@ namespace llarp
     {
       PathID_t P;
 
-      DataDiscardMessage() : IMessage()
-      {
-      }
+      DataDiscardMessage() = default;
 
       DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
       {
