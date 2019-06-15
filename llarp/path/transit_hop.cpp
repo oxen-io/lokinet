@@ -2,8 +2,8 @@
 
 #include <dht/context.hpp>
 #include <exit/context.hpp>
+#include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/exit.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
 #include <messages/relay_commit.hpp>

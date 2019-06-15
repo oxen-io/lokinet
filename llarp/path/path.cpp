@@ -1,7 +1,7 @@
 #include <path/path.hpp>
 
+#include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/exit.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/relay_commit.hpp>
 #include <path/pathbuilder.hpp>

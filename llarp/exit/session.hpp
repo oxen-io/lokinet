@@ -1,7 +1,7 @@
 #ifndef LLARP_EXIT_SESSION_HPP
 #define LLARP_EXIT_SESSION_HPP
 
-#include <messages/exit.hpp>
+#include <exit/exit_messages.hpp>
 #include <net/ip.hpp>
 #include <path/pathbuilder.hpp>
 #include <routing/transfer_traffic.hpp>

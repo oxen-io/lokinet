@@ -1,4 +1,4 @@
-#include <messages/exit.hpp>
+#include <exit/exit_messages.hpp>
 
 #include <crypto/crypto.hpp>
 #include <routing/handler.hpp>

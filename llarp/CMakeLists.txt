@@ -163,6 +163,7 @@ set(LIB_SRC
   dnsd.cpp
   exit/context.cpp
   exit/endpoint.cpp
+  exit/exit_messages.cpp
   exit/policy.cpp
   exit/session.cpp
   handlers/exit.cpp
@@ -176,7 +177,6 @@ set(LIB_SRC
   link/session.cpp
   messages/dht_immediate.cpp
   messages/discard.cpp
-  messages/exit.cpp
   messages/link_intro.cpp
   messages/link_message_parser.cpp
   messages/link_message.cpp

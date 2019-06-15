@@ -1,7 +1,7 @@
 #include <routing/message_parser.hpp>
 
+#include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/exit.hpp>
 #include <messages/path_confirm.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
