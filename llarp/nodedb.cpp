@@ -133,19 +133,28 @@ llarp_nodedb::InsertAsync(llarp::RouterContact rc,
       std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler));
 }
 
+bool
+llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
+                                 std::shared_ptr< llarp::Logic > logic,
+                                 std::function< void(void) > completionHandler)
+{
+  llarp::util::Lock lock(&access);
+  auto itr = entries.find(rc.pubkey);
+  if(itr == entries.end() || itr->second.rc.OtherIsNewer(rc))
+  {
+    InsertAsync(rc, logic, completionHandler);
+    return true;
+  }
+  return false;
+}
+
 /// insert and write to disk
 bool
 llarp_nodedb::Insert(const llarp::RouterContact &rc)
 {
   std::array< byte_t, MAX_RC_SIZE > tmp;
   llarp_buffer_t buf(tmp);
-  {
-    llarp::util::Lock lock(&access);
-    auto itr = entries.find(rc.pubkey.as_array());
-    if(itr != entries.end())
-      entries.erase(itr);
-    entries.emplace(rc.pubkey.as_array(), rc);
-  }
+
   if(!rc.BEncode(&buf))
     return false;
 
@@ -156,6 +165,7 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
       filepath,
       std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
   ofs.write((char *)buf.base, buf.sz);
+  ofs.flush();
   ofs.close();
   if(!ofs)
   {
@@ -163,6 +173,14 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
     return false;
   }
   llarp::LogDebug("saved RC.pubkey: ", filepath);
+  // save rc after writing to disk
+  {
+    llarp::util::Lock lock(&access);
+    auto itr = entries.find(rc.pubkey.as_array());
+    if(itr != entries.end())
+      entries.erase(itr);
+    entries.emplace(rc.pubkey.as_array(), rc);
+  }
   return true;
 }
 
@@ -189,6 +207,35 @@ llarp_nodedb::Load(const fs::path &path)
       loaded += l;
   }
   return loaded;
+}
+
+void
+llarp_nodedb::SaveAll()
+{
+  std::array< byte_t, MAX_RC_SIZE > tmp;
+  llarp::util::Lock lock(&access);
+  for(const auto &item : entries)
+  {
+    llarp_buffer_t buf(tmp);
+
+    if(!item.second.rc.BEncode(&buf))
+      continue;
+
+    buf.sz              = buf.cur - buf.base;
+    const auto filepath = getRCFilePath(item.second.rc.pubkey);
+    std::ofstream ofs(
+        filepath,
+        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+    ofs.write((char *)buf.base, buf.sz);
+    ofs.flush();
+    ofs.close();
+  }
+}
+
+void
+llarp_nodedb::AsyncFlushToDisk()
+{
+  disk->addJob(std::bind(&llarp_nodedb::SaveAll, this));
 }
 
 ssize_t

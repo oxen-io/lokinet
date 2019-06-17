@@ -1270,6 +1270,7 @@ namespace llarp
     nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
       return removeStale.count(rc.pubkey) > 0;
     });
+
     if(IsServiceNode())
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
@@ -1913,6 +1914,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
+    nodedb()->AsyncFlushToDisk();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }
 

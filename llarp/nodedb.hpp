@@ -95,17 +95,30 @@ struct llarp_nodedb
   bool
   Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
 
-  /// insert and write to disk in background
+  /// unconditional insert and write to disk in background
+  /// updates the inserted time of the entry
   void
   InsertAsync(llarp::RouterContact rc,
               std::shared_ptr< llarp::Logic > l             = nullptr,
               std::function< void(void) > completionHandler = nullptr);
+
+  /// update rc if newer
+  /// return true if we started to put this rc in the database
+  /// retur false if not newer
+  bool
+  UpdateAsyncIfNewer(llarp::RouterContact rc,
+                     std::shared_ptr< llarp::Logic > l             = nullptr,
+                     std::function< void(void) > completionHandler = nullptr)
+      LOCKS_EXCLUDED(access);
 
   ssize_t
   Load(const fs::path &path);
 
   ssize_t
   loadSubdir(const fs::path &dir);
+  /// save all entries to disk async
+  void
+  AsyncFlushToDisk();
 
   bool
   loadfile(const fs::path &fpath) LOCKS_EXCLUDED(access);
@@ -145,6 +158,10 @@ struct llarp_nodedb
 
   static bool
   ensure_dir(const char *dir);
+
+ private:
+  void
+  SaveAll() LOCKS_EXCLUDED(access);
 };
 
 /// struct for async rc verification
