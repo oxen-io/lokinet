@@ -3,7 +3,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <messages/dht.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <nodedb.hpp>
 #include <router/abstractrouter.hpp>
 

@@ -2,7 +2,8 @@
 
 #include <crypto/crypto.hpp>
 #include <messages/path_confirm.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
+#include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>

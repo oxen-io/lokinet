@@ -2,6 +2,7 @@
 
 #include <dns/dns.hpp>
 #include <net/net.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/str.hpp>
 
