@@ -1254,7 +1254,12 @@ namespace llarp
         [&](const RouterContact &rc) {
           if(HasPendingRouterLookup(rc.pubkey))
             return;
-          LookupRouter(rc.pubkey, nullptr);
+          LookupRouter(rc.pubkey,
+                       [&](const std::vector< RouterContact > &result) {
+                         // store found routers
+                         for(const auto &rc : result)
+                           nodedb()->InsertAsync(rc);
+                       });
         },
         RouterContact::UpdateInterval + now);
     std::set< RouterID > removeStale;
