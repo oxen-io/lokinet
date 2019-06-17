@@ -631,7 +631,7 @@ namespace llarp
         return false;
       // make sure we have all paths that are established
       // in our introset
-      size_t numNotInIntroset =0;
+      size_t numNotInIntroset = 0;
       ForEachPath([&](const path::Path_ptr& p) {
         if(!p->IsReady())
           return;
