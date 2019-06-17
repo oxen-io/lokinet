@@ -237,11 +237,6 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
-      else if(NumInStatus(path::ePathEstablished) < 3)
-      {
-        if(m_IntroSet.HasExpiredIntros(now))
-          ManualRebuild(1);
-      }
 
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_SNodeSessions);
@@ -636,7 +631,7 @@ namespace llarp
         return false;
       // make sure we have all paths that are established
       // in our introset
-      bool should = false;
+      size_t numNotInIntroset =0;
       ForEachPath([&](const path::Path_ptr& p) {
         if(!p->IsReady())
           return;
@@ -645,9 +640,9 @@ namespace llarp
           if(i == p->intro)
             return;
         }
-        should = true;
+        ++numNotInIntroset;
       });
-      if(m_IntroSet.HasExpiredIntros(now) || should)
+      if(m_IntroSet.HasExpiredIntros(now) || numNotInIntroset > 1)
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
     }
