@@ -1266,7 +1266,7 @@ namespace llarp
     // remove stale routers
     nodedb()->VisitInsertedAfter(
         [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
-        ((RouterContact::UpdateInterval * 3) / 2) + now);
+        (RouterContact::UpdateInterval + now + RouterContact::UpdateWindow));
     nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
       return removeStale.count(rc.pubkey) > 0;
     });

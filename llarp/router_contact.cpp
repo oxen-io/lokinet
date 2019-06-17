@@ -33,6 +33,8 @@ namespace llarp
 #endif
   /// every 30 minutes an RC is stale and needs updating
   llarp_time_t RouterContact::UpdateInterval = 30 * 60 * 1000;
+  // 1 minute window for update
+  llarp_time_t RouterContact::UpdateWindow = 60 * 1000;
 
   NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {
