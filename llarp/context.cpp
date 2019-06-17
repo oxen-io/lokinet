@@ -8,7 +8,8 @@
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
 #include <metrics/metrictank_publisher.hpp>
-#include <metrics/publishers.hpp>
+#include <metrics/json_publisher.hpp>
+#include <metrics/stream_publisher.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
