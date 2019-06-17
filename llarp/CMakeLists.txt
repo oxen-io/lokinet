@@ -67,7 +67,8 @@ set(LIB_PLATFORM_SRC
   ev/ev.cpp
   ev/pipe.cpp
   metrics/metrictank_publisher.cpp
-  metrics/publishers.cpp
+  metrics/json_publisher.cpp
+  metrics/stream_publisher.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
