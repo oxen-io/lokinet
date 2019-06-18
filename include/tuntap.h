@@ -151,6 +151,7 @@ extern "C"
 #endif
 #if defined(__sun)
     int ip_fd;
+    int reserved;
     char internal_name[IF_NAMESIZE];
 #endif
   };
