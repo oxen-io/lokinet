@@ -25,7 +25,7 @@ namespace llarp
 
   void
   Win32LogStream::PreLog(std::stringstream& ss, LogLevel lvl, const char* fname,
-                         int lineno) const
+                         int lineno, const std::string& nodename) const
   {
     if(!isConsoleModern)
     {
@@ -60,11 +60,12 @@ namespace llarp
           ss << "[ERR] ";
           break;
       }
-      ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
+      ss << "[" << nodename << "]"
+         << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
          << ":" << lineno << "\t";
     }
     else
-      OStreamLogStream::PreLog(ss, lvl, fname, lineno);
+      OStreamLogStream::PreLog(ss, lvl, fname, lineno, nodename);
   }
 
   void
