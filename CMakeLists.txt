@@ -262,8 +262,9 @@ else()
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
 endif(NOT WIN32)
 
-target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+# Why does abyss not inherit the existing include folders?
+target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
+target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
