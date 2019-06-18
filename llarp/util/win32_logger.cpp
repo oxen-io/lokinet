@@ -60,7 +60,8 @@ namespace llarp
           ss << "[ERR] ";
           break;
       }
-      ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
+      ss << "[" << nodename << "]"
+         << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
          << ":" << lineno << "\t";
     }
     else
