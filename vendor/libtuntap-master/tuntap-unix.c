@@ -173,14 +173,14 @@ tuntap_set_ifname(struct device *dev, const char *ifname)
 int
 tuntap_up(struct device *dev)
 {
-  /* On Solaris, the interface automatically comes up when an IP
-   * address is first assigned.
-   */
-#ifndef __sun
   struct ifreq ifr;
 
   (void)memset(&ifr, '\0', sizeof ifr);
+#ifndef __sun
   (void)memcpy(ifr.ifr_name, dev->if_name, sizeof dev->if_name);
+#else
+  (void)memcpy(ifr.ifr_name, dev->internal_name, sizeof dev->internal_name);
+#endif
   ifr.ifr_flags = (short int)dev->flags;
   ifr.ifr_flags |= IFF_UP;
 
@@ -190,7 +190,6 @@ tuntap_up(struct device *dev)
   }
 
   dev->flags = ifr.ifr_flags;
-#endif
   return 0;
 }
 
@@ -200,7 +199,11 @@ tuntap_down(struct device *dev)
   struct ifreq ifr;
 
   (void)memset(&ifr, '\0', sizeof ifr);
+#ifndef __sun
   (void)memcpy(ifr.ifr_name, dev->if_name, sizeof dev->if_name);
+#else
+  (void)memcpy(ifr.ifr_name, dev->internal_name, sizeof dev->internal_name);
+#endif
   ifr.ifr_flags = (short)dev->flags;
   ifr.ifr_flags &= ~IFF_UP;
 
