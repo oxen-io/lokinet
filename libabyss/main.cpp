@@ -119,8 +119,8 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   // Now that libuv is the single non-Windows event loop impl, we can
   // go back to using the normal function
-  llarp_ev_loop_ptr loop       = llarp_make_ev_loop();
-  auto logic                   = std::make_shared< llarp::Logic >(threadpool);
+  llarp_ev_loop_ptr loop = llarp_make_ev_loop();
+  auto logic             = std::make_shared< llarp::Logic >(threadpool);
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port        = htons(1222);
