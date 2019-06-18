@@ -13,7 +13,7 @@ namespace llarp
 
     void
     PreLog(std::stringstream& s, LogLevel lvl, const char* fname,
-           int lineno) const override;
+           int lineno, const std::string& nodename) const override;
 
     void
     PostLog(std::stringstream& s) const override;
