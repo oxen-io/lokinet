@@ -246,11 +246,7 @@ __        ___    ____  _   _ ___ _   _  ____
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-#if defined(WIN32)
     mainloop = llarp_make_ev_loop();
-#else
-    mainloop = llarp_make_uv_loop();
-#endif
     // ensure worker thread pool
     if(!worker && !singleThreaded)
       worker.reset(llarp_init_threadpool(2, "llarp-worker"));

@@ -51,13 +51,10 @@ namespace llarp
 
 using llarp_ev_loop_ptr = std::shared_ptr< llarp_ev_loop >;
 
-/// make an event loop using our baked in event loop, ew.
+/// make an event loop using our baked in event loop on Windows
+/// make an event loop using libuv otherwise.
 llarp_ev_loop_ptr
 llarp_make_ev_loop();
-
-/// make an event loop using libuv
-llarp_ev_loop_ptr
-llarp_make_uv_loop();
 
 // run mainloop
 void

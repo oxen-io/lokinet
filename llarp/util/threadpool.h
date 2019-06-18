@@ -16,8 +16,8 @@ struct llarp_threadpool
   const pid_t callingPID;
 
   llarp_threadpool(int workers, const char *name)
-      : impl(
-          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
+      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
+                                                           workers * 128))
       , jobs(nullptr)
       , callingPID(0)
   {
