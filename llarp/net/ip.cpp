@@ -15,19 +15,29 @@ namespace llarp
 {
   namespace net
   {
+    inline static uint32_t *
+    in6_uint32_ptr(in6_addr &addr)
+    {
+      return (uint32_t *)addr.s6_addr;
+    }
+
+    inline static const uint32_t *
+    in6_uint32_ptr(const in6_addr &addr)
+    {
+      return (uint32_t *)addr.s6_addr;
+    }
+
     huint128_t
     IPPacket::In6ToHUInt(in6_addr addr)
     {
+      uint32_t *ptr = in6_uint32_ptr(addr);
 #if __BYTE_ORDER == __BIG_ENDIAN
-      return huint128_t{addr.s6_addr32[0]}
-      | (huint128_t{addr.s6_addr32[1]} << 32)
-          | (huint128_t{addr.s6_addr32[2]} << 64)
-          | (huint128_t{addr.s6_addr32[3]} << 96);
+      return huint128_t{ptr[0]} | (huint128_t{ptr[1]} << 32)
+          | (huint128_t{ptr[2]} << 64) | (huint128_t{ptr[3]} << 96);
 #else
-      return huint128_t{ntohl(addr.s6_addr32[3])}
-      | (huint128_t{ntohl(addr.s6_addr32[2])} << 32)
-          | (huint128_t{ntohl(addr.s6_addr32[1])} << 64)
-          | (huint128_t{ntohl(addr.s6_addr32[0])} << 96);
+      return huint128_t{ntohl(ptr[3])} | (huint128_t{ntohl(ptr[2])} << 32)
+          | (huint128_t{ntohl(ptr[1])} << 64)
+          | (huint128_t{ntohl(ptr[0])} << 96);
 #endif
     }
 
@@ -346,14 +356,14 @@ namespace llarp
 
       const auto oldSrcIP    = hdr->srcaddr;
       const auto oldDstIP    = hdr->dstaddr;
-      const uint32_t *oSrcIP = oldSrcIP.s6_addr32;
-      const uint32_t *oDstIP = oldDstIP.s6_addr32;
+      const uint32_t *oSrcIP = in6_uint32_ptr(oldSrcIP);
+      const uint32_t *oDstIP = in6_uint32_ptr(oldDstIP);
 
       // IPv6 address
       hdr->srcaddr           = HUIntToIn6(src);
       hdr->dstaddr           = HUIntToIn6(dst);
-      const uint32_t *nSrcIP = hdr->srcaddr.s6_addr32;
-      const uint32_t *nDstIP = hdr->dstaddr.s6_addr32;
+      const uint32_t *nSrcIP = in6_uint32_ptr(hdr->srcaddr);
+      const uint32_t *nDstIP = in6_uint32_ptr(hdr->dstaddr);
 
       // TODO IPv6 header options
       auto pld = buf + ihs;
