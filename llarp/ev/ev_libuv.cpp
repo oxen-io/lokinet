@@ -630,12 +630,3 @@ namespace libuv
   }
 
 }  // namespace libuv
-
-llarp_ev_loop_ptr
-llarp_make_uv_loop()
-{
-  auto loop = std::make_shared< libuv::Loop >();
-  if(loop->init())
-    return loop;
-  return nullptr;
-}

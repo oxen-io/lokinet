@@ -121,7 +121,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
     oldRCLifetime               = RouterContact::Lifetime;
     RouterContact::IgnoreBogons = true;
     RouterContact::Lifetime     = 500;
-    netLoop                     = llarp_make_uv_loop();
+    netLoop                     = llarp_make_ev_loop();
     m_logic.reset(new Logic());
   }
 
