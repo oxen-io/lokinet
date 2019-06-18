@@ -19,7 +19,7 @@ namespace llarp
     Session::IsExpired(llarp_time_t now, llarp_time_t lifetime) const
     {
       if(now <= lastUsed)
-        return false;
+        return intro.IsExpired(now) || replyIntro.IsExpired(now);
       return now - lastUsed > lifetime || intro.IsExpired(now)
           || replyIntro.IsExpired(now);
     }
