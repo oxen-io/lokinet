@@ -202,6 +202,7 @@ namespace libuv
       llarp::LogDebug("close tcp connection");
       uv_timer_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      OnClosed((uv_handle_t*)&m_Handle);
     }
 
     static void
@@ -381,6 +382,7 @@ namespace libuv
     {
       uv_check_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      OnClosed((uv_handle_t*)&m_Handle);
     }
   };
 
@@ -453,6 +455,9 @@ namespace libuv
     Close()
     {
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      // It seems that the event loop stops before we get around to the callback (!!!)
+      // so call the function
+      OnClosed((uv_handle_t*)&m_Handle);
     }
 
     bool
