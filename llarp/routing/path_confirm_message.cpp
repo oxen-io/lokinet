@@ -1,4 +1,4 @@
-#include <routing/path_confirm.hpp>
+#include <routing/path_confirm_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/bencode.hpp>

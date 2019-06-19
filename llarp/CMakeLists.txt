@@ -204,10 +204,10 @@ set(LIB_SRC
   routing/handler.cpp
   routing/message_parser.cpp
   routing/message.cpp
-  routing/path_confirm.cpp
-  routing/path_latency.cpp
-  routing/path_transfer.cpp
-  routing/transfer_traffic.cpp
+  routing/path_confirm_message.cpp
+  routing/path_latency_message.cpp
+  routing/path_transfer_message.cpp
+  routing/transfer_traffic_message.cpp
   rpc/rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp

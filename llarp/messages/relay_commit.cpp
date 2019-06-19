@@ -5,7 +5,7 @@
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
-#include <routing/path_confirm.hpp>
+#include <routing/path_confirm_message.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>

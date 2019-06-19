@@ -4,7 +4,7 @@
 #include <exit/exit_messages.hpp>
 #include <net/ip.hpp>
 #include <path/pathbuilder.hpp>
-#include <routing/transfer_traffic.hpp>
+#include <routing/transfer_traffic_message.hpp>
 
 #include <deque>
 #include <queue>

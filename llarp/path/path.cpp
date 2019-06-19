@@ -8,8 +8,8 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
-#include <routing/path_latency.hpp>
-#include <routing/transfer_traffic.hpp>
+#include <routing/path_latency_message.hpp>
+#include <routing/transfer_traffic_message.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 

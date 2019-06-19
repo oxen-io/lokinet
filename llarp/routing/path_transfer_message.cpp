@@ -1,4 +1,4 @@
-#include <routing/path_transfer.hpp>
+#include <routing/path_transfer_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>

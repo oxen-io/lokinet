@@ -8,8 +8,8 @@
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
-#include <routing/path_latency.hpp>
-#include <routing/path_transfer.hpp>
+#include <routing/path_latency_message.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>

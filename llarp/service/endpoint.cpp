@@ -9,7 +9,7 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
-#include <routing/path_transfer.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <service/endpoint_util.hpp>
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
@@ -1160,18 +1160,18 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace_back(data, t);
       // no converstation
-      return EnsurePathToService(remote,
-                                 [&](Address r, OutboundContext* c) {
-                                   if(c)
-                                   {
-                                     c->UpdateIntroSet(true);
-                                     for(auto& pending : m_PendingTraffic[r])
-                                       c->AsyncEncryptAndSendTo(
-                                           pending.Buffer(), pending.protocol);
-                                   }
-                                   m_PendingTraffic.erase(r);
-                                 },
-                                 5000, true);
+      return EnsurePathToService(
+          remote,
+          [&](Address r, OutboundContext* c) {
+            if(c)
+            {
+              c->UpdateIntroSet(true);
+              for(auto& pending : m_PendingTraffic[r])
+                c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
+            }
+            m_PendingTraffic.erase(r);
+          },
+          5000, true);
     }
 
     void

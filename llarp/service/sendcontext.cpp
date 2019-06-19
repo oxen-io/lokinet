@@ -1,7 +1,7 @@
 #include <service/sendcontext.hpp>
 
 #include <router/abstractrouter.hpp>
-#include <routing/path_transfer.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <service/endpoint.hpp>
 #include <util/logic.hpp>
 

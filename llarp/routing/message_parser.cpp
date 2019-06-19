@@ -4,10 +4,10 @@
 #include <messages/discard.hpp>
 #include <path/path_types.hpp>
 #include <routing/dht_message.hpp>
-#include <routing/path_confirm.hpp>
-#include <routing/path_latency.hpp>
-#include <routing/path_transfer.hpp>
-#include <routing/transfer_traffic.hpp>
+#include <routing/path_confirm_message.hpp>
+#include <routing/path_latency_message.hpp>
+#include <routing/path_transfer_message.hpp>
+#include <routing/transfer_traffic_message.hpp>
 #include <util/mem.hpp>
 
 namespace llarp

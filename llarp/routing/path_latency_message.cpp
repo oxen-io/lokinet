@@ -1,4 +1,4 @@
-#include <routing/path_latency.hpp>
+#include <routing/path_latency_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/bencode.hpp>
