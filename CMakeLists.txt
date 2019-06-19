@@ -277,10 +277,10 @@ target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${AB
 target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
 
 # for freebsd
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR APPLE)
   target_link_directories(${ABYSS_EXE} PRIVATE /usr/local/lib)
   target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR APPLE)
 add_log_tag(${ABYSS_EXE})
 add_log_tag(${ABYSS_LIB})
 
@@ -312,7 +312,7 @@ else()
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR APPLE)
     target_link_directories(${EXE} PRIVATE /usr/local/lib)
   endif()
   target_link_libraries(${EXE} PUBLIC ${EXE_LIBS})

@@ -70,6 +70,6 @@ else()
     target_link_libraries(${TEST_EXE} PUBLIC ${FS_LIB} ws2_32 iphlpapi shlwapi)
 endif(NOT WIN32)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR APPLE)
   target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
 endif()

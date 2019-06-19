@@ -252,7 +252,7 @@ add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 set(LIBS ${LIBS} libutp)
 target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR APPLE)
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
   target_include_directories(${STATIC_LIB} SYSTEM PUBLIC /usr/local/include)
 endif()
