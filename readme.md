@@ -67,7 +67,7 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
-* libuv >= 1.27.0 
+* libuv >= 1.27.0
 
 ### Linux
 
