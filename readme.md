@@ -76,7 +76,7 @@ build:
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make -j8
+    $ make 
 
 install:
 
