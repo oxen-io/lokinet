@@ -211,7 +211,7 @@ namespace llarp
 
     uint32_t ticker_job_id = 0;
 
-    InboundMessageParser inbound_link_msg_parser;
+    LinkMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
 
     service::Context _hiddenServiceContext;

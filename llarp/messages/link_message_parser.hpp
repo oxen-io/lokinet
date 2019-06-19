@@ -12,10 +12,10 @@ namespace llarp
   struct ILinkMessage;
   struct ILinkSession;
 
-  struct InboundMessageParser
+  struct LinkMessageParser
   {
-    InboundMessageParser(AbstractRouter* router);
-    ~InboundMessageParser();
+    LinkMessageParser(AbstractRouter* router);
+    ~LinkMessageParser();
 
     bool
     operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);

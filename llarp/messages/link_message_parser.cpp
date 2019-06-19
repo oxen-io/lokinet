@@ -15,7 +15,7 @@
 
 namespace llarp
 {
-  struct InboundMessageParser::msg_holder_t
+  struct LinkMessageParser::msg_holder_t
   {
     LinkIntroMessage i;
     RelayDownstreamMessage d;
@@ -27,7 +27,7 @@ namespace llarp
     msg_holder_t() = default;
   };
 
-  InboundMessageParser::InboundMessageParser(AbstractRouter* _router)
+  LinkMessageParser::LinkMessageParser(AbstractRouter* _router)
       : router(_router)
       , from(nullptr)
       , msg(nullptr)
@@ -35,12 +35,12 @@ namespace llarp
   {
   }
 
-  InboundMessageParser::~InboundMessageParser()
+  LinkMessageParser::~LinkMessageParser()
   {
   }
 
   bool
-  InboundMessageParser::operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
+  LinkMessageParser::operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
   {
     // we are reading the first key
     if(firstkey)
@@ -113,7 +113,7 @@ namespace llarp
   }
 
   bool
-  InboundMessageParser::MessageDone()
+  LinkMessageParser::MessageDone()
   {
     bool result = false;
     if(msg)
@@ -125,8 +125,7 @@ namespace llarp
   }
 
   bool
-  InboundMessageParser::ProcessFrom(ILinkSession* src,
-                                    const llarp_buffer_t& buf)
+  LinkMessageParser::ProcessFrom(ILinkSession* src, const llarp_buffer_t& buf)
   {
     if(!src)
     {
@@ -141,7 +140,7 @@ namespace llarp
   }
 
   void
-  InboundMessageParser::Reset()
+  LinkMessageParser::Reset()
   {
     if(msg)
       msg->Clear();
