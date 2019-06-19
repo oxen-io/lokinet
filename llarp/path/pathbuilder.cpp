@@ -3,7 +3,7 @@
 #include <crypto/crypto.hpp>
 #include <messages/relay_commit.hpp>
 #include <nodedb.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>

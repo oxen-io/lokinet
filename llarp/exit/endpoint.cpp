@@ -1,5 +1,7 @@
 #include <exit/endpoint.hpp>
+
 #include <handlers/exit.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp

@@ -1,6 +1,7 @@
 set(LIB_UTIL_SRC
   constants/defaults.cpp
   constants/link_layer.cpp
+  constants/path.cpp
   constants/proto.cpp
   constants/version.cpp
   util/aligned.cpp
@@ -196,8 +197,10 @@ set(LIB_SRC
   net/ip.cpp
   net/net_int.cpp
   nodedb.cpp
-  path/path.cpp
+  path/ihophandler.cpp
+  path/path_context.cpp
   path/path_types.cpp
+  path/path.cpp
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
