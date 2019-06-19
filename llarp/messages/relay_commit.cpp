@@ -1,6 +1,7 @@
 #include <messages/relay_commit.hpp>
 
 #include <crypto/crypto.hpp>
+#include <nodedb.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
