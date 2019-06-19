@@ -29,7 +29,7 @@ to run as client:
 
 to run as relay:
 
-    $ lokinet -r
+    $ lokinet -r -g
     $ lokinet-bootstrap
     $ lokinet
 
