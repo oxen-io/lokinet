@@ -16,6 +16,7 @@
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
+extern "C" void win32_signal_handler(int);
 #endif
 
 struct llarp_main *ctx = 0;
@@ -116,6 +117,7 @@ main(int argc, char *argv[])
   if(startWinsock())
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
+  signal(SIGSEGV, win32_signal_handler);
 #endif
 
 #ifdef LOKINET_DEBUG

@@ -570,3 +570,106 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
     CloseHandle(hThread);
 }
 #endif
+
+#ifdef _WIN32
+// Generate a core dump if we crash. Finally.
+// Unix-style, we just leave a file named "core" in
+// the user's working directory. Gets overwritten if
+// a new crash occurs.
+#include <dbghelp.h>
+#ifdef _MSC_VER
+#pragma comment(lib, "dbghelp.lib")
+#endif
+
+HRESULT
+GenerateCrashDump(MINIDUMP_TYPE flags, EXCEPTION_POINTERS *seh)
+{
+  HRESULT error                         = S_OK;
+  MINIDUMP_USER_STREAM_INFORMATION info = {0};
+  MINIDUMP_USER_STREAM *streamPtr       = NULL;
+  MINIDUMP_USER_STREAM stream           = {0};
+
+  // get the time
+  SYSTEMTIME sysTime = {0};
+  GetSystemTime(&sysTime);
+
+  // get the computer name
+  char compName[MAX_COMPUTERNAME_LENGTH + 1] = {0};
+  DWORD compNameLen                          = ARRAYSIZE(compName);
+  GetComputerNameA(compName, &compNameLen);
+
+  // This information is written to a core dump user stream
+  char extra_info[1024] = {0};
+  snprintf(extra_info, 1024,
+           "hostname=%s;datetime=%02u-%02u-%02u_%02u-%02u-%02u", compName,
+           sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour,
+           sysTime.wMinute, sysTime.wSecond);
+
+  // open the file
+  HANDLE hFile =
+      CreateFileA("core", GENERIC_READ | GENERIC_WRITE,
+                  FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                  CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if(hFile == INVALID_HANDLE_VALUE)
+  {
+    error = GetLastError();
+    error = HRESULT_FROM_WIN32(error);
+    return error;
+  }
+
+  // get the process information
+  HANDLE hProc = GetCurrentProcess();
+  DWORD procID = GetCurrentProcessId();
+
+  // if we have SEH info, package it up
+  MINIDUMP_EXCEPTION_INFORMATION sehInfo = {0};
+  MINIDUMP_EXCEPTION_INFORMATION *sehPtr = NULL;
+
+  // Collect hostname and time
+  info.UserStreamCount = 1;
+  info.UserStreamArray = streamPtr;
+  streamPtr            = &stream;
+  stream.Type          = CommentStreamA;
+  stream.BufferSize    = strlen(extra_info) + 1;
+  stream.Buffer        = extra_info;
+
+  if(seh)
+  {
+    sehInfo.ThreadId          = GetCurrentThreadId();
+    sehInfo.ExceptionPointers = seh;
+    sehInfo.ClientPointers    = FALSE;
+    sehPtr                    = &sehInfo;
+  }
+
+  // generate the crash dump
+  BOOL result =
+      MiniDumpWriteDump(hProc, procID, hFile, flags, sehPtr, &info, NULL);
+  if(!result)
+  {
+    error = (HRESULT)GetLastError();  // already an HRESULT
+  }
+
+  // close the file
+  CloseHandle(hFile);
+  return error;
+}
+
+// ok try a UNIX-style signal handler
+__declspec(noreturn) void win32_signal_handler(int s)
+{
+  MessageBox(NULL,
+             "A fatal error has occurred. A core dump was generated and "
+             "dropped in the daemon's working directory. Please create an "
+             "issue at https://github.com/loki-network/loki-project, and "
+             "attach the core dump for further assistance.",
+             "Fatal Error", MB_ICONHAND);
+  GenerateCrashDump(
+      MiniDumpWithFullMemory | MiniDumpWithHandleData | MiniDumpWithThreadInfo
+          | MiniDumpWithProcessThreadData | MiniDumpWithFullMemoryInfo
+          | MiniDumpWithUnloadedModules | MiniDumpWithFullAuxiliaryState
+          | MiniDumpIgnoreInaccessibleMemory | MiniDumpWithTokenInformation,
+      NULL);
+  exit(127);
+}
+#endif
