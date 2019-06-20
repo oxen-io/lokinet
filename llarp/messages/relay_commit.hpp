@@ -54,11 +54,9 @@ namespace llarp
     {
     }
 
-    LR_CommitMessage() : ILinkMessage()
-    {
-    }
+    LR_CommitMessage() = default;
 
-    ~LR_CommitMessage();
+    ~LR_CommitMessage() = default;
 
     void
     Clear() override;

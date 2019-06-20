@@ -21,9 +21,7 @@ namespace llarp
 
     ILinkMessage() = default;
 
-    virtual ~ILinkMessage()
-    {
-    }
+    virtual ~ILinkMessage() = default;
 
     virtual bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;

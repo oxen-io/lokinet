@@ -16,13 +16,13 @@ namespace llarp
       service::ProtocolFrame T;
       TunnelNonce Y;
 
-      PathTransferMessage();
+      PathTransferMessage() = default;
       PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p)
           : P(p), T(f)
       {
         Y.Randomize();
       }
-      ~PathTransferMessage();
+      ~PathTransferMessage() = default;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;

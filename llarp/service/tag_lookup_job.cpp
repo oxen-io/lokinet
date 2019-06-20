@@ -1,7 +1,7 @@
 #include <service/tag_lookup_job.hpp>
 
 #include <dht/messages/findintro.hpp>
-#include <messages/dht.hpp>
+#include <routing/dht_message.hpp>
 #include <service/endpoint.hpp>
 
 namespace llarp

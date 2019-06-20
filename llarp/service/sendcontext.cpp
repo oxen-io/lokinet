@@ -1,8 +1,8 @@
 #include <service/sendcontext.hpp>
 
-#include <messages/path_transfer.hpp>
-#include <service/endpoint.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_transfer_message.hpp>
+#include <service/endpoint.hpp>
 #include <util/logic.hpp>
 
 namespace llarp

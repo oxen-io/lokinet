@@ -1,25 +1,21 @@
 #include <messages/relay_commit.hpp>
 
 #include <crypto/crypto.hpp>
-#include <messages/path_confirm.hpp>
+#include <nodedb.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_confirm_message.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/logic.hpp>
 #include <util/memfn.hpp>
-#include <nodedb.hpp>
 
 #include <functional>
 
 namespace llarp
 {
-  LR_CommitMessage::~LR_CommitMessage()
-  {
-  }
-
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
@@ -38,14 +34,7 @@ namespace llarp
   void
   LR_CommitMessage::Clear()
   {
-    frames[0].Clear();
-    frames[1].Clear();
-    frames[2].Clear();
-    frames[3].Clear();
-    frames[4].Clear();
-    frames[5].Clear();
-    frames[6].Clear();
-    frames[7].Clear();
+    std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
   }
 
   bool

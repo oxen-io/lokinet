@@ -1,4 +1,4 @@
-#include <messages/path_transfer.hpp>
+#include <routing/path_transfer_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
@@ -7,14 +7,6 @@ namespace llarp
 {
   namespace routing
   {
-    PathTransferMessage::PathTransferMessage() : IMessage()
-    {
-    }
-
-    PathTransferMessage::~PathTransferMessage()
-    {
-    }
-
     bool
     PathTransferMessage::DecodeKey(const llarp_buffer_t& key,
                                    llarp_buffer_t* val)
