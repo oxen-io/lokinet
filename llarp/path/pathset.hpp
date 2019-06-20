@@ -97,7 +97,7 @@ namespace llarp
       HandlePathBuilt(Path_ptr path) = 0;
 
       virtual void
-      HandlePathBuildTimeout(__attribute__((unused)) Path_ptr path);
+      HandlePathBuildTimeout(Path_ptr path);
 
       /// a path died now what?
       virtual void

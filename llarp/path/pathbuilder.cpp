@@ -8,50 +8,33 @@
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
 #include <util/logic.hpp>
+#include <util/memfn.hpp>
 
 #include <functional>
 
 namespace llarp
 {
-  template < typename User >
   struct AsyncPathKeyExchangeContext
   {
-    typedef path::Path_ptr Path_t;
-    typedef path::PathSet_ptr PathSet_t;
+    using Path_t      = path::Path_ptr;
+    using PathSet_t   = path::PathSet_ptr;
     PathSet_t pathset = nullptr;
     Path_t path       = nullptr;
-    typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
-    User* user = nullptr;
+    using Handler = std::function< void(const AsyncPathKeyExchangeContext&) >;
 
     Handler result;
-    size_t idx                     = 0;
-    AbstractRouter* router         = nullptr;
-    llarp_threadpool* worker       = nullptr;
-    std::shared_ptr< Logic > logic = nullptr;
+    size_t idx               = 0;
+    AbstractRouter* router   = nullptr;
+    llarp_threadpool* worker = nullptr;
+    std::shared_ptr< Logic > logic;
     LR_CommitMessage LRCM;
 
-    ~AsyncPathKeyExchangeContext()
+    void
+    GenerateNextKey()
     {
-    }
-
-    static void
-    HandleDone(void* u)
-    {
-      AsyncPathKeyExchangeContext< User >* ctx =
-          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
-      ctx->result(ctx);
-      delete ctx;
-    }
-
-    static void
-    GenerateNextKey(void* u)
-    {
-      AsyncPathKeyExchangeContext< User >* ctx =
-          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
-
       // current hop
-      auto& hop   = ctx->path->hops[ctx->idx];
-      auto& frame = ctx->LRCM.frames[ctx->idx];
+      auto& hop   = path->hops[idx];
+      auto& frame = LRCM.frames[idx];
 
       auto crypto = CryptoManager::instance();
 
@@ -61,16 +44,15 @@ namespace llarp
       // do key exchange
       if(!crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey, hop.nonce))
       {
-        LogError(ctx->pathset->Name(),
+        LogError(pathset->Name(),
                  " Failed to generate shared key for path build");
-        delete ctx;
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
       crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
-      ++ctx->idx;
+      ++idx;
 
-      bool isFarthestHop = ctx->idx == ctx->path->hops.size();
+      bool isFarthestHop = idx == path->hops.size();
 
       LR_CommitRecord record;
       if(isFarthestHop)
@@ -79,9 +61,8 @@ namespace llarp
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
-        record.nextRC =
-            std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
+        hop.upstream  = path->hops[idx].rc.pubkey;
+        record.nextRC = std::make_unique< RouterContact >(path->hops[idx].rc);
       }
       // build record
       record.lifetime    = path::default_lifetime;
@@ -98,9 +79,8 @@ namespace llarp
       if(!record.BEncode(&buf))
       {
         // failed to encode?
-        LogError(ctx->pathset->Name(), " Failed to generate Commit Record");
+        LogError(pathset->Name(), " Failed to generate Commit Record");
         DumpBuffer(buf);
-        delete ctx;
         return;
       }
       // use ephemeral keypair for frame
@@ -108,8 +88,7 @@ namespace llarp
       crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey))
       {
-        LogError(ctx->pathset->Name(), " Failed to encrypt LRCR");
-        delete ctx;
+        LogError(pathset->Name(), " Failed to encrypt LRCR");
         return;
       }
 
@@ -117,23 +96,23 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        ctx->logic->queue_job({ctx, &HandleDone});
+        logic->queue_func(std::bind(result, *this));
       }
       else
       {
         // next hop
-        llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
+        worker->QueueFunc(
+            std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
       }
     }
 
     /// Generate all keys asynchronously and call handler when done
     void
     AsyncGenerateKeys(Path_t p, std::shared_ptr< Logic > l,
-                      llarp_threadpool* pool, User* u, Handler func)
+                      llarp_threadpool* pool, Handler func)
     {
       path   = p;
       logic  = l;
-      user   = u;
       result = func;
       worker = pool;
 
@@ -141,41 +120,36 @@ namespace llarp
       {
         LRCM.frames[i].Randomize();
       }
-      llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
+      pool->QueueFunc(
+          std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
     }
   };
 
   static void
-  PathBuilderKeysGenerated(AsyncPathKeyExchangeContext< path::Builder >* ctx)
+  PathBuilderKeysGenerated(const AsyncPathKeyExchangeContext& ctx)
   {
-    if(!ctx->pathset->IsStopped())
+    if(!ctx.pathset->IsStopped())
     {
-      RouterID remote         = ctx->path->Upstream();
-      const ILinkMessage* msg = &ctx->LRCM;
-      if(ctx->router->SendToOrQueue(remote, msg))
+      RouterID remote         = ctx.path->Upstream();
+      const ILinkMessage* msg = &ctx.LRCM;
+      if(ctx.router->SendToOrQueue(remote, msg))
       {
         // persist session with router until this path is done
-        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+        ctx.router->PersistSessionUntil(remote, ctx.path->ExpireTime());
         // add own path
-        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+        ctx.router->pathContext().AddOwnPath(ctx.pathset, ctx.path);
       }
       else
-        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
+        LogError(ctx.pathset->Name(), " failed to send LRCM to ", remote);
     }
   }
 
   namespace path
   {
-    Builder::Builder(AbstractRouter* p_router, struct llarp_dht_context* p_dht,
-                     size_t pathNum, size_t hops)
-        : path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
+    Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
+        : path::PathSet(pathNum), _run(true), router(p_router), numHops(hops)
     {
       CryptoManager::instance()->encryption_keygen(enckey);
-      _run.store(true);
-    }
-
-    Builder::~Builder()
-    {
     }
 
     void
@@ -238,6 +212,7 @@ namespace llarp
             true);
         return got;
       }
+
       do
       {
         cur.Clear();
@@ -250,13 +225,14 @@ namespace llarp
             return true;
         }
       } while(tries > 0);
+
       return false;
     }
 
     bool
     Builder::Stop()
     {
-      _run.store(false);
+      _run = false;
       return true;
     }
 
@@ -306,62 +282,89 @@ namespace llarp
     }
 
     bool
+    Builder::DoUrgentBuildAlignedTo(const RouterID remote,
+                                    std::vector< RouterContact >& hops)
+    {
+      const auto aligned =
+          router->pathContext().FindOwnedPathsWithEndpoint(remote);
+      /// pick the lowest latency path that aligns to remote
+      /// note: peer exhaustion is made worse happen here
+      Path_ptr p;
+      llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
+      for(const auto& path : aligned)
+      {
+        if(path->intro.latency < min && path->hops.size() == numHops)
+        {
+          p   = path;
+          min = path->intro.latency;
+        }
+      }
+      if(p)
+      {
+        for(const auto& hop : p->hops)
+        {
+          if(hop.rc.pubkey.IsZero())
+            return false;
+          hops.emplace_back(hop.rc);
+        }
+      }
+
+      return true;
+    }
+
+    bool
+    Builder::DoBuildAlignedTo(const RouterID remote,
+                              std::vector< RouterContact >& hops)
+    {
+      std::set< RouterID > routers{remote};
+      hops.resize(numHops);
+
+      auto nodedb = router->nodedb();
+      for(size_t idx = 0; idx < hops.size(); idx++)
+      {
+        hops[idx].Clear();
+        if(idx == numHops - 1)
+        {
+          // last hop
+          if(!nodedb->Get(remote, hops[idx]))
+          {
+            router->LookupRouter(remote, nullptr);
+            return false;
+          }
+        }
+        else
+        {
+          if(!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
+          {
+            return false;
+          }
+        }
+        if(hops[idx].pubkey.IsZero())
+          return false;
+        routers.insert(hops[idx].pubkey);
+      }
+
+      return true;
+    }
+
+    bool
     Builder::BuildOneAlignedTo(const RouterID remote)
     {
-      std::vector< RouterContact > hops(0);
-      std::set< RouterID > routers = {remote};
+      std::vector< RouterContact > hops;
       /// if we really need this path build it "dangerously"
       if(UrgentBuild(router->Now()))
       {
-        const auto aligned =
-            router->pathContext().FindOwnedPathsWithEndpoint(remote);
-        /// pick the lowest latency path that aligns to remote
-        /// note: peer exhaustion is made worse happen here
-        Path_ptr p;
-        llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
-        for(const auto& path : aligned)
+        if(!DoUrgentBuildAlignedTo(remote, hops))
         {
-          if(path->intro.latency < min && path->hops.size() == numHops)
-          {
-            p   = path;
-            min = path->intro.latency;
-          }
-        }
-        if(p)
-        {
-          for(const auto& hop : p->hops)
-          {
-            if(hop.rc.pubkey.IsZero())
-              return false;
-            hops.emplace_back(hop.rc);
-          }
+          return false;
         }
       }
-      if(hops.size() == 0)
-      {
-        hops.resize(numHops);
 
-        auto nodedb = router->nodedb();
-        for(size_t idx = 0; idx < hops.size(); idx++)
+      if(hops.empty())
+      {
+        if(!DoBuildAlignedTo(remote, hops))
         {
-          hops[idx].Clear();
-          if(idx == numHops - 1)
-          {
-            // last hop
-            if(!nodedb->Get(remote, hops[idx]))
-            {
-              router->LookupRouter(remote, nullptr);
-              return false;
-            }
-          }
-          else
-          {
-            if(!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
-              return false;
-          }
-          if(hops[idx].pubkey.IsZero())
-            return false;
-          routers.insert(hops[idx].pubkey);
+          return false;
         }
       }
       LogInfo(Name(), " building path to ", remote);
@@ -373,21 +376,21 @@ namespace llarp
     Builder::SelectHops(llarp_nodedb* nodedb,
                         std::vector< RouterContact >& hops, PathRole roles)
     {
-      size_t idx = 0;
       std::set< RouterID > exclude;
-      while(idx < hops.size())
+      for(size_t idx = 0; idx < hops.size(); ++idx)
       {
         hops[idx].Clear();
         size_t tries = 4;
         while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
+        {
           --tries;
+        }
         if(tries == 0 || hops[idx].pubkey.IsZero())
         {
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
         }
         exclude.insert(hops[idx].pubkey);
-        ++idx;
       }
       return true;
     }
@@ -405,16 +408,15 @@ namespace llarp
         return;
       lastBuild = Now();
       // async generate keys
-      AsyncPathKeyExchangeContext< Builder >* ctx =
-          new AsyncPathKeyExchangeContext< Builder >();
-      ctx->router  = router;
-      ctx->pathset = GetSelf();
-      auto path    = std::make_shared< path::Path >(hops, this, roles);
+      AsyncPathKeyExchangeContext ctx;
+      ctx.router  = router;
+      ctx.pathset = GetSelf();
+      auto path   = std::make_shared< path::Path >(hops, this, roles);
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [this](Path_ptr p) { this->HandlePathBuilt(p); });
-      ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
-                             &PathBuilderKeysGenerated);
+      ctx.AsyncGenerateKeys(path, router->logic(), router->threadpool(),
+                            &PathBuilderKeysGenerated);
     }
 
     void

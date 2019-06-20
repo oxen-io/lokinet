@@ -70,9 +70,9 @@ namespace llarp
     }
 
     /// A path we made
-    struct Path : public IHopHandler,
-                  public routing::IMessageHandler,
-                  public std::enable_shared_from_this< Path >
+    struct Path final : public IHopHandler,
+                        public routing::IMessageHandler,
+                        public std::enable_shared_from_this< Path >
     {
       using BuildResultHookFunc = std::function< void(Path_ptr) >;
       using CheckForDeadFunc    = std::function< bool(Path_ptr, llarp_time_t) >;
