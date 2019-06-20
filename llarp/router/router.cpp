@@ -1250,7 +1250,7 @@ namespace llarp
     routerProfiling().Tick();
 
     // try looking up stale routers
-    nodedb()->VisitInsertedAfter(
+    nodedb()->VisitInsertedBefore(
         [&](const RouterContact &rc) {
           if(HasPendingRouterLookup(rc.pubkey))
             return;
@@ -1261,12 +1261,12 @@ namespace llarp
                            nodedb()->InsertAsync(rc);
                        });
         },
-        RouterContact::UpdateInterval + now);
+        now - RouterContact::UpdateInterval);
     std::set< RouterID > removeStale;
     // remove stale routers
-    nodedb()->VisitInsertedAfter(
+    nodedb()->VisitInsertedBefore(
         [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
-        (RouterContact::UpdateInterval + now + RouterContact::UpdateWindow));
+        now - ((RouterContact::UpdateInterval * 3) / 2));
     nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
       return removeStale.count(rc.pubkey) > 0;
     });

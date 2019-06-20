@@ -287,7 +287,7 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 }
 
 void
-llarp_nodedb::VisitInsertedAfter(
+llarp_nodedb::VisitInsertedBefore(
     std::function< void(const llarp::RouterContact &) > visit,
     llarp_time_t insertedAfter)
 {
@@ -295,7 +295,7 @@ llarp_nodedb::VisitInsertedAfter(
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    if(itr->second.inserted > insertedAfter)
+    if(itr->second.inserted < insertedAfter)
       visit(itr->second.rc);
     ++itr;
   }

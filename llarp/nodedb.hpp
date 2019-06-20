@@ -135,10 +135,10 @@ struct llarp_nodedb
   ssize_t
   store_dir(const char *dir);
 
-  /// visit all entries inserted into nodedb cache after a timestamp
+  /// visit all entries inserted into nodedb cache before a timestamp
   void
-  VisitInsertedAfter(std::function< void(const llarp::RouterContact &) > visit,
-                     llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
+  VisitInsertedBefore(std::function< void(const llarp::RouterContact &) > visit,
+                      llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
 
   size_t
   num_loaded() const LOCKS_EXCLUDED(access);
