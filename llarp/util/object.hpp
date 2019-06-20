@@ -176,11 +176,11 @@ namespace llarp
           Buffer< Value > m_buffer;
           Node* m_next;
         };
-        Payload m_payload;
+        Payload m_payload{};
         int32_t m_handle{};
       };
 
-      std::vector< Node* > m_nodes GUARDED_BY(m_mutex);
+      std::vector< gsl::owner< Node* > > m_nodes GUARDED_BY(m_mutex);
       Node* m_next{nullptr};
       std::atomic_size_t m_size{0};
 
@@ -299,6 +299,7 @@ namespace llarp
       {
         absl::WriterMutexLock l(&m_mutex);
 
+        // NOLINTNEXTLINE
         for(gsl::owner< Node* > node : m_nodes)
         {
           if(node->m_handle & BUSY_INDICATOR)

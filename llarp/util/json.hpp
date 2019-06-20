@@ -5,6 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <gsl/gsl>
 #include <memory>
 #include <iostream>
 
@@ -16,9 +17,7 @@ namespace llarp
 
     struct IParser
     {
-      virtual ~IParser()
-      {
-      }
+      virtual ~IParser() = default;
 
       /// result from feeding data to parser
       enum Result
@@ -33,7 +32,7 @@ namespace llarp
 
       /// feed data to parser return true if successful
       virtual bool
-      FeedData(const char* buf, size_t sz) = 0;
+      FeedData(gsl::span< const char > buffer) = 0;
       /// parse internal buffer
       virtual Result
       Parse(Object& obj) const = 0;

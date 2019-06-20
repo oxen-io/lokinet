@@ -8,6 +8,8 @@
 #include <memory>
 #include <queue>
 #include <unordered_map>
+#include <utility>
+#include <utility>
 
 namespace llarp
 {
@@ -27,15 +29,14 @@ namespace llarp
         , called_at(0)
         , started(now)
         , timeout(ms)
-        , func(_func)
+        , func(std::move(std::move(_func)))
         , done(false)
         , canceled(false)
     {
     }
 
     ~timer()
-    {
-    }
+    = default;
 
     void
     exec();
@@ -75,8 +76,7 @@ struct llarp_timer_context
   bool _run          = true;
 
   ~llarp_timer_context()
-  {
-  }
+  = default;
 
   bool
   run()
@@ -95,8 +95,9 @@ struct llarp_timer_context
   {
     llarp::util::Lock lock(&timersMutex);
     const auto& itr = timers.find(id);
-    if(itr == timers.end())
+    if(itr == timers.end()) {
       return;
+}
     itr->second->canceled = true;
   }
 
@@ -105,14 +106,15 @@ struct llarp_timer_context
   {
     llarp::util::Lock lock(&timersMutex);
     const auto& itr = timers.find(id);
-    if(itr == timers.end())
+    if(itr == timers.end()) {
       return;
+}
     itr->second->func     = nullptr;
     itr->second->canceled = true;
   }
 
   uint32_t
-  call_later(void* user, llarp_timer_handler_func func, uint64_t timeout_ms)
+  call_later(void* user, const llarp_timer_handler_func& func, uint64_t timeout_ms)
       LOCKS_EXCLUDED(timersMutex)
   {
     llarp::util::Lock lock(&timersMutex);
@@ -152,7 +154,7 @@ llarp_init_timer()
 
 uint32_t
 llarp_timer_call_later(struct llarp_timer_context* t,
-                       struct llarp_timeout_job job)
+                       const struct llarp_timeout_job& job)
 {
   return t->call_later(job.user, job.handler, job.timeout);
 }
@@ -160,8 +162,9 @@ llarp_timer_call_later(struct llarp_timer_context* t,
 void
 llarp_free_timer(struct llarp_timer_context** t)
 {
-  if(*t)
+  if(*t != nullptr) {
     delete *t;
+}
   *t = nullptr;
 }
 
@@ -181,8 +184,9 @@ llarp_timer_stop(struct llarp_timer_context* t)
     t->timers.clear();
     t->stop();
   }
-  if(t->ticker)
+  if(t->ticker) {
     t->ticker->SignalAll();
+}
 }
 
 void
@@ -194,16 +198,18 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
 void
 llarp_timer_set_time(struct llarp_timer_context* t, llarp_time_t now)
 {
-  if(now == 0)
+  if(now == 0) {
     now = llarp::time_now_ms();
+}
   t->m_Now = now;
 }
 
 void
 llarp_timer_tick_all(struct llarp_timer_context* t)
 {
-  if(!t->run())
+  if(!t->run()) {
     return;
+}
 
   std::list< std::unique_ptr< llarp::timer > > hit;
   {
@@ -218,8 +224,9 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
         hit.emplace_back(std::move(itr->second));
         itr = t->timers.erase(itr);
       }
-      else
+      else {
         ++itr;
+}
     }
   }
   for(const auto& h : hit)
@@ -280,10 +287,11 @@ namespace llarp
       // queued if call takes longer than 1 timer tick
       auto call = func;
       func      = nullptr;
-      if(diff >= timeout)
+      if(diff >= timeout) {
         call(user, timeout, 0);
-      else
+      } else {
         call(user, timeout, diff);
+}
     }
     done = true;
   }

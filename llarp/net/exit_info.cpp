@@ -5,10 +5,9 @@
 #include <net/exit_info.hpp>
 #include <util/bencode.h>
 #include <util/bits.hpp>
-#include <util/mem.h>
 
 #include <list>
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {

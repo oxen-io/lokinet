@@ -16,7 +16,7 @@ namespace llarp
 
   struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
   {
-    PubKey() : AlignedBuffer< SIZE >()
+    PubKey()  
     {
     }
 
@@ -78,7 +78,7 @@ namespace llarp
 
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
-    SecretKey() : AlignedBuffer< SECKEYSIZE >()
+    SecretKey()  
     {
     }
 
@@ -108,7 +108,7 @@ namespace llarp
   };
 
   inline std::ostream &
-  operator<<(std::ostream &out, const SecretKey &)
+  operator<<(std::ostream &out, const SecretKey & /*unused*/)
   {
     // return out << k.ToHex();
     // make sure we never print out secret keys
@@ -118,7 +118,7 @@ namespace llarp
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer< 32 >
   {
-    IdentitySecret() : AlignedBuffer< 32 >()
+    IdentitySecret()  
     {
     }
 
@@ -133,7 +133,7 @@ namespace llarp
   };
 
   inline std::ostream &
-  operator<<(std::ostream &out, const IdentitySecret &)
+  operator<<(std::ostream &out, const IdentitySecret & /*unused*/)
   {
     // make sure we never print out secret keys
     return out << "[IdentitySecret]";

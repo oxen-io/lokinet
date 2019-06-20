@@ -102,8 +102,9 @@ namespace llarp
   _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
     auto& log = LogContext::Instance();
-    if(log.minLevel > lvl)
+    if(log.minLevel > lvl) {
       return;
+}
 
     std::stringstream ss;
     LogAppend(ss, std::forward< TArgs >(args)...);

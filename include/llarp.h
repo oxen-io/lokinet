@@ -8,7 +8,7 @@
 #include <service/address.hpp>  // for service::address
 #include <service/endpoint.hpp>
 #include <util/logic.hpp>
-#include <util/mem.h>
+#include <util/mem.hpp>
 
 extern "C"
 {

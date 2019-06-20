@@ -19,7 +19,7 @@
 extern "C"
 {
   extern void
-  randombytes(unsigned char* const ptr, unsigned long long sz);
+  randombytes(unsigned char* ptr, unsigned long long sz);
 }
 namespace llarp
 {

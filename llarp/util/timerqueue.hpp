@@ -3,10 +3,12 @@
 
 #include <util/object.hpp>
 #include <util/threading.hpp>
+#include <util/type_helpers.hpp>
 
 #include <atomic>
 #include <absl/time/time.h>
 #include <absl/types/optional.h>
+#include <gsl/gsl>
 #include <map>
 
 namespace llarp
@@ -17,7 +19,7 @@ namespace llarp
     class TimerQueueItem;
 
     template < typename Value >
-    class TimerQueue
+    class TimerQueue : public util::NoMove
     {
       static constexpr int INDEX_BITS_MIN     = 8;
       static constexpr int INDEX_BITS_MAX     = 24;
@@ -36,6 +38,8 @@ namespace llarp
         explicit Key(const void* key) : m_key(key)
         {
         }
+
+        // NOLINTNEXTLINE
         explicit Key(int value) : m_key(reinterpret_cast< const void* >(value))
         {
         }
@@ -62,18 +66,12 @@ namespace llarp
         Node* m_next;
         object::Buffer< Value > m_value;
 
-        Node()
-            : 
-             m_key(nullptr)
-            , m_prev(nullptr)
-            , m_next(nullptr)
-            , m_value()
+        Node() : m_key(nullptr), m_prev(nullptr), m_next(nullptr), m_value()
         {
         }
 
         explicit Node(const absl::Time& time)
-            : 
-             m_time(time)
+            : m_time(time)
             , m_key(nullptr)
             , m_prev(nullptr)
             , m_next(nullptr)
@@ -150,10 +148,6 @@ namespace llarp
         }
       }
 
-      TimerQueue(const TimerQueue&) = delete;
-      TimerQueue&
-      operator=(const TimerQueue&) = delete;
-
      public:
       TimerQueue()
           : m_indexMask((1 << INDEX_BITS_DEFAULT) - 1)
@@ -178,7 +172,8 @@ namespace llarp
       {
         removeAll();
 
-        for(Node* node : m_nodes)
+        // NOLINTNEXTLINE
+        for(gsl::owner< Node* > node : m_nodes)
         {
           delete node;
         }
@@ -265,7 +260,8 @@ namespace llarp
         }
         Node* node = m_nodes[index];
 
-        return !static_cast<bool>(node->m_index != handle || node->m_key != key);
+        return !static_cast< bool >(node->m_index != handle
+                                    || node->m_key != key);
       }
 
       absl::optional< absl::Time >
@@ -292,11 +288,11 @@ namespace llarp
      private:
       absl::Time m_time;
       Value m_value;
-      Handle m_handle;
+      Handle m_handle{0};
       Key m_key;
 
      public:
-      TimerQueueItem() :  m_value(), m_handle(0), m_key(nullptr)
+      TimerQueueItem() : m_value(), m_key(nullptr)
       {
       }
 
@@ -305,9 +301,12 @@ namespace llarp
       {
       }
 
-      TimerQueueItem(absl::Time time, const Value& value, Handle handle,
+      TimerQueueItem(absl::Time time, Value value, Handle handle,
                      const Key& key)
-          : m_time(time), m_value(value), m_handle(handle), m_key(key)
+          : m_time(time)
+          , m_value(std::move(value))
+          , m_handle(handle)
+          , m_key(key)
       {
       }
 
@@ -355,7 +354,7 @@ namespace llarp
           return INVALID_HANDLE;
         }
 
-        node = new Node;
+        node = new Node;  // NOLINT
         m_nodes.push_back(node);
         node->m_index =
             static_cast< int >(m_nodes.size()) | m_indexIterationInc;

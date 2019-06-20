@@ -1,13 +1,17 @@
 #ifndef LLARP_QUEUE_MANAGER_HPP
 #define LLARP_QUEUE_MANAGER_HPP
 
+#include <util/type_helpers.hpp>
+
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace llarp
 {
@@ -51,7 +55,7 @@ namespace llarp
       return os;
     }
 
-    class QueueManager
+    class QueueManager : public util::NoMove
     {
       // This class provides thread-safe state management for a queue.
 
@@ -76,12 +80,12 @@ namespace llarp
       AtomicIndex m_pushIndex;  // Index in the buffer that the next
                                 // element will be added to.
 
-      char m_pushPadding[Alignment - sizeof(AtomicIndex)];
+      std::array< char, Alignment - sizeof(AtomicIndex) > m_pushPadding{};
 
       AtomicIndex m_popIndex;  // Index in the buffer that the next
                                // element will be removed from.
 
-      char m_popPadding[Alignment - sizeof(AtomicIndex)];
+      std::array< char, Alignment - sizeof(AtomicIndex) > m_popPadding{};
 
       const size_t m_capacity;  // max size of the manager.
 
@@ -90,7 +94,7 @@ namespace llarp
       const uint32_t m_maxCombinedIndex;  // Maximum combined value of index and
                                           // generation for this object.
 
-      std::atomic< std::uint32_t >* m_states;  // Array of index states.
+      std::vector< AtomicIndex > m_states;  // Array of index states.
 
       AtomicIndex&
       pushIndex();
@@ -129,8 +133,6 @@ namespace llarp
       static constexpr size_t MAX_CAPACITY = 1 << ((sizeof(uint32_t) * 8) - 2);
 
       explicit QueueManager(size_t capacity);
-
-      ~QueueManager();
 
       // Push operations
 

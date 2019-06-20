@@ -23,7 +23,7 @@ namespace llarp
   void
   inAddr::reset()
   {
-    llarp::Zero(&this->_addr, sizeof(in6_addr));
+    _addr = decltype(_addr){};
   }
 
   bool
@@ -117,7 +117,7 @@ namespace llarp
       this->_addr.s6_addr[13] = this->_addr.s6_addr[1];
       this->_addr.s6_addr[14] = this->_addr.s6_addr[2];
       this->_addr.s6_addr[15] = this->_addr.s6_addr[3];
-      llarp::Zero(&this->_addr, sizeof(in6_addr) - 6);
+      std::memset(&_addr, 0, sizeof(_addr) - 6);
     }
   }
 

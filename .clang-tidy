@@ -1,0 +1,2 @@
+Checks:          'clang-diagnostic-*,clang-analyzer-*,modernize-*,cppcoreguidelines-*,clang-analyzer-*,misc-*,performance-*,portability-*,readability-*,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-misc-non-private-member-variables-in-classes,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-type-vararg'
+HeaderFilterRegex: '.*'

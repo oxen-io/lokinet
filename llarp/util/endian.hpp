@@ -3,8 +3,8 @@
 
 // adapted from libi2pd
 
-#include <inttypes.h>
-#include <string.h>
+#include <cinttypes>
+#include <cstring>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>

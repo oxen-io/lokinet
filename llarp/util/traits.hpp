@@ -25,7 +25,7 @@ namespace llarp
     template < size_t N >
     struct Tag
     {
-      char arr[N + 1];
+      std::array< char, N + 1 > arr;
     };
 
     /// Type trait representing whether a type is pointer-like

@@ -1,17 +1,20 @@
 #ifndef LLARP_ENCODE_HPP
 #define LLARP_ENCODE_HPP
-#include <stdint.h>
+
+#include <array>
+#include <cstdint>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_map>
+#include <vector>
 
 namespace llarp
 {
   // from  https://en.wikipedia.org/wiki/Base32#z-base-32
-  static const char zbase32_alpha[] = {'y', 'b', 'n', 'd', 'r', 'f', 'g', '8',
-                                       'e', 'j', 'k', 'm', 'c', 'p', 'q', 'x',
-                                       'o', 't', '1', 'u', 'w', 'i', 's', 'z',
-                                       'a', '3', '4', '5', 'h', '7', '6', '9'};
+  static const std::vector< char > zbase32_alpha{
+      'y', 'b', 'n', 'd', 'r', 'f', 'g', '8', 'e', 'j', 'k',
+      'm', 'c', 'p', 'q', 'x', 'o', 't', '1', 'u', 'w', 'i',
+      's', 'z', 'a', '3', '4', '5', 'h', '7', '6', '9'};
 
   static const std::unordered_map< char, uint8_t > zbase32_reverse_alpha = {
       {'y', 0},  {'b', 1},  {'n', 2},  {'d', 3},  {'r', 4},  {'f', 5},
@@ -27,7 +30,9 @@ namespace llarp
   {
     auto d = div(sz, a);
     if(d.rem)
+    {
       d.quot++;
+    }
     return b * d.quot;
   }
 
@@ -41,7 +46,8 @@ namespace llarp
   bool
   Base32Decode(const Stack& stack, V& value)
   {
-    int tmp = 0, bits = 0;
+    int tmp             = 0;
+    int bits            = 0;
     size_t idx          = 0;
     const size_t len    = Base32DecodeSize(value.size());
     const size_t outLen = value.size();
@@ -52,7 +58,9 @@ namespace llarp
       {
         auto itr = zbase32_reverse_alpha.find(ch);
         if(itr == zbase32_reverse_alpha.end())
+        {
           return false;
+        }
         ch = itr->second;
       }
       else
@@ -64,7 +72,9 @@ namespace llarp
       if(bits >= 8)
       {
         if(idx >= outLen)
+        {
           return false;
+        }
         value[idx] = tmp >> (bits - 8);
         bits -= 8;
         idx++;
@@ -79,7 +89,8 @@ namespace llarp
   const char*
   Base32Encode(const V& value, Stack& stack)
   {
-    size_t ret = 0, pos = 1;
+    size_t ret   = 0;
+    size_t pos   = 1;
     int bits     = 8;
     uint32_t tmp = value[0];
     size_t len   = value.size();
@@ -109,7 +120,9 @@ namespace llarp
         ret++;
       }
       else
+      {
         return nullptr;
+      }
     }
     return &stack[0];
   }
@@ -129,7 +142,9 @@ namespace llarp
     {
       auto wrote = snprintf(ptr, end - ptr, "%.2x", value[idx]);
       if(wrote == -1)
+      {
         return nullptr;
+      }
       ptr += wrote;
       idx++;
     }
@@ -153,7 +168,7 @@ namespace llarp
     return sz == 0;
   }
 
-  static const char base64_table[] = {
+  static const std::vector< char > base64_table{
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
       'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -164,10 +179,10 @@ namespace llarp
   void
   Base64Encode(OStream_t& out, const uint8_t* src, size_t len)
   {
-    size_t i       = 0;
-    size_t j       = 0;
-    uint8_t buf[4] = {0};
-    uint8_t tmp[3] = {0};
+    size_t i                     = 0;
+    size_t j                     = 0;
+    std::array< uint8_t, 4 > buf = {0};
+    std::array< uint8_t, 3 > tmp = {0};
     while(len--)
     {
       tmp[i++] = *(src++);

@@ -12,8 +12,7 @@ namespace llarp
   struct ILogStream
   {
     virtual ~ILogStream()
-    {
-    }
+    = default;
 
     virtual void
     PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,

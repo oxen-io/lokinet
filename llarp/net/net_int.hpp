@@ -14,7 +14,7 @@
 
 #include <net/net.h>
 
-#include <stdlib.h>  // for itoa
+#include <cstdlib>  // for itoa
 #include <iostream>
 #include <util/endian.hpp>
 #include <vector>

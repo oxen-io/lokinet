@@ -4,11 +4,10 @@
 #include <crypto/types.hpp>
 #include <net/net.h>
 #include <util/bencode.hpp>
-#include <util/mem.h>
+#include <util/mem.hpp>
 
 #include <string>
 #include <vector>
-#include <stdbool.h>
 
 /**
  * address_info.hpp

@@ -42,7 +42,7 @@ namespace llarp
     bool
     isDisabledFlagSet(uint32_t encodedIndex)
     {
-      return (encodedIndex & DISABLED_STATE_MASK);
+      return (encodedIndex & DISABLED_STATE_MASK) != 0U;
     }
 
     uint32_t
@@ -136,14 +136,12 @@ namespace llarp
       {
         return difference - modulo;
       }
-      else if(difference < -static_cast< int32_t >(modulo / 2))
+      if(difference < -static_cast< int32_t >(modulo / 2))
       {
         return difference + modulo;
       }
-      else
-      {
-        return difference;
-      }
+
+      return difference;
     }
 
     uint32_t
@@ -162,23 +160,12 @@ namespace llarp
         , m_maxGeneration(numGenerations(capacity) - 1)
         , m_maxCombinedIndex(
               numGenerations(capacity) * static_cast< uint32_t >(capacity) - 1)
+        , m_states(capacity)
     {
       assert(0 < capacity);
       assert(capacity <= MAX_CAPACITY);
       (void)m_pushPadding;
       (void)m_popPadding;
-
-      m_states = new std::atomic< std::uint32_t >[capacity];
-
-      for(size_t i = 0; i < capacity; ++i)
-      {
-        m_states[i] = 0;
-      }
-    }
-
-    QueueManager::~QueueManager()
-    {
-      delete[] m_states;
     }
 
     QueueReturn
@@ -228,7 +215,7 @@ namespace llarp
 
         uint32_t elemGen = decodeGenerationFromElementState(compare);
 
-        int32_t difference = static_cast< int32_t >(currGen - elemGen);
+        auto difference = static_cast< int32_t >(currGen - elemGen);
 
         if(difference == 1
            || (difference == -static_cast< int32_t >(m_maxGeneration)))
@@ -328,7 +315,7 @@ namespace llarp
         uint32_t elemGen   = decodeGenerationFromElementState(compare);
         ElementState state = decodeStateFromElementState(compare);
 
-        int32_t difference = static_cast< int32_t >(currGen - elemGen);
+        auto difference = static_cast< int32_t >(currGen - elemGen);
 
         if(difference == 1
            || (difference == -static_cast< int32_t >(m_maxGeneration)))
@@ -457,9 +444,9 @@ namespace llarp
         assert(0 < circularDifference(endCombinedIndex, loadedCombinedIndex,
                                       m_maxCombinedIndex + 1));
 
-        uint32_t currIdx =
+        auto currIdx =
             static_cast< uint32_t >(loadedCombinedIndex % m_capacity);
-        uint32_t currGen =
+        auto currGen =
             static_cast< uint32_t >(loadedCombinedIndex / m_capacity);
 
         // Try to swap this cell from Full to Reading.

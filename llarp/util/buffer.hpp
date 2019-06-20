@@ -1,7 +1,7 @@
 #ifndef LLARP_BUFFER_HPP
 #define LLARP_BUFFER_HPP
 
-#include <util/mem.h>
+#include <util/mem.hpp>
 #include <util/types.hpp>
 
 #include <cassert>
@@ -61,20 +61,18 @@ struct ManagedBuffer;
 struct llarp_buffer_t
 {
   /// starting memory address
-  byte_t *base;
+  byte_t *base{nullptr};
   /// memory address of stream position
-  byte_t *cur;
+  byte_t *cur{nullptr};
   /// max size of buffer
-  size_t sz;
+  size_t sz{0};
 
   byte_t operator[](size_t x)
   {
-    return *(this->base + x);
+    return *(this->base + x);  // NOLINT
   }
 
-  llarp_buffer_t() : base(nullptr), cur(nullptr), sz(0)
-  {
-  }
+  constexpr llarp_buffer_t() = default;
 
   llarp_buffer_t(byte_t *b, byte_t *c, size_t s) : base(b), cur(c), sz(s)
   {
@@ -159,7 +157,7 @@ struct llarp_buffer_t
   read_uint64(uint64_t &i);
 
   size_t
-  read_until(char delim, byte_t *result, size_t resultlen);
+  read_until(char delim, byte_t *result, size_t resultsize);
 
  private:
   friend struct ManagedBuffer;
@@ -168,7 +166,7 @@ struct llarp_buffer_t
 };
 
 bool
-operator==(const llarp_buffer_t &buff, const char *data);
+operator==(const llarp_buffer_t &buff, const char *str);
 
 template < typename OutputIt >
 bool

@@ -16,19 +16,19 @@ namespace llarp
     struct MemFnDereference
     {
       // clang-format off
-      static inline Obj& derefImp(Obj& obj, std::false_type)
+      static inline Obj& derefImp(Obj& obj, ABSL_ATTRIBUTE_UNUSED std::false_type tag)
       {
         return obj;
       }
 
       template < typename Type >
-      static inline Obj& derefImp(Type& obj, std::true_type)
+      static inline Obj& derefImp(Type& obj, ABSL_ATTRIBUTE_UNUSED std::true_type tag)
       {
         return *obj;
       }
 
       template < typename Type >
-      static inline Obj& derefImp(const Type& obj, std::true_type)
+      static inline Obj& derefImp(const Type& obj, ABSL_ATTRIBUTE_UNUSED std::true_type tag)
       {
         return *obj;
       }

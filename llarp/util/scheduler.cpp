@@ -1,4 +1,5 @@
 #include <util/scheduler.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -25,14 +26,16 @@ namespace llarp
 
           m_iterationCount++;
 
-          size_t newRepeatSize = 0, newEventSize = 0;
+          size_t newRepeatSize = 0;
+          size_t newEventSize = 0;
 
           absl::Time now = m_clock();
 
           static constexpr size_t MAX_PENDING_REPEAT = 64;
           static constexpr size_t MAX_PENDING_EVENTS = 64;
 
-          absl::Time minRepeat, minEvent;
+          absl::Time minRepeat;
+          absl::Time minEvent;
 
           m_repeatQueue.popLess(now, MAX_PENDING_REPEAT, &pendingRepeats,
                                 &newRepeatSize, &minRepeat);
@@ -152,13 +155,13 @@ namespace llarp
       }
     }
 
-    Scheduler::Scheduler(const EventDispatcher& dispatcher, const Clock& clock)
-        : m_clock(clock)
-        , m_dispatcher(dispatcher)
+    Scheduler::Scheduler(EventDispatcher  dispatcher, Clock  clock)
+        : m_clock(std::move(clock))
+        , m_dispatcher(std::move(dispatcher))
         , m_running(false)
         , m_iterationCount(0)
-        , m_eventIt()
-        , m_repeatCount(0)
+        , 
+         m_repeatCount(0)
         , m_eventCount(0)
     {
     }

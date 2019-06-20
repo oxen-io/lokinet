@@ -38,9 +38,9 @@ namespace llarp
     const in_addr*
     addr4() const;
 
-    Addr(const std::string str);
+    Addr(std::string str);
 
-    Addr(const std::string str, const uint16_t p_port);
+    Addr(std::string str, uint16_t p_port);
 
     Addr(string_view addr_str, string_view port_str);
 
@@ -50,14 +50,14 @@ namespace llarp
     Addr(const char* str);
 
     bool
-    from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
-              const uint8_t four);
+    from_4int(uint8_t one, uint8_t two, uint8_t three,
+              uint8_t four);
 
-    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-         const uint8_t four);
+    Addr(uint8_t one, uint8_t two, uint8_t three,
+         uint8_t four);
 
-    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-         const uint8_t four, const uint16_t p_port);
+    Addr(uint8_t one, uint8_t two, uint8_t three,
+         uint8_t four, uint16_t p_port);
 
     Addr(const AddressInfo& other);
     Addr(const sockaddr_in& other);

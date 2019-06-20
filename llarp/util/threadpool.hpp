@@ -67,25 +67,25 @@ namespace llarp
       IsolateNetwork() = 0;
 
       bool
-      IsolateCurrentProcess()
+      IsolateCurrentProcess() override
       {
         return IsolateNetwork();
       }
 
       bool
-      Isolated()
+      Isolated() override
       {
         return m_NetSetup(m_user, true);
       }
 
       void
-      Fail()
+      Fail() override
       {
         m_NetSetup(m_user, false);
       }
 
       void
-      MainLoop()
+      MainLoop() override
       {
         m_RunMain(m_user);
       }

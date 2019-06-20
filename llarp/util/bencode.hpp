@@ -106,8 +106,9 @@ namespace llarp
   {
     if(key == k)
     {
-      if(!bencode_read_integer(buf, &item))
+      if(!bencode_read_integer(buf, &item)) {
         return false;
+}
       read = item == expect;
     }
     return true;
@@ -118,14 +119,18 @@ namespace llarp
   BEncodeWriteDictBEncodeList(const char* k, const List_t& l,
                               llarp_buffer_t* buf)
   {
-    if(!bencode_write_bytestring(buf, k, 1))
+    if(!bencode_write_bytestring(buf, k, 1)) {
       return false;
-    if(!bencode_start_list(buf))
+}
+    if(!bencode_start_list(buf)) {
       return false;
+}
 
-    for(const auto& item : l)
-      if(!item->BEncode(buf))
+    for(const auto& item : l) {
+      if(!item->BEncode(buf)) {
         return false;
+}
+}
     return bencode_end(buf);
   }
 
@@ -133,14 +138,18 @@ namespace llarp
   bool
   BEncodeWriteDictArray(const char* k, const Array& array, llarp_buffer_t* buf)
   {
-    if(!bencode_write_bytestring(buf, k, 1))
+    if(!bencode_write_bytestring(buf, k, 1)) {
       return false;
-    if(!bencode_start_list(buf))
+}
+    if(!bencode_start_list(buf)) {
       return false;
+}
 
-    for(size_t idx = 0; idx < array.size(); ++idx)
-      if(!array[idx].BEncode(buf))
+    for(size_t idx = 0; idx < array.size(); ++idx) {
+      if(!array[idx].BEncode(buf)) {
         return false;
+}
+}
     return bencode_end(buf);
   }
 
@@ -148,13 +157,16 @@ namespace llarp
   bool
   BEncodeWriteList(Iter itr, Iter end, llarp_buffer_t* buf)
   {
-    if(!bencode_start_list(buf))
+    if(!bencode_start_list(buf)) {
       return false;
-    while(itr != end)
-      if(!itr->BEncode(buf))
+}
+    while(itr != end) {
+      if(!itr->BEncode(buf)) {
         return false;
-      else
+      } else {
         ++itr;
+}
+}
     return bencode_end(buf);
   }
 
@@ -162,21 +174,25 @@ namespace llarp
   bool
   bencode_read_dict(Sink&& sink, llarp_buffer_t* buffer)
   {
-    if(buffer->size_left() < 2)  // minimum case is 'de'
+    if(buffer->size_left() < 2) {  // minimum case is 'de'
       return false;
-    if(*buffer->cur != 'd')  // ensure is a dictionary
+}
+    if(*buffer->cur != 'd') {  // ensure is a dictionary
       return false;
+}
     buffer->cur++;
     while(buffer->size_left() && *buffer->cur != 'e')
     {
       llarp_buffer_t strbuf;  // temporary buffer for current element
       if(bencode_read_string(buffer, &strbuf))
       {
-        if(!sink(buffer, &strbuf))  // check for early abort
+        if(!sink(buffer, &strbuf)) {  // check for early abort
           return false;
+}
       }
-      else
+      else {
         return false;
+}
     }
 
     if(*buffer->cur != 'e')
@@ -195,10 +211,12 @@ namespace llarp
   {
     return bencode_read_dict(
         [&](llarp_buffer_t* buffer, llarp_buffer_t* key) {
-          if(key == nullptr)
+          if(key == nullptr) {
             return true;
-          if(sink.DecodeKey(*key, buffer))
+}
+          if(sink.DecodeKey(*key, buffer)) {
             return true;
+}
           llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *key->cur,
                             "' for entry in dict");
 
@@ -211,8 +229,9 @@ namespace llarp
   bool
   bencode_read_list(Sink&& sink, llarp_buffer_t* buffer)
   {
-    if(buffer->size_left() < 2)  // minimum case is 'le'
+    if(buffer->size_left() < 2) {  // minimum case is 'le'
       return false;
+}
     if(*buffer->cur != 'l')  // ensure is a list
     {
       llarp::LogWarn("bencode::bencode_read_list - expecting list got ",
@@ -223,11 +242,13 @@ namespace llarp
     buffer->cur++;
     while(buffer->size_left() && *buffer->cur != 'e')
     {
-      if(!sink(buffer, true))  // check for early abort
+      if(!sink(buffer, true)) {  // check for early abort
         return false;
+}
     }
-    if(*buffer->cur != 'e')  // make sure we're at a list end
+    if(*buffer->cur != 'e') {  // make sure we're at a list end
       return false;
+}
     buffer->cur++;
     return sink(buffer, false);
   }
@@ -241,10 +262,12 @@ namespace llarp
         [&array, &idx](llarp_buffer_t* buffer, bool has) {
           if(has)
           {
-            if(idx >= array.size())
+            if(idx >= array.size()) {
               return false;
-            if(!array[idx++].BDecode(buffer))
+}
+            if(!array[idx++].BDecode(buffer)) {
               return false;
+}
           }
           return true;
         },
@@ -352,14 +375,16 @@ namespace llarp
   {
     std::array< byte_t, bufsz > tmp;
     llarp_buffer_t buf(tmp);
-    if(!t.BEncode(&buf))
+    if(!t.BEncode(&buf)) {
       return false;
+}
     buf.sz = buf.cur - buf.base;
     {
       std::ofstream f;
       f.open(fpath);
-      if(!f.is_open())
+      if(!f.is_open()) {
         return false;
+}
       f.write((char*)buf.base, buf.sz);
     }
     return true;

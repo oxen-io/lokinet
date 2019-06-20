@@ -33,12 +33,12 @@ namespace llarp
       std::atomic< std::uint32_t > m_waitingPoppers;
       util::Semaphore m_popSemaphore;
       const char
-          m_popSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
+          m_popSemaphorePadding[(2U * Alignment) - sizeof(util::Semaphore)];
 
       std::atomic< std::uint32_t > m_waitingPushers;
       util::Semaphore m_pushSemaphore;
       const char
-          m_pushSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
+          m_pushSemaphorePadding[(2U * Alignment) - sizeof(util::Semaphore)];
 
       friend QueuePopGuard< Type >;
       friend QueuePushGuard< Type >;
@@ -409,7 +409,7 @@ namespace llarp
 
       size_t wakeups = std::min(poppedItems, m_waitingPushers.load());
 
-      while(wakeups--)
+      while((wakeups--) != 0U)
       {
         m_pushSemaphore.notify();
       }
@@ -423,7 +423,7 @@ namespace llarp
 
       uint32_t numWaiting = m_waitingPushers;
 
-      while(numWaiting--)
+      while((numWaiting--) != 0U)
       {
         m_pushSemaphore.notify();
       }
@@ -498,7 +498,7 @@ namespace llarp
 
         m_queue->m_manager.abortPushIndexReservation(m_generation, m_index);
 
-        while(poppedItems--)
+        while((poppedItems--) != 0U)
         {
           m_queue->m_pushSemaphore.notify();
         }

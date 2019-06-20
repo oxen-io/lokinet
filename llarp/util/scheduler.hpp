@@ -22,7 +22,7 @@ namespace llarp
     /// - Events should not be started before their begin time
     /// - Events may start an arbitrary amount of time after they are scheduled,
     ///   if there is a previous long running event.
-    class Scheduler
+    class Scheduler : public util::NoMove
     {
      public:
       using Callback = std::function< void() >;
@@ -41,7 +41,7 @@ namespace llarp
         std::atomic_bool m_isCancelled;
         Handle m_handle;
 
-        RepeatData(Callback  callback, absl::Duration period)
+        RepeatData(Callback callback, absl::Duration period)
             : m_callback(std::move(callback))
             , m_period(period)
             , m_isCancelled(false)
@@ -84,10 +84,6 @@ namespace llarp
 
       std::atomic_size_t m_repeatCount;
       std::atomic_size_t m_eventCount;
-
-      Scheduler(const Scheduler&) = delete;
-      Scheduler&
-      operator=(const Scheduler&) = delete;
 
       friend class DispatcherImpl;
       friend class Tardis;
@@ -134,7 +130,7 @@ namespace llarp
       {
       }
 
-      Scheduler(const EventDispatcher& dispatcher, const Clock& clock);
+      Scheduler(EventDispatcher dispatcher, Clock clock);
 
       ~Scheduler();
 

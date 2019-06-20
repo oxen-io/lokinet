@@ -5,10 +5,10 @@
 #endif
 #include <net/net.hpp>
 #include <util/bencode.h>
-#include <util/mem.h>
+#include <util/mem.hpp>
 #include <util/printer.hpp>
 
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {

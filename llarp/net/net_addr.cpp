@@ -101,7 +101,7 @@ namespace llarp
       LogDebug("Truncating to ", str);
       freeStr = true;
     }
-    Zero(&_addr, sizeof(sockaddr_in6));
+    _addr = decltype(_addr){};
     struct addrinfo hint, *res = NULL;
     int ret;
 
@@ -171,7 +171,8 @@ namespace llarp
   Addr::from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
                   const uint8_t four)
   {
-    Zero(&_addr, sizeof(sockaddr_in6));
+    _addr = decltype(_addr){};
+
     struct in_addr* addr = &_addr4.sin_addr;
     unsigned char* ip    = (unsigned char*)&(addr->s_addr);
 
@@ -227,7 +228,7 @@ namespace llarp
 
   Addr::Addr(const sockaddr_in& other)
   {
-    Zero(&_addr, sizeof(sockaddr_in6));
+    _addr             = decltype(_addr){};
     _addr.sin6_family = AF_INET;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;
@@ -263,7 +264,7 @@ namespace llarp
 
   Addr::Addr(const sockaddr& other)
   {
-    Zero(&_addr, sizeof(sockaddr_in6));
+    _addr             = decltype(_addr){};
     _addr.sin6_family = other.sa_family;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;
@@ -408,7 +409,7 @@ namespace llarp
   Addr&
   Addr::operator=(const sockaddr& other)
   {
-    Zero(&_addr, sizeof(sockaddr_in6));
+    _addr             = decltype(_addr){};
     _addr.sin6_family = other.sa_family;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;

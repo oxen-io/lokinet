@@ -39,21 +39,22 @@ namespace libuv
     void
     stopped() override
     {
-      for(const auto& func : m_CloseFuncs)
+      for(const auto& func : m_CloseFuncs) {
         func();
+}
       m_CloseFuncs.clear();
       llarp::LogInfo("event loop stopped");
     }
 
     bool
-    udp_listen(llarp_udp_io* l, const sockaddr* src) override;
+    udp_listen(llarp_udp_io* udp, const sockaddr* src) override;
 
     bool
-    udp_close(llarp_udp_io* l) override;
+    udp_close(llarp_udp_io* udp) override;
 
     /// deregister event listener
     bool
-    close_ev(llarp::ev_io*) override
+    close_ev(llarp::ev_io* /*ev*/) override
     {
       return true;
     }
@@ -62,7 +63,7 @@ namespace libuv
     tun_listen(llarp_tun_io* tun) override;
 
     llarp::ev_io*
-    create_tun(llarp_tun_io*) override
+    create_tun(llarp_tun_io* /*tun*/) override
     {
       return nullptr;
     }
@@ -71,14 +72,14 @@ namespace libuv
     tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr) override;
 
     llarp::ev_io*
-    bind_tcp(llarp_tcp_acceptor*, const sockaddr*) override
+    bind_tcp(llarp_tcp_acceptor* /*tcp*/, const sockaddr* /*addr*/) override
     {
       return nullptr;
     }
 
     /// register event listener
     bool
-    add_ev(llarp::ev_io*, bool) override
+    add_ev(llarp::ev_io* /*ev*/, bool /*write*/) override
     {
       return false;
     }

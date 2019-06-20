@@ -4,10 +4,11 @@ namespace llarp
 {
   namespace
   {
-    static void
+    void
     putSpaces(std::ostream& stream, size_t count)
     {
       // chunk n write
+      // NOLINTNEXTLINE
       static const char spaces[]   = "                                      ";
       static constexpr size_t size = sizeof(spaces) - 1;
 
@@ -72,26 +73,27 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, char value, int,
+  PrintHelper::printType(std::ostream& stream, char value, int /*unused*/,
                          int spacesPerLevel,
-                         traits::select::Case< std::is_fundamental >)
+                         traits::select::Case< std::is_fundamental > /*unused*/)
   {
-    if(std::isprint(static_cast< unsigned char >(value)))
+    if(std::isprint(static_cast< unsigned char >(value)) != 0)
     {
       stream << "'" << value << "'";
     }
     else
     {
-#define PRINT_CONTROL_CHAR(x) \
-  case x:                     \
-    stream << #x;             \
-    break;
-
       switch(value)
       {
-        PRINT_CONTROL_CHAR('\n');
-        PRINT_CONTROL_CHAR('\t');
-        PRINT_CONTROL_CHAR('\0');
+        case '\n':
+          stream << '\n';
+          break;
+        case '\t':
+          stream << '\t';
+          break;
+        case '\0':
+          stream << '\0';
+          break;
         default:
         {
           // Print as hex
@@ -110,9 +112,9 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, bool value, int,
+  PrintHelper::printType(std::ostream& stream, bool value, int /*unused*/,
                          int spacesPerLevel,
-                         traits::select::Case< std::is_fundamental >)
+                         traits::select::Case< std::is_fundamental > /*unused*/)
   {
     {
       FormatFlagsGuard guard(stream);
@@ -126,9 +128,9 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const char* value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_pointer >)
+  PrintHelper::printType(std::ostream& stream, const char* value,
+                         int /*unused*/, int spacesPerLevel,
+                         traits::select::Case< std::is_pointer > /*unused*/)
   {
     if(value == nullptr)
     {
@@ -146,9 +148,9 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const void* value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_pointer >)
+  PrintHelper::printType(std::ostream& stream, const void* value,
+                         int /*unused*/, int spacesPerLevel,
+                         traits::select::Case< std::is_pointer > /*unused*/)
   {
     if(value == nullptr)
     {
@@ -157,8 +159,9 @@ namespace llarp
     else
     {
       FormatFlagsGuard guard(stream);
-      stream << std::hex << std::showbase
-             << reinterpret_cast< std::uintptr_t >(value);
+      // NOLINTNEXTLINE
+      auto val = reinterpret_cast< std::uintptr_t >(value);
+      stream << std::hex << std::showbase << val;
     }
 
     if(spacesPerLevel >= 0)
@@ -168,9 +171,10 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const string_view& value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< traits::is_container >)
+  PrintHelper::printType(
+      std::ostream& stream, const string_view& value, int /*unused*/,
+      int spacesPerLevel,
+      traits::select::Case< traits::is_container > /*unused*/)
   {
     stream << '"' << value << '"';
     if(spacesPerLevel >= 0)

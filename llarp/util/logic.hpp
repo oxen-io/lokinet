@@ -1,7 +1,7 @@
 #ifndef LLARP_LOGIC_HPP
 #define LLARP_LOGIC_HPP
 
-#include <util/mem.h>
+#include <util/mem.hpp>
 #include <util/threadpool.h>
 #include <util/timer.hpp>
 

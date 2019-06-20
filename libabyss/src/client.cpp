@@ -233,7 +233,8 @@ namespace abyss
 
           m_BodyParser.reset(json::MakeParser(contentSize));
         }
-        if(m_BodyParser && m_BodyParser->FeedData(buf, sz))
+        if(m_BodyParser
+           && m_BodyParser->FeedData(gsl::span< const char >(buf, buf + sz)))
         {
           switch(m_BodyParser->Parse(m_Response))
           {

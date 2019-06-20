@@ -130,7 +130,7 @@ struct QueueData
   const uint32_t m_maxCombinedIndex;  // Maximum combined value of index and
                                       // generation for this object.
 
-  std::uint32_t* m_states;  // Array of index states.
+  std::vector< std::uint32_t > m_states;  // Array of index states.
 };
 
 static_assert(sizeof(QueueData) == sizeof(QueueManager),

@@ -16,6 +16,7 @@
 #include <deque>
 #include <list>
 #include <future>
+#include <utility>
 
 #ifdef _WIN32
 #include <win32/win32_up.h>
@@ -52,7 +53,7 @@ typedef struct sockaddr_un
 
 /// do io and reset errno after
 static ssize_t
-IO(std::function< ssize_t(void) > iofunc)
+IO(const std::function< ssize_t(void) >& iofunc)
 {
   ssize_t ret = iofunc();
 #ifndef _WIN32
@@ -277,8 +278,8 @@ namespace llarp
     struct WriteBuffer
     {
       llarp_time_t timestamp = 0;
-      size_t bufsz;
-      byte_t buf[EV_WRITE_BUF_SZ];
+      size_t bufsz{};
+      byte_t buf[EV_WRITE_BUF_SZ]{};
 
       WriteBuffer() = default;
 
@@ -290,7 +291,9 @@ namespace llarp
           memcpy(buf, ptr, bufsz);
         }
         else
+        {
           bufsz = 0;
+        }
       }
 
       struct GetTime
@@ -305,7 +308,7 @@ namespace llarp
       struct GetNow
       {
         llarp_ev_loop_ptr loop;
-        GetNow(llarp_ev_loop_ptr l) : loop(l)
+        GetNow(llarp_ev_loop_ptr l) : loop(std::move(std::move(l)))
         {
         }
 
@@ -319,7 +322,7 @@ namespace llarp
       struct PutTime
       {
         llarp_ev_loop_ptr loop;
-        PutTime(llarp_ev_loop_ptr l) : loop(l)
+        PutTime(llarp_ev_loop_ptr l) : loop(std::move(std::move(l)))
         {
         }
         void
@@ -351,7 +354,9 @@ namespace llarp
     int flags = 0;
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
-    struct kevent change;
+    struct kevent change
+    {
+    };
 #endif
 
     posix_ev_io(int f) : fd(f)
@@ -407,13 +412,15 @@ namespace llarp
         m_LossyWriteQueue->Emplace(buf, sz);
         return true;
       }
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
       }
       else
+      {
         return false;
+      }
     }
 
     virtual void
@@ -444,14 +451,16 @@ namespace llarp
       }
       else if(m_BlockingWriteQueue)
       {
-        if(amount)
+        if(amount != 0u)
         {
-          while(amount && m_BlockingWriteQueue->size())
+          while((amount != 0u) && (!m_BlockingWriteQueue->empty() != 0u))
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
             if(result <= 0)
+            {
               return;
+            }
             ssize_t dlt = itr.bufsz - result;
             if(dlt > 0)
             {
@@ -469,7 +478,7 @@ namespace llarp
         else
         {
           // write buffers
-          while(m_BlockingWriteQueue->size())
+          while(!m_BlockingWriteQueue->empty() != 0u)
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
@@ -524,10 +533,10 @@ namespace llarp
   // on sockets
   struct tcp_conn : public ev_io
   {
-    sockaddr_storage _addr;
+    sockaddr_storage _addr{};
     bool _shouldClose     = false;
     bool _calledConnected = false;
-    llarp_tcp_conn tcp;
+    llarp_tcp_conn tcp{};
     // null if inbound otherwise outbound
     llarp_tcp_connecter* _conn;
 
@@ -557,9 +566,13 @@ namespace llarp
     {
       socklen_t slen = sizeof(sockaddr_in);
       if(addr->sa_family == AF_INET6)
+      {
         slen = sizeof(sockaddr_in6);
+      }
       else if(addr->sa_family == AF_UNIX)
+      {
         slen = sizeof(sockaddr_un);
+      }
       memcpy(&_addr, addr, slen);
       tcp.impl   = this;
       tcp.loop   = loop;
@@ -570,9 +583,7 @@ namespace llarp
       tcp.close  = &DoClose;
     }
 
-    virtual ~tcp_conn()
-    {
-    }
+    ~tcp_conn() override = default;
 
     /// start connecting
     void
@@ -582,15 +593,17 @@ namespace llarp
     void
     connected()
     {
-      sockaddr_storage st;
+      sockaddr_storage st{};
       socklen_t sl;
       if(getpeername(fd, (sockaddr*)&st, &sl) == 0)
       {
         // we are connected yeh boi
-        if(_conn)
+        if(_conn != nullptr)
         {
-          if(_conn->connected && !_calledConnected)
+          if((_conn->connected != nullptr) && !_calledConnected)
+          {
             _conn->connected(_conn, &tcp);
+          }
         }
         _calledConnected = true;
       }
@@ -614,7 +627,7 @@ namespace llarp
     error() override
     {
       _shouldClose = true;
-      if(_conn)
+      if(_conn != nullptr)
       {
 #ifndef _WIN32
         llarp::LogError("tcp_conn error: ", strerror(errno));
@@ -625,16 +638,18 @@ namespace llarp
                       ebuf, 1024, nullptr);
         llarp::LogError("tcp_conn error: ", ebuf);
 #endif
-        if(_conn->error)
+        if(_conn->error != nullptr)
+        {
           _conn->error(_conn);
+        }
       }
       errno = 0;
     }
 
-    virtual ssize_t
+    ssize_t
     do_write(void* buf, size_t sz) override;
 
-    virtual int
+    int
     read(byte_t* buf, size_t sz) override;
 
     bool
@@ -652,16 +667,18 @@ namespace llarp
     }
 
     bool
-    tick()
+    tick() override
     {
-      if(tcp->tick)
+      if(tcp->tick != nullptr)
+      {
         tcp->tick(tcp);
+      }
       return true;
     }
 
     /// actually does accept() :^)
-    virtual int
-    read(byte_t*, size_t);
+    int
+    read(byte_t* /*buf*/, size_t /*sz*/) override;
   };
 
 }  // namespace llarp
@@ -760,7 +777,7 @@ struct llarp_ev_loop
   {
     auto dev  = create_tun(tun);
     tun->impl = dev;
-    if(dev)
+    if(dev != nullptr)
     {
       return add_ev(dev, false);
     }
@@ -781,12 +798,10 @@ struct llarp_ev_loop
   tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
   {
     auto conn = bind_tcp(tcp, addr);
-    return conn && add_ev(conn, true);
+    return (conn != nullptr) && add_ev(conn, true);
   }
 
-  virtual ~llarp_ev_loop()
-  {
-  }
+  virtual ~llarp_ev_loop() = default;
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 
@@ -797,7 +812,9 @@ struct llarp_ev_loop
     while(itr != handlers.end())
     {
       if((*itr)->tick())
+      {
         ++itr;
+      }
       else
       {
         close_ev(itr->get());

@@ -163,7 +163,7 @@ namespace abyss
             m_BodyParser.reset(json::MakeParser(contentLength));
           }
         }
-        if(!m_BodyParser->FeedData(buf, sz))
+        if(!m_BodyParser->FeedData(gsl::span< const char >(buf, buf + sz)))
         {
           return WriteResponseSimple(400, "Bad Request", "text/plain",
                                      "invalid body size");

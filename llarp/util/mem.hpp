@@ -2,7 +2,7 @@
 #define LLARP_MEM_HPP
 
 #include <util/buffer.hpp>
-#include <util/mem.h>
+#include <util/mem.hpp>
 
 #include <cctype>
 #include <cstdio>
@@ -10,9 +10,6 @@
 
 namespace llarp
 {
-  void
-  Zero(void *ptr, size_t sz);
-
   template < typename T >
   void
   dumphex(const uint8_t *t)
@@ -22,7 +19,9 @@ namespace llarp
     {
       printf("%.2x ", t[idx++]);
       if(idx % 8 == 0)
+      {
         printf("\n");
+      }
     }
   }
 
@@ -49,7 +48,9 @@ namespace llarp
       }
       ++idx;
       if(idx % align == 0)
+      {
         printf("\n");
+      }
     }
     printf("\n");
     fflush(stdout);
@@ -85,7 +86,9 @@ namespace llarp
       }
       ++idx;
       if(idx % align == 0)
+      {
         printf("\n");
+      }
     }
     printf("\n");
     fflush(stdout);

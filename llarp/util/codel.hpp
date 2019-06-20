@@ -11,6 +11,7 @@
 #include <cmath>
 #include <functional>
 #include <string>
+#include <utility>
 
 namespace llarp
 {
@@ -31,8 +32,8 @@ namespace llarp
                llarp_time_t initialIntervalMs = 100, size_t MaxSize = 1024 >
     struct CoDelQueue
     {
-      CoDelQueue(const std::string& name, const PutTime& put, const GetNow& now)
-          : m_QueueIdx(0), m_name(name), _putTime(put), _getNow(now)
+      CoDelQueue(std::string  name, const PutTime& put, const GetNow& now)
+          : m_QueueIdx(0), m_name(std::move(name)), _putTime(put), _getNow(now)
       {
       }
 
@@ -49,8 +50,9 @@ namespace llarp
           LOCKS_EXCLUDED(m_QueueMutex)
       {
         Lock_t lock(&m_QueueMutex);
-        if(m_QueueIdx == MaxSize)
+        if(m_QueueIdx == MaxSize) {
           return false;
+}
         T* t = &m_Queue[m_QueueIdx];
         new(t) T(std::forward< Args >(args)...);
         if(!pred(*t))
@@ -60,8 +62,9 @@ namespace llarp
         }
 
         _putTime(m_Queue[m_QueueIdx]);
-        if(firstPut == 0)
+        if(firstPut == 0) {
           firstPut = _getTime(m_Queue[m_QueueIdx]);
+}
         ++m_QueueIdx;
 
         return true;
@@ -72,13 +75,15 @@ namespace llarp
       Emplace(Args&&... args) LOCKS_EXCLUDED(m_QueueMutex)
       {
         Lock_t lock(&m_QueueMutex);
-        if(m_QueueIdx == MaxSize)
+        if(m_QueueIdx == MaxSize) {
           return;
+}
         T* t = &m_Queue[m_QueueIdx];
         new(t) T(std::forward< Args >(args)...);
         _putTime(m_Queue[m_QueueIdx]);
-        if(firstPut == 0)
+        if(firstPut == 0) {
           firstPut = _getTime(m_Queue[m_QueueIdx]);
+}
         ++m_QueueIdx;
       }
 
@@ -86,7 +91,7 @@ namespace llarp
       void
       Process(Visit v)
       {
-        return Process(v, [](T&) -> bool { return false; });
+        return Process(v, [](T& /*unused*/) -> bool { return false; });
       }
 
       template < typename Visit, typename Filter >
@@ -94,8 +99,9 @@ namespace llarp
       Process(Visit visitor, Filter f) LOCKS_EXCLUDED(m_QueueMutex)
       {
         llarp_time_t lowest = std::numeric_limits< llarp_time_t >::max();
-        if(_getNow() < nextTickAt)
+        if(_getNow() < nextTickAt) {
           return;
+}
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(&m_QueueMutex);
         auto start = firstPut;
@@ -114,8 +120,9 @@ namespace llarp
         {
           llarp::LogDebug(m_name, " - queue has ", m_QueueIdx);
           T* item = &m_Queue[idx++];
-          if(f(*item))
+          if(f(*item)) {
             break;
+}
           --m_QueueIdx;
           auto dlt = start - _getTime(*item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
@@ -132,11 +139,11 @@ namespace llarp
               nextTickAt = start + nextTickInterval;
               return;
             }
-            else
-            {
+            
+            
               nextTickInterval = initialIntervalMs;
               dropNum          = 0;
-            }
+            
           }
           visitor(*item);
           item->~T();
