@@ -656,7 +656,7 @@ GenerateCrashDump(MINIDUMP_TYPE flags, EXCEPTION_POINTERS *seh)
 }
 
 // ok try a UNIX-style signal handler
-__declspec(noreturn) void win32_signal_handler(int s)
+__declspec(noreturn) LONG FAR PASCAL win32_signal_handler(EXCEPTION_POINTERS *e)
 {
   MessageBox(NULL,
              "A fatal error has occurred. A core dump was generated and "
@@ -669,7 +669,8 @@ __declspec(noreturn) void win32_signal_handler(int s)
           | MiniDumpWithProcessThreadData | MiniDumpWithFullMemoryInfo
           | MiniDumpWithUnloadedModules | MiniDumpWithFullAuxiliaryState
           | MiniDumpIgnoreInaccessibleMemory | MiniDumpWithTokenInformation,
-      NULL);
+      e);
   exit(127);
+  return 0;
 }
 #endif

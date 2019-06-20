@@ -16,7 +16,7 @@
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
-extern "C" void win32_signal_handler(int);
+extern "C" LONG FAR PASCAL win32_signal_handler(EXCEPTION_POINTERS*);
 #endif
 
 struct llarp_main *ctx = 0;
@@ -117,7 +117,7 @@ main(int argc, char *argv[])
   if(startWinsock())
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
-  signal(SIGSEGV, win32_signal_handler);
+  SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
 
 #ifdef LOKINET_DEBUG
