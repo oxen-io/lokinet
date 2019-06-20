@@ -77,7 +77,7 @@ namespace llarp
     ServiceAddressLookup::SendReply()
     {
       // get newest introset
-      if(!valuesFound.empty() != 0u)
+      if(!valuesFound.empty())
       {
         llarp::service::IntroSet found;
         for(const auto &introset : valuesFound)

@@ -34,7 +34,7 @@ namespace llarp
             localPath);
         return;
       }
-      if(!valuesFound.empty() != 0u)
+      if(!valuesFound.empty())
       {
         RouterContact found;
         for(const auto &rc : valuesFound)
