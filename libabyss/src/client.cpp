@@ -338,8 +338,7 @@ namespace abyss
         request << "\r\n" << body;
         std::string buf = request.str();
 
-        if(!llarp_tcp_conn_async_write(m_Conn,
-                                       llarp_buffer_t(buf.c_str(), buf.size())))
+        if(!llarp_tcp_conn_async_write(m_Conn, llarp_buffer_t(buf)))
         {
           CloseError("failed to write request");
           return;

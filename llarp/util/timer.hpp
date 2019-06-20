@@ -12,8 +12,8 @@ using llarp_timer_handler_func =
 
 struct llarp_timeout_job
 {
-  uint64_t timeout;
-  void *user;
+  uint64_t timeout{};
+  void *user{};
   llarp_timer_handler_func handler;
 };
 

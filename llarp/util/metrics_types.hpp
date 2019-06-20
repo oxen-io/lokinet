@@ -4,6 +4,7 @@
 #include <util/printer.hpp>
 #include <util/string_view.hpp>
 #include <util/threading.hpp>
+#include <util/type_helpers.hpp>
 #include <util/types.hpp>
 #include <util/variant.hpp>
 
@@ -196,7 +197,7 @@ namespace llarp
       }
     };
 
-    class Description
+    class Description : public util::NoMove
     {
       mutable util::Mutex m_mutex;
 
@@ -204,10 +205,6 @@ namespace llarp
       string_view m_name GUARDED_BY(m_mutex);
       Publication::Type m_type GUARDED_BY(m_mutex);
       std::shared_ptr< Format > m_format GUARDED_BY(m_mutex);
-
-      Description(const Description &) = delete;
-      Description &
-      operator=(const Description &) = delete;
 
      public:
       Description(const Category *category, string_view name)

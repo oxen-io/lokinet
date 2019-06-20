@@ -108,7 +108,7 @@ namespace libuv
       if(m_Conn.read != nullptr)
       {
         llarp::LogDebug("tcp read ", sz, " bytes");
-        const llarp_buffer_t buf(ptr, sz);
+        const llarp_buffer_t buf(ptr, size_t(sz));
         m_Conn.read(&m_Conn, buf);
       }
     }

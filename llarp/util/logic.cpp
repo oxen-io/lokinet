@@ -29,15 +29,16 @@ namespace llarp
   void
   Logic::queue_job(struct llarp_thread_job job)
   {
-    if(job.user && job.work)
+    if((job.user != nullptr) && (job.work != nullptr)) {
       queue_func(std::bind(job.work, job.user));
+}
   }
 
   void
   Logic::stop()
   {
     llarp::LogDebug("logic thread stop");
-    if(this->thread)
+    if(this->thread != nullptr)
     {
       llarp_threadpool_stop(this->thread);
       llarp_threadpool_join(this->thread);
@@ -45,8 +46,9 @@ namespace llarp
     llarp_free_threadpool(&this->thread);
 
     llarp::LogDebug("logic timer stop");
-    if(this->timer)
+    if(this->timer != nullptr) {
       llarp_timer_stop(this->timer);
+}
   }
 
   void
@@ -56,7 +58,7 @@ namespace llarp
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > f)
+  Logic::queue_func(const std::function< void(void) >& f)
   {
     size_t left = 1000;
     while(!this->thread->QueueFunc(f))
@@ -74,8 +76,9 @@ namespace llarp
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
       left--;
-      if(left == 0)  // too many retries
+      if(left == 0) {  // too many retries
         return false;
+}
     }
     return true;
   }
@@ -105,7 +108,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return ourPID && ourPID == ::getpid();
+    return (ourPID != 0) && ourPID == ::getpid();
   }
 
 }  // namespace llarp

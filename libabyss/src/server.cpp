@@ -111,13 +111,16 @@ namespace abyss
                           code, msg.c_str(), contentType, contentLength);
         if(sz <= 0)
           return false;
-        if(!llarp_tcp_conn_async_write(_conn, llarp_buffer_t(buf, sz)))
+        if(!llarp_tcp_conn_async_write(
+               _conn, llarp_buffer_t(reinterpret_cast< byte_t* >(buf), sz)))
           return false;
 
         m_State = eWriteHTTPBody;
 
         return llarp_tcp_conn_async_write(
-            _conn, llarp_buffer_t(content, contentLength));
+            _conn,
+            llarp_buffer_t(reinterpret_cast< const byte_t* >(content),
+                           contentLength));
       }
 
       bool

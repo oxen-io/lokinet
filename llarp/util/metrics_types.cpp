@@ -16,8 +16,8 @@ namespace llarp
     {
       static constexpr size_t INIT_SIZE = 32;
 
-      char buf[INIT_SIZE] = {0};
-      int rc              = snprintf(buf, INIT_SIZE, format.m_format.data(),
+      std::array< char, INIT_SIZE > buf{0};
+      int rc = snprintf(buf.data(), INIT_SIZE, format.m_format.data(),
                         data * format.m_scale);
 
       if(rc < 0)
@@ -28,7 +28,7 @@ namespace llarp
 
       if(static_cast< size_t >(rc) < INIT_SIZE)
       {
-        stream << buf;
+        stream << buf.data();
         return stream;
       }
 

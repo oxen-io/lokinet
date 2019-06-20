@@ -25,20 +25,20 @@ namespace llarp
       static constexpr size_t Alignment = 64;
 
      private:
-      Type *m_data;
-      const char m_dataPadding[Alignment - sizeof(Type *)];
+      Type *m_data{nullptr};
+      const std::array< char, Alignment - sizeof(Type *) > m_dataPadding{0};
 
       QueueManager m_manager;
 
-      std::atomic< std::uint32_t > m_waitingPoppers;
-      util::Semaphore m_popSemaphore;
-      const char
-          m_popSemaphorePadding[(2U * Alignment) - sizeof(util::Semaphore)];
+      std::atomic< std::uint32_t > m_waitingPoppers{0};
+      util::Semaphore m_popSemaphore{0};
+      const std::array< char, (2U * Alignment) - sizeof(util::Semaphore) >
+          m_popSemaphorePadding{0};
 
-      std::atomic< std::uint32_t > m_waitingPushers;
-      util::Semaphore m_pushSemaphore;
-      const char
-          m_pushSemaphorePadding[(2U * Alignment) - sizeof(util::Semaphore)];
+      std::atomic< std::uint32_t > m_waitingPushers{0};
+      util::Semaphore m_pushSemaphore{0};
+      const std::array< char, (2U * Alignment) - sizeof(util::Semaphore) >
+          m_pushSemaphorePadding{0};
 
       friend QueuePopGuard< Type >;
       friend QueuePushGuard< Type >;
@@ -154,16 +154,7 @@ namespace llarp
     };
 
     template < typename Type >
-    Queue< Type >::Queue(size_t capacity)
-        : m_data(nullptr)
-        , m_dataPadding()
-        , m_manager(capacity)
-        , m_waitingPoppers(0)
-        , m_popSemaphore(0)
-        , m_popSemaphorePadding()
-        , m_waitingPushers(0)
-        , m_pushSemaphore(0)
-        , m_pushSemaphorePadding()
+    Queue< Type >::Queue(size_t capacity) : m_manager(capacity)
     {
       m_data = static_cast< Type * >(::operator new(capacity * sizeof(Type)));
     }
@@ -203,7 +194,7 @@ namespace llarp
       QueuePushGuard< Type > pushGuard(*this, generation, index);
 
       // Construct in place.
-      ::new(&m_data[index]) Type(value);
+      ::new(&m_data[index]) Type(value);  // NOLINT
 
       pushGuard.release();
 
@@ -245,7 +236,7 @@ namespace llarp
       Type &dummy = value;
 
       // Construct in place.
-      ::new(&m_data[index]) Type(std::move(dummy));
+      ::new(&m_data[index]) Type(std::move(dummy));  // NOLINT
 
       pushGuard.release();
 
@@ -285,7 +276,7 @@ namespace llarp
       // - notify any waiting pushers
 
       QueuePopGuard< Type > popGuard(*this, generation, index);
-      return absl::optional< Type >(std::move(m_data[index]));
+      return absl::optional< Type >(std::move(m_data[index]));  // NOLINT
     }
 
     template < typename Type >
@@ -382,7 +373,7 @@ namespace llarp
       }
 
       QueuePopGuard< Type > popGuard(*this, generation, index);
-      return Type(std::move(m_data[index]));
+      return Type(std::move(m_data[index]));  // NOLINT
     }
 
     template < typename Type >
@@ -403,7 +394,7 @@ namespace llarp
           break;
         }
 
-        m_data[index].~Type();
+        m_data[index].~Type();  // NOLINT
         m_manager.commitPopIndex(generation, index);
       }
 

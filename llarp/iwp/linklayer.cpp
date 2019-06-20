@@ -55,8 +55,8 @@ namespace llarp
     LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
     {
       m_OuterMsg.Clear();
-      llarp_buffer_t sigbuf(pkt, sz);
-      llarp_buffer_t decodebuf(pkt, sz);
+      llarp_buffer_t sigbuf(static_cast< const byte_t* >(pkt), sz);
+      llarp_buffer_t decodebuf(static_cast< const byte_t* >(pkt), sz);
       if(!m_OuterMsg.Decode(&decodebuf))
       {
         LogError("failed to decode outer message");

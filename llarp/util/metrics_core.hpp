@@ -49,7 +49,7 @@ namespace llarp
     }
 
     template < typename Type >
-    class Collector
+    class Collector : public util::NoMove
     {
      public:
       using RecordType        = Record< Type >;
@@ -58,10 +58,6 @@ namespace llarp
      private:
       TaggedRecordsType m_records GUARDED_BY(m_mutex);
       mutable util::Mutex m_mutex;
-
-      Collector(const Collector &) = delete;
-      Collector &
-      operator=(const Collector &) = delete;
 
       template < typename... Args >
       RecordType &
@@ -187,7 +183,7 @@ namespace llarp
     }
 
     template < typename Type >
-    class Collectors
+    class Collectors : public util::NoMove
     {
       using CollectorType = Collector< Type >;
       using CollectorPtr  = std::shared_ptr< CollectorType >;
@@ -195,10 +191,6 @@ namespace llarp
 
       CollectorType m_default;
       CollectorSet m_collectors;
-
-      Collectors(const Collectors &) = delete;
-      Collectors &
-      operator=(const Collectors &) = delete;
 
      public:
       Collectors(const Id &id) : m_default(id)
@@ -363,7 +355,7 @@ namespace llarp
     }
 
     template < typename Type >
-    class CollectorRepo
+    class CollectorRepo : public util::NoMove
     {
       using CollectorsPtr = std::shared_ptr< Collectors< Type > >;
       using IdCollectors  = std::map< Id, CollectorsPtr >;
@@ -375,10 +367,6 @@ namespace llarp
       CategoryCollectors m_categories;
 
       mutable util::Mutex m_mutex;
-
-      CollectorRepo(const CollectorRepo &) = delete;
-      CollectorRepo &
-      operator=(const CollectorRepo &) = delete;
 
       Collectors< Type > &
       getCollectors(const Id &id)
@@ -392,7 +380,7 @@ namespace llarp
           const Category *cat = id.category();
 
           auto ptr  = std::make_shared< Collectors< Type > >(id);
-          auto &vec = m_categories[cat];
+          auto &vec = m_categories[cat];  // NOLINT
           vec.reserve(vec.size() + 1);
 
           it = m_collectors.emplace(id, ptr).first;
@@ -510,7 +498,7 @@ namespace llarp
 
     class Manager;
 
-    class PublisherRegistry
+    class PublisherRegistry : public util::NoMove
     {
       using PubPtr        = std::shared_ptr< Publisher >;
       using CatPublishers = std::multimap< const Category *, PubPtr >;
@@ -521,10 +509,6 @@ namespace llarp
       CatPublishers m_categoryPublishers;
       RegInfo m_registry;
       PubSet m_publishers;
-
-      PublisherRegistry(const PublisherRegistry &) = delete;
-      PublisherRegistry &
-      operator=(const PublisherRegistry &) = delete;
 
      public:
       using GlobalIterator = PubSet::iterator;
@@ -571,6 +555,7 @@ namespace llarp
       bool
       removePublisher(const Publisher *publisher)
       {
+        // NOLINTNEXTLINE
         std::shared_ptr< Publisher > ptr(const_cast< Publisher * >(publisher),
                                          [](Publisher * /*unused*/) {});
 
@@ -846,13 +831,13 @@ namespace llarp
     /// a painful singleton mechanism
     class DefaultManager
     {
-      static Manager *m_manager;
+      static gsl::owner< Manager * > m_manager;
 
      public:
       static Manager *
       instance()
       {
-        return m_manager;
+        return m_manager;  // NOLINT
       }
 
       static Manager *
@@ -865,7 +850,7 @@ namespace llarp
       create()
       {
         m_manager = new Manager;
-        return m_manager;
+        return m_manager;  // NOLINT
       }
 
       static void
@@ -877,12 +862,8 @@ namespace llarp
     };
 
     /// Scoped guard to manage the default manager
-    class DefaultManagerGuard
+    class DefaultManagerGuard : public util::NoMove
     {
-      DefaultManagerGuard(const DefaultManagerGuard &) = delete;
-      DefaultManagerGuard &
-      operator=(const DefaultManagerGuard &) = delete;
-
      public:
       DefaultManagerGuard()
       {
@@ -1035,16 +1016,12 @@ namespace llarp
 
     using IntMetric = Metric< IntCollector, int, &Manager::intCollectorRepo >;
 
-    class TimerGuard
+    class TimerGuard : public util::NoMove
     {
      private:
       Tags m_tags;
       util::Stopwatch m_stopwatch;
       DoubleCollector *m_collector;
-
-      TimerGuard(const TimerGuard &) = delete;
-      TimerGuard &
-      operator=(const TimerGuard &) = delete;
 
      public:
       template < typename... TagVals >

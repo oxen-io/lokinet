@@ -72,9 +72,9 @@ TEST_F(DNSTest, TestDecodeDNSstring)
 
 TEST_F(DNSTest, TestCodeDomain)
 {
-  char buffer[16]    = {0};
-  char *write_buffer = buffer;
-  std::string url    = "bob.com";
+  byte_t buffer[16]    = {0};
+  byte_t *write_buffer = buffer;
+  std::string url      = "bob.com";
   code_domain(write_buffer, url);
 
   char hex_buffer[16 * 3 + 1];

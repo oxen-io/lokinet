@@ -96,6 +96,7 @@ namespace llarp
     Registry::enable(const Category *category, bool value)
     {
       absl::WriterMutexLock l(&m_mutex);
+      // NOLINTNEXTLINE
       const_cast< Category * >(category)->enabled(value);
     }
 
@@ -122,6 +123,7 @@ namespace llarp
       absl::WriterMutexLock l(&m_mutex);
       if(container.m_category == nullptr)
       {
+        // NOLINTNEXTLINE
         const_cast< Category * >(category)->registerContainer(&container);
       }
     }
@@ -129,12 +131,14 @@ namespace llarp
     void
     Registry::publicationType(const Id &id, Publication::Type type)
     {
+      // NOLINTNEXTLINE
       const_cast< Description * >(id.description())->type(type);
     }
 
     void
     Registry::setFormat(const Id &id, const Format &format)
     {
+      // NOLINTNEXTLINE
       auto *description = const_cast< Description * >(id.description());
 
       absl::WriterMutexLock l(&m_mutex);
@@ -427,7 +431,7 @@ namespace llarp
                                clear);
     }
 
-    Manager *DefaultManager::m_manager = nullptr;
+    gsl::owner< Manager * > DefaultManager::m_manager = nullptr;
 
     struct PublisherSchedulerData
     {

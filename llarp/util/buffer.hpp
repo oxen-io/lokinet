@@ -81,23 +81,28 @@ struct llarp_buffer_t
   llarp_buffer_t(const ManagedBuffer &) = delete;
   llarp_buffer_t(ManagedBuffer &&)      = delete;
 
-  template < typename T >
-  llarp_buffer_t(T *buf, size_t _sz)
-      : base(reinterpret_cast< byte_t * >(buf)), cur(base), sz(_sz)
+  llarp_buffer_t(byte_t *buf, size_t _sz) : base(buf), cur(base), sz(_sz)
   {
   }
 
-  template < typename T >
-  llarp_buffer_t(const T *buf, size_t _sz)
-      : base(reinterpret_cast< byte_t * >(const_cast< T * >(buf)))
-      , cur(base)
-      , sz(_sz)
+  llarp_buffer_t(const byte_t *buf, size_t _sz)
+      : llarp_buffer_t(const_cast< byte_t * >(buf), _sz)
+  {
+  }
+
+  llarp_buffer_t(char *buf, size_t _sz)
+      : llarp_buffer_t(reinterpret_cast< byte_t * >(buf), _sz)
+  {
+  }
+
+  llarp_buffer_t(const char *buf, size_t _sz)
+      : llarp_buffer_t(const_cast< char * >(buf), _sz)
   {
   }
 
   /** initialize llarp_buffer_t from container */
   template < typename T >
-  llarp_buffer_t(T &t) : base(t.data()), cur(t.data()), sz(t.size())
+  llarp_buffer_t(T &t) : llarp_buffer_t(t.data(), t.size())
   {
     // use data over the first element to "enforce" the container used has
     // contiguous memory. (Note this isn't required by the standard, but a
