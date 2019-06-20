@@ -23,7 +23,7 @@ namespace llarp
       }
 
       PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx,
-                          uint64_t s, std::vector< Key_t >  exclude = {})
+                          uint64_t s, std::vector< Key_t > exclude = {})
           : IMessage({}), E(std::move(exclude)), txID(tx)
       {
         I = i;

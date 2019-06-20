@@ -54,8 +54,7 @@ namespace llarp
 
     /// set an IPv4 addr
     void
-    from4int(uint8_t one, uint8_t two, uint8_t three,
-             uint8_t four);
+    from4int(uint8_t one, uint8_t two, uint8_t three, uint8_t four);
 
     /// set from an net-order uint32_t
     void

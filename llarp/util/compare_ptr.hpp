@@ -11,11 +11,13 @@ namespace llarp
     bool
     operator()(const Ptr_t& left, const Ptr_t& right) const
     {
-      if(left && right) {
+      if(left && right)
+      {
         return Compare()(*left, *right);
-      }  {
+      }
+      {
         return Compare()(left, right);
-}
+      }
     }
   };
 }  // namespace llarp

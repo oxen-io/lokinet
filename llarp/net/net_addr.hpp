@@ -50,14 +50,12 @@ namespace llarp
     Addr(const char* str);
 
     bool
-    from_4int(uint8_t one, uint8_t two, uint8_t three,
-              uint8_t four);
+    from_4int(uint8_t one, uint8_t two, uint8_t three, uint8_t four);
 
-    Addr(uint8_t one, uint8_t two, uint8_t three,
-         uint8_t four);
+    Addr(uint8_t one, uint8_t two, uint8_t three, uint8_t four);
 
-    Addr(uint8_t one, uint8_t two, uint8_t three,
-         uint8_t four, uint16_t p_port);
+    Addr(uint8_t one, uint8_t two, uint8_t three, uint8_t four,
+         uint16_t p_port);
 
     Addr(const AddressInfo& other);
     Addr(const sockaddr_in& other);

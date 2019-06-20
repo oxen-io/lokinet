@@ -12,8 +12,7 @@ namespace llarp
 
     using Data = std::array< byte_t, SIZE >;
 
-    RouterID()  
-    = default;
+    RouterID() = default;
 
     RouterID(const byte_t* buf) : AlignedBuffer< SIZE >(buf)
     {

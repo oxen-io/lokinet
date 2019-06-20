@@ -39,9 +39,10 @@ namespace libuv
     void
     stopped() override
     {
-      for(const auto& func : m_CloseFuncs) {
+      for(const auto& func : m_CloseFuncs)
+      {
         func();
-}
+      }
       m_CloseFuncs.clear();
       llarp::LogInfo("event loop stopped");
     }

@@ -39,9 +39,10 @@ namespace llarp
         RouterContact found;
         for(const auto &rc : valuesFound)
         {
-          if(rc.OtherIsNewer(found)) {
+          if(rc.OtherIsNewer(found))
+          {
             found = rc;
-}
+          }
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);

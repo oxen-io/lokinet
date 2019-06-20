@@ -42,7 +42,8 @@ namespace llarp
   }
 
   void
-  OStreamLogStream::Print(LogLevel /*lvl*/, const char* /*filename*/, const std::string& msg)
+  OStreamLogStream::Print(LogLevel /*lvl*/, const char* /*filename*/,
+                          const std::string& msg)
   {
     m_Out << msg << std::flush;
   }

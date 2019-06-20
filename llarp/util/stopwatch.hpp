@@ -14,8 +14,7 @@ namespace llarp
       absl::optional< absl::Time > m_stop;
 
      public:
-      Stopwatch()
-      = default;
+      Stopwatch() = default;
 
       void
       start()

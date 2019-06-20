@@ -180,10 +180,8 @@ namespace llarp
       {
         return m_threads.size() - m_idleThreads.load(std::memory_order_relaxed);
       }
-      
-      
-        return 0;
-      
+
+      return 0;
     }
 
     inline size_t

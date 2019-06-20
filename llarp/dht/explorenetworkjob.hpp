@@ -26,7 +26,8 @@ namespace llarp
       Start(const TXOwner &peer) override;
 
       bool
-      GetNextPeer(Key_t & /*next*/, const std::set< Key_t > & /*exclude*/) override
+      GetNextPeer(Key_t & /*next*/,
+                  const std::set< Key_t > & /*exclude*/) override
       {
         return false;
       }

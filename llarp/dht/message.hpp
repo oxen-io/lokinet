@@ -16,8 +16,7 @@ namespace llarp
 
     struct IMessage
     {
-      virtual ~IMessage()
-      = default;
+      virtual ~IMessage() = default;
 
       /// construct
       IMessage(const Key_t& from) : From(from)

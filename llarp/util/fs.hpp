@@ -27,7 +27,8 @@ namespace llarp
     using PathVisitor = std::function< bool(const fs::path &) >;
     using PathIter    = std::function< void(const fs::path &, PathVisitor) >;
 
-    static PathIter IterDir = [](const fs::path &path, const PathVisitor& visit) {
+    static PathIter IterDir = [](const fs::path &path,
+                                 const PathVisitor &visit) {
 #ifdef _MSC_VER
       for(auto &p : fs::directory_iterator(path))
       {
@@ -38,23 +39,27 @@ namespace llarp
       }
 #else
       DIR *d = opendir(path.string().c_str());
-      if(d == nullptr) {
+      if(d == nullptr)
+      {
         return;
-}
+      }
       struct dirent *ent = nullptr;
       do
       {
         ent = readdir(d);
-        if(ent == nullptr) {
+        if(ent == nullptr)
+        {
           break;
-}
-        if(ent->d_name[0] == '.') {
+        }
+        if(ent->d_name[0] == '.')
+        {
           continue;
-}
+        }
         fs::path p = path / fs::path(ent->d_name);
-        if(!visit(p)) {
+        if(!visit(p))
+        {
           break;
-}
+        }
       } while(ent != nullptr);
       closedir(d);
 #endif

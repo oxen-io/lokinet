@@ -15,7 +15,8 @@ namespace llarp
   }
 
   void
-  SysLogStream::Print(LogLevel lvl, const char* /*filename*/, const std::string& msg)
+  SysLogStream::Print(LogLevel lvl, const char* /*filename*/,
+                      const std::string& msg)
   {
     switch(lvl)
     {

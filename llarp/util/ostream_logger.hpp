@@ -10,8 +10,7 @@ namespace llarp
   {
     OStreamLogStream(std::ostream& out);
 
-    ~OStreamLogStream() override
-    = default;
+    ~OStreamLogStream() override = default;
 
     void
     PreLog(std::stringstream& s, LogLevel lvl, const char* fname, int lineno,

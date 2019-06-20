@@ -107,9 +107,10 @@ namespace llarp
         ForEach(const std::function< void(const TransitHop_ptr&) >& visit)
         {
           util::Lock lock(&first);
-          for(const auto& item : second) {
+          for(const auto& item : second)
+          {
             visit(item.second);
-}
+          }
         }
       };
 
@@ -125,9 +126,10 @@ namespace llarp
         ForEach(const std::function< void(const PathSet_ptr&) >& visit)
         {
           util::Lock lock(&first);
-          for(const auto& item : second) {
+          for(const auto& item : second)
+          {
             visit(item.second);
-}
+          }
         }
       };
 

@@ -29,9 +29,10 @@ namespace llarp
   void
   Logic::queue_job(struct llarp_thread_job job)
   {
-    if((job.user != nullptr) && (job.work != nullptr)) {
+    if((job.user != nullptr) && (job.work != nullptr))
+    {
       queue_func(std::bind(job.work, job.user));
-}
+    }
   }
 
   void
@@ -46,9 +47,10 @@ namespace llarp
     llarp_free_threadpool(&this->thread);
 
     llarp::LogDebug("logic timer stop");
-    if(this->timer != nullptr) {
+    if(this->timer != nullptr)
+    {
       llarp_timer_stop(this->timer);
-}
+    }
   }
 
   void
@@ -76,9 +78,10 @@ namespace llarp
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
       }
       left--;
-      if(left == 0) {  // too many retries
+      if(left == 0)
+      {  // too many retries
         return false;
-}
+      }
     }
     return true;
   }

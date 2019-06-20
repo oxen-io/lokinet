@@ -17,7 +17,7 @@ namespace llarp
   {
     struct Tag : public AlignedBuffer< 16 >
     {
-      Tag()  
+      Tag()
       {
       }
 

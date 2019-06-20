@@ -18,12 +18,11 @@ namespace llarp
       uint64_t S{0};
       uint64_t version = LLARP_PROTO_VERSION;
 
-      IMessage()  
+      IMessage()
       {
       }
 
-      virtual ~IMessage()
-      = default;
+      virtual ~IMessage() = default;
 
       virtual bool
       BEncode(llarp_buffer_t* buf) const = 0;

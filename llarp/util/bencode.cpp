@@ -8,9 +8,10 @@ bool
 bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 {
   size_t len;
-  if(*buffer->cur != 'i') {
+  if(*buffer->cur != 'i')
+  {
     return false;
-}
+  }
 
   char numbuf[32];
 
@@ -35,9 +36,10 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
   char numbuf[10];
 
   size_t len = buffer->read_until(':', (byte_t*)numbuf, sizeof(numbuf) - 1);
-  if(len == 0u) {
+  if(len == 0u)
+  {
     return false;
-}
+  }
 
   numbuf[len]   = '\0';
   const int num = atoi(numbuf);

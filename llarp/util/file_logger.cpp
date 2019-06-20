@@ -6,11 +6,12 @@ namespace llarp
   namespace
   {
     void
-    Flush(const std::deque< std::string >& lines, FILE *const f)
+    Flush(const std::deque< std::string > &lines, FILE *const f)
     {
-      for(const auto &line : lines) {
+      for(const auto &line : lines)
+      {
         fprintf(f, "%s\n", line.c_str());
-}
+      }
       fflush(f);
     }
   }  // namespace
@@ -26,17 +27,19 @@ namespace llarp
   FileLogStream::~FileLogStream()
   {
     fflush(m_File);
-    if(m_Close) {
+    if(m_Close)
+    {
       fclose(m_File);
-}
+    }
   }
 
   bool
   FileLogStream::ShouldFlush(llarp_time_t now) const
   {
-    if(m_LastFlush >= now) {
+    if(m_LastFlush >= now)
+    {
       return false;
-}
+    }
     const auto dlt = now - m_LastFlush;
     return dlt >= m_FlushInterval;
   }
@@ -52,7 +55,8 @@ namespace llarp
   }
 
   void
-  FileLogStream::Print(LogLevel /*lvl*/, const char * /*filename*/, const std::string &msg)
+  FileLogStream::Print(LogLevel /*lvl*/, const char * /*filename*/,
+                       const std::string &msg)
   {
     m_Lines.emplace_back(msg);
   }
@@ -60,9 +64,10 @@ namespace llarp
   void
   FileLogStream::Tick(llarp_time_t now)
   {
-    if(ShouldFlush(now)) {
+    if(ShouldFlush(now))
+    {
       FlushLinesToDisk(now);
-}
+    }
   }
 
   void

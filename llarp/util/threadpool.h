@@ -16,8 +16,8 @@ struct llarp_threadpool
   const pid_t callingPID;
 
   llarp_threadpool(int workers, const char *name)
-      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
-                                                           workers * 128))
+      : impl(
+          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
       , jobs(nullptr)
       , callingPID(0)
   {
@@ -34,20 +34,23 @@ struct llarp_threadpool
   size_t
   size() const
   {
-    if(jobs) {
+    if(jobs)
+    {
       return jobs->size();
-}
+    }
     return 0;
   }
 
   bool
-  QueueFunc(const std::function< void(void) >& f)
+  QueueFunc(const std::function< void(void) > &f)
   {
-    if(impl) {
+    if(impl)
+    {
       return impl->tryAddJob(f);
-    }  {
+    }
+    {
       return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
-}
+    }
   }
 };
 
@@ -75,8 +78,7 @@ struct llarp_thread_job
   {
   }
 
-  llarp_thread_job()  
-  = default;
+  llarp_thread_job() = default;
 #endif
 };
 

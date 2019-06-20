@@ -107,10 +107,8 @@ namespace llarp
       {
         return nullptr;
       }
-      
-      
-        return itr->second.get();
-      
+
+      return itr->second.get();
     }
 
     template < typename K, typename V, typename K_Hash,
@@ -149,9 +147,10 @@ namespace llarp
       }
 
       // ask for next peer
-      if(!txitr->second->AskNextPeer(from.node, next)) {
+      if(!txitr->second->AskNextPeer(from.node, next))
+      {
         Inform(from, txitr->second->target, {}, true, true);
-}
+      }
     }
 
     template < typename K, typename V, typename K_Hash,

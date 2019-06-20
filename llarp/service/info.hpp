@@ -106,9 +106,10 @@ namespace llarp
       bool
       BDecode(llarp_buffer_t* buf)
       {
-        if(bencode_decode_dict(*this, buf)) {
+        if(bencode_decode_dict(*this, buf))
+        {
           return CalculateAddress(m_CachedAddr.as_array());
-}
+        }
         return false;
       }
 

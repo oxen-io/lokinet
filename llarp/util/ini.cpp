@@ -15,15 +15,17 @@ namespace llarp
   {
     {
       std::ifstream f(fname, std::ios::in | std::ios::binary);
-      if(!f.is_open()) {
+      if(!f.is_open())
+      {
         return false;
-}
+      }
       f.seekg(0, std::ios::end);
       m_Data.resize(f.tellg());
       f.seekg(0, std::ios::beg);
-      if(m_Data.empty()) {
+      if(m_Data.empty())
+      {
         return false;
-}
+      }
       f.read(m_Data.data(), m_Data.size());
     }
     m_FileName = fname;
@@ -62,13 +64,15 @@ namespace llarp
       while(itr != m_Data.end())
       {
         auto beg = itr;
-        while(itr != m_Data.end() && *itr != '\n' && *itr != '\r') {
+        while(itr != m_Data.end() && *itr != '\n' && *itr != '\r')
+        {
           ++itr;
-}
+        }
         lines.emplace_back(std::addressof(*beg), std::distance(beg, itr));
-        if(itr == m_Data.end()) {
+        if(itr == m_Data.end())
+        {
           break;
-}
+        }
         ++itr;
       }
     }
@@ -80,18 +84,23 @@ namespace llarp
       lineno++;
       String_t realLine;
       auto comment = line.find_first_of(';');
-      if(comment == String_t::npos) {
+      if(comment == String_t::npos)
+      {
         comment = line.find_first_of('#');
-}
-      if(comment == String_t::npos) {
+      }
+      if(comment == String_t::npos)
+      {
         realLine = line;
-      } else {
+      }
+      else
+      {
         realLine = line.substr(0, comment);
-}
+      }
       // blank or commented line?
-      if(realLine.empty()) {
+      if(realLine.empty())
+      {
         continue;
-}
+      }
       // find delimiters
       auto sectOpenPos = realLine.find_first_of('[');
       auto sectClosPos = realLine.find_first_of(']');
@@ -103,13 +112,15 @@ namespace llarp
 
         // clamp whitespaces
         ++sectOpenPos;
-        while(whitespace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos) {
+        while(whitespace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos)
+        {
           ++sectOpenPos;
-}
+        }
         --sectClosPos;
-        while(whitespace(realLine[sectClosPos]) && sectClosPos != sectOpenPos) {
+        while(whitespace(realLine[sectClosPos]) && sectClosPos != sectOpenPos)
+        {
           --sectClosPos;
-}
+        }
         // set section name
         sectName = realLine.substr(sectOpenPos, sectClosPos);
       }
@@ -121,18 +132,22 @@ namespace llarp
         String_t::size_type v_start = kvDelim + 1;
         String_t::size_type v_end   = realLine.size() - 1;
         // clamp whitespaces
-        while(whitespace(realLine[k_start]) && k_start != kvDelim) {
+        while(whitespace(realLine[k_start]) && k_start != kvDelim)
+        {
           ++k_start;
-}
-        while(whitespace(realLine[k_end - 1]) && k_end != k_start) {
+        }
+        while(whitespace(realLine[k_end - 1]) && k_end != k_start)
+        {
           --k_end;
-}
-        while(whitespace(realLine[v_start]) && v_start != v_end) {
+        }
+        while(whitespace(realLine[v_start]) && v_start != v_end)
+        {
           ++v_start;
-}
-        while(whitespace(realLine[v_end])) {
+        }
+        while(whitespace(realLine[v_end]))
+        {
           --v_end;
-}
+        }
 
         // sect.k = v
         String_t k = realLine.substr(k_start, k_end - k_start);
@@ -158,9 +173,10 @@ namespace llarp
   ConfigParser::IterAll(
       const std::function< void(const String_t&, const Section_t&) >& visit)
   {
-    for(const auto& item : m_Config) {
+    for(const auto& item : m_Config)
+    {
       visit(item.first, item.second);
-}
+    }
   }
 
   bool
@@ -169,9 +185,10 @@ namespace llarp
       const std::function< bool(const Section_t& sect) >& visit) const
   {
     auto itr = m_Config.find(name);
-    if(itr == m_Config.end()) {
+    if(itr == m_Config.end())
+    {
       return false;
-}
+    }
     return visit(itr->second);
   }
 }  // namespace llarp

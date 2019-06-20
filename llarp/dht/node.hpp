@@ -48,7 +48,7 @@ namespace llarp
         ID.Zero();
       }
 
-      ISNode(service::IntroSet  other) : introset(std::move(other))
+      ISNode(service::IntroSet other) : introset(std::move(other))
       {
         introset.A.CalculateAddress(ID.as_array());
       }

@@ -89,8 +89,7 @@ namespace llarp
     pqe_encrypt(PQCipherBlock &, SharedSecret &, const PQPubKey &) = 0;
   };
 
-  inline Crypto::~Crypto()
-  = default;
+  inline Crypto::~Crypto() = default;
 
   /// return random 64bit unsigned interger
   uint64_t

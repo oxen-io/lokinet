@@ -22,7 +22,8 @@ namespace llarp
            const std::string& nodename) const override;
 
     void
-    Print(LogLevel /*lvl*/, const char* /*filename*/, const std::string& msg) override;
+    Print(LogLevel /*lvl*/, const char* /*filename*/,
+          const std::string& msg) override;
 
     void
     Tick(llarp_time_t now) override;

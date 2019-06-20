@@ -47,10 +47,8 @@ namespace llarp
       {
         return nodes->FindCloseExcluding(k, next, exclude);
       }
-      
-      
-        return false;
-      
+
+      return false;
     }
 
     void
@@ -84,9 +82,10 @@ namespace llarp
         llarp::service::IntroSet found;
         for(const auto &introset : valuesFound)
         {
-          if(found.OtherIsNewer(introset)) {
+          if(found.OtherIsNewer(introset))
+          {
             found = introset;
-}
+          }
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);

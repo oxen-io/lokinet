@@ -12,9 +12,9 @@ llarp_buffer_t::size_left() const
   {
     return 0;
   }
-   {
+  {
     return sz - diff;
-}
+  }
 }
 
 bool
@@ -26,12 +26,14 @@ llarp_buffer_t::writef(const char* fmt, ...)
   va_start(args, fmt);
   written = vsnprintf(reinterpret_cast< char* >(cur), toWrite, fmt, args);
   va_end(args);
-  if(written <= 0) {
+  if(written <= 0)
+  {
     return false;
-}
-  if(toWrite < static_cast< size_t >(written)) {
+  }
+  if(toWrite < static_cast< size_t >(written))
+  {
     return false;
-}
+  }
   cur += written;
   return true;
 }
@@ -39,9 +41,10 @@ llarp_buffer_t::writef(const char* fmt, ...)
 bool
 llarp_buffer_t::put_uint16(uint16_t i)
 {
-  if(size_left() < sizeof(uint16_t)) {
+  if(size_left() < sizeof(uint16_t))
+  {
     return false;
-}
+  }
   htobe16buf(cur, i);
   cur += sizeof(uint16_t);
   return true;
@@ -50,9 +53,10 @@ llarp_buffer_t::put_uint16(uint16_t i)
 bool
 llarp_buffer_t::put_uint64(uint64_t i)
 {
-  if(size_left() < sizeof(uint64_t)) {
+  if(size_left() < sizeof(uint64_t))
+  {
     return false;
-}
+  }
   htobe64buf(cur, i);
   cur += sizeof(uint64_t);
   return true;
@@ -61,9 +65,10 @@ llarp_buffer_t::put_uint64(uint64_t i)
 bool
 llarp_buffer_t::put_uint32(uint32_t i)
 {
-  if(size_left() < sizeof(uint32_t)) {
+  if(size_left() < sizeof(uint32_t))
+  {
     return false;
-}
+  }
   htobe32buf(cur, i);
   cur += sizeof(uint32_t);
   return true;
@@ -72,9 +77,10 @@ llarp_buffer_t::put_uint32(uint32_t i)
 bool
 llarp_buffer_t::read_uint16(uint16_t& i)
 {
-  if(size_left() < sizeof(uint16_t)) {
+  if(size_left() < sizeof(uint16_t))
+  {
     return false;
-}
+  }
   i = bufbe16toh(cur);
   cur += sizeof(uint16_t);
   return true;
@@ -83,9 +89,10 @@ llarp_buffer_t::read_uint16(uint16_t& i)
 bool
 llarp_buffer_t::read_uint32(uint32_t& i)
 {
-  if(size_left() < sizeof(uint32_t)) {
+  if(size_left() < sizeof(uint32_t))
+  {
     return false;
-}
+  }
   i = bufbe32toh(cur);
   cur += sizeof(uint32_t);
   return true;
@@ -94,9 +101,10 @@ llarp_buffer_t::read_uint32(uint32_t& i)
 bool
 llarp_buffer_t::read_uint64(uint64_t& i)
 {
-  if(size_left() < sizeof(uint64_t)) {
+  if(size_left() < sizeof(uint64_t))
+  {
     return false;
-}
+  }
   i = bufbe64toh(cur);
   cur += sizeof(uint64_t);
   return true;
@@ -117,11 +125,13 @@ llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
     read++;
   }
 
-  if(size_left() != 0U) {
+  if(size_left() != 0U)
+  {
     return read;
-  }  {
+  }
+  {
     return 0;
-}
+  }
 }
 
 bool
@@ -131,9 +141,10 @@ operator==(const llarp_buffer_t& buff, const char* str)
   while((*str != 0)
         && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {
-    if(*copy.underlying.cur != *str) {
+    if(*copy.underlying.cur != *str)
+    {
       return false;
-}
+    }
     copy.underlying.cur++;
     str++;
   }

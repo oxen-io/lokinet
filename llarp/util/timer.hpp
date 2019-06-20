@@ -24,7 +24,7 @@ llarp_init_timer();
 
 uint32_t
 llarp_timer_call_later(struct llarp_timer_context *t,
-                       const struct llarp_timeout_job& job);
+                       const struct llarp_timeout_job &job);
 
 void
 llarp_timer_cancel_job(struct llarp_timer_context *t, uint32_t id);

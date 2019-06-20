@@ -33,7 +33,8 @@ namespace llarp
 
     /// iterate all sections and thier values
     void
-    IterAll(const std::function< void(const String_t&, const Section_t&) >& visit);
+    IterAll(
+        const std::function< void(const String_t&, const Section_t&) >& visit);
 
     /// visit a section in config read only by name
     /// return false if no section or value propagated from visitor

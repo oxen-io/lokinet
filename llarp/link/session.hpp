@@ -15,8 +15,7 @@ namespace llarp
   struct ILinkLayer;
   struct ILinkSession
   {
-    virtual ~ILinkSession()
-    = default;
+    virtual ~ILinkSession() = default;
 
     /// hook for utp for when we have established a connection
     virtual void

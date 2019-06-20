@@ -27,7 +27,7 @@ namespace llarp
           m_iterationCount++;
 
           size_t newRepeatSize = 0;
-          size_t newEventSize = 0;
+          size_t newEventSize  = 0;
 
           absl::Time now = m_clock();
 
@@ -155,13 +155,12 @@ namespace llarp
       }
     }
 
-    Scheduler::Scheduler(EventDispatcher  dispatcher, Clock  clock)
+    Scheduler::Scheduler(EventDispatcher dispatcher, Clock clock)
         : m_clock(std::move(clock))
         , m_dispatcher(std::move(dispatcher))
         , m_running(false)
         , m_iterationCount(0)
-        , 
-         m_repeatCount(0)
+        , m_repeatCount(0)
         , m_eventCount(0)
     {
     }
