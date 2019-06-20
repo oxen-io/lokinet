@@ -20,7 +20,7 @@ namespace llarp
 
       PublishServiceJob(const TXOwner &asker, const service::IntroSet &introset,
                         AbstractContext *ctx, uint64_t s,
-                        const std::set< Key_t > &exclude);
+                        std::set< Key_t > exclude);
 
       bool
       Validate(const service::IntroSet &introset) const override;
@@ -29,13 +29,13 @@ namespace llarp
       Start(const TXOwner &peer) override;
 
       bool
-      GetNextPeer(Key_t &, const std::set< Key_t > &) override
+      GetNextPeer(Key_t & /*next*/, const std::set< Key_t > & /*exclude*/) override
       {
         return false;
       }
 
       void
-      DoNextRequest(const Key_t &) override
+      DoNextRequest(const Key_t & /*peer*/) override
       {
       }
 

@@ -3,6 +3,8 @@
 #include <dht/context.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <utility>
+#include <utility>
 
 namespace llarp
 {
@@ -13,7 +15,7 @@ namespace llarp
         AbstractContext *ctx, uint64_t r,
         service::IntroSetLookupHandler handler)
         : TX< service::Address, service::IntroSet >(asker, addr, ctx)
-        , handleResult(handler)
+        , handleResult(std::move(std::move(handler)))
         , R(r)
     {
       peersAsked.insert(ctx->OurKey());
@@ -41,27 +43,27 @@ namespace llarp
     {
       Key_t k           = target.ToKey();
       const auto &nodes = parent->Nodes();
-      if(nodes)
+      if(nodes != nullptr)
       {
         return nodes->FindCloseExcluding(k, next, exclude);
       }
-      else
-      {
+      
+      
         return false;
-      }
+      
     }
 
     void
     ServiceAddressLookup::Start(const TXOwner &peer)
     {
       parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(peer.txid, target, R));
+                        new FindIntroMessage(peer.txid, target, R != 0u));
     }
 
     void
     ServiceAddressLookup::DoNextRequest(const Key_t &ask)
     {
-      if(R)
+      if(R != 0u)
       {
         parent->LookupIntroSetRecursive(target, whoasked.node, whoasked.txid,
                                         ask, R - 1);
@@ -77,13 +79,14 @@ namespace llarp
     ServiceAddressLookup::SendReply()
     {
       // get newest introset
-      if(valuesFound.size())
+      if(!valuesFound.empty() != 0u)
       {
         llarp::service::IntroSet found;
         for(const auto &introset : valuesFound)
         {
-          if(found.OtherIsNewer(introset))
+          if(found.OtherIsNewer(introset)) {
             found = introset;
+}
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);

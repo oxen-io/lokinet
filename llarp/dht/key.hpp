@@ -24,7 +24,7 @@ namespace llarp
       {
       }
 
-      Key_t() : AlignedBuffer< SIZE >()
+      Key_t()  
       {
       }
 

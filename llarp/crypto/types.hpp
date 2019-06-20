@@ -17,8 +17,7 @@ namespace llarp
   struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
   {
     PubKey()  
-    {
-    }
+    = default;
 
     explicit PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
     {
@@ -79,8 +78,7 @@ namespace llarp
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
     SecretKey()  
-    {
-    }
+    = default;
 
     explicit SecretKey(const byte_t *ptr) : AlignedBuffer< SECKEYSIZE >(ptr)
     {
@@ -119,8 +117,7 @@ namespace llarp
   struct IdentitySecret final : public AlignedBuffer< 32 >
   {
     IdentitySecret()  
-    {
-    }
+    = default;
 
     /// no copy constructor
     explicit IdentitySecret(const IdentitySecret &) = delete;

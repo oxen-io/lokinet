@@ -30,8 +30,7 @@ namespace llarp
       }
 
       virtual ~TX()
-      {
-      }
+      = default;
 
       void
       OnFound(const Key_t& askedPeer, const V& value);

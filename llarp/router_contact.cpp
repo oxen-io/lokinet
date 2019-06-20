@@ -18,7 +18,7 @@ namespace llarp
   NetID::DefaultValue()
   {
     static NetID defaultID(
-        reinterpret_cast< const byte_t * >(Version::LLARP_NET_ID));
+        reinterpret_cast< const byte_t * >(Version::LLARP_NET_ID.data()));
     return defaultID;
   }
 

@@ -7,6 +7,8 @@
 
 #include <map>
 #include <set>
+#include <utility>
+#include <utility>
 #include <vector>
 
 namespace llarp
@@ -19,7 +21,7 @@ namespace llarp
       using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
       using Random_t        = std::function< uint64_t() >;
 
-      Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r)
+      Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(std::move(std::move(r)))
       {
       }
 
@@ -88,7 +90,7 @@ namespace llarp
             result  = item.first;
           }
         }
-        return nodes.size() > 0;
+        return !nodes.empty();
       }
 
       bool
@@ -110,7 +112,7 @@ namespace llarp
         }
         size_t expecting = N;
         size_t sz        = nodes.size();
-        while(N)
+        while(N != 0u)
         {
           auto itr = nodes.begin();
           std::advance(itr, random() % sz);
@@ -154,7 +156,7 @@ namespace llarp
         std::set< Key_t > s(exclude.begin(), exclude.end());
 
         Key_t peer;
-        while(N--)
+        while((N--) != 0u)
         {
           if(!FindCloseExcluding(target, peer, s))
           {

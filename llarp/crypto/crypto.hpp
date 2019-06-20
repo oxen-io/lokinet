@@ -8,8 +8,8 @@
 
 #include <absl/base/optimization.h>
 #include <functional>
-#include <stdbool.h>
-#include <stdint.h>
+
+#include <cstdint>
 
 /**
  * crypto.hpp
@@ -90,8 +90,7 @@ namespace llarp
   };
 
   inline Crypto::~Crypto()
-  {
-  }
+  = default;
 
   /// return random 64bit unsigned interger
   uint64_t

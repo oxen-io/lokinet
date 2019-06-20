@@ -163,9 +163,9 @@ namespace llarp
     while(itr != end) {
       if(!itr->BEncode(buf)) {
         return false;
-      } else {
+      } 
         ++itr;
-}
+
 }
     return bencode_end(buf);
   }

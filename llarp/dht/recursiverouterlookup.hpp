@@ -28,7 +28,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override;
 
-      virtual void
+      void
       SendReply() override;
     };
   }  // namespace dht

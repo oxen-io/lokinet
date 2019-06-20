@@ -45,13 +45,19 @@ namespace llarp
       if(sz <= bufsz)
       {
         _sz = sz;
-        if(buf)
+        if(buf != nullptr)
+        {
           memcpy(_buf.data(), buf, sz);
+        }
         else
+        {
           _buf.Zero();
+        }
       }
       else
+      {
         _sz = 0;
+      }
       UpdateBuffer();
     }
 
@@ -105,7 +111,9 @@ namespace llarp
     Randomize()
     {
       if(_sz)
+      {
         randombytes(_buf.data(), _sz);
+      }
     }
 
     bool
@@ -113,12 +121,18 @@ namespace llarp
     {
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
+      {
         return false;
+      }
       if(strbuf.sz > sizeof(_buf))
+      {
         return false;
+      }
       _sz = strbuf.sz;
       if(_sz)
+      {
         memcpy(_buf.data(), strbuf.base, _sz);
+      }
       UpdateBuffer();
       return true;
     }
@@ -162,7 +176,7 @@ namespace llarp
       m_Buffer.sz   = _sz;
     }
     AlignedBuffer< bufsz > _buf;
-    size_t _sz;
+    size_t _sz{0};
     llarp_buffer_t m_Buffer;
   };  // namespace llarp
 }  // namespace llarp

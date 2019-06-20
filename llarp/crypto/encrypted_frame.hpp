@@ -54,7 +54,7 @@ namespace llarp
     static void
     Decrypt(void* user)
     {
-      AsyncFrameDecrypter< User >* ctx =
+      auto* ctx =
           static_cast< AsyncFrameDecrypter< User >* >(user);
 
       if(ctx->target.DecryptInPlace(ctx->seckey))
@@ -63,8 +63,9 @@ namespace llarp
         buf->cur = buf->base + EncryptedFrameOverheadSize;
         ctx->result(buf, ctx->user);
       }
-      else
+      else {
         ctx->result(nullptr, ctx->user);
+}
       ctx->user = nullptr;
     }
 

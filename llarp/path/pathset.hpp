@@ -165,14 +165,14 @@ namespace llarp
 
       /// override me in subtype
       virtual bool
-      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
+      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage > /*unused*/)
       {
         return false;
       }
 
       /// override me in subtype
       virtual bool
-      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
+      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage > /*unused*/)
       {
         return false;
       }
@@ -226,10 +226,10 @@ namespace llarp
                 RouterContact& cur, size_t hop, PathRole roles) = 0;
 
       virtual bool
-      BuildOneAlignedTo(const RouterID endpoint) = 0;
+      BuildOneAlignedTo(RouterID endpoint) = 0;
 
       void
-      ForEachPath(std::function< void(const Path_ptr&) > visit) const
+      ForEachPath(const std::function< void(const Path_ptr&) >& visit) const
       {
         Lock_t lock(&m_PathsMutex);
         auto itr = m_Paths.begin();

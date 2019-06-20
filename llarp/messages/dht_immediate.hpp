@@ -11,7 +11,7 @@ namespace llarp
   struct DHTImmediateMessage final : public ILinkMessage
   {
     DHTImmediateMessage()  = default;
-    ~DHTImmediateMessage() = default;
+    ~DHTImmediateMessage() override = default;
 
     std::vector< std::unique_ptr< dht::IMessage > > msgs;
 

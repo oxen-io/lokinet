@@ -28,10 +28,11 @@ namespace llarp
           : IMessage({}), N(tag), T(txid)
       {
         S.Zero();
-        if(iterate)
+        if(iterate) {
           R = 0;
-        else
+        } else {
           R = 1;
+}
       }
 
       FindIntroMessage(uint64_t txid, const llarp::service::Address& addr,
@@ -39,13 +40,14 @@ namespace llarp
           : IMessage({}), S(addr), T(txid)
       {
         N.Zero();
-        if(iterate)
+        if(iterate) {
           R = 0;
-        else
+        } else {
           R = 1;
+}
       }
 
-      ~FindIntroMessage();
+      ~FindIntroMessage() override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

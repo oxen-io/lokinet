@@ -2,6 +2,7 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/pubintro.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -10,11 +11,11 @@ namespace llarp
     PublishServiceJob::PublishServiceJob(const TXOwner &asker,
                                          const service::IntroSet &introset,
                                          AbstractContext *ctx, uint64_t s,
-                                         const std::set< Key_t > &exclude)
+                                         std::set< Key_t > exclude)
         : TX< service::Address, service::IntroSet >(asker, introset.A.Addr(),
                                                     ctx)
         , S(s)
-        , dontTell(exclude)
+        , dontTell(std::move(exclude))
         , I(introset)
     {
     }

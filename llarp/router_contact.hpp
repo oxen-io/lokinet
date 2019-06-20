@@ -136,7 +136,7 @@ namespace llarp
     bool
     IsExit() const
     {
-      return exits.size() > 0;
+      return !exits.empty();
     }
 
     bool

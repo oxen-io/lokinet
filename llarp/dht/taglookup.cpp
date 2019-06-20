@@ -27,7 +27,7 @@ namespace llarp
     TagLookup::Start(const TXOwner &peer)
     {
       parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(target, peer.txid, R));
+                        new FindIntroMessage(target, peer.txid, R != 0u));
     }
 
     void

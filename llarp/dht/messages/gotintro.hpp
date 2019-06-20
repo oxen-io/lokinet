@@ -44,7 +44,7 @@ namespace llarp
       GotIntroMessage(const std::vector< llarp::service::IntroSet >& results,
                       uint64_t txid);
 
-      ~GotIntroMessage();
+      ~GotIntroMessage() override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -52,7 +52,7 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      virtual bool
+      bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage::Ptr_t >& replies) const override;
     };

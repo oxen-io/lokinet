@@ -17,8 +17,7 @@ namespace llarp
     struct IMessage
     {
       virtual ~IMessage()
-      {
-      }
+      = default;
 
       /// construct
       IMessage(const Key_t& from) : From(from)
@@ -47,7 +46,7 @@ namespace llarp
 
     bool
     DecodeMesssageList(Key_t from, llarp_buffer_t* buf,
-                       std::vector< IMessage::Ptr_t >& dst,
+                       std::vector< IMessage::Ptr_t >& list,
                        bool relayed = false);
   }  // namespace dht
 }  // namespace llarp

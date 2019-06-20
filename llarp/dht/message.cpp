@@ -1,5 +1,6 @@
 #include <dht/context.hpp>
 
+#include <memory>
 #include <util/bencode.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
@@ -28,47 +29,52 @@ namespace llarp
       {
         llarp_buffer_t strbuf;
         // check for empty dict
-        if(!key)
+        if(key == nullptr) {
           return !firstKey;
+}
 
         // first key
         if(firstKey)
         {
-          if(!(*key == "A"))
+          if(!(*key == "A")) {
             return false;
-          if(!bencode_read_string(buffer, &strbuf))
+}
+          if(!bencode_read_string(buffer, &strbuf)) {
             return false;
+}
           // bad msg size?
-          if(strbuf.sz != 1)
+          if(strbuf.sz != 1) {
             return false;
+}
           llarp::LogInfo("Handle DHT message ", *strbuf.base,
                          " relayed=", relayed);
           switch(*strbuf.base)
           {
             case 'F':
-              msg.reset(new FindIntroMessage(From, relayed));
+              msg = std::make_unique<FindIntroMessage>(From, relayed);
               break;
             case 'R':
-              if(relayed)
-                msg.reset(new RelayedFindRouterMessage(From));
-              else
-                msg.reset(new FindRouterMessage(From));
+              if(relayed) {
+                msg = std::make_unique<RelayedFindRouterMessage>(From);
+              } else {
+                msg = std::make_unique<FindRouterMessage>(From);
+}
               break;
             case 'S':
-              msg.reset(new GotRouterMessage(From, relayed));
+              msg = std::make_unique<GotRouterMessage>(From, relayed);
               break;
             case 'I':
-              msg.reset(new PublishIntroMessage());
+              msg = std::make_unique<PublishIntroMessage>();
               break;
             case 'G':
               if(relayed)
               {
-                msg.reset(new RelayedGotIntroMessage());
+                msg = std::make_unique<RelayedGotIntroMessage>();
                 break;
               }
               else
               {
-                msg.reset(new GotIntroMessage(From));
+                msg = std::make_unique<GotIntroMessage>(From);
                 break;
               }
             default:
@@ -79,8 +85,9 @@ namespace llarp
           firstKey = false;
           return msg != nullptr;
         }
-        else
+         {
           return msg->DecodeKey(*key, buffer);
+}
       }
     };
 
@@ -88,8 +95,9 @@ namespace llarp
     DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
     {
       MessageDecoder dec(from, relayed);
-      if(!bencode_read_dict(dec, buf))
+      if(!bencode_read_dict(dec, buf)) {
         return nullptr;
+}
 
       return std::move(dec.msg);
     }
@@ -109,16 +117,18 @@ namespace llarp
       bool
       operator()(llarp_buffer_t *buffer, bool has)
       {
-        if(!has)
+        if(!has) {
           return true;
+}
         auto msg = DecodeMesssage(From, buffer, relayed);
         if(msg)
         {
           l.emplace_back(std::move(msg));
           return true;
         }
-        else
+         {
           return false;
+}
       }
     };
 

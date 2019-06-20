@@ -34,13 +34,14 @@ namespace llarp
         return;
       }
       // pick newest if we have more than 1 result
-      if(valuesFound.size())
+      if(!valuesFound.empty() != 0u)
       {
         service::IntroSet found;
         for(const auto &introset : valuesFound)
         {
-          if(found.OtherIsNewer(introset))
+          if(found.OtherIsNewer(introset)) {
             found = introset;
+}
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);

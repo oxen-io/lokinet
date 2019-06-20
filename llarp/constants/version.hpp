@@ -29,9 +29,11 @@
 #define LLARP_RELEASE_MOTTO "(dev build)"
 #endif
 
+#include <string>
+
 struct Version
 {
-  static const char LLARP_NET_ID[];
+  static const std::string LLARP_NET_ID;
 };
 
 #endif

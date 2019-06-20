@@ -34,13 +34,14 @@ namespace llarp
             localPath);
         return;
       }
-      if(valuesFound.size())
+      if(!valuesFound.empty() != 0u)
       {
         RouterContact found;
         for(const auto &rc : valuesFound)
         {
-          if(rc.OtherIsNewer(found))
+          if(rc.OtherIsNewer(found)) {
             found = rc;
+}
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);

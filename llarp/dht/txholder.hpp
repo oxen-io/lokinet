@@ -33,7 +33,9 @@ namespace llarp
       ExtractStatus() const
       {
         util::StatusObject obj{};
-        std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;
+        std::vector< util::StatusObject > txObjs;
+        std::vector< util::StatusObject > timeoutsObjs;
+        std::vector< util::StatusObject > waitingObjs;
         std::transform(tx.begin(), tx.end(), std::back_inserter(txObjs),
                        [](const auto& item) -> util::StatusObject {
                          return util::StatusObject{
@@ -105,10 +107,10 @@ namespace llarp
       {
         return nullptr;
       }
-      else
-      {
+      
+      
         return itr->second.get();
-      }
+      
     }
 
     template < typename K, typename V, typename K_Hash,
@@ -147,8 +149,9 @@ namespace llarp
       }
 
       // ask for next peer
-      if(!txitr->second->AskNextPeer(from.node, next))
+      if(!txitr->second->AskNextPeer(from.node, next)) {
         Inform(from, txitr->second->target, {}, true, true);
+}
     }
 
     template < typename K, typename V, typename K_Hash,

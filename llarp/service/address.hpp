@@ -35,7 +35,7 @@ namespace llarp
       bool
       FromString(const std::string& str, const char* tld = ".loki");
 
-      Address() : AlignedBuffer< SIZE >()
+      Address()  
       {
       }
 

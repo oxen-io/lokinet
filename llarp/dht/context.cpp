@@ -27,16 +27,14 @@ namespace llarp
   namespace dht
   {
     AbstractContext::~AbstractContext()
-    {
-    }
+    = default;
 
     struct Context final : public AbstractContext
     {
       Context();
 
-      ~Context()
-      {
-      }
+      ~Context() override
+      = default;
 
       util::StatusObject
       ExtractStatus() const override;
@@ -45,22 +43,22 @@ namespace llarp
       /// key askpeer
       void
       LookupIntroSetRecursive(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
-          service::IntroSetLookupHandler result = nullptr) override;
+          const service::Address& addr, const Key_t& whoasked,
+          uint64_t txid, const Key_t& askpeer, uint64_t R,
+          service::IntroSetLookupHandler handler = nullptr) override;
 
       void
       LookupIntroSetIterative(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer,
-          service::IntroSetLookupHandler result = nullptr) override;
+          const service::Address& addr, const Key_t& whoasked,
+          uint64_t txid, const Key_t& askpeer,
+          service::IntroSetLookupHandler handler = nullptr) override;
 
       /// on behalf of whoasked request router with public key target from dht
       /// router with key askpeer
       void
       LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
-                            uint64_t whoaskedTX, const Key_t& askpeer,
-                            RouterLookupHandler result = nullptr) override;
+                            uint64_t txid, const Key_t& askpeer,
+                            RouterLookupHandler handler = nullptr) override;
 
       bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) override
@@ -131,12 +129,12 @@ namespace llarp
 
       /// relay a dht message from a local path to the main network
       bool
-      RelayRequestForPath(const llarp::PathID_t& localPath,
+      RelayRequestForPath(const llarp::PathID_t& id,
                           const IMessage& msg) override;
 
       /// send introset to peer from source with S counter and excluding peers
       void
-      PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
+      PropagateIntroSetTo(const Key_t& from, uint64_t txid,
                           const service::IntroSet& introset, const Key_t& peer,
                           uint64_t S,
                           const std::set< Key_t >& exclude) override;
@@ -161,7 +159,7 @@ namespace llarp
       void
       Explore(size_t N = 3);
 
-      llarp::AbstractRouter* router;
+      llarp::AbstractRouter* router{nullptr};
       // for router contacts
       std::unique_ptr< Bucket< RCNode > > _nodes;
 
@@ -174,7 +172,7 @@ namespace llarp
         return _services.get();
       }
 
-      bool allowTransit;
+      bool allowTransit{false};
 
       bool&
       AllowTransit() override
@@ -283,12 +281,12 @@ namespace llarp
       void
       CleanupTX();
 
-      uint64_t ids;
+      uint64_t ids{};
 
       Key_t ourKey;
     };
 
-    Context::Context() : router(nullptr), allowTransit(false)
+    Context::Context()  
     {
       randombytes((byte_t*)&ids, sizeof(uint64_t));
     }
@@ -302,11 +300,13 @@ namespace llarp
 
       if(_nodes->GetManyRandom(peers, N))
       {
-        for(const auto& peer : peers)
+        for(const auto& peer : peers) {
           ExploreNetworkVia(peer);
+}
       }
-      else
+      else {
         llarp::LogError("failed to select random nodes for exploration");
+}
     }
 
     void
@@ -323,13 +323,15 @@ namespace llarp
     void
     Context::handle_explore_timer(void* u, uint64_t orig, uint64_t left)
     {
-      if(left)
+      if(left != 0u) {
         return;
-      Context* ctx = static_cast< Context* >(u);
+}
+      auto* ctx = static_cast< Context* >(u);
       const auto num =
           std::min(ctx->router->NumberOfConnectedRouters(), size_t(4));
-      if(num)
+      if(num != 0u) {
         ctx->Explore(num);
+}
       ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
     }
 
@@ -338,9 +340,10 @@ namespace llarp
                                   __attribute__((unused)) uint64_t orig,
                                   uint64_t left)
     {
-      if(left)
+      if(left != 0u) {
         return;
-      Context* ctx = static_cast< Context* >(u);
+}
+      auto* ctx = static_cast< Context* >(u);
       // clean up transactions
       ctx->CleanupTX();
 
@@ -357,8 +360,9 @@ namespace llarp
             llarp::LogDebug("introset expired ", itr->second.introset.A.Addr());
             itr = nodes.erase(itr);
           }
-          else
+          else {
             ++itr;
+}
         }
       }
       ctx->ScheduleCleanupTimer();
@@ -371,7 +375,7 @@ namespace llarp
     {
       std::set< service::IntroSet > found;
       auto& nodes = _services->nodes;
-      if(nodes.size() == 0)
+      if(nodes.empty())
       {
         return found;
       }
@@ -388,8 +392,9 @@ namespace llarp
           if(exclude.count(itr->second.introset) == 0)
           {
             found.insert(itr->second.introset);
-            if(found.size() == max)
+            if(found.size() == max) {
               return found;
+}
           }
         }
         ++itr;
@@ -402,8 +407,9 @@ namespace llarp
           if(exclude.count(itr->second.introset) == 0)
           {
             found.insert(itr->second.introset);
-            if(found.size() == max)
+            if(found.size() == max) {
               return found;
+}
           }
         }
         ++itr;
@@ -469,8 +475,9 @@ namespace llarp
     {
       auto key = addr.ToKey();
       auto itr = _services->nodes.find(key);
-      if(itr == _services->nodes.end())
+      if(itr == _services->nodes.end()) {
         return nullptr;
+}
       return &itr->second.introset;
     }
 
@@ -524,7 +531,7 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool)
+    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool /*keepalive*/)
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
@@ -537,8 +544,9 @@ namespace llarp
     Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
       llarp::routing::DHTMessage reply;
-      if(!msg.HandleMessage(router->dht(), reply.M))
+      if(!msg.HandleMessage(router->dht(), reply.M)) {
         return false;
+}
       if(!reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
@@ -630,8 +638,9 @@ namespace llarp
       std::vector< RouterID > closer;
       const Key_t t(target.as_array());
       std::set< Key_t > found;
-      if(!_nodes)
+      if(!_nodes) {
         return false;
+}
 
       const size_t nodeCount = _nodes->size();
       if(nodeCount == 0)
@@ -657,8 +666,9 @@ namespace llarp
       for(const auto& f : found)
       {
         const RouterID r(f.as_array());
-        if(GetRouter()->ConnectionToRouterAllowed(r))
+        if(GetRouter()->ConnectionToRouterAllowed(r)) {
           closer.emplace_back(r);
+}
       }
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
