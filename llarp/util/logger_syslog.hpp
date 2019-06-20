@@ -17,7 +17,7 @@ namespace llarp
     void
     PostLog(std::stringstream& ss) const override;
 
-    void Tick(llarp_time_t) override
+    void Tick(llarp_time_t /*now*/) override
     {
     }
   };

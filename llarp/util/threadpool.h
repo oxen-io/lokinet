@@ -59,7 +59,7 @@ struct llarp_threadpool *
 llarp_init_same_process_threadpool();
 
 void
-llarp_free_threadpool(struct llarp_threadpool **tp);
+llarp_free_threadpool(struct llarp_threadpool **pool);
 
 using llarp_thread_work_func = void (*)(void *);
 
@@ -82,20 +82,20 @@ struct llarp_thread_job
 
 /// for single process mode
 void
-llarp_threadpool_tick(struct llarp_threadpool *tp);
+llarp_threadpool_tick(struct llarp_threadpool *pool);
 
 void
-llarp_threadpool_queue_job(struct llarp_threadpool *tp,
+llarp_threadpool_queue_job(struct llarp_threadpool *pool,
                            struct llarp_thread_job j);
 void
-llarp_threadpool_start(struct llarp_threadpool *tp);
+llarp_threadpool_start(struct llarp_threadpool *pool);
 
 void
-llarp_threadpool_stop(struct llarp_threadpool *tp);
+llarp_threadpool_stop(struct llarp_threadpool *pool);
 void
-llarp_threadpool_join(struct llarp_threadpool *tp);
+llarp_threadpool_join(struct llarp_threadpool *pool);
 
 void
-llarp_threadpool_wait(struct llarp_threadpool *tp);
+llarp_threadpool_wait(struct llarp_threadpool *pool);
 
 #endif

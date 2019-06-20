@@ -15,7 +15,7 @@ namespace llarp
   };
 
   std::string
-  LogLevelToString(LogLevel level);
+  LogLevelToString(LogLevel lvl);
 
 }  // namespace llarp
 

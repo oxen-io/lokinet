@@ -15,20 +15,20 @@ namespace llarp
     FileLogStream(thread::ThreadPool* disk, FILE* f, llarp_time_t flushInterval,
                   bool closefile = true);
 
-    ~FileLogStream();
+    ~FileLogStream() override;
 
     void
-    PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,
+    PreLog(std::stringstream& ss, LogLevel lvl, const char* fname, int lineno,
            const std::string& nodename) const override;
 
     void
-    Print(LogLevel, const char*, const std::string& msg) override;
+    Print(LogLevel /*lvl*/, const char* /*filename*/, const std::string& msg) override;
 
     void
     Tick(llarp_time_t now) override;
 
     void
-    PostLog(std::stringstream&) const override
+    PostLog(std::stringstream& /*out*/) const override
     {
     }
 

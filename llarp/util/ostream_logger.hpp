@@ -10,21 +10,20 @@ namespace llarp
   {
     OStreamLogStream(std::ostream& out);
 
-    ~OStreamLogStream()
-    {
-    }
+    ~OStreamLogStream() override
+    = default;
 
-    virtual void
+    void
     PreLog(std::stringstream& s, LogLevel lvl, const char* fname, int lineno,
            const std::string& nodename) const override;
 
     void
     Print(LogLevel lvl, const char* tag, const std::string& msg) override;
 
-    virtual void
+    void
     PostLog(std::stringstream& ss) const override;
 
-    void Tick(llarp_time_t) override
+    void Tick(llarp_time_t /*now*/) override
     {
     }
 

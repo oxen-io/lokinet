@@ -15,7 +15,7 @@ namespace llarp
 
     void
     AppendLog(LogLevel lvl, const char* fname, int lineno,
-              const std::string& nodename, const std::string msg) override;
+              const std::string& nodename, std::string msg) override;
   };
 }  // namespace llarp
 

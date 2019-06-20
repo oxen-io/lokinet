@@ -111,7 +111,7 @@ std::string
 getDNSstring(const char *const buffer, uint32_t *pos);
 
 void
-code_domain(byte_t *buffer, const std::string &domain);
+code_domain(byte_t *&buffer, const std::string &domain);
 
 void
 vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw();
@@ -140,10 +140,10 @@ extern "C"
   decode_answer(const char *const buffer, uint32_t *pos);
 
   void
-  put16bits(byte_t *buffer, uint16_t value);
+  put16bits(byte_t *&buffer, uint16_t value);
 
   void
-  put32bits(byte_t *buffer, uint32_t value);
+  put32bits(byte_t *&buffer, uint32_t value);
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,

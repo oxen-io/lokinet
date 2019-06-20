@@ -96,7 +96,7 @@ getDNSstring(const char *const buffer, uint32_t *pos)
 }
 
 void
-code_domain(byte_t *buffer, const std::string &domain)
+code_domain(byte_t *&buffer, const std::string &domain)
 {
   std::string::size_type start(0);
   std::string::size_type end;  // indexes
@@ -589,14 +589,14 @@ extern "C"
   }
 
   void
-  put16bits(byte_t *buffer, uint16_t value)
+  put16bits(byte_t *&buffer, uint16_t value)
   {
     htobe16buf(buffer, value);
     buffer += 2;
   }
 
   void
-  put32bits(byte_t *buffer, uint32_t value)
+  put32bits(byte_t *&buffer, uint32_t value)
   {
     htobe32buf(buffer, value);
     buffer += 4;

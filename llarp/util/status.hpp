@@ -30,7 +30,7 @@ namespace llarp
       }
 
       void
-      Put(String_t name, const Variant& value);
+      Put(String_t name, const Variant& data);
 
       void
       Put(const value_type& value);

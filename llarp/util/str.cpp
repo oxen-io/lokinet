@@ -33,7 +33,8 @@ namespace llarp
     {
       return strncmp(s1, s2, sz1) == 0;
     }
-    else
+     {
       return false;
+}
   }
 }  // namespace llarp
