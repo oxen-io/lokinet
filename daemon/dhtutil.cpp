@@ -102,7 +102,6 @@ main(int argc, char *argv[])
   char defaultConfName[] = "/Users/admin/.lokinet/lokinet-snappnet.ini";
   conffname              = defaultConfName;
   char *rcfname          = nullptr;
-  char *nodesdir         = nullptr;
 
   llarp::RouterContact rc;
   while(1)
@@ -256,14 +255,29 @@ main(int argc, char *argv[])
     // make sure we have one endpoint
     llarp::Router *rtr = dynamic_cast<llarp::Router *>(n_ctx->router.get()); // cast it
     rtr->CreateDefaultHiddenService();
+    
+    n_ctx->LoadDatabase(); // make sure db is loaded
+    rtr->_hiddenServiceContext.ForEachService(
+                                     [=](const std::string &,
+                                         const std::shared_ptr< llarp::service::Endpoint > &ep) -> bool {
+                                       // will call LookupRouter which the GetEstablishedPathClosestTo will still be null
+                                       ep->Start();
+                                       ep->EnsurePathToSNode(addr, [=](const llarp::RouterID &addr, llarp::exit::BaseSession_ptr s) {
+                                         llarp::LogInfo("std ", addr);
+                                       });
+                                       return true;
+                                     });
+
     // we need a path built
     // and we can't tick yet
     // so we need a path future...
+    /*
     n_ctx->router->LookupRouter(addr, [](const std::vector<llarp::RouterContact> &contacts){
       llarp::LogInfo("Found ", contacts.size());
       llarp::LogInfo("Found ", contacts.size());
       llarp::LogInfo("Found ", contacts.size());
     });
+     */
     //llarp_main_queryDHT(request);
 
     llarp::LogInfo("Processing");
