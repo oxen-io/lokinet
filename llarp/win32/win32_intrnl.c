@@ -572,6 +572,7 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
 #endif
 
 #ifdef _WIN32
+#if 0
 // Generate a core dump if we crash. Finally.
 // Unix-style, we just leave a file named "core" in
 // the user's working directory. Gets overwritten if
@@ -673,4 +674,5 @@ __declspec(noreturn) LONG FAR PASCAL win32_signal_handler(EXCEPTION_POINTERS *e)
   exit(127);
   return 0;
 }
+#endif
 #endif

@@ -117,7 +117,7 @@ main(int argc, char *argv[])
   if(startWinsock())
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
-  SetUnhandledExceptionFilter(win32_signal_handler);
+  //SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
 
 #ifdef LOKINET_DEBUG
