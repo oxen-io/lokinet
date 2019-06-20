@@ -3,11 +3,8 @@
 
 #include <constants/proto.hpp>
 #include <util/buffer.hpp>
-#include <util/common.hpp>
 
 #include <functional>
-#include <stdbool.h>
-#include <stdint.h>
 
 /**
  * bencode.h

@@ -49,24 +49,39 @@ namespace llarp
       print(std::ostream &stream, Type val);
     };
 
-    struct FormatSpec
+    class FormatSpec
     {
-      float m_scale;
-      string_view m_format;
+     private:
+      float m_scale{1.0};
+      std::string m_format = DEFAULT_FORMAT;
 
-      static constexpr char DEFAULT_FORMAT[] = "%f";
+      static const std::string DEFAULT_FORMAT;
 
-      constexpr FormatSpec() : m_scale(1.0), m_format(DEFAULT_FORMAT)
-      {
-      }
+      friend bool
+      operator==(const FormatSpec &lhs, const FormatSpec &rhs);
 
-      constexpr FormatSpec(float scale, string_view format)
+     public:
+      constexpr FormatSpec() = default;
+
+      FormatSpec(float scale, string_view format)
           : m_scale(scale), m_format(format)
       {
       }
 
+      const std::string &
+      format() const
+      {
+        return m_format;
+      }
+
+      float
+      scale() const
+      {
+        return m_scale;
+      }
+
       static std::ostream &
-      format(std::ostream &stream, double data, const FormatSpec &spec);
+      format(std::ostream &stream, double data, const FormatSpec &format);
     };
 
     inline bool
@@ -76,20 +91,23 @@ namespace llarp
           == std::make_tuple(rhs.m_scale, rhs.m_format);
     }
 
-    struct Format
+    class Format
     {
+     private:
       using Spec = absl::optional< FormatSpec >;
 
       std::array< Spec, Publication::MaxSize > m_specs;
 
-      constexpr Format() : m_specs()
-      {
-      }
+      friend bool
+      operator==(const Format &lhs, const Format &rhs);
+
+     public:
+      constexpr Format() = default;
 
       void
       setSpec(Publication::Type pub, const FormatSpec &spec)
       {
-        m_specs[static_cast< size_t >(pub)].emplace(spec);
+        m_specs.at(static_cast< size_t >(pub)).emplace(spec);
       }
 
       constexpr void
@@ -101,7 +119,7 @@ namespace llarp
       constexpr const FormatSpec *
       specFor(Publication::Type val) const
       {
-        const auto &spec = m_specs[static_cast< size_t >(val)];
+        const auto &spec = m_specs.at(static_cast< size_t >(val));
         return spec ? &spec.value() : nullptr;
       }
     };
@@ -130,7 +148,7 @@ namespace llarp
       ~Category();
 
       void
-      enabled(bool flag);
+      enabled(bool val);
 
       void
       registerContainer(CategoryContainer *container);
@@ -272,12 +290,10 @@ namespace llarp
     /// order to make things like static initialisation cleaner.
     class Id
     {
-      const Description *m_description;
+      const Description *m_description{nullptr};
 
      public:
-      constexpr Id() : m_description(nullptr)
-      {
-      }
+      constexpr Id() = default;
 
       constexpr Id(const Description *description) : m_description(description)
       {
@@ -330,21 +346,19 @@ namespace llarp
       std::string
       toString() const
       {
-        if(m_description)
+        if(m_description != nullptr)
         {
           return m_description->toString();
           ;
         }
-        else
-        {
-          return "INVALID_METRIC";
-        }
+
+        return "INVALID_METRIC";
       }
 
       std::ostream &
-      print(std::ostream &stream, int, int) const
+      print(std::ostream &stream, int /*unused*/, int /*unused*/) const
       {
-        if(m_description)
+        if(m_description != nullptr)
         {
           stream << *m_description;
         }
@@ -397,7 +411,7 @@ namespace llarp
     template < typename Type >
     class Record
     {
-      size_t m_count;
+      size_t m_count{0};
       Type m_total;
       Type m_min;
       Type m_max;
@@ -408,8 +422,7 @@ namespace llarp
       static constexpr Type DEFAULT_MAX() { return RecordMax<Type>::max(); };
       // clang-format on
 
-      Record()
-          : m_count(0), m_total(0.0), m_min(DEFAULT_MIN()), m_max(DEFAULT_MAX())
+      Record() : m_total(0.0), m_min(DEFAULT_MIN()), m_max(DEFAULT_MAX())
       {
       }
 
@@ -537,7 +550,7 @@ namespace llarp
       absl::Duration m_samplePeriod;
 
      public:
-      SampleGroup() : m_records(), m_samplePeriod()
+      SampleGroup() : m_records()
       {
       }
 
@@ -571,8 +584,8 @@ namespace llarp
       print(std::ostream &stream, int level, int spaces) const
       {
         Printer::PrintFunction< absl::Duration > durationPrinter =
-            [](std::ostream &stream, const absl::Duration &duration, int,
-               int) -> std::ostream & {
+            [](std::ostream &stream, const absl::Duration &duration,
+               int /*unused*/, int /*unused*/) -> std::ostream & {
           stream << duration;
           return stream;
         };
@@ -605,14 +618,12 @@ namespace llarp
       absl::Time m_sampleTime;
       std::vector< absl::variant< SampleGroup< double >, SampleGroup< int > > >
           m_samples;
-      size_t m_recordCount;
+      size_t m_recordCount{0};
 
      public:
       using const_iterator = typename decltype(m_samples)::const_iterator;
 
-      Sample() : m_sampleTime(), m_recordCount(0)
-      {
-      }
+      Sample() = default;
 
       // clang-format off
       void sampleTime(const absl::Time& time) { m_sampleTime = time; }

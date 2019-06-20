@@ -1,16 +1,13 @@
 #ifndef LLARP_BUFFER_HPP
 #define LLARP_BUFFER_HPP
 
-#include <util/common.hpp>
 #include <util/mem.h>
 #include <util/types.hpp>
 
 #include <cassert>
 #include <iterator>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
 #include <utility>
 #include <algorithm>
 

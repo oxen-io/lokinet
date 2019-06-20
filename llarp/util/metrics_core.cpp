@@ -147,8 +147,8 @@ namespace llarp
         const FormatSpec *spec = format.specFor(type);
         if(spec != nullptr)
         {
-          string_view fmt = m_stringmem.emplace(spec->m_format).first->c_str();
-          fmtPtr->setSpec(type, FormatSpec(spec->m_scale, fmt));
+          string_view fmt = m_stringmem.emplace(spec->format()).first->c_str();
+          fmtPtr->setSpec(type, FormatSpec(spec->scale(), fmt));
         }
       }
 

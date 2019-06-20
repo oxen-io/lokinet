@@ -83,7 +83,7 @@ namespace llarp
       };
 
       template < typename T, typename... Types >
-      struct Switch< 0u, T, Types... >
+      struct Switch< 0U, T, Types... >
       {
         using Type = T;
       };
@@ -206,7 +206,7 @@ namespace llarp
     {
       template < typename T, typename F, size_t... Is >
       void
-      for_each(T&& t, F f, std::index_sequence< Is... >)
+      for_each(T&& t, F f, std::index_sequence< Is... > /*unused*/)
       {
         auto l = {(f(std::get< Is >(t)), 0)...};
         (void)l;

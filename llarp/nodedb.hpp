@@ -3,7 +3,6 @@
 
 #include <router_contact.hpp>
 #include <router_id.hpp>
-#include <util/common.hpp>
 #include <util/fs.hpp>
 #include <util/threading.hpp>
 

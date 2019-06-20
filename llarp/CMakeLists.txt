@@ -9,7 +9,6 @@ set(LIB_UTIL_SRC
   util/bits.cpp
   util/buffer.cpp
   util/codel.cpp
-  util/common.cpp
   util/encode.cpp
   util/endian.cpp
   util/fs.cpp

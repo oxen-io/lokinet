@@ -22,8 +22,16 @@ namespace llarp
       {
       }
 
+      NullLock(const NullLock&) = delete;
+      NullLock(NullLock&&)      = delete;
+      NullLock&
+      operator=(const NullLock&) = delete;
+      NullLock&
+      operator=(NullLock&&) = delete;
+
       ~NullLock() UNLOCK_FUNCTION()
       {
+        (void)this;  // empty destructor body to "trick" clang-tidy
       }
     };
 

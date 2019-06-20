@@ -8,6 +8,8 @@ namespace llarp
 {
   namespace metrics
   {
+    const std::string FormatSpec::DEFAULT_FORMAT = "%f";
+
     std::ostream &
     FormatSpec::format(std::ostream &stream, double data,
                        const FormatSpec &format)
@@ -37,13 +39,12 @@ namespace llarp
       if(static_cast< size_t >(rc) > vec.size())
       {
         stream << "Bad format " << format.m_format << " applied to " << data;
-        return stream;
       }
       else
       {
         stream << vec.data();
-        return stream;
       }
+      return stream;
     }
 
     string_view
@@ -81,7 +82,7 @@ namespace llarp
 
     Category::~Category()
     {
-      while(m_container)
+      while(m_container != nullptr)
       {
         auto next = m_container->m_nextCategory;
         m_container->clear();
@@ -96,7 +97,7 @@ namespace llarp
       if(m_enabled != val)
       {
         auto cont = m_container;
-        while(cont)
+        while(cont != nullptr)
         {
           cont->m_enabled = val;
           cont            = cont->m_nextCategory;

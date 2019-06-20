@@ -140,18 +140,18 @@ namespace llarp
     template < typename Type >
     static void
     printType(std::ostream& stream, Type value, int level, int spaces,
-              traits::select::Case< std::is_fundamental >);
+              traits::select::Case< std::is_fundamental > /*unused*/);
 
     template < typename Type >
     static void
     printType(std::ostream& stream, Type value, int level, int spaces,
-              traits::select::Case< std::is_enum >);
+              traits::select::Case< std::is_enum > /*unused*/);
 
     // Function types
     template < typename Type >
     static void
     printType(std::ostream& stream, Type value, int level, int spaces,
-              traits::select::Case< std::is_function >);
+              traits::select::Case< std::is_function > /*unused*/);
 
     // Pointer types
     static void
@@ -165,17 +165,17 @@ namespace llarp
     template < typename Type >
     static void
     printType(std::ostream& stream, const Type* value, int level, int spaces,
-              traits::select::Case< std::is_pointer >);
+              traits::select::Case< std::is_pointer > /*unused*/);
 
     template < typename Type >
     static void
     printType(std::ostream& stream, const Type* value, int level, int spaces,
-              traits::select::Case< std::is_array >);
+              traits::select::Case< std::is_array > /*unused*/);
 
     // Container types
     static void
     printType(std::ostream& stream, const std::string& value, int level,
-              int spaces, traits::select::Case< traits::is_container >);
+              int spaces, traits::select::Case< traits::is_container > /*unused*/);
 
     static void
     printType(std::ostream& stream, const string_view& value, int level,
@@ -184,29 +184,29 @@ namespace llarp
     template < typename Type >
     static void
     printType(std::ostream& stream, const Type& value, int level, int spaces,
-              traits::select::Case< traits::is_container >);
+              traits::select::Case< traits::is_container > /*unused*/);
 
     // Utility types
     template < typename Type1, typename Type2 >
     static void
     printType(std::ostream& stream, const std::pair< Type1, Type2 >& value,
-              int level, int spaces, traits::select::Case<>);
+              int level, int spaces, traits::select::Case<> /*unused*/);
 
     template < typename... Types >
     static void
     printType(std::ostream& stream, const std::tuple< Types... >& value,
-              int level, int spaces, traits::select::Case<>);
+              int level, int spaces, traits::select::Case<> /*unused*/);
 
     template < typename... Types >
     static void
     printType(std::ostream& stream, const absl::variant< Types... >& value,
-              int level, int spaces, traits::select::Case<>);
+              int level, int spaces, traits::select::Case<> /*unused*/);
 
     // Default type
     template < typename Type >
     static void
     printType(std::ostream& stream, const Type& value, int level, int spaces,
-              traits::select::Case<>);
+              traits::select::Case<> /*unused*/);
   };
 
   template < typename Type >
@@ -395,8 +395,8 @@ namespace llarp
 
   template < typename Type >
   inline void
-  PrintHelper::printType(std::ostream& stream, Type value, int, int spaces,
-                         traits::select::Case< std::is_fundamental >)
+  PrintHelper::printType(std::ostream& stream, Type value, int /*unused*/, int spaces,
+                         traits::select::Case< std::is_fundamental > /*unused*/)
   {
     stream << value;
     if(spaces >= 0)
@@ -407,8 +407,8 @@ namespace llarp
 
   template < typename Type >
   inline void
-  PrintHelper::printType(std::ostream& stream, Type value, int, int spaces,
-                         traits::select::Case< std::is_enum >)
+  PrintHelper::printType(std::ostream& stream, Type value, int /*unused*/, int spaces,
+                         traits::select::Case< std::is_enum > /*unused*/)
   {
     printType(stream, value, 0, spaces,
               traits::select::Case< std::is_fundamental >());
@@ -417,7 +417,7 @@ namespace llarp
   template < typename Type >
   inline void
   PrintHelper::printType(std::ostream& stream, Type value, int level,
-                         int spaces, traits::select::Case< std::is_function >)
+                         int spaces, traits::select::Case< std::is_function > /*unused*/)
   {
     PrintHelper::print(stream, reinterpret_cast< const void* >(value), level,
                        spaces);
@@ -426,7 +426,7 @@ namespace llarp
   template < typename Type >
   inline void
   PrintHelper::printType(std::ostream& stream, const Type* value, int level,
-                         int spaces, traits::select::Case< std::is_pointer >)
+                         int spaces, traits::select::Case< std::is_pointer > /*unused*/)
   {
     printType(stream, static_cast< const void* >(value), level, -1,
               traits::select::Case< std::is_pointer >());
@@ -447,7 +447,7 @@ namespace llarp
   template < typename Type >
   inline void
   PrintHelper::printType(std::ostream& stream, const Type* value, int level,
-                         int spaces, traits::select::Case< std::is_array >)
+                         int spaces, traits::select::Case< std::is_array > /*unused*/)
   {
     printType(stream, value, level, spaces,
               traits::select::Case< std::is_pointer >());
@@ -456,7 +456,7 @@ namespace llarp
   inline void
   PrintHelper::printType(std::ostream& stream, const std::string& value,
                          int level, int spaces,
-                         traits::select::Case< traits::is_container >)
+                         traits::select::Case< traits::is_container > /*unused*/)
   {
     printType(stream, value.c_str(), level, spaces,
               traits::select::Case< std::is_pointer >());
@@ -466,7 +466,7 @@ namespace llarp
   inline void
   PrintHelper::printType(std::ostream& stream, const Type& value, int level,
                          int spaces,
-                         traits::select::Case< traits::is_container >)
+                         traits::select::Case< traits::is_container > /*unused*/)
   {
     print(stream, value.begin(), value.end(), level, spaces);
   }
@@ -475,7 +475,7 @@ namespace llarp
   inline void
   PrintHelper::printType(std::ostream& stream,
                          const std::pair< Type1, Type2 >& value, int level,
-                         int spaces, traits::select::Case<>)
+                         int spaces, traits::select::Case<> /*unused*/)
   {
     Printer print(stream, level, spaces);
     print.printValue(value.first);
@@ -486,7 +486,7 @@ namespace llarp
   inline void
   PrintHelper::printType(std::ostream& stream,
                          const std::tuple< Types... >& value, int level,
-                         int spaces, traits::select::Case<>)
+                         int spaces, traits::select::Case<> /*unused*/)
   {
     Printer print(stream, level, spaces);
     traits::for_each_in_tuple(value,
@@ -497,7 +497,7 @@ namespace llarp
   inline void
   PrintHelper::printType(std::ostream& stream,
                          const absl::variant< Types... >& value, int level,
-                         int spaces, traits::select::Case<>)
+                         int spaces, traits::select::Case<> /*unused*/)
   {
     Printer print(stream, level, spaces);
 
@@ -507,7 +507,7 @@ namespace llarp
   template < typename Type >
   inline void
   PrintHelper::printType(std::ostream& stream, const Type& value, int level,
-                         int spaces, traits::select::Case<>)
+                         int spaces, traits::select::Case<> /*unused*/)
   {
     value.print(stream, level, spaces);
   }
