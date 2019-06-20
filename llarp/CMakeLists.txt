@@ -5,18 +5,19 @@ set(LIB_UTIL_SRC
   constants/proto.cpp
   constants/version.cpp
   util/aligned.cpp
+  util/android_logger.cpp
   util/bencode.cpp
   util/bits.cpp
   util/buffer.cpp
   util/codel.cpp
   util/encode.cpp
   util/endian.cpp
+  util/file_logger.cpp
   util/fs.cpp
   util/ini.cpp
+  util/json_logger.cpp
   util/json.cpp
   util/logger.cpp
-  util/android_logger.cpp
-  util/file_logger.cpp
   util/logic.cpp
   util/loglevel.cpp
   util/mem.cpp
@@ -24,12 +25,9 @@ set(LIB_UTIL_SRC
   util/memfn.cpp
   util/metrics_core.cpp
   util/metrics_types.cpp
-  util/json_logger.cpp
-  util/ostream_logger.cpp
-  util/syslog_logger.cpp
-  util/win32_logger.cpp
   util/metrics.cpp
   util/object.cpp
+  util/ostream_logger.cpp
   util/printer.cpp
   util/queue_manager.cpp
   util/queue.cpp
@@ -38,6 +36,7 @@ set(LIB_UTIL_SRC
   util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
+  util/syslog_logger.cpp
   util/thread_pool.cpp
   util/threading.cpp
   util/threadpool.cpp
@@ -45,8 +44,10 @@ set(LIB_UTIL_SRC
   util/timer.cpp
   util/timerqueue.cpp
   util/traits.cpp
+  util/type_helpers.cpp
   util/types.cpp
   util/variant.cpp
+  util/win32_logger.cpp
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})

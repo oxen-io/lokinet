@@ -55,7 +55,7 @@ namespace llarp
      private:
       struct Node
       {
-        int m_index;
+        int m_index{0};
         absl::Time m_time;
         Key m_key;
         Node* m_prev;
@@ -63,9 +63,8 @@ namespace llarp
         object::Buffer< Value > m_value;
 
         Node()
-            : m_index(0)
-            , m_time()
-            , m_key(nullptr)
+            : 
+             m_key(nullptr)
             , m_prev(nullptr)
             , m_next(nullptr)
             , m_value()
@@ -73,8 +72,8 @@ namespace llarp
         }
 
         explicit Node(const absl::Time& time)
-            : m_index(0)
-            , m_time(time)
+            : 
+             m_time(time)
             , m_key(nullptr)
             , m_prev(nullptr)
             , m_next(nullptr)
@@ -266,12 +265,7 @@ namespace llarp
         }
         Node* node = m_nodes[index];
 
-        if(node->m_index != handle || node->m_key != key)
-        {
-          return false;
-        }
-
-        return true;
+        return !static_cast<bool>(node->m_index != handle || node->m_key != key);
       }
 
       absl::optional< absl::Time >
@@ -302,7 +296,7 @@ namespace llarp
       Key m_key;
 
      public:
-      TimerQueueItem() : m_time(), m_value(), m_handle(0), m_key(nullptr)
+      TimerQueueItem() :  m_value(), m_handle(0), m_key(nullptr)
       {
       }
 
@@ -389,12 +383,12 @@ namespace llarp
       }
 
       ++m_size;
-      if(isAtHead)
+      if(isAtHead != nullptr)
       {
         *isAtHead = m_nodeMap.begin()->second == node && node->m_prev == node;
       }
 
-      if(newSize)
+      if(newSize != nullptr)
       {
         *newSize = m_size;
       }
@@ -457,7 +451,7 @@ namespace llarp
           *newMinTime = m_nodeMap.begin()->first;
         }
 
-        if(newSize)
+        if(newSize != nullptr)
         {
           *newSize = m_size;
         }
@@ -505,7 +499,7 @@ namespace llarp
           m_nodeMap.erase(condemned);
         }
 
-        if(newSize)
+        if(newSize != nullptr)
         {
           *newSize = m_size;
         }
@@ -568,7 +562,7 @@ namespace llarp
           }
         }
 
-        if(newSize)
+        if(newSize != nullptr)
         {
           *newSize = m_size;
         }
@@ -628,7 +622,7 @@ namespace llarp
         freeNode(node);
         --m_size;
 
-        if(newSize)
+        if(newSize != nullptr)
         {
           *newSize = m_size;
         }
@@ -736,7 +730,7 @@ namespace llarp
         it->second->m_prev         = node;
       }
 
-      if(isNewTop)
+      if(isNewTop != nullptr)
       {
         *isNewTop = m_nodeMap.begin()->second == node && node->m_prev == node;
       }

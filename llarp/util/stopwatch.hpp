@@ -15,8 +15,7 @@ namespace llarp
 
      public:
       Stopwatch()
-      {
-      }
+      = default;
 
       void
       start()

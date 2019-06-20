@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace llarp
@@ -15,7 +16,7 @@ namespace llarp
   namespace metrics
   {
     inline void
-    packToTagsImpl(Tags &)
+    packToTagsImpl(ABSL_ATTRIBUTE_UNUSED Tags &tags)
     {
     }
 
@@ -32,12 +33,12 @@ namespace llarp
 
     template < typename... Args >
     inline Tags
-    packToTags(const Args &... args)
+    packToTags(const Args &... tags)
     {
-      static_assert(sizeof...(args) % 2 == 0, "");
-      Tags tags;
-      packToTagsImpl(tags, args...);
-      return tags;
+      static_assert(sizeof...(tags) % 2 == 0, "");
+      Tags tags_;
+      packToTagsImpl(tags_, tags...);
+      return tags_;
     }
 
     template <>
@@ -221,7 +222,8 @@ namespace llarp
       bool
       remove(CollectorType *collector)
       {
-        std::shared_ptr< CollectorType > ptr(collector, [](CollectorType *) {});
+        std::shared_ptr< CollectorType > ptr(
+            collector, [](ABSL_ATTRIBUTE_UNUSED CollectorType *type) {});
         size_t count = m_collectors.erase(ptr);
         return count > 0;
       }
@@ -279,21 +281,19 @@ namespace llarp
       std::set< std::string > m_stringmem GUARDED_BY(m_mutex);
       CategoryMap m_categories GUARDED_BY(m_mutex);
       MetricMap m_metrics GUARDED_BY(m_mutex);
-      bool m_defaultEnabled GUARDED_BY(m_mutex);
+      bool m_defaultEnabled GUARDED_BY(m_mutex) = true;
       mutable util::Mutex m_mutex;
-
-      Registry(const Registry &) = delete;
-      Registry &
-      operator=(const Registry &) = delete;
 
       std::tuple< Id, bool >
       insert(string_view category, string_view name)
           EXCLUSIVE_LOCKS_REQUIRED(m_mutex);
 
      public:
-      Registry() : m_defaultEnabled(true)
-      {
-      }
+      Registry() = default;
+
+      Registry(const Registry &) = delete;
+      Registry &
+      operator=(const Registry &) = delete;
 
       Id
       add(string_view category, string_view name) LOCKS_EXCLUDED(m_mutex);
@@ -347,12 +347,10 @@ namespace llarp
       DoubleRecords doubleRecords;
       IntRecords intRecords;
 
-      Records()
-      {
-      }
+      Records() = default;
 
-      Records(const DoubleRecords &d, const IntRecords &i)
-          : doubleRecords(d), intRecords(i)
+      Records(DoubleRecords d, IntRecords i)
+          : doubleRecords(std::move(d)), intRecords(std::move(i))
       {
       }
     };
@@ -574,7 +572,7 @@ namespace llarp
       removePublisher(const Publisher *publisher)
       {
         std::shared_ptr< Publisher > ptr(const_cast< Publisher * >(publisher),
-                                         [](Publisher *) {});
+                                         [](Publisher * /*unused*/) {});
 
         auto allIt = m_publishers.find(ptr);
 
@@ -833,8 +831,8 @@ namespace llarp
       publishersForCategory(string_view categoryName) const
       {
         const Category *category = m_registry.findCategory(categoryName);
-        return category ? publishersForCategory(category)
-                        : std::vector< Publisher * >();
+        return category != nullptr ? publishersForCategory(category)
+                                   : std::vector< Publisher * >();
       }
       std::vector< Publisher * >
       publishersForCategory(const Category *category) const
@@ -860,7 +858,7 @@ namespace llarp
       static Manager *
       manager(Manager *value)
       {
-        return value ? value : m_manager;
+        return value != nullptr ? value : m_manager;
       }
 
       static Manager *
@@ -915,15 +913,17 @@ namespace llarp
       lookup(string_view category, string_view name, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
-        return manager ? (manager->*repoFunc)().defaultCollector(category, name)
-                       : 0;
+        return manager != nullptr
+            ? (manager->*repoFunc)().defaultCollector(category, name)
+            : 0;
       }
 
       static Collector *
       lookup(const Id &id, Manager *manager = nullptr)
       {
         manager = DefaultManager::manager(manager);
-        return manager ? (manager->*repoFunc)().defaultCollector(id) : 0;
+        return manager != nullptr ? (manager->*repoFunc)().defaultCollector(id)
+                                  : 0;
       }
 
       Metric(string_view category, string_view name, Manager *manager)
@@ -1113,7 +1113,8 @@ namespace llarp
       bool
       active() const
       {
-        return m_collector ? m_collector->id().category()->enabled() : false;
+        return m_collector != nullptr ? m_collector->id().category()->enabled()
+                                      : false;
       }
     };
 
@@ -1147,7 +1148,7 @@ namespace llarp
 
      public:
       PublisherScheduler(thread::Scheduler &scheduler, Manager *manager)
-          : m_scheduler(scheduler), m_manager(manager), m_defaultInterval()
+          : m_scheduler(scheduler), m_manager(manager)
       {
       }
 

@@ -19,7 +19,7 @@
 
 #include <absl/strings/str_split.h>
 #include <cxxopts.hpp>
-#include <signal.h>
+#include <csignal>
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>

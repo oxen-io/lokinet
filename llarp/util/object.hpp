@@ -2,8 +2,10 @@
 #define LLARP_OBJECT_HPP
 
 #include <util/threading.hpp>
+#include <util/type_helpers.hpp>
 
 #include <absl/types/optional.h>
+#include <gsl/gsl>
 #include <vector>
 
 namespace llarp
@@ -18,40 +20,46 @@ namespace llarp
     template < typename Value >
     union Buffer {
      private:
-      char m_buffer[sizeof(Value)];
-      char m_align[alignof(Value)];
+      std::array< char, sizeof(Value) > m_buffer;
+      std::array< char, alignof(Value) > m_align;
 
      public:
       Value*
       address()
       {
-        return reinterpret_cast< Value* >(static_cast< void* >(m_buffer));
+        // NOLINTNEXTLINE
+        return reinterpret_cast< Value* >(
+            static_cast< void* >(m_buffer.data()));
       }
       const Value*
       address() const
       {
-        return reinterpret_cast< Value* >(static_cast< void* >(m_buffer));
+        // NOLINTNEXTLINE
+        return reinterpret_cast< Value* >(
+            static_cast< void* >(m_buffer.data()));
       }
 
       char*
       buffer()
       {
-        return m_buffer;
+        return m_buffer.data();
       }
       const char*
       buffer() const
       {
-        return m_buffer;
+        return m_buffer.data();
       }
 
       Value&
       value()
       {
+        // NOLINTNEXTLINE
         return *reinterpret_cast< Value* >(this);
       }
       const Value&
       value() const
       {
+        // NOLINTNEXTLINE
         return *reinterpret_cast< const Value* >(this);
       }
     };
@@ -60,9 +68,6 @@ namespace llarp
     class Proxy
     {
       Buffer< Value > m_value;
-
-      Proxy&
-      operator=(const Proxy&) = delete;
 
      public:
       Proxy()
@@ -75,16 +80,25 @@ namespace llarp
         ::new(m_value.buffer()) Value(other.value());
       }
 
+      Proxy(Proxy&& other) noexcept
+      {
+        ::new(m_value.buffer()) Value(other.value());
+      }
+
       Proxy(const Value& value)
       {
         ::new(m_value.buffer()) Value(value);
       }
 
-      // template < typename... Args >
-      // Proxy(Args&&... args)
-      // {
-      //   ::new(m_value.buffer()) Value(std::forward< Args >(args)...);
-      // }
+      Proxy(Value&& value)
+      {
+        ::new(m_value.buffer()) Value(value);
+      }
+
+      Proxy&
+      operator=(const Proxy&) = delete;
+      Proxy&
+      operator=(Proxy&&) = delete;
 
       ~Proxy()
       {
@@ -110,19 +124,14 @@ namespace llarp
     class CatalogIterator;
 
     template < typename Value >
-    class CatalogCleaner
+    class CatalogCleaner : public util::NoMove
     {
       Catalog< Value >* m_catalog;
-      typename Catalog< Value >::Node* m_node;
-      bool m_shouldDelete;
-
-      CatalogCleaner(const CatalogCleaner&) = delete;
-      CatalogCleaner&
-      operator=(const CatalogCleaner&) = delete;
+      typename Catalog< Value >::Node* m_node{nullptr};
+      bool m_shouldDelete{false};
 
      public:
-      explicit CatalogCleaner(Catalog< Value >* catalog)
-          : m_catalog(catalog), m_node(nullptr), m_shouldDelete(false)
+      explicit CatalogCleaner(Catalog< Value >* catalog) : m_catalog(catalog)
       {
       }
 
@@ -151,7 +160,7 @@ namespace llarp
 
     /// A pooling catalog of objects, referred to by a 32-bit handle
     template < typename Value >
-    class Catalog
+    class Catalog : public util::NoMove
     {
       enum
       {
@@ -161,19 +170,19 @@ namespace llarp
         GENERATION_MASK = 0XFF000000
       };
 
-      struct Node
+      struct Node : util::NoMove
       {
         union Payload {
           Buffer< Value > m_buffer;
           Node* m_next;
         };
         Payload m_payload;
-        int32_t m_handle;
+        int32_t m_handle{};
       };
 
       std::vector< Node* > m_nodes GUARDED_BY(m_mutex);
-      Node* m_next;
-      std::atomic_size_t m_size;
+      Node* m_next{nullptr};
+      std::atomic_size_t m_size{0};
 
       mutable util::Mutex m_mutex;
 
@@ -213,9 +222,7 @@ namespace llarp
       }
 
      public:
-      Catalog() : m_next(nullptr), m_size(0)
-      {
-      }
+      Catalog() = default;
 
       ~Catalog()
       {
@@ -228,7 +235,7 @@ namespace llarp
         int32_t handle;
         absl::WriterMutexLock l(&m_mutex);
         CatalogCleaner< Value > guard(this);
-        Node* node;
+        Node* node{nullptr};
 
         if(m_next)
         {
@@ -241,6 +248,7 @@ namespace llarp
         {
           assert(m_nodes.size() < BUSY_INDICATOR);
 
+          // NOLINTNEXTLINE
           node = new Node;
           guard.manageNode(node, true);
 
@@ -291,7 +299,7 @@ namespace llarp
       {
         absl::WriterMutexLock l(&m_mutex);
 
-        for(Node* node : m_nodes)
+        for(gsl::owner< Node* > node : m_nodes)
         {
           if(node->m_handle & BUSY_INDICATOR)
           {
@@ -361,10 +369,6 @@ namespace llarp
       const Catalog< Value >* m_catalog;
       size_t m_index;
 
-      CatalogIterator(const CatalogIterator&) = delete;
-      CatalogIterator&
-      operator=(const CatalogIterator&) = delete;
-
      public:
       explicit CatalogIterator(const Catalog< Value >* catalog)
           SHARED_LOCK_FUNCTION(m_catalog->m_mutex)
@@ -378,6 +382,13 @@ namespace llarp
       {
         m_catalog->m_mutex.ReaderUnlock();
       }
+
+      CatalogIterator(const CatalogIterator&) = delete;
+      CatalogIterator&
+      operator=(const CatalogIterator&)  = delete;
+      CatalogIterator(CatalogIterator&&) = delete;
+      CatalogIterator&
+      operator=(CatalogIterator&&) = delete;
 
       void
       operator++() NO_THREAD_SAFETY_ANALYSIS
@@ -456,12 +467,7 @@ namespace llarp
         freeCount++;
       }
 
-      if(freeCount + busyCount != m_nodes.size())
-      {
-        return false;
-      }
-
-      return true;
+      return static_cast< bool >(freeCount + busyCount == m_nodes.size());
     }
   }  // namespace object
 }  // namespace llarp

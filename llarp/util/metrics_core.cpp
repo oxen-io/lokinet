@@ -76,7 +76,7 @@ namespace llarp
     Registry::get(string_view category)
     {
       const Category *cPtr = findCategory(category);
-      if(cPtr)
+      if(cPtr != nullptr)
       {
         return cPtr;
       }
@@ -135,7 +135,7 @@ namespace llarp
     void
     Registry::setFormat(const Id &id, const Format &format)
     {
-      Description *description = const_cast< Description * >(id.description());
+      auto *description = const_cast< Description * >(id.description());
 
       absl::WriterMutexLock l(&m_mutex);
 
@@ -197,7 +197,7 @@ namespace llarp
                         const SampleGroup< int > &intGroup,
                         const absl::Time &timeStamp)
       {
-        SampleCache::iterator it = cache.find(publisher);
+        auto it = cache.find(publisher);
         if(it == cache.end())
         {
           Sample sample;
@@ -227,7 +227,7 @@ namespace llarp
                       manager.m_intRepo.collect(category));
 
         // Get the time since last reset, and clear if needed.
-        Manager::ResetTimes::iterator it = manager.m_resetTimes.find(category);
+        auto it = manager.m_resetTimes.find(category);
         if(it == manager.m_resetTimes.end())
         {
           if(clear)
@@ -236,15 +236,13 @@ namespace llarp
           }
           return {result, now - manager.m_createTime};
         }
-        else
+
+        auto tmp = now - it->second;
+        if(clear)
         {
-          auto tmp = now - it->second;
-          if(clear)
-          {
-            it->second = now;
-          }
-          return {result, tmp};
+          it->second = now;
         }
+        return {result, tmp};
       }
 
       template < typename Type >
@@ -437,11 +435,10 @@ namespace llarp
       thread::Scheduler::Handle m_handle;
       std::set< const Category * > m_categories;
 
-      bool m_default;
+      bool m_default{false};
       std::set< const Category * > m_nonDefaultCategories;
 
-      PublisherSchedulerData()
-          : m_handle(thread::Scheduler::INVALID_HANDLE), m_default(false)
+      PublisherSchedulerData() : m_handle(thread::Scheduler::INVALID_HANDLE)
       {
       }
     };
@@ -456,6 +453,13 @@ namespace llarp
           : m_scheduler(scheduler)
       {
       }
+
+      PublisherSchedulerGuard(const PublisherSchedulerGuard &) = delete;
+      PublisherSchedulerGuard(PublisherSchedulerGuard &&)      = delete;
+      PublisherSchedulerGuard &
+      operator=(const PublisherSchedulerGuard &) = delete;
+      PublisherSchedulerGuard &
+      operator=(PublisherSchedulerGuard &&) = delete;
 
       ~PublisherSchedulerGuard()
       {
@@ -658,7 +662,7 @@ namespace llarp
       util::Lock lock(&data->m_mutex);
       data->m_default = true;
 
-      Categories::iterator cIt = m_categories.begin();
+      auto cIt = m_categories.begin();
       for(; cIt != m_categories.end(); ++cIt)
       {
         if(cIt->second != interval)
@@ -681,7 +685,7 @@ namespace llarp
     {
       util::Lock l(&m_mutex);
 
-      Categories::iterator it = m_categories.find(category);
+      auto it = m_categories.find(category);
       if(it == m_categories.end())
       {
         // This category has no specific schedule.
@@ -723,10 +727,8 @@ namespace llarp
       {
         return {};
       }
-      else
-      {
-        return it->second;
-      }
+
+      return it->second;
     }
 
     absl::optional< absl::Duration >
@@ -738,10 +740,8 @@ namespace llarp
       {
         return {};
       }
-      else
-      {
-        return m_defaultInterval;
-      }
+
+      return m_defaultInterval;
     }
 
     std::vector< std::pair< const Category *, absl::Duration > >
