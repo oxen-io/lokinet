@@ -2,9 +2,10 @@
 #include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
-#include "net/net_addr.hpp"
+#include <net/net_addr.hpp>
 
-#include <stddef.h>
+#include <cstddef>
+#include <cstring>
 
 // We libuv now
 #ifndef _WIN32
@@ -90,7 +91,6 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
   return udp->sendto(udp, to, buf.base, buf.sz);
 }
 
-#include <string.h>
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {

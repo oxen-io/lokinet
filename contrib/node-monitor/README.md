@@ -18,7 +18,7 @@ Currently:
 - succesful ping to snode (1 per second after a snode is discovered)
 - session with snode established
 - got a router from exploration
-- Hanlding DHT S or R message
+- Handling DHT S or R message
 - a path is built
 - obtained an exit via
 - granted exit

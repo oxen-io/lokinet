@@ -13,10 +13,10 @@
 #include <dht/recursiverouterlookup.hpp>
 #include <dht/serviceaddresslookup.hpp>
 #include <dht/taglookup.hpp>
-#include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 #include <util/logic.hpp>
 #include <nodedb.hpp>
 

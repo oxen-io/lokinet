@@ -1,5 +1,5 @@
-#ifndef LLARP_PATHBUILDER_HPP_
-#define LLARP_PATHBUILDER_HPP_
+#ifndef LLARP_PATHBUILDER_HPP
+#define LLARP_PATHBUILDER_HPP
 
 #include <path/pathset.hpp>
 #include <util/status.hpp>

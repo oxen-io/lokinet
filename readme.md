@@ -1,6 +1,6 @@
-# LokiNet
+# Lokinet
 
-LokiNet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
+Lokinet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
 
 You can learn more about the high level design of LLARP [here](docs/high-level.txt)
 
@@ -13,7 +13,7 @@ You can view documentation on how to get started [here](https://loki-project.git
 
 ## Usage
 
-see the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
+See the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
 
 Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
 
@@ -29,7 +29,7 @@ to run as client:
 
 to run as relay:
 
-    $ lokinet -r
+    $ lokinet -r -g
     $ lokinet-bootstrap
     $ lokinet
 
@@ -47,7 +47,7 @@ to run as client:
 
 to run as relay:
 
-    $ lokinet -r
+    $ lokinet -r -g
     $ lokinet-bootstrap
     $ sudo lokinet
 
@@ -67,7 +67,7 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
-* libuv >= 1.27.0 
+* libuv >= 1.27.0
 
 ### Linux
 
@@ -76,7 +76,7 @@ build:
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make -j8
+    $ make 
 
 install:
 

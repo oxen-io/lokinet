@@ -2,9 +2,9 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/gotintro.hpp>
-#include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 
 namespace llarp
 {

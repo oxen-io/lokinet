@@ -1,5 +1,5 @@
-#ifndef LLARP_MESSAGES_EXIT_HPP
-#define LLARP_MESSAGES_EXIT_HPP
+#ifndef LLARP_EXIT_MESSAGES_HPP
+#define LLARP_EXIT_MESSAGES_HPP
 
 #include <crypto/types.hpp>
 #include <exit/policy.hpp>

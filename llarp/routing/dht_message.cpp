@@ -1,4 +1,4 @@
-#include <messages/dht.hpp>
+#include <routing/dht_message.hpp>
 
 #include <router/abstractrouter.hpp>
 #include <routing/handler.hpp>
@@ -7,10 +7,6 @@ namespace llarp
 {
   namespace routing
   {
-    DHTMessage::~DHTMessage()
-    {
-    }
-
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
@@ -63,6 +59,5 @@ namespace llarp
       }
       return true;
     }
-
   }  // namespace routing
 }  // namespace llarp

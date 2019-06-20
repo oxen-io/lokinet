@@ -2,12 +2,14 @@
 
 #include <dht/context.hpp>
 #include <exit/context.hpp>
+#include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/exit.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
 #include <messages/relay_commit.hpp>
+#include <path/path_context.hpp>
+#include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_latency_message.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
@@ -16,6 +18,18 @@ namespace llarp
 {
   namespace path
   {
+    std::ostream&
+    TransitHopInfo::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("tx", txID);
+      printer.printAttribute("rx", rxID);
+      printer.printAttribute("upstream", upstream);
+      printer.printAttribute("downstream", downstream);
+
+      return stream;
+    }
+
     TransitHop::TransitHop()
     {
     }
@@ -303,5 +317,15 @@ namespace llarp
       return SendRoutingMessage(discarded, r);
     }
 
+    std::ostream&
+    TransitHop::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("TransitHop", info);
+      printer.printAttribute("started", started);
+      printer.printAttribute("lifetime", lifetime);
+
+      return stream;
+    }
   }  // namespace path
 }  // namespace llarp

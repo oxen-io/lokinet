@@ -2,6 +2,7 @@
 
 #include <crypto/crypto.hpp>
 #include <nodedb.hpp>
+#include <path/path_context.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/memfn.hpp>

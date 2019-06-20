@@ -1,4 +1,4 @@
-#include <messages/transfer_traffic.hpp>
+#include <routing/transfer_traffic_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/bencode.hpp>

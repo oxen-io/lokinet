@@ -118,6 +118,14 @@ namespace llarp
         if(singleThreaded)
           num_nethreads = 0;
       }
+      else if(!strcmp(key, "netid"))
+      {
+        metricTags["netid"] = val;
+      }
+      else if(!strcmp(key, "nickname"))
+      {
+        metricTags["nickname"] = val;
+      }
     }
     if(!strcmp(section, "netdb"))
     {

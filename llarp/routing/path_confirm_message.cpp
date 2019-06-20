@@ -1,4 +1,4 @@
-#include <messages/path_confirm.hpp>
+#include <routing/path_confirm_message.hpp>
 
 #include <routing/handler.hpp>
 #include <util/bencode.hpp>
@@ -8,10 +8,6 @@ namespace llarp
 {
   namespace routing
   {
-    PathConfirmMessage::PathConfirmMessage() : pathLifetime(0), pathCreated(0)
-    {
-    }
-
     PathConfirmMessage::PathConfirmMessage(uint64_t lifetime)
         : pathLifetime(lifetime), pathCreated(time_now_ms())
     {

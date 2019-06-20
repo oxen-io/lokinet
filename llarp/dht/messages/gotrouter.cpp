@@ -1,7 +1,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp

@@ -124,6 +124,10 @@ namespace llarp
           absl::StrAppend(&tagStr, ";", tag.first, "=",
                           absl::visit(overloaded, tag.second));
         }
+        if(!tags.empty())
+        {
+          absl::StrAppend(&tagStr, ";");
+        }
         return tagStr;
       }
 
@@ -333,26 +337,6 @@ namespace llarp
           tags["system"] = "linux";
 #else
           tags["system"] = "unknown";
-#endif
-        }
-
-        if(tags.count("user") == 0)
-        {
-#ifndef _WIN32
-          const char *username = getlogin();
-          if(username != nullptr)
-          {
-            tags["user"] = username;
-          }
-          else
-          {
-            tags["user"] = "unknown";
-          }
-#else
-          char username[UNLEN + 1];
-          DWORD username_len = UNLEN + 1;
-          GetUserName(username, &username_len);
-          tags["user"] = username;
 #endif
         }
 

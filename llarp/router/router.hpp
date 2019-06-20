@@ -11,7 +11,7 @@
 #include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
@@ -211,7 +211,7 @@ namespace llarp
 
     uint32_t ticker_job_id = 0;
 
-    InboundMessageParser inbound_link_msg_parser;
+    LinkMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
 
     service::Context _hiddenServiceContext;

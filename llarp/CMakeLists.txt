@@ -1,6 +1,7 @@
 set(LIB_UTIL_SRC
   constants/defaults.cpp
   constants/link_layer.cpp
+  constants/path.cpp
   constants/proto.cpp
   constants/version.cpp
   util/aligned.cpp
@@ -162,16 +163,11 @@ set(LIB_SRC
   dns.cpp
   dnsc.cpp
   dnsd.cpp
-  exit/close_exit.cpp
   exit/context.cpp
   exit/endpoint.cpp
-  exit/grant_exit.cpp
-  exit/obtain_exit.cpp
+  exit/exit_messages.cpp
   exit/policy.cpp
-  exit/reject_exit.cpp
   exit/session.cpp
-  exit/transfer_traffic.cpp
-  exit/update_exit.cpp
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
@@ -182,22 +178,19 @@ set(LIB_SRC
   link/server.cpp
   link/session.cpp
   messages/dht_immediate.cpp
-  messages/dht.cpp
   messages/discard.cpp
-  messages/exit.cpp
   messages/link_intro.cpp
+  messages/link_message_parser.cpp
   messages/link_message.cpp
-  messages/path_confirm.cpp
-  messages/path_latency.cpp
-  messages/path_transfer.cpp
   messages/relay.cpp
   messages/relay_commit.cpp
-  messages/transfer_traffic.cpp
   net/address_info.cpp
   net/exit_info.cpp
   nodedb.cpp
-  path/path.cpp
+  path/ihophandler.cpp
+  path/path_context.cpp
   path/path_types.cpp
+  path/path.cpp
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
@@ -211,9 +204,10 @@ set(LIB_SRC
   routing/handler.cpp
   routing/message_parser.cpp
   routing/message.cpp
-  routing/path_confirm.cpp
-  routing/path_latency.cpp
-  routing/path_transfer.cpp
+  routing/path_confirm_message.cpp
+  routing/path_latency_message.cpp
+  routing/path_transfer_message.cpp
+  routing/transfer_traffic_message.cpp
   rpc/rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp

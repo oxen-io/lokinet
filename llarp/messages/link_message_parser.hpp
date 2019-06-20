@@ -12,10 +12,10 @@ namespace llarp
   struct ILinkMessage;
   struct ILinkSession;
 
-  struct InboundMessageParser
+  struct LinkMessageParser
   {
-    InboundMessageParser(AbstractRouter* router);
-    ~InboundMessageParser();
+    LinkMessageParser(AbstractRouter* router);
+    ~LinkMessageParser();
 
     bool
     operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
@@ -44,7 +44,8 @@ namespace llarp
     ILinkMessage* msg;
 
     struct msg_holder_t;
-    msg_holder_t* holder;
+
+    std::unique_ptr< msg_holder_t > holder;
   };
 }  // namespace llarp
 #endif

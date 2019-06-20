@@ -16,10 +16,6 @@ namespace llarp
     Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
     TunnelNonce Y;
 
-    RelayUpstreamMessage();
-    RelayUpstreamMessage(ILinkSession* from);
-    ~RelayUpstreamMessage();
-
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
@@ -44,9 +40,6 @@ namespace llarp
     PathID_t pathid;
     Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
     TunnelNonce Y;
-    RelayDownstreamMessage();
-    RelayDownstreamMessage(ILinkSession* from);
-    ~RelayDownstreamMessage();
 
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;

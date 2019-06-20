@@ -1,11 +1,13 @@
 #ifndef LLARP_SERVICE_SENDCONTEXT_HPP
 #define LLARP_SERVICE_SENDCONTEXT_HPP
-#include <messages/path_transfer.hpp>
+
 #include <path/pathset.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <service/intro.hpp>
 #include <service/protocol.hpp>
 #include <util/buffer.hpp>
 #include <util/types.hpp>
+
 #include <deque>
 
 namespace llarp

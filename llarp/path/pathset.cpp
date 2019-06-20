@@ -1,8 +1,8 @@
 #include <path/pathset.hpp>
 
 #include <dht/messages/pubintro.hpp>
-#include <messages/dht.hpp>
 #include <path/path.hpp>
+#include <routing/dht_message.hpp>
 
 namespace llarp
 {
