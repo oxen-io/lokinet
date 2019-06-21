@@ -5,7 +5,7 @@ namespace libuv
 {
   struct glue
   {
-    virtual ~glue(){};
+    virtual ~glue() = default;
     virtual void
     Close() = 0;
   };
