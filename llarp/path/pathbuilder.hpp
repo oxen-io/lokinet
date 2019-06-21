@@ -6,8 +6,6 @@
 
 #include <atomic>
 
-struct llarp_dht_context;
-
 namespace llarp
 {
   namespace path
@@ -24,19 +22,26 @@ namespace llarp
       virtual bool
       UrgentBuild(llarp_time_t now) const;
 
+     private:
+      bool
+      DoUrgentBuildAlignedTo(const RouterID remote,
+                             std::vector< RouterContact >& hops);
+
+      bool
+      DoBuildAlignedTo(const RouterID remote,
+                       std::vector< RouterContact >& hops);
+
      public:
       AbstractRouter* router;
-      llarp_dht_context* dht;
       SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
       /// construct
-      Builder(AbstractRouter* p_router, llarp_dht_context* p_dht,
-              size_t numPaths, size_t numHops);
+      Builder(AbstractRouter* p_router, size_t numPaths, size_t numHops);
 
-      virtual ~Builder();
+      virtual ~Builder() = default;
 
       util::StatusObject
       ExtractStatus() const;

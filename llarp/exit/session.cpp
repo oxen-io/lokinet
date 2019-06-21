@@ -15,7 +15,7 @@ namespace llarp
         const llarp::RouterID& router,
         std::function< bool(const llarp_buffer_t&) > writepkt,
         AbstractRouter* r, size_t numpaths, size_t hoplen, bool bundleRC)
-        : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
+        : llarp::path::Builder(r, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
         , m_Counter(0)

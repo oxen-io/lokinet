@@ -53,8 +53,7 @@ namespace llarp
     }
 
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
-        : path::Builder(parent->Router(), parent->Router()->dht(), 3,
-                        path::default_len)
+        : path::Builder(parent->Router(), 3, path::default_len)
         , SendContext(introset.A, {}, this, parent)
         , currentIntroSet(introset)
 

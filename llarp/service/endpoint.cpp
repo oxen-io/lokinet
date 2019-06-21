@@ -26,7 +26,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, r->dht(), 3, path::default_len)
+        : path::Builder(r, 3, path::default_len)
         , context(parent)
         , m_Router(r)
         , m_Name(name)
