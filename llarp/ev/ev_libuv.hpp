@@ -37,13 +37,10 @@ namespace libuv
     stop() override;
 
     void
-    stopped() override
-    {
-      for(const auto& func : m_CloseFuncs)
-        func();
-      m_CloseFuncs.clear();
-      llarp::LogInfo("event loop stopped");
-    }
+    stopped() override;
+
+    void
+    CloseAll();
 
     bool
     udp_listen(llarp_udp_io* l, const sockaddr* src) override;
@@ -96,7 +93,6 @@ namespace libuv
     std::unique_ptr< uv_loop_t, DestructLoop > m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
-    std::vector< std::function< void(void) > > m_CloseFuncs;
   };
 
 }  // namespace libuv
