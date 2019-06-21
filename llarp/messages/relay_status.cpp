@@ -9,6 +9,7 @@
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/logic.hpp>
+#include <util/memfn.hpp>
 
 #include <functional>
 
@@ -31,9 +32,7 @@ namespace llarp
     {
     }
 
-    ~LRSM_AsyncHandler()
-    {
-    }
+    ~LRSM_AsyncHandler() = default;
 
     void handle()
     {
@@ -48,10 +47,6 @@ namespace llarp
 
   };
 
-
-  LR_StatusMessage::~LR_StatusMessage()
-  {
-  }
 
   bool
   LR_StatusMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
@@ -90,14 +85,7 @@ namespace llarp
   void
   LR_StatusMessage::Clear()
   {
-    frames[0].Clear();
-    frames[1].Clear();
-    frames[2].Clear();
-    frames[3].Clear();
-    frames[4].Clear();
-    frames[5].Clear();
-    frames[6].Clear();
-    frames[7].Clear();
+    std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
   }
 
   bool
@@ -162,8 +150,7 @@ namespace llarp
                                   const RouterID nextHop, const SharedSecret pathKey,
                                   uint64_t status)
   {
-    typedef std::shared_ptr< LR_StatusMessage > LRSM_ptr;
-    LRSM_ptr message = std::make_shared< LR_StatusMessage >();
+    auto message = std::make_shared< LR_StatusMessage >();
 
     message->status = status & LR_StatusRecord::SUCCESS;
     message->pathid = pathid;
@@ -233,31 +220,24 @@ namespace llarp
                                 std::shared_ptr< LR_StatusMessage > msg)
   {
     llarp::LogDebug("Attempting to send LR_Status message to (", nextHop, ")");
-    if(router->HasSessionTo(nextHop))
+    if(not router->HasSessionTo(nextHop))
     {
-      if (router->SendToOrQueue(nextHop, msg.get()))
-      {
-        return;
-      }
-      llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop, " failed");
+      llarp::LogError("Sending LR_Status message, but no connection to previous hop (", nextHop, ")");
       return;
     }
-    llarp::LogError("Sending LR_Status message, but no connection to previous hop (", nextHop, ")");
-    return;
+    if (not router->SendToOrQueue(nextHop, msg.get()))
+    {
+      llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop, " failed");
+    }
   }
 
   bool
   LR_StatusRecord::BEncode(llarp_buffer_t* buf) const
   {
-    if(!bencode_start_dict(buf))
-      return false;
-
-    if(!BEncodeWriteDictInt("s", status, buf))
-      return false;
-    if(!bencode_write_version_entry(buf))
-      return false;
-
-    return bencode_end(buf);
+    return bencode_start_dict(buf)
+        && BEncodeWriteDictInt("s", status, buf)
+        && bencode_write_version_entry(buf)
+        && bencode_end(buf);
   }
 
   bool
@@ -280,9 +260,7 @@ namespace llarp
   bool
   LR_StatusRecord::BDecode(llarp_buffer_t* buf)
   {
-    using namespace std::placeholders;
-    return bencode_read_dict(std::bind(&LR_StatusRecord::OnKey, this, _1, _2),
-                             buf);
+    return bencode_read_dict(util::memFn(&LR_StatusRecord::OnKey, this), buf);
   }
 
   bool

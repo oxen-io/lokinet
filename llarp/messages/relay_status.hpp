@@ -59,11 +59,9 @@ namespace llarp
     {
     }
 
-    LR_StatusMessage() : ILinkMessage()
-    {
-    }
+    LR_StatusMessage() = default;
 
-    ~LR_StatusMessage();
+    ~LR_StatusMessage() = default;
 
     void
     Clear() override;
