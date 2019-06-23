@@ -125,7 +125,7 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
-  config.cpp
+  config/config.cpp
   context.cpp
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp

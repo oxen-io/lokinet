@@ -1,7 +1,7 @@
 #include <llarp.hpp>
 #include <llarp.h>
 
-#include <config.hpp>
+#include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <crypto/crypto_noop.hpp>
 #include <dht/context.hpp>

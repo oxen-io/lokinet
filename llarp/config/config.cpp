@@ -1,4 +1,4 @@
-#include <config.hpp>
+#include <config/config.hpp>
 
 #include <constants/defaults.hpp>
 #include <net/net.hpp>

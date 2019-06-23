@@ -1,9 +1,9 @@
-#include <config.hpp>  // for ensure_config
+#include <config/config.hpp>  // for ensure_config
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
 
-#include <signal.h>
+#include <csignal>
 
 #if !defined(_WIN32) && !defined(__OpenBSD__)
 #include <wordexp.h>

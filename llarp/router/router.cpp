@@ -1,6 +1,6 @@
 #include <router/router.hpp>
 
-#include <config.hpp>
+#include <config/config.hpp>
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
