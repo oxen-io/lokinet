@@ -150,7 +150,7 @@ struct llarp_nodedb
   SaveAll() LOCKS_EXCLUDED(access);
 
   void
-  AsyncFlushToDisk()
+  AsyncFlushToDisk();
 };
 
 /// struct for async rc verification
