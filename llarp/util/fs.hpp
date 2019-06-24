@@ -11,16 +11,16 @@
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
-
 #ifndef _MSC_VER
 #include <dirent.h>
 #endif
+
+#include <absl/types/optional.h>
 
 namespace llarp
 {
   namespace util
   {
-
     using error_code_t = std::error_code;
 
     /// Ensure that a file exists and has correct permissions
@@ -30,16 +30,16 @@ namespace llarp
 
     /// open a stream to a file and ensure it exists before open
     /// sets any permissions on creation
-    template<typename T>
-    T OpenFileStream(fs::path pathname)
+    template < typename T >
+    absl::optional< T >
+    OpenFileStream(fs::path pathname, std::ios::openmode mode)
     {
-      T stream;
       if(EnsurePrivateFile(pathname))
       {
         std::string f = pathname.string();
-        stream.open(f);
+        return T{pathname, mode};
       }
-      return stream;
+      return {};
     }
 
     using PathVisitor = std::function< bool(const fs::path &) >;

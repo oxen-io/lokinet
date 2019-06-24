@@ -141,12 +141,14 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   }
 
   // write fname ini
-  std::ofstream f(fname, std::ios::out | std::ios::binary);
-  if(!f.is_open())
+  auto optional_f =
+      llarp::util::OpenFileStream< std::ofstream >(fname, std::ios::binary);
+  if(!optional_f || !optional_f.value().is_open())
   {
     llarp::LogError("failed to open ", fname, " for writing");
     return false;
   }
+  auto &f = optional_f.value();
   llarp_generic_ensure_config(f, basepath);
   if(asRouter)
   {
@@ -294,9 +296,12 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   // write snapp-example.ini
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
-    std::ofstream example_f(snappExample_fpath,
-                            std::ios::binary | std::ios::out);
-    if(f.is_open())
+    auto f = llarp::util::OpenFileStream< std::ofstream >(snappExample_fpath,
+                                                          std::ios::binary);
+    if(!f)
+      return false;
+    auto &example_f = f.value();
+    if(example_f.is_open())
     {
       // pick ip
       // don't revert me

@@ -3,6 +3,8 @@
 #include <util/buffer.hpp>
 
 #include <fstream>
+#include <util/fs.hpp>
+
 #include <iterator>
 
 namespace llarp
@@ -23,8 +25,18 @@ namespace llarp
   bool
   SecretKey::LoadFromFile(const char* fname)
   {
-    std::ifstream f(fname, std::ios::in | std::ios::binary);
+    const fs::path fpath = std::string(fname);
 
+    std::error_code ec;
+    if(!fs::exists(fpath, ec))
+    {
+      return false;
+    }
+    auto optional_f = util::OpenFileStream< std::ifstream >(
+        fpath, std::ios::in | std::ios::binary);
+    if(!optional_f)
+      return false;
+    auto& f = optional_f.value();
     if(!f.is_open())
     {
       return false;
@@ -59,9 +71,12 @@ namespace llarp
     {
       return false;
     }
-
-    std::ofstream f;
-    f.open(fname, std::ios::binary);
+    const fs::path fpath = std::string(fname);
+    auto optional_f      = llarp::util::OpenFileStream< std::ofstream >(
+        fpath, std::ios::binary | std::ios::out);
+    if(!optional_f)
+      return false;
+    auto& f = optional_f.value();
     if(!f.is_open())
       return false;
     f.write((char*)buf.base, buf.cur - buf.base);
@@ -71,9 +86,12 @@ namespace llarp
   bool
   IdentitySecret::LoadFromFile(const char* fname)
   {
-    std::ifstream f(fname, std::ios::binary | std::ios::in);
-    if(!f.is_open())
+    const fs::path fpath = std::string(fname);
+    auto optional        = util::OpenFileStream< std::ifstream >(
+        fpath, std::ios::binary | std::ios::in);
+    if(!optional)
       return false;
+    auto& f = optional.value();
     f.seekg(0, std::ios::end);
     const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);
