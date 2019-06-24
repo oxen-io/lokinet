@@ -8,13 +8,9 @@
 #define PATH_SEP "/"
 #endif
 
-#ifdef _WIN32
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
-#else
-#include "filesystem.h"
-namespace fs = cpp17::filesystem;
-#endif
+
 
 #ifndef _MSC_VER
 #include <dirent.h>
@@ -24,6 +20,28 @@ namespace llarp
 {
   namespace util
   {
+
+    using error_code_t = std::error_code;
+
+    /// Ensure that a file exists and has correct permissions
+    /// return any error code or success
+    error_code_t
+    EnsurePrivateFile(fs::path pathname);
+
+    /// open a stream to a file and ensure it exists before open
+    /// sets any permissions on creation
+    template<typename T>
+    T OpenFileStream(fs::path pathname)
+    {
+      T stream;
+      if(EnsurePrivateFile(pathname))
+      {
+        std::string f = pathname.string();
+        stream.open(f);
+      }
+      return stream;
+    }
+
     using PathVisitor = std::function< bool(const fs::path &) >;
     using PathIter    = std::function< void(const fs::path &, PathVisitor) >;
 
