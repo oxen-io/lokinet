@@ -1,6 +1,7 @@
 #include <profiling.hpp>
 
 #include <fstream>
+#include <util/fs.hpp>
 
 namespace llarp
 {
@@ -219,9 +220,13 @@ namespace llarp
     auto res = BEncodeNoLock(&buf);
     if(res)
     {
-      buf.sz = buf.cur - buf.base;
-      std::ofstream f;
-      f.open(fname);
+      buf.sz               = buf.cur - buf.base;
+      const fs::path fpath = std::string(fname);
+      auto optional_f =
+          util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
+      if(!optional_f)
+        return false;
+      auto& f = optional_f.value();
       if(f.is_open())
       {
         f.write((char*)buf.base, buf.sz);

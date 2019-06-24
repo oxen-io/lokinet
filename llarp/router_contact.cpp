@@ -11,6 +11,7 @@
 #include <util/time.hpp>
 
 #include <fstream>
+#include <util/fs.hpp>
 
 namespace llarp
 {
@@ -333,10 +334,14 @@ namespace llarp
     llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
       return false;
-    buf.sz  = buf.cur - buf.base;
-    buf.cur = buf.base;
-    std::ofstream f;  // why was this in its own scope?
-    f.open(fname, std::ios::binary);
+    buf.sz               = buf.cur - buf.base;
+    buf.cur              = buf.base;
+    const fs::path fpath = std::string(fname); /*  */
+    auto optional_f =
+        llarp::util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
+    if(!optional_f)
+      return false;
+    auto &f = optional_f.value();
     if(!f.is_open())
       return false;
     f.write((char *)buf.base, buf.sz);
