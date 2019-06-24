@@ -161,9 +161,12 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   buf.sz        = buf.cur - buf.base;
   auto filepath = getRCFilePath(rc.pubkey);
   llarp::LogDebug("saving RC.pubkey ", filepath);
-  std::ofstream ofs(
+  auto optional_ofs = llarp::util::OpenFileStream< std::ofstream >(
       filepath,
       std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+  if(!optional_ofs)
+    return false;
+  auto &ofs = optional_ofs.value();
   ofs.write((char *)buf.base, buf.sz);
   ofs.flush();
   ofs.close();
@@ -223,9 +226,12 @@ llarp_nodedb::SaveAll()
 
     buf.sz              = buf.cur - buf.base;
     const auto filepath = getRCFilePath(item.second.rc.pubkey);
-    std::ofstream ofs(
+    auto optional_ofs   = llarp::util::OpenFileStream< std::ofstream >(
         filepath,
         std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+    if(!optional_ofs)
+      continue;
+    auto &ofs = optional_ofs.value();
     ofs.write((char *)buf.base, buf.sz);
     ofs.flush();
     ofs.close();
