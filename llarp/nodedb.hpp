@@ -145,6 +145,12 @@ struct llarp_nodedb
 
   static bool
   ensure_dir(const char *dir);
+
+  void
+  SaveAll() LOCKS_EXCLUDED(access);
+
+  void
+  AsyncFlushToDisk();
 };
 
 /// struct for async rc verification

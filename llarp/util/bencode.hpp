@@ -3,6 +3,7 @@
 
 #include <util/buffer.hpp>
 #include <util/bencode.h>
+#include <util/fs.hpp>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 
@@ -356,8 +357,12 @@ namespace llarp
       return false;
     buf.sz = buf.cur - buf.base;
     {
-      std::ofstream f;
-      f.open(fpath);
+      const fs::path path = std::string(fpath);
+      auto optional_f =
+          llarp::util::OpenFileStream< std::ofstream >(path, std::ios::binary);
+      if(!optional_f)
+        return false;
+      auto& f = optional_f.value();
       if(!f.is_open())
         return false;
       f.write((char*)buf.base, buf.sz);

@@ -99,8 +99,11 @@ namespace llarp
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
         // write
-        std::ofstream f;
-        f.open(fname, std::ios::binary);
+        auto optional_f =
+            util::OpenFileStream< std::ofstream >(fname, std::ios::binary);
+        if(!optional_f)
+          return false;
+        auto& f = optional_f.value();
         if(!f.is_open())
           return false;
         f.write((char*)buf.cur, buf.sz);
