@@ -1,9 +1,9 @@
 #include <config/config.hpp>
 
+#include <config/ini.hpp>
 #include <constants/defaults.hpp>
 #include <net/net.hpp>
 #include <util/fs.hpp>
-#include <util/ini.hpp>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 

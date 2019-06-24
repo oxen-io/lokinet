@@ -1,8 +1,9 @@
-#include <util/ini.hpp>
+#include <config/ini.hpp>
+#include <util/logger.hpp>
+
 #include <fstream>
 #include <list>
 #include <iostream>
-#include <util/logger.hpp>
 
 #ifdef LoadString
 #undef LoadString
