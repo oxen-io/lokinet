@@ -1249,28 +1249,6 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    // try looking up stale routers
-    nodedb()->VisitInsertedBefore(
-        [&](const RouterContact &rc) {
-          if(HasPendingRouterLookup(rc.pubkey))
-            return;
-          LookupRouter(rc.pubkey,
-                       [&](const std::vector< RouterContact > &result) {
-                         // store found routers
-                         for(const auto &rc : result)
-                           nodedb()->InsertAsync(rc);
-                       });
-        },
-        now - RouterContact::UpdateInterval);
-    std::set< RouterID > removeStale;
-    // remove stale routers
-    nodedb()->VisitInsertedBefore(
-        [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
-        now - ((RouterContact::UpdateInterval * 3) / 2));
-    nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
-      return removeStale.count(rc.pubkey) > 0;
-    });
-
     if(IsServiceNode())
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
@@ -1292,17 +1270,31 @@ namespace llarp
     }
     else
     {
-      // kill dead nodes if client
-      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-        // don't kill first hop nodes
-        if(strictConnectPubkeys.count(rc.pubkey))
-          return false;
-        // don't kill "non-bad" nodes
-        if(!routerProfiling().IsBad(rc.pubkey))
-          return false;
-        routerProfiling().ClearProfile(rc.pubkey);
-        // don't kill bootstrap nodes
-        return !IsBootstrapNode(rc.pubkey);
+      // try looking up stale routers
+      nodedb()->VisitInsertedBefore(
+          [&](const RouterContact &rc) {
+            if(HasPendingRouterLookup(rc.pubkey))
+              return;
+            LookupRouter(rc.pubkey,
+                         [&](const std::vector< RouterContact > &result) {
+                           // store found routers
+                           for(const auto &rc : result)
+                             nodedb()->InsertAsync(rc);
+                         });
+          },
+          now - RouterContact::UpdateInterval);
+      std::set< RouterID > removeStale;
+      // remove stale routers
+      nodedb()->VisitInsertedBefore(
+          [&](const RouterContact &rc) {
+            if(IsBootstrapNode(rc.pubkey))
+              return;
+            removeStale.insert(rc.pubkey);
+          },
+          now - ((RouterContact::UpdateInterval * 3) / 2));
+
+      nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
+        return removeStale.count(rc.pubkey) > 0;
       });
     }
     // expire transit paths
