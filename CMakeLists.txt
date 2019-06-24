@@ -219,12 +219,6 @@ if(JEMALLOC)
 endif(JEMALLOC)
 
 
-# FS_LIB should resolve to nothing on all other platforms
-# it is only required on win32 -rick
-set(LIBS ${MALLOC_LIB} ${FS_LIB})
-if(NOT WIN32)
-  set(LIBS ${LIBS} uv)
-endif()
 
 if(ANDROID)
   list(APPEND LIBS log)
@@ -256,6 +250,11 @@ if(NOT WIN32)
   add_subdirectory(vendor)
 endif()
 
+set(LIBS ${MALLOC_LIB} ${FS_LIB})
+if(NOT WIN32)
+  set(LIBS ${LIBS} uv)
+endif()
+
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
@@ -263,7 +262,7 @@ add_subdirectory(libabyss)
 
 if (NOT WIN32)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads ${LIBS})
 elseif(NOT MSVC_VERSION)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
@@ -315,7 +314,7 @@ else()
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     target_link_directories(${EXE} PRIVATE /usr/local/lib)
   endif()
-  target_link_libraries(${EXE} PUBLIC ${EXE_LIBS})
+  target_link_libraries(${EXE} PUBLIC ${EXE_LIBS} ${LIBS})
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
