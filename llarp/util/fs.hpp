@@ -35,11 +35,10 @@ namespace llarp
     OpenFileStream(fs::path pathname, std::ios::openmode mode)
     {
       if(EnsurePrivateFile(pathname))
-      {
-        std::string f = pathname.string();
-        return T{pathname, mode};
-      }
-      return {};
+        return {};
+
+      std::string f = pathname.string();
+      return T{pathname, mode};
     }
 
     using PathVisitor = std::function< bool(const fs::path &) >;

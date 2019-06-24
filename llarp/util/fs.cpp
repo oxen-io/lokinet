@@ -3,16 +3,25 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <system_error>
+#include <util/logger.hpp>
 
 namespace llarp
 {
   namespace util
   {
+    static std::error_code
+    errno_error()
+    {
+      int e = errno;
+      errno = 0;
+      return std::make_error_code(static_cast< std::errc >(e));
+    }
+
     error_code_t
     EnsurePrivateFile(fs::path pathname)
     {
-      auto str = pathname.string();
-      error_code_t ec;
+      const auto str  = pathname.string();
+      error_code_t ec = errno_error();
       if(fs::exists(pathname, ec))  // file exists
       {
         fs::permissions(pathname,
@@ -22,15 +31,16 @@ namespace llarp
       }
       else if(!ec)  // file is not there
       {
-        int fd = ::open(str.c_str(), O_WRONLY | O_CREAT, 0600);
-        int e  = errno;
+        errno  = 0;
+        int fd = ::open(str.c_str(), O_RDWR | O_CREAT, 0600);
+        ec     = errno_error();
         if(fd != -1)
         {
           ::close(fd);
         }
-        ec    = std::error_code(e, std::generic_category());
-        errno = 0;
       }
+      if(ec)
+        llarp::LogError("failed to ensure ", str, ", ", ec.message());
       return ec;
     }
   }  // namespace util
