@@ -1361,6 +1361,14 @@ namespace llarp
         {
           dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
+        // explore via every conected peer
+        ForEachPeer([&](ILinkSession *s) {
+          if(!s->IsEstablished())
+            return;
+          const RouterContact rc = s->GetRemoteRC();
+          if(rc.IsPublicRouter())
+            dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+        });
       }
       else
         LogError("we have no bootstrap nodes specified");

@@ -25,18 +25,7 @@ namespace llarp
   bool
   SecretKey::LoadFromFile(const char* fname)
   {
-    const fs::path fpath = std::string(fname);
-
-    std::error_code ec;
-    if(!fs::exists(fpath, ec))
-    {
-      return false;
-    }
-    auto optional_f = util::OpenFileStream< std::ifstream >(
-        fpath, std::ios::in | std::ios::binary);
-    if(!optional_f)
-      return false;
-    auto& f = optional_f.value();
+    std::ifstream f(fname, std::ios::in | std::ios::binary);
     if(!f.is_open())
     {
       return false;
@@ -72,15 +61,15 @@ namespace llarp
       return false;
     }
     const fs::path fpath = std::string(fname);
-    auto optional_f      = llarp::util::OpenFileStream< std::ofstream >(
-        fpath, std::ios::binary | std::ios::out);
+    auto optional_f =
+        llarp::util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
     if(!optional_f)
       return false;
     auto& f = optional_f.value();
     if(!f.is_open())
       return false;
     f.write((char*)buf.base, buf.cur - buf.base);
-    return true;
+    return f.good();
   }
 
   bool
