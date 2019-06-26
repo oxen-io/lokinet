@@ -74,8 +74,12 @@ namespace llarp
     void
     OutboundContext::SwapIntros()
     {
-      remoteIntro = m_NextIntro;
-      m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+      if(remoteIntro != m_NextIntro)
+      {
+        remoteIntro = m_NextIntro;
+        m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+        ShiftIntroduction(false);
+      }
     }
 
     bool
@@ -132,7 +136,7 @@ namespace llarp
           util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if(p->Endpoint() == m_NextIntro.router && remoteIntro != m_NextIntro)
+      if(p->Endpoint() == m_NextIntro.router && remoteIntro.router.IsZero())
         SwapIntros();
     }
 
@@ -325,7 +329,7 @@ namespace llarp
     OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
       // insert bad intro
-      m_BadIntros[m_NextIntro] = now;
+      m_BadIntros[remoteIntro] = now;
       // try shifting intro without rebuild
       if(ShiftIntroduction(false))
       {
