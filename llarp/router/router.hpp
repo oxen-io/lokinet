@@ -25,6 +25,10 @@
 #include <util/status.hpp>
 #include <util/str.hpp>
 #include <util/threadpool.h>
+#include <router/outbound_message_handler.hpp>
+#include <router/outbound_session_maker.hpp>
+#include <link/link_manager.hpp>
+#include <router/rc_lookup_handler.hpp>
 
 #include <functional>
 #include <list>
@@ -49,8 +53,6 @@ llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey);
 bool
 llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
                                  llarp::SecretKey &secretkey);
-
-struct TryConnectJob;
 
 namespace llarp
 {
@@ -191,9 +193,6 @@ namespace llarp
     bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;
 
-    // buffer for serializing link messages
-    std::array< byte_t, MAX_LINK_MSG_SIZE > linkmsg_buffer;
-
     uint16_t m_OutboundPort = 0;
 
     /// always maintain this many connections to other routers
@@ -233,10 +232,6 @@ namespace llarp
     /// default network config for default network interface
     NetConfig_t netConfig;
 
-    /// identity keys whitelist of routers we will connect to directly (not for
-    /// service nodes)
-    std::set< RouterID > strictConnectPubkeys;
-
     /// bootstrap RCs
     std::set< RouterContact > bootstrapRCList;
 
@@ -267,39 +262,37 @@ namespace llarp
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 
-    using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
-
-    LinkSet outboundLinks;
-    LinkSet inboundLinks;
-
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";
 
-    using MessageQueue = std::queue< std::vector< byte_t > >;
+    OutboundMessageHandler _outboundMessageHandler;
+    OutboundSessionMaker _outboundSessionMaker;
+    LinkManager _linkManager;
+    RCLookupHandler _rcLookupHandler;
 
-    /// outbound message queue
-    std::unordered_map< RouterID, MessageQueue, RouterID::Hash >
-        outboundMessageQueue;
+    IOutboundMessageHandler &
+    outboundMessageHandler() override
+    {
+      return _outboundMessageHandler;
+    }
 
-    /// loki verified routers
-    std::unordered_map< RouterID, RouterContact, RouterID::Hash > validRouters;
+    IOutboundSessionMaker &
+    outboundSessionMaker() override
+    {
+      return _outboundSessionMaker;
+    }
 
-    // pending establishing session with routers
-    std::unordered_map< RouterID, std::shared_ptr< TryConnectJob >,
-                        RouterID::Hash >
-        pendingEstablishJobs;
+    ILinkManager &
+    linkManager() override
+    {
+      return _linkManager;
+    }
 
-    // pending RCs to be verified by pubkey
-    std::unordered_map< RouterID, llarp_async_verify_rc, RouterID::Hash >
-        pendingVerifyRC;
-
-    // sessions to persist -> timestamp to end persist at
-    std::unordered_map< RouterID, llarp_time_t, RouterID::Hash >
-        m_PersistingSessions;
-
-    // lokinet routers from lokid, maps pubkey to when we think it will expire,
-    // set to max value right now
-    std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
+    I_RCLookupHandler &
+    rcLookupHandler() override
+    {
+      return _rcLookupHandler;
+    }
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
@@ -307,14 +300,8 @@ namespace llarp
     ~Router();
 
     bool
-    OnSessionEstablished(ILinkSession *) override;
-
-    bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,
                                 const llarp_buffer_t &msg) override;
-
-    void
-    AddLink(std::shared_ptr< ILinkLayer > link, bool outbound = false);
 
     bool
     InitOutboundLinks();
@@ -341,10 +328,7 @@ namespace llarp
     AddHiddenService(const service::Config::section_t &config);
 
     bool
-    Configure(Config *conf) override;
-
-    bool
-    Ready();
+    Configure(Config *conf, llarp_nodedb *nodedb = nullptr) override;
 
     bool
     Run(struct llarp_nodedb *nodedb) override;
@@ -382,20 +366,14 @@ namespace llarp
     }
 
     void
-    OnConnectTimeout(ILinkSession *session) override;
-
-    bool
-    HasPendingConnectJob(const RouterID &remote);
-
-    bool
-    HasPendingRouterLookup(const RouterID &remote) const override;
-
-    void
     try_connect(fs::path rcfile);
 
     /// inject configuration and reconfigure router
     bool
     Reconfigure(Config *conf) override;
+
+    bool
+    TryConnectAsync(RouterContact rc, uint16_t tries) override;
 
     /// validate new configuration against old one
     /// return true on 100% valid
@@ -410,37 +388,6 @@ namespace llarp
     /// MUST be called in the logic thread
     bool
     SendToOrQueue(const RouterID &remote, const ILinkMessage *msg) override;
-
-    /// sendto or drop
-    void
-    SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *chosen);
-
-    /// manually flush outbound message queue for just 1 router
-    void
-    FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
-
-    void
-    LookupRouter(RouterID remote, RouterLookupHandler handler) override;
-
-    /// manually discard all pending messages to remote router
-    void
-    DiscardOutboundFor(const RouterID &remote);
-
-    /// try establishing a session to a remote router
-    void
-    TryEstablishTo(const RouterID &remote);
-
-    /// lookup a router by pubkey when it expires
-    void
-    LookupRouterWhenExpired(RouterID remote);
-
-    void
-    HandleDHTLookupForExplore(
-        RouterID remote, const std::vector< RouterContact > &results) override;
-
-    void
-    HandleRouterLookupForExpireUpdate(
-        RouterID remote, const std::vector< RouterContact > &results);
 
     void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
@@ -457,10 +404,6 @@ namespace llarp
     /// returns false otherwise
     bool
     CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC) override;
-
-    /// flush outbound message queue
-    void
-    FlushOutbound();
 
     /// called by link when a remote session has no more sessions open
     void
@@ -481,9 +424,6 @@ namespace llarp
     void
     ScheduleTicker(uint64_t i = 1000);
 
-    ILinkLayer *
-    GetLinkWithSessionByPubkey(const RouterID &remote);
-
     /// parse a routing message in a buffer and handle it with a handler if
     /// successful parsing return true on parse and handle success otherwise
     /// return false
@@ -503,51 +443,27 @@ namespace llarp
     size_t
     NumberOfConnectedClients() const override;
 
-    /// count unique router id's given filter to match session
-    size_t
-    NumberOfRoutersMatchingFilter(
-        std::function< bool(const ILinkSession *) > filter) const;
-
-    /// count the number of connections that match filter
-    size_t
-    NumberOfConnectionsMatchingFilter(
-        std::function< bool(const ILinkSession *) > filter) const;
-
-    bool
-    TryConnectAsync(RouterContact rc, uint16_t tries) override;
-
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;
 
-    bool
-    async_verify_RC(const RouterContact rc);
+    void
+    HandleDHTLookupForExplore(
+        RouterID remote, const std::vector< RouterContact > &results) override;
 
     void
-    HandleDHTLookupForSendTo(RouterID remote,
-                             const std::vector< RouterContact > &results);
+    LookupRouter(RouterID remote, RouterLookupHandler resultHandler) override;
 
     bool
     HasSessionTo(const RouterID &remote) const override;
 
-    void
-    HandleDHTLookupForTryEstablishTo(
-        RouterID remote, const std::vector< RouterContact > &results);
-
-    static void
-    on_verify_client_rc(llarp_async_verify_rc *context);
-
-    static void
-    on_verify_server_rc(llarp_async_verify_rc *context);
-
     static void
     handle_router_ticker(void *user, uint64_t orig, uint64_t left);
-
-    static void
-    HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
 
    private:
     std::atomic< bool > _stopping;
     std::atomic< bool > _running;
+
+    bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0;
 
@@ -572,6 +488,9 @@ namespace llarp
 
     bool
     FromConfig(Config *conf);
+
+    void
+    MessageSent(const RouterID &remote, SendStatus status);
   };
 
 }  // namespace llarp

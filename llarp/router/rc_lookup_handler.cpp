@@ -1,0 +1,337 @@
+#include <router/rc_lookup_handler.hpp>
+
+#include <link/i_link_manager.hpp>
+#include <link/server.hpp>
+#include <crypto/crypto.hpp>
+#include <service/context.hpp>
+#include <router_contact.hpp>
+#include <util/memfn.hpp>
+#include <util/types.hpp>
+#include <util/threading.hpp>
+#include <nodedb.hpp>
+#include <dht/context.hpp>
+
+#include <iterator>
+#include <functional>
+
+namespace llarp
+{
+  void
+  RCLookupHandler::AddValidRouter(const RouterID &router)
+  {
+    util::Lock l(&_mutex);
+    whitelistRouters.insert(router);
+  }
+
+  void
+  RCLookupHandler::RemoveValidRouter(const RouterID &router)
+  {
+    util::Lock l(&_mutex);
+    whitelistRouters.erase(router);
+  }
+
+  void
+  RCLookupHandler::SetRouterWhitelist(const std::vector< RouterID > &routers)
+  {
+    util::Lock l(&_mutex);
+
+    whitelistRouters.clear();
+    for(auto &router : routers)
+    {
+      whitelistRouters.emplace(router);
+    }
+
+    LogInfo("lokinet service node list now has ", whitelistRouters.size(),
+            " routers");
+  }
+
+  void
+  RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback)
+  {
+    RouterContact remoteRC;
+
+    if(_nodedb->Get(router, remoteRC))
+    {
+      if(callback)
+      {
+        callback(router, &remoteRC, RCRequestResult::Success);
+      }
+      FinalizeRequest(router, &remoteRC, RCRequestResult::Success);
+      return;
+    }
+
+    bool shouldDoLookup = false;
+
+    {
+      util::Lock l(&_mutex);
+
+      auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
+
+      if(callback)
+      {
+        itr_pair.first->second.push_back(callback);
+      }
+      shouldDoLookup = itr_pair.second;
+    }
+
+    if(shouldDoLookup)
+    {
+      auto fn = std::bind(&RCLookupHandler::HandleDHTLookupResult, this, router,
+                          std::placeholders::_1);
+
+      // if we are a client try using the hidden service endpoints
+      if(!isServiceNode)
+      {
+        bool sent = false;
+        LogInfo("Lookup ", router, " anonymously");
+        _hiddenServiceContext->ForEachService(
+            [&](const std::string &,
+                const std::shared_ptr< service::Endpoint > &ep) -> bool {
+              const bool success = ep->LookupRouterAnon(router, fn);
+              sent               = sent || success;
+              return !success;
+            });
+        if(sent)
+          return;
+        LogWarn("cannot lookup ", router, " anonymously");
+      }
+
+      if(!_dht->impl->LookupRouter(router, fn))
+      {
+        FinalizeRequest(router, nullptr, RCRequestResult::RouterNotFound);
+      }
+    }
+  }
+
+  bool
+  RCLookupHandler::RemoteIsAllowed(const RouterID &remote) const
+  {
+    if(_strictConnectPubkeys.size() && _strictConnectPubkeys.count(remote) == 0
+       && !RemoteInBootstrap(remote))
+    {
+      return false;
+    }
+
+    util::Lock l(&_mutex);
+
+    if(useWhitelist && whitelistRouters.find(remote) == whitelistRouters.end())
+    {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool
+  RCLookupHandler::CheckRC(const RouterContact &rc) const
+  {
+    if(not RemoteIsAllowed(rc.pubkey))
+    {
+      _dht->impl->DelRCNodeAsync(dht::Key_t{rc.pubkey});
+      return false;
+    }
+
+    if(not rc.Verify(_dht->impl->Now()))
+    {
+      return false;
+    }
+
+    // update nodedb if required
+    if(rc.IsPublicRouter())
+    {
+      LogInfo("Adding or updating RC for ", RouterID(rc.pubkey),
+              " to nodedb and dht.");
+      _nodedb->UpdateAsyncIfNewer(rc);
+      _dht->impl->PutRCNodeAsync(rc);
+    }
+
+    return true;
+  }
+
+  bool
+  RCLookupHandler::GetRandomWhitelistRouter(RouterID &router) const
+  {
+    util::Lock l(&_mutex);
+
+    const auto sz = whitelistRouters.size();
+    auto itr      = whitelistRouters.begin();
+    if(sz == 0)
+      return false;
+    if(sz > 1)
+      std::advance(itr, randint() % sz);
+    router = *itr;
+    return true;
+  }
+
+  bool
+  RCLookupHandler::CheckRenegotiateValid(RouterContact newrc,
+                                         RouterContact oldrc)
+  {
+    // missmatch of identity ?
+    if(newrc.pubkey != oldrc.pubkey)
+      return false;
+
+    if(!RemoteIsAllowed(newrc.pubkey))
+      return false;
+
+    auto func = std::bind(&RCLookupHandler::CheckRC, this, newrc);
+    _threadpool->addJob(func);
+
+    // update dht if required
+    if(_dht->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
+    {
+      _dht->impl->Nodes()->PutNode(newrc);
+    }
+
+    // TODO: check for other places that need updating the RC
+    return true;
+  }
+
+  void
+  RCLookupHandler::PeriodicUpdate(llarp_time_t now)
+  {
+    // try looking up stale routers
+    std::set< RouterID > routersToLookUp;
+
+    _nodedb->VisitInsertedBefore(
+        [&](const RouterContact &rc) {
+          if(HavePendingLookup(rc.pubkey))
+            return;
+          routersToLookUp.insert(rc.pubkey);
+        },
+        now - RouterContact::UpdateInterval);
+
+    for(const auto &router : routersToLookUp)
+    {
+      GetRC(router, nullptr);
+    }
+
+    _nodedb->RemoveStaleRCs(_bootstrapRouterIDList,
+                            now - RouterContact::StaleInsertionAge);
+  }
+
+  void
+  RCLookupHandler::ExploreNetwork()
+  {
+    if(_bootstrapRCList.size())
+    {
+      for(const auto &rc : _bootstrapRCList)
+      {
+        LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
+        _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+      }
+    }
+    else
+    {
+      LogError("we have no bootstrap nodes specified");
+    }
+
+    // TODO: only explore via random subset
+    // explore via every connected peer
+    _linkManager->ForEachPeer([&](ILinkSession *s) {
+      if(!s->IsEstablished())
+        return;
+      const RouterContact rc = s->GetRemoteRC();
+      if(rc.IsPublicRouter()
+         && (_bootstrapRCList.find(rc) == _bootstrapRCList.end()))
+      {
+        LogInfo("Doing explore via public node: ", RouterID(rc.pubkey));
+        _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
+      }
+    });
+  }
+
+  void
+  RCLookupHandler::Init(llarp_dht_context *dht, llarp_nodedb *nodedb,
+                        std::shared_ptr< llarp::thread::ThreadPool > threadpool,
+                        ILinkManager *linkManager,
+                        service::Context *hiddenServiceContext,
+                        const std::set< RouterID > &strictConnectPubkeys,
+                        const std::set< RouterContact > &bootstrapRCList,
+                        bool useWhitelist_arg, bool isServiceNode_arg)
+  {
+    _dht                  = dht;
+    _nodedb               = nodedb;
+    _threadpool           = threadpool;
+    _hiddenServiceContext = hiddenServiceContext;
+    _strictConnectPubkeys = strictConnectPubkeys;
+    _bootstrapRCList      = bootstrapRCList;
+    _linkManager          = linkManager;
+    useWhitelist          = useWhitelist_arg;
+    isServiceNode         = isServiceNode_arg;
+
+    for(const auto &rc : _bootstrapRCList)
+    {
+      _bootstrapRouterIDList.insert(rc.pubkey);
+    }
+  }
+
+  void
+  RCLookupHandler::HandleDHTLookupResult(
+      RouterID remote, const std::vector< RouterContact > &results)
+  {
+    if(not results.size())
+    {
+      FinalizeRequest(remote, nullptr, RCRequestResult::RouterNotFound);
+      return;
+    }
+
+    if(not RemoteIsAllowed(remote))
+    {
+      FinalizeRequest(remote, &results[0], RCRequestResult::InvalidRouter);
+      return;
+    }
+
+    if(not CheckRC(results[0]))
+    {
+      FinalizeRequest(remote, &results[0], RCRequestResult::BadRC);
+      return;
+    }
+
+    FinalizeRequest(remote, &results[0], RCRequestResult::Success);
+  }
+
+  bool
+  RCLookupHandler::HavePendingLookup(RouterID remote) const
+  {
+    return pendingCallbacks.find(remote) != pendingCallbacks.end();
+  }
+
+  bool
+  RCLookupHandler::RemoteInBootstrap(const RouterID &remote) const
+  {
+    for(const auto &rc : _bootstrapRCList)
+    {
+      if(rc.pubkey == remote)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void
+  RCLookupHandler::FinalizeRequest(const RouterID &router,
+                                   const RouterContact *const rc,
+                                   RCRequestResult result)
+  {
+    CallbacksQueue movedCallbacks;
+    {
+      util::Lock l(&_mutex);
+
+      auto itr = pendingCallbacks.find(router);
+
+      if(itr != pendingCallbacks.end())
+      {
+        movedCallbacks.splice(movedCallbacks.begin(), itr->second);
+        pendingCallbacks.erase(itr);
+      }
+    }  // lock
+
+    for(const auto &callback : movedCallbacks)
+    {
+      callback(router, rc, result);
+    }
+  }
+
+}  // namespace llarp

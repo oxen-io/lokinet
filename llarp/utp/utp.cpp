@@ -18,19 +18,6 @@ namespace llarp
                                            reneg, timeout, closed);
     }
 
-    LinkLayer_ptr
-    NewServerFromRouter(AbstractRouter* r)
-    {
-      return NewServer(
-          r->encryption(), util::memFn(&AbstractRouter::rc, r),
-          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, r),
-          util::memFn(&AbstractRouter::OnSessionEstablished, r),
-          util::memFn(&AbstractRouter::CheckRenegotiateValid, r),
-          util::memFn(&AbstractRouter::Sign, r),
-          util::memFn(&AbstractRouter::OnConnectTimeout, r),
-          util::memFn(&AbstractRouter::SessionClosed, r));
-    }
-
   }  // namespace utp
 
 }  // namespace llarp

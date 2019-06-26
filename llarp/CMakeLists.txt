@@ -173,6 +173,8 @@ set(LIB_SRC
   iwp/linklayer.cpp
   iwp/outermessage.cpp
   iwp/iwp.cpp
+  link/i_link_manager.cpp
+  link/link_manager.cpp
   link/server.cpp
   link/session.cpp
   messages/dht_immediate.cpp
@@ -195,6 +197,12 @@ set(LIB_SRC
   pow.cpp
   profiling.cpp
   router/abstractrouter.cpp
+  router/i_outbound_message_handler.cpp
+  router/outbound_message_handler.cpp
+  router/i_outbound_session_maker.cpp
+  router/outbound_session_maker.cpp
+  router/i_rc_lookup_handler.cpp
+  router/rc_lookup_handler.cpp
   router/router.cpp
   router_contact.cpp
   router_id.cpp

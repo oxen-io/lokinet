@@ -18,9 +18,6 @@ namespace llarp
               llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
               llarp::SessionClosedHandler closed);
 
-    std::unique_ptr< ILinkLayer >
-    NewServerFromRouter(AbstractRouter* r);
-
   }  // namespace iwp
 }  // namespace llarp
 

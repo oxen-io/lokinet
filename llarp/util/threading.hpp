@@ -35,9 +35,10 @@ namespace llarp
       }
     };
 
-    using Mutex     = absl::Mutex;
-    using Lock      = absl::MutexLock;
-    using Condition = absl::CondVar;
+    using Mutex          = absl::Mutex;
+    using Lock           = absl::MutexLock;
+    using ReleasableLock = absl::ReleasableMutexLock;
+    using Condition      = absl::CondVar;
 
     class Semaphore
     {

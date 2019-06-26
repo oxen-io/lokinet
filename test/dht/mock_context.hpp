@@ -117,6 +117,8 @@ namespace llarp
       MOCK_METHOD0(AllowTransit, bool&());
 
       MOCK_CONST_METHOD0(Nodes, dht::Bucket< dht::RCNode >*());
+      MOCK_METHOD1(PutRCNodeAsync, void(const dht::RCNode& val));
+      MOCK_METHOD1(DelRCNodeAsync, void(const dht::Key_t& val));
     };
 
   }  // namespace test

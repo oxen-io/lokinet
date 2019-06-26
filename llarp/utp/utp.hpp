@@ -15,9 +15,6 @@ namespace llarp
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed);
-
-    LinkLayer_ptr
-    NewServerFromRouter(AbstractRouter* r);
   }  // namespace utp
 }  // namespace llarp
 
