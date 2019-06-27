@@ -16,7 +16,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "
   set(FS_LIB c++experimental)
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  set(FS_LIB stdc++fs)
+  find_library(FS_LIB NAMES c++fs c++experimental stdc++fs)
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
@@ -30,4 +30,3 @@ set(EXE_LIBS ${STATIC_LIB} libutp)
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
-
