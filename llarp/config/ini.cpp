@@ -12,10 +12,11 @@
 namespace llarp
 {
   bool
-  ConfigParser::LoadFile(const char* fname)
+  ConfigParser::LoadFile(string_view fname)
   {
+    std::string name{fname};
     {
-      std::ifstream f(fname, std::ios::in | std::ios::binary);
+      std::ifstream f(name, std::ios::in | std::ios::binary);
       if(!f.is_open())
         return false;
       f.seekg(0, std::ios::end);
@@ -25,12 +26,12 @@ namespace llarp
         return false;
       f.read(m_Data.data(), m_Data.size());
     }
-    m_FileName = fname;
+    m_FileName = name;
     return Parse();
   }
 
   bool
-  ConfigParser::LoadString(const std::string& str)
+  ConfigParser::LoadString(string_view str)
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());

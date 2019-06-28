@@ -7,10 +7,10 @@ namespace llarp
   namespace service
   {
     bool
-    Config::Load(const std::string& fname)
+    Config::Load(string_view fname)
     {
       ConfigParser parser;
-      if(!parser.LoadFile(fname.c_str()))
+      if(!parser.LoadFile(fname))
         return false;
       parser.IterAll([&](const ConfigParser::String_t& name,
                          const ConfigParser::Section_t& section) {

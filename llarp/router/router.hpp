@@ -265,11 +265,10 @@ namespace llarp
     std::string rpcBindAddr = DefaultRPCBindAddr;
 
     /// lokid caller
-    const std::string DefaultLokidRPCAddr = "127.0.0.1:22023";
     std::unique_ptr< rpc::Caller > rpcCaller;
-    std::string lokidRPCAddr     = DefaultLokidRPCAddr;
-    std::string lokidRPCUser     = "";
-    std::string lokidRPCPassword = "";
+    std::string lokidRPCAddr = "127.0.0.1:22023";
+    std::string lokidRPCUser;
+    std::string lokidRPCPassword;
 
     using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
 
@@ -305,11 +304,6 @@ namespace llarp
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
-    // set to true if we are configured to run with json logging
-    bool m_LogJSON = false;
-    // the file we are logging to
-    FILE *m_LogFile = stdout;
-
     Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
            std::shared_ptr< Logic > logic);
 
@@ -344,7 +338,7 @@ namespace llarp
     Close();
 
     bool
-    LoadHiddenServiceConfig(const char *fname);
+    LoadHiddenServiceConfig(string_view fname);
 
     bool
     AddHiddenService(const service::Config::section_t &config);
@@ -572,7 +566,7 @@ namespace llarp
     }
 
     void
-    router_iter_config(const char *section, const char *key, const char *val);
+    fromConfig(Config *conf);
   };
 
 }  // namespace llarp

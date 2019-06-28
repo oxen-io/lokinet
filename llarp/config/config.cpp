@@ -5,7 +5,10 @@
 #include <net/net.hpp>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
+#include <util/logger_syslog.hpp>
 #include <util/mem.hpp>
+#include <util/memfn.hpp>
+#include <util/str.hpp>
 
 #include <fstream>
 #include <ios>
@@ -13,23 +16,392 @@
 
 namespace llarp
 {
-  template < typename Config, typename Section >
+  bool
+  RouterConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "netid")
+    {
+      if(val.size() <= rc.netID.size())
+      {
+        llarp::LogWarn("!!!! you have manually set netid to be '", val,
+                       "' which does not equal '", Version::LLARP_NET_ID,
+                       "' you will run as a different network, good luck "
+                       "and "
+                       "don't forget: something something MUH traffic "
+                       "shape "
+                       "correlation !!!!");
+        NetID::DefaultValue() =
+            NetID(reinterpret_cast< const byte_t * >(std::string(val).c_str()));
+        // re set netid in our rc
+        rc.netID = llarp::NetID();
+        netid.assign(val.begin(), val.end());
+      }
+      else
+      {
+        llarp::LogError("invalid netid '", val, "', is too long");
+      }
+    }
+    if(key == "max-connections")
+    {
+      std::string sVal(val.begin(), val.end());
+      auto ival = atoi(sVal.c_str());
+      if(ival > 0)
+      {
+        maxConnectedRouters = ival;
+        LogInfo("max connections set to ", maxConnectedRouters);
+      }
+    }
+    if(key == "min-connections")
+    {
+      std::string sVal(val.begin(), val.end());
+      auto ival = atoi(sVal.c_str());
+      if(ival > 0)
+      {
+        minConnectedRouters = ival;
+        LogInfo("min connections set to ", minConnectedRouters);
+      }
+    }
+    if(key == "nickname")
+    {
+      rc.SetNick(val);
+      // set logger name here
+      LogContext::Instance().nodeName = rc.Nick();
+    }
+    if(key == "encryption-privkey")
+    {
+      encryption_keyfile.assign(val.begin(), val.end());
+    }
+    if(key == "contact-file")
+    {
+      our_rc_file.assign(val.begin(), val.end());
+    }
+    if(key == "transport-privkey")
+    {
+      transport_keyfile.assign(val.begin(), val.end());
+    }
+    if((key == "identity-privkey" || key == "ident-privkey"))
+    {
+      ident_keyfile.assign(val.begin(), val.end());
+    }
+    if(key == "public-address" || key == "public-ip")
+    {
+      llarp::LogInfo("public ip ", val, " size ", val.size());
+      if(val.size() < 17)
+      {
+        // assume IPv4
+        llarp::Addr a(val);
+        llarp::LogInfo("setting public ipv4 ", a);
+        addrInfo.ip    = *a.addr6();
+        publicOverride = true;
+      }
+      // llarp::Addr a(val);
+    }
+    if(key == "public-port")
+    {
+      llarp::LogInfo("Setting public port ", val);
+      int p = atoi(std::string(val).c_str());
+      // Not needed to flip upside-down - this is done in llarp::Addr(const
+      // AddressInfo&)
+      ip4addr.sin_port = p;
+      addrInfo.port    = p;
+      publicOverride   = true;
+    }
+    if(key == "worker-threads")
+    {
+      workerThreads = atoi(std::string(val).c_str());
+    }
+    if(key == "net-threads")
+    {
+      num_nethreads = atoi(std::string(val).c_str());
+      if(num_nethreads <= 0)
+        num_nethreads = 1;
+    }
+
+    return true;
+  }
+  bool
+  NetworkConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "profiling")
+    {
+      if(IsTrueValue(val))
+      {
+        enableProfiling.emplace(true);
+      }
+      else if(IsFalseValue(val))
+      {
+        enableProfiling.emplace(false);
+      }
+    }
+    if(key == "profiles")
+    {
+      routerProfilesFile.assign(val.begin(), val.end());
+      llarp::LogInfo("setting profiles to ", routerProfilesFile);
+    }
+    else if(key == "strict-connect")
+    {
+      strictConnect.assign(val.begin(), val.end());
+    }
+    else
+    {
+      netConfig.emplace(key, val);
+    }
+    return true;
+  }
+
+  bool
+  NetdbConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "dir")
+    {
+      nodedb_dir.assign(val.begin(), val.end());
+    }
+
+    return true;
+  }
+
+  bool
+  DnsConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "upstream")
+    {
+      llarp::LogInfo("add upstream resolver ", val);
+      netConfig.emplace("upstream-dns", val);
+    }
+    if(key == "bind")
+    {
+      llarp::LogInfo("set local dns to ", val);
+      netConfig.emplace("local-dns", val);
+    }
+    return true;
+  }
+
+  bool
+  IwpConfig::fromSection(string_view key, string_view val)
+  {
+    // try IPv4 first
+    uint16_t proto = 0;
+
+    std::set< std::string > parsed_opts;
+    std::string v(val.begin(), val.end());
+    std::string::size_type idx;
+    do
+    {
+      idx = v.find_first_of(',');
+      if(idx != std::string::npos)
+      {
+        parsed_opts.insert(v.substr(0, idx));
+        v = v.substr(idx + 1);
+      }
+      else
+      {
+        parsed_opts.insert(v);
+      }
+    } while(idx != std::string::npos);
+
+    /// for each option
+    for(const auto &item : parsed_opts)
+    {
+      /// see if it's a number
+      auto port = std::atoi(item.c_str());
+      if(port > 0)
+      {
+        /// set port
+        if(proto == 0)
+        {
+          proto = port;
+        }
+      }
+    }
+
+    if(key == "*")
+    {
+      m_OutboundPort = proto;
+    }
+    else
+    {
+      servers.emplace_back(key, AF_INET, proto);
+    }
+    return true;
+  }
+
+  bool
+  ConnectConfig::fromSection(ABSL_ATTRIBUTE_UNUSED string_view key,
+                             string_view val)
+  {
+    routers.emplace_back(val.begin(), val.end());
+    return true;
+  }
+
+  bool
+  ServicesConfig::fromSection(string_view key, string_view val)
+  {
+    services.emplace_back(std::string(key.begin(), key.end()),
+                          std::string(val.begin(), val.end()));
+    return true;
+  }
+
+  bool
+  SystemConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "pidfile")
+    {
+      pidfile.assign(val.begin(), val.end());
+    }
+
+    return true;
+  }
+
+  bool
+  MetricsConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "disable-metrics")
+    {
+      disableMetrics = true;
+    }
+    else if(key == "disable-metrics-log")
+    {
+      disableMetricLogs = true;
+    }
+    else if(key == "json-metrics-path")
+    {
+      jsonMetricsPath.assign(val.begin(), val.end());
+    }
+    else if(key == "metric-tank-host")
+    {
+      metricTankHost.assign(val.begin(), val.end());
+    }
+    else
+    {
+      // consume everything else as a metric tag
+      metricTags[std::string(key)] = std::string(val);
+    }
+
+    return true;
+  }
+
+  bool
+  ApiConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "enabled")
+    {
+      enableRPCServer = IsTrueValue(val);
+    }
+    if(key == "bind")
+    {
+      rpcBindAddr.assign(val.begin(), val.end());
+    }
+    if(key == "authkey")
+    {
+      // TODO: add pubkey to whitelist
+    }
+
+    return true;
+  }
+
+  bool
+  LokidConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "service-node-seed")
+    {
+      usingSNSeed = true;
+      ident_keyfile.assign(val.begin(), val.end());
+    }
+    if(key == "enabled")
+    {
+      whitelistRouters = IsTrueValue(val);
+    }
+    if(key == "jsonrpc" || key == "addr")
+    {
+      lokidRPCAddr.assign(val.begin(), val.end());
+    }
+    if(key == "username")
+    {
+      lokidRPCUser.assign(val.begin(), val.end());
+    }
+    if(key == "password")
+    {
+      lokidRPCPassword.assign(val.begin(), val.end());
+    }
+
+    return true;
+  }
+
+  bool
+  BootstrapConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "add-node")
+    {
+      routers.emplace_back(val.begin(), val.end());
+    }
+
+    return true;
+  }
+
+  bool
+  LoggingConfig::fromSection(string_view key, string_view val)
+  {
+    if(key == "type" && val == "syslog")
+    {
+      // TODO(despair): write event log syslog class
+#if defined(_WIN32)
+      LogError("syslog not supported on win32");
+#else
+      LogInfo("Switching to syslog");
+      LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+#endif
+    }
+    if(key == "type" && val == "json")
+    {
+      m_LogJSON = true;
+    }
+    if(key == "file")
+    {
+      LogInfo("open log file: ", val);
+      std::string fname(val.begin(), val.end());
+      FILE *const logfile = ::fopen(fname.c_str(), "a");
+      if(logfile)
+      {
+        m_LogFile = logfile;
+        LogInfo("will log to file ", val);
+      }
+      else if(errno)
+      {
+        LogError("could not open log file at '", val, "': ", strerror(errno));
+        errno = 0;
+      }
+      else
+      {
+        LogError("failed to open log file at '", val,
+                 "' for an unknown reason, bailing tf out kbai");
+        ::abort();
+      }
+    }
+
+    return true;
+  }
+
+  template < typename Section, typename Config >
   Section
-  find_section(Config &c, const std::string &name, const Section &fallback)
+  find_section(Config &c, const std::string &name)
   {
     Section ret;
-    if(c.VisitSection(name.c_str(),
-                      [&ret](const ConfigParser::Section_t &s) -> bool {
-                        for(const auto &item : s)
-                        {
-                          ret.emplace_back(string_view_string(item.first),
-                                           string_view_string(item.second));
-                        }
-                        return true;
-                      }))
+
+    auto visitor = [&ret](const ConfigParser::Section_t &section) -> bool {
+      for(const auto &sec : section)
+      {
+        if(!ret.fromSection(sec.first, sec.second))
+        {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    if(c.VisitSection(name.c_str(), visitor))
       return ret;
     else
-      return fallback;
+      return {};
   }
 
   bool
@@ -40,57 +412,20 @@ namespace llarp
     {
       return false;
     }
-    router    = find_section(parser, "router", section_t{});
-    network   = find_section(parser, "network", section_t{});
-    connect   = find_section(parser, "connect", section_t{});
-    netdb     = find_section(parser, "netdb", section_t{});
-    dns       = find_section(parser, "dns", section_t{});
-    iwp_links = find_section(parser, "bind", section_t{});
-    services  = find_section(parser, "services", section_t{});
-    system    = find_section(parser, "system", section_t{});
-    metrics   = find_section(parser, "metrics", section_t{});
-    api       = find_section(parser, "api", section_t{});
-    lokid     = find_section(parser, "lokid", section_t{});
-    bootstrap = find_section(parser, "bootstrap", section_t{});
-    logging   = find_section(parser, "logging", section_t{});
+    router    = find_section< RouterConfig >(parser, "router");
+    network   = find_section< NetworkConfig >(parser, "network");
+    connect   = find_section< ConnectConfig >(parser, "connect");
+    netdb     = find_section< NetdbConfig >(parser, "netdb");
+    dns       = find_section< DnsConfig >(parser, "dns");
+    iwp_links = find_section< IwpConfig >(parser, "bind");
+    services  = find_section< ServicesConfig >(parser, "services");
+    system    = find_section< SystemConfig >(parser, "system");
+    metrics   = find_section< MetricsConfig >(parser, "metrics");
+    api       = find_section< ApiConfig >(parser, "api");
+    lokid     = find_section< LokidConfig >(parser, "lokid");
+    bootstrap = find_section< BootstrapConfig >(parser, "bootstrap");
+    logging   = find_section< LoggingConfig >(parser, "logging");
     return true;
-  }
-
-  void
-  Config::visit(const Visitor &functor)
-  {
-    std::unordered_map< std::string, const llarp::Config::section_t & >
-        sections = {{"network", network},
-                    {"connect", connect},
-                    {"bootstrap", bootstrap},
-                    {"system", system},
-                    {"metrics", metrics},
-                    {"netdb", netdb},
-                    {"api", api},
-                    {"services", services}};
-
-    auto visitor = [&](const char *name, const auto &item) {
-      functor(name, item.first.c_str(), item.second.c_str());
-    };
-
-    using namespace std::placeholders;
-
-    std::for_each(logging.begin(), logging.end(),
-                  std::bind(visitor, "logging", _1));
-    // end of logging section commit settings and go
-    functor("logging", "", "");
-    std::for_each(lokid.begin(), lokid.end(), std::bind(visitor, "lokid", _1));
-    std::for_each(router.begin(), router.end(),
-                  std::bind(visitor, "router", _1));
-
-    std::for_each(dns.begin(), dns.end(), std::bind(visitor, "dns", _1));
-    std::for_each(iwp_links.begin(), iwp_links.end(),
-                  std::bind(visitor, "bind", _1));
-
-    std::for_each(sections.begin(), sections.end(), [&](const auto &section) {
-      std::for_each(section.second.begin(), section.second.end(),
-                    std::bind(visitor, section.first.c_str(), _1));
-    });
   }
 
 }  // namespace llarp

@@ -52,12 +52,39 @@ namespace llarp
       llarp::LogError("failed to load config file ", configfile);
       return false;
     }
-    config->visit(util::memFn(&Context::iter_config, this));
 
-    if(!disableMetrics)
+    // System config
+    if(!config->system.pidfile.empty())
     {
-      setupMetrics();
-      if(!disableMetricLogs)
+      SetPIDFile(config->system.pidfile);
+    }
+
+    // Router config
+    if(!singleThreaded && config->router.workerThreads > 0 && !worker)
+    {
+      worker.reset(
+          llarp_init_threadpool(config->router.workerThreads, "llarp-worker"));
+    }
+
+    if(singleThreaded)
+    {
+      num_nethreads = 0;
+    }
+    else
+    {
+      num_nethreads = config->router.num_nethreads;
+    }
+
+    nodedb_dir = config->netdb.nodedb_dir;
+
+    if(!config->metrics.disableMetrics)
+    {
+      auto &metricsConfig = config->metrics;
+      auto &tags          = metricsConfig.metricTags;
+      tags["netid"]       = config->router.netid;
+      tags["nickname"]    = config->router.rc.Nick();
+      setupMetrics(metricsConfig);
+      if(!config->metrics.disableMetricLogs)
       {
         m_metricsManager->instance()->addGlobalPublisher(
             std::make_shared< metrics::StreamPublisher >(std::cerr));
@@ -67,77 +94,7 @@ namespace llarp
   }
 
   void
-  Context::iter_config(const char *section, const char *key, const char *val)
-  {
-    if(!strcmp(section, "system"))
-    {
-      if(!strcmp(key, "pidfile"))
-      {
-        SetPIDFile(val);
-      }
-    }
-    if(!strcmp(section, "metrics"))
-    {
-      if(!strcmp(key, "disable-metrics"))
-      {
-        disableMetrics = true;
-      }
-      else if(!strcmp(key, "disable-metrics-log"))
-      {
-        disableMetricLogs = true;
-      }
-      else if(!strcmp(key, "json-metrics-path"))
-      {
-        jsonMetricsPath = val;
-      }
-      else if(!strcmp(key, "metric-tank-host"))
-      {
-        metricTankHost = val;
-      }
-      else
-      {
-        // consume everything else as a metric tag
-        metricTags[key] = val;
-      }
-    }
-    if(!strcmp(section, "router"))
-    {
-      if(!strcmp(key, "worker-threads") && !singleThreaded)
-      {
-        int workers = atoi(val);
-        if(workers > 0 && worker == nullptr)
-        {
-          worker.reset(llarp_init_threadpool(workers, "llarp-worker"));
-        }
-      }
-      else if(!strcmp(key, "net-threads"))
-      {
-        num_nethreads = atoi(val);
-        if(num_nethreads <= 0)
-          num_nethreads = 1;
-        if(singleThreaded)
-          num_nethreads = 0;
-      }
-      else if(!strcmp(key, "netid"))
-      {
-        metricTags["netid"] = val;
-      }
-      else if(!strcmp(key, "nickname"))
-      {
-        metricTags["nickname"] = val;
-      }
-    }
-    if(!strcmp(section, "netdb"))
-    {
-      if(!strcmp(key, "dir"))
-      {
-        nodedb_dir = val;
-      }
-    }
-  }
-
-  void
-  Context::setupMetrics()
+  Context::setupMetrics(const MetricsConfig &metricsConfig)
   {
     if(!m_scheduler)
     {
@@ -153,15 +110,15 @@ namespace llarp
           *m_scheduler, m_metricsManager->instance());
     }
 
-    if(!jsonMetricsPath.native().empty())
+    if(!metricsConfig.jsonMetricsPath.native().empty())
     {
       m_metricsManager->instance()->addGlobalPublisher(
           std::make_shared< metrics::JsonPublisher >(
               std::bind(&metrics::JsonPublisher::directoryPublisher,
-                        std::placeholders::_1, jsonMetricsPath)));
+                        std::placeholders::_1, metricsConfig.jsonMetricsPath)));
     }
 
-    if(!metricTankHost.empty())
+    if(!metricsConfig.metricTankHost.empty())
     {
       if(std::getenv("LOKINET_ENABLE_METRIC_TANK"))
       {
@@ -186,11 +143,11 @@ __        ___    ____  _   _ ___ _   _  ____
         std::cerr << WARNING << '\n';
 
         std::pair< std::string, std::string > split =
-            absl::StrSplit(metricTankHost, ':');
+            absl::StrSplit(metricsConfig.metricTankHost, ':');
 
         m_metricsManager->instance()->addGlobalPublisher(
             std::make_shared< metrics::MetricTankPublisher >(
-                metricTags, split.first, stoi(split.second)));
+                metricsConfig.metricTags, split.first, stoi(split.second)));
       }
       else
       {

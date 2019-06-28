@@ -18,11 +18,12 @@ struct llarp_threadpool;
 
 namespace llarp
 {
+  class Logic;
+  struct AbstractRouter;
   struct Config;
   struct Crypto;
   struct CryptoManager;
-  class Logic;
-  struct AbstractRouter;
+  struct MetricsConfig;
   struct RouterContact;
 
   namespace metrics
@@ -47,13 +48,8 @@ namespace llarp
     std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
     std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
 
-    int num_nethreads      = 1;
-    bool singleThreaded    = false;
-    bool disableMetrics    = false;
-    bool disableMetricLogs = false;
-    fs::path jsonMetricsPath;
-    std::string metricTankHost;
-    std::map< std::string, std::string > metricTags;
+    int num_nethreads   = 1;
+    bool singleThreaded = false;
 
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< CryptoManager > cryptoManager;
@@ -112,13 +108,10 @@ namespace llarp
     ReloadConfig();
 
     void
-    iter_config(const char *section, const char *key, const char *val);
-
-    void
     progress();
 
     void
-    setupMetrics();
+    setupMetrics(const MetricsConfig &metricsConfig);
 
     std::string configfile;
     std::string pidfile;
