@@ -1437,6 +1437,7 @@ namespace llarp
         return;
     }
     LogWarn("message to ", remote, " was dropped");
+    metrics::integerTick(msg->Name(), "to", 1, "drop", remote.ToString());
   }
 
   void
