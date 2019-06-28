@@ -246,10 +246,7 @@ else()
   set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif()
 
-set(LIBS ${MALLOC_LIB} ${FS_LIB})
-if(NOT WIN32)
-  set(LIBS ${LIBS} uv)
-endif()
+set(LIBS ${MALLOC_LIB} ${FS_LIB} ${UV_LIB})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)

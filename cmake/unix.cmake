@@ -1,6 +1,8 @@
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
+find_library(UV_LIB NAMES uv)
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(FS_LIB stdc++fs)
   get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c ABSOLUTE)
