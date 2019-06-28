@@ -56,7 +56,7 @@ target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::
 
 # cut back on fluff
 if (NOT WIN32)
-  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings cppbackport)
+  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
