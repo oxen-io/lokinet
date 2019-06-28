@@ -339,7 +339,7 @@ namespace llarp
 
         self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
         self->handler->PutReplyIntroFor(self->msg->tag, self->fromIntro);
-        self->handler->PutSenderFor(self->msg->tag, self->msg->sender, true);
+        self->handler->PutSenderFor(self->msg->tag, self->msg->sender, false);
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
         self->msg->handler                     = self->handler;

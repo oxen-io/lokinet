@@ -403,9 +403,9 @@ namespace llarp
       if(itr == m_Sessions.end())
       {
         itr = m_Sessions.emplace(tag, Session{}).first;
+        itr->second.inbound  = inbound;
+        itr->second.remote   = info;
       }
-      itr->second.remote   = info;
-      itr->second.inbound  = inbound;
       itr->second.lastUsed = Now();
     }
 
