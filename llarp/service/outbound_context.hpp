@@ -60,6 +60,10 @@ namespace llarp
       bool
       ReadyToSend() const;
 
+      /// return true if we are ready to swap intros
+      bool
+      ReadyToSwap(llarp_time_t now) const;
+
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 

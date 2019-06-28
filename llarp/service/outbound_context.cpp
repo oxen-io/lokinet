@@ -239,6 +239,26 @@ namespace llarp
     }
 
     bool
+    OutboundContext::ReadyToSwap(llarp_time_t now) const
+    {
+      if(m_NextIntro == remoteIntro && !remoteIntro.router.IsZero())
+        return false;
+      if(remoteIntro.ExpiresSoon(now))
+        return true;
+      if(m_NextIntro.router != remoteIntro.router)
+      {
+        if(m_NextIntro.router.IsZero())
+          return false;
+        auto path = GetNewestPathByRouter(m_NextIntro.router);
+        if(path)
+          return !path->ExpiresSoon(now);
+        return false;
+      }
+      auto path = GetNewestPathByRouter(remoteIntro.router);
+      return path && !path->ExpiresSoon(now);
+    }
+
+    bool
     OutboundContext::Pump(llarp_time_t now)
     {
       // we are probably dead af
@@ -261,6 +281,8 @@ namespace llarp
         else
           ++itr;
       }
+      if(ReadyToSwap(now))
+        SwapIntros();
       // send control message if we look too quiet
       if(lastGoodSend)
       {
@@ -322,7 +344,19 @@ namespace llarp
         return false;
       if(path::Builder::ShouldBuildMore(now))
         return true;
-      return !ReadyToSend();
+      const bool should = !(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths);
+      if(!ReadyToSend())
+      {
+        return should;
+      }
+      llarp_time_t t = 0;
+      ForEachPath([&t](path::Path_ptr path)
+      {
+        t = std::max(path->ExpireTime(), t);
+      });
+      if(t <= now)
+        return should;
+      return should && t - now > path::default_lifetime / 2;
     }
 
     bool
