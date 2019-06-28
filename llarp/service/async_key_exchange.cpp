@@ -32,9 +32,9 @@ namespace llarp
     {
       AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
       // put values
+      self->handler->PutSenderFor(self->msg.tag, self->remote, false);
       self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
       self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
-      self->handler->PutSenderFor(self->msg.tag, self->remote, false);
       self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
       self->hook(self->frame);
       delete self;
