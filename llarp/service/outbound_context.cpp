@@ -342,9 +342,8 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      if(path::Builder::ShouldBuildMore(now))
-        return true;
-      const bool should = !(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths);
+      const bool should = (!(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths)) && ShouldBuildMore(now);
+
       if(!ReadyToSend())
       {
         return should;
