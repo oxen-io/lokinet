@@ -241,7 +241,9 @@ namespace llarp
     bool
     OutboundContext::ReadyToSwap(llarp_time_t now) const
     {
-      if(m_NextIntro == remoteIntro && !remoteIntro.router.IsZero())
+      if(m_NextIntro.router.IsZero())
+        return false;
+      if(m_NextIntro == remoteIntro)
         return false;
       if(remoteIntro.ExpiresSoon(now))
         return true;
