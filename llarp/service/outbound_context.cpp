@@ -239,28 +239,6 @@ namespace llarp
     }
 
     bool
-    OutboundContext::ReadyToSwap(llarp_time_t now) const
-    {
-      if(m_NextIntro.router.IsZero())
-        return false;
-      if(m_NextIntro == remoteIntro)
-        return false;
-      if(remoteIntro.ExpiresSoon(now))
-        return true;
-      if(m_NextIntro.router != remoteIntro.router)
-      {
-        if(m_NextIntro.router.IsZero())
-          return false;
-        auto path = GetNewestPathByRouter(m_NextIntro.router);
-        if(path)
-          return !path->ExpiresSoon(now);
-        return false;
-      }
-      auto path = GetNewestPathByRouter(remoteIntro.router);
-      return path && !path->ExpiresSoon(now);
-    }
-
-    bool
     OutboundContext::Pump(llarp_time_t now)
     {
       // we are probably dead af
@@ -283,8 +261,6 @@ namespace llarp
         else
           ++itr;
       }
-      if(ReadyToSwap(now))
-        SwapIntros();
       // send control message if we look too quiet
       if(lastGoodSend)
       {
