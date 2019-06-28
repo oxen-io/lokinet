@@ -105,6 +105,8 @@ namespace llarp
           return true;
         }
         currentIntroSet = *i;
+
+        m_DataHandler->PutSenderFor(currentConvoTag, currentIntroSet.A, false);
         if(!ShiftIntroduction())
         {
           LogWarn("failed to pick new intro during introset update");
