@@ -342,7 +342,7 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      const bool should = (!(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths)) && ShouldBuildMore(now);
+      const bool should = (!(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths)) && path::Builder::ShouldBuildMore(now);
 
       if(!ReadyToSend())
       {
@@ -351,11 +351,12 @@ namespace llarp
       llarp_time_t t = 0;
       ForEachPath([&t](path::Path_ptr path)
       {
-        t = std::max(path->ExpireTime(), t);
+        if(path->IsReady())
+          t = std::max(path->ExpireTime(), t);
       });
       if(t <= now)
         return should;
-      return should && t - now > path::default_lifetime / 2;
+      return should && t - now < path::default_lifetime / 2;
     }
 
     bool
