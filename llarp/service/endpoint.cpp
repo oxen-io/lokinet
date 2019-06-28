@@ -841,7 +841,7 @@ namespace llarp
       Introduction intro;
       intro.pathID = from;
       intro.router = PubKey(path->Endpoint());
-      intro.expiresAt = path->ExpireTime();
+      intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
       PutIntroFor(msg->tag, intro);
       return ProcessDataMessage(msg);
     }
