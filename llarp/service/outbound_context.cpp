@@ -334,7 +334,7 @@ namespace llarp
       });
       if(t <= now)
         return should;
-      return should && t - now < path::default_lifetime / 2;
+      return should && t - now >= path::default_lifetime / 2;
     }
 
     bool
