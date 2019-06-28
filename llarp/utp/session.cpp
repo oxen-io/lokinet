@@ -81,6 +81,8 @@ namespace llarp
     Session::OutboundLinkEstablished(LinkLayer* p)
     {
       OnLinkEstablished(p);
+      metrics::integerTick("utp.session.open", "to", 1, "id",
+                             RouterID(remoteRC.pubkey).ToString());
       OutboundHandshake();
     }
 
@@ -587,6 +589,11 @@ namespace llarp
           utp_set_userdata(sock, nullptr);
           sock = nullptr;
           LogDebug("utp_close ", remoteAddr);
+          if(remoteRC.IsPublicRouter())
+          {
+            metrics::integerTick("utp.session.close", "to", 1, "id",
+                             RouterID(remoteRC.pubkey).ToString());
+          }
         }
       }
       EnterState(eClose);
