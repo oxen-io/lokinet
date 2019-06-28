@@ -17,7 +17,7 @@ namespace llarp
     struct IDataHandler
     {
       virtual bool
-      HandleDataMessage(path::Path_ptr path,
+      HandleDataMessage(path::Path_ptr path, const PathID_t from,
                         std::shared_ptr< ProtocolMessage > msg) = 0;
 
       virtual bool

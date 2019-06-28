@@ -5,7 +5,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(FS_LIB stdc++fs)
   get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c ABSOLUTE)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
-
   set(FS_LIB stdc++fs)
   get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c ABSOLUTE)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")

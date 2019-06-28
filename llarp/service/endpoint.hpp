@@ -165,7 +165,7 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(path::Path_ptr path,
+      HandleDataMessage(path::Path_ptr path, const PathID_t from,
                         std::shared_ptr< ProtocolMessage > msg) override;
 
       virtual bool
@@ -291,6 +291,9 @@ namespace llarp
       bool
       GetConvoTagsForService(const Address& si,
                              std::set< ConvoTag >& tag) const override;
+
+
+
 
       void
       PutNewOutboundContext(const IntroSet& introset);

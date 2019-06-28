@@ -31,10 +31,10 @@ namespace llarp
     }
 
     void
-    ProtocolMessage::ProcessAsync(path::Path_ptr path,
+    ProtocolMessage::ProcessAsync(path::Path_ptr path, PathID_t from,
                                   std::shared_ptr< ProtocolMessage > self)
     {
-      if(!self->handler->HandleDataMessage(path, self))
+      if(!self->handler->HandleDataMessage(path, from, self))
         LogWarn("failed to handle data message from ", path->Name());
     }
 
@@ -345,8 +345,9 @@ namespace llarp
         self->msg->handler                     = self->handler;
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
         path::Path_ptr path                    = std::move(self->path);
+        const PathID_t from = self->frame.F;
         self->logic->queue_func(
-            [=]() { ProtocolMessage::ProcessAsync(path, msg); });
+            [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
         delete self;
       }
     };
@@ -407,8 +408,9 @@ namespace llarp
         return false;
       }
       msg->handler = handler;
+      const PathID_t from = F;
       logic->queue_func(
-          [=]() { ProtocolMessage::ProcessAsync(recvPath, msg); });
+          [=]() { ProtocolMessage::ProcessAsync(recvPath, from, msg); });
       return true;
     }
 

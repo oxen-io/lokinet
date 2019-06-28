@@ -832,13 +832,17 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(path::Path_ptr path,
+    Endpoint::HandleDataMessage(path::Path_ptr path, const PathID_t from,
                                 std::shared_ptr< ProtocolMessage > msg)
     {
       msg->sender.UpdateAddr();
-      PutReplyIntroFor(msg->tag, path->intro);
       PutSenderFor(msg->tag, msg->sender, true);
-      PutIntroFor(msg->tag, msg->introReply);
+      PutReplyIntroFor(msg->tag, path->intro);
+      Introduction intro;
+      intro.pathID = from;
+      intro.router = PubKey(path->Endpoint());
+      intro.expiresAt = path->ExpireTime();
+      PutIntroFor(msg->tag, intro);
       return ProcessDataMessage(msg);
     }
 
@@ -1096,7 +1100,9 @@ namespace llarp
         std::set< ConvoTag > tags;
         if(GetConvoTagsForService(remote, tags))
         {
+          // the remote guy's intro
           Introduction remoteIntro;
+          Introduction replyPath;
           SharedSecret K;
           // pick tag
           for(const auto& tag : tags)
@@ -1105,14 +1111,20 @@ namespace llarp
               continue;
             if(!GetCachedSessionKeyFor(tag, K))
               continue;
-            if(GetIntroFor(tag, remoteIntro))
+            if(!GetReplyIntroFor(tag, replyPath))
+              continue;
+            if(!GetIntroFor(tag, remoteIntro))
+              continue;
+            if(replyPath.ExpiresSoon(now))
+              continue;
+            // get path for intro
+            ForEachPath([&](path::Path_ptr path) {
+              if(path->Endpoint() == replyPath.router)
+                p = path;
+            });
+            if(p)
             {
-              if(!remoteIntro.ExpiresSoon(now))
-                p = GetNewestPathByRouter(remoteIntro.router);
-              if(p)
-              {
-                f.T = tag;
-              }
+              f.T = tag;
             }
           }
           if(p)
