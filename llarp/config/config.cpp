@@ -23,7 +23,7 @@ namespace llarp
     {
       if(val.size() <= NetID::size())
       {
-        netid.assign(val.begin(), val.end());
+        m_netId.assign(val.begin(), val.end());
       }
       else
       {
@@ -36,8 +36,8 @@ namespace llarp
       auto ival = atoi(sVal.c_str());
       if(ival > 0)
       {
-        maxConnectedRouters = ival;
-        LogInfo("max connections set to ", maxConnectedRouters);
+        m_maxConnectedRouters = ival;
+        LogInfo("max connections set to ", m_maxConnectedRouters);
       }
     }
     if(key == "min-connections")
@@ -46,31 +46,31 @@ namespace llarp
       auto ival = atoi(sVal.c_str());
       if(ival > 0)
       {
-        minConnectedRouters = ival;
-        LogInfo("min connections set to ", minConnectedRouters);
+        m_minConnectedRouters = ival;
+        LogInfo("min connections set to ", m_minConnectedRouters);
       }
     }
     if(key == "nickname")
     {
-      nickname.assign(val.begin(), val.end());
+      m_nickname.assign(val.begin(), val.end());
       // set logger name here
-      LogContext::Instance().nodeName = nickname;
+      LogContext::Instance().nodeName = nickname();
     }
     if(key == "encryption-privkey")
     {
-      encryption_keyfile.assign(val.begin(), val.end());
+      m_encryptionKeyfile.assign(val.begin(), val.end());
     }
     if(key == "contact-file")
     {
-      our_rc_file.assign(val.begin(), val.end());
+      m_ourRcFile.assign(val.begin(), val.end());
     }
     if(key == "transport-privkey")
     {
-      transport_keyfile.assign(val.begin(), val.end());
+      m_transportKeyfile.assign(val.begin(), val.end());
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
-      ident_keyfile.assign(val.begin(), val.end());
+      m_identKeyfile.assign(val.begin(), val.end());
     }
     if(key == "public-address" || key == "public-ip")
     {
@@ -80,28 +80,31 @@ namespace llarp
         // assume IPv4
         llarp::Addr a(val);
         llarp::LogInfo("setting public ipv4 ", a);
-        addrInfo.ip    = *a.addr6();
-        publicOverride = true;
+        m_addrInfo.ip    = *a.addr6();
+        m_publicOverride = true;
       }
     }
     if(key == "public-port")
     {
       llarp::LogInfo("Setting public port ", val);
       int p = atoi(std::string(val).c_str());
-      // Not needed to flip upside-down this is done in Addr(const AddressInfo&)
-      ip4addr.sin_port = p;
-      addrInfo.port    = p;
-      publicOverride   = true;
+      // Not needed to flip upside-down - this is done in llarp::Addr(const
+      // AddressInfo&)
+      m_ip4addr.sin_port = p;
+      m_addrInfo.port    = p;
+      m_publicOverride   = true;
     }
     if(key == "worker-threads")
     {
-      workerThreads = atoi(std::string(val).c_str());
+      m_workerThreads = atoi(std::string(val).c_str());
     }
     if(key == "net-threads")
     {
-      num_nethreads = atoi(std::string(val).c_str());
-      if(num_nethreads <= 0)
-        num_nethreads = 1;
+      m_numNethreads = atoi(std::string(val).c_str());
+      if(m_numNethreads <= 0)
+      {
+        m_numNethreads = 1;
+      }
     }
 
     return true;

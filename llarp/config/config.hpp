@@ -14,34 +14,53 @@ namespace llarp
 {
   struct ConfigParser;
 
-  struct RouterConfig
+  class RouterConfig
   {
+   private:
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 2;
+    size_t m_minConnectedRouters = 2;
 
     /// hard upperbound limit on the number of router to router connections
-    size_t maxConnectedRouters = 2000;
+    size_t m_maxConnectedRouters = 2000;
 
-    std::string netid;
-    std::string nickname;
+    std::string m_netId;
+    std::string m_nickname;
 
-    fs::path encryption_keyfile = "encryption.key";
+    fs::path m_encryptionKeyfile = "encryption.key";
 
     // path to write our self signed rc to
-    fs::path our_rc_file = "rc.signed";
+    fs::path m_ourRcFile = "rc.signed";
 
     // transient iwp encryption key
-    fs::path transport_keyfile = "transport.key";
+    fs::path m_transportKeyfile = "transport.key";
 
     // long term identity key
-    fs::path ident_keyfile = "identity.key";
+    fs::path m_identKeyfile = "identity.key";
 
-    bool publicOverride = false;
-    struct sockaddr_in ip4addr;
-    AddressInfo addrInfo;
+    bool m_publicOverride = false;
+    struct sockaddr_in m_ip4addr;
+    AddressInfo m_addrInfo;
 
-    int workerThreads;
-    int num_nethreads;
+    int m_workerThreads;
+    int m_numNethreads;
+
+   public:
+    // clang-format off
+    size_t minConnectedRouters() const        { return m_minConnectedRouters; }
+    size_t maxConnectedRouters() const        { return m_maxConnectedRouters; }
+    const fs::path& encryptionKeyfile() const { return m_encryptionKeyfile; }
+    const fs::path& ourRcFile() const         { return m_ourRcFile; }
+    const fs::path& transportKeyfile() const  { return m_transportKeyfile; }
+    const fs::path& identKeyfile() const      { return m_identKeyfile; }
+    const std::string& netId() const          { return m_netId; }
+    const std::string& nickname() const       { return m_nickname; }
+    bool publicOverride() const               { return m_publicOverride; }
+    const struct sockaddr_in& ip4addr() const { return m_ip4addr; }
+    const AddressInfo& addrInfo() const       { return m_addrInfo; }
+    int workerThreads() const                 { return m_workerThreads; }
+    int numNethreads() const                  { return m_numNethreads; }
+
+    // clang-format on
 
     bool
     fromSection(string_view key, string_view val);
@@ -151,7 +170,7 @@ namespace llarp
   struct LoggingConfig
   {
     bool m_LogJSON  = false;
-    FILE *m_LogFile = stdout;
+    FILE* m_LogFile = stdout;
 
     bool
     fromSection(string_view key, string_view val);
@@ -161,7 +180,7 @@ namespace llarp
   {
    private:
     bool
-    parse(const ConfigParser &parser);
+    parse(const ConfigParser& parser);
 
    public:
     RouterConfig router;
@@ -179,7 +198,7 @@ namespace llarp
     LoggingConfig logging;
 
     bool
-    Load(const char *fname);
+    Load(const char* fname);
 
     bool
     LoadFromString(string_view str);
@@ -188,12 +207,12 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_generic_ensure_config(std::ofstream &f, std::string basepath);
+llarp_generic_ensure_config(std::ofstream& f, std::string basepath);
 
 void
-llarp_ensure_router_config(std::ofstream &f, std::string basepath);
+llarp_ensure_router_config(std::ofstream& f, std::string basepath);
 
 bool
-llarp_ensure_client_config(std::ofstream &f, std::string basepath);
+llarp_ensure_client_config(std::ofstream& f, std::string basepath);
 
 #endif

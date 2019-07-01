@@ -60,10 +60,10 @@ namespace llarp
     }
 
     // Router config
-    if(!singleThreaded && config->router.workerThreads > 0 && !worker)
+    if(!singleThreaded && config->router.workerThreads() > 0 && !worker)
     {
-      worker.reset(
-          llarp_init_threadpool(config->router.workerThreads, "llarp-worker"));
+      worker.reset(llarp_init_threadpool(config->router.workerThreads(),
+                                         "llarp-worker"));
     }
 
     if(singleThreaded)
@@ -72,7 +72,7 @@ namespace llarp
     }
     else
     {
-      num_nethreads = config->router.num_nethreads;
+      num_nethreads = config->router.numNethreads();
     }
 
     nodedb_dir = config->netdb.nodedb_dir;
@@ -81,8 +81,8 @@ namespace llarp
     {
       auto &metricsConfig = config->metrics;
       auto &tags          = metricsConfig.metricTags;
-      tags["netid"]       = config->router.netid;
-      tags["nickname"]    = config->router.nickname;
+      tags["netid"]       = config->router.netId();
+      tags["nickname"]    = config->router.nickname();
       setupMetrics(metricsConfig);
       if(!config->metrics.disableMetricLogs)
       {

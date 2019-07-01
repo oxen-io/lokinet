@@ -770,9 +770,9 @@ namespace llarp
   Router::fromConfig(Config *conf)
   {
     // Set netid before anything else
-    if(!conf->router.netid.empty())
+    if(!conf->router.netId().empty())
     {
-      const auto &netid = conf->router.netid;
+      const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
                      "' which does not equal '", Version::LLARP_NET_ID,
                      "' you will run as a different network, good luck "
@@ -942,19 +942,19 @@ namespace llarp
     }
 
     // Router config
-    _rc.SetNick(conf->router.nickname);
-    maxConnectedRouters = conf->router.maxConnectedRouters;
-    minConnectedRouters = conf->router.minConnectedRouters;
-    encryption_keyfile  = conf->router.encryption_keyfile;
-    our_rc_file         = conf->router.our_rc_file;
-    transport_keyfile   = conf->router.transport_keyfile;
-    addrInfo            = conf->router.addrInfo;
-    publicOverride      = conf->router.publicOverride;
-    ip4addr             = conf->router.ip4addr;
+    _rc.SetNick(conf->router.nickname());
+    maxConnectedRouters = conf->router.maxConnectedRouters();
+    minConnectedRouters = conf->router.minConnectedRouters();
+    encryption_keyfile  = conf->router.encryptionKeyfile();
+    our_rc_file         = conf->router.ourRcFile();
+    transport_keyfile   = conf->router.transportKeyfile();
+    addrInfo            = conf->router.addrInfo();
+    publicOverride      = conf->router.publicOverride();
+    ip4addr             = conf->router.ip4addr();
 
     if(!usingSNSeed)
     {
-      ident_keyfile = conf->router.ident_keyfile;
+      ident_keyfile = conf->router.identKeyfile();
     }
   }
 
