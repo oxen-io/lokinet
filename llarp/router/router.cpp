@@ -1216,18 +1216,23 @@ namespace llarp
       resultHandler = std::bind(&Router::HandleRouterLookupForExpireUpdate,
                                 this, remote, std::placeholders::_1);
     }
-    if(IsServiceNode())
+    // if we are a client try using the hidden service endpoints
+    if(!IsServiceNode())
     {
-      dht()->impl->LookupRouter(remote, resultHandler);
-    }
-    else
-    {
+      bool sent = false;
       _hiddenServiceContext.ForEachService(
-          [=](const std::string &,
+          [&](const std::string &,
               const std::shared_ptr< service::Endpoint > &ep) -> bool {
-            return !ep->LookupRouterAnon(remote, resultHandler);
+            const bool success = ep->LookupRouterAnon(remote, resultHandler);
+            sent |= success;
+            return !success;
           });
+      if(sent)
+        return;
     }
+    // if we are service node or failed to use hidden service endpoints as
+    // client do a direct lookup
+    dht()->impl->LookupRouter(remote, resultHandler);
   }
 
   bool
