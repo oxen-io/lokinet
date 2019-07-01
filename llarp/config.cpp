@@ -296,11 +296,11 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   // write snapp-example.ini
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
-    auto stream = llarp::util::OpenFileStream< std::ofstream >(
-        snappExample_fpath, std::ios::binary);
-    if(!stream)
+    auto f = llarp::util::OpenFileStream< std::ofstream >(snappExample_fpath,
+                                                          std::ios::binary);
+    if(!f)
       return false;
-    auto &example_f = stream.value();
+    auto &example_f = f.value();
     if(example_f.is_open())
     {
       // pick ip
