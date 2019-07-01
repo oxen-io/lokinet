@@ -1158,10 +1158,10 @@ namespace llarp
               continue;
             if(!GetIntroFor(tag, remoteIntro))
               continue;
-            if(replyPath.ExpiresSoon(now))
-              continue;
             // get path for intro
             ForEachPath([&](path::Path_ptr path) {
+              if(!path->IsReady())
+                return;
               if(path->Endpoint() == replyPath.router)
                 p = path;
             });
