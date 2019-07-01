@@ -56,7 +56,7 @@ target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::
 
 # cut back on fluff
 if (NOT WIN32)
-  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings cppbackport)
+  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -102,7 +102,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     add_import_library(rt)
     target_link_libraries(${PLATFORM_LIB} PUBLIC rt)
   else()
-    add_import_library(rt)
+    add_import_library(cap)
     target_link_libraries(${PLATFORM_LIB} PUBLIC cap)
   endif()
 endif()
