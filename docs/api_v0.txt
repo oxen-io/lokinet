@@ -162,7 +162,7 @@ craete a new convseration on a loki address (bidi)
 {
   A: "make-convo",
   C: "<16 bytes session cookie>",
-  R: "<32 bytes loki address>",
+  R: "human readable address .snode/.loki",
   T: "<16 bytes convo tag>",
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"
@@ -173,7 +173,7 @@ infrom the status of a converstation on a loki address (S->C)
 sent every 500 ms until fully established for outbound convos and immediately
 when a new inbound conversation is made.
 
-S bit 0 (LSB): we found the introset for (set by outbound)
+S bit 0 (LSB): we found the introset/endpoint for (set by outbound)
 S bit 1: we found the router to align on (set by outbound)
 S bit 2: we have a path right now (set by outbound)
 S bit 3: we have made the converstation (set by both)
@@ -182,7 +182,7 @@ S bit 4: we are an inbound converstation (set by inbound)
 {
   A: "convo",
   C: "<16 bytes session cookie>",
-  R: "<32 bytes loki remote address>",
+  R: "human readable address .snode/.loki",
   S: bitmask_status_uint64,
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"

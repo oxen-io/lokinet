@@ -82,12 +82,18 @@ namespace llarp
 
       /// overrides Endpoint
       bool
-      HandleIPPacket(const AlignedBuffer< 32 > addr, const llarp_buffer_t& buf,
-                     bool serviceNode) override
+      HandleInboundPacket(const service::ConvoTag tag,
+                          const llarp_buffer_t& pkt,
+                          service::ProtocolType t) override
       {
-        return HandleWriteIPPacket(buf, [=]() -> huint128_t {
-          return ObtainIPForAddr(addr, serviceNode);
-        });
+        if(t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6)
+          return false;
+        AlignedBuffer< 32 > addr;
+        bool snode = false;
+        if(!GetEndpointWithConvoTag(tag, addr, snode))
+          return false;
+        return HandleWriteIPPacket(
+            pkt, [=]() -> huint128_t { return ObtainIPForAddr(addr, snode); });
       }
 
       /// handle inbound traffic

@@ -193,6 +193,33 @@ namespace llarp
     }
 
     bool
+    Endpoint::GetEndpointWithConvoTag(const ConvoTag tag,
+                                      llarp::AlignedBuffer< 32 >& addr,
+                                      bool& snode) const
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr != m_Sessions.end())
+      {
+        snode = false;
+        addr  = itr->second.remote.Addr();
+        return true;
+      }
+      else
+      {
+        for(const auto& item : m_SNodeSessions)
+        {
+          if(item.second.second == tag)
+          {
+            snode = true;
+            addr  = item.first;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    bool
     Endpoint::IntrosetIsStale() const
     {
       return m_IntroSet.HasExpiredIntros(Now());
@@ -210,11 +237,15 @@ namespace llarp
 
       if(!m_Tag.IsZero())
         obj.Put("tag", m_Tag.ToString());
-
-      obj.PutContainer("deadSessions", m_DeadSessions);
-      obj.PutContainer("remoteSessions", m_RemoteSessions);
-      obj.PutContainer("snodeSessions", m_SNodeSessions);
-      obj.PutContainer("lookups", m_PendingLookups);
+      static auto getSecond = [](const auto& item) -> const auto&
+      {
+        return item.second;
+      };
+      obj.PutContainer("deadSessions", m_DeadSessions, getSecond);
+      obj.PutContainer("remoteSessions", m_RemoteSessions, getSecond);
+      obj.PutContainer("lookups", m_PendingLookups, getSecond);
+      obj.PutContainer("snodeSessions", m_SNodeSessions,
+                       [](const auto& item) { return item.second.first; });
 
       util::StatusObject sessionObj{};
 
@@ -616,12 +647,15 @@ namespace llarp
     Endpoint::ResetInternalState()
     {
       path::Builder::ResetInternalState();
-      static auto resetState = [](auto& container) {
-        std::for_each(container.begin(), container.end(),
-                      [](auto& item) { item.second->ResetInternalState(); });
+      static auto resetState = [](auto& container, auto getter) {
+        std::for_each(container.begin(), container.end(), [getter](auto& item) {
+          getter(item)->ResetInternalState();
+        });
       };
-      resetState(m_RemoteSessions);
-      resetState(m_SNodeSessions);
+      resetState(m_RemoteSessions,
+                 [](const auto& item) { return item.second; });
+      resetState(m_SNodeSessions,
+                 [](const auto& item) { return item.second.first; });
     }
 
     bool
@@ -850,7 +884,7 @@ namespace llarp
       auto itr   = range.first;
       while(itr != range.second)
       {
-        if(itr->second->IsReady())
+        if(itr->second.first->IsReady())
         {
           return true;
         }
@@ -1011,25 +1045,30 @@ namespace llarp
       using namespace std::placeholders;
       if(m_SNodeSessions.count(snode) == 0)
       {
+        ConvoTag tag;
+        // TODO: check for collision lol no we don't but maybe we will...
+        // some day :DDDDD
+        tag.Randomize();
         auto session = std::make_shared< exit::SNodeSession >(
             snode,
             [=](const llarp_buffer_t& pkt) -> bool {
-              return HandleIPPacket(snode, pkt, true);
+              /// TODO: V6
+              return HandleInboundPacket(tag, pkt, eProtocolTrafficV4);
             },
             m_Router, m_NumPaths, numHops, false, ShouldBundleRC());
-        m_SNodeSessions.emplace(snode, session);
+        m_SNodeSessions.emplace(snode, std::make_pair(session, tag));
       }
       EnsureRouterIsKnown(snode);
       auto range = m_SNodeSessions.equal_range(snode);
       auto itr   = range.first;
       while(itr != range.second)
       {
-        if(itr->second->IsReady())
-          h(snode, itr->second);
+        if(itr->second.first->IsReady())
+          h(snode, itr->second.first);
         else
         {
-          itr->second->AddReadyHook(std::bind(h, snode, _1));
-          itr->second->BuildOne();
+          itr->second.first->AddReadyHook(std::bind(h, snode, _1));
+          itr->second.first->BuildOne();
         }
         ++itr;
       }
@@ -1054,14 +1093,14 @@ namespace llarp
       EndpointLogic()->queue_func([&]() {
         // send downstream packets to user for snode
         for(const auto& item : m_SNodeSessions)
-          item.second->FlushDownstream();
+          item.second.first->FlushDownstream();
         // send downstream traffic to user for hidden service
         util::Lock lock(&m_InboundTrafficQueueMutex);
         while(m_InboundTrafficQueue.size())
         {
           const auto& msg = m_InboundTrafficQueue.top();
           llarp_buffer_t buf(msg->payload);
-          HandleIPPacket(msg->sender.Addr(), buf, false);
+          HandleInboundPacket(msg->tag, buf, msg->proto);
           m_InboundTrafficQueue.pop();
         }
       });
@@ -1072,12 +1111,21 @@ namespace llarp
         item.second->FlushUpstream();
       // TODO: locking on this container
       for(const auto& item : m_SNodeSessions)
-        item.second->FlushUpstream();
+        item.second.first->FlushUpstream();
       util::Lock lock(&m_SendQueueMutex);
       // send outbound traffic
       for(const auto& item : m_SendQueue)
         item.second->SendRoutingMessage(*item.first, router);
       m_SendQueue.clear();
+    }
+
+    bool
+    Endpoint::EnsureConvo(const AlignedBuffer< 32 > addr, bool snode,
+                          ConvoEventListener_ptr ev)
+    {
+      if(snode)
+      {
+      }
     }
 
     bool

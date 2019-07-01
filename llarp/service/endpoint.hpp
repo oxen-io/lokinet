@@ -34,6 +34,29 @@ namespace llarp
     struct Context;
     struct OutboundContext;
 
+    struct IConvoEventListener
+    {
+      ~IConvoEventListener() = default;
+
+      /// called when we have obtained the introset
+      /// called with nullptr on not found or when we
+      /// talking to a snode
+      virtual void
+      FoundIntroSet(const IntroSet*) = 0;
+
+      /// called when we found the RC we need for alignment
+      virtual void
+      FoundRC(const RouterContact) = 0;
+
+      /// called when we have successfully built an aligned path
+      virtual void GotAlignedPath(path::Path_ptr) = 0;
+
+      /// called when we have established a session or conversation
+      virtual void
+      MadeConvo(const ConvoTag) = 0;
+    };
+    using ConvoEventListener_ptr = std::shared_ptr< IConvoEventListener >;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
@@ -168,9 +191,10 @@ namespace llarp
       HandleDataMessage(path::Path_ptr path, const PathID_t from,
                         std::shared_ptr< ProtocolMessage > msg) override;
 
+      /// handle packet io from service node or hidden service to frontend
       virtual bool
-      HandleIPPacket(const AlignedBuffer< 32 > addr, const llarp_buffer_t& pkt,
-                     bool serviceNode) = 0;
+      HandleInboundPacket(const ConvoTag tag, const llarp_buffer_t& pkt,
+                          ProtocolType t) = 0;
 
       // virtual bool
       // HandleWriteIPPacket(const llarp_buffer_t& pkt,
@@ -208,11 +232,13 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SendToServiceOrQueue(const service::Address& addr,
-                           const llarp_buffer_t& payload, ProtocolType t);
+      EnsureConvo(const AlignedBuffer< 32 > addr, bool snode,
+                  ConvoEventListener_ptr ev);
 
       bool
-      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+      SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
+
+      ;
 
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
@@ -227,6 +253,15 @@ namespace llarp
 
       static void
       HandlePathDead(void*);
+
+      /// return true if we have a convotag as an exit session
+      /// or as a hidden service session
+      /// set addr and issnode
+      ///
+      /// return false if we don't have either
+      bool
+      GetEndpointWithConvoTag(const ConvoTag t, AlignedBuffer< 32 >& addr,
+                              bool& issnode) const;
 
       bool
       HasConvoTag(const ConvoTag& t) const override;
@@ -315,6 +350,12 @@ namespace llarp
       GenTXID();
 
      protected:
+      bool
+      SendToServiceOrQueue(const service::Address& addr,
+                           const llarp_buffer_t& payload, ProtocolType t);
+      bool
+      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+
       /// parent context that owns this endpoint
       Context* const context;
 
@@ -441,8 +482,12 @@ namespace llarp
           std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
                                    Address::Hash >;
 
-      using SNodeSessions = std::unordered_multimap<
-          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
+      using SNodeSessionValue =
+          std::pair< std::shared_ptr< exit::BaseSession >, ConvoTag >;
+
+      using SNodeSessions =
+          std::unordered_multimap< RouterID, SNodeSessionValue,
+                                   RouterID::Hash >;
 
       using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 

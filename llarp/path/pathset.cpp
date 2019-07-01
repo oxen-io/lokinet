@@ -311,7 +311,7 @@ namespace llarp
     BuildStats::ToString() const
     {
       std::stringstream ss;
-      ss << SuccsessRatio() << " percent success ";
+      ss << (SuccsessRatio() * 100.0) << " percent success ";
       ss << "(success=" << success << " ";
       ss << "attempts=" << attempts << " ";
       ss << "timeouts=" << timeouts << " ";
@@ -323,8 +323,8 @@ namespace llarp
     BuildStats::SuccsessRatio() const
     {
       if(attempts)
-        return success / attempts;
-      return 0;
+        return double(success) / double(attempts);
+      return 0.0;
     }
 
     bool

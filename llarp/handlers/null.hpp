@@ -18,8 +18,8 @@ namespace llarp
       }
 
       bool
-      HandleIPPacket(const AlignedBuffer< 32 >, const llarp_buffer_t &,
-                     bool) override
+      HandleInboundPacket(const service::ConvoTag, const llarp_buffer_t &,
+                          service::ProtocolType) override
       {
         return true;
       }

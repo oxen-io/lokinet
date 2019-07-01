@@ -739,7 +739,6 @@ namespace llarp
           }
           return;
         }
-
         if(m_SNodes.at(itr->second))
         {
           sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,

@@ -167,9 +167,14 @@ namespace llarp
       if(ShouldBuildMore(now))
         BuildOne();
       TickPaths(now, router);
-      if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio)
+      if(m_BuildStats.attempts > 50)
       {
-        LogWarn(Name(), " has a low path build success. ", m_BuildStats);
+        if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
+           && now - m_LastWarn > 5000)
+        {
+          LogWarn(Name(), " has a low path build success. ", m_BuildStats);
+          m_LastWarn = now;
+        }
       }
     }
 

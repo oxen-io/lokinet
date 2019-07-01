@@ -14,19 +14,19 @@ namespace llarp
       auto itr = sessions.begin();
       while(itr != sessions.end())
       {
-        if(itr->second->ShouldRemove() && itr->second->IsStopped())
+        if(itr->second.first->ShouldRemove() && itr->second.first->IsStopped())
         {
           itr = sessions.erase(itr);
           continue;
         }
         // expunge next tick
-        if(itr->second->IsExpired(now))
+        if(itr->second.first->IsExpired(now))
         {
-          itr->second->Stop();
+          itr->second.first->Stop();
         }
         else
         {
-          itr->second->Tick(now);
+          itr->second.first->Tick(now);
         }
 
         ++itr;
@@ -139,7 +139,7 @@ namespace llarp
     {
       for(auto& item : sessions)
       {
-        item.second->Stop();
+        item.second.first->Stop();
       }
     }
 
