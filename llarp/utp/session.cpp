@@ -278,6 +278,8 @@ namespace llarp
         ptr += s;
         sz -= s;
       }
+      if(state != eSessionReady)
+        PumpWrite();
       return true;
     }
 
