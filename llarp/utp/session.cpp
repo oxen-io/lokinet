@@ -82,7 +82,7 @@ namespace llarp
     {
       OnLinkEstablished(p);
       metrics::integerTick("utp.session.open", "to", 1, "id",
-                             RouterID(remoteRC.pubkey).ToString());
+                           RouterID(remoteRC.pubkey).ToString());
       OutboundHandshake();
     }
 
@@ -193,9 +193,16 @@ namespace llarp
         return true;
       if(state == eConnecting)
         return now - lastActive > 5000;
-      if(now <= lastSend)
-        return false;
-      return now - lastSend > 30000;
+      if(state == eSessionReady)
+      {
+        if(now <= lastSend)
+          return false;
+        return now - lastSend > 30000;
+      }
+      if(state == eLinkEstablished)
+        return now - lastActive
+            > 10000;  /// 10 second timeout for the whole handshake
+      return true;
     }
 
     PubKey
@@ -591,7 +598,7 @@ namespace llarp
           if(remoteRC.IsPublicRouter())
           {
             metrics::integerTick("utp.session.close", "to", 1, "id",
-                             RouterID(remoteRC.pubkey).ToString());
+                                 RouterID(remoteRC.pubkey).ToString());
           }
         }
       }
