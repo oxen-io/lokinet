@@ -230,7 +230,7 @@ namespace llarp
     {
       if(state != eSessionReady)
         return false;
-      const auto dlt = parent->Now() - lastActive;
+      const auto dlt = parent->Now() - lastSend;
       return dlt >= 10000;
     }
 
@@ -278,6 +278,8 @@ namespace llarp
         ptr += s;
         sz -= s;
       }
+      if(state != eSessionReady)
+        PumpWrite();
       return true;
     }
 
