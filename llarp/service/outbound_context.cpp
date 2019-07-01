@@ -98,6 +98,7 @@ namespace llarp
           LogInfo("introset is old, dropping");
           return true;
         }
+
         auto now = Now();
         if(i->IsExpired(now))
         {
@@ -105,7 +106,6 @@ namespace llarp
           return true;
         }
         currentIntroSet = *i;
-
         if(!ShiftIntroduction())
         {
           LogWarn("failed to pick new intro during introset update");

@@ -1160,10 +1160,16 @@ namespace llarp
               continue;
             // get path for intro
             ForEachPath([&](path::Path_ptr path) {
-              if(!path->IsReady())
-                return;
-              if(path->Endpoint() == replyPath.router)
+              if(path->intro == replyPath)
+              {
                 p = path;
+                return;
+              }
+              if(p && p->ExpiresSoon(now) && path->IsReady()
+                 && path->intro.router == replyPath.router)
+              {
+                p = path;
+              }
             });
             if(p)
             {
