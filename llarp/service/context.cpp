@@ -153,29 +153,6 @@ namespace llarp
     }
 
     bool
-    Context::FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
-                                huint128_t &ip)
-    {
-      auto itr = m_Endpoints.begin();
-      while(itr != m_Endpoints.end())
-      {
-        if(itr->second->HasAddress(addr))
-        {
-          ip = itr->second->ObtainIPForAddr(addr, isSNode);
-          return true;
-        }
-        ++itr;
-      }
-      itr = m_Endpoints.find("default");
-      if(itr != m_Endpoints.end())
-      {
-        ip = itr->second->ObtainIPForAddr(addr, isSNode);
-        return true;
-      }
-      return false;
-    }
-
-    bool
     Context::AddDefaultEndpoint(
         const std::unordered_multimap< std::string, std::string > &opts)
     {

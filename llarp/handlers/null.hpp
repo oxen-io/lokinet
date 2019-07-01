@@ -18,8 +18,8 @@ namespace llarp
       }
 
       bool
-      HandleWriteIPPacket(const llarp_buffer_t &,
-                          std::function< huint128_t(void) >) override
+      HandleIPPacket(const AlignedBuffer< 32 >, const llarp_buffer_t &,
+                     bool) override
       {
         return true;
       }
@@ -32,18 +32,6 @@ namespace llarp
 
       bool
       SupportsV6() const override
-      {
-        return false;
-      }
-
-      huint128_t
-      ObtainIPForAddr(const AlignedBuffer< 32 > &, bool) override
-      {
-        return {0};
-      }
-
-      bool
-      HasAddress(const AlignedBuffer< 32 > &) const override
       {
         return false;
       }

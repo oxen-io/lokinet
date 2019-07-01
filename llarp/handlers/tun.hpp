@@ -81,25 +81,27 @@ namespace llarp
       SetupNetworking() override;
 
       /// overrides Endpoint
+      bool
+      HandleIPPacket(const AlignedBuffer< 32 > addr, const llarp_buffer_t& buf,
+                     bool serviceNode) override
+      {
+        return HandleWriteIPPacket(buf, [=]() -> huint128_t {
+          return ObtainIPForAddr(addr, serviceNode);
+        });
+      }
+
       /// handle inbound traffic
       bool
       HandleWriteIPPacket(const llarp_buffer_t& buf,
-                          std::function< huint128_t(void) > getFromIP) override;
+                          std::function< huint128_t(void) > getFromIP);
 
       /// queue outbound packet to the world
       bool
       QueueOutboundTraffic(llarp::net::IPPacket&& pkt);
 
-      /// we have a resolvable ip address
-      bool
-      HasIfAddr() const override
-      {
-        return true;
-      }
-
       /// get the local interface's address
       huint128_t
-      GetIfAddr() const override;
+      GetIfAddr() const;
 
       bool
       HasLocalIP(const huint128_t& ip) const;
@@ -142,15 +144,14 @@ namespace llarp
       }
 
       bool
-      HasAddress(const AlignedBuffer< 32 >& addr) const override
+      HasAddress(const AlignedBuffer< 32 >& addr) const
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(const AlignedBuffer< 32 >& addr,
-                      bool serviceNode) override;
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode);
 
       /// flush network traffic
       void

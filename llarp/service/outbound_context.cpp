@@ -321,15 +321,17 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      const bool should = (!(path::Builder::BuildCooldownHit(now) ||path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths)) && path::Builder::ShouldBuildMore(now);
+      const bool should =
+          (!(path::Builder::BuildCooldownHit(now)
+             || path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths))
+          && path::Builder::ShouldBuildMore(now);
 
       if(!ReadyToSend())
       {
         return should;
       }
       llarp_time_t t = 0;
-      ForEachPath([&t](path::Path_ptr path)
-      {
+      ForEachPath([&t](path::Path_ptr path) {
         if(path->IsReady())
           t = std::max(path->ExpireTime(), t);
       });

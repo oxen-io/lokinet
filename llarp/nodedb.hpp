@@ -161,7 +161,6 @@ struct llarp_nodedb
 
   void
   SaveAll() LOCKS_EXCLUDED(access);
-
 };
 
 /// struct for async rc verification

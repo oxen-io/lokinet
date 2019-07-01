@@ -138,6 +138,7 @@ namespace llarp
         ctx.router->PersistSessionUntil(remote, ctx.path->ExpireTime());
         // add own path
         ctx.router->pathContext().AddOwnPath(ctx.pathset, ctx.path);
+        ctx.pathset->PathBuildStarted(ctx.path);
       }
       else
         LogError(ctx.pathset->Name(), " failed to send LRCM to ", remote);
@@ -166,12 +167,17 @@ namespace llarp
       if(ShouldBuildMore(now))
         BuildOne();
       TickPaths(now, router);
+      if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio)
+      {
+        LogWarn(Name(), " has a low path build success. ", m_BuildStats);
+      }
     }
 
     util::StatusObject
     Builder::ExtractStatus() const
     {
-      util::StatusObject obj{{"numHops", uint64_t(numHops)},
+      util::StatusObject obj{{"buildStats", m_BuildStats.ExtractStatus()},
+                             {"numHops", uint64_t(numHops)},
                              {"numPaths", uint64_t(m_NumPaths)}};
       std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
@@ -425,6 +431,7 @@ namespace llarp
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       router->routerProfiling().MarkPathSuccess(p.get());
       LogInfo(p->Name(), " built latency=", p->intro.latency);
+      m_BuildStats.success++;
     }
 
     void

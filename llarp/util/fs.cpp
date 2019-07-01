@@ -21,7 +21,7 @@ namespace llarp
     EnsurePrivateFile(fs::path pathname)
     {
       const auto str  = pathname.string();
-      errno  = 0;
+      errno           = 0;
       error_code_t ec = errno_error();
       if(fs::exists(pathname, ec))  // file exists
       {
@@ -31,13 +31,13 @@ namespace llarp
         auto perms = st.permissions();
         if((perms & fs::perms::others_exec) != fs::perms::none)
           perms ^= fs::perms::others_exec;
-        if((perms & fs::perms::others_write)  != fs::perms::none)
+        if((perms & fs::perms::others_write) != fs::perms::none)
           perms ^= fs::perms::others_write;
-        if((perms & fs::perms::others_write)  != fs::perms::none)
+        if((perms & fs::perms::others_write) != fs::perms::none)
           perms ^= fs::perms::others_write;
-        if((perms & fs::perms::group_read)  != fs::perms::none)
+        if((perms & fs::perms::group_read) != fs::perms::none)
           perms ^= fs::perms::group_read;
-        if((perms & fs::perms::others_read)  != fs::perms::none)
+        if((perms & fs::perms::others_read) != fs::perms::none)
           perms ^= fs::perms::others_read;
         if((perms & fs::perms::owner_exec) != fs::perms::none)
           perms ^= fs::perms::owner_exec;

@@ -385,6 +385,8 @@ namespace llarp
           context->ForEachService(
               [&](const std::string &,
                   const std::shared_ptr< service::Endpoint > &service) -> bool {
+                if(!service->HasIfAddr())
+                  return true;
                 huint128_t ip = service->GetIfAddr();
                 if(ip.h)
                 {

@@ -402,9 +402,9 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.emplace(tag, Session{}).first;
-        itr->second.inbound  = inbound;
-        itr->second.remote   = info;
+        itr                 = m_Sessions.emplace(tag, Session{}).first;
+        itr->second.inbound = inbound;
+        itr->second.remote  = info;
       }
       itr->second.lastUsed = Now();
     }
@@ -797,12 +797,9 @@ namespace llarp
 
         if(path && path->SendRoutingMessage(msg, m_Router))
         {
-          LogInfo(Name(), " looking up ", router);
           m_PendingRouters.emplace(router, RouterLookupJob(this, handler));
           return true;
         }
-        else
-          LogError("failed to send request for router lookup");
       }
       return false;
     }
@@ -839,15 +836,15 @@ namespace llarp
       PutSenderFor(msg->tag, msg->sender, true);
       PutReplyIntroFor(msg->tag, path->intro);
       Introduction intro;
-      intro.pathID = from;
-      intro.router = PubKey(path->Endpoint());
+      intro.pathID    = from;
+      intro.router    = PubKey(path->Endpoint());
       intro.expiresAt = std::min(path->ExpireTime(), msg->introReply.expiresAt);
       PutIntroFor(msg->tag, intro);
       return ProcessDataMessage(msg);
     }
 
     bool
-    Endpoint::HasPathToSNode(const RouterID& ident) const
+    Endpoint::HasPathToSNode(const RouterID ident) const
     {
       auto range = m_SNodeSessions.equal_range(ident);
       auto itr   = range.first;
@@ -963,7 +960,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
+    Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
                                   ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
                                   bool randomPath)
     {
@@ -1009,16 +1006,16 @@ namespace llarp
     }
 
     void
-    Endpoint::EnsurePathToSNode(const RouterID& snode, SNodeEnsureHook h)
+    Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
     {
       using namespace std::placeholders;
       if(m_SNodeSessions.count(snode) == 0)
       {
-        auto themIP  = ObtainIPForAddr(snode, true);
         auto session = std::make_shared< exit::SNodeSession >(
             snode,
-            std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
-                      [themIP]() -> huint128_t { return themIP; }),
+            [=](const llarp_buffer_t& pkt) -> bool {
+              return HandleIPPacket(snode, pkt, true);
+            },
             m_Router, m_NumPaths, numHops, false, ShouldBundleRC());
         m_SNodeSessions.emplace(snode, session);
       }
@@ -1064,9 +1061,7 @@ namespace llarp
         {
           const auto& msg = m_InboundTrafficQueue.top();
           llarp_buffer_t buf(msg->payload);
-          HandleWriteIPPacket(buf, [&]() -> huint128_t {
-            return ObtainIPForAddr(msg->sender.Addr(), false);
-          });
+          HandleIPPacket(msg->sender.Addr(), buf, false);
           m_InboundTrafficQueue.pop();
         }
       });

@@ -345,7 +345,7 @@ namespace llarp
         self->msg->handler                     = self->handler;
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
         path::Path_ptr path                    = std::move(self->path);
-        const PathID_t from = self->frame.F;
+        const PathID_t from                    = self->frame.F;
         self->logic->queue_func(
             [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
         delete self;
@@ -407,7 +407,7 @@ namespace llarp
         LogError("failed to decrypt message");
         return false;
       }
-      msg->handler = handler;
+      msg->handler        = handler;
       const PathID_t from = F;
       logic->queue_func(
           [=]() { ProtocolMessage::ProcessAsync(recvPath, from, msg); });

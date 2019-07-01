@@ -82,7 +82,7 @@ namespace llarp
     {
       OnLinkEstablished(p);
       metrics::integerTick("utp.session.open", "to", 1, "id",
-                             RouterID(remoteRC.pubkey).ToString());
+                           RouterID(remoteRC.pubkey).ToString());
       OutboundHandshake();
     }
 
@@ -592,7 +592,7 @@ namespace llarp
           if(remoteRC.IsPublicRouter())
           {
             metrics::integerTick("utp.session.close", "to", 1, "id",
-                             RouterID(remoteRC.pubkey).ToString());
+                                 RouterID(remoteRC.pubkey).ToString());
           }
         }
       }

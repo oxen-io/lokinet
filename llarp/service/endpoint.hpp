@@ -84,7 +84,7 @@ namespace llarp
       virtual huint128_t
       GetIfAddr() const
       {
-        return huint128_t{0};
+        return {0};
       }
 
       virtual void
@@ -148,11 +148,11 @@ namespace llarp
       HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
 
-      virtual huint128_t
-      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
+      // virtual huint128_t
+      // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
-      virtual bool
-      HasAddress(const AlignedBuffer< 32 >& addr) const = 0;
+      // virtual bool
+      // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;
 
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
@@ -169,8 +169,12 @@ namespace llarp
                         std::shared_ptr< ProtocolMessage > msg) override;
 
       virtual bool
-      HandleWriteIPPacket(const llarp_buffer_t& pkt,
-                          std::function< huint128_t(void) > getFromIP) = 0;
+      HandleIPPacket(const AlignedBuffer< 32 > addr, const llarp_buffer_t& pkt,
+                     bool serviceNode) = 0;
+
+      // virtual bool
+      // HandleWriteIPPacket(const llarp_buffer_t& pkt,
+      //                    std::function< huint128_t(void) > getFromIP) = 0;
 
       bool
       ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg);
@@ -237,22 +241,22 @@ namespace llarp
       /// return false if we have already called this function before for this
       /// address
       bool
-      EnsurePathToService(const Address& remote, PathEnsureHook h,
+      EnsurePathToService(const Address remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       using SNodeEnsureHook =
-          std::function< void(RouterID, exit::BaseSession_ptr) >;
+          std::function< void(const RouterID, exit::BaseSession_ptr) >;
 
       /// ensure a path to a service node by public key
       void
-      EnsurePathToSNode(const RouterID& remote, SNodeEnsureHook h);
+      EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);
 
       /// return true if this endpoint is trying to lookup this router right now
       bool
       HasPendingRouterLookup(const RouterID remote) const;
 
       bool
-      HasPathToSNode(const RouterID& remote) const;
+      HasPathToSNode(const RouterID remote) const;
 
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info,
@@ -291,9 +295,6 @@ namespace llarp
       bool
       GetConvoTagsForService(const Address& si,
                              std::set< ConvoTag >& tag) const override;
-
-
-
 
       void
       PutNewOutboundContext(const IntroSet& introset);

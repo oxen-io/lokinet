@@ -31,10 +31,6 @@ namespace llarp
       bool
       hasEndpoints();
 
-      bool
-      FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
-                         huint128_t &);
-
       /// function visitor returns false to prematurely break iteration
       void
       ForEachService(
@@ -59,7 +55,7 @@ namespace llarp
       StartAll();
 
      private:
-      AbstractRouter *m_Router;
+      AbstractRouter *const m_Router;
       std::unordered_map< std::string, std::shared_ptr< Endpoint > >
           m_Endpoints;
       std::list< std::shared_ptr< Endpoint > > m_Stopped;

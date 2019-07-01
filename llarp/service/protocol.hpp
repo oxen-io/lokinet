@@ -63,7 +63,8 @@ namespace llarp
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(path::Path_ptr p, PathID_t from, std::shared_ptr< ProtocolMessage > self);
+      ProcessAsync(path::Path_ptr p, PathID_t from,
+                   std::shared_ptr< ProtocolMessage > self);
 
       bool
       operator<(const ProtocolMessage& other) const
