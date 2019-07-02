@@ -87,7 +87,7 @@ alternatively make a debian package with:
 
     $ debuild -uc -us -b
 
-this puts the built files in `../`
+this puts the built packages in `../`
 
 ### MacOS
 
