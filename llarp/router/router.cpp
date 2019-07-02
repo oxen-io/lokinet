@@ -811,9 +811,9 @@ namespace llarp
     netConfig = conf->network.netConfig;
 
     // Network config
-    if(conf->network.enableProfiling.has_value())
+    if(conf->network.enableProfiling().has_value())
     {
-      if(conf->network.enableProfiling.value())
+      if(conf->network.enableProfiling().value())
       {
         routerProfiling().Enable();
         LogInfo("router profiling explicitly enabled");
@@ -825,16 +825,16 @@ namespace llarp
       }
     }
 
-    if(!conf->network.routerProfilesFile.empty())
+    if(!conf->network.routerProfilesFile().empty())
     {
-      routerProfilesFile = conf->network.routerProfilesFile;
+      routerProfilesFile = conf->network.routerProfilesFile();
       routerProfiling().Load(routerProfilesFile.c_str());
       llarp::LogInfo("setting profiles to ", routerProfilesFile);
     }
 
-    if(!conf->network.strictConnect.empty())
+    if(!conf->network.strictConnect().empty())
     {
-      const auto &val = conf->network.strictConnect;
+      const auto &val = conf->network.strictConnect();
       if(IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");

@@ -59,21 +59,27 @@ namespace llarp
     const AddressInfo& addrInfo() const       { return m_addrInfo; }
     int workerThreads() const                 { return m_workerThreads; }
     int numNethreads() const                  { return m_numNethreads; }
-
     // clang-format on
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
-  struct NetworkConfig
+  class NetworkConfig
   {
-    absl::optional< bool > enableProfiling;
-    std::string routerProfilesFile = "profiles.dat";
-    std::string strictConnect;
-    std::unordered_multimap< std::string, std::string > netConfig;
+   private:
+    absl::optional< bool > m_enableProfiling;
+    std::string m_routerProfilesFile = "profiles.dat";
+    std::string m_strictConnect;
 
-    bool
+   public:
+    // clang-format off
+    const absl::optional< bool >& enableProfiling() const { return m_enableProfiling; }
+    const std::string& routerProfilesFile() const         { return m_routerProfilesFile; }
+    const std::string& strictConnect() const              { return m_strictConnect; }
+    // clang-format on
+
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -81,7 +87,7 @@ namespace llarp
   {
     std::string nodedb_dir;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -89,7 +95,7 @@ namespace llarp
   {
     std::unordered_multimap< std::string, std::string > netConfig;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -99,7 +105,7 @@ namespace llarp
 
     std::vector< std::tuple< std::string, int, uint16_t > > servers;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -107,14 +113,14 @@ namespace llarp
   {
     std::vector< std::string > routers;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
   struct ServicesConfig
   {
     std::vector< std::pair< std::string, std::string > > services;
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -122,7 +128,7 @@ namespace llarp
   {
     std::string pidfile;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -134,7 +140,7 @@ namespace llarp
     std::string metricTankHost;
     std::map< std::string, std::string > metricTags;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -143,7 +149,7 @@ namespace llarp
     bool enableRPCServer    = false;
     std::string rpcBindAddr = "127.0.0.1:1190";
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -156,14 +162,14 @@ namespace llarp
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
   struct BootstrapConfig
   {
     std::vector< std::string > routers;
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 
@@ -172,7 +178,7 @@ namespace llarp
     bool m_LogJSON  = false;
     FILE* m_LogFile = stdout;
 
-    bool
+    void
     fromSection(string_view key, string_view val);
   };
 

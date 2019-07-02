@@ -16,7 +16,7 @@
 
 namespace llarp
 {
-  bool
+  void
   RouterConfig::fromSection(string_view key, string_view val)
   {
     if(key == "netid")
@@ -106,51 +106,43 @@ namespace llarp
         m_numNethreads = 1;
       }
     }
-
-    return true;
   }
-  bool
+
+  void
   NetworkConfig::fromSection(string_view key, string_view val)
   {
     if(key == "profiling")
     {
       if(IsTrueValue(val))
       {
-        enableProfiling.emplace(true);
+        m_enableProfiling.emplace(true);
       }
       else if(IsFalseValue(val))
       {
-        enableProfiling.emplace(false);
+        m_enableProfiling.emplace(false);
       }
     }
     if(key == "profiles")
     {
-      routerProfilesFile.assign(val.begin(), val.end());
-      llarp::LogInfo("setting profiles to ", routerProfilesFile);
+      m_routerProfilesFile.assign(val.begin(), val.end());
+      llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
     else if(key == "strict-connect")
     {
-      strictConnect.assign(val.begin(), val.end());
+      m_strictConnect.assign(val.begin(), val.end());
     }
-    else
-    {
-      netConfig.emplace(key, val);
-    }
-    return true;
   }
 
-  bool
+  void
   NetdbConfig::fromSection(string_view key, string_view val)
   {
     if(key == "dir")
     {
       nodedb_dir.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   DnsConfig::fromSection(string_view key, string_view val)
   {
     if(key == "upstream")
@@ -163,10 +155,9 @@ namespace llarp
       llarp::LogInfo("set local dns to ", val);
       netConfig.emplace("local-dns", val);
     }
-    return true;
   }
 
-  bool
+  void
   IwpConfig::fromSection(string_view key, string_view val)
   {
     // try IPv4 first
@@ -212,37 +203,32 @@ namespace llarp
     {
       servers.emplace_back(key, AF_INET, proto);
     }
-    return true;
   }
 
-  bool
+  void
   ConnectConfig::fromSection(ABSL_ATTRIBUTE_UNUSED string_view key,
                              string_view val)
   {
     routers.emplace_back(val.begin(), val.end());
-    return true;
   }
 
-  bool
+  void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
     services.emplace_back(std::string(key.begin(), key.end()),
                           std::string(val.begin(), val.end()));
-    return true;
   }
 
-  bool
+  void
   SystemConfig::fromSection(string_view key, string_view val)
   {
     if(key == "pidfile")
     {
       pidfile.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   MetricsConfig::fromSection(string_view key, string_view val)
   {
     if(key == "disable-metrics")
@@ -266,11 +252,9 @@ namespace llarp
       // consume everything else as a metric tag
       metricTags[std::string(key)] = std::string(val);
     }
-
-    return true;
   }
 
-  bool
+  void
   ApiConfig::fromSection(string_view key, string_view val)
   {
     if(key == "enabled")
@@ -285,11 +269,9 @@ namespace llarp
     {
       // TODO: add pubkey to whitelist
     }
-
-    return true;
   }
 
-  bool
+  void
   LokidConfig::fromSection(string_view key, string_view val)
   {
     if(key == "service-node-seed")
@@ -313,22 +295,18 @@ namespace llarp
     {
       lokidRPCPassword.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   BootstrapConfig::fromSection(string_view key, string_view val)
   {
     if(key == "add-node")
     {
       routers.emplace_back(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   LoggingConfig::fromSection(string_view key, string_view val)
   {
     if(key == "type" && val == "syslog")
@@ -367,8 +345,6 @@ namespace llarp
         ::abort();
       }
     }
-
-    return true;
   }
 
   template < typename Section, typename Config >
@@ -380,10 +356,7 @@ namespace llarp
     auto visitor = [&ret](const ConfigParser::Section_t &section) -> bool {
       for(const auto &sec : section)
       {
-        if(!ret.fromSection(sec.first, sec.second))
-        {
-          return false;
-        }
+        ret.fromSection(sec.first, sec.second);
       }
       return true;
     };
