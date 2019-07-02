@@ -3,57 +3,25 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
-#include <set>
 
 namespace llarp
 {
   bool
-  CaselessCmp::operator()(string_view lhs, string_view rhs) const
+  IsFalseValue(const char* str)
   {
-    if(lhs.size() < rhs.size())
-    {
-      return true;
-    }
-    else if(lhs.size() > rhs.size())
-    {
-      return false;
-    }
-    else
-    {
-      for(size_t i = 0; i < lhs.size(); ++i)
-      {
-        auto l = std::tolower(lhs[i]);
-        auto r = std::tolower(rhs[i]);
-
-        if(l < r)
-        {
-          return true;
-        }
-        else if(l > r)
-        {
-          return false;
-        }
-      }
-      return false;
-    }
+    std::string value = str;
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](char ch) -> char { return std::tolower(ch); });
+    return value == "no" || value == "false" || value == "0" || value == "off";
   }
 
   bool
-  IsFalseValue(string_view str)
+  IsTrueValue(const char* str)
   {
-    static const std::set< string_view, CaselessCmp > vals{"no", "false", "0",
-                                                           "off"};
-
-    return vals.count(str) > 0;
-  }
-
-  bool
-  IsTrueValue(string_view str)
-  {
-    static const std::set< string_view, CaselessCmp > vals{"yes", "true", "1",
-                                                           "on"};
-
-    return vals.count(str) > 0;
+    std::string value = str;
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](char ch) -> char { return std::tolower(ch); });
+    return value == "yes" || value == "true" || value == "1" || value == "on";
   }
 
   bool

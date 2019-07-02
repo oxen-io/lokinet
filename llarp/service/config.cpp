@@ -1,16 +1,16 @@
 #include <service/config.hpp>
 
-#include <config/ini.hpp>
+#include <util/ini.hpp>
 
 namespace llarp
 {
   namespace service
   {
     bool
-    Config::Load(string_view fname)
+    Config::Load(const std::string& fname)
     {
       ConfigParser parser;
-      if(!parser.LoadFile(fname))
+      if(!parser.LoadFile(fname.c_str()))
         return false;
       parser.IterAll([&](const ConfigParser::String_t& name,
                          const ConfigParser::Section_t& section) {

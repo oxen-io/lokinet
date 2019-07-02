@@ -70,8 +70,8 @@ namespace llarp
       }
     }
 
-    exit::Endpoint*
-    Context::FindEndpointForPath(const PathID_t& path) const
+    llarp::exit::Endpoint*
+    Context::FindEndpointForPath(const llarp::PathID_t& path) const
     {
       auto itr = m_Exits.begin();
       while(itr != m_Exits.end())
@@ -85,7 +85,7 @@ namespace llarp
     }
 
     bool
-    Context::ObtainNewExit(const PubKey& pk, const PathID_t& path,
+    Context::ObtainNewExit(const llarp::PubKey& pk, const llarp::PathID_t& path,
                            bool permitInternet)
     {
       auto itr = m_Exits.begin();
@@ -106,13 +106,13 @@ namespace llarp
         auto itr = m_Exits.find(name);
         if(itr != m_Exits.end())
         {
-          LogError("duplicate exit with name ", name);
+          llarp::LogError("duplicate exit with name ", name);
           return false;
         }
       }
-      std::unique_ptr< handlers::ExitEndpoint > endpoint;
+      std::unique_ptr< llarp::handlers::ExitEndpoint > endpoint;
       // make new endpoint
-      endpoint.reset(new handlers::ExitEndpoint(name, m_Router));
+      endpoint.reset(new llarp::handlers::ExitEndpoint(name, m_Router));
       // configure
       {
         auto itr = conf.begin();
@@ -120,7 +120,8 @@ namespace llarp
         {
           if(!endpoint->SetOption(itr->first, itr->second))
           {
-            LogWarn("Couldn't set option ", itr->first, " to  ", itr->second);
+            llarp::LogWarn("Couldn't set option ", itr->first, " to  ",
+                           itr->second);
             return false;
           }
           ++itr;
@@ -129,7 +130,7 @@ namespace llarp
       // add endpoint
       if(!endpoint->Start())
       {
-        LogWarn("Couldn't start exit endpoint");
+        llarp::LogWarn("Couldn't start exit endpoint");
         return false;
       }
       m_Exits.emplace(name, std::move(endpoint));

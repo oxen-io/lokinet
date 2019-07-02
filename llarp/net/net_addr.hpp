@@ -23,12 +23,6 @@ namespace llarp
 
     Addr(const Addr& other);
 
-    Addr(string_view str);
-
-    Addr(string_view str, const uint16_t p_port);
-
-    Addr(string_view addr_str, string_view port_str);
-
     void
     port(uint16_t port);
 
@@ -44,8 +38,16 @@ namespace llarp
     const in_addr*
     addr4() const;
 
+    Addr(const std::string str);
+
+    Addr(const std::string str, const uint16_t p_port);
+
+    Addr(string_view addr_str, string_view port_str);
+
     bool
-    from_char_array(string_view str);
+    from_char_array(const char* str);
+
+    Addr(const char* str);
 
     bool
     from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
