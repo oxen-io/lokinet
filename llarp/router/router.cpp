@@ -792,6 +792,9 @@ namespace llarp
       LogError("failed to bind inbound link on ", key, " port ", port);
     }
 
+    // set network config
+    netConfig = conf->network.netConfig;
+
     // Network config
     if(conf->network.enableProfiling.has_value())
     {
@@ -844,6 +847,7 @@ namespace llarp
       else
         llarp::LogError("invalid key for strict-connect: ", val);
     }
+
 
     // API config
     enableRPCServer = conf->api.enableRPCServer;
