@@ -1,6 +1,7 @@
 #include <util/logger.hpp>
-#include <util/threadpool.hpp>
 #include <util/time.hpp>
+#include <util/threadpool.h>
+#include <util/thread_pool.hpp>
 
 #include <cstring>
 #include <functional>
