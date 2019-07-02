@@ -808,7 +808,7 @@ namespace llarp
     }
 
     // set network config
-    netConfig = conf->network.netConfig;
+    netConfig = conf->network.netConfig();
 
     // Network config
     if(conf->network.enableProfiling().has_value())

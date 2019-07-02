@@ -5,6 +5,8 @@
 #include <router_contact.hpp>
 #include <util/fs.hpp>
 
+#include <absl/strings/str_cat.h>
+#include <cstdlib>
 #include <functional>
 #include <string>
 #include <utility>
@@ -13,6 +15,22 @@
 namespace llarp
 {
   struct ConfigParser;
+
+  template < typename Type >
+  Type
+  fromEnv(const Type& val, string_view envNameSuffix)
+  {
+    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
+    auto ptr            = std::getenv(envName.c_str());
+    if(ptr)
+    {
+      return ptr;
+    }
+    else
+    {
+      return val;
+    }
+  }
 
   class RouterConfig
   {
@@ -67,16 +85,21 @@ namespace llarp
 
   class NetworkConfig
   {
+   public:
+    using NetConfig = std::unordered_multimap< std::string, std::string >;
+
    private:
     absl::optional< bool > m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
+    NetConfig m_netConfig;
 
    public:
     // clang-format off
     const absl::optional< bool >& enableProfiling() const { return m_enableProfiling; }
     const std::string& routerProfilesFile() const         { return m_routerProfilesFile; }
     const std::string& strictConnect() const              { return m_strictConnect; }
+    const NetConfig& netConfig() const                    { return m_netConfig; }
     // clang-format on
 
     void
