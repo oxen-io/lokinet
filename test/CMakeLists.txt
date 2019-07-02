@@ -48,6 +48,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_timerqueue.cpp
     util/test_llarp_util_traits.cpp
     util/test_llarp_utils_scheduler.cpp
+    util/test_llarp_utils_str.cpp
 )
 
 add_executable(${TEST_EXE}

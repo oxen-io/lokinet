@@ -7,40 +7,36 @@
 
 namespace llarp
 {
-  struct CaselessCmp
+  bool
+  CaselessCmp::operator()(string_view lhs, string_view rhs) const
   {
-    bool
-    operator()(string_view lhs, string_view rhs) const
+    if(lhs.size() < rhs.size())
     {
-      if(lhs.size() < rhs.size())
-      {
-        return true;
-      }
-      else if(lhs.size() > rhs.size())
-      {
-        return false;
-      }
-      else
-      {
-        for(size_t i = 0; i < lhs.size(); ++i)
-        {
-          auto l = std::tolower(lhs[i]);
-          auto r = std::tolower(rhs[i]);
-
-          if(l < r)
-          {
-            return true;
-          }
-          else if(l > r)
-          {
-            return false;
-          }
-        }
-      }
-
       return true;
     }
-  };
+    else if(lhs.size() > rhs.size())
+    {
+      return false;
+    }
+    else
+    {
+      for(size_t i = 0; i < lhs.size(); ++i)
+      {
+        auto l = std::tolower(lhs[i]);
+        auto r = std::tolower(rhs[i]);
+
+        if(l < r)
+        {
+          return true;
+        }
+        else if(l > r)
+        {
+          return false;
+        }
+      }
+      return false;
+    }
+  }
 
   bool
   IsFalseValue(string_view str)

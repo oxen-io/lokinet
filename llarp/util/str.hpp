@@ -11,6 +11,12 @@ namespace llarp
   bool
   IsFalseValue(string_view str);
 
+  struct CaselessCmp
+  {
+    bool
+    operator()(string_view lhs, string_view rhs) const;
+  };
+
   bool
   IsTrueValue(string_view str);
 
