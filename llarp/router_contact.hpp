@@ -162,7 +162,7 @@ namespace llarp
     IsPublicRouter() const;
 
     void
-    SetNick(string_view nick);
+    SetNick(const std::string &nick);
 
     bool
     Verify(llarp_time_t now, bool allowExpired = true) const;

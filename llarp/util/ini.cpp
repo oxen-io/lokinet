@@ -1,9 +1,8 @@
-#include <config/ini.hpp>
-#include <util/logger.hpp>
-
+#include <util/ini.hpp>
 #include <fstream>
 #include <list>
 #include <iostream>
+#include <util/logger.hpp>
 
 #ifdef LoadString
 #undef LoadString
@@ -12,11 +11,10 @@
 namespace llarp
 {
   bool
-  ConfigParser::LoadFile(string_view fname)
+  ConfigParser::LoadFile(const char* fname)
   {
-    std::string name{fname};
     {
-      std::ifstream f(name, std::ios::in | std::ios::binary);
+      std::ifstream f(fname, std::ios::in | std::ios::binary);
       if(!f.is_open())
         return false;
       f.seekg(0, std::ios::end);
@@ -26,12 +24,12 @@ namespace llarp
         return false;
       f.read(m_Data.data(), m_Data.size());
     }
-    m_FileName = name;
+    m_FileName = fname;
     return Parse();
   }
 
   bool
-  ConfigParser::LoadString(string_view str)
+  ConfigParser::LoadString(const std::string& str)
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());

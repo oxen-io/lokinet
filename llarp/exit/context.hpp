@@ -35,11 +35,11 @@ namespace llarp
       AddExitEndpoint(const std::string &name, const Config_t &config);
 
       bool
-      ObtainNewExit(const PubKey &remote, const PathID_t &path,
+      ObtainNewExit(const llarp::PubKey &remote, const llarp::PathID_t &path,
                     bool permitInternet);
 
-      exit::Endpoint *
-      FindEndpointForPath(const PathID_t &path) const;
+      llarp::exit::Endpoint *
+      FindEndpointForPath(const llarp::PathID_t &path) const;
 
       /// calculate (pk, tx, rx) for all exit traffic
       using TrafficStats =
@@ -52,9 +52,9 @@ namespace llarp
      private:
       AbstractRouter *m_Router;
       std::unordered_map< std::string,
-                          std::shared_ptr< handlers::ExitEndpoint > >
+                          std::shared_ptr< llarp::handlers::ExitEndpoint > >
           m_Exits;
-      std::list< std::shared_ptr< handlers::ExitEndpoint > > m_Closed;
+      std::list< std::shared_ptr< llarp::handlers::ExitEndpoint > > m_Closed;
     };
   }  // namespace exit
 }  // namespace llarp

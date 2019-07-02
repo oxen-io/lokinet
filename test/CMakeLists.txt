@@ -1,7 +1,6 @@
 set(TEST_EXE testAll)
 
 list(APPEND TEST_SRC
-    config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp
     dht/test_llarp_dht_bucket.cpp
@@ -37,6 +36,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_bencode.cpp
     util/test_llarp_util_bits.cpp
     util/test_llarp_util_encode.cpp
+    util/test_llarp_util_ini.cpp
     util/test_llarp_util_metrics_core.cpp
     util/test_llarp_util_metrics_types.cpp
     util/test_llarp_util_memfn.cpp
@@ -48,7 +48,6 @@ list(APPEND TEST_SRC
     util/test_llarp_util_timerqueue.cpp
     util/test_llarp_util_traits.cpp
     util/test_llarp_utils_scheduler.cpp
-    util/test_llarp_utils_str.cpp
 )
 
 add_executable(${TEST_EXE}

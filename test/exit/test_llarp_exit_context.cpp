@@ -1,18 +1,15 @@
 #include <exit/context.hpp>
 
 #include <router/router.hpp>
-#include <exit/context.hpp>
 
 #include <gtest/gtest.h>
 
 struct ExitTest : public ::testing::Test
 {
-  ExitTest() : r(nullptr, nullptr, nullptr), context(&r)
+  ExitTest() : r(nullptr, nullptr, nullptr)
   {
   }
-
   llarp::Router r;
-  llarp::exit::Context context;
 };
 
 TEST_F(ExitTest, AddMultipleIP)
@@ -26,10 +23,9 @@ TEST_F(ExitTest, AddMultipleIP)
   conf.emplace("exit", "true");
   conf.emplace("type", "null");
   conf.emplace("ifaddr", "10.0.0.1/24");
-
-  ASSERT_TRUE(context.AddExitEndpoint("test-exit", conf));
-  ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, true));
-  ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, true));
-  ASSERT_TRUE(context.FindEndpointForPath(firstPath)->LocalIP()
-              == context.FindEndpointForPath(secondPath)->LocalIP());
+  ASSERT_TRUE(r.exitContext().AddExitEndpoint("test-exit", conf));
+  ASSERT_TRUE(r.exitContext().ObtainNewExit(pk, firstPath, true));
+  ASSERT_TRUE(r.exitContext().ObtainNewExit(pk, secondPath, true));
+  ASSERT_TRUE(r.exitContext().FindEndpointForPath(firstPath)->LocalIP()
+              == r.exitContext().FindEndpointForPath(secondPath)->LocalIP());
 }
