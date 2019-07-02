@@ -24,7 +24,7 @@
 #include <util/mem.hpp>
 #include <util/status.hpp>
 #include <util/str.hpp>
-#include <util/threadpool.hpp>
+#include <util/threadpool.h>
 
 #include <functional>
 #include <list>
