@@ -1,7 +1,7 @@
-FROM alpine:latest as builder
+FROM alpine:edge as builder
 
 RUN apk update && \
-    apk add build-base cmake git libcap-dev curl ninja bash binutils-gold
+    apk add build-base cmake git libcap-dev libcap-static libuv-dev libuv-static curl ninja bash binutils-gold
 
 WORKDIR /src/
 COPY . /src/
