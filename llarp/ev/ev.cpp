@@ -97,7 +97,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   // llarp::LogInfo("ev creating tunnel ", tun->ifaddr, " on ", tun->ifname);
   if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto") == 0)
   {
-    std::string ifaddr = llarp::findFreePrivateRange();
+    std::string ifaddr = llarp::FindFreeRange();
     auto pos           = ifaddr.find("/");
     if(pos == std::string::npos)
     {
@@ -124,7 +124,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   }
   if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto") == 0)
   {
-    std::string ifname = llarp::findFreeLokiTunIfName();
+    std::string ifname = llarp::FindFreeTun();
     std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()),
                 tun->ifname);
     llarp::LogInfo("IfName autodetect: ", tun->ifname);

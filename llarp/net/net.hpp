@@ -158,11 +158,11 @@ namespace llarp
 
   /// look at adapter ranges and find a free one
   std::string
-  findFreePrivateRange();
+  FindFreeRange();
 
   /// look at adapter names and find a free one
   std::string
-  findFreeLokiTunIfName();
+  FindFreeTun();
 
   /// get network interface address for network interface with ifname
   bool

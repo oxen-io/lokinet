@@ -1772,16 +1772,10 @@ namespace llarp
         return false;
       }
 
-      // don't create default if we already have some defined
-      if(this->ShouldCreateDefaultHiddenService())
+      if(!CreateDefaultHiddenService())
       {
-        // generate default hidden service
-        LogInfo("setting up default network endpoint");
-        if(!CreateDefaultHiddenService())
-        {
-          LogError("failed to set up default network endpoint");
-          return false;
-        }
+        LogError("failed to set up default network endpoint");
+        return false;
       }
     }
 
@@ -1830,84 +1824,6 @@ namespace llarp
       link->Stop();
     for(const auto &link : inboundLinks)
       link->Stop();
-  }
-
-  bool
-  Router::ShouldCreateDefaultHiddenService()
-  {
-    std::string defaultIfAddr = "auto";
-    std::string defaultIfName = "auto";
-    std::string enabledOption = "auto";
-    auto itr                  = netConfig.find("defaultIfAddr");
-    if(itr != netConfig.end())
-    {
-      defaultIfAddr = itr->second;
-    }
-    itr = netConfig.find("defaultIfName");
-    if(itr != netConfig.end())
-    {
-      defaultIfName = itr->second;
-    }
-    itr = netConfig.find("enabled");
-    if(itr != netConfig.end())
-    {
-      enabledOption = itr->second;
-    }
-    LogDebug("IfName: ", defaultIfName, " IfAddr: ", defaultIfAddr,
-             " Enabled: ", enabledOption);
-    // LogInfo("IfAddr: ", itr->second);
-    // LogInfo("IfName: ", itr->second);
-    if(enabledOption == "false")
-    {
-      LogInfo("Disabling default hidden service");
-      return false;
-    }
-    else if(enabledOption == "auto")
-    {
-      // auto detect if we have any pre-defined endpoints
-      // no if we have a endpoints
-      if(hiddenServiceContext().hasEndpoints())
-      {
-        LogInfo("Auto mode detected and we have endpoints");
-        netConfig.emplace("enabled", "false");
-        return false;
-      }
-      netConfig.emplace("enabled", "true");
-    }
-    // ev.cpp llarp_ev_add_tun now handles this
-    /*
-    // so basically enabled at this point
-    if(defaultIfName == "auto")
-    {
-      // we don't have any endpoints, auto configure settings
-      // set a default IP range
-      defaultIfAddr = findFreePrivateRange();
-      if(defaultIfAddr == "")
-      {
-        LogError(
-                        "Could not find any free lokitun interface names, can't
-    auto set up " "default HS context for client"); defaultIfAddr = "no";
-        netConfig.emplace("defaultIfAddr", defaultIfAddr);
-        return false;
-      }
-      netConfig.emplace("defaultIfAddr", defaultIfAddr);
-    }
-    if(defaultIfName == "auto")
-    {
-      // pick an ifName
-      defaultIfName = findFreeLokiTunIfName();
-      if(defaultIfName == "")
-      {
-        LogError(
-                        "Could not find any free private ip ranges, can't auto
-    set up " "default HS context for client"); defaultIfName = "no";
-        netConfig.emplace("defaultIfName", defaultIfName);
-        return false;
-      }
-      netConfig.emplace("defaultIfName", defaultIfName);
-    }
-    */
-    return true;
   }
 
   void
@@ -2072,14 +1988,11 @@ namespace llarp
   Router::CreateDefaultHiddenService()
   {
     // fallback defaults
-    // To NeuroScr: why run findFree* here instead of in tun.cpp?
-    // I think it should be in tun.cpp, better to closer to time of usage
-    // that way new tun may have grab a range we may have also grabbed here
     static const std::unordered_map< std::string,
                                      std::function< std::string(void) > >
         netConfigDefaults = {
-            {"ifname", []() -> std::string { return "auto"; }},
-            {"ifaddr", []() -> std::string { return "auto"; }},
+            {"ifname", llarp::FindFreeTun},
+            {"ifaddr", llarp::FindFreeRange},
             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
     // populate with fallback defaults if values not present
     auto itr = netConfigDefaults.begin();

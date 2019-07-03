@@ -70,6 +70,12 @@ namespace llarp
                     {"services", services}};
 
     auto visitor = [&](const char *name, const auto &item) {
+      if(item.second == "auto")
+      {
+        llarp::LogWarn(
+            "value 'auto' is deprecated, stop using this as it will break "
+            "things in the very near future");
+      }
       functor(name, item.first.c_str(), item.second.c_str());
     };
 
