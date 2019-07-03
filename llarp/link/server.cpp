@@ -38,56 +38,68 @@ namespace llarp
   ILinkLayer::ForEachSession(std::function< void(const ILinkSession*) > visit,
                              bool randomize) const
   {
-    Lock l(&m_AuthedLinksMutex);
-    if(m_AuthedLinks.size() == 0)
-      return;
-    const size_t sz = randint() % m_AuthedLinks.size();
-    auto itr        = m_AuthedLinks.begin();
-    auto begin      = itr;
-    if(randomize)
+    std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      std::advance(itr, sz);
-      begin = itr;
-    }
-    while(itr != m_AuthedLinks.end())
-    {
-      visit(itr->second.get());
-      ++itr;
-    }
-    if(randomize)
-    {
-      itr = m_AuthedLinks.begin();
-      while(itr != begin)
+      Lock l(&m_AuthedLinksMutex);
+      if(m_AuthedLinks.size() == 0)
+        return;
+      const size_t sz = randint() % m_AuthedLinks.size();
+      auto itr        = m_AuthedLinks.begin();
+      auto begin      = itr;
+      if(randomize)
       {
-        visit(itr->second.get());
+        std::advance(itr, sz);
+        begin = itr;
+      }
+      while(itr != m_AuthedLinks.end())
+      {
+        sessions.emplace_back(itr->second);
         ++itr;
       }
+      if(randomize)
+      {
+        itr = m_AuthedLinks.begin();
+        while(itr != begin)
+        {
+          sessions.emplace_back(itr->second);
+          ++itr;
+        }
+      }
     }
+    for(const auto& session : sessions)
+      visit(session.get());
   }
 
   bool
   ILinkLayer::VisitSessionByPubkey(const RouterID& pk,
                                    std::function< bool(ILinkSession*) > visit)
   {
-    Lock l(&m_AuthedLinksMutex);
-    auto itr = m_AuthedLinks.find(pk);
-    if(itr != m_AuthedLinks.end())
+    std::shared_ptr< ILinkSession > session;
     {
-      return visit(itr->second.get());
+      Lock l(&m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.find(pk);
+      if(itr == m_AuthedLinks.end())
+        return false;
+      session = itr->second;
     }
-    return false;
+    return visit(session.get());
   }
 
   void
   ILinkLayer::ForEachSession(std::function< void(ILinkSession*) > visit)
   {
-    Lock l(&m_AuthedLinksMutex);
-    auto itr = m_AuthedLinks.begin();
-    while(itr != m_AuthedLinks.end())
+    std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      visit(itr->second.get());
-      ++itr;
+      Lock l(&m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.begin();
+      while(itr != m_AuthedLinks.end())
+      {
+        sessions.emplace_back(itr->second);
+        ++itr;
+      }
     }
+    for(const auto& s : sessions)
+      visit(s.get());
   }
 
   bool
