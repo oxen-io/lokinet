@@ -230,8 +230,8 @@ namespace llarp
     const SecretKey& m_RouterEncSecret;
 
    protected:
-    using Lock  = util::NullLock;
-    using Mutex = util::NullMutex;
+    using Lock  = util::Lock;
+    using Mutex = util::Mutex;
 
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
@@ -249,9 +249,9 @@ namespace llarp
         std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
                                  llarp::Addr::Hash >;
 
-    Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
+    mutable Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
-    Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
+    mutable Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
     Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
 
