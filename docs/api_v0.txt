@@ -14,8 +14,8 @@ LRTP is a message oriented data delivery and receival protocol for hidden
 service traffic. All structures are BitTorrent Encoded dictionaries sent 
 over TCP.
 
-all structures are bencoded when sent over the network but are provided in JSON
-for ease of display in documentation.
+all structures are bencoded when sent over the networks.
+In this document they are provided in JSON for ease of display.
 
 message format:
 
@@ -28,7 +28,7 @@ Nouns (data structures):
 Path: information about a path that we have built
 
 {
-  H: [router_id, router_id, router_id, router_id],
+  H: [router_id_32_bytes, router_id_32_bytes, router_id_32_bytes, router_id_32_bytes],
   R: "<16 bytes local rxid>",
   T: "<16 bytes local txid>"
 }
@@ -39,7 +39,7 @@ Introduction: a hidden service introduction
   E: expiration_ms_since_epoch_uint64,
   L: advertised_latency_ms_uint64,
   P: "<16 bytes pathid>",
-  R: "<32 bytes RouterID>",
+  R: "<32 bytes RouterID>"
 }
 
 ServiceInfo: public key info for hidden service address
@@ -61,7 +61,8 @@ IntroSet: information about an introduction set from the network
 Converstation: information about a loki network converstation
 
 {
-  A: "<32 bytes loki address>",
+  L: "<32 bytes loki address provided if a loki address>",
+  S: "<32 bytes snode address provided if a snode address>",
   T: "<16 bytes convo tag>"
 }
 
@@ -78,6 +79,8 @@ Verbs (methods):
 
 session requset (C->S)
 
+the first message sent by the client
+
 {
   A: "session",
   B: "<8 bytes random>",
@@ -93,6 +96,7 @@ a session cookie to the client.
 
 {
   A: "session-reply",
+  B: "<8 bytes random from session request>",
   C: "<16 bytes session cookie>",
   T: milliseconds_since_epoch_server_now_uint64,
   Y: 0,
@@ -105,7 +109,7 @@ sent in reply to a session message to indicate session rejection
 
 {
   A: "session-reject",
-  B: "<8 bytes random>",
+  B: "<8 bytes random from session request>",
   R: "<variable length utf-8 encoded bytes human readable reason here>",
   T: milliseconds_since_epoch_server_now_uint64,
   Y: 0,
@@ -119,8 +123,8 @@ only one hidden service can be made per session
 {
   A: "spawn",
   C: "<16 bytes session cookie>",
-  N: "Human Readable Name Of Hidden Service",
-  Y: sequence_num_uint64,
+  O: config_options_dict,
+  Y: 1,
   Z: "<32 bytes keyed hash>"
 }
 
@@ -129,49 +133,60 @@ inform that we have spawned a new hidden service endpoint (S->C)
 {
   A: "spawn-reply",
   C: "<16 bytes session cookie>",
-  N: "Human Readable Name Of Hidden Service",
   S: ServiceInfo,
+  Y: 1,
   Z: "<32 bytes keyed hash>"
 }
 
-lookup an intro set for a remote hidden service (C->S)
+inform that we have not spaned a new hidden service endpint (S->C)
+
+after sending this message the server closes the connection
 
 {
-  A: "lookup"
+  A: "spawn-reject",
   C: "<16 bytes session cookie>",
-  N: "base32encoded.loki",
+  E: "<error message goes here>",
+  Y: 1,
+  Z: "<32 bytes keyed hash>"
+}
+
+create a new convseration on a loki/snode address (C->S)
+
+{
+  A: "start-convo",
+  B: "<8 bytes random>",
+  C: "<16 bytes session cookie>",
+  R: "human readable remote address .snode/.loki",
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"
 }
 
-reply to a intro set lookup (S->C)
+sent in reply to a make-convo message to indicate rejection (S->C)
 
 {
-  A: "lookup-reply",
+  A: "start-convo-reject",
+  B: "<8 bytes random from start-convo message>",
   C: "<16 bytes session cookie>",
-  I: IntroSet,
+  S: status_bitmask_uint,
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"
 }
 
-
-
-
-craete a new convseration on a loki address (bidi)
+sent in reply to a make-convo message to indicate that we have accepted this
+new conversation and gives the convo tag it uses.
 
 {
-  A: "make-convo",
+  A: "start-convo-accept",
+  B: "<8 bytes random from start-convo message>",
   C: "<16 bytes session cookie>",
-  R: "human readable address .snode/.loki",
-  T: "<16 bytes convo tag>",
   Y: sequence_num_uint64,
-  Z: "<32 bytes keyed hash>"
+  Z: "<32 bytes keyed hash>
 }
 
 infrom the status of a converstation on a loki address (S->C)
 
-sent every 500 ms until fully established for outbound convos and immediately
-when a new inbound conversation is made.
+for an outbund conversation it is sent every time the status bitmask changes.
+for inbound convos it is sent immediately when a new inbound conversation is made.
 
 S bit 0 (LSB): we found the introset/endpoint for (set by outbound)
 S bit 1: we found the router to align on (set by outbound)
@@ -180,22 +195,37 @@ S bit 3: we have made the converstation (set by both)
 S bit 4: we are an inbound converstation (set by inbound)
 
 {
-  A: "convo",
+  A: "convo-status",
   C: "<16 bytes session cookie>",
   R: "human readable address .snode/.loki",
   S: bitmask_status_uint64,
+  T: "<16 bytes convotag>",
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"
 }
 
 send or recieve authenticated data to or from the network (bidi)
 
+protocol numbers are
+
+1 for ipv4
+2 for ipv6
+
 {
   A: "data",
   C: "<16 bytes session cookie>",
   T: "<16 bytes convotag>",
-  P: protocol_number_uint,
+  W: protocol_number_uint,
   X: "<N bytes payload>",
+  Y: sequence_num_uint64,
+  Z: "<32 bytes keyed hash>"
+}
+
+get session information (C->S)
+
+{
+  A: "info",
+  C: "<16 bytes session cookie>",
   Y: sequence_num_uint64,
   Z: "<32 bytes keyed hash>"
 }
@@ -203,10 +233,10 @@ send or recieve authenticated data to or from the network (bidi)
 
 session information update (S->C)
 
-sent every 5000 millisecond to the client
+sent in reply to a get session information message
 
 {
-  A: "info",
+  A: "info-reply",
   C: "<16 bytes session cookie>",
   I: hiddenserviceinfo,
   Y: sequence_num_uint64,
@@ -221,25 +251,13 @@ A is the function name being called
 
 C is the session cookie indicating the current session
 
-Y is the 64 bit message sequence number
+Y is the 64 bit message sequence number as an integer
 
 Z is the keyed hash computed by MDS(BE(msg), K) where K is HS(api_password)
-with the msg.Z being set to zeros.
+with the msg.Z being set to 32 bytes of \x00
 
 both client and server MUST know a variable length string api_password used to
 authenticate access to the api subsystem.
 
-first message MUST be a spawn message, before any other messages are sent by 
-client (other than keepalives and acl) the client MUST wait for the server to 
-send a spawn message in reply.
-
-once the server spawn message is sent lookup messages may be sent.
-
-when a lookup is done by the client, the router looks up the descriptor from
-the DHT. when a response is obtained the api server gives the introset to 
-the client.
-
-in order to send data to a remote hidden service, the client must align a path
-to a intro in the hidden service's intro set.
-
-after alignment is done, data messages may flow in a bidirectional manner.
+the Y value is incremented by 1 for each direction every time the sender sends 
+a message in that direction.
