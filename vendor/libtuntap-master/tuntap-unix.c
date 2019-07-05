@@ -46,7 +46,10 @@
 #include <net/tun/if_tun.h>
 #elif defined(ANDROID)
 #include <linux/if_tun.h>
-#elif !defined(Darwin)
+#elif defined(Darwin)
+#include <sys/uio.h>
+#include <unistd.h>
+#else
 #include <net/if_tun.h>
 #endif
 #include <netinet/if_ether.h>
@@ -308,9 +311,9 @@ tuntap_write(struct device *dev, void *buf, size_t size)
 #if defined(Darwin)
   /** darwin has packet info so let's use writev */
   struct iovec vecs[2];
-  static unsigned int af4 = AF_INET;
-  static unsigned int af6 = AF_INET6;
-  vecs[0].iov_base = (((byte_t*)buf)[0] & 0x60) == 0x60) ? &af6 : &af4;
+  static unsigned int af4 = htonl(AF_INET);
+  static unsigned int af6 = htonl(AF_INET6);
+  vecs[0].iov_base = (((unsigned char*)buf)[0] & 0x60) == 0x60 ? &af6 : &af4;
   vecs[0].iov_len = sizeof(unsigned int);
   vecs[1].iov_base = buf;
   vecs[1].iov_len = size;
