@@ -107,7 +107,7 @@ namespace llarp
 
       /// get the local interface's address
       huint128_t
-      GetIfAddr() const;
+      GetIfAddr() const override;
 
       bool
       HasLocalIP(const huint128_t& ip) const;

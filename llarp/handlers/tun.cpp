@@ -351,7 +351,7 @@ namespace llarp
           context->ForEachService(
               [&](const std::string &,
                   const std::shared_ptr< service::Endpoint > &service) -> bool {
-                service::Address addr = service->GetIdentity().pub.Addr();
+                const service::Address addr = service->GetIdentity().pub.Addr();
                 msg.AddCNAMEReply(addr.ToString(), 1);
                 ++counter;
                 return true;
