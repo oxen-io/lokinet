@@ -109,6 +109,13 @@ namespace llarp
       huint128_t
       GetIfAddr() const override;
 
+      /// we have an interface addr
+      bool
+      HasIfAddr() const override
+      {
+        return true;
+      }
+
       bool
       HasLocalIP(const huint128_t& ip) const;
 
