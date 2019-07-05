@@ -46,7 +46,10 @@
 #include <net/tun/if_tun.h>
 #elif defined(ANDROID)
 #include <linux/if_tun.h>
-#elif !defined(Darwin)
+#elif defined(Darwin)
+#include <sys/uio.h>
+#include <unistd.h>
+#else
 #include <net/if_tun.h>
 #endif
 #include <netinet/if_ether.h>
@@ -274,8 +277,18 @@ tuntap_read(struct device *dev, void *buf, size_t size)
     tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
     return 0;
   }
-
+#if defined(Darwin)
+  unsigned int pktinfo = 0;
+  struct iovec vecs[2];
+  vecs[0].iov_base = &pktinfo;
+  vecs[0].iov_len = sizeof(unsigned int);
+  vecs[1].iov_base = buf;
+  vecs[1].iov_len = size;
+  n = readv(dev->tun_fd, &vecs, 2);
+  if(n >= sizeof(unsigned int)) n -= sizeof(unsigned int);
+#else
   n = read(dev->tun_fd, buf, size);
+#endif
   if(n == -1)
   {
     tuntap_log(TUNTAP_LOG_WARN, "Can't to read from device");
@@ -295,8 +308,20 @@ tuntap_write(struct device *dev, void *buf, size_t size)
     tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
     return 0;
   }
-
+#if defined(Darwin)
+  /** darwin has packet info so let's use writev */
+  struct iovec vecs[2];
+  static unsigned int af4 = htonl(AF_INET);
+  static unsigned int af6 = htonl(AF_INET6);
+  vecs[0].iov_base = (((unsigned char*)buf)[0] & 0x60) == 0x60 ? &af6 : &af4;
+  vecs[0].iov_len = sizeof(unsigned int);
+  vecs[1].iov_base = buf;
+  vecs[1].iov_len = size;
+  n = writev(dev->tun_fd, &vecs, 2);
+  if (n >= sizeof(unsigned int)) n -= sizeof(unsigned int);
+#else
   n = write(dev->tun_fd, buf, size);
+#endif
   if(n == -1)
   {
     tuntap_log(TUNTAP_LOG_WARN, "Can't write to device");
