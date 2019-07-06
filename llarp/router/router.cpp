@@ -1186,7 +1186,7 @@ namespace llarp
         {
           dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
-        // explore via every conected peer
+        // explore via every connected peer
         ForEachPeer([&](ILinkSession *s) {
           if(!s->IsEstablished())
             return;
