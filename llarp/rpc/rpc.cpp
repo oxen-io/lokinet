@@ -41,14 +41,12 @@ namespace llarp
         {
           return HandleJSONResult({});
         }
-        else if(itr.value().is_object())
+        if(itr.value().is_object())
         {
           return HandleJSONResult(itr.value());
         }
-        else
-        {
-          return false;
-        }
+
+        return false;
       }
 
       void
@@ -277,11 +275,11 @@ namespace llarp
         {
           return ListNeighboors();
         }
-        else if(method == "llarp.admin.exit.list")
+        if(method == "llarp.admin.exit.list")
         {
           return ListExitLevels();
         }
-        else if(method == "llarp.admin.dumpstate")
+        if(method == "llarp.admin.dumpstate")
         {
           return DumpState();
         }

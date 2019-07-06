@@ -236,15 +236,13 @@ namespace llarp
           }
           return {result, now - manager.m_createTime};
         }
-        else
+
+        auto tmp = now - it->second;
+        if(clear)
         {
-          auto tmp = now - it->second;
-          if(clear)
-          {
-            it->second = now;
-          }
-          return {result, tmp};
+          it->second = now;
         }
+        return {result, tmp};
       }
 
       template < typename Type >
@@ -723,10 +721,8 @@ namespace llarp
       {
         return {};
       }
-      else
-      {
-        return it->second;
-      }
+
+      return it->second;
     }
 
     absl::optional< absl::Duration >
@@ -738,10 +734,8 @@ namespace llarp
       {
         return {};
       }
-      else
-      {
-        return m_defaultInterval;
-      }
+
+      return m_defaultInterval;
     }
 
     std::vector< std::pair< const Category *, absl::Duration > >

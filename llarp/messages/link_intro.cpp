@@ -20,14 +20,14 @@ namespace llarp
         return false;
       return *strbuf.cur == 'i';
     }
-    else if(key == "n")
+    if(key == "n")
     {
       if(N.BDecode(buf))
         return true;
       llarp::LogWarn("failed to decode nonce in LIM");
       return false;
     }
-    else if(key == "p")
+    if(key == "p")
     {
       return bencode_read_integer(buf, &P);
     }

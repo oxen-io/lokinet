@@ -108,10 +108,8 @@ namespace llarp
         firstKey = false;
         return msg != nullptr;
       }
-      else
-      {
-        return msg->DecodeKey(*key, buffer);
-      }
+
+      return msg->DecodeKey(*key, buffer);
     }
 
     bool

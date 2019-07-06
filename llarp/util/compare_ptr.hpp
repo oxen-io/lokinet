@@ -13,8 +13,8 @@ namespace llarp
     {
       if(left && right)
         return Compare()(*left, *right);
-      else
-        return Compare()(left, right);
+
+      return Compare()(left, right);
     }
   };
 }  // namespace llarp

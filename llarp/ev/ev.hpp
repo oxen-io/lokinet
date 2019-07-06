@@ -407,13 +407,13 @@ namespace llarp
         m_LossyWriteQueue->Emplace(buf, sz);
         return true;
       }
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
       }
-      else
-        return false;
+
+      return false;
     }
 
     virtual void

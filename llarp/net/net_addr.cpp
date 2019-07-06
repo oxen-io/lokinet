@@ -123,7 +123,7 @@ namespace llarp
       LogError("IPv6 address not supported yet", str);
       return false;
     }
-    else if(res->ai_family != AF_INET)
+    if(res->ai_family != AF_INET)
     {
       LogError("Address family not supported yet", str);
       return false;
@@ -359,16 +359,16 @@ namespace llarp
   {
     if(af() == AF_INET)
       return (const sockaddr*)&_addr4;
-    else
-      return (const sockaddr*)&_addr;
+
+    return (const sockaddr*)&_addr;
   }
 
   Addr::operator sockaddr*() const
   {
     if(af() == AF_INET)
       return (sockaddr*)&_addr4;
-    else
-      return (sockaddr*)&_addr;
+
+    return (sockaddr*)&_addr;
   }
 
   bool
@@ -376,9 +376,9 @@ namespace llarp
   {
     if(af() == AF_INET && other.af() == AF_INET)
       return port() < other.port() || addr4()->s_addr < other.addr4()->s_addr;
-    else
-      return port() < other.port() || *addr6() < *other.addr6()
-          || af() < other.af();
+
+    return port() < other.port() || *addr6() < *other.addr6()
+        || af() < other.af();
   }
 
   bool
@@ -386,9 +386,9 @@ namespace llarp
   {
     if(af() == AF_INET && other.af() == AF_INET)
       return port() == other.port() && addr4()->s_addr == other.addr4()->s_addr;
-    else
-      return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
-          && port() == other.port();
+
+    return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
+        && port() == other.port();
   }
 
   Addr&
@@ -471,8 +471,8 @@ namespace llarp
   {
     if(af() == AF_INET)
       return sizeof(sockaddr_in);
-    else
-      return sizeof(sockaddr_in6);
+
+    return sizeof(sockaddr_in6);
   }
 
   bool

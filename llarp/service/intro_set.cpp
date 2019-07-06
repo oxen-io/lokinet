@@ -150,7 +150,7 @@ namespace llarp
           {
             return false;
           }
-          else if(!W.has_value())
+          if(!W.has_value())
           {
             LogWarn("intro has too high expire time");
             return false;

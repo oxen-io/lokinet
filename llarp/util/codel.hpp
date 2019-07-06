@@ -132,11 +132,9 @@ namespace llarp
               nextTickAt = start + nextTickInterval;
               return;
             }
-            else
-            {
-              nextTickInterval = initialIntervalMs;
-              dropNum          = 0;
-            }
+
+            nextTickInterval = initialIntervalMs;
+            dropNum          = 0;
           }
           visitor(*item);
           item->~T();

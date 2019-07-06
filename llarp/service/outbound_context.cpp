@@ -339,20 +339,18 @@ namespace llarp
           BuildOneAlignedTo(m_NextIntro.router);
         return true;
       }
-      else
+
+      // we didn't shift check if we should update introset
+      if(now - lastShift >= MIN_SHIFT_INTERVAL
+         || currentIntroSet.HasExpiredIntros(now)
+         || currentIntroSet.IsExpired(now))
       {
-        // we didn't shift check if we should update introset
-        if(now - lastShift >= MIN_SHIFT_INTERVAL
-           || currentIntroSet.HasExpiredIntros(now)
-           || currentIntroSet.IsExpired(now))
-        {
-          // update introset
-          LogInfo(Name(), " updating introset");
-          UpdateIntroSet(true);
-          return true;
-        }
-        return false;
+        // update introset
+        LogInfo(Name(), " updating introset");
+        UpdateIntroSet(true);
+        return true;
       }
+      return false;
     }
 
     bool

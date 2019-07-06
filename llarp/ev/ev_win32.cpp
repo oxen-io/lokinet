@@ -1,5 +1,7 @@
 #include <ev/ev_win32.hpp>
 
+#ifdef _WIN32
+
 // a single event queue for the TUN interface
 static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 
@@ -683,3 +685,5 @@ llarp_win32_loop::stop()
   upollfd = nullptr;
   llarp::LogDebug("destroy upoll");
 }
+
+#endif

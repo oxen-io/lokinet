@@ -109,17 +109,15 @@ namespace llarp
         m_LastActivity = r->Now();
         return r->ParseRoutingMessageBuffer(buf, this, info.rxID);
       }
-      else
-      {
-        RelayUpstreamMessage msg;
-        msg.pathid = info.txID;
-        msg.Y      = Y ^ nonceXOR;
 
-        msg.X = buf;
-        llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
-                        info.downstream, " to ", info.upstream);
-        return r->SendToOrQueue(info.upstream, &msg);
-      }
+      RelayUpstreamMessage msg;
+      msg.pathid = info.txID;
+      msg.Y      = Y ^ nonceXOR;
+
+      msg.X = buf;
+      llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
+                      info.downstream, " to ", info.upstream);
+      return r->SendToOrQueue(info.upstream, &msg);
     }
 
     bool
@@ -283,8 +281,8 @@ namespace llarp
         }
         return sent;
       }
-      else
-        llarp::LogError("No exit endpoint on ", info);
+
+      llarp::LogError("No exit endpoint on ", info);
       // discarded
       llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       return SendRoutingMessage(discard, r);

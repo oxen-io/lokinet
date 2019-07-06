@@ -71,9 +71,9 @@ namespace llarp
           return false;
         return m_OurRange.Contains(ip);
       }
-      else if(msg.questions[0].qtype == dns::qTypeA
-              || msg.questions[0].qtype == dns::qTypeCNAME
-              || msg.questions[0].qtype == dns::qTypeAAAA)
+      if(msg.questions[0].qtype == dns::qTypeA
+         || msg.questions[0].qtype == dns::qTypeCNAME
+         || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         if(msg.questions[0].IsName("localhost.loki"))
           return true;
