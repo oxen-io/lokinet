@@ -21,19 +21,8 @@ namespace llarp
   {
     if(key == "netid")
     {
-      if(val.size() <= rc.netID.size())
+      if(val.size() <= NetID::size())
       {
-        llarp::LogWarn("!!!! you have manually set netid to be '", val,
-                       "' which does not equal '", Version::LLARP_NET_ID,
-                       "' you will run as a different network, good luck "
-                       "and "
-                       "don't forget: something something MUH traffic "
-                       "shape "
-                       "correlation !!!!");
-        NetID::DefaultValue() =
-            NetID(reinterpret_cast< const byte_t * >(std::string(val).c_str()));
-        // re set netid in our rc
-        rc.netID = llarp::NetID();
         netid.assign(val.begin(), val.end());
       }
       else
@@ -63,9 +52,9 @@ namespace llarp
     }
     if(key == "nickname")
     {
-      rc.SetNick(val);
+      nickname.assign(val.begin(), val.end());
       // set logger name here
-      LogContext::Instance().nodeName = rc.Nick();
+      LogContext::Instance().nodeName = nickname;
     }
     if(key == "encryption-privkey")
     {
@@ -94,14 +83,12 @@ namespace llarp
         addrInfo.ip    = *a.addr6();
         publicOverride = true;
       }
-      // llarp::Addr a(val);
     }
     if(key == "public-port")
     {
       llarp::LogInfo("Setting public port ", val);
       int p = atoi(std::string(val).c_str());
-      // Not needed to flip upside-down - this is done in llarp::Addr(const
-      // AddressInfo&)
+      // Not needed to flip upside-down this is done in Addr(const AddressInfo&)
       ip4addr.sin_port = p;
       addrInfo.port    = p;
       publicOverride   = true;
@@ -412,6 +399,25 @@ namespace llarp
     {
       return false;
     }
+
+    return parse(parser);
+  }
+
+  bool
+  Config::LoadFromString(string_view str)
+  {
+    ConfigParser parser;
+    if(!parser.LoadString(str))
+    {
+      return false;
+    }
+
+    return parse(parser);
+  }
+
+  bool
+  Config::parse(const ConfigParser &parser)
+  {
     router    = find_section< RouterConfig >(parser, "router");
     network   = find_section< NetworkConfig >(parser, "network");
     connect   = find_section< ConnectConfig >(parser, "connect");

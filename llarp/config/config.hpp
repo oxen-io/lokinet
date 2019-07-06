@@ -1,7 +1,6 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
 
-#include <config/ini.hpp>
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/fs.hpp>
@@ -13,6 +12,8 @@
 
 namespace llarp
 {
+  struct ConfigParser;
+
   struct RouterConfig
   {
     /// always maintain this many connections to other routers
@@ -22,7 +23,7 @@ namespace llarp
     size_t maxConnectedRouters = 2000;
 
     std::string netid;
-    RouterContact rc;
+    std::string nickname;
 
     fs::path encryption_keyfile = "encryption.key";
 
@@ -120,8 +121,8 @@ namespace llarp
 
   struct ApiConfig
   {
-    bool enableRPCServer = false;
-    std::string rpcBindAddr;
+    bool enableRPCServer    = false;
+    std::string rpcBindAddr = "127.0.0.1:1190";
 
     bool
     fromSection(string_view key, string_view val);
@@ -158,6 +159,11 @@ namespace llarp
 
   struct Config
   {
+   private:
+    bool
+    parse(const ConfigParser &parser);
+
+   public:
     RouterConfig router;
     NetworkConfig network;
     ConnectConfig connect;
@@ -174,6 +180,9 @@ namespace llarp
 
     bool
     Load(const char *fname);
+
+    bool
+    LoadFromString(string_view str);
   };
 
 }  // namespace llarp

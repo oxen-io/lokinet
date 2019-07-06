@@ -1,6 +1,7 @@
 set(TEST_EXE testAll)
 
 list(APPEND TEST_SRC
+    config/test_llarp_config_config.cpp
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp

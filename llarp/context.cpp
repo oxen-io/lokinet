@@ -82,7 +82,7 @@ namespace llarp
       auto &metricsConfig = config->metrics;
       auto &tags          = metricsConfig.metricTags;
       tags["netid"]       = config->router.netid;
-      tags["nickname"]    = config->router.rc.Nick();
+      tags["nickname"]    = config->router.nickname;
       setupMetrics(metricsConfig);
       if(!config->metrics.disableMetricLogs)
       {
