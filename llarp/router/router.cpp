@@ -769,6 +769,21 @@ namespace llarp
   void
   Router::fromConfig(Config *conf)
   {
+    // Set netid before anything else
+    if(!conf->router.netid.empty())
+    {
+      const auto &netid = conf->router.netid;
+      llarp::LogWarn("!!!! you have manually set netid to be '", netid,
+                     "' which does not equal '", Version::LLARP_NET_ID,
+                     "' you will run as a different network, good luck "
+                     "and don't forget: something something MUH traffic "
+                     "shape correlation !!!!");
+      NetID::DefaultValue() =
+          NetID(reinterpret_cast< const byte_t * >(netid.c_str()));
+      // reset netid in our rc
+      _rc.netID = llarp::NetID();
+    }
+
     // IWP config
     m_OutboundPort = conf->iwp_links.m_OutboundPort;
 
@@ -927,20 +942,6 @@ namespace llarp
     }
 
     // Router config
-    if(!conf->router.netid.empty())
-    {
-      const auto &netid = conf->router.netid;
-      llarp::LogWarn("!!!! you have manually set netid to be '", netid,
-                     "' which does not equal '", Version::LLARP_NET_ID,
-                     "' you will run as a different network, good luck "
-                     "and don't forget: something something MUH traffic "
-                     "shape correlation !!!!");
-      NetID::DefaultValue() =
-          NetID(reinterpret_cast< const byte_t * >(netid.c_str()));
-      // reset netid in our rc
-      _rc.netID = llarp::NetID();
-    }
-
     _rc.SetNick(conf->router.nickname);
     maxConnectedRouters = conf->router.maxConnectedRouters;
     minConnectedRouters = conf->router.minConnectedRouters;
