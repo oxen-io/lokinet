@@ -316,7 +316,7 @@ tuntap_write(struct device *dev, void *buf, size_t size)
   }
 #if defined(Darwin)
   /** darwin has packet info so let's use writev */
-   static unsigned int af4 = htonl(AF_INET);
+  static unsigned int af4 = htonl(AF_INET);
   static unsigned int af6 = htonl(AF_INET6);
 
   const struct iovec vecs[2] = {
