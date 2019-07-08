@@ -1,6 +1,6 @@
 import CoreFoundation
 
-final class LKDaemon {
+enum LKDaemon {
     
     struct Configuration {
         let isDebuggingEnabled: Bool
@@ -10,7 +10,9 @@ final class LKDaemon {
         let bootstrapFileName: String
     }
     
-    func configure(with configuration: Configuration, completionHandler: @escaping (Result<(configurationFilePath: String, context: LLARPContext), Error>) -> Void) {
+    typealias LLARPContext = OpaquePointer
+    
+    static func configure(with configuration: Configuration, completionHandler: @escaping (Result<(configurationFilePath: String, context: LLARPContext), Error>) -> Void) {
         // Enable debugging mode if needed
         if configuration.isDebuggingEnabled { llarp_enable_debug_mode() }
         // Generate configuration file
@@ -18,7 +20,7 @@ final class LKDaemon {
         llarp_ensure_config(configurationFilePath, configuration.directoryPath, true, false)
         // Download bootstrap file
         let downloadTask = URLSession.shared.dataTask(with: configuration.bootstrapFileURL) { data, _, error in
-            guard let data = data else { return completionHandler(.failure(error ?? LKError.generic)) }
+            guard let data = data else { return completionHandler(.failure(error ?? "An error occurred")) }
             let bootstrapFilePath = configuration.directoryPath + "/" + configuration.bootstrapFileName
             do {
                 try data.write(to: URL(fileURLWithPath: bootstrapFilePath))
@@ -34,7 +36,11 @@ final class LKDaemon {
         downloadTask.resume()
     }
     
-    func start(with context: LLARPContext) {
+    static func start(with context: LLARPContext) {
         llarp_main_run(context)
+    }
+    
+    static func stop(with context: LLARPContext) {
+        llarp_main_abort(context)
     }
 }

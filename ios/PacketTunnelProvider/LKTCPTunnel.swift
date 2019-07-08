@@ -24,7 +24,7 @@ final class LKTCPTunnel : NSObject {
         if keyPath == "state" && context?.assumingMemoryBound(to: Optional<NWTCPConnection>.self).pointee == connection {
             let connection = self.connection!
             let state = connection.state
-            Console.log("[Loki] TCP Tunnel state changed to \(state).")
+            LKLog("[Loki] TCP tunnel state changed to \(state).")
             switch state {
             case .connected:
                 openCompletion?(nil)
@@ -32,7 +32,7 @@ final class LKTCPTunnel : NSObject {
                 read()
             case .disconnected:
                 if let error = connection.error {
-                    Console.log("[Loki] Disconnected due to error: \(error).")
+                    LKLog("[Loki] TCP tunnel disconnected due to error: \(error).")
                 }
                 close()
             case .cancelled: close()
@@ -46,19 +46,19 @@ final class LKTCPTunnel : NSObject {
     private func read() {
         connection!.readMinimumLength(0, maximumLength: configuration.readBufferSize) { [weak self] data, error in
             if let data = data {
-                Console.log(String(data: data, encoding: .utf8)!)
+                LKLog(String(data: data, encoding: .utf8)!)
                 self?.read()
             } else if let error = error {
-                Console.log("[Loki] Couldn't read packet due to error: \(error).")
+                LKLog("[Loki] Couldn't read packet due to error: \(error).")
             } else {
-                Console.log("[Loki] Couldn't read packet.")
+                LKLog("[Loki] Couldn't read packet.")
             }
         }
     }
     
     func close() {
         connection?.cancel()
-        openCompletion?("Failed to open tunnel.")
+        openCompletion?("Failed to open TCP tunnel.")
         openCompletion = nil
         connection?.removeObserver(self, forKeyPath: "state")
         connection = nil

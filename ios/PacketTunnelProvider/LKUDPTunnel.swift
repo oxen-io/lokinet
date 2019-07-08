@@ -17,7 +17,7 @@ final class LKUDPTunnel : NSObject {
         openCompletion = completion
         let endpoint = NWHostEndpoint(hostname: configuration.address, port: String(configuration.port))
         session = provider.createUDPSession(to: endpoint, from: nil)
-        Console.log("[Loki] Tunnel state changed to preparing.")
+        LKLog("[Loki] UDP tunnel state changed to preparing.")
         session!.addObserver(self, forKeyPath: "state", options: .initial, context: &session)
         session!.setReadHandler(read(_:_:), maxDatagrams: Int.max)
     }
@@ -25,7 +25,7 @@ final class LKUDPTunnel : NSObject {
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey:Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "state" && context?.assumingMemoryBound(to: Optional<NWTCPConnection>.self).pointee == session {
             let state = session!.state
-            Console.log("[Loki] UDP Tunnel state changed to \(state).")
+            LKLog("[Loki] UDP tunnel state changed to \(state).")
             switch state {
             case .ready:
                 openCompletion?(nil)
@@ -40,17 +40,17 @@ final class LKUDPTunnel : NSObject {
     
     private func read(_ datagrams: [Data]?, _ error: Error?) {
         if let datagrams = datagrams {
-            Console.log("[Loki] Read datagrams: \(datagrams).")
+            LKLog("[Loki] Read datagrams: \(datagrams).")
         } else if let error = error {
-            Console.log("[Loki] Couldn't read datagrams due to error: \(error).")
+            LKLog("[Loki] Couldn't read datagrams due to error: \(error).")
         } else {
-            Console.log("[Loki] Couldn't read datagrams.")
+            LKLog("[Loki] Couldn't read datagrams.")
         }
     }
     
     func close() {
         session?.cancel()
-        openCompletion?("Failed to open tunnel.")
+        openCompletion?("Failed to open UDP tunnel.")
         openCompletion = nil
         session?.removeObserver(self, forKeyPath: "state")
         session = nil

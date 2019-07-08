@@ -2,9 +2,9 @@ import CoreFoundation
 import NetworkExtension
 
 final class LKPacketTunnelProvider : NEPacketTunnelProvider {
-    private let daemon = LKDaemon()
     private var tcpTunnel: LKTCPTunnel?
     private var udpTunnel: LKUDPTunnel?
+    private var llarpContext: LKDaemon.LLARPContext?
     
     override func startTunnel(options: [String:NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {
         Darwin.sleep(10) // Give the user time to attach the debugger
@@ -13,11 +13,11 @@ final class LKPacketTunnelProvider : NEPacketTunnelProvider {
         let bootstrapFileURL = URL(string: "https://i2p.rocks/i2procks.signed")!
         let bootstrapFileName = "bootstrap.signed"
         let daemonConfiguration = LKDaemon.Configuration(isDebuggingEnabled: false, directoryPath: directoryPath, configurationFileName: configurationFileName, bootstrapFileURL: bootstrapFileURL, bootstrapFileName: bootstrapFileName)
-        daemon.configure(with: daemonConfiguration) { [weak self, daemon] result in
+        LKDaemon.configure(with: daemonConfiguration) { result in
             switch result {
             case .success(let configurationFilePath, let context):
                 do {
-                    guard let strongSelf = self else { return }
+                    guard let strongSelf = self else { return completionHandler("Couldn't open tunnel.") }
                     var isTCPTunnelOpen = false
                     var isUDPTunnelOpen = false
                     let tcpTunnelConfiguration = try LKTCPTunnel.Configuration(fromFileAt: configurationFilePath)
@@ -38,16 +38,18 @@ final class LKPacketTunnelProvider : NEPacketTunnelProvider {
                         guard isTCPTunnelOpen else { return }
                         completionHandler(openTCPTunnelError ?? error)
                     }
-                    daemon.start(with: context)
+                    strongSelf.llarpContext = context
+                    LKDaemon.start(with: context)
                 } catch let error {
-                    Console.log("[Loki] Failed to parse tunnel configuration due to error: \(error).")
+                    LKLog("[Loki] Failed to parse tunnel configuration due to error: \(error).")
                 }
-            case .failure(let error): Console.log("[Loki] Failed to configure daemon due to error: \(error).")
+            case .failure(let error): LKLog("[Loki] Failed to configure daemon due to error: \(error).")
             }
         }
     }
     
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
+        if let llarpContext = llarpContext { LKDaemon.stop(llarpContext) }
         tcpTunnel?.close()
         udpTunnel?.close()
         completionHandler()
