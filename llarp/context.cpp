@@ -72,10 +72,10 @@ namespace llarp
     }
     else
     {
-      num_nethreads = config->router.numNethreads();
+      num_nethreads = config->router.numNetThreads();
     }
 
-    nodedb_dir = config->netdb.nodedb_dir;
+    nodedb_dir = config->netdb.nodedbDir();
 
     if(!config->metrics.disableMetrics)
     {

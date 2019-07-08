@@ -785,9 +785,9 @@ namespace llarp
     }
 
     // IWP config
-    m_OutboundPort = conf->iwp_links.m_OutboundPort;
+    m_OutboundPort = conf->iwp_links.outboundPort();
 
-    for(const auto &serverConfig : conf->iwp_links.servers)
+    for(const auto &serverConfig : conf->iwp_links.servers())
     {
       auto server = llarp::utp::NewServerFromRouter(this);
       if(!server->EnsureKeys(transport_keyfile.string().c_str()))
@@ -864,8 +864,8 @@ namespace llarp
     }
 
     // API config
-    enableRPCServer = conf->api.enableRPCServer;
-    rpcBindAddr     = conf->api.rpcBindAddr;
+    enableRPCServer = conf->api.enableRPCServer();
+    rpcBindAddr     = conf->api.rpcBindAddr();
 
     // Services config
     for(const auto &service : conf->services.services)

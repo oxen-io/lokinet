@@ -100,10 +100,10 @@ namespace llarp
     }
     if(key == "net-threads")
     {
-      m_numNethreads = atoi(std::string(val).c_str());
-      if(m_numNethreads <= 0)
+      m_numNetThreads = atoi(std::string(val).c_str());
+      if(m_numNetThreads <= 0)
       {
-        m_numNethreads = 1;
+        m_numNetThreads = 1;
       }
     }
   }
@@ -122,7 +122,7 @@ namespace llarp
         m_enableProfiling.emplace(false);
       }
     }
-    if(key == "profiles")
+    else if(key == "profiles")
     {
       m_routerProfilesFile.assign(val.begin(), val.end());
       llarp::LogInfo("setting profiles to ", routerProfilesFile());
@@ -131,6 +131,10 @@ namespace llarp
     {
       m_strictConnect.assign(val.begin(), val.end());
     }
+    else
+    {
+      m_netConfig.emplace(key, val);
+    }
   }
 
   void
@@ -138,7 +142,7 @@ namespace llarp
   {
     if(key == "dir")
     {
-      nodedb_dir.assign(val.begin(), val.end());
+      m_nodedbDir.assign(val.begin(), val.end());
     }
   }
 
@@ -201,7 +205,7 @@ namespace llarp
     }
     else
     {
-      servers.emplace_back(key, AF_INET, proto);
+      m_servers.emplace_back(key, AF_INET, proto);
     }
   }
 
@@ -259,11 +263,11 @@ namespace llarp
   {
     if(key == "enabled")
     {
-      enableRPCServer = IsTrueValue(val);
+      m_enableRPCServer = IsTrueValue(val);
     }
     if(key == "bind")
     {
-      rpcBindAddr.assign(val.begin(), val.end());
+      m_rpcBindAddr.assign(val.begin(), val.end());
     }
     if(key == "authkey")
     {

@@ -4,6 +4,7 @@
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/fs.hpp>
+#include <util/str.hpp>
 
 #include <absl/strings/str_cat.h>
 #include <cstdlib>
@@ -21,10 +22,75 @@ namespace llarp
   fromEnv(const Type& val, string_view envNameSuffix)
   {
     std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    auto ptr            = std::getenv(envName.c_str());
+    char* ptr           = std::getenv(envName.c_str());
     if(ptr)
     {
       return ptr;
+    }
+    else
+    {
+      return val;
+    }
+  }
+
+  template <>
+  inline int
+  fromEnv< int >(const int& val, string_view envNameSuffix)
+  {
+    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
+    const char* ptr     = std::getenv(envName.c_str());
+    if(ptr)
+    {
+      return std::atoi(ptr);
+    }
+    else
+    {
+      return val;
+    }
+  }
+
+  template <>
+  inline uint16_t
+  fromEnv< uint16_t >(const uint16_t& val, string_view envNameSuffix)
+  {
+    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
+    const char* ptr     = std::getenv(envName.c_str());
+    if(ptr)
+    {
+      return std::atoi(ptr);
+    }
+    else
+    {
+      return val;
+    }
+  }
+
+  template <>
+  inline size_t
+  fromEnv< size_t >(const size_t& val, string_view envNameSuffix)
+  {
+    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
+    const char* ptr     = std::getenv(envName.c_str());
+    if(ptr)
+    {
+      return std::atoll(ptr);
+    }
+    else
+    {
+      return val;
+    }
+  }
+
+  template <>
+  inline absl::optional< bool >
+  fromEnv< absl::optional< bool > >(const absl::optional< bool >& val,
+                                    string_view envNameSuffix)
+  {
+    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
+    const char* ptr     = std::getenv(envName.c_str());
+    if(ptr)
+    {
+      return IsTrueValue(ptr);
     }
     else
     {
@@ -60,23 +126,23 @@ namespace llarp
     AddressInfo m_addrInfo;
 
     int m_workerThreads;
-    int m_numNethreads;
+    int m_numNetThreads;
 
    public:
     // clang-format off
-    size_t minConnectedRouters() const        { return m_minConnectedRouters; }
-    size_t maxConnectedRouters() const        { return m_maxConnectedRouters; }
-    const fs::path& encryptionKeyfile() const { return m_encryptionKeyfile; }
-    const fs::path& ourRcFile() const         { return m_ourRcFile; }
-    const fs::path& transportKeyfile() const  { return m_transportKeyfile; }
-    const fs::path& identKeyfile() const      { return m_identKeyfile; }
-    const std::string& netId() const          { return m_netId; }
-    const std::string& nickname() const       { return m_nickname; }
-    bool publicOverride() const               { return m_publicOverride; }
+    size_t minConnectedRouters() const        { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
+    size_t maxConnectedRouters() const        { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
+    fs::path encryptionKeyfile() const        { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
+    fs::path ourRcFile() const                { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
+    fs::path transportKeyfile() const         { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
+    fs::path identKeyfile() const             { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
+    std::string netId() const                 { return fromEnv(m_netId, "NETID"); }
+    std::string nickname() const              { return fromEnv(m_nickname, "NICKNAME"); }
+    bool publicOverride() const               { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
     const struct sockaddr_in& ip4addr() const { return m_ip4addr; }
     const AddressInfo& addrInfo() const       { return m_addrInfo; }
-    int workerThreads() const                 { return m_workerThreads; }
-    int numNethreads() const                  { return m_numNethreads; }
+    int workerThreads() const                 { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
+    int numNetThreads() const                 { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
     // clang-format on
 
     void
@@ -96,19 +162,25 @@ namespace llarp
 
    public:
     // clang-format off
-    const absl::optional< bool >& enableProfiling() const { return m_enableProfiling; }
-    const std::string& routerProfilesFile() const         { return m_routerProfilesFile; }
-    const std::string& strictConnect() const              { return m_strictConnect; }
-    const NetConfig& netConfig() const                    { return m_netConfig; }
+    absl::optional< bool > enableProfiling() const { return fromEnv(m_enableProfiling, "ENABLE_PROFILING"); }
+    std::string routerProfilesFile() const         { return fromEnv(m_routerProfilesFile, "ROUTER_PROFILES_FILE"); }
+    std::string strictConnect() const              { return fromEnv(m_strictConnect, "STRICT_CONNECT"); }
+    const NetConfig& netConfig() const             { return m_netConfig; }
     // clang-format on
 
     void
     fromSection(string_view key, string_view val);
   };
 
-  struct NetdbConfig
+  class NetdbConfig
   {
-    std::string nodedb_dir;
+   private:
+    std::string m_nodedbDir;
+
+   public:
+    // clang-format off
+    std::string nodedbDir() const { return fromEnv(m_nodedbDir, "NODEDB_DIR"); }
+    // clang-format on
 
     void
     fromSection(string_view key, string_view val);
@@ -122,11 +194,21 @@ namespace llarp
     fromSection(string_view key, string_view val);
   };
 
-  struct IwpConfig
+  class IwpConfig
   {
+   public:
+    using Servers = std::vector< std::tuple< std::string, int, uint16_t > >;
+
+   private:
     uint16_t m_OutboundPort = 0;
 
-    std::vector< std::tuple< std::string, int, uint16_t > > servers;
+    Servers m_servers;
+
+   public:
+    // clang-format off
+    uint16_t outboundPort() const  { return fromEnv(m_OutboundPort, "OUTBOUND_PORT"); }
+    const Servers& servers() const { return m_servers; }
+    // clang-format on
 
     void
     fromSection(string_view key, string_view val);
@@ -167,10 +249,17 @@ namespace llarp
     fromSection(string_view key, string_view val);
   };
 
-  struct ApiConfig
+  class ApiConfig
   {
-    bool enableRPCServer    = false;
-    std::string rpcBindAddr = "127.0.0.1:1190";
+   private:
+    bool m_enableRPCServer    = false;
+    std::string m_rpcBindAddr = "127.0.0.1:1190";
+
+   public:
+    // clang-format off
+    bool enableRPCServer() const    { return fromEnv(m_enableRPCServer, "ENABLE_RPC_SERVER"); }
+    std::string rpcBindAddr() const { return fromEnv(m_rpcBindAddr, "RPC_BIND_ADDR"); }
+    // clang-format on
 
     void
     fromSection(string_view key, string_view val);
