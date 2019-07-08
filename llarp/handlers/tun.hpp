@@ -15,11 +15,6 @@ namespace llarp
 {
   namespace handlers
   {
-    static const int DefaultTunNetmask    = 16;
-    static const char DefaultTunIfname[]  = "lokinet0";
-    static const char DefaultTunDstAddr[] = "10.10.0.1";
-    static const char DefaultTunSrcAddr[] = "10.10.0.2";
-
     struct TunEndpoint : public service::Endpoint,
                          public dns::IQueryHandler,
                          public std::enable_shared_from_this< TunEndpoint >

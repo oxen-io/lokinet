@@ -45,18 +45,19 @@ namespace llarp
         , m_Resolver(std::make_shared< dns::Proxy >(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
+      std::fill(tunif.ifaddr, tunif.ifaddr + sizeof(tunif.ifaddr), 0);
+      std::fill(tunif.ifname, tunif.ifname + sizeof(tunif.ifname), 0);
+      tunif.netmask = 0;
+
 #ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;
       Promise.reset(new llarp_fd_promise(&m_VPNPromise));
 #else
       tunif.get_fd_promise = nullptr;
 #endif
-      tunif.user    = this;
-      tunif.netmask = DefaultTunNetmask;
+      tunif.user = this;
 
       // eh this shouldn't do anything on windows anyway
-      strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
-      strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
       tunif.tick         = &tunifTick;
       tunif.before_write = &tunifBeforeWrite;
       tunif.recvpkt      = &tunifRecvPkt;

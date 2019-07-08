@@ -25,6 +25,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
+#include <unordered_map>
 #if defined(RPI) || defined(ANDROID)
 #include <unistd.h>
 #endif
@@ -1426,6 +1427,30 @@ namespace llarp
             " routers");
   }
 
+  /// this function ensure there are sane defualts in a net config
+  static void
+  EnsureNetConfigDefaultsSane(
+      std::unordered_multimap< std::string, std::string > &netConfig)
+  {
+    static const std::unordered_map< std::string,
+                                     std::function< std::string(void) > >
+        netConfigDefaults = {
+            {"ifname", llarp::FindFreeTun},
+            {"ifaddr", llarp::FindFreeRange},
+            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
+    // populate with fallback defaults if values not present
+    auto itr = netConfigDefaults.begin();
+    while(itr != netConfigDefaults.end())
+    {
+      auto found = netConfig.find(itr->first);
+      if(found == netConfig.end() || found->second.empty())
+      {
+        netConfig.emplace(itr->first, itr->second());
+      }
+      ++itr;
+    }
+  }
+
   bool
   Router::Run(struct llarp_nodedb *nodedb)
   {
@@ -1565,6 +1590,8 @@ namespace llarp
       else
         LogWarn("Link ", link->Name(), " failed to start");
     }
+
+    EnsureNetConfigDefaultsSane(netConfig);
 
     if(IBLinksStarted > 0)
     {
@@ -1763,24 +1790,6 @@ namespace llarp
   bool
   Router::CreateDefaultHiddenService()
   {
-    // fallback defaults
-    static const std::unordered_map< std::string,
-                                     std::function< std::string(void) > >
-        netConfigDefaults = {
-            {"ifname", llarp::FindFreeTun},
-            {"ifaddr", llarp::FindFreeRange},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
-    // populate with fallback defaults if values not present
-    auto itr = netConfigDefaults.begin();
-    while(itr != netConfigDefaults.end())
-    {
-      auto found = netConfig.find(itr->first);
-      if(found == netConfig.end() || found->second.empty())
-      {
-        netConfig.emplace(itr->first, itr->second());
-      }
-      ++itr;
-    }
     // add endpoint
     return hiddenServiceContext().AddDefaultEndpoint(netConfig);
   }

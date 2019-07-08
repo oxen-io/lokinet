@@ -127,23 +127,6 @@ namespace llarp
       {
         item.second->Tick(now);
       }
-      /*
-      std::vector< RouterID > expired;
-      m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
-        if(rc.IsExpired(now))
-          expired.emplace_back(rc.pubkey);
-        return true;
-      });
-      ForEachService([&](const std::string &,
-                         const std::shared_ptr< Endpoint > &ep) -> bool {
-        // TODO: we need to stop looking up service nodes that are gone forever
-        // how do?
-        for(const auto &k : expired)
-          if(!ep->LookupRouterAnon(k, nullptr))
-            return false;
-        return true;
-      });
-      */
     }
 
     bool
