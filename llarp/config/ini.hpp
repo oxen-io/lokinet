@@ -1,9 +1,11 @@
 #ifndef LOKINET_BOOTSERV_CONFIG_HPP
 #define LOKINET_BOOTSERV_CONFIG_HPP
-#include <unordered_map>
+
 #include <util/string_view.hpp>
+
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace llarp
@@ -23,13 +25,13 @@ namespace llarp
     /// return true on success
     /// return false on error
     bool
-    LoadFile(const char* fname);
+    LoadFile(string_view fname);
 
     /// load from string
     /// return true on success
     /// return false on error
     bool
-    LoadString(const std::string& str);
+    LoadString(string_view str);
 
     /// iterate all sections and thier values
     void

@@ -277,15 +277,16 @@ tuntap_read(struct device *dev, void *buf, size_t size)
     tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
     return 0;
   }
-#if defined(Darwin)
+#ifdef Darwin
   unsigned int pktinfo = 0;
   struct iovec vecs[2];
   vecs[0].iov_base = &pktinfo;
-  vecs[0].iov_len = sizeof(unsigned int);
+  vecs[0].iov_len  = sizeof(unsigned int);
   vecs[1].iov_base = buf;
-  vecs[1].iov_len = size;
-  n = readv(dev->tun_fd, &vecs, 2);
-  if(n >= sizeof(unsigned int)) n -= sizeof(unsigned int);
+  vecs[1].iov_len  = size;
+  n                = readv(dev->tun_fd, vecs, 2);
+  if(n >= (int)(sizeof(unsigned int)))
+    n -= sizeof(unsigned int);
 #else
   n = read(dev->tun_fd, buf, size);
 #endif
@@ -313,16 +314,18 @@ tuntap_write(struct device *dev, void *buf, size_t size)
   struct iovec vecs[2];
   static unsigned int af4 = htonl(AF_INET);
   static unsigned int af6 = htonl(AF_INET6);
+<<<<<<< HEAD
   vecs[0].iov_base = (((unsigned char*)buf)[0] & 0x60) == 0x60 ? &af6 : &af4;
   vecs[0].iov_len = sizeof(unsigned int);
   vecs[1].iov_base = buf;
   vecs[1].iov_len = size;
   n = writev(dev->tun_fd, &vecs, 2);
   if (n >= sizeof(unsigned int)) n -= sizeof(unsigned int);
-#else
-  n = write(dev->tun_fd, buf, size);
-#endif
-  if(n == -1)
+=======
+  vecs[0].iov_base = (((unsigned char *)buf)[0] & 0x60) == 0x60 ? &af6 : &af4;
+  vecs[0].iov_len  = sizeof(unsigned int);
+  vecs[1].iov_base = buf;
+  vecs[1].iov_len  = size;
   {
     tuntap_log(TUNTAP_LOG_WARN, "Can't write to device");
     return -1;
@@ -330,7 +333,6 @@ tuntap_write(struct device *dev, void *buf, size_t size)
   return n;
 }
 
-int
 tuntap_get_readable(struct device *dev)
 {
   int n;
@@ -377,7 +379,7 @@ tuntap_set_debug(struct device *dev, int set)
     return 0;
   }
 
-#if !defined Darwin
+#ifndef Darwin
   if(ioctl(dev->tun_fd, TUNSDEBUG, &set) == -1)
   {
     switch(set)
