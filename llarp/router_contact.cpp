@@ -223,7 +223,7 @@ namespace llarp
   }
 
   void
-  RouterContact::SetNick(const std::string &nick)
+  RouterContact::SetNick(string_view nick)
   {
     nickname.Zero();
     std::copy(nick.begin(),

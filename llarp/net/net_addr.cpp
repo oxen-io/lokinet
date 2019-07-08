@@ -63,14 +63,14 @@ namespace llarp
     return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
   }
 
-  Addr::Addr(const std::string str)
+  Addr::Addr(string_view str)
   {
-    this->from_char_array(str.c_str());
+    this->from_char_array(str);
   }
 
-  Addr::Addr(const std::string str, const uint16_t p_port)
+  Addr::Addr(string_view str, const uint16_t p_port)
   {
-    this->from_char_array(str.c_str());
+    this->from_char_array(str);
     this->port(p_port);
   }
 
@@ -81,25 +81,17 @@ namespace llarp
   }
 
   bool
-  Addr::from_char_array(const char* in)
+  Addr::from_char_array(string_view in)
   {
-    char* str       = (char*)in;
-    char* pPosition = strchr(str, ':');
-    bool freeStr    = false;
-    if(pPosition)
+    auto str       = in.begin();
+    auto pPosition = in.find(':');
+    if(pPosition != string_view::npos)
     {
       // parse port
-      char buf[6];
-      snprintf(buf, 6, "%s", pPosition + 1);
-      uint16_t port = std::atoi(buf);
+      uint16_t port =
+          std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
       LogDebug("Setting port ", std::to_string(port));
       this->port(port);
-      // trim str
-      // can't VLA
-      str                 = strdup(in);  // copy it
-      str[pPosition - in] = '\0';        // nul terminate it early
-      LogDebug("Truncating to ", str);
-      freeStr = true;
     }
     Zero(&_addr, sizeof(sockaddr_in6));
     struct addrinfo hint, *res = NULL;
@@ -110,27 +102,30 @@ namespace llarp
     hint.ai_family = PF_UNSPEC;
     hint.ai_flags  = AI_NUMERICHOST;
 
-    ret = getaddrinfo(str, NULL, &hint, &res);
+    if(pPosition != string_view::npos)
+    {
+      ret = getaddrinfo(std::string(in.begin(), in.begin() + pPosition).c_str(),
+                        NULL, &hint, &res);
+    }
+    else
+    {
+      ret = getaddrinfo(std::string(in).c_str(), NULL, &hint, &res);
+    }
+
     if(ret)
     {
       LogError("failed to determine address family: ", str);
-      if(freeStr)
-        free(str);
       return false;
     }
 
     if(res->ai_family == AF_INET6)
     {
       LogError("IPv6 address not supported yet", str);
-      if(freeStr)
-        free(str);
       return false;
     }
     else if(res->ai_family != AF_INET)
     {
       LogError("Address family not supported yet", str);
-      if(freeStr)
-        free(str);
       return false;
     }
 
@@ -139,12 +134,8 @@ namespace llarp
     if(inet_aton(str, addr) == 0)
     {
       LogError("failed to parse ", str);
-      if(freeStr)
-        free(str);
       return false;
     }
-    if(freeStr)
-      free(str);
 
     _addr.sin6_family = res->ai_family;
     _addr4.sin_family = res->ai_family;
@@ -160,11 +151,6 @@ namespace llarp
     freeaddrinfo(res);
 
     return true;
-  }
-
-  Addr::Addr(const char* str)
-  {
-    this->from_char_array(str);
   }
 
   bool

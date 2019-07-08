@@ -21,7 +21,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "
   find_library(FS_LIB NAMES c++experimental)
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  find_library(FS_LIB NAMES stdc++fs c++experimental stdc++fs)
+  find_library(FS_LIB NAMES c++fs c++experimental stdc++fs)
 
   if(FS_LIB STREQUAL FS_LIB-NOTFOUND)
     add_subdirectory(vendor)

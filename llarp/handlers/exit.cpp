@@ -607,6 +607,7 @@ namespace llarp
                                 pk, path, !wantInternet, ip, this));
 
       m_Paths[path] = pk;
+
       return HasLocalMappedAddrFor(pk);
     }
 

@@ -1,4 +1,6 @@
 set(LIB_UTIL_SRC
+  config/config.cpp
+  config/ini.cpp
   constants/defaults.cpp
   constants/link_layer.cpp
   constants/path.cpp
@@ -13,7 +15,6 @@ set(LIB_UTIL_SRC
   util/encode.cpp
   util/endian.cpp
   util/fs.cpp
-  util/ini.cpp
   util/json.cpp
   util/logger.cpp
   util/android_logger.cpp
@@ -52,6 +53,7 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${FS_LIB})
 target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
 
 # cut back on fluff
@@ -125,7 +127,6 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
-  config.cpp
   context.cpp
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp
@@ -241,7 +242,7 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 set(LIBS ${LIBS} libutp)
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)

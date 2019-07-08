@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <util/ini.hpp>
+#include <config/ini.hpp>
 
 struct TestINIParser : public ::testing::Test
 {
