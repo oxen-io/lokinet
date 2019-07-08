@@ -1,8 +1,7 @@
-import Foundation
+import CoreFoundation
 
 final class LKDaemon {
     
-    // MARK: Types
     struct Configuration {
         let isDebuggingEnabled: Bool
         let directoryPath: String
@@ -11,14 +10,6 @@ final class LKDaemon {
         let bootstrapFileName: String
     }
     
-    typealias LLARPContext = OpaquePointer
-    
-    // MARK: Lifecycle
-    static let shared = LKDaemon()
-    
-    private init() { }
-    
-    // MARK: Configuration
     func configure(with configuration: Configuration, completionHandler: @escaping (Result<(configurationFilePath: String, context: LLARPContext), Error>) -> Void) {
         // Enable debugging mode if needed
         if configuration.isDebuggingEnabled { llarp_enable_debug_mode() }
@@ -43,7 +34,7 @@ final class LKDaemon {
         downloadTask.resume()
     }
     
-    func run(with context: LLARPContext) {
+    func start(with context: LLARPContext) {
         llarp_main_run(context)
     }
 }

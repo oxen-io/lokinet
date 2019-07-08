@@ -1,13 +1,13 @@
 
-extension LKTunnel {
+extension LKUDPTunnel {
     
     struct Configuration {
-        let dns: String
-        let ifaddr: String
+        let address: String
+        let port: UInt16
         
-        init(dns: String, ifaddr: String) {
-            self.dns = dns
-            self.ifaddr = ifaddr
+        init(address: String, port: String) {
+            self.address = address
+            self.port = port
         }
         
         init(fromFileAt path: String) throws {
@@ -15,12 +15,12 @@ extension LKTunnel {
             if let dns = contents["dns"]?["bind"] {
                 self.dns = dns
             } else {
-                throw LKError.incompleteConfigurationFile(missingEntry: "dns")
+                throw "No configuration file entry found for: \"dns\"."
             }
             if let ifaddr = contents["network"]?["ifaddr"] {
                 self.ifaddr = ifaddr
             } else {
-                throw LKError.incompleteConfigurationFile(missingEntry: "ifaddr")
+                throw "No configuration file entry found for: \"ifaddr\"."
             }
         }
     }
