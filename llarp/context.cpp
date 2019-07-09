@@ -64,7 +64,7 @@ namespace llarp
       config->router.workerThreads = 1;
 
     worker = std::make_shared< llarp::thread::ThreadPool >(
-        config->router.workerThreads, 1024, "llarp-cryptoworker");
+        config->router.workerThreads, 1024, "llarp-worker");
 
     nodedb_dir = config->netdb.nodedb_dir;
 
