@@ -885,6 +885,7 @@ namespace llarp
       }
       if(!hit)
         return loaddr.ToString() + "/16";
+      ++oct;
     }
     return "";
   }
