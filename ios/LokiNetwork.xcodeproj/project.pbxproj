@@ -41,6 +41,8 @@
 		B8EFF94F22D31382005597E9 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4662266B7080098F863 /* liblokinet-util.a */; };
 		B8EFF95022D31389005597E9 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4622266B7080098F863 /* liblokinet-platform.a */; };
 		B8EFF95122D31392005597E9 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4642266B7080098F863 /* liblokinet-static.a */; };
+		B8EFF98D22D41544005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF95522D41544005597E9 /* MMWormhole.framework */; };
+		B8EFF99122D41768005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF99022D41768005597E9 /* MMWormhole.framework */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKViewController.swift */; };
@@ -444,6 +446,8 @@
 		B8EFF93222D30928005597E9 /* LKUDPTunnel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKUDPTunnel.swift; sourceTree = "<group>"; };
 		B8EFF93422D30A8F005597E9 /* LKTCPTunnel+Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LKTCPTunnel+Configuration.swift"; sourceTree = "<group>"; };
 		B8EFF93722D30B42005597E9 /* LKUDPTunnel+Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LKUDPTunnel+Configuration.swift"; sourceTree = "<group>"; };
+		B8EFF95522D41544005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
+		B8EFF99022D41768005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -497,6 +501,7 @@
 				B8EFF94322D312FC005597E9 /* libabsl_symbolize.a in Frameworks */,
 				B8EFF94422D31303005597E9 /* libabsl_hash.a in Frameworks */,
 				B8EFF94522D31316005597E9 /* libabsl_internal_city.a in Frameworks */,
+				B8EFF98D22D41544005597E9 /* MMWormhole.framework in Frameworks */,
 				B8EFF94622D3131D005597E9 /* libabsl_int128.a in Frameworks */,
 				B8EFF94722D3132B005597E9 /* libabsl_strings.a in Frameworks */,
 				B8EFF94822D31333005597E9 /* libabsl_synchronization.a in Frameworks */,
@@ -516,6 +521,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */,
+				B8EFF99122D41768005597E9 /* MMWormhole.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -620,6 +626,15 @@
 				C3CBFB642256D47400F34631 /* lokinet-wrapper.h */,
 				C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */,
 				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
+				B8EFF95522D41544005597E9 /* MMWormhole.framework */,
+			);
+			name = Dependencies;
+			sourceTree = "<group>";
+		};
+		B8EFF98F22D4167B005597E9 /* Dependencies */ = {
+			isa = PBXGroup;
+			children = (
+				B8EFF99022D41768005597E9 /* MMWormhole.framework */,
 			);
 			name = Dependencies;
 			sourceTree = "<group>";
@@ -679,6 +694,7 @@
 		C3FBE36322542DD60006284B /* LokiNetwork */ = {
 			isa = PBXGroup;
 			children = (
+				B8EFF98F22D4167B005597E9 /* Dependencies */,
 				B8F79874225DB9FF00003DE6 /* Meta */,
 				B8EBA4D8226EDF4D0098F863 /* UI */,
 			);
@@ -724,6 +740,7 @@
 				B8F7987F226056DD00003DE6 /* Sources */,
 				B8F79880226056DD00003DE6 /* Frameworks */,
 				B8F79881226056DD00003DE6 /* Resources */,
+				B8EFF98E22D4159F005597E9 /* Copy Frameworks */,
 			);
 			buildRules = (
 			);
@@ -742,6 +759,7 @@
 				C3FBE35E22542DD60006284B /* Frameworks */,
 				C3FBE35F22542DD60006284B /* Resources */,
 				B8F7988F226056DD00003DE6 /* Embed App Extensions */,
+				B8EFF99222D41773005597E9 /* Copy Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1205,6 +1223,49 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		B8EFF98E22D4159F005597E9 /* Copy Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Carthage/Build/iOS/MMWormhole.framework",
+			);
+			name = "Copy Frameworks";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/MMWormhole.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/local/bin/carthage copy-frameworks\n";
+		};
+		B8EFF99222D41773005597E9 /* Copy Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Carthage/Build/iOS/MMWormhole.framework",
+			);
+			name = "Copy Frameworks";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/MMWormhole.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/local/bin/carthage copy-frameworks\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		B8F7987F226056DD00003DE6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -1270,6 +1331,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/PacketTunnelProvider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1301,6 +1366,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/PacketTunnelProvider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1450,6 +1519,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/LokiNetwork/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1473,6 +1546,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = "$(SRCROOT)/LokiNetwork/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

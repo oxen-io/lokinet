@@ -68,4 +68,5 @@ xcuserdata/
 !*.xcworkspace/contents.xcworkspacedata
 /*.gcno
 ios/Core/
+ios/Carthage/
 
