@@ -805,7 +805,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 namespace llarp
 {
   static void
-  IterAllNetworkInterface(std::function< void(ifaddrs* const) > visit)
+  IterAllNetworkInterfaces(std::function< void(ifaddrs* const) > visit)
   {
     ifaddrs* ifa = nullptr;
 #ifndef _WIN32
@@ -830,7 +830,7 @@ namespace llarp
   GetBestNetIF(std::string& ifname, int af)
   {
     bool found = false;
-    IterAllNetworkInterface([&](ifaddrs* i) {
+    IterAllNetworkInterfaces([&](ifaddrs* i) {
       if(found)
         return;
       if(i->ifa_addr)
@@ -855,7 +855,7 @@ namespace llarp
   FindFreeRange()
   {
     std::vector< IPRange > currentRanges;
-    IterAllNetworkInterface([&](ifaddrs* i) {
+    IterAllNetworkInterfaces([&](ifaddrs* i) {
       if(i && i->ifa_addr)
       {
         const auto fam = i->ifa_addr->sa_family;
@@ -879,7 +879,7 @@ namespace llarp
       bool hit               = false;
       for(const auto& range : currentRanges)
       {
-        hit |= range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
+        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
       if(!hit)
         return loaddr.ToString() + "/16";
