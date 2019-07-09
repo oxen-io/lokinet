@@ -12,18 +12,13 @@ extension LKUDPTunnel {
         
         init(fromFileAt path: String) throws {
             let contents = try INIParser(path).sections
-            if let _ = contents["dns"]?["bind"] {
-                // TODO: Use
+            if let bind = contents["api"]?["bind"] {
+                let parts = bind.split(separator: ":").map { String($0) }
+                address = parts[0]
+                port = UInt16(parts[1])!
             } else {
-                throw "No configuration file entry found for: \"dns\"."
+                throw "No configuration file entry found for: \"bind\"."
             }
-            if let _ = contents["network"]?["ifaddr"] {
-                // TODO: Use
-            } else {
-                throw "No configuration file entry found for: \"ifaddr\"."
-            }
-            self.address = ""
-            self.port = 0
         }
     }
 }

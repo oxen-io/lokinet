@@ -4,29 +4,22 @@ extension LKTCPTunnel {
     struct Configuration {
         let address: String
         let port: UInt16
-        let readBufferSize: UInt
+        let readBufferSize: UInt = 128 * 1024
         
-        init(address: String, port: UInt16, readBufferSize: UInt = 128 * 1024) {
+        init(address: String, port: UInt16) {
             self.address = address
             self.port = port
-            self.readBufferSize = readBufferSize
         }
         
         init(fromFileAt path: String) throws {
             let contents = try INIParser(path).sections
-            if let _ = contents["dns"]?["bind"] {
-                // TODO: Use
+            if let bind = contents["api"]?["bind"] {
+                let parts = bind.split(separator: ":").map { String($0) }
+                address = parts[0]
+                port = UInt16(parts[1])!
             } else {
-                throw "No configuration file entry found for: \"dns\"."
+                throw "No configuration file entry found for: \"bind\"."
             }
-            if let _ = contents["network"]?["ifaddr"] {
-                // TODO: Use
-            } else {
-                throw "No configuration file entry found for: \"ifaddr\"."
-            }
-            self.address = ""
-            self.port = 0
-            self.readBufferSize = 128 * 1024
         }
     }
 }
