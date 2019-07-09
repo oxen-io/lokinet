@@ -17,7 +17,24 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="vwO-af-b21">
+                                <rect key="frame" x="107" y="424" width="200" height="48"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="200" id="8mE-hu-Z95"/>
+                                    <constraint firstAttribute="height" constant="48" id="ssf-Pa-7Dn"/>
+                                </constraints>
+                                <fontDescription key="fontDescription" type="system" weight="light" pointSize="24"/>
+                                <state key="normal" title="connect">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </state>
+                            </button>
+                        </subviews>
                         <color key="backgroundColor" red="0.039215686274509803" green="0.039215686274509803" blue="0.039215686274509803" alpha="1" colorSpace="calibratedRGB"/>
+                        <constraints>
+                            <constraint firstItem="vwO-af-b21" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="Jac-M6-i4V"/>
+                            <constraint firstItem="vwO-af-b21" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="m9k-tK-wW2"/>
+                        </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
                 </viewController>

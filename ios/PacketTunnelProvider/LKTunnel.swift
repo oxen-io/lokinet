@@ -1,10 +1,11 @@
 import NetworkExtension
+import PromiseKit
 
-final class LKUDPTunnel : NSObject {
+final class LKTunnel : NSObject {
     private let provider: NEPacketTunnelProvider
     private let configuration: Configuration
     private var session: NWUDPSession?
-    private var openCompletion: ((Error?) -> Void)?
+    private var openPromiseSeal: PromiseKit.Resolver<Void>?
     
     // MARK: Initialization
     init(provider: NEPacketTunnelProvider, configuration: Configuration) {
@@ -13,23 +14,25 @@ final class LKUDPTunnel : NSObject {
     }
     
     // MARK: Connection
-    func open(_ completion: @escaping (Error?) -> Void) {
-        openCompletion = completion
+    func open() -> Promise<Void> {
+        let tuple = Promise<Void>.pending()
+        openPromiseSeal = tuple.resolver
         let endpoint = NWHostEndpoint(hostname: configuration.address, port: String(configuration.port))
         session = provider.createUDPSession(to: endpoint, from: nil)
-        LKLog("[Loki] UDP tunnel state changed to preparing.")
+        LKLog("[Loki] Tunnel (to \(configuration.address):\(configuration.port) state changed to preparing.")
         session!.addObserver(self, forKeyPath: "state", options: .initial, context: &session)
         session!.setReadHandler(read(_:_:), maxDatagrams: Int.max)
+        return tuple.promise
     }
     
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey:Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "state" && context?.assumingMemoryBound(to: Optional<NWTCPConnection>.self).pointee == session {
             let state = session!.state
-            LKLog("[Loki] UDP tunnel state changed to \(state).")
+            LKLog("[Loki] Tunnel (to \(configuration.address):\(configuration.port) state changed to \(state).")
             switch state {
             case .ready:
-                openCompletion?(nil)
-                openCompletion = nil
+                openPromiseSeal!.fulfill(())
+                openPromiseSeal = nil
             case .failed, .cancelled: close()
             default: break
             }
@@ -50,8 +53,8 @@ final class LKUDPTunnel : NSObject {
     
     func close() {
         session?.cancel()
-        openCompletion?("Couldn't open UDP tunnel.")
-        openCompletion = nil
+        openPromiseSeal?.reject(LKError.openingTunnelFailed(destination: "\(configuration.address):\(configuration.port)"))
+        openPromiseSeal = nil
         session?.removeObserver(self, forKeyPath: "state")
         session = nil
     }

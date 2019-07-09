@@ -1,1 +1,2 @@
 github "mutualmobile/MMWormhole" "2.0.10"
+github "mxcl/PromiseKit" "6.10.0"
