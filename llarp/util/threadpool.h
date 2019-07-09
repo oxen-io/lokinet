@@ -2,7 +2,9 @@
 #define LLARP_THREADPOOL_H
 
 #include <util/queue.hpp>
+#include <util/string_view.hpp>
 #include <util/thread_pool.hpp>
+
 #include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
@@ -13,13 +15,12 @@ struct llarp_threadpool
   std::unique_ptr< llarp::thread::Queue< std::function< void(void) > > > jobs;
   const pid_t callingPID;
 
-  llarp_threadpool(int workers, const char *name)
-      : impl(
-          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
+  llarp_threadpool(int workers, llarp::string_view name)
+      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
+                                                           workers * 128, name))
       , jobs(nullptr)
       , callingPID(0)
   {
-    (void)name;
   }
 
   llarp_threadpool()
