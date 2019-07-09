@@ -854,8 +854,6 @@ namespace llarp
   std::string
   FindFreeRange()
   {
-    // pick ip
-    std::string ip;
     std::vector< IPRange > currentRanges;
     IterAllNetworkInterface([&](ifaddrs* i) {
       if(i && i->ifa_addr)

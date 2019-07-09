@@ -63,7 +63,7 @@ namespace llarp
     if(!singleThreaded && config->router.workerThreads > 0 && !worker)
     {
       worker = std::make_shared< llarp::thread::ThreadPool >(
-          config->router.workerThreads, 1024);
+          config->router.workerThreads, 1024, "llarp-cryptoworker");
     }
 
     if(singleThreaded)
