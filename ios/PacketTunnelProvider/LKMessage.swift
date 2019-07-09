@@ -9,6 +9,5 @@ struct LKMessage {
     
     init(from data: Data) {
         let payloadAsData = data[headerSizeInBytes...data.endIndex]
-        
     }
 }
