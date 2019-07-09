@@ -1,4 +1,4 @@
-import CoreFoundation
+import Foundation
 
 enum LKDaemon {
     
@@ -20,7 +20,7 @@ enum LKDaemon {
         llarp_ensure_config(configurationFilePath, configuration.directoryPath, true, false)
         // Download bootstrap file
         let downloadTask = URLSession.shared.dataTask(with: configuration.bootstrapFileURL) { data, _, error in
-            guard let data = data else { return completionHandler(.failure(error ?? "An error occurred")) }
+            guard let data = data else { return completionHandler(.failure(error ?? "Couldn't download bootstrap file.")) }
             let bootstrapFilePath = configuration.directoryPath + "/" + configuration.bootstrapFileName
             do {
                 try data.write(to: URL(fileURLWithPath: bootstrapFilePath))
@@ -28,7 +28,7 @@ enum LKDaemon {
                 completionHandler(.failure(error))
             }
             // Perform main setup
-            guard let context = llarp_main_init(configurationFilePath, false) else { return completionHandler(.failure(LKError.generic)) }
+            guard let context = llarp_main_init(configurationFilePath, false) else { return completionHandler(.failure("Couldn't initialize LLARP.")) }
             llarp_main_setup(context)
             // Invoke completion handler
             completionHandler(.success((configurationFilePath: configurationFilePath, context: context)))
@@ -40,7 +40,7 @@ enum LKDaemon {
         llarp_main_run(context)
     }
     
-    static func stop(with context: LLARPContext) {
-        llarp_main_abort(context)
+    static func stop() {
+        // TODO: Implement
     }
 }

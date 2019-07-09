@@ -7,7 +7,7 @@ final class LKUDPTunnel : NSObject {
     private var openCompletion: ((Error?) -> Void)?
     
     // MARK: Initialization
-    init(provider: NEPacketTunnelProvider, configuration: Configuration = Configuration()) {
+    init(provider: NEPacketTunnelProvider, configuration: Configuration) {
         self.provider = provider
         self.configuration = configuration
     }
@@ -50,7 +50,7 @@ final class LKUDPTunnel : NSObject {
     
     func close() {
         session?.cancel()
-        openCompletion?("Failed to open UDP tunnel.")
+        openCompletion?("Couldn't open UDP tunnel.")
         openCompletion = nil
         session?.removeObserver(self, forKeyPath: "state")
         session = nil

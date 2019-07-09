@@ -7,27 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B8EBA46F2266B7DD0098F863 /* libabyss.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA44E2266B7080098F863 /* libabyss.a */; };
-		B8EBA4702266B7E20098F863 /* liblibutp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA45C2266B7080098F863 /* liblibutp.a */; };
-		B8EBA4712266B7E70098F863 /* libabsl_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4162266B7080098F863 /* libabsl_base.a */; };
-		B8EBA4722266B7EB0098F863 /* libabsl_internal_malloc_internal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42A2266B7080098F863 /* libabsl_internal_malloc_internal.a */; };
-		B8EBA4732266B7F20098F863 /* libabsl_internal_spinlock_wait.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42C2266B7080098F863 /* libabsl_internal_spinlock_wait.a */; };
-		B8EBA4742266B7F60098F863 /* libabsl_internal_throw_delegate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42E2266B7080098F863 /* libabsl_internal_throw_delegate.a */; };
-		B8EBA4752266B7FB0098F863 /* libabsl_stacktrace.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA43E2266B7080098F863 /* libabsl_stacktrace.a */; };
-		B8EBA4762266B7FF0098F863 /* libabsl_symbolize.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4442266B7080098F863 /* libabsl_symbolize.a */; };
-		B8EBA4772266B8030098F863 /* libabsl_hash.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4202266B7080098F863 /* libabsl_hash.a */; };
-		B8EBA4782266B8090098F863 /* libabsl_internal_city.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4242266B7080098F863 /* libabsl_internal_city.a */; };
-		B8EBA4792266B80C0098F863 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4222266B7080098F863 /* libabsl_int128.a */; };
-		B8EBA47A2266B8130098F863 /* libabsl_strings.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4422266B7080098F863 /* libabsl_strings.a */; };
-		B8EBA47B2266B8180098F863 /* libabsl_synchronization.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4462266B7080098F863 /* libabsl_synchronization.a */; };
-		B8EBA47C2266B81E0098F863 /* libabsl_time.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4482266B7080098F863 /* libabsl_time.a */; };
-		B8EBA47D2266B8240098F863 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4142266B7080098F863 /* libabsl_bad_optional_access.a */; };
-		B8EBA47E2266B82A0098F863 /* libabsl_variant.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA44C2266B7080098F863 /* libabsl_variant.a */; };
-		B8EBA47F2266B82F0098F863 /* liblokinet-cryptography.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4602266B7080098F863 /* liblokinet-cryptography.a */; };
-		B8EBA4802266B8340098F863 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4662266B7080098F863 /* liblokinet-util.a */; };
-		B8EBA4812266B8380098F863 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4622266B7080098F863 /* liblokinet-platform.a */; };
-		B8EBA4822266B83B0098F863 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4642266B7080098F863 /* liblokinet-static.a */; };
-		B8EBA4832266B8550098F863 /* libcppbackport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4522266B7080098F863 /* libcppbackport.a */; };
 		B8EBA4CB226EA8EB0098F863 /* PacketTunnelProvider.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B8F79883226056DD00003DE6 /* PacketTunnelProvider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B8EBA4CF226EAC620098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
 		B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
@@ -536,28 +515,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B8EBA46F2266B7DD0098F863 /* libabyss.a in Frameworks */,
-				B8EBA4702266B7E20098F863 /* liblibutp.a in Frameworks */,
-				B8EBA4712266B7E70098F863 /* libabsl_base.a in Frameworks */,
-				B8EBA4722266B7EB0098F863 /* libabsl_internal_malloc_internal.a in Frameworks */,
-				B8EBA4732266B7F20098F863 /* libabsl_internal_spinlock_wait.a in Frameworks */,
-				B8EBA4742266B7F60098F863 /* libabsl_internal_throw_delegate.a in Frameworks */,
-				B8EBA4752266B7FB0098F863 /* libabsl_stacktrace.a in Frameworks */,
 				B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */,
-				B8EBA4762266B7FF0098F863 /* libabsl_symbolize.a in Frameworks */,
-				B8EBA4772266B8030098F863 /* libabsl_hash.a in Frameworks */,
-				B8EBA4782266B8090098F863 /* libabsl_internal_city.a in Frameworks */,
-				B8EBA4792266B80C0098F863 /* libabsl_int128.a in Frameworks */,
-				B8EBA47A2266B8130098F863 /* libabsl_strings.a in Frameworks */,
-				B8EBA47B2266B8180098F863 /* libabsl_synchronization.a in Frameworks */,
-				B8EBA47C2266B81E0098F863 /* libabsl_time.a in Frameworks */,
-				B8EBA47D2266B8240098F863 /* libabsl_bad_optional_access.a in Frameworks */,
-				B8EBA47E2266B82A0098F863 /* libabsl_variant.a in Frameworks */,
-				B8EBA4832266B8550098F863 /* libcppbackport.a in Frameworks */,
-				B8EBA47F2266B82F0098F863 /* liblokinet-cryptography.a in Frameworks */,
-				B8EBA4802266B8340098F863 /* liblokinet-util.a in Frameworks */,
-				B8EBA4812266B8380098F863 /* liblokinet-platform.a in Frameworks */,
-				B8EBA4822266B83B0098F863 /* liblokinet-static.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

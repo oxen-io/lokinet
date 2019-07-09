@@ -35,7 +35,7 @@
             BlueprintIdentifier = "C3FBE36022542DD60006284B"
             BuildableName = "LokiNetwork.app"
             BlueprintName = "LokiNetwork"
-            ReferencedContainer = "container:Loki Network.xcodeproj">
+            ReferencedContainer = "container:LokiNetwork.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -58,7 +58,7 @@
             BlueprintIdentifier = "C3FBE36022542DD60006284B"
             BuildableName = "LokiNetwork.app"
             BlueprintName = "LokiNetwork"
-            ReferencedContainer = "container:Loki Network.xcodeproj">
+            ReferencedContainer = "container:LokiNetwork.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>

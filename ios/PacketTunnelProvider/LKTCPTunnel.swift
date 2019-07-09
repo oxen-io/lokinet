@@ -7,7 +7,7 @@ final class LKTCPTunnel : NSObject {
     private var openCompletion: ((Error?) -> Void)?
     
     // MARK: Initialization
-    init(provider: NEPacketTunnelProvider, configuration: Configuration = Configuration()) {
+    init(provider: NEPacketTunnelProvider, configuration: Configuration) {
         self.provider = provider
         self.configuration = configuration
     }
@@ -44,7 +44,7 @@ final class LKTCPTunnel : NSObject {
     }
     
     private func read() {
-        connection!.readMinimumLength(0, maximumLength: configuration.readBufferSize) { [weak self] data, error in
+        connection!.readMinimumLength(0, maximumLength: Int(configuration.readBufferSize)) { [weak self] data, error in
             if let data = data {
                 LKLog(String(data: data, encoding: .utf8)!)
                 self?.read()
@@ -58,7 +58,7 @@ final class LKTCPTunnel : NSObject {
     
     func close() {
         connection?.cancel()
-        openCompletion?("Failed to open TCP tunnel.")
+        openCompletion?("Couldn't open TCP tunnel.")
         openCompletion = nil
         connection?.removeObserver(self, forKeyPath: "state")
         connection = nil

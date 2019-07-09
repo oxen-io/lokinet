@@ -1,3 +1,4 @@
+import NetworkExtension
 
 extension NWTCPConnectionState : CustomStringConvertible {
     
