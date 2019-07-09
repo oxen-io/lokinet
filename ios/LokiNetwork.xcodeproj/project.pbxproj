@@ -44,6 +44,7 @@
 		B8EFF98D22D41544005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF95522D41544005597E9 /* MMWormhole.framework */; };
 		B8EFF99122D41768005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF99022D41768005597E9 /* MMWormhole.framework */; };
 		B8EFF99622D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */; };
+		B8EFF99822D429D8005597E9 /* LKMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99722D429D8005597E9 /* LKMessage.swift */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKViewController.swift */; };
@@ -450,6 +451,7 @@
 		B8EFF95522D41544005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF99022D41768005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NWUDPSessionState+CustomStringConvertible.swift"; sourceTree = "<group>"; };
+		B8EFF99722D429D8005597E9 /* LKMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKMessage.swift; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -602,6 +604,7 @@
 			isa = PBXGroup;
 			children = (
 				B8F79878225DBCC500003DE6 /* LKDaemon.swift */,
+				B8EFF99722D429D8005597E9 /* LKMessage.swift */,
 				B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */,
 				B8EFF8EB22D2F699005597E9 /* LKTCPTunnel.swift */,
 				B8EFF93422D30A8F005597E9 /* LKTCPTunnel+Configuration.swift */,
@@ -1275,6 +1278,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B8EFF8F722D2FE5A005597E9 /* LKTCPTunnel.swift in Sources */,
+				B8EFF99822D429D8005597E9 /* LKMessage.swift in Sources */,
 				B8EFF93622D30B36005597E9 /* LKTCPTunnel+Configuration.swift in Sources */,
 				B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */,
 				B8EFF93A22D3117D005597E9 /* LKUDPTunnel+Configuration.swift in Sources */,
