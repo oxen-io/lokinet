@@ -13,7 +13,6 @@
 		B8EFF8F422D2F8B3005597E9 /* General.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF8F322D2F8B3005597E9 /* General.swift */; };
 		B8EFF92F22D2FEC3005597E9 /* LKDaemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* LKDaemon.swift */; };
 		B8EFF93122D2FF8B005597E9 /* lokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */; };
-		B8EFF93922D30B97005597E9 /* INIParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EBA58922701FE70098F863 /* INIParser.swift */; };
 		B8EFF93A22D3117D005597E9 /* LKTunnel+Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF93722D30B42005597E9 /* LKTunnel+Configuration.swift */; };
 		B8EFF93B22D31180005597E9 /* LKTunnel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF93222D30928005597E9 /* LKTunnel.swift */; };
 		B8EFF93C22D3128D005597E9 /* libabyss.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA44E2266B7080098F863 /* libabyss.a */; };
@@ -441,7 +440,6 @@
 		B8EBA4CD226EAB6B0098F863 /* LokiNetwork.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LokiNetwork.entitlements; sourceTree = "<group>"; };
 		B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
 		B8EBA4D9226EEE080098F863 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
-		B8EBA58922701FE70098F863 /* INIParser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = INIParser.swift; sourceTree = "<group>"; };
 		B8EFF8F322D2F8B3005597E9 /* General.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = General.swift; sourceTree = "<group>"; };
 		B8EFF93222D30928005597E9 /* LKTunnel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKTunnel.swift; sourceTree = "<group>"; };
 		B8EFF93722D30B42005597E9 /* LKTunnel+Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LKTunnel+Configuration.swift"; sourceTree = "<group>"; };
@@ -627,7 +625,6 @@
 		B8EFF93022D2FF7B005597E9 /* Dependencies */ = {
 			isa = PBXGroup;
 			children = (
-				B8EBA58922701FE70098F863 /* INIParser.swift */,
 				C3CBFB642256D47400F34631 /* lokinet-wrapper.h */,
 				C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */,
 				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
@@ -1296,7 +1293,6 @@
 				B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */,
 				B8EFF93A22D3117D005597E9 /* LKTunnel+Configuration.swift in Sources */,
 				B8EFF92F22D2FEC3005597E9 /* LKDaemon.swift in Sources */,
-				B8EFF93922D30B97005597E9 /* INIParser.swift in Sources */,
 				B8EFF93122D2FF8B005597E9 /* lokinet-wrapper.cpp in Sources */,
 				B8EFF99622D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift in Sources */,
 				B8EFF8F422D2F8B3005597E9 /* General.swift in Sources */,
