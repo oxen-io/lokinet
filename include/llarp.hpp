@@ -51,9 +51,6 @@ namespace llarp
     std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
     std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
 
-    int num_nethreads   = 1;
-    bool singleThreaded = false;
-
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< CryptoManager > cryptoManager;
     std::unique_ptr< AbstractRouter > router;

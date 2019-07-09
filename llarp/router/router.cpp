@@ -215,7 +215,8 @@ namespace llarp
       , _logic(l)
       , paths(this)
       , _exitContext(this)
-      , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000, "diskworker"))
+      , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000,
+                                                           "diskworker"))
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)

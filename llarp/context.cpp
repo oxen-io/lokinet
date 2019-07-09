@@ -60,20 +60,11 @@ namespace llarp
     }
 
     // Router config
-    if(!singleThreaded && config->router.workerThreads > 0 && !worker)
-    {
-      worker = std::make_shared< llarp::thread::ThreadPool >(
-          config->router.workerThreads, 1024, "llarp-cryptoworker");
-    }
+    if(config->router.workerThreads <= 0)
+      config->router.workerThreads = 1;
 
-    if(singleThreaded)
-    {
-      num_nethreads = 0;
-    }
-    else
-    {
-      num_nethreads = config->router.num_nethreads;
-    }
+    worker = std::make_shared< llarp::thread::ThreadPool >(
+        config->router.workerThreads, 1024, "llarp-cryptoworker");
 
     nodedb_dir = config->netdb.nodedb_dir;
 
@@ -415,6 +406,7 @@ extern "C"
   struct llarp_main *
   llarp_main_init(const char *fname, bool multiProcess)
   {
+    (void)multiProcess;
     if(!fname)
       fname = "daemon.ini";
     char *var = getenv("LLARP_DEBUG");
@@ -422,9 +414,8 @@ extern "C"
     {
       cSetLogLevel(eLogDebug);
     }
-    llarp_main *m          = new llarp_main;
-    m->ctx                 = std::make_unique< llarp::Context >();
-    m->ctx->singleThreaded = !multiProcess;
+    llarp_main *m = new llarp_main;
+    m->ctx        = std::make_unique< llarp::Context >();
     if(!m->ctx->LoadConfig(fname))
     {
       m->ctx->Close();
