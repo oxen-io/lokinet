@@ -443,8 +443,7 @@ llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
   // switch to crypto threadpool and continue with
   // crypto_threadworker_verifyrc
-  llarp_threadpool_queue_job(job->cryptoworker,
-                             {job, &crypto_threadworker_verifyrc});
+  job->cryptoworker->addJob(std::bind(&crypto_threadworker_verifyrc, job));
 }
 
 // disabled for now

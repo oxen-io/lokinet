@@ -23,9 +23,9 @@ namespace llarp
     using Handler = std::function< void(const AsyncPathKeyExchangeContext&) >;
 
     Handler result;
-    size_t idx               = 0;
-    AbstractRouter* router   = nullptr;
-    llarp_threadpool* worker = nullptr;
+    size_t idx             = 0;
+    AbstractRouter* router = nullptr;
+    std::shared_ptr< thread::ThreadPool > worker;
     std::shared_ptr< Logic > logic;
     LR_CommitMessage LRCM;
 
@@ -101,7 +101,7 @@ namespace llarp
       else
       {
         // next hop
-        worker->QueueFunc(
+        worker->addJob(
             std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
       }
     }
@@ -109,7 +109,7 @@ namespace llarp
     /// Generate all keys asynchronously and call handler when done
     void
     AsyncGenerateKeys(Path_t p, std::shared_ptr< Logic > l,
-                      llarp_threadpool* pool, Handler func)
+                      std::shared_ptr< thread::ThreadPool > pool, Handler func)
     {
       path   = p;
       logic  = l;
@@ -120,7 +120,7 @@ namespace llarp
       {
         LRCM.frames[i].Randomize();
       }
-      pool->QueueFunc(
+      pool->addJob(
           std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
     }
   };

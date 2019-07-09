@@ -12,8 +12,8 @@ namespace llarp
   /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
-    FileLogStream(thread::ThreadPool* disk, FILE* f, llarp_time_t flushInterval,
-                  bool closefile = true);
+    FileLogStream(std::shared_ptr< thread::ThreadPool > disk, FILE* f,
+                  llarp_time_t flushInterval, bool closefile = true);
 
     ~FileLogStream();
 
@@ -42,7 +42,7 @@ namespace llarp
     void
     FlushLinesToDisk(llarp_time_t now);
 
-    thread::ThreadPool* m_Disk;
+    std::shared_ptr< thread::ThreadPool > m_Disk;
     FILE* const m_File;
     const llarp_time_t m_FlushInterval;
     llarp_time_t m_LastFlush = 0;

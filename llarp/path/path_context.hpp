@@ -129,7 +129,7 @@ namespace llarp
         }
       };
 
-      llarp_threadpool*
+      std::shared_ptr< thread::ThreadPool >
       Worker();
 
       std::shared_ptr< Logic >

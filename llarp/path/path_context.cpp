@@ -25,7 +25,7 @@ namespace llarp
       return m_AllowTransit;
     }
 
-    llarp_threadpool*
+    std::shared_ptr< thread::ThreadPool >
     PathContext::Worker()
     {
       return m_Router->threadpool();

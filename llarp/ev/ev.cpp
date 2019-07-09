@@ -34,7 +34,6 @@ llarp_make_ev_loop()
 
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
-                                 struct llarp_threadpool *tp,
                                  std::shared_ptr< llarp::Logic > logic)
 {
   while(ev->running())
@@ -45,7 +44,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     {
       ev->update_time();
       logic->tick_async(ev->time_now());
-      llarp_threadpool_tick(tp);
+      llarp_threadpool_tick(logic->thread);
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }

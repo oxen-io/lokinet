@@ -207,15 +207,15 @@ namespace llarp
     return async_verify_RC(s->GetRemoteRC());
   }
 
-  Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
-                 std::shared_ptr< Logic > l)
+  Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
+                 llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > l)
       : ready(false)
       , _netloop(__netloop)
-      , tp(_tp)
+      , cryptoworker(_tp)
       , _logic(l)
       , paths(this)
       , _exitContext(this)
-      , disk(1, 1000)
+      , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000))
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
@@ -517,8 +517,8 @@ namespace llarp
     llarp_ev_loop_stop(_netloop);
     inboundLinks.clear();
     outboundLinks.clear();
-    disk.stop();
-    disk.shutdown();
+    disk->stop();
+    disk->shutdown();
   }
 
   void
@@ -1405,8 +1405,8 @@ namespace llarp
 
     job->nodedb       = _nodedb;
     job->logic        = _logic;
-    job->cryptoworker = tp;
-    job->diskworker   = &disk;
+    job->cryptoworker = cryptoworker;
+    job->diskworker   = disk;
     if(rc.IsPublicRouter())
       job->hook = &Router::on_verify_server_rc;
     else
@@ -1492,8 +1492,8 @@ namespace llarp
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
-    llarp_threadpool_start(tp);
-    disk.start();
+    cryptoworker->start();
+    disk->start();
 
     for(const auto &rc : bootstrapRCList)
     {

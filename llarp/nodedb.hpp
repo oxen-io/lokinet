@@ -44,7 +44,7 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  explicit llarp_nodedb(llarp::thread::ThreadPool *diskworker)
+  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker)
       : disk(diskworker)
   {
   }
@@ -54,7 +54,7 @@ struct llarp_nodedb
     Clear();
   }
 
-  llarp::thread::ThreadPool *disk;
+  std::shared_ptr< llarp::thread::ThreadPool > disk;
   mutable llarp::util::Mutex access;  // protects entries
 
   struct NetDBEntry
@@ -178,8 +178,8 @@ struct llarp_async_verify_rc
   llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
   std::shared_ptr< llarp::Logic > logic;  // includes a llarp_threadpool
-  llarp_threadpool *cryptoworker;
-  llarp::thread::ThreadPool *diskworker;
+  std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
+  std::shared_ptr< llarp::thread::ThreadPool > diskworker;
 
   /// router contact
   llarp::RouterContact rc;

@@ -13,8 +13,9 @@ namespace llarp
       fflush(f);
     }
   }  // namespace
-  FileLogStream::FileLogStream(thread::ThreadPool *disk, FILE *f,
-                               llarp_time_t flushInterval, bool closeFile)
+  FileLogStream::FileLogStream(std::shared_ptr< thread::ThreadPool > disk,
+                               FILE *f, llarp_time_t flushInterval,
+                               bool closeFile)
       : m_Disk(disk)
       , m_File(f)
       , m_FlushInterval(flushInterval)

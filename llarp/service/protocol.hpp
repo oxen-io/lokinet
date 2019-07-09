@@ -126,10 +126,10 @@ namespace llarp
       Sign(const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
-                            path::Path_ptr fromPath, llarp_threadpool* worker,
-                            const Identity& localIdent,
-                            IDataHandler* handler) const;
+      AsyncDecryptAndVerify(
+          std::shared_ptr< Logic > logic, path::Path_ptr fromPath,
+          const std::shared_ptr< llarp::thread::ThreadPool >& worker,
+          const Identity& localIdent, IDataHandler* handler) const;
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey,

@@ -368,11 +368,10 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
-                                         path::Path_ptr recvPath,
-                                         llarp_threadpool* worker,
-                                         const Identity& localIdent,
-                                         IDataHandler* handler) const
+    ProtocolFrame::AsyncDecryptAndVerify(
+        std::shared_ptr< Logic > logic, path::Path_ptr recvPath,
+        const std::shared_ptr< llarp::thread::ThreadPool >& worker,
+        const Identity& localIdent, IDataHandler* handler) const
     {
       auto msg = std::make_shared< ProtocolMessage >();
       if(T.IsZero())
@@ -382,8 +381,7 @@ namespace llarp
         auto dh  = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
                                         recvPath->intro);
         dh->path = recvPath;
-        llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
-        return true;
+        return worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
       }
       SharedSecret shared;
       if(!handler->GetCachedSessionKeyFor(T, shared))

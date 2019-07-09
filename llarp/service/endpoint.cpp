@@ -696,8 +696,7 @@ namespace llarp
       m_IsolatedNetLoop = llarp_make_ev_loop();
       m_IsolatedLogic   = std::make_shared< llarp::Logic >();
       if(SetupNetworking())
-        llarp_ev_loop_run_single_process(
-            m_IsolatedNetLoop, m_IsolatedLogic->thread, m_IsolatedLogic);
+        llarp_ev_loop_run_single_process(m_IsolatedNetLoop, m_IsolatedLogic);
       else
       {
         m_IsolatedNetLoop.reset();
@@ -1282,7 +1281,7 @@ namespace llarp
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();
     }
 
-    llarp_threadpool*
+    std::shared_ptr< llarp::thread::ThreadPool >
     Endpoint::CryptoWorker()
     {
       return m_Router->threadpool();

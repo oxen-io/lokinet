@@ -156,16 +156,16 @@ namespace llarp
       return _netloop;
     }
 
-    llarp_threadpool *
+    std::shared_ptr< llarp::thread::ThreadPool >
     threadpool() override
     {
-      return tp;
+      return cryptoworker;
     }
 
-    thread::ThreadPool *
+    std::shared_ptr< llarp::thread::ThreadPool >
     diskworker() override
     {
-      return &disk;
+      return disk;
     }
 
     // our ipv4 public setting
@@ -174,13 +174,13 @@ namespace llarp
     AddressInfo addrInfo;
 
     llarp_ev_loop_ptr _netloop;
-    llarp_threadpool *tp;
+    std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
     std::shared_ptr< Logic > _logic;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    thread::ThreadPool disk;
+    std::shared_ptr< thread::ThreadPool > disk;
     llarp_dht_context *_dht = nullptr;
     llarp_nodedb *_nodedb;
     llarp_time_t _startedAt;
@@ -301,8 +301,8 @@ namespace llarp
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
-    Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
-           std::shared_ptr< Logic > logic);
+    Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
+           llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
 
     ~Router();
 

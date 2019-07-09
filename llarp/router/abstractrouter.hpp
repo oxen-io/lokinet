@@ -94,10 +94,10 @@ namespace llarp
     virtual llarp_ev_loop_ptr
     netloop() const = 0;
 
-    virtual llarp_threadpool *
+    virtual std::shared_ptr< thread::ThreadPool >
     threadpool() = 0;
 
-    virtual thread::ThreadPool *
+    virtual std::shared_ptr< thread::ThreadPool >
     diskworker() = 0;
 
     virtual service::Context &

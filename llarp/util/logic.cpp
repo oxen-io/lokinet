@@ -58,7 +58,7 @@ namespace llarp
   bool
   Logic::queue_func(std::function< void(void) > f)
   {
-    size_t left = 1000;
+    size_t left = 10;
     while(!this->thread->QueueFunc(f))
     {
       // our queue is full
@@ -71,7 +71,7 @@ namespace llarp
       {
         // wait a bit and retry queuing because we are not in the same thread as
         // we are calling the jobs in
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
       left--;
       if(left == 0)  // too many retries
@@ -105,7 +105,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return ourPID && ourPID == ::getpid();
+    return ourID == std::this_thread::get_id();
   }
 
 }  // namespace llarp
