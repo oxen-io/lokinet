@@ -177,7 +177,7 @@ struct llarp_async_verify_rc
   /// nodedb storage
   llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
-  std::shared_ptr< llarp::Logic > logic;  // includes a llarp_threadpool
+  std::shared_ptr< llarp::Logic > logic; 
   std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
   std::shared_ptr< llarp::thread::ThreadPool > diskworker;
 
