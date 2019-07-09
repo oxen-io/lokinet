@@ -1052,7 +1052,7 @@ namespace llarp
           [&](const std::string &,
               const std::shared_ptr< service::Endpoint > &ep) -> bool {
             const bool success = ep->LookupRouterAnon(remote, resultHandler);
-            sent |= success;
+            sent = sent || success;
             return !success;
           });
       if(sent)
