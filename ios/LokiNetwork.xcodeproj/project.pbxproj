@@ -43,6 +43,7 @@
 		B8EFF95122D31392005597E9 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4642266B7080098F863 /* liblokinet-static.a */; };
 		B8EFF98D22D41544005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF95522D41544005597E9 /* MMWormhole.framework */; };
 		B8EFF99122D41768005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF99022D41768005597E9 /* MMWormhole.framework */; };
+		B8EFF99622D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKViewController.swift */; };
@@ -448,6 +449,7 @@
 		B8EFF93722D30B42005597E9 /* LKUDPTunnel+Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LKUDPTunnel+Configuration.swift"; sourceTree = "<group>"; };
 		B8EFF95522D41544005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF99022D41768005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
+		B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NWUDPSessionState+CustomStringConvertible.swift"; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -614,6 +616,7 @@
 			children = (
 				B8EFF8F322D2F8B3005597E9 /* General.swift */,
 				B8EFF8ED22D2F6E0005597E9 /* NWTCPConnectionState+CustomStringConvertible.swift */,
+				B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */,
 				B8EFF8EF22D2F888005597E9 /* String+Error.swift */,
 			);
 			name = Utilities;
@@ -1278,6 +1281,7 @@
 				B8EFF92F22D2FEC3005597E9 /* LKDaemon.swift in Sources */,
 				B8EFF93922D30B97005597E9 /* INIParser.swift in Sources */,
 				B8EFF93122D2FF8B005597E9 /* lokinet-wrapper.cpp in Sources */,
+				B8EFF99622D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift in Sources */,
 				B8EFF8F422D2F8B3005597E9 /* General.swift in Sources */,
 				B8EFF8F222D2F88E005597E9 /* NWTCPConnectionState+CustomStringConvertible.swift in Sources */,
 				B8EFF93B22D31180005597E9 /* LKUDPTunnel.swift in Sources */,
