@@ -119,7 +119,7 @@ TEST(TestThreadPool, breathing)
   static constexpr size_t threads  = 10;
   static constexpr size_t capacity = 50;
 
-  ThreadPool pool(threads, capacity);
+  ThreadPool pool(threads, capacity, "breathing");
 
   ASSERT_EQ(0u, pool.startedThreadCount());
   ASSERT_EQ(capacity, pool.capacity());
@@ -151,11 +151,11 @@ class Accessors : public ::testing::TestWithParam< AccessorsData >
 {
 };
 
-TEST_P(Accessors, acessors)
+TEST_P(Accessors, accessors)
 {
   auto d = GetParam();
 
-  ThreadPool pool(d.threads, d.capacity);
+  ThreadPool pool(d.threads, d.capacity, "accessors");
 
   ASSERT_EQ(d.threads, pool.threadCount());
   ASSERT_EQ(d.capacity, pool.capacity());
@@ -195,7 +195,7 @@ TEST_P(Closing, drain)
 
   PoolArgs args{mutex, start, stop, 0, 0, 0};
 
-  ThreadPool pool(d.threads, d.capacity);
+  ThreadPool pool(d.threads, d.capacity, "drain");
 
   ASSERT_EQ(d.threads, pool.threadCount());
   ASSERT_EQ(d.capacity, pool.capacity());
@@ -235,7 +235,7 @@ TEST_P(Closing, stop)
 {
   auto d = GetParam();
 
-  ThreadPool pool(d.threads, d.capacity);
+  ThreadPool pool(d.threads, d.capacity, "stop");
 
   std::mutex mutex;
   std::condition_variable start;
@@ -286,7 +286,7 @@ TEST_P(Closing, shutdown)
 {
   auto d = GetParam();
 
-  ThreadPool pool(d.threads, d.capacity);
+  ThreadPool pool(d.threads, d.capacity, "shutdown");
 
   std::mutex mutex;
   std::condition_variable start;
@@ -370,7 +370,7 @@ TEST_P(TryAdd, noblocking)
   // Fill the queue, then verify `tryAddJob` does not block.
   auto d = GetParam();
 
-  ThreadPool pool(d.threads, d.capacity);
+  ThreadPool pool(d.threads, d.capacity, "noblocking");
 
   util::Barrier startBarrier(d.threads + 1);
   util::Barrier stopBarrier(d.threads + 1);
@@ -422,7 +422,7 @@ TEST(TestThreadPool, recurseJob)
   util::Barrier barrier(threads + 1);
   std::atomic_size_t counter{0};
 
-  ThreadPool pool(threads, capacity);
+  ThreadPool pool(threads, capacity, "recurse");
 
   pool.start();
 
@@ -441,7 +441,7 @@ TEST(TestThreadPool, destructors)
   static constexpr size_t threads  = 1;
   static constexpr size_t capacity = 100;
 
-  ThreadPool pool(threads, capacity);
+  ThreadPool pool(threads, capacity, "destructors");
 
   pool.start();
 

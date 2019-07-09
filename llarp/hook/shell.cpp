@@ -34,7 +34,8 @@ namespace llarp
       std::vector< std::string > _args;
       std::vector< char * > args;
 
-      ExecShellHookBackend(std::string script) : m_ThreadPool(1, 1000)
+      ExecShellHookBackend(std::string script)
+          : m_ThreadPool(1, 1000, "exechook")
       {
         do
         {
