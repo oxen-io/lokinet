@@ -22,7 +22,7 @@ final class LKLokiNetManager {
     
     // MARK: Connection Management
     @discardableResult
-    func connect() -> Promise<Void> {
+    func start() -> Promise<Void> {
         return Promise<Void> { [tunnelProviderManager] seal in
             tunnelProviderManager.loadFromPreferences { error in
                 guard error == nil else { return seal.reject(LKError.loadingTunnelProviderConfigurationFailed) }
@@ -48,7 +48,7 @@ final class LKLokiNetManager {
         }
     }
     
-    func disconnect() {
+    func stop() {
         tunnelProviderManager.connection.stopVPNTunnel()
     }
     

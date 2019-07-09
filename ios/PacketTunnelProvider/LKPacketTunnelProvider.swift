@@ -4,7 +4,6 @@ import NetworkExtension
 final class LKPacketTunnelProvider : NEPacketTunnelProvider {
     
     override func startTunnel(options: [String:NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {
-        Darwin.sleep(10) // Give the user time to attach the debugger
         let directoryPath = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.niels-andriesse.loki-project")!.path
         let configurationFileName = "lokinet-configuration.ini"
         let bootstrapFileURL = URL(string: "https://i2p.rocks/i2procks.signed")!

@@ -31,8 +31,8 @@ final class LKMainViewController : UIViewController {
     // MARK: Interaction
     @IBAction private func toggleLokiNet() {
         switch lokiNet.status {
-        case .disconnected: lokiNet.connect()
-        case .connected: lokiNet.disconnect()
+        case .disconnected: lokiNet.start()
+        case .connected: lokiNet.stop()
         default: break
         }
     }
