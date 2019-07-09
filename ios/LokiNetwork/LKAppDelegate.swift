@@ -14,6 +14,7 @@ final class LKAppDelegate : UIResponder, UIApplicationDelegate {
         tunnelProviderManager.loadFromPreferences { [tunnelProviderManager] error in
             if let error = error { return print("[Loki] Couldn't load tunnel configuration due to error: \(error).") }
             let prtcl = NETunnelProviderProtocol()
+            prtcl.serverAddress = ""
             prtcl.providerBundleIdentifier = "com.niels-andriesse.loki-network.packet-tunnel-provider"
             tunnelProviderManager.protocolConfiguration = prtcl
             tunnelProviderManager.isEnabled = true
