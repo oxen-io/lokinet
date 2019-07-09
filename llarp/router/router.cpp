@@ -1665,6 +1665,7 @@ namespace llarp
   {
     Router *self = static_cast< Router * >(u);
     self->StopLinks();
+    self->nodedb()->AsyncFlushToDisk();
     self->_logic->call_later({200, self, &RouterAfterStopLinks});
   }
 
@@ -1692,7 +1693,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
-    nodedb()->AsyncFlushToDisk();
+    PumpLL();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }
 
