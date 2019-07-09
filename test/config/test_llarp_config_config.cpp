@@ -92,9 +92,9 @@ metric-tank-host=52.80.56.123:2003
   ASSERT_TRUE(config.LoadFromString(text));
 
   {
-    using kv = decltype(config.network.netConfig)::value_type;
+    using kv = NetworkConfig::NetConfig::value_type;
 
-    ASSERT_THAT(config.network.netConfig,
+    ASSERT_THAT(config.network.netConfig(),
                 UnorderedElementsAre(kv("ifname", "cluster-1"),
                                      kv("ifaddr", "10.101.0.1/16")));
   }
@@ -102,9 +102,9 @@ metric-tank-host=52.80.56.123:2003
   ASSERT_FALSE(config.metrics.disableMetrics);
 
   {
-    using kv = decltype(config.iwp_links.servers)::value_type;
+    using kv = IwpConfig::Servers::value_type;
 
-    ASSERT_THAT(config.iwp_links.servers,
+    ASSERT_THAT(config.iwp_links.servers(),
                 UnorderedElementsAre(kv("eth0", AF_INET, 5501)));
   }
 

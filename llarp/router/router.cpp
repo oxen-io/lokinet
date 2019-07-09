@@ -770,9 +770,9 @@ namespace llarp
   Router::fromConfig(Config *conf)
   {
     // Set netid before anything else
-    if(!conf->router.netid.empty())
+    if(!conf->router.netId().empty())
     {
-      const auto &netid = conf->router.netid;
+      const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
                      "' which does not equal '", Version::LLARP_NET_ID,
                      "' you will run as a different network, good luck "
@@ -785,9 +785,9 @@ namespace llarp
     }
 
     // IWP config
-    m_OutboundPort = conf->iwp_links.m_OutboundPort;
+    m_OutboundPort = conf->iwp_links.outboundPort();
 
-    for(const auto &serverConfig : conf->iwp_links.servers)
+    for(const auto &serverConfig : conf->iwp_links.servers())
     {
       auto server = llarp::utp::NewServerFromRouter(this);
       if(!server->EnsureKeys(transport_keyfile.string().c_str()))
@@ -808,12 +808,12 @@ namespace llarp
     }
 
     // set network config
-    netConfig = conf->network.netConfig;
+    netConfig = conf->network.netConfig();
 
     // Network config
-    if(conf->network.enableProfiling.has_value())
+    if(conf->network.enableProfiling().has_value())
     {
-      if(conf->network.enableProfiling.value())
+      if(conf->network.enableProfiling().value())
       {
         routerProfiling().Enable();
         LogInfo("router profiling explicitly enabled");
@@ -825,16 +825,16 @@ namespace llarp
       }
     }
 
-    if(!conf->network.routerProfilesFile.empty())
+    if(!conf->network.routerProfilesFile().empty())
     {
-      routerProfilesFile = conf->network.routerProfilesFile;
+      routerProfilesFile = conf->network.routerProfilesFile();
       routerProfiling().Load(routerProfilesFile.c_str());
       llarp::LogInfo("setting profiles to ", routerProfilesFile);
     }
 
-    if(!conf->network.strictConnect.empty())
+    if(!conf->network.strictConnect().empty())
     {
-      const auto &val = conf->network.strictConnect;
+      const auto &val = conf->network.strictConnect();
       if(IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
@@ -864,8 +864,8 @@ namespace llarp
     }
 
     // API config
-    enableRPCServer = conf->api.enableRPCServer;
-    rpcBindAddr     = conf->api.rpcBindAddr;
+    enableRPCServer = conf->api.enableRPCServer();
+    rpcBindAddr     = conf->api.rpcBindAddr();
 
     // Services config
     for(const auto &service : conf->services.services)
@@ -942,19 +942,19 @@ namespace llarp
     }
 
     // Router config
-    _rc.SetNick(conf->router.nickname);
-    maxConnectedRouters = conf->router.maxConnectedRouters;
-    minConnectedRouters = conf->router.minConnectedRouters;
-    encryption_keyfile  = conf->router.encryption_keyfile;
-    our_rc_file         = conf->router.our_rc_file;
-    transport_keyfile   = conf->router.transport_keyfile;
-    addrInfo            = conf->router.addrInfo;
-    publicOverride      = conf->router.publicOverride;
-    ip4addr             = conf->router.ip4addr;
+    _rc.SetNick(conf->router.nickname());
+    maxConnectedRouters = conf->router.maxConnectedRouters();
+    minConnectedRouters = conf->router.minConnectedRouters();
+    encryption_keyfile  = conf->router.encryptionKeyfile();
+    our_rc_file         = conf->router.ourRcFile();
+    transport_keyfile   = conf->router.transportKeyfile();
+    addrInfo            = conf->router.addrInfo();
+    publicOverride      = conf->router.publicOverride();
+    ip4addr             = conf->router.ip4addr();
 
     if(!usingSNSeed)
     {
-      ident_keyfile = conf->router.ident_keyfile;
+      ident_keyfile = conf->router.identKeyfile();
     }
   }
 
