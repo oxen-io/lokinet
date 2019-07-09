@@ -1,6 +1,7 @@
 import Foundation
 import NetworkExtension
 
+/// The general idea here is to intercept packets, pass them to the LokiNet core so that it can modify them as described by the LLARP Traffic Routing Protocol, and then pass them on to the appropriate snode(s).
 final class LKPacketTunnelProvider : NEPacketTunnelProvider {
     
     override func startTunnel(options: [String:NSObject]? = nil, completionHandler: @escaping (Error?) -> Void) {

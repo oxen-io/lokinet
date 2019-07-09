@@ -1,11 +1,12 @@
 import NetworkExtension
 import PromiseKit
 
+/// A UDP based tunnel used for snode communication.
 final class LKTunnel : NSObject {
     private let provider: NEPacketTunnelProvider
     private let configuration: Configuration
     private var session: NWUDPSession?
-    private var openPromiseSeal: PromiseKit.Resolver<Void>?
+    private var openSeal: PromiseKit.Resolver<Void>?
     
     // MARK: Initialization
     init(provider: NEPacketTunnelProvider, configuration: Configuration) {
@@ -16,7 +17,7 @@ final class LKTunnel : NSObject {
     // MARK: Connection
     func open() -> Promise<Void> {
         let tuple = Promise<Void>.pending()
-        openPromiseSeal = tuple.resolver
+        openSeal = tuple.resolver
         let endpoint = NWHostEndpoint(hostname: configuration.address, port: String(configuration.port))
         session = provider.createUDPSession(to: endpoint, from: nil)
         LKLog("[Loki] Tunnel (to \(configuration.address):\(configuration.port) state changed to preparing.")
@@ -31,8 +32,8 @@ final class LKTunnel : NSObject {
             LKLog("[Loki] Tunnel (to \(configuration.address):\(configuration.port) state changed to \(state).")
             switch state {
             case .ready:
-                openPromiseSeal!.fulfill(())
-                openPromiseSeal = nil
+                openSeal!.fulfill(())
+                openSeal = nil
             case .failed, .cancelled: close()
             default: break
             }
@@ -53,8 +54,8 @@ final class LKTunnel : NSObject {
     
     func close() {
         session?.cancel()
-        openPromiseSeal?.reject(LKError.openingTunnelFailed(destination: "\(configuration.address):\(configuration.port)"))
-        openPromiseSeal = nil
+        openSeal?.reject(LKError.openingTunnelFailed(destination: "\(configuration.address):\(configuration.port)"))
+        openSeal = nil
         session?.removeObserver(self, forKeyPath: "state")
         session = nil
     }
