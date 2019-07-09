@@ -928,14 +928,9 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      ManagedBuffer buf(b);
-      if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); }))
-      {
-#if defined(DEBUG) || !defined(RELEASE_MOTTO)
-        llarp::LogInfo("invalid pkt");
-#endif
-      }
+      const ManagedBuffer buf(b);
+      self->m_UserToNetworkPktQueue.EmplaceIf(
+             [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
     }
 
     TunEndpoint::~TunEndpoint()
