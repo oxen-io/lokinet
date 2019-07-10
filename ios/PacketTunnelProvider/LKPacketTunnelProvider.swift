@@ -10,6 +10,7 @@ final class LKPacketTunnelProvider : NEPacketTunnelProvider {
         let bootstrapFileURL = URL(string: "https://i2p.rocks/i2procks.signed")!
         let bootstrapFileName = "bootstrap.signed"
         let daemonConfiguration = LKDaemon.Configuration(isDebuggingEnabled: false, directoryPath: directoryPath, configurationFileName: configurationFileName, bootstrapFileURL: bootstrapFileURL, bootstrapFileName: bootstrapFileName)
+        LKUpdateConnectionProgress(0.2)
         LKDaemon.configure(with: daemonConfiguration).done { _, context in
             LKDaemon.start(with: context)
             completionHandler(nil)

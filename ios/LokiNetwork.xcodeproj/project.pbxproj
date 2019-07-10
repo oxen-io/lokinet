@@ -46,6 +46,10 @@
 		B8EFF9DC22D44977005597E9 /* LKMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8EFF9DB22D44977005597E9 /* LKMainViewController.xib */; };
 		B8EFF9DF22D453B5005597E9 /* LKError.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99D22D443BB005597E9 /* LKError.swift */; };
 		B8EFF9E022D453C1005597E9 /* LKError.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99D22D443BB005597E9 /* LKError.swift */; };
+		B8EFF9E722D5A2C6005597E9 /* General.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9E622D5A2C6005597E9 /* General.swift */; };
+		B8EFF9EE22D5ACDA005597E9 /* GBKUIButtonProgressView.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8EFF9E922D5ACD9005597E9 /* GBKUIButtonProgressView.xib */; };
+		B8EFF9EF22D5ACDA005597E9 /* GBKUIButtonProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */; };
+		B8EFF9F022D5ACDA005597E9 /* GBKUIButtonAnimations.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKMainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKMainViewController.swift */; };
@@ -452,6 +456,13 @@
 		B8EFF9D722D445B6005597E9 /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF9D922D445C5005597E9 /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF9DB22D44977005597E9 /* LKMainViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LKMainViewController.xib; sourceTree = "<group>"; };
+		B8EFF9E222D59FD9005597E9 /* LokiNetwork-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "LokiNetwork-Bridging-Header.h"; sourceTree = "<group>"; };
+		B8EFF9E622D5A2C6005597E9 /* General.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = General.swift; sourceTree = "<group>"; };
+		B8EFF9E922D5ACD9005597E9 /* GBKUIButtonProgressView.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = GBKUIButtonProgressView.xib; sourceTree = "<group>"; };
+		B8EFF9EA22D5ACDA005597E9 /* GBKUIButtonAnimations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GBKUIButtonAnimations.h; sourceTree = "<group>"; };
+		B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GBKUIButtonProgressView.m; sourceTree = "<group>"; };
+		B8EFF9EC22D5ACDA005597E9 /* GBKUIButtonProgressView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GBKUIButtonProgressView.h; sourceTree = "<group>"; };
+		B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GBKUIButtonAnimations.m; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -637,6 +648,7 @@
 		B8EFF98F22D4167B005597E9 /* Dependencies */ = {
 			isa = PBXGroup;
 			children = (
+				B8EFF9E822D5ACC8005597E9 /* GBKUIButtonProgressView */,
 				B8EFF99022D41768005597E9 /* MMWormhole.framework */,
 				B8EFF9D922D445C5005597E9 /* PromiseKit.framework */,
 			);
@@ -651,6 +663,26 @@
 			name = Core;
 			sourceTree = "<group>";
 		};
+		B8EFF9E522D5A2AF005597E9 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				B8EFF9E622D5A2C6005597E9 /* General.swift */,
+			);
+			name = Utilities;
+			sourceTree = "<group>";
+		};
+		B8EFF9E822D5ACC8005597E9 /* GBKUIButtonProgressView */ = {
+			isa = PBXGroup;
+			children = (
+				B8EFF9EA22D5ACDA005597E9 /* GBKUIButtonAnimations.h */,
+				B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */,
+				B8EFF9EC22D5ACDA005597E9 /* GBKUIButtonProgressView.h */,
+				B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */,
+				B8EFF9E922D5ACD9005597E9 /* GBKUIButtonProgressView.xib */,
+			);
+			path = GBKUIButtonProgressView;
+			sourceTree = "<group>";
+		};
 		B8F79874225DB9FF00003DE6 /* Meta */ = {
 			isa = PBXGroup;
 			children = (
@@ -659,6 +691,7 @@
 				C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */,
 				C3FBE36422542DD60006284B /* LKAppDelegate.swift */,
 				B8EBA4CD226EAB6B0098F863 /* LokiNetwork.entitlements */,
+				B8EFF9E222D59FD9005597E9 /* LokiNetwork-Bridging-Header.h */,
 				B8EBA4D9226EEE080098F863 /* README.md */,
 			);
 			name = Meta;
@@ -711,6 +744,7 @@
 				B8EFF99922D4428F005597E9 /* Core */,
 				B8EBA4D8226EDF4D0098F863 /* UI */,
 				B8F79874225DB9FF00003DE6 /* Meta */,
+				B8EFF9E522D5A2AF005597E9 /* Utilities */,
 			);
 			path = LokiNetwork;
 			sourceTree = "<group>";
@@ -1231,6 +1265,7 @@
 			files = (
 				C3FBE36F22542DD80006284B /* LaunchScreen.storyboard in Resources */,
 				B8EFF9DC22D44977005597E9 /* LKMainViewController.xib in Resources */,
+				B8EFF9EE22D5ACDA005597E9 /* GBKUIButtonProgressView.xib in Resources */,
 				C3FBE36C22542DD80006284B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1305,10 +1340,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8EFF9E722D5A2C6005597E9 /* General.swift in Sources */,
 				C3FBE36722542DD60006284B /* LKMainViewController.swift in Sources */,
 				B8EFF9E022D453C1005597E9 /* LKError.swift in Sources */,
 				B8EFF99B22D442AF005597E9 /* LKLokiNetManager.swift in Sources */,
+				B8EFF9EF22D5ACDA005597E9 /* GBKUIButtonProgressView.m in Sources */,
 				C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */,
+				B8EFF9F022D5ACDA005597E9 /* GBKUIButtonAnimations.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1525,6 +1563,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LokiNetwork/LokiNetwork.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1542,6 +1581,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "LokiNetwork/LokiNetwork-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1552,6 +1593,7 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LokiNetwork/LokiNetwork.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
@@ -1569,6 +1611,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "LokiNetwork/LokiNetwork-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

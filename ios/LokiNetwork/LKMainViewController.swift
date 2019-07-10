@@ -1,9 +1,9 @@
 import UIKit
 
 final class LKMainViewController : UIViewController {
-    @IBOutlet private var button: UIButton!
+    @IBOutlet private var button: GBKUIButtonProgressView!
     
-    private var lokiNet: LKLokiNetManager { return LKLokiNetManager.shared }
+    private var lokinet: LKLokiNetManager { return LKLokiNetManager.shared }
     
     // MARK: Lifecycle
     static func load() -> LKMainViewController {
@@ -12,27 +12,33 @@ final class LKMainViewController : UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        lokiNet.onStatusChanged = { [weak self] in self?.updateButton() }
+        button.tintColor = UIColor(0x5BCA5B)
+        button.initialTitle = "Connect"
+        button.completeTitle = "Disconnect"
+        button.addTarget(self, action: #selector(toggleLokinet), for: UIControl.Event.touchUpInside)
+        lokinet.onStatusChanged = { [weak self] in self?.updateButtonStatus() }
+        LKAppDelegate.wormhole.listenForMessage(withIdentifier: "connection_progress") { [weak self] progress in self?.setButtonProgress(to: progress as! Double) }
     }
     
     // MARK: Updating
-    private func updateButton() {
-        let title: String = {
-            switch lokiNet.status {
-            case .connecting: return "connecting..."
-            case .connected: return "disconnect"
-            case .disconnecting: return "disconnecting..."
-            case .disconnected: return "connect"
-            }
-        }()
-        button.setTitle(title, for: UIControl.State.normal)
+    private func updateButtonStatus() {
+        switch lokinet.status {
+        case .connecting: button.startProgressing()
+        case .connected: button.completeProgressing()
+        case .disconnecting, .disconnected: button.reset()
+        }
+    }
+    
+    private func setButtonProgress(to progress: Double) {
+        guard button.isProgressing else { return }
+        button.setProgress(CGFloat(progress), animated: true)
     }
     
     // MARK: Interaction
-    @IBAction private func toggleLokiNet() {
-        switch lokiNet.status {
-        case .disconnected: lokiNet.start()
-        case .connected: lokiNet.stop()
+    @objc private func toggleLokinet() {
+        switch lokinet.status {
+        case .disconnected: lokinet.start()
+        case .connected: lokinet.stop()
         default: break
         }
     }

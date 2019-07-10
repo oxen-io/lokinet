@@ -20,6 +20,8 @@ enum LKDaemon {
             // Generate configuration file
             let configurationFilePath = configuration.directoryPath + "/" + configuration.configurationFileName
             llarp_ensure_config(configurationFilePath, configuration.directoryPath, true, false)
+            // Update connection progress
+            LKUpdateConnectionProgress(0.4)
             // Download bootstrap file
             let downloadTask = URLSession.shared.dataTask(with: configuration.bootstrapFileURL) { data, _, error in
                 guard let data = data else { return seal.reject(error ?? LKError.downloadingBootstrapFileFailed) }
@@ -29,9 +31,13 @@ enum LKDaemon {
                 } catch let error {
                     return seal.reject(error)
                 }
+                // Update connection progress
+                LKUpdateConnectionProgress(0.6)
                 // Perform main setup
                 guard let context = llarp_main_init(configurationFilePath, false) else { return seal.reject(LKError.llarpInitializationFailed) }
                 llarp_main_setup(context)
+                // Update connection progress
+                LKUpdateConnectionProgress(0.8)
                 // Invoke completion handler
                 seal.fulfill((configurationFilePath: configurationFilePath, context: context))
             }
@@ -41,6 +47,7 @@ enum LKDaemon {
     
     static func start(with context: LLARPContext) {
         llarp_main_run(context)
+        LKUpdateConnectionProgress(1.0)
     }
     
     static func stop() {
