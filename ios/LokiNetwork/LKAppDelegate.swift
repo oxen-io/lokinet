@@ -5,7 +5,7 @@ import MMWormhole
 final class LKAppDelegate : UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     
-    static let wormhole = MMWormhole(applicationGroupIdentifier: "group.com.niels-andriesse.loki-project", optionalDirectory: "logs")
+    static let wormhole = MMWormhole(applicationGroupIdentifier: "group.com.niels-andriesse.loki-network", optionalDirectory: nil)
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey:Any]? = nil) -> Bool {
         let window = UIWindow(frame: UIScreen.main.bounds)
