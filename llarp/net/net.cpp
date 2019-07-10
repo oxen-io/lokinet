@@ -973,7 +973,7 @@ namespace llarp
       result               = addr;
       return true;
     }
-    else if(af == AF_INET6)
+    if(af == AF_INET6)
     {
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
@@ -982,10 +982,9 @@ namespace llarp
       result            = addr6;
       return true;
     }
-    else
-    {
-      // TODO: implement sockaddr_ll
-    }
+
+    // TODO: implement sockaddr_ll
+
     return false;
   }
 

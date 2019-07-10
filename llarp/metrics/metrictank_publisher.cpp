@@ -38,10 +38,8 @@ namespace llarp
         {
           return {};
         }
-        else
-        {
-          return std::to_string(d);
-        }
+
+        return std::to_string(d);
       }
 
       absl::optional< std::string >

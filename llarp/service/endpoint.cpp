@@ -114,8 +114,8 @@ namespace llarp
     {
       if(m_IsolatedNetLoop)
         return m_IsolatedNetLoop;
-      else
-        return m_Router->netloop();
+
+      return m_Router->netloop();
     }
 
     bool
@@ -280,8 +280,7 @@ namespace llarp
             continue;
           std::array< byte_t, 128 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(SendToServiceOrQueue(introset.A.Addr(), buf,
-                                  eProtocolControl))
+          if(SendToServiceOrQueue(introset.A.Addr(), buf, eProtocolControl))
             LogInfo(Name(), " send message to ", introset.A.Addr(), " for tag ",
                     tag.ToString());
           else
@@ -371,10 +370,8 @@ namespace llarp
           IntroSetPublished();
           return true;
         }
-        else
-        {
-          remote.insert(introset);
-        }
+
+        remote.insert(introset);
       }
       auto itr = m_PendingLookups.find(msg->T);
       if(itr == m_PendingLookups.end())
@@ -793,8 +790,8 @@ namespace llarp
           m_PendingRouters.emplace(router, RouterLookupJob(this, handler));
           return true;
         }
-        else
-          LogError("failed to send request for router lookup");
+
+        LogError("failed to send request for router lookup");
       }
       return false;
     }
@@ -862,7 +859,7 @@ namespace llarp
         m_InboundTrafficQueue.emplace(msg);
         return true;
       }
-      else if(msg->proto == eProtocolControl)
+      if(msg->proto == eProtocolControl)
       {
         // TODO: implement me (?)
         // right now it's just random noise
@@ -948,8 +945,8 @@ namespace llarp
         }
         return false;
       }
-      else
-        PutNewOutboundContext(*introset);
+
+      PutNewOutboundContext(*introset);
       return true;
     }
 

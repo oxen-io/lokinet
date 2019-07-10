@@ -39,11 +39,9 @@ namespace llarp
         stream << "Bad format " << format.m_format << " applied to " << data;
         return stream;
       }
-      else
-      {
-        stream << vec.data();
-        return stream;
-      }
+
+      stream << vec.data();
+      return stream;
     }
 
     string_view

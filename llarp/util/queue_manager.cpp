@@ -136,14 +136,12 @@ namespace llarp
       {
         return difference - modulo;
       }
-      else if(difference < -static_cast< int32_t >(modulo / 2))
+      if(difference < -static_cast< int32_t >(modulo / 2))
       {
         return difference + modulo;
       }
-      else
-      {
-        return difference;
-      }
+
+      return difference;
     }
 
     uint32_t

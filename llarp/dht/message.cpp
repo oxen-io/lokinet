@@ -79,8 +79,8 @@ namespace llarp
           firstKey = false;
           return msg != nullptr;
         }
-        else
-          return msg->DecodeKey(*key, buffer);
+
+        return msg->DecodeKey(*key, buffer);
       }
     };
 
@@ -117,8 +117,8 @@ namespace llarp
           l.emplace_back(std::move(msg));
           return true;
         }
-        else
-          return false;
+
+        return false;
       }
     };
 

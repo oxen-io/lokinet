@@ -99,8 +99,8 @@ namespace llarp
         ip  = llarp::ipaddr_ipv4_bits(a, b, c, d);
         return true;
       }
-      else
-        return false;
+
+      return false;
     }
 
   }  // namespace dns

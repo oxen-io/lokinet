@@ -287,12 +287,10 @@ namespace llarp
         LogError("failed to start hidden service endpoint ", conf.first);
         return false;
       }
-      else
-      {
-        LogInfo("added hidden service endpoint ", service->Name());
-        m_Endpoints.emplace(conf.first, service);
-        return true;
-      }
+
+      LogInfo("added hidden service endpoint ", service->Name());
+      m_Endpoints.emplace(conf.first, service);
+      return true;
     }
   }  // namespace service
 }  // namespace llarp

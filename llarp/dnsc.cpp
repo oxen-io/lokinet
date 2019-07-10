@@ -400,7 +400,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     request->resolved(request);
     return;
   }
-  else if(rcode == 3)
+  if(rcode == 3)
   {
     llarp::LogWarn("nameserver ", upstreamAddr,
                    " returned NXDOMAIN for: ", request->question.name);

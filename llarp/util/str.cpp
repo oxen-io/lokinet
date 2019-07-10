@@ -14,28 +14,26 @@ namespace llarp
     {
       return true;
     }
-    else if(lhs.size() > rhs.size())
+    if(lhs.size() > rhs.size())
     {
       return false;
     }
-    else
-    {
-      for(size_t i = 0; i < lhs.size(); ++i)
-      {
-        auto l = std::tolower(lhs[i]);
-        auto r = std::tolower(rhs[i]);
 
-        if(l < r)
-        {
-          return true;
-        }
-        else if(l > r)
-        {
-          return false;
-        }
+    for(size_t i = 0; i < lhs.size(); ++i)
+    {
+      auto l = std::tolower(lhs[i]);
+      auto r = std::tolower(rhs[i]);
+
+      if(l < r)
+      {
+        return true;
       }
-      return false;
+      if(l > r)
+      {
+        return false;
+      }
     }
+    return false;
   }
 
   bool
@@ -65,7 +63,7 @@ namespace llarp
     {
       return strncmp(s1, s2, sz1) == 0;
     }
-    else
-      return false;
+
+    return false;
   }
 }  // namespace llarp
