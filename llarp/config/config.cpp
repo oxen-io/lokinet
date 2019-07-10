@@ -16,14 +16,14 @@
 
 namespace llarp
 {
-  bool
+  void
   RouterConfig::fromSection(string_view key, string_view val)
   {
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
       {
-        netid.assign(val.begin(), val.end());
+        m_netId.assign(val.begin(), val.end());
       }
       else
       {
@@ -36,8 +36,8 @@ namespace llarp
       auto ival = atoi(sVal.c_str());
       if(ival > 0)
       {
-        maxConnectedRouters = ival;
-        LogInfo("max connections set to ", maxConnectedRouters);
+        m_maxConnectedRouters = ival;
+        LogInfo("max connections set to ", m_maxConnectedRouters);
       }
     }
     if(key == "min-connections")
@@ -46,31 +46,31 @@ namespace llarp
       auto ival = atoi(sVal.c_str());
       if(ival > 0)
       {
-        minConnectedRouters = ival;
-        LogInfo("min connections set to ", minConnectedRouters);
+        m_minConnectedRouters = ival;
+        LogInfo("min connections set to ", m_minConnectedRouters);
       }
     }
     if(key == "nickname")
     {
-      nickname.assign(val.begin(), val.end());
+      m_nickname.assign(val.begin(), val.end());
       // set logger name here
-      LogContext::Instance().nodeName = nickname;
+      LogContext::Instance().nodeName = nickname();
     }
     if(key == "encryption-privkey")
     {
-      encryption_keyfile.assign(val.begin(), val.end());
+      m_encryptionKeyfile.assign(val.begin(), val.end());
     }
     if(key == "contact-file")
     {
-      our_rc_file.assign(val.begin(), val.end());
+      m_ourRcFile.assign(val.begin(), val.end());
     }
     if(key == "transport-privkey")
     {
-      transport_keyfile.assign(val.begin(), val.end());
+      m_transportKeyfile.assign(val.begin(), val.end());
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
-      ident_keyfile.assign(val.begin(), val.end());
+      m_identKeyfile.assign(val.begin(), val.end());
     }
     if(key == "public-address" || key == "public-ip")
     {
@@ -80,74 +80,73 @@ namespace llarp
         // assume IPv4
         llarp::Addr a(val);
         llarp::LogInfo("setting public ipv4 ", a);
-        addrInfo.ip    = *a.addr6();
-        publicOverride = true;
+        m_addrInfo.ip    = *a.addr6();
+        m_publicOverride = true;
       }
     }
     if(key == "public-port")
     {
       llarp::LogInfo("Setting public port ", val);
       int p = atoi(std::string(val).c_str());
-      // Not needed to flip upside-down this is done in Addr(const AddressInfo&)
-      ip4addr.sin_port = p;
-      addrInfo.port    = p;
-      publicOverride   = true;
+      // Not needed to flip upside-down - this is done in llarp::Addr(const
+      // AddressInfo&)
+      m_ip4addr.sin_port = p;
+      m_addrInfo.port    = p;
+      m_publicOverride   = true;
     }
     if(key == "worker-threads")
     {
-      workerThreads = atoi(std::string(val).c_str());
+      m_workerThreads = atoi(std::string(val).c_str());
     }
     if(key == "net-threads")
     {
-      num_nethreads = atoi(std::string(val).c_str());
-      if(num_nethreads <= 0)
-        num_nethreads = 1;
+      m_numNetThreads = atoi(std::string(val).c_str());
+      if(m_numNetThreads <= 0)
+      {
+        m_numNetThreads = 1;
+      }
     }
-
-    return true;
   }
-  bool
+
+  void
   NetworkConfig::fromSection(string_view key, string_view val)
   {
     if(key == "profiling")
     {
       if(IsTrueValue(val))
       {
-        enableProfiling.emplace(true);
+        m_enableProfiling.emplace(true);
       }
       else if(IsFalseValue(val))
       {
-        enableProfiling.emplace(false);
+        m_enableProfiling.emplace(false);
       }
     }
-    if(key == "profiles")
+    else if(key == "profiles")
     {
-      routerProfilesFile.assign(val.begin(), val.end());
-      llarp::LogInfo("setting profiles to ", routerProfilesFile);
+      m_routerProfilesFile.assign(val.begin(), val.end());
+      llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
     else if(key == "strict-connect")
     {
-      strictConnect.assign(val.begin(), val.end());
+      m_strictConnect.assign(val.begin(), val.end());
     }
     else
     {
-      netConfig.emplace(key, val);
+      m_netConfig.emplace(key, val);
     }
-    return true;
   }
 
-  bool
+  void
   NetdbConfig::fromSection(string_view key, string_view val)
   {
     if(key == "dir")
     {
-      nodedb_dir.assign(val.begin(), val.end());
+      m_nodedbDir.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   DnsConfig::fromSection(string_view key, string_view val)
   {
     if(key == "upstream")
@@ -160,10 +159,9 @@ namespace llarp
       llarp::LogInfo("set local dns to ", val);
       netConfig.emplace("local-dns", val);
     }
-    return true;
   }
 
-  bool
+  void
   IwpConfig::fromSection(string_view key, string_view val)
   {
     // try IPv4 first
@@ -207,39 +205,34 @@ namespace llarp
     }
     else
     {
-      servers.emplace_back(key, AF_INET, proto);
+      m_servers.emplace_back(key, AF_INET, proto);
     }
-    return true;
   }
 
-  bool
+  void
   ConnectConfig::fromSection(ABSL_ATTRIBUTE_UNUSED string_view key,
                              string_view val)
   {
     routers.emplace_back(val.begin(), val.end());
-    return true;
   }
 
-  bool
+  void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
     services.emplace_back(std::string(key.begin(), key.end()),
                           std::string(val.begin(), val.end()));
-    return true;
   }
 
-  bool
+  void
   SystemConfig::fromSection(string_view key, string_view val)
   {
     if(key == "pidfile")
     {
       pidfile.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   MetricsConfig::fromSection(string_view key, string_view val)
   {
     if(key == "disable-metrics")
@@ -263,30 +256,26 @@ namespace llarp
       // consume everything else as a metric tag
       metricTags[std::string(key)] = std::string(val);
     }
-
-    return true;
   }
 
-  bool
+  void
   ApiConfig::fromSection(string_view key, string_view val)
   {
     if(key == "enabled")
     {
-      enableRPCServer = IsTrueValue(val);
+      m_enableRPCServer = IsTrueValue(val);
     }
     if(key == "bind")
     {
-      rpcBindAddr.assign(val.begin(), val.end());
+      m_rpcBindAddr.assign(val.begin(), val.end());
     }
     if(key == "authkey")
     {
       // TODO: add pubkey to whitelist
     }
-
-    return true;
   }
 
-  bool
+  void
   LokidConfig::fromSection(string_view key, string_view val)
   {
     if(key == "service-node-seed")
@@ -310,22 +299,18 @@ namespace llarp
     {
       lokidRPCPassword.assign(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   BootstrapConfig::fromSection(string_view key, string_view val)
   {
     if(key == "add-node")
     {
       routers.emplace_back(val.begin(), val.end());
     }
-
-    return true;
   }
 
-  bool
+  void
   LoggingConfig::fromSection(string_view key, string_view val)
   {
     if(key == "type" && val == "syslog")
@@ -364,8 +349,6 @@ namespace llarp
         ::abort();
       }
     }
-
-    return true;
   }
 
   template < typename Section, typename Config >
@@ -377,10 +360,7 @@ namespace llarp
     auto visitor = [&ret](const ConfigParser::Section_t &section) -> bool {
       for(const auto &sec : section)
       {
-        if(!ret.fromSection(sec.first, sec.second))
-        {
-          return false;
-        }
+        ret.fromSection(sec.first, sec.second);
       }
       return true;
     };

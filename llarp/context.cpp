@@ -66,14 +66,14 @@ namespace llarp
     worker = std::make_shared< llarp::thread::ThreadPool >(
         config->router.workerThreads, 1024, "llarp-worker");
 
-    nodedb_dir = config->netdb.nodedb_dir;
+    nodedb_dir = config->netdb.nodedbDir();
 
     if(!config->metrics.disableMetrics)
     {
       auto &metricsConfig = config->metrics;
       auto &tags          = metricsConfig.metricTags;
-      tags["netid"]       = config->router.netid;
-      tags["nickname"]    = config->router.nickname;
+      tags["netid"]       = config->router.netId();
+      tags["nickname"]    = config->router.nickname();
       setupMetrics(metricsConfig);
       if(!config->metrics.disableMetricLogs)
       {
