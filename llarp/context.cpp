@@ -59,12 +59,8 @@ namespace llarp
       SetPIDFile(config->system.pidfile);
     }
 
-    // Router config
-    if(config->router.workerThreads <= 0)
-      config->router.workerThreads = 1;
-
     worker = std::make_shared< llarp::thread::ThreadPool >(
-        config->router.workerThreads, 1024, "llarp-worker");
+        config->router.workerThreads(), 1024, "llarp-worker");
 
     nodedb_dir = config->netdb.nodedbDir();
 
