@@ -63,6 +63,11 @@ public:
 
 	path(const char*);
 
+	template< typename Iterator >
+	path(Iterator first, Iterator last) : s(first, last)
+    {
+    }
+
 	/// Copy constructor
 	path(const path&);
 
