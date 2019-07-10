@@ -4,6 +4,9 @@
 
 #ifdef POSIX
 #include <pthread.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
 #endif
 
 namespace llarp
@@ -17,13 +20,17 @@ namespace llarp
 #ifdef __MACH__
       const int rc = pthread_setname_np(name.c_str());
 #else
+#ifdef __FreeBSD__
+      pthread_setname_np(pthread_self(), name.c_str());
+#else
       const int rc = pthread_setname_np(pthread_self(), name.c_str());
-#endif
       if(rc)
       {
         LogError("Failed to set thread name to ", name, " errno = ", rc,
                  " errstr = ", strerror(rc));
       }
+#endif
+#endif
 #else
       LogInfo("Thread name setting not supported on this platform");
       (void)name;
