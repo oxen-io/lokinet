@@ -1,8 +1,6 @@
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
-include_directories(/usr/local/include)
-
 if (STATIC_LINK_RUNTIME)
   find_library(UV_LIB NAMES libuv.a)
 else()

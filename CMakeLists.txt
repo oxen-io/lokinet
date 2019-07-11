@@ -73,7 +73,6 @@ endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
   message("Compiling for iOS")
   add_definitions(-DDarwin)
-  set(UV_LIB "/usr/local/lib")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
 
 if(NOT DEBIAN AND NOT MSVC_VERSION)
@@ -140,7 +139,7 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
-elseif(NOT ANDROID AND NOT IOS AND NOT NON_PC_TARGET)
+elseif(NOT ANDROID AND NOT iOS AND NOT NON_PC_TARGET)
   if (NOT USE_AVX2)
     # Public binary releases
     set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
