@@ -29,6 +29,8 @@ callgrind.*
 shadow.data
 shadow.config.xml
 *.log
+*.pdf
+*.xz
 
 testnet_tmp
 
