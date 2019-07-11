@@ -2,7 +2,9 @@ import Foundation
 import PromiseKit
 
 enum LKDaemon {
-    
+
+    private static let requestTerminationSignal: Int32 = 15
+
     struct Configuration {
         let isDebuggingEnabled: Bool
         let directoryPath: String
@@ -11,10 +13,10 @@ enum LKDaemon {
         let bootstrapFileName: String
     }
     
-    typealias LLARPContext = OpaquePointer
-    
-    static func configure(with configuration: Configuration) -> Promise<(configurationFilePath: String, context: LLARPContext)> {
-        return Promise<(configurationFilePath: String, context: LLARPContext)> { seal in
+    typealias Context = OpaquePointer
+
+    static func configure(with configuration: Configuration) -> Promise<(configurationFilePath: String, context: Context)> {
+        return Promise<(configurationFilePath: String, context: Context)> { seal in
             // Enable debugging mode if needed
             if configuration.isDebuggingEnabled { llarp_enable_debug_mode() }
             // Generate configuration file
@@ -45,14 +47,14 @@ enum LKDaemon {
         }
     }
     
-    static func start(with context: LLARPContext) -> Bool {
+    static func start(with context: Context) -> Bool {
         let resultCode = llarp_main_run(context)
         let isSuccess = (resultCode == 0)
         if isSuccess { LKUpdateConnectionProgress(1.0) }
         return isSuccess
     }
     
-    static func stop() {
-        // TODO: Implement
+    static func stop(with context: Context) {
+        llarp_main_signal(context, requestTerminationSignal)
     }
 }

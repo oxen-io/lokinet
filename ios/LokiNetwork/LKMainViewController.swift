@@ -37,8 +37,15 @@ final class LKMainViewController : UIViewController {
     // MARK: Interaction
     @objc private func toggleLokinet() {
         switch lokinet.status {
-        case .disconnected: lokinet.start()
-        case .connected: lokinet.stop()
+        case .disconnected:
+            lokinet.start().catch { error in
+                if let error = error as? LKError {
+                    print(error.message)
+                } else {
+                    print("An error occurred.")
+                }
+            }
+        case .connecting, .connected: lokinet.stop()
         default: break
         }
     }
