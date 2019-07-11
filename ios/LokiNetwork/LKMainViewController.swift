@@ -3,7 +3,7 @@ import UIKit
 final class LKMainViewController : UIViewController {
     @IBOutlet private var button: GBKUIButtonProgressView!
     
-    private var lokinet: LKLokiNetManager { return LKLokiNetManager.shared }
+    private var lokinet: LKLokinetManager { return LKLokinetManager.shared }
     
     // MARK: Lifecycle
     static func load() -> LKMainViewController {

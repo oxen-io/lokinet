@@ -1,7 +1,7 @@
 import NetworkExtension
 import PromiseKit
 
-final class LKLokiNetManager {
+final class LKLokinetManager {
     private var tunnelProviderManager: NETunnelProviderManager?
     private(set) var status: Status = .disconnected { didSet { onStatusChanged?() } }
     var onStatusChanged: (() -> Void)?
@@ -10,7 +10,7 @@ final class LKLokiNetManager {
     enum Status { case connecting, connected, disconnecting, disconnected }
     
     // MARK: Initialization & Deinitialization
-    static let shared = LKLokiNetManager()
+    static let shared = LKLokinetManager()
     
     private init() {
         NotificationCenter.default.addObserver(self, selector: #selector(updateStatusIfNeeded), name: .NEVPNStatusDidChange, object: nil)
@@ -32,7 +32,7 @@ final class LKLokiNetManager {
                         try tunnelProviderManager.connection.startVPNTunnel()
                         seal.fulfill(())
                     } catch {
-                        seal.reject(LKError.startingLokiNetFailed)
+                        seal.reject(LKError.startingLokinetFailed)
                     }
                 }
                 if let tunnelProviderManager = tunnelProviderManagers?.first {

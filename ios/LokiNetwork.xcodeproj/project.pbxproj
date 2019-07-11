@@ -40,7 +40,7 @@
 		B8EFF99122D41768005597E9 /* MMWormhole.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF99022D41768005597E9 /* MMWormhole.framework */; };
 		B8EFF99622D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */; };
 		B8EFF99822D429D8005597E9 /* LKMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99722D429D8005597E9 /* LKMessage.swift */; };
-		B8EFF99B22D442AF005597E9 /* LKLokiNetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99A22D442AF005597E9 /* LKLokiNetManager.swift */; };
+		B8EFF99B22D442AF005597E9 /* LKLokinetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF99A22D442AF005597E9 /* LKLokinetManager.swift */; };
 		B8EFF9D822D445B6005597E9 /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF9D722D445B6005597E9 /* PromiseKit.framework */; };
 		B8EFF9DA22D445C5005597E9 /* PromiseKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFF9D922D445C5005597E9 /* PromiseKit.framework */; };
 		B8EFF9DC22D44977005597E9 /* LKMainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8EFF9DB22D44977005597E9 /* LKMainViewController.xib */; };
@@ -451,7 +451,7 @@
 		B8EFF99022D41768005597E9 /* MMWormhole.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MMWormhole.framework; path = Carthage/Build/iOS/MMWormhole.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF99522D4262B005597E9 /* NWUDPSessionState+CustomStringConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NWUDPSessionState+CustomStringConvertible.swift"; sourceTree = "<group>"; };
 		B8EFF99722D429D8005597E9 /* LKMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKMessage.swift; sourceTree = "<group>"; };
-		B8EFF99A22D442AF005597E9 /* LKLokiNetManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKLokiNetManager.swift; sourceTree = "<group>"; };
+		B8EFF99A22D442AF005597E9 /* LKLokinetManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKLokinetManager.swift; sourceTree = "<group>"; };
 		B8EFF99D22D443BB005597E9 /* LKError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKError.swift; sourceTree = "<group>"; };
 		B8EFF9D722D445B6005597E9 /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = SOURCE_ROOT; };
 		B8EFF9D922D445C5005597E9 /* PromiseKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PromiseKit.framework; path = Carthage/Build/iOS/PromiseKit.framework; sourceTree = SOURCE_ROOT; };
@@ -658,7 +658,7 @@
 		B8EFF99922D4428F005597E9 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				B8EFF99A22D442AF005597E9 /* LKLokiNetManager.swift */,
+				B8EFF99A22D442AF005597E9 /* LKLokinetManager.swift */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -1343,7 +1343,7 @@
 				B8EFF9E722D5A2C6005597E9 /* General.swift in Sources */,
 				C3FBE36722542DD60006284B /* LKMainViewController.swift in Sources */,
 				B8EFF9E022D453C1005597E9 /* LKError.swift in Sources */,
-				B8EFF99B22D442AF005597E9 /* LKLokiNetManager.swift in Sources */,
+				B8EFF99B22D442AF005597E9 /* LKLokinetManager.swift in Sources */,
 				B8EFF9EF22D5ACDA005597E9 /* GBKUIButtonProgressView.m in Sources */,
 				C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */,
 				B8EFF9F022D5ACDA005597E9 /* GBKUIButtonAnimations.m in Sources */,

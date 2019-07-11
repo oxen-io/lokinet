@@ -45,9 +45,12 @@ enum LKDaemon {
         }
     }
     
-    static func start(with context: LLARPContext) {
-        llarp_main_run(context)
-        LKUpdateConnectionProgress(1.0)
+    static func start(with context: LLARPContext) -> Bool {
+        let isSuccess = (llarp_main_run(context) == 0)
+        if isSuccess {
+            LKUpdateConnectionProgress(1.0)
+        }
+        return isSuccess
     }
     
     static func stop() {
