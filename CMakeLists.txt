@@ -289,33 +289,22 @@ if(SHADOW)
   target_link_libraries(${LOKINET_SHADOW} ${LOKINET_SHADOW_LIBS})
   target_include_directories(${LOKINET_SHADOW} PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/llarp ${PROJECT_SOURCE_DIR}/crypto/include)
 else()
-  if(APPLE)
-    set(MACOSX_BUNDLE_BUNDLE_NAME lokinet)
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.loki-project.loki-network")
-    set(MACOSX_BUNDLE_LONG_VERSION_STRING ${GIT_VERSION})
-    set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${GIT_VERSION})
-    set(MACOSX_BUNDLE_BUNDLE_VERSION ${GIT_VERSION})
-    add_executable(${EXE} MACOSX_BUNDLE ${EXE_SRC})
-  elseif(NOT WIN32)
+  if(NOT WIN32)
     add_executable(${EXE} ${EXE_SRC})
   elseif(NOT MSVC_VERSION)
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
   else()
     add_executable(${EXE} ${EXE_SRC})
-  endif(APPLE)
+  endif(NOT WIN32)
 
   add_log_tag(${EXE})
 
-  if (APPLE)
-    set_target_properties(
-      ${EXE}
-      PROPERTIES
-      MACOSX_BUNDLE_INFO_PLIST ios/Loki\ Network/Info.plist
-    )
+  if(APPLE)
     install(TARGETS ${EXE} RUNTIME DESTINATION bin BUNDLE DESTINATION bin)
   else()
     install(TARGETS ${EXE} RUNTIME DESTINATION bin)
   endif()
+
   if(WIN32)
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)
   else()
