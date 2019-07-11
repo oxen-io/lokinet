@@ -71,8 +71,9 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
-  message("Compiling for iOS...")
+  message("Compiling for iOS")
   add_definitions(-DDarwin)
+  set(UV_LIB "/usr/local/lib")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
 
 if(NOT DEBIAN AND NOT MSVC_VERSION)

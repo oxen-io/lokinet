@@ -1,6 +1,8 @@
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
+include_directories(/usr/local/include)
+
 if (STATIC_LINK_RUNTIME)
   find_library(UV_LIB NAMES libuv.a)
 else()
@@ -20,7 +22,7 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
   find_library(FS_LIB NAMES c++experimental)
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "iOS")
   find_library(FS_LIB NAMES c++fs c++experimental stdc++fs)
 
   if(FS_LIB STREQUAL FS_LIB-NOTFOUND)
