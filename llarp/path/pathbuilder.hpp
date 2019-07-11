@@ -1,19 +1,17 @@
-#ifndef LLARP_PATHBUILDER_HPP_
-#define LLARP_PATHBUILDER_HPP_
+#ifndef LLARP_PATHBUILDER_HPP
+#define LLARP_PATHBUILDER_HPP
 
 #include <path/pathset.hpp>
 #include <util/status.hpp>
 
 #include <atomic>
 
-struct llarp_dht_context;
-
 namespace llarp
 {
   namespace path
   {
     // milliseconds waiting between builds on a path
-    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
+    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 500;
 
     struct Builder : public PathSet
     {
@@ -21,29 +19,36 @@ namespace llarp
       /// flag for PathSet::Stop()
       std::atomic< bool > _run;
 
+      virtual bool
+      UrgentBuild(llarp_time_t now) const;
+
+     private:
+      bool
+      DoUrgentBuildAlignedTo(const RouterID remote,
+                             std::vector< RouterContact >& hops);
+
+      bool
+      DoBuildAlignedTo(const RouterID remote,
+                       std::vector< RouterContact >& hops);
+
      public:
       AbstractRouter* router;
-      llarp_dht_context* dht;
       SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
-      // how many keygens are currently happening
-      std::atomic< uint8_t > keygens;
-
       /// construct
-      Builder(AbstractRouter* p_router, llarp_dht_context* p_dht,
-              size_t numPaths, size_t numHops);
+      Builder(AbstractRouter* p_router, size_t numPaths, size_t numHops);
 
-      virtual ~Builder();
+      virtual ~Builder() = default;
 
       util::StatusObject
       ExtractStatus() const;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) override;
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -51,6 +56,9 @@ namespace llarp
       /// should we bundle RCs in builds?
       virtual bool
       ShouldBundleRC() const = 0;
+
+      virtual void
+      ResetInternalState() override;
 
       /// return true if we hit our soft limit for building paths too fast
       bool
@@ -75,12 +83,18 @@ namespace llarp
       llarp_time_t
       Now() const override;
 
+      virtual void
+      Tick(llarp_time_t now) override;
+
       void
-      BuildOne(PathRole roles = ePathRoleAny);
+      BuildOne(PathRole roles = ePathRoleAny) override;
+
+      bool
+      BuildOneAlignedTo(const RouterID endpoint) override;
 
       void
       Build(const std::vector< RouterContact >& hops,
-            PathRole roles = ePathRoleAny);
+            PathRole roles = ePathRoleAny) override;
 
       bool
       SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops,
@@ -93,11 +107,14 @@ namespace llarp
       GetTunnelEncryptionSecretKey() const;
 
       virtual void
-      HandlePathBuilt(Path* p) override;
+      HandlePathBuilt(Path_ptr p) override;
 
       virtual void
-      HandlePathBuildTimeout(Path* p) override;
+      HandlePathBuildTimeout(Path_ptr p) override;
     };
+
+    using Builder_ptr = std::shared_ptr< Builder >;
+
   }  // namespace path
 
 }  // namespace llarp

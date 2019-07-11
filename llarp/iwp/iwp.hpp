@@ -12,9 +12,8 @@ namespace llarp
   namespace iwp
   {
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp::Crypto* crypto, const SecretKey& routerEncSecret,
-              llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
-              llarp::SessionEstablishedHandler est,
+    NewServer(const SecretKey& routerEncSecret, llarp::GetRCFunc getrc,
+              llarp::LinkMessageHandler h, llarp::SessionEstablishedHandler est,
               llarp::SessionRenegotiateHandler reneg,
               llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
               llarp::SessionClosedHandler closed);

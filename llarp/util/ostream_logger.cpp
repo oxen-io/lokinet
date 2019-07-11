@@ -9,7 +9,8 @@ namespace llarp
 
   void
   OStreamLogStream::PreLog(std::stringstream& ss, LogLevel lvl,
-                           const char* fname, int lineno) const
+                           const char* fname, int lineno,
+                           const std::string& nodename) const
   {
     switch(lvl)
     {
@@ -17,23 +18,20 @@ namespace llarp
         break;
       case eLogDebug:
         ss << (char)27 << "[0m";
-        ss << "[DBG] ";
         break;
       case eLogInfo:
         ss << (char)27 << "[1m";
-        ss << "[NFO] ";
         break;
       case eLogWarn:
         ss << (char)27 << "[1;33m";
-        ss << "[WRN] ";
         break;
       case eLogError:
         ss << (char)27 << "[1;31m";
-        ss << "[ERR] ";
         break;
     }
-
-    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
+    ss << "[" << LogLevelToString(lvl) << "] ";
+    ss << "[" << nodename << "]"
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
        << ":" << lineno << "\t";
   }
 
@@ -46,7 +44,7 @@ namespace llarp
   void
   OStreamLogStream::Print(LogLevel, const char*, const std::string& msg)
   {
-    m_Out << msg;
+    m_Out << msg << std::flush;
   }
 
 }  // namespace llarp

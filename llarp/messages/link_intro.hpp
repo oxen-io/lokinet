@@ -17,15 +17,10 @@ namespace llarp
     {
     }
 
-    ~LinkIntroMessage();
-
     RouterContact rc;
     KeyExchangeNonce N;
     Signature Z;
     uint64_t P;
-
-    LinkIntroMessage&
-    operator=(const LinkIntroMessage& msg);
 
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
@@ -40,7 +35,7 @@ namespace llarp
     Sign(std::function< bool(Signature&, const llarp_buffer_t&) > signer);
 
     bool
-    Verify(llarp::Crypto* c) const;
+    Verify() const;
 
     void
     Clear() override;

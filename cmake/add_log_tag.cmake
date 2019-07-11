@@ -1,0 +1,6 @@
+function(add_log_tag target)
+  get_target_property(TARGET_SRCS ${target} SOURCES)
+  foreach(F ${TARGET_SRCS})
+    set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
+  endforeach(F)
+endfunction()

@@ -1,0 +1,129 @@
+#ifndef LLARP_SERVICE_INFO_HPP
+#define LLARP_SERVICE_INFO_HPP
+
+#include <crypto/types.hpp>
+#include <service/address.hpp>
+#include <service/vanity.hpp>
+#include <util/bencode.hpp>
+
+#include <absl/types/optional.h>
+
+namespace llarp
+{
+  namespace service
+  {
+    struct ServiceInfo
+    {
+     private:
+      PubKey enckey;
+      PubKey signkey;
+
+     public:
+      VanityNonce vanity;
+      Address m_CachedAddr;
+      uint64_t version = LLARP_PROTO_VERSION;
+
+      using OptNonce = absl::optional< VanityNonce >;
+
+      void
+      RandomizeVanity()
+      {
+        vanity.Randomize();
+      }
+
+      bool
+      Verify(const llarp_buffer_t& payload, const Signature& sig) const;
+
+      const PubKey&
+      EncryptionPublicKey() const
+      {
+        return enckey;
+      }
+
+      bool
+      Update(const byte_t* enc, const byte_t* sign,
+             const OptNonce& nonce = OptNonce())
+      {
+        enckey  = enc;
+        signkey = sign;
+        if(nonce)
+        {
+          vanity = nonce.value();
+        }
+        return UpdateAddr();
+      }
+
+      bool
+      operator==(const ServiceInfo& other) const
+      {
+        return enckey == other.enckey && signkey == other.signkey
+            && version == other.version && vanity == other.vanity;
+      }
+
+      bool
+      operator!=(const ServiceInfo& other) const
+      {
+        return !(*this == other);
+      }
+
+      ServiceInfo&
+      operator=(const ServiceInfo& other)
+      {
+        enckey  = other.enckey;
+        signkey = other.signkey;
+        version = other.version;
+        vanity  = other.vanity;
+        version = other.version;
+        UpdateAddr();
+        return *this;
+      }
+
+      bool
+      operator<(const ServiceInfo& other) const
+      {
+        return Addr() < other.Addr();
+      }
+
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
+
+      /// .loki address
+      std::string
+      Name() const;
+
+      bool
+      UpdateAddr();
+
+      const Address&
+      Addr() const
+      {
+        return m_CachedAddr;
+      }
+
+      /// calculate our address
+      bool CalculateAddress(std::array< byte_t, 32 >& data) const;
+
+      bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        if(bencode_decode_dict(*this, buf))
+          return CalculateAddress(m_CachedAddr.as_array());
+        return false;
+      }
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
+    };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const ServiceInfo& i)
+    {
+      return i.print(out, -1, -1);
+    }
+  }  // namespace service
+}  // namespace llarp
+
+#endif

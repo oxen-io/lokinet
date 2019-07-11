@@ -3,6 +3,7 @@
 #include <crypto/mock_crypto.hpp>
 #include <dht/mock_context.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <llarp_test.hpp>
 #include <service/intro_set.hpp>
 #include <test_util.hpp>
 
@@ -21,9 +22,8 @@ struct MockIntroSetHandler
 
 static constexpr uint64_t EXPIRY = 1548503831ull;
 
-struct TestDhtServiceAddressLookup : public ::testing::Test
+struct TestDhtServiceAddressLookup : public test::LlarpTest<>
 {
-  test::MockCrypto crypto;
   MockIntroSetHandler introsetHandler;
 
   dht::Key_t ourKey;
@@ -62,9 +62,8 @@ TEST_F(TestDhtServiceAddressLookup, validate)
 
   {
     service::IntroSet introset;
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(false));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(false));
 
     ASSERT_FALSE(serviceAddressLookup->Validate(introset));
   }
@@ -78,9 +77,8 @@ TEST_F(TestDhtServiceAddressLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_FALSE(serviceAddressLookup->Validate(introset));
   }
@@ -97,9 +95,8 @@ TEST_F(TestDhtServiceAddressLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_TRUE(serviceAddressLookup->Validate(introset));
   }

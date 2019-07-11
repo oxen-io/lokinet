@@ -49,6 +49,29 @@ namespace llarp
       return true;
     }
 
+    bool
+    Question::IsName(const std::string& other) const
+    {
+      // does other have a . at the end?
+      if(other.find_last_of('.') == (other.size() - 1))
+        return other == qname;
+      // no, add it and retry
+      return IsName(other + ".");
+    }
+
+    std::string
+    Question::Name() const
+    {
+      return qname.substr(0, qname.find_last_of('.'));
+    }
+
+    bool
+    Question::HasTLD(const std::string& tld) const
+    {
+      return qname.find(tld) != std::string::npos
+          && qname.rfind(tld) == (qname.size() - tld.size()) - 1;
+    }
+
     std::ostream&
     Question::print(std::ostream& stream, int level, int spaces) const
     {

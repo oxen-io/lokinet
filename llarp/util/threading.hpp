@@ -82,6 +82,9 @@ namespace llarp
 
     using Barrier = absl::Barrier;
 
+    void
+    SetThreadName(const std::string& name);
+
   }  // namespace util
 }  // namespace llarp
 

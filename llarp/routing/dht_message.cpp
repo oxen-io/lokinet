@@ -1,4 +1,4 @@
-#include <messages/dht.hpp>
+#include <routing/dht_message.hpp>
 
 #include <router/abstractrouter.hpp>
 #include <routing/handler.hpp>
@@ -7,10 +7,6 @@ namespace llarp
 {
   namespace routing
   {
-    DHTMessage::~DHTMessage()
-    {
-    }
-
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
@@ -20,11 +16,11 @@ namespace llarp
       {
         return llarp::dht::DecodeMesssageList(from, val, M, true);
       }
-      else if(key == "S")
+      if(key == "S")
       {
         return bencode_read_integer(val, &S);
       }
-      else if(key == "V")
+      if(key == "V")
       {
         return bencode_read_integer(val, &V);
       }
@@ -63,6 +59,5 @@ namespace llarp
       }
       return true;
     }
-
   }  // namespace routing
 }  // namespace llarp

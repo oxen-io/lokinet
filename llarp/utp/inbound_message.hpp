@@ -6,8 +6,7 @@
 #include <util/types.hpp>
 
 #include <utp_types.h>  // for uint32
-
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {
@@ -56,17 +55,6 @@ namespace llarp
       /// for accessing message buffer
       llarp_buffer_t buffer;
 
-      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
-      {
-      }
-
-      InboundMessage(const InboundMessage& other)
-          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
-      {
-        buffer.cur = buffer.base + (other.buffer.cur - other.buffer.base);
-        buffer.sz  = other.buffer.sz;
-      }
-
       /// return true if this inbound message can be removed due to expiration
       bool
       IsExpired(llarp_time_t now) const;
@@ -77,6 +65,15 @@ namespace llarp
       /// return true on success
       bool
       AppendData(const byte_t* ptr, uint16_t sz);
+
+      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
+      {
+      }
+
+      InboundMessage(const InboundMessage& other)
+          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
+      {
+      }
     };
 
     inline bool
@@ -84,6 +81,7 @@ namespace llarp
     {
       return lhs.buffer.base == rhs.buffer.base;
     }
+
   }  // namespace utp
 
 }  // namespace llarp

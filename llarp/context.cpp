@@ -1,17 +1,19 @@
 #include <llarp.hpp>
 #include <llarp.h>
 
-#include <config.hpp>
+#include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <crypto/crypto_noop.hpp>
 #include <dht/context.hpp>
-#include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
 #include <metrics/metrictank_publisher.hpp>
-#include <metrics/publishers.hpp>
+#include <metrics/json_publisher.hpp>
+#include <metrics/stream_publisher.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
+#include <util/memfn.hpp>
 #include <util/metrics.hpp>
 #include <util/scheduler.hpp>
 
@@ -50,13 +52,39 @@ namespace llarp
       llarp::LogError("failed to load config file ", configfile);
       return false;
     }
-    using namespace std::placeholders;
-    config->visit(std::bind(&Context::iter_config, this, _1, _2, _3));
 
-    if(!disableMetrics)
+    // System config
+    if(!config->system.pidfile.empty())
     {
-      setupMetrics();
-      if(!disableMetricLogs)
+      SetPIDFile(config->system.pidfile);
+    }
+
+    // Router config
+    if(!singleThreaded && config->router.workerThreads() > 0 && !worker)
+    {
+      worker.reset(llarp_init_threadpool(config->router.workerThreads(),
+                                         "llarp-worker"));
+    }
+
+    if(singleThreaded)
+    {
+      num_nethreads = 0;
+    }
+    else
+    {
+      num_nethreads = config->router.numNetThreads();
+    }
+
+    nodedb_dir = config->netdb.nodedbDir();
+
+    if(!config->metrics.disableMetrics)
+    {
+      auto &metricsConfig = config->metrics;
+      auto &tags          = metricsConfig.metricTags;
+      tags["netid"]       = config->router.netId();
+      tags["nickname"]    = config->router.nickname();
+      setupMetrics(metricsConfig);
+      if(!config->metrics.disableMetricLogs)
       {
         m_metricsManager->instance()->addGlobalPublisher(
             std::make_shared< metrics::StreamPublisher >(std::cerr));
@@ -66,69 +94,7 @@ namespace llarp
   }
 
   void
-  Context::iter_config(const char *section, const char *key, const char *val)
-  {
-    if(!strcmp(section, "system"))
-    {
-      if(!strcmp(key, "pidfile"))
-      {
-        SetPIDFile(val);
-      }
-    }
-    if(!strcmp(section, "metrics"))
-    {
-      if(!strcmp(key, "disable-metrics"))
-      {
-        disableMetrics = true;
-      }
-      else if(!strcmp(key, "disable-metrics-log"))
-      {
-        disableMetricLogs = true;
-      }
-      else if(!strcmp(key, "json-metrics-path"))
-      {
-        jsonMetricsPath = val;
-      }
-      else if(!strcmp(key, "metric-tank-host"))
-      {
-        metricTankHost = val;
-      }
-      else
-      {
-        // consume everything else as a metric tag
-        metricTags[key] = val;
-      }
-    }
-    if(!strcmp(section, "router"))
-    {
-      if(!strcmp(key, "worker-threads") && !singleThreaded)
-      {
-        int workers = atoi(val);
-        if(workers > 0 && worker == nullptr)
-        {
-          worker.reset(llarp_init_threadpool(workers, "llarp-worker"));
-        }
-      }
-      else if(!strcmp(key, "net-threads"))
-      {
-        num_nethreads = atoi(val);
-        if(num_nethreads <= 0)
-          num_nethreads = 1;
-        if(singleThreaded)
-          num_nethreads = 0;
-      }
-    }
-    if(!strcmp(section, "netdb"))
-    {
-      if(!strcmp(key, "dir"))
-      {
-        nodedb_dir = val;
-      }
-    }
-  }
-
-  void
-  Context::setupMetrics()
+  Context::setupMetrics(const MetricsConfig &metricsConfig)
   {
     if(!m_scheduler)
     {
@@ -144,15 +110,15 @@ namespace llarp
           *m_scheduler, m_metricsManager->instance());
     }
 
-    if(!jsonMetricsPath.native().empty())
+    if(!metricsConfig.jsonMetricsPath.native().empty())
     {
       m_metricsManager->instance()->addGlobalPublisher(
           std::make_shared< metrics::JsonPublisher >(
               std::bind(&metrics::JsonPublisher::directoryPublisher,
-                        std::placeholders::_1, jsonMetricsPath)));
+                        std::placeholders::_1, metricsConfig.jsonMetricsPath)));
     }
 
-    if(!metricTankHost.empty())
+    if(!metricsConfig.metricTankHost.empty())
     {
       if(std::getenv("LOKINET_ENABLE_METRIC_TANK"))
       {
@@ -163,9 +129,9 @@ __        ___    ____  _   _ ___ _   _  ____
   \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
    \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
 
-This Lokinet session is not private
+This Lokinet session is not private!!
 
-Sending connection metrics to metrictank
+Sending connection metrics to metrictank!!
 __        ___    ____  _   _ ___ _   _  ____
 \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
  \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
@@ -177,11 +143,11 @@ __        ___    ____  _   _ ___ _   _  ____
         std::cerr << WARNING << '\n';
 
         std::pair< std::string, std::string > split =
-            absl::StrSplit(metricTankHost, ':');
+            absl::StrSplit(metricsConfig.metricTankHost, ':');
 
         m_metricsManager->instance()->addGlobalPublisher(
             std::make_shared< metrics::MetricTankPublisher >(
-                metricTags, split.first, stoi(split.second)));
+                metricsConfig.metricTags, split.first, stoi(split.second)));
       }
       else
       {
@@ -204,9 +170,7 @@ __        ___    ____  _   _ ___ _   _  ____
   int
   Context::LoadDatabase()
   {
-    crypto = std::make_unique< sodium::CryptoLibSodium >();
-    nodedb =
-        std::make_unique< llarp_nodedb >(crypto.get(), router->diskworker());
+    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -226,12 +190,6 @@ __        ___    ____  _   _ ___ _   _  ____
     return 1;
   }
 
-  int
-  Context::IterateDatabase(llarp_nodedb_iter &i)
-  {
-    return nodedb->iterate_all(i);
-  }
-
   bool
   Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
   {
@@ -249,12 +207,11 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   int
-  Context::Setup()
+  Context::Setup(bool debug)
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
-
     // ensure worker thread pool
     if(!worker && !singleThreaded)
       worker.reset(llarp_init_threadpool(2, "llarp-worker"));
@@ -266,12 +223,41 @@ __        ___    ____  _   _ ___ _   _  ____
     // ensure netio thread
     if(singleThreaded)
     {
-      logic = std::make_unique< Logic >(worker.get());
+      logic = std::make_shared< Logic >(worker.get());
     }
     else
-      logic = std::make_unique< Logic >();
+      logic = std::make_shared< Logic >();
 
-    router = std::make_unique< Router >(worker.get(), mainloop, logic.get());
+    if(debug)
+    {
+      static std::string WARNING = R"(
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+This Lokinet session is not private!!
+
+Sending traffic unencrypted!!
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+        )";
+
+      std::cerr << WARNING << '\n';
+      crypto = std::make_unique< NoOpCrypto >();
+    }
+    else
+    {
+      crypto = std::make_unique< sodium::CryptoLibSodium >();
+    }
+    cryptoManager = std::make_unique< CryptoManager >(crypto.get());
+
+    router = std::make_unique< Router >(worker.get(), mainloop, logic);
     if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
@@ -302,7 +288,7 @@ __        ___    ____  _   _ ___ _   _  ____
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic.get());
+    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic);
     // waits for router graceful stop
     return 0;
   }
@@ -316,8 +302,8 @@ __        ___    ____  _   _ ___ _   _  ____
       f << std::to_string(getpid());
       return f.good();
     }
-    else
-      return true;
+
+    return true;
   }
 
   void
@@ -349,8 +335,16 @@ __        ___    ____  _   _ ___ _   _  ____
       llarp::LogInfo("SIGHUP");
       if(router)
       {
+        router->hiddenServiceContext().ForEachService(
+            [](const std::string &name,
+               const llarp::service::Endpoint_ptr &ep) -> bool {
+              ep->ResetInternalState();
+              llarp::LogInfo("Reset internal state for ", name);
+              return true;
+            });
+        router->PumpLL();
         Config newconfig;
-        if(newconfig.Load(configfile.c_str()))
+        if(!newconfig.Load(configfile.c_str()))
         {
           llarp::LogError("failed to load config file ", configfile);
           return;
@@ -386,7 +380,7 @@ __        ___    ____  _   _ ___ _   _  ____
     {
       if(logic)
         logic->stop();
-      llarp_ev_loop_stop(mainloop.get());
+      llarp_ev_loop_stop(mainloop);
       Close();
     }
   }
@@ -415,7 +409,7 @@ __        ___    ____  _   _ ___ _   _  ____
     router.release();
 
     llarp::LogDebug("free logic");
-    logic.release();
+    logic.reset();
 
     RemovePIDFile();
   }
@@ -464,22 +458,10 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
-  void
-  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int rfd, int wfd)
-  {
-    llarp::handlers::TunEndpoint *tun =
-        ptr->ctx->router->hiddenServiceContext().getFirstTun();
-    if(!tun)
-      return;
-    if(!tun->Promise)
-      return;
-    tun->Promise->Set({rfd, wfd});
-  }
-
   int
-  llarp_main_setup(struct llarp_main *ptr)
+  llarp_main_setup(struct llarp_main *ptr, bool debug)
   {
-    return ptr->ctx->Setup();
+    return ptr->ctx->Setup(debug);
   }
 
   int
@@ -538,113 +520,10 @@ extern "C"
     return ptr->ctx->LoadDatabase();
   }
 
-  int
-  llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
-  {
-    return ptr->ctx->IterateDatabase(i);
-  }
-
-  bool
-  llarp_main_putDatabase(struct llarp_main *ptr, llarp::RouterContact &rc)
-  {
-    return ptr->ctx->PutDatabase(rc);
-  }
-
-  llarp::RouterContact *
-  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
-  {
-    return ptr->ctx->GetDatabase(pk);
-  }
-
-  llarp::RouterContact *
-  llarp_main_getLocalRC(__attribute__((unused)) struct llarp_main *ptr)
-  {
-    return nullptr;
-  }
-
-  void
-  llarp_main_checkOnline(void *u, __attribute__((unused)) uint64_t orig,
-                         uint64_t left)
-  {
-    // llarp::Info("checkOnline - check ", left);
-    if(left)
-      return;
-    struct check_online_request *request =
-        static_cast< struct check_online_request * >(u);
-    // llarp::Debug("checkOnline - running");
-    // llarp::Info("checkOnline - DHT nodes ",
-    // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
-    request->online = false;
-    request->nodes =
-        request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size();
-    if(request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size())
-    {
-      // llarp::Info("checkOnline - Going to say we're online");
-      request->online = true;
-    }
-    request->hook(request);
-    // reschedue our self
-    llarp_main_queryDHT(request);
-  }
-
-  void
-  llarp_main_queryDHT_online(struct check_online_request *request)
-  {
-    // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
-    // "offline");
-    if(request->online && !request->first)
-    {
-      request->first = true;
-      llarp::LogInfo("llarp_main_queryDHT_online - We're online");
-      llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-      llarp_dht_lookup_router(request->ptr->ctx->router->dht(), request->job);
-    }
-  }
-
-  void
-  llarp_main_queryDHT(struct check_online_request *request)
-  {
-    // llarp::Info("llarp_main_queryDHT - setting up timer");
-    request->hook = &llarp_main_queryDHT_online;
-    request->ptr->ctx->router->logic()->call_later(
-        {1000, request, &llarp_main_checkOnline});
-    // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
-  }
-
-  bool
-  main_router_prefetch(struct llarp_main *ptr,
-                       const llarp::service::Address &addr)
-  {
-    auto &endpoint = ptr->ctx->router->hiddenServiceContext();
-    return endpoint.Prefetch(addr);
-  }
-
-  llarp::handlers::TunEndpoint *
-  main_router_getFirstTunEndpoint(struct llarp_main *ptr)
-  {
-    if(ptr && ptr->ctx && ptr->ctx->router)
-      return ptr->ctx->router->hiddenServiceContext().getFirstTun();
-    return nullptr;
-  }
-
-  bool
-  main_router_endpoint_iterator(
-      struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)
-  {
-    return ptr->ctx->router->hiddenServiceContext().iterate(i);
-  }
-
-  llarp_tun_io *
-  main_router_getRange(struct llarp_main *ptr)
-  {
-    return ptr->ctx->router->hiddenServiceContext().getRange();
-  }
-
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {
-
-	// clang-format off
+    // clang-format off
     cxxopts::Options options(
 		"lokinet",
 		"Lokinet is a private, decentralized and IP based overlay network for the internet"
@@ -652,9 +531,9 @@ extern "C"
     options.add_options()
 		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
 		("o,logLevel", "logging level");
-	// clang-format on
+    // clang-format on
 
-    auto result = options.parse(argc, argv);
+    auto result          = options.parse(argc, argv);
     std::string logLevel = result["logLevel"].as< std::string >();
 
     if(logLevel == "debug")
@@ -674,9 +553,10 @@ extern "C"
       cSetLogLevel(eLogError);
     }
 
-	// this isn't thread safe, but reconfiguring during run is likely unsafe either way
-	static std::string confname = result["config"].as< std::string >();
+    // this isn't thread safe, but reconfiguring during run is likely unsafe
+    // either way
+    static std::string confname = result["config"].as< std::string >();
 
-	return confname.c_str();
+    return confname.c_str();
   }
 }

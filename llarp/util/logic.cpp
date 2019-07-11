@@ -30,7 +30,7 @@ namespace llarp
   Logic::queue_job(struct llarp_thread_job job)
   {
     if(job.user && job.work)
-      llarp_threadpool_queue_job(this->thread, {job.user, job.work});
+      queue_func(std::bind(job.work, job.user));
   }
 
   void
@@ -55,10 +55,29 @@ namespace llarp
     llarp_timer_run(this->timer, this->thread);
   }
 
-  void
+  bool
   Logic::queue_func(std::function< void(void) > f)
   {
-    this->thread->QueueFunc(f);
+    size_t left = 1000;
+    while(!this->thread->QueueFunc(f))
+    {
+      // our queue is full
+      if(this->can_flush())
+      {
+        // we can flush the queue here so let's do it
+        this->tick(llarp::time_now_ms());
+      }
+      else
+      {
+        // wait a bit and retry queuing because we are not in the same thread as
+        // we are calling the jobs in
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      left--;
+      if(left == 0)  // too many retries
+        return false;
+    }
+    return true;
   }
 
   uint32_t
@@ -81,6 +100,12 @@ namespace llarp
   Logic::remove_call(uint32_t id)
   {
     llarp_timer_remove_job(this->timer, id);
+  }
+
+  bool
+  Logic::can_flush() const
+  {
+    return ourPID && ourPID == ::getpid();
   }
 
 }  // namespace llarp

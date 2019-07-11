@@ -4,11 +4,11 @@ namespace llarp
 {
   namespace iwp
   {
-    LinkLayer::LinkLayer(Crypto* c, const SecretKey& enckey, GetRCFunc getrc,
+    LinkLayer::LinkLayer(const SecretKey& enckey, GetRCFunc getrc,
                          LinkMessageHandler h, SessionEstablishedHandler est,
                          SessionRenegotiateHandler reneg, SignBufferFunc sign,
                          TimeoutHandler t, SessionClosedHandler closed)
-        : ILinkLayer(enckey, getrc, h, sign, est, reneg, t, closed), crypto(c)
+        : ILinkLayer(enckey, getrc, h, sign, est, reneg, t, closed)
     {
       m_FlowCookie.Randomize();
     }
@@ -33,7 +33,7 @@ namespace llarp
     LinkLayer::KeyGen(SecretKey& k)
     {
       k.Zero();
-      crypto->encryption_keygen(k);
+      CryptoManager::instance()->encryption_keygen(k);
       return !k.IsZero();
     }
 
@@ -44,11 +44,10 @@ namespace llarp
     }
 
     bool
-    LinkLayer::Start(Logic* l)
+    LinkLayer::Start(std::shared_ptr< Logic > l)
     {
       if(!ILinkLayer::Start(l))
         return false;
-      /// TODO: change me to true when done
       return false;
     }
 
@@ -68,7 +67,8 @@ namespace llarp
       {
         case eOCMD_ObtainFlowID:
           sigbuf.sz -= m_OuterMsg.Zsig.size();
-          if(!crypto->verify(m_OuterMsg.pubkey, sigbuf, m_OuterMsg.Zsig))
+          if(!CryptoManager::instance()->verify(m_OuterMsg.pubkey, sigbuf,
+                                                m_OuterMsg.Zsig))
           {
             LogError("failed to verify signature on '",
                      (char)m_OuterMsg.command, "' message from ", from);
@@ -132,7 +132,7 @@ namespace llarp
                   tmp.begin() + 64 + pk.size());
       llarp_buffer_t buf(tmp);
       ShortHash h;
-      if(!crypto->shorthash(h, buf))
+      if(!CryptoManager::instance()->shorthash(h, buf))
         return false;
       std::copy_n(h.begin(), flow.size(), flow.begin());
       return true;

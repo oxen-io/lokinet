@@ -3,6 +3,7 @@
 
 #include <util/buffer.hpp>
 #include <util/bencode.h>
+#include <util/fs.hpp>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 
@@ -12,6 +13,10 @@
 
 namespace llarp
 {
+  template < typename List_t >
+  bool
+  BEncodeReadList(List_t& result, llarp_buffer_t* buf);
+
   inline bool
   BEncodeWriteDictMsgType(llarp_buffer_t* buf, const char* k, const char* t)
   {
@@ -140,28 +145,6 @@ namespace llarp
     return bencode_end(buf);
   }
 
-  template < typename Array >
-  bool
-  BEncodeReadArray(Array& array, llarp_buffer_t* buf)
-  {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    size_t idx = 0;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      if(idx >= array.size())
-        return false;
-      if(!array[idx++].BDecode(buf))
-        return false;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
-  }
-
   template < typename Iter >
   bool
   BEncodeWriteList(Iter itr, Iter end, llarp_buffer_t* buf)
@@ -176,44 +159,115 @@ namespace llarp
     return bencode_end(buf);
   }
 
+  template < typename Sink >
+  bool
+  bencode_read_dict(Sink&& sink, llarp_buffer_t* buffer)
+  {
+    if(buffer->size_left() < 2)  // minimum case is 'de'
+      return false;
+    if(*buffer->cur != 'd')  // ensure is a dictionary
+      return false;
+    buffer->cur++;
+    while(buffer->size_left() && *buffer->cur != 'e')
+    {
+      llarp_buffer_t strbuf;  // temporary buffer for current element
+      if(bencode_read_string(buffer, &strbuf))
+      {
+        if(!sink(buffer, &strbuf))  // check for early abort
+          return false;
+      }
+      else
+        return false;
+    }
+
+    if(*buffer->cur != 'e')
+    {
+      llarp::LogWarn("reading dict not ending on 'e'");
+      // make sure we're at dictionary end
+      return false;
+    }
+    buffer->cur++;
+    return sink(buffer, nullptr);
+  }
+
+  template < typename Sink >
+  bool
+  bencode_decode_dict(Sink&& sink, llarp_buffer_t* buff)
+  {
+    return bencode_read_dict(
+        [&](llarp_buffer_t* buffer, llarp_buffer_t* key) {
+          if(key == nullptr)
+            return true;
+          if(sink.DecodeKey(*key, buffer))
+            return true;
+          llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *key->cur,
+                            "' for entry in dict");
+
+          return false;
+        },
+        buff);
+  }
+
+  template < typename Sink >
+  bool
+  bencode_read_list(Sink&& sink, llarp_buffer_t* buffer)
+  {
+    if(buffer->size_left() < 2)  // minimum case is 'le'
+      return false;
+    if(*buffer->cur != 'l')  // ensure is a list
+    {
+      llarp::LogWarn("bencode::bencode_read_list - expecting list got ",
+                     *buffer->cur);
+      return false;
+    }
+
+    buffer->cur++;
+    while(buffer->size_left() && *buffer->cur != 'e')
+    {
+      if(!sink(buffer, true))  // check for early abort
+        return false;
+    }
+    if(*buffer->cur != 'e')  // make sure we're at a list end
+      return false;
+    buffer->cur++;
+    return sink(buffer, false);
+  }
+
+  template < typename Array >
+  bool
+  BEncodeReadArray(Array& array, llarp_buffer_t* buf)
+  {
+    size_t idx = 0;
+    return bencode_read_list(
+        [&array, &idx](llarp_buffer_t* buffer, bool has) {
+          if(has)
+          {
+            if(idx >= array.size())
+              return false;
+            if(!array[idx++].BDecode(buffer))
+              return false;
+          }
+          return true;
+        },
+        buf);
+  }
+
   template < typename List_t >
   bool
   BEncodeReadList(List_t& result, llarp_buffer_t* buf)
   {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      if(!result.emplace(result.end())->BDecode(buf))
-        return false;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
-  }
-
-  template < typename T >
-  bool
-  BEncodeReadSet(std::set< T >& result, llarp_buffer_t* buf)
-  {
-    if(*buf->cur != 'l')  // ensure is a list
-      return false;
-
-    buf->cur++;
-    while(buf->size_left() && *buf->cur != 'e')
-    {
-      T item;
-      if(!item.BDecode(buf))
-        return false;
-      return result.insert(item).second;
-    }
-    if(*buf->cur != 'e')  // make sure we're at a list end
-      return false;
-    buf->cur++;
-    return true;
+    return bencode_read_list(
+        [&result](llarp_buffer_t* buffer, bool has) {
+          if(has)
+          {
+            if(!result.emplace(result.end())->BDecode(buffer))
+            {
+              return false;
+            }
+          }
+          return true;
+        },
+        buf);
   }
 
   template < typename List_t >
@@ -224,65 +278,17 @@ namespace llarp
         && BEncodeWriteList(list.begin(), list.end(), buf);
   }
 
-  /// bencode serializable message
-  struct IBEncodeMessage
+  template < size_t bufsz, typename T >
+  void
+  Dump(const T& val)
   {
-    virtual ~IBEncodeMessage(){};
-
-    IBEncodeMessage(uint64_t v = LLARP_PROTO_VERSION)
+    std::array< byte_t, bufsz > tmp;
+    llarp_buffer_t buf(tmp);
+    if(val.BEncode(&buf))
     {
-      version = v;
+      llarp::DumpBuffer< decltype(buf), 128 >(buf);
     }
-
-    virtual bool
-    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
-
-    virtual bool
-    BEncode(llarp_buffer_t* buf) const = 0;
-
-    virtual bool
-    BDecode(llarp_buffer_t* buf)
-    {
-      dict_reader r;
-      r.user   = this;
-      r.on_key = &OnKey;
-      return bencode_read_dict(buf, &r);
-    }
-
-    // TODO: check for shadowed values elsewhere
-    uint64_t version = 0;
-
-    static bool
-    OnKey(dict_reader* r, llarp_buffer_t* k)
-    {
-      return static_cast< IBEncodeMessage* >(r->user)->HandleKey(k, r->buffer);
-    }
-
-    bool
-    HandleKey(llarp_buffer_t* k, llarp_buffer_t* val)
-    {
-      if(k == nullptr)
-        return true;
-      if(DecodeKey(*k, val))
-        return true;
-      llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *k->cur,
-                        "' for entry in dict");
-
-      return false;
-    }
-
-    template < size_t bufsz, size_t align = 128 >
-    void
-    Dump() const
-    {
-      std::array< byte_t, bufsz > tmp;
-      llarp_buffer_t buf(tmp);
-      if(BEncode(&buf))
-      {
-        llarp::DumpBuffer< decltype(buf), align >(buf);
-      }
-    }
-  };
+  }
 
   /// read entire file and decode its contents into t
   template < typename T >
@@ -312,6 +318,34 @@ namespace llarp
     return result;
   }
 
+  /// read entire file and decode its contents into t
+  template < typename T >
+  bool
+  BDecodeReadFromFile(const char* fpath, T& t)
+  {
+    std::vector< byte_t > ptr;
+    {
+      std::ifstream f;
+      f.open(fpath);
+      if(!f.is_open())
+      {
+        return false;
+      }
+      f.seekg(0, std::ios::end);
+      const std::streampos sz = f.tellg();
+      f.seekg(0, std::ios::beg);
+      ptr.resize(sz);
+      f.read((char*)ptr.data(), sz);
+    }
+    llarp_buffer_t buf(ptr);
+    auto result = bencode_decode_dict(t, &buf);
+    if(!result)
+    {
+      DumpBuffer(buf);
+    }
+    return result;
+  }
+
   /// bencode and write to file
   template < typename T, size_t bufsz >
   bool
@@ -323,8 +357,12 @@ namespace llarp
       return false;
     buf.sz = buf.cur - buf.base;
     {
-      std::ofstream f;
-      f.open(fpath);
+      const fs::path path = std::string(fpath);
+      auto optional_f =
+          llarp::util::OpenFileStream< std::ofstream >(path, std::ios::binary);
+      if(!optional_f)
+        return false;
+      auto& f = optional_f.value();
       if(!f.is_open())
         return false;
       f.write((char*)buf.base, buf.sz);

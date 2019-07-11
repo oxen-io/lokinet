@@ -1,6 +1,6 @@
 #include <utp/inbound_message.hpp>
 
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {
@@ -17,10 +17,11 @@ namespace llarp
     {
       if(buffer.size_left() < sz)
         return false;
-      memcpy(buffer.cur, ptr, sz);
+      std::copy_n(ptr, sz, buffer.cur);
       buffer.cur += sz;
       return true;
     }
+
   }  // namespace utp
 
 }  // namespace llarp

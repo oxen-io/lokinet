@@ -1,8 +1,9 @@
 #include <service/sendcontext.hpp>
 
-#include <messages/path_transfer.hpp>
-#include <service/endpoint.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_transfer_message.hpp>
+#include <service/endpoint.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -22,39 +23,43 @@ namespace llarp
     }
 
     bool
-    SendContext::Send(const ProtocolFrame& msg)
+    SendContext::Send(const ProtocolFrame& msg, path::Path_ptr path)
     {
-      auto path = m_PathSet->GetByEndpointWithID(remoteIntro.router, msg.F);
-      if(path)
+      auto transfer = std::make_shared< const routing::PathTransferMessage >(
+          msg, remoteIntro.pathID);
       {
-        const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(path->SendRoutingMessage(transfer, m_Endpoint->Router()))
+        util::Lock lock(&m_SendQueueMutex);
+        m_SendQueue.emplace_back(transfer, path);
+      }
+      return true;
+    }
+
+    void
+    SendContext::FlushUpstream()
+    {
+      auto r = m_Endpoint->Router();
+      util::Lock lock(&m_SendQueueMutex);
+      for(const auto& item : m_SendQueue)
+      {
+        if(item.second->SendRoutingMessage(*item.first, r))
         {
-          LogInfo("sent intro to ", remoteIntro.pathID, " on ",
-                  remoteIntro.router, " seqno=", sequenceNo);
-          lastGoodSend = m_Endpoint->Now();
-          ++sequenceNo;
-          return true;
+          lastGoodSend = r->Now();
         }
         else
           LogError("Failed to send frame on path");
       }
-      else
-        LogError("cannot send because we have no path to ", remoteIntro.router);
-      return false;
+      m_SendQueue.clear();
     }
 
     /// send on an established convo tag
     void
     SendContext::EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t)
     {
-      auto crypto = m_Endpoint->Router()->crypto();
       SharedSecret shared;
-      routing::PathTransferMessage msg;
-      ProtocolFrame& f = msg.T;
+      ProtocolFrame f;
       f.N.Randomize();
       f.T = currentConvoTag;
-      f.S = m_Endpoint->GetSeqNoForConvo(f.T);
+      f.S = ++sequenceNo;
 
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
@@ -72,42 +77,28 @@ namespace llarp
         return;
       }
 
-      if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
-      {
-        ProtocolMessage m;
-        m_DataHandler->PutIntroFor(f.T, remoteIntro);
-        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-        m.proto      = t;
-        m.introReply = path->intro;
-        f.F          = m.introReply.pathID;
-        m.sender     = m_Endpoint->GetIdentity().pub;
-        m.tag        = f.T;
-        m.PutBuffer(payload);
-        if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->GetIdentity()))
-        {
-          LogError("failed to sign");
-          return;
-        }
-      }
-      else
+      if(!m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         LogError("No cached session key");
         return;
       }
 
-      msg.P = remoteIntro.pathID;
-      msg.Y.Randomize();
-      if(path->SendRoutingMessage(msg, m_Endpoint->Router()))
+      ProtocolMessage m;
+      m_DataHandler->PutIntroFor(f.T, remoteIntro);
+      m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+      m.proto      = t;
+      m.seqno      = m_Endpoint->GetSeqNoForConvo(f.T);
+      m.introReply = path->intro;
+      f.F          = m.introReply.pathID;
+      m.sender     = m_Endpoint->GetIdentity().pub;
+      m.tag        = f.T;
+      m.PutBuffer(payload);
+      if(!f.EncryptAndSign(m, shared, m_Endpoint->GetIdentity()))
       {
-        LogDebug("sent message via ", remoteIntro.pathID, " on ",
-                 remoteIntro.router);
-        ++sequenceNo;
-        lastGoodSend = now;
+        LogError("failed to sign");
+        return;
       }
-      else
-      {
-        LogWarn("Failed to send routing message for data");
-      }
+      Send(f, path);
     }
 
     void
@@ -117,12 +108,12 @@ namespace llarp
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
-        if(!MarkCurrentIntroBad(now))
+        if(!ShiftIntroduction())
         {
           LogWarn("no good path yet, your message may drop");
         }
       }
-      if(sequenceNo)
+      if(lastGoodSend)
       {
         EncryptAndSendTo(data, protocol);
       }

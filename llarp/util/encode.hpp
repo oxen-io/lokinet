@@ -42,9 +42,9 @@ namespace llarp
   Base32Decode(const Stack& stack, V& value)
   {
     int tmp = 0, bits = 0;
-    size_t ret    = 0;
-    size_t len    = Base32DecodeSize(value.size());
-    size_t outLen = value.size();
+    size_t idx          = 0;
+    const size_t len    = Base32DecodeSize(value.size());
+    const size_t outLen = value.size();
     for(size_t i = 0; i < len; i++)
     {
       char ch = stack[i];
@@ -57,21 +57,21 @@ namespace llarp
       }
       else
       {
-        return ret == outLen;
+        return idx == outLen;
       }
       tmp |= ch;
       bits += 5;
       if(bits >= 8)
       {
-        if(ret >= outLen)
+        if(idx >= outLen)
           return false;
-        value[ret] = tmp >> (bits - 8);
+        value[idx] = tmp >> (bits - 8);
         bits -= 8;
-        ret++;
+        idx++;
       }
       tmp <<= 5;
     }
-    return true;
+    return idx == outLen;
   }
 
   /// adapted from i2pd

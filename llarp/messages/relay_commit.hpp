@@ -41,19 +41,22 @@ namespace llarp
     operator==(const LR_CommitRecord &other) const;
 
    private:
-    static bool
-    OnKey(dict_reader *r, llarp_buffer_t *buf);
+    bool
+    OnKey(llarp_buffer_t *buffer, llarp_buffer_t *key);
   };
 
   struct LR_CommitMessage : public ILinkMessage
   {
     std::array< EncryptedFrame, 8 > frames;
 
-    LR_CommitMessage() : ILinkMessage()
+    LR_CommitMessage(const std::array< EncryptedFrame, 8 > &_frames)
+        : ILinkMessage(), frames(_frames)
     {
     }
 
-    ~LR_CommitMessage();
+    LR_CommitMessage() = default;
+
+    ~LR_CommitMessage() = default;
 
     void
     Clear() override;

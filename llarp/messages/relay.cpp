@@ -1,19 +1,11 @@
 #include <messages/relay.hpp>
 
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/bencode.hpp>
 
 namespace llarp
 {
-  RelayUpstreamMessage::RelayUpstreamMessage() : ILinkMessage()
-  {
-  }
-
-  RelayUpstreamMessage::~RelayUpstreamMessage()
-  {
-  }
-
   void
   RelayUpstreamMessage::Clear()
   {
@@ -67,14 +59,6 @@ namespace llarp
       return path->HandleUpstream(llarp_buffer_t(X), Y, r);
     }
     return false;
-  }
-
-  RelayDownstreamMessage::RelayDownstreamMessage() : ILinkMessage()
-  {
-  }
-
-  RelayDownstreamMessage::~RelayDownstreamMessage()
-  {
   }
 
   void

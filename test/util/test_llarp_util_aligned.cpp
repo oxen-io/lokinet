@@ -222,4 +222,4 @@ TYPED_TEST(AlignedBufferTest, TestHash)
   EXPECT_FALSE(m.emplace(k_copy, 2).second);
   EXPECT_FALSE(m[k_copy] == 2);
   EXPECT_TRUE(m[k_copy] == 1);
-};
+}

@@ -17,180 +17,168 @@
 #include <stdlib.h>  // for itoa
 #include <iostream>
 #include <util/endian.hpp>
+#include <vector>
 
 namespace llarp
 {
-  // clang-format off
-
-  struct huint32_t
+  template < typename UInt_t >
+  struct huint_t
   {
-    uint32_t h;
+    UInt_t h;
 
-    constexpr huint32_t
-    operator &(huint32_t x) const { return huint32_t{uint32_t(h & x.h)}; }
-    constexpr huint32_t
-    operator |(huint32_t x) const { return huint32_t{uint32_t(h | x.h)}; }
-    constexpr huint32_t
-    operator ^(huint32_t x) const { return huint32_t{uint32_t(h ^ x.h)}; }
-
-    constexpr huint32_t
-    operator ~() const { return huint32_t{uint32_t(~h)}; }
-
-    inline huint32_t operator ++() { ++h; return *this; }
-    inline huint32_t operator --() { --h; return *this; }
-
-    constexpr bool operator <(huint32_t x) const { return h < x.h; }
-    constexpr bool operator ==(huint32_t x) const { return h == x.h; }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const huint32_t& a)
+    constexpr huint_t operator&(huint_t x) const
     {
-      uint32_t n = htonl(a.h);
-      char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
-      {
-        out << tmp;
-      }
-      return out;
+      return huint_t{UInt_t(h & x.h)};
     }
 
-    template<typename Container>
-    void SIIT(Container & c)
+    constexpr huint_t
+    operator|(huint_t x) const
     {
-      c.resize(16);
-      std::fill(c.begin(), c.end(), 0);
-      htobe32buf(c.data() + 12, h);
-      c[11] = 0xff;
-      c[10] = 0xff;
+      return huint_t{UInt_t(h | x.h)};
     }
-    
-    std::string ToString() const
+
+    constexpr huint_t
+    operator^(huint_t x) const
     {
-      uint32_t n = htonl(h);
-      char tmp[INET_ADDRSTRLEN]   = {0};
-      if(!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
-        return "";
-      return tmp;
+      return huint_t{UInt_t(h ^ x.h)};
     }
-    
-    struct Hash
+
+    constexpr huint_t
+    operator~() const
     {
-      inline size_t
-      operator ()(huint32_t x) const
-      {
-        return std::hash< uint32_t >{}(x.h);
-      }
-    };
-  };
+      return huint_t{UInt_t(~h)};
+    }
 
-  struct nuint32_t
-  {
-    uint32_t n;
-
-    constexpr nuint32_t
-    operator &(nuint32_t x) const { return nuint32_t{uint32_t(n & x.n)}; }
-    constexpr nuint32_t
-    operator |(nuint32_t x) const { return nuint32_t{uint32_t(n | x.n)}; }
-    constexpr nuint32_t
-    operator ^(nuint32_t x) const { return nuint32_t{uint32_t(n ^ x.n)}; }
-
-    constexpr nuint32_t
-    operator ~() const { return nuint32_t{uint32_t(~n)}; }
-
-    inline nuint32_t operator ++() { ++n; return *this; }
-    inline nuint32_t operator --() { --n; return *this; }
-
-    constexpr bool operator <(nuint32_t x) const { return n < x.n; }
-    constexpr bool operator ==(nuint32_t x) const { return n == x.n; }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const nuint32_t& a)
+    inline huint_t
+    operator++()
     {
-      char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&a.n, tmp, sizeof(tmp)))
-      {
-        out << tmp;
-      }
-      return out;
+      ++h;
+      return *this;
+    }
+
+    inline huint_t
+    operator--()
+    {
+      --h;
+      return *this;
+    }
+
+    constexpr bool
+    operator<(huint_t x) const
+    {
+      return h < x.h;
+    }
+
+    constexpr bool
+    operator==(huint_t x) const
+    {
+      return h == x.h;
     }
 
     struct Hash
     {
       inline size_t
-      operator ()(nuint32_t x) const
+      operator()(huint_t x) const
       {
-        return std::hash< uint32_t >{}(x.n);
+        return std::hash< UInt_t >{}(x.h);
       }
     };
-  };
 
-  struct huint16_t
-  {
-    uint16_t h;
+    using V6Container = std::vector< uint8_t >;
+    void
+    ToV6(V6Container& c);
 
-    constexpr huint16_t
-    operator &(huint16_t x) const { return huint16_t{uint16_t(h & x.h)}; }
-    constexpr huint16_t
-    operator |(huint16_t x) const { return huint16_t{uint16_t(h | x.h)}; }
-    constexpr huint16_t
-    operator ~() const { return huint16_t{uint16_t(~h)}; }
-
-    inline huint16_t operator ++() { ++h; return *this; }
-    inline huint16_t operator --() { --h; return *this; }
-
-    constexpr bool operator <(huint16_t x) const { return h < x.h; }
-    constexpr bool operator ==(huint16_t x) const { return h == x.h; }
+    std::string
+    ToString() const;
 
     friend std::ostream&
-    operator<<(std::ostream& out, const huint16_t& a)
+    operator<<(std::ostream& out, const huint_t& i)
     {
-      return out << a.h;
+      return out << i.ToString();
+    }
+  };
+
+  using huint32_t = huint_t< uint32_t >;
+  using huint16_t = huint_t< uint16_t >;
+
+  template < typename UInt_t >
+  struct nuint_t
+  {
+    UInt_t n;
+
+    constexpr nuint_t operator&(nuint_t x) const
+    {
+      return nuint_t{UInt_t(n & x.n)};
+    }
+
+    constexpr nuint_t
+    operator|(nuint_t x) const
+    {
+      return nuint_t{UInt_t(n | x.n)};
+    }
+
+    constexpr nuint_t
+    operator^(nuint_t x) const
+    {
+      return nuint_t{UInt_t(n ^ x.n)};
+    }
+
+    constexpr nuint_t
+    operator~() const
+    {
+      return nuint_t{UInt_t(~n)};
+    }
+
+    inline nuint_t
+    operator++()
+    {
+      ++n;
+      return *this;
+    }
+    inline nuint_t
+    operator--()
+    {
+      --n;
+      return *this;
+    }
+
+    constexpr bool
+    operator<(nuint_t x) const
+    {
+      return n < x.n;
+    }
+
+    constexpr bool
+    operator==(nuint_t x) const
+    {
+      return n == x.n;
     }
 
     struct Hash
     {
       inline size_t
-      operator ()(huint16_t x) const
+      operator()(nuint_t x) const
       {
-        return std::hash< uint16_t >{}(x.h);
+        return std::hash< UInt_t >{}(x.n);
       }
     };
-  };
 
-  struct nuint16_t
-  {
-    uint16_t n;
+    using V6Container = std::vector< uint8_t >;
+    void
+    ToV6(V6Container& c);
 
-    constexpr nuint16_t
-    operator &(nuint16_t x) const { return nuint16_t{uint16_t(n & x.n)}; }
-    constexpr nuint16_t
-    operator |(nuint16_t x) const { return nuint16_t{uint16_t(n | x.n)}; }
-    constexpr nuint16_t
-    operator ~() const { return nuint16_t{uint16_t(~n)}; }
-
-    inline nuint16_t operator ++() { ++n; return *this; }
-    inline nuint16_t operator --() { --n; return *this; }
-
-    constexpr bool operator <(nuint16_t x) const { return n < x.n; }
-    constexpr bool operator ==(nuint16_t x) const { return n == x.n; }
+    std::string
+    ToString() const;
 
     friend std::ostream&
-    operator<<(std::ostream& out, const nuint16_t& a)
+    operator<<(std::ostream& out, const nuint_t& i)
     {
-      return out << ntohs(a.n);
+      return out << i.ToString();
     }
-
-    struct Hash
-    {
-      inline size_t
-      operator ()(nuint16_t x) const
-      {
-        return std::hash< uint16_t >{}(x.n);
-      }
-    };
   };
 
-  // clang-format on
+  using nuint32_t = nuint_t< uint32_t >;
+  using nuint16_t = nuint_t< uint16_t >;
 
   static inline nuint32_t
   xhtonl(huint32_t x)

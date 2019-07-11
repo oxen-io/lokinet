@@ -1,10 +1,10 @@
 #ifndef LLARP_EXIT_SESSION_HPP
 #define LLARP_EXIT_SESSION_HPP
 
-#include <messages/exit.hpp>
-#include <messages/transfer_traffic.hpp>
+#include <exit/exit_messages.hpp>
 #include <net/ip.hpp>
 #include <path/pathbuilder.hpp>
+#include <routing/transfer_traffic_message.hpp>
 
 #include <deque>
 #include <queue>
@@ -15,19 +15,32 @@ namespace llarp
   {
     struct BaseSession;
 
-    using SessionReadyFunc = std::function< void(BaseSession*) >;
+    using BaseSession_ptr = std::shared_ptr< BaseSession >;
+
+    using SessionReadyFunc = std::function< void(BaseSession_ptr) >;
 
     /// a persisting exit session with an exit router
-    struct BaseSession : public llarp::path::Builder
+    struct BaseSession : public llarp::path::Builder,
+                         public std::enable_shared_from_this< BaseSession >
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
       static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
 
       BaseSession(const llarp::RouterID& exitRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,
-                  AbstractRouter* r, size_t numpaths, size_t hoplen);
+                  AbstractRouter* r, size_t numpaths, size_t hoplen,
+                  bool bundleRC);
 
       virtual ~BaseSession();
+
+      std::shared_ptr< path::PathSet >
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
+
+      void
+      BlacklistSnode(const RouterID snode);
 
       util::StatusObject
       ExtractStatus() const;
@@ -35,32 +48,41 @@ namespace llarp
       bool
       ShouldBundleRC() const override
       {
-        // TODO: make configurable
-        return false;
+        return m_BundleRC;
       }
 
+      virtual void
+      ResetInternalState() override;
+
+      bool UrgentBuild(llarp_time_t) const override;
+
       void
-      HandlePathDied(llarp::path::Path* p) override;
+      HandlePathDied(llarp::path::Path_ptr p) override;
 
       bool
-      CheckPathDead(path::Path* p, llarp_time_t dlt);
+      CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
       bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, llarp::path::PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop,
+                llarp::path::PathRole roles) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
       void
-      HandlePathBuilt(llarp::path::Path* p) override;
+      HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
       QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
 
-      /// flush upstream and downstream traffic
+      /// flush upstream to exit via paths
       bool
-      Flush();
+      FlushUpstream();
+
+      /// flush downstream to user via tun
+      void
+      FlushDownstream();
 
       path::PathRole
       GetRoles() const override
@@ -99,17 +121,19 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
 
       bool
-      HandleTrafficDrop(llarp::path::Path* p, const llarp::PathID_t& path,
+      HandleTrafficDrop(llarp::path::Path_ptr p, const llarp::PathID_t& path,
                         uint64_t s);
 
       bool
-      HandleGotExit(llarp::path::Path* p, llarp_time_t b);
+      HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+      HandleTraffic(llarp::path::Path_ptr p, const llarp_buffer_t& buf,
                     uint64_t seqno);
 
      private:
+      std::set< RouterID > m_SnodeBlacklist;
+
       using UpstreamTrafficQueue_t =
           std::deque< llarp::routing::TransferTrafficMessage >;
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;
@@ -135,6 +159,7 @@ namespace llarp
       llarp_time_t m_LastUse;
 
       std::vector< SessionReadyFunc > m_PendingCallbacks;
+      const bool m_BundleRC;
 
       void
       CallPendingCallbacks(bool success);
@@ -144,10 +169,13 @@ namespace llarp
     {
       ExitSession(const llarp::RouterID& snodeRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,
-                  AbstractRouter* r, size_t numpaths, size_t hoplen)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen){};
+                  AbstractRouter* r, size_t numpaths, size_t hoplen,
+                  bool bundleRC)
+          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
+      {
+      }
 
-      ~ExitSession(){};
+      ~ExitSession() = default;
 
       std::string
       Name() const override;
@@ -167,9 +195,9 @@ namespace llarp
       SNodeSession(const llarp::RouterID& snodeRouter,
                    std::function< bool(const llarp_buffer_t&) > writepkt,
                    AbstractRouter* r, size_t numpaths, size_t hoplen,
-                   bool useRouterSNodeKey = false);
+                   bool useRouterSNodeKey, bool bundleRC);
 
-      ~SNodeSession(){};
+      ~SNodeSession() = default;
 
       std::string
       Name() const override;

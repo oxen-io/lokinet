@@ -6,7 +6,12 @@
 #include <gmock/gmock.h>
 
 using namespace llarp;
+using namespace metrics;
 using namespace ::testing;
+
+using RecordT      = metrics::Record< double >;
+using TagRecordT   = metrics::TaggedRecords< double >;
+using SampleGroupT = metrics::SampleGroup< double >;
 
 struct MetricFormatSpecTestData
 {
@@ -57,11 +62,11 @@ TEST(MetricsTypes, Format)
   ASSERT_EQ(nullptr, format.specFor(metrics::Publication::Type::Avg));
   auto ptr = format.specFor(metrics::Publication::Type::Total);
   ASSERT_NE(nullptr, ptr);
-  ASSERT_STREQ("%0.3f", ptr->m_format);
+  ASSERT_EQ("%0.3f", ptr->m_format);
   ASSERT_DOUBLE_EQ(2.0, ptr->m_scale);
   ptr = format.specFor(metrics::Publication::Type::Max);
   ASSERT_NE(nullptr, ptr);
-  ASSERT_STREQ("%0.2f", ptr->m_format);
+  ASSERT_EQ("%0.2f", ptr->m_format);
   ASSERT_DOUBLE_EQ(1.0, ptr->m_scale);
 
   format.clear();
@@ -130,7 +135,7 @@ TEST(MetricsTypes, CatContainer)
 
 TEST(MetricsTypes, Record)
 {
-  metrics::Record r;
+  RecordT r;
   ASSERT_GT(r.min(), r.max());
 }
 
@@ -146,13 +151,17 @@ TEST(MetricsTypes, Sample)
   metrics::Id metricC(&descC);
 
   absl::Time timeStamp = absl::Now();
-  metrics::Record recordA(metricA, 0, 0, 0, 0);
-  metrics::Record recordB(metricB, 1, 2, 3, 4);
-  metrics::Record recordC(metricC, 4, 3, 2, 1);
+  RecordT recordA(0, 0, 0, 0);
+  RecordT recordB(1, 2, 3, 4);
+  RecordT recordC(4, 3, 2, 1);
 
-  metrics::Record buffer1[] = {recordA, recordB};
-  std::vector< metrics::Record > buffer2;
-  buffer2.push_back(recordC);
+  TagRecordT tagRecordA(metricA, {{{}, recordA}});
+  TagRecordT tagRecordB(metricB, {{{}, recordB}});
+  TagRecordT tagRecordC(metricC, {{{}, recordC}});
+
+  TagRecordT buffer1[] = {tagRecordA, tagRecordB};
+  std::vector< TagRecordT > buffer2;
+  buffer2.push_back(tagRecordC);
 
   metrics::Sample sample;
   sample.sampleTime(timeStamp);
@@ -163,17 +172,23 @@ TEST(MetricsTypes, Sample)
   ASSERT_EQ(timeStamp, sample.sampleTime());
   ASSERT_EQ(2u, sample.groupCount());
   ASSERT_EQ(3u, sample.recordCount());
-  ASSERT_EQ(absl::Seconds(1), sample.group(0).samplePeriod());
-  ASSERT_EQ(buffer1, sample.group(0).records().data());
-  ASSERT_EQ(2, sample.group(0).size());
-  ASSERT_EQ(absl::Seconds(2), sample.group(1).samplePeriod());
-  ASSERT_EQ(buffer2.data(), sample.group(1).records().data());
-  ASSERT_EQ(1, sample.group(1).size());
+  ASSERT_TRUE(absl::holds_alternative< SampleGroupT >(sample.group(0)));
+  ASSERT_TRUE(absl::holds_alternative< SampleGroupT >(sample.group(1)));
+
+  const SampleGroupT s0 = absl::get< SampleGroupT >(sample.group(0));
+  const SampleGroupT s1 = absl::get< SampleGroupT >(sample.group(1));
+  ASSERT_EQ(absl::Seconds(1), s0.samplePeriod());
+  ASSERT_EQ(buffer1, s0.records().data());
+  ASSERT_EQ(2, s0.size());
+
+  ASSERT_EQ(absl::Seconds(2), s1.samplePeriod());
+  ASSERT_EQ(buffer2.data(), s1.records().data());
+  ASSERT_EQ(1, s1.size());
 
   for(auto sampleIt = sample.begin(); sampleIt != sample.end(); ++sampleIt)
   {
-    ;
-    for(auto groupIt = sampleIt->begin(); groupIt != sampleIt->end(); ++groupIt)
+    const auto &s = absl::get< SampleGroupT >(*sampleIt);
+    for(auto groupIt = s.begin(); groupIt != s.end(); ++groupIt)
     {
       std::cout << *groupIt << std::endl;
     }
@@ -200,7 +215,7 @@ struct SampleTest
   metrics::Id id_F;
   metrics::Id id_G;
 
-  std::vector< metrics::Record > recordBuffer;
+  std::vector< TagRecordT > recordBuffer;
 
   SampleTest()
       : cat_A("A", true)
@@ -219,29 +234,47 @@ struct SampleTest
       , id_F(&DESC_F)
       , id_G(&DESC_G)
   {
-    recordBuffer.emplace_back(metrics::Id(0), 1, 1, 1, 1);
-    recordBuffer.emplace_back(id_A, 2, 2, 2, 2);
-    recordBuffer.emplace_back(id_B, 3, 3, 3, 3);
-    recordBuffer.emplace_back(id_C, 4, 4, 4, 4);
-    recordBuffer.emplace_back(id_D, 5, 5, 5, 5);
-    recordBuffer.emplace_back(id_E, 6, 6, 6, 6);
-    recordBuffer.emplace_back(id_F, 7, 7, 7, 7);
-    recordBuffer.emplace_back(id_G, 8, 8, 8, 8);
-    recordBuffer.emplace_back(id_A, 9, 9, 9, 9);
+    recordBuffer.emplace_back(
+        metrics::Id(0),
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(1, 1, 1, 1)}});
+    recordBuffer.emplace_back(
+        id_A,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(2, 2, 2, 2)}});
+    recordBuffer.emplace_back(
+        id_B,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(3, 3, 3, 3)}});
+    recordBuffer.emplace_back(
+        id_C,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(4, 4, 4, 4)}});
+    recordBuffer.emplace_back(
+        id_D,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(5, 5, 5, 5)}});
+    recordBuffer.emplace_back(
+        id_E,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(6, 6, 6, 6)}});
+    recordBuffer.emplace_back(
+        id_F,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(7, 7, 7, 7)}});
+    recordBuffer.emplace_back(
+        id_G,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(8, 8, 8, 8)}});
+    recordBuffer.emplace_back(
+        id_A,
+        TaggedRecordsData< double >{{metrics::Tags(), RecordT(9, 9, 9, 9)}});
   }
 };
 
-std::pair< std::vector< metrics::SampleGroup >, size_t >
+std::pair< std::vector< metrics::SampleGroup< double > >, size_t >
 generate(const std::string &specification,
-         const std::vector< metrics::Record > &recordBuffer)
+         const std::vector< TagRecordT > &recordBuffer)
 {
   const char *c = specification.c_str();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size = 0;
 
-  const metrics::Record *head    = recordBuffer.data();
-  const metrics::Record *current = head;
+  const TagRecordT *head    = recordBuffer.data();
+  const TagRecordT *current = head;
   while(*c)
   {
     int numRecords = *(c + 1) - '0';
@@ -268,7 +301,7 @@ TEST_P(SampleTest, basics)
 
   std::tie(timestamp, spec) = GetParam();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size;
   std::tie(groups, size) = generate(spec, recordBuffer);
 
@@ -286,7 +319,8 @@ TEST_P(SampleTest, basics)
   ASSERT_EQ(size, sample.recordCount());
   for(size_t j = 0; j < sample.groupCount(); ++j)
   {
-    ASSERT_EQ(groups[j], sample.group(j));
+    ASSERT_EQ(groups[j],
+              absl::get< metrics::SampleGroup< double > >(sample.group(j)));
   }
 }
 
@@ -297,7 +331,7 @@ TEST_P(SampleTest, append)
 
   std::tie(timestamp, spec) = GetParam();
 
-  std::vector< metrics::SampleGroup > groups;
+  std::vector< metrics::SampleGroup< double > > groups;
   size_t size;
   std::tie(groups, size) = generate(spec, recordBuffer);
 
@@ -316,7 +350,8 @@ TEST_P(SampleTest, append)
 
   for(size_t j = 0; j < sample.groupCount(); ++j)
   {
-    ASSERT_EQ(groups[j], sample.group(j));
+    ASSERT_EQ(groups[j],
+              absl::get< metrics::SampleGroup< double > >(sample.group(j)));
   }
 }
 

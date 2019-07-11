@@ -296,9 +296,9 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const WriteBuffer& buf) const
+        operator()(const WriteBuffer& writebuf) const
         {
-          return buf.timestamp;
+          return writebuf.timestamp;
         }
       };
 
@@ -323,9 +323,9 @@ namespace llarp
         {
         }
         void
-        operator()(WriteBuffer& buf)
+        operator()(WriteBuffer& writebuf)
         {
-          buf.timestamp = llarp_ev_loop_time_now_ms(loop);
+          writebuf.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
       };
 
@@ -383,14 +383,14 @@ namespace llarp
            __attribute__((unused)) size_t sz)
     {
       return -1;
-    };
+    }
 
     /// return false if we want to deregister and remove ourselves
     virtual bool
     tick()
     {
       return true;
-    };
+    }
 
     /// used for tun interface and tcp conn
     virtual ssize_t
@@ -407,13 +407,13 @@ namespace llarp
         m_LossyWriteQueue->Emplace(buf, sz);
         return true;
       }
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
       }
-      else
-        return false;
+
+      return false;
     }
 
     virtual void
@@ -423,7 +423,9 @@ namespace llarp
     }
 
     virtual void
-    before_flush_write(){};
+    before_flush_write()
+    {
+    }
 
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
@@ -505,7 +507,7 @@ namespace llarp
     virtual ~posix_ev_io()
     {
       close(fd);
-    };
+    }
   };
 #endif
 
@@ -529,6 +531,12 @@ namespace llarp
     // null if inbound otherwise outbound
     llarp_tcp_connecter* _conn;
 
+    static void
+    DoClose(llarp_tcp_conn* conn)
+    {
+      static_cast< tcp_conn* >(conn->impl)->_shouldClose = true;
+    }
+
     /// inbound
     tcp_conn(llarp_ev_loop* loop, int fd)
         : ev_io(fd, new LosslessWriteQueue_t{}), _conn(nullptr)
@@ -539,6 +547,7 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
+      tcp.close  = &DoClose;
     }
 
     /// outbound
@@ -558,6 +567,7 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
+      tcp.close  = &DoClose;
     }
 
     virtual ~tcp_conn();
@@ -652,7 +662,7 @@ namespace llarp
     read(byte_t*, size_t);
   };
 
-};  // namespace llarp
+}  // namespace llarp
 
 #ifdef _WIN32
 struct llarp_fd_promise
@@ -709,7 +719,7 @@ struct llarp_ev_loop
   virtual bool
   running() const = 0;
 
-  void
+  virtual void
   update_time()
   {
     _now = llarp::time_now_ms();
@@ -720,6 +730,9 @@ struct llarp_ev_loop
   {
     return _now;
   }
+
+  virtual void
+  stopped(){};
 
   /// return false on socket error (non blocking)
   virtual bool
@@ -734,14 +747,23 @@ struct llarp_ev_loop
   virtual bool
   udp_listen(llarp_udp_io* l, const sockaddr* src) = 0;
 
-  virtual llarp::ev_io*
-  create_udp(llarp_udp_io* l, const sockaddr* src) = 0;
-
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
   /// deregister event listener
   virtual bool
   close_ev(llarp::ev_io* ev) = 0;
+
+  virtual bool
+  tun_listen(llarp_tun_io* tun)
+  {
+    auto dev  = create_tun(tun);
+    tun->impl = dev;
+    if(dev)
+    {
+      return add_ev(dev, false);
+    }
+    return false;
+  }
 
   virtual llarp::ev_io*
   create_tun(llarp_tun_io* tun) = 0;
@@ -753,7 +775,16 @@ struct llarp_ev_loop
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
 
-  virtual ~llarp_ev_loop(){};
+  virtual bool
+  tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+  {
+    auto conn = bind_tcp(tcp, addr);
+    return conn && add_ev(conn, true);
+  }
+
+  virtual ~llarp_ev_loop()
+  {
+  }
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 

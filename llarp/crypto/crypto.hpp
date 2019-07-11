@@ -6,6 +6,7 @@
 
 #include <util/buffer.hpp>
 
+#include <absl/base/optimization.h>
 #include <functional>
 #include <stdbool.h>
 #include <stdint.h>
@@ -19,18 +20,6 @@
 
 namespace llarp
 {
-  /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func = std::function< bool(
-      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
-
-  /// TKE(result, publickey, secretkey, nonce)
-  using transport_dh_func = std::function< bool(
-      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
-
-  /// SH(result, body)
-  using shorthash_func =
-      std::function< bool(ShortHash &, const llarp_buffer_t &) >;
-
   /// library crypto configuration
   struct Crypto
   {
@@ -62,9 +51,6 @@ namespace llarp
     virtual bool
     transport_dh_server(SharedSecret &, const PubKey &, const SecretKey &,
                         const TunnelNonce &) = 0;
-    /// blake2b 512 bit
-    virtual bool
-    hash(byte_t *, const llarp_buffer_t &) = 0;
     /// blake2b 256 bit
     virtual bool
     shorthash(ShortHash &, const llarp_buffer_t &) = 0;
@@ -85,7 +71,7 @@ namespace llarp
     randomize(const llarp_buffer_t &) = 0;
     /// randomizer memory
     virtual void
-    randbytes(void *, size_t) = 0;
+    randbytes(byte_t *, size_t) = 0;
     /// generate signing keypair
     virtual void
     identity_keygen(SecretKey &) = 0;
@@ -119,6 +105,36 @@ namespace llarp
 
   const byte_t *
   pq_keypair_to_secret(const PQKeyPair &keypair);
+
+  struct CryptoManager
+  {
+   private:
+    static Crypto *m_crypto;
+
+    Crypto *m_prevCrypto;
+
+   public:
+    CryptoManager(Crypto *crypto) : m_prevCrypto(m_crypto)
+    {
+      m_crypto = crypto;
+    }
+
+    ~CryptoManager()
+    {
+      m_crypto = m_prevCrypto;
+    }
+
+    static Crypto *
+    instance() ABSL_ATTRIBUTE_RETURNS_NONNULL
+    {
+      if(ABSL_PREDICT_TRUE(m_crypto))
+      {
+        return m_crypto;
+      }
+
+      throw std::logic_error("Cryptomanager::instance() was undefined");
+    }
+  };
 
 }  // namespace llarp
 

@@ -9,11 +9,9 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   static constexpr size_t EncryptedFrameOverheadSize =
       PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
-  static constexpr size_t EncryptedFrameBodySize = 1024;
+  static constexpr size_t EncryptedFrameBodySize = 128 * 6;
   static constexpr size_t EncryptedFrameSize =
       EncryptedFrameOverheadSize + EncryptedFrameBodySize;
 
@@ -27,16 +25,6 @@ namespace llarp
         : Encrypted< EncryptedFrameSize >(std::min(sz, EncryptedFrameBodySize)
                                           + EncryptedFrameOverheadSize)
     {
-      UpdateBuffer();
-    }
-
-    EncryptedFrame&
-    operator=(const EncryptedFrame& other)
-    {
-      _sz = other._sz;
-      memcpy(data(), other.data(), size());
-      UpdateBuffer();
-      return *this;
     }
 
     void
@@ -50,64 +38,18 @@ namespace llarp
     }
 
     bool
-    DecryptInPlace(const SecretKey& seckey, llarp::Crypto* crypto);
+    DecryptInPlace(const SecretKey& seckey);
 
     bool
-    EncryptInPlace(const SecretKey& seckey, const PubKey& other,
-                   llarp::Crypto* crypto);
-  };
-
-  /// TODO: can only handle 1 frame at a time
-  template < typename User >
-  struct AsyncFrameEncrypter
-  {
-    using EncryptHandler = std::function< void(EncryptedFrame*, User*) >;
-
-    static void
-    Encrypt(void* user)
-    {
-      AsyncFrameEncrypter< User >* ctx =
-          static_cast< AsyncFrameEncrypter< User >* >(user);
-
-      if(ctx->frame.EncryptInPlace(ctx->seckey, ctx->otherKey, ctx->crypto))
-        ctx->handler(&ctx->frame, ctx->user);
-      else
-      {
-        ctx->handler(nullptr, ctx->user);
-      }
-    }
-
-    llarp::Crypto* crypto;
-    byte_t* secretkey;
-    EncryptHandler handler;
-    EncryptedFrame frame;
-    User* user;
-    byte_t* otherKey;
-
-    AsyncFrameEncrypter(llarp::Crypto* c, byte_t* seckey, EncryptHandler h)
-        : crypto(c), secretkey(seckey), handler(h)
-    {
-    }
-
-    void
-    AsyncEncrypt(llarp_threadpool* worker, llarp_buffer_t buf, byte_t* other,
-                 User* u)
-    {
-      // TODO: should we own otherKey?
-      otherKey = other;
-      if(buf.sz > EncryptedFrameBodySize)
-        return;
-      memcpy(frame.data() + EncryptedFrameOverheadSize, buf.base, buf.sz);
-      user = u;
-      llarp_threadpool_queue_job(worker, {this, &Encrypt});
-    }
+    EncryptInPlace(const SecretKey& seckey, const PubKey& other);
   };
 
   /// TODO: can only handle 1 frame at a time
   template < typename User >
   struct AsyncFrameDecrypter
   {
-    using DecryptHandler = std::function< void(llarp_buffer_t*, User*) >;
+    using User_ptr       = std::shared_ptr< User >;
+    using DecryptHandler = std::function< void(llarp_buffer_t*, User_ptr) >;
 
     static void
     Decrypt(void* user)
@@ -115,34 +57,33 @@ namespace llarp
       AsyncFrameDecrypter< User >* ctx =
           static_cast< AsyncFrameDecrypter< User >* >(user);
 
-      if(ctx->target.DecryptInPlace(ctx->seckey, ctx->crypto))
+      if(ctx->target.DecryptInPlace(ctx->seckey))
       {
         auto buf = ctx->target.Buffer();
         buf->cur = buf->base + EncryptedFrameOverheadSize;
-        ctx->result(buf, ctx->context);
+        ctx->result(buf, ctx->user);
       }
       else
-        ctx->result(nullptr, ctx->context);
+        ctx->result(nullptr, ctx->user);
+      ctx->user = nullptr;
     }
 
-    AsyncFrameDecrypter(llarp::Crypto* c, const SecretKey& secretkey,
-                        DecryptHandler h)
-        : result(h), crypto(c), seckey(secretkey)
+    AsyncFrameDecrypter(const SecretKey& secretkey, DecryptHandler h)
+        : result(h), seckey(secretkey)
     {
     }
 
     DecryptHandler result;
-    User* context;
-    llarp::Crypto* crypto;
+    User_ptr user;
     const SecretKey& seckey;
     EncryptedFrame target;
 
     void
     AsyncDecrypt(llarp_threadpool* worker, const EncryptedFrame& frame,
-                 User* user)
+                 User_ptr u)
     {
-      target  = frame;
-      context = user;
+      target = frame;
+      user   = u;
       llarp_threadpool_queue_job(worker, {this, &Decrypt});
     }
   };

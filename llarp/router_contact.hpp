@@ -17,8 +17,6 @@
 
 namespace llarp
 {
-  struct Crypto;
-
   /// NetID
   struct NetID final : public AlignedBuffer< 8 >
   {
@@ -65,29 +63,17 @@ namespace llarp
   }
 
   /// RouterContact
-  struct RouterContact final : public IBEncodeMessage
+  struct RouterContact
   {
     /// for unit tests
     static bool IgnoreBogons;
 
     static llarp_time_t Lifetime;
+    static llarp_time_t UpdateInterval;
 
-    RouterContact() : IBEncodeMessage()
+    RouterContact()
     {
       Clear();
-    }
-
-    RouterContact(const RouterContact &other)
-        : IBEncodeMessage(other.version)
-        , addrs(other.addrs)
-        , netID(other.netID)
-        , enckey(other.enckey)
-        , pubkey(other.pubkey)
-        , exits(other.exits)
-        , signature(other.signature)
-        , nickname(other.nickname)
-        , last_updated(other.last_updated)
-    {
     }
 
     struct Hash
@@ -115,12 +101,13 @@ namespace llarp
     llarp::AlignedBuffer< NICKLEN > nickname;
 
     uint64_t last_updated = 0;
+    uint64_t version      = LLARP_PROTO_VERSION;
 
     util::StatusObject
     ExtractStatus() const;
 
     bool
-    BEncode(llarp_buffer_t *buf) const override;
+    BEncode(llarp_buffer_t *buf) const;
 
     bool
     operator==(const RouterContact &other) const
@@ -153,14 +140,14 @@ namespace llarp
     }
 
     bool
-    BDecode(llarp_buffer_t *buf) override
+    BDecode(llarp_buffer_t *buf)
     {
       Clear();
-      return IBEncodeMessage::BDecode(buf);
+      return bencode_decode_dict(*this, buf);
     }
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf) override;
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
 
     RouterContact &
     operator=(const RouterContact &other);
@@ -175,18 +162,19 @@ namespace llarp
     IsPublicRouter() const;
 
     void
-    SetNick(const std::string &nick);
+    SetNick(string_view nick);
 
     bool
-    Verify(llarp::Crypto *crypto, llarp_time_t now) const;
+    Verify(llarp_time_t now, bool allowExpired = true) const;
 
     bool
-    Sign(llarp::Crypto *crypto, const llarp::SecretKey &secret);
+    Sign(const llarp::SecretKey &secret);
 
     /// does this RC expire soon? default delta is 1 minute
     bool
     ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 60000) const;
 
+    /// returns true if this RC is expired and should be removed
     bool
     IsExpired(llarp_time_t now) const;
 
@@ -207,7 +195,7 @@ namespace llarp
 
    private:
     bool
-    VerifySignature(llarp::Crypto *crypto) const;
+    VerifySignature() const;
   };
 
   inline std::ostream &

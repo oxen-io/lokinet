@@ -114,6 +114,13 @@ struct llarp_buffer_t
   {
   }
 
+  // clang-format off
+  byte_t * begin()       { return base; }
+  byte_t * begin() const { return base; }
+  byte_t * end()         { return base + sz; }
+  byte_t * end()   const { return base + sz; }
+  // clang-format on
+
   size_t
   size_left() const;
 
@@ -128,7 +135,7 @@ struct llarp_buffer_t
 #ifndef _WIN32
   bool
   writef(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-  
+
 #elif defined(__MINGW64__) || defined(__MINGW32__)
   bool
   writef(const char *fmt, ...)

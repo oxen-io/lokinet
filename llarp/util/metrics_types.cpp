@@ -2,6 +2,8 @@
 
 #include <util/printer.hpp>
 
+#include <absl/strings/str_join.h>
+
 namespace llarp
 {
   namespace metrics
@@ -13,7 +15,8 @@ namespace llarp
       static constexpr size_t INIT_SIZE = 32;
 
       char buf[INIT_SIZE] = {0};
-      int rc = snprintf(buf, INIT_SIZE, format.m_format, data * format.m_scale);
+      int rc              = snprintf(buf, INIT_SIZE, format.m_format.data(),
+                        data * format.m_scale);
 
       if(rc < 0)
       {
@@ -28,7 +31,7 @@ namespace llarp
       }
 
       std::vector< char > vec(rc + 1);
-      rc = snprintf(vec.data(), vec.size(), format.m_format,
+      rc = snprintf(vec.data(), vec.size(), format.m_format.data(),
                     data * format.m_scale);
 
       if(static_cast< size_t >(rc) > vec.size())
@@ -36,11 +39,9 @@ namespace llarp
         stream << "Bad format " << format.m_format << " applied to " << data;
         return stream;
       }
-      else
-      {
-        stream << vec.data();
-        return stream;
-      }
+
+      stream << vec.data();
+      return stream;
     }
 
     string_view
@@ -127,7 +128,7 @@ namespace llarp
     Description::toString() const
     {
       util::Lock l(&m_mutex);
-      return m_category->name() + std::string(".") + m_name;
+      return absl::StrCat(m_category->name(), ".", m_name);
     }
 
     std::ostream &
@@ -136,40 +137,6 @@ namespace llarp
       util::Lock l(&m_mutex);
 
       stream << m_category->name() << '.' << m_name;
-
-      return stream;
-    }
-
-    const double Record::DEFAULT_MIN = std::numeric_limits< double >::max() * 2;
-    const double Record::DEFAULT_MAX =
-        std::numeric_limits< double >::max() * -2;
-
-    std::ostream &
-    Record::print(std::ostream &stream, int level, int spaces) const
-    {
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("id", m_id);
-      printer.printAttribute("count", m_count);
-      printer.printAttribute("total", m_total);
-      printer.printAttribute("min", m_min);
-      printer.printAttribute("max", m_max);
-
-      return stream;
-    }
-
-    std::ostream &
-    SampleGroup::print(std::ostream &stream, int level, int spaces) const
-    {
-      Printer::PrintFunction< absl::Duration > durationPrinter =
-          [](std::ostream &stream, const absl::Duration &duration, int,
-             int) -> std::ostream & {
-        stream << duration;
-        return stream;
-      };
-      Printer printer(stream, level, spaces);
-      printer.printAttribute("records", m_records);
-      printer.printForeignAttribute("samplePeriod", m_samplePeriod,
-                                    durationPrinter);
 
       return stream;
     }

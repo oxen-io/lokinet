@@ -3,6 +3,7 @@
 #include <crypto/mock_crypto.hpp>
 #include <dht/mock_context.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <llarp_test.hpp>
 #include <service/intro_set.hpp>
 #include <test_util.hpp>
 
@@ -15,9 +16,8 @@ using test::makeBuf;
 
 static constexpr uint64_t EXPIRY = 1548503831ull;
 
-struct TestDhtTagLookup : public ::testing::Test
+struct TestDhtTagLookup : public test::LlarpTest<>
 {
-  test::MockCrypto crypto;
   dht::Key_t txKey;
   uint64_t txId;
   dht::TXOwner txOwner;
@@ -47,9 +47,8 @@ TEST_F(TestDhtTagLookup, validate)
 
   {
     service::IntroSet introset;
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(false));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(false));
 
     ASSERT_FALSE(tagLookup.Validate(introset));
   }
@@ -65,9 +64,8 @@ TEST_F(TestDhtTagLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_FALSE(tagLookup.Validate(introset));
   }
@@ -83,9 +81,8 @@ TEST_F(TestDhtTagLookup, validate)
         EXPIRY + service::MAX_INTROSET_TIME_DELTA + 1;
 
     // Set expectations
-    EXPECT_CALL(context, Crypto()).WillOnce(Return(&crypto));
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
-    EXPECT_CALL(crypto, verify(_, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
     ASSERT_TRUE(tagLookup.Validate(introset));
   }
@@ -204,9 +201,13 @@ TEST_F(TestDhtTagLookup, send_reply)
   {
     tagLookup.valuesFound.clear();
     tagLookup.valuesFound.emplace_back();
-    tagLookup.valuesFound.back().T = 1;
+    tagLookup.valuesFound.back().T           = 1;
+    tagLookup.valuesFound.back().A.vanity[0] = 1;
+    tagLookup.valuesFound.back().A.UpdateAddr();
     tagLookup.valuesFound.emplace_back();
-    tagLookup.valuesFound.back().T = 2;
+    tagLookup.valuesFound.back().T           = 2;
+    tagLookup.valuesFound.back().A.vanity[0] = 2;
+    tagLookup.valuesFound.back().A.UpdateAddr();
     // clang-format off
     EXPECT_CALL(context, FindRandomIntroSetsWithTagExcluding(_, _, _)).Times(0);
 

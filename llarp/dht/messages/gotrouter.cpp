@@ -1,7 +1,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp
@@ -90,7 +90,8 @@ namespace llarp
       {
         auto pathset =
             ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
-        return pathset && pathset->HandleGotRouterMessage(this);
+        auto copy = std::make_shared< const GotRouterMessage >(*this);
+        return pathset && pathset->HandleGotRouterMessage(copy);
       }
       // not relayed
       const TXOwner owner(From, txid);

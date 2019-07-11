@@ -31,51 +31,15 @@ namespace llarp
       bool
       hasEndpoints();
 
-      /// DRY refactor
-      service::Endpoint *
-      getFirstEndpoint();
-
       bool
       FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
                          huint32_t &);
 
-      /// DRY refactor
-      handlers::TunEndpoint *
-      getFirstTun();
-
-      /// punch a hole to get ip range from first tun endpoint
-      llarp_tun_io *
-      getRange();
-
-      struct mapAddressAll_context
-      {
-        service::Address serviceAddr;
-        Addr localPrivateIpAddr;
-      };
-
-      struct endpoint_iter
-      {
-        void *user;
-        service::Endpoint *endpoint;
-        size_t index;
-        bool (*visit)(struct endpoint_iter *);
-      };
-
-      bool
-      iterate(struct endpoint_iter &i);
-
       /// function visitor returns false to prematurely break iteration
       void
-      ForEachService(std::function< bool(const std::string &,
-                                         const std::unique_ptr< Endpoint > &) >
-                         visit);
-
-      /// hint at possible path usage and trigger building early
-      bool
-      Prefetch(const service::Address &addr);
-
-      bool
-      MapAddressAll(const service::Address &addr, Addr &localPrivateIpAddr);
+      ForEachService(
+          std::function< bool(const std::string &, const Endpoint_ptr &) >
+              visit) const;
 
       /// add default endpoint with options
       bool
@@ -96,9 +60,9 @@ namespace llarp
 
      private:
       AbstractRouter *m_Router;
-      std::unordered_map< std::string, std::unique_ptr< Endpoint > >
+      std::unordered_map< std::string, std::shared_ptr< Endpoint > >
           m_Endpoints;
-      std::list< std::unique_ptr< Endpoint > > m_Stopped;
+      std::list< std::shared_ptr< Endpoint > > m_Stopped;
     };
   }  // namespace service
 }  // namespace llarp

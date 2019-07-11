@@ -1,8 +1,11 @@
 #include <exit/session.hpp>
 
+#include <crypto/crypto.hpp>
 #include <nodedb.hpp>
+#include <path/path_context.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -11,14 +14,15 @@ namespace llarp
     BaseSession::BaseSession(
         const llarp::RouterID& router,
         std::function< bool(const llarp_buffer_t&) > writepkt,
-        AbstractRouter* r, size_t numpaths, size_t hoplen)
-        : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
+        AbstractRouter* r, size_t numpaths, size_t hoplen, bool bundleRC)
+        : llarp::path::Builder(r, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
         , m_Counter(0)
         , m_LastUse(0)
+        , m_BundleRC(bundleRC)
     {
-      r->crypto()->identity_keygen(m_ExitIdentity);
+      CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
 
     BaseSession::~BaseSession()
@@ -26,8 +30,9 @@ namespace llarp
     }
 
     void
-    BaseSession::HandlePathDied(path::Path*)
+    BaseSession::HandlePathDied(path::Path_ptr p)
     {
+      p->Rebuild();
     }
 
     util::StatusObject
@@ -51,64 +56,59 @@ namespace llarp
     {
       const size_t expect = (1 + (m_NumPaths / 2));
       // check 30 seconds into the future and see if we need more paths
-      const llarp_time_t future = now + (30 * 1000);
-      if(NumPathsExistingAt(future) < expect)
-        return llarp::randint() % 4
-            == 0;  // 25% chance for build if we will run out soon
-      // if we don't have the expended number of paths right now try building
-      // some if the cooldown timer isn't hit
-      if(AvailablePaths(llarp::path::ePathRoleExit) < expect)
-        return !path::Builder::BuildCooldownHit(now);
-      // maintain regular number of paths
-      return path::Builder::ShouldBuildMore(now);
+      const llarp_time_t future = now + (30 * 1000) + buildIntervalLimit;
+      return NumPathsExistingAt(future) < expect && !BuildCooldownHit(now);
+    }
+
+    void
+    BaseSession::BlacklistSnode(const RouterID snode)
+    {
+      m_SnodeBlacklist.insert(std::move(snode));
     }
 
     bool
-    BaseSession::SelectHop(llarp_nodedb* db, const RouterContact& prev,
+    BaseSession::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
     {
+      std::set< RouterID > exclude = prev;
+      for(const auto& snode : m_SnodeBlacklist)
+      {
+        if(snode != m_ExitRouter)
+          exclude.insert(snode);
+      }
+      exclude.insert(m_ExitRouter);
       if(hop == numHops - 1)
       {
-        return db->Get(m_ExitRouter, cur);
+        if(db->Get(m_ExitRouter, cur))
+          return true;
+        router->LookupRouter(m_ExitRouter, nullptr);
+        return false;
       }
-      else if(hop == numHops - 2)
-      {
-        return db->select_random_hop_excluding(cur,
-                                               {prev.pubkey, m_ExitRouter});
-      }
-      else
-        return path::Builder::SelectHop(db, prev, cur, hop, roles);
+
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool
-    BaseSession::CheckPathDead(path::Path*, llarp_time_t dlt)
+    BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
     {
       return dlt >= 10000;
     }
 
     void
-    BaseSession::HandlePathBuilt(llarp::path::Path* p)
+    BaseSession::HandlePathBuilt(llarp::path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
-      p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
-                                  std::placeholders::_1, std::placeholders::_2,
-                                  std::placeholders::_3));
-      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2));
-      p->SetExitTrafficHandler(
-          std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3));
+      p->SetDropHandler(util::memFn(&BaseSession::HandleTrafficDrop, this));
+      p->SetDeadChecker(util::memFn(&BaseSession::CheckPathDead, this));
+      p->SetExitTrafficHandler(util::memFn(&BaseSession::HandleTraffic, this));
+      p->AddObtainExitHandler(util::memFn(&BaseSession::HandleGotExit, this));
 
-      p->AddObtainExitHandler(std::bind(&BaseSession::HandleGotExit, this,
-                                        std::placeholders::_1,
-                                        std::placeholders::_2));
-      llarp::routing::ObtainExitMessage obtain;
+      routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp::randint();
       PopulateRequest(obtain);
-      if(!obtain.Sign(router->crypto(), m_ExitIdentity))
+      if(!obtain.Sign(m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
         return;
@@ -126,13 +126,14 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleGotExit(llarp::path::Path* p, llarp_time_t b)
+    BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
     {
       m_LastUse = router->Now();
       if(b == 0)
+      {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
-      if(IsReady())
         CallPendingCallbacks(true);
+      }
       return true;
     }
 
@@ -141,8 +142,9 @@ namespace llarp
     {
       if(success)
       {
+        auto self = shared_from_this();
         for(auto& f : m_PendingCallbacks)
-          f(this);
+          f(self);
       }
       else
       {
@@ -152,29 +154,50 @@ namespace llarp
       m_PendingCallbacks.clear();
     }
 
-    bool
-    BaseSession::Stop()
+    void
+    BaseSession::ResetInternalState()
     {
-      CallPendingCallbacks(false);
-      auto sendExitClose = [&](llarp::path::Path* p) {
-        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
+      auto sendExitClose = [&](const llarp::path::Path_ptr p) {
+        const static auto roles =
+            llarp::path::ePathRoleExit | llarp::path::ePathRoleSVC;
+        if(p->SupportsAnyRoles(roles))
         {
           llarp::LogInfo(p->Name(), " closing exit path");
-          llarp::routing::CloseExitMessage msg;
-          if(!(msg.Sign(router->crypto(), m_ExitIdentity)
-               && p->SendExitClose(msg, router)))
+          routing::CloseExitMessage msg;
+          if(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router))
+          {
+            p->ClearRoles(roles);
+          }
+          else
             llarp::LogWarn(p->Name(), " failed to send exit close message");
         }
       };
       ForEachPath(sendExitClose);
-      return llarp::path::Builder::Stop();
+      path::Builder::ResetInternalState();
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+    BaseSession::Stop()
+    {
+      CallPendingCallbacks(false);
+      auto sendExitClose = [&](const path::Path_ptr p) {
+        if(p->SupportsAnyRoles(path::ePathRoleExit))
+        {
+          LogInfo(p->Name(), " closing exit path");
+          routing::CloseExitMessage msg;
+          if(!(msg.Sign(m_ExitIdentity) && p->SendExitClose(msg, router)))
+            LogWarn(p->Name(), " failed to send exit close message");
+        }
+      };
+      ForEachPath(sendExitClose);
+      router->pathContext().RemovePathSet(shared_from_this());
+      return path::Builder::Stop();
+    }
+
+    bool
+    BaseSession::HandleTraffic(llarp::path::Path_ptr, const llarp_buffer_t& buf,
                                uint64_t counter)
     {
-      (void)p;
       if(m_WritePacket)
       {
         llarp::net::IPv4Packet pkt;
@@ -189,12 +212,12 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTrafficDrop(llarp::path::Path* p, const PathID_t& path,
-                                   uint64_t s)
+    BaseSession::HandleTrafficDrop(llarp::path::Path_ptr p,
+                                   const PathID_t& path, uint64_t s)
     {
-      (void)p;
       llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s,
                       " P=", path);
+      p->EnterState(path::ePathIgnore, router->Now());
       return true;
     }
 
@@ -219,8 +242,8 @@ namespace llarp
         queue.emplace_back();
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-      else
-        return back.PutBuffer(buf, m_Counter++);
+
+      return back.PutBuffer(buf, m_Counter++);
     }
 
     bool
@@ -237,7 +260,15 @@ namespace llarp
     }
 
     bool
-    BaseSession::Flush()
+    BaseSession::UrgentBuild(llarp_time_t now) const
+    {
+      if(!IsReady())
+        return NumInStatus(path::ePathBuilding) < m_NumPaths;
+      return path::Builder::UrgentBuild(now);
+    }
+
+    bool
+    BaseSession::FlushUpstream()
     {
       auto now  = router->Now();
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
@@ -249,10 +280,16 @@ namespace llarp
           while(queue.size())
           {
             auto& msg = queue.front();
-            msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(msg, router))
-              m_LastUse = now;
+            if(path)
+            {
+              msg.S = path->NextSeqNo();
+              if(path->SendRoutingMessage(msg, router))
+                m_LastUse = now;
+            }
             queue.pop_front();
+
+            // spread across all paths
+            path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
           }
         }
       }
@@ -264,22 +301,42 @@ namespace llarp
         for(auto& item : m_Upstream)
           item.second.clear();
         m_Upstream.clear();
+        if(numHops == 1)
+        {
+          auto r = router;
+          RouterContact rc;
+          if(r->nodedb()->Get(m_ExitRouter, rc))
+            r->TryConnectAsync(rc, 5);
+          else
+            r->LookupRouter(m_ExitRouter,
+                            [r](const std::vector< RouterContact >& results) {
+                              if(results.size())
+                                r->TryConnectAsync(results[0], 5);
+                            });
+        }
+        else if(UrgentBuild(now))
+          BuildOneAlignedTo(m_ExitRouter);
       }
+      return true;
+    }
+
+    void
+    BaseSession::FlushDownstream()
+    {
       while(m_Downstream.size())
       {
         if(m_WritePacket)
           m_WritePacket(m_Downstream.top().second.ConstBuffer());
         m_Downstream.pop();
       }
-      return true;
     }
 
     SNodeSession::SNodeSession(
         const llarp::RouterID& snodeRouter,
         std::function< bool(const llarp_buffer_t&) > writepkt,
         AbstractRouter* r, size_t numpaths, size_t hoplen,
-        bool useRouterSNodeKey)
-        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+        bool useRouterSNodeKey, bool bundleRC)
+        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
     {
       if(useRouterSNodeKey)
       {

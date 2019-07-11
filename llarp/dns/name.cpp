@@ -10,7 +10,7 @@ namespace llarp
   namespace dns
   {
     bool
-    DecodeName(llarp_buffer_t* buf, Name_t& name)
+    DecodeName(llarp_buffer_t* buf, Name_t& name, bool trimTrailingDot)
     {
       if(buf->size_left() < 1)
         return false;
@@ -37,6 +37,9 @@ namespace llarp
         buf->cur = buf->cur + l;
       } while(l);
       name = ss.str();
+      /// trim off last dot
+      if(trimTrailingDot)
+        name = name.substr(0, name.find_last_of('.'));
       return true;
     }
 
@@ -96,8 +99,8 @@ namespace llarp
         ip  = llarp::ipaddr_ipv4_bits(a, b, c, d);
         return true;
       }
-      else
-        return false;
+
+      return false;
     }
 
   }  // namespace dns

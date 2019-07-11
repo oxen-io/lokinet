@@ -52,7 +52,7 @@
 static int
 tuntap_sys_create_dev(struct device *dev, int tun)
 {
-	int if_fd, ip_muxid, ppa = -1;
+	int fd, strm_fd, ip_muxid, ppa = -1;
 	struct lifreq lifr;
 	struct ifreq ifr;
 	const char *ptr = NULL;
@@ -74,7 +74,7 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 		return -1;
 	}
 
-	if ((dev->tun_fd = open("/dev/tun", O_RDWR, 0)) < 0)
+	if ((fd = open("/dev/tun", O_RDWR, 0)) < 0)
 	{
 		tuntap_log(TUNTAP_LOG_ERR, "Can't open /dev/tun");
 		return -1;
@@ -102,7 +102,7 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 		bool found_one = false;
 		while (!found_one && ppa < 64)
 		{
-			int new_ppa = ioctl(dev->tun_fd, I_STR, &strioc_ppa);
+			int new_ppa = ioctl(fd, I_STR, &strioc_ppa);
 			if (new_ppa >= 0)
 			{
 				char* msg = alloca(512);
@@ -127,7 +127,7 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 	}
 	else                        /* try this particular one */
 	{
-		if ((ppa = ioctl(dev->tun_fd, I_STR, &strioc_ppa)) < 0)
+		if ((ppa = ioctl(fd, I_STR, &strioc_ppa)) < 0)
 		{
 			char *msg = alloca(512);
 			sprintf(msg, "Can't assign PPA for new interface (tun%i)", ppa);
@@ -136,20 +136,21 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 		}
 	}
 
-	if ((if_fd = open("/dev/tun", O_RDWR, 0)) < 0)
+	// Open a new handle to link up the STREAMS
+	if ((strm_fd = open("/dev/tun", O_RDWR, 0)) < 0)
 	{
 		tuntap_log(TUNTAP_LOG_ERR, "Can't open /dev/tun (2)");
 		return -1;
 	}
 
-	if (ioctl(if_fd, I_PUSH, "ip") < 0)
+	if (ioctl(strm_fd, I_PUSH, "ip") < 0)
 	{
 		tuntap_log(TUNTAP_LOG_ERR, "Can't push IP module");
 		return -1;
 	}
 
 	/* Assign ppa according to the unit number returned by tun device */
-	if (ioctl(if_fd, IF_UNITSEL, (char *) &ppa) < 0)
+	if (ioctl(strm_fd, IF_UNITSEL, (char *) &ppa) < 0)
 	{
 		char *msg = alloca(512);
 		sprintf(msg, "Can't set PPA %i", ppa);
@@ -159,7 +160,7 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 
 	snprintf(dev->internal_name, IF_NAMESIZE, "%s%d", "tun", ppa);
 
-	if ((ip_muxid = ioctl(dev->ip_fd, I_PLINK, if_fd)) < 0)
+	if ((ip_muxid = ioctl(dev->ip_fd, I_PLINK, strm_fd)) < 0)
 	{
 		tuntap_log(TUNTAP_LOG_ERR, "Can't link tun device to IP");
 		return -1;
@@ -177,8 +178,8 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 		return -1;
 	}
 
-	fcntl(dev->tun_fd, F_SETFL, O_NONBLOCK);
-	fcntl(dev->tun_fd, F_SETFD, FD_CLOEXEC);
+	fcntl(fd, F_SETFL, O_NONBLOCK);
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	fcntl(dev->ip_fd, F_SETFD, FD_CLOEXEC);
 	char *msg = alloca(512);
 	sprintf(msg, "TUN device %s opened as %s", dev->if_name, dev->internal_name);
@@ -194,7 +195,8 @@ tuntap_sys_create_dev(struct device *dev, int tun)
 	}
 	/* Save flags for tuntap_{up, down} */
 	dev->flags = ifr.ifr_flags;
-	return 0;
+	dev->reserved = strm_fd;
+	return fd;
 }
 
 int
@@ -245,6 +247,8 @@ tuntap_sys_destroy(struct device *dev)
 	}
 
 	close(dev->ip_fd);
+	close(dev->reserved);
+	dev->reserved = -1;
 	dev->ip_fd = -1;
 }
 
@@ -254,9 +258,12 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 {
 	struct lifreq ifr;
 	struct sockaddr_in mask;
+	struct in_addr net;
+	char *src, *dst, *netmask;
 
 	(void)memset(&ifr, '\0', sizeof ifr);
 	(void)memcpy(ifr.lifr_name, dev->internal_name, sizeof dev->internal_name);
+	net.s_addr = htonl(ntohl(s4->s_addr) - 1); // this gets us x.x.x.0
 
 	/* Set the IP address first */
 	(void)memcpy(&(((struct sockaddr_in *)&ifr.lifr_addr)->sin_addr), s4,
@@ -271,6 +278,20 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 	/* Reinit the struct ifr */
 	(void)memset(&ifr.lifr_addr, '\0', sizeof ifr.lifr_addr);
 
+	/* Set the tunnel endpoint */
+	(void)memcpy(&(((struct sockaddr_in *)&ifr.lifr_dstaddr)->sin_addr), s4,
+		sizeof(struct in_addr));
+	ifr.lifr_addr.ss_family = AF_INET;
+	if(ioctl(dev->ctrl_sock, SIOCSLIFDSTADDR, &ifr) == -1)
+	{
+		tuntap_log(TUNTAP_LOG_ERR, "Can't set IP address");
+		return -1;
+	}
+
+	/* Reinit the struct ifr */
+	(void)memset(&ifr.lifr_addr, '\0', sizeof ifr.lifr_addr);
+	(void)memset(&ifr.lifr_addr, '\0', sizeof ifr.lifr_dstaddr);
+
 	/* Then set the netmask */
 	(void)memset(&mask, '\0', sizeof mask);
 	mask.sin_family      = AF_INET;
@@ -282,7 +303,16 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 		return -1;
 	}
 
-	return 0;
+	// Now set the route, yup even ovpn does this :-/
+	char* cmd = alloca(512);
+	src = alloca(16);
+	dst = alloca(16);
+	netmask = alloca(16);
+	strlcpy(src, inet_ntoa(net), 16);
+	strlcpy(dst, inet_ntoa(*s4), 16);
+	strlcpy(netmask, inet_ntoa(mask.sin_addr), 16);
+	sprintf(cmd, "route add %s -netmask %s %s 0", src, netmask, dst);
+	return system(cmd);
 }
 
 int

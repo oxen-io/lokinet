@@ -3167,7 +3167,8 @@ utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
             "UTP_Connect conn_seed:%u packet_size:%u (B) "
             "target_delay:%u (ms) delay_history:%u "
             "delay_base_history:%u (minutes)",
-            conn->conn_seed, PACKET_SIZE, conn->target_delay / 1000,
+            conn->conn_seed, PACKET_SIZE,
+            static_cast< unsigned int >(conn->target_delay / 1000),
             CUR_DELAY_SIZE, DELAY_BASE_HISTORY);
 
   // Setup initial timeout timer.

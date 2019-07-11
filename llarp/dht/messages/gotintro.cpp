@@ -1,9 +1,9 @@
 #include <dht/messages/gotintro.hpp>
 
 #include <dht/context.hpp>
-#include <messages/dht.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 
 namespace llarp
 {
@@ -25,12 +25,11 @@ namespace llarp
         __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht   = *ctx->impl;
-      auto crypto = dht.GetRouter()->crypto();
+      auto &dht = *ctx->impl;
 
       for(const auto &introset : I)
       {
-        if(!introset.Verify(crypto, dht.Now()))
+        if(!introset.Verify(dht.Now()))
         {
           llarp::LogWarn(
               "Invalid introset while handling direct GotIntro "
@@ -75,7 +74,8 @@ namespace llarp
           ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
       if(pathset)
       {
-        return pathset->HandleGotIntroMessage(this);
+        auto copy = std::make_shared< const RelayedGotIntroMessage >(*this);
+        return pathset->HandleGotIntroMessage(copy);
       }
       llarp::LogWarn("No path for got intro message pathid=", pathID);
       return false;

@@ -14,46 +14,14 @@
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
-llarp::Addr::operator const sockaddr*() const
-{
-  if(af() == AF_INET)
-    return (const sockaddr*)&_addr4;
-  else
-    return (const sockaddr*)&_addr;
-}
-
-llarp::Addr::operator sockaddr*() const
-{
-  if(af() == AF_INET)
-    return (sockaddr*)&_addr4;
-  else
-    return (sockaddr*)&_addr;
-}
-
-bool
-llarp::Addr::operator<(const Addr& other) const
-{
-  if(af() == AF_INET && other.af() == AF_INET)
-    return port() < other.port() || addr4()->s_addr < other.addr4()->s_addr;
-  else
-    return port() < other.port() || *addr6() < *other.addr6()
-        || af() < other.af();
-}
-
-bool
-llarp::Addr::operator==(const Addr& other) const
-{
-  if(af() == AF_INET && other.af() == AF_INET)
-    return port() == other.port() && addr4()->s_addr == other.addr4()->s_addr;
-  else
-    return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
-        && port() == other.port();
-}
-
 namespace llarp
 {
-  Addr::Addr(){};
-  Addr::~Addr(){};
+  Addr::Addr()
+  {
+  }
+  Addr::~Addr()
+  {
+  }
 
   Addr::Addr(const Addr& other)
   {
@@ -95,46 +63,37 @@ namespace llarp
     return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
   }
 
-  Addr::Addr(const std::string str)
+  Addr::Addr(string_view str)
   {
-    this->from_char_array(str.c_str());
+    this->from_char_array(str);
   }
 
-  Addr::Addr(const std::string str, const uint16_t p_port)
+  Addr::Addr(string_view str, const uint16_t p_port)
   {
-    this->from_char_array(str.c_str());
+    this->from_char_array(str);
     this->port(p_port);
   }
 
   Addr::Addr(string_view addr_str, string_view port_str)
   {
-    this->from_char_array(llarp::string_view_string(addr_str).c_str());
-    this->port(
-        std::strtoul(llarp::string_view_string(port_str).c_str(), nullptr, 10));
+    this->from_char_array(string_view_string(addr_str).c_str());
+    this->port(std::strtoul(string_view_string(port_str).c_str(), nullptr, 10));
   }
 
   bool
-  Addr::from_char_array(const char* in)
+  Addr::from_char_array(string_view in)
   {
-    char* str       = (char*)in;
-    char* pPosition = strchr(str, ':');
-    bool freeStr    = false;
-    if(pPosition)
+    auto str       = in.begin();
+    auto pPosition = in.find(':');
+    if(pPosition != string_view::npos)
     {
       // parse port
-      char buf[6];
-      snprintf(buf, 6, "%s", pPosition + 1);
-      uint16_t port = std::atoi(buf);
-      llarp::LogDebug("Setting port ", std::to_string(port));
+      uint16_t port =
+          std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
+      LogDebug("Setting port ", std::to_string(port));
       this->port(port);
-      // trim str
-      // can't VLA
-      str                 = strdup(in);  // copy it
-      str[pPosition - in] = '\0';        // nul terminate it early
-      llarp::LogDebug("Truncating to ", str);
-      freeStr = true;
     }
-    llarp::Zero(&_addr, sizeof(sockaddr_in6));
+    Zero(&_addr, sizeof(sockaddr_in6));
     struct addrinfo hint, *res = NULL;
     int ret;
 
@@ -143,27 +102,30 @@ namespace llarp
     hint.ai_family = PF_UNSPEC;
     hint.ai_flags  = AI_NUMERICHOST;
 
-    ret = getaddrinfo(str, NULL, &hint, &res);
+    if(pPosition != string_view::npos)
+    {
+      ret = getaddrinfo(std::string(in.begin(), in.begin() + pPosition).c_str(),
+                        NULL, &hint, &res);
+    }
+    else
+    {
+      ret = getaddrinfo(std::string(in).c_str(), NULL, &hint, &res);
+    }
+
     if(ret)
     {
-      llarp::LogError("failed to determine address family: ", str);
-      if(freeStr)
-        free(str);
+      LogError("failed to determine address family: ", str);
       return false;
     }
 
     if(res->ai_family == AF_INET6)
     {
-      llarp::LogError("IPv6 address not supported yet", str);
-      if(freeStr)
-        free(str);
+      LogError("IPv6 address not supported yet", str);
       return false;
     }
-    else if(res->ai_family != AF_INET)
+    if(res->ai_family != AF_INET)
     {
-      llarp::LogError("Address family not supported yet", str);
-      if(freeStr)
-        free(str);
+      LogError("Address family not supported yet", str);
       return false;
     }
 
@@ -171,13 +133,9 @@ namespace llarp
     struct in_addr* addr = &_addr4.sin_addr;
     if(inet_aton(str, addr) == 0)
     {
-      llarp::LogError("failed to parse ", str);
-      if(freeStr)
-        free(str);
+      LogError("failed to parse ", str);
       return false;
     }
-    if(freeStr)
-      free(str);
 
     _addr.sin6_family = res->ai_family;
     _addr4.sin_family = res->ai_family;
@@ -195,16 +153,11 @@ namespace llarp
     return true;
   }
 
-  Addr::Addr(const char* str)
-  {
-    this->from_char_array(str);
-  }
-
   bool
   Addr::from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
                   const uint8_t four)
   {
-    llarp::Zero(&_addr, sizeof(sockaddr_in6));
+    Zero(&_addr, sizeof(sockaddr_in6));
     struct in_addr* addr = &_addr4.sin_addr;
     unsigned char* ip    = (unsigned char*)&(addr->s_addr);
 
@@ -260,7 +213,7 @@ namespace llarp
 
   Addr::Addr(const sockaddr_in& other)
   {
-    llarp::Zero(&_addr, sizeof(sockaddr_in6));
+    Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = AF_INET;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;
@@ -296,7 +249,7 @@ namespace llarp
 
   Addr::Addr(const sockaddr& other)
   {
-    llarp::Zero(&_addr, sizeof(sockaddr_in6));
+    Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = other.sa_family;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;
@@ -402,10 +355,46 @@ namespace llarp
     return ntohs(_addr.sin6_port);
   }
 
+  Addr::operator const sockaddr*() const
+  {
+    if(af() == AF_INET)
+      return (const sockaddr*)&_addr4;
+
+    return (const sockaddr*)&_addr;
+  }
+
+  Addr::operator sockaddr*() const
+  {
+    if(af() == AF_INET)
+      return (sockaddr*)&_addr4;
+
+    return (sockaddr*)&_addr;
+  }
+
+  bool
+  Addr::operator<(const Addr& other) const
+  {
+    if(af() == AF_INET && other.af() == AF_INET)
+      return port() < other.port() || addr4()->s_addr < other.addr4()->s_addr;
+
+    return port() < other.port() || *addr6() < *other.addr6()
+        || af() < other.af();
+  }
+
+  bool
+  Addr::operator==(const Addr& other) const
+  {
+    if(af() == AF_INET && other.af() == AF_INET)
+      return port() == other.port() && addr4()->s_addr == other.addr4()->s_addr;
+
+    return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
+        && port() == other.port();
+  }
+
   Addr&
   Addr::operator=(const sockaddr& other)
   {
-    llarp::Zero(&_addr, sizeof(sockaddr_in6));
+    Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = other.sa_family;
     uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
     uint16_t* port    = &_addr.sin6_port;
@@ -482,8 +471,8 @@ namespace llarp
   {
     if(af() == AF_INET)
       return sizeof(sockaddr_in);
-    else
-      return sizeof(sockaddr_in6);
+
+    return sizeof(sockaddr_in6);
   }
 
   bool

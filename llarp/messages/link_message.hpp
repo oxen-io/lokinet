@@ -13,17 +13,27 @@ namespace llarp
   struct AbstractRouter;
 
   /// parsed link layer message
-  struct ILinkMessage : public IBEncodeMessage
+  struct ILinkMessage
   {
     /// who did this message come from or is going to
     ILinkSession* session = nullptr;
-    uint64_t version      = 0;
+    uint64_t version      = LLARP_PROTO_VERSION;
 
     ILinkMessage() = default;
 
-    virtual ~ILinkMessage()
+    virtual ~ILinkMessage() = default;
+
+    virtual bool
+    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
+
+    bool
+    BDecode(llarp_buffer_t* buf)
     {
+      return bencode_decode_dict(*this, buf);
     }
+
+    virtual bool
+    BEncode(llarp_buffer_t* buf) const = 0;
 
     virtual bool
     HandleMessage(AbstractRouter* router) const = 0;

@@ -10,6 +10,41 @@ namespace llarp
 {
   namespace service
   {
+    namespace
+    {
+      using EndpointConstructor  = std::function< service::Endpoint_ptr(
+          const std::string &, AbstractRouter *, service::Context *) >;
+      using EndpointConstructors = std::map< std::string, EndpointConstructor >;
+
+      static EndpointConstructors endpointConstructors = {
+          {"tun",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::TunEndpoint >(nick, r, c);
+           }},
+          {"android-tun",
+           [](const std::string &, AbstractRouter *,
+              service::Context *) -> service::Endpoint_ptr {
+             return nullptr;
+             /// SOOOOOOON (tm)
+             // return std::make_shared<handlers::AndroidTunEndpoint>(nick,
+             // r, c);
+           }},
+          {"ios-tun",
+           [](const std::string &, AbstractRouter *,
+              service::Context *) -> service::Endpoint_ptr {
+             return nullptr;
+             /// SOOOOOOON (tm)
+             // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,
+             // c);
+           }},
+          {"null",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::NullEndpoint >(nick, r, c);
+           }}};
+
+    }  // namespace
     Context::Context(AbstractRouter *r) : m_Router(r)
     {
     }
@@ -47,8 +82,8 @@ namespace llarp
     void
     Context::ForEachService(
         std::function< bool(const std::string &,
-                            const std::unique_ptr< Endpoint > &) >
-            visit)
+                            const std::shared_ptr< Endpoint > &) >
+            visit) const
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
@@ -66,7 +101,7 @@ namespace llarp
       auto itr = m_Endpoints.find(name);
       if(itr == m_Endpoints.end())
         return false;
-      std::unique_ptr< Endpoint > ep = std::move(itr->second);
+      std::shared_ptr< Endpoint > ep = std::move(itr->second);
       m_Endpoints.erase(itr);
       ep->Stop();
       m_Stopped.emplace_back(std::move(ep));
@@ -88,96 +123,33 @@ namespace llarp
         }
       }
       // tick active endpoints
+      for(const auto &item : m_Endpoints)
       {
-        auto itr = m_Endpoints.begin();
-        while(itr != m_Endpoints.end())
-        {
-          itr->second->Tick(now);
-          ++itr;
-        }
+        item.second->Tick(now);
       }
-
-      auto ep = getFirstEndpoint();
-      if(!ep)
-        return;
+      /*
       std::vector< RouterID > expired;
       m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
         if(rc.IsExpired(now))
           expired.emplace_back(rc.pubkey);
         return true;
       });
-      // TODO: we need to stop looking up service nodes that are gone forever
-      // how do?
-      for(const auto &k : expired)
-        ep->LookupRouterAnon(k);
+      ForEachService([&](const std::string &,
+                         const std::shared_ptr< Endpoint > &ep) -> bool {
+        // TODO: we need to stop looking up service nodes that are gone forever
+        // how do?
+        for(const auto &k : expired)
+          if(!ep->LookupRouterAnon(k, nullptr))
+            return false;
+        return true;
+      });
+      */
     }
 
     bool
     Context::hasEndpoints()
     {
       return m_Endpoints.size() ? true : false;
-    }
-
-    service::Endpoint *
-    Context::getFirstEndpoint()
-    {
-      if(!m_Endpoints.size())
-      {
-        LogError("No endpoints found");
-        return nullptr;
-      }
-      auto itr = m_Endpoints.begin();
-      if(itr == m_Endpoints.end())
-        return nullptr;
-      return itr->second.get();
-    }
-
-    bool
-    Context::iterate(struct endpoint_iter &i)
-    {
-      if(!m_Endpoints.size())
-      {
-        LogError("No endpoints found");
-        return false;
-      }
-      i.index = 0;
-      // util::Lock lock(access);
-      auto itr = m_Endpoints.begin();
-      while(itr != m_Endpoints.end())
-      {
-        i.endpoint = itr->second.get();
-        if(!i.visit(&i))
-          return false;
-        // advance
-        i.index++;
-        itr++;
-      }
-      return true;
-    }
-
-    handlers::TunEndpoint *
-    Context::getFirstTun()
-    {
-      service::Endpoint *endpointer = this->getFirstEndpoint();
-      if(!endpointer)
-      {
-        return nullptr;
-      }
-      handlers::TunEndpoint *tunEndpoint =
-          static_cast< handlers::TunEndpoint * >(endpointer);
-      return tunEndpoint;
-    }
-
-    llarp_tun_io *
-    Context::getRange()
-    {
-      handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if(!tunEndpoint)
-      {
-        LogError("No tunnel endpoint found");
-        return nullptr;
-      }
-      return &tunEndpoint->tunif;
     }
 
     bool
@@ -201,56 +173,6 @@ namespace llarp
         return true;
       }
       return false;
-    }
-
-    bool
-    Context::Prefetch(const service::Address &addr)
-    {
-      handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if(!tunEndpoint)
-      {
-        LogError("No tunnel endpoint found");
-        return false;
-      }
-      // HiddenServiceAddresslookup *lookup = new
-      // HiddenServiceEndpoint(tunEndpoint, callback, addr,
-      // tunEndpoint->GenTXID());
-      return tunEndpoint->EnsurePathToService(
-          addr,
-          [](__attribute__((unused)) Address addr,
-             __attribute__((unused)) void *ctx) {},
-          10000);
-    }
-
-    bool
-    MapAddressAllIter(struct Context::endpoint_iter *endpointCfg)
-    {
-      Context::mapAddressAll_context *context =
-          (Context::mapAddressAll_context *)endpointCfg->user;
-      handlers::TunEndpoint *tunEndpoint =
-          (handlers::TunEndpoint *)endpointCfg->endpoint;
-      if(!tunEndpoint)
-      {
-        LogError("No tunnel endpoint found");
-        return true;  // still continue
-      }
-      return tunEndpoint->MapAddress(
-          context->serviceAddr, context->localPrivateIpAddr.xtohl(), false);
-    }
-
-    bool
-    Context::MapAddressAll(const service::Address &addr,
-                           Addr &localPrivateIpAddr)
-    {
-      struct Context::mapAddressAll_context context;
-      context.serviceAddr        = addr;
-      context.localPrivateIpAddr = localPrivateIpAddr;
-
-      struct Context::endpoint_iter i;
-      i.user  = &context;
-      i.index = 0;
-      i.visit = &MapAddressAllIter;
-      return this->iterate(i);
     }
 
     bool
@@ -301,7 +223,7 @@ namespace llarp
       }
       // extract type
       std::string endpointType = "tun";
-      std::string keyfile      = "";
+      std::string keyfile;
       for(const auto &option : conf.second)
       {
         if(option.first == "type")
@@ -310,27 +232,11 @@ namespace llarp
           keyfile = option.second;
       }
 
-      std::unique_ptr< service::Endpoint > service;
-
-      static std::map<
-          std::string,
-          std::function< std::unique_ptr< service::Endpoint >(
-              const std::string &, AbstractRouter *, service::Context *) > >
-          endpointConstructors = {
-              {"tun",
-               [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
-                 return std::make_unique< handlers::TunEndpoint >(nick, r, c);
-               }},
-              {"null",
-               [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
-                 return std::make_unique< handlers::NullEndpoint >(nick, r, c);
-               }}};
+      service::Endpoint_ptr service;
 
       {
         // detect type
-        auto itr = endpointConstructors.find(endpointType);
+        const auto itr = endpointConstructors.find(endpointType);
         if(itr == endpointConstructors.end())
         {
           LogError("no such endpoint type: ", endpointType);
@@ -339,18 +245,22 @@ namespace llarp
 
         // construct
         service = itr->second(conf.first, m_Router, this);
-
-        // if ephemeral, then we need to regen key
-        // if privkey file, then set it and load it
-        if(keyfile != "")
+        if(service)
         {
-          service->SetOption("keyfile", keyfile);
-          // load keyfile, so we have the correct name for logging
+          // if ephemeral, then we need to regen key
+          // if privkey file, then set it and load it
+          if(!keyfile.empty())
+          {
+            service->SetOption("keyfile", keyfile);
+            // load keyfile, so we have the correct name for logging
+          }
+          LogInfo("Establishing endpoint identity");
+          service->LoadKeyFile();  // only start endpoint not tun
+          // now Name() will be correct
         }
-        LogInfo("Establishing endpoint identity");
-        service->LoadKeyFile();  // only start endpoint not tun
-        // now Name() will be correct
       }
+      if(service == nullptr)
+        return false;
       // configure
       for(const auto &option : conf.second)
       {
@@ -371,18 +281,16 @@ namespace llarp
         if(service->Start())
         {
           LogInfo("autostarting hidden service endpoint ", service->Name());
-          m_Endpoints.emplace(conf.first, std::move(service));
+          m_Endpoints.emplace(conf.first, service);
           return true;
         }
         LogError("failed to start hidden service endpoint ", conf.first);
         return false;
       }
-      else
-      {
-        LogInfo("added hidden service endpoint ", service->Name());
-        m_Endpoints.emplace(conf.first, std::move(service));
-        return true;
-      }
+
+      LogInfo("added hidden service endpoint ", service->Name());
+      m_Endpoints.emplace(conf.first, service);
+      return true;
     }
   }  // namespace service
 }  // namespace llarp

@@ -1,11 +1,13 @@
 #include <rpc/rpc.hpp>
 
 #include <router/abstractrouter.hpp>
+#include <service/context.hpp>
 #include <util/logger.hpp>
 #include <router_id.hpp>
 #include <exit/context.hpp>
 
 #include <util/encode.hpp>
+#include <util/memfn.hpp>
 #include <libabyss.hpp>
 
 namespace llarp
@@ -39,14 +41,12 @@ namespace llarp
         {
           return HandleJSONResult({});
         }
-        else if(itr.value().is_object())
+        if(itr.value().is_object())
         {
           return HandleJSONResult(itr.value());
         }
-        else
-        {
-          return false;
-        }
+
+        return false;
       }
 
       void
@@ -150,8 +150,7 @@ namespace llarp
       {
         LogInfo("Updating service node list");
         QueueRPC("get_all_service_nodes_keys", nlohmann::json::object(),
-                 std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
-                           std::placeholders::_1));
+                 util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
       }
 
       bool
@@ -165,8 +164,7 @@ namespace llarp
       {
         return new GetServiceNodeListHandler(
             impl, this,
-            std::bind(&CallerImpl::HandleServiceNodeListUpdated, this,
-                      std::placeholders::_1, std::placeholders::_2));
+            util::memFn(&CallerImpl::HandleServiceNodeListUpdated, this));
       }
 
       void
@@ -206,7 +204,7 @@ namespace llarp
       Response
       DumpState() const
       {
-        util::StatusObject dump = router->ExtractStatus();
+        const util::StatusObject dump = router->ExtractStatus();
         return dump.get();
       }
 
@@ -236,10 +234,36 @@ namespace llarp
             [&](const ILinkSession* session, bool outbound) {
               resp.emplace_back(
                   Response{{"ident", RouterID(session->GetPubKey()).ToString()},
-                           {"addr", session->GetRemoteEndpoint().ToString()},
+                           {"svcnode", session->GetRemoteRC().IsPublicRouter()},
                            {"outbound", outbound}});
             },
             false);
+        return resp;
+      }
+
+      Response
+      DumpStatus() const
+      {
+        size_t numServices      = 0;
+        size_t numServicesReady = 0;
+        Response services       = Response::array();
+        auto visitor =
+            [&](const std::string& name,
+                const std::shared_ptr< service::Endpoint >& ptr) -> bool {
+          numServices++;
+          if(ptr->IsReady())
+            numServicesReady++;
+          const Response status{{"ready", ptr->IsReady()},
+                                {"stopped", ptr->IsStopped()},
+                                {"stale", ptr->IntrosetIsStale()}};
+          services.emplace_back(Response{name, status});
+          return true;
+        };
+        router->hiddenServiceContext().ForEachService(visitor);
+        const Response resp{{"uptime", router->Uptime()},
+                            {"servicesTotal", numServices},
+                            {"servicesReady", numServicesReady},
+                            {"services", services}};
         return resp;
       }
 
@@ -251,13 +275,17 @@ namespace llarp
         {
           return ListNeighboors();
         }
-        else if(method == "llarp.admin.exit.list")
+        if(method == "llarp.admin.exit.list")
         {
           return ListExitLevels();
         }
-        else if(method == "llarp.admin.dumpstate")
+        if(method == "llarp.admin.dumpstate")
         {
           return DumpState();
+        }
+        else if(method == "llarp.admin.status")
+        {
+          return DumpStatus();
         }
         return false;
       }

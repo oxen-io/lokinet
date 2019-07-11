@@ -5,6 +5,7 @@
 #include <ev/ev.h>
 #include <net/net.hpp>
 #include <util/string_view.hpp>
+#include <util/logic.hpp>
 
 #include <unordered_map>
 
@@ -15,7 +16,9 @@ namespace llarp
     /// handler of dns query hooking
     struct IQueryHandler
     {
-      virtual ~IQueryHandler(){};
+      virtual ~IQueryHandler()
+      {
+      }
 
       /// return true if we should hook this message
       virtual bool
@@ -27,12 +30,15 @@ namespace llarp
                              std::function< void(Message) > sendReply) = 0;
     };
 
-    struct Proxy
+    struct Proxy : public std::enable_shared_from_this< Proxy >
     {
-      Proxy(llarp_ev_loop_ptr loop, IQueryHandler* handler);
+      using Logic_ptr = std::shared_ptr< Logic >;
+      Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic,
+            llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
+            IQueryHandler* handler);
 
       bool
-      Start(const llarp::Addr& addr,
+      Start(const llarp::Addr addr,
             const std::vector< llarp::Addr >& resolvers);
 
       void
@@ -61,7 +67,10 @@ namespace llarp
       HandlePktServer(llarp::Addr from, llarp_buffer_t* buf);
 
       void
-      SendMessageTo(llarp::Addr to, Message msg);
+      SendClientMessageTo(llarp::Addr to, Message msg);
+
+      void
+      SendServerMessageTo(llarp::Addr to, Message msg);
 
       llarp::Addr
       PickRandomResolver() const;
@@ -69,7 +78,10 @@ namespace llarp
      private:
       llarp_udp_io m_Server;
       llarp_udp_io m_Client;
-      llarp_ev_loop_ptr m_Loop;
+      llarp_ev_loop_ptr m_ServerLoop;
+      llarp_ev_loop_ptr m_ClientLoop;
+      Logic_ptr m_ServerLogic;
+      Logic_ptr m_ClientLogic;
       IQueryHandler* m_QueryHandler;
       std::vector< llarp::Addr > m_Resolvers;
 

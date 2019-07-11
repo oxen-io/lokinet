@@ -2,6 +2,7 @@
 
 #include <dns/dns.hpp>
 #include <net/net.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/str.hpp>
 
@@ -25,9 +26,10 @@ namespace llarp
 
     ExitEndpoint::ExitEndpoint(const std::string &name, AbstractRouter *r)
         : m_Router(r)
-        , m_Resolver(r->netloop(), this)
+        , m_Resolver(std::make_shared< dns::Proxy >(
+              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
+        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0, 0}
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
 
@@ -69,19 +71,16 @@ namespace llarp
           return false;
         return m_OurRange.Contains(ip);
       }
-      else if(msg.questions[0].qtype == dns::qTypeA
-              || msg.questions[0].qtype == dns::qTypeCNAME
-              || msg.questions[0].qtype == dns::qTypeAAAA)
+      if(msg.questions[0].qtype == dns::qTypeA
+         || msg.questions[0].qtype == dns::qTypeCNAME
+         || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        // hook for forward dns or cname when using snode tld
-        if(msg.questions[0].qname.find(".snode.")
-           == (msg.questions[0].qname.size() - 7))
+        if(msg.questions[0].IsName("localhost.loki"))
           return true;
-        return msg.questions[0].qname == "localhost.loki"
-            || msg.questions[0].qname == "localhost.loki.";
+        if(msg.questions[0].HasTLD(".snode"))
+          return true;
       }
-      else
-        return false;
+      return false;
     }
 
     bool
@@ -113,8 +112,7 @@ namespace llarp
       }
       else if(msg.questions[0].qtype == dns::qTypeCNAME)
       {
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if(GetRouter()->GetRandomGoodRouter(random))
@@ -122,8 +120,7 @@ namespace llarp
           else
             msg.AddNXReply();
         }
-        else if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+        else if(msg.questions[0].IsName("localhost.loki"))
         {
           RouterID us = m_Router->pubkey();
           msg.AddAReply(us.ToString(), 1);
@@ -135,19 +132,21 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
           if(GetRouter()->GetRandomGoodRouter(random))
+          {
             msg.AddCNAMEReply(random.ToString(), 1);
+            auto ip = ObtainServiceNodeIP(random);
+            msg.AddINReply(ip, false);
+          }
           else
             msg.AddNXReply();
           reply(msg);
           return true;
         }
-        if(msg.questions[0].qname == "localhost.loki."
-           || msg.questions[0].qname == "localhost.loki")
+        if(msg.questions[0].IsName("localhost.loki"))
         {
           msg.AddINReply(GetIfAddr(), isV6);
           reply(msg);
@@ -155,7 +154,7 @@ namespace llarp
         }
         // forward dns for snode
         RouterID r;
-        if(r.FromString(msg.questions[0].qname))
+        if(r.FromString(msg.questions[0].Name()))
         {
           huint32_t ip;
           PubKey pubKey(r);
@@ -192,6 +191,22 @@ namespace llarp
       return m_Router->Now();
     }
 
+    bool
+    ExitEndpoint::VisitEndpointsFor(
+        const PubKey &pk, std::function< bool(exit::Endpoint *const) > visit)
+    {
+      auto range = m_ActiveExits.equal_range(pk);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        if(visit(itr->second.get()))
+          ++itr;
+        else
+          return true;
+      }
+      return false;
+    }
+
     void
     ExitEndpoint::Flush()
     {
@@ -220,21 +235,22 @@ namespace llarp
               return;
           }
         }
-        exit::Endpoint *ep = m_ChosenExits[pk];
-
-        if(ep == nullptr)
-        {
-          // we may have all dead sessions, wtf now?
-          LogWarn(Name(), " dropped inbound traffic for session ", pk,
-                  " as we have no working endpoints");
-        }
-        else
-        {
+        auto tryFlushingTraffic = [&](exit::Endpoint *const ep) -> bool {
           if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
           {
             LogWarn(Name(), " dropped inbound traffic for session ", pk,
                     " as we are overloaded (probably)");
+            // continue iteration
+            return true;
           }
+          // break iteration
+          return false;
+        };
+        if(!VisitEndpointsFor(pk, tryFlushingTraffic))
+        {
+          // we may have all dead sessions, wtf now?
+          LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                  " as we have no working endpoints");
         }
       });
       {
@@ -252,19 +268,29 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(!itr->second->Flush())
+          // TODO: move flush upstream to router event loop
+          if(!itr->second->FlushUpstream())
           {
             LogWarn("failed to flush snode traffic to ", itr->first,
                     " via outbound session");
           }
+          itr->second->FlushDownstream();
           ++itr;
         }
       }
+      m_Router->PumpLL();
     }
 
     bool
     ExitEndpoint::Start()
     {
+      // map our address
+      const PubKey us(m_Router->pubkey());
+      const huint32_t ip = GetIfAddr();
+      m_KeyToIP[us]      = ip;
+      m_IPToKey[ip]      = us;
+      m_IPActivity[ip]   = std::numeric_limits< llarp_time_t >::max();
+      m_SNodeKeys.insert(us);
       if(m_ShouldInitTun)
       {
         auto loop = GetRouter()->netloop();
@@ -275,7 +301,7 @@ namespace llarp
         }
         llarp::LogInfo("Trying to start resolver ",
                        m_LocalResolverAddr.ToString());
-        return m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers);
+        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers);
       }
       return true;
     }
@@ -284,12 +310,6 @@ namespace llarp
     ExitEndpoint::GetRouter()
     {
       return m_Router;
-    }
-
-    Crypto *
-    ExitEndpoint::GetCrypto()
-    {
-      return m_Router->crypto();
     }
 
     huint32_t
@@ -548,18 +568,22 @@ namespace llarp
     huint32_t
     ExitEndpoint::ObtainServiceNodeIP(const RouterID &other)
     {
-      PubKey pubKey(other);
+      const PubKey pubKey(other);
+      const PubKey us(m_Router->pubkey());
+      // just in case
+      if(pubKey == us)
+        return m_IfAddr;
+
       huint32_t ip = GetIPForIdent(pubKey);
       if(m_SNodeKeys.emplace(pubKey).second)
       {
-        // this is a new service node make an outbound session to them
-        m_SNodeSessions.emplace(
+        auto session = std::make_shared< exit::SNodeSession >(
             other,
-            std::unique_ptr< exit::SNodeSession >(new exit::SNodeSession(
-                other,
-                std::bind(&ExitEndpoint::QueueSNodePacket, this,
-                          std::placeholders::_1, ip),
-                GetRouter(), 2, 1, true)));
+            std::bind(&ExitEndpoint::QueueSNodePacket, this,
+                      std::placeholders::_1, ip),
+            GetRouter(), 2, 1, true, false);
+        // this is a new service node make an outbound session to them
+        m_SNodeSessions.emplace(other, session);
       }
       return ip;
     }
@@ -583,6 +607,7 @@ namespace llarp
                                 pk, path, !wantInternet, ip, this));
 
       m_Paths[path] = pk;
+
       return HasLocalMappedAddrFor(pk);
     }
 
@@ -625,7 +650,10 @@ namespace llarp
           if(itr->second->IsExpired(now))
             itr = m_SNodeSessions.erase(itr);
           else
+          {
+            itr->second->Tick(now);
             ++itr;
+          }
         }
       }
       {

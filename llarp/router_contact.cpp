@@ -11,6 +11,7 @@
 #include <util/time.hpp>
 
 #include <fstream>
+#include <util/fs.hpp>
 
 namespace llarp
 {
@@ -31,6 +32,8 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
+  /// every 30 minutes an RC is stale and needs updating
+  llarp_time_t RouterContact::UpdateInterval = 30 * 60 * 1000;
 
   NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {
@@ -220,7 +223,7 @@ namespace llarp
   }
 
   void
-  RouterContact::SetNick(const std::string &nick)
+  RouterContact::SetNick(string_view nick)
   {
     nickname.Zero();
     std::copy(nick.begin(),
@@ -231,28 +234,15 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    /*
-    auto expiresAt = last_updated + Lifetime;
+    const auto expiresAt = last_updated + Lifetime;
     return now >= expiresAt;
-    */
-    (void)now;
-    return false;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
-    (void)now;
-    (void)dlt;
-    return false;
-    /*
-    if(IsExpired(now))
-    {
-      return true;
-    }
-    auto expiresAt = last_updated + Lifetime;
-    return expiresAt - now <= dlt;
-    */
+    const auto expiresAt = last_updated + Lifetime;
+    return expiresAt <= now || expiresAt - now <= dlt;
   }
 
   std::string
@@ -263,7 +253,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Sign(llarp::Crypto *crypto, const SecretKey &secretkey)
+  RouterContact::Sign(const SecretKey &secretkey)
   {
     pubkey = llarp::seckey_topublic(secretkey);
     std::array< byte_t, MAX_RC_SIZE > tmp;
@@ -274,11 +264,11 @@ namespace llarp
       return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return crypto->sign(signature, secretkey, buf);
+    return CryptoManager::instance()->sign(signature, secretkey, buf);
   }
 
   bool
-  RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
+  RouterContact::Verify(llarp_time_t now, bool allowExpired) const
   {
     if(netID != NetID::DefaultValue())
     {
@@ -288,8 +278,12 @@ namespace llarp
     }
     if(IsExpired(now))
     {
-      llarp::LogError("RC is expired");
-      return false;
+      if(!allowExpired)
+      {
+        llarp::LogError("RC is expired");
+        return false;
+      }
+      llarp::LogWarn("RC is expired");
     }
     for(const auto &a : addrs)
     {
@@ -307,7 +301,7 @@ namespace llarp
         return false;
       }
     }
-    if(!VerifySignature(crypto))
+    if(!VerifySignature())
     {
       llarp::LogError("invalid signature");
       return false;
@@ -316,7 +310,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::VerifySignature(llarp::Crypto *crypto) const
+  RouterContact::VerifySignature() const
   {
     RouterContact copy;
     copy = *this;
@@ -330,7 +324,7 @@ namespace llarp
     }
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return crypto->verify(pubkey, buf, signature);
+    return CryptoManager::instance()->verify(pubkey, buf, signature);
   }
 
   bool
@@ -340,10 +334,14 @@ namespace llarp
     llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
       return false;
-    buf.sz  = buf.cur - buf.base;
-    buf.cur = buf.base;
-    std::ofstream f;  // why was this in its own scope?
-    f.open(fname, std::ios::binary);
+    buf.sz               = buf.cur - buf.base;
+    buf.cur              = buf.base;
+    const fs::path fpath = std::string(fname); /*  */
+    auto optional_f =
+        llarp::util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
+    if(!optional_f)
+      return false;
+    auto &f = optional_f.value();
     if(!f.is_open())
       return false;
     f.write((char *)buf.base, buf.sz);

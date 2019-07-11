@@ -84,11 +84,9 @@ namespace llarp
         llarp::LogWarn("Not in presentation format");
         return false;
       }
-      else
-      {
-        llarp::LogWarn("inet_pton failure");
-        return false;
-      }
+
+      llarp::LogWarn("inet_pton failure");
+      return false;
     }
     return true;
   }

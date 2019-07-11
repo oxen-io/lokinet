@@ -15,7 +15,7 @@ namespace llarp
   namespace dht
   {
     template < typename K, typename V, typename K_Hash,
-               llarp_time_t requestTimeoutMS = 5000UL >
+               llarp_time_t requestTimeoutMS = 30000UL >
     struct TXHolder
     {
       using TXPtr = std::unique_ptr< TX< K, V > >;
@@ -105,10 +105,8 @@ namespace llarp
       {
         return nullptr;
       }
-      else
-      {
-        return itr->second.get();
-      }
+
+      return itr->second.get();
     }
 
     template < typename K, typename V, typename K_Hash,

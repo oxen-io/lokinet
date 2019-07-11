@@ -1,8 +1,9 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
 
-#include <util/threading.hpp>
-#include <util/threadpool.hpp>
+#include <util/queue.hpp>
+#include <util/string_view.hpp>
+#include <util/thread_pool.hpp>
 
 #include <absl/base/thread_annotations.h>
 #include <memory>
@@ -11,38 +12,39 @@
 struct llarp_threadpool
 {
   std::unique_ptr< llarp::thread::ThreadPool > impl;
+  std::unique_ptr< llarp::thread::Queue< std::function< void(void) > > > jobs;
+  const pid_t callingPID;
 
-  mutable llarp::util::Mutex m_access;  // protects jobs
-  std::queue< std::function< void(void) > > jobs GUARDED_BY(m_access);
-
-  llarp_threadpool(int workers, const char *name)
+  llarp_threadpool(int workers, llarp::string_view name)
       : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
-                                                           workers * 128))
+                                                           workers * 128, name))
+      , jobs(nullptr)
+      , callingPID(0)
   {
-    (void)name;
   }
 
   llarp_threadpool()
+      : jobs(new llarp::thread::Queue< std::function< void(void) > >(128))
+      , callingPID(::getpid())
   {
+    jobs->enable();
   }
 
   size_t
-  size() const LOCKS_EXCLUDED(m_access)
+  size() const
   {
-    absl::ReaderMutexLock l(&m_access);
-    return jobs.size();
+    if(jobs)
+      return jobs->size();
+    return 0;
   }
 
-  void
-  QueueFunc(std::function< void(void) > f) LOCKS_EXCLUDED(m_access)
+  bool
+  QueueFunc(std::function< void(void) > f)
   {
     if(impl)
-      impl->addJob(f);
-    else
-    {
-      llarp::util::Lock lock(&m_access);
-      jobs.emplace(f);
-    }
+      return impl->tryAddJob(f);
+
+    return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
   }
 };
 
@@ -52,14 +54,6 @@ llarp_init_threadpool(int workers, const char *name);
 /// for single process mode
 struct llarp_threadpool *
 llarp_init_same_process_threadpool();
-
-typedef bool (*setup_net_func)(void *, bool);
-typedef void (*run_main_func)(void *);
-
-/// for network isolation
-struct llarp_threadpool *
-llarp_init_isolated_net_threadpool(const char *name, setup_net_func setupNet,
-                                   run_main_func runMain, void *context);
 
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);

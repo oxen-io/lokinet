@@ -11,16 +11,30 @@ namespace llarp
   /// logger stream interface
   struct ILogStream
   {
-    virtual ~ILogStream(){};
+    virtual ~ILogStream()
+    {
+    }
 
     virtual void
-    PreLog(std::stringstream& out, LogLevel lvl, const char* fname,
-           int lineno) const = 0;
+    PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,
+           const std::string& nodename) const = 0;
+
     virtual void
     Print(LogLevel lvl, const char* filename, const std::string& msg) = 0;
 
     virtual void
     PostLog(std::stringstream& out) const = 0;
+
+    virtual void
+    AppendLog(LogLevel lvl, const char* fname, int lineno,
+              const std::string& nodename, const std::string msg)
+    {
+      std::stringstream ss;
+      PreLog(ss, lvl, fname, lineno, nodename);
+      ss << msg;
+      PostLog(ss);
+      Print(lvl, fname, ss.str());
+    }
 
     /// called every end of event loop tick
     virtual void

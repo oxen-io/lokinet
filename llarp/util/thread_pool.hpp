@@ -2,6 +2,7 @@
 #define LLARP_THREAD_POOL_HPP
 
 #include <util/queue.hpp>
+#include <util/string_view.hpp>
 #include <util/threading.hpp>
 
 #include <atomic>
@@ -47,6 +48,7 @@ namespace llarp
 
       util::Mutex m_gateMutex;
 
+      std::string m_name;
       std::vector< std::thread > m_threads;
       size_t m_createdThreads;
 
@@ -81,7 +83,7 @@ namespace llarp
       }
 
      public:
-      ThreadPool(size_t numThreads, size_t maxJobs);
+      ThreadPool(size_t numThreads, size_t maxJobs, string_view name);
 
       ~ThreadPool();
 
@@ -180,10 +182,8 @@ namespace llarp
       {
         return m_threads.size() - m_idleThreads.load(std::memory_order_relaxed);
       }
-      else
-      {
-        return 0;
-      }
+
+      return 0;
     }
 
     inline size_t

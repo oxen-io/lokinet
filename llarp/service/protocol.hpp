@@ -11,6 +11,7 @@
 #include <service/handler.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>
+#include <path/pathset.hpp>
 
 #include <vector>
 
@@ -18,7 +19,6 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  struct Crypto;
   class Logic;
 
   namespace path
@@ -37,7 +37,7 @@ namespace llarp
     constexpr ProtocolType eProtocolTraffic = 1UL;
 
     /// inner message
-    struct ProtocolMessage final : public IBEncodeMessage
+    struct ProtocolMessage
     {
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
@@ -51,18 +51,26 @@ namespace llarp
       /// local path we got this message from
       PathID_t srcPath;
       ConvoTag tag;
+      uint64_t seqno   = 0;
+      uint64_t version = LLARP_PROTO_VERSION;
 
       bool
-      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val);
 
       bool
-      BEncode(llarp_buffer_t* buf) const override;
+      BEncode(llarp_buffer_t* buf) const;
 
       void
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(void* user);
+      ProcessAsync(std::shared_ptr< ProtocolMessage > self);
+
+      bool
+      operator<(const ProtocolMessage& other) const
+      {
+        return seqno < other.seqno;
+      }
     };
 
     /// outer message
@@ -111,20 +119,20 @@ namespace llarp
       operator=(const ProtocolFrame& other);
 
       bool
-      EncryptAndSign(Crypto* c, const ProtocolMessage& msg,
-                     const SharedSecret& sharedkey, const Identity& localIdent);
+      EncryptAndSign(const ProtocolMessage& msg, const SharedSecret& sharedkey,
+                     const Identity& localIdent);
 
       bool
-      Sign(Crypto* c, const Identity& localIdent);
+      Sign(const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(Logic* logic, Crypto* c, path::Path* fromPath,
-                            llarp_threadpool* worker,
+      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
+                            path::Path_ptr fromPath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(Crypto* c, const SharedSecret& sharedkey,
+      DecryptPayloadInto(const SharedSecret& sharedkey,
                          ProtocolMessage& into) const;
 
       bool
@@ -132,6 +140,12 @@ namespace llarp
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
+
+      bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        return bencode_decode_dict(*this, buf);
+      }
 
       void
       Clear() override
@@ -146,7 +160,7 @@ namespace llarp
       }
 
       bool
-      Verify(Crypto* c, const ServiceInfo& from) const;
+      Verify(const ServiceInfo& from) const;
 
       bool
       HandleMessage(routing::IMessageHandler* h,

@@ -45,22 +45,26 @@ namespace llarp
   struct log_timestamp
   {
     const char* format;
+    const llarp_time_t now;
+    const llarp_time_t delta;
 
-    log_timestamp(const char* fmt = "%c %Z") : format(fmt)
-    {
-    }
+    log_timestamp();
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const log_timestamp& ts)
-    {
-#if defined(ANDROID) || defined(RPI)
-      (void)ts;
-      return out << time_now_ms();
-#else
-      return out << absl::FormatTime(ts.format, absl::Now(), absl::LocalTimeZone());
-#endif
-    }
+    explicit log_timestamp(const char* fmt);
   };
+
+  inline std::ostream&
+  operator<<(std::ostream& out, const log_timestamp& ts)
+  {
+#if defined(ANDROID) || defined(RPI)
+    (void)ts;
+    return out << ts.now << " [+" << ts.delta << " ms]";
+#else
+    absl::TimeZone tz = absl::LocalTimeZone();
+    return out << absl::FormatTime(ts.format, absl::FromUnixMillis(ts.now), tz)
+               << " [+" << ts.delta << " ms]";
+#endif
+  }
 
 }  // namespace llarp
 

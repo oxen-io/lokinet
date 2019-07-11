@@ -73,8 +73,7 @@ namespace llarp
 
     bool
     FindIntroMessage::HandleMessage(
-        llarp_dht_context* ctx,
-        std::vector< std::unique_ptr< IMessage > >& replies) const
+        llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
       if(R > 5)
       {
@@ -99,105 +98,98 @@ namespace llarp
           replies.emplace_back(new GotIntroMessage({i}, T));
           return true;
         }
-        else
+
+        if(R == 0)
         {
-          if(R == 0)
-          {
-            // we don't have it
-            Key_t target = S.ToKey();
-            Key_t closer;
-            // find closer peer
-            if(!dht.Nodes()->FindClosest(target, closer))
-              return false;
-            if(relayed)
-              dht.LookupIntroSetForPath(S, T, pathID, closer);
-            else
-              replies.emplace_back(new GotIntroMessage(From, closer, T));
-            return true;
-          }
+          // we don't have it
+          Key_t target = S.ToKey();
+          Key_t closer;
+          // find closer peer
+          if(!dht.Nodes()->FindClosest(target, closer))
+            return false;
+          if(relayed)
+            dht.LookupIntroSetForPath(S, T, pathID, closer);
+          else
+            replies.emplace_back(new GotIntroMessage(From, closer, T));
+          return true;
+        }
+
+        Key_t us     = dht.OurKey();
+        Key_t target = S.ToKey();
+        // we are recursive
+        if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
+        {
+          if(relayed)
+            dht.LookupIntroSetForPath(S, T, pathID, peer);
           else
           {
-            Key_t us     = dht.OurKey();
-            Key_t target = S.ToKey();
-            // we are recursive
-            if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
+            if((us ^ target) < (peer ^ target))
             {
-              if(relayed)
-                dht.LookupIntroSetForPath(S, T, pathID, peer);
-              else
-              {
-                if((us ^ target) < (peer ^ target))
-                {
-                  // we are not closer than our peer to the target so don't
-                  // recurse farther
-                  replies.emplace_back(new GotIntroMessage({}, T));
-                  return true;
-                }
-                else if(R > 0)
-                  dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
-                else
-                  dht.LookupIntroSetIterative(S, From, T, peer);
-              }
-              return true;
-            }
-            else
-            {
-              // no more closer peers
+              // we are not closer than our peer to the target so don't
+              // recurse farther
               replies.emplace_back(new GotIntroMessage({}, T));
               return true;
             }
+            if(R > 0)
+              dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
+            else
+              dht.LookupIntroSetIterative(S, From, T, peer);
           }
+          return true;
+        }
+
+        // no more closer peers
+        replies.emplace_back(new GotIntroMessage({}, T));
+        return true;
+      }
+
+      if(relayed)
+      {
+        // tag lookup
+        if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
+        {
+          dht.LookupTagForPath(N, T, pathID, peer);
+        }
+        else
+        {
+          // no more closer peers
+          replies.emplace_back(new GotIntroMessage({}, T));
+          return true;
         }
       }
       else
       {
-        if(relayed)
+        if(R == 0)
+        {
+          // base case
+          auto introsets = dht.FindRandomIntroSetsWithTagExcluding(N, 2, {});
+          std::vector< service::IntroSet > reply;
+          for(const auto& introset : introsets)
+          {
+            reply.push_back(introset);
+          }
+          replies.emplace_back(new GotIntroMessage(reply, T));
+          return true;
+        }
+        if(R < 5)
         {
           // tag lookup
           if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
           {
-            dht.LookupTagForPath(N, T, pathID, peer);
+            dht.LookupTagRecursive(N, From, T, peer, R - 1);
           }
           else
           {
-            // no more closer peers
             replies.emplace_back(new GotIntroMessage({}, T));
-            return true;
           }
         }
         else
         {
-          if(R == 0)
-          {
-            // base case
-            auto introsets = dht.FindRandomIntroSetsWithTagExcluding(N, 2, {});
-            std::vector< service::IntroSet > reply;
-            for(const auto& introset : introsets)
-            {
-              reply.push_back(introset);
-            }
-            replies.emplace_back(new GotIntroMessage(reply, T));
-            return true;
-          }
-          else if(R < 5)
-          {
-            // tag lookup
-            if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
-            {
-              dht.LookupTagRecursive(N, From, T, peer, R - 1);
-            }
-            else
-            {
-              replies.emplace_back(new GotIntroMessage({}, T));
-            }
-          }
-          else
-          {
-            // too big R value
-            replies.emplace_back(new GotIntroMessage({}, T));
-          }
+          // too big R value
+          replies.emplace_back(new GotIntroMessage({}, T));
         }
       }
+
       return true;
     }
   }  // namespace dht

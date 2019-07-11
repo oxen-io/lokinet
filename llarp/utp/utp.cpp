@@ -1,37 +1,34 @@
 #include <utp/utp.hpp>
 
-#include <utp/linklayer.hpp>
 #include <router/abstractrouter.hpp>
+#include <util/memfn.hpp>
+#include <utp/linklayer.hpp>
 
 namespace llarp
 {
   namespace utp
   {
-    using namespace std::placeholders;
-
-    std::unique_ptr< ILinkLayer >
-    NewServer(Crypto* crypto, const SecretKey& routerEncSecret, GetRCFunc getrc,
+    LinkLayer_ptr
+    NewServer(const SecretKey& routerEncSecret, GetRCFunc getrc,
               LinkMessageHandler h, SessionEstablishedHandler est,
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler timeout, SessionClosedHandler closed)
     {
-      return std::unique_ptr< ILinkLayer >(
-          new LinkLayer(crypto, routerEncSecret, getrc, h, sign, est, reneg,
-                        timeout, closed));
+      return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
+                                           reneg, timeout, closed);
     }
 
-    std::unique_ptr< ILinkLayer >
+    LinkLayer_ptr
     NewServerFromRouter(AbstractRouter* r)
     {
-      using namespace std::placeholders;
       return NewServer(
-          r->crypto(), r->encryption(), std::bind(&AbstractRouter::rc, r),
-          std::bind(&AbstractRouter::HandleRecvLinkMessageBuffer, r, _1, _2),
-          std::bind(&AbstractRouter::OnSessionEstablished, r, _1),
-          std::bind(&AbstractRouter::CheckRenegotiateValid, r, _1, _2),
-          std::bind(&AbstractRouter::Sign, r, _1, _2),
-          std::bind(&AbstractRouter::OnConnectTimeout, r, _1),
-          std::bind(&AbstractRouter::SessionClosed, r, _1));
+          r->encryption(), util::memFn(&AbstractRouter::rc, r),
+          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, r),
+          util::memFn(&AbstractRouter::OnSessionEstablished, r),
+          util::memFn(&AbstractRouter::CheckRenegotiateValid, r),
+          util::memFn(&AbstractRouter::Sign, r),
+          util::memFn(&AbstractRouter::OnConnectTimeout, r),
+          util::memFn(&AbstractRouter::SessionClosed, r));
     }
 
   }  // namespace utp

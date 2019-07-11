@@ -13,10 +13,10 @@
 #include <dht/recursiverouterlookup.hpp>
 #include <dht/serviceaddresslookup.hpp>
 #include <dht/taglookup.hpp>
-#include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 #include <util/logic.hpp>
 #include <nodedb.hpp>
 
@@ -40,9 +40,6 @@ namespace llarp
 
       util::StatusObject
       ExtractStatus() const override;
-
-      llarp::Crypto*
-      Crypto() const override;
 
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
@@ -69,7 +66,7 @@ namespace llarp
       LookupRouter(const RouterID& target, RouterLookupHandler result) override
       {
         Key_t askpeer;
-        if(!nodes->FindClosest(Key_t(target), askpeer))
+        if(!_nodes->FindClosest(Key_t(target), askpeer))
         {
           return false;
         }
@@ -166,7 +163,7 @@ namespace llarp
 
       llarp::AbstractRouter* router;
       // for router contacts
-      std::unique_ptr< Bucket< RCNode > > nodes;
+      std::unique_ptr< Bucket< RCNode > > _nodes;
 
       // for introduction sets
       std::unique_ptr< Bucket< ISNode > > _services;
@@ -193,7 +190,7 @@ namespace llarp
       Bucket< RCNode >*
       Nodes() const override
       {
-        return nodes.get();
+        return _nodes.get();
       }
 
       const Key_t&
@@ -303,7 +300,7 @@ namespace llarp
       llarp::LogInfo("Exploring network via ", N, " peers");
       std::set< Key_t > peers;
 
-      if(nodes->GetManyRandom(peers, N))
+      if(_nodes->GetManyRandom(peers, N))
       {
         for(const auto& peer : peers)
           ExploreNetworkVia(peer);
@@ -428,13 +425,13 @@ namespace llarp
       }
       Key_t next;
       std::set< Key_t > excluding = {requester, ourKey};
-      if(nodes->FindCloseExcluding(target, next, excluding))
+      if(_nodes->FindCloseExcluding(target, next, excluding))
       {
         if(next == target)
         {
           // we know it
           replies.emplace_back(new GotRouterMessage(
-              requester, txid, {nodes->nodes[target].rc}, false));
+              requester, txid, {_nodes->nodes[target].rc}, false));
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -497,7 +494,7 @@ namespace llarp
           {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
           {"pendingTagLookups", pendingTagLookups().ExtractStatus()},
           {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
-          {"nodes", nodes->ExtractStatus()},
+          {"nodes", _nodes->ExtractStatus()},
           {"services", _services->ExtractStatus()},
           {"ourKey", ourKey.ToHex()}};
       return obj;
@@ -509,7 +506,7 @@ namespace llarp
     {
       router    = r;
       ourKey    = us;
-      nodes     = std::make_unique< Bucket< RCNode > >(ourKey, llarp::randint);
+      _nodes    = std::make_unique< Bucket< RCNode > >(ourKey, llarp::randint);
       _services = std::make_unique< Bucket< ISNode > >(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
@@ -527,16 +524,13 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive)
+    Context::DHTSendTo(const RouterID& peer, IMessage* msg, bool)
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
-      if(keepalive)
-      {
-        auto now = Now();
-        router->PersistSessionUntil(peer, now + 10000);
-      }
+      auto now = Now();
+      router->PersistSessionUntil(peer, now + 60000);
     }
 
     bool
@@ -634,36 +628,38 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > >& reply)
     {
       std::vector< RouterID > closer;
-      Key_t t(target.as_array());
+      const Key_t t(target.as_array());
       std::set< Key_t > found;
-      if(!nodes)
+      if(!_nodes)
         return false;
 
-      size_t nodeCount = nodes->size();
+      const size_t nodeCount = _nodes->size();
       if(nodeCount == 0)
       {
         llarp::LogError(
             "cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      llarp::LogDebug("We have ", nodes->size(),
+      llarp::LogDebug("We have ", _nodes->size(),
                       " connected nodes into the DHT");
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      size_t want = std::min(size_t(4), nodeCount - 1);
-      llarp::LogDebug("We want ", want, " connected nodes in the DHT");
-      if(!nodes->GetManyNearExcluding(t, found, want,
-                                      std::set< Key_t >{ourKey, requester}))
+      if(!_nodes->GetManyNearExcluding(t, found, 1,
+                                       std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
             "not enough dht nodes to handle exploritory router lookup, "
-            "need a minimum of ",
-            want, " dht peers");
+            "have ",
+            nodeCount, " dht peers");
         return false;
       }
       for(const auto& f : found)
-        closer.emplace_back(f.as_array());
+      {
+        const RouterID r(f.as_array());
+        if(GetRouter()->ConnectionToRouterAllowed(r))
+          closer.emplace_back(r);
+      }
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }
@@ -695,12 +691,6 @@ namespace llarp
             peer, asker, target,
             new RecursiveRouterLookup(asker, target, this, handler));
       }
-    }
-
-    llarp::Crypto*
-    Context::Crypto() const
-    {
-      return router->crypto();
     }
 
     llarp_time_t

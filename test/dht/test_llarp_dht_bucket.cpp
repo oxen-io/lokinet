@@ -327,7 +327,7 @@ TEST_F(TestDhtBucket, TestBucketFindClosest)
   target.Fill(0xf5);
   ASSERT_TRUE(nodes->FindClosest(target, result));
   ASSERT_EQ(oldResult, result);
-};
+}
 
 TEST_F(TestDhtBucket, TestBucketRandomized_1000)
 {
@@ -367,4 +367,4 @@ TEST_F(TestDhtBucket, TestBucketRandomized_1000)
       ASSERT_NE(result ^ target, expect ^ target);
     }
   }
-};
+}

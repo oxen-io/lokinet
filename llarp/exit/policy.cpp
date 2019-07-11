@@ -4,10 +4,6 @@ namespace llarp
 {
   namespace exit
   {
-    Policy::~Policy()
-    {
-    }
-
     bool
     Policy::BEncode(llarp_buffer_t *buf) const
     {

@@ -52,7 +52,7 @@ namespace llarp
       return (started + timeout) < (other.started + other.timeout);
     }
   };
-};  // namespace llarp
+}  // namespace llarp
 
 struct llarp_timer_context
 {
@@ -71,8 +71,8 @@ struct llarp_timer_context
     m_Now = llarp::time_now_ms();
   }
 
-  uint32_t ids = 0;
-  bool _run    = true;
+  uint32_t currentId = 0;
+  bool _run          = true;
 
   ~llarp_timer_context()
   {
@@ -117,7 +117,7 @@ struct llarp_timer_context
   {
     llarp::util::Lock lock(&timersMutex);
 
-    uint32_t id = ++ids;
+    uint32_t id = ++currentId;
     timers.emplace(
         id, std::make_unique< llarp::timer >(m_Now, timeout_ms, user, func));
     return id;
@@ -176,9 +176,11 @@ llarp_timer_stop(struct llarp_timer_context* t)
 {
   // destroy all timers
   // don't call callbacks on timers
-  llarp::util::Lock lock(&t->timersMutex);
-  t->timers.clear();
-  t->stop();
+  {
+    llarp::util::Lock lock(&t->timersMutex);
+    t->timers.clear();
+    t->stop();
+  }
   if(t->ticker)
     t->ticker->SignalAll();
 }

@@ -4,12 +4,17 @@
 #
 import requests
 import json
+import os
 import sys
+
+from collections import defaultdict as Dict
+
+from requests.exceptions import RequestException
 
 
 def jsonrpc(method, **args):
     return requests.post('http://127.0.0.1:1190/', data=json.dumps(
-        {'method': method, 'params': args, 'id': 0}), headers={'content-type': 'application/json'}).json()
+        {'method': method, 'params': args, 'id': 'munin'}), headers={'content-type': 'application/json'}).json()
 
 
 def exit_sessions_main():
@@ -18,16 +23,16 @@ def exit_sessions_main():
         print("graph_vlabel sessions")
         print("graph_category network")
         print("graph_info This graph shows the number of exit sessions on a lokinet exit")
-        print("lokinet.exit.sessions.info Number of exit sessions")
-        print("lokinet.exit.sessions.label sessions")
+        print("_exit_sessions.info Number of exit sessions")
+        print("_exit_sessions.label sessions")
     else:
         count = 0
         try:
             j = jsonrpc("llarp.admin.exit.list")
             count = len(j['result'])
-        except:
+        except RequestException:
             pass
-        print("lokinet.exit.sessions {}".format(outbound))
+        print("_exit_sessions.value {}".format(count))
 
 
 def peers_main():
@@ -36,32 +41,39 @@ def peers_main():
         print("graph_vlabel peers")
         print("graph_category network")
         print("graph_info This graph shows the number of node to node sessions of this lokinet router")
-        print("lokinet.peers.outbound.info Number of outbound lokinet peers")
-        print("lokinet.peers.inbound.info Number of inbound lokinet peers")
-        print("lokinet.peers.outbound.label outbound peers")
-        print("lokinet.peers.inbound.label inbound peers")
+        print("_peers_outbound.info Number of outbound lokinet peers")
+        print("_peers_inbound.info Number of inbound lokinet peers")
+        print("_peers_outbound.label outbound peers")
+        print("_peers_inbound.label inbound peers")
+        print("_peers_clients.info Number of lokinet client peers")
+        print("_peers_clients.label lokinet client peers")
     else:
-        inbound = 0
-        outbound = 0
+        inbound = Dict(int)
+        outbound = Dict(int)
+        clients = Dict(int)
         try:
             j = jsonrpc("llarp.admin.link.neighboors")
             for peer in j['result']:
-                if peer["outbound"]:
-                    outbound += 1
+                if peer["svcnode"]:
+                    if peer["outbound"]:
+                        outbound[peer['ident']] += 1
+                    else:
+                        inbound[peer['ident']] += 1
                 else:
-                    inbound += 1
-        except:
+                    clients[peer['ident']] += 1
+        except RequestException:
             pass
 
-        print("lokinet.peers.outbound {}".format(outbound))
-        print("lokinet.peers.inbound {}".format(inbound))
-
+        print("_peers_outbound.value {}".format(len(outbound)))
+        print("_peers_inbound.value {}".format(len(inbound)))
+        print("_peers_clients.value {}".format(len(clients)))
 
 if __name__ == '__main__':
-    if sys.argv[0] == 'lokinet-peers':
+    exe = os.path.basename(sys.argv[0]).lower()
+    if exe == 'lokinet_peers':
         peers_main()
-    elif sys.argv[0] == 'lokinet-exit':
+    elif exe == 'lokinet_exit':
         exit_sessions_main()
     else:
         print(
-            'please symlink this as `lokinet-peers` or `lokinet-exit` in munin plugins dir')
+            'please symlink this as `lokinet_peers` or `lokinet_exit` in munin plugins dir')

@@ -12,6 +12,11 @@
 #include <ev/ev.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
+#include <util/logic.hpp>
+#include <util/memfn.hpp>
+#include <nodedb.hpp>
+
+#include <util/str.hpp>
 
 namespace llarp
 {
@@ -37,7 +42,8 @@ namespace llarp
                                   r->netloop())
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop(),
                                   r->netloop())
-        , m_Resolver(r->netloop(), this)
+        , m_Resolver(std::make_shared< dns::Proxy >(
+              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
 #ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;
@@ -91,6 +97,47 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "isolate-network" && IsTrueValue(v.c_str()))
+      {
+#if defined(__linux__)
+        LogInfo(Name(), " isolating network...");
+        if(!SpawnIsolatedNetwork())
+        {
+          LogError(Name(), " failed to spawn isolated network");
+          return false;
+        }
+        LogInfo(Name(), " booyeah network isolation succeeded");
+        return true;
+#else
+        LogError(Name(),
+                 " network isolation is not supported on your platform");
+        return false;
+#endif
+      }
+      if(k == "strict-connect")
+      {
+        RouterID connect;
+        if(!connect.FromString(v))
+        {
+          LogError(Name(), " invalid snode for strict-connect: ", v);
+          return false;
+        }
+
+        RouterContact rc;
+        if(!router->nodedb()->Get(connect, rc))
+        {
+          LogError(Name(), " we don't have the RC for ", v,
+                   " so we can't use it in strict-connect");
+          return false;
+        }
+        for(const auto &ai : rc.addrs)
+        {
+          m_StrictConnectAddrs.emplace_back(ai);
+          LogInfo(Name(), " added ", m_StrictConnectAddrs.back(),
+                  " to strict connect");
+        }
+        return true;
+      }
       // Name won't be set because we need to read the config before we can read
       // the keyfile
       if(k == "exit-node")
@@ -102,11 +149,10 @@ namespace llarp
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
         }
-        m_Exit.reset(new llarp::exit::ExitSession(
+        m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
-            std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
-                      std::placeholders::_1),
-            router, m_NumPaths, numHops));
+            util::memFn(&TunEndpoint::QueueInboundPacketForExit, this), router,
+            m_NumPaths, numHops, ShouldBundleRC());
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")
@@ -227,21 +273,31 @@ namespace llarp
     void
     TunEndpoint::Flush()
     {
+      auto self = shared_from_this();
       FlushSend();
+      if(m_Exit)
+      {
+        RouterLogic()->queue_func([=] {
+          self->m_Exit->FlushUpstream();
+          self->Router()->PumpLL();
+        });
+      }
+      RouterLogic()->queue_func([=]() {
+        self->Pump(self->Now());
+        self->Router()->PumpLL();
+      });
     }
 
     static bool
     is_random_snode(const dns::Message &msg)
     {
-      return msg.questions[0].qname == "random.snode"
-          || msg.questions[0].qname == "random.snode.";
+      return msg.questions[0].IsName("random.snode");
     }
 
     static bool
     is_localhost_loki(const dns::Message &msg)
     {
-      return msg.questions[0].qname == "localhost.loki"
-          || msg.questions[0].qname == "localhost.loki.";
+      return msg.questions[0].IsName("localhost.loki");
     }
 
     bool
@@ -255,7 +311,7 @@ namespace llarp
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      std::string qname = msg.questions[0].qname;
+      const std::string qname = msg.questions[0].Name();
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
@@ -282,7 +338,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 service::Address addr = service->GetIdentity().pub.Addr();
                 msg.AddCNAMEReply(addr.ToString(), 1);
                 ++counter;
@@ -314,7 +370,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 huint32_t ip = service->GetIfAddr();
                 if(ip.h)
                 {
@@ -340,8 +396,8 @@ namespace llarp
             using service::OutboundContext;
             return EnsurePathToService(
                 addr,
-                [=](const Address &remote, OutboundContext *ctx) {
-                  SendDNSReply(remote, ctx, replyMsg, reply, false, isV6);
+                [=](const Address &, OutboundContext *ctx) {
+                  SendDNSReply(addr, ctx, replyMsg, reply, false, isV6);
                 },
                 2000);
           }
@@ -349,15 +405,13 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           dns::Message *replyMsg = new dns::Message(std::move(msg));
-          EnsurePathToSNode(addr.as_array(),
-                            [=](const RouterID &remote, exit::BaseSession *s) {
-                              SendDNSReply(remote, s, replyMsg, reply, true,
-                                           isV6);
-                            });
+          EnsurePathToSNode(
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
+                SendDNSReply(addr, s, replyMsg, reply, true, isV6);
+              });
           return true;
         }
         else
-          // forward dns
           msg.AddNXReply();
 
         reply(msg);
@@ -399,6 +453,14 @@ namespace llarp
       return true;
     }
 
+    void
+    TunEndpoint::ResetInternalState()
+    {
+      service::Endpoint::ResetInternalState();
+      if(m_Exit)
+        m_Exit->ResetInternalState();
+    }
+
     // FIXME: pass in which question it should be addressing
     bool
     TunEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
@@ -406,19 +468,11 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
-        // hook random.snode
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        /// hook every .loki
+        if(msg.questions[0].HasTLD(".loki"))
           return true;
-        // hook localhost.loki
-        if(msg.questions[0].qname == "localhost.loki"
-           || msg.questions[0].qname == "localhost.loki.")
-          return true;
-        // hook .loki
-        if(addr.FromString(msg.questions[0].qname, ".loki"))
-          return true;
-        // hook .snode
-        if(addr.FromString(msg.questions[0].qname, ".snode"))
+        /// hook every .snode
+        if(msg.questions[0].HasTLD(".snode"))
           return true;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
@@ -460,6 +514,11 @@ namespace llarp
       {
         llarp::LogWarn("Couldn't start endpoint");
         return false;
+      }
+      if(m_Exit)
+      {
+        for(const auto &snode : m_SnodeBlacklist)
+          m_Exit->BlacklistSnode(snode);
       }
       return SetupNetworking();
     }
@@ -539,7 +598,25 @@ namespace llarp
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
       MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
+      if(m_OnUp)
+      {
+        m_OnUp->NotifyAsync(NotifyParams());
+      }
       return true;
+    }
+
+    std::unordered_map< std::string, std::string >
+    TunEndpoint::NotifyParams() const
+    {
+      auto env = Endpoint::NotifyParams();
+      env.emplace("IP_ADDR", m_OurIP.ToString());
+      env.emplace("IF_ADDR", m_OurRange.ToString());
+      env.emplace("IF_NAME", tunif.ifname);
+      std::string strictConnect;
+      for(const auto &addr : m_StrictConnectAddrs)
+        strictConnect += addr.ToString() + " ";
+      env.emplace("STRICT_CONNECT_ADDRS", strictConnect);
+      return env;
     }
 
     bool
@@ -551,7 +628,7 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
-      if(!m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers))
+      if(!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
         // downgrade DNS server failure to a warning
         llarp::LogWarn(Name(), " failed to start dns server");
@@ -566,7 +643,10 @@ namespace llarp
       // call tun code in endpoint logic in case of network isolation
       // EndpointLogic()->queue_job({this, handleTickTun});
       if(m_Exit)
+      {
         EnsureRouterIsKnown(m_Exit->Endpoint());
+        m_Exit->Tick(now);
+      }
       Endpoint::Tick(now);
     }
 
@@ -604,9 +684,10 @@ namespace llarp
         }
         else
         {
-          sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
-                               itr->second.as_array(), std::placeholders::_1,
-                               service::eProtocolTraffic);
+          sendFunc =
+              std::bind(&TunEndpoint::SendToServiceOrQueue, this,
+                        service::Address(itr->second.as_array()),
+                        std::placeholders::_1, service::eProtocolTraffic);
         }
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
@@ -759,9 +840,9 @@ namespace llarp
       self->FlushSend();
       // flush exit traffic queues if it's there
       if(self->m_Exit)
-        self->m_Exit->Flush();
-      // flush snode traffic
-      self->FlushSNodeTraffic();
+      {
+        self->m_Exit->FlushDownstream();
+      }
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))

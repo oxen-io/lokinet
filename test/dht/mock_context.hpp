@@ -88,8 +88,6 @@ namespace llarp
 
       MOCK_METHOD1(ExploreNetworkVia, void(const dht::Key_t& peer));
 
-      MOCK_CONST_METHOD0(Crypto, llarp::Crypto*());
-
       MOCK_CONST_METHOD0(GetRouter, llarp::AbstractRouter*());
 
       MOCK_CONST_METHOD0(OurKey, const dht::Key_t&());

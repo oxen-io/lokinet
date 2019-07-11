@@ -13,6 +13,6 @@ namespace llarp
                              {"seqno", seqno},
                              {"intro", intro.ExtractStatus()}};
       return obj;
-    };
+    }
   }  // namespace service
 }  // namespace llarp

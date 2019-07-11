@@ -58,11 +58,10 @@ def makeClient(settings, name, id):
     peer = makeBase(settings, name, id)
     basedir = getSetting(settings, 'baseDir', 'tmp')
     nodeconf(peer['config'], basedir, name)
-    fname = os.path.join(basedir, "test-service.ini")
     peer['config']['network'] = {
         'type': 'null',
-        'tag':'test',
-        'prefetch-tag':'test'
+        'tag': 'test',
+        'prefetch-tag': 'test'
     }
     return peer
 

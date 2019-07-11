@@ -14,24 +14,15 @@ namespace llarp
   {
     struct LinkLayer final : public ILinkLayer
     {
-      LinkLayer(Crypto *crypto, const SecretKey &encryptionSecretKey,
-                GetRCFunc getrc, LinkMessageHandler h,
-                SessionEstablishedHandler established,
+      LinkLayer(const SecretKey &encryptionSecretKey, GetRCFunc getrc,
+                LinkMessageHandler h, SessionEstablishedHandler established,
                 SessionRenegotiateHandler reneg, SignBufferFunc sign,
                 TimeoutHandler timeout, SessionClosedHandler closed);
 
       ~LinkLayer();
 
-      Crypto *const crypto;
-
-      Crypto *
-      OurCrypto() override
-      {
-        return crypto;
-      }
-
       bool
-      Start(Logic *l) override;
+      Start(std::shared_ptr< Logic > l) override;
 
       std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,

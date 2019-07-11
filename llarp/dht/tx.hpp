@@ -29,7 +29,9 @@ namespace llarp
       {
       }
 
-      virtual ~TX(){};
+      virtual ~TX()
+      {
+      }
 
       void
       OnFound(const Key_t& askedPeer, const V& value);

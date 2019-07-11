@@ -608,8 +608,6 @@ llarp_dnsd_init(struct dnsd_context *const dnsd, llarp::Logic *const logic,
                             (const sockaddr *)dnsd_sockaddr)
         != -1;
   }
-  else
-  {
-    return true;
-  }
+
+  return true;
 }

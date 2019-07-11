@@ -12,22 +12,22 @@ llarp_buffer_t::size_left() const
   {
     return 0;
   }
-  else
-    return sz - diff;
+
+  return sz - diff;
 }
 
 bool
 llarp_buffer_t::writef(const char* fmt, ...)
 {
   int written;
-  size_t sz = size_left();
+  size_t toWrite = size_left();
   va_list args;
   va_start(args, fmt);
-  written = vsnprintf(reinterpret_cast< char* >(cur), sz, fmt, args);
+  written = vsnprintf(reinterpret_cast< char* >(cur), toWrite, fmt, args);
   va_end(args);
   if(written <= 0)
     return false;
-  if(sz < written)
+  if(toWrite < static_cast< size_t >(written))
     return false;
   cur += written;
   return true;
@@ -110,8 +110,8 @@ llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
 
   if(size_left())
     return read;
-  else
-    return 0;
+
+  return 0;
 }
 
 bool

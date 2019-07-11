@@ -239,7 +239,7 @@ crypto_hash_sha512_update(crypto_hash_sha512_state *state,
   state->count[0] += bitlen[0];
   if(inlen < 128 - r)
   {
-    for(i = 0; i < inlen; i++)
+    for(i = 0; i < inlen || i < 128; i++)
     {
       state->buf[r + i] = in[i];
     }

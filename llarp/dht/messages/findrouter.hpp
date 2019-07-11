@@ -56,9 +56,8 @@ namespace llarp
       /// the path of the result
       /// TODO: smart path expiration logic needs to be implemented
       virtual bool
-      HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage::Ptr_t >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

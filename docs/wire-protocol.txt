@@ -5,17 +5,21 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in RFC 2119 [RFC2119].
 
-LLARP supports by default an authenticated message transport over a
-datagram based network layer.
+LLARP's wire protocol is Internet Wire Protocol (IWP)
 
+The main goal of iwp is to provide an authenticated encrypted
+reliable semi-ordered durable datagram transfer protocol supporting
+datagrams of larger size than link mtu.
 
-protocol phases:
+in iwp there is an initiator who initiates a session to a recipiant.
 
-first phase: proof of flow
-second phase: session handshake
-thrid phase: data transmission
+iwp has 3 phases. the first phase is the proof of flow phase.
+the second is a session handshake phase, the third is data transmission.
 
 proof of flow:
+
+the purpose of the proof of flow phase is to verify the existence
+of the initiator's endpoint.
 
 At any time before the data transfer phase a reject message
 is sent the session is reset.
@@ -26,15 +30,22 @@ A asks for a flow id from B.
 
 B MAY send a flow id to A or MAY reject the message from A.
 
-
 session handshake:
 
 an encrypted session is established using establish wire session messages
 using a newly created flow id.
 
+message format:
+
+there are 2 layers in this protocol, outer messages and inner messages.
+
+outer messages are sent in plaintext and / or obfsucated with symettric
+encryption using a preshared key.
+
+inner messages are inside an encrypted and authenticated envelope
+wrapped by an outer messages, which is always a data tranmssion message.
 
 outer message format:
-
 
 every outer message MAY be obfsucated via symettric encryption for dpi
 resistance reasons, this is not authenticated encryption.
@@ -53,6 +64,11 @@ K = HS(B_k)
 N = HS(n + K)
 X = SD(K, m, N[0:24])
 
+where
+B_k is the long term identity public key of the recipient.
+HS is blake2 256 bit non keyed hash
+SD is xchacha20 symettric stream cipher (decryption)
+
 outer-header:
 
 <1 byte command>
@@ -66,7 +82,7 @@ obtain a flow id
 <6 magic bytes "netid?">
 <8 bytes netid, I>
 <8 bytes timestamp milliseconds since epoch, T>
-<32 bytes ed25519 public key of sender, A_k>
+<32 bytes public identity key of sender, A_k>
 <0-N bytes discarded>
 <last 64 bytes signature of unobfuscated packet, Z>
 
@@ -80,8 +96,8 @@ command 'G' - give flow id
 <outer-header>
 <6 magic bytes "netid!">
 <16 bytes new flow id>
-<32 bytes ed25519 public key of sender, A_k>
-<0-N bytes discarded>
+<32 bytes public identiy key of sender, A_k>
+<0-N bytes ignored but included in signature>
 <last 64 bytes signature of unobfsucated packet, Z>
 
 after recieving a give flow id message a session negotiation can happen with that flow id.
@@ -93,8 +109,8 @@ reject new flow
 <outer-header>
 <14 ascii bytes reason for rejection null padded>
 <8 bytes timestamp>
-<32 bytes ed25519 public key of sender, A_k>
-<0-N bytes discarded>
+<32 bytes public identity key of sender, A_k>
+<0-N bytes ignored but included in signature>
 <last 64 bytes signature of unobsfucated packet, Z>
 
 command 'E' - establish wire session
@@ -102,11 +118,16 @@ command 'E' - establish wire session
 establish an encrypted session using a flow id
 
 <outer-header>
+<2 bytes 0x0a 0x0d>
+<4 bytes flags, F>
 <16 bytes flow id, B>
 <32 bytes ephemeral public encryption key, E>
 <8 bytes packet counter starting at 0>
 <optional 32 bytes authenticated credentials, A>
 <last 64 bytes signature of unobfuscated packet using identity key, Z>
+
+
+F is currently set to all zeros
 
 every time we try establishing a wire session we increment the counter
 by 1 for the next message we send.
@@ -141,14 +162,13 @@ Z is keyed hash of entire message
 
 Z is generated via:
 
-msg.Z = '0x00' * 32
-msg.Z = MDS(msg, tx_K)
+msg.Z = MDS(outer-header + F + N + X, tx_K)
 
 data tranmission:
 
 inner message format of X (after decryption):
 
-header:
+inner header:
 
 <1 byte protocol version>
 <1 byte command>
@@ -158,7 +178,7 @@ command: 'k' (keep alive)
 
 tell other side to acknoledge they are alive
 
-<header>
+<inner header>
 <2 bytes resevered, set to 0>
 <2 bytes attempt counter, set to 0 and incremented every retransmit, reset when we get a keepalive ack>
 <2 bytes milliseconds ping timeout>
@@ -171,7 +191,7 @@ command: 'l' (keep alive ack)
 
 acknolege keep alive message
 
-<header>
+<inner header>
 <6 bytes reserved, set to 0>
 <8 bytes current session RX limit in bytes per second>
 <8 bytes current session TX use in bytes per second>
@@ -184,7 +204,7 @@ command: 'n' (advertise neighboors)
 tell peer about neighboors, only sent by non service nodes to other non service
 nodes.
 
-<header>
+<inner header>
 <route between us and them>
 <0 or more intermediate routes>
 <route from a service node>
@@ -205,7 +225,7 @@ command: 'c' (congestion)
 
 tell other side to slow down
 
-<header>
+<inner header>
 <2 bytes reduce TX rate by this many 1024 bytes per second>
 <4 bytes milliseconds slowdown lifetime>
 <remaining bytes discarded>
@@ -214,48 +234,42 @@ command: 'd' (anti-congestion)
 
 tell other side to speed up
 
-<header>
+<inner header>
 <2 bytes increase TX rate by this many 1024 bytes per second>
 <4 bytes milliseconds speedup lifetime>
 <remaining bytes discarded>
 
-command: 't' (transmit data)
 
-transmit a message to a peer
+command: 's' (start transmission)
 
-if this fragment is not addressed to us we route it to the neighboor
-with the shortest route to the recipiant as advertised by all neighboors.
+initate the transmission of a message to the remote peer
 
-<header>
-<32 bytes public identity key of recipiant>
-<32 bytes public identity key of sender>
-<24 bytes nounce, N>
-<N bytes encrypted message, X>
-<last 32 bytes keyed hash, Z>
+<inner header>
+<1 byte flags F>
+<1 byte reserved R set to zero>
+<2 bytes total size of full message>
+<4 bytes sequence number S>
+<32 bytes blake2 hash of full message>
+<N remaining bytes first fragment of message>
 
-encrypted via:
+if F lsb is set then there is no further fragments
 
-K = EDDH(recipiant, sender)
-X = SE(msg, K, N)
-Z = MDS(X, K)
+command: 't' (continued transmission)
 
-encrypted message format:
+continue transmission of a bigger message
 
-<1 byte version, currently 0>
-<1 byte number of acks following, aN>
-<8 * aN bytes acks>
-<4 byte sequence number of fragment or 0 if no fragment is included>
-<2 byte 16 byte block offset in message of this fragment if it is included>
-<remaining bytes fragment data aligned to 16 bytes>
-<discard anything not aligned to 16 bytes>
+<inner header>
+<1 byte flags F>
+<1 bytes reserved R set to zero>
+<2 bytes 16 byte block offset in message>
+<4 bytes sequence number S>
+<N remaining bytes fragment of message aligned to 16 bytes>
+<remaining bytes not aligned to 16 bytes discarded>
 
-ack format:
+command: 'q' (acknoledge transmission)
 
-<4 byte message sequence number>
-<1 byte reserved current set to 0>
-<1 byte ack counter (number of acks sent for the corrisponding message)>
-<1 byte bitmask fragments selective ack (msb is fragment 0, lsb is fragment 7)>
-<1 byte bitmask fragments posative ack (msb is fragment 0, lsb is fragment 7)>
+acknoledges a transmitted message
+
 
 
 command: 'r' (rotate keys)
@@ -269,6 +283,7 @@ n_K = TKE(K, B_e, K_seed, N)
 A.tx_K = n_K
 B.rx_K = n_K
 
+<inner header>
 <2 bytes milliseconds lifetime of old keys, retain them for this long and then discard>
 <4 bytes reserved, set to 0>
 <32 bytes key exchange nounce, N>
@@ -279,7 +294,7 @@ command: 'u' (upgrade)
 
 request protocol upgrade
 
-<header>
+<inner header>
 <1 byte protocol min version to upgrade to>
 <1 byte protocol max version to upgrade to>
 <remaining bytes discarded>
@@ -288,7 +303,7 @@ command: 'v' (version upgrade)
 
 sent in response to upgrade message
 
-<header>
+<inner header>
 <1 byte protocol version selected>
 <1 byte protocol version highest we support>
 <remaining bytes discarded>

@@ -1,6 +1,7 @@
 #include <iwp/iwp.hpp>
 #include <iwp/linklayer.hpp>
 #include <router/abstractrouter.hpp>
+#include <util/memfn.hpp>
 
 namespace llarp
 {
@@ -9,24 +10,22 @@ namespace llarp
     std::unique_ptr< ILinkLayer >
     NewServerFromRouter(AbstractRouter* r)
     {
-      using namespace std::placeholders;
       return NewServer(
-          r->crypto(), r->encryption(), std::bind(&AbstractRouter::rc, r),
-          std::bind(&AbstractRouter::HandleRecvLinkMessageBuffer, r, _1, _2),
-          std::bind(&AbstractRouter::OnSessionEstablished, r, _1),
-          std::bind(&AbstractRouter::CheckRenegotiateValid, r, _1, _2),
-          std::bind(&AbstractRouter::Sign, r, _1, _2),
-          std::bind(&AbstractRouter::OnConnectTimeout, r, _1),
-          std::bind(&AbstractRouter::SessionClosed, r, _1));
+          r->encryption(), std::bind(&AbstractRouter::rc, r),
+          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, r),
+          util::memFn(&AbstractRouter::OnSessionEstablished, r),
+          util::memFn(&AbstractRouter::CheckRenegotiateValid, r),
+          util::memFn(&AbstractRouter::Sign, r),
+          util::memFn(&AbstractRouter::OnConnectTimeout, r),
+          util::memFn(&AbstractRouter::SessionClosed, r));
     }
 
     std::unique_ptr< ILinkLayer >
-    NewServer(Crypto* c, const SecretKey& enckey, GetRCFunc getrc,
-              LinkMessageHandler h, SessionEstablishedHandler est,
-              SessionRenegotiateHandler reneg, SignBufferFunc sign,
-              TimeoutHandler t, SessionClosedHandler closed)
+    NewServer(const SecretKey& enckey, GetRCFunc getrc, LinkMessageHandler h,
+              SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
+              SignBufferFunc sign, TimeoutHandler t,
+              SessionClosedHandler closed)
     {
-      (void)c;
       (void)enckey;
       (void)getrc;
       (void)h;

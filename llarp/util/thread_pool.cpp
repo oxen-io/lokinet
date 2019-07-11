@@ -1,5 +1,7 @@
 #include <util/thread_pool.hpp>
 
+#include <util/threading.hpp>
+
 namespace llarp
 {
   namespace thread
@@ -93,6 +95,8 @@ namespace llarp
       // Lock will be valid until the end of the statement
       size_t gateCount = (absl::ReaderMutexLock(&m_gateMutex), m_gateCount);
 
+      util::SetThreadName(m_name);
+
       for(;;)
       {
         {
@@ -152,13 +156,14 @@ namespace llarp
       }
     }
 
-    ThreadPool::ThreadPool(size_t numThreads, size_t maxJobs)
+    ThreadPool::ThreadPool(size_t numThreads, size_t maxJobs, string_view name)
         : m_queue(maxJobs)
         , m_semaphore(0)
         , m_idleThreads(0)
         , m_status(Status::Stop)
         , m_gateCount(0)
         , m_numThreadsReady(0)
+        , m_name(name)
         , m_threads(numThreads)
         , m_createdThreads(0)
     {

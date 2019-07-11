@@ -12,14 +12,17 @@ namespace llarp
    public:
     struct llarp_threadpool* thread;
     struct llarp_timer_context* timer;
+    const pid_t ourPID;
 
     Logic()
         : thread(llarp_init_same_process_threadpool())
         , timer(llarp_init_timer())
+        , ourPID(::getpid())
     {
     }
 
-    Logic(struct llarp_threadpool* tp) : thread(tp), timer(llarp_init_timer())
+    Logic(struct llarp_threadpool* tp)
+        : thread(tp), timer(llarp_init_timer()), ourPID(0)
     {
     }
 
@@ -43,7 +46,7 @@ namespace llarp
     void
     queue_job(struct llarp_thread_job job);
 
-    void
+    bool
     queue_func(std::function< void(void) > func);
 
     uint32_t
@@ -54,6 +57,9 @@ namespace llarp
 
     void
     remove_call(uint32_t id);
+
+    bool
+    can_flush() const;
   };
 }  // namespace llarp
 

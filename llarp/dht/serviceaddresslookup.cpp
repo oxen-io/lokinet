@@ -22,7 +22,7 @@ namespace llarp
     bool
     ServiceAddressLookup::Validate(const service::IntroSet &value) const
     {
-      if(!value.Verify(parent->Crypto(), parent->Now()))
+      if(!value.Verify(parent->Now()))
       {
         llarp::LogWarn("Got invalid introset from service lookup");
         return false;
@@ -45,10 +45,8 @@ namespace llarp
       {
         return nodes->FindCloseExcluding(k, next, exclude);
       }
-      else
-      {
-        return false;
-      }
+
+      return false;
     }
 
     void

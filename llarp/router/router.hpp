@@ -8,9 +8,10 @@
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
+#include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
-#include <path/path.hpp>
+#include <path/path_context.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
@@ -23,7 +24,7 @@
 #include <util/mem.hpp>
 #include <util/status.hpp>
 #include <util/str.hpp>
-#include <util/threadpool.hpp>
+#include <util/threadpool.h>
 
 #include <functional>
 #include <list>
@@ -36,38 +37,23 @@
 namespace llarp
 {
   struct Config;
-  struct Crypto;
 }  // namespace llarp
 
 bool
-llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &fpath,
+llarp_findOrCreateEncryption(const fs::path &fpath,
                              llarp::SecretKey &encryption);
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
-                           llarp::SecretKey &secretkey);
+llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey);
 
 bool
-llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
+llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
                                  llarp::SecretKey &secretkey);
 
 struct TryConnectJob;
 
 namespace llarp
 {
-  template < typename T >
-  struct CompareLinks
-  {
-    bool
-    operator()(const std::unique_ptr< T > &left,
-               const std::unique_ptr< T > &right) const
-    {
-      const std::string leftName  = left->Name();
-      const std::string rightName = right->Name();
-      return left->Rank() < right->Rank() || leftName < rightName;
-    }
-  };
-
   struct Router final : public AbstractRouter
   {
     bool ready;
@@ -88,8 +74,6 @@ namespace llarp
 
     // use file based logging?
     bool m_UseFileLogging = false;
-    // default log file path
-    fs::path logfile = "lokinet.log";
 
     // our router contact
     RouterContact _rc;
@@ -100,7 +84,7 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
-    Logic *
+    std::shared_ptr< Logic >
     logic() const override
     {
       return _logic;
@@ -114,12 +98,6 @@ namespace llarp
 
     util::StatusObject
     ExtractStatus() const override;
-
-    Crypto *
-    crypto() const override
-    {
-      return _crypto.get();
-    }
 
     llarp_nodedb *
     nodedb() const override
@@ -184,10 +162,10 @@ namespace llarp
       return tp;
     }
 
-    llarp_threadpool *
+    thread::ThreadPool *
     diskworker() override
     {
-      return disk;
+      return &disk;
     }
 
     // our ipv4 public setting
@@ -197,15 +175,18 @@ namespace llarp
 
     llarp_ev_loop_ptr _netloop;
     llarp_threadpool *tp;
-    Logic *_logic;
-    std::unique_ptr< Crypto > _crypto;
+    std::shared_ptr< Logic > _logic;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    llarp_threadpool *disk;
+    thread::ThreadPool disk;
     llarp_dht_context *_dht = nullptr;
     llarp_nodedb *_nodedb;
+    llarp_time_t _startedAt;
+
+    llarp_time_t
+    Uptime() const override;
 
     bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;
@@ -230,7 +211,7 @@ namespace llarp
 
     uint32_t ticker_job_id = 0;
 
-    InboundMessageParser inbound_link_msg_parser;
+    LinkMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
 
     service::Context _hiddenServiceContext;
@@ -257,7 +238,7 @@ namespace llarp
     std::set< RouterID > strictConnectPubkeys;
 
     /// bootstrap RCs
-    std::list< RouterContact > bootstrapRCList;
+    std::set< RouterContact > bootstrapRCList;
 
     bool
     ExitEnabled() const
@@ -269,6 +250,9 @@ namespace llarp
       return IsTrueValue(itr->second.c_str());
     }
 
+    void
+    PumpLL() override;
+
     bool
     CreateDefaultHiddenService();
 
@@ -276,21 +260,20 @@ namespace llarp
     ShouldCreateDefaultHiddenService();
 
     const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
-    bool enableRPCServer                 = true;
+    bool enableRPCServer                 = false;
     std::unique_ptr< rpc::Server > rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
 
     /// lokid caller
-    const std::string DefaultLokidRPCAddr = "127.0.0.1:22023";
     std::unique_ptr< rpc::Caller > rpcCaller;
-    std::string lokidRPCAddr     = DefaultLokidRPCAddr;
-    std::string lokidRPCUser     = "";
-    std::string lokidRPCPassword = "";
+    std::string lokidRPCAddr = "127.0.0.1:22023";
+    std::string lokidRPCUser;
+    std::string lokidRPCPassword;
 
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        outboundLinks;
-    std::set< std::unique_ptr< ILinkLayer >, CompareLinks< ILinkLayer > >
-        inboundLinks;
+    using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
+
+    LinkSet outboundLinks;
+    LinkSet inboundLinks;
 
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";
@@ -305,7 +288,7 @@ namespace llarp
     std::unordered_map< RouterID, RouterContact, RouterID::Hash > validRouters;
 
     // pending establishing session with routers
-    std::unordered_map< RouterID, std::unique_ptr< TryConnectJob >,
+    std::unordered_map< RouterID, std::shared_ptr< TryConnectJob >,
                         RouterID::Hash >
         pendingEstablishJobs;
 
@@ -317,15 +300,12 @@ namespace llarp
     std::unordered_map< RouterID, llarp_time_t, RouterID::Hash >
         m_PersistingSessions;
 
-    // RCs of connected clients
-    std::set< RouterID > m_Clients;
-
     // lokinet routers from lokid, maps pubkey to when we think it will expire,
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
     Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
-           Logic *logic);
+           std::shared_ptr< Logic > logic);
 
     ~Router();
 
@@ -337,7 +317,7 @@ namespace llarp
                                 const llarp_buffer_t &msg) override;
 
     void
-    AddInboundLink(std::unique_ptr< ILinkLayer > &link);
+    AddLink(std::shared_ptr< ILinkLayer > link, bool outbound = false);
 
     bool
     InitOutboundLinks();
@@ -358,7 +338,7 @@ namespace llarp
     Close();
 
     bool
-    LoadHiddenServiceConfig(const char *fname);
+    LoadHiddenServiceConfig(string_view fname);
 
     bool
     AddHiddenService(const service::Config::section_t &config);
@@ -392,6 +372,9 @@ namespace llarp
     bool
     ConnectionToRouterAllowed(const RouterID &router) const override;
 
+    void
+    HandleSaveRC() const;
+
     bool
     SaveRC();
 
@@ -406,6 +389,9 @@ namespace llarp
 
     bool
     HasPendingConnectJob(const RouterID &remote);
+
+    bool
+    HasPendingRouterLookup(const RouterID &remote) const override;
 
     void
     try_connect(fs::path rcfile);
@@ -437,7 +423,7 @@ namespace llarp
     FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
 
     void
-    LookupRouter(RouterID remote) override;
+    LookupRouter(RouterID remote, RouterLookupHandler handler) override;
 
     /// manually discard all pending messages to remote router
     void
@@ -447,13 +433,17 @@ namespace llarp
     void
     TryEstablishTo(const RouterID &remote);
 
-    /// lookup a router by pubkey when it expires when we are a service node
+    /// lookup a router by pubkey when it expires
     void
-    ServiceNodeLookupRouterWhenExpired(RouterID remote);
+    LookupRouterWhenExpired(RouterID remote);
 
     void
     HandleDHTLookupForExplore(
         RouterID remote, const std::vector< RouterContact > &results) override;
+
+    void
+    HandleRouterLookupForExpireUpdate(
+        RouterID remote, const std::vector< RouterContact > &results);
 
     void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
@@ -508,24 +498,39 @@ namespace llarp
     void
     ConnectToRandomRouters(int N) override;
 
+    /// count the number of unique service nodes connected via pubkey
     size_t
     NumberOfConnectedRouters() const override;
 
+    /// count the number of unique clients connected by pubkey
+    size_t
+    NumberOfConnectedClients() const override;
+
+    /// count unique router id's given filter to match session
+    size_t
+    NumberOfRoutersMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
+
+    /// count the number of connections that match filter
+    size_t
+    NumberOfConnectionsMatchingFilter(
+        std::function< bool(const ILinkSession *) > filter) const;
+
     bool
-    TryConnectAsync(RouterContact rc, uint16_t tries);
+    TryConnectAsync(RouterContact rc, uint16_t tries) override;
 
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;
 
     bool
-    async_verify_RC(const RouterContact &rc);
+    async_verify_RC(const RouterContact rc);
 
     void
     HandleDHTLookupForSendTo(RouterID remote,
                              const std::vector< RouterContact > &results);
 
     bool
-    HasSessionTo(const RouterID &remote) const;
+    HasSessionTo(const RouterID &remote) const override;
 
     void
     HandleDHTLookupForTryEstablishTo(
@@ -561,7 +566,7 @@ namespace llarp
     }
 
     void
-    router_iter_config(const char *section, const char *key, const char *val);
+    fromConfig(Config *conf);
   };
 
 }  // namespace llarp

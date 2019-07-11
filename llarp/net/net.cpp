@@ -37,7 +37,7 @@ operator==(const sockaddr& a, const sockaddr& b)
 bool
 operator<(const sockaddr_in6& a, const sockaddr_in6& b)
 {
-  return memcmp(&a, &b, sizeof(sockaddr_in6)) < 0;
+  return a.sin6_addr < b.sin6_addr || a.sin6_port < b.sin6_port;
 }
 
 bool
@@ -973,7 +973,7 @@ namespace llarp
       result               = addr;
       return true;
     }
-    else if(af == AF_INET6)
+    if(af == AF_INET6)
     {
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
@@ -982,17 +982,16 @@ namespace llarp
       result            = addr6;
       return true;
     }
-    else
-    {
-      // TODO: implement sockaddr_ll
-    }
+
+    // TODO: implement sockaddr_ll
+
     return false;
   }
 
   bool
   IsBogon(const in6_addr& addr)
   {
-#ifdef TESTNET
+#if defined(TESTNET)
     (void)addr;
     return false;
 #else
@@ -1022,12 +1021,15 @@ namespace llarp
         iprange_ipv4(192, 168, 0, 0, 16),  iprange_ipv4(198, 18, 0, 0, 15),
         iprange_ipv4(198, 51, 100, 0, 24), iprange_ipv4(203, 0, 113, 0, 24),
         iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
-
     for(const auto& bogon : bogonRanges)
     {
       if(bogon.Contains(addr))
       {
+#if defined(TESTNET)
+        return false;
+#else
         return true;
+#endif
       }
     }
     return false;

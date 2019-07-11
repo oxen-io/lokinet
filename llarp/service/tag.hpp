@@ -37,13 +37,6 @@ namespace llarp
       }
 
       Tag&
-      operator=(const Tag& other)
-      {
-        as_array() = other.as_array();
-        return *this;
-      }
-
-      Tag&
       operator=(const std::string& str)
       {
         std::copy(

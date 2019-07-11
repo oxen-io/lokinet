@@ -5,7 +5,6 @@
 #include <router_id.hpp>
 #include <routing/message.hpp>
 #include <service/intro_set.hpp>
-#include <service/lookup.hpp>
 #include <util/status.hpp>
 #include <util/threading.hpp>
 #include <util/time.hpp>
@@ -35,6 +34,7 @@ namespace llarp
       ePathBuilding,
       ePathEstablished,
       ePathTimeout,
+      ePathIgnore,
       ePathExpired
     };
 
@@ -57,6 +57,12 @@ namespace llarp
     // forward declare
     struct Path;
 
+    using Path_ptr = std::shared_ptr< Path >;
+
+    struct PathSet;
+
+    using PathSet_ptr = std::shared_ptr< PathSet >;
+
     /// a set of paths owned by an entity
     struct PathSet
     {
@@ -64,34 +70,46 @@ namespace llarp
       /// @params numPaths the number of paths to maintain
       PathSet(size_t numPaths);
 
+      /// get a shared_ptr of ourself
+      virtual PathSet_ptr
+      GetSelf() = 0;
+
+      virtual void
+      BuildOne(PathRole roles = ePathRoleAny) = 0;
+
+      /// manual build on these hops
+      virtual void
+      Build(const std::vector< RouterContact >& hops,
+            PathRole roles = ePathRoleAny) = 0;
+
       /// tick owned paths
-      void
-      Tick(llarp_time_t now, AbstractRouter* r);
+      virtual void
+      Tick(llarp_time_t now) = 0;
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
       NumPathsExistingAt(llarp_time_t futureTime) const;
 
       void
-      RemovePath(Path* path);
+      RemovePath(Path_ptr path);
 
       virtual void
-      HandlePathBuilt(Path* path) = 0;
+      HandlePathBuilt(Path_ptr path) = 0;
 
       virtual void
-      HandlePathBuildTimeout(__attribute__((unused)) Path* path);
+      HandlePathBuildTimeout(Path_ptr path);
 
       /// a path died now what?
       virtual void
-      HandlePathDied(Path* path) = 0;
+      HandlePathDied(Path_ptr path) = 0;
 
       bool
       GetNewestIntro(service::Introduction& intro) const;
 
       void
-      AddPath(Path* path);
+      AddPath(Path_ptr path);
 
-      Path*
+      Path_ptr
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
@@ -147,16 +165,14 @@ namespace llarp
 
       /// override me in subtype
       virtual bool
-      HandleGotIntroMessage(__attribute__((unused))
-                            const dht::GotIntroMessage* msg)
+      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
       {
         return false;
       }
 
       /// override me in subtype
       virtual bool
-      HandleGotRouterMessage(__attribute__((unused))
-                             const dht::GotRouterMessage* msg)
+      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
       {
         return false;
       }
@@ -167,24 +183,24 @@ namespace llarp
         return nullptr;
       }
 
-      Path*
+      Path_ptr
       GetEstablishedPathClosestTo(RouterID router,
                                   PathRole roles = ePathRoleAny) const;
 
-      Path*
+      Path_ptr
       PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
-      Path*
+      Path_ptr
       GetPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
-      Path*
+      Path_ptr
       GetNewestPathByRouter(RouterID router,
                             PathRole roles = ePathRoleAny) const;
 
-      Path*
+      Path_ptr
       GetPathByID(PathID_t id) const;
 
-      Path*
+      Path_ptr
       GetByEndpointWithID(RouterID router, PathID_t id) const;
 
       bool
@@ -201,36 +217,34 @@ namespace llarp
         return false;
       }
 
+      /// reset all cooldown timers
+      virtual void
+      ResetInternalState() = 0;
+
       virtual bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles) = 0;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, PathRole roles) = 0;
+
+      virtual bool
+      BuildOneAlignedTo(const RouterID endpoint) = 0;
+
+      void
+      ForEachPath(std::function< void(const Path_ptr&) > visit) const
+      {
+        Lock_t lock(&m_PathsMutex);
+        auto itr = m_Paths.begin();
+        while(itr != m_Paths.end())
+        {
+          visit(itr->second);
+          ++itr;
+        }
+      }
 
      protected:
       size_t m_NumPaths;
 
       void
-      ForEachPath(std::function< void(Path*) > visit)
-      {
-        Lock_t lock(&m_PathsMutex);
-        auto itr = m_Paths.begin();
-        while(itr != m_Paths.end())
-        {
-          visit(itr->second);
-          ++itr;
-        }
-      }
-
-      void
-      ForEachPath(std::function< void(const Path*) > visit) const
-      {
-        Lock_t lock(&m_PathsMutex);
-        auto itr = m_Paths.begin();
-        while(itr != m_Paths.end())
-        {
-          visit(itr->second);
-          ++itr;
-        }
-      }
+      TickPaths(llarp_time_t now, AbstractRouter* r);
 
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 
@@ -242,9 +256,10 @@ namespace llarp
           return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
         }
       };
-      using Mtx_t     = util::NullMutex;
-      using Lock_t    = util::NullLock;
-      using PathMap_t = std::unordered_map< PathInfo_t, Path*, PathInfoHash >;
+      using Mtx_t  = util::NullMutex;
+      using Lock_t = util::NullLock;
+      using PathMap_t =
+          std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash >;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };

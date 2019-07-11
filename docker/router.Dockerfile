@@ -1,18 +1,19 @@
-FROM ubuntu:latest
+FROM alpine:edge as builder
 
-RUN apt update && \
-    apt install -y build-essential cmake git libcap-dev curl ninja-build
+RUN apk update && \
+    apk add build-base cmake git libcap-dev libcap-static libuv-dev libuv-static curl ninja bash binutils-gold
 
 WORKDIR /src/
 COPY . /src/
 
-# 12p/24l cores takes 8gb
-ARG BIG_AND_FAST="false"
+RUN make NINJA=ninja STATIC_LINK=ON BUILD_TYPE=Release
+RUN ./lokinet-bootstrap
 
-RUN if [ "false$BIG_AND_FAST" = "false" ] ; then make ; else make NINJA=ninja ; fi
-RUN find . -name lokinet
-RUN ./lokinet -g -f
-RUN ./lokinet-bootstrap http://206.81.100.174/n-st-1.signed
+FROM alpine:latest
+
+COPY lokinet-docker.ini /root/.lokinet/lokinet.ini
+COPY --from=builder /src/build/lokinet .
+COPY --from=builder /root/.lokinet/bootstrap.signed /root/.lokinet/
 
 CMD ["./lokinet"]
-EXPOSE 1090/udp
+EXPOSE 1090/udp 1190/tcp

@@ -61,9 +61,6 @@ namespace llarp
       return llarp_ev_loop_time_now_ms(m_Loop);
     }
 
-    virtual Crypto*
-    OurCrypto() = 0;
-
     bool
     HasSessionTo(const RouterID& pk);
 
@@ -126,7 +123,7 @@ namespace llarp
     TryEstablishTo(RouterContact rc);
 
     virtual bool
-    Start(llarp::Logic* l);
+    Start(std::shared_ptr< llarp::Logic > l);
 
     void
     Stop();
@@ -202,6 +199,13 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
 
+    bool
+    operator<(const ILinkLayer& other) const
+    {
+      return Rank() < other.Rank() || Name() < other.Name()
+          || m_ourAddr < other.m_ourAddr;
+    }
+
     /// called by link session to remove a pending session who is timed out
     // void
     // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
@@ -226,13 +230,13 @@ namespace llarp
     const SecretKey& m_RouterEncSecret;
 
    protected:
-    using Lock  = util::NullLock;
-    using Mutex = util::NullMutex;
+    using Lock  = util::Lock;
+    using Mutex = util::Mutex;
 
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
 
-    llarp::Logic* m_Logic = nullptr;
+    std::shared_ptr< llarp::Logic > m_Logic = nullptr;
     llarp_ev_loop_ptr m_Loop;
     Addr m_ourAddr;
     llarp_udp_io m_udp;
@@ -245,11 +249,13 @@ namespace llarp
         std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
                                  llarp::Addr::Hash >;
 
-    Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
+    mutable Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
-    Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
+    mutable Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
     Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
+
+  using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;
 }  // namespace llarp
 
 #endif

@@ -5,6 +5,8 @@
 
 namespace llarp
 {
+  static constexpr size_t MaxSessionsPerKey = 16;
+
   ILinkLayer::ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
@@ -36,63 +38,75 @@ namespace llarp
   ILinkLayer::ForEachSession(std::function< void(const ILinkSession*) > visit,
                              bool randomize) const
   {
-    Lock l(&m_AuthedLinksMutex);
-    if(m_AuthedLinks.size() == 0)
-      return;
-    const size_t sz = randint() % m_AuthedLinks.size();
-    auto itr        = m_AuthedLinks.begin();
-    auto begin      = itr;
-    if(randomize)
+    std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      std::advance(itr, sz);
-      begin = itr;
-    }
-    while(itr != m_AuthedLinks.end())
-    {
-      visit(itr->second.get());
-      ++itr;
-    }
-    if(randomize)
-    {
-      itr = m_AuthedLinks.begin();
-      while(itr != begin)
+      Lock l(&m_AuthedLinksMutex);
+      if(m_AuthedLinks.size() == 0)
+        return;
+      const size_t sz = randint() % m_AuthedLinks.size();
+      auto itr        = m_AuthedLinks.begin();
+      auto begin      = itr;
+      if(randomize)
       {
-        visit(itr->second.get());
+        std::advance(itr, sz);
+        begin = itr;
+      }
+      while(itr != m_AuthedLinks.end())
+      {
+        sessions.emplace_back(itr->second);
         ++itr;
       }
+      if(randomize)
+      {
+        itr = m_AuthedLinks.begin();
+        while(itr != begin)
+        {
+          sessions.emplace_back(itr->second);
+          ++itr;
+        }
+      }
     }
+    for(const auto& session : sessions)
+      visit(session.get());
   }
 
   bool
   ILinkLayer::VisitSessionByPubkey(const RouterID& pk,
                                    std::function< bool(ILinkSession*) > visit)
   {
-    Lock l(&m_AuthedLinksMutex);
-    auto itr = m_AuthedLinks.find(pk);
-    if(itr != m_AuthedLinks.end())
+    std::shared_ptr< ILinkSession > session;
     {
-      return visit(itr->second.get());
+      Lock l(&m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.find(pk);
+      if(itr == m_AuthedLinks.end())
+        return false;
+      session = itr->second;
     }
-    return false;
+    return visit(session.get());
   }
 
   void
   ILinkLayer::ForEachSession(std::function< void(ILinkSession*) > visit)
   {
-    Lock l(&m_AuthedLinksMutex);
-    auto itr = m_AuthedLinks.begin();
-    while(itr != m_AuthedLinks.end())
+    std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      visit(itr->second.get());
-      ++itr;
+      Lock l(&m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.begin();
+      while(itr != m_AuthedLinks.end())
+      {
+        sessions.emplace_back(itr->second);
+        ++itr;
+      }
     }
+    for(const auto& s : sessions)
+      visit(s.get());
   }
 
   bool
   ILinkLayer::Configure(llarp_ev_loop_ptr loop, const std::string& ifname,
                         int af, uint16_t port)
   {
-    m_Loop         = std::move(loop);
+    m_Loop         = loop;
     m_udp.user     = this;
     m_udp.recvfrom = &ILinkLayer::udp_recv_from;
     m_udp.tick     = &ILinkLayer::udp_tick;
@@ -102,7 +116,7 @@ namespace llarp
         return false;
     }
     else if(!GetIFAddr(ifname, m_ourAddr, af))
-      return false;
+      m_ourAddr = Addr(ifname);
     m_ourAddr.port(port);
     return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr) != -1;
   }
@@ -125,6 +139,7 @@ namespace llarp
         {
           llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()),
                          " timed out");
+          itr->second->Close();
           itr = m_AuthedLinks.erase(itr);
         }
       }
@@ -143,6 +158,7 @@ namespace llarp
         else
         {
           LogInfo("pending session at ", itr->first, " timed out");
+          itr->second->Close();
           itr = m_Pending.erase(itr);
         }
       }
@@ -152,7 +168,6 @@ namespace llarp
   bool
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
-    static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(&m_AuthedLinksMutex);
     Lock l_pending(&m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
@@ -220,10 +235,20 @@ namespace llarp
   bool
   ILinkLayer::TryEstablishTo(RouterContact rc)
   {
+    {
+      Lock l(&m_AuthedLinksMutex);
+      if(m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
+        return false;
+    }
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::Addr addr(to);
+    const llarp::Addr addr(to);
+    {
+      Lock l(&m_PendingMutex);
+      if(m_Pending.count(addr) >= MaxSessionsPerKey)
+        return false;
+    }
     std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
     {
@@ -234,7 +259,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(Logic* l)
+  ILinkLayer::Start(std::shared_ptr< Logic > l)
   {
     m_Logic = l;
     ScheduleTick(100);

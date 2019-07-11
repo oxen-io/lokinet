@@ -1,6 +1,7 @@
 #include <profiling.hpp>
 
 #include <fstream>
+#include <util/fs.hpp>
 
 namespace llarp
 {
@@ -96,9 +97,27 @@ namespace llarp
     return checkIsGood(pathFailCount, pathSuccessCount, chances);
   }
 
+  Profiling::Profiling() : m_DisableProfiling(false)
+  {
+  }
+
+  void
+  Profiling::Disable()
+  {
+    m_DisableProfiling.store(true);
+  }
+
+  void
+  Profiling::Enable()
+  {
+    m_DisableProfiling.store(false);
+  }
+
   bool
   Profiling::IsBadForConnect(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
@@ -109,6 +128,8 @@ namespace llarp
   bool
   Profiling::IsBadForPath(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
@@ -119,6 +140,8 @@ namespace llarp
   bool
   Profiling::IsBad(const RouterID& r, uint64_t chances)
   {
+    if(m_DisableProfiling.load())
+      return false;
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
@@ -161,11 +184,16 @@ namespace llarp
   Profiling::MarkPathFail(path::Path* p)
   {
     lock_t lock(&m_ProfilesMutex);
+    size_t idx = 0;
     for(const auto& hop : p->hops)
     {
-      // TODO: also mark bad?
-      m_Profiles[hop.rc.pubkey].pathFailCount += 1;
-      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      // don't mark first hop as failure because we are connected to it directly
+      if(idx)
+      {
+        m_Profiles[hop.rc.pubkey].pathFailCount += 1;
+        m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      }
+      ++idx;
     }
   }
 
@@ -192,9 +220,13 @@ namespace llarp
     auto res = BEncodeNoLock(&buf);
     if(res)
     {
-      buf.sz = buf.cur - buf.base;
-      std::ofstream f;
-      f.open(fname);
+      buf.sz               = buf.cur - buf.base;
+      const fs::path fpath = std::string(fname);
+      auto optional_f =
+          util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
+      if(!optional_f)
+        return false;
+      auto& f = optional_f.value();
       if(f.is_open())
       {
         f.write((char*)buf.base, buf.sz);
@@ -235,7 +267,7 @@ namespace llarp
     if(k.sz != 32)
       return false;
     RouterProfile profile;
-    if(!profile.BDecode(buf))
+    if(!bencode_decode_dict(profile, buf))
       return false;
     RouterID pk = k.base;
     return m_Profiles.emplace(pk, profile).second;
@@ -246,7 +278,7 @@ namespace llarp
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles.clear();
-    if(!BDecodeReadFile(fname, *this))
+    if(!BDecodeReadFromFile(fname, *this))
     {
       llarp::LogWarn("failed to load router profiles from ", fname);
       return false;

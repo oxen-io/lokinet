@@ -2,12 +2,14 @@
 
 #include <dht/context.hpp>
 #include <exit/context.hpp>
+#include <exit/exit_messages.hpp>
 #include <messages/discard.hpp>
-#include <messages/exit.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
 #include <messages/relay_commit.hpp>
+#include <path/path_context.hpp>
+#include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/path_latency_message.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
@@ -16,6 +18,18 @@ namespace llarp
 {
   namespace path
   {
+    std::ostream&
+    TransitHopInfo::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("tx", txID);
+      printer.printAttribute("rx", rxID);
+      printer.printAttribute("upstream", upstream);
+      printer.printAttribute("downstream", downstream);
+
+      return stream;
+    }
+
     TransitHop::TransitHop()
     {
     }
@@ -32,29 +46,12 @@ namespace llarp
       return started + lifetime;
     }
 
-    TransitHopInfo::TransitHopInfo(const TransitHopInfo& other)
-        : txID(other.txID)
-        , rxID(other.rxID)
-        , upstream(other.upstream)
-        , downstream(other.downstream)
-    {
-    }
-
     TransitHopInfo::TransitHopInfo(const RouterID& down,
                                    const LR_CommitRecord& record)
         : txID(record.txid)
         , rxID(record.rxid)
         , upstream(record.nextHop)
         , downstream(down)
-    {
-    }
-
-    TransitHop::TransitHop(const TransitHop& other)
-        : info(other.info)
-        , pathKey(other.pathKey)
-        , started(other.started)
-        , lifetime(other.lifetime)
-        , version(other.version)
     {
     }
 
@@ -81,7 +78,7 @@ namespace llarp
       {
         dlt = pad_size - dlt;
         // randomize padding
-        r->crypto()->randbytes(buf.cur, dlt);
+        CryptoManager::instance()->randbytes(buf.cur, dlt);
         buf.sz += dlt;
       }
       buf.cur = buf.base;
@@ -95,7 +92,7 @@ namespace llarp
       RelayDownstreamMessage msg;
       msg.pathid = info.rxID;
       msg.Y      = Y ^ nonceXOR;
-      r->crypto()->xchacha20(buf, pathKey, Y);
+      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
       msg.X = buf;
       llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
                       info.upstream, " to ", info.downstream);
@@ -106,23 +103,21 @@ namespace llarp
     TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                                AbstractRouter* r)
     {
-      r->crypto()->xchacha20(buf, pathKey, Y);
+      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
       if(IsEndpoint(r->pubkey()))
       {
         m_LastActivity = r->Now();
         return r->ParseRoutingMessageBuffer(buf, this, info.rxID);
       }
-      else
-      {
-        RelayUpstreamMessage msg;
-        msg.pathid = info.txID;
-        msg.Y      = Y ^ nonceXOR;
 
-        msg.X = buf;
-        llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
-                        info.downstream, " to ", info.upstream);
-        return r->SendToOrQueue(info.upstream, &msg);
-      }
+      RelayUpstreamMessage msg;
+      msg.pathid = info.txID;
+      msg.Y      = Y ^ nonceXOR;
+
+      msg.X = buf;
+      llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
+                      info.downstream, " to ", info.upstream);
+      return r->SendToOrQueue(info.upstream, &msg);
     }
 
     bool
@@ -163,13 +158,13 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage& msg, AbstractRouter* r)
     {
-      if(msg.Verify(r->crypto())
+      if(msg.Verify()
          && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg.T;
-        if(!grant.Sign(r->crypto(), r->identity()))
+        if(!grant.Sign(r->identity()))
         {
           llarp::LogError("Failed to sign grant exit message");
           return false;
@@ -181,7 +176,7 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg.T;
-      if(!reject.Sign(r->crypto(), r->identity()))
+      if(!reject.Sign(r->identity()))
       {
         llarp::LogError("Failed to sign reject exit message");
         return false;
@@ -193,16 +188,22 @@ namespace llarp
     TransitHop::HandleCloseExitMessage(
         const llarp::routing::CloseExitMessage& msg, AbstractRouter* r)
     {
-      llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
+      const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       auto ep = r->exitContext().FindEndpointForPath(info.rxID);
-      if(ep && msg.Verify(r->crypto(), ep->PubKey()))
+      if(ep && msg.Verify(ep->PubKey()))
       {
-        ep->Close();
-        // ep is now gone af
         llarp::routing::CloseExitMessage reply;
+        reply.Y = msg.Y;
         reply.S = NextSeqNo();
-        if(reply.Sign(r->crypto(), r->identity()))
-          return SendRoutingMessage(reply, r);
+        if(reply.Sign(r->identity()))
+        {
+          if(SendRoutingMessage(reply, r))
+          {
+            r->PumpLL();
+            ep->Close();
+            return true;
+          }
+        }
       }
       return SendRoutingMessage(discard, r);
     }
@@ -224,7 +225,7 @@ namespace llarp
       auto ep = r->exitContext().FindEndpointForPath(msg.P);
       if(ep)
       {
-        if(!msg.Verify(r->crypto(), ep->PubKey()))
+        if(!msg.Verify(ep->PubKey()))
           return false;
 
         if(ep->UpdateLocalPath(info.rxID))
@@ -280,8 +281,8 @@ namespace llarp
         }
         return sent;
       }
-      else
-        llarp::LogError("No exit endpoint on ", info);
+
+      llarp::LogError("No exit endpoint on ", info);
       // discarded
       llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       return SendRoutingMessage(discard, r);
@@ -314,5 +315,15 @@ namespace llarp
       return SendRoutingMessage(discarded, r);
     }
 
+    std::ostream&
+    TransitHop::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("TransitHop", info);
+      printer.printAttribute("started", started);
+      printer.printAttribute("lifetime", lifetime);
+
+      return stream;
+    }
   }  // namespace path
 }  // namespace llarp

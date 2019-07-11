@@ -8,12 +8,18 @@
 #include <util/logger.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
+#include <util/thread_pool.hpp>
 
 #include <fstream>
 #include <unordered_map>
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
+
+llarp_nodedb::NetDBEntry::NetDBEntry(const llarp::RouterContact &value)
+    : rc(value), inserted(llarp::time_now_ms())
+{
+}
 
 bool
 llarp_nodedb::Remove(const llarp::RouterID &pk)
@@ -44,50 +50,38 @@ llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
-  result = itr->second;
+  result = itr->second.rc;
   return true;
 }
 
-// kill rcs from disk async
-struct AsyncKillRCJobs
+void
+KillRCJobs(const std::set< std::string > &files)
 {
-  std::set< std::string > files;
-
-  static void
-  Work(void *u)
-  {
-    static_cast< AsyncKillRCJobs * >(u)->Kill();
-  }
-
-  void
-  Kill()
-  {
-    for(const auto &file : files)
-      fs::remove(file);
-    delete this;
-  }
-};
+  for(const auto &file : files)
+    fs::remove(file);
+}
 
 void
 llarp_nodedb::RemoveIf(
     std::function< bool(const llarp::RouterContact &rc) > filter)
 {
-  AsyncKillRCJobs *job = new AsyncKillRCJobs();
+  std::set< std::string > files;
   {
     llarp::util::Lock l(&access);
     auto itr = entries.begin();
     while(itr != entries.end())
     {
-      if(filter(itr->second))
+      if(filter(itr->second.rc))
       {
-        job->files.insert(getRCFilePath(itr->second.pubkey));
+        files.insert(getRCFilePath(itr->second.rc.pubkey));
         itr = entries.erase(itr);
       }
       else
         ++itr;
     }
   }
-  llarp_threadpool_queue_job(disk, {job, &AsyncKillRCJobs::Work});
+
+  disk->addJob(std::bind(&KillRCJobs, files));
 }
 
 bool
@@ -118,38 +112,25 @@ llarp_nodedb::getRCFilePath(const llarp::RouterID &pubkey) const
   return filepath.string();
 }
 
-struct async_insert_rc
-{
-  llarp_nodedb *nodedb;
-  llarp::RouterContact rc;
-  llarp::Logic *logic;
-  std::function< void(void) > completedHook;
-  async_insert_rc(llarp_nodedb *n, const llarp::RouterContact &r)
-      : nodedb(n), rc(r)
-  {
-  }
-};
-
 static void
-handle_async_insert_rc(void *u)
+handle_async_insert_rc(llarp_nodedb *nodedb, const llarp::RouterContact &rc,
+                       std::shared_ptr< llarp::Logic > logic,
+                       const std::function< void(void) > &completedHook)
 {
-  async_insert_rc *job = static_cast< async_insert_rc * >(u);
-  job->nodedb->Insert(job->rc);
-  if(job->logic && job->completedHook)
+  nodedb->Insert(rc);
+  if(logic && completedHook)
   {
-    job->logic->queue_func(job->completedHook);
+    logic->queue_func(completedHook);
   }
-  delete job;
 }
 
 void
-llarp_nodedb::InsertAsync(llarp::RouterContact rc, llarp::Logic *logic,
+llarp_nodedb::InsertAsync(llarp::RouterContact rc,
+                          std::shared_ptr< llarp::Logic > logic,
                           std::function< void(void) > completionHandler)
 {
-  async_insert_rc *ctx = new async_insert_rc(this, rc);
-  ctx->completedHook   = completionHandler;
-  ctx->logic           = logic;
-  llarp_threadpool_queue_job(disk, {ctx, &handle_async_insert_rc});
+  disk->addJob(
+      std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler));
 }
 
 /// insert and write to disk
@@ -171,9 +152,12 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   buf.sz        = buf.cur - buf.base;
   auto filepath = getRCFilePath(rc.pubkey);
   llarp::LogDebug("saving RC.pubkey ", filepath);
-  std::ofstream ofs(
+  auto optional_ofs = llarp::util::OpenFileStream< std::ofstream >(
       filepath,
       std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+  if(!optional_ofs)
+    return false;
+  auto &ofs = optional_ofs.value();
   ofs.write((char *)buf.base, buf.sz);
   ofs.close();
   if(!ofs)
@@ -210,6 +194,38 @@ llarp_nodedb::Load(const fs::path &path)
   return loaded;
 }
 
+void
+llarp_nodedb::SaveAll()
+{
+  std::array< byte_t, MAX_RC_SIZE > tmp;
+  llarp::util::Lock lock(&access);
+  for(const auto &item : entries)
+  {
+    llarp_buffer_t buf(tmp);
+
+    if(!item.second.rc.BEncode(&buf))
+      continue;
+
+    buf.sz              = buf.cur - buf.base;
+    const auto filepath = getRCFilePath(item.second.rc.pubkey);
+    auto optional_ofs   = llarp::util::OpenFileStream< std::ofstream >(
+        filepath,
+        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+    if(!optional_ofs)
+      continue;
+    auto &ofs = optional_ofs.value();
+    ofs.write((char *)buf.base, buf.sz);
+    ofs.flush();
+    ofs.close();
+  }
+}
+
+void
+llarp_nodedb::AsyncFlushToDisk()
+{
+  disk->addJob(std::bind(&llarp_nodedb::SaveAll, this));
+}
+
 ssize_t
 llarp_nodedb::loadSubdir(const fs::path &dir)
 {
@@ -233,7 +249,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
     llarp::LogError("failed to read file ", fpath);
     return false;
   }
-  if(!rc.Verify(crypto, llarp::time_now_ms()))
+  if(!rc.Verify(llarp::time_now_ms()))
   {
     llarp::LogError(fpath, " contains invalid RC");
     return false;
@@ -252,28 +268,25 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    if(!visit(itr->second))
+    if(!visit(itr->second.rc))
       return;
     ++itr;
   }
 }
 
-bool
-llarp_nodedb::iterate(llarp_nodedb_iter &i)
+void
+llarp_nodedb::VisitInsertedAfter(
+    std::function< void(const llarp::RouterContact &) > visit,
+    llarp_time_t insertedAfter)
 {
-  i.index = 0;
   llarp::util::Lock lock(&access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    i.rc = &itr->second;
-    i.visit(&i);
-
-    // advance
-    i.index++;
-    itr++;
+    if(itr->second.inserted > insertedAfter)
+      visit(itr->second.rc);
+    ++itr;
   }
-  return true;
 }
 
 /*
@@ -304,10 +317,8 @@ logic_threadworker_callback(void *user)
 
 // write it to disk
 void
-disk_threadworker_setRC(void *user)
+disk_threadworker_setRC(llarp_async_verify_rc *verify_request)
 {
-  llarp_async_verify_rc *verify_request =
-      static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid = verify_request->nodedb->Insert(verify_request->rc);
   if(verify_request->logic)
     verify_request->logic->queue_job(
@@ -321,14 +332,13 @@ crypto_threadworker_verifyrc(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   llarp::RouterContact rc = verify_request->rc;
-  verify_request->valid =
-      rc.Verify(verify_request->nodedb->crypto, llarp::time_now_ms());
+  verify_request->valid   = rc.Verify(llarp::time_now_ms());
   // if it's valid we need to set it
   if(verify_request->valid && rc.IsPublicRouter())
   {
     llarp::LogDebug("RC is valid, saving to disk");
-    llarp_threadpool_queue_job(verify_request->diskworker,
-                               {verify_request, &disk_threadworker_setRC});
+    verify_request->diskworker->addJob(
+        std::bind(&disk_threadworker_setRC, verify_request));
   }
   else
   {
@@ -409,13 +419,6 @@ llarp_nodedb::load_dir(const char *dir)
   return Load(dir);
 }
 
-int
-llarp_nodedb::iterate_all(struct llarp_nodedb_iter i)
-{
-  iterate(i);
-  return num_loaded();
-}
-
 /// maybe rename to verify_and_set
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
@@ -456,9 +459,9 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
     std::advance(itr, idx - 1);
   while(itr != entries.end())
   {
-    if(itr->second.IsExit())
+    if(itr->second.rc.IsExit())
     {
-      result = itr->second;
+      result = itr->second.rc;
       return true;
     }
     ++itr;
@@ -467,9 +470,9 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
   itr = entries.begin();
   while(idx--)
   {
-    if(itr->second.IsExit())
+    if(itr->second.rc.IsExit())
     {
-      result = itr->second;
+      result = itr->second.rc;
       return true;
     }
     ++itr;
@@ -497,11 +500,11 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   auto start = itr;
   while(itr == entries.end())
   {
-    if(prev.pubkey != itr->second.pubkey)
+    if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -510,11 +513,11 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   itr = entries.begin();
   while(itr != start)
   {
-    if(prev.pubkey != itr->second.pubkey)
+    if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -545,9 +548,9 @@ llarp_nodedb::select_random_hop_excluding(
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }
@@ -558,9 +561,9 @@ llarp_nodedb::select_random_hop_excluding(
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
       {
-        result = itr->second;
+        result = itr->second.rc;
         return true;
       }
     }

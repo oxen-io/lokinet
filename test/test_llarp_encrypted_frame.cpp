@@ -2,40 +2,25 @@
 
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <llarp_test.hpp>
 #include <messages/relay_commit.hpp>
+
+#include <test_util.hpp>
 
 #include <gtest/gtest.h>
 
-using EncryptedFrame = llarp::EncryptedFrame;
-using SecretKey      = llarp::SecretKey;
-using PubKey         = llarp::PubKey;
-using LRCR           = llarp::LR_CommitRecord;
+using namespace ::llarp;
+using namespace ::testing;
 
-class FrameTest : public ::testing::Test
+using EncryptedFrame = EncryptedFrame;
+using SecretKey      = SecretKey;
+using PubKey         = PubKey;
+using LRCR           = LR_CommitRecord;
+
+class FrameTest : public test::LlarpTest<>
 {
  public:
-  llarp::sodium::CryptoLibSodium crypto;
   SecretKey alice, bob;
-
-  FrameTest()
-  {
-  }
-
-  ~FrameTest()
-  {
-  }
-
-  void
-  SetUp()
-  {
-    crypto.encryption_keygen(alice);
-    crypto.encryption_keygen(bob);
-  }
-
-  void
-  TearDown()
-  {
-  }
 };
 
 TEST_F(FrameTest, TestFrameCrypto)
@@ -49,18 +34,30 @@ TEST_F(FrameTest, TestFrameCrypto)
   record.txid.Fill(4);
 
   auto buf = f.Buffer();
-  buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
+  buf->cur = buf->base + EncryptedFrameOverheadSize;
 
   ASSERT_TRUE(record.BEncode(buf));
 
+  EXPECT_CALL(m_crypto, randbytes(_, _))
+      .WillOnce(Invoke(&test::randbytes_impl));
+
+  EXPECT_CALL(m_crypto, dh_client(_, _, alice, _)).WillOnce(Return(true));
+  EXPECT_CALL(m_crypto, xchacha20(_, _, _))
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(m_crypto, hmac(_, _, _)).Times(2).WillRepeatedly(Return(true));
+
   // rewind buffer
-  buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
+  buf->cur = buf->base + EncryptedFrameOverheadSize;
   // encrypt to alice
-  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic(), &crypto));
+  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic()));
+
+  EXPECT_CALL(m_crypto, dh_server(_, _, _, _)).WillOnce(Return(true));
+
   // decrypt from alice
-  ASSERT_TRUE(f.DecryptInPlace(bob, &crypto));
+  ASSERT_TRUE(f.DecryptInPlace(bob));
 
   LRCR otherRecord;
   ASSERT_TRUE(otherRecord.BDecode(buf));
   ASSERT_TRUE(otherRecord == record);
-};
+}

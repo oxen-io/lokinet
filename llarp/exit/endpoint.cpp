@@ -1,5 +1,7 @@
 #include <exit/endpoint.hpp>
+
 #include <handlers/exit.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp
@@ -96,7 +98,7 @@ namespace llarp
       auto lastPing = path->LastRemoteActivityAt();
       if(lastPing == 0 || (now > lastPing && now - lastPing > timeout))
         return now > m_LastActive && now - m_LastActive > timeout;
-      else if(lastPing)
+      else if(lastPing)  // NOLINT
         return now > lastPing && now - lastPing > timeout;
       return lastPing > 0;
     }
@@ -138,8 +140,10 @@ namespace llarp
         src = pkt.src();
       pkt.UpdateIPv4PacketOnDst(src, m_IP);
       const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
-      uint8_t queue_idx            = pktbuf.sz / llarp::routing::ExitPadSize;
-      auto& queue                  = m_DownstreamQueues[queue_idx];
+      const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
+      if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
+        m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
+      auto& queue = m_DownstreamQueues.at(queue_idx);
       if(queue.size() == 0)
       {
         queue.emplace_back();
@@ -151,8 +155,8 @@ namespace llarp
         queue.emplace_back();
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
-      else
-        return msg.PutBuffer(pktbuf, m_Counter++);
+
+      return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
     bool
@@ -190,7 +194,7 @@ namespace llarp
       return sent;
     }
 
-    llarp::path::IHopHandler*
+    llarp::path::HopHandler_ptr
     Endpoint::GetCurrentPath() const
     {
       auto router = m_Parent->GetRouter();

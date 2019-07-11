@@ -3,6 +3,7 @@
 
 #include <util/metrics_types.hpp>
 #include <util/metrics_core.hpp>
+#include <util/string_view.hpp>
 
 namespace llarp
 {
@@ -25,6 +26,23 @@ namespace llarp
         return manager->registry().publicationType(id, type);
       }
     };
+
+    template < typename... TagVals >
+    void
+    integerTick(string_view category, string_view metric, int val,
+                TagVals&&... tags)
+    {
+      if(DefaultManager::instance())
+      {
+        CollectorRepo< int >& repository =
+            DefaultManager::instance()->intCollectorRepo();
+        IntCollector* collector = repository.defaultCollector(category, metric);
+        if(collector->id().category()->enabled())
+        {
+          collector->tick(val, tags...);
+        }
+      }
+    }
   }  // namespace metrics
 }  // namespace llarp
 
@@ -41,139 +59,22 @@ namespace llarp
 
 #define METRICS_UNIQUE_NAME(X) METRICS_NAME_CAT(X, METRICS_UNIQ_NUMBER)
 
-#define METRICS_TIME_BLOCK_IMP(CAT, METRIC, VAR_NAME)                   \
-  llarp::metrics::DoubleCollector* VAR_NAME = nullptr;                  \
-  if(llarp::metrics::DefaultManager::instance())                        \
-  {                                                                     \
-    using namespace llarp::metrics;                                     \
-    CollectorRepo& repo = DefaultManager::instance()->collectorRepo();  \
-    VAR_NAME            = repo.defaultDoubleCollector((CAT), (METRIC)); \
-  }                                                                     \
-  llarp::metrics::TimerGuard METRICS_UNIQUE_NAME(timer_guard)(VAR_NAME);
-
-#define METRICS_TIME_BLOCK(CAT, METRIC) \
-  METRICS_TIME_BLOCK_IMP(CAT, METRIC, METRICS_UNIQUE_NAME(time_block))
-
-#define METRICS_IF_CATEGORY_ENABLED_IMP(CAT, NAME)                           \
-  static llarp::metrics::CategoryContainer NAME = {false, nullptr, nullptr}; \
-  if(!NAME.category() && llarp::metrics::DefaultManager::instance())         \
-  {                                                                          \
-    llarp::metrics::MetricsHelper::initContainer(NAME, CAT);                 \
-  }                                                                          \
-  if(NAME.enabled())
-
-#define METRICS_IF_CATEGORY_ENABLED(CAT) \
-  BALM_METRICS_IF_CATEGORY_ENABLED_IMP(CAT, METRICS_UNIQUE_NAME(Container))
-
 // For when the category/metric may change during the program run
-#define METRICS_DYNAMIC_INT_UPDATE(CAT, METRIC, VALUE)                         \
-  do                                                                           \
-  {                                                                            \
-    using namespace llarp::metrics;                                            \
-    if(DefaultManager::instance())                                             \
-    {                                                                          \
-      CollectorRepo& repository = DefaultManager::instance()->collectorRepo(); \
-      IntCollector* collector =                                                \
-          repository.defaultIntCollector((CAT), (METRIC));                     \
-      if(collector->id().category()->enabled())                                \
-      {                                                                        \
-        collector->tick((VALUE));                                              \
-      }                                                                        \
-    }                                                                          \
+#define METRICS_DYNAMIC_UPDATE(CAT, METRIC, ...)             \
+  do                                                         \
+  {                                                          \
+    using namespace llarp::metrics;                          \
+    if(DefaultManager::instance())                           \
+    {                                                        \
+      CollectorRepo< double >& repository =                  \
+          DefaultManager::instance()->doubleCollectorRepo(); \
+      DoubleCollector* collector =                           \
+          repository.defaultCollector((CAT), (METRIC));      \
+      if(collector->id().category()->enabled())              \
+      {                                                      \
+        collector->tick(__VA_ARGS__);                        \
+      }                                                      \
+    }                                                        \
   } while(false)
-
-// For when the category/metric remain static
-#define METRICS_INT_UPDATE(CAT, METRIC, VALUE)                        \
-  do                                                                  \
-  {                                                                   \
-    using namespace llarp::metrics;                                   \
-    static CategoryContainer container = {false, nullptr, nullptr};   \
-    static IntCollector* collector     = nullptr;                     \
-    if(container.category() == nullptr && DefaultManager::instance()) \
-    {                                                                 \
-      collector = MetricHelper::getIntCollector(CAT, METRIC);         \
-      MetricHelper::initContainer(container, CAT);                    \
-    }                                                                 \
-    if(container.enabled())                                           \
-    {                                                                 \
-      collector->tick(VALUE);                                         \
-    }                                                                 \
-  } while(false)
-
-#define METRICS_TYPED_INT_UPDATE(CAT, METRIC, VALUE, TYPE)            \
-  do                                                                  \
-  {                                                                   \
-    using namespace llarp::metrics;                                   \
-    static CategoryContainer container = {false, nullptr, nullptr};   \
-    static IntCollector* collector     = nullptr;                     \
-    if(container.category() == nullptr && DefaultManager::instance()) \
-    {                                                                 \
-      collector = MetricHelper::getIntCollector(CAT, METRIC);         \
-      MetricHelper::setType(collector->id(), TYPE);                   \
-      MetricHelper::initContainer(container, CAT);                    \
-    }                                                                 \
-    if(container.enabled())                                           \
-    {                                                                 \
-      collector->tick(VALUE);                                         \
-    }                                                                 \
-  } while(false)
-
-// For when the category/metric may change during the program run
-#define METRICS_DYNAMIC_UPDATE(CAT, METRIC, VALUE)                             \
-  do                                                                           \
-  {                                                                            \
-    using namespace llarp::metrics;                                            \
-    if(DefaultManager::instance())                                             \
-    {                                                                          \
-      CollectorRepo& repository = DefaultManager::instance()->collectorRepo(); \
-      DoubleCollector* collector =                                             \
-          repository.defaultDoubleCollector((CAT), (METRIC));                  \
-      if(collector->id().category()->enabled())                                \
-      {                                                                        \
-        collector->tick((VALUE));                                              \
-      }                                                                        \
-    }                                                                          \
-  } while(false)
-
-// For when the category/metric remain static
-#define METRICS_UPDATE(CAT, METRIC, VALUE)                            \
-  do                                                                  \
-  {                                                                   \
-    using namespace llarp::metrics;                                   \
-    static CategoryContainer container = {false, nullptr, nullptr};   \
-    static DoubleCollector* collector  = nullptr;                     \
-    if(container.category() == nullptr && DefaultManager::instance()) \
-    {                                                                 \
-      collector = MetricHelper::getDoubleCollector(CAT, METRIC);      \
-      MetricHelper::initContainer(container, CAT);                    \
-    }                                                                 \
-    if(container.enabled())                                           \
-    {                                                                 \
-      collector->tick(VALUE);                                         \
-    }                                                                 \
-  } while(false)
-
-#define METRICS_TYPED_UPDATE(CAT, METRIC, VALUE, TYPE)                \
-  do                                                                  \
-  {                                                                   \
-    using namespace llarp::metrics;                                   \
-    static CategoryContainer container = {false, nullptr, nullptr};   \
-    static DoubleCollector* collector  = nullptr;                     \
-    if(container.category() == nullptr && DefaultManager::instance()) \
-    {                                                                 \
-      collector = MetricHelper::getDoubleCollector(CAT, METRIC);      \
-      MetricHelper::setType(collector->id(), TYPE);                   \
-      MetricHelper::initContainer(container, CAT);                    \
-    }                                                                 \
-    if(container.enabled())                                           \
-    {                                                                 \
-      collector->tick(VALUE);                                         \
-    }                                                                 \
-  } while(false)
-
-#define METRICS_DYNAMIC_INCREMENT(CAT, METRIC) \
-  METRICS_DYNAMIC_INT_UPDATE(CAT, METRIC, 1)
-
-#define METRICS_INCREMENT(CAT, METRIC) METRICS_INT_UPDATE(CAT, METRIC, 1)
 
 #endif

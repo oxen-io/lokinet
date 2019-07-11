@@ -15,7 +15,10 @@ namespace llarp
     struct Endpoint;
 
     /// context needed to initiate an outbound hidden service session
-    struct OutboundContext : public path::Builder, public SendContext
+    struct OutboundContext
+        : public path::Builder,
+          public SendContext,
+          public std::enable_shared_from_this< OutboundContext >
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
       ~OutboundContext();
@@ -26,14 +29,20 @@ namespace llarp
       bool
       ShouldBundleRC() const override;
 
+      path::PathSet_ptr
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
+
       bool
       Stop() override;
 
       bool
-      HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+      HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
       void
-      HandlePathDied(path::Path* p) override;
+      HandlePathDied(path::Path_ptr p) override;
 
       /// set to true if we are updating the remote introset right now
       bool updatingIntroSet;
@@ -54,17 +63,17 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
-      /// tick internal state
+      /// pump internal state
       /// return true to mark as dead
       bool
-      Tick(llarp_time_t now);
+      Pump(llarp_time_t now);
 
       /// return true if it's safe to remove ourselves
       bool
       IsDone(llarp_time_t now) const;
 
       bool
-      CheckPathIsDead(path::Path* p, llarp_time_t dlt);
+      CheckPathIsDead(path::Path_ptr p, llarp_time_t dlt);
 
       void
       AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) override;
@@ -73,18 +82,15 @@ namespace llarp
       void
       UpdateIntroSet(bool randomizePath) override;
 
-      bool
-      BuildOneAlignedTo(const RouterID& remote);
-
       void
-      HandlePathBuilt(path::Path* path) override;
+      HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, path::PathRole roles) override;
+      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                RouterContact& cur, size_t hop, path::PathRole roles) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame& frame);
+      HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);
 
       std::string
       Name() const override;

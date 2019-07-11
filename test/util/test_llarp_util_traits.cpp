@@ -152,3 +152,30 @@ using SelectTypes = ::testing::Types<
 INSTANTIATE_TYPED_TEST_SUITE_P(traits, Select, SelectTypes);
 
 // clang-format on
+
+template < typename T >
+class IsPointy : public ::testing::Test
+{
+};
+
+TYPED_TEST_SUITE_P(IsPointy);
+
+TYPED_TEST_P(IsPointy, Smoke)
+{
+  bool expected = std::tuple_element_t< 1, TypeParam >::value;
+  bool result =
+      traits::is_pointy< std::tuple_element_t< 0, TypeParam > >::value;
+  ASSERT_EQ(expected, result);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(IsPointy, Smoke);
+
+// clang-format off
+using PointerTypes = ::testing::Types<
+    std::tuple< int *, std::true_type >,
+    std::tuple< int, std::integral_constant< bool, false > >,
+    std::tuple< std::shared_ptr<int>, std::true_type >,
+    std::tuple< std::unique_ptr<int>, std::true_type >
+>;
+INSTANTIATE_TYPED_TEST_SUITE_P(traits, IsPointy, PointerTypes);
+// clang-format on

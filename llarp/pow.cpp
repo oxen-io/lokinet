@@ -1,5 +1,6 @@
 #include <pow.hpp>
 
+#include <crypto/crypto.hpp>
 #include <util/buffer.hpp>
 
 #include <cmath>
@@ -28,7 +29,7 @@ namespace llarp
   }
 
   bool
-  PoW::IsValid(shorthash_func hashfunc, llarp_time_t now) const
+  PoW::IsValid(llarp_time_t now) const
   {
     if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
       return false;
@@ -43,7 +44,7 @@ namespace llarp
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
     // hash
-    if(!hashfunc(digest, buf))
+    if(!CryptoManager::instance()->shorthash(digest, buf))
       return false;
     // check bytes required
     uint32_t required = std::floor(std::log(extendedLifetime));

@@ -1,15 +1,9 @@
+add_library(${ABYSS_LIB} "${CMAKE_CURRENT_SOURCE_DIR}/src/md5.cpp"
+                         "${CMAKE_CURRENT_SOURCE_DIR}/src/http.cpp"
+                         "${CMAKE_CURRENT_SOURCE_DIR}/src/client.cpp"
+                         "${CMAKE_CURRENT_SOURCE_DIR}/src/server.cpp")
 
-set(ABYSS src)
-
-set(ABYSS_LIB abyss)
-
-include_directories(include)
-
-set(ABYSS_SRC
-  ${ABYSS}/md5.cpp
-  ${ABYSS}/http.cpp
-  ${ABYSS}/client.cpp
-  ${ABYSS}/server.cpp
-  ${ABYSS}/json.cpp)
-
-add_library(${ABYSS_LIB} ${ABYSS_SRC})
+target_include_directories(${ABYSS_LIB} PUBLIC include)
+if(NOT WIN32)
+  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB} uv)
+endif()

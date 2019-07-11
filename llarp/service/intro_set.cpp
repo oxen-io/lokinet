@@ -43,8 +43,8 @@ namespace llarp
 
       if(key == "w")
       {
-        W = std::make_unique< PoW >();
-        return W->BDecode(buf);
+        W = absl::make_optional< PoW >();
+        return bencode_decode_dict(*W, buf);
       }
 
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
@@ -114,7 +114,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::Verify(Crypto* crypto, llarp_time_t now) const
+    IntroSet::Verify(llarp_time_t now) const
     {
       std::array< byte_t, MAX_INTROSET_SIZE > tmp;
       llarp_buffer_t buf(tmp);
@@ -128,13 +128,12 @@ namespace llarp
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      if(!A.Verify(crypto, buf, Z))
+      if(!A.Verify(buf, Z))
       {
         return false;
       }
       // validate PoW
-      using namespace std::placeholders;
-      if(W && !W->IsValid(std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+      if(W && !W->IsValid(now))
       {
         return false;
       }
@@ -151,7 +150,7 @@ namespace llarp
           {
             return false;
           }
-          else if(W == nullptr)
+          if(!W.has_value())
           {
             LogWarn("intro has too high expire time");
             return false;
@@ -195,7 +194,14 @@ namespace llarp
       }
 
       printer.printAttribute("T", T);
-      printer.printAttribute("W", W.get());
+      if(W)
+      {
+        printer.printAttribute("W", W.value());
+      }
+      else
+      {
+        printer.printAttribute("W", "NULL");
+      }
       printer.printAttribute("V", version);
       printer.printAttribute("Z", Z);
 

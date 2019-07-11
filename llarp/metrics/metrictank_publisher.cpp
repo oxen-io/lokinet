@@ -1,6 +1,7 @@
 #include <metrics/metrictank_publisher.hpp>
 
 #include <util/logger.hpp>
+#include <util/variant.hpp>
 
 #include <cstdio>
 #include <absl/strings/str_cat.h>
@@ -37,14 +38,25 @@ namespace llarp
         {
           return {};
         }
-        else
-        {
-          return std::to_string(d);
-        }
+
+        return std::to_string(d);
       }
 
       absl::optional< std::string >
-      formatValue(const Record &record, double elapsedTime,
+      makeStr(int i)
+      {
+        if(i == std::numeric_limits< int >::min()
+           || i == std::numeric_limits< int >::max())
+        {
+          return {};
+        }
+
+        return std::to_string(i);
+      }
+
+      template < typename Value >
+      absl::optional< std::string >
+      formatValue(const Record< Value > &record, double elapsedTime,
                   Publication::Type publicationType)
       {
         switch(publicationType)
@@ -76,7 +88,8 @@ namespace llarp
           break;
           case Publication::Type::Avg:
           {
-            return makeStr(record.total() / record.count());
+            return makeStr(static_cast< double >(record.total())
+                           / static_cast< double >(record.count()));
           }
           break;
           case Publication::Type::Rate:
@@ -91,52 +104,96 @@ namespace llarp
           break;
         }
         assert(false && "Invalid publication type");
+        return {};
       }
 
       std::string
-      addName(string_view id, string_view name, string_view suffix)
+      makeTagStr(const Tags &tags)
       {
-        return absl::StrCat(id, ".", name, suffix);
+        std::string tagStr;
+
+        auto overloaded = util::overloaded(
+            [](const std::string &str) { return str; },
+            [](double d) { return std::to_string(d); },
+            [](const std::int64_t i) { return std::to_string(i); });
+
+        for(const auto &tag : tags)
+        {
+          absl::StrAppend(&tagStr, ";", tag.first, "=",
+                          absl::visit(overloaded, tag.second));
+        }
+        if(!tags.empty())
+        {
+          absl::StrAppend(&tagStr, ";");
+        }
+        return tagStr;
       }
 
+      std::string
+      addName(string_view id, string_view name, const Tags &tags,
+              string_view suffix)
+      {
+        return absl::StrCat(id, ".", name, makeTagStr(tags), suffix);
+      }
+
+      constexpr bool
+      isValid(int val)
+      {
+        return val != std::numeric_limits< int >::min()
+            && val != std::numeric_limits< int >::max();
+      }
+
+      constexpr bool
+      isValid(double val)
+      {
+        return Record< double >::DEFAULT_MIN() != val
+            && Record< double >::DEFAULT_MAX() != val && !std::isnan(val)
+            && !std::isinf(val);
+      }
+
+      template < typename Value >
       std::vector< MetricTankPublisherInterface::PublishData >
-      recordToData(const Record &record, absl::Time time, double elapsedTime,
-                   string_view suffix)
+      recordToData(const TaggedRecords< Value > &taggedRecords, absl::Time time,
+                   double elapsedTime, string_view suffix)
       {
         std::vector< MetricTankPublisherInterface::PublishData > result;
 
-        std::string id = record.id().toString();
+        std::string id = taggedRecords.id.toString();
 
-        auto publicationType = record.id().description()->type();
-        if(publicationType != Publication::Type::Unspecified)
+        auto publicationType = taggedRecords.id.description()->type();
+
+        for(const auto &record : taggedRecords.data)
         {
-          auto val = formatValue(record, elapsedTime, publicationType);
+          const auto &tags = record.first;
+          const auto &rec  = record.second;
+          if(publicationType != Publication::Type::Unspecified)
+          {
+            auto val = formatValue(rec, elapsedTime, publicationType);
 
-          if(val)
-          {
-            result.emplace_back(
-                addName(id, Publication::repr(publicationType), suffix),
-                val.value(), time);
+            if(val)
+            {
+              result.emplace_back(
+                  addName(id, Publication::repr(publicationType), tags, suffix),
+                  val.value(), time);
+            }
           }
-        }
-        else
-        {
-          result.emplace_back(addName(id, "count", suffix),
-                              std::to_string(record.count()), time);
-          result.emplace_back(addName(id, "total", suffix),
-                              std::to_string(record.total()), time);
+          else
+          {
+            result.emplace_back(addName(id, "count", tags, suffix),
+                                std::to_string(rec.count()), time);
+            result.emplace_back(addName(id, "total", tags, suffix),
+                                std::to_string(rec.total()), time);
 
-          if(Record::DEFAULT_MIN != record.min() && !std::isnan(record.min())
-             && !std::isinf(record.min()))
-          {
-            result.emplace_back(addName(id, "min", suffix),
-                                std::to_string(record.min()), time);
-          }
-          if(Record::DEFAULT_MAX == record.max() && !std::isnan(record.max())
-             && !std::isinf(record.max()))
-          {
-            result.emplace_back(addName(id, "max", suffix),
-                                std::to_string(record.max()), time);
+            if(isValid(rec.min()))
+            {
+              result.emplace_back(addName(id, "min", tags, suffix),
+                                  std::to_string(rec.min()), time);
+            }
+            if(isValid(rec.max()))
+            {
+              result.emplace_back(addName(id, "max", tags, suffix),
+                                  std::to_string(rec.max()), time);
+            }
           }
         }
         return result;
@@ -195,6 +252,8 @@ namespace llarp
           } while((0 <= sentLen)
                   && (static_cast< size_t >(sentLen) < val.size()));
         }
+
+        LogInfo("Sent ", toSend.size(), " metrics to metrictank");
 
         shutdown(sock, SHUT_RDWR);
         close(sock);
@@ -279,26 +338,6 @@ namespace llarp
 #endif
         }
 
-        if(tags.count("user") == 0)
-        {
-#ifndef _WIN32
-          const char *username = getlogin();
-          if(username != nullptr)
-          {
-            tags["user"] = username;
-          }
-          else
-          {
-            tags["user"] = "unknown";
-          }
-#else
-          char username[UNLEN + 1];
-          DWORD username_len = UNLEN + 1;
-          GetUserName(username, &username_len);
-          tags["user"] = username;
-#endif
-        }
-
         return tags;
       }
     }  // namespace
@@ -306,12 +345,7 @@ namespace llarp
     std::string
     MetricTankPublisherInterface::makeSuffix(const Tags &tags)
     {
-      std::string result;
-      for(const auto &tag : updateTags(tags))
-      {
-        absl::StrAppend(&result, ";", tag.first, "=", tag.second);
-      }
-      return result;
+      return absl::StrJoin(updateTags(tags), ";", absl::PairFormatter("="));
     }
 
     void
@@ -332,14 +366,19 @@ namespace llarp
       auto prev = values.begin();
       for(; gIt != values.end(); ++gIt)
       {
-        const double elapsedTime = absl::ToDoubleSeconds(gIt->samplePeriod());
+        const double elapsedTime = absl::ToDoubleSeconds(samplePeriod(*gIt));
 
-        for(const auto &record : *gIt)
-        {
-          auto partial =
-              recordToData(record, sampleTime, elapsedTime, m_suffix);
-          result.insert(result.end(), partial.begin(), partial.end());
-        }
+        absl::visit(
+            [&](const auto &d) {
+              for(const auto &record : d)
+              {
+                auto partial =
+                    recordToData(record, sampleTime, elapsedTime, m_suffix);
+                result.insert(result.end(), partial.begin(), partial.end());
+              }
+            },
+            *gIt);
+
         prev = gIt;
       }
 

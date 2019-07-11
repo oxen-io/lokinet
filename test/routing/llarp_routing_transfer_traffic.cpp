@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <messages/transfer_traffic.hpp>
+#include <routing/transfer_traffic_message.hpp>
 
 using TransferTrafficMessage = llarp::routing::TransferTrafficMessage;
 
@@ -13,7 +13,7 @@ TEST_F(TransferTrafficTest, TestPutBufferOverflow)
   std::array< byte_t, llarp::routing::MaxExitMTU* 2 > tmp = {{0}};
   llarp_buffer_t buf(tmp);
   ASSERT_FALSE(msg.PutBuffer(buf, 1));
-};
+}
 
 TEST_F(TransferTrafficTest, TestPutBuffer)
 {
@@ -21,4 +21,4 @@ TEST_F(TransferTrafficTest, TestPutBuffer)
   std::array< byte_t, llarp::routing::MaxExitMTU > tmp = {{0}};
   llarp_buffer_t buf(tmp);
   ASSERT_TRUE(msg.PutBuffer(buf, 1));
-};
+}

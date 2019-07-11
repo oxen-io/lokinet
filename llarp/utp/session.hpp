@@ -91,9 +91,6 @@ namespace llarp
       void
       OnLinkEstablished(ILinkLayer* p) override;
 
-      Crypto*
-      OurCrypto();
-
       /// switch states
       void
       EnterState(State st);
@@ -120,9 +117,9 @@ namespace llarp
       SendKeepAlive() override;
 
       bool
-      IsEstablished() override
+      IsEstablished() const override
       {
-        return state == eSessionReady || state == eLinkEstablished;
+        return state == eSessionReady;
       }
 
       bool
@@ -159,10 +156,27 @@ namespace llarp
       OutboundHandshake();
 
       // do key exchange for handshake
+      template < bool (Crypto::*dh_func)(SharedSecret&, const PubKey&,
+                                         const SecretKey&, const TunnelNonce&) >
       bool
-      DoKeyExchange(transport_dh_func dh, SharedSecret& K,
-                    const KeyExchangeNonce& n, const PubKey& other,
-                    const SecretKey& secret);
+      DoKeyExchange(SharedSecret& K, const KeyExchangeNonce& n,
+                    const PubKey& other, const SecretKey& secret);
+
+      bool
+      DoClientKeyExchange(SharedSecret& K, const KeyExchangeNonce& n,
+                          const PubKey& other, const SecretKey& secret)
+      {
+        return DoKeyExchange< &Crypto::transport_dh_client >(K, n, other,
+                                                             secret);
+      }
+
+      bool
+      DoServerKeyExchange(SharedSecret& K, const KeyExchangeNonce& n,
+                          const PubKey& other, const SecretKey& secret)
+      {
+        return DoKeyExchange< &Crypto::transport_dh_server >(K, n, other,
+                                                             secret);
+      }
 
       /// does K = HS(K + A)
       bool

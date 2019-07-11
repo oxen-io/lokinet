@@ -25,6 +25,10 @@ namespace llarp
       std::string
       Name() const;
 
+      bool
+      VisitEndpointsFor(const PubKey& pk,
+                        std::function< bool(exit::Endpoint* const) > visit);
+
       util::StatusObject
       ExtractStatus() const;
 
@@ -57,9 +61,6 @@ namespace llarp
 
       llarp_time_t
       Now() const;
-
-      Crypto*
-      GetCrypto();
 
       template < typename Stats >
       void
@@ -126,7 +127,7 @@ namespace llarp
       KickIdentOffExit(const PubKey& pk);
 
       AbstractRouter* m_Router;
-      dns::Proxy m_Resolver;
+      std::shared_ptr< dns::Proxy > m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
@@ -147,7 +148,7 @@ namespace llarp
       SNodes_t m_SNodeKeys;
 
       using SNodeSessions_t =
-          std::unordered_map< RouterID, std::unique_ptr< exit::SNodeSession >,
+          std::unordered_map< RouterID, std::shared_ptr< exit::SNodeSession >,
                               RouterID::Hash >;
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;

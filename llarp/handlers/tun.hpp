@@ -20,11 +20,19 @@ namespace llarp
     static const char DefaultTunDstAddr[] = "10.10.0.1";
     static const char DefaultTunSrcAddr[] = "10.10.0.2";
 
-    struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
+    struct TunEndpoint : public service::Endpoint,
+                         public dns::IQueryHandler,
+                         public std::enable_shared_from_this< TunEndpoint >
     {
       TunEndpoint(const std::string& nickname, AbstractRouter* r,
                   llarp::service::Context* parent);
       ~TunEndpoint();
+
+      path::PathSet_ptr
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
       virtual bool
       SetOption(const std::string& k, const std::string& v) override;
@@ -34,6 +42,9 @@ namespace llarp
 
       util::StatusObject
       ExtractStatus() const;
+
+      std::unordered_map< std::string, std::string >
+      NotifyParams() const override;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
@@ -142,6 +153,9 @@ namespace llarp
       void
       Flush();
 
+      virtual void
+      ResetInternalState() override;
+
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
@@ -195,7 +209,7 @@ namespace llarp
 
       template < typename Addr_t, typename Endpoint_t >
       void
-      SendDNSReply(Addr_t addr, Endpoint_t* ctx, dns::Message* query,
+      SendDNSReply(Addr_t addr, Endpoint_t ctx, dns::Message* query,
                    std::function< void(dns::Message) > reply, bool snode,
                    bool sendIPv6)
       {
@@ -216,7 +230,7 @@ namespace llarp
 #endif
 
       /// our dns resolver
-      dns::Proxy m_Resolver;
+      std::shared_ptr< dns::Proxy > m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
@@ -233,6 +247,8 @@ namespace llarp
       std::vector< llarp::Addr > m_UpstreamResolvers;
       /// local dns
       llarp::Addr m_LocalResolverAddr;
+      /// list of strict connect addresses for hooks
+      std::vector< llarp::Addr > m_StrictConnectAddrs;
     };
   }  // namespace handlers
 }  // namespace llarp

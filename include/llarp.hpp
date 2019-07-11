@@ -18,10 +18,12 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  struct Config;
-  struct Crypto;
   class Logic;
   struct AbstractRouter;
+  struct Config;
+  struct Crypto;
+  struct CryptoManager;
+  struct MetricsConfig;
   struct RouterContact;
 
   namespace metrics
@@ -46,18 +48,14 @@ namespace llarp
     std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
     std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
 
-    int num_nethreads      = 1;
-    bool singleThreaded    = false;
-    bool disableMetrics    = false;
-    bool disableMetricLogs = false;
-    fs::path jsonMetricsPath;
-    std::string metricTankHost;
-    std::map< std::string, std::string > metricTags;
+    int num_nethreads   = 1;
+    bool singleThreaded = false;
 
     std::unique_ptr< Crypto > crypto;
+    std::unique_ptr< CryptoManager > cryptoManager;
     std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
-    std::unique_ptr< Logic > logic;
+    std::shared_ptr< Logic > logic;
     std::unique_ptr< Config > config;
     std::unique_ptr< llarp_nodedb > nodedb;
     llarp_ev_loop_ptr mainloop;
@@ -82,7 +80,7 @@ namespace llarp
     GetDatabase(const byte_t *pk);
 
     int
-    Setup();
+    Setup(bool debug = false);
 
     int
     Run();
@@ -110,13 +108,10 @@ namespace llarp
     ReloadConfig();
 
     void
-    iter_config(const char *section, const char *key, const char *val);
-
-    void
     progress();
 
     void
-    setupMetrics();
+    setupMetrics(const MetricsConfig &metricsConfig);
 
     std::string configfile;
     std::string pidfile;

@@ -2,10 +2,10 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
-#include <messages/dht.hpp>
-#include <path/path.hpp>
 #include <nodedb.hpp>
+#include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <routing/dht_message.hpp>
 
 namespace llarp
 {
@@ -35,6 +35,12 @@ namespace llarp
       Key_t peer;
       // check if we know this in our nodedb first
       RouterContact found;
+      if(!dht.GetRouter()->ConnectionToRouterAllowed(K))
+      {
+        // explicitly disallowed by network
+        replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
+        return true;
+      }
       if(dht.GetRouter()->nodedb()->Get(K, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
@@ -166,7 +172,13 @@ namespace llarp
       Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(dht.Nodes()->HasNode(k))
+      if(!dht.GetRouter()->ConnectionToRouterAllowed(K))
+      {
+        // explicitly disallowed by network
+        replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
+        return true;
+      }
+      if(dht.Nodes()->HasNode(k))
       {
         found = dht.Nodes()->nodes[k].rc;
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));

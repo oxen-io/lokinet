@@ -1,5 +1,5 @@
-#ifndef __ABYSS_HTTP_HPP__
-#define __ABYSS_HTTP_HPP__
+#ifndef ABYSS_HTTP_HPP
+#define ABYSS_HTTP_HPP
 #include <util/json.hpp>
 #include <util/string_view.hpp>
 

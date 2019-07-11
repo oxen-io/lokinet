@@ -5,6 +5,10 @@ namespace llarp
 {
   namespace dns
   {
+    Serialize::~Serialize()
+    {
+    }
+
     bool
     EncodeRData(llarp_buffer_t* buf, const std::vector< byte_t >& v)
     {

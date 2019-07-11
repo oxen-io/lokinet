@@ -5,15 +5,40 @@ stages:
   - build
   - test
 
+# disabled because cannot find -luv -lcap when building
+#build:linux:
+#  image: alpine:latest
+#  tags:
+#    - linux
+#  stage: build
+#  before_script:
+#    - apk add --update g++ make cmake linux-headers libcap-dev libuv-dev
+#  script:
+#    - make STATIC_LINK=ON
+#  artifacts:
+#    paths:
+#      - "lokinet"
+
+# we'll just try our travis set up for now
 build:linux:
-  image: alpine:latest
+  image: ubuntu:latest
   tags:
     - linux
   stage: build
   before_script:
-    - apk add --update g++ make cmake linux-headers libcap-dev
+    - apt-get update && apt-get install -y build-essential cmake git libcap-dev bsdmainutils ninja-build curl git ca-certificates ccache libuv1-dev
   script:
-    - make
+    - make STATIC_LINK=OFF
+  artifacts:
+    paths:
+      - "lokinet"
+
+build:freebsd:
+  tags:
+     - freebsd
+  stage: build
+  script:
+    - gmake
   artifacts:
     paths:
       - "lokinet"

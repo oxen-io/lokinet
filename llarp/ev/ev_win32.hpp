@@ -1,5 +1,6 @@
 #ifndef EV_WIN32_H
 #define EV_WIN32_H
+#ifdef _WIN32
 #include <ev/ev.hpp>
 #include <net/net.h>
 #include <net/net.hpp>
@@ -150,4 +151,5 @@ struct llarp_win32_loop : public llarp_ev_loop
   stop();
 };
 
+#endif
 #endif

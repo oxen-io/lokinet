@@ -85,7 +85,10 @@ namespace llarp
     LogContext();
     LogLevel minLevel = eLogInfo;
     ILogStream_ptr logStream;
-    std::string nodeName;
+    std::string nodeName = "lokinet";
+
+    const llarp_time_t started;
+
     static LogContext&
     Instance();
   };
@@ -103,10 +106,8 @@ namespace llarp
       return;
 
     std::stringstream ss;
-    log.logStream->PreLog(ss, lvl, fname, lineno);
     LogAppend(ss, std::forward< TArgs >(args)...);
-    log.logStream->PostLog(ss);
-    log.logStream->Print(lvl, fname, ss.str());
+    log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
   }
   /*
     std::stringstream ss;

@@ -120,4 +120,4 @@ TEST(TestDhtKey, TestBucketOperators)
   ASSERT_NE(one, three);
   ASSERT_FALSE(one == three);
   ASSERT_EQ(one ^ three, three ^ one);
-};
+}

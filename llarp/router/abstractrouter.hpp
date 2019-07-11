@@ -5,6 +5,8 @@
 #include <util/status.hpp>
 #include <vector>
 #include <ev/ev.h>
+#include <functional>
+#include <router_contact.hpp>
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
@@ -15,8 +17,6 @@ namespace llarp
 {
   class Logic;
   struct Config;
-  struct Crypto;
-  struct RouterContact;
   struct RouterID;
   struct ILinkMessage;
   struct ILinkSession;
@@ -45,6 +45,11 @@ namespace llarp
     struct Context;
   }
 
+  namespace thread
+  {
+    class ThreadPool;
+  }
+
   struct AbstractRouter
   {
     virtual ~AbstractRouter() = 0;
@@ -56,14 +61,11 @@ namespace llarp
     HandleRecvLinkMessageBuffer(ILinkSession *from,
                                 const llarp_buffer_t &msg) = 0;
 
-    virtual Logic *
+    virtual std::shared_ptr< Logic >
     logic() const = 0;
 
     virtual llarp_dht_context *
     dht() const = 0;
-
-    virtual Crypto *
-    crypto() const = 0;
 
     virtual llarp_nodedb *
     nodedb() const = 0;
@@ -95,7 +97,7 @@ namespace llarp
     virtual llarp_threadpool *
     threadpool() = 0;
 
-    virtual llarp_threadpool *
+    virtual thread::ThreadPool *
     diskworker() = 0;
 
     virtual service::Context &
@@ -117,6 +119,10 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    /// pump low level links
+    virtual void
+    PumpLL() = 0;
+
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;
 
@@ -133,6 +139,9 @@ namespace llarp
     virtual bool
     Reconfigure(Config *conf) = 0;
 
+    virtual bool
+    TryConnectAsync(RouterContact rc, uint16_t tries) = 0;
+
     /// validate new configuration against old one
     /// return true on 100% valid
     /// return false if not 100% valid
@@ -143,8 +152,13 @@ namespace llarp
     virtual void
     SessionClosed(RouterID remote) = 0;
 
+    /// returns system clock milliseconds since epoch
     virtual llarp_time_t
     Now() const = 0;
+
+    /// returns milliseconds since started
+    virtual llarp_time_t
+    Uptime() const = 0;
 
     virtual bool
     GetRandomGoodRouter(RouterID &r) = 0;
@@ -160,8 +174,13 @@ namespace llarp
                               routing::IMessageHandler *h,
                               const PathID_t &rxid) = 0;
 
+    /// count the number of service nodes we are connected to
     virtual size_t
     NumberOfConnectedRouters() const = 0;
+
+    /// count the number of clients that are connected to us
+    virtual size_t
+    NumberOfConnectedClients() const = 0;
 
     virtual bool
     GetRandomConnectedRouter(RouterContact &result) const = 0;
@@ -174,7 +193,7 @@ namespace llarp
     /// if we are a service node this is done direct otherwise it's done via
     /// path
     virtual void
-    LookupRouter(RouterID remote) = 0;
+    LookupRouter(RouterID remote, RouterLookupHandler resultHandler) = 0;
 
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid
@@ -195,8 +214,21 @@ namespace llarp
     virtual bool
     ConnectionToRouterAllowed(const RouterID &router) const = 0;
 
+    /// return true if we have at least 1 session to this router in either
+    /// direction
+    virtual bool
+    HasSessionTo(const RouterID &router) const = 0;
+
+    /// return true if we are currently looking up this router either directly
+    /// or via an anonymous endpoint
+    virtual bool
+    HasPendingRouterLookup(const RouterID &router) const = 0;
+
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    void
+    EnsureRouter(RouterID router, RouterLookupHandler handler);
   };
 }  // namespace llarp
 
