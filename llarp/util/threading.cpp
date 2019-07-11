@@ -19,8 +19,7 @@ namespace llarp
 #ifdef POSIX
 #ifdef __MACH__
       const int rc = pthread_setname_np(name.c_str());
-#else
-#ifdef __FreeBSD__
+#elif defined(__FreeBSD__)
       const int rc = pthread_setname_np(pthread_self(), name.c_str(), nullptr);
 #else
       const int rc = pthread_setname_np(pthread_self(), name.c_str());
@@ -30,8 +29,6 @@ namespace llarp
         LogError("Failed to set thread name to ", name, " errno = ", rc,
                  " errstr = ", strerror(rc));
       }
-
-#endif
 #else
       LogInfo("Thread name setting not supported on this platform");
       (void)name;
