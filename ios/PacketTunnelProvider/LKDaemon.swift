@@ -37,7 +37,7 @@ enum LKDaemon {
                 LKUpdateConnectionProgress(0.6)
                 // Perform main setup
                 guard let context = llarp_main_init(configurationFilePath, false) else { return seal.reject(LKError.llarpInitializationFailed) }
-                llarp_main_setup(context)
+                llarp_main_setup(context, configuration.isDebuggingEnabled)
                 // Update connection progress
                 LKUpdateConnectionProgress(0.8)
                 // Invoke completion handler
