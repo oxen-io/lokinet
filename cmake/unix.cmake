@@ -2,7 +2,8 @@ add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
-  include_directories(../ios/libuv/libuv-ios-arm64.dylib)
+  include_directories(/usr/local/include)
+  link_directories(../ios/libuv/libuv-ios-arm64.dylib)
 endif()
 
 if (STATIC_LINK_RUNTIME)

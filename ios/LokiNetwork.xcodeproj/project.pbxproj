@@ -50,6 +50,8 @@
 		B8EFF9EE22D5ACDA005597E9 /* GBKUIButtonProgressView.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8EFF9E922D5ACD9005597E9 /* GBKUIButtonProgressView.xib */; };
 		B8EFF9EF22D5ACDA005597E9 /* GBKUIButtonProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */; };
 		B8EFF9F022D5ACDA005597E9 /* GBKUIButtonAnimations.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */; };
+		B8EFFA2B22D81F0E005597E9 /* libuv-ios-arm64.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFFA2A22D81F0E005597E9 /* libuv-ios-arm64.dylib */; };
+		B8EFFA2C22D8201C005597E9 /* libabsl_container.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4182266B7080098F863 /* libabsl_container.a */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* LKMainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKMainViewController.swift */; };
@@ -463,6 +465,7 @@
 		B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GBKUIButtonProgressView.m; sourceTree = "<group>"; };
 		B8EFF9EC22D5ACDA005597E9 /* GBKUIButtonProgressView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GBKUIButtonProgressView.h; sourceTree = "<group>"; };
 		B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GBKUIButtonAnimations.m; sourceTree = "<group>"; };
+		B8EFFA2A22D81F0E005597E9 /* libuv-ios-arm64.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libuv-ios-arm64.dylib"; path = "libuv/libuv-ios-arm64.dylib"; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -504,9 +507,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8EFFA2B22D81F0E005597E9 /* libuv-ios-arm64.dylib in Frameworks */,
 				B8EFF93D22D31293005597E9 /* liblibutp.a in Frameworks */,
 				B8EFF93C22D3128D005597E9 /* libabyss.a in Frameworks */,
 				B8EFF93E22D312C9005597E9 /* libabsl_base.a in Frameworks */,
+				B8EFFA2C22D8201C005597E9 /* libabsl_container.a in Frameworks */,
 				B8EFF93F22D312D1005597E9 /* libabsl_internal_malloc_internal.a in Frameworks */,
 				B8EFF94022D312DA005597E9 /* libabsl_internal_spinlock_wait.a in Frameworks */,
 				B8EFF94122D312E0005597E9 /* libabsl_internal_throw_delegate.a in Frameworks */,
@@ -752,6 +757,7 @@
 		C3FBE376225438E20006284B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				B8EFFA2A22D81F0E005597E9 /* libuv-ios-arm64.dylib */,
 				B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */,
 				B8F7984D225DAB7A00003DE6 /* libabyss.a */,
 				B8F79847225DAA0C00003DE6 /* liblibutp.a */,
@@ -1375,10 +1381,12 @@
 		B8F7988D226056DD00003DE6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = NO;
 				CODE_SIGN_ENTITLEMENTS = PacketTunnelProvider/PacketTunnelProvider.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Carthage/Build/iOS",
@@ -1388,6 +1396,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/libuv",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.packet-tunnel-provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1410,10 +1422,12 @@
 		B8F7988E226056DD00003DE6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = NO;
 				CODE_SIGN_ENTITLEMENTS = PacketTunnelProvider/PacketTunnelProvider.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8SQ45X653X;
+				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Carthage/Build/iOS",
@@ -1423,6 +1437,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/libuv",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.packet-tunnel-provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
