@@ -566,7 +566,7 @@ namespace llarp
     }
 
     bool
-    fromConfig(Config *conf);
+    FromConfig(Config *conf);
   };
 
 }  // namespace llarp

@@ -462,7 +462,8 @@ namespace llarp
   bool
   Router::Configure(Config *conf)
   {
-    fromConfig(conf);
+    if(!FromConfig(conf))
+      return false;
 
     if(!InitOutboundLinks())
       return false;
@@ -765,7 +766,7 @@ namespace llarp
   }
 
   bool
-  Router::fromConfig(Config *conf)
+  Router::FromConfig(Config *conf)
   {
     // Set netid before anything else
     if(!conf->router.netId().empty())
