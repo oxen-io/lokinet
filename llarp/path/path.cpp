@@ -178,6 +178,7 @@ namespace llarp
           break;
         case ePathIgnore:
           obj.Put("status", "ignored");
+          break;
         default:
           obj.Put("status", "unknown");
           break;
@@ -272,10 +273,10 @@ namespace llarp
     {
       if(_status == ePathEstablished || _status == ePathTimeout)
         return now >= ExpireTime();
-      else if(_status == ePathBuilding)
+      if(_status == ePathBuilding)
         return false;
-      else
-        return true;
+
+      return true;
     }
 
     std::string
@@ -435,11 +436,9 @@ namespace llarp
         LogDebug("path latency is now ", intro.latency, " for ", Name());
         return true;
       }
-      else
-      {
-        LogWarn("unwarranted path latency message via ", Upstream());
-        return false;
-      }
+
+      LogWarn("unwarranted path latency message via ", Upstream());
+      return false;
     }
 
     bool
@@ -467,8 +466,8 @@ namespace llarp
           _role &= ~ePathRoleExit;
           return true;
         }
-        else
-          LogError(Name(), " CXM from exit with bad signature");
+
+        LogError(Name(), " CXM from exit with bad signature");
       }
       else
         LogError(Name(), " unwarranted CXM");

@@ -45,10 +45,8 @@ namespace llarp
       {
         return nodes->FindCloseExcluding(k, next, exclude);
       }
-      else
-      {
-        return false;
-      }
+
+      return false;
     }
 
     void

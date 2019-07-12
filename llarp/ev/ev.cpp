@@ -226,7 +226,7 @@ namespace llarp
       ::shutdown(fd, SHUT_RDWR);
       return false;
     }
-    else if(tcp.tick)
+    if(tcp.tick)
       tcp.tick(&tcp);
     return true;
   }

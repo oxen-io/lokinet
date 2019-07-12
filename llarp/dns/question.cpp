@@ -55,8 +55,8 @@ namespace llarp
       // does other have a . at the end?
       if(other.find_last_of('.') == (other.size() - 1))
         return other == qname;
-      else  // no, add it and retry
-        return IsName(other + ".");
+      // no, add it and retry
+      return IsName(other + ".");
     }
 
     std::string

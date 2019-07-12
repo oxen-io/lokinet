@@ -114,8 +114,8 @@ namespace llarp
     {
       if(m_IsolatedNetLoop)
         return m_IsolatedNetLoop;
-      else
-        return m_Router->netloop();
+
+      return m_Router->netloop();
     }
 
     bool
@@ -396,10 +396,8 @@ namespace llarp
           IntroSetPublished();
           return true;
         }
-        else
-        {
-          remote.insert(introset);
-        }
+
+        remote.insert(introset);
       }
       auto itr = m_PendingLookups.find(msg->T);
       if(itr == m_PendingLookups.end())
@@ -900,7 +898,7 @@ namespace llarp
         m_InboundTrafficQueue.emplace(msg);
         return true;
       }
-      else if(msg->proto == eProtocolControl)
+      if(msg->proto == eProtocolControl)
       {
         // TODO: implement me (?)
         // right now it's just random noise
@@ -986,8 +984,8 @@ namespace llarp
         }
         return false;
       }
-      else
-        PutNewOutboundContext(*introset);
+
+      PutNewOutboundContext(*introset);
       return true;
     }
 

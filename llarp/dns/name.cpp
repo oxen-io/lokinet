@@ -125,8 +125,8 @@ namespace llarp
         }
         return true;
       }
-      else
-        return false;
+
+      return false;
     }
 
   }  // namespace dns

@@ -12,8 +12,8 @@ llarp_buffer_t::size_left() const
   {
     return 0;
   }
-  else
-    return sz - diff;
+
+  return sz - diff;
 }
 
 bool
@@ -110,8 +110,8 @@ llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
 
   if(size_left())
     return read;
-  else
-    return 0;
+
+  return 0;
 }
 
 bool

@@ -275,8 +275,8 @@ __        ___    ____  _   _ ___ _   _  ____
       f << std::to_string(getpid());
       return f.good();
     }
-    else
-      return true;
+
+    return true;
   }
 
   void

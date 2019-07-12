@@ -16,11 +16,11 @@ namespace llarp
       {
         return llarp::dht::DecodeMesssageList(from, val, M, true);
       }
-      else if(key == "S")
+      if(key == "S")
       {
         return bencode_read_integer(val, &S);
       }
-      else if(key == "V")
+      if(key == "V")
       {
         return bencode_read_integer(val, &V);
       }

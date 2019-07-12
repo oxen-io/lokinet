@@ -367,8 +367,8 @@ namespace llarp
 
     if(c.VisitSection(name.c_str(), visitor))
       return ret;
-    else
-      return {};
+
+    return {};
   }
 
   bool

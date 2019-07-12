@@ -41,8 +41,8 @@ namespace llarp
           pq = str.base;
           return true;
         }
-        else
-          return false;
+
+        return false;
       }
       if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, buf))
         return false;

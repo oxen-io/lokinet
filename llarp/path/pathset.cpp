@@ -364,8 +364,8 @@ namespace llarp
       {
         return established[randint() % sz];
       }
-      else
-        return nullptr;
+
+      return nullptr;
     }
 
   }  // namespace path

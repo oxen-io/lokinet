@@ -43,8 +43,8 @@ struct llarp_threadpool
   {
     if(impl)
       return impl->tryAddJob(f);
-    else
-      return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
+
+    return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
   }
 };
 

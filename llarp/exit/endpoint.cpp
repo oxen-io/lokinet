@@ -98,7 +98,7 @@ namespace llarp
       auto lastPing = path->LastRemoteActivityAt();
       if(lastPing == 0 || (now > lastPing && now - lastPing > timeout))
         return now > m_LastActive && now - m_LastActive > timeout;
-      else if(lastPing)
+      else if(lastPing)  // NOLINT
         return now > lastPing && now - lastPing > timeout;
       return lastPing > 0;
     }
@@ -171,8 +171,8 @@ namespace llarp
         queue.emplace_back();
         return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
-      else
-        return msg.PutBuffer(pktbuf, m_Counter++);
+
+      return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
     bool

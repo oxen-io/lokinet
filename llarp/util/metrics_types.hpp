@@ -335,10 +335,8 @@ namespace llarp
           return m_description->toString();
           ;
         }
-        else
-        {
-          return "INVALID_METRIC";
-        }
+
+        return "INVALID_METRIC";
       }
 
       std::ostream &

@@ -193,10 +193,8 @@ namespace llarp
         _logic->queue_func(std::bind(&on_try_connecting, job));
         return true;
       }
-      else
-      {
-        itr.first->second->Attempt();
-      }
+
+      itr.first->second->Attempt();
     }
     return false;
   }
@@ -444,8 +442,8 @@ namespace llarp
       return false;
     if(usingSNSeed)
       return llarp_loadServiceNodeIdentityKey(ident_keyfile, _identity);
-    else
-      return llarp_findOrCreateIdentity(ident_keyfile, _identity);
+
+    return llarp_findOrCreateIdentity(ident_keyfile, _identity);
   }
 
   bool
@@ -603,10 +601,10 @@ namespace llarp
   {
     if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
       return false;
-    else if(IsServiceNode() && whitelistRouters)
+    if(IsServiceNode() && whitelistRouters)
       return lokinetRouters.find(router) != lokinetRouters.end();
-    else
-      return true;
+
+    return true;
   }
 
   void

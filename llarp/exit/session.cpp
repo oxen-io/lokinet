@@ -85,8 +85,8 @@ namespace llarp
         router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
-      else
-        return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+
+      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
     bool
@@ -241,8 +241,8 @@ namespace llarp
         queue.emplace_back();
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-      else
-        return back.PutBuffer(buf, m_Counter++);
+
+      return back.PutBuffer(buf, m_Counter++);
     }
 
     bool
