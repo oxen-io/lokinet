@@ -196,12 +196,9 @@ ntoh128(absl::uint128 i)
 #if __BYTE_ORDER == __BIG_ENDIAN
   return i;
 #else
-  uint64_t *ptr = (uint64_t *)&i;
-  absl::uint128 ret;
-  uint64_t *retptr = (uint64_t *)&ret;
-  htobe64buf(retptr, ptr[1]);
-  htobe64buf(retptr + 1, ptr[0]);
-  return ret;
+  const auto loSwapped = htobe64(absl::Uint128Low64(i));
+  const auto hiSwapped = htobe64(absl::Uint128High64(i));
+  return absl::MakeUint128(loSwapped, hiSwapped);
 #endif
 }
 
