@@ -565,7 +565,7 @@ namespace llarp
         out.push_back({item.first, item.second});
     }
 
-    void
+    bool
     fromConfig(Config *conf);
   };
 
