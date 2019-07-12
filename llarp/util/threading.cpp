@@ -19,7 +19,7 @@ namespace llarp
 #ifdef POSIX
 #if defined(__FreeBSD__)
       /* on free bsd this function has void return type */
-      pthread_set_name_np(pthread_self(), name.c_str();
+      pthread_set_name_np(pthread_self(), name.c_str());
 #else
 #if defined(__MACH__)
       const int rc = pthread_setname_np(name.c_str());
