@@ -1,7 +1,6 @@
 #include <hook/shell.hpp>
-#if defined(_WIN32)
-/** put win32 stuff here */
-#else
+
+#if defined(ENABLE_SHELLHOOKS)
 #include <util/thread_pool.hpp>
 #include <util/logger.hpp>
 #include <sys/wait.h>
@@ -10,21 +9,16 @@
 // Not all systems declare this variable
 extern char **environ;
 #endif
-#endif
 #if defined(Darwin)
 #include <crt_externs.h>
+#endif
 #endif
 
 namespace llarp
 {
   namespace hooks
   {
-#if defined(_WIN32)
-    Backend_ptr ExecShellBackend(std::string)
-    {
-      return nullptr;
-    }
-#else
+#if defined(ENABLE_SHELLHOOKS)
     struct ExecShellHookBackend
         : public IBackend,
           public std::enable_shared_from_this< ExecShellHookBackend >
@@ -156,6 +150,11 @@ namespace llarp
       if(!ptr->Start())
         return nullptr;
       return ptr;
+    }
+#else
+    Backend_ptr ExecShellBackend(std::string)
+    {
+      return nullptr;
     }
 #endif
   }  // namespace hooks
