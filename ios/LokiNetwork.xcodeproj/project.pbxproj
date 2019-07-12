@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B833559122D8539900F045AF /* libuv.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B833559022D8539800F045AF /* libuv.1.dylib */; };
+		B833559322D853B500F045AF /* libuv.1.dylib in Copy libuv */ = {isa = PBXBuildFile; fileRef = B833559022D8539800F045AF /* libuv.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		B8EBA4CB226EA8EB0098F863 /* PacketTunnelProvider.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B8F79883226056DD00003DE6 /* PacketTunnelProvider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B8EBA4CF226EAC620098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
 		B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
@@ -50,7 +52,6 @@
 		B8EFF9EE22D5ACDA005597E9 /* GBKUIButtonProgressView.xib in Resources */ = {isa = PBXBuildFile; fileRef = B8EFF9E922D5ACD9005597E9 /* GBKUIButtonProgressView.xib */; };
 		B8EFF9EF22D5ACDA005597E9 /* GBKUIButtonProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9EB22D5ACDA005597E9 /* GBKUIButtonProgressView.m */; };
 		B8EFF9F022D5ACDA005597E9 /* GBKUIButtonAnimations.m in Sources */ = {isa = PBXBuildFile; fileRef = B8EFF9ED22D5ACDA005597E9 /* GBKUIButtonAnimations.m */; };
-		B8EFFA2B22D81F0E005597E9 /* libuv-ios-arm64.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EFFA2A22D81F0E005597E9 /* libuv-ios-arm64.dylib */; };
 		B8EFFA2C22D8201C005597E9 /* libabsl_container.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4182266B7080098F863 /* libabsl_container.a */; };
 		B8F798922260579100003DE6 /* LKPacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* LKPacketTunnelProvider.swift */; };
 		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
@@ -427,6 +428,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		B833559222D8539F00F045AF /* Copy libuv */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				B833559322D853B500F045AF /* libuv.1.dylib in Copy libuv */,
+			);
+			name = "Copy libuv";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B8F7988F226056DD00003DE6 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -441,6 +453,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B833559022D8539800F045AF /* libuv.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libuv.1.dylib; path = libuv/libuv.1.dylib; sourceTree = SOURCE_ROOT; };
 		B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = lokinet.xcodeproj; path = ../Core/lokinet.xcodeproj; sourceTree = "<group>"; };
 		B8EBA4CC226EAB5C0098F863 /* PacketTunnelProvider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PacketTunnelProvider.entitlements; sourceTree = "<group>"; };
 		B8EBA4CD226EAB6B0098F863 /* LokiNetwork.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LokiNetwork.entitlements; sourceTree = "<group>"; };
@@ -507,7 +520,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B8EFFA2B22D81F0E005597E9 /* libuv-ios-arm64.dylib in Frameworks */,
 				B8EFF93D22D31293005597E9 /* liblibutp.a in Frameworks */,
 				B8EFF93C22D3128D005597E9 /* libabyss.a in Frameworks */,
 				B8EFF93E22D312C9005597E9 /* libabsl_base.a in Frameworks */,
@@ -530,6 +542,7 @@
 				B8EFF94B22D31354005597E9 /* libabsl_variant.a in Frameworks */,
 				B8EFF94C22D31358005597E9 /* libcppbackport.a in Frameworks */,
 				B8EFF94E22D3137A005597E9 /* liblokinet-cryptography.a in Frameworks */,
+				B833559122D8539900F045AF /* libuv.1.dylib in Frameworks */,
 				B8EFF94F22D31382005597E9 /* liblokinet-util.a in Frameworks */,
 				B8EFF95022D31389005597E9 /* liblokinet-platform.a in Frameworks */,
 				B8EFF95122D31392005597E9 /* liblokinet-static.a in Frameworks */,
@@ -644,6 +657,7 @@
 				C3CBFB642256D47400F34631 /* lokinet-wrapper.h */,
 				C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */,
 				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
+				B833559022D8539800F045AF /* libuv.1.dylib */,
 				B8EFF95522D41544005597E9 /* MMWormhole.framework */,
 				B8EFF9D722D445B6005597E9 /* PromiseKit.framework */,
 			);
@@ -792,9 +806,10 @@
 			buildConfigurationList = B8F7988C226056DD00003DE6 /* Build configuration list for PBXNativeTarget "PacketTunnelProvider" */;
 			buildPhases = (
 				B8F7987F226056DD00003DE6 /* Sources */,
+				B833559222D8539F00F045AF /* Copy libuv */,
 				B8F79880226056DD00003DE6 /* Frameworks */,
 				B8F79881226056DD00003DE6 /* Resources */,
-				B8EFF98E22D4159F005597E9 /* Copy Frameworks */,
+				B8EFF98E22D4159F005597E9 /* Copy Carthage Frameworks */,
 			);
 			buildRules = (
 			);
@@ -813,7 +828,7 @@
 				C3FBE35E22542DD60006284B /* Frameworks */,
 				C3FBE35F22542DD60006284B /* Resources */,
 				B8F7988F226056DD00003DE6 /* Embed App Extensions */,
-				B8EFF99222D41773005597E9 /* Copy Frameworks */,
+				B8EFF99222D41773005597E9 /* Copy Carthage Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1279,7 +1294,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		B8EFF98E22D4159F005597E9 /* Copy Frameworks */ = {
+		B8EFF98E22D4159F005597E9 /* Copy Carthage Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1290,7 +1305,7 @@
 				"$(SRCROOT)/Carthage/Build/iOS/MMWormhole.framework",
 				"$(SRCROOT)/Carthage/Build/iOS/PromiseKit.framework",
 			);
-			name = "Copy Frameworks";
+			name = "Copy Carthage Frameworks";
 			outputFileListPaths = (
 			);
 			outputPaths = (
@@ -1301,7 +1316,7 @@
 			shellPath = /bin/sh;
 			shellScript = "/usr/local/bin/carthage copy-frameworks\n";
 		};
-		B8EFF99222D41773005597E9 /* Copy Frameworks */ = {
+		B8EFF99222D41773005597E9 /* Copy Carthage Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1312,7 +1327,7 @@
 				"$(SRCROOT)/Carthage/Build/iOS/MMWormhole.framework",
 				"$(SRCROOT)/Carthage/Build/iOS/PromiseKit.framework",
 			);
-			name = "Copy Frameworks";
+			name = "Copy Carthage Frameworks";
 			outputFileListPaths = (
 			);
 			outputPaths = (
