@@ -74,6 +74,7 @@ namespace llarp
           }
           break;
         }
+        return {};
       }
 
       template < typename Value >

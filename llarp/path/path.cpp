@@ -178,6 +178,7 @@ namespace llarp
           break;
         case ePathIgnore:
           obj.Put("status", "ignored");
+          break;
         default:
           obj.Put("status", "unknown");
           break;
