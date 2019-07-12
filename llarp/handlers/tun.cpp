@@ -930,7 +930,7 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       const ManagedBuffer buf(b);
       self->m_UserToNetworkPktQueue.EmplaceIf(
-             [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
+          [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
     }
 
     TunEndpoint::~TunEndpoint()
