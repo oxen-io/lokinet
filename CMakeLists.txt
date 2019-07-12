@@ -73,6 +73,7 @@ endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
   message("Compiling for iOS")
   add_definitions(-DDarwin)
+  set(UV_LIB "ios/libuv/libuv-ios-arm64.dylib")
 endif(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
 
 if(NOT DEBIAN AND NOT MSVC_VERSION)

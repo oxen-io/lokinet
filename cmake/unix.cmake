@@ -1,6 +1,10 @@
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
+  include_directories(../ios/libuv/libuv-ios-arm64.dylib)
+endif()
+
 if (STATIC_LINK_RUNTIME)
   find_library(UV_LIB NAMES libuv.a)
 else()

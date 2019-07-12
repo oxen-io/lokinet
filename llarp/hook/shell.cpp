@@ -11,7 +11,7 @@
 extern char **environ;
 #endif
 #endif
-#if defined(Darwin)
+#if defined(Darwin) && !defined(iOS)
 #include <crt_externs.h>
 #endif
 
@@ -99,7 +99,7 @@ namespace llarp
                        const std::unordered_map< std::string, std::string > env)
           : m_Parent(b)
       {
-#if defined(Darwin)
+#if defined(Darwin) && !defined(iOS)
         char **ptr = *_NSGetEnviron();
 #else
         char **ptr = environ;
