@@ -58,7 +58,7 @@ namespace llarp
     {
       SetPIDFile(config->system.pidfile);
     }
-    auto threads = config.router.workerThreads();
+    auto threads = config->router.workerThreads();
     if(threads <= 0)
       threads = 1;
     worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024, "llarp-worker");
