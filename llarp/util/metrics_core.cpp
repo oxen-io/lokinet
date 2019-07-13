@@ -6,7 +6,7 @@ namespace llarp
 {
   namespace metrics
   {
-    std::tuple< Id, bool >
+    std::pair< Id, bool >
     Registry::insert(string_view category, string_view name)
     {
       // avoid life time issues, putting strings in the stringmem set
@@ -18,7 +18,7 @@ namespace llarp
 
       if(it != m_metrics.end())
       {
-        return std::make_tuple(Id(it->second.get()), false);
+        return {Id(it->second.get()), false};
       }
 
       auto cIt = m_categories.find(cStr);

@@ -86,11 +86,6 @@ namespace llarp
       // check for file
       if(!fs::exists(fname, ec))
       {
-        if(ec)
-        {
-          LogError(ec);
-          return false;
-        }
         // regen and encode
         RegenerateKeys();
         if(!BEncode(&buf))
