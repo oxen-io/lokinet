@@ -10,12 +10,26 @@
 #include <util/memfn.hpp>
 #include <util/str.hpp>
 
+#include <cstdlib>
 #include <fstream>
 #include <ios>
 #include <iostream>
 
 namespace llarp
 {
+  std::string
+  tostr(string_view val)
+  {
+    return {val.begin(), val.end()};
+  }
+
+  int
+  svtoi(string_view val)
+  {
+    auto str = tostr(val);
+    return std::atoi(str.c_str());
+  }
+
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
@@ -23,7 +37,7 @@ namespace llarp
     {
       if(val.size() <= NetID::size())
       {
-        m_netId.assign(val.begin(), val.end());
+        m_netId = tostr(val);
         LogInfo("setting netid to '", val, "'");
       }
       else
@@ -33,8 +47,7 @@ namespace llarp
     }
     if(key == "max-connections")
     {
-      std::string sVal(val.begin(), val.end());
-      auto ival = atoi(sVal.c_str());
+      auto ival = svtoi(val);
       if(ival > 0)
       {
         m_maxConnectedRouters = ival;
@@ -43,8 +56,7 @@ namespace llarp
     }
     if(key == "min-connections")
     {
-      std::string sVal(val.begin(), val.end());
-      auto ival = atoi(sVal.c_str());
+      auto ival = svtoi(val);
       if(ival > 0)
       {
         m_minConnectedRouters = ival;
@@ -53,29 +65,29 @@ namespace llarp
     }
     if(key == "nickname")
     {
-      m_nickname.assign(val.begin(), val.end());
+      m_nickname = tostr(val);
       // set logger name here
       LogContext::Instance().nodeName = nickname();
       LogInfo("nickname set");
     }
     if(key == "encryption-privkey")
     {
-      m_encryptionKeyfile.assign(val.begin(), val.end());
+      m_encryptionKeyfile = tostr(val);
       LogDebug("encryption key set to ", m_encryptionKeyfile);
     }
     if(key == "contact-file")
     {
-      m_ourRcFile.assign(val.begin(), val.end());
+      m_ourRcFile = tostr(val);
       LogDebug("rc file set to ", m_ourRcFile);
     }
     if(key == "transport-privkey")
     {
-      m_transportKeyfile.assign(val.begin(), val.end());
+      m_transportKeyfile = tostr(val);
       LogDebug("transport key set to ", m_transportKeyfile);
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
-      m_identKeyfile.assign(val.begin(), val.end());
+      m_identKeyfile = tostr(val);
       LogDebug("identity key set to ", m_identKeyfile);
     }
     if(key == "public-address" || key == "public-ip")
@@ -93,7 +105,7 @@ namespace llarp
     if(key == "public-port")
     {
       llarp::LogInfo("Setting public port ", val);
-      int p = atoi(std::string(val).c_str());
+      int p = svtoi(val);
       // Not needed to flip upside-down - this is done in llarp::Addr(const
       // AddressInfo&)
       m_ip4addr.sin_port = p;
@@ -102,7 +114,7 @@ namespace llarp
     }
     if(key == "worker-threads" || key == "threads")
     {
-      m_workerThreads = atoi(std::string(val).c_str());
+      m_workerThreads = svtoi(val);
       if(m_workerThreads <= 0)
       {
         LogWarn("worker threads invalid value: '", val, "' defaulting to 1");
@@ -115,7 +127,7 @@ namespace llarp
     }
     if(key == "net-threads")
     {
-      m_numNetThreads = atoi(std::string(val).c_str());
+      m_numNetThreads = svtoi(val);
       if(m_numNetThreads <= 0)
       {
         LogWarn("net threads invalid value: '", val, "' defaulting to 1");
@@ -144,16 +156,16 @@ namespace llarp
     }
     else if(key == "profiles")
     {
-      m_routerProfilesFile.assign(val.begin(), val.end());
+      m_routerProfilesFile = tostr(val);
       llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
     else if(key == "strict-connect")
     {
-      m_strictConnect.assign(val.begin(), val.end());
+      m_strictConnect = tostr(val);
     }
     else
     {
-      m_netConfig.emplace(key, val);
+      m_netConfig.emplace(tostr(key), tostr(val));
     }
   }
 
@@ -162,7 +174,7 @@ namespace llarp
   {
     if(key == "dir")
     {
-      m_nodedbDir.assign(val.begin(), val.end());
+      m_nodedbDir = tostr(val);
     }
   }
 
@@ -172,12 +184,12 @@ namespace llarp
     if(key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", val);
+      netConfig.emplace("upstream-dns", tostr(val));
     }
     if(key == "bind")
     {
       llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", val);
+      netConfig.emplace("local-dns", tostr(val));
     }
   }
 
@@ -188,7 +200,7 @@ namespace llarp
     uint16_t proto = 0;
 
     std::set< std::string > parsed_opts;
-    std::string v(val.begin(), val.end());
+    std::string v = tostr(val);
     std::string::size_type idx;
     do
     {
@@ -225,7 +237,7 @@ namespace llarp
     }
     else
     {
-      m_servers.emplace_back(key, AF_INET, proto);
+      m_servers.emplace_back(tostr(key), AF_INET, proto);
     }
   }
 
@@ -239,8 +251,7 @@ namespace llarp
   void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
-    services.emplace_back(std::string(key.begin(), key.end()),
-                          std::string(val.begin(), val.end()));
+    services.emplace_back(tostr(key), tostr(val));
   }
 
   void
@@ -248,7 +259,7 @@ namespace llarp
   {
     if(key == "pidfile")
     {
-      pidfile.assign(val.begin(), val.end());
+      pidfile = tostr(val);
     }
   }
 
@@ -265,16 +276,16 @@ namespace llarp
     }
     else if(key == "json-metrics-path")
     {
-      jsonMetricsPath.assign(val.begin(), val.end());
+      jsonMetricsPath = tostr(val);
     }
     else if(key == "metric-tank-host")
     {
-      metricTankHost.assign(val.begin(), val.end());
+      metricTankHost = tostr(val);
     }
     else
     {
       // consume everything else as a metric tag
-      metricTags[std::string(key)] = std::string(val);
+      metricTags[tostr(key)] = tostr(val);
     }
   }
 
@@ -287,7 +298,7 @@ namespace llarp
     }
     if(key == "bind")
     {
-      m_rpcBindAddr.assign(val.begin(), val.end());
+      m_rpcBindAddr = tostr(val);
     }
     if(key == "authkey")
     {
@@ -300,8 +311,8 @@ namespace llarp
   {
     if(key == "service-node-seed")
     {
-      usingSNSeed = true;
-      ident_keyfile.assign(val.begin(), val.end());
+      usingSNSeed   = true;
+      ident_keyfile = tostr(val);
     }
     if(key == "enabled")
     {
@@ -309,15 +320,15 @@ namespace llarp
     }
     if(key == "jsonrpc" || key == "addr")
     {
-      lokidRPCAddr.assign(val.begin(), val.end());
+      lokidRPCAddr = tostr(val);
     }
     if(key == "username")
     {
-      lokidRPCUser.assign(val.begin(), val.end());
+      lokidRPCUser = tostr(val);
     }
     if(key == "password")
     {
-      lokidRPCPassword.assign(val.begin(), val.end());
+      lokidRPCPassword = tostr(val);
     }
   }
 
@@ -350,7 +361,7 @@ namespace llarp
     if(key == "file")
     {
       LogInfo("open log file: ", val);
-      std::string fname(val.begin(), val.end());
+      std::string fname   = tostr(val);
       FILE *const logfile = ::fopen(fname.c_str(), "a");
       if(logfile)
       {
