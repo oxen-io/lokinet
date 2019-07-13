@@ -5,5 +5,5 @@ add_library(${ABYSS_LIB} "${CMAKE_CURRENT_SOURCE_DIR}/src/md5.cpp"
 
 target_include_directories(${ABYSS_LIB} PUBLIC include)
 if(NOT WIN32)
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB} uv)
+  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB} ${LIBUV_LIBRARY})
 endif()

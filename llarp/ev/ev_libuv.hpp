@@ -1,4 +1,5 @@
 #ifndef LLARP_EV_LIBUV_HPP
+#define LLARP_EV_LIBUV_HPP
 #include <ev/ev.hpp>
 #include <uv.h>
 #include <vector>
