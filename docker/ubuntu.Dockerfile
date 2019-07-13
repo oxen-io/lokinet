@@ -11,4 +11,4 @@ WORKDIR /src/
 
 COPY . /src/
 
-RUN make NINJA=ninja JSONRPC=ON
+RUN make NINJA=ninja JSONRPC=ON STATIC_LINK=ON
