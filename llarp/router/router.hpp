@@ -562,8 +562,8 @@ namespace llarp
         out.push_back({item.first, item.second});
     }
 
-    void
-    fromConfig(Config *conf);
+    bool
+    FromConfig(Config *conf);
   };
 
 }  // namespace llarp

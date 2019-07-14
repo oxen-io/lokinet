@@ -464,7 +464,8 @@ namespace llarp
   bool
   Router::Configure(Config *conf)
   {
-    fromConfig(conf);
+    if(!FromConfig(conf))
+      return false;
 
     if(!InitOutboundLinks())
       return false;
@@ -766,8 +767,8 @@ namespace llarp
     return SaveRC();
   }
 
-  void
-  Router::fromConfig(Config *conf)
+  bool
+  Router::FromConfig(Config *conf)
   {
     // Set netid before anything else
     if(!conf->router.netId().empty())
@@ -786,6 +787,29 @@ namespace llarp
 
     // IWP config
     m_OutboundPort = conf->iwp_links.outboundPort();
+    // Router config
+    _rc.SetNick(conf->router.nickname());
+    maxConnectedRouters = conf->router.maxConnectedRouters();
+    minConnectedRouters = conf->router.minConnectedRouters();
+    encryption_keyfile  = conf->router.encryptionKeyfile();
+    our_rc_file         = conf->router.ourRcFile();
+    transport_keyfile   = conf->router.transportKeyfile();
+    addrInfo            = conf->router.addrInfo();
+    publicOverride      = conf->router.publicOverride();
+    ip4addr             = conf->router.ip4addr();
+
+    // Lokid Config
+    usingSNSeed      = conf->lokid.usingSNSeed;
+    ident_keyfile    = conf->lokid.ident_keyfile;
+    whitelistRouters = conf->lokid.whitelistRouters;
+    lokidRPCAddr     = conf->lokid.lokidRPCAddr;
+    lokidRPCUser     = conf->lokid.lokidRPCUser;
+    lokidRPCPassword = conf->lokid.lokidRPCPassword;
+
+    if(!usingSNSeed)
+    {
+      ident_keyfile = conf->router.identKeyfile();
+    }
 
     for(const auto &serverConfig : conf->iwp_links.servers())
     {
@@ -793,18 +817,18 @@ namespace llarp
       if(!server->EnsureKeys(transport_keyfile.string().c_str()))
       {
         llarp::LogError("failed to ensure keyfile ", transport_keyfile);
-        return;
+        return false;
       }
 
       const auto &key = std::get< 0 >(serverConfig);
       int af          = std::get< 1 >(serverConfig);
       uint16_t port   = std::get< 2 >(serverConfig);
-      if(server->Configure(netloop(), key, af, port))
+      if(!server->Configure(netloop(), key, af, port))
       {
-        AddLink(std::move(server), true);
-        return;
+        LogError("failed to bind inbound link on ", key, " port ", port);
+        return false;
       }
-      LogError("failed to bind inbound link on ", key, " port ", port);
+      AddLink(std::move(server), true);
     }
 
     // set network config
@@ -838,7 +862,7 @@ namespace llarp
       if(IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
-        return;
+        return false;
       }
       llarp::RouterID snode;
       llarp::PubKey pk;
@@ -896,13 +920,6 @@ namespace llarp
           std::make_unique< FileLogStream >(diskworker(), logfile, 100, true);
     }
 
-    // Lokid Config
-    usingSNSeed      = conf->lokid.usingSNSeed;
-    ident_keyfile    = conf->lokid.ident_keyfile;
-    whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr     = conf->lokid.lokidRPCAddr;
-    lokidRPCUser     = conf->lokid.lokidRPCUser;
-    lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
 
@@ -917,7 +934,7 @@ namespace llarp
       {
         llarp::LogWarn("failed to decode bootstrap RC, file='", router,
                        "' rc=", rc);
-        return;
+        return false;
       }
       if(rc.Verify(Now()))
       {
@@ -940,22 +957,7 @@ namespace llarp
         }
       }
     }
-
-    // Router config
-    _rc.SetNick(conf->router.nickname());
-    maxConnectedRouters = conf->router.maxConnectedRouters();
-    minConnectedRouters = conf->router.minConnectedRouters();
-    encryption_keyfile  = conf->router.encryptionKeyfile();
-    our_rc_file         = conf->router.ourRcFile();
-    transport_keyfile   = conf->router.transportKeyfile();
-    addrInfo            = conf->router.addrInfo();
-    publicOverride      = conf->router.publicOverride();
-    ip4addr             = conf->router.ip4addr();
-
-    if(!usingSNSeed)
-    {
-      ident_keyfile = conf->router.identKeyfile();
-    }
+    return true;
   }
 
   bool

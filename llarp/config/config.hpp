@@ -110,16 +110,16 @@ namespace llarp
     std::string m_netId;
     std::string m_nickname;
 
-    fs::path m_encryptionKeyfile = "encryption.key";
+    std::string m_encryptionKeyfile = "encryption.key";
 
     // path to write our self signed rc to
-    fs::path m_ourRcFile = "rc.signed";
+    std::string m_ourRcFile = "rc.signed";
 
     // transient iwp encryption key
-    fs::path m_transportKeyfile = "transport.key";
+    std::string m_transportKeyfile = "transport.key";
 
     // long term identity key
-    fs::path m_identKeyfile = "identity.key";
+    std::string m_identKeyfile = "identity.key";
 
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
@@ -132,10 +132,10 @@ namespace llarp
     // clang-format off
     size_t minConnectedRouters() const        { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
     size_t maxConnectedRouters() const        { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
-    fs::path encryptionKeyfile() const        { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
-    fs::path ourRcFile() const                { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
-    fs::path transportKeyfile() const         { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
-    fs::path identKeyfile() const             { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
+    std::string encryptionKeyfile() const        { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
+    std::string ourRcFile() const                { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
+    std::string transportKeyfile() const         { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
+    std::string identKeyfile() const             { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
     std::string netId() const                 { return fromEnv(m_netId, "NETID"); }
     std::string nickname() const              { return fromEnv(m_nickname, "NICKNAME"); }
     bool publicOverride() const               { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
