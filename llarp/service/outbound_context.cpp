@@ -74,8 +74,12 @@ namespace llarp
     void
     OutboundContext::SwapIntros()
     {
-      remoteIntro = m_NextIntro;
-      m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+      if(remoteIntro != m_NextIntro)
+      {
+        remoteIntro = m_NextIntro;
+        m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
+        ShiftIntroduction(false);
+      }
     }
 
     bool
@@ -94,6 +98,7 @@ namespace llarp
           LogInfo("introset is old, dropping");
           return true;
         }
+
         auto now = Now();
         if(i->IsExpired(now))
         {
@@ -132,7 +137,7 @@ namespace llarp
           util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if(p->Endpoint() == m_NextIntro.router && remoteIntro != m_NextIntro)
+      if(p->Endpoint() == m_NextIntro.router && remoteIntro.router.IsZero())
         SwapIntros();
     }
 
@@ -160,17 +165,16 @@ namespace llarp
       currentConvoTag.Randomize();
       AsyncKeyExchange* ex = new AsyncKeyExchange(
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
-          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag);
+          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
 
       ex->hook =
           std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
-      ex->msg.proto      = t;
       ex->msg.introReply = path->intro;
       ex->frame.F        = ex->msg.introReply.pathID;
-      llarp_threadpool_queue_job(m_Endpoint->CryptoWorker(),
-                                 {ex, &AsyncKeyExchange::Encrypt});
+      m_Endpoint->CryptoWorker()->addJob(
+          std::bind(&AsyncKeyExchange::Encrypt, ex));
     }
 
     std::string
@@ -317,16 +321,30 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      if(path::Builder::ShouldBuildMore(now))
-        return true;
-      return !ReadyToSend();
+      const bool should =
+          (!(path::Builder::BuildCooldownHit(now)
+             || path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths))
+          && path::Builder::ShouldBuildMore(now);
+
+      if(!ReadyToSend())
+      {
+        return should;
+      }
+      llarp_time_t t = 0;
+      ForEachPath([&t](path::Path_ptr path) {
+        if(path->IsReady())
+          t = std::max(path->ExpireTime(), t);
+      });
+      if(t <= now)
+        return should;
+      return should && t - now >= path::default_lifetime / 2;
     }
 
     bool
     OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
       // insert bad intro
-      m_BadIntros[m_NextIntro] = now;
+      m_BadIntros[remoteIntro] = now;
       // try shifting intro without rebuild
       if(ShiftIntroduction(false))
       {

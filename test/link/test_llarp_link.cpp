@@ -149,7 +149,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
   RunMainloop()
   {
     m_logic->call_later({5000, this, &OnTimeout});
-    llarp_ev_loop_run_single_process(netLoop, m_logic->thread, m_logic);
+    llarp_ev_loop_run_single_process(netLoop, m_logic);
   }
 
   void

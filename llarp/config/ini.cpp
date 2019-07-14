@@ -132,6 +132,7 @@ namespace llarp
           return false;
         }
         Section_t& sect = m_Config[sectName];
+        LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
         sect.emplace(k, v);
       }
       else  // malformed?

@@ -47,10 +47,9 @@ struct AbyssTestBase : public ::testing::Test
   void
   Start()
   {
-    threadpool = llarp_init_same_process_threadpool();
     loop       = llarp_make_ev_loop();
-    logic      = std::make_shared< llarp::Logic >(threadpool);
-
+    logic      = std::make_shared< llarp::Logic >();
+    threadpool = logic->thread;
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr.sin_port        = htons((llarp::randint() % 2000) + 2000);
@@ -177,7 +176,7 @@ struct AbyssTest : public AbyssTestBase,
   void
   RunLoop()
   {
-    llarp_ev_loop_run_single_process(loop, threadpool, logic);
+    llarp_ev_loop_run_single_process(loop, logic);
   }
 };
 

@@ -1,6 +1,7 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
 
+#include <absl/numeric/int128.h>
 #include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
@@ -59,15 +60,18 @@ namespace llarp
 {
   struct IPRange
   {
-    huint32_t addr;
-    huint32_t netmask_bits;
+    huint128_t addr;
+    huint128_t netmask_bits;
 
     /// return true if ip is contained in this ip range
     bool
-    Contains(const huint32_t& ip) const
+    Contains(const huint128_t& ip) const
     {
       return (addr & netmask_bits) == (ip & netmask_bits);
     }
+
+    bool
+    ContainsV4(const huint32_t& ip) const;
 
     friend std::ostream&
     operator<<(std::ostream& out, const IPRange& a)
@@ -76,12 +80,26 @@ namespace llarp
     }
 
     std::string
-    ToString() const
-    {
-      return addr.ToString() + "/"
-          + std::to_string(llarp::bits::count_bits(netmask_bits.h));
-    }
+    ToString() const;
   };
+
+  huint128_t
+  ExpandV4(huint32_t x);
+
+  /// get a netmask with the higest numset bits set
+  constexpr huint128_t
+  __netmask_ipv6_bits(uint32_t numset)
+  {
+    return (128 - numset)
+        ? (huint128_t{1} << numset) | __netmask_ipv6_bits(numset + 1)
+        : huint128_t{0};
+  }
+
+  constexpr huint128_t
+  netmask_ipv6_bits(uint32_t numset)
+  {
+    return __netmask_ipv6_bits(128 - numset);
+  }
 
   /// get a netmask with the higest numset bits set
   constexpr uint32_t
@@ -90,7 +108,7 @@ namespace llarp
     return (32 - numset) ? (1 << numset) | __netmask_ipv4_bits(numset + 1) : 0;
   }
 
-  /// get an ipv4 netmask given some /N range
+  /// get a netmask given some /N range
   constexpr huint32_t
   netmask_ipv4_bits(uint32_t num)
   {
@@ -107,11 +125,8 @@ namespace llarp
 #endif
   }
 
-  constexpr IPRange
-  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
-  {
-    return IPRange{ipaddr_ipv4_bits(a, b, c, d), netmask_ipv4_bits(mask)};
-  }
+  IPRange
+  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask);
 
   bool
   IsIPv4Bogon(const huint32_t& addr);
@@ -143,11 +158,11 @@ namespace llarp
 
   /// look at adapter ranges and find a free one
   std::string
-  findFreePrivateRange();
+  FindFreeRange();
 
   /// look at adapter names and find a free one
   std::string
-  findFreeLokiTunIfName();
+  FindFreeTun();
 
   /// get network interface address for network interface with ifname
   bool

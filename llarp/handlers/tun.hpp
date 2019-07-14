@@ -15,11 +15,6 @@ namespace llarp
 {
   namespace handlers
   {
-    static const int DefaultTunNetmask    = 16;
-    static const char DefaultTunIfname[]  = "lokinet0";
-    static const char DefaultTunDstAddr[] = "10.10.0.1";
-    static const char DefaultTunSrcAddr[] = "10.10.0.2";
-
     struct TunEndpoint : public service::Endpoint,
                          public dns::IQueryHandler,
                          public std::enable_shared_from_this< TunEndpoint >
@@ -47,6 +42,9 @@ namespace llarp
       NotifyParams() const override;
 
       bool
+      SupportsV6() const override;
+
+      bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 
       bool
@@ -58,7 +56,7 @@ namespace llarp
       TickTun(llarp_time_t now);
 
       bool
-      MapAddress(const service::Address& remote, huint32_t ip, bool SNode);
+      MapAddress(const service::Address& remote, huint128_t ip, bool SNode);
 
       bool
       Start() override;
@@ -78,28 +76,43 @@ namespace llarp
       SetupNetworking() override;
 
       /// overrides Endpoint
+      bool
+      HandleInboundPacket(const service::ConvoTag tag,
+                          const llarp_buffer_t& pkt,
+                          service::ProtocolType t) override
+      {
+        if(t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6)
+          return false;
+        AlignedBuffer< 32 > addr;
+        bool snode = false;
+        if(!GetEndpointWithConvoTag(tag, addr, snode))
+          return false;
+        return HandleWriteIPPacket(
+            pkt, [=]() -> huint128_t { return ObtainIPForAddr(addr, snode); });
+      }
+
       /// handle inbound traffic
       bool
       HandleWriteIPPacket(const llarp_buffer_t& buf,
-                          std::function< huint32_t(void) > getFromIP) override;
+                          std::function< huint128_t(void) > getFromIP);
 
       /// queue outbound packet to the world
       bool
-      QueueOutboundTraffic(llarp::net::IPv4Packet&& pkt);
+      QueueOutboundTraffic(llarp::net::IPPacket&& pkt);
 
-      /// we have a resolvable ip address
+      /// get the local interface's address
+      huint128_t
+      GetIfAddr() const override;
+
+      /// we have an interface addr
       bool
       HasIfAddr() const override
       {
         return true;
       }
 
-      /// get the local interface's address
-      huint32_t
-      GetIfAddr() const override;
-
       bool
-      HasLocalIP(const huint32_t& ip) const;
+      HasLocalIP(const huint128_t& ip) const;
 
       llarp_tun_io tunif;
       std::unique_ptr< llarp_fd_promise > Promise;
@@ -124,7 +137,7 @@ namespace llarp
       /// get a key for ip address
       template < typename Addr >
       Addr
-      ObtainAddrForIP(huint32_t ip, bool isSNode)
+      ObtainAddrForIP(huint128_t ip, bool isSNode)
       {
         auto itr = m_IPToAddr.find(ip);
         if(itr == m_IPToAddr.end() || m_SNodes[itr->second] != isSNode)
@@ -139,15 +152,14 @@ namespace llarp
       }
 
       bool
-      HasAddress(const AlignedBuffer< 32 >& addr) const override
+      HasAddress(const AlignedBuffer< 32 >& addr) const
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
-      huint32_t
-      ObtainIPForAddr(const AlignedBuffer< 32 >& addr,
-                      bool serviceNode) override;
+      huint128_t
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode);
 
       /// flush network traffic
       void
@@ -158,33 +170,33 @@ namespace llarp
 
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
-          net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
-          net::IPv4Packet::CompareOrder, net::IPv4Packet::GetNow >;
+          net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
+          net::IPPacket::CompareOrder, net::IPPacket::GetNow >;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network
       PacketQueue_t m_NetworkToUserPktQueue;
       /// return true if we have a remote loki address for this ip address
       bool
-      HasRemoteForIP(huint32_t ipv4) const;
+      HasRemoteForIP(huint128_t ipv4) const;
 
       /// mark this address as active
       void
-      MarkIPActive(huint32_t ip);
+      MarkIPActive(huint128_t ip);
 
       /// mark this address as active forever
       void
-      MarkIPActiveForever(huint32_t ip);
+      MarkIPActiveForever(huint128_t ip);
 
       /// flush ip packets
       virtual void
       FlushSend();
 
       /// maps ip to key (host byte order)
-      std::unordered_map< huint32_t, AlignedBuffer< 32 >, huint32_t::Hash >
+      std::unordered_map< huint128_t, AlignedBuffer< 32 >, huint128_t::Hash >
           m_IPToAddr;
       /// maps key to ip (host byte order)
-      std::unordered_map< AlignedBuffer< 32 >, huint32_t,
+      std::unordered_map< AlignedBuffer< 32 >, huint128_t,
                           AlignedBuffer< 32 >::Hash >
           m_AddrToIP;
 
@@ -199,10 +211,30 @@ namespace llarp
       {
         ManagedBuffer copy{buf};
         return m_NetworkToUserPktQueue.EmplaceIf(
-            [&](llarp::net::IPv4Packet& pkt) -> bool {
+            [&](llarp::net::IPPacket& pkt) -> bool {
               if(!pkt.Load(copy.underlying))
                 return false;
-              pkt.UpdateIPv4PacketOnDst(pkt.src(), m_OurIP);
+              if(SupportsV6())
+              {
+                if(pkt.IsV4())
+                {
+                  pkt.UpdateIPv6Address(net::IPPacket::ExpandV4(pkt.srcv4()),
+                                        m_OurIP);
+                }
+                else
+                {
+                  pkt.UpdateIPv6Address(pkt.srcv6(), m_OurIP);
+                }
+              }
+              else
+              {
+                if(pkt.IsV4())
+                  pkt.UpdateIPv4Address(
+                      xhtonl(pkt.srcv4()),
+                      xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
+                else
+                  return false;
+              }
               return true;
             });
       }
@@ -215,7 +247,7 @@ namespace llarp
       {
         if(ctx)
         {
-          huint32_t ip = ObtainIPForAddr(addr, snode);
+          huint128_t ip = ObtainIPForAddr(addr, snode);
           query->AddINReply(ip, sendIPv6);
         }
         else
@@ -233,14 +265,14 @@ namespace llarp
       std::shared_ptr< dns::Proxy > m_Resolver;
 
       /// maps ip address to timestamp last active
-      std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
+      std::unordered_map< huint128_t, llarp_time_t, huint128_t::Hash >
           m_IPActivity;
       /// our ip address (host byte order)
-      huint32_t m_OurIP;
+      huint128_t m_OurIP;
       /// next ip address to allocate (host byte order)
-      huint32_t m_NextIP;
+      huint128_t m_NextIP;
       /// highest ip address to allocate (host byte order)
-      huint32_t m_MaxIP;
+      huint128_t m_MaxIP;
       /// our ip range we are using
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
@@ -249,6 +281,8 @@ namespace llarp
       llarp::Addr m_LocalResolverAddr;
       /// list of strict connect addresses for hooks
       std::vector< llarp::Addr > m_StrictConnectAddrs;
+      /// use v6?
+      bool m_UseV6;
     };
   }  // namespace handlers
 }  // namespace llarp

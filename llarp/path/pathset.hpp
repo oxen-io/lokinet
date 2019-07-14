@@ -38,6 +38,32 @@ namespace llarp
       ePathExpired
     };
 
+    /// Stats about all our path builds
+    struct BuildStats
+    {
+      static constexpr double MinGoodRatio = 0.25;
+
+      uint64_t attempts = 0;
+      uint64_t success  = 0;
+      uint64_t fails    = 0;
+      uint64_t timeouts = 0;
+
+      util::StatusObject
+      ExtractStatus() const;
+
+      double
+      SuccsessRatio() const;
+
+      std::string
+      ToString() const;
+
+      friend std::ostream&
+      operator<<(std::ostream& o, const BuildStats& st)
+      {
+        return o << st.ToString();
+      }
+    };
+
     /// the role of this path can fulfill
     using PathRole = int;
 
@@ -98,6 +124,9 @@ namespace llarp
 
       virtual void
       HandlePathBuildTimeout(Path_ptr path);
+
+      virtual void
+      PathBuildStarted(Path_ptr path);
 
       /// a path died now what?
       virtual void
@@ -242,6 +271,8 @@ namespace llarp
 
      protected:
       size_t m_NumPaths;
+
+      BuildStats m_BuildStats;
 
       void
       TickPaths(llarp_time_t now, AbstractRouter* r);

@@ -72,9 +72,11 @@ set(LIB_PLATFORM_SRC
   metrics/metrictank_publisher.cpp
   metrics/json_publisher.cpp
   metrics/stream_publisher.cpp
+  net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp
+  net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -185,8 +187,6 @@ set(LIB_SRC
   messages/relay_commit.cpp
   net/address_info.cpp
   net/exit_info.cpp
-  net/ip.cpp
-  net/net_int.cpp
   nodedb.cpp
   path/ihophandler.cpp
   path/path_context.cpp

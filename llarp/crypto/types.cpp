@@ -75,9 +75,12 @@ namespace llarp
   bool
   IdentitySecret::LoadFromFile(const char* fname)
   {
-    std::ifstream f(fname, std::ios::binary | std::ios::in);
-    if(!f.is_open())
+    const fs::path fpath = std::string(fname);
+    auto optional        = util::OpenFileStream< std::ifstream >(
+        fpath, std::ios::binary | std::ios::in);
+    if(!optional)
       return false;
+    auto& f = optional.value();
     f.seekg(0, std::ios::end);
     const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);

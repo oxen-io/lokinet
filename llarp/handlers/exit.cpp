@@ -59,6 +59,12 @@ namespace llarp
     }
 
     bool
+    ExitEndpoint::SupportsV6() const
+    {
+      return m_UseV6;
+    }
+
+    bool
     ExitEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
     {
       if(msg.questions.size() == 0)
@@ -66,7 +72,7 @@ namespace llarp
       // always hook ptr for ranges we own
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint32_t ip;
+        huint128_t ip;
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
           return false;
         return m_OurRange.Contains(ip);
@@ -89,7 +95,7 @@ namespace llarp
     {
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
-        huint32_t ip;
+        huint128_t ip;
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
           return false;
         if(ip == m_IfAddr)
@@ -132,6 +138,7 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
+        const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         if(msg.questions[0].IsName("random.snode"))
         {
           RouterID random;
@@ -156,9 +163,13 @@ namespace llarp
         RouterID r;
         if(r.FromString(msg.questions[0].Name()))
         {
-          huint32_t ip;
+          huint128_t ip;
           PubKey pubKey(r);
-          if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
+          if(isV4 && SupportsV6())
+          {
+            msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
+          }
+          else if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped
             // map it
@@ -213,11 +224,12 @@ namespace llarp
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         PubKey pk;
         {
-          auto itr = m_IPToKey.find(pkt.dst());
+          auto itr = m_IPToKey.find(pkt.dstv6());
           if(itr == m_IPToKey.end())
           {
             // drop
-            LogWarn(Name(), " dropping packet, has no session at ", pkt.dst());
+            LogWarn(Name(), " dropping packet, has no session at ",
+                    pkt.dstv4());
             return;
           }
           pk = itr->second;
@@ -286,10 +298,10 @@ namespace llarp
     {
       // map our address
       const PubKey us(m_Router->pubkey());
-      const huint32_t ip = GetIfAddr();
-      m_KeyToIP[us]      = ip;
-      m_IPToKey[ip]      = us;
-      m_IPActivity[ip]   = std::numeric_limits< llarp_time_t >::max();
+      const huint128_t ip = GetIfAddr();
+      m_KeyToIP[us]       = ip;
+      m_IPToKey[ip]       = us;
+      m_IPActivity[ip]    = std::numeric_limits< llarp_time_t >::max();
       m_SNodeKeys.insert(us);
       if(m_ShouldInitTun)
       {
@@ -312,7 +324,7 @@ namespace llarp
       return m_Router;
     }
 
-    huint32_t
+    huint128_t
     ExitEndpoint::GetIfAddr() const
     {
       return m_IfAddr;
@@ -341,10 +353,10 @@ namespace llarp
       return m_KeyToIP.find(pk) != m_KeyToIP.end();
     }
 
-    huint32_t
+    huint128_t
     ExitEndpoint::GetIPForIdent(const PubKey pk)
     {
-      huint32_t found = {0};
+      huint128_t found = {0};
       if(!HasLocalMappedAddrFor(pk))
       {
         // allocate and map
@@ -373,14 +385,14 @@ namespace llarp
       return found;
     }
 
-    huint32_t
+    huint128_t
     ExitEndpoint::AllocateNewAddress()
     {
       if(m_NextAddr < m_HigestAddr)
         return ++m_NextAddr;
 
       // find oldest activity ip address
-      huint32_t found  = {0};
+      huint128_t found = {0};
       llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
       auto itr         = m_IPActivity.begin();
       while(itr != m_IPActivity.end())
@@ -410,7 +422,7 @@ namespace llarp
     ExitEndpoint::KickIdentOffExit(const PubKey &pk)
     {
       LogInfo(Name(), " kicking ", pk, " off exit");
-      huint32_t ip = m_KeyToIP[pk];
+      huint128_t ip = m_KeyToIP[pk];
       m_KeyToIP.erase(pk);
       m_IPToKey.erase(ip);
       auto range    = m_ActiveExits.equal_range(pk);
@@ -420,7 +432,7 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::MarkIPActive(huint32_t ip)
+    ExitEndpoint::MarkIPActive(huint128_t ip)
     {
       m_IPActivity[ip] = GetRouter()->Now();
     }
@@ -433,13 +445,13 @@ namespace llarp
     }
 
     bool
-    ExitEndpoint::QueueSNodePacket(const llarp_buffer_t &buf, huint32_t from)
+    ExitEndpoint::QueueSNodePacket(const llarp_buffer_t &buf, huint128_t from)
     {
-      net::IPv4Packet pkt;
+      net::IPPacket pkt;
       if(!pkt.Load(buf))
         return false;
       // rewrite ip
-      pkt.UpdateIPv4PacketOnDst(from, m_IfAddr);
+      pkt.UpdateIPv6Address(from, m_IfAddr);
       return llarp_ev_tun_async_write(&m_Tun, pkt.Buffer());
     }
 
@@ -530,12 +542,25 @@ namespace llarp
         strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
         m_Tun.netmask = std::atoi(nmask_str.c_str());
 
-        Addr ifaddr(host_str);
-        m_IfAddr                = ifaddr.xtohl();
-        m_OurRange.netmask_bits = netmask_ipv4_bits(m_Tun.netmask);
-        m_OurRange.addr         = m_IfAddr;
-        m_NextAddr              = m_IfAddr;
-        m_HigestAddr            = m_IfAddr | (~m_OurRange.netmask_bits);
+        huint32_t ip;
+        if(ip.FromString(host_str))
+        {
+          m_IfAddr                = net::IPPacket::ExpandV4(ip);
+          m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask + 96);
+        }
+        else if(m_IfAddr.FromString(host_str))
+        {
+          m_UseV6                 = true;
+          m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask);
+        }
+        else
+        {
+          LogError(Name(), " invalid ifaddr: ", v);
+          return false;
+        }
+        m_OurRange.addr = m_IfAddr;
+        m_NextAddr      = m_IfAddr;
+        m_HigestAddr    = m_IfAddr | (~m_OurRange.netmask_bits);
         LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
                 m_Tun.netmask, " lo=", m_IfAddr, " hi=", m_HigestAddr);
       }
@@ -565,7 +590,7 @@ namespace llarp
       return true;
     }
 
-    huint32_t
+    huint128_t
     ExitEndpoint::ObtainServiceNodeIP(const RouterID &other)
     {
       const PubKey pubKey(other);
@@ -574,7 +599,7 @@ namespace llarp
       if(pubKey == us)
         return m_IfAddr;
 
-      huint32_t ip = GetIPForIdent(pubKey);
+      huint128_t ip = GetIPForIdent(pubKey);
       if(m_SNodeKeys.emplace(pubKey).second)
       {
         auto session = std::make_shared< exit::SNodeSession >(
@@ -594,7 +619,7 @@ namespace llarp
     {
       if(wantInternet && !m_PermitExit)
         return false;
-      huint32_t ip = GetIPForIdent(pk);
+      auto ip = GetIPForIdent(pk);
       if(GetRouter()->pathContext().TransitHopPreviousIsRouter(path,
                                                                pk.as_array()))
       {

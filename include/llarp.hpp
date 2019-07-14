@@ -14,7 +14,6 @@
 struct llarp_ev_loop;
 struct llarp_nodedb;
 struct llarp_nodedb_iter;
-struct llarp_threadpool;
 
 namespace llarp
 {
@@ -25,6 +24,10 @@ namespace llarp
   struct CryptoManager;
   struct MetricsConfig;
   struct RouterContact;
+  namespace thread
+  {
+    struct ThreadPool;
+  }
 
   namespace metrics
   {
@@ -48,13 +51,10 @@ namespace llarp
     std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
     std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
 
-    int num_nethreads   = 1;
-    bool singleThreaded = false;
-
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< CryptoManager > cryptoManager;
     std::unique_ptr< AbstractRouter > router;
-    std::unique_ptr< llarp_threadpool > worker;
+    std::shared_ptr< thread::ThreadPool > worker;
     std::shared_ptr< Logic > logic;
     std::unique_ptr< Config > config;
     std::unique_ptr< llarp_nodedb > nodedb;

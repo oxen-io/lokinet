@@ -5,6 +5,7 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <absl/numeric/int128.h>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
@@ -187,6 +188,18 @@ inline void
 htole64buf(void *buf, uint64_t big64)
 {
   htobuf64(buf, htole64(big64));
+}
+
+inline absl::uint128
+ntoh128(absl::uint128 i)
+{
+#if __BYTE_ORDER == __BIG_ENDIAN
+  return i;
+#else
+  const auto loSwapped = htobe64(absl::Uint128Low64(i));
+  const auto hiSwapped = htobe64(absl::Uint128High64(i));
+  return absl::MakeUint128(loSwapped, hiSwapped);
+#endif
 }
 
 #endif

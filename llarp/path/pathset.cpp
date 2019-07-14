@@ -288,6 +288,43 @@ namespace llarp
     PathSet::HandlePathBuildTimeout(Path_ptr p)
     {
       LogWarn(Name(), " path build ", p->HopsString(), " timed out");
+      m_BuildStats.timeouts++;
+    }
+
+    void
+    PathSet::PathBuildStarted(Path_ptr p)
+    {
+      LogInfo(Name(), " path build ", p->HopsString(), " started");
+      m_BuildStats.attempts++;
+    }
+
+    util::StatusObject
+    BuildStats::ExtractStatus() const
+    {
+      return util::StatusObject{{"success", success},
+                                {"attempts", attempts},
+                                {"timeouts", timeouts},
+                                {"fails", fails}};
+    }
+
+    std::string
+    BuildStats::ToString() const
+    {
+      std::stringstream ss;
+      ss << (SuccsessRatio() * 100.0) << " percent success ";
+      ss << "(success=" << success << " ";
+      ss << "attempts=" << attempts << " ";
+      ss << "timeouts=" << timeouts << " ";
+      ss << "fails=" << fails << ")";
+      return ss.str();
+    }
+
+    double
+    BuildStats::SuccsessRatio() const
+    {
+      if(attempts)
+        return double(success) / double(attempts);
+      return 0.0;
     }
 
     bool

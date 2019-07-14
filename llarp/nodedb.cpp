@@ -133,19 +133,28 @@ llarp_nodedb::InsertAsync(llarp::RouterContact rc,
       std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler));
 }
 
+bool
+llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
+                                 std::shared_ptr< llarp::Logic > logic,
+                                 std::function< void(void) > completionHandler)
+{
+  llarp::util::Lock lock(&access);
+  auto itr = entries.find(rc.pubkey);
+  if(itr == entries.end() || itr->second.rc.OtherIsNewer(rc))
+  {
+    InsertAsync(rc, logic, completionHandler);
+    return true;
+  }
+  return false;
+}
+
 /// insert and write to disk
 bool
 llarp_nodedb::Insert(const llarp::RouterContact &rc)
 {
   std::array< byte_t, MAX_RC_SIZE > tmp;
   llarp_buffer_t buf(tmp);
-  {
-    llarp::util::Lock lock(&access);
-    auto itr = entries.find(rc.pubkey.as_array());
-    if(itr != entries.end())
-      entries.erase(itr);
-    entries.emplace(rc.pubkey.as_array(), rc);
-  }
+
   if(!rc.BEncode(&buf))
     return false;
 
@@ -159,6 +168,7 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
     return false;
   auto &ofs = optional_ofs.value();
   ofs.write((char *)buf.base, buf.sz);
+  ofs.flush();
   ofs.close();
   if(!ofs)
   {
@@ -166,6 +176,14 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
     return false;
   }
   llarp::LogDebug("saved RC.pubkey: ", filepath);
+  // save rc after writing to disk
+  {
+    llarp::util::Lock lock(&access);
+    auto itr = entries.find(rc.pubkey.as_array());
+    if(itr != entries.end())
+      entries.erase(itr);
+    entries.emplace(rc.pubkey.as_array(), rc);
+  }
   return true;
 }
 
@@ -275,7 +293,7 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 }
 
 void
-llarp_nodedb::VisitInsertedAfter(
+llarp_nodedb::VisitInsertedBefore(
     std::function< void(const llarp::RouterContact &) > visit,
     llarp_time_t insertedAfter)
 {
@@ -283,7 +301,7 @@ llarp_nodedb::VisitInsertedAfter(
   auto itr = entries.begin();
   while(itr != entries.end())
   {
-    if(itr->second.inserted > insertedAfter)
+    if(itr->second.inserted < insertedAfter)
       visit(itr->second.rc);
     ++itr;
   }
@@ -425,8 +443,7 @@ llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
   // switch to crypto threadpool and continue with
   // crypto_threadworker_verifyrc
-  llarp_threadpool_queue_job(job->cryptoworker,
-                             {job, &crypto_threadworker_verifyrc});
+  job->cryptoworker->addJob(std::bind(&crypto_threadworker_verifyrc, job));
 }
 
 // disabled for now

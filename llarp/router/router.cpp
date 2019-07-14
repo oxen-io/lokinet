@@ -25,6 +25,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
+#include <unordered_map>
 #if defined(RPI) || defined(ANDROID)
 #include <unistd.h>
 #endif
@@ -204,15 +205,16 @@ namespace llarp
     return async_verify_RC(s->GetRemoteRC());
   }
 
-  Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
-                 std::shared_ptr< Logic > l)
+  Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
+                 llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > l)
       : ready(false)
       , _netloop(__netloop)
-      , tp(_tp)
+      , cryptoworker(_tp)
       , _logic(l)
       , paths(this)
       , _exitContext(this)
-      , disk(1, 1000, "diskworker")
+      , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000,
+                                                           "diskworker"))
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
@@ -515,8 +517,8 @@ namespace llarp
     llarp_ev_loop_stop(_netloop);
     inboundLinks.clear();
     outboundLinks.clear();
-    disk.stop();
-    disk.shutdown();
+    disk->stop();
+    disk->shutdown();
   }
 
   void
@@ -1040,18 +1042,27 @@ namespace llarp
       resultHandler = std::bind(&Router::HandleRouterLookupForExpireUpdate,
                                 this, remote, std::placeholders::_1);
     }
-    if(IsServiceNode())
+
+    // if we are a client try using the hidden service endpoints
+    if(!IsServiceNode())
     {
-      dht()->impl->LookupRouter(remote, resultHandler);
-    }
-    else
-    {
+      bool sent = false;
+      LogInfo("Lookup ", remote, " anonymously");
       _hiddenServiceContext.ForEachService(
-          [=](const std::string &,
+          [&](const std::string &,
               const std::shared_ptr< service::Endpoint > &ep) -> bool {
-            return !ep->LookupRouterAnon(remote, resultHandler);
+            const bool success = ep->LookupRouterAnon(remote, resultHandler);
+            sent               = sent || success;
+            return !success;
           });
+      if(sent)
+        return;
+      LogWarn("cannot lookup ", remote, " anonymously");
     }
+    // if we are service node or failed to use hidden service endpoints as
+    // client do a direct lookup
+    LogInfo("Lookup ", remote, " direct");
+    dht()->impl->LookupRouter(remote, resultHandler);
   }
 
   bool
@@ -1073,22 +1084,6 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    // try looking up stale routers
-    nodedb()->VisitInsertedAfter(
-        [&](const RouterContact &rc) {
-          if(HasPendingRouterLookup(rc.pubkey))
-            return;
-          LookupRouter(rc.pubkey, nullptr);
-        },
-        RouterContact::UpdateInterval + now);
-    std::set< RouterID > removeStale;
-    // remove stale routers
-    nodedb()->VisitInsertedAfter(
-        [&](const RouterContact &rc) { removeStale.insert(rc.pubkey); },
-        ((RouterContact::UpdateInterval * 3) / 2) + now);
-    nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
-      return removeStale.count(rc.pubkey) > 0;
-    });
     if(IsServiceNode())
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
@@ -1110,17 +1105,31 @@ namespace llarp
     }
     else
     {
-      // kill dead nodes if client
-      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-        // don't kill first hop nodes
-        if(strictConnectPubkeys.count(rc.pubkey))
-          return false;
-        // don't kill "non-bad" nodes
-        if(!routerProfiling().IsBad(rc.pubkey))
-          return false;
-        routerProfiling().ClearProfile(rc.pubkey);
-        // don't kill bootstrap nodes
-        return !IsBootstrapNode(rc.pubkey);
+      // try looking up stale routers
+      nodedb()->VisitInsertedBefore(
+          [&](const RouterContact &rc) {
+            if(HasPendingRouterLookup(rc.pubkey))
+              return;
+            LookupRouter(rc.pubkey,
+                         [&](const std::vector< RouterContact > &result) {
+                           // store found routers
+                           for(const auto &rc : result)
+                             nodedb()->InsertAsync(rc);
+                         });
+          },
+          now - RouterContact::UpdateInterval);
+      std::set< RouterID > removeStale;
+      // remove stale routers
+      nodedb()->VisitInsertedBefore(
+          [&](const RouterContact &rc) {
+            if(IsBootstrapNode(rc.pubkey))
+              return;
+            removeStale.insert(rc.pubkey);
+          },
+          now - ((RouterContact::UpdateInterval * 3) / 2));
+
+      nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
+        return removeStale.count(rc.pubkey) > 0;
       });
     }
     // expire transit paths
@@ -1397,8 +1406,8 @@ namespace llarp
 
     job->nodedb       = _nodedb;
     job->logic        = _logic;
-    job->cryptoworker = tp;
-    job->diskworker   = &disk;
+    job->cryptoworker = cryptoworker;
+    job->diskworker   = disk;
     if(rc.IsPublicRouter())
       job->hook = &Router::on_verify_server_rc;
     else
@@ -1417,6 +1426,30 @@ namespace llarp
                              std::numeric_limits< llarp_time_t >::max());
     LogInfo("lokinet service node list now has ", lokinetRouters.size(),
             " routers");
+  }
+
+  /// this function ensure there are sane defualts in a net config
+  static void
+  EnsureNetConfigDefaultsSane(
+      std::unordered_multimap< std::string, std::string > &netConfig)
+  {
+    static const std::unordered_map< std::string,
+                                     std::function< std::string(void) > >
+        netConfigDefaults = {
+            {"ifname", llarp::FindFreeTun},
+            {"ifaddr", llarp::FindFreeRange},
+            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
+    // populate with fallback defaults if values not present
+    auto itr = netConfigDefaults.begin();
+    while(itr != netConfigDefaults.end())
+    {
+      auto found = netConfig.find(itr->first);
+      if(found == netConfig.end() || found->second.empty())
+      {
+        netConfig.emplace(itr->first, itr->second());
+      }
+      ++itr;
+    }
   }
 
   bool
@@ -1460,8 +1493,8 @@ namespace llarp
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
-    llarp_threadpool_start(tp);
-    disk.start();
+    cryptoworker->start();
+    disk->start();
 
     for(const auto &rc : bootstrapRCList)
     {
@@ -1559,6 +1592,8 @@ namespace llarp
         LogWarn("Link ", link->Name(), " failed to start");
     }
 
+    EnsureNetConfigDefaultsSane(netConfig);
+
     if(IBLinksStarted > 0)
     {
       // initialize as service node
@@ -1589,16 +1624,10 @@ namespace llarp
         return false;
       }
 
-      // don't create default if we already have some defined
-      if(this->ShouldCreateDefaultHiddenService())
+      if(!CreateDefaultHiddenService())
       {
-        // generate default hidden service
-        LogInfo("setting up default network endpoint");
-        if(!CreateDefaultHiddenService())
-        {
-          LogError("failed to set up default network endpoint");
-          return false;
-        }
+        LogError("failed to set up default network endpoint");
+        return false;
       }
     }
 
@@ -1636,6 +1665,7 @@ namespace llarp
   {
     Router *self = static_cast< Router * >(u);
     self->StopLinks();
+    self->nodedb()->AsyncFlushToDisk();
     self->_logic->call_later({200, self, &RouterAfterStopLinks});
   }
 
@@ -1647,84 +1677,6 @@ namespace llarp
       link->Stop();
     for(const auto &link : inboundLinks)
       link->Stop();
-  }
-
-  bool
-  Router::ShouldCreateDefaultHiddenService()
-  {
-    std::string defaultIfAddr = "auto";
-    std::string defaultIfName = "auto";
-    std::string enabledOption = "auto";
-    auto itr                  = netConfig.find("defaultIfAddr");
-    if(itr != netConfig.end())
-    {
-      defaultIfAddr = itr->second;
-    }
-    itr = netConfig.find("defaultIfName");
-    if(itr != netConfig.end())
-    {
-      defaultIfName = itr->second;
-    }
-    itr = netConfig.find("enabled");
-    if(itr != netConfig.end())
-    {
-      enabledOption = itr->second;
-    }
-    LogDebug("IfName: ", defaultIfName, " IfAddr: ", defaultIfAddr,
-             " Enabled: ", enabledOption);
-    // LogInfo("IfAddr: ", itr->second);
-    // LogInfo("IfName: ", itr->second);
-    if(enabledOption == "false")
-    {
-      LogInfo("Disabling default hidden service");
-      return false;
-    }
-    if(enabledOption == "auto")
-    {
-      // auto detect if we have any pre-defined endpoints
-      // no if we have a endpoints
-      if(hiddenServiceContext().hasEndpoints())
-      {
-        LogInfo("Auto mode detected and we have endpoints");
-        netConfig.emplace("enabled", "false");
-        return false;
-      }
-      netConfig.emplace("enabled", "true");
-    }
-    // ev.cpp llarp_ev_add_tun now handles this
-    /*
-    // so basically enabled at this point
-    if(defaultIfName == "auto")
-    {
-      // we don't have any endpoints, auto configure settings
-      // set a default IP range
-      defaultIfAddr = findFreePrivateRange();
-      if(defaultIfAddr == "")
-      {
-        LogError(
-                        "Could not find any free lokitun interface names, can't
-    auto set up " "default HS context for client"); defaultIfAddr = "no";
-        netConfig.emplace("defaultIfAddr", defaultIfAddr);
-        return false;
-      }
-      netConfig.emplace("defaultIfAddr", defaultIfAddr);
-    }
-    if(defaultIfName == "auto")
-    {
-      // pick an ifName
-      defaultIfName = findFreeLokiTunIfName();
-      if(defaultIfName == "")
-      {
-        LogError(
-                        "Could not find any free private ip ranges, can't auto
-    set up " "default HS context for client"); defaultIfName = "no";
-        netConfig.emplace("defaultIfName", defaultIfName);
-        return false;
-      }
-      netConfig.emplace("defaultIfName", defaultIfName);
-    }
-    */
-    return true;
   }
 
   void
@@ -1741,6 +1693,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
+    PumpLL();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }
 
@@ -1839,27 +1792,6 @@ namespace llarp
   bool
   Router::CreateDefaultHiddenService()
   {
-    // fallback defaults
-    // To NeuroScr: why run findFree* here instead of in tun.cpp?
-    // I think it should be in tun.cpp, better to closer to time of usage
-    // that way new tun may have grab a range we may have also grabbed here
-    static const std::unordered_map< std::string,
-                                     std::function< std::string(void) > >
-        netConfigDefaults = {
-            {"ifname", []() -> std::string { return "auto"; }},
-            {"ifaddr", []() -> std::string { return "auto"; }},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
-    // populate with fallback defaults if values not present
-    auto itr = netConfigDefaults.begin();
-    while(itr != netConfigDefaults.end())
-    {
-      auto found = netConfig.find(itr->first);
-      if(found == netConfig.end() || found->second.empty())
-      {
-        netConfig.emplace(itr->first, itr->second());
-      }
-      ++itr;
-    }
     // add endpoint
     return hiddenServiceContext().AddDefaultEndpoint(netConfig);
   }

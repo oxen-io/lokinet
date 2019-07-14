@@ -127,52 +127,12 @@ namespace llarp
       {
         item.second->Tick(now);
       }
-      /*
-      std::vector< RouterID > expired;
-      m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
-        if(rc.IsExpired(now))
-          expired.emplace_back(rc.pubkey);
-        return true;
-      });
-      ForEachService([&](const std::string &,
-                         const std::shared_ptr< Endpoint > &ep) -> bool {
-        // TODO: we need to stop looking up service nodes that are gone forever
-        // how do?
-        for(const auto &k : expired)
-          if(!ep->LookupRouterAnon(k, nullptr))
-            return false;
-        return true;
-      });
-      */
     }
 
     bool
     Context::hasEndpoints()
     {
       return m_Endpoints.size() ? true : false;
-    }
-
-    bool
-    Context::FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
-                                huint32_t &ip)
-    {
-      auto itr = m_Endpoints.begin();
-      while(itr != m_Endpoints.end())
-      {
-        if(itr->second->HasAddress(addr))
-        {
-          ip = itr->second->ObtainIPForAddr(addr, isSNode);
-          return true;
-        }
-        ++itr;
-      }
-      itr = m_Endpoints.find("default");
-      if(itr != m_Endpoints.end())
-      {
-        ip = itr->second->ObtainIPForAddr(addr, isSNode);
-        return true;
-      }
-      return false;
     }
 
     bool

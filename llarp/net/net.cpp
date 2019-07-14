@@ -13,6 +13,7 @@
 #endif
 
 #include <net/net_addr.hpp>
+#include <net/ip.hpp>
 #include <util/logger.hpp>
 #include <util/str.hpp>
 
@@ -801,71 +802,37 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
   return found;
 }
 
-struct privatesInUse
-llarp_getPrivateIfs()
-{
-  struct privatesInUse result;
-  // mark all available for use
-  result.ten      = false;
-  result.oneSeven = false;
-  result.oneNine  = false;
-
-  ifaddrs* ifa = nullptr;
-
-#ifndef _WIN32
-  if(getifaddrs(&ifa) == -1)
-#else
-  if(!getifaddrs(&ifa))
-#endif
-    return result;
-  ifaddrs* i = ifa;
-  while(i)
-  {
-    if(i->ifa_addr && i->ifa_addr->sa_family == AF_INET)
-    {
-      // llarp::LogInfo("scanning ", i->ifa_name, " af: ",
-      // std::to_string(i->ifa_addr->sa_family));
-      llarp::Addr test(*i->ifa_addr);
-      uint32_t byte = test.getHostLong();
-      if(test.isTenPrivate(byte))
-      {
-        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
-        result.ten = true;
-      }
-      else if(test.isOneSevenPrivate(byte))
-      {
-        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
-        result.oneSeven = true;
-      }
-      else if(test.isOneNinePrivate(byte))
-      {
-        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
-        result.oneNine = true;
-      }
-    }
-    i = i->ifa_next;
-  }
-  if(ifa)
-    freeifaddrs(ifa);
-  return result;
-}
-
 namespace llarp
 {
-  bool
-  GetBestNetIF(std::string& ifname, int af)
+  static void
+  IterAllNetworkInterfaces(std::function< void(ifaddrs* const) > visit)
   {
     ifaddrs* ifa = nullptr;
-    bool found   = false;
 #ifndef _WIN32
     if(getifaddrs(&ifa) == -1)
 #else
     if(!getifaddrs(&ifa))
 #endif
-      return false;
+      return;
+
     ifaddrs* i = ifa;
     while(i)
     {
+      visit(i);
+      i = ifa->ifa_next;
+    }
+
+    if(ifa)
+      freeifaddrs(ifa);
+  }
+
+  bool
+  GetBestNetIF(std::string& ifname, int af)
+  {
+    bool found = false;
+    IterAllNetworkInterfaces([&](ifaddrs* i) {
+      if(found)
+        return;
       if(i->ifa_addr)
       {
         if(i->ifa_addr->sa_family == af)
@@ -876,48 +843,53 @@ namespace llarp
           {
             ifname = i->ifa_name;
             found  = true;
-            break;
           }
         }
       }
-      i = i->ifa_next;
-    }
-    if(ifa)
-      freeifaddrs(ifa);
+    });
     return found;
   }
 
+  // TODO: ipv6?
   std::string
-  findFreePrivateRange()
+  FindFreeRange()
   {
-    // pick ip
-    struct privatesInUse ifsInUse = llarp_getPrivateIfs();
-    std::string ip                = "";
-    if(!ifsInUse.ten)
+    std::vector< IPRange > currentRanges;
+    IterAllNetworkInterfaces([&](ifaddrs* i) {
+      if(i && i->ifa_addr)
+      {
+        const auto fam = i->ifa_addr->sa_family;
+        if(fam != AF_INET)
+          return;
+        sockaddr_in* addr = (sockaddr_in*)i->ifa_addr;
+        sockaddr_in* mask = (sockaddr_in*)i->ifa_netmask;
+        nuint32_t ifaddr{addr->sin_addr.s_addr};
+        nuint32_t ifmask{mask->sin_addr.s_addr};
+        currentRanges.emplace_back(
+            IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
+                    net::IPPacket::ExpandV4(xntohl(ifmask))});
+      }
+    });
+    byte_t oct = 0;
+    while(oct < 255)
     {
-      ip = "10.200.0.1/24";
+      // TODO: check for range inbetween these
+      const huint32_t loaddr = ipaddr_ipv4_bits(10, oct, 0, 1);
+      const huint32_t hiaddr = ipaddr_ipv4_bits(10, oct, 255, 255);
+      bool hit               = false;
+      for(const auto& range : currentRanges)
+      {
+        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
+      }
+      if(!hit)
+        return loaddr.ToString() + "/16";
+      ++oct;
     }
-    else if(!ifsInUse.oneSeven)
-    {
-      ip = "172.16.10.1/24";
-    }
-    else if(!ifsInUse.oneNine)
-    {
-      ip = "192.168.10.1/24";
-    }
-    else
-    {
-      llarp::LogError(
-          "Couldn't easily detect a private range to map lokinet onto");
-      return "";
-    }
-    llarp::LogDebug("Detected " + ip
-                    + " is available for use, configuring as such");
-    return ip;
+    return "";
   }
 
   std::string
-  findFreeLokiTunIfName()
+  FindFreeTun()
   {
     uint8_t num = 0;
     while(num < 255)
@@ -937,7 +909,7 @@ namespace llarp
     }
     if(num == 255)
     {
-      // llarp::LogError("Could not find any free lokitun interface names");
+      llarp::LogError("Could not find any free lokitun interface names");
       return "";
     }
 // include lokitun prefix to communicate result is valid
@@ -1010,6 +982,37 @@ namespace llarp
   }
 
   bool
+  IPRange::ContainsV4(const huint32_t& ip) const
+  {
+    return Contains(net::IPPacket::ExpandV4(ip));
+  }
+
+  std::string
+  IPRange::ToString() const
+  {
+    char buf[INET6_ADDRSTRLEN + 1] = {0};
+    std::string str;
+    in6_addr inaddr;
+    size_t numset      = 0;
+    absl::uint128 bits = netmask_bits.h;
+    while(bits)
+    {
+      if(bits & 1)
+        numset++;
+      bits >>= 1;
+    }
+    str += inet_ntop(AF_INET6, &inaddr, buf, sizeof(buf));
+    return str + "/" + std::to_string(numset);
+  }
+
+  IPRange
+  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
+  {
+    return IPRange{net::IPPacket::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)),
+                   netmask_ipv6_bits(mask + 96)};
+  }
+
+  bool
   IsIPv4Bogon(const huint32_t& addr)
   {
     static std::vector< IPRange > bogonRanges = {
@@ -1023,7 +1026,7 @@ namespace llarp
         iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
     for(const auto& bogon : bogonRanges)
     {
-      if(bogon.Contains(addr))
+      if(bogon.ContainsV4(addr))
       {
 #if defined(TESTNET)
         return false;

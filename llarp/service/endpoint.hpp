@@ -34,6 +34,29 @@ namespace llarp
     struct Context;
     struct OutboundContext;
 
+    struct IConvoEventListener
+    {
+      ~IConvoEventListener() = default;
+
+      /// called when we have obtained the introset
+      /// called with nullptr on not found or when we
+      /// talking to a snode
+      virtual void
+      FoundIntroSet(const IntroSet*) = 0;
+
+      /// called when we found the RC we need for alignment
+      virtual void
+      FoundRC(const RouterContact) = 0;
+
+      /// called when we have successfully built an aligned path
+      virtual void GotAlignedPath(path::Path_ptr) = 0;
+
+      /// called when we have established a session or conversation
+      virtual void
+      MadeConvo(const ConvoTag) = 0;
+    };
+    using ConvoEventListener_ptr = std::shared_ptr< IConvoEventListener >;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
@@ -81,10 +104,10 @@ namespace llarp
       }
 
       /// get our ifaddr if it is set
-      virtual huint32_t
+      virtual huint128_t
       GetIfAddr() const
       {
-        return huint32_t{0};
+        return {0};
       }
 
       virtual void
@@ -106,7 +129,7 @@ namespace llarp
       EndpointNetLoop();
 
       /// crypto worker threadpool
-      llarp_threadpool*
+      std::shared_ptr< llarp::thread::ThreadPool >
       CryptoWorker();
 
       AbstractRouter*
@@ -130,9 +153,6 @@ namespace llarp
       void
       HandlePathDied(path::Path_ptr p) override;
 
-      void
-      EnsureReplyPath(const ServiceInfo& addr);
-
       bool
       PublishIntroSet(AbstractRouter* r) override;
 
@@ -151,11 +171,11 @@ namespace llarp
       HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
 
-      virtual huint32_t
-      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
+      // virtual huint128_t
+      // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
-      virtual bool
-      HasAddress(const AlignedBuffer< 32 >& addr) const = 0;
+      // virtual bool
+      // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;
 
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
@@ -168,12 +188,17 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(const PathID_t&,
+      HandleDataMessage(path::Path_ptr path, const PathID_t from,
                         std::shared_ptr< ProtocolMessage > msg) override;
 
+      /// handle packet io from service node or hidden service to frontend
       virtual bool
-      HandleWriteIPPacket(const llarp_buffer_t& pkt,
-                          std::function< huint32_t(void) > getFromIP) = 0;
+      HandleInboundPacket(const ConvoTag tag, const llarp_buffer_t& pkt,
+                          ProtocolType t) = 0;
+
+      // virtual bool
+      // HandleWriteIPPacket(const llarp_buffer_t& pkt,
+      //                    std::function< huint128_t(void) > getFromIP) = 0;
 
       bool
       ProcessDataMessage(std::shared_ptr< ProtocolMessage > msg);
@@ -207,11 +232,13 @@ namespace llarp
       HandlePathBuilt(path::Path_ptr path) override;
 
       bool
-      SendToServiceOrQueue(const service::Address& addr,
-                           const llarp_buffer_t& payload, ProtocolType t);
+      EnsureConvo(const AlignedBuffer< 32 > addr, bool snode,
+                  ConvoEventListener_ptr ev);
 
       bool
-      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+      SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
+
+      ;
 
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
@@ -227,6 +254,15 @@ namespace llarp
       static void
       HandlePathDead(void*);
 
+      /// return true if we have a convotag as an exit session
+      /// or as a hidden service session
+      /// set addr and issnode
+      ///
+      /// return false if we don't have either
+      bool
+      GetEndpointWithConvoTag(const ConvoTag t, AlignedBuffer< 32 >& addr,
+                              bool& issnode) const;
+
       bool
       HasConvoTag(const ConvoTag& t) const override;
 
@@ -240,25 +276,29 @@ namespace llarp
       /// return false if we have already called this function before for this
       /// address
       bool
-      EnsurePathToService(const Address& remote, PathEnsureHook h,
+      EnsurePathToService(const Address remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       using SNodeEnsureHook =
-          std::function< void(RouterID, exit::BaseSession_ptr) >;
+          std::function< void(const RouterID, exit::BaseSession_ptr) >;
 
       /// ensure a path to a service node by public key
       void
-      EnsurePathToSNode(const RouterID& remote, SNodeEnsureHook h);
+      EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);
 
       /// return true if this endpoint is trying to lookup this router right now
       bool
       HasPendingRouterLookup(const RouterID remote) const;
 
       bool
-      HasPathToSNode(const RouterID& remote) const;
+      HasPathToSNode(const RouterID remote) const;
 
       void
-      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info) override;
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info,
+                   bool inbound) override;
+
+      bool
+      HasInboundConvo(const Address& addr) const override;
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
@@ -288,7 +328,7 @@ namespace llarp
                        Introduction& intro) const override;
 
       bool
-      GetConvoTagsForService(const ServiceInfo& si,
+      GetConvoTagsForService(const Address& si,
                              std::set< ConvoTag >& tag) const override;
 
       void
@@ -310,8 +350,17 @@ namespace llarp
       GenTXID();
 
      protected:
+      bool
+      SendToServiceOrQueue(const service::Address& addr,
+                           const llarp_buffer_t& payload, ProtocolType t);
+      bool
+      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+
       /// parent context that owns this endpoint
       Context* const context;
+
+      virtual bool
+      SupportsV6() const = 0;
 
       void
       RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
@@ -433,8 +482,12 @@ namespace llarp
           std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
                                    Address::Hash >;
 
-      using SNodeSessions = std::unordered_multimap<
-          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
+      using SNodeSessionValue =
+          std::pair< std::shared_ptr< exit::BaseSession >, ConvoTag >;
+
+      using SNodeSessions =
+          std::unordered_multimap< RouterID, SNodeSessionValue,
+                                   RouterID::Hash >;
 
       using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
@@ -454,10 +507,9 @@ namespace llarp
       Sessions m_RemoteSessions;
       Sessions m_DeadSessions;
 
-      SNodeSessions m_SNodeSessions;
+      std::set< ConvoTag > m_InboundConvos;
 
-      std::unordered_map< Address, ServiceInfo, Address::Hash >
-          m_AddressToService;
+      SNodeSessions m_SNodeSessions;
 
       std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;

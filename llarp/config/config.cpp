@@ -100,7 +100,7 @@ namespace llarp
       m_addrInfo.port    = p;
       m_publicOverride   = true;
     }
-    if(key == "worker-threads")
+    if(key == "worker-threads" || key == "threads")
     {
       m_workerThreads = atoi(std::string(val).c_str());
       if(m_workerThreads <= 0)

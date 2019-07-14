@@ -33,8 +33,9 @@ namespace llarp
 
     using ProtocolType = uint64_t;
 
-    constexpr ProtocolType eProtocolControl = 0UL;
-    constexpr ProtocolType eProtocolTraffic = 1UL;
+    constexpr ProtocolType eProtocolControl   = 0UL;
+    constexpr ProtocolType eProtocolTrafficV4 = 1UL;
+    constexpr ProtocolType eProtocolTrafficV6 = 2UL;
 
     /// inner message
     struct ProtocolMessage
@@ -42,14 +43,12 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto  = eProtocolTraffic;
+      ProtocolType proto  = eProtocolTrafficV4;
       llarp_time_t queued = 0;
       std::vector< byte_t > payload;
       Introduction introReply;
       ServiceInfo sender;
       IDataHandler* handler = nullptr;
-      /// local path we got this message from
-      PathID_t srcPath;
       ConvoTag tag;
       uint64_t seqno   = 0;
       uint64_t version = LLARP_PROTO_VERSION;
@@ -64,7 +63,8 @@ namespace llarp
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(std::shared_ptr< ProtocolMessage > self);
+      ProcessAsync(path::Path_ptr p, PathID_t from,
+                   std::shared_ptr< ProtocolMessage > self);
 
       bool
       operator<(const ProtocolMessage& other) const
@@ -126,10 +126,10 @@ namespace llarp
       Sign(const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
-                            path::Path_ptr fromPath, llarp_threadpool* worker,
-                            const Identity& localIdent,
-                            IDataHandler* handler) const;
+      AsyncDecryptAndVerify(
+          std::shared_ptr< Logic > logic, path::Path_ptr fromPath,
+          const std::shared_ptr< llarp::thread::ThreadPool >& worker,
+          const Identity& localIdent, IDataHandler* handler) const;
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey,

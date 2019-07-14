@@ -30,7 +30,7 @@ namespace llarp
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,
-                       const ConvoTag& t);
+                       const ConvoTag& t, ProtocolType proto);
 
       static void
       Result(void* user);

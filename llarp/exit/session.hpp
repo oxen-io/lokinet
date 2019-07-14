@@ -74,7 +74,7 @@ namespace llarp
       HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
-      QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
+      QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t packSize);
 
       /// flush upstream to exit via paths
       bool
@@ -139,7 +139,7 @@ namespace llarp
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;
       TieredQueue_t m_Upstream;
 
-      using DownstreamPkt = std::pair< uint64_t, llarp::net::IPv4Packet >;
+      using DownstreamPkt = std::pair< uint64_t, llarp::net::IPPacket >;
 
       struct DownstreamPktSorter
       {

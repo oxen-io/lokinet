@@ -5,6 +5,7 @@
 #include <dns/name.hpp>
 #include <dns/rr.hpp>
 #include <net/net.hpp>
+#include <net/ip.hpp>
 #include <util/buffer.hpp>
 
 #include <algorithm>
@@ -49,8 +50,8 @@ TEST_F(DNSLibTest, TestHasTLD)
 
 TEST_F(DNSLibTest, TestPTR)
 {
-  llarp::huint32_t ip       = {0};
-  llarp::huint32_t expected = llarp::ipaddr_ipv4_bits(10, 10, 10, 1);
+  llarp::huint128_t ip       = {0};
+  llarp::huint128_t expected = llarp::net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
   ASSERT_TRUE(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
   ASSERT_EQ(ip, expected);
 }

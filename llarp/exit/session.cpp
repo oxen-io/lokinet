@@ -200,7 +200,7 @@ namespace llarp
     {
       if(m_WritePacket)
       {
-        llarp::net::IPv4Packet pkt;
+        llarp::net::IPPacket pkt;
         if(!pkt.Load(buf))
           return false;
         m_Downstream.emplace(counter, pkt);
@@ -222,8 +222,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt,
-                                      const size_t N)
+    BaseSession::QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t N)
     {
       const llarp_buffer_t& buf = pkt.Buffer();
       auto& queue               = m_Upstream[buf.sz / N];

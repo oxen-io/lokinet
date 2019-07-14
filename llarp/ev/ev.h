@@ -59,7 +59,6 @@ llarp_make_ev_loop();
 // run mainloop
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
-                                 struct llarp_threadpool *tp,
                                  std::shared_ptr< llarp::Logic > logic);
 
 /// get the current time on the event loop

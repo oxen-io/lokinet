@@ -31,10 +31,11 @@ namespace llarp
     }
 
     void
-    ProtocolMessage::ProcessAsync(std::shared_ptr< ProtocolMessage > self)
+    ProtocolMessage::ProcessAsync(path::Path_ptr path, PathID_t from,
+                                  std::shared_ptr< ProtocolMessage > self)
     {
-      if(!self->handler->HandleDataMessage(self->srcPath, self))
-        LogWarn("failed to handle data message from ", self->srcPath);
+      if(!self->handler->HandleDataMessage(path, from, self))
+        LogWarn("failed to handle data message from ", path->Name());
     }
 
     bool
@@ -245,6 +246,7 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
+      path::Path_ptr path;
       std::shared_ptr< Logic > logic;
       std::shared_ptr< ProtocolMessage > msg;
       const Identity& m_LocalIdentity;
@@ -337,12 +339,15 @@ namespace llarp
 
         self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
         self->handler->PutReplyIntroFor(self->msg->tag, self->fromIntro);
-        self->handler->PutSenderFor(self->msg->tag, self->msg->sender);
+        self->handler->PutSenderFor(self->msg->tag, self->msg->sender, true);
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
         self->msg->handler                     = self->handler;
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
-        self->logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
+        path::Path_ptr path                    = std::move(self->path);
+        const PathID_t from                    = self->frame.F;
+        self->logic->queue_func(
+            [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
         delete self;
       }
     };
@@ -363,22 +368,20 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(std::shared_ptr< Logic > logic,
-                                         path::Path_ptr recvPath,
-                                         llarp_threadpool* worker,
-                                         const Identity& localIdent,
-                                         IDataHandler* handler) const
+    ProtocolFrame::AsyncDecryptAndVerify(
+        std::shared_ptr< Logic > logic, path::Path_ptr recvPath,
+        const std::shared_ptr< llarp::thread::ThreadPool >& worker,
+        const Identity& localIdent, IDataHandler* handler) const
     {
       auto msg = std::make_shared< ProtocolMessage >();
       if(T.IsZero())
       {
         LogInfo("Got protocol frame with new convo");
-        msg->srcPath = recvPath->RXID();
         // we need to dh
-        auto dh = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
+        auto dh  = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
                                         recvPath->intro);
-        llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
-        return true;
+        dh->path = recvPath;
+        return worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
       }
       SharedSecret shared;
       if(!handler->GetCachedSessionKeyFor(T, shared))
@@ -402,9 +405,10 @@ namespace llarp
         LogError("failed to decrypt message");
         return false;
       }
-      msg->srcPath = recvPath->RXID();
-      msg->handler = handler;
-      logic->queue_func([=]() { ProtocolMessage::ProcessAsync(msg); });
+      msg->handler        = handler;
+      const PathID_t from = F;
+      logic->queue_func(
+          [=]() { ProtocolMessage::ProcessAsync(recvPath, from, msg); });
       return true;
     }
 

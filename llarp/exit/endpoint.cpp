@@ -10,7 +10,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const llarp::PubKey& remoteIdent,
                        const llarp::PathID_t& beginPath, bool rewriteIP,
-                       huint32_t ip, llarp::handlers::ExitEndpoint* parent)
+                       huint128_t ip, llarp::handlers::ExitEndpoint* parent)
         : createdAt(parent->Now())
         , m_Parent(parent)
         , m_remoteSignKey(remoteIdent)
@@ -110,16 +110,32 @@ namespace llarp
       if(m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
 
-      llarp::net::IPv4Packet pkt;
+      llarp::net::IPPacket pkt;
       if(!pkt.Load(buf.underlying))
         return false;
-
-      huint32_t dst;
-      if(m_RewriteSource)
-        dst = m_Parent->GetIfAddr();
+      if(pkt.IsV6() && m_Parent->SupportsV6())
+      {
+        huint128_t dst;
+        if(m_RewriteSource)
+          dst = m_Parent->GetIfAddr();
+        else
+          dst = pkt.dstv6();
+        pkt.UpdateIPv6Address(m_IP, dst);
+      }
+      else if(pkt.IsV4() && !m_Parent->SupportsV6())
+      {
+        huint32_t dst;
+        if(m_RewriteSource)
+          dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
+        else
+          dst = pkt.dstv4();
+        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)),
+                              xhtonl(dst));
+      }
       else
-        dst = pkt.dst();
-      pkt.UpdateIPv4PacketOnDst(m_IP, dst);
+      {
+        return false;
+      }
       m_UpstreamQueue.emplace(pkt, counter);
       m_TxRate += buf.underlying.sz;
       m_LastActive = m_Parent->Now();
@@ -129,16 +145,16 @@ namespace llarp
     bool
     Endpoint::QueueInboundTraffic(ManagedBuffer buf)
     {
-      llarp::net::IPv4Packet pkt;
+      llarp::net::IPPacket pkt;
       if(!pkt.Load(buf.underlying))
         return false;
 
-      huint32_t src;
+      huint128_t src;
       if(m_RewriteSource)
         src = m_Parent->GetIfAddr();
       else
-        src = pkt.src();
-      pkt.UpdateIPv4PacketOnDst(src, m_IP);
+        src = pkt.srcv6();
+      pkt.UpdateIPv6Address(src, m_IP);
       const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
       const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
       if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())

@@ -44,7 +44,7 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  explicit llarp_nodedb(llarp::thread::ThreadPool *diskworker)
+  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker)
       : disk(diskworker)
   {
   }
@@ -54,7 +54,7 @@ struct llarp_nodedb
     Clear();
   }
 
-  llarp::thread::ThreadPool *disk;
+  std::shared_ptr< llarp::thread::ThreadPool > disk;
   mutable llarp::util::Mutex access;  // protects entries
 
   struct NetDBEntry
@@ -95,17 +95,30 @@ struct llarp_nodedb
   bool
   Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
 
-  /// insert and write to disk in background
+  /// unconditional insert and write to disk in background
+  /// updates the inserted time of the entry
   void
   InsertAsync(llarp::RouterContact rc,
               std::shared_ptr< llarp::Logic > l             = nullptr,
               std::function< void(void) > completionHandler = nullptr);
+
+  /// update rc if newer
+  /// return true if we started to put this rc in the database
+  /// retur false if not newer
+  bool
+  UpdateAsyncIfNewer(llarp::RouterContact rc,
+                     std::shared_ptr< llarp::Logic > l             = nullptr,
+                     std::function< void(void) > completionHandler = nullptr)
+      LOCKS_EXCLUDED(access);
 
   ssize_t
   Load(const fs::path &path);
 
   ssize_t
   loadSubdir(const fs::path &dir);
+  /// save all entries to disk async
+  void
+  AsyncFlushToDisk();
 
   bool
   loadfile(const fs::path &fpath) LOCKS_EXCLUDED(access);
@@ -122,10 +135,10 @@ struct llarp_nodedb
   ssize_t
   store_dir(const char *dir);
 
-  /// visit all entries inserted into nodedb cache after a timestamp
+  /// visit all entries inserted into nodedb cache before a timestamp
   void
-  VisitInsertedAfter(std::function< void(const llarp::RouterContact &) > visit,
-                     llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
+  VisitInsertedBefore(std::function< void(const llarp::RouterContact &) > visit,
+                      llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
 
   size_t
   num_loaded() const LOCKS_EXCLUDED(access);
@@ -148,9 +161,6 @@ struct llarp_nodedb
 
   void
   SaveAll() LOCKS_EXCLUDED(access);
-
-  void
-  AsyncFlushToDisk();
 };
 
 /// struct for async rc verification
@@ -167,9 +177,9 @@ struct llarp_async_verify_rc
   /// nodedb storage
   llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
-  std::shared_ptr< llarp::Logic > logic;  // includes a llarp_threadpool
-  llarp_threadpool *cryptoworker;
-  llarp::thread::ThreadPool *diskworker;
+  std::shared_ptr< llarp::Logic > logic;
+  std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
+  std::shared_ptr< llarp::thread::ThreadPool > diskworker;
 
   /// router contact
   llarp::RouterContact rc;

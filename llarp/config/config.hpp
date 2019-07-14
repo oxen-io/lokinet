@@ -125,8 +125,8 @@ namespace llarp
     struct sockaddr_in m_ip4addr;
     AddressInfo m_addrInfo;
 
-    int m_workerThreads;
-    int m_numNetThreads;
+    int m_workerThreads = 1;
+    int m_numNetThreads = 1;
 
    public:
     // clang-format off

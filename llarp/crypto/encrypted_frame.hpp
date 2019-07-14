@@ -79,12 +79,12 @@ namespace llarp
     EncryptedFrame target;
 
     void
-    AsyncDecrypt(llarp_threadpool* worker, const EncryptedFrame& frame,
-                 User_ptr u)
+    AsyncDecrypt(const std::shared_ptr< thread::ThreadPool >& worker,
+                 const EncryptedFrame& frame, User_ptr u)
     {
       target = frame;
       user   = u;
-      llarp_threadpool_queue_job(worker, {this, &Decrypt});
+      worker->addJob(std::bind(&Decrypt, this));
     }
   };
 }  // namespace llarp

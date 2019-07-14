@@ -58,22 +58,10 @@ namespace llarp
     {
       SetPIDFile(config->system.pidfile);
     }
-
-    // Router config
-    if(!singleThreaded && config->router.workerThreads() > 0 && !worker)
-    {
-      worker.reset(llarp_init_threadpool(config->router.workerThreads(),
-                                         "llarp-worker"));
-    }
-
-    if(singleThreaded)
-    {
-      num_nethreads = 0;
-    }
-    else
-    {
-      num_nethreads = config->router.numNetThreads();
-    }
+    auto threads = config->router.workerThreads();
+    if(threads <= 0)
+      threads = 1;
+    worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024, "llarp-worker");
 
     nodedb_dir = config->netdb.nodedbDir();
 
@@ -212,21 +200,7 @@ __        ___    ____  _   _ ___ _   _  ____
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
-    // ensure worker thread pool
-    if(!worker && !singleThreaded)
-      worker.reset(llarp_init_threadpool(2, "llarp-worker"));
-    else if(singleThreaded)
-    {
-      llarp::LogInfo("running in single threaded mode");
-      worker.reset(llarp_init_same_process_threadpool());
-    }
-    // ensure netio thread
-    if(singleThreaded)
-    {
-      logic = std::make_shared< Logic >(worker.get());
-    }
-    else
-      logic = std::make_shared< Logic >();
+    logic    = std::make_shared< Logic >();
 
     if(debug)
     {
@@ -257,7 +231,7 @@ __        ___    ____  _   _ ___ _   _  ____
     }
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
-    router = std::make_unique< Router >(worker.get(), mainloop, logic);
+    router = std::make_unique< Router >(worker, mainloop, logic);
     if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
@@ -288,7 +262,7 @@ __        ___    ____  _   _ ___ _   _  ____
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic);
+    llarp_ev_loop_run_single_process(mainloop, logic);
     // waits for router graceful stop
     return 0;
   }
@@ -390,17 +364,13 @@ __        ___    ____  _   _ ___ _   _  ____
   {
     llarp::LogDebug("stop workers");
     if(worker)
-      llarp_threadpool_stop(worker.get());
-
-    llarp::LogDebug("join workers");
-    if(worker)
-      llarp_threadpool_join(worker.get());
+      worker->stop();
 
     llarp::LogDebug("free config");
     config.release();
 
     llarp::LogDebug("free workers");
-    worker.release();
+    worker.reset();
 
     llarp::LogDebug("free nodedb");
     nodedb.release();
@@ -433,6 +403,7 @@ extern "C"
   struct llarp_main *
   llarp_main_init(const char *fname, bool multiProcess)
   {
+    (void)multiProcess;
     if(!fname)
       fname = "daemon.ini";
     char *var = getenv("LLARP_DEBUG");
@@ -440,9 +411,8 @@ extern "C"
     {
       cSetLogLevel(eLogDebug);
     }
-    llarp_main *m          = new llarp_main;
-    m->ctx                 = std::make_unique< llarp::Context >();
-    m->ctx->singleThreaded = !multiProcess;
+    llarp_main *m = new llarp_main;
+    m->ctx        = std::make_unique< llarp::Context >();
     if(!m->ctx->LoadConfig(fname))
     {
       m->ctx->Close();

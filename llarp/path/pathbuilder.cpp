@@ -23,9 +23,9 @@ namespace llarp
     using Handler = std::function< void(const AsyncPathKeyExchangeContext&) >;
 
     Handler result;
-    size_t idx               = 0;
-    AbstractRouter* router   = nullptr;
-    llarp_threadpool* worker = nullptr;
+    size_t idx             = 0;
+    AbstractRouter* router = nullptr;
+    std::shared_ptr< thread::ThreadPool > worker;
     std::shared_ptr< Logic > logic;
     LR_CommitMessage LRCM;
 
@@ -101,7 +101,7 @@ namespace llarp
       else
       {
         // next hop
-        worker->QueueFunc(
+        worker->addJob(
             std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
       }
     }
@@ -109,7 +109,7 @@ namespace llarp
     /// Generate all keys asynchronously and call handler when done
     void
     AsyncGenerateKeys(Path_t p, std::shared_ptr< Logic > l,
-                      llarp_threadpool* pool, Handler func)
+                      std::shared_ptr< thread::ThreadPool > pool, Handler func)
     {
       path   = p;
       logic  = l;
@@ -120,7 +120,7 @@ namespace llarp
       {
         LRCM.frames[i].Randomize();
       }
-      pool->QueueFunc(
+      pool->addJob(
           std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
     }
   };
@@ -138,6 +138,7 @@ namespace llarp
         ctx.router->PersistSessionUntil(remote, ctx.path->ExpireTime());
         // add own path
         ctx.router->pathContext().AddOwnPath(ctx.pathset, ctx.path);
+        ctx.pathset->PathBuildStarted(ctx.path);
       }
       else
         LogError(ctx.pathset->Name(), " failed to send LRCM to ", remote);
@@ -166,12 +167,22 @@ namespace llarp
       if(ShouldBuildMore(now))
         BuildOne();
       TickPaths(now, router);
+      if(m_BuildStats.attempts > 50)
+      {
+        if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
+           && now - m_LastWarn > 5000)
+        {
+          LogWarn(Name(), " has a low path build success. ", m_BuildStats);
+          m_LastWarn = now;
+        }
+      }
     }
 
     util::StatusObject
     Builder::ExtractStatus() const
     {
-      util::StatusObject obj{{"numHops", uint64_t(numHops)},
+      util::StatusObject obj{{"buildStats", m_BuildStats.ExtractStatus()},
+                             {"numHops", uint64_t(numHops)},
                              {"numPaths", uint64_t(m_NumPaths)}};
       std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
@@ -425,6 +436,7 @@ namespace llarp
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       router->routerProfiling().MarkPathSuccess(p.get());
       LogInfo(p->Name(), " built latency=", p->intro.latency);
+      m_BuildStats.success++;
     }
 
     void

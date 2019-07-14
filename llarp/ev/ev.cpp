@@ -34,7 +34,6 @@ llarp_make_ev_loop()
 
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
-                                 struct llarp_threadpool *tp,
                                  std::shared_ptr< llarp::Logic > logic)
 {
   while(ev->running())
@@ -45,7 +44,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     {
       ev->update_time();
       logic->tick_async(ev->time_now());
-      llarp_threadpool_tick(tp);
+      llarp_threadpool_tick(logic->thread);
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }
@@ -94,46 +93,17 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
-  // llarp::LogInfo("ev creating tunnel ", tun->ifaddr, " on ", tun->ifname);
-  if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto") == 0)
+#if !defined(_WIN32)
+  if(tun->ifaddr[0] == 0 || strcmp(tun->ifaddr, "auto") == 0)
   {
-    std::string ifaddr = llarp::findFreePrivateRange();
-    auto pos           = ifaddr.find("/");
-    if(pos == std::string::npos)
-    {
-      llarp::LogWarn("Auto ifaddr didn't return a netmask: ", ifaddr);
-      return false;
-    }
-    int num;
-    std::string part = ifaddr.substr(pos + 1);
-#if defined(ANDROID) || defined(RPI)
-    num = atoi(part.c_str());
-#else
-    num = std::stoi(part);
-#endif
-    if(num <= 0)
-    {
-      llarp::LogError("bad ifaddr netmask value: ", ifaddr);
-      return false;
-    }
-    tun->netmask           = num;
-    const std::string addr = ifaddr.substr(0, pos);
-    std::copy_n(addr.begin(), std::min(sizeof(tun->ifaddr), addr.size()),
-                tun->ifaddr);
-    llarp::LogInfo("IfAddr autodetect: ", tun->ifaddr, "/", tun->netmask);
+    LogError("invalid ifaddr on tun: ", tun->ifaddr);
+    return false;
   }
-  if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto") == 0)
+  if(tun->ifname[0] == 0 || strcmp(tun->ifname, "auto") == 0)
   {
-    std::string ifname = llarp::findFreeLokiTunIfName();
-    std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()),
-                tun->ifname);
-    llarp::LogInfo("IfName autodetect: ", tun->ifname);
+    LogError("invalid ifname on tun: ", tun->ifname);
+    return false;
   }
-  llarp::LogDebug("Tun Interface will use the following settings:");
-  llarp::LogDebug("IfAddr: ", tun->ifaddr);
-  llarp::LogDebug("IfName: ", tun->ifname);
-  llarp::LogDebug("IfNMsk: ", tun->netmask);
-#ifndef _WIN32
   return loop->tun_listen(tun);
 #else
   UNREFERENCED_PARAMETER(loop);
@@ -145,9 +115,9 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
     dev->setup();
     return dev->add_ev();  // start up tun and add to event queue
   }
-#endif
   llarp::LogWarn("Loop could not create tun");
   return false;
+#endif
 }
 
 bool

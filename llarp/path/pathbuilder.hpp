@@ -15,6 +15,9 @@ namespace llarp
 
     struct Builder : public PathSet
     {
+     private:
+      llarp_time_t m_LastWarn = 0;
+
      protected:
       /// flag for PathSet::Stop()
       std::atomic< bool > _run;

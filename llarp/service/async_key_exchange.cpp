@@ -14,7 +14,8 @@ namespace llarp
                                        const Identity& localident,
                                        const PQPubKey& introsetPubKey,
                                        const Introduction& remote,
-                                       IDataHandler* h, const ConvoTag& t)
+                                       IDataHandler* h, const ConvoTag& t,
+                                       ProtocolType proto)
         : logic(l)
         , remote(r)
         , m_LocalIdentity(localident)
@@ -23,6 +24,7 @@ namespace llarp
         , handler(h)
         , tag(t)
     {
+      msg.proto = proto;
     }
 
     void
@@ -30,9 +32,9 @@ namespace llarp
     {
       AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
       // put values
+      self->handler->PutSenderFor(self->msg.tag, self->remote, false);
       self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
       self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
-      self->handler->PutSenderFor(self->msg.tag, self->remote);
       self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
       self->hook(self->frame);
       delete self;
@@ -69,8 +71,6 @@ namespace llarp
       self->msg.sender = self->m_LocalIdentity.pub;
       // set version
       self->msg.version = LLARP_PROTO_VERSION;
-      // set protocol
-      self->msg.proto = eProtocolTraffic;
       // encrypt and sign
       if(self->frame.EncryptAndSign(self->msg, K, self->m_LocalIdentity))
         self->logic->queue_job({self, &Result});

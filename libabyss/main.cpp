@@ -116,11 +116,10 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
   absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
 #endif
   llarp::SetLogLevel(llarp::eLogDebug);
-  llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   // Now that libuv is the single non-Windows event loop impl, we can
   // go back to using the normal function
   llarp_ev_loop_ptr loop = llarp_make_ev_loop();
-  auto logic             = std::make_shared< llarp::Logic >(threadpool);
+  auto logic             = std::make_shared< llarp::Logic >();
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port        = htons(1222);
@@ -135,7 +134,7 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
     {
       client.RunAsync(loop, a.ToString());
       client.DoDemoRequest();
-      llarp_ev_loop_run_single_process(loop, threadpool, logic);
+      llarp_ev_loop_run_single_process(loop, logic);
       return 0;
     }
     else
