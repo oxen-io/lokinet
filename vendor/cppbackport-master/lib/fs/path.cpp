@@ -66,7 +66,7 @@ namespace cpp17
     void
     path::swap(path& p)
     {
-      s.swap(p.s);
+      std::swap(p.s, s);
     }
 
     std::string

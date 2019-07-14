@@ -83,9 +83,7 @@ public:
 	template< typename Source >
 	path& assign(const Source& source)
 	{
-		path t(source);
-
-		swap(t);
+		s = string_type(source);
 		return *this;
 	}
 
@@ -95,9 +93,7 @@ public:
 		Iterator last
 	)
 	{
-		path t(first, last);
-
-		swap(t);
+		s = string_type(first, last);
 		return *this;
 	}
 
