@@ -26,6 +26,8 @@ include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
 # Basic definitions
 set(LIB lokinet)
 set(SHARED_LIB ${LIB}-shared)
@@ -251,7 +253,7 @@ else()
   set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif()
 
-set(LIBS ${MALLOC_LIB} ${FS_LIB} ${UV_LIB})
+set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)

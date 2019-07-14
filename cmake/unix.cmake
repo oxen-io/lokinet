@@ -2,10 +2,11 @@ add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
 if (STATIC_LINK_RUNTIME)
-  find_library(UV_LIB NAMES libuv.a)
-else()
-  find_library(UV_LIB NAMES uv)
+  set(LIBUV_USE_STATIC ON)
 endif()
+
+find_package(LibUV 1.28.0 REQUIRED)
+include_directories(SYSTEM ${LIBUV_INCLUDE_DIRS})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(FS_LIB stdc++fs)
