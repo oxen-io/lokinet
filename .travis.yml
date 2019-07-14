@@ -4,10 +4,7 @@ os:
   - linux
   - osx
 
-osx_image:
-  - xcode11
-  - xcode10.2
-
+osx_image: - xcode10.2
 dist: xenial
 
 compiler:
