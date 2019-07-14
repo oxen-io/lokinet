@@ -1,5 +1,13 @@
 language: cpp
-os: linux
+
+os:
+  - linux
+  - osx
+
+osx_image:
+  - xcode11
+  - xcode10.2
+
 dist: xenial
 
 compiler:
@@ -9,24 +17,16 @@ compiler:
 env:
   global:
     - BUILD_TYPE=Release
+    - NINJA=ninja
   matrix:
     - STATIC_LINK=OFF
-    - STATIC_LINK=OFF
-    - STATIC_LINK=ON
-    - STATIC_LINK=OFF NINJA=ninja
-    - STATIC_LINK=ON NINJA=ninja
     - STATIC_LINK=OFF NETNS=ON
-    - STATIC_LINK=ON NETNS=ON
-    - STATIC_LINK=OFF NINJA=ninja NETNS=ON
-    - STATIC_LINK=ON NINJA=ninja NETNS=ON
-    - STATIC_LINK=OFF SHARED_LIB=ON
-    - STATIC_LINK=ON SHARED_LIB=ON
-    - STATIC_LINK=OFF NINJA=ninja SHARED_LIB=ON
-    - STATIC_LINK=ON NINJA=ninja SHARED_LIB=ON
     - STATIC_LINK=OFF NETNS=ON SHARED_LIB=ON
+    - STATIC_LINK=OFF SHARED_LIB=ON
+    - STATIC_LINK=ON
+    - STATIC_LINK=ON NETNS=ON
     - STATIC_LINK=ON NETNS=ON SHARED_LIB=ON
-    - STATIC_LINK=OFF NINJA=ninja NETNS=ON SHARED_LIB=ON
-    - STATIC_LINK=ON NINJA=ninja NETNS=ON SHARED_LIB=ON
+    - STATIC_LINK=ON SHARED_LIB=ON
 
 addons:
   apt:
@@ -38,6 +38,11 @@ addons:
     - libcap-dev
     - libuv1-dev
     - ninja-build
+  homebrew:
+    packages:
+    - cmake
+    - libuv
+    - ninja
 
 script:
   - make test
