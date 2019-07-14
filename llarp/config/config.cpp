@@ -24,6 +24,7 @@ namespace llarp
       if(val.size() <= NetID::size())
       {
         m_netId.assign(val.begin(), val.end());
+        LogInfo("setting netid to '", val, "'");
       }
       else
       {
@@ -55,22 +56,27 @@ namespace llarp
       m_nickname.assign(val.begin(), val.end());
       // set logger name here
       LogContext::Instance().nodeName = nickname();
+      LogInfo("nickname set");
     }
     if(key == "encryption-privkey")
     {
       m_encryptionKeyfile.assign(val.begin(), val.end());
+      LogDebug("encryption key set to ", m_encryptionKeyfile);
     }
     if(key == "contact-file")
     {
       m_ourRcFile.assign(val.begin(), val.end());
+      LogDebug("rc file set to ", m_ourRcFile);
     }
     if(key == "transport-privkey")
     {
       m_transportKeyfile.assign(val.begin(), val.end());
+      LogDebug("transport key set to ", m_transportKeyfile);
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
       m_identKeyfile.assign(val.begin(), val.end());
+      LogDebug("identity key set to ", m_identKeyfile);
     }
     if(key == "public-address" || key == "public-ip")
     {
@@ -97,13 +103,27 @@ namespace llarp
     if(key == "worker-threads")
     {
       m_workerThreads = atoi(std::string(val).c_str());
+      if(m_workerThreads <= 0)
+      {
+        LogWarn("worker threads invalid value: '", val, "' defaulting to 1");
+        m_workerThreads = 1;
+      }
+      else
+      {
+        LogDebug("set to use ", m_workerThreads, " worker threads");
+      }
     }
     if(key == "net-threads")
     {
       m_numNetThreads = atoi(std::string(val).c_str());
       if(m_numNetThreads <= 0)
       {
+        LogWarn("net threads invalid value: '", val, "' defaulting to 1");
         m_numNetThreads = 1;
+      }
+      else
+      {
+        LogDebug("set to use ", m_numNetThreads, " net threads");
       }
     }
   }
