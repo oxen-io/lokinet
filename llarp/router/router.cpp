@@ -1122,7 +1122,7 @@ namespace llarp
       {
         // don't accept expired RCs
         if(rc.Verify(Now(), false))
-          nodedb()->UpdateAsyncIfNewer(rc);
+          nodedb()->InsertAsync(rc);
       }
     };
 
