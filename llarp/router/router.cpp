@@ -1534,8 +1534,17 @@ namespace llarp
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
-    cryptoworker->start();
-    disk->start();
+    if(!cryptoworker->start())
+    {
+      LogError("crypto worker failed to start");
+      return false;
+    }
+
+    if(!disk->start())
+    {
+      LogError("disk worker failed to start");
+      return false;
+    }
 
     for(const auto &rc : bootstrapRCList)
     {
