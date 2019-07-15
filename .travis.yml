@@ -16,11 +16,7 @@ env:
   global:
     - BUILD_TYPE=Release
     - NINJA=ninja
-  matrix:
     - STATIC_LINK=OFF
-    - STATIC_LINK=OFF SHARED_LIB=ON
-    - STATIC_LINK=ON
-    - STATIC_LINK=ON SHARED_LIB=ON
 
 addons:
   apt:
