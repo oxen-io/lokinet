@@ -552,7 +552,7 @@ namespace llarp
       }
       if(m_Exit)
       {
-        for(const auto &snode : m_SnodeBlacklist)
+        for(const auto &snode : SnodeBlacklist())
           m_Exit->BlacklistSnode(snode);
       }
       return SetupNetworking();

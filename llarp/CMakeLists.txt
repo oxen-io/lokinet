@@ -214,6 +214,7 @@ set(LIB_SRC
   service/async_key_exchange.cpp
   service/config.cpp
   service/context.cpp
+  service/endpoint_state.cpp
   service/endpoint_util.cpp
   service/endpoint.cpp
   service/handler.cpp
@@ -226,6 +227,7 @@ set(LIB_SRC
   service/outbound_context.cpp
   service/pendingbuffer.cpp
   service/protocol.cpp
+  service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
   service/tag_lookup_job.cpp

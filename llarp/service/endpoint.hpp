@@ -32,6 +32,7 @@ namespace llarp
   {
     struct AsyncKeyExchange;
     struct Context;
+    struct EndpointState;
     struct OutboundContext;
 
     struct IConvoEventListener
@@ -133,10 +134,7 @@ namespace llarp
       CryptoWorker();
 
       AbstractRouter*
-      Router()
-      {
-        return m_Router;
-      }
+      Router();
 
       virtual bool
       LoadKeyFile();
@@ -349,6 +347,9 @@ namespace llarp
       uint64_t
       GenTXID();
 
+      const std::set< RouterID >&
+      SnodeBlacklist() const;
+
      protected:
       bool
       SendToServiceOrQueue(const service::Address& addr,
@@ -413,9 +414,6 @@ namespace llarp
         return false;
       }
 
-     public:
-      std::set< RouterID > m_SnodeBlacklist;
-
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
@@ -427,119 +425,16 @@ namespace llarp
      private:
       friend struct EndpointUtil;
 
-      struct RouterLookupJob
-      {
-        RouterLookupJob(Endpoint* p, RouterLookupHandler h) : handler(h)
-        {
-          started = p->Now();
-          txid    = p->GenTXID();
-        }
-
-        RouterLookupHandler handler;
-        uint64_t txid;
-        llarp_time_t started;
-
-        bool
-        IsExpired(llarp_time_t now) const
-        {
-          if(now < started)
-            return false;
-          return now - started > 30000;
-        }
-
-        void
-        InformResult(std::vector< RouterContact > result)
-        {
-          if(handler)
-            handler(result);
-        }
-      };
-
-      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
-      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
-      using PendingTraffic =
-          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
-
-      using ProtocolMessagePtr = std::shared_ptr< ProtocolMessage >;
-      using RecvPacketQueue_t =
-          std::priority_queue< ProtocolMessagePtr,
-                               std::vector< ProtocolMessagePtr >,
-                               ComparePtr< ProtocolMessagePtr > >;
-
-      util::Mutex m_InboundTrafficQueueMutex;
-      /// ordered queue for inbound hidden service traffic
-      RecvPacketQueue_t m_InboundTrafficQueue
-          GUARDED_BY(m_InboundTrafficQueueMutex);
-
-      using PendingRouters =
-          std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
-
-      using PendingLookups =
-          std::unordered_map< uint64_t,
-                              std::unique_ptr< service::IServiceLookup > >;
-
-      using Sessions =
-          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
-                                   Address::Hash >;
-
-      using SNodeSessionValue =
-          std::pair< std::shared_ptr< exit::BaseSession >, ConvoTag >;
-
-      using SNodeSessions =
-          std::unordered_multimap< RouterID, SNodeSessionValue,
-                                   RouterID::Hash >;
+      // clang-format off
+      const IntroSet& introSet() const;
+      IntroSet&       introSet();
 
       using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+      const ConvoMap& Sessions() const;
+      ConvoMap&       Sessions();
+      // clang-format on
 
-      AbstractRouter* m_Router;
-      std::shared_ptr< Logic > m_IsolatedLogic = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop      = nullptr;
-      std::string m_Keyfile;
-      std::string m_Name;
-      std::string m_NetNS;
-      bool m_BundleRC = false;
-
-      util::Mutex m_SendQueueMutex;
-      std::deque< SendEvent_t > m_SendQueue GUARDED_BY(m_SendQueueMutex);
-
-      PendingTraffic m_PendingTraffic;
-
-      Sessions m_RemoteSessions;
-      Sessions m_DeadSessions;
-
-      std::set< ConvoTag > m_InboundConvos;
-
-      SNodeSessions m_SNodeSessions;
-
-      std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
-          m_PendingServiceLookups;
-
-      std::unordered_map< RouterID, uint32_t, RouterID::Hash >
-          m_ServiceLookupFails;
-
-      PendingRouters m_PendingRouters;
-
-      uint64_t m_CurrentPublishTX       = 0;
-      llarp_time_t m_LastPublish        = 0;
-      llarp_time_t m_LastPublishAttempt = 0;
-      llarp_time_t m_MinPathLatency     = (5 * 1000);
-      /// our introset
-      service::IntroSet m_IntroSet;
-      /// pending remote service lookups by id
-      PendingLookups m_PendingLookups;
-      /// prefetch remote address list
-      std::set< Address > m_PrefetchAddrs;
-      /// hidden service tag
-      Tag m_Tag;
-      /// prefetch descriptors for these hidden service tags
-      std::set< Tag > m_PrefetchTags;
-      /// on initialize functions
-      std::list< std::function< bool(void) > > m_OnInit;
-
-      /// conversations
-      ConvoMap m_Sessions;
-
-      std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
+      std::unique_ptr< EndpointState > m_state;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;

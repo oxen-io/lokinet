@@ -5,6 +5,7 @@
 #include <util/status.hpp>
 
 #include <atomic>
+#include <set>
 
 namespace llarp
 {

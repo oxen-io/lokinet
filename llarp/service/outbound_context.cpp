@@ -303,7 +303,7 @@ namespace llarp
       }
       std::set< RouterID > exclude = prev;
       exclude.insert(m_NextIntro.router);
-      for(const auto& snode : m_Endpoint->m_SnodeBlacklist)
+      for(const auto& snode : m_Endpoint->SnodeBlacklist())
         exclude.insert(snode);
       if(hop == numHops - 1)
       {
@@ -384,7 +384,7 @@ namespace llarp
       {
         if(intro.ExpiresSoon(now))
           continue;
-        if(m_Endpoint->m_SnodeBlacklist.count(intro.router))
+        if(m_Endpoint->SnodeBlacklist().count(intro.router))
           continue;
         if(m_BadIntros.find(intro) == m_BadIntros.end()
            && remoteIntro.router == intro.router)
@@ -402,7 +402,7 @@ namespace llarp
         /// pick newer intro not on same router
         for(const auto& intro : currentIntroSet.I)
         {
-          if(m_Endpoint->m_SnodeBlacklist.count(intro.router))
+          if(m_Endpoint->SnodeBlacklist().count(intro.router))
             continue;
           m_Endpoint->EnsureRouterIsKnown(intro.router);
           if(intro.ExpiresSoon(now))

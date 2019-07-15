@@ -1,6 +1,8 @@
 #include <service/endpoint_util.hpp>
 
+#include <exit/session.hpp>
 #include <service/outbound_context.hpp>
+#include <service/lookup.hpp>
 #include <util/logger.hpp>
 
 namespace llarp
@@ -8,8 +10,7 @@ namespace llarp
   namespace service
   {
     void
-    EndpointUtil::ExpireSNodeSessions(llarp_time_t now,
-                                      Endpoint::SNodeSessions& sessions)
+    EndpointUtil::ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions)
     {
       auto itr = sessions.begin();
       while(itr != sessions.end())
@@ -34,8 +35,7 @@ namespace llarp
     }
 
     void
-    EndpointUtil::ExpirePendingTx(llarp_time_t now,
-                                  Endpoint::PendingLookups& lookups)
+    EndpointUtil::ExpirePendingTx(llarp_time_t now, PendingLookups& lookups)
     {
       for(auto itr = lookups.begin(); itr != lookups.end();)
       {
@@ -54,7 +54,7 @@ namespace llarp
 
     void
     EndpointUtil::ExpirePendingRouterLookups(llarp_time_t now,
-                                             Endpoint::PendingRouters& routers)
+                                             PendingRouters& routers)
     {
       for(auto itr = routers.begin(); itr != routers.end();)
       {
@@ -70,8 +70,7 @@ namespace llarp
     }
 
     void
-    EndpointUtil::DeregisterDeadSessions(llarp_time_t now,
-                                         Endpoint::Sessions& sessions)
+    EndpointUtil::DeregisterDeadSessions(llarp_time_t now, Sessions& sessions)
     {
       auto itr = sessions.begin();
       while(itr != sessions.end())
@@ -88,9 +87,8 @@ namespace llarp
     }
 
     void
-    EndpointUtil::TickRemoteSessions(llarp_time_t now,
-                                     Endpoint::Sessions& remoteSessions,
-                                     Endpoint::Sessions& deadSessions)
+    EndpointUtil::TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
+                                     Sessions& deadSessions)
     {
       auto itr = remoteSessions.begin();
       while(itr != remoteSessions.end())
@@ -110,8 +108,7 @@ namespace llarp
     }
 
     void
-    EndpointUtil::ExpireConvoSessions(llarp_time_t now,
-                                      Endpoint::ConvoMap& sessions)
+    EndpointUtil::ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions)
     {
       auto itr = sessions.begin();
       while(itr != sessions.end())
@@ -126,7 +123,7 @@ namespace llarp
     }
 
     void
-    EndpointUtil::StopRemoteSessions(Endpoint::Sessions& remoteSessions)
+    EndpointUtil::StopRemoteSessions(Sessions& remoteSessions)
     {
       for(auto& item : remoteSessions)
       {
@@ -135,7 +132,7 @@ namespace llarp
     }
 
     void
-    EndpointUtil::StopSnodeSessions(Endpoint::SNodeSessions& sessions)
+    EndpointUtil::StopSnodeSessions(SNodeSessions& sessions)
     {
       for(auto& item : sessions)
       {
@@ -145,7 +142,7 @@ namespace llarp
 
     bool
     EndpointUtil::HasPathToService(const Address& addr,
-                                   const Endpoint::Sessions& remoteSessions)
+                                   const Sessions& remoteSessions)
     {
       auto range = remoteSessions.equal_range(addr);
       auto itr   = range.first;
@@ -159,7 +156,7 @@ namespace llarp
     }
 
     bool
-    EndpointUtil::GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
+    EndpointUtil::GetConvoTagsForService(const ConvoMap& sessions,
                                          const Address& info,
                                          std::set< ConvoTag >& tags)
     {
