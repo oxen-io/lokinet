@@ -71,6 +71,7 @@ namespace llarp
     static llarp_time_t Lifetime;
     static llarp_time_t UpdateInterval;
     static llarp_time_t UpdateWindow;
+    static int UpdateTries;
 
     RouterContact()
     {
@@ -178,6 +179,14 @@ namespace llarp
     /// returns true if this RC is expired and should be removed
     bool
     IsExpired(llarp_time_t now) const;
+
+    /// returns time in ms until we expire or 0 if we have expired
+    llarp_time_t
+    TimeUntilExpires(llarp_time_t now) const;
+
+    /// get the age of this RC in ms
+    llarp_time_t
+    Age(llarp_time_t now) const;
 
     bool
     OtherIsNewer(const RouterContact &other) const

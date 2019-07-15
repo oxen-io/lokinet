@@ -617,7 +617,7 @@ namespace llarp
     {
       if(!rc.Verify(Now()))
         continue;
-      nodedb()->InsertAsync(rc);
+      nodedb()->UpdateAsyncIfNewer(rc);
 
       if(ConnectionToRouterAllowed(rc.pubkey)
          && numConnected < minConnectedRouters)
@@ -686,6 +686,7 @@ namespace llarp
       if(whitelistRouters
          && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
         continue;
+      nodedb()->UpdateAsyncIfNewer(result);
       TryConnectAsync(result, 10);
     }
   }
@@ -920,7 +921,6 @@ namespace llarp
           std::make_unique< FileLogStream >(diskworker(), logfile, 100, true);
     }
 
-
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
 
     std::vector< std::string > configRouters = conf->connect.routers;
@@ -1011,7 +1011,7 @@ namespace llarp
     if(result.size() == 1 && !result[0].IsExpired(now))
     {
       LogInfo("storing rc for ", router);
-      nodedb()->Insert(result[0]);
+      nodedb()->UpdateAsyncIfNewer(result[0]);
     }
     else
     {
@@ -1074,6 +1074,33 @@ namespace llarp
         > 0;
   }
 
+  bool
+  Router::ShouldReportStats(llarp_time_t now) const
+  {
+    static constexpr llarp_time_t ReportStatsInterval = 30 * 1000;
+    return now - m_LastStatsReport > ReportStatsInterval;
+  }
+
+  void
+  Router::ReportStats()
+  {
+    const auto now = Now();
+    LogInfo("---- BEGIN REPORT ----");
+    LogInfo(nodedb()->num_loaded(), " RCs loaded");
+    LogInfo(bootstrapRCList.size(), " bootstrap peers");
+    LogInfo(NumberOfConnectedRouters(), " router connections");
+    if(IsServiceNode())
+    {
+      LogInfo(NumberOfConnectedClients(), " client connections");
+      LogInfo(_rc.Age(now), " ms since we last updated our RC");
+      LogInfo(_rc.TimeUntilExpires(now), " ms until our RC expires");
+    }
+    LogInfo(now, " system time");
+    LogInfo(m_LastStatsReport, " last reported stats");
+    LogInfo("----- END REPORT -----");
+    m_LastStatsReport = now;
+  }
+
   void
   Router::Tick()
   {
@@ -1084,7 +1111,49 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    if(IsServiceNode())
+    if(ShouldReportStats(now))
+    {
+      ReportStats();
+    }
+
+    const auto insertRouters = [&](const std::vector< RouterContact > &res) {
+      // store found routers
+      for(const auto &rc : res)
+      {
+        // don't accept expired RCs
+        if(rc.Verify(Now(), false))
+          nodedb()->InsertAsync(rc);
+      }
+    };
+
+    const bool isSvcNode = IsServiceNode();
+
+    // try looking up stale routers
+    nodedb()->VisitInsertedBefore(
+        [&](const RouterContact &rc) {
+          if(HasPendingRouterLookup(rc.pubkey))
+            return;
+          LookupRouter(rc.pubkey, insertRouters);
+        },
+        now - RouterContact::UpdateInterval);
+
+    std::set< RouterID > removeStale;
+    // remove stale routers
+    const auto timeout = RouterContact::UpdateWindow * RouterContact::UpdateTries;
+    nodedb()->VisitInsertedBefore(
+        [&](const RouterContact &rc) {
+          if(IsBootstrapNode(rc.pubkey))
+            return;
+          LogInfo("removing stale router: ", RouterID(rc.pubkey));
+          removeStale.insert(rc.pubkey);
+        },
+        now - timeout);
+
+    nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
+      return removeStale.count(rc.pubkey) > 0;
+    });
+
+    if(isSvcNode)
     {
       if(_rc.ExpiresSoon(now, randint() % 10000)
          || (now - _rc.last_updated) > rcRegenInterval)
@@ -1103,36 +1172,7 @@ namespace llarp
       });
       */
     }
-    else
-    {
-      // try looking up stale routers
-      nodedb()->VisitInsertedBefore(
-          [&](const RouterContact &rc) {
-            if(HasPendingRouterLookup(rc.pubkey))
-              return;
-            LookupRouter(rc.pubkey,
-                         [&](const std::vector< RouterContact > &result) {
-                           // store found routers
-                           for(const auto &rc : result)
-                             nodedb()->InsertAsync(rc);
-                         });
-          },
-          now - RouterContact::UpdateInterval);
-      std::set< RouterID > removeStale;
-      // remove stale routers
-      nodedb()->VisitInsertedBefore(
-          [&](const RouterContact &rc) {
-            if(IsBootstrapNode(rc.pubkey))
-              return;
-            removeStale.insert(rc.pubkey);
-          },
-          now - ((RouterContact::UpdateInterval * 3) / 2));
-
-      nodedb()->RemoveIf([removeStale](const RouterContact &rc) -> bool {
-        return removeStale.count(rc.pubkey) > 0;
-      });
-    }
-    // expire transit paths
+    // expire paths
     paths.ExpirePaths(now);
     {
       auto itr = pendingEstablishJobs.begin();
@@ -1215,7 +1255,7 @@ namespace llarp
       ConnectToRandomRouters(dlt);
     }
 
-    if(!IsServiceNode())
+    if(!isSvcNode)
     {
       _hiddenServiceContext.Tick(now);
     }
@@ -1493,8 +1533,17 @@ namespace llarp
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
-    cryptoworker->start();
-    disk->start();
+    if(!cryptoworker->start())
+    {
+      LogError("crypto worker failed to start");
+      return false;
+    }
+
+    if(!disk->start())
+    {
+      LogError("disk worker failed to start");
+      return false;
+    }
 
     for(const auto &rc : bootstrapRCList)
     {

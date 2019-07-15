@@ -645,7 +645,7 @@ namespace llarp
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      if(!_nodes->GetManyNearExcluding(t, found, 1,
+      if(!_nodes->GetManyNearExcluding(t, found, nodeCount >= 4 ? 4 : 1,
                                        std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
@@ -685,12 +685,9 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      if(target != askpeer)
-      {
-        _pendingRouterLookups.NewTX(
-            peer, asker, target,
-            new RecursiveRouterLookup(asker, target, this, handler));
-      }
+       _pendingRouterLookups.NewTX(
+         peer, asker, target,
+         new RecursiveRouterLookup(asker, target, this, handler));
     }
 
     llarp_time_t

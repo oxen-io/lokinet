@@ -36,6 +36,8 @@ namespace llarp
   llarp_time_t RouterContact::UpdateInterval = 30 * 60 * 1000;
   // 1 minute window for update
   llarp_time_t RouterContact::UpdateWindow = 60 * 1000;
+  // try 5 times to update
+  int RouterContact::UpdateTries = 5;
 
   NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {
@@ -236,15 +238,26 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
+    return Age(now) >= Lifetime;
+  }
+
+  llarp_time_t
+  RouterContact::TimeUntilExpires(llarp_time_t now) const
+  {
     const auto expiresAt = last_updated + Lifetime;
-    return now >= expiresAt;
+    return now < expiresAt ? expiresAt - now : 0;
+  }
+
+  llarp_time_t
+  RouterContact::Age(llarp_time_t now) const
+  {
+    return now > last_updated ? now - last_updated : 0;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
-    const auto expiresAt = last_updated + Lifetime;
-    return expiresAt <= now || expiresAt - now <= dlt;
+    return TimeUntilExpires(now) <= dlt;
   }
 
   std::string
