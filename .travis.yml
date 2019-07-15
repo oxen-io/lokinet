@@ -14,9 +14,11 @@ compiler:
 
 env:
   global:
-    - BUILD_TYPE=Release
     - NINJA=ninja
     - STATIC_LINK=OFF
+  matrix:
+    - BUILD_TYPE=Debug
+    - BUILD_TYPE=Release
 
 addons:
   apt:
