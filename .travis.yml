@@ -41,6 +41,9 @@ addons:
     - make
 
 script:
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+      choco install make ninja;
+    fi
   - PATH="/usr/local/opt/ccache/libexec:$PATH" make test
 
 after_script:
