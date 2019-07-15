@@ -43,8 +43,10 @@ addons:
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
       choco install make ninja;
+      export CC="/c/Program Files/LLVM/bin/clang-cl";
+      export CXX="/c/Program Files/LLVM/bin/clang-cl";
     fi
-  - PATH="/usr/local/opt/ccache/libexec:$PATH" make test
+  - make test
 
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
