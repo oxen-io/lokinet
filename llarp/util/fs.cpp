@@ -95,7 +95,7 @@ namespace llarp
         if(ec)
           llarp::LogError("failed to set permissions on ", pathname);
       }
-      else if(!ec)  // file is not there
+      else  // file is not there
       {
         errno  = 0;
         int fd = ::open(str.c_str(), O_RDWR | O_CREAT, 0600);
@@ -105,6 +105,7 @@ namespace llarp
           ::close(fd);
         }
       }
+
       if(ec)
         llarp::LogError("failed to ensure ", str, ", ", ec.message());
       return ec;

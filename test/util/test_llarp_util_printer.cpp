@@ -91,20 +91,20 @@ TEST_P(SingleAttributeTest, value)
 
 // clang-format off
 static const SingleAttributeType singleAttributeType[] = {
-    {"our_value", char('a'), StrEq("[ our_value = 'a' ]")},
-    {"our_value", bool(true), StrEq("[ our_value = true ]")},
-    {"our_value", bool(false), StrEq("[ our_value = false ]")},
-    {"our_value", short(123), StrEq("[ our_value = 123 ]")},
-    {"our_value", int(INT_MAX - 1), StrEq("[ our_value = 2147483646 ]")},
-    {"our_value", static_cast< unsigned int >(std::numeric_limits< int >::max()) + 1, StrEq("[ our_value = 2147483648 ]")},
-    {"our_value", static_cast< const void * >(PTR_TYPE), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))},
-    {"our_value", static_cast< const char * >(PTR_TYPE), StrEq("[ our_value = \"abacus\" ]")},
-    {"our_value", std::string("abacus"), StrEq("[ our_value = \"abacus\" ]")},
-    {"our_value", static_cast< const int * >(&INT_VAL), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))},
-    {"our_value", std::pair< int, std::string >(100, "abacus"), StrEq("[ our_value = [ 100 \"abacus\" ] ]")},
-    {"our_value", std::tuple< int, std::string, int >(100, "abacus", 123), StrEq("[ our_value = [ 100 \"abacus\" 123 ] ]")},
-    {"our_value", std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}}, StrEq("[ our_value = [ [ \"one\" \'a\' ] [ \"three\" \'c\' ] [ \"two\" 'b' ] ] ]")},
-    {"our_value", PrintableType(), StrEq("[ our_value = PrintableType -2 -1 ]")},
+    SingleAttributeType("our_value", char('a'), StrEq("[ our_value = 'a' ]")),
+    SingleAttributeType("our_value", bool(true), StrEq("[ our_value = true ]")),
+    SingleAttributeType("our_value", bool(false), StrEq("[ our_value = false ]")),
+    SingleAttributeType("our_value", short(123), StrEq("[ our_value = 123 ]")),
+    SingleAttributeType("our_value", int(INT_MAX - 1), StrEq("[ our_value = 2147483646 ]")),
+    SingleAttributeType("our_value", static_cast< unsigned int >(std::numeric_limits< int >::max()) + 1, StrEq("[ our_value = 2147483648 ]")),
+    SingleAttributeType("our_value", static_cast< const void * >(PTR_TYPE), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))),
+    SingleAttributeType("our_value", static_cast< const char * >(PTR_TYPE), StrEq("[ our_value = \"abacus\" ]")),
+    SingleAttributeType("our_value", std::string("abacus"), StrEq("[ our_value = \"abacus\" ]")),
+    SingleAttributeType("our_value", static_cast< const int * >(&INT_VAL), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))),
+    SingleAttributeType("our_value", std::pair< int, std::string >(100, "abacus"), StrEq("[ our_value = [ 100 \"abacus\" ] ]")),
+    SingleAttributeType("our_value", std::tuple< int, std::string, int >(100, "abacus", 123), StrEq("[ our_value = [ 100 \"abacus\" 123 ] ]")),
+    SingleAttributeType("our_value", std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}}, StrEq("[ our_value = [ [ \"one\" \'a\' ] [ \"three\" \'c\' ] [ \"two\" 'b' ] ] ]")),
+    SingleAttributeType("our_value", PrintableType(), StrEq("[ our_value = PrintableType -2 -1 ]")),
 };
 // clang-format on
 

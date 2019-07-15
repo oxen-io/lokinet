@@ -112,9 +112,8 @@ add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
 include_directories(SYSTEM vendor/cxxopts/include)
 
-if (NOT WIN32)
-  add_compile_options(-fPIC)
-endif(NOT WIN32)
+# Always build PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unknown-warning-option)

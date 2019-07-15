@@ -286,7 +286,7 @@ namespace llarp
       Registry &
       operator=(const Registry &) = delete;
 
-      std::tuple< Id, bool >
+      std::pair< Id, bool >
       insert(string_view category, string_view name)
           EXCLUSIVE_LOCKS_REQUIRED(m_mutex);
 
