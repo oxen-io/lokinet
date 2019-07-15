@@ -685,12 +685,9 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      if(target != askpeer)
-      {
-        _pendingRouterLookups.NewTX(
-            peer, asker, target,
-            new RecursiveRouterLookup(asker, target, this, handler));
-      }
+       _pendingRouterLookups.NewTX(
+         peer, asker, target,
+         new RecursiveRouterLookup(asker, target, this, handler));
     }
 
     llarp_time_t
