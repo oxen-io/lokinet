@@ -8,12 +8,15 @@
 #define PATH_SEP "/"
 #endif
 
-#ifndef LOKINET_USE_CPPBACKPORT
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
+#ifdef WIN32
+#include <filesystem>
+namespace fs = std::filesystem;
+#elif defined(LOKINET_USE_CPPBACKPORT)
 #include <filesystem.h>
 namespace fs = cpp17::filesystem;
+#else
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
 #endif
 
 #ifndef _MSC_VER
