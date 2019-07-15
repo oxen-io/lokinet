@@ -617,7 +617,7 @@ namespace llarp
     {
       if(!rc.Verify(Now()))
         continue;
-      nodedb()->InsertAsync(rc);
+      nodedb()->UpdateAsyncIfNewer(rc);
 
       if(ConnectionToRouterAllowed(rc.pubkey)
          && numConnected < minConnectedRouters)
@@ -686,6 +686,7 @@ namespace llarp
       if(whitelistRouters
          && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
         continue;
+      nodedb()->UpdateAsyncIfNewer(result);
       TryConnectAsync(result, 10);
     }
   }
@@ -1010,7 +1011,7 @@ namespace llarp
     if(result.size() == 1 && !result[0].IsExpired(now))
     {
       LogInfo("storing rc for ", router);
-      nodedb()->Insert(result[0]);
+      nodedb()->UpdateAsyncIfNewer(result[0]);
     }
     else
     {
@@ -1121,7 +1122,7 @@ namespace llarp
       {
         // don't accept expired RCs
         if(rc.Verify(Now(), false))
-          nodedb()->InsertAsync(rc);
+          nodedb()->UpdateAsyncIfNewer(rc);
       }
     };
 
