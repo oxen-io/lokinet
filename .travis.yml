@@ -25,6 +25,7 @@ env:
 addons:
   apt:
     packages:
+    - binutils-gold
     - build-essential
     - cmake
     - curl
