@@ -61,7 +61,8 @@ namespace llarp
     auto threads = config->router.workerThreads();
     if(threads <= 0)
       threads = 1;
-    worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024, "llarp-worker");
+    worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024,
+                                                           "llarp-worker");
 
     nodedb_dir = config->netdb.nodedbDir();
 

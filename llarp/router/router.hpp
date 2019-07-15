@@ -549,6 +549,14 @@ namespace llarp
     std::atomic< bool > _stopping;
     std::atomic< bool > _running;
 
+    llarp_time_t m_LastStatsReport = 0;
+
+    bool
+    ShouldReportStats(llarp_time_t now) const;
+
+    void
+    ReportStats();
+
     bool
     UpdateOurRC(bool rotateKeys = false);
 
