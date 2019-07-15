@@ -1139,9 +1139,7 @@ namespace llarp
 
     std::set< RouterID > removeStale;
     // remove stale routers
-    const auto timeout = isSvcNode
-        ? RouterContact::Lifetime / 8
-        : RouterContact::UpdateWindow * RouterContact::UpdateTries;
+    const auto timeout = RouterContact::UpdateWindow * RouterContact::UpdateTries;
     nodedb()->VisitInsertedBefore(
         [&](const RouterContact &rc) {
           if(IsBootstrapNode(rc.pubkey))
