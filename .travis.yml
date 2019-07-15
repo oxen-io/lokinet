@@ -1,16 +1,17 @@
 language: cpp
 
-os:
-  - linux
-  - osx
+os: windows
+  # - linux
+  # - osx
+  # - windows
 
 cache: ccache
-dist: xenial
-osx_image: xcode10.2
+# dist: xenial
+# osx_image: xcode10.2
 
-compiler:
-  - clang
-  - gcc
+# compiler:
+  # - clang
+  # - gcc
 
 env:
   global:
@@ -18,7 +19,7 @@ env:
     - STATIC_LINK=OFF
   matrix:
     - BUILD_TYPE=Debug
-    - BUILD_TYPE=Release
+    # - BUILD_TYPE=Release
 
 addons:
   apt:
