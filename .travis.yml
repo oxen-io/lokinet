@@ -36,6 +36,7 @@ addons:
     - cmake
     - libuv
     - ninja
+    - make
 
 script:
   - make test
