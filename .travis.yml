@@ -4,8 +4,9 @@ os:
   - linux
   - osx
 
-osx_image: xcode10.2
+cache: ccache
 dist: xenial
+osx_image: xcode10.2
 
 compiler:
   - clang
@@ -33,13 +34,14 @@ addons:
     - ninja-build
   homebrew:
     packages:
+    - ccache
     - cmake
     - libuv
     - ninja
     - make
 
 script:
-  - make test
+  - PATH="/usr/local/opt/ccache/libexec:$PATH" make test
 
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
