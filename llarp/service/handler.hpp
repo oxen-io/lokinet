@@ -5,7 +5,9 @@
 #include <path/path.hpp>
 #include <service/intro_set.hpp>
 #include <util/aligned.hpp>
+
 #include <memory>
+#include <set>
 
 namespace llarp
 {

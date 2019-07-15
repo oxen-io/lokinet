@@ -26,7 +26,7 @@ namespace llarp
   struct RouterContact;
   namespace thread
   {
-    struct ThreadPool;
+    class ThreadPool;
   }
 
   namespace metrics

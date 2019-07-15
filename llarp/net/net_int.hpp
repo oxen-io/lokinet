@@ -96,9 +96,9 @@ namespace llarp
 
     template < typename H >
     friend H
-    AbslHashValue(H h, const huint_t< UInt_t >& i)
+    AbslHashValue(H hash, const huint_t< UInt_t >& i)
     {
-      return H::combine(std::move(h), i.h);
+      return H::combine(std::move(hash), i.h);
     }
 
     using V6Container = std::vector< uint8_t >;

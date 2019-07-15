@@ -278,18 +278,11 @@ tuntap_read(struct device *dev, void *buf, size_t size)
     return 0;
   }
 #ifdef Darwin
-  unsigned int pktinfo = 0;
+  unsigned int pktinfo       = 0;
   const struct iovec vecs[2] = {
-    {
-      .iov_base = &pktinfo,
-      .iov_len = sizeof(unsigned int) 
-    },
-    {
-      .iov_base = buf,
-      .iov_len = size
-    }
-  };
-  n                = readv(dev->tun_fd, vecs, 2);
+      {.iov_base = &pktinfo, .iov_len = sizeof(unsigned int)},
+      {.iov_base = buf, .iov_len = size}};
+  n = readv(dev->tun_fd, vecs, 2);
   if(n >= (int)(sizeof(unsigned int)))
     n -= sizeof(unsigned int);
 #else
@@ -320,17 +313,13 @@ tuntap_write(struct device *dev, void *buf, size_t size)
   static unsigned int af6 = htonl(AF_INET6);
 
   const struct iovec vecs[2] = {
-    {
-      .iov_base = (((unsigned char*)buf)[0] & 0x60) == 0x60 ? &af6 : &af4, .iov_len = sizeof(unsigned int) 
-    },
-    {
-      .iov_base = buf,
-      .iov_len = size
-    }
-  };
+      {.iov_base = (((unsigned char *)buf)[0] & 0x60) == 0x60 ? &af6 : &af4,
+       .iov_len  = sizeof(unsigned int)},
+      {.iov_base = buf, .iov_len = size}};
 
-  n = writev(dev->tun_fd, &vecs, 2);
-  if (n >= sizeof(unsigned int)) n -= sizeof(unsigned int);
+  n = writev(dev->tun_fd, vecs, 2);
+  if(n >= (int)sizeof(unsigned int))
+    n -= sizeof(unsigned int);
 
 #else
   n = write(dev->tun_fd, buf, size);

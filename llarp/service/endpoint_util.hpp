@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_ENDPOINT_UTIL_HPP
 #define LLARP_SERVICE_ENDPOINT_UTIL_HPP
 
-#include <service/endpoint.hpp>
+#include <service/endpoint_types.hpp>
 
 namespace llarp
 {
@@ -10,38 +10,36 @@ namespace llarp
     struct EndpointUtil
     {
       static void
-      ExpireSNodeSessions(llarp_time_t now, Endpoint::SNodeSessions& sessions);
+      ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions);
 
       static void
-      ExpirePendingTx(llarp_time_t now, Endpoint::PendingLookups& lookups);
+      ExpirePendingTx(llarp_time_t now, PendingLookups& lookups);
 
       static void
-      ExpirePendingRouterLookups(llarp_time_t now,
-                                 Endpoint::PendingRouters& routers);
+      ExpirePendingRouterLookups(llarp_time_t now, PendingRouters& routers);
 
       static void
-      DeregisterDeadSessions(llarp_time_t now, Endpoint::Sessions& sessions);
+      DeregisterDeadSessions(llarp_time_t now, Sessions& sessions);
 
       static void
-      TickRemoteSessions(llarp_time_t now, Endpoint::Sessions& remoteSessions,
-                         Endpoint::Sessions& deadSessions);
+      TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
+                         Sessions& deadSessions);
 
       static void
-      ExpireConvoSessions(llarp_time_t now, Endpoint::ConvoMap& sessions);
+      ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions);
 
       static void
-      StopRemoteSessions(Endpoint::Sessions& remoteSessions);
+      StopRemoteSessions(Sessions& remoteSessions);
 
       static void
-      StopSnodeSessions(Endpoint::SNodeSessions& sessions);
+      StopSnodeSessions(SNodeSessions& sessions);
 
       static bool
-      HasPathToService(const Address& addr,
-                       const Endpoint::Sessions& remoteSessions);
+      HasPathToService(const Address& addr, const Sessions& remoteSessions);
 
       static bool
-      GetConvoTagsForService(const Endpoint::ConvoMap& sessions,
-                             const Address& addr, std::set< ConvoTag >& tags);
+      GetConvoTagsForService(const ConvoMap& sessions, const Address& addr,
+                             std::set< ConvoTag >& tags);
     };
   }  // namespace service
 
