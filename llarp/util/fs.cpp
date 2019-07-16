@@ -7,7 +7,9 @@
 #include <sys/types.h>
 #include <system_error>
 
-#ifndef WIN32
+#ifdef WIN32
+#include <io.h>
+#else
 #include <unistd.h>
 #endif
 
