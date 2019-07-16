@@ -1,10 +1,10 @@
 # Lokinet
 
-[Ingles](readme-md)
+[Ingles](readme.md)
 
-Lokinet es la implementación referente de LLARO (low latency anonymous routing protocol, protocolo de enrutado anónimo de baja latencia), un protocolo de enrutado onion de capa 3.
+Lokinet es la implementación referente de LLARP (low latency anonymous routing protocol, protocolo de enrutado anónimo de baja latencia), un protocolo de enrutado onion de capa 3.
 
-Puede aprender mas acerca de el diseño de alto nivel de LLARP [aquí](docs/high-level.txt) , documento en idioma ingles.
+Puede aprender a grandes razgos sobre el diseño de LLARP [aquí](docs/high-level.txt) , documento en idioma ingles.
 
 Y puede leer las especificaciones del protocolo [aquí](docs/proto_v0.txt) , documento técnico en idioma ingles.
 
@@ -39,7 +39,7 @@ para correr un relay:
 
 **USTED TIENE QUE CORRER COMO ROOT**, correr usando sudo. Los privilegios elevados son necesarios para crear una interfaz de tunel virtual.
 
-El instalador den MAC coloca los binarios normales (`lokinet` y `lokinet-bootstrap`) en `/usr/local/bin` los que pudieran estar en ruta, asi que usted puede usar los binarios facilmente desde su terminal. El instalador tambien truena sus configuraciones y llaves previas y descarga la semilla de arranque mas actual.
+El instalador de MAC coloca los binarios normales (`lokinet` y `lokinet-bootstrap`) en `/usr/local/bin` los que pudieran estar en ruta, asi que usted puede usar los binarios facilmente desde su terminal. El instalador tambien truena sus configuraciones y llaves previas, y descarga la semilla de arranque mas actual.
 
 para correr como cliente:
 
@@ -121,7 +121,7 @@ instalando (con priviligios elevados) en `$PROGRAMFILES/lokinet` o `$ProgramFile
 si usa compilacion cruzada (cross-compiling), instale mingw-w64 desde su administrador de paquetes, o [compile desde el codigo fuente](https://sourceforge.net/p/mingw-w64/wiki2/Cross%20Win32%20and%20Win64%20compiler/), then:
 
     $ mkdir -p build; cd build
-    $ export COMPILER=clang # if using clang for windows
+    $ export COMPILER=clang # si esta usando clang para windows
     $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK_RUNTIME=ON -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
 
 esto crea un binario que puede ser instalado en cualquier parte, con ninguna otra dependencia aparte de libc (v6.1 minimo)
