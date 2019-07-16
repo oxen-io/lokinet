@@ -58,6 +58,8 @@ else()
   enable_language(ASM)
 endif(MSVC_VERSION)
 
+add_compile_options(/EHca)
+
 include(cmake/solaris.cmake)
 
 if(WIN32)
