@@ -1,6 +1,4 @@
-#if defined(ANDROID) || defined(RPI)
-
-#else
+#if __SSE2__
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
