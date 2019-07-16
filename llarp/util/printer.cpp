@@ -1,5 +1,7 @@
 #include <util/printer.hpp>
 
+#include <cctype>
+
 namespace llarp
 {
   namespace

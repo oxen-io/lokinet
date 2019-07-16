@@ -53,7 +53,7 @@ ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
 GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
-TOOLCHAIN ?= 
+TOOLCHAIN ?=
 
 # native avx2 code
 AVX2 ?= OFF
@@ -63,7 +63,7 @@ NON_PC_TARGET ?= OFF
 STATIC_LINK ?= OFF
 # enable network namespace isolation
 NETNS ?= OFF
-# enable shell hooks callbacks 
+# enable shell hooks callbacks
 SHELL_HOOKS ?= OFF
 # cross compile?
 CROSS ?= OFF
@@ -78,7 +78,7 @@ CMAKE_GEN ?= Unix Makefiles
 
 
 ifdef NINJA
-	MAKE = $(NINJA)
+	MAKE = $(NINJA) -k0
 	CMAKE_GEN = Ninja
 endif
 
