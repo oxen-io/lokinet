@@ -49,7 +49,7 @@ before_install:
     fi
 
 script:
-  - make test
+  - cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test'
 
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
