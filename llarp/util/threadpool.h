@@ -9,6 +9,11 @@
 #include <memory>
 #include <queue>
 
+#ifdef WIN32
+#include <process.h>
+using pid_t = int;
+#endif
+
 struct llarp_threadpool
 {
   std::unique_ptr< llarp::thread::ThreadPool > impl;
