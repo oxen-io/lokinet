@@ -1,5 +1,5 @@
 set(CMAKE_SYSTEM_NAME Linux)
-set(TOOLCHAIN_PREFIX arm-linux-gnueabihf)
+set(TOOLCHAIN_PREFIX powerpc64le-linux-gnu)
 set(TOOLCHAIN_SUFFIX -8)
 
 set(CMAKE_FIND_ROOT_PATH /usr/${TOOLCHAIN_PREFIX})
