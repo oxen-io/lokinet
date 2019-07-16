@@ -1,6 +1,7 @@
 #include <util/str.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <string>
 #include <set>
