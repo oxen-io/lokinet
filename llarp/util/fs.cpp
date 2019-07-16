@@ -1,8 +1,11 @@
 #include <util/fs.hpp>
+
+#include <util/logger.hpp>
+
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <system_error>
-#include <util/logger.hpp>
 
 #ifndef WIN32
 #include <unistd.h>
