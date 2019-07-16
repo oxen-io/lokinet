@@ -1,6 +1,7 @@
 #include <config/ini.hpp>
 #include <util/logger.hpp>
 
+#include <cctype>
 #include <fstream>
 #include <list>
 #include <iostream>
