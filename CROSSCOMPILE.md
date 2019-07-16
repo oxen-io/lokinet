@@ -34,9 +34,24 @@ To cross compile for windows on non windows platforms run:
 
 ## For Other Linux
 
+## deps
+
+this setup assumes ubuntu
+
+first you need to cross compile and install libuv:
+
+    $ git clone https://github.com/libuv/libuv
+    $ mkdir -p build && cd build
+    $ export TOOLCHAIN=arm-linux-gnueabihf # or whatever your compiler is
+    $ cmake -DCMAKE_C_COMPILER=$(TOOLCHAIN)-gcc-8 -DCMAKE_INSTALL_PREFIX=/usr/$(TOOLCHAIN)
+    $ make
+    $ sudo make install
+
+## build
+
 To cross compile on linux for another archietecture:
 
-   # for rpi
+   # for rpi 3
    $ make CROSS=ON TOOLCHAIN=contrib/armhf.toolchain.cmake
 
    # for ppc64le
