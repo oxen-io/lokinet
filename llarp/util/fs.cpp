@@ -1,9 +1,12 @@
 #include <util/fs.hpp>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <system_error>
 #include <util/logger.hpp>
+
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 namespace cpp17
 {
