@@ -58,7 +58,7 @@ else()
   enable_language(ASM)
 endif(MSVC_VERSION)
 
-add_compile_options(/EHca)
+add_compile_options(/EHca /arch:AVX2)
 
 include(cmake/solaris.cmake)
 
