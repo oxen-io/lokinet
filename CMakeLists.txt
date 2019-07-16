@@ -59,6 +59,7 @@ else()
 endif(MSVC_VERSION)
 
 add_compile_options(/EHca /arch:AVX2)
+add_definitions(/D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
 
 include(cmake/solaris.cmake)
 

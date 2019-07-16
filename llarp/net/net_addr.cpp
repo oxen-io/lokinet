@@ -114,26 +114,26 @@ namespace llarp
 
     if(ret)
     {
-      LogError("failed to determine address family: ", str);
+      LogError("failed to determine address family: ", in);
       return false;
     }
 
     if(res->ai_family == AF_INET6)
     {
-      LogError("IPv6 address not supported yet", str);
+      LogError("IPv6 address not supported yet", in);
       return false;
     }
     if(res->ai_family != AF_INET)
     {
-      LogError("Address family not supported yet", str);
+      LogError("Address family not supported yet", in);
       return false;
     }
 
     // put it in _addr4
     struct in_addr* addr = &_addr4.sin_addr;
-    if(inet_aton(str, addr) == 0)
+    if(inet_aton(std::string(in).c_str(), addr) == 0)
     {
-      LogError("failed to parse ", str);
+      LogError("failed to parse ", in);
       return false;
     }
 

@@ -1,12 +1,13 @@
 #ifndef LLARP_UTIL_LOGGER_INTERNAL_HPP
 #define LLARP_UTIL_LOGGER_INTERNAL_HPP
 
+#include <util/time.hpp>
+
 #include <absl/time/clock.h>
 #include <absl/time/time.h>
-#include <util/time.hpp>
-#include <sstream>
 #include <ctime>
 #include <iomanip>
+#include <sstream>
 #include <thread>
 
 namespace llarp
@@ -27,7 +28,7 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
   }
 
-  static inline std::string
+  inline std::string
   thread_id_string()
   {
     auto tid = std::this_thread::get_id();
