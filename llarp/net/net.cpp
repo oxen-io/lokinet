@@ -819,7 +819,7 @@ namespace llarp
     while(i)
     {
       visit(i);
-      i = ifa->ifa_next;
+      i = i->ifa_next;
     }
 
     if(ifa)
