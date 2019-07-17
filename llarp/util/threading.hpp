@@ -100,8 +100,8 @@ namespace llarp
       return _getpid();
 #else
       return ::getpid();
+#endif
     }
-
   }  // namespace util
 }  // namespace llarp
 
