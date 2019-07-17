@@ -68,7 +68,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 #ifdef SINGLE_ARCH
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dbghelp64.dll"; DestDir: "{app}\dbghelp.dll"; Flags: ignoreversion
+Source: "dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion
 #else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
