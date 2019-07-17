@@ -328,6 +328,6 @@ endif(SHADOW)
 
 enable_testing()
 
-if (NOT SHADOW AND NOT MSVC_VERSION)
+if (NOT SHADOW)
   add_subdirectory(test)
 endif()
