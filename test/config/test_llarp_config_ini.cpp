@@ -15,7 +15,7 @@ struct TestINIParser : public ::testing::Test
 
 TEST_F(TestINIParser, TestParseEmpty)
 {
-  ASSERT_TRUE(parser.LoadString(""));
+  ASSERT_TRUE(parser.LoadFromStr(""));
 }
 
 TEST_F(TestINIParser, TestParseOneSection)
@@ -26,7 +26,7 @@ TEST_F(TestINIParser, TestParseOneSection)
     sect = section;
     return true;
   };
-  ASSERT_TRUE(parser.LoadString("[test]\nkey=val   \n"));
+  ASSERT_TRUE(parser.LoadFromStr("[test]\nkey=val   \n"));
   ASSERT_TRUE(parser.VisitSection("test", assertVisit));
   auto itr = sect.find("notfound");
   ASSERT_EQ(itr, sect.end());
@@ -41,7 +41,7 @@ TEST_F(TestINIParser, TestParseOneSection)
 
 TEST_F(TestINIParser, TestParseSectionDuplicateKeys)
 {
-  ASSERT_TRUE(parser.LoadString("[test]\nkey1=val1\nkey1=val2"));
+  ASSERT_TRUE(parser.LoadFromStr("[test]\nkey1=val1\nkey1=val2"));
   size_t num = 0;
   auto visit = [&num](const auto& section) -> bool {
     num = section.count("key1");
@@ -53,12 +53,12 @@ TEST_F(TestINIParser, TestParseSectionDuplicateKeys)
 
 TEST_F(TestINIParser, TestNoKey)
 {
-  ASSERT_FALSE(parser.LoadString("[test]\n=1090\n"));
+  ASSERT_FALSE(parser.LoadFromStr("[test]\n=1090\n"));
 }
 
 TEST_F(TestINIParser, TestParseInvalid)
 {
   ASSERT_FALSE(
-      parser.LoadString("srged5ghe5\nf34wtge5\nw34tgfs4ygsd5yg=4;\n#"
-                        "g4syhgd5\n"));
+      parser.LoadFromStr("srged5ghe5\nf34wtge5\nw34tgfs4ygsd5yg=4;\n#"
+                         "g4syhgd5\n"));
 }

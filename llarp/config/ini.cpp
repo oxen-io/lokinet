@@ -6,10 +6,6 @@
 #include <list>
 #include <iostream>
 
-#ifdef LoadString
-#undef LoadString
-#endif
-
 namespace llarp
 {
   bool
@@ -32,7 +28,7 @@ namespace llarp
   }
 
   bool
-  ConfigParser::LoadString(string_view str)
+  ConfigParser::LoadFromStr(string_view str)
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());

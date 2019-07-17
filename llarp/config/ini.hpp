@@ -31,7 +31,7 @@ namespace llarp
     /// return true on success
     /// return false on error
     bool
-    LoadString(string_view str);
+    LoadFromStr(string_view str);
 
     /// iterate all sections and thier values
     void

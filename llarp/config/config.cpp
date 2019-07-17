@@ -418,7 +418,7 @@ namespace llarp
   Config::LoadFromStr(string_view str)
   {
     ConfigParser parser;
-    if(!parser.LoadString(str))
+    if(!parser.LoadFromStr(str))
     {
       return false;
     }
