@@ -2,6 +2,7 @@
 #define LLARP_DHT_KEY_HPP
 
 #include <util/aligned.hpp>
+#include <router_id.hpp>
 
 #include <array>
 
