@@ -53,13 +53,15 @@ endif()
 if(MSVC_VERSION)
   enable_language(ASM_MASM)
   list(APPEND CMAKE_ASM_MASM_SOURCE_FILE_EXTENSIONS s)
-  add_definitions(/D_WIN32_WINNT=0x0600 /DNOMINMAX /DSODIUM_STATIC)
+  add_definitions(-D_WIN32_WINNT=0x0600 -DNOMINMAX -DSODIUM_STATIC)
 else()
   enable_language(ASM)
 endif(MSVC_VERSION)
 
 add_compile_options(/EHca /arch:AVX2)
-add_definitions(/D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+add_definitions(-D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+add_definitions(-DGTEST_CREATE_SHARED_LIBRARY=1)
+add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1)
 
 include(cmake/solaris.cmake)
 
