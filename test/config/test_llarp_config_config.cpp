@@ -89,7 +89,7 @@ metric-tank-host=52.80.56.123:2003
 )";
 
   Config config;
-  ASSERT_TRUE(config.LoadFromString(text));
+  ASSERT_TRUE(config.LoadFromStr(text));
 
   {
     using kv = NetworkConfig::NetConfig::value_type;
