@@ -41,8 +41,8 @@ namespace llarp
           // bad msg size?
           if(strbuf.sz != 1)
             return false;
-          llarp::LogInfo("Handle DHT message ", *strbuf.base,
-                         " relayed=", relayed);
+          llarp::LogDebug("Handle DHT message ", *strbuf.base,
+                          " relayed=", relayed);
           switch(*strbuf.base)
           {
             case 'F':

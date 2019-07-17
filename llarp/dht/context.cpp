@@ -297,7 +297,7 @@ namespace llarp
     Context::Explore(size_t N)
     {
       // ask N random peers for new routers
-      llarp::LogInfo("Exploring network via ", N, " peers");
+      llarp::LogDebug("Exploring network via ", N, " peers");
       std::set< Key_t > peers;
 
       if(_nodes->GetManyRandom(peers, N))
@@ -306,7 +306,8 @@ namespace llarp
           ExploreNetworkVia(peer);
       }
       else
-        llarp::LogError("failed to select random nodes for exploration");
+        llarp::LogError("failed to select ", N,
+                        " random nodes for exploration");
     }
 
     void
@@ -608,8 +609,8 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingTagLookups.NewTX(peer, asker, tag,
                                new TagLookup(asker, tag, this, R));
-      llarp::LogInfo("ask ", askpeer, " for ", tag, " on behalf of ", whoasked,
-                     " R=", R);
+      llarp::LogDebug("ask ", askpeer.SNode(), " for ", tag, " on behalf of ",
+                      whoasked.SNode(), " R=", R);
     }
 
     void
@@ -685,9 +686,9 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-       _pendingRouterLookups.NewTX(
-         peer, asker, target,
-         new RecursiveRouterLookup(asker, target, this, handler));
+      _pendingRouterLookups.NewTX(
+          peer, asker, target,
+          new RecursiveRouterLookup(asker, target, this, handler));
     }
 
     llarp_time_t

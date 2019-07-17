@@ -17,7 +17,7 @@ namespace llarp
     void
     ExploreNetworkJob::SendReply()
     {
-      llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
+      llarp::LogDebug("got ", valuesFound.size(), " routers from exploration");
 
       auto router = parent->GetRouter();
       using std::placeholders::_1;

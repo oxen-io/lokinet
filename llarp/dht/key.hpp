@@ -2,6 +2,7 @@
 #define LLARP_DHT_KEY_HPP
 
 #include <util/aligned.hpp>
+#include <router_id.hpp>
 
 #include <array>
 
@@ -26,6 +27,14 @@ namespace llarp
 
       Key_t() : AlignedBuffer< SIZE >()
       {
+      }
+
+      /// get snode address string
+      std::string
+      SNode() const
+      {
+        const RouterID rid{as_array()};
+        return rid.ToString();
       }
 
       Key_t
