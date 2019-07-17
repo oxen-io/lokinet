@@ -4,15 +4,11 @@
 #include <util/queue.hpp>
 #include <util/string_view.hpp>
 #include <util/thread_pool.hpp>
+#include <util/threading.hpp>
 
 #include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
-
-#ifdef WIN32
-#include <process.h>
-using pid_t = int;
-#endif
 
 struct llarp_threadpool
 {
@@ -30,7 +26,7 @@ struct llarp_threadpool
 
   llarp_threadpool()
       : jobs(new llarp::thread::Queue< std::function< void(void) > >(128))
-      , callingPID(::getpid())
+      , callingPID(llarp::util::GetPid())
   {
     jobs->enable();
   }
