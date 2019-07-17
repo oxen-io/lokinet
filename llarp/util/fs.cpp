@@ -79,9 +79,10 @@ namespace llarp
     error_code_t
     EnsurePrivateFile(fs::path pathname)
     {
-      const auto str  = pathname.string();
       errno           = 0;
       error_code_t ec = errno_error();
+#ifndef WIN32
+      const auto str = pathname.string();
       if(fs::exists(pathname, ec))  // file exists
       {
         auto st    = fs::status(pathname);
@@ -116,6 +117,7 @@ namespace llarp
 
       if(ec)
         llarp::LogError("failed to ensure ", str, ", ", ec.message());
+#endif
       return ec;
     }
   }  // namespace util
