@@ -505,7 +505,7 @@ getInterfaceIndexTable(void)
 // there's probably an use case for a _newer_ implementation
 // of pthread_setname_np(3), in fact, I may just merge _this_
 // upstream...
-#if 0
+#ifdef _MSC_VER
 #include <windows.h>
 
 typedef HRESULT(FAR PASCAL *p_SetThreadDescription)(void *, const wchar_t *);
@@ -587,7 +587,6 @@ GenerateCrashDump(MINIDUMP_TYPE flags, EXCEPTION_POINTERS *seh)
 {
   HRESULT error                         = S_OK;
   MINIDUMP_USER_STREAM_INFORMATION info = {0};
-  MINIDUMP_USER_STREAM *streamPtr       = NULL;
   MINIDUMP_USER_STREAM stream           = {0};
 
   // get the time
@@ -629,8 +628,7 @@ GenerateCrashDump(MINIDUMP_TYPE flags, EXCEPTION_POINTERS *seh)
 
   // Collect hostname and time
   info.UserStreamCount = 1;
-  info.UserStreamArray = streamPtr;
-  streamPtr            = &stream;
+  info.UserStreamArray = &stream;
   stream.Type          = CommentStreamA;
   stream.BufferSize    = strlen(extra_info) + 1;
   stream.Buffer        = extra_info;
@@ -657,7 +655,7 @@ GenerateCrashDump(MINIDUMP_TYPE flags, EXCEPTION_POINTERS *seh)
 }
 
 // ok try a UNIX-style signal handler
-__declspec(noreturn) LONG FAR PASCAL win32_signal_handler(EXCEPTION_POINTERS *e)
+LONG FAR PASCAL win32_signal_handler(EXCEPTION_POINTERS *e)
 {
   MessageBox(NULL,
              "A fatal error has occurred. A core dump was generated and "
