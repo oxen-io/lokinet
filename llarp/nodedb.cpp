@@ -129,7 +129,8 @@ llarp_nodedb::InsertAsync(llarp::RouterContact rc,
                           std::shared_ptr< llarp::Logic > logic,
                           std::function< void(void) > completionHandler)
 {
-  const auto job = std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler);
+  const auto job =
+      std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler);
   size_t tries = 10;
   while((!disk->addJob(job)) && tries-- > 0)
     std::this_thread::sleep_for(std::chrono::milliseconds(1));

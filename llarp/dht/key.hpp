@@ -28,6 +28,14 @@ namespace llarp
       {
       }
 
+      /// get snode address string
+      std::string
+      SNode() const
+      {
+        const RouterID rid{as_array()};
+        return rid.ToString();
+      }
+
       Key_t
       operator^(const Key_t& other) const
       {

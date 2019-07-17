@@ -1077,7 +1077,7 @@ namespace llarp
   bool
   Router::ShouldReportStats(llarp_time_t now) const
   {
-    static constexpr llarp_time_t ReportStatsInterval = 30 * 1000;
+    static constexpr llarp_time_t ReportStatsInterval = 60 * 60 * 1000;
     return now - m_LastStatsReport > ReportStatsInterval;
   }
 
@@ -1085,7 +1085,6 @@ namespace llarp
   Router::ReportStats()
   {
     const auto now = Now();
-    LogInfo("---- BEGIN REPORT ----");
     LogInfo(nodedb()->num_loaded(), " RCs loaded");
     LogInfo(bootstrapRCList.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
@@ -1097,7 +1096,6 @@ namespace llarp
     }
     LogInfo(now, " system time");
     LogInfo(m_LastStatsReport, " last reported stats");
-    LogInfo("----- END REPORT -----");
     m_LastStatsReport = now;
   }
 
@@ -1139,7 +1137,8 @@ namespace llarp
 
     std::set< RouterID > removeStale;
     // remove stale routers
-    const auto timeout = RouterContact::UpdateWindow * RouterContact::UpdateTries;
+    const auto timeout =
+        RouterContact::UpdateWindow * RouterContact::UpdateTries;
     nodedb()->VisitInsertedBefore(
         [&](const RouterContact &rc) {
           if(IsBootstrapNode(rc.pubkey))

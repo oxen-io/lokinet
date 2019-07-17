@@ -106,14 +106,14 @@ namespace llarp
         if((prevPeer ^ targetKey) < (peer ^ targetKey))
         {
           // next peer is not closer
-          llarp::LogInfo("next peer ", peer, " is not closer to ", target,
-                         " than ", prevPeer);
+          llarp::LogDebug("next peer ", peer.SNode(), " is not closer to ",
+                          target, " than ", prevPeer.SNode());
           return false;
         }
       }
       else
       {
-        llarp::LogInfo("no more peers for request asking for ", target);
+        llarp::LogDebug("no more peers for request asking for ", target);
         return false;
       }
       peersAsked.insert(peer);
