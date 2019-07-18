@@ -92,6 +92,8 @@ namespace llarp
     /// a set of paths owned by an entity
     struct PathSet
     {
+      /// maximum number of paths a path set can maintain
+      static constexpr size_t max_paths = 32;
       /// construct
       /// @params numPaths the number of paths to maintain
       PathSet(size_t numPaths);
