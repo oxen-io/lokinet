@@ -269,9 +269,9 @@ namespace llarp
         }
       }
 
-     protected:
-      size_t m_NumPaths;
+      size_t numPaths;
 
+     protected:
       BuildStats m_BuildStats;
 
       void

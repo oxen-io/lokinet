@@ -38,7 +38,7 @@ namespace llarp
     bool
     Endpoint::SetOption(const std::string& k, const std::string& v)
     {
-      return m_state->SetOption(k, v, Name());
+      return m_state->SetOption(k, v, *this);
     }
 
     llarp_ev_loop_ptr
@@ -984,7 +984,7 @@ namespace llarp
               /// TODO: V6
               return HandleInboundPacket(tag, pkt, eProtocolTrafficV4);
             },
-            Router(), m_NumPaths, numHops, false, ShouldBundleRC());
+            Router(), numPaths, numHops, false, ShouldBundleRC());
 
         m_state->m_SNodeSessions.emplace(snode, std::make_pair(session, tag));
       }
@@ -1031,7 +1031,7 @@ namespace llarp
         while(queue.size())
         {
           const auto& msg = queue.top();
-          llarp_buffer_t buf(msg->payload);
+          const llarp_buffer_t buf(msg->payload);
           HandleInboundPacket(msg->tag, buf, msg->proto);
           queue.pop();
         }
@@ -1069,7 +1069,7 @@ namespace llarp
                                    const llarp_buffer_t& data, ProtocolType t)
     {
       // inbound converstation
-      auto now = Now();
+      const auto now = Now();
 
       if(HasInboundConvo(remote))
       {
@@ -1209,7 +1209,7 @@ namespace llarp
       return should
           || (  // try spacing tunnel builds out evenly in time
                  (dlt <= (path::default_lifetime / 4))
-                 && (NumInStatus(path::ePathBuilding) < m_NumPaths));
+                 && (NumInStatus(path::ePathBuilding) < numPaths));
     }
 
     std::shared_ptr< Logic >

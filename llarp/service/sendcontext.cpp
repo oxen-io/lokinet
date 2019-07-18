@@ -25,12 +25,11 @@ namespace llarp
     bool
     SendContext::Send(const ProtocolFrame& msg, path::Path_ptr path)
     {
-      auto transfer = std::make_shared< const routing::PathTransferMessage >(
-          msg, remoteIntro.pathID);
-      {
-        util::Lock lock(&m_SendQueueMutex);
-        m_SendQueue.emplace_back(transfer, path);
-      }
+      util::Lock lock(&m_SendQueueMutex);
+      m_SendQueue.emplace_back(
+          std::make_shared< const routing::PathTransferMessage >(
+              msg, remoteIntro.pathID),
+          path);
       return true;
     }
 
@@ -46,7 +45,7 @@ namespace llarp
           lastGoodSend = r->Now();
         }
         else
-          LogError("Failed to send frame on path");
+          LogError(m_Endpoint->Name(), " failed to send frame on path");
       }
       m_SendQueue.clear();
     }
@@ -57,30 +56,22 @@ namespace llarp
     {
       SharedSecret shared;
       ProtocolFrame f;
-      f.C.Zero();
       f.N.Randomize();
       f.T = currentConvoTag;
       f.S = ++sequenceNo;
 
-      auto now = m_Endpoint->Now();
-      if(remoteIntro.ExpiresSoon(now))
-      {
-        // shift intro
-        if(MarkCurrentIntroBad(now))
-        {
-          LogInfo("intro shifted");
-        }
-      }
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
-        LogError("cannot encrypt and send: no path for intro ", remoteIntro);
+        LogError(m_Endpoint->Name(),
+                 " cannot encrypt and send: no path for intro ", remoteIntro);
         return;
       }
 
       if(!m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
-        LogError("No cached session key");
+        LogError(m_Endpoint->Name(),
+                 " has no cached session key on session T=", f.T);
         return;
       }
 
@@ -96,7 +87,7 @@ namespace llarp
       m.PutBuffer(payload);
       if(!f.EncryptAndSign(m, shared, m_Endpoint->GetIdentity()))
       {
-        LogError("failed to sign");
+        LogError(m_Endpoint->Name(), " failed to sign message");
         return;
       }
       Send(f, path);
@@ -106,14 +97,6 @@ namespace llarp
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
                                        ProtocolType protocol)
     {
-      auto now = m_Endpoint->Now();
-      if(remoteIntro.ExpiresSoon(now))
-      {
-        if(!ShiftIntroduction())
-        {
-          LogWarn("no good path yet, your message may drop");
-        }
-      }
       if(lastGoodSend)
       {
         EncryptAndSendTo(data, protocol);
