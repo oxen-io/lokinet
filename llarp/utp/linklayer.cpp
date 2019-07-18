@@ -200,6 +200,7 @@ namespace llarp
 #ifdef __linux__
       ProcessICMP();
 #endif
+      utp_issue_deferred_acks(_utp_ctx);
       std::set< RouterID > sessions;
       {
         Lock l(&m_AuthedLinksMutex);
@@ -222,7 +223,6 @@ namespace llarp
           }
         }
       }
-      utp_issue_deferred_acks(_utp_ctx);
     }
 
     void
@@ -282,7 +282,6 @@ namespace llarp
           return 0;
         }
         utp_read_drained(arg->socket);
-        utp_issue_deferred_acks(arg->context);
       }
       else
       {
