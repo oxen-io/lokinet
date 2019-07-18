@@ -195,7 +195,7 @@ namespace llarp
         return now - lastActive > 5000;
       if(state == eSessionReady)
       {
-        if(now <= lastSend || lastSend == 0)
+        if(now <= lastSend)
           return false;
         return now - lastSend > 30000;
       }
