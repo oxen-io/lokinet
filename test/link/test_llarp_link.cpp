@@ -169,6 +169,9 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
 
 TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
 {
+#ifdef WIN32
+  GTEST_SKIP();
+#else
   Alice.link = utp::NewServer(
       Alice.encryptionKey,
       [&]() -> const RouterContact& { return Alice.GetRC(); },
@@ -211,7 +214,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
     DiscardMessage discard;
     if(!discard.BEncode(&otherBuf))
       return false;
-    otherBuf.sz  = otherBuf.cur - otherBuf.base;
+    otherBuf.sz = otherBuf.cur - otherBuf.base;
     otherBuf.cur = otherBuf.base;
     return s->SendMessageBuffer(otherBuf);
   };
@@ -253,10 +256,14 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
   RunMainloop();
   ASSERT_TRUE(Bob.gotLIM);
   ASSERT_TRUE(success);
+#endif
 }
 
 TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
 {
+#ifdef WIN32
+  GTEST_SKIP();
+#else
   Alice.link = utp::NewServer(
       Alice.encryptionKey,
       [&]() -> const RouterContact& { return Alice.GetRC(); },
@@ -318,7 +325,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
                               DiscardMessage discard;
                               if(!discard.BEncode(&otherBuf))
                                 return;
-                              otherBuf.sz  = otherBuf.cur - otherBuf.base;
+                              otherBuf.sz = otherBuf.cur - otherBuf.base;
                               otherBuf.cur = otherBuf.base;
                               self->SendMessageBuffer(otherBuf);
                             }});
@@ -339,4 +346,5 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
   RunMainloop();
   ASSERT_TRUE(Bob.gotLIM);
   ASSERT_TRUE(success);
+#endif
 }
