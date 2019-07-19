@@ -169,7 +169,7 @@ namespace llarp
         return false;
       }
       RouterContact found;
-      Key_t k{K};
+      const Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
       if(!dht.GetRouter()->ConnectionToRouterAllowed(K))
@@ -178,13 +178,7 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
         return true;
       }
-      if(dht.Nodes()->HasNode(k))
-      {
-        found = dht.Nodes()->nodes[k].rc;
-        replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
-        return true;
-      }
-      else if(dht.GetRCFromNodeDB(k, found))
+      if(dht.GetRCFromNodeDB(k, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;

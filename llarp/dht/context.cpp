@@ -41,6 +41,12 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      void
+      StoreRC(const RouterContact rc) const override
+      {
+        GetRouter()->nodedb()->InsertAsync(rc);
+      }
+
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       void
@@ -430,9 +436,8 @@ namespace llarp
       {
         if(next == target)
         {
-          // we know it
-          replies.emplace_back(new GotRouterMessage(
-              requester, txid, {_nodes->nodes[target].rc}, false));
+          // we know it, ask them directly for their own RC to keep it updated
+          LookupRouterRecursive(target.as_array(), requester, txid, next);
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -671,8 +676,8 @@ namespace llarp
                                  const Key_t& askpeer)
 
     {
-      TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), txid);
+      const TXOwner peer(askpeer, ++ids);
+      const TXOwner whoasked(OurKey(), txid);
       _pendingRouterLookups.NewTX(
           peer, whoasked, target,
           new LocalRouterLookup(path, txid, target, this));
@@ -684,8 +689,8 @@ namespace llarp
                                    const Key_t& askpeer,
                                    RouterLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingRouterLookups.NewTX(
           peer, asker, target,
           new RecursiveRouterLookup(asker, target, this, handler));
