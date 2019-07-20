@@ -1,3 +1,4 @@
+[Español](CONTRIBUTING_es.md)
 # Do
 
 * Act like a responsible adult.
@@ -14,7 +15,7 @@
 
 * Merge Spelling mistake corrections (I have lots of those because spelling is HARD)
 
-* Merge code based on its correctness, Including patches via email from (psuedo/fully) anonymous contributors.
+* Merge code based on its correctness, Including patches via email from (pseudo/fully) anonymous contributors.
 
 # We WILL NOT
 
