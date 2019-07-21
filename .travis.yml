@@ -6,20 +6,51 @@ os: windows
   # - windows
 
 cache: ccache
-# dist: xenial
-# osx_image: xcode10.2
+dist: xenial
 
-# compiler:
-  # - clang
-  # - gcc
+matrix:
+  include:
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env: BUILD_TYPE=Debug
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env: BUILD_TYPE=Release
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Debug
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Release
+  - os: osx
+    osx_image: xcode10.2
+    compiler: gcc
+    env: BUILD_TYPE=Debug
+  - os: osx
+    osx_image: xcode10.2
+    compiler: gcc
+    env: BUILD_TYPE=Release
+  - os: osx
+    osx_image: xcode10.2
+    compiler: clang
+    env: BUILD_TYPE=Debug
+  - os: osx
+    osx_image: xcode10.2
+    compiler: clang
+    env: BUILD_TYPE=Release
+  - os: windows
+    env: BUILD_TYPE=Debug
+  - os: windows
+    env: BUILD_TYPE=Release
 
 env:
   global:
     - NINJA=ninja
     - STATIC_LINK=OFF
-  matrix:
-    - BUILD_TYPE=Debug
-    # - BUILD_TYPE=Release
 
 addons:
   apt:
@@ -43,13 +74,17 @@ addons:
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
       choco install make ninja;
-      choco upgrade cmake cmake.install;
+      choco upgrade cmake.install;
       export CC="/c/Program Files/LLVM/bin/clang-cl";
       export CXX="/c/Program Files/LLVM/bin/clang-cl";
     fi
 
 script:
-  - cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test'
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
+    else
+      make test;
+    fi
 
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
