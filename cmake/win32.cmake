@@ -1,3 +1,7 @@
+if(NOT WIN32)
+  return()
+endif()
+
 enable_language(RC)
 set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lshlwapi")
 

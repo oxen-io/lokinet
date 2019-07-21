@@ -59,6 +59,8 @@ else()
 endif(MSVC_VERSION)
 
 include(cmake/solaris.cmake)
+include(cmake/unix.cmake)
+include(cmake/win32.cmake)
 
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
@@ -224,22 +226,11 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif(JEMALLOC)
 
-
-
 if(ANDROID)
   list(APPEND LIBS log)
   add_definitions(-DANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
-
-if(UNIX)
-  include(cmake/unix.cmake)
-elseif(WIN32)
-  include(cmake/win32.cmake)
-else()
-    message(FATAL_ERROR "What operating system _are_ you building on/for?")
-endif()
-
 
 set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.cpp
