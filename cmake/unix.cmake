@@ -1,3 +1,7 @@
+if(NOT UNIX)
+  return()
+endif()
+
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 

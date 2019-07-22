@@ -319,7 +319,7 @@ namespace llarp
     Load(const char* fname);
 
     bool
-    LoadFromString(string_view str);
+    LoadFromStr(string_view str);
   };
 
 }  // namespace llarp

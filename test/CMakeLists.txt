@@ -15,7 +15,6 @@ list(APPEND TEST_SRC
     dht/test_llarp_dht_tx.cpp
     dht/test_llarp_dht_txowner.cpp
     dns/test_llarp_dns_dns.cpp
-    ev/test_ev_loop.cpp
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
     llarp_test.cpp

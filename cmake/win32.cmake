@@ -1,5 +1,13 @@
+if(NOT WIN32)
+  return()
+endif()
+
 enable_language(RC)
 set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lshlwapi")
+
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+add_compile_options(/EHca /arch:AVX2 /MD)
+add_definitions(-D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
 
 if(NOT MSVC_VERSION)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
@@ -13,7 +21,7 @@ endif()
 
 get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
 get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
-add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
+add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500)
 set(EXE_LIBS ${STATIC_LIB} ${FS_LIB} ws2_32 iphlpapi)
 
 if(RELEASE_MOTTO)

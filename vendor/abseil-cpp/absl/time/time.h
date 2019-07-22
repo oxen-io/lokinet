@@ -66,7 +66,7 @@
 #if !defined(_MSC_VER)
 #include <sys/time.h>
 #else
-#include <winsock2.h>
+#include <WinSock2.h>
 #endif
 #include <chrono>  // NOLINT(build/c++11)
 #include <cmath>

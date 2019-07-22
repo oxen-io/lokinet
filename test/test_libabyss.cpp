@@ -182,6 +182,9 @@ struct AbyssTest : public AbyssTestBase,
 
 TEST_F(AbyssTest, TestClientAndServer)
 {
+#ifdef WIN32
+  GTEST_SKIP();
+#else
   Start();
   QueueRPC(method, nlohmann::json::object(),
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));
@@ -189,4 +192,5 @@ TEST_F(AbyssTest, TestClientAndServer)
   AsyncFlush();
   RunLoop();
   ASSERT_TRUE(called);
+#endif
 }

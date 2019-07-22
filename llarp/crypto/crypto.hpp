@@ -132,7 +132,8 @@ namespace llarp
         return m_crypto;
       }
 
-      throw std::logic_error("Cryptomanager::instance() was undefined");
+      assert(false && "Cryptomanager::instance() was undefined");
+      abort();
     }
   };
 

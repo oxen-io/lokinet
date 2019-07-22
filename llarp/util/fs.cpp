@@ -1,9 +1,17 @@
 #include <util/fs.hpp>
+
+#include <util/logger.hpp>
+
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <sys/types.h>
 #include <system_error>
-#include <util/logger.hpp>
+
+#ifdef WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace cpp17
 {
@@ -71,9 +79,9 @@ namespace llarp
     error_code_t
     EnsurePrivateFile(fs::path pathname)
     {
-      const auto str  = pathname.string();
       errno           = 0;
       error_code_t ec = errno_error();
+      const auto str  = pathname.string();
       if(fs::exists(pathname, ec))  // file exists
       {
         auto st    = fs::status(pathname);
@@ -106,9 +114,13 @@ namespace llarp
         }
       }
 
+#ifndef WIN32
       if(ec)
         llarp::LogError("failed to ensure ", str, ", ", ec.message());
       return ec;
+#else
+      return {};
+#endif
     }
   }  // namespace util
 }  // namespace llarp

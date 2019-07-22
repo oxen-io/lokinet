@@ -1,13 +1,10 @@
 #include <config/ini.hpp>
 #include <util/logger.hpp>
 
+#include <cctype>
 #include <fstream>
 #include <list>
 #include <iostream>
-
-#ifdef LoadString
-#undef LoadString
-#endif
 
 namespace llarp
 {
@@ -31,7 +28,7 @@ namespace llarp
   }
 
   bool
-  ConfigParser::LoadString(string_view str)
+  ConfigParser::LoadFromStr(string_view str)
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());

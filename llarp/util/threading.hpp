@@ -5,6 +5,14 @@
 #include <absl/synchronization/mutex.h>
 #include <absl/time/time.h>
 
+#ifdef WIN32
+#include <process.h>
+using pid_t = int;
+#else
+#include <sys/types.h>
+#include <unistd.h>
+#endif
+
 namespace llarp
 {
   namespace util
@@ -85,6 +93,15 @@ namespace llarp
     void
     SetThreadName(const std::string& name);
 
+    inline pid_t
+    GetPid()
+    {
+#ifdef WIN32
+      return _getpid();
+#else
+      return ::getpid();
+#endif
+    }
   }  // namespace util
 }  // namespace llarp
 
