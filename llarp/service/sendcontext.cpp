@@ -57,6 +57,7 @@ namespace llarp
     {
       SharedSecret shared;
       ProtocolFrame f;
+      f.C.Zero();
       f.N.Randomize();
       f.T = currentConvoTag;
       f.S = ++sequenceNo;

@@ -33,9 +33,9 @@ namespace llarp
       /// tx session key
       SharedSecret txKey;
       /// timestamp last active
-      llarp_time_t lastActive;
+      llarp_time_t lastActive = 0;
       /// timestamp last send success
-      llarp_time_t lastSend;
+      llarp_time_t lastSend = 0;
       /// session timeout (60s)
       const static llarp_time_t sessionTimeout = DefaultLinkSessionLifetime;
 
