@@ -1,19 +1,13 @@
 language: cpp
 
-os: windows
-  # - linux
-  # - osx
-  # - windows
-
 cache: ccache
-dist: xenial
 
 matrix:
   include:
   - os: linux
     dist: xenial
     compiler: gcc
-    env: BUILD_TYPE=Debug
+    env: BUILD_TYPE=Debug IS_NOTIFICATION=1
   - os: linux
     dist: xenial
     compiler: gcc
@@ -36,12 +30,16 @@ matrix:
     env: BUILD_TYPE=Release
   - os: osx
     osx_image: xcode10.2
-    compiler: clang
-    env: BUILD_TYPE=Debug
+    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
     osx_image: xcode10.2
-    compiler: clang
-    env: BUILD_TYPE=Release
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode11
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
   - os: windows
     env: BUILD_TYPE=Debug
   - os: windows
@@ -68,6 +66,7 @@ addons:
     - ccache
     - cmake
     - libuv
+    - llvm
     - ninja
     - make
 
@@ -89,14 +88,17 @@ script:
 after_script:
   - echo $TRAVIS_COMMIT_RANGE
   - echo $TRAVIS_COMMIT_LOG
+
 after_success:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
-  - ./send.sh success $WEBHOOK_URL
+  - if [[ -z $IS_NOTIFICATION ]]; then ./send.sh success $WEBHOOK_URL; fi
+
 after_failure:
   - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
-  - ./send.sh failure $WEBHOOK_URL
+  - if [[ -z $IS_NOTIFICATION ]]; then ./send.sh failure $WEBHOOK_URL; fi
+
 notifications:
   irc:
     on_success: change
