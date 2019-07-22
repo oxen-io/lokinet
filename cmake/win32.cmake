@@ -6,10 +6,11 @@ enable_language(RC)
 set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lshlwapi")
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-add_compile_options(/EHca /arch:AVX2 /MD)
-add_definitions(-D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
 
-if(NOT MSVC_VERSION)
+if(MSVC_VERSION)
+  add_compile_options(/EHca /arch:AVX2 /MD)
+  add_definitions(-D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+else()
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
   # unlike unix where you get a *single* compiler ID string in .comment

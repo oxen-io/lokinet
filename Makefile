@@ -83,7 +83,7 @@ CMAKE_GEN ?= Unix Makefiles
 
 
 ifdef NINJA
-	MAKE = $(NINJA) -k0
+	MAKE = $(NINJA)
 	CMAKE_GEN = Ninja
 endif
 

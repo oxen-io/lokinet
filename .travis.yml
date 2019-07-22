@@ -12,42 +12,46 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/router.Dockerfile
     services: docker
-  # - os: linux
-  #   dist: xenial
-  #   compiler: gcc
-  #   env: BUILD_TYPE=Release
-  # - os: linux
-  #   dist: xenial
-  #   compiler: clang
-  #   env: BUILD_TYPE=Debug
-  # - os: linux
-  #   dist: xenial
-  #   compiler: clang
-  #   env: BUILD_TYPE=Release
-  # - os: osx
-  #   osx_image: xcode10.2
-  #   compiler: gcc
-  #   env: BUILD_TYPE=Debug
-  # - os: osx
-  #   osx_image: xcode10.2
-  #   compiler: gcc
-  #   env: BUILD_TYPE=Release
-  # - os: osx
-  #   osx_image: xcode10.2
-  #   env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
-  # - os: osx
-  #   osx_image: xcode10.2
-  #   env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  # - os: osx
-  #   osx_image: xcode11
-  #   env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  # - os: osx
-  #   osx_image: xcode10.2
-  #   env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
-  # - os: windows
-  #   env: BUILD_TYPE=Debug
-  # - os: windows
-  #   env: BUILD_TYPE=Release
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env: MAKE_TARGET=windows BUILD_TYPE=Release
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env: BUILD_TYPE=Release
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Debug
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Release
+  - os: osx
+    osx_image: xcode10.2
+    compiler: gcc
+    env: BUILD_TYPE=Debug
+  - os: osx
+    osx_image: xcode10.2
+    compiler: gcc
+    env: BUILD_TYPE=Release
+  - os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode11
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - os: windows
+    env: BUILD_TYPE=Debug
+  - os: windows
+    env: BUILD_TYPE=Release
 
 env:
   global:
@@ -62,9 +66,13 @@ addons:
     - cmake
     - curl
     - docker-ce
+    - g++-mingw-w64
+    - g++-mingw-w64-x86-64
+    - gcc-mingw-w64-base
     - git
     - libcap-dev
     - libuv1-dev
+    - mingw-w64 mingw-w64-common
     - ninja-build
   homebrew:
     packages:
@@ -89,7 +97,7 @@ script:
     elif [[ ! -z $DOCKER_FILE ]]; then
       docker build -f $DOCKER_FILE .;
     else
-      make test;
+      make ${MAKE_TARGET:-test};
     fi
 
 after_script:

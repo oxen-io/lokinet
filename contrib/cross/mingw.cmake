@@ -1,5 +1,6 @@
 set(CMAKE_SYSTEM_NAME Windows)
 set(TOOLCHAIN_PREFIX x86_64-w64-mingw32)
+set(TOOLCHAIN_SUFFIX posix)
 
 add_definitions("-DWINNT_CROSS_COMPILE")
 
@@ -14,12 +15,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
 # cross compilers to use
 if($ENV{COMPILER} MATCHES "clang")
-set(USING_CLANG ON)
-set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-clang)
-set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-clang++)
+    set(USING_CLANG ON)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-clang)
+    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-clang++)
 else()
-set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
-set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
+    set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc-${TOOLCHAIN_SUFFIX})
+    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++-${TOOLCHAIN_SUFFIX})
+    add_compile_options("-Wa,-mbig-obj")
+    set(FS_LIB stdc++fs)
 endif()
 
 set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)
