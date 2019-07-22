@@ -73,8 +73,9 @@ def main():
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            for n in range(args.connect):
-                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName((nodeid + 1 + n) % args.svc), 'rc.signed')))
+            for n in [0]:
+                if nodeid:
+                    f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(n), 'rc.signed')))
 
         
     for nodeid in range(args.clients):
