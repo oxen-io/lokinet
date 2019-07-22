@@ -323,7 +323,7 @@ namespace llarp
         return false;
       const bool should =
           (!(path::Builder::BuildCooldownHit(now)
-             || path::Builder::NumInStatus(path::ePathBuilding) >= m_NumPaths))
+             || path::Builder::NumInStatus(path::ePathBuilding) >= numPaths))
           && path::Builder::ShouldBuildMore(now);
 
       if(!ReadyToSend())

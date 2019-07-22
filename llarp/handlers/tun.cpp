@@ -153,7 +153,7 @@ namespace llarp
         m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
             util::memFn(&TunEndpoint::QueueInboundPacketForExit, this), router,
-            m_NumPaths, numHops, ShouldBundleRC());
+            numPaths, numHops, ShouldBundleRC());
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")

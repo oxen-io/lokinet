@@ -156,7 +156,8 @@ namespace llarp
         T.Zero();
         N.Zero();
         Z.Zero();
-        R = 0;
+        R       = 0;
+        version = LLARP_PROTO_VERSION;
       }
 
       bool

@@ -183,7 +183,7 @@ namespace llarp
     {
       util::StatusObject obj{{"buildStats", m_BuildStats.ExtractStatus()},
                              {"numHops", uint64_t(numHops)},
-                             {"numPaths", uint64_t(m_NumPaths)}};
+                             {"numPaths", uint64_t(numPaths)}};
       std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
                      std::back_inserter(pathObjs),

@@ -2,6 +2,7 @@
 
 #include <exit/session.hpp>
 #include <hook/shell.hpp>
+#include <service/endpoint.hpp>
 #include <service/outbound_context.hpp>
 #include <util/str.hpp>
 
@@ -11,8 +12,9 @@ namespace llarp
   {
     bool
     EndpointState::SetOption(const std::string& k, const std::string& v,
-                             const std::string& name)
+                             Endpoint& ep)
     {
+      const auto name = ep.Name();
       if(k == "keyfile")
       {
         m_Keyfile = v;
@@ -34,9 +36,35 @@ namespace llarp
       }
       if(k == "min-latency")
       {
-        auto val = atoi(v.c_str());
+        const auto val = atoi(v.c_str());
         if(val > 0)
           m_MinPathLatency = val;
+      }
+      if(k == "paths")
+      {
+        const auto val = atoi(v.c_str());
+        if(val >= 1 && val <= path::PathSet::max_paths)
+        {
+          ep.numPaths = val;
+          LogInfo(name, " set number of paths to ", ep.numHops);
+        }
+        else
+        {
+          LogWarn(name, " invalid number of paths: ", v);
+        }
+      }
+      if(k == "hops")
+      {
+        const auto val = atoi(v.c_str());
+        if(val >= 1 && val <= path::max_len)
+        {
+          ep.numHops = val;
+          LogInfo(name, " set number of hops to ", ep.numHops);
+        }
+        else
+        {
+          LogWarn(name, " invalid number of hops: ", v);
+        }
       }
       if(k == "bundle-rc")
       {

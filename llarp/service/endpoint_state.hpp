@@ -32,6 +32,7 @@ namespace llarp
   {
     struct IServiceLookup;
     struct OutboundContext;
+    struct Endpoint;
 
     struct EndpointState
     {
@@ -97,8 +98,7 @@ namespace llarp
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
 
       bool
-      SetOption(const std::string& k, const std::string& v,
-                const std::string& name);
+      SetOption(const std::string& k, const std::string& v, Endpoint& ep);
 
       util::StatusObject
       ExtractStatus(util::StatusObject& obj) const;

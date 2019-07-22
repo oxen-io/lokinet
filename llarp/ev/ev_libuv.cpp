@@ -367,6 +367,7 @@ namespace libuv
     {
       if(m_UDP && m_UDP->tick)
         m_UDP->tick(m_UDP);
+      gotpkts = false;
     }
 
     static int
