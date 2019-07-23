@@ -1,0 +1,146 @@
+LLARP - Low Latency Anon Routing Protocol -  Protocolo de Enrutado Anónimo de Baja Latencia
+
+	Resumen TL;DR: un router onion con una interfaz tun para transportar paquetes ip
+	de forma anónima entre usted y la internet, y desde dentro de ella hacia otros usuarios.
+	
+	Este documento describe la visión general de LLARP, detalla todas las metas
+	del proyecto, lo que no son metas y la arquitectura de la red desde una perspectiva
+	general.	
+	
+	Prefacio	
+	
+	Trabajar en I2P ha sido experiencia realmente grande para todo el que se involucra.
+	Después bastante deliberación, yo decidí empezar a construir un protocolo onion de
+	"proxima generacion". LLARP es específicamente (en la actualidad) un proyecto de
+	investigación para explorar la siguiente cuestión: 
+
+
+	"¿Que hubiera sido si I2P fuera construido en el año presente (2018)? ¿Que hubiera
+	sido diferente?"	
+
+	
+	Lo que No son Metas del Proyecto: 
+	
+
+	Este proyecto no intenta resolver la correlación por la forma del tráfico o ataques a
+	la red patrocinadas por el estado. Lo primero es una propiedad inherente de las redes
+	computacionales de baja latencia que yo personalmente no pienso que es posible
+	completamente "resolver" de forma apropiada. Lo segundo es una amenaza que por el
+	momento se encuentra fuera de los alcances de las herramientas actuales que me están 
+	disponibles. 
+	
+	Este proyecto no pretende ser la aplicación mágica de nivel curalotodo para la
+	aplicación o la seguridad del usuario final. Después de todo, eso es un problema que
+	existe entre la silla y el teclado.
+
+	
+	La Única Meta del Proyecto:
+	
+	
+	LLARP en una suite de protocolos que pretende mantener anónima la IP mediante el
+	ofrecimiento de un agente de túnel anónimo a nivel red (IPv4/IPv6) tanto para
+	"servicios ocultos" y la comunicación de regreso a la "red transparente" (la Internet 
+	comun). Tanto las comunicación del servicio oculto y la red transparente DEBEN
+	permitir tanto el trafico de salida y el tráfico de entrada a nivel red sin implementar
+	NAT alguna (con excepción de la IPv4 de la cual la NAT es permitida debido a la
+	escasez de direcciones).
+	
+	
+	En concreto, Queremos permitir tanto la salida y la entrada anonima del trafico
+	a nivel red entre las redes habilitadas por LLARP y la Internet.
+	
+	Las razones de porque empezar desde cero:
+
+	A pesar de los mejores esfuerzos del Proyecto Tor para popularizar el uso de Tor,
+	Tor2Web parece ser ampliamente popular para las personas que no desean optar estar
+	dentro del ecosistema. Mi solucion propuesta seria permitir el tráfico de entrada desde
+	los "nodos de salida" en adición de permitir el tráfico de salida. No tengo idea
+	en cómo pudiera hacer esto los protocolos actuales en Tor, o si es posible o
+	recomendable intentar tal cosa ya que no estoy familiarizado con su ecosistema.
+	
+	
+	I2P se hubiera usado como un medio para transito anonimo IP cifrado pero la red actual
+	tiene problemas con la latencia y el rendimiento. Avanzar I2P sobre criptografía
+	moderna está en proceso dentro de I2P, proceso que ya lleva por lo menos 5 años y con
+	menos progreso que lo deseado. Así como algunos antes de mi, yo he llegado a la 
+	conclusión que seria mas rapido rehacer todo el stack "de la forma correcta" que estar 
+	esperando a que I2P termine sus avances. Dicho esto, nada está previniendo a I2P en ser 
+	usado para el transito de trafico anonimo IP cifrado dentro de un futuro en que I2P
+	termine sus migraciones de protocolo, pero yo no quiero esperarlo.
+	
+	
+	
+	En concreto, yo quiero tomar las "mejores partes" de Tor e I2P, y hacer una nueva
+	suite de protocolos.
+
+	
+	Para ambos, tanto Tor e I2P, les tengo 2 categorías de sus atributos.
+	
+	
+	lo bueno	
+	lo malo y lo feo
+	
+	
+	Lo bueno (I2P):
+	
+	
+	I2P apunta a proveer una capa de red anónima de carga balanceada insuplantable.
+	
+	
+	Yo quiero esta característica
+	
+	
+	I2P tiene agilidad de confianza, no necesita tener alguna confianza integrada en el
+	código dentro de su arquitectura de red. Incluso la fase de arranque de la red puede 
+	realizarse desde un solo router, si el usuario lo desea (aunque esto esté desaconsejado)
+	
+
+	Yo quiero esta característica	
+	
+
+	Lo bueno (Tor):	
+	
+	
+	Tor abarca la realidad de la actual infraestructura de la Internet al tener una
+	arquitectura cliente/servidor. Esto permite tener barreras de acceso muy bajas
+	para usar la red Tor, y barreras más altas de acceso para contribuir a la 
+	infraestructura de enrutado. Esto promueve una forma saludable de red con servidores
+	de alta capacidad ofreciendo servicios a clientes de baja capacidad que "se cuelgan 
+	del extremo" de la red.
+
+	
+	Yo quiero esta característica
+	
+	
+	Lo malo y lo feo (I2P):
+	
+	
+	Malo: I2P usa criptografia vieja, en especial ElGamal de 2048 bits usando primos no
+	estandares. El uso de ElGamal es tan constante a traves del stack del protocolo I2P
+	que existe en cada nivel suyo. Removerlo es una tarea masiva que está tomando
+	mucho MUCHO tiempo.
+	
+	
+	Yo no quiero esta característica
+	
+
+	Feo: I2P no puede actualmente mitigar la mayoría de los ataques Sybil, con su
+	actual arquitectura de red. I2P recientemente añadió algunas soluciones de listas de 
+	bloqueo que están firmadas por los firmantes de lanzamiento, pero esto es probable que
+	no escale en el evento de una ataque "grande". Además I2P tampoco tiene el personal 
+	para ese tipo de ataques.
+	
+	
+	Este es un problema difícil de resolver en que la red Loki pudiera ayudar con la 
+	creación de una barrera financiera para correr múltiples relays.
+	
+	
+	Lo malo y lo feo (Tor):
+	
+	
+	Malo: Tor está estrictamente orientado al TCP.
+	
+	Yo no quiero esta característica
+
+
+
