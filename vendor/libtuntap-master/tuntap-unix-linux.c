@@ -187,13 +187,15 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 
   return 0;
 }
+#if defined(ANDROID)
 
+#else
 struct in6_ifreq {
   struct in6_addr ifr6_addr;
   __u32 ifr6_prefixlen;
   unsigned int ifr6_ifindex;
 };
-
+#endif
 
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s6, uint32_t bits)

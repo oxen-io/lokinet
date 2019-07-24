@@ -1,5 +1,5 @@
 #include <llarp.h>
-#include <config.hpp>
+#include <config/config.hpp>
 #include <util/fs.hpp>
 
 #include <jni.h>
@@ -40,7 +40,7 @@ struct AndroidMain
     m_impl = llarp_main_init(configFile.c_str(), true);
     if(m_impl == nullptr)
       return false;
-    if(llarp_main_setup(m_impl))
+    if(llarp_main_setup(m_impl, false))
     {
       llarp_main_free(m_impl);
       m_impl = nullptr;
