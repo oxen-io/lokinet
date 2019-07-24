@@ -115,9 +115,6 @@ extern "C"
   llarp::RouterContact *
   llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
-  llarp::handlers::TunEndpoint *
-  main_router_getFirstTunEndpoint(struct llarp_main *ptr);
-
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr);
 

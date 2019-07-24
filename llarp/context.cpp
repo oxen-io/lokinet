@@ -399,6 +399,12 @@ struct llarp_main
   std::unique_ptr< llarp::Context > ctx;
 };
 
+llarp::Context *
+llarp_main_get_context(llarp_main *m)
+{
+  return m->ctx.get();
+}
+
 extern "C"
 {
   struct llarp_main *

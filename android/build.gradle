@@ -33,7 +33,7 @@ android {
         externalNativeBuild {
             cmake {
                 targets "lokinetandroid"
-                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static", "-DANDROID_ARM_NEON=TRUE"
+                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static", "-DANDROID_ARM_NEON=TRUE", "-DLIBUV_ROOT="  + libuvsrc, "-DANDROID_TOOLCHAIN=clang", "-DANDROID_ARM_MODE=arm"
                 cppFlags "-fexceptions -std=c++14 -frtti"
             }
         }
@@ -68,7 +68,6 @@ android {
     externalNativeBuild {
         cmake {
             path lokinetCMake
-            
         }
     }
 }

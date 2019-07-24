@@ -4,6 +4,8 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
+BUILD_ROOT = $(REPO)/build
+
 DESTDIR ?=
 
 CC ?= cc
@@ -25,6 +27,9 @@ SHADOW_SRC ?= $(HOME)/local/shadow
 SHADOW_PARSE ?= $(PYTHON) $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
 SHADOW_PLOT ?= $(PYTHON) $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
 SHADOW_OPTS ?=
+
+LIBUV_VERSION ?= v1.30.1
+LIBUV_PREFIX = $(BUILD_ROOT)/libuv
 
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
@@ -83,7 +88,6 @@ ifdef NINJA
 endif
 
 
-BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
@@ -113,12 +117,15 @@ LINT_FILES = $(wildcard llarp/*.cpp)
 
 LINT_CHECK = $(LINT_FILES:.cpp=.cpp-check)
 
-clean:
+clean: android-clean
 	rm -f $(TARGETS)
 	rm -rf $(BUILD_ROOT)
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
 	rm -f *.a *.so
+
+android-clean:
+	rm -rf $(ANDROID_DIR)/.externalNativeBuild
 
 debug-configure:
 	mkdir -p '$(BUILD_ROOT)'
@@ -184,10 +191,17 @@ $(TEST_EXE): debug
 test: $(TEST_EXE)
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
-android-gradle-prepare:
+
+
+$(LIBUV_PREFIX):
+	mkdir -p $(BUILD_ROOT)
+	git clone -b "$(LIBUV_VERSION)" https://github.com/libuv/libuv "$(LIBUV_PREFIX)"
+
+android-gradle-prepare: $(LIBUV_PREFIX)
 	rm -f $(ANDROID_PROPS)
 	rm -f $(ANDROID_LOCAL_PROPS)
 	echo "#auto generated don't modify kthnx" >> $(ANDROID_PROPS)
+	echo "libuvsrc=$(LIBUV_PREFIX)" >> $(ANDROID_PROPS)
 	echo "lokinetCMake=$(REPO)/CMakeLists.txt" >> $(ANDROID_PROPS)
 	echo "org.gradle.parallel=true" >> $(ANDROID_PROPS)
 	echo "org.gradle.jvmargs=-Xmx1536M" >> $(ANDROID_PROPS)
@@ -223,7 +237,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
+	clang-format -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
 analyze-config: clean
 	mkdir -p '$(BUILD_ROOT)'

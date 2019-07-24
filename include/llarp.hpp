@@ -14,6 +14,7 @@
 struct llarp_ev_loop;
 struct llarp_nodedb;
 struct llarp_nodedb_iter;
+struct llarp_main;
 
 namespace llarp
 {
@@ -117,5 +118,8 @@ namespace llarp
     std::string pidfile;
   };
 }  // namespace llarp
+
+llarp::Context *
+llarp_main_get_context(llarp_main *m);
 
 #endif

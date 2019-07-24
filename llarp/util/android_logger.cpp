@@ -6,7 +6,8 @@ namespace llarp
 {
   void
   AndroidLogStream::PreLog(std::stringstream& ss, LogLevel lvl,
-                           const char* fname, int lineno, const std::string&) const
+                           const char* fname, int lineno,
+                           const std::string&) const
   {
     switch(lvl)
     {
@@ -32,6 +33,10 @@ namespace llarp
 
   void
   AndroidLogStream::PostLog(std::stringstream&) const
+  {
+  }
+
+  void AndroidLogStream::Tick(llarp_time_t)
   {
   }
 
