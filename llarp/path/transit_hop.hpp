@@ -92,6 +92,8 @@ namespace llarp
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
 
+      bool destroy = false;
+
       bool
       IsEndpoint(const RouterID& us) const
       {
@@ -200,6 +202,13 @@ namespace llarp
       bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        AbstractRouter* r) override;
+
+     private:
+      void
+      SetSelfDestruct();
+
+      void
+      QueueDestroySelf(AbstractRouter* r);
     };
 
     inline std::ostream&

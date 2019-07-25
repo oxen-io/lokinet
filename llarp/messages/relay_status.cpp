@@ -21,19 +21,14 @@ namespace llarp
     using HopHandler_ptr = std::shared_ptr< llarp::path::IHopHandler >;
 
     std::array< EncryptedFrame, 8 > frames;
-    PathID_t pathid;
     uint64_t status = 0;
     HopHandler_ptr path;
     AbstractRouter* router;
 
     LRSM_AsyncHandler(const std::array< EncryptedFrame, 8 >& _frames,
-                      const PathID_t& _pathid, uint64_t _status,
-                      HopHandler_ptr _path, AbstractRouter* _router)
-        : frames(_frames)
-        , pathid(_pathid)
-        , status(_status)
-        , path(_path)
-        , router(_router)
+                      uint64_t _status, HopHandler_ptr _path,
+                      AbstractRouter* _router)
+        : frames(_frames), status(_status), path(_path), router(_router)
     {
     }
 
@@ -139,9 +134,8 @@ namespace llarp
       return false;
     }
 
-    const uint64_t ourStatus = LR_StatusRecord::SUCCESS;
-    auto handler             = std::make_shared< LRSM_AsyncHandler >(
-        frames, pathid, ourStatus, path, router);
+    auto handler =
+        std::make_shared< LRSM_AsyncHandler >(frames, status, path, router);
 
     handler->queue_handle();
 

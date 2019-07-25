@@ -38,7 +38,7 @@ namespace llarp
     bool
     TransitHop::Expired(llarp_time_t now) const
     {
-      return now >= ExpireTime();
+      return destroy || (now >= ExpireTime());
     }
 
     llarp_time_t
@@ -58,12 +58,21 @@ namespace llarp
 
       // TODO: add to IHopHandler some notion of "path status"
 
-      if(!msg->AddFrame(pathKey, status))
+      const uint64_t ourStatus = LR_StatusRecord::SUCCESS;
+      if(!msg->AddFrame(pathKey, ourStatus))
       {
         return false;
       }
 
       LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
+
+      if((status & LR_StatusRecord::SUCCESS) == 0)
+      {
+        LogDebug(
+            "TransitHop received non-successful LR_StatusMessage, queueing "
+            "self-destruct");
+        QueueDestroySelf(r);
+      }
 
       return true;
     }
@@ -346,6 +355,19 @@ namespace llarp
       printer.printAttribute("lifetime", lifetime);
 
       return stream;
+    }
+
+    void
+    TransitHop::SetSelfDestruct()
+    {
+      destroy = true;
+    }
+
+    void
+    TransitHop::QueueDestroySelf(AbstractRouter* r)
+    {
+      auto func = std::bind(&TransitHop::SetSelfDestruct, this);
+      r->logic()->queue_func(func);
     }
   }  // namespace path
 }  // namespace llarp
