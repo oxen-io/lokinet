@@ -1,6 +1,8 @@
 #include <llarp.h>
-#include <config.hpp>
+#include <config/config.hpp>
 #include <util/fs.hpp>
+#include <llarp.hpp>
+#include <router/router.hpp>
 
 #include <jni.h>
 #include <signal.h>
@@ -40,7 +42,7 @@ struct AndroidMain
     m_impl = llarp_main_init(configFile.c_str(), true);
     if(m_impl == nullptr)
       return false;
-    if(llarp_main_setup(m_impl))
+    if(llarp_main_setup(m_impl, false))
     {
       llarp_main_free(m_impl);
       m_impl = nullptr;
@@ -75,13 +77,33 @@ struct AndroidMain
   const char*
   GetIfAddr()
   {
+    std::string addr;
     if(m_impl)
     {
-      auto tun = main_router_getFirstTunEndpoint(m_impl);
-      if(tun)
-        return tun->tunif.ifaddr;
+      auto* ctx = llarp_main_get_context(m_impl);
+      if(!ctx)
+        return "";
+
+      ctx->router->hiddenServiceContext().ForEachService(
+          [&addr](const std::string&,
+                  const llarp::service::Endpoint_ptr& ep) -> bool {
+            if(addr.empty())
+            {
+              if(ep->HasIfAddr())
+              {
+                // TODO: v4
+                const auto ip = ep->GetIfAddr();
+                if(ip.h)
+                {
+                  addr = ip.ToString();
+                  return false;
+                }
+              }
+            }
+            return true;
+          });
     }
-    return "";
+    return addr.c_str();
   }
 
   int
@@ -89,9 +111,9 @@ struct AndroidMain
   {
     if(m_impl)
     {
-      auto tun = main_router_getFirstTunEndpoint(m_impl);
-      if(tun)
-        return tun->tunif.netmask;
+      auto* ctx = llarp_main_get_context(m_impl);
+      if(!ctx)
+        return -1;
     }
     return -1;
   }
@@ -99,8 +121,10 @@ struct AndroidMain
   void
   SetVPN_FD(int rfd, int wfd)
   {
-    if(m_impl)
-      llarp_main_inject_vpn_fd(m_impl, rfd, wfd);
+    (void)rfd;
+    (void)wfd;
+    // if(m_impl)
+    //  llarp_main_inject_vpn_fd(m_impl, rfd, wfd);
   }
 
   /// stop daemon thread
