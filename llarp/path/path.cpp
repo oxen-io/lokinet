@@ -389,6 +389,7 @@ namespace llarp
         ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
         AbstractRouter* r)
     {
+      LogDebug("Path built: ", HopsString());
       auto now = r->Now();
       if(_status == ePathBuilding)
       {
