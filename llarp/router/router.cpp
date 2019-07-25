@@ -1126,7 +1126,7 @@ namespace llarp
   {
     if(status == SendStatus::Success)
     {
-      LogInfo("Message successfully sent to ", remote);
+      LogDebug("Message successfully sent to ", remote);
     }
     else
     {
