@@ -1,8 +1,640 @@
-lokinet (0.4.2) UNRELEASED; urgency=medium
+lokinet (0.5.0~pre20190725-1) sid; urgency=medium
 
+  [ Jeff Becker (probably not evil) ]
   * bug fix release
 
- -- Jeff Becker (probably not evil) <jeff@i2p.rocks>  Sat, 11 May 2019 10:45:49 -0400
+  [ Jeff Becker ]
+  * i am a potatoe
+  * aaaaaaaaaaAAAah
+  * potatoe
+  * mor potatoe
+  * don't kill bootstrap
+  * aaaaaaA
+  * disable
+  * connect out to committed routers if we don't have a session each tick
+  * don't kill nodes as service node
+  * null check
+  * prevent crash
+  * more
+  * attempt every time
+  * use 1 for dht exploration
+  * fix
+  * const
+  * don't resize frames
+  * meh
+  * fix
+  * more
+  * fuck
+  * whatever
+
+  [ Michael ]
+  * Fixup MSVC build
+
+  [ Jeff Becker ]
+  * revert breaking change
+  * re-enable unit test
+  * hax to make it work.
+  * hard code range for now as a /16 don't revert me
+  * add comment
+  * pick newer intros only
+
+  [ Rick V ]
+  * really remove line break
+  * move tun autoconfig from config parser to tun setup
+  * fix ui
+  * fix UI again
+
+  [ Jeff Becker ]
+  * more hax
+  * shift introduction
+  * fix
+
+  [ Michael ]
+  * Fix ASAN build
+  * More explicit error when keyfile is not a valid file
+  * Convert router diskworker to use a modern ThreadPool
+  * Drain diskworker pool on close
+  * Change ExecShellHookBackend to use a modern thread pool
+
+  [ Jeff Becker ]
+  * commit recent stuff
+
+  [ Michael ]
+  * Apply rule of zero to code base
+
+  [ Jeff Becker ]
+  * make format and revert stupid alloc changes
+  * try allowing ip addresses in bind section
+
+  [ Michael ]
+  * Minor warnings fixes in python/javascript code
+
+  [ Jeff Becker ]
+  * more docs
+  * don't move, instead copy
+
+  [ Ryan Tharp ]
+  * osx pkg updates
+
+  [ Michael ]
+  * Replace dict_reader/list_reader with version which doesn't involve indirection
+
+  [ Rick V ]
+  * bump version
+  * fix
+  * jeff forgot to bump
+
+  [ Jeff Becker ]
+  * add docs on debs
+  * revert
+  * move llarp::Logic to std::shared_ptr
+  * make format
+  * use limited size queue for logic and singled threaded threadpool
+  * fixit
+  * fix
+
+  [ Michael ]
+  * Fix thread safety issue in service::Endpoint::ProcessDataMessage
+
+  [ Jeff Becker ]
+  * DRY
+  * more
+  * double path build timeout
+
+  [ Michael ]
+  * Remove all use of IBEncodeMessage
+
+  [ Jeff Becker ]
+  * update docs and discard pending traffic on connect timeout to prevent memleak
+  * prefer inbound links over outbound links
+  * * don't lookup routers in sendtoorqueue * don't lookup routers that are not public when committing
+
+  [ Jeff ]
+  * Update high-level.txt
+
+  [ Jeff Becker ]
+  * use for each loop
+  * delete inbound messages right after being handled
+  * close timed out sessions
+  * more strict connection timeouts
+  * only check for ready paths when counting in future
+  * update munin script
+  * fix
+  * more
+  * more
+  * add missing lines
+  * gfdi
+  * aaAaAAaaaa
+  * add member to rpc response indicating weither or not a peer is a service node
+  * don't log ips
+  * differentiate between clients and service nodes
+  * explicitly lookup router if not connected to it on LRCM forward.
+  * uncomment
+  * make format and introduce new function EnsureRouter on router to check nodedb or do dht lookup
+  * set lifetime of paths
+  * fix previous commit
+
+  [ Michael ]
+  * Add CryptoManager class to provide a guard-style class to manage the current Crypto instance
+  * Port code to use CryptoManager over passing Crypto pointers
+  * Move tests to use top-level LlarpTest
+  * Fix crypto build derp
+
+  [ Ryan Tharp ]
+  * try to configure travis
+  * Travis attempt #2
+  * Need GCC-6 for C++17
+  * change default compiler to gcc-6
+  * Oh actually install the apt packages in docker, impressed it gets this far
+  * win/mac, xenial and make test at the end
+  * xenial doesn't have a gcc-6 without ubuntu-toolchain-r
+  * install gcc6 after some basics
+  * give up an xenial too many overrides, bionic it is
+  * add IRC support
+  * well if IRC isn't going to work, add discord webhooks
+  * Add travis badge
+
+  [ Michael ]
+  * Initial No-Op Crypto implementation
+  * Update LinkLayer tests to use no-op crypto
+
+  [ Jeff Becker ]
+  * make format
+  * make debian stable happy
+
+  [ Michael ]
+  * Move gtest to vendor dir
+  * Update cmake to point to vendor dir
+
+  [ Jeff Becker ]
+  * revert modification to libutp
+  * ingore paths that drop exit traffic
+  * fix previous commit
+  * use libuv
+
+  [ Michael ]
+  * Create util::MemFn and memFn to make binding callbacks easier
+  * Convert to use memFn
+
+  [ Jeff Becker ]
+  * use timers not idle
+  * try fixing tcp
+  * more libuv jizz
+  * make tcp work with libuv probably
+  * fix travis and gitlab
+
+  [ Ryan Tharp ]
+  * Add static link to CI
+  * add more makefile options
+  * actually test the variables
+  * disable extras for production day
+
+  [ Jeff Becker ]
+  * add rc expiration (again)
+  * fix
+  * use reply intro for inbound sessions
+  * revert
+  * use latest tag not oldest tag in inbound convos
+  * dont use timers use check for tick
+  * please don't work
+  * please don't work
+
+  [ Ryan Tharp ]
+  * build a router config not a client
+
+  [ Jeff Becker ]
+  * try switching logic
+  * fix
+  * eh
+  * fix
+  * update RC expiration logic, lookup more often and remove stale entries
+  * use timetamps
+  * put deltas in timestamps
+  * try addressing issue #642
+  * try fixing freebsd build
+  * again
+  * another freebsd fix
+  * (more freebsd fixes)
+  * try linking for freebsd
+  * ammend previous commit
+  * another fix for freebsd
+  * ipv6
+  * more
+  * make exits support v6 probably
+  * handle ipv6 exit traffic
+  * fix exit traffic for v6
+
+  [ cathugger ]
+  * net/ip: cleanup
+  * net/ip: IPv6 TCP/UDP delta chksum funcs
+
+  [ Michael ]
+  * Log when we publish to metrictank
+  * Tidy up metric code
+  * Unfuck metrics
+  * Unfuck integer metrics
+
+  [ cathugger ]
+  * net/ip: IPv6 packet deltachecksum
+  * net/ip: update names
+  * fix stuff
+  * make format
+
+  [ Jeff Becker ]
+  * typofixes
+
+  [ cathugger ]
+  * net/ip: skip IPv6 option headers
+  * net/ip: correct IPv6 fragment processing, also check for length before modifying
+
+  [ Jeff Becker ]
+  * fix tpyos and pass event loop by l value
+  * make format
+  * update for win32 parts
+  * reverse dns for ipv6
+  * swap intros on message rejection
+  * swap intros on message rejection
+  * add guard
+  * add release key files
+  * update readme with libuv dependancy
+  * json logging option
+
+  [ Ryan Tharp ]
+  * attempt freebsd build
+  * fix fbsd tag
+  * fix typo
+  * fix freebsd tag
+  * Update .gitlab-ci.yml
+
+  [ Michael ]
+  * Introduce tag types
+  * Introduce tags for metrics
+  * Publish metric tags
+
+  [ Ryan Tharp ]
+  * fix freebsd artifact
+
+  [ Rick V ]
+  * remove all disused platform-specific event loops
+  * we libuv now
+
+  [ Jeff Becker ]
+  * differentiate between inbound and outbound convos
+  * pass in path
+
+  [ Michael ]
+  * Move local publishers to their own files
+  * Fix event loop tests post-libuv
+
+  [ Jeff Becker ]
+  * try not spamming network with builds
+  * store looked up routers
+  * make format
+  * remove libuv variable from makefile
+  * add handover window to router contact updating
+  * save all nodedb entries in memory on exit
+
+  [ Rick V ]
+  * fix legacy windows console logger
+  * try fixing libabyss Why does abyss not inherit the include folders used by the rest of the lokinet build?
+  * restore llarp_make_ev_loop() as we only use libuv now; separate function is now ded code
+  * make format
+  * fix windows native console
+  * I _think_ this is a decent compromise for LTO vs non-LTO builds
+
+  [ Jeff Becker ]
+  * check for expiration
+  * make freebsd compile
+
+  [ Michael ]
+  * Refactor path build code
+
+  [ Rick V ]
+  * now i remember why i had to open /dev/tun twice on solaris
+  * fix callback hell
+  * finally fix solaris
+
+  [ Jeff ]
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+  * Update readme.md
+
+  [ Jeff Becker ]
+  * fix borken unit tests
+
+  [ Michael ]
+  * Move exit messages to match header
+  * Move remaining messages around
+
+  [ Jeff ]
+  * Update readme.md
+
+  [ Michael ]
+  * Move subset of messages to right directory
+  * Move exit messages
+  * Move other messages
+  * Tweak link message parser
+  * Merge changes from upstream
+  * Rename InboundMessageParser to LinkMessageParser
+
+  [ Ryan Tharp ]
+  * Update README.md
+
+  [ Michael ]
+  * Rename message files
+  * Send netid to metrictank
+
+  [ Jeff Becker ]
+  * fix comparision
+
+  [ Michael ]
+  * Tidy up pathbuilder code
+
+  [ Jeff Becker ]
+  * fix up libuv close logic
+  * fix up libuv close logic
+  * =default
+  * only kill rcs as client
+  * try fixing issue number 17 (not done)
+  * finish up issue 17
+  * continue using llarp::openfilestream
+  * try fixing issue number 17 (not done)
+  * finish up issue 17
+  * continue using llarp::openfilestream
+  * make it compile and make it secure files
+  * reset errno and make unit tests pass
+  * explore faster via all peers
+  * fix fs stuff
+  * fix freebsd build
+
+  [ Ryan Tharp ]
+  * copy travis to temp fix linux build
+  * run update first
+  * gitlabci: actually install the package
+
+  [ Jeff Becker ]
+  * tweak
+
+  [ Michael ]
+  * Remove cppbackport from vendor dir
+  * Find libuv for Ryan
+
+  [ Jeff Becker ]
+  * update docs
+  * handle reply intro
+  * choose first timestamp
+  * outbound context build more
+  * fix previous commit
+  * oooof
+  * check for zero
+  * swap intros only on path build success
+  * correct comparison
+  * fix convotag inbound state setting
+  * set outbound context to be outbound session
+  * fix order
+  * add more metrics
+  * track drop in metrics
+
+  [ Michael ]
+  * Revert "Merge pull request #668 from michael-loki/remove_cppbackport"
+
+  [ Jeff Becker ]
+  * do direct lookup when in endgame scenario as client when looking for router
+  * better logging
+  * start seperating tun and endpoint
+  * start work on seperating ips out of endpoint
+  * close after 30 seconds of dead
+  * close after 30 seconds of dead
+  * pump write when handshaking
+  * ping on send idle not recv idle
+  * relax timeouts for handshake and make format
+  * pick ready paths for reply
+  * swap path on inbound convo if expires soon
+
+  [ Michael ]
+  * Add in-source version of std::filesystem::permissions
+  * Move config class to its own dir
+  * Move ini parser as well
+  * Convert to load config in config loader
+  * Fix tests
+
+  [ Jeff Becker ]
+  * disable rpc by default
+  * actually set config for network
+
+  [ Thomas Winget ]
+  * Reverts #678 #677 and #669 with hashes:
+
+  [ Jeff ]
+  * Update readme.md
+  * Update api_v0.txt
+
+  [ Jeff Becker ]
+  * remove threadpool.hpp
+  * remove threadpool.hpp
+  * don't lock when visiting links
+  * use sane defaults and deprecated "auto" as it's horribly bad style
+  * * fix testnet codepath
+
+  [ Jeff ]
+  * make it work
+
+  [ Jeff Becker ]
+  * * fix testnet codepath
+
+  [ Jeff ]
+  * make it work
+
+  [ Jeff Becker ]
+  * try fix for localhost.loki
+  * fix last commit
+
+  [ Michael ]
+  * Revert "Merge pull request #679 from tewinget/revert-config-refactor"
+  * Fix llvm 8 build
+  * Fixup and add tests
+  * Fix macos build after rebase
+  * Set netid before doing anything else
+
+  [ Jeff Becker ]
+  * fix
+  * make format
+  * whitespace fix
+  * initialize tun with 0 and set defaults in correct places
+
+  [ Michael ]
+  * Move router config to be encapsulated
+  * Have fromSection return void
+  * Allow override of some config via env variables
+  * Allow override of the rest of the config
+  * Add function to set threadname, and use from threadpool impl
+
+  [ Jeff Becker ]
+  * make threadpool consice
+  * lel
+  * make it compile
+  * make it compile
+  * correct name
+  * use logical or instead of bitwise or
+  * use const reference and don't log invalid packets
+  * use logical or not bitwise or and change function name to be plural
+  * remove comment that is wrong
+  * * pump after stopping hidden service context
+
+  [ Michael ]
+  * Remove redundant else blocks
+  * Address Jeff's comment
+
+  [ Jeff Becker ]
+  * make it compile
+  * fix freebsd build
+
+  [ Michael ]
+  * Add missing cppbackport fs::path constructor
+
+  [ Jeff Becker ]
+  * use correct function from free bsd pthread
+  * use elseif
+  * fix freebsd build for real
+
+  [ Michael ]
+  * Fixup two minor warnings
+
+  [ Jeff Becker ]
+  * typo fix lel
+  * disable shell hooks by default
+  * use correct uint128 functions when doing endian flipping
+  * make format
+  * change order of configuration
+  * try bailing when configration failed
+  * more logging
+
+  [ Jeff ]
+  * correct worker threads amounts
+  * fix previous commit
+
+  [ Michael ]
+  * Add FindLibUV and migrate
+
+  [ Jeff Becker ]
+  * use std::string instead of fs::path
+
+  [ Michael ]
+  * Refactor endpoint state management to a new class
+
+  [ Jeff Becker ]
+  * try fixing bootstrap
+  * durable write for nodedb
+  * only update if newer
+  * use static lookup timeout
+  * unconditional insert so that we dont run out of peers
+  * always ask peers for next closest
+
+  [ Michael ]
+  * Matrix build for travis
+  * Fix config builds
+  * Fix Ubuntu builds
+  * Update ubuntu dockerfile to use static linking
+  * always build release
+  * Attempt macOS build
+  * Set PIC everywhere
+  * Remove matrix build of NETNS
+  * Drop xcode11 for now
+  * Install make too
+  * fix formatting
+  * Use ccache to speed up builds
+  * Install gold on ubuntu
+  * Disable matrix builds on build type
+  * Matrix build debug and release, since we care about both
+
+  [ Ricardo Jesus Malagon Jerez ]
+  * Update readme.md to include readme_es.md link
+  * Create readme_es.md spanish translation
+
+  [ Jeff Becker ]
+  * make cross compile happen in makefile
+
+  [ Ricardo Jesus Malagon Jerez ]
+  * Update readme_es.md
+
+  [ Jeff Becker ]
+  * * fix arm cross compile on ubuntu disco
+  * add forgotten file
+  * add ppc64le toolchain
+  * add cross compile docs
+  * update cross compiler docs
+  * fix network interface iteration infinite loop
+  * reduce logging
+  * make it compile
+  * when lastSend is zero don;t time out
+  * set timestamps to zero
+  * revert
+  * only issue deferred utp acks before timeout checks in pump
+  * make hop count and length configurable
+  * set limits correctly
+  * do lookup for RC to neighboor even if we have them in our DHT buckets so we get an updated RC in reply
+  * fix testnet scripts
+
+  [ Ricardo Jesus Malagon Jerez ]
+  * Create release_es.md
+  * Create CONTRIBUTING_es.md
+  * Update CONTRIBUTING.md
+
+  [ rjmalagon ]
+  * Basic docs translations to spanish, more to go later
+
+  [ Michael ]
+  * Test windows support in travis
+  * Try installing make and ninja
+  * Fixup fs
+  * Try with clang?!
+  * Bump cmake version maybe
+  * use whatever vcvarsall is
+  * exceptions BE GONE
+  * Explictly enable catching exceptions
+  * try to fix pid_t issue
+  * Try forcing avx2
+  * include cctype
+  * Fix some string_view problems
+  * fix fs.cpp
+  * fix str.cpp
+  * Fix more headers for fs.cpp
+  * more fs.cpp
+  * fixup printer.cpp
+  * Don't use LoadFromString
+  * Change ConfigParser too
+  * Try building tests on windows
+  * Silence spammy threadpool warning
+  * build gtest/gmock in shared mode
+  * Try to silence some warnings to reduce noise
+  * Try to link shared again
+  * try actually reading the gtest docs
+  * Change manifest ids
+  * fix test.rc
+  * Delete ev loop tests
+  * Fixup some tests
+  * try to ensure on windows, but don't fail
+  * Skip 3 tests on windows
+  * fix test.rc
+  * Normalise build
+  * Tidy up cmake files
+  * Introduce a couple more builds, fixup notifications maybe
+
+  [ Jeff Becker ]
+  * make android compile
+  * fix android compile, have makefile pull in libuv for cmake on android
+
+  [ Thomas Winget ]
+  * Refactor Router code into more classes
+  * change log level of message send success
+  * add debug-level log message on path build success
+  * revert change that made travis happy because it broke things
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 25 Jul 2019 17:29:26 -0300
 
 lokinet (0.4.1) disco; urgency=medium
 

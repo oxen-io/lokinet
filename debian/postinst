@@ -1,3 +1,31 @@
 #!/bin/sh -e
-setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet || echo "failed to setcap lokinet"
-adduser --quiet --system --home /var/lib/lokinet debian-lokinet || echo "debian-lokinet user not added"
+
+set -e
+
+if [ "$1" = configure ]; then
+    # Create the loki_ group (shared with lokid)
+    if ! getent group _loki >/dev/null; then
+        addgroup --force-badname --system --quiet _loki
+    fi
+
+    # Create _lokinet user if it doesn't exist
+    if ! getent passwd _lokinet >/dev/null; then
+        adduser --force-badname --system --quiet --home /var/lib/lokinet --ingroup _loki --gecos "Lokinet system user" _lokinet
+    fi
+
+    # Make sure the _lokinet user is part of the _loki group (in case it already existed)
+    if ! id -Gn _lokinet | grep -qw _loki; then
+        adduser --force-badname --quiet _lokinet _loki
+    fi
+
+    mkdir -p /var/lib/lokinet
+    su -s /bin/sh _lokinet -c "test -O /var/lib/lokinet && test -G /var/lib/lokinet" || \
+        chown _lokinet:_loki /var/lib/lokinet
+
+    if ! setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet; then
+       echo "failed to setcap lokinet" >&2
+       exit 1
+   fi
+fi
+
+#DEBHELPER#
