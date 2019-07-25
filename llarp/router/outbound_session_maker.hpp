@@ -1,0 +1,103 @@
+#ifndef LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP
+#define LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP
+
+#include <router/i_outbound_session_maker.hpp>
+
+#include <router/i_rc_lookup_handler.hpp>
+#include <util/threading.hpp>
+#include <util/thread_pool.hpp>
+#include <util/logic.hpp>
+
+#include <unordered_map>
+#include <list>
+#include <memory>
+
+struct llarp_nodedb;
+
+namespace llarp
+{
+  struct PendingSession;
+
+  struct ILinkManager;
+  struct I_RCLookupHandler;
+
+  struct OutboundSessionMaker final : public IOutboundSessionMaker
+  {
+    using CallbacksQueue = std::list< RouterCallback >;
+
+   public:
+    ~OutboundSessionMaker() = default;
+
+    bool
+    OnSessionEstablished(ILinkSession *session) override;
+
+    void
+    OnConnectTimeout(ILinkSession *session) override;
+
+    void
+    CreateSessionTo(const RouterID &router,
+                    RouterCallback on_result) /* override */;
+
+    void
+    CreateSessionTo(const RouterContact &rc,
+                    RouterCallback on_result) /* override */;
+
+    bool
+    HavePendingSessionTo(const RouterID &router) const override;
+
+    void
+    ConnectToRandomRouters(int numDesired, llarp_time_t now) override;
+
+    util::StatusObject
+    ExtractStatus() const override;
+
+    void
+    Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
+         std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
+         std::shared_ptr< llarp::thread::ThreadPool > threadpool);
+
+   private:
+    void
+    DoEstablish(const RouterID &router);
+
+    void
+    GotRouterContact(const RouterID &router, const RouterContact &rc);
+
+    void
+    InvalidRouter(const RouterID &router);
+
+    void
+    RouterNotFound(const RouterID &router);
+
+    void
+    OnRouterContactResult(const RouterID &router, const RouterContact *const rc,
+                          const RCRequestResult result);
+
+    void
+    VerifyRC(const RouterContact rc);
+
+    void
+    CreatePendingSession(const RouterID &router);
+
+    void
+    FinalizeRequest(const RouterID &router, const SessionResult type);
+
+    mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
+
+    std::unordered_map< RouterID, std::shared_ptr< PendingSession >,
+                        RouterID::Hash >
+        pendingSessions GUARDED_BY(_mutex);
+
+    std::unordered_map< RouterID, CallbacksQueue, RouterID::Hash >
+        pendingCallbacks GUARDED_BY(_mutex);
+
+    ILinkManager *_linkManager;
+    I_RCLookupHandler *_rcLookup;
+    std::shared_ptr< Logic > _logic;
+    llarp_nodedb *_nodedb;
+    std::shared_ptr< llarp::thread::ThreadPool > _threadpool;
+  };
+
+}  // namespace llarp
+
+#endif  // LLARP_ROUTER_OUTBOUND_SESSION_MAKER_HPP

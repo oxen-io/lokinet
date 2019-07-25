@@ -3,10 +3,6 @@
 
 namespace llarp
 {
-  AbstractRouter::~AbstractRouter()
-  {
-  }
-
   void
   AbstractRouter::EnsureRouter(RouterID router, RouterLookupHandler handler)
   {

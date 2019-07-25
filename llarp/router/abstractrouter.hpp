@@ -24,6 +24,10 @@ namespace llarp
   struct Profiling;
   struct SecretKey;
   struct Signature;
+  struct IOutboundMessageHandler;
+  struct IOutboundSessionMaker;
+  struct ILinkManager;
+  struct I_RCLookupHandler;
 
   namespace exit
   {
@@ -52,10 +56,7 @@ namespace llarp
 
   struct AbstractRouter
   {
-    virtual ~AbstractRouter() = 0;
-
-    virtual bool
-    OnSessionEstablished(ILinkSession *) = 0;
+    virtual ~AbstractRouter() = default;
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,
@@ -106,11 +107,23 @@ namespace llarp
     virtual const service::Context &
     hiddenServiceContext() const = 0;
 
+    virtual IOutboundMessageHandler &
+    outboundMessageHandler() = 0;
+
+    virtual IOutboundSessionMaker &
+    outboundSessionMaker() = 0;
+
+    virtual ILinkManager &
+    linkManager() = 0;
+
+    virtual I_RCLookupHandler &
+    rcLookupHandler() = 0;
+
     virtual bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const = 0;
 
     virtual bool
-    Configure(Config *conf) = 0;
+    Configure(Config *conf, llarp_nodedb *nodedb) = 0;
 
     virtual bool
     Run(struct llarp_nodedb *nodedb) = 0;
@@ -128,9 +141,6 @@ namespace llarp
 
     virtual const byte_t *
     pubkey() const = 0;
-
-    virtual void
-    OnConnectTimeout(ILinkSession *session) = 0;
 
     /// connect to N random routers
     virtual void
@@ -218,11 +228,6 @@ namespace llarp
     /// direction
     virtual bool
     HasSessionTo(const RouterID &router) const = 0;
-
-    /// return true if we are currently looking up this router either directly
-    /// or via an anonymous endpoint
-    virtual bool
-    HasPendingRouterLookup(const RouterID &router) const = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;

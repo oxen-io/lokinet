@@ -60,7 +60,7 @@ struct llarp_nodedb
   struct NetDBEntry
   {
     const llarp::RouterContact rc;
-    const llarp_time_t inserted;
+    llarp_time_t inserted;
 
     NetDBEntry(const llarp::RouterContact &data);
   };
@@ -139,6 +139,9 @@ struct llarp_nodedb
   void
   VisitInsertedBefore(std::function< void(const llarp::RouterContact &) > visit,
                       llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
+
+  void
+  RemoveStaleRCs(const std::set< llarp::RouterID > &keep, llarp_time_t cutoff);
 
   size_t
   num_loaded() const LOCKS_EXCLUDED(access);

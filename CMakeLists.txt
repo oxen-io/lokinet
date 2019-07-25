@@ -1,6 +1,11 @@
 # Lowest version - android ndk 3.6.0
 cmake_minimum_required(VERSION 3.6.0)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif()
+
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX)
 
@@ -44,11 +49,6 @@ add_definitions(-D${CMAKE_SYSTEM_NAME})
 
 get_filename_component(CORE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include" ABSOLUTE)
 get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" ABSOLUTE)
-
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
-endif()
 
 if(MSVC_VERSION)
   enable_language(ASM_MASM)

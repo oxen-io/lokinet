@@ -199,6 +199,20 @@ namespace llarp
         return _nodes.get();
       }
 
+      void
+      PutRCNodeAsync(const RCNode& val) override
+      {
+        auto func = std::bind(&Bucket< RCNode >::PutNode, Nodes(), val);
+        router->logic()->queue_func(func);
+      }
+
+      void
+      DelRCNodeAsync(const Key_t& val) override
+      {
+        auto func = std::bind(&Bucket< RCNode >::DelNode, Nodes(), val);
+        router->logic()->queue_func(func);
+      }
+
       const Key_t&
       OurKey() const override
       {

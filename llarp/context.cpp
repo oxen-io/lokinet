@@ -159,8 +159,6 @@ __        ___    ____  _   _ ___ _   _  ____
   int
   Context::LoadDatabase()
   {
-    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
-
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
       llarp::LogError("nodedb_dir is incorrect");
@@ -233,16 +231,21 @@ __        ___    ____  _   _ ___ _   _  ____
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
     router = std::make_unique< Router >(worker, mainloop, logic);
-    if(!router->Configure(config.get()))
+
+    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
+
+    if(!router->Configure(config.get(), nodedb.get()))
     {
       llarp::LogError("Failed to configure router");
       return 1;
     }
+
     // must be done after router is made so we can use its disk io worker
     // must also be done after configure so that netid is properly set if it
     // is provided by config
     if(!this->LoadDatabase())
       return 1;
+
     return 0;
   }
 

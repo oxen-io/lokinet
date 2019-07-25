@@ -173,6 +173,12 @@ namespace llarp
       virtual Bucket< RCNode >*
       Nodes() const = 0;
 
+      virtual void
+      PutRCNodeAsync(const RCNode& val) = 0;
+
+      virtual void
+      DelRCNodeAsync(const Key_t& val) = 0;
+
       virtual util::StatusObject
       ExtractStatus() const = 0;
 

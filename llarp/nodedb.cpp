@@ -151,6 +151,13 @@ llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
     InsertAsync(rc, logic, completionHandler);
     return true;
   }
+  else if(itr != entries.end())
+  {
+    // insertion time is set on...insertion.  But it should be updated here
+    // even if there is no insertion of a new RC, to show that the existing one
+    // is not "stale"
+    itr->second.inserted = llarp::time_now_ms();
+  }
   return false;
 }
 
@@ -189,6 +196,8 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
     if(itr != entries.end())
       entries.erase(itr);
     entries.emplace(rc.pubkey.as_array(), rc);
+    LogInfo("Added or updated RC for ", llarp::RouterID(rc.pubkey),
+            " to nodedb.  Current nodedb count is: ", entries.size());
   }
   return true;
 }
@@ -311,6 +320,26 @@ llarp_nodedb::VisitInsertedBefore(
       visit(itr->second.rc);
     ++itr;
   }
+}
+
+void
+llarp_nodedb::RemoveStaleRCs(const std::set< llarp::RouterID > &keep,
+                             llarp_time_t cutoff)
+{
+  std::set< llarp::RouterID > removeStale;
+  // remove stale routers
+  VisitInsertedBefore(
+      [&](const llarp::RouterContact &rc) {
+        if(keep.find(rc.pubkey) != keep.end())
+          return;
+        LogInfo("removing stale router: ", llarp::RouterID(rc.pubkey));
+        removeStale.insert(rc.pubkey);
+      },
+      cutoff);
+
+  RemoveIf([&removeStale](const llarp::RouterContact &rc) -> bool {
+    return removeStale.count(rc.pubkey) > 0;
+  });
 }
 
 /*

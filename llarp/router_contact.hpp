@@ -70,8 +70,7 @@ namespace llarp
 
     static llarp_time_t Lifetime;
     static llarp_time_t UpdateInterval;
-    static llarp_time_t UpdateWindow;
-    static int UpdateTries;
+    static llarp_time_t StaleInsertionAge;
 
     RouterContact()
     {
