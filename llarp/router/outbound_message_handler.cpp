@@ -25,9 +25,7 @@ namespace llarp
       return false;
     }
 
-    Message message;
-    message.first.reserve(buf.sz);
-    message.second = callback;
+    Message message{buf.sz, callback};
 
     std::copy_n(buf.base, buf.sz, message.first.data());
 
