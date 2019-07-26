@@ -728,10 +728,13 @@ namespace llarp
         [=](const RouterID &id, const RouterContact *const rc,
             const RCRequestResult result) {
           (void)id;
-          std::vector< RouterContact > routers;
-          if(result == RCRequestResult::Success && rc != nullptr)
+          if(resultHandler)
           {
-            routers.push_back(*rc);
+            std::vector< RouterContact > routers;
+            if(result == RCRequestResult::Success && rc != nullptr)
+            {
+              routers.push_back(*rc);
+            }
             resultHandler(routers);
           }
         });
