@@ -1,3 +1,18 @@
+lokinet (0.5.0~pre20190726-1) sid; urgency=medium
+
+  [ Thomas Winget ]
+  * make travis happy again *and* don't break message sending
+
+  [ Jeff Becker ]
+  * fix crash of clients and propagate lookup failures
+
+  [ Jason Rhinelander ]
+  * lokinet-bootstrap improvements
+  * Remove unneeded git dependency
+  * Deb updates & fixes
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 26 Jul 2019 18:21:31 -0300
+
 lokinet (0.5.0~pre20190725-1) sid; urgency=medium
 
   [ Jeff Becker (probably not evil) ]
