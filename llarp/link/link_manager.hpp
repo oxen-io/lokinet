@@ -27,7 +27,8 @@ namespace llarp
     GetSessionMaker() const override;
 
     bool
-    SendTo(const RouterID &remote, const llarp_buffer_t &buf) override;
+    SendTo(const RouterID &remote, const llarp_buffer_t &buf,
+           ILinkSession::CompletionHandler completed) override;
 
     bool
     HasSessionTo(const RouterID &remote) const override;
