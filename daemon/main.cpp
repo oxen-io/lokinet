@@ -19,6 +19,7 @@
 #endif
 
 struct llarp_main *ctx = 0;
+std::promise< int > exit_code;
 
 void
 handle_signal(int sig)
@@ -74,6 +75,31 @@ resolvePath(std::string conffname)
   // one of these exists deep in the bowels of LLVMSupport
   return conffname;  // eww, easier said than done outside of cygwin
 #endif
+}
+
+/// this sets up, configures and runs the main context
+static void
+run_main_context(std::string conffname, bool multiThreaded, bool debugMode)
+{
+  // this is important, can downgrade from Info though
+  llarp::LogDebug("Running from: ", fs::current_path().string());
+  llarp::LogInfo("Using config file: ", conffname);
+  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
+  int code = 1;
+  if(ctx)
+  {
+    signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
+#ifndef _WIN32
+    signal(SIGHUP, handle_signal);
+#endif
+    code = llarp_main_setup(ctx, debugMode);
+    llarp::util::SetThreadName("llarp-mainloop");
+    if(code == 0)
+      code = llarp_main_run(ctx);
+    llarp_main_free(ctx);
+  }
+  exit_code.set_value(code);
 }
 
 int
@@ -273,27 +299,20 @@ main(int argc, char *argv[])
     return 0;
   }
 
-  // this is important, can downgrade from Info though
-  llarp::LogInfo("Running from: ", fs::current_path().string());
-  llarp::LogInfo("Using config file: ", conffname);
-  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
-  int code = 1;
-  if(ctx)
+  std::thread main_thread{
+      std::bind(&run_main_context, conffname, multiThreaded, debugMode)};
+  auto ftr = exit_code.get_future();
+  do
   {
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
-#ifndef _WIN32
-    signal(SIGHUP, handle_signal);
-#endif
+    // do periodic non lokinet related tasks here
+  } while(ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
-    code = llarp_main_setup(ctx, debugMode);
-    if(code == 0)
-      code = llarp_main_run(ctx);
-    llarp_main_free(ctx);
-  }
+  main_thread.join();
+
 #ifdef _WIN32
   ::WSACleanup();
 #endif
+  const auto code = ftr.get();
   exit(code);
   return code;
 }
