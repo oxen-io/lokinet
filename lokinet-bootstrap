@@ -6,19 +6,44 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
+set -e
+
+helpme=
+default_url="https://i2p.rocks/i2procks.signed"
+default_dest="$HOME/.lokinet/bootstrap.signed"
+
+if [ "$#" -gt 2 ]; then
+  helpme=y
+fi
+
 if [ -z "$1" ]
 then
-  url="https://i2p.rocks/i2procks.signed"
+  url="$default_url"
+elif [[ "$1" = -* ]]; then
+  helpme=y
 else
   url="$1"
 fi
 
-echo "downloading $url"
-
-if [ ! -d "$HOME/.lokinet" ]
-then
-  mkdir $HOME/.lokinet
+if [[ "$2" = -* ]]; then
+  helpme=y
+elif [ -n "$2" ]; then
+  dest="$2"
+else
+  dest="$default_dest"
 fi
+
+if [ -n "$helpme" ]; then
+  echo "Usage: $0 [URL [DEST]] -- download bootstrap file from URL (default: $default_url) and save to DEST (default: $default_dest)."
+  exit 1
+fi
+
+destdir="$(dirname $dest)"
+if [ ! -d "$destdir" ]; then
+  mkdir "$destdir"
+fi
+
+echo "downloading $url"
 
 # use temp file to not overrwrite existing bootstrap file on fail
 #tmp=mktemp
@@ -26,7 +51,11 @@ tmp=/tmp/bootstrap.tmp
 
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
-curl -o "$tmp" "$url" && \
-    (mv "$tmp" "$HOME/.lokinet/bootstrap.signed" && echo -e "${GREEN}lokinet successfully bootstrapped${NC}" ) \
-        || echo -e "${RED}failed to download bootstrap from $url${NC}"
-rm -f "$tmp"
+if curl -L "$url" >"$tmp"; then
+  mv "$tmp" "$dest"
+  echo -e "${GREEN}lokinet successfully bootstrapped${NC}"
+else
+  echo -e "${RED}failed to download bootstrap from $url${NC}"
+  rm -f "$tmp"
+  exit 1
+fi
