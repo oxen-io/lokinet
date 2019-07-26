@@ -184,7 +184,7 @@ namespace llarp
                   }
                   reply(msg);
                 });
-            return;
+            return true;
           }
           else
           {
