@@ -4,10 +4,10 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-User=debian-lokinet
+User=_lokinet
 SyslogIdentifier=lokinet
-ExecStartPre=/bin/bash -c "/usr/bin/lokinet-bootstrap && /usr/bin/lokinet -g"
-ExecStart=/usr/bin/lokinet
+RequireFileExists=/var/lib/lokinet/bootstrap.signed
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
 Restart=always
 
 [Install]

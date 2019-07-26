@@ -22,10 +22,25 @@ if [ "$1" = configure ]; then
     su -s /bin/sh _lokinet -c "test -O /var/lib/lokinet && test -G /var/lib/lokinet" || \
         chown _lokinet:_loki /var/lib/lokinet
 
+    if ! dpkg-statoverride --list /usr/bin/lokinet >/dev/null 2>&1; then
+        dpkg-statoverride --update --add root _loki 750 /usr/bin/lokinet
+    fi
+
     if ! setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet; then
-       echo "failed to setcap lokinet" >&2
-       exit 1
-   fi
+        echo "failed to setcap lokinet" >&2
+        exit 1
+    fi
+
+    if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
+        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/boostrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/boostrap.signed
+    fi
+
+    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
+    /usr/bin/lokinet -g $tmpdir/lokinet.ini
+    ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
+    ucfr lokinet /etc/loki/lokinet.ini
+
 fi
 
 #DEBHELPER#
