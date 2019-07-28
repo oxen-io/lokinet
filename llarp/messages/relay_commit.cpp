@@ -1,10 +1,12 @@
 #include <messages/relay_commit.hpp>
+#include <messages/relay_status.hpp>
 
 #include <crypto/crypto.hpp>
 #include <nodedb.hpp>
 #include <path/path_context.hpp>
 #include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
+#include <router/i_outbound_message_handler.hpp>
 #include <routing/path_confirm_message.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
@@ -195,6 +197,45 @@ namespace llarp
     {
     }
 
+    static void
+    OnForwardLRCMResult(AbstractRouter* router, const PathID_t pathid,
+                        const RouterID nextHop, const SharedSecret pathKey,
+                        SendStatus sendStatus)
+    {
+      uint64_t status = LR_StatusRecord::FAIL_DEST_INVALID;
+
+      switch(sendStatus)
+      {
+        case SendStatus::Success:
+          // do nothing, will forward success message later
+          return;
+        case SendStatus::Timeout:
+          status = LR_StatusRecord::FAIL_TIMEOUT;
+          break;
+        case SendStatus::NoLink:
+          status = LR_StatusRecord::FAIL_CANNOT_CONNECT;
+          break;
+        case SendStatus::InvalidRouter:
+          status = LR_StatusRecord::FAIL_DEST_INVALID;
+          break;
+        case SendStatus::RouterNotFound:
+          status = LR_StatusRecord::FAIL_DEST_UNKNOWN;
+          break;
+        case SendStatus::Congestion:
+          status = LR_StatusRecord::FAIL_CONGESTION;
+          break;
+        default:
+          LogError("llarp::SendStatus value not in enum class");
+          std::abort();
+          break;
+      }
+
+      auto func = std::bind(&LR_StatusMessage::CreateAndSend, router, pathid,
+                            nextHop, pathKey, status);
+
+      router->threadpool()->addJob(func);
+    }
+
     /// this is done from logic thread
     static void
     SendLRCM(std::shared_ptr< LRCMFrameDecrypt > self)
@@ -205,6 +246,9 @@ namespace llarp
         // we are not allowed to forward it ... now what?
         llarp::LogError("path to ", self->hop->info.upstream,
                         "not allowed, dropping build request on the floor");
+        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
+                            self->hop->info.downstream, self->hop->pathKey,
+                            SendStatus::InvalidRouter);
         self->hop = nullptr;
         return;
       }
@@ -227,24 +271,17 @@ namespace llarp
           if(self->record.nextRC->IsPublicRouter()
              && self->record.nextRC->Verify(now))
           {
-            llarp_nodedb* n        = self->context->Router()->nodedb();
-            const RouterContact rc = *self->record.nextRC;
-            // store it into netdb if we don't have it
-            if(!n->Has(rc.pubkey))
-            {
-              std::shared_ptr< Logic > l = self->context->Router()->logic();
-              n->InsertAsync(rc, l, [=]() {
-                self->context->ForwardLRCM(self->hop->info.upstream,
-                                           self->frames);
-                self->hop = nullptr;
-              });
-              return;
-            }
+            self->context->Router()->nodedb()->UpdateAsyncIfNewer(
+                *self->record.nextRC.get());
           }
         }
       }
       // forward to next hop
-      self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
+      using std::placeholders::_1;
+      auto func = std::bind(&OnForwardLRCMResult, self->context->Router(),
+                            self->hop->info.rxID, self->hop->info.downstream,
+                            self->hop->pathKey, _1);
+      self->context->ForwardLRCM(self->hop->info.upstream, self->frames, func);
       self->hop = nullptr;
     }
 
@@ -257,9 +294,14 @@ namespace llarp
           self->hop->info.downstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
+
       // send path confirmation
-      const llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
-      if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
+      // TODO: other status flags?
+      uint64_t status = LR_StatusRecord::SUCCESS;
+
+      if(!LR_StatusMessage::CreateAndSend(
+             self->context->Router(), self->hop->info.rxID,
+             self->hop->info.downstream, self->hop->pathKey, status))
       {
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);

@@ -387,7 +387,8 @@ namespace llarp
     /// NOT threadsafe
     /// MUST be called in the logic thread
     bool
-    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg) override;
+    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
+                  SendStatusHandler handler) override;
 
     void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,

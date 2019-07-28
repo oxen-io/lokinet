@@ -3,6 +3,7 @@
 
 #include <util/types.hpp>
 #include <util/status.hpp>
+#include <router/i_outbound_message_handler.hpp>
 #include <vector>
 #include <ev/ev.h>
 #include <functional>
@@ -174,7 +175,8 @@ namespace llarp
     GetRandomGoodRouter(RouterID &r) = 0;
 
     virtual bool
-    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg) = 0;
+    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
+                  SendStatusHandler handler = nullptr) = 0;
 
     virtual void
     PersistSessionUntil(const RouterID &remote, llarp_time_t until) = 0;
