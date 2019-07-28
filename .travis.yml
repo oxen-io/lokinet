@@ -14,8 +14,8 @@ matrix:
     services: docker
   - os: linux
     dist: xenial
-    compiler: gcc
-    env: MAKE_TARGET=windows BUILD_TYPE=Release
+    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+    services: docker
   - os: linux
     dist: xenial
     compiler: gcc

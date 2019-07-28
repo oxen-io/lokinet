@@ -12,8 +12,8 @@
 #include <filesystem.h>
 namespace fs = cpp17::filesystem;
 #else
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
+#include <filesystem>
+namespace fs = std::filesystem;
 #endif
 
 #ifndef _MSC_VER
