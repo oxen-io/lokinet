@@ -11,10 +11,17 @@ namespace llarp
   namespace utp
   {
     LinkLayer_ptr
-    NewServer(const SecretKey& routerEncSecret, GetRCFunc getrc,
-              LinkMessageHandler h, SessionEstablishedHandler est,
-              SessionRenegotiateHandler reneg, SignBufferFunc sign,
-              TimeoutHandler timeout, SessionClosedHandler closed);
+    NewInboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                   LinkMessageHandler h, SessionEstablishedHandler est,
+                   SessionRenegotiateHandler reneg, SignBufferFunc sign,
+                   TimeoutHandler timeout, SessionClosedHandler closed);
+    LinkLayer_ptr
+    NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                    LinkMessageHandler h, SessionEstablishedHandler est,
+                    SessionRenegotiateHandler reneg, SignBufferFunc sign,
+                    TimeoutHandler timeout, SessionClosedHandler closed);
+    /// shim
+    const auto NewServer = NewInboundLink;
   }  // namespace utp
 }  // namespace llarp
 

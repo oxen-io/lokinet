@@ -345,7 +345,8 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::SendTo(const RouterID& remote, const llarp_buffer_t& buf)
+  ILinkLayer::SendTo(const RouterID& remote, const llarp_buffer_t& buf,
+                     ILinkSession::CompletionHandler completed)
   {
     ILinkSession* s = nullptr;
     {
@@ -366,7 +367,7 @@ namespace llarp
         ++itr;
       }
     }
-    return s && s->SendMessageBuffer(buf);
+    return s && s->SendMessageBuffer(buf, completed);
   }
 
   bool

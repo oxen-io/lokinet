@@ -35,7 +35,8 @@ namespace llarp
   }
 
   bool
-  LinkManager::SendTo(const RouterID &remote, const llarp_buffer_t &buf)
+  LinkManager::SendTo(const RouterID &remote, const llarp_buffer_t &buf,
+                      ILinkSession::CompletionHandler completed)
   {
     if(stopping)
       return false;
@@ -43,10 +44,14 @@ namespace llarp
     auto link = GetLinkWithSessionTo(remote);
     if(link == nullptr)
     {
+      if(completed)
+      {
+        completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
+      }
       return false;
     }
 
-    return link->SendTo(remote, buf);
+    return link->SendTo(remote, buf, completed);
   }
 
   bool

@@ -481,7 +481,7 @@ namespace llarp
     // create inbound links, if we are a service node
     for(const auto &serverConfig : conf->iwp_links.servers())
     {
-      auto server = llarp::utp::NewServer(
+      auto server = llarp::utp::NewInboundLink(
           encryption(), util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -1064,7 +1064,7 @@ namespace llarp
         SessionEstablishedHandler, SessionRenegotiateHandler, SignBufferFunc,
         TimeoutHandler, SessionClosedHandler) >;
 
-    static std::list< LinkFactory > linkFactories = {utp::NewServer,
+    static std::list< LinkFactory > linkFactories = {utp::NewOutboundLink,
                                                      iwp::NewServer};
 
     bool addedAtLeastOne = false;
@@ -1089,9 +1089,9 @@ namespace llarp
         continue;
       }
 
-      auto afs = {AF_INET, AF_INET6};
+      const auto afs = {AF_INET, AF_INET6};
 
-      for(auto af : afs)
+      for(const auto af : afs)
       {
         if(!link->Configure(netloop(), "*", af, m_OutboundPort))
           continue;

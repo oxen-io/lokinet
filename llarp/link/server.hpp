@@ -141,7 +141,8 @@ namespace llarp
     KeepAliveSessionTo(const RouterID& remote);
 
     bool
-    SendTo(const RouterID& remote, const llarp_buffer_t& buf);
+    SendTo(const RouterID& remote, const llarp_buffer_t& buf,
+           ILinkSession::CompletionHandler completed);
 
     bool
     GetOurAddressInfo(AddressInfo& addr) const;

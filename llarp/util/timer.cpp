@@ -18,6 +18,7 @@ namespace llarp
     uint64_t started;
     uint64_t timeout;
     llarp_timer_handler_func func;
+    std::function< void(void) > deferredFunc;
     bool done;
     bool canceled;
 
@@ -117,9 +118,21 @@ struct llarp_timer_context
   {
     llarp::util::Lock lock(&timersMutex);
 
-    uint32_t id = ++currentId;
+    const uint32_t id = ++currentId;
     timers.emplace(
         id, std::make_unique< llarp::timer >(m_Now, timeout_ms, user, func));
+    return id;
+  }
+
+  uint32_t
+  call_func_later(std::function< void(void) > func, llarp_time_t timeout)
+  {
+    llarp::util::Lock lock(&timersMutex);
+
+    const uint32_t id = ++currentId;
+    timers.emplace(
+        id, std::make_unique< llarp::timer >(m_Now, timeout, nullptr, nullptr));
+    timers[id]->deferredFunc = func;
     return id;
   }
 
@@ -155,6 +168,13 @@ llarp_timer_call_later(struct llarp_timer_context* t,
                        struct llarp_timeout_job job)
 {
   return t->call_later(job.user, job.handler, job.timeout);
+}
+
+uint32_t
+llarp_timer_call_func_later(struct llarp_timer_context* t, llarp_time_t timeout,
+                            std::function< void(void) > func)
+{
+  return t->call_func_later(func, timeout);
 }
 
 void
@@ -285,6 +305,8 @@ namespace llarp
       else
         call(user, timeout, diff);
     }
+    if(deferredFunc)
+      deferredFunc();
     done = true;
   }
 }  // namespace llarp
