@@ -50,7 +50,7 @@ namespace llarp
                 LinkMessageHandler h, SignBufferFunc sign,
                 SessionEstablishedHandler established,
                 SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                SessionClosedHandler closed);
+                SessionClosedHandler closed, bool acceptInbound);
 
       /// destruct
       ~LinkLayer();

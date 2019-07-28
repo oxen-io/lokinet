@@ -26,6 +26,7 @@ namespace llarp
         return;
       ssize_t expect = 0;
       std::vector< utp_iovec > send;
+
       for(const auto& msg : sendq)
       {
         for(const auto& vec : msg.vecs)
@@ -40,10 +41,9 @@ namespace llarp
       if(expect)
       {
         ssize_t s = utp_writev(sock, send.data(), send.size());
-        if(s < 0)
+        if(s <= 0)
           return;
-        if(s > 0)
-          lastSend = parent->Now();
+        lastSend = parent->Now();
 
         metrics::integerTick("utp.session.tx", "writes", s, "id",
                              RouterID(remoteRC.pubkey).ToString());

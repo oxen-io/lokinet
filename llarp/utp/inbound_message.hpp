@@ -38,9 +38,6 @@ namespace llarp
     /// buffer for a single utp fragment
     using FragmentBuffer = AlignedBuffer< FragmentBufferSize >;
 
-    /// maximum size for send queue for a session before we drop
-    constexpr size_t MaxSendQueueSize = 64;
-
     /// buffer for a link layer message
     using MessageBuffer = AlignedBuffer< MAX_LINK_MSG_SIZE >;
 

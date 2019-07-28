@@ -73,14 +73,16 @@ namespace llarp
                          LinkMessageHandler h, SignBufferFunc sign,
                          SessionEstablishedHandler established,
                          SessionRenegotiateHandler reneg,
-                         TimeoutHandler timeout, SessionClosedHandler closed)
+                         TimeoutHandler timeout, SessionClosedHandler closed,
+                         bool permitInbound)
         : ILinkLayer(routerEncSecret, getrc, h, sign, established, reneg,
                      timeout, closed)
     {
       _utp_ctx = utp_init(2);
       utp_context_set_userdata(_utp_ctx, this);
       utp_set_callback(_utp_ctx, UTP_SENDTO, &LinkLayer::SendTo);
-      utp_set_callback(_utp_ctx, UTP_ON_ACCEPT, &LinkLayer::OnAccept);
+      if(permitInbound)
+        utp_set_callback(_utp_ctx, UTP_ON_ACCEPT, &LinkLayer::OnAccept);
       utp_set_callback(_utp_ctx, UTP_ON_CONNECT, &LinkLayer::OnConnect);
       utp_set_callback(_utp_ctx, UTP_ON_STATE_CHANGE,
                        &LinkLayer::OnStateChange);
@@ -90,8 +92,10 @@ namespace llarp
       utp_context_set_option(_utp_ctx, UTP_LOG_NORMAL, 1);
       utp_context_set_option(_utp_ctx, UTP_LOG_MTU, 1);
       utp_context_set_option(_utp_ctx, UTP_LOG_DEBUG, 1);
-      utp_context_set_option(_utp_ctx, UTP_SNDBUF, MAX_LINK_MSG_SIZE * 64);
-      utp_context_set_option(_utp_ctx, UTP_RCVBUF, MAX_LINK_MSG_SIZE * 64);
+      utp_context_set_option(_utp_ctx, UTP_SNDBUF,
+                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * 3) / 2);
+      utp_context_set_option(_utp_ctx, UTP_RCVBUF,
+                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * 3) / 2);
     }
 
     LinkLayer::~LinkLayer()

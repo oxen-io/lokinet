@@ -89,8 +89,10 @@ namespace llarp
       uint32_t m_NextTXMsgID;
       /// the next message id for rx
       uint32_t m_NextRXMsgID;
+
+      using SendQueue_t = std::deque< OutboundMessage >;
       /// messages we are currently sending
-      std::deque< OutboundMessage > sendq;
+      SendQueue_t sendq;
       /// messages we are recving right now
       std::unordered_map< uint32_t, InboundMessage > m_RecvMsgs;
       /// are we stalled or nah?
