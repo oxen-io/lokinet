@@ -9,7 +9,7 @@ namespace llarp
   namespace utp
   {
     LinkLayer_ptr
-    NewOutoundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+    NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
                    LinkMessageHandler h, SessionEstablishedHandler est,
                    SessionRenegotiateHandler reneg, SignBufferFunc sign,
                    TimeoutHandler timeout, SessionClosedHandler closed)

@@ -20,6 +20,8 @@ namespace llarp
                     LinkMessageHandler h, SessionEstablishedHandler est,
                     SessionRenegotiateHandler reneg, SignBufferFunc sign,
                     TimeoutHandler timeout, SessionClosedHandler closed);
+    /// shim
+    const auto NewServer = NewInboundLink;
   }  // namespace utp
 }  // namespace llarp
 
