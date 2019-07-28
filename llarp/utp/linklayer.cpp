@@ -93,9 +93,9 @@ namespace llarp
       utp_context_set_option(_utp_ctx, UTP_LOG_MTU, 1);
       utp_context_set_option(_utp_ctx, UTP_LOG_DEBUG, 1);
       utp_context_set_option(_utp_ctx, UTP_SNDBUF,
-                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * 3) / 2);
+                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * size_t{3}) / size_t{2});
       utp_context_set_option(_utp_ctx, UTP_RCVBUF,
-                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * 3) / 2);
+                             (MAX_LINK_MSG_SIZE * MaxSendQueueSize * size_t{3}) / size_t{2});
     }
 
     LinkLayer::~LinkLayer()
