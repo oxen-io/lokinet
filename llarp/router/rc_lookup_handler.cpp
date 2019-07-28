@@ -294,6 +294,7 @@ namespace llarp
   bool
   RCLookupHandler::HavePendingLookup(RouterID remote) const
   {
+    util::Lock l(&_mutex);
     return pendingCallbacks.find(remote) != pendingCallbacks.end();
   }
 

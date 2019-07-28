@@ -16,7 +16,7 @@ struct llarp_buffer_t;
 namespace llarp
 {
   struct ILinkManager;
-  struct Logic;
+  class Logic;
   enum class SessionResult;
 
   struct OutboundMessageHandler final : public IOutboundMessageHandler

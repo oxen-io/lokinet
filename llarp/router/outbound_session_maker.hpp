@@ -35,12 +35,10 @@ namespace llarp
     OnConnectTimeout(ILinkSession *session) override;
 
     void
-    CreateSessionTo(const RouterID &router,
-                    RouterCallback on_result) /* override */;
+    CreateSessionTo(const RouterID &router, RouterCallback on_result) override;
 
     void
-    CreateSessionTo(const RouterContact &rc,
-                    RouterCallback on_result) /* override */;
+    CreateSessionTo(const RouterContact &rc, RouterCallback on_result) override;
 
     bool
     HavePendingSessionTo(const RouterID &router) const override;
