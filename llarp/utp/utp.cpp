@@ -10,9 +10,9 @@ namespace llarp
   {
     LinkLayer_ptr
     NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
-                   LinkMessageHandler h, SessionEstablishedHandler est,
-                   SessionRenegotiateHandler reneg, SignBufferFunc sign,
-                   TimeoutHandler timeout, SessionClosedHandler closed)
+                    LinkMessageHandler h, SessionEstablishedHandler est,
+                    SessionRenegotiateHandler reneg, SignBufferFunc sign,
+                    TimeoutHandler timeout, SessionClosedHandler closed)
     {
       return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
                                            reneg, timeout, closed, false);

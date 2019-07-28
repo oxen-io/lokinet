@@ -27,6 +27,10 @@ uint32_t
 llarp_timer_call_later(struct llarp_timer_context *t,
                        struct llarp_timeout_job job);
 
+uint32_t
+llarp_timer_call_func_later(llarp_timer_context *t, llarp_time_t timeout,
+                            std::function< void(void) > func);
+
 void
 llarp_timer_cancel_job(struct llarp_timer_context *t, uint32_t id);
 
