@@ -56,10 +56,7 @@ namespace llarp
 
       if(session && link)
       {
-        if(arg->error_code == UTP_ETIMEDOUT)
-        {
-          link->HandleTimeout(session);
-        }
+        link->HandleTimeout(session);
         session->Close();
       }
       return 0;
