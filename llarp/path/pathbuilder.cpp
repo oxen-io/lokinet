@@ -130,7 +130,7 @@ namespace llarp
   {
     if(!ctx.pathset->IsStopped())
     {
-      RouterID remote         = ctx.path->Upstream();
+      const RouterID remote   = ctx.path->Upstream();
       const ILinkMessage* msg = &ctx.LRCM;
       if(ctx.router->SendToOrQueue(remote, msg))
       {
