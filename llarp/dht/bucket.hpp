@@ -151,8 +151,9 @@ namespace llarp
       GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
                            size_t N, const std::set< Key_t >& exclude) const
       {
-        auto itr = nodes.upper_bound(target);
-        while(itr != nodes.end() && N > 0)
+        auto itr       = nodes.lower_bound(target);
+        const auto end = nodes.end();
+        while(N > 0 && itr != end)
         {
           if(exclude.count(itr->first) == 0)
           {
@@ -161,7 +162,7 @@ namespace llarp
           }
           ++itr;
         }
-        return N == 0;
+        return true;
       }
 
       void
