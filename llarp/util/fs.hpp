@@ -11,6 +11,9 @@
 #if defined(LOKINET_USE_CPPBACKPORT)
 #include <filesystem.h>
 namespace fs = cpp17::filesystem;
+#elif defined(__cpp_lib_filesystem)
+#include <filesystem>
+namespace fs = std::filesystem;
 #else
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
