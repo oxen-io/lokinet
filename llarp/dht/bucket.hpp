@@ -108,8 +108,8 @@ namespace llarp
 
           return true;
         }
-        size_t expecting = N;
-        size_t sz        = nodes.size();
+        const size_t expecting = N;
+        const size_t sz        = nodes.size();
         while(N)
         {
           auto itr = nodes.begin();
@@ -137,7 +137,7 @@ namespace llarp
             continue;
           }
 
-          auto curDist = item.first ^ target;
+          const auto curDist = item.first ^ target;
           if(curDist < mindist)
           {
             mindist = curDist;
@@ -151,19 +151,17 @@ namespace llarp
       GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
                            size_t N, const std::set< Key_t >& exclude) const
       {
-        std::set< Key_t > s(exclude.begin(), exclude.end());
-
-        Key_t peer;
-        while(N--)
+        auto itr = nodes.upper_bound(target);
+        while(itr != nodes.end() && N > 0)
         {
-          if(!FindCloseExcluding(target, peer, s))
+          if(exclude.count(itr->first) == 0)
           {
-            return false;
+            result.insert(itr->first);
+            --N;
           }
-          s.insert(peer);
-          result.insert(peer);
+          ++itr;
         }
-        return true;
+        return N == 0;
       }
 
       void
