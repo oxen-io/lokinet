@@ -9,7 +9,7 @@ namespace llarp
   {
     struct XorMetric
     {
-      const Key_t& us;
+      const Key_t us;
 
       XorMetric(const Key_t& ourKey) : us(ourKey)
       {

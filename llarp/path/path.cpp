@@ -13,6 +13,7 @@
 #include <routing/transfer_traffic_message.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
+#include <util/logic.hpp>
 
 #include <deque>
 
@@ -145,7 +146,8 @@ namespace llarp
       if((currentStatus & LR_StatusRecord::SUCCESS) == 1)
       {
         llarp::LogDebug("LR_Status message processed, path build successful");
-        HandlePathConfirmMessage(r);
+        auto self = shared_from_this();
+        r->logic()->queue_func([=]() { self->HandlePathConfirmMessage(r); });
       }
       else
       {

@@ -336,9 +336,10 @@ namespace llarp
       uint64_t txid = ++ids;
       TXOwner peer(askpeer, txid);
       TXOwner whoasked(OurKey(), txid);
+      RouterID K;
+      K.Randomize();
       pendingExploreLookups().NewTX(
-          peer, whoasked, askpeer.as_array(),
-          new ExploreNetworkJob(askpeer.as_array(), this));
+          peer, whoasked, K, new ExploreNetworkJob(askpeer.as_array(), this));
     }
 
     void
