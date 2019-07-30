@@ -666,7 +666,7 @@ namespace llarp
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
       if(!_nodes->GetManyNearExcluding(t, foundRouters,
-                                       nodeCount >= 4 ? 4 : nodeCount - 1,
+                                       nodeCount >= 4 ? 4 : nodeCount,
                                        std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
