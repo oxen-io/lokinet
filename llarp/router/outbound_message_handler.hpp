@@ -22,7 +22,7 @@ namespace llarp
   struct OutboundMessageHandler final : public IOutboundMessageHandler
   {
    public:
-    ~OutboundMessageHandler() = default;
+    ~OutboundMessageHandler() override = default;
 
     bool
     QueueMessage(const RouterID &remote, const ILinkMessage *msg,

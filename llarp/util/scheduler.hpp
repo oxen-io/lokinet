@@ -8,6 +8,7 @@
 #include <atomic>
 #include <functional>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace llarp
@@ -40,8 +41,8 @@ namespace llarp
         std::atomic_bool m_isCancelled;
         Handle m_handle;
 
-        RepeatData(const Callback& callback, absl::Duration period)
-            : m_callback(callback)
+        RepeatData(Callback callback, absl::Duration period)
+            : m_callback(std::move(callback))
             , m_period(period)
             , m_isCancelled(false)
             , m_handle(0)
@@ -133,7 +134,7 @@ namespace llarp
       {
       }
 
-      Scheduler(const EventDispatcher& dispatcher, const Clock& clock);
+      Scheduler(EventDispatcher dispatcher, Clock clock);
 
       ~Scheduler();
 

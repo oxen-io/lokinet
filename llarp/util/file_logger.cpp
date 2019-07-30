@@ -1,5 +1,6 @@
 #include <util/file_logger.hpp>
 #include <util/logger_internal.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -16,7 +17,7 @@ namespace llarp
   FileLogStream::FileLogStream(std::shared_ptr< thread::ThreadPool > disk,
                                FILE *f, llarp_time_t flushInterval,
                                bool closeFile)
-      : m_Disk(disk)
+      : m_Disk(std::move(disk))
       , m_File(f)
       , m_FlushInterval(flushInterval)
       , m_Close(closeFile)

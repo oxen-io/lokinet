@@ -25,7 +25,7 @@ struct llarp_threadpool
   }
 
   llarp_threadpool()
-      : jobs(new llarp::thread::Queue< std::function< void(void) > >(128))
+      : jobs(new llarp::thread::Queue< std::function< void() > >(128))
       , callingPID(llarp::util::GetPid())
   {
     jobs->enable();
@@ -59,23 +59,21 @@ llarp_init_same_process_threadpool();
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);
 
-typedef void (*llarp_thread_work_func)(void *);
+using llarp_thread_work_func = void (*)(void *);
 
 /** job to be done in worker thread */
 struct llarp_thread_job
 {
   /** user data to pass to work function */
-  void *user;
+  void *user{nullptr};
   /** called in threadpool worker thread */
-  llarp_thread_work_func work;
+  llarp_thread_work_func work{nullptr};
 #ifdef __cplusplus
   llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
   {
   }
 
-  llarp_thread_job() : user(nullptr), work(nullptr)
-  {
-  }
+  llarp_thread_job() = default;
 #endif
 };
 

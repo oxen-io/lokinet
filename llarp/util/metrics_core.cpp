@@ -135,7 +135,7 @@ namespace llarp
     void
     Registry::setFormat(const Id &id, const Format &format)
     {
-      Description *description = const_cast< Description * >(id.description());
+      auto *description = const_cast< Description * >(id.description());
 
       absl::WriterMutexLock l(&m_mutex);
 
@@ -197,7 +197,7 @@ namespace llarp
                         const SampleGroup< int > &intGroup,
                         const absl::Time &timeStamp)
       {
-        SampleCache::iterator it = cache.find(publisher);
+        auto it = cache.find(publisher);
         if(it == cache.end())
         {
           Sample sample;
@@ -227,7 +227,7 @@ namespace llarp
                       manager.m_intRepo.collect(category));
 
         // Get the time since last reset, and clear if needed.
-        Manager::ResetTimes::iterator it = manager.m_resetTimes.find(category);
+        auto it = manager.m_resetTimes.find(category);
         if(it == manager.m_resetTimes.end())
         {
           if(clear)
@@ -435,11 +435,10 @@ namespace llarp
       thread::Scheduler::Handle m_handle GUARDED_BY(m_mutex);
       std::set< const Category * > m_categories GUARDED_BY(m_mutex);
 
-      bool m_default GUARDED_BY(m_mutex);
+      bool m_default GUARDED_BY(m_mutex){false};
       std::set< const Category * > m_nonDefaultCategories GUARDED_BY(m_mutex);
 
-      PublisherSchedulerData()
-          : m_handle(thread::Scheduler::INVALID_HANDLE), m_default(false)
+      PublisherSchedulerData() : m_handle(thread::Scheduler::INVALID_HANDLE)
       {
       }
     };
@@ -656,7 +655,7 @@ namespace llarp
       util::Lock lock(&data->m_mutex);
       data->m_default = true;
 
-      Categories::iterator cIt = m_categories.begin();
+      auto cIt = m_categories.begin();
       for(; cIt != m_categories.end(); ++cIt)
       {
         if(cIt->second != interval)
@@ -679,7 +678,7 @@ namespace llarp
     {
       util::Lock l(&m_mutex);
 
-      Categories::iterator it = m_categories.find(category);
+      auto it = m_categories.find(category);
       if(it == m_categories.end())
       {
         // This category has no specific schedule.

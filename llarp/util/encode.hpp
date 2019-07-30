@@ -1,6 +1,6 @@
 #ifndef LLARP_ENCODE_HPP
 #define LLARP_ENCODE_HPP
-#include <stdint.h>
+#include <cstdint>
 #include <cmath>
 #include <cstdlib>
 #include <unordered_map>

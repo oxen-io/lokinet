@@ -111,24 +111,24 @@ std::string
 getDNSstring(const char *const buffer, uint32_t *pos);
 
 void
-code_domain(char *&buffer, const std::string &domain) throw();
+code_domain(char *&buffer, const std::string &domain) noexcept;
 
 void
-vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw();
+vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) noexcept;
 
 void
-vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw();
+vput16bits(std::vector< byte_t > &bytes, uint16_t value) noexcept;
 
 void
-vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw();
+vput32bits(std::vector< byte_t > &bytes, uint32_t value) noexcept;
 
 extern "C"
 {
   uint16_t
-  get16bits(const char *&buffer) throw();
+  get16bits(const char *&buffer) noexcept;
 
   uint32_t
-  get32bits(const char *&buffer) throw();
+  get32bits(const char *&buffer) noexcept;
 
   bool
   decode_hdr(llarp_buffer_t *buffer, dns_msg_header *hdr);
@@ -140,10 +140,10 @@ extern "C"
   decode_answer(const char *const buffer, uint32_t *pos);
 
   void
-  put16bits(char *&buffer, uint16_t value) throw();
+  put16bits(char *&buffer, uint16_t value) noexcept;
 
   void
-  put32bits(char *&buffer, uint32_t value) throw();
+  put32bits(char *&buffer, uint32_t value) noexcept;
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,

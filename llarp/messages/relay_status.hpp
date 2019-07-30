@@ -9,6 +9,7 @@
 
 #include <array>
 #include <memory>
+#include <utility>
 
 namespace llarp
 {
@@ -56,14 +57,14 @@ namespace llarp
 
     uint64_t status = 0;
 
-    LR_StatusMessage(const std::array< EncryptedFrame, 8 > &_frames)
-        : ILinkMessage(), frames(_frames)
+    LR_StatusMessage(std::array< EncryptedFrame, 8 > _frames)
+        : ILinkMessage(), frames(std::move(_frames))
     {
     }
 
     LR_StatusMessage() = default;
 
-    ~LR_StatusMessage() = default;
+    ~LR_StatusMessage() override = default;
 
     void
     Clear() override;

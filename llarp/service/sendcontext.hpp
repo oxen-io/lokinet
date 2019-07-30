@@ -20,7 +20,7 @@ namespace llarp
 
     struct SendContext
     {
-      SendContext(const ServiceInfo& ident, const Introduction& intro,
+      SendContext(ServiceInfo ident, const Introduction& intro,
                   path::PathSet* send, Endpoint* ep);
 
       void

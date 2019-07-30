@@ -26,7 +26,7 @@ namespace llarp
     using CallbacksQueue = std::list< RouterCallback >;
 
    public:
-    ~OutboundSessionMaker() = default;
+    ~OutboundSessionMaker() override = default;
 
     bool
     OnSessionEstablished(ILinkSession *session) override;

@@ -51,12 +51,12 @@ namespace llarp
 
     struct FormatSpec
     {
-      float m_scale;
+      float m_scale{1.0};
       string_view m_format;
 
       static constexpr char DEFAULT_FORMAT[] = "%f";
 
-      constexpr FormatSpec() : m_scale(1.0), m_format(DEFAULT_FORMAT)
+      constexpr FormatSpec() : m_format(DEFAULT_FORMAT)
       {
       }
 
@@ -272,12 +272,10 @@ namespace llarp
     /// order to make things like static initialisation cleaner.
     class Id
     {
-      const Description *m_description;
+      const Description *m_description{nullptr};
 
      public:
-      constexpr Id() : m_description(nullptr)
-      {
-      }
+      constexpr Id() = default;
 
       constexpr Id(const Description *description) : m_description(description)
       {
@@ -395,7 +393,7 @@ namespace llarp
     template < typename Type >
     class Record
     {
-      size_t m_count;
+      size_t m_count{0};
       Type m_total;
       Type m_min;
       Type m_max;
@@ -406,8 +404,7 @@ namespace llarp
       static constexpr Type DEFAULT_MAX() { return RecordMax<Type>::max(); };
       // clang-format on
 
-      Record()
-          : m_count(0), m_total(0.0), m_min(DEFAULT_MIN()), m_max(DEFAULT_MAX())
+      Record() : m_total(0.0), m_min(DEFAULT_MIN()), m_max(DEFAULT_MAX())
       {
       }
 
@@ -603,12 +600,12 @@ namespace llarp
       absl::Time m_sampleTime;
       std::vector< absl::variant< SampleGroup< double >, SampleGroup< int > > >
           m_samples;
-      size_t m_recordCount;
+      size_t m_recordCount{0};
 
      public:
       using const_iterator = typename decltype(m_samples)::const_iterator;
 
-      Sample() : m_sampleTime(), m_recordCount(0)
+      Sample() : m_sampleTime()
       {
       }
 

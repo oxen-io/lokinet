@@ -8,8 +8,8 @@
 
 #include <absl/base/optimization.h>
 #include <functional>
-#include <stdbool.h>
-#include <stdint.h>
+
+#include <cstdint>
 
 /**
  * crypto.hpp
@@ -89,9 +89,7 @@ namespace llarp
     pqe_encrypt(PQCipherBlock &, SharedSecret &, const PQPubKey &) = 0;
   };
 
-  inline Crypto::~Crypto()
-  {
-  }
+  inline Crypto::~Crypto() = default;
 
   /// return random 64bit unsigned interger
   uint64_t

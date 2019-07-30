@@ -7,9 +7,7 @@ namespace llarp
 {
   namespace routing
   {
-    PathLatencyMessage::PathLatencyMessage()
-    {
-    }
+    PathLatencyMessage::PathLatencyMessage() = default;
 
     bool
     PathLatencyMessage::DecodeKey(const llarp_buffer_t& key,

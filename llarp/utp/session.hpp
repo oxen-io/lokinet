@@ -3,6 +3,7 @@
 
 #include <crypto/crypto.hpp>
 #include <link/session.hpp>
+#include <utility>
 #include <utp/inbound_message.hpp>
 #include <deque>
 
@@ -42,7 +43,7 @@ namespace llarp
       struct OutboundMessage
       {
         OutboundMessage(uint32_t id, CompletionHandler func)
-            : msgid{id}, completed{func}
+            : msgid{id}, completed{std::move(func)}
         {
         }
 
@@ -110,7 +111,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
-      virtual ~Session() = 0;
+      ~Session() override = 0;
 
       /// base
       explicit Session(LinkLayer* p);
