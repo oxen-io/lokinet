@@ -1,5 +1,6 @@
 #ifndef LLARP_FS_HPP
 #define LLARP_FS_HPP
+
 #include <functional>
 
 #if defined(WIN32) || defined(_WIN32)
@@ -8,12 +9,12 @@
 #define PATH_SEP "/"
 #endif
 
-#ifdef WIN32
-#include <filesystem>
-namespace fs = std::filesystem;
-#elif defined(LOKINET_USE_CPPBACKPORT)
+#if defined(LOKINET_USE_CPPBACKPORT)
 #include <filesystem.h>
 namespace fs = cpp17::filesystem;
+#elif __cplusplus >= 201703L && !defined(_MSC_VER)
+#include <filesystem>
+namespace fs = std::filesystem;
 #else
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
