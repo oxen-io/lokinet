@@ -47,7 +47,7 @@ matrix:
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
     osx_image: xcode10.2
-    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+    env: BUILD_TYPE=Debug ASAN=ON PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
   - os: windows
     env: BUILD_TYPE=Debug
   - os: windows
