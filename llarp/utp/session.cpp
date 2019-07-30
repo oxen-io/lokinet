@@ -52,24 +52,25 @@ namespace llarp
         do
         {
           auto& msg = sendq.front();
-          while(msg.vecs.size() && sz >= msg.vecs.front().iov_len)
+          while(msg.vecs.size() > 0 && sz >= msg.vecs.front().iov_len)
           {
             sz -= msg.vecs.front().iov_len;
             msg.vecs.pop_front();
-            msg.fragments.pop_front();
           }
           if(msg.vecs.size() == 0)
           {
             msg.Delivered();
             sendq.pop_front();
           }
-          else
+          else if(sz)
           {
             auto& front = msg.vecs.front();
             front.iov_len -= sz;
             front.iov_base = ((byte_t*)front.iov_base) + sz;
             return;
           }
+          else
+            return;
         } while(sendq.size());
       }
     }
