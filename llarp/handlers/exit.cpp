@@ -242,7 +242,7 @@ namespace llarp
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         PubKey pk;
         {
-          auto itr = m_IPToKey.find(pkt.dstv6());
+          auto itr = m_IPToKey.find(net::IPPacket::ExpandV4(pkt.dstv4()));
           if(itr == m_IPToKey.end())
           {
             // drop
