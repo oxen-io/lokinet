@@ -23,7 +23,9 @@ namespace llarp
 #else
 #if defined(__MACH__)
       const int rc = pthread_setname_np(name.c_str());
-#elif defined(__linux__)
+// API present upstream since v2.11.3 and imported downstream
+// in CR 8158 <https://www.illumos.org/issues/8158>
+#elif defined(__linux__) || defined(__sun)
       const int rc = pthread_setname_np(pthread_self(), name.c_str());
 #else
 #error "unsupported platform"
