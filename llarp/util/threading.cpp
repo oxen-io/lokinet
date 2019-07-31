@@ -9,6 +9,11 @@
 #endif
 #endif
 
+#ifdef _MSC_VER
+#include <windows.h>
+extern "C" void SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
+#endif
+
 namespace llarp
 {
   namespace util
@@ -25,7 +30,7 @@ namespace llarp
       const int rc = pthread_setname_np(name.c_str());
 // API present upstream since v2.11.3 and imported downstream
 // in CR 8158 <https://www.illumos.org/issues/8158>
-#elif defined(__linux__) || defined(__sun)
+#elif defined(__linux__) || defined(__sun) || defined(__MINGW32__)
       const int rc = pthread_setname_np(pthread_self(), name.c_str());
 #else
 #error "unsupported platform"
@@ -36,6 +41,8 @@ namespace llarp
                  " errstr = ", strerror(rc));
       }
 #endif
+#elif _MSC_VER
+      ::SetThreadName(::GetCurrentThreadId(), name.c_str());
 #else
       LogInfo("Thread name setting not supported on this platform");
       (void)name;
