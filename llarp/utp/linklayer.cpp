@@ -332,7 +332,6 @@ namespace llarp
       {
         LogWarn("dropping inbound utp session from ", remote);
         utp_close(arg->socket);
-        session->Close();
       }
       else
       {
