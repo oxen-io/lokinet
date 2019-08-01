@@ -1,3 +1,46 @@
+lokinet (0.5.0~pre20190731-1) sid; urgency=medium
+
+  [ Thomas Winget ]
+  * Adds Link-Relay Status Messages
+  * make TransitHop self-destruct if path is invalidated
+
+  [ Jeff Becker ]
+  * run main in it's own thread and set its process name.
+  * try deferred resolve for exit handler
+  * add link layer delivery feedback
+  * make travis happy
+  * propagate all utp link errors
+  * make it compile
+  * * increase utp buffers * disallow inbound traffic on outbound utp link * const correctness
+  * use size_t
+  * fix compile for tests
+  * on logic queue overflow put job on timer instead
+  * correct cmake paramter for shellhooks
+  * * const correctness * use std::map's upper_bound to find many closer entries * randomize key for exploration to allow many explore jobs in paralell
+  * fix crashes in testnet
+  * const correctness
+  * const correctness
+
+  [ Michael ]
+  * Initial experiment with a docker-based CI
+  * try to make some windows
+  * Abandon debian
+  * Fixup
+  * Use __cpp_lib_filesystem
+  * or not
+
+  [ Jeff Becker ]
+  * revert dht stuff
+  * fix dht exploration ;~;
+  * remove -1
+  * use std::min
+  * use ipv4 address on snodes for now
+
+  [ Michael ]
+  * Add ASAN CI
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 31 Jul 2019 23:45:23 -0300
+
 lokinet (0.5.0~pre20190726-1) sid; urgency=medium
 
   [ Thomas Winget ]
