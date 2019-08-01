@@ -759,7 +759,10 @@ namespace llarp
           pkt.UpdateIPv6Address({0}, {0});
 
         if(sendFunc && sendFunc(pkt.Buffer()))
+        {
+          MarkIPActive(dst);
           return;
+        }
         llarp::LogWarn(Name(), " did not flush packets");
       });
     }
