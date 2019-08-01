@@ -52,6 +52,11 @@ matrix:
     env: BUILD_TYPE=Debug
   - os: windows
     env: BUILD_TYPE=Release
+  allow_failures:
+  - os: linux
+    dist: xenial
+    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+    services: docker
 
 env:
   global:
@@ -93,11 +98,11 @@ before_install:
 
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
+      travis_wait cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
     elif [[ ! -z $DOCKER_FILE ]]; then
-      docker build -f $DOCKER_FILE .;
+      travis_wait docker build -f $DOCKER_FILE .;
     else
-      make ${MAKE_TARGET:-test};
+      travis_wait make ${MAKE_TARGET:-test};
     fi
 
 after_script:
