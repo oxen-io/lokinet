@@ -103,8 +103,8 @@ namespace llarp
     }
 
     bool
-    Path::HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
-                     AbstractRouter* r)
+    Path::HandleLRSM(ABSL_ATTRIBUTE_UNUSED uint64_t status,
+                     std::array< EncryptedFrame, 8 >& frames, AbstractRouter* r)
     {
       uint64_t currentStatus = status;
 

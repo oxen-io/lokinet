@@ -83,7 +83,6 @@ namespace llarp
   bool
   Addr::from_char_array(string_view in)
   {
-    auto str       = in.begin();
     auto pPosition = in.find(':');
     if(pPosition != string_view::npos)
     {

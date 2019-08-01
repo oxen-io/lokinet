@@ -172,7 +172,7 @@ namespace llarp
   }
 
   bool
-  LR_StatusMessage::AddFrame(const SharedSecret& pathKey, uint64_t status)
+  LR_StatusMessage::AddFrame(const SharedSecret& pathKey, uint64_t newStatus)
   {
     frames[7] = frames[6];
     frames[6] = frames[5];
@@ -188,7 +188,7 @@ namespace llarp
 
     LR_StatusRecord record;
 
-    record.status  = status;
+    record.status  = newStatus;
     record.version = LLARP_PROTO_VERSION;
 
     llarp_buffer_t buf(frame.data(), frame.size());
