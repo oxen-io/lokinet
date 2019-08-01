@@ -1,3 +1,9 @@
+lokinet (0.5.0~pre20190801-2) sid; urgency=medium
+
+  * Replace tmpdir in generated config file
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Aug 2019 16:38:19 -0300
+
 lokinet (0.5.0~pre20190801-1) sid; urgency=medium
 
   [ Michael ]
