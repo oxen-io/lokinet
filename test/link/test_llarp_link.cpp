@@ -216,7 +216,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       return false;
     otherBuf.sz = otherBuf.cur - otherBuf.base;
     otherBuf.cur = otherBuf.base;
-    return s->SendMessageBuffer(otherBuf);
+    return s->SendMessageBuffer(otherBuf, nullptr);
   };
 
   Bob.link = utp::NewServer(
@@ -327,7 +327,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
                                 return;
                               otherBuf.sz = otherBuf.cur - otherBuf.base;
                               otherBuf.cur = otherBuf.base;
-                              self->SendMessageBuffer(otherBuf);
+                              self->SendMessageBuffer(otherBuf, nullptr);
                             }});
         return true;
       },

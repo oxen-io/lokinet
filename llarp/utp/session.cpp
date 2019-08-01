@@ -26,38 +26,52 @@ namespace llarp
         return;
       ssize_t expect = 0;
       std::vector< utp_iovec > send;
-      for(const auto& vec : vecq)
+
+      for(const auto& msg : sendq)
       {
-        if(vec.iov_len)
+        for(const auto& vec : msg.vecs)
         {
-          expect += vec.iov_len;
-          send.emplace_back(vec);
+          if(vec.iov_len)
+          {
+            expect += vec.iov_len;
+            send.emplace_back(vec);
+          }
         }
       }
       if(expect)
       {
         ssize_t s = utp_writev(sock, send.data(), send.size());
-        if(s < 0)
+        if(s <= 0)
           return;
-        if(s > 0)
-          lastSend = parent->Now();
+        lastSend = parent->Now();
 
         metrics::integerTick("utp.session.tx", "writes", s, "id",
                              RouterID(remoteRC.pubkey).ToString());
         m_TXRate += s;
         size_t sz = s;
-        while(vecq.size() && sz >= vecq.front().iov_len)
+        do
         {
-          sz -= vecq.front().iov_len;
-          vecq.pop_front();
-          sendq.pop_front();
-        }
-        if(vecq.size())
-        {
-          auto& front = vecq.front();
-          front.iov_len -= sz;
-          front.iov_base = ((byte_t*)front.iov_base) + sz;
-        }
+          auto& msg = sendq.front();
+          while(msg.vecs.size() > 0 && sz >= msg.vecs.front().iov_len)
+          {
+            sz -= msg.vecs.front().iov_len;
+            msg.vecs.pop_front();
+          }
+          if(msg.vecs.size() == 0)
+          {
+            msg.Delivered();
+            sendq.pop_front();
+          }
+          else if(sz)
+          {
+            auto& front = msg.vecs.front();
+            front.iov_len -= sz;
+            front.iov_base = ((byte_t*)front.iov_base) + sz;
+            return;
+          }
+          else
+            return;
+        } while(sendq.size());
       }
     }
 
@@ -257,14 +271,16 @@ namespace llarp
     }
 
     bool
-    Session::SendMessageBuffer(const llarp_buffer_t& buf)
+    Session::SendMessageBuffer(
+        const llarp_buffer_t& buf,
+        ILinkSession::CompletionHandler completionHandler)
     {
-      if(sendq.size() >= MaxSendQueueSize)
+      if(SendQueueBacklog() >= MaxSendQueueSize)
       {
         // pump write queue if we seem to be full
         PumpWrite();
       }
-      if(sendq.size() >= MaxSendQueueSize)
+      if(SendQueueBacklog() >= MaxSendQueueSize)
       {
         // we didn't pump anything wtf
         // this means we're stalled
@@ -273,12 +289,14 @@ namespace llarp
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
+      sendq.emplace_back(msgid, completionHandler);
       while(sz)
       {
         uint32_t s = std::min(FragmentBodyPayloadSize, sz);
         if(!EncryptThenHash(ptr, msgid, s, sz - s))
         {
           LogError("EncryptThenHash failed?!");
+          Close();
           return false;
         }
         LogDebug("encrypted ", s, " bytes");
@@ -302,7 +320,7 @@ namespace llarp
           return false;
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
-        return this->SendMessageBuffer(buf);
+        return this->SendMessageBuffer(buf, nullptr);
       }
       return true;
     }
@@ -340,7 +358,7 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
-      if(!SendMessageBuffer(buf))
+      if(!SendMessageBuffer(buf, nullptr))
       {
         LogError("failed to send handshake to ", remoteAddr);
         Close();
@@ -370,10 +388,11 @@ namespace llarp
                              uint16_t remaining)
 
     {
-      sendq.emplace_back();
-      auto& buf = sendq.back();
-      vecq.emplace_back();
-      auto& vec    = vecq.back();
+      auto& msg = sendq.back();
+      msg.vecs.emplace_back();
+      auto& vec = msg.vecs.back();
+      msg.fragments.emplace_back();
+      auto& buf    = msg.fragments.back();
       vec.iov_base = buf.data();
       vec.iov_len  = FragmentBufferSize;
       buf.Randomize();
@@ -472,7 +491,7 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send message
-      if(!SendMessageBuffer(buf))
+      if(!SendMessageBuffer(buf, nullptr))
         return false;
       // regen our tx Key
       return DoClientKeyExchange(txKey, lim.N, remoteRC.enckey,
@@ -600,6 +619,13 @@ namespace llarp
             metrics::integerTick("utp.session.close", "to", 1, "id",
                                  RouterID(remoteRC.pubkey).ToString());
           }
+          // discard sendq
+          // TODO: retry on another session ?
+          while(sendq.size())
+          {
+            sendq.front().Dropped();
+            sendq.pop_front();
+          }
         }
       }
       EnterState(eClose);
@@ -675,7 +701,7 @@ namespace llarp
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
         // send
-        if(!SendMessageBuffer(buf))
+        if(!SendMessageBuffer(buf, nullptr))
         {
           LogError("failed to repl to handshake from ", remoteAddr);
           Close();

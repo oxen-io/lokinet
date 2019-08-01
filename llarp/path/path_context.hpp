@@ -7,6 +7,7 @@
 #include <path/pathset.hpp>
 #include <path/transit_hop.hpp>
 #include <routing/handler.hpp>
+#include <router/i_outbound_message_handler.hpp>
 #include <util/compare_ptr.hpp>
 #include <util/types.hpp>
 
@@ -79,7 +80,8 @@ namespace llarp
 
       bool
       ForwardLRCM(const RouterID& nextHop,
-                  const std::array< EncryptedFrame, 8 >& frames);
+                  const std::array< EncryptedFrame, 8 >& frames,
+                  SendStatusHandler handler);
 
       bool
       HopIsUs(const RouterID& k) const;

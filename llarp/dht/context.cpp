@@ -334,11 +334,11 @@ namespace llarp
     Context::ExploreNetworkVia(const Key_t& askpeer)
     {
       uint64_t txid = ++ids;
-      TXOwner peer(askpeer, txid);
-      TXOwner whoasked(OurKey(), txid);
+      const TXOwner peer(askpeer, txid);
+      const TXOwner whoasked(OurKey(), txid);
+      const RouterID K(askpeer.as_array());
       pendingExploreLookups().NewTX(
-          peer, whoasked, askpeer.as_array(),
-          new ExploreNetworkJob(askpeer.as_array(), this));
+          peer, whoasked, K, new ExploreNetworkJob(askpeer.as_array(), this));
     }
 
     void
@@ -649,7 +649,7 @@ namespace llarp
     {
       std::vector< RouterID > closer;
       const Key_t t(target.as_array());
-      std::set< Key_t > found;
+      std::set< Key_t > foundRouters;
       if(!_nodes)
         return false;
 
@@ -665,7 +665,8 @@ namespace llarp
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less
-      if(!_nodes->GetManyNearExcluding(t, found, nodeCount >= 4 ? 4 : 1,
+      if(!_nodes->GetManyNearExcluding(t, foundRouters,
+                                       std::min(nodeCount, size_t{4}),
                                        std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
@@ -674,12 +675,11 @@ namespace llarp
             nodeCount, " dht peers");
         return false;
       }
-      for(const auto& f : found)
+      for(const auto& f : foundRouters)
       {
-        const RouterID r(f.as_array());
-        if(GetRouter()->ConnectionToRouterAllowed(r))
-          closer.emplace_back(r);
+        closer.emplace_back(f.as_array());
       }
+      llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }

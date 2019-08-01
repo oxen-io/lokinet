@@ -5,7 +5,7 @@
 #include <absl/synchronization/mutex.h>
 #include <absl/time/time.h>
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(__GNUC__)
 #include <process.h>
 using pid_t = int;
 #else

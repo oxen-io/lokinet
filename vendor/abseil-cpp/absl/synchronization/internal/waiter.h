@@ -19,7 +19,7 @@
 #include "absl/base/config.h"
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <pthread.h>
 #endif
@@ -131,12 +131,12 @@ class Waiter {
   std::atomic<int> wakeup_count_;
 
 #else
-  #error Unknown ABSL_WAITER_MODE
+#error Unknown ABSL_WAITER_MODE
 #endif
 };
 
 }  // namespace synchronization_internal
-}  // inline namespace lts_2018_12_18
+}  // namespace lts_2018_12_18
 }  // namespace absl
 
 #endif  // ABSL_SYNCHRONIZATION_INTERNAL_WAITER_H_

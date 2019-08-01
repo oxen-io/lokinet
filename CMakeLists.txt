@@ -24,7 +24,7 @@ option(DEBIAN "build for debian" )
 option(TESTNET "testnet build" )
 option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
-option(WITH_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
+option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 
 include(cmake/target_link_libraries_system.cmake)

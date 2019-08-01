@@ -344,11 +344,11 @@ request a commit to relay traffic to another node.
 
 {
   a: "c",
-  c: [ list, of, encrypted, frames ],
+  c: [ list, of, encrypted, LRCR frames ],
   v: 0
 }
 
-c and r MUST contain dummy records if the hop length is less than the maximum
+c MUST contain dummy records if the hop length is less than the maximum
 hop length.
 
 link relay commit record (LRCR)
@@ -365,7 +365,7 @@ the path is extended by w.y seconds
 
 {
   c: "<32 byte public encryption key used for upstream>",
-  d: uint_optional_ms_delay,
+  d: uint_optional_ms_delay,  // TODO
   i: "<32 byte RC.k of next hop>",
   l: uint_optional_lifespan,
   n: "<32 bytes nounce for key exchange>",
@@ -395,6 +395,39 @@ this proof of work requirement is subject to change
 
 if i is equal to RC.k then any LRDM.x values are decrypted and interpreted as
 routing layer messages. This indicates that we are the farthest hop in the path.
+
+link relay status message (LRSM)
+
+response to path creator about build status
+
+{
+  a: "s",
+  c: [ list, of, encrypted, LRSR frames],
+  p: "<16 bytes rx path id>",
+  s: uint_status_flags, // for now, only set (or don't) success bit
+  v: 0
+}
+
+the creator of the LRSM MUST include dummy LRSR records
+to pad out to the maximum path length
+
+link relay status record (LRSR)
+
+record indicating status of path build
+
+{
+  s: uint_status_flags,
+  v: 0
+}
+
+uint_status_flags (bitwise booleans):
+  [0] = success
+  [1] = fail, hop timeout
+  [2] = fail, congestion
+  [3] = fail, refusal, next hop is not known to be a snode
+  [4] = fail, used by hop creator when decrypting frames if decryption fails
+  [5] = fail, used by hop creator when record decode fails
+  [4-63] reserved
 
 link relay upstream message (LRUM)
 

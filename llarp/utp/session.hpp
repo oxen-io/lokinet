@@ -39,10 +39,45 @@ namespace llarp
       /// session timeout (60s)
       const static llarp_time_t sessionTimeout = DefaultLinkSessionLifetime;
 
-      /// send queue for utp
-      std::deque< utp_iovec > vecq;
-      /// tx fragment queue
-      std::deque< FragmentBuffer > sendq;
+      struct OutboundMessage
+      {
+        OutboundMessage(uint32_t id, CompletionHandler func)
+            : msgid{id}, completed{func}
+        {
+        }
+
+        const uint32_t msgid;
+        std::deque< utp_iovec > vecs;
+        std::deque< FragmentBuffer > fragments;
+        CompletionHandler completed;
+
+        void
+        Dropped()
+        {
+          if(completed)
+          {
+            completed(DeliveryStatus::eDeliveryDropped);
+            completed = nullptr;
+          }
+        }
+
+        void
+        Delivered()
+        {
+          if(completed)
+          {
+            completed(DeliveryStatus::eDeliverySuccess);
+            completed = nullptr;
+          }
+        }
+
+        bool
+        operator<(const OutboundMessage& other) const
+        {
+          return msgid < other.msgid;
+        }
+      };
+
       /// current rx fragment buffer
       FragmentBuffer recvBuf;
       /// current offset in current rx fragment buffer
@@ -54,6 +89,10 @@ namespace llarp
       uint32_t m_NextTXMsgID;
       /// the next message id for rx
       uint32_t m_NextRXMsgID;
+
+      using SendQueue_t = std::deque< OutboundMessage >;
+      /// messages we are currently sending
+      SendQueue_t sendq;
       /// messages we are recving right now
       std::unordered_map< uint32_t, InboundMessage > m_RecvMsgs;
       /// are we stalled or nah?
@@ -137,7 +176,8 @@ namespace llarp
 
       /// queue a fully formed message
       bool
-      SendMessageBuffer(const llarp_buffer_t& buf) override;
+      SendMessageBuffer(const llarp_buffer_t& buf,
+                        ILinkSession::CompletionHandler) override;
 
       /// prune expired inbound messages
       void

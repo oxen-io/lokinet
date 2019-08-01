@@ -48,6 +48,9 @@ namespace llarp
     call_later(const llarp_timeout_job& job);
 
     void
+    call_later(llarp_time_t later, std::function< void(void) > func);
+
+    void
     cancel_call(uint32_t id);
 
     void

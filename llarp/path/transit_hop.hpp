@@ -92,6 +92,8 @@ namespace llarp
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
 
+      bool destroy = false;
+
       bool
       IsEndpoint(const RouterID& us) const
       {
@@ -106,6 +108,10 @@ namespace llarp
       {
         return m_LastActivity;
       }
+
+      bool
+      HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                 AbstractRouter* r) override;
 
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
@@ -131,6 +137,9 @@ namespace llarp
       bool
       HandleDataDiscardMessage(const routing::DataDiscardMessage& msg,
                                AbstractRouter* r) override;
+
+      bool
+      HandlePathConfirmMessage(AbstractRouter* r);
 
       bool
       HandlePathConfirmMessage(const routing::PathConfirmMessage& msg,
@@ -193,6 +202,13 @@ namespace llarp
       bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        AbstractRouter* r) override;
+
+     private:
+      void
+      SetSelfDestruct();
+
+      void
+      QueueDestroySelf(AbstractRouter* r);
     };
 
     inline std::ostream&

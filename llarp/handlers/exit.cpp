@@ -171,10 +171,20 @@ namespace llarp
           }
           else if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
-            // we do not have it mapped
-            // map it
-            ip = ObtainServiceNodeIP(r);
-            msg.AddINReply(ip, isV6);
+            // we do not have it mapped, async obtain it
+            ObtainSNodeSession(
+                r, [&](std::shared_ptr< exit::BaseSession > session) {
+                  if(session && session->IsReady())
+                  {
+                    msg.AddINReply(m_KeyToIP[pubKey], isV6);
+                  }
+                  else
+                  {
+                    msg.AddNXReply();
+                  }
+                  reply(msg);
+                });
+            return true;
           }
           else
           {
@@ -194,6 +204,14 @@ namespace llarp
       }
       reply(msg);
       return true;
+    }
+
+    void
+    ExitEndpoint::ObtainSNodeSession(const RouterID &router,
+                                     exit::SessionReadyFunc obtainCb)
+    {
+      ObtainServiceNodeIP(router);
+      m_SNodeSessions[router]->AddReadyHook(obtainCb);
     }
 
     llarp_time_t
@@ -224,7 +242,7 @@ namespace llarp
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         PubKey pk;
         {
-          auto itr = m_IPToKey.find(pkt.dstv6());
+          auto itr = m_IPToKey.find(net::IPPacket::ExpandV4(pkt.dstv4()));
           if(itr == m_IPToKey.end())
           {
             // drop

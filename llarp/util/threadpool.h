@@ -86,6 +86,15 @@ llarp_threadpool_tick(struct llarp_threadpool *tp);
 void
 llarp_threadpool_queue_job(struct llarp_threadpool *tp,
                            struct llarp_thread_job j);
+
+#ifdef __cplusplus
+
+void
+llarp_threadpool_queue_job(struct llarp_threadpool *tp,
+                           std::function< void() > func);
+
+#endif
+
 void
 llarp_threadpool_start(struct llarp_threadpool *tp);
 

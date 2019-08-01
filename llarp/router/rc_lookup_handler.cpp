@@ -139,8 +139,8 @@ namespace llarp
     // update nodedb if required
     if(rc.IsPublicRouter())
     {
-      LogInfo("Adding or updating RC for ", RouterID(rc.pubkey),
-              " to nodedb and dht.");
+      LogDebug("Adding or updating RC for ", RouterID(rc.pubkey),
+               " to nodedb and dht.");
       _nodedb->UpdateAsyncIfNewer(rc);
       _dht->impl->PutRCNodeAsync(rc);
     }
@@ -294,6 +294,7 @@ namespace llarp
   bool
   RCLookupHandler::HavePendingLookup(RouterID remote) const
   {
+    util::Lock l(&_mutex);
     return pendingCallbacks.find(remote) != pendingCallbacks.end();
   }
 

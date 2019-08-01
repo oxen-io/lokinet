@@ -34,7 +34,8 @@ namespace llarp
     GetSessionMaker() const = 0;
 
     virtual bool
-    SendTo(const RouterID &remote, const llarp_buffer_t &buf) = 0;
+    SendTo(const RouterID &remote, const llarp_buffer_t &buf,
+           ILinkSession::CompletionHandler completed) = 0;
 
     virtual bool
     HasSessionTo(const RouterID &remote) const = 0;

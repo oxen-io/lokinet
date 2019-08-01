@@ -893,20 +893,21 @@ namespace llarp
     Endpoint::OnLookup(const Address& addr, const IntroSet* introset,
                        const RouterID& endpoint)
     {
-      auto now      = Now();
-      auto& fails   = m_state->m_ServiceLookupFails;
-      auto& lookups = m_state->m_PendingServiceLookups;
+      const auto now = router->Now();
+      auto& fails    = m_state->m_ServiceLookupFails;
+      auto& lookups  = m_state->m_PendingServiceLookups;
       if(introset == nullptr || introset->IsExpired(now))
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                  endpoint);
         fails[endpoint] = fails[endpoint] + 1;
-        // inform one
-        auto itr = lookups.find(addr);
-        if(itr != lookups.end())
+        // inform all
+        auto range = lookups.equal_range(addr);
+        auto itr   = range.first;
+        if(itr != range.second)
         {
           itr->second(addr, nullptr);
-          lookups.erase(itr);
+          itr = lookups.erase(itr);
         }
         return false;
       }
@@ -1169,12 +1170,12 @@ namespace llarp
             if(c)
             {
               c->UpdateIntroSet(true);
-              for(auto& pending : traffic[r])
+              for(auto& pending : m_state->m_PendingTraffic[r])
               {
                 c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
               }
             }
-            traffic.erase(r);
+            m_state->m_PendingTraffic.erase(r);
           },
           5000, true);
     }

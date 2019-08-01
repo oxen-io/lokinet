@@ -58,26 +58,18 @@ namespace llarp
   bool
   Logic::queue_func(std::function< void(void) > f)
   {
-    size_t left = 10;
-    while(!this->thread->QueueFunc(f))
+    if(!this->thread->QueueFunc(f))
     {
-      // our queue is full
-      if(this->can_flush())
-      {
-        // we can flush the queue here so let's do it
-        this->tick(llarp::time_now_ms());
-      }
-      else
-      {
-        // wait a bit and retry queuing because we are not in the same thread as
-        // we are calling the jobs in
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-      left--;
-      if(left == 0)  // too many retries
-        return false;
+      // try calling it later if the job queue overflows
+      this->call_later(1, f);
     }
     return true;
+  }
+
+  void
+  Logic::call_later(llarp_time_t timeout, std::function< void(void) > func)
+  {
+    llarp_timer_call_func_later(this->timer, timeout, func);
   }
 
   uint32_t

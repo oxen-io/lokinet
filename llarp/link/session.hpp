@@ -13,11 +13,19 @@ namespace llarp
   struct LinkIntroMessage;
   struct ILinkMessage;
   struct ILinkLayer;
+
   struct ILinkSession
   {
     virtual ~ILinkSession()
     {
     }
+
+    /// delivery status of a message
+    enum class DeliveryStatus
+    {
+      eDeliverySuccess = 0,
+      eDeliveryDropped = 1
+    };
 
     /// hook for utp for when we have established a connection
     virtual void
@@ -30,9 +38,12 @@ namespace llarp
     /// called every timer tick
     virtual void Tick(llarp_time_t) = 0;
 
+    /// message delivery result hook function
+    using CompletionHandler = std::function< void(DeliveryStatus) >;
+
     /// send a message buffer to the remote endpoint
     virtual bool
-    SendMessageBuffer(const llarp_buffer_t &) = 0;
+    SendMessageBuffer(const llarp_buffer_t &, CompletionHandler handler) = 0;
 
     /// start the connection
     virtual void

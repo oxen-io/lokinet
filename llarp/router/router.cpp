@@ -168,11 +168,15 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID &remote, const ILinkMessage *msg)
+  Router::SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
+                        SendStatusHandler handler)
   {
-    using std::placeholders::_1;
-    auto func = std::bind(&Router::MessageSent, this, remote, _1);
-    return _outboundMessageHandler.QueueMessage(remote, msg, func);
+    if(handler == nullptr)
+    {
+      using std::placeholders::_1;
+      handler = std::bind(&Router::MessageSent, this, remote, _1);
+    }
+    return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
 
   void
@@ -477,7 +481,7 @@ namespace llarp
     // create inbound links, if we are a service node
     for(const auto &serverConfig : conf->iwp_links.servers())
     {
-      auto server = llarp::utp::NewServer(
+      auto server = llarp::utp::NewInboundLink(
           encryption(), util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -1060,7 +1064,7 @@ namespace llarp
         SessionEstablishedHandler, SessionRenegotiateHandler, SignBufferFunc,
         TimeoutHandler, SessionClosedHandler) >;
 
-    static std::list< LinkFactory > linkFactories = {utp::NewServer,
+    static std::list< LinkFactory > linkFactories = {utp::NewOutboundLink,
                                                      iwp::NewServer};
 
     bool addedAtLeastOne = false;
@@ -1085,9 +1089,9 @@ namespace llarp
         continue;
       }
 
-      auto afs = {AF_INET, AF_INET6};
+      const auto afs = {AF_INET, AF_INET6};
 
-      for(auto af : afs)
+      for(const auto af : afs)
       {
         if(!link->Configure(netloop(), "*", af, m_OutboundPort))
           continue;

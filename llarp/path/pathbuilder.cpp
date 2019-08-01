@@ -15,12 +15,14 @@
 namespace llarp
 {
   struct AsyncPathKeyExchangeContext
+      : std::enable_shared_from_this< AsyncPathKeyExchangeContext >
   {
     using Path_t      = path::Path_ptr;
     using PathSet_t   = path::PathSet_ptr;
     PathSet_t pathset = nullptr;
     Path_t path       = nullptr;
-    using Handler = std::function< void(const AsyncPathKeyExchangeContext&) >;
+    using Handler =
+        std::function< void(std::shared_ptr< AsyncPathKeyExchangeContext >) >;
 
     Handler result;
     size_t idx             = 0;
@@ -96,13 +98,13 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        logic->queue_func(std::bind(result, *this));
+        logic->queue_func(std::bind(result, shared_from_this()));
       }
       else
       {
         // next hop
-        worker->addJob(
-            std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
+        worker->addJob(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey,
+                                 shared_from_this()));
       }
     }
 
@@ -120,28 +122,28 @@ namespace llarp
       {
         LRCM.frames[i].Randomize();
       }
-      pool->addJob(
-          std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, *this));
+      pool->addJob(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey,
+                             shared_from_this()));
     }
   };
 
   static void
-  PathBuilderKeysGenerated(const AsyncPathKeyExchangeContext& ctx)
+  PathBuilderKeysGenerated(std::shared_ptr< AsyncPathKeyExchangeContext > ctx)
   {
-    if(!ctx.pathset->IsStopped())
+    if(!ctx->pathset->IsStopped())
     {
-      RouterID remote         = ctx.path->Upstream();
-      const ILinkMessage* msg = &ctx.LRCM;
-      if(ctx.router->SendToOrQueue(remote, msg))
+      const RouterID remote   = ctx->path->Upstream();
+      const ILinkMessage* msg = &ctx->LRCM;
+      if(ctx->router->SendToOrQueue(remote, msg))
       {
         // persist session with router until this path is done
-        ctx.router->PersistSessionUntil(remote, ctx.path->ExpireTime());
+        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
         // add own path
-        ctx.router->pathContext().AddOwnPath(ctx.pathset, ctx.path);
-        ctx.pathset->PathBuildStarted(ctx.path);
+        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+        ctx->pathset->PathBuildStarted(ctx->path);
       }
       else
-        LogError(ctx.pathset->Name(), " failed to send LRCM to ", remote);
+        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
     }
   }
 
@@ -419,15 +421,15 @@ namespace llarp
         return;
       lastBuild = Now();
       // async generate keys
-      AsyncPathKeyExchangeContext ctx;
-      ctx.router  = router;
-      ctx.pathset = GetSelf();
-      auto path   = std::make_shared< path::Path >(hops, this, roles);
+      auto ctx     = std::make_shared< AsyncPathKeyExchangeContext >();
+      ctx->router  = router;
+      ctx->pathset = GetSelf();
+      auto path    = std::make_shared< path::Path >(hops, this, roles);
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [this](Path_ptr p) { this->HandlePathBuilt(p); });
-      ctx.AsyncGenerateKeys(path, router->logic(), router->threadpool(),
-                            &PathBuilderKeysGenerated);
+      ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(),
+                             &PathBuilderKeysGenerated);
     }
 
     void

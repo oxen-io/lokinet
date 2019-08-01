@@ -34,6 +34,7 @@ namespace llarp
       ePathBuilding,
       ePathEstablished,
       ePathTimeout,
+      ePathFailed,
       ePathIgnore,
       ePathExpired
     };

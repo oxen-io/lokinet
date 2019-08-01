@@ -168,14 +168,20 @@ namespace llarp
   bool
   OutboundMessageHandler::Send(const RouterID &remote, const Message &msg)
   {
-    llarp_buffer_t buf(msg.first);
-    if(_linkManager->SendTo(remote, buf))
+    const llarp_buffer_t buf(msg.first);
+    auto callback = msg.second;
+    if(!_linkManager->SendTo(
+           remote, buf, [=](ILinkSession::DeliveryStatus status) {
+             if(status == ILinkSession::DeliveryStatus::eDeliverySuccess)
+               DoCallback(callback, SendStatus::Success);
+             else
+               DoCallback(callback, SendStatus::Congestion);
+           }))
     {
-      DoCallback(msg.second, SendStatus::Success);
-      return true;
+      DoCallback(callback, SendStatus::Congestion);
+      return false;
     }
-    DoCallback(msg.second, SendStatus::Congestion);
-    return false;
+    return true;
   }
 
   bool
