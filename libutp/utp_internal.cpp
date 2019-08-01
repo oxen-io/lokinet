@@ -3416,7 +3416,7 @@ utp_process_udp(utp_context *ctx, const byte *buffer, size_t len,
 
       return 1;
     }
-
+    /*
     if(ctx->utp_sockets->GetCount() > 3000)
     {
 #if UTP_DEBUG_LOGGING
@@ -3427,6 +3427,7 @@ utp_process_udp(utp_context *ctx, const byte *buffer, size_t len,
 
       return 1;
     }
+    */
     // true means yes, block connection.  false means no, don't block.
     if(utp_call_on_firewall(ctx, to, tolen))
     {
