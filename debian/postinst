@@ -32,8 +32,8 @@ if [ "$1" = configure ]; then
     fi
 
     if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/boostrap.signed
-        chown _lokinet:_loki /var/lib/lokinet/boostrap.signed
+        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
     fi
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
