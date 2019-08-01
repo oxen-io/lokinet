@@ -442,15 +442,29 @@ namespace llarp
     }
 
     void
-    Builder::HandlePathBuildTimeout(Path_ptr p)
+    Builder::HandlePathBuildFailed(Path_ptr p)
+    {
+      router->routerProfiling().MarkPathFail(p.get());
+      PathSet::HandlePathBuildFailed(p);
+      DoPathBuildBackoff();
+    }
+
+    void
+    Builder::DoPathBuildBackoff()
     {
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit                             = std::min(
           MIN_PATH_BUILD_INTERVAL + buildIntervalLimit, MaxBuildInterval);
+      LogWarn(Name(), " build interval is now ", buildIntervalLimit);
+    }
+
+    void
+    Builder::HandlePathBuildTimeout(Path_ptr p)
+    {
       router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildTimeout(p);
-      LogWarn(Name(), " build interval is now ", buildIntervalLimit);
+      DoPathBuildBackoff();
     }
 
     void

@@ -69,13 +69,19 @@ namespace llarp
     huint128_t
     IPPacket::srcv6() const
     {
-      return In6ToHUInt(HeaderV6()->srcaddr);
+      if(IsV6())
+        return In6ToHUInt(HeaderV6()->srcaddr);
+      else
+        return ExpandV4(srcv4());
     }
 
     huint128_t
     IPPacket::dstv6() const
     {
-      return In6ToHUInt(HeaderV6()->dstaddr);
+      if(IsV6())
+        return In6ToHUInt(HeaderV6()->dstaddr);
+      else
+        return ExpandV4(dstv4());
     }
 
     bool

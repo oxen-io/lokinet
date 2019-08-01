@@ -32,6 +32,8 @@ namespace llarp
       Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
       if(session && l)
         session->OutboundLinkEstablished(l);
+      else
+        utp_close(arg->socket);
       return 0;
     }
 
@@ -58,6 +60,10 @@ namespace llarp
       {
         link->HandleTimeout(session);
         session->Close();
+      }
+      else
+      {
+        utp_close(arg->socket);
       }
       return 0;
     }
@@ -319,15 +325,20 @@ namespace llarp
       LinkLayer* self =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       Addr remote(*arg->address);
-      LogDebug("utp accepted from ", remote);
+
       std::shared_ptr< ILinkSession > session =
           std::make_shared< InboundSession >(self, arg->socket, remote);
       if(!self->PutSession(session))
       {
-        session->Close();
+        LogWarn("dropping inbound utp session from ", remote);
+        // close later
+        self->m_Logic->call_later(50, [=]() {
+          session->Close();
+        });
       }
       else
       {
+        LogDebug("utp accepted from ", remote);
         session->OnLinkEstablished(self);
       }
       return 0;

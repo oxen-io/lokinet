@@ -759,7 +759,10 @@ namespace llarp
           pkt.UpdateIPv6Address({0}, {0});
 
         if(sendFunc && sendFunc(pkt.Buffer()))
+        {
+          MarkIPActive(dst);
           return;
+        }
         llarp::LogWarn(Name(), " did not flush packets");
       });
     }
@@ -799,8 +802,6 @@ namespace llarp
             }
             else if(pkt.IsV6())
             {
-              if(pkt.srcv6() != huint128_t{0} || pkt.dstv6() != huint128_t{0})
-                return false;
               pkt.UpdateIPv6Address(themIP, usIP);
             }
             return true;
