@@ -38,6 +38,7 @@ if [ "$1" = configure ]; then
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
     /usr/bin/lokinet -g $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#/var/lib/lokinet#" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
     ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
