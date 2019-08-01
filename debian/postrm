@@ -5,6 +5,8 @@ set -e
 if [ "$1" = purge ]; then
     ucf --purge /etc/loki/lokinet.ini
     ucfr --purge lokinet /etc/loki/lokinet.ini
+    rm -f /etc/loki/lokinet.ini
+    rm -rf /var/lib/lokinet
 fi
 
 #DEBHELPER#
