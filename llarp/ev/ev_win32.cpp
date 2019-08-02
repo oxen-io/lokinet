@@ -641,7 +641,7 @@ llarp_win32_loop::create_udp(llarp_udp_io* l, const sockaddr* src)
     return nullptr;
   llarp::ev_io* listener = new llarp::udp_listener(fd, l);
   l->impl                = listener;
-  l->sendto              = &UDPSendTo;
+  l->sendto              = &llarp::UDPSendTo;
   return listener;
 }
 
