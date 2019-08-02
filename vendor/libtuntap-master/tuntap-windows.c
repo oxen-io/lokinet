@@ -21,9 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <iphlpapi.h>
 /*#include <strsafe.h>*/
 #include "tuntap.h"
+#include <iphlpapi.h>
 
 char *
 tuntap_get_hwaddr(struct device *dev);
