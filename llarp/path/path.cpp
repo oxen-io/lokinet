@@ -106,7 +106,7 @@ namespace llarp
     Path::HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
                      AbstractRouter* r)
     {
-      uint64_t currentStatus = LR_StatusRecord::SUCCESS;
+      uint64_t currentStatus = status;
 
       size_t index = 0;
       while(index < hops.size())
@@ -143,7 +143,7 @@ namespace llarp
         ++index;
       }
 
-      if((currentStatus & LR_StatusRecord::SUCCESS) == 1)
+      if(currentStatus & LR_StatusRecord::SUCCESS)
       {
         llarp::LogDebug("LR_Status message processed, path build successful");
         auto self = shared_from_this();
@@ -153,7 +153,7 @@ namespace llarp
       {
         r->routerProfiling().MarkPathFail(this);
 
-        llarp::LogInfo("LR_Status message processed, path build failed");
+        llarp::LogDebug("LR_Status message processed, path build failed");
 
         if(currentStatus & LR_StatusRecord::FAIL_TIMEOUT)
         {
@@ -197,8 +197,9 @@ namespace llarp
         {
           llarp::LogDebug("Path build failed for an unspecified reason");
         }
-
-        EnterState(ePathFailed, r->Now());
+        auto self = shared_from_this();
+        r->logic()->queue_func(
+            [=]() { self->EnterState(ePathFailed, r->Now()); });
       }
 
       // TODO: meaningful return value?
@@ -211,6 +212,8 @@ namespace llarp
       if(st == ePathFailed)
       {
         _status = st;
+        m_PathSet->HandlePathBuildFailed(shared_from_this());
+        return;
       }
       else if(st == ePathExpired && _status == ePathBuilding)
       {

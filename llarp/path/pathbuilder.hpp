@@ -27,6 +27,9 @@ namespace llarp
       UrgentBuild(llarp_time_t now) const;
 
      private:
+      void
+      DoPathBuildBackoff();
+
       bool
       DoUrgentBuildAlignedTo(const RouterID remote,
                              std::vector< RouterContact >& hops);
@@ -115,6 +118,9 @@ namespace llarp
 
       virtual void
       HandlePathBuildTimeout(Path_ptr p) override;
+
+      virtual void
+      HandlePathBuildFailed(Path_ptr p) override;
     };
 
     using Builder_ptr = std::shared_ptr< Builder >;

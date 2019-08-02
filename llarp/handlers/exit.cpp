@@ -242,12 +242,12 @@ namespace llarp
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         PubKey pk;
         {
-          auto itr = m_IPToKey.find(net::IPPacket::ExpandV4(pkt.dstv4()));
+          auto itr = m_IPToKey.find(pkt.dstv6());
           if(itr == m_IPToKey.end())
           {
             // drop
             LogWarn(Name(), " dropping packet, has no session at ",
-                    pkt.dstv4());
+                    pkt.dstv6());
             return;
           }
           pk = itr->second;
