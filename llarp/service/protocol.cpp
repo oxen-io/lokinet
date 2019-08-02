@@ -405,10 +405,10 @@ namespace llarp
         LogError("failed to decrypt message");
         return false;
       }
-      msg->handler        = handler;
-      const PathID_t from = F;
+      msg->handler            = handler;
+      const PathID_t fromPath = F;
       logic->queue_func(
-          [=]() { ProtocolMessage::ProcessAsync(recvPath, from, msg); });
+          [=]() { ProtocolMessage::ProcessAsync(recvPath, fromPath, msg); });
       return true;
     }
 
@@ -420,7 +420,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Verify(const ServiceInfo& from) const
+    ProtocolFrame::Verify(const ServiceInfo& svc) const
     {
       ProtocolFrame copy(*this);
       // save signature
@@ -439,7 +439,7 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // verify
-      return from.Verify(buf, Z);
+      return svc.Verify(buf, Z);
     }
 
     bool

@@ -569,10 +569,10 @@ namespace llarp
       print(std::ostream &stream, int level, int spaces) const
       {
         Printer::PrintFunction< absl::Duration > durationPrinter =
-            [](std::ostream &stream, const absl::Duration &duration, int,
+            [](std::ostream &os, const absl::Duration &duration, int,
                int) -> std::ostream & {
-          stream << duration;
-          return stream;
+          os << duration;
+          return os;
         };
         Printer printer(stream, level, spaces);
         printer.printAttribute("records", m_records);

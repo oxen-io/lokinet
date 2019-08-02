@@ -11,9 +11,9 @@ namespace llarp
   namespace dht
   {
     LocalTagLookup::LocalTagLookup(const PathID_t &path, uint64_t txid,
-                                   const service::Tag &target,
+                                   const service::Tag &_target,
                                    AbstractContext *ctx)
-        : TagLookup(TXOwner{ctx->OurKey(), txid}, target, ctx, 0)
+        : TagLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx, 0)
         , localPath(path)
     {
     }

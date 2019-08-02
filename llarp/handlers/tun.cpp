@@ -125,7 +125,7 @@ namespace llarp
         }
 
         RouterContact rc;
-        if(!router->nodedb()->Get(connect, rc))
+        if(!m_router->nodedb()->Get(connect, rc))
         {
           LogError(Name(), " we don't have the RC for ", v,
                    " so we can't use it in strict-connect");
@@ -152,8 +152,8 @@ namespace llarp
         }
         m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
-            util::memFn(&TunEndpoint::QueueInboundPacketForExit, this), router,
-            numPaths, numHops, ShouldBundleRC());
+            util::memFn(&TunEndpoint::QueueInboundPacketForExit, this),
+            m_router, numPaths, numHops, ShouldBundleRC());
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")

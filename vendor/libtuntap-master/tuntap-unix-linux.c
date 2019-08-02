@@ -36,10 +36,10 @@
 int
 tuntap_sys_start(struct device *dev, int mode, int tun)
 {
-  
+
   int fd;
   int persist;
-  char *ifname;
+  char *ifname = NULL;
   struct ifreq ifr;
 
   /* Get the persistence bit */
@@ -92,7 +92,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
     }
     return fd;
   }
-  else 
+  else
   {
     /* Open the clonable interface */
     if((fd = open("/dev/net/tun", O_RDWR)) == -1)
@@ -202,7 +202,7 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s6, uint32_t bits)
 {
   struct ifreq ifr;
   struct sockaddr_in6 sai;
-  int sockfd; 
+  int sockfd;
   struct in6_ifreq ifr6;
 
   sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);

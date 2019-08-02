@@ -22,9 +22,9 @@ namespace llarp
       llarp_time_t lastModified     = 0;
       std::set< IntroSet > result;
       Tag tag;
-      Endpoint* parent;
+      Endpoint* m_parent;
 
-      CachedTagResult(const Tag& t, Endpoint* p) : tag(t), parent(p)
+      CachedTagResult(const Tag& t, Endpoint* p) : tag(t), m_parent(p)
       {
       }
 
