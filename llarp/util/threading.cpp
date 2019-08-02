@@ -32,7 +32,7 @@ namespace llarp
 // API present upstream since v2.11.3 and imported downstream
 // in CR 8158 <https://www.illumos.org/issues/8158>
 // We only use the native function on Microsoft C++ builds
-#elif defined(__linux__) || defined(__sun) || defined(__MINGW32__)
+#elif defined(__linux__) || defined(__sun)
       const int rc = pthread_setname_np(pthread_self(), name.c_str());
 #else
 #error "unsupported platform"
@@ -45,6 +45,8 @@ namespace llarp
 #endif
 #elif _MSC_VER
       ::SetThreadName(::GetCurrentThreadId(), name.c_str());
+#elif __MINGW32__
+      const int rc = pthread_setname_np(pthread_self(), name.c_str());
 #else
       LogInfo("Thread name setting not supported on this platform");
       (void)name;
