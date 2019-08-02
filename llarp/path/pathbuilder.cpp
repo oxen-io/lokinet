@@ -444,7 +444,7 @@ namespace llarp
     void
     Builder::HandlePathBuildFailed(Path_ptr p)
     {
-      router->routerProfiling().MarkPathFail(p.get());
+      m_router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildFailed(p);
       DoPathBuildBackoff();
     }
