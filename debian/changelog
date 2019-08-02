@@ -1,3 +1,17 @@
+lokinet (0.5.0~pre20190801-4) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * have IPPacket::srcv6 and IPPacket::dstv6 check for ipv4 packets and expand them to ipv6
+  * call path build fail stuff in logic thread
+  * properly close dropped inbound sessions on utp
+  * remove limit
+  * mark addresses as active when we use them
+  * remove session->Close()
+  * close dropped session later in event loop
+  * always rewrite address
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Aug 2019 21:02:48 -0300
+
 lokinet (0.5.0~pre20190801-3) sid; urgency=medium
 
   * Fix "boostrap.signed" misnaming in deb postinst
