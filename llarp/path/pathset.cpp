@@ -295,9 +295,8 @@ namespace llarp
     PathSet::HandlePathBuildFailed(Path_ptr p)
     {
       LogWarn(Name(), " path build ", p->HopsString(), " failed");
-      m_BuildStats.fails ++;
+      m_BuildStats.fails++;
     }
-
 
     void
     PathSet::PathBuildStarted(Path_ptr p)

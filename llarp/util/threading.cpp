@@ -11,7 +11,8 @@
 
 #ifdef _MSC_VER
 #include <windows.h>
-extern "C" void SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
+extern "C" void
+SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 #endif
 
 namespace llarp
