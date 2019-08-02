@@ -1,4 +1,4 @@
-lokinet (0.5.0~pre20190801-4) sid; urgency=medium
+lokinet (0.5.0~pre20190801.1-1) sid; urgency=medium
 
   [ Jeff Becker ]
   * have IPPacket::srcv6 and IPPacket::dstv6 check for ipv4 packets and expand them to ipv6
