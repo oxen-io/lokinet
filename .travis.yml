@@ -48,6 +48,12 @@ matrix:
     osx_image: xcode10.2
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release
+  - os: osx
     osx_image: xcode11
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
@@ -94,8 +100,10 @@ addons:
     - cmake
     - libuv
     - llvm
-    - ninja
     - make
+    - mingw-w64
+    - ninja
+    update: true
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
