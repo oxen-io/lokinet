@@ -519,8 +519,6 @@ namespace libuv
     bool
     Init(uv_loop_t* loop)
     {
-      std::copy(std::begin(m_Tun->ifname), std::end(m_Tun->ifname),
-                m_Device->if_name);
       memcpy(m_Device->if_name, m_Tun->ifname, sizeof(m_Device->if_name));
       if(tuntap_start(m_Device, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
