@@ -32,8 +32,6 @@ namespace llarp
       Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
       if(session && l)
         session->OutboundLinkEstablished(l);
-      else
-        utp_close(arg->socket);
       return 0;
     }
 
@@ -60,10 +58,6 @@ namespace llarp
       {
         link->HandleTimeout(session);
         session->Close();
-      }
-      else
-      {
-        utp_close(arg->socket);
       }
       return 0;
     }
