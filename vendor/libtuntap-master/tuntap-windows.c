@@ -23,7 +23,10 @@
 #include <time.h>
 /*#include <strsafe.h>*/
 #include "tuntap.h"
+#include <iphlpapi.h>
 
+char *
+tuntap_get_hwaddr(struct device *dev);
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
@@ -175,6 +178,10 @@ tuntap_start(struct device *dev, int mode, int tun)
   HANDLE tun_fd;
   char *deviceid;
   char buf[60];
+  char msg[256];
+  ULONG size;
+  IP_ADAPTER_INFO* netif_data, *next_if;
+  char* if_addr;
   (void)(tun);
 
   /* put something in there to avoid problems (uninitialised field access) */
@@ -215,9 +222,32 @@ tuntap_start(struct device *dev, int mode, int tun)
     free(deviceid);
     return -1;
   }
-
+  
   dev->tun_fd = tun_fd;
   free(deviceid);
+
+  /* get the size of our adapter list */
+  GetAdaptersInfo(NULL, &size);
+  netif_data = alloca(size);
+
+  /* get our own interface address. If we're down here already, then we're ok */
+  if_addr = tuntap_get_hwaddr(dev);
+
+  /* get our interface data */
+  GetAdaptersInfo(netif_data, &size);
+  next_if = netif_data;
+  while (next_if)
+  {
+	  if(!memcmp(next_if->Address, if_addr, ETHER_ADDR_LEN))
+	  {
+		  dev->idx = next_if->Index;
+		  (void)_snprintf(msg, sizeof msg, "Our TAP interface index is %d", dev->idx);
+		  tuntap_log(TUNTAP_LOG_INFO, msg);
+		  break;
+	  }
+	  next_if = next_if->Next;
+  }
+
   return 0;
 }
 
@@ -405,8 +435,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   return 0;
 }
 
-/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x
- * supports inet6 */
+
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 {

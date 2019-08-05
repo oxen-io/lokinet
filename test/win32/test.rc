@@ -80,7 +80,11 @@ BEGIN
 #ifdef LLARP_RELEASE_MOTTO
             VALUE "FileVersion", VERSION_STRING(0.4.0, RELEASE_MOTTO, GIT_REV)
 #else
+#ifdef __GNUC__
+            VALUE "FileVersion", VERSION_STRING(0.4.0-dev-, GIT_REV)
+#else
             VALUE "FileVersion", "0.4.0-dev"
+#endif
 #endif
             VALUE "InternalName", "llarpd"
             VALUE "LegalCopyright", "Copyright �2018-2019 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
@@ -89,7 +93,11 @@ BEGIN
 #ifdef LLARP_RELEASE_MOTTO
             VALUE "ProductVersion", VERSION_STRING(0.4.0, RELEASE_MOTTO, GIT_REV)
 #else
+#ifdef __GNUC__
+            VALUE "ProductVersion", VERSION_STRING(0.4.0-dev-, GIT_REV)
+#else
             VALUE "ProductVersion", "0.4.0-dev"
+#endif
 #endif
         END
     END

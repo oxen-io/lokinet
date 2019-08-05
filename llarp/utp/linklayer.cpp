@@ -332,9 +332,7 @@ namespace llarp
       {
         LogWarn("dropping inbound utp session from ", remote);
         // close later
-        self->m_Logic->call_later(50, [=]() {
-          session->Close();
-        });
+        self->m_Logic->call_later(50, [=]() { session->Close(); });
       }
       else
       {
