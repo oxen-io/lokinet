@@ -75,22 +75,22 @@ TEST(Catalog, Iterator)
   for(size_t i = 0; i < THREAD_COUNT; ++i)
   {
     threads[i] = std::thread(
-        [](Barrier *barrier, Cat *catalog, int32_t id) {
-          barrier->Block();
-          for(size_t i = 0; i < ITERATION_COUNT; ++i)
+        [](Barrier *b, Cat *cat, int32_t id) {
+          b->Block();
+          for(size_t j = 0; j < ITERATION_COUNT; ++j)
           {
-            int32_t handle                = catalog->add(id);
-            absl::optional< int32_t > res = catalog->find(handle);
+            int32_t handle                = cat->add(id);
+            absl::optional< int32_t > res = cat->find(handle);
             ASSERT_TRUE(res);
             ASSERT_EQ(res.value(), id);
-            ASSERT_TRUE(catalog->replace(MAX - id, handle));
-            res = catalog->find(handle);
+            ASSERT_TRUE(cat->replace(MAX - id, handle));
+            res = cat->find(handle);
             ASSERT_TRUE(res);
             ASSERT_EQ(MAX - id, res.value());
             int32_t removed = 0;
-            ASSERT_TRUE(catalog->remove(handle, &removed));
+            ASSERT_TRUE(cat->remove(handle, &removed));
             ASSERT_EQ(removed, MAX - id);
-            ASSERT_FALSE(catalog->find(handle));
+            ASSERT_FALSE(cat->find(handle));
           }
         },
         &barrier, &catalog, i);
@@ -98,11 +98,11 @@ TEST(Catalog, Iterator)
 
   // Verify the length constraint is never violated
   threads[THREAD_COUNT] = std::thread(
-      [](Barrier *barrier, Cat *catalog) {
-        barrier->Block();
+      [](Barrier *b, Cat *cat) {
+        b->Block();
         for(size_t i = 0; i < ITERATION_COUNT; ++i)
         {
-          size_t size = catalog->size();
+          size_t size = cat->size();
           ASSERT_LE(size, THREAD_COUNT);
         }
       },
@@ -110,13 +110,13 @@ TEST(Catalog, Iterator)
 
   // Verify that iteration always produces a valid state
   threads[THREAD_COUNT + 1] = std::thread(
-      [](Barrier *barrier, Cat *catalog) {
-        barrier->Block();
+      [](Barrier *b, Cat *cat) {
+        b->Block();
         for(size_t i = 0; i < ITERATION_COUNT; ++i)
         {
           int32_t arr[100];
           size_t size = 0;
-          for(Iterator it(catalog); it; ++it)
+          for(Iterator it(cat); it; ++it)
           {
             arr[size++] = it().second;
           }
@@ -133,6 +133,8 @@ TEST(Catalog, Iterator)
               }
             }
 
+            (void)present;
+
             // no duplicate should be there
             for(size_t k = j + 1; k < size; k++)
             {
@@ -145,11 +147,11 @@ TEST(Catalog, Iterator)
 
   // And that we don't have an invalid catalog
   threads[THREAD_COUNT + 2] = std::thread(
-      [](Barrier *barrier, Cat *catalog) {
-        barrier->Block();
+      [](Barrier *b, Cat *cat) {
+        b->Block();
         for(size_t i = 0; i < ITERATION_COUNT; ++i)
         {
-          catalog->verify();
+          cat->verify();
         }
       },
       &barrier, &catalog);

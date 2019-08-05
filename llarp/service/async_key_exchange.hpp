@@ -15,7 +15,7 @@ namespace llarp
     {
       std::shared_ptr< Logic > logic;
       SharedSecret sharedKey;
-      ServiceInfo remote;
+      ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
       ProtocolMessage msg;
       ProtocolFrame frame;

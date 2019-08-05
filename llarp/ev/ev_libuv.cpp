@@ -1,5 +1,7 @@
-#include "ev_libuv.hpp"
-#include "net/net_addr.hpp"
+#include <ev/ev_libuv.hpp>
+#include <net/net_addr.hpp>
+
+#include <string.h>
 
 namespace libuv
 {
@@ -517,7 +519,7 @@ namespace libuv
     bool
     Init(uv_loop_t* loop)
     {
-      strncpy(m_Device->if_name, m_Tun->ifname, sizeof(m_Device->if_name));
+      memcpy(m_Device->if_name, m_Tun->ifname, sizeof(m_Device->if_name));
       if(tuntap_start(m_Device, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
         llarp::LogError("failed to start up ", m_Tun->ifname);

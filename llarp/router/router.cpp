@@ -714,7 +714,7 @@ namespace llarp
   }
 
   void
-  Router::HandleDHTLookupForExplore(RouterID remote,
+  Router::HandleDHTLookupForExplore(ABSL_ATTRIBUTE_UNUSED RouterID remote,
                                     const std::vector< RouterContact > &results)
   {
     for(const auto &rc : results)

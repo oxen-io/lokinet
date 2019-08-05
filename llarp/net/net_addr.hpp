@@ -21,8 +21,6 @@ namespace llarp
 
     Addr();
 
-    Addr(const Addr& other);
-
     Addr(string_view str);
 
     Addr(string_view str, const uint16_t p_port);

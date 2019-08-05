@@ -157,7 +157,7 @@ tuntap_set_ifname(struct device *dev, const char *ifname)
   }
 
   len = strlen(ifname);
-  if(len > IF_NAMESIZE)
+  if(len >= IF_NAMESIZE)
   {
     tuntap_log(TUNTAP_LOG_ERR, "Parameter 'ifname' is too long");
     return -1;
@@ -169,7 +169,7 @@ tuntap_set_ifname(struct device *dev, const char *ifname)
   }
 
   (void)memset(dev->if_name, 0, IF_NAMESIZE);
-  (void)strncpy(dev->if_name, ifname, len);
+  (void)strncpy(dev->if_name, ifname, len + 1);
   return 0;
 }
 

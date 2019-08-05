@@ -272,41 +272,41 @@ TEST(TimerQueue, ThreadSafety)
     info[i].first  = i;
     info[i].second = &items[i];
     threads[i]     = std::thread(
-        [](Info* info, absl::Barrier* barrier, StringQueue* queue) {
-          const int THREAD_ID             = info->first;
-          std::vector< StringItem >* vPtr = info->second;
+        [](Info* nfo, absl::Barrier* b, StringQueue* q) {
+          const int THREAD_ID             = nfo->first;
+          std::vector< StringItem >* vPtr = nfo->second;
 
           // We stagger the removeAll steps among the threads.
-          const int STEP_REMOVE_ALL = THREAD_ID * NUM_REMOVE_ALL / NUM_THREADS;
+          const unsigned int STEP_REMOVE_ALL = THREAD_ID * NUM_REMOVE_ALL / NUM_THREADS;
 
           std::ostringstream oss;
           oss << THREAD_ID;
           Data V(oss.str());
 
-          barrier->Block();
+          b->Block();
 
           size_t newSize;
           absl::Time newMinTime;
           StringItem item;
-          for(size_t i = 0; i < NUM_ITERATIONS; ++i)
+          for(size_t j = 0; j < NUM_ITERATIONS; ++j)
           {
             const absl::Time TIME =
-                absl::Time() + absl::Seconds((i * (i + 3)) % NUM_ITERATIONS);
-            int h = queue->add(TIME, V);
-            queue->update(h, TIME);
-            if(queue->popFront(&item, &newSize, &newMinTime))
+                absl::Time() + absl::Seconds((j * (j + 3)) % NUM_ITERATIONS);
+            int h = q->add(TIME, V);
+            q->update(h, TIME);
+            if(q->popFront(&item, &newSize, &newMinTime))
             {
               vPtr->push_back(item);
             }
-            h = queue->add(newMinTime, V);
-            queue->popLess(newMinTime, vPtr);
-            if(queue->remove(h, &item, &newSize, &newMinTime))
+            h = q->add(newMinTime, V);
+            q->popLess(newMinTime, vPtr);
+            if(q->remove(h, &item, &newSize, &newMinTime))
             {
               vPtr->push_back(item);
             }
-            if(i % NUM_REMOVE_ALL == STEP_REMOVE_ALL)
+            if(j % NUM_REMOVE_ALL == STEP_REMOVE_ALL)
             {
-              queue->removeAll(vPtr);
+              q->removeAll(vPtr);
             }
           }
         },
@@ -314,11 +314,11 @@ TEST(TimerQueue, ThreadSafety)
   }
 
   threads[NUM_THREADS] = std::thread(
-      [](absl::Barrier* barrier, StringQueue* queue) {
-        barrier->Block();
+      [](absl::Barrier* b, StringQueue* q) {
+        b->Block();
         for(size_t i = 0; i < NUM_ITERATIONS; ++i)
         {
-          size_t size = queue->size();
+          size_t size = q->size();
           ASSERT_GE(size, 0);
           ASSERT_LE(size, NUM_THREADS);
         }

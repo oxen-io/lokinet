@@ -382,21 +382,6 @@ namespace llarp
     return BDecode(&buf);
   }
 
-  RouterContact &
-  RouterContact::operator=(const RouterContact &other)
-  {
-    addrs        = other.addrs;
-    exits        = other.exits;
-    signature    = other.signature;
-    last_updated = other.last_updated;
-    enckey       = other.enckey;
-    pubkey       = other.pubkey;
-    nickname     = other.nickname;
-    version      = other.version;
-    netID        = other.netID;
-    return *this;
-  }
-
   std::ostream &
   RouterContact::print(std::ostream &stream, int level, int spaces) const
   {

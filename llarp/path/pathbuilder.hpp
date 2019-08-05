@@ -39,7 +39,7 @@ namespace llarp
                        std::vector< RouterContact >& hops);
 
      public:
-      AbstractRouter* router;
+      AbstractRouter* m_router;
       SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;

@@ -150,9 +150,6 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
 
-    RouterContact &
-    operator=(const RouterContact &other);
-
     bool
     HasNick() const;
 

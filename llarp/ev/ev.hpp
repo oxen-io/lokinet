@@ -538,8 +538,8 @@ namespace llarp
     }
 
     /// inbound
-    tcp_conn(llarp_ev_loop* loop, int fd)
-        : ev_io(fd, new LosslessWriteQueue_t{}), _conn(nullptr)
+    tcp_conn(llarp_ev_loop* loop, int _fd)
+        : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(nullptr)
     {
       tcp.impl   = this;
       tcp.loop   = loop;
@@ -551,9 +551,9 @@ namespace llarp
     }
 
     /// outbound
-    tcp_conn(llarp_ev_loop* loop, int fd, const sockaddr* addr,
+    tcp_conn(llarp_ev_loop* loop, int _fd, const sockaddr* addr,
              llarp_tcp_connecter* conn)
-        : ev_io(fd, new LosslessWriteQueue_t{}), _conn(conn)
+        : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(conn)
     {
       socklen_t slen = sizeof(sockaddr_in);
       if(addr->sa_family == AF_INET6)
@@ -645,8 +645,8 @@ namespace llarp
   {
     llarp_ev_loop* loop;
     llarp_tcp_acceptor* tcp;
-    tcp_serv(llarp_ev_loop* l, int fd, llarp_tcp_acceptor* t)
-        : ev_io(fd), loop(l), tcp(t)
+    tcp_serv(llarp_ev_loop* l, int _fd, llarp_tcp_acceptor* t)
+        : ev_io(_fd), loop(l), tcp(t)
     {
       tcp->impl = this;
     }
