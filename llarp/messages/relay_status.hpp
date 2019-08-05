@@ -86,7 +86,7 @@ namespace llarp
                   uint64_t status);
 
     bool
-    AddFrame(const SharedSecret &pathKey, uint64_t status);
+    AddFrame(const SharedSecret &pathKey, uint64_t newStatus);
 
     static void
     QueueSendMessage(AbstractRouter *router, const RouterID nextHop,

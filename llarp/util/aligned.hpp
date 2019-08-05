@@ -33,13 +33,13 @@ namespace llarp
 
     AlignedBuffer()
     {
-      new(&val) Data;
+      new(&m_val) Data;
       Zero();
     }
 
     explicit AlignedBuffer(const byte_t* data)
     {
-      new(&val) Data;
+      new(&m_val) Data;
       auto& b = as_array();
       for(size_t idx = 0; idx < sz; ++idx)
       {
@@ -49,7 +49,7 @@ namespace llarp
 
     explicit AlignedBuffer(const Data& buf)
     {
-      new(&val) Data;
+      new(&m_val) Data;
       std::copy(buf.begin(), buf.end(), begin());
     }
 
@@ -164,13 +164,13 @@ namespace llarp
     Data&
     as_array()
     {
-      return reinterpret_cast< Data& >(val);
+      return reinterpret_cast< Data& >(m_val);
     }
 
     const Data&
     as_array() const
     {
-      return reinterpret_cast< const Data& >(val);
+      return reinterpret_cast< const Data& >(m_val);
     }
 
     byte_t*
@@ -282,7 +282,7 @@ namespace llarp
     using AlignedStorage = typename std::aligned_storage< sizeof(Data),
                                                           alignof(uint64_t) >::
         type;  // why did we align to the nearest double-precision float
-    AlignedStorage val;
+    AlignedStorage m_val;
   };
 }  // namespace llarp
 

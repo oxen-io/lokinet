@@ -53,7 +53,7 @@ namespace llarp
       bool
       SendRequestViaPath(path::Path_ptr p, AbstractRouter* r);
 
-      ILookupHolder* parent;
+      ILookupHolder* m_parent;
       uint64_t txid;
       const std::string name;
       RouterID endpoint;

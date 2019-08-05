@@ -11,7 +11,7 @@ namespace llarp
     bool
     CachedTagResult::HandleResponse(const std::set< IntroSet >& introsets)
     {
-      auto now = parent->Now();
+      auto now = m_parent->Now();
 
       for(const auto& introset : introsets)
         if(result.insert(introset).second)
@@ -47,7 +47,7 @@ namespace llarp
     {
       auto msg = std::make_shared< routing::DHTMessage >();
       msg->M.emplace_back(std::make_unique< dht::FindIntroMessage >(tag, txid));
-      lastRequest = parent->Now();
+      lastRequest = m_parent->Now();
       return msg;
     }
 

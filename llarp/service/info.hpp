@@ -66,18 +66,6 @@ namespace llarp
         return !(*this == other);
       }
 
-      ServiceInfo&
-      operator=(const ServiceInfo& other)
-      {
-        enckey  = other.enckey;
-        signkey = other.signkey;
-        version = other.version;
-        vanity  = other.vanity;
-        version = other.version;
-        UpdateAddr();
-        return *this;
-      }
-
       bool
       operator<(const ServiceInfo& other) const
       {

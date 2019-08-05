@@ -10,11 +10,11 @@ namespace llarp
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      llarp::dht::Key_t from;
-      from.Zero();
+      llarp::dht::Key_t fromKey;
+      fromKey.Zero();
       if(key == "M")
       {
-        return llarp::dht::DecodeMesssageList(from, val, M, true);
+        return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
       }
       if(key == "S")
       {

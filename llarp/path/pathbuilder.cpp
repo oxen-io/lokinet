@@ -150,7 +150,7 @@ namespace llarp
   namespace path
   {
     Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet(pathNum), _run(true), router(p_router), numHops(hops)
+        : path::PathSet(pathNum), _run(true), m_router(p_router), numHops(hops)
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }
@@ -168,7 +168,7 @@ namespace llarp
       ExpirePaths(now);
       if(ShouldBuildMore(now))
         BuildOne();
-      TickPaths(now, router);
+      TickPaths(now, m_router);
       if(m_BuildStats.attempts > 50)
       {
         if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
@@ -204,14 +204,14 @@ namespace llarp
       size_t tries = 10;
       if(hop == 0)
       {
-        if(router->NumberOfConnectedRouters() == 0)
+        if(m_router->NumberOfConnectedRouters() == 0)
         {
           // persist connection
-          router->ConnectToRandomRouters(1);
+          m_router->ConnectToRandomRouters(1);
           return false;
         }
         bool got = false;
-        router->ForEachPeer(
+        m_router->ForEachPeer(
             [&](const ILinkSession* s, bool isOutbound) {
               if(s && s->IsEstablished() && isOutbound && !got)
               {
@@ -234,7 +234,7 @@ namespace llarp
         if(db->select_random_hop_excluding(cur, excluding))
         {
           excluding.insert(cur.pubkey);
-          if(!router->routerProfiling().IsBadForPath(cur.pubkey))
+          if(!m_router->routerProfiling().IsBadForPath(cur.pubkey))
             return true;
         }
       } while(tries > 0);
@@ -285,7 +285,7 @@ namespace llarp
     Builder::BuildOne(PathRole roles)
     {
       std::vector< RouterContact > hops(numHops);
-      if(SelectHops(router->nodedb(), hops, roles))
+      if(SelectHops(m_router->nodedb(), hops, roles))
         Build(hops, roles);
     }
 
@@ -299,7 +299,7 @@ namespace llarp
                                     std::vector< RouterContact >& hops)
     {
       const auto aligned =
-          router->pathContext().FindOwnedPathsWithEndpoint(remote);
+          m_router->pathContext().FindOwnedPathsWithEndpoint(remote);
       /// pick the lowest latency path that aligns to remote
       /// note: peer exhaustion is made worse happen here
       Path_ptr p;
@@ -332,7 +332,7 @@ namespace llarp
       std::set< RouterID > routers{remote};
       hops.resize(numHops);
 
-      auto nodedb = router->nodedb();
+      auto nodedb = m_router->nodedb();
       for(size_t idx = 0; idx < hops.size(); idx++)
       {
         hops[idx].Clear();
@@ -341,7 +341,7 @@ namespace llarp
           // last hop
           if(!nodedb->Get(remote, hops[idx]))
           {
-            router->LookupRouter(remote, nullptr);
+            m_router->LookupRouter(remote, nullptr);
             return false;
           }
         }
@@ -365,7 +365,7 @@ namespace llarp
     {
       std::vector< RouterContact > hops;
       /// if we really need this path build it "dangerously"
-      if(UrgentBuild(router->Now()))
+      if(UrgentBuild(m_router->Now()))
       {
         if(!DoUrgentBuildAlignedTo(remote, hops))
         {
@@ -411,7 +411,7 @@ namespace llarp
     llarp_time_t
     Builder::Now() const
     {
-      return router->Now();
+      return m_router->Now();
     }
 
     void
@@ -422,13 +422,13 @@ namespace llarp
       lastBuild = Now();
       // async generate keys
       auto ctx     = std::make_shared< AsyncPathKeyExchangeContext >();
-      ctx->router  = router;
+      ctx->router  = m_router;
       ctx->pathset = GetSelf();
       auto path    = std::make_shared< path::Path >(hops, this, roles);
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [this](Path_ptr p) { this->HandlePathBuilt(p); });
-      ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(),
+      ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),
                              &PathBuilderKeysGenerated);
     }
 
@@ -436,7 +436,7 @@ namespace llarp
     Builder::HandlePathBuilt(Path_ptr p)
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-      router->routerProfiling().MarkPathSuccess(p.get());
+      m_router->routerProfiling().MarkPathSuccess(p.get());
       LogInfo(p->Name(), " built latency=", p->intro.latency);
       m_BuildStats.success++;
     }
@@ -444,7 +444,7 @@ namespace llarp
     void
     Builder::HandlePathBuildFailed(Path_ptr p)
     {
-      router->routerProfiling().MarkPathFail(p.get());
+      m_router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildFailed(p);
       DoPathBuildBackoff();
     }
@@ -462,7 +462,7 @@ namespace llarp
     void
     Builder::HandlePathBuildTimeout(Path_ptr p)
     {
-      router->routerProfiling().MarkPathFail(p.get());
+      m_router->routerProfiling().MarkPathFail(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
     }

@@ -18,6 +18,10 @@ matrix:
     services: docker
   - os: linux
     dist: xenial
+    env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
+    services: docker
+  - os: linux
+    dist: xenial
     compiler: gcc
     env: BUILD_TYPE=Release
   - os: linux
@@ -56,6 +60,10 @@ matrix:
   - os: linux
     dist: xenial
     env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+    services: docker
+  - os: linux
+    dist: xenial
+    env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
 
 env:

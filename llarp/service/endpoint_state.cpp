@@ -43,7 +43,7 @@ namespace llarp
       if(k == "paths")
       {
         const auto val = atoi(v.c_str());
-        if(val >= 1 && val <= path::PathSet::max_paths)
+        if(val >= 1 && val <= static_cast< int >(path::PathSet::max_paths))
         {
           ep.numPaths = val;
           LogInfo(name, " set number of paths to ", ep.numHops);
@@ -56,7 +56,7 @@ namespace llarp
       if(k == "hops")
       {
         const auto val = atoi(v.c_str());
-        if(val >= 1 && val <= path::max_len)
+        if(val >= 1 && val <= static_cast< int >(path::max_len))
         {
           ep.numHops = val;
           LogInfo(name, " set number of hops to ", ep.numHops);
