@@ -307,6 +307,14 @@ namespace llarp
           return;
         }
 
+        if(self->frame.T != self->msg->tag)
+        {
+          LogError("convotag missmatch: ", self->frame.T, " != ", self->msg->tag);
+          self->msg.reset();
+          delete self;
+          return;
+        }
+
         if(self->handler->HasConvoTag(self->msg->tag))
         {
           LogError("dropping duplicate convo tag T=", self->msg->tag);
