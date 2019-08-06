@@ -1,3 +1,42 @@
+lokinet (0.5.0~pre20190805-1) sid; urgency=medium
+
+  [ Rick V ]
+  * add debug helper lib for core dump generation on all supported windows targets
+  * ok use exception filter
+  * back out for now
+  * enable SetThreadName (#689)
+  * fix single-arch install config
+  * fix header case
+  * add make windows config command line
+  * fix sun
+  * really fix #689 this time
+  * fix netbsd
+  * this is new, intro'd with the libuv refactor
+  * clang-format
+  * namespace
+  * why isn't cmake picking this up
+  * this is getting hairy
+  * fix thread naming on windows
+  * get our TAP ifindex to pass to ipv6(1) on old platforms
+  * fix a crash on some win32 systems
+
+  [ Michael ]
+  * Add fail-able docker build for gcc trunk
+  * Fix gcc trunk warnings
+  * fixup! Fix gcc trunk warnings
+
+  [ Jeff Becker ]
+  * dont close socket on bad state
+
+  [ Michael ]
+  * Jeff's fixes
+
+  [ Jeff Becker ]
+  * don't time out clients based on downstream traffic
+  * always regen expired rc
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 05 Aug 2019 21:19:05 -0300
+
 lokinet (0.5.0~pre20190801.1-1) sid; urgency=medium
 
   [ Jeff Becker ]
