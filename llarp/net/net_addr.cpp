@@ -23,12 +23,6 @@ namespace llarp
   {
   }
 
-  Addr::Addr(const Addr& other)
-  {
-    memcpy(&_addr, &other._addr, sizeof(sockaddr_in6));
-    memcpy(&_addr4, &other._addr4, sizeof(sockaddr_in));
-  }
-
   void
   Addr::port(uint16_t port)
   {
@@ -83,7 +77,6 @@ namespace llarp
   bool
   Addr::from_char_array(string_view in)
   {
-    auto str       = in.begin();
     auto pPosition = in.find(':');
     if(pPosition != string_view::npos)
     {

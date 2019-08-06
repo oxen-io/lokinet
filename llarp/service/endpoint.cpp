@@ -191,8 +191,8 @@ namespace llarp
         {
           if(!EnsurePathToService(
                  addr,
-                 [](ABSL_ATTRIBUTE_UNUSED Address addr,
-                    ABSL_ATTRIBUTE_UNUSED OutboundContext* ctx) {},
+                 [](ABSL_ATTRIBUTE_UNUSED Address _addr,
+                    ABSL_ATTRIBUTE_UNUSED OutboundContext* _ctx) {},
                  10000))
           {
             LogWarn("failed to ensure path to ", addr);
@@ -893,7 +893,7 @@ namespace llarp
     Endpoint::OnLookup(const Address& addr, const IntroSet* introset,
                        const RouterID& endpoint)
     {
-      const auto now = router->Now();
+      const auto now = Router()->Now();
       auto& fails    = m_state->m_ServiceLookupFails;
       auto& lookups  = m_state->m_PendingServiceLookups;
       if(introset == nullptr || introset->IsExpired(now))

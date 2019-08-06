@@ -44,7 +44,7 @@ typedef USHORT NTAPI RtlCaptureStackBackTrace_Function(
     IN ULONG frames_to_skip,
     IN ULONG frames_to_capture,
     OUT PVOID *backtrace,
-    OUT PULONG backtrace_hash);
+    OUT PULONG backtrace_hash); // Until 2001, this was a required parameter
 
 // Load the function we need at static init time, where we don't have
 // to worry about someone else holding the loader's lock.
@@ -56,10 +56,11 @@ template <bool IS_STACK_FRAMES, bool IS_WITH_CONTEXT>
 static int UnwindImpl(void** result, int* sizes, int max_depth, int skip_count,
                       const void *ucp, int *min_dropped_frames) {
   int n = 0;
+  ULONG hash;
   if (!RtlCaptureStackBackTrace_fn) {
     // can't find a stacktrace with no function to call
   } else {
-    n = (int)RtlCaptureStackBackTrace_fn(skip_count + 2, max_depth, result, 0);
+    n = (int)RtlCaptureStackBackTrace_fn(skip_count + 2, max_depth, result, &hash);
   }
   if (IS_STACK_FRAMES) {
     // No implementation for finding out the stack frame sizes yet.

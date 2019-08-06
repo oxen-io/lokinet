@@ -8,11 +8,11 @@ namespace llarp
 {
   namespace dht
   {
-    RecursiveRouterLookup::RecursiveRouterLookup(const TXOwner &whoasked,
-                                                 const RouterID &target,
+    RecursiveRouterLookup::RecursiveRouterLookup(const TXOwner &_whoasked,
+                                                 const RouterID &_target,
                                                  AbstractContext *ctx,
                                                  RouterLookupHandler result)
-        : TX< RouterID, RouterContact >(whoasked, target, ctx)
+        : TX< RouterID, RouterContact >(_whoasked, _target, ctx)
         , resultHandler(result)
 
     {

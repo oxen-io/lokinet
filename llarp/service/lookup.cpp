@@ -13,7 +13,7 @@ namespace llarp
   {
     IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx,
                                    const std::string &n)
-        : parent(p), txid(tx), name(n)
+        : m_parent(p), txid(tx), name(n)
     {
       m_created = time_now_ms();
       p->PutLookup(this, tx);

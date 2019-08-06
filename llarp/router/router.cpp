@@ -631,16 +631,16 @@ namespace llarp
 
     const bool isSvcNode = IsServiceNode();
 
+    if(_rc.ExpiresSoon(now, randint() % 10000)
+       || (now - _rc.last_updated) > rcRegenInterval)
+    {
+      LogInfo("regenerating RC");
+      if(!UpdateOurRC(false))
+        LogError("Failed to update our RC");
+    }
+
     if(isSvcNode)
     {
-      if(_rc.ExpiresSoon(now, randint() % 10000)
-         || (now - _rc.last_updated) > rcRegenInterval)
-      {
-        LogInfo("regenerating RC");
-        if(!UpdateOurRC(false))
-          LogError("Failed to update our RC");
-      }
-
       // remove RCs for nodes that are no longer allowed by network policy
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
         if(IsBootstrapNode(rc.pubkey))
@@ -714,7 +714,7 @@ namespace llarp
   }
 
   void
-  Router::HandleDHTLookupForExplore(RouterID remote,
+  Router::HandleDHTLookupForExplore(ABSL_ATTRIBUTE_UNUSED RouterID remote,
                                     const std::vector< RouterContact > &results)
   {
     for(const auto &rc : results)

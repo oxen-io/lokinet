@@ -35,10 +35,10 @@ struct TestTx final : public dht::TX< dht::Key_t, Val_t >
 struct TestDhtTx : public Test
 {
   dht::TXOwner asker;
-  dht::Key_t key;
+  dht::Key_t m_key;
   TestTx tx;
 
-  TestDhtTx() : tx(asker, key, nullptr)
+  TestDhtTx() : tx(asker, m_key, nullptr)
   {
   }
 };

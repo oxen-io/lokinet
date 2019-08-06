@@ -19,7 +19,11 @@ if(NOT MSVC_VERSION)
   add_compile_options(-fno-ident -Wa,-mbig-obj)
   link_libraries( -lshlwapi -ldbghelp )
   add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
-  # set(FS_LIB stdc++fs)
+  # Wait a minute, if we're not Microsoft C++, nor a Clang paired with Microsoft C++,
+  # then the only possible option has to be GNU or a GNU-linked Clang!
+  if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 9.0 OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(FS_LIB stdc++fs)
+  endif()
 endif()
 
 get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)

@@ -368,6 +368,13 @@ namespace llarp
     return 0;
   }
 
+  static int
+  UDPSendTo(llarp_udp_io* udp, const sockaddr* to, const byte_t* ptr, size_t sz)
+  {
+    llarp::ev_io* io = (llarp::ev_io*)udp->impl;
+    return io->sendto(to, ptr, sz);
+  }
+
   int
   udp_listener::sendto(const sockaddr* to, const void* data, size_t sz)
   {
@@ -634,6 +641,7 @@ llarp_win32_loop::create_udp(llarp_udp_io* l, const sockaddr* src)
     return nullptr;
   llarp::ev_io* listener = new llarp::udp_listener(fd, l);
   l->impl                = listener;
+  l->sendto              = &llarp::UDPSendTo;
   return listener;
 }
 

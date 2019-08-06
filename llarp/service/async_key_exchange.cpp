@@ -17,7 +17,7 @@ namespace llarp
                                        IDataHandler* h, const ConvoTag& t,
                                        ProtocolType proto)
         : logic(l)
-        , remote(r)
+        , m_remote(r)
         , m_LocalIdentity(localident)
         , introPubKey(introsetPubKey)
         , remoteIntro(remote)
@@ -32,7 +32,7 @@ namespace llarp
     {
       AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
       // put values
-      self->handler->PutSenderFor(self->msg.tag, self->remote, false);
+      self->handler->PutSenderFor(self->msg.tag, self->m_remote, false);
       self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
       self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
       self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
@@ -55,7 +55,7 @@ namespace llarp
       SharedSecret sharedSecret;
       path_dh_func dh_client = util::memFn(&Crypto::dh_client, crypto);
       if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
-                                            self->remote, self->frame.N))
+                                            self->m_remote, self->frame.N))
       {
         LogError("failed to derive x25519 shared key component");
       }

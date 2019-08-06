@@ -209,9 +209,13 @@ namespace llarp
         return now - lastActive > 5000;
       if(state == eSessionReady)
       {
-        if(now <= lastSend)
+        // don't time out the connection if backlogged in downstream direction
+        // for clients dangling off the side of the network
+        const auto timestamp =
+            remoteRC.IsPublicRouter() ? lastSend : lastActive;
+        if(now <= timestamp)
           return false;
-        return now - lastSend > 30000;
+        return now - timestamp > 30000;
       }
       if(state == eLinkEstablished)
         return now - lastActive
@@ -436,7 +440,10 @@ namespace llarp
     Session::EnterState(State st)
     {
       state = st;
-      Alive();
+      if(st != eClose)
+      {
+        Alive();
+      }
       if(st == eSessionReady)
       {
         parent->MapAddr(remoteRC.pubkey.as_array(), this);
