@@ -266,7 +266,15 @@ namespace llarp
   void
   MetricsConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "disable-metrics")
+    if(key == "enable-metrics")
+    {
+      disableMetrics = IsFalseValue(val);
+    }
+    else if(key == "enable-metrics-log")
+    {
+      disableMetricLogs = IsFalseValue(val);
+    }
+    else if(key == "disable-metrics")
     {
       disableMetrics = IsTrueValue(val);
     }
