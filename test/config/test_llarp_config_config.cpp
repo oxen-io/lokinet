@@ -85,6 +85,8 @@ ifname=cluster-1
 ifaddr=10.101.0.1/16
 
 [metrics]
+disable-metrics=false
+disable-metrics-log=false
 metric-tank-host=52.80.56.123:2003
 )";
 
