@@ -268,11 +268,11 @@ namespace llarp
   {
     if(key == "disable-metrics")
     {
-      disableMetrics = true;
+      disableMetrics = IsTrueValue(val);
     }
     else if(key == "disable-metrics-log")
     {
-      disableMetricLogs = true;
+      disableMetricLogs = IsTrueValue(val);
     }
     else if(key == "json-metrics-path")
     {
