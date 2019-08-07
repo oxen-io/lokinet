@@ -192,7 +192,7 @@ namespace llarp
                                          const RouterContact &rc)
   {
     {
-      util::Lock l(&_mutex);
+      util::ReleasableLock l(&_mutex);
 
       // in case other request found RC for this router after this request was
       // made
@@ -206,6 +206,7 @@ namespace llarp
 
       if(!link)
       {
+        l.Release();
         FinalizeRequest(router, SessionResult::NoLink);
         return;
       }
