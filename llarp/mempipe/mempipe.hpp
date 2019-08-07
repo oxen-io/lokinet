@@ -1,12 +1,11 @@
-#ifndef LLARP_UTP_UTP_HPP
-#define LLARP_UTP_UTP_HPP
-
+#ifndef LLARP_MEMPIPE_MEMPIPE_HPP
+#define LLARP_MEMPIPE_MEMPIPE_HPP
 #include <memory>
 #include <link/server.hpp>
 
 namespace llarp
 {
-  namespace utp
+  namespace mempipe
   {
     LinkLayer_ptr
     NewInboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
@@ -20,9 +19,7 @@ namespace llarp
                     SessionEstablishedHandler est,
                     SessionRenegotiateHandler reneg, TimeoutHandler timeout,
                     SessionClosedHandler closed);
-    /// shim
-    const auto NewServer = NewInboundLink;
-  }  // namespace utp
+  }  // namespace mempipe
 }  // namespace llarp
 
 #endif

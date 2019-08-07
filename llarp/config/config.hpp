@@ -128,6 +128,8 @@ namespace llarp
     int m_workerThreads = 1;
     int m_numNetThreads = 1;
 
+    std::string m_DefaultLinkProto = "utp";
+
    public:
     // clang-format off
     size_t minConnectedRouters() const        { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
@@ -143,6 +145,7 @@ namespace llarp
     const AddressInfo& addrInfo() const       { return m_addrInfo; }
     int workerThreads() const                 { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
     int numNetThreads() const                 { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
+    std::string defaultLinkProto() const      { return fromEnv(m_DefaultLinkProto, "LINK_PROTO"); }
     // clang-format on
 
     void
@@ -194,20 +197,27 @@ namespace llarp
     fromSection(string_view key, string_view val);
   };
 
-  class IwpConfig
+  class LinksConfig
   {
    public:
-    using Servers = std::vector< std::tuple< std::string, int, uint16_t > >;
+    static constexpr int Interface     = 0;
+    static constexpr int AddressFamily = 1;
+    static constexpr int Port          = 2;
+    static constexpr int Options       = 3;
+
+    using ServerOptions = std::set< std::string >;
+    using LinkInfo = std::tuple< std::string, int, uint16_t, ServerOptions >;
+    using Links    = std::vector< LinkInfo >;
 
    private:
-    uint16_t m_OutboundPort = 0;
-
-    Servers m_servers;
+    LinkInfo m_OutboundLink;
+    Links m_InboundLinks;
 
    public:
     // clang-format off
-    uint16_t outboundPort() const  { return fromEnv(m_OutboundPort, "OUTBOUND_PORT"); }
-    const Servers& servers() const { return m_servers; }
+    const LinkInfo& outboundLink() const  { return m_OutboundLink; }
+
+    const Links& inboundLinks() const { return m_InboundLinks; }
     // clang-format on
 
     void
@@ -306,7 +316,7 @@ namespace llarp
     ConnectConfig connect;
     NetdbConfig netdb;
     DnsConfig dns;
-    IwpConfig iwp_links;
+    LinksConfig links;
     ServicesConfig services;
     SystemConfig system;
     MetricsConfig metrics;

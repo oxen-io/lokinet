@@ -28,6 +28,7 @@
 #include <router/outbound_message_handler.hpp>
 #include <router/outbound_session_maker.hpp>
 #include <link/link_manager.hpp>
+#include <link/factory.hpp>
 #include <router/rc_lookup_handler.hpp>
 
 #include <functional>
@@ -174,6 +175,8 @@ namespace llarp
     bool publicOverride = false;
     struct sockaddr_in ip4addr;
     AddressInfo addrInfo;
+
+    LinkFactory::LinkType _defaultLinkType;
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;

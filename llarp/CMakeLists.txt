@@ -178,10 +178,12 @@ set(LIB_SRC
   iwp/linklayer.cpp
   iwp/outermessage.cpp
   iwp/iwp.cpp
+  link/factory.cpp
   link/i_link_manager.cpp
   link/link_manager.cpp
   link/server.cpp
   link/session.cpp
+  mempipe/mempipe.cpp
   messages/dht_immediate.cpp
   messages/discard.cpp
   messages/link_intro.cpp

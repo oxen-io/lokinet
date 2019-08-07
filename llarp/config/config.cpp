@@ -33,6 +33,11 @@ namespace llarp
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
+    if(key == "default-protocol")
+    {
+      m_DefaultLinkProto = tostr(val);
+      LogInfo("overriding default link protocol to '", val, "'");
+    }
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
@@ -194,9 +199,8 @@ namespace llarp
   }
 
   void
-  IwpConfig::fromSection(string_view key, string_view val)
+  LinksConfig::fromSection(string_view key, string_view val)
   {
-    // try IPv4 first
     uint16_t proto = 0;
 
     std::set< std::string > parsed_opts;
@@ -215,7 +219,7 @@ namespace llarp
         parsed_opts.insert(v);
       }
     } while(idx != std::string::npos);
-
+    std::set< std::string > opts;
     /// for each option
     for(const auto &item : parsed_opts)
     {
@@ -229,15 +233,20 @@ namespace llarp
           proto = port;
         }
       }
+      else
+      {
+        opts.insert(item);
+      }
     }
 
     if(key == "*")
     {
-      m_OutboundPort = proto;
+      m_OutboundLink = {"*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"),
+                        std::move(opts)};
     }
     else
     {
-      m_servers.emplace_back(tostr(key), AF_INET, proto);
+      m_InboundLinks.emplace_back(tostr(key), AF_INET, proto, std::move(opts));
     }
   }
 
@@ -434,7 +443,7 @@ namespace llarp
     connect   = find_section< ConnectConfig >(parser, "connect");
     netdb     = find_section< NetdbConfig >(parser, "netdb");
     dns       = find_section< DnsConfig >(parser, "dns");
-    iwp_links = find_section< IwpConfig >(parser, "bind");
+    links     = find_section< LinksConfig >(parser, "bind");
     services  = find_section< ServicesConfig >(parser, "services");
     system    = find_section< SystemConfig >(parser, "system");
     metrics   = find_section< MetricsConfig >(parser, "metrics");

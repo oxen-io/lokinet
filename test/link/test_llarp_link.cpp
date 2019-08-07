@@ -193,14 +193,15 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
           return true;
         }
       },
+      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return m_crypto.sign(sig, Alice.signingKey, buf);
+      },
       [&](ILinkSession* s) -> bool {
         const auto rc = s->GetRemoteRC();
         return rc.pubkey == Bob.GetRC().pubkey;
       },
       [&](RouterContact, RouterContact) -> bool { return true; },
-      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Alice.signingKey, buf);
-      },
+     
       [&](ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
         Stop();
@@ -231,6 +232,10 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
         Bob.gotLIM = true;
         return sendDiscardMessage(s);
       },
+
+      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return m_crypto.sign(sig, Bob.signingKey, buf);
+      },
       [&](ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
@@ -241,9 +246,6 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       [&](RouterContact newrc, RouterContact oldrc) -> bool {
         success = newrc.pubkey == oldrc.pubkey;
         return true;
-      },
-      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Bob.signingKey, buf);
       },
       [&](ILinkSession* session) { ASSERT_FALSE(session->IsEstablished()); },
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
@@ -281,6 +283,9 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         }
         return AliceGotMessage(buf);
       },
+            [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return m_crypto.sign(sig, Alice.signingKey, buf);
+      },
       [&](ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Bob.GetRC().pubkey)
           return false;
@@ -288,9 +293,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         return true;
       },
       [&](RouterContact, RouterContact) -> bool { return true; },
-      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Alice.signingKey, buf);
-      },
+
       [&](ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
         Stop();
@@ -312,6 +315,9 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
           return false;
         }
         return true;
+      },   
+      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return m_crypto.sign(sig, Bob.signingKey, buf);
       },
       [&](ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
@@ -332,9 +338,6 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         return true;
       },
       [&](RouterContact, RouterContact) -> bool { return true; },
-      [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Bob.signingKey, buf);
-      },
       [&](ILinkSession* session) { ASSERT_FALSE(session->IsEstablished()); },
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
 
