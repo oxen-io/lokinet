@@ -147,7 +147,7 @@ extern "C"
     int flags; /* ifr.ifr_flags on Unix */
     char if_name[IF_NAMESIZE];
 #if defined(Windows)
-	int idx; /* needed to set ipv6 address */
+    int idx; /* needed to set ipv6 address */
 #endif
 #if defined(FreeBSD)
     int mode;

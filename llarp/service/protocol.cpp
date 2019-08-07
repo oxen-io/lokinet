@@ -309,7 +309,8 @@ namespace llarp
 
         if(self->frame.T != self->msg->tag)
         {
-          LogError("convotag missmatch: ", self->frame.T, " != ", self->msg->tag);
+          LogError("convotag missmatch: ", self->frame.T,
+                   " != ", self->msg->tag);
           self->msg.reset();
           delete self;
           return;
