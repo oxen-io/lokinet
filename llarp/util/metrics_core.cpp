@@ -432,11 +432,11 @@ namespace llarp
     struct PublisherSchedulerData
     {
       util::Mutex m_mutex;
-      thread::Scheduler::Handle m_handle;
-      std::set< const Category * > m_categories;
+      thread::Scheduler::Handle m_handle GUARDED_BY(m_mutex);
+      std::set< const Category * > m_categories GUARDED_BY(m_mutex);
 
-      bool m_default;
-      std::set< const Category * > m_nonDefaultCategories;
+      bool m_default GUARDED_BY(m_mutex);
+      std::set< const Category * > m_nonDefaultCategories GUARDED_BY(m_mutex);
 
       PublisherSchedulerData()
           : m_handle(thread::Scheduler::INVALID_HANDLE), m_default(false)
@@ -506,11 +506,9 @@ namespace llarp
       m_categories.erase(it);
       auto data = repeatIt->second;
 
-      {
-        util::Lock l(&data->m_mutex);
-        assert(data->m_categories.find(category) != data->m_categories.end());
-        data->m_categories.erase(category);
-      }
+      util::Lock l(&data->m_mutex);
+      assert(data->m_categories.find(category) != data->m_categories.end());
+      data->m_categories.erase(category);
 
       if(!data->m_default)
       {
@@ -526,7 +524,7 @@ namespace llarp
           assert(defaultIntervalIt != m_repeaters.end());
 
           auto &defaultRepeater = defaultIntervalIt->second;
-          util::Lock l(&defaultRepeater->m_mutex);
+          util::Lock lock(&defaultRepeater->m_mutex);
           defaultRepeater->m_nonDefaultCategories.erase(category);
         }
       }
@@ -547,6 +545,8 @@ namespace llarp
       assert(repeatIt != m_repeaters.end());
       auto data = repeatIt->second;
 
+      util::Lock l(&data->m_mutex);
+
       if(data->m_categories.empty())
       {
         assert(data->m_handle != thread::Scheduler::INVALID_HANDLE);
@@ -555,7 +555,6 @@ namespace llarp
       }
       else
       {
-        util::Lock l(&data->m_mutex);
         data->m_default = false;
         data->m_nonDefaultCategories.clear();
       }
@@ -593,9 +592,9 @@ namespace llarp
       if(repeatIt == m_repeaters.end())
       {
         data = std::make_shared< PublisherSchedulerData >();
+        util::Lock lock(&data->m_mutex);
         data->m_categories.insert(category);
         m_repeaters.emplace(interval, data);
-        util::Lock lock(&data->m_mutex);
         data->m_handle = m_scheduler.scheduleRepeat(
             interval, std::bind(&PublisherScheduler::publish, this, data));
       }
@@ -609,6 +608,7 @@ namespace llarp
       // If this isn't being added to the default schedule, then add to the set
       // of non-default categories in the default schedule.
 
+      util::Lock dataLock(&data->m_mutex);
       if(!data->m_default && m_defaultInterval != absl::Duration())
       {
         auto defaultIntervalIt = m_repeaters.find(m_defaultInterval);
@@ -703,6 +703,7 @@ namespace llarp
       util::Lock l(&m_mutex);
       for(auto &repeat : m_repeaters)
       {
+        util::Lock dataLock(&repeat.second->m_mutex);
         m_scheduler.cancelRepeat(repeat.second->m_handle, true);
       }
 

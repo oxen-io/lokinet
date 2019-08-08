@@ -200,56 +200,56 @@ namespace llarp
       }
 
       void
-      category(const Category *c)
+      category(const Category *c) LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         m_category = c;
       }
 
       const Category *
-      category() const
+      category() const LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         return m_category;
       }
 
       void
-      name(string_view n)
+      name(string_view n) LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         m_name = n;
       }
 
       string_view
-      name() const
+      name() const LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         return m_name;
       }
 
       void
-      type(Publication::Type t)
+      type(Publication::Type t) LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         m_type = t;
       }
 
       Publication::Type
-      type() const
+      type() const LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         return m_type;
       }
 
       void
-      format(const std::shared_ptr< Format > &f)
+      format(const std::shared_ptr< Format > &f) LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         m_format = f;
       }
 
       std::shared_ptr< Format >
-      format() const
+      format() const LOCKS_EXCLUDED(m_mutex)
       {
         util::Lock l(&m_mutex);
         return m_format;

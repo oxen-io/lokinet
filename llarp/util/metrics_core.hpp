@@ -56,7 +56,7 @@ namespace llarp
 
      private:
       TaggedRecordsType m_records GUARDED_BY(m_mutex);
-      mutable util::Mutex m_mutex;
+      mutable util::Mutex m_mutex;  // protects m_records
 
       Collector(const Collector &) = delete;
       Collector &
@@ -280,7 +280,8 @@ namespace llarp
       CategoryMap m_categories GUARDED_BY(m_mutex);
       MetricMap m_metrics GUARDED_BY(m_mutex);
       bool m_defaultEnabled GUARDED_BY(m_mutex);
-      mutable util::Mutex m_mutex;
+      mutable util::Mutex m_mutex;  // protects m_stringmem, m_categories,
+                                    // m_metrics, m_defaultEnabled
 
       Registry(const Registry &) = delete;
       Registry &
@@ -374,16 +375,16 @@ namespace llarp
 
       Registry *m_registry;
       IdCollectors m_collectors;
-      CategoryCollectors m_categories;
+      CategoryCollectors m_categories GUARDED_BY(m_mutex);
 
-      mutable util::Mutex m_mutex;
+      mutable util::Mutex m_mutex;  // protects m_categories
 
       CollectorRepo(const CollectorRepo &) = delete;
       CollectorRepo &
       operator=(const CollectorRepo &) = delete;
 
       Collectors< Type > &
-      getCollectors(const Id &id)
+      getCollectors(const Id &id) SHARED_LOCKS_REQUIRED(m_mutex)
       {
         auto it = m_collectors.find(id);
 
@@ -406,7 +407,7 @@ namespace llarp
 
       template < TaggedRecords< Type > (Collectors< Type >::*func)() >
       std::vector< TaggedRecords< Type > >
-      collectOp(const Category *category)
+      collectOp(const Category *category) LOCKS_EXCLUDED(m_mutex)
       {
         absl::WriterMutexLock l(&m_mutex);
 
@@ -452,7 +453,7 @@ namespace llarp
       }
 
       Collector< Type > *
-      defaultCollector(const Id &id)
+      defaultCollector(const Id &id) LOCKS_EXCLUDED(m_mutex)
       {
         {
           absl::ReaderMutexLock l(&m_mutex);
@@ -476,14 +477,14 @@ namespace llarp
       }
 
       std::shared_ptr< Collector< Type > >
-      addCollector(const Id &id)
+      addCollector(const Id &id) LOCKS_EXCLUDED(m_mutex)
       {
         absl::WriterMutexLock l(&m_mutex);
         return getCollectors(id).add();
       }
 
       std::vector< std::shared_ptr< Collector< Type > > >
-      allCollectors(const Id &id)
+      allCollectors(const Id &id) LOCKS_EXCLUDED(m_mutex)
       {
         absl::ReaderMutexLock l(&m_mutex);
 
@@ -1134,7 +1135,8 @@ namespace llarp
       Repeaters m_repeaters GUARDED_BY(m_mutex);
       absl::Duration m_defaultInterval GUARDED_BY(m_mutex);
 
-      mutable util::Mutex m_mutex;
+      mutable util::Mutex
+          m_mutex;  // protected m_categories, m_repeaters, m_defaultInterval
 
       void
       publish(const std::shared_ptr< PublisherSchedulerData > &data) const;
