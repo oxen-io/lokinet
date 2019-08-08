@@ -212,7 +212,7 @@ namespace llarp
         // don't time out the connection if backlogged in downstream direction
         // for clients dangling off the side of the network
         const auto timestamp =
-            remoteRC.IsPublicRouter() && GetOurRC().IsPublicRouter()
+            remoteRC.IsPublicRouter() && parent->GetOurRC().IsPublicRouter()
             ? lastSend
             : lastActive;
         if(now <= timestamp)
