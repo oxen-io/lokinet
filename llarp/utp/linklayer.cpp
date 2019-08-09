@@ -302,7 +302,7 @@ namespace llarp
       {
         if(arg->state == UTP_STATE_WRITABLE)
         {
-          session->PumpWrite();
+          session->Pump();
         }
         else if(arg->state == UTP_STATE_EOF)
         {
