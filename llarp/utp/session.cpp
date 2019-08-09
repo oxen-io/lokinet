@@ -20,7 +20,7 @@ namespace llarp
 
     /// pump tx queue
     void
-    Session::PumpWrite()
+    Session::PumpWrite(size_t numSend)
     {
       if(!sock)
         return;
@@ -31,10 +31,11 @@ namespace llarp
       {
         for(const auto& vec : msg.vecs)
         {
-          if(vec.iov_len)
+          if(vec.iov_len > 0)
           {
             expect += vec.iov_len;
             send.emplace_back(vec);
+            numSend--;
           }
         }
       }
@@ -270,8 +271,10 @@ namespace llarp
     void
     Session::Pump()
     {
-      // pump write queue
-      PumpWrite();
+      if(sendq.size() > (MaxSendQueueSize / 4))
+        PumpWrite(sendq.size() / 2);
+      else
+        PumpWrite(sendq.size());
       // prune inbound messages
       PruneInboundMessages(parent->Now());
     }
@@ -284,7 +287,7 @@ namespace llarp
       if(SendQueueBacklog() >= MaxSendQueueSize)
       {
         // pump write queue if we seem to be full
-        PumpWrite();
+        PumpWrite(MaxSendQueueSize / 2);
       }
       if(SendQueueBacklog() >= MaxSendQueueSize)
       {
@@ -310,7 +313,7 @@ namespace llarp
         sz -= s;
       }
       if(state != eSessionReady)
-        PumpWrite();
+        PumpWrite(sendq.size());
       return true;
     }
 

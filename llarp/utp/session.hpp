@@ -147,7 +147,7 @@ namespace llarp
 
       /// pump tx queue
       void
-      PumpWrite();
+      PumpWrite(size_t numMessages);
 
       void
       Pump() override;
