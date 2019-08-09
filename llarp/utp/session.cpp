@@ -215,7 +215,7 @@ namespace llarp
             (now > lastActive) && now - lastActive > sessionTimeout;
         const bool sendTimeout =
             (now > lastSend) && now - lastSend > sessionTimeout;
-        if(remoteIsSnode && weAreSnode)
+        if(remoteIsSNode && weAreSnode)
         {
           /// for s2s connections only check write direction
           return sendTimeout;
