@@ -307,15 +307,6 @@ namespace llarp
           return;
         }
 
-        if(self->frame.T != self->msg->tag)
-        {
-          LogError("convotag missmatch: ", self->frame.T,
-                   " != ", self->msg->tag);
-          self->msg.reset();
-          delete self;
-          return;
-        }
-
         if(self->handler->HasConvoTag(self->msg->tag))
         {
           LogError("dropping duplicate convo tag T=", self->msg->tag);
@@ -412,6 +403,11 @@ namespace llarp
       if(!DecryptPayloadInto(shared, *msg))
       {
         LogError("failed to decrypt message");
+        return false;
+      }
+      if(T != msg->tag && !msg->tag.IsZero())
+      {
+        LogError("convotag missmatch: ", T , " != ", msg->tag);
         return false;
       }
       msg->handler            = handler;
