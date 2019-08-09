@@ -407,7 +407,7 @@ namespace llarp
       }
       if(T != msg->tag && !msg->tag.IsZero())
       {
-        LogError("convotag missmatch: ", T , " != ", msg->tag);
+        LogError("convotag missmatch: ", T, " != ", msg->tag);
         return false;
       }
       msg->handler            = handler;
