@@ -101,6 +101,8 @@ namespace llarp
       uint64_t m_RXRate = 0;
       uint64_t m_TXRate = 0;
 
+      llarp_time_t m_LastTick = 0;
+
       /// mark session as alive
       void
       Alive();

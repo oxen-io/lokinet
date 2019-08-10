@@ -148,10 +148,15 @@ namespace llarp
     Session::Tick(llarp_time_t now)
     {
       PruneInboundMessages(now);
-      m_TXRate = 0;
-      m_RXRate = 0;
-      metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
-                           RouterID(remoteRC.pubkey).ToString());
+      // ensure that this section is called every 1s or so
+      if(now - m_LastTick >= 1000)
+      {
+        m_TXRate = 0;
+        m_RXRate = 0;
+        metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
+                             RouterID(remoteRC.pubkey).ToString());
+        m_LastTick = now;
+      }
     }
 
     /// low level read
