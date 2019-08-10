@@ -215,15 +215,29 @@ namespace llarp
         return now - lastActive > 5000;
       if(state == eSessionReady)
       {
-        // don't time out the connection if backlogged in downstream direction
-        // for clients dangling off the side of the network
-        const auto timestamp =
-            remoteRC.IsPublicRouter() && parent->GetOurRC().IsPublicRouter()
-            ? lastSend
-            : lastActive;
-        if(now <= timestamp)
-          return false;
-        return now - timestamp > 30000;
+        const bool remoteIsSNode = remoteRC.IsPublicRouter();
+        const bool weAreSnode    = parent->GetOurRC().IsPublicRouter();
+        const bool recvTimeout =
+            (now > lastActive) && now - lastActive > sessionTimeout;
+        const bool sendTimeout =
+            (now > lastSend) && now - lastSend > sessionTimeout;
+        if(remoteIsSNode && weAreSnode)
+        {
+          /// for s2s connections only check write direction
+          return sendTimeout;
+        }
+        else if(weAreSnode)
+        {
+          // for edge connection as service node check either direction for
+          // timeout
+          return recvTimeout || sendTimeout;
+        }
+        else
+        {
+          /// for edge connections as client we check if both directions have
+          /// been silent for 60s
+          return recvTimeout && sendTimeout;
+        }
       }
       if(state == eLinkEstablished)
         return now - lastActive
