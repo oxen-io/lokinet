@@ -101,6 +101,8 @@ namespace llarp
       uint64_t m_RXRate = 0;
       uint64_t m_TXRate = 0;
 
+      llarp_time_t m_LastTick = 0;
+
       /// mark session as alive
       void
       Alive();
@@ -147,7 +149,7 @@ namespace llarp
 
       /// pump tx queue
       void
-      PumpWrite();
+      PumpWrite(size_t numMessages);
 
       void
       Pump() override;
