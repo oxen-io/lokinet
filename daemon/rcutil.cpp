@@ -1,11 +1,14 @@
 #include <router_contact.hpp>
+#include <util/logger.hpp>
+#include <util/ostream_logger.hpp>
 
 #include <cxxopts.hpp>
 #include <string>
 #include <vector>
 
-bool dumpRc(const std::vector<std::string>& files)
+bool dumpRc(const std::vector<std::string>& files, bool json)
 {
+    nlohmann::json result;
     for(const auto& file : files)
     {
         llarp::RouterContact rc;
@@ -13,14 +16,24 @@ bool dumpRc(const std::vector<std::string>& files)
 
         if (ret)
         {
+            if (json)
+            {
+                result[file] = rc.ToJson();
+            }
+            else
+            {
             std::cout << "file = " << file << "\n";
             std::cout << rc << "\n\n";
+            }
         }
         else
         {
             std::cerr << "file = " << file << " was not a valid rc file\n";
         }
     }
+
+    if (json)
+        std::cout << result << "\n";
 
     return true;
 }
@@ -41,15 +54,19 @@ main(int argc, char *argv[])
   options.add_options()
       ("v,verbose", "Verbose", cxxopts::value<bool>())
       ("h,help", "help", cxxopts::value<bool>())
+      ("j,json", "output in json", cxxopts::value<bool>())
       ("dump", "dump rc file", cxxopts::value<std::vector<std::string>>(), "FILE");
   // clang-format on
 
   try {
     const auto result = options.parse(argc, argv);
 
+    const bool json = result["json"].as<bool>();
+
     if(result.count("verbose") > 0)
     {
       SetLogLevel(llarp::eLogDebug);
+      llarp::LogContext::Instance().logStream = std::make_unique<llarp::OStreamLogStream>(std::cerr);
       llarp::LogDebug("debug logging activated");
     }
 
@@ -61,7 +78,7 @@ main(int argc, char *argv[])
 
     if(result.count("dump") > 0)
     {
-      if (!dumpRc(result["dump"].as<std::vector<std::string>>()))
+      if (!dumpRc(result["dump"].as<std::vector<std::string>>(), json))
       {
           return 1;
       }
