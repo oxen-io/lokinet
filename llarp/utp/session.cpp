@@ -149,7 +149,7 @@ namespace llarp
     {
       PruneInboundMessages(now);
       // ensure that this section is called every 1s or so
-      if(now - m_LastTick >= 1000)
+      if(now > m_LastTick && now - m_LastTick >= 1000)
       {
         m_TXRate = 0;
         m_RXRate = 0;
