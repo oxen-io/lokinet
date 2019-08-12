@@ -2,6 +2,7 @@
 
 #include <config/config.hpp>
 #include <constants/proto.hpp>
+#include <constants/limits.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
