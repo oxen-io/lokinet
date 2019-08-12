@@ -164,15 +164,14 @@ namespace llarp
     HopHandler_ptr
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(
-          m_OurPaths, id,
-          [](const PathSet_ptr) -> bool {
-            // TODO: is this right?
-            return true;
-          },
-          [remote, id](PathSet_ptr p) -> HopHandler_ptr {
-            return p->GetByUpstream(remote, id);
-          });
+      auto own = MapGet(m_OurPaths, id,
+                        [](const PathSet_ptr) -> bool {
+                          // TODO: is this right?
+                          return true;
+                        },
+                        [remote, id](PathSet_ptr p) -> HopHandler_ptr {
+                          return p->GetByUpstream(remote, id);
+                        });
       if(own)
         return own;
 
