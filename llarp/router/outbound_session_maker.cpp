@@ -228,7 +228,8 @@ namespace llarp
     size_t numPending = 0;
     {
       util::Lock lock(&_mutex);
-      numPending += pendingSessions.size();
+      if(pendingSessions.find(router) == pendingSessions.end())
+        numPending += pendingSessions.size();
     }
     if(_linkManager->HasSessionTo(router))
       return false;
