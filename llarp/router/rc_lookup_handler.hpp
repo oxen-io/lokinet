@@ -28,7 +28,7 @@ namespace llarp
    public:
     using CallbacksQueue = std::list< RCRequestCallback >;
 
-    ~RCLookupHandler() = default;
+    ~RCLookupHandler() override = default;
 
     void
     AddValidRouter(const RouterID &router) override LOCKS_EXCLUDED(_mutex);

@@ -10,9 +10,7 @@ namespace llarp
 {
   namespace dht
   {
-    PublishIntroMessage::~PublishIntroMessage()
-    {
-    }
+    PublishIntroMessage::~PublishIntroMessage() = default;
 
     bool
     PublishIntroMessage::DecodeKey(const llarp_buffer_t &key,

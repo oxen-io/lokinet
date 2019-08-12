@@ -20,6 +20,7 @@
 #include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
+#include <utility>
 #include <utp/utp.hpp>
 
 #include <fstream>
@@ -81,9 +82,9 @@ namespace llarp
   Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
                  llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > l)
       : ready(false)
-      , _netloop(__netloop)
-      , cryptoworker(_tp)
-      , _logic(l)
+      , _netloop(std::move(__netloop))
+      , cryptoworker(std::move(_tp))
+      , _logic(std::move(l))
       , paths(this)
       , _exitContext(this)
       , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000,
@@ -288,7 +289,7 @@ namespace llarp
   {
     if(left)
       return;
-    Router *self        = static_cast< Router * >(user);
+    auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
     self->Tick();
     self->ScheduleTicker(orig);
@@ -965,14 +966,14 @@ namespace llarp
   static void
   RouterAfterStopLinks(void *u, uint64_t, uint64_t)
   {
-    Router *self = static_cast< Router * >(u);
+    auto *self = static_cast< Router * >(u);
     self->Close();
   }
 
   static void
   RouterAfterStopIssued(void *u, uint64_t, uint64_t)
   {
-    Router *self = static_cast< Router * >(u);
+    auto *self = static_cast< Router * >(u);
     self->StopLinks();
     self->nodedb()->AsyncFlushToDisk();
     self->_logic->call_later({200, self, &RouterAfterStopLinks});

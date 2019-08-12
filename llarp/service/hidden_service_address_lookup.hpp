@@ -20,15 +20,13 @@ namespace llarp
       HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
                                  const Address& addr, uint64_t tx);
 
-      ~HiddenServiceAddressLookup()
-      {
-      }
+      ~HiddenServiceAddressLookup() override = default;
 
       bool
-      HandleResponse(const std::set< IntroSet >& results);
+      HandleResponse(const std::set< IntroSet >& results) override;
 
       std::shared_ptr< routing::IMessage >
-      BuildRequestMessage();
+      BuildRequestMessage() override;
     };
   }  // namespace service
 }  // namespace llarp

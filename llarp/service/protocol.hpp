@@ -104,7 +104,7 @@ namespace llarp
         Clear();
       }
 
-      ~ProtocolFrame();
+      ~ProtocolFrame() override;
 
       bool
       operator==(const ProtocolFrame& other) const;

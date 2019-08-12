@@ -4,15 +4,15 @@
 #include <routing/path_transfer_message.hpp>
 #include <service/endpoint.hpp>
 #include <util/logic.hpp>
+#include <utility>
 
 namespace llarp
 {
   namespace service
   {
-    SendContext::SendContext(const ServiceInfo& ident,
-                             const Introduction& intro, path::PathSet* send,
-                             Endpoint* ep)
-        : remoteIdent(ident)
+    SendContext::SendContext(ServiceInfo ident, const Introduction& intro,
+                             path::PathSet* send, Endpoint* ep)
+        : remoteIdent(std::move(ident))
         , remoteIntro(intro)
         , m_PathSet(send)
         , m_DataHandler(ep)

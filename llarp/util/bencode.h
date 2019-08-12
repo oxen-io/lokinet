@@ -6,8 +6,8 @@
 #include <util/common.hpp>
 
 #include <functional>
-#include <stdbool.h>
-#include <stdint.h>
+
+#include <cstdint>
 
 /**
  * bencode.h

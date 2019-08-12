@@ -1,4 +1,5 @@
 #include <exit/context.hpp>
+#include <memory>
 
 namespace llarp
 {
@@ -7,9 +8,7 @@ namespace llarp
     Context::Context(AbstractRouter* r) : m_Router(r)
     {
     }
-    Context::~Context()
-    {
-    }
+    Context::~Context() = default;
 
     void
     Context::Tick(llarp_time_t now)
@@ -112,7 +111,7 @@ namespace llarp
       }
       std::unique_ptr< handlers::ExitEndpoint > endpoint;
       // make new endpoint
-      endpoint.reset(new handlers::ExitEndpoint(name, m_Router));
+      endpoint = std::make_unique< handlers::ExitEndpoint >(name, m_Router);
       // configure
       {
         auto itr = conf.begin();

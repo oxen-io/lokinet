@@ -9,6 +9,7 @@
 #include <util/encode.hpp>
 #include <util/memfn.hpp>
 #include <libabyss.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -22,15 +23,13 @@ namespace llarp
       {
       }
 
-      ~CallerHandler()
-      {
-      }
+      ~CallerHandler() override = default;
 
       virtual bool
       HandleJSONResult(const nlohmann::json& val) = 0;
 
       bool
-      HandleResponse(::abyss::http::RPC_Response response)
+      HandleResponse(::abyss::http::RPC_Response response) override
       {
         if(!response.is_object())
         {
@@ -50,7 +49,7 @@ namespace llarp
       }
 
       void
-      PopulateReqHeaders(abyss::http::Headers_t& hdr);
+      PopulateReqHeaders(abyss::http::Headers_t& hdr) override;
     };
 
     struct GetServiceNodeListHandler final : public CallerHandler
@@ -58,14 +57,12 @@ namespace llarp
       using PubkeyList_t = std::vector< RouterID >;
       using Callback_t   = std::function< void(const PubkeyList_t&, bool) >;
 
-      ~GetServiceNodeListHandler()
-      {
-      }
+      ~GetServiceNodeListHandler() override = default;
       Callback_t handler;
 
       GetServiceNodeListHandler(::abyss::http::ConnImpl* impl,
                                 CallerImpl* parent, Callback_t h)
-          : CallerHandler(impl, parent), handler(h)
+          : CallerHandler(impl, parent), handler(std::move(h))
       {
       }
 
@@ -178,9 +175,7 @@ namespace llarp
           LogError("service node list not updated");
       }
 
-      ~CallerImpl()
-      {
-      }
+      ~CallerImpl() = default;
     };
 
     void
@@ -197,9 +192,7 @@ namespace llarp
       {
       }
 
-      ~Handler()
-      {
-      }
+      ~Handler() override = default;
 
       Response
       DumpState() const
@@ -269,7 +262,7 @@ namespace llarp
 
       absl::optional< Response >
       HandleJSONRPC(Method_t method,
-                    __attribute__((unused)) const Params& params)
+                    ABSL_ATTRIBUTE_UNUSED const Params& params) override
       {
         if(method == "llarp.admin.link.neighboors")
         {
@@ -283,7 +276,7 @@ namespace llarp
         {
           return DumpState();
         }
-        else if(method == "llarp.admin.status")
+        if(method == "llarp.admin.status")
         {
           return DumpStatus();
         }
@@ -299,7 +292,7 @@ namespace llarp
       }
       AbstractRouter* router;
       ::abyss::httpd::IRPCHandler*
-      CreateHandler(::abyss::httpd::ConnImpl* conn)
+      CreateHandler(::abyss::httpd::ConnImpl* conn) override
       {
         return new Handler(conn, router);
       }
@@ -314,9 +307,7 @@ namespace llarp
       {
       }
 
-      ~ServerImpl()
-      {
-      }
+      ~ServerImpl() = default;
 
       void
       Stop()
@@ -349,9 +340,7 @@ namespace llarp
     {
     }
 
-    Caller::~Caller()
-    {
-    }
+    Caller::~Caller() = default;
 
     void
     Caller::Stop()
@@ -382,9 +371,7 @@ namespace llarp
     {
     }
 
-    Server::~Server()
-    {
-    }
+    Server::~Server() = default;
 
     void
     Server::Stop()

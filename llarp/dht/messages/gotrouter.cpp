@@ -1,6 +1,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 
+#include <memory>
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 
@@ -8,9 +9,7 @@ namespace llarp
 {
   namespace dht
   {
-    GotRouterMessage::~GotRouterMessage()
-    {
-    }
+    GotRouterMessage::~GotRouterMessage() = default;
 
     bool
     GotRouterMessage::BEncode(llarp_buffer_t *buf) const
@@ -56,7 +55,7 @@ namespace llarp
       {
         if(K)  // duplicate key?
           return false;
-        K.reset(new dht::Key_t());
+        K = std::make_unique< dht::Key_t >();
         return K->BDecode(val);
       }
       if(key == "N")

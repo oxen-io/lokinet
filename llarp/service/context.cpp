@@ -49,9 +49,7 @@ namespace llarp
     {
     }
 
-    Context::~Context()
-    {
-    }
+    Context::~Context() = default;
 
     bool
     Context::StopAll()

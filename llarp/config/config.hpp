@@ -27,10 +27,8 @@ namespace llarp
     {
       return ptr;
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -43,10 +41,8 @@ namespace llarp
     {
       return std::atoi(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -59,10 +55,8 @@ namespace llarp
     {
       return std::atoi(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -75,10 +69,8 @@ namespace llarp
     {
       return std::atoll(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -92,10 +84,8 @@ namespace llarp
     {
       return IsTrueValue(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   class RouterConfig

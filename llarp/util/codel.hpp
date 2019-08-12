@@ -11,6 +11,7 @@
 #include <cmath>
 #include <functional>
 #include <string>
+#include <utility>
 
 namespace llarp
 {
@@ -31,8 +32,11 @@ namespace llarp
                llarp_time_t initialIntervalMs = 100, size_t MaxSize = 1024 >
     struct CoDelQueue
     {
-      CoDelQueue(const std::string& name, const PutTime& put, const GetNow& now)
-          : m_QueueIdx(0), m_name(name), _putTime(put), _getNow(now)
+      CoDelQueue(std::string name, PutTime put, GetNow now)
+          : m_QueueIdx(0)
+          , m_name(std::move(name))
+          , _putTime(std::move(put))
+          , _getNow(std::move(now))
       {
       }
 

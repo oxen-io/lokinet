@@ -8,7 +8,7 @@
 #include <util/mem.h>
 
 #include <list>
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {

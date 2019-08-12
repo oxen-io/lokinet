@@ -3,6 +3,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -13,7 +14,7 @@ namespace llarp
         AbstractContext *ctx, uint64_t r,
         service::IntroSetLookupHandler handler)
         : TX< service::Address, service::IntroSet >(asker, addr, ctx)
-        , handleResult(handler)
+        , handleResult(std::move(handler))
         , R(r)
     {
       peersAsked.insert(ctx->OurKey());

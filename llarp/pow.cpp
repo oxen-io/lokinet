@@ -7,9 +7,7 @@
 
 namespace llarp
 {
-  PoW::~PoW()
-  {
-  }
+  PoW::~PoW() = default;
 
   bool
   PoW::DecodeKey(ABSL_ATTRIBUTE_UNUSED const llarp_buffer_t& k,

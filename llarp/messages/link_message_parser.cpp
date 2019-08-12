@@ -37,9 +37,7 @@ namespace llarp
   {
   }
 
-  LinkMessageParser::~LinkMessageParser()
-  {
-  }
+  LinkMessageParser::~LinkMessageParser() = default;
 
   bool
   LinkMessageParser::operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)

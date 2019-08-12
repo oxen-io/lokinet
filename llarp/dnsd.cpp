@@ -27,7 +27,7 @@ ssize_t
 llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
                            ManagedBuffer buf)
 {
-  struct llarp_udp_io *udp = (struct llarp_udp_io *)sock;
+  auto *udp = (struct llarp_udp_io *)sock;
   if(!udp)
   {
     llarp::LogWarn("couldnt cast to udp");
@@ -333,8 +333,7 @@ writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
 void
 handle_dnsc_result(dnsc_answer_request *client_request)
 {
-  dnsd_question_request *server_request =
-      (dnsd_question_request *)client_request->user;
+  auto *server_request = (dnsd_question_request *)client_request->user;
   if(!server_request)
   {
     llarp::LogError("Couldn't map client requser user to a server request");
@@ -522,7 +521,7 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
     return;
   }
   // create new request
-  dnsd_question_request *llarp_dns_request = new dnsd_question_request;
+  auto *llarp_dns_request    = new dnsd_question_request;
   llarp_dns_request->context = dns_udp_tracker.dnsd;  // set context
   llarp_dns_request->from =
       new sockaddr(*saddr);  // make a copy of the sockaddr
@@ -543,7 +542,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
     llarp::LogError("No tracker set in dnsd context");
     return;
   }
-  dnsd_question_request *llarp_dns_request = new dnsd_question_request;
+  auto *llarp_dns_request    = new dnsd_question_request;
   llarp_dns_request->context = dns_udp_tracker.dnsd;  // set context
   llarp_dns_request->from =
       new sockaddr(*saddr);  // make a copy of the sockaddr

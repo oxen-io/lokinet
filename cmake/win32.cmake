@@ -8,6 +8,10 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 if (MSVC OR MSVC_VERSION)
   add_compile_options(/EHca /arch:AVX2 /MD)
   add_definitions(-D_SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING)
+
+  if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
+      add_compile_options(-Wno-nonportable-system-include-path)
+  endif()
 endif()
 
 if(NOT MSVC_VERSION)

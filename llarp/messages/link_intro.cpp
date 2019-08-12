@@ -31,7 +31,7 @@ namespace llarp
     {
       return bencode_read_integer(buf, &P);
     }
-    else if(key == "r")
+    if(key == "r")
     {
       if(rc.BDecode(buf))
         return true;
@@ -39,7 +39,7 @@ namespace llarp
       llarp::DumpBuffer(*buf);
       return false;
     }
-    else if(key == "v")
+    if(key == "v")
     {
       if(!bencode_read_integer(buf, &version))
         return false;
@@ -52,15 +52,13 @@ namespace llarp
       llarp::LogDebug("LIM version ", version);
       return true;
     }
-    else if(key == "z")
+    if(key == "z")
     {
       return Z.BDecode(buf);
     }
-    else
-    {
-      llarp::LogWarn("invalid LIM key: ", *key.cur);
-      return false;
-    }
+
+    llarp::LogWarn("invalid LIM key: ", *key.cur);
+    return false;
   }
 
   bool

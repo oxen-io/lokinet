@@ -12,6 +12,7 @@
 #include <util/memfn.hpp>
 
 #include <functional>
+#include <utility>
 
 namespace llarp
 {
@@ -25,10 +26,12 @@ namespace llarp
     HopHandler_ptr path;
     AbstractRouter* router;
 
-    LRSM_AsyncHandler(const std::array< EncryptedFrame, 8 >& _frames,
-                      uint64_t _status, HopHandler_ptr _path,
-                      AbstractRouter* _router)
-        : frames(_frames), status(_status), path(_path), router(_router)
+    LRSM_AsyncHandler(std::array< EncryptedFrame, 8 > _frames, uint64_t _status,
+                      HopHandler_ptr _path, AbstractRouter* _router)
+        : frames(std::move(_frames))
+        , status(_status)
+        , path(std::move(_path))
+        , router(_router)
     {
     }
 
@@ -57,7 +60,7 @@ namespace llarp
     {
       return BEncodeReadArray(frames, buf);
     }
-    else if(key == "p")
+    if(key == "p")
     {
       if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       {

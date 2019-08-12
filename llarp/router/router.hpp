@@ -297,7 +297,7 @@ namespace llarp
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
 
-    ~Router();
+    ~Router() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,

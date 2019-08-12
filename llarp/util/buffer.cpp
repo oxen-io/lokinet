@@ -1,8 +1,8 @@
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 
 size_t
 llarp_buffer_t::size_left() const

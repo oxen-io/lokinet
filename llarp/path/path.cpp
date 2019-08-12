@@ -215,7 +215,7 @@ namespace llarp
         m_PathSet->HandlePathBuildFailed(shared_from_this());
         return;
       }
-      else if(st == ePathExpired && _status == ePathBuilding)
+      if(st == ePathExpired && _status == ePathBuilding)
       {
         _status = st;
         m_PathSet->HandlePathBuildTimeout(shared_from_this());

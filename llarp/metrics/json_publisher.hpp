@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <iosfwd>
+#include <utility>
 
 namespace llarp
 {
@@ -22,13 +23,11 @@ namespace llarp
       PublishFunction m_publish;
 
      public:
-      JsonPublisher(const PublishFunction& publish) : m_publish(publish)
+      JsonPublisher(PublishFunction publish) : m_publish(std::move(publish))
       {
       }
 
-      ~JsonPublisher()
-      {
-      }
+      ~JsonPublisher() override = default;
 
       void
       publish(const Sample& values) override;

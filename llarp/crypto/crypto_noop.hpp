@@ -20,7 +20,7 @@ namespace llarp
     {
     }
 
-    ~NoOpCrypto() = default;
+    ~NoOpCrypto() override = default;
 
     bool
     xchacha20(const llarp_buffer_t &, const SharedSecret &,

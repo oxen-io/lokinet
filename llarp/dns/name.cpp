@@ -107,11 +107,11 @@ namespace llarp
         ip  = net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(a, b, c, d));
         return true;
       }
-      else if(numdots == 32 && isV6)
+      if(numdots == 32 && isV6)
       {
         size_t idx = 0;
         uint8_t lo, hi;
-        uint8_t* ptr = (uint8_t*)&ip.h;
+        auto* ptr = (uint8_t*)&ip.h;
         while(idx < 16)
         {
           pos      = sub.find('.');

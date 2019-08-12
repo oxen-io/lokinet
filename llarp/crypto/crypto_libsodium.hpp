@@ -11,9 +11,7 @@ namespace llarp
     {
       CryptoLibSodium();
 
-      ~CryptoLibSodium()
-      {
-      }
+      ~CryptoLibSodium() override = default;
 
       /// xchacha symmetric cipher
       bool

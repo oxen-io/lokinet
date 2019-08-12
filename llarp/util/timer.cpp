@@ -8,6 +8,7 @@
 #include <memory>
 #include <queue>
 #include <unordered_map>
+#include <utility>
 
 namespace llarp
 {
@@ -28,15 +29,13 @@ namespace llarp
         , called_at(0)
         , started(now)
         , timeout(ms)
-        , func(_func)
+        , func(std::move(_func))
         , done(false)
         , canceled(false)
     {
     }
 
-    ~timer()
-    {
-    }
+    ~timer() = default;
 
     void
     exec();
@@ -75,9 +74,7 @@ struct llarp_timer_context
   uint32_t currentId = 0;
   bool _run          = true;
 
-  ~llarp_timer_context()
-  {
-  }
+  ~llarp_timer_context() = default;
 
   bool
   run()
