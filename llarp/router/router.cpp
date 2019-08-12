@@ -886,6 +886,14 @@ namespace llarp
 
     EnsureNetConfigDefaultsSane(netConfig);
 
+    const auto limits =
+        IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
+
+    minConnectedRouters =
+        std::max(minConnectedRouters, limits.DefaultMinRouters);
+    maxConnectedRouters =
+        std::max(maxConnectedRouters, limits.DefaultMaxRouters);
+
     if(IsServiceNode())
     {
       // initialize as service node
@@ -896,14 +904,12 @@ namespace llarp
       }
       RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
-      if(minConnectedRouters < 6)
-        minConnectedRouters = 6;
+
       // relays do not use profiling
       routerProfiling().Disable();
     }
     else
     {
-      maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
       CryptoManager::instance()->identity_keygen(_identity);

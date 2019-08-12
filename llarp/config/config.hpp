@@ -105,7 +105,7 @@ namespace llarp
     size_t m_minConnectedRouters = 2;
 
     /// hard upperbound limit on the number of router to router connections
-    size_t m_maxConnectedRouters = 2000;
+    size_t m_maxConnectedRouters = 5;
 
     std::string m_netId;
     std::string m_nickname;
@@ -325,7 +325,8 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath);
+llarp_generic_ensure_config(std::ofstream& f, std::string basepath,
+                            bool isRouter);
 
 void
 llarp_ensure_router_config(std::ofstream& f, std::string basepath);
