@@ -8,6 +8,16 @@ matrix:
   - os: linux
     dist: xenial
     compiler: gcc
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
+    addons:
+      apt:
+        sources:
+          - llvm-toolchain-xenial-8
+        packages:
+          - clang-format-8
+  - os: linux
+    dist: xenial
+    compiler: gcc
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
   - os: linux
     dist: xenial
@@ -77,6 +87,7 @@ addons:
     packages:
     - binutils-gold
     - build-essential
+    - clang-format
     - cmake
     - curl
     - docker-ce
