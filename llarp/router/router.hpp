@@ -194,13 +194,6 @@ namespace llarp
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;
 
     uint16_t m_OutboundPort = 0;
-
-    /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 2;
-    /// hard upperbound limit on the number of router to router connections
-    size_t maxConnectedRouters = 2000;
-
-    size_t minRequiredRouters = 4;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
     llarp_time_t rcRegenInterval = 60 * 60 * 1000;

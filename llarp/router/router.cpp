@@ -374,14 +374,16 @@ namespace llarp
     m_OutboundPort = conf->iwp_links.outboundPort();
     // Router config
     _rc.SetNick(conf->router.nickname());
-    maxConnectedRouters = conf->router.maxConnectedRouters();
-    minConnectedRouters = conf->router.minConnectedRouters();
-    encryption_keyfile  = conf->router.encryptionKeyfile();
-    our_rc_file         = conf->router.ourRcFile();
-    transport_keyfile   = conf->router.transportKeyfile();
-    addrInfo            = conf->router.addrInfo();
-    publicOverride      = conf->router.publicOverride();
-    ip4addr             = conf->router.ip4addr();
+    _outboundSessionMaker.maxConnectedRouters =
+        conf->router.maxConnectedRouters();
+    _outboundSessionMaker.minConnectedRouters =
+        conf->router.minConnectedRouters();
+    encryption_keyfile = conf->router.encryptionKeyfile();
+    our_rc_file        = conf->router.ourRcFile();
+    transport_keyfile  = conf->router.transportKeyfile();
+    addrInfo           = conf->router.addrInfo();
+    publicOverride     = conf->router.publicOverride();
+    ip4addr            = conf->router.ip4addr();
 
     // Lokid Config
     usingSNSeed      = conf->lokid.usingSNSeed;
@@ -656,16 +658,16 @@ namespace llarp
 
     const size_t connected = NumberOfConnectedRouters();
     const size_t N         = nodedb()->num_loaded();
-    if(N < minRequiredRouters)
+    if(N < 4)
     {
-      LogInfo("We need at least ", minRequiredRouters,
+      LogInfo("We need at least ", 4,
               " service nodes to build paths but we have ", N, " in nodedb");
 
       _rcLookupHandler.ExploreNetwork();
     }
-    if(connected < minConnectedRouters)
+    if(connected < _outboundSessionMaker.minConnectedRouters)
     {
-      size_t dlt = minConnectedRouters - connected;
+      size_t dlt = _outboundSessionMaker.minConnectedRouters - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
     }
@@ -890,10 +892,10 @@ namespace llarp
     const auto limits =
         IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
 
-    minConnectedRouters =
-        std::max(minConnectedRouters, limits.DefaultMinRouters);
-    maxConnectedRouters =
-        std::max(maxConnectedRouters, limits.DefaultMaxRouters);
+    _outboundSessionMaker.minConnectedRouters = std::max(
+        _outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
+    _outboundSessionMaker.maxConnectedRouters = std::max(
+        _outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
 
     if(IsServiceNode())
     {
