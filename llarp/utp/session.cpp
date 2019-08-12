@@ -157,6 +157,11 @@ namespace llarp
                              RouterID(remoteRC.pubkey).ToString());
         m_LastTick = now;
       }
+      else
+      {
+        // try sending 1 segment
+        PumpWrite(1);
+      }
     }
 
     /// low level read
