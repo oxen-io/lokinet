@@ -1,7 +1,6 @@
 #ifndef LLARP_CONSTANTS_LIMITS_HPP
 #define LLARP_CONSTANTS_LIMITS_HPP
-#include <cstdint>
-
+#include <cstddef>
 namespace llarp
 {
   namespace limits
