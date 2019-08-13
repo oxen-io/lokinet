@@ -2,6 +2,7 @@
 #include <util/logger.hpp>
 #include <util/ostream_logger.hpp>
 
+#include <absl/synchronization/mutex.h>
 #include <cxxopts.hpp>
 #include <string>
 #include <vector>
