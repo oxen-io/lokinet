@@ -10,6 +10,7 @@
 #include <util/threading.hpp>
 #include <util/status.hpp>
 #include <crypto/crypto.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -22,8 +23,8 @@ namespace llarp
 
     size_t attemptCount = 0;
 
-    PendingSession(const RouterContact &_rc, LinkLayer_ptr _link)
-        : rc(_rc), link(_link)
+    PendingSession(RouterContact _rc, LinkLayer_ptr _link)
+        : rc(std::move(_rc)), link(std::move(_link))
     {
     }
   };
@@ -192,7 +193,7 @@ namespace llarp
                                          const RouterContact &rc)
   {
     {
-      util::Lock l(&_mutex);
+      util::ReleasableLock l(&_mutex);
 
       // in case other request found RC for this router after this request was
       // made
@@ -206,6 +207,7 @@ namespace llarp
 
       if(!link)
       {
+        l.Release();
         FinalizeRequest(router, SessionResult::NoLink);
         return;
       }

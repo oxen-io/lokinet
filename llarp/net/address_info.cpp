@@ -8,7 +8,7 @@
 #include <util/mem.h>
 #include <util/printer.hpp>
 
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {

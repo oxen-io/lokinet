@@ -1,7 +1,7 @@
 #ifndef LLARP_CRYPTO_CONSTANTS_HPP
 #define LLARP_CRYPTO_CONSTANTS_HPP
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <libntrup/ntru.h>
 

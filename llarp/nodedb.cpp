@@ -12,12 +12,13 @@
 
 #include <fstream>
 #include <unordered_map>
+#include <utility>
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
-llarp_nodedb::NetDBEntry::NetDBEntry(const llarp::RouterContact &value)
-    : rc(value), inserted(llarp::time_now_ms())
+llarp_nodedb::NetDBEntry::NetDBEntry(llarp::RouterContact value)
+    : rc(std::move(value)), inserted(llarp::time_now_ms())
 {
 }
 
@@ -151,7 +152,7 @@ llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
     InsertAsync(rc, logic, completionHandler);
     return true;
   }
-  else if(itr != entries.end())
+  if(itr != entries.end())
   {
     // insertion time is set on...insertion.  But it should be updated here
     // even if there is no insertion of a new RC, to show that the existing one
@@ -362,8 +363,7 @@ llarp_nodedb::Save()
 void
 logic_threadworker_callback(void *user)
 {
-  llarp_async_verify_rc *verify_request =
-      static_cast< llarp_async_verify_rc * >(user);
+  auto *verify_request = static_cast< llarp_async_verify_rc * >(user);
   if(verify_request->hook)
     verify_request->hook(verify_request);
 }
@@ -382,8 +382,7 @@ disk_threadworker_setRC(llarp_async_verify_rc *verify_request)
 void
 crypto_threadworker_verifyrc(void *user)
 {
-  llarp_async_verify_rc *verify_request =
-      static_cast< llarp_async_verify_rc * >(user);
+  auto *verify_request    = static_cast< llarp_async_verify_rc * >(user);
   llarp::RouterContact rc = verify_request->rc;
   verify_request->valid   = rc.Verify(llarp::time_now_ms());
   // if it's valid we need to set it
@@ -404,14 +403,14 @@ crypto_threadworker_verifyrc(void *user)
 void
 nodedb_inform_load_rc(void *user)
 {
-  llarp_async_load_rc *job = static_cast< llarp_async_load_rc * >(user);
+  auto *job = static_cast< llarp_async_load_rc * >(user);
   job->hook(job);
 }
 
 void
 nodedb_async_load_rc(void *user)
 {
-  llarp_async_load_rc *job = static_cast< llarp_async_load_rc * >(user);
+  auto *job = static_cast< llarp_async_load_rc * >(user);
 
   auto fpath  = job->nodedb->getRCFilePath(job->pubkey);
   job->loaded = job->nodedb->loadfile(fpath);

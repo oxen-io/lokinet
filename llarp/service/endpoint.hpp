@@ -71,7 +71,7 @@ namespace llarp
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
-      ~Endpoint();
+      ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void
       bool
@@ -94,7 +94,7 @@ namespace llarp
       virtual bool
       SetOption(const std::string& k, const std::string& v);
 
-      virtual void
+      void
       Tick(llarp_time_t now) override;
 
       /// return true if we have a resolvable ip address
@@ -111,7 +111,7 @@ namespace llarp
         return {0};
       }
 
-      virtual void
+      void
       ResetInternalState() override;
 
       /// router's logic
@@ -142,7 +142,7 @@ namespace llarp
       virtual bool
       Start();
 
-      virtual std::string
+      std::string
       Name() const override;
 
       bool
@@ -335,7 +335,7 @@ namespace llarp
       uint64_t
       GetSeqNoForConvo(const ConvoTag& tag);
 
-      virtual bool
+      bool
       SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                 RouterContact& cur, size_t hop, path::PathRole roles) override;
 

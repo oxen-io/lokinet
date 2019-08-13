@@ -26,17 +26,13 @@ namespace llarp
 {
   namespace dht
   {
-    AbstractContext::~AbstractContext()
-    {
-    }
+    AbstractContext::~AbstractContext() = default;
 
     struct Context final : public AbstractContext
     {
       Context();
 
-      ~Context()
-      {
-      }
+      ~Context() override = default;
 
       util::StatusObject
       ExtractStatus() const override;
@@ -167,7 +163,7 @@ namespace llarp
       void
       Explore(size_t N = 3);
 
-      llarp::AbstractRouter* router;
+      llarp::AbstractRouter* router{nullptr};
       // for router contacts
       std::unique_ptr< Bucket< RCNode > > _nodes;
 
@@ -180,7 +176,7 @@ namespace llarp
         return _services.get();
       }
 
-      bool allowTransit;
+      bool allowTransit{false};
 
       bool&
       AllowTransit() override
@@ -308,7 +304,7 @@ namespace llarp
       Key_t ourKey;
     };
 
-    Context::Context() : router(nullptr), allowTransit(false)
+    Context::Context()
     {
       randombytes((byte_t*)&ids, sizeof(uint64_t));
     }
@@ -346,7 +342,7 @@ namespace llarp
     {
       if(left)
         return;
-      Context* ctx = static_cast< Context* >(u);
+      auto* ctx = static_cast< Context* >(u);
       const auto num =
           std::min(ctx->router->NumberOfConnectedRouters(), size_t(4));
       if(num)
@@ -361,7 +357,7 @@ namespace llarp
     {
       if(left)
         return;
-      Context* ctx = static_cast< Context* >(u);
+      auto* ctx = static_cast< Context* >(u);
       // clean up transactions
       ctx->CleanupTX();
 

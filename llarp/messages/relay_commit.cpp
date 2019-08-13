@@ -171,9 +171,9 @@ namespace llarp
 
   struct LRCMFrameDecrypt
   {
-    typedef llarp::path::PathContext Context;
-    typedef llarp::path::TransitHop Hop;
-    typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
+    using Context       = llarp::path::PathContext;
+    using Hop           = llarp::path::TransitHop;
+    using Decrypter     = AsyncFrameDecrypter< LRCMFrameDecrypt >;
     using Decrypter_ptr = std::unique_ptr< Decrypter >;
     Decrypter_ptr decrypter;
     std::array< EncryptedFrame, 8 > frames;
@@ -193,9 +193,7 @@ namespace llarp
       hop->info.downstream = commit->session->GetPubKey();
     }
 
-    ~LRCMFrameDecrypt()
-    {
-    }
+    ~LRCMFrameDecrypt() = default;
 
     static void
     OnForwardLRCMResult(AbstractRouter* router, const PathID_t pathid,

@@ -20,6 +20,7 @@
 #include <util/buffer.hpp>
 #include <util/memfn.hpp>
 #include <hook/shell.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -138,18 +139,17 @@ namespace llarp
         addr  = itr->second.remote.Addr();
         return true;
       }
-      else
+
+      for(const auto& item : m_state->m_SNodeSessions)
       {
-        for(const auto& item : m_state->m_SNodeSessions)
+        if(item.second.second == tag)
         {
-          if(item.second.second == tag)
-          {
-            snode = true;
-            addr  = item.first;
-            return true;
-          }
+          snode = true;
+          addr  = item.first;
+          return true;
         }
       }
+
       return false;
     }
 
@@ -497,16 +497,15 @@ namespace llarp
     {
       IntroSet m_IntroSet;
       Endpoint* m_Endpoint;
-      PublishIntroSetJob(Endpoint* parent, uint64_t id,
-                         const IntroSet& introset)
+      PublishIntroSetJob(Endpoint* parent, uint64_t id, IntroSet introset)
           : IServiceLookup(parent, id, "PublishIntroSet")
-          , m_IntroSet(introset)
+          , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
       {
       }
 
       std::shared_ptr< routing::IMessage >
-      BuildRequestMessage()
+      BuildRequestMessage() override
       {
         auto msg = std::make_shared< routing::DHTMessage >();
         msg->M.emplace_back(
@@ -515,7 +514,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set< IntroSet >& response)
+      HandleResponse(const std::set< IntroSet >& response) override
       {
         if(response.size())
           m_Endpoint->IntroSetPublished();
@@ -698,11 +697,11 @@ namespace llarp
     {
       if(msg->R.size())
       {
-        llarp_async_verify_rc* job = new llarp_async_verify_rc;
-        job->nodedb                = Router()->nodedb();
-        job->cryptoworker          = Router()->threadpool();
-        job->diskworker            = Router()->diskworker();
-        job->logic                 = Router()->logic();
+        auto* job         = new llarp_async_verify_rc;
+        job->nodedb       = Router()->nodedb();
+        job->cryptoworker = Router()->threadpool();
+        job->diskworker   = Router()->diskworker();
+        job->logic        = Router()->logic();
         job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
                               std::placeholders::_1);
         job->rc   = msg->R[0];

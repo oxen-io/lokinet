@@ -13,9 +13,7 @@ namespace llarp
       m_FlowCookie.Randomize();
     }
 
-    LinkLayer::~LinkLayer()
-    {
-    }
+    LinkLayer::~LinkLayer() = default;
 
     void
     LinkLayer::Pump()

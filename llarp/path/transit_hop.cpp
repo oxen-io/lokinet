@@ -31,9 +31,7 @@ namespace llarp
       return stream;
     }
 
-    TransitHop::TransitHop()
-    {
-    }
+    TransitHop::TransitHop() = default;
 
     bool
     TransitHop::Expired(llarp_time_t now) const

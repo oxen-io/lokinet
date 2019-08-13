@@ -13,9 +13,7 @@ namespace llarp
     struct record
     {
       virtual ~record() = 0;
-      record()
-      {
-      }
+      record()          = default;
 
       virtual bool
       parse(std::vector< byte_t > bytes) = 0;
@@ -28,9 +26,7 @@ namespace llarp
     {
       huint32_t ipaddr;
 
-      virtual ~type_1a()
-      {
-      }
+      ~type_1a() override = default;
       type_1a();
 
       bool
@@ -44,9 +40,7 @@ namespace llarp
     {
       std::string ns;
 
-      virtual ~type_2ns()
-      {
-      }
+      ~type_2ns() override = default;
       type_2ns();
 
       bool
@@ -66,9 +60,7 @@ namespace llarp
       uint32_t expire;
       uint32_t minimum;
 
-      virtual ~type_6soa()
-      {
-      }
+      ~type_6soa() override = default;
       type_6soa();
 
       bool
@@ -82,9 +74,7 @@ namespace llarp
     {
       std::string cname;
 
-      virtual ~type_5cname()
-      {
-      }
+      ~type_5cname() override = default;
       type_5cname();
 
       bool
@@ -98,9 +88,7 @@ namespace llarp
     {
       std::string revname;
 
-      virtual ~type_12ptr()
-      {
-      }
+      ~type_12ptr() override = default;
       type_12ptr();
 
       bool
@@ -115,9 +103,7 @@ namespace llarp
       std::string mx;
       uint16_t priority;
 
-      virtual ~type_15mx()
-      {
-      }
+      ~type_15mx() override = default;
       type_15mx();
 
       bool
@@ -131,9 +117,7 @@ namespace llarp
     {
       std::string txt;
 
-      virtual ~type_16txt()
-      {
-      }
+      ~type_16txt() override = default;
       type_16txt();
 
       bool

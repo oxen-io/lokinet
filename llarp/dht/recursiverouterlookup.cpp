@@ -3,6 +3,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotrouter.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -13,7 +14,7 @@ namespace llarp
                                                  AbstractContext *ctx,
                                                  RouterLookupHandler result)
         : TX< RouterID, RouterContact >(_whoasked, _target, ctx)
-        , resultHandler(result)
+        , resultHandler(std::move(result))
 
     {
       peersAsked.insert(ctx->OurKey());

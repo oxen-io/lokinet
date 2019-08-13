@@ -66,9 +66,7 @@ namespace llarp
       }
     }
 
-    OutboundContext::~OutboundContext()
-    {
-    }
+    OutboundContext::~OutboundContext() = default;
 
     /// actually swap intros
     void

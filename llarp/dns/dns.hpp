@@ -1,7 +1,7 @@
 #ifndef LLARP_DNS_DNS_HPP
 #define LLARP_DNS_DNS_HPP
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace llarp
 {

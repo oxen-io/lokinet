@@ -45,7 +45,7 @@ namespace llarp
     struct InboundMessage
     {
       /// timestamp of last activity
-      llarp_time_t lastActive;
+      llarp_time_t lastActive{0};
       /// the underlying message buffer
       MessageBuffer _msg;
 
@@ -63,7 +63,7 @@ namespace llarp
       bool
       AppendData(const byte_t* ptr, uint16_t sz);
 
-      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
+      InboundMessage() : _msg(), buffer(_msg)
       {
       }
 

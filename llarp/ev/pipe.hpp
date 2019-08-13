@@ -25,7 +25,7 @@ struct llarp_ev_pkt_pipe : public llarp::ev_io
   ssize_t
   do_write(void* buf, size_t sz) override;
 
-  virtual bool
+  bool
   tick() override;
 
   int

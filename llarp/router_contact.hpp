@@ -10,6 +10,7 @@
 #include <util/status.hpp>
 
 #include <functional>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
@@ -106,6 +107,12 @@ namespace llarp
 
     util::StatusObject
     ExtractStatus() const;
+
+    nlohmann::json
+    ToJson() const
+    {
+      return ExtractStatus().get();
+    }
 
     bool
     BEncode(llarp_buffer_t *buf) const;

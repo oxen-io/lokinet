@@ -16,9 +16,7 @@ namespace llarp
 
   struct ILinkSession
   {
-    virtual ~ILinkSession()
-    {
-    }
+    virtual ~ILinkSession() = default;
 
     /// delivery status of a message
     enum class DeliveryStatus

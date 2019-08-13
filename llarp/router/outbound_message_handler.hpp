@@ -22,11 +22,11 @@ namespace llarp
   struct OutboundMessageHandler final : public IOutboundMessageHandler
   {
    public:
-    ~OutboundMessageHandler() = default;
+    ~OutboundMessageHandler() override = default;
 
     bool
     QueueMessage(const RouterID &remote, const ILinkMessage *msg,
-                 SendStatusHandler callback) override;
+                 SendStatusHandler callback) override LOCKS_EXCLUDED(_mutex);
 
     util::StatusObject
     ExtractStatus() const override;
@@ -72,7 +72,8 @@ namespace llarp
     SendIfSession(const RouterID &remote, const Message &msg);
 
     void
-    FinalizeRequest(const RouterID &router, SendStatus status);
+    FinalizeRequest(const RouterID &router, SendStatus status)
+        LOCKS_EXCLUDED(_mutex);
 
     mutable util::Mutex _mutex;  // protects outboundMessageQueue
 

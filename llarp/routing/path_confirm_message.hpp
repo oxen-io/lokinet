@@ -14,7 +14,7 @@ namespace llarp
 
       PathConfirmMessage() = default;
       PathConfirmMessage(uint64_t lifetime);
-      ~PathConfirmMessage() = default;
+      ~PathConfirmMessage() override = default;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

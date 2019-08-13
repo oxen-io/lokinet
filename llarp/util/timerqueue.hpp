@@ -8,6 +8,7 @@
 #include <absl/time/time.h>
 #include <absl/types/optional.h>
 #include <map>
+#include <utility>
 
 namespace llarp
 {
@@ -55,7 +56,7 @@ namespace llarp
      private:
       struct Node
       {
-        int m_index;
+        int m_index{0};
         absl::Time m_time;
         Key m_key;
         Node* m_prev;
@@ -63,8 +64,7 @@ namespace llarp
         object::Buffer< Value > m_value;
 
         Node()
-            : m_index(0)
-            , m_time()
+            : m_time()
             , m_key(nullptr)
             , m_prev(nullptr)
             , m_next(nullptr)
@@ -73,8 +73,7 @@ namespace llarp
         }
 
         explicit Node(const absl::Time& time)
-            : m_index(0)
-            , m_time(time)
+            : m_time(time)
             , m_key(nullptr)
             , m_prev(nullptr)
             , m_next(nullptr)
@@ -311,9 +310,12 @@ namespace llarp
       {
       }
 
-      TimerQueueItem(absl::Time time, const Value& value, Handle handle,
+      TimerQueueItem(absl::Time time, Value value, Handle handle,
                      const Key& key)
-          : m_time(time), m_value(value), m_handle(handle), m_key(key)
+          : m_time(time)
+          , m_value(std::move(value))
+          , m_handle(handle)
+          , m_key(key)
       {
       }
 

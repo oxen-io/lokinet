@@ -10,6 +10,7 @@
 #include <absl/base/thread_annotations.h>
 
 #include <set>
+#include <utility>
 
 #ifdef _MSC_VER
 #include <BaseTsd.h>
@@ -45,7 +46,7 @@ struct llarp_nodedb_iter
 struct llarp_nodedb
 {
   explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker)
-      : disk(diskworker)
+      : disk(std::move(diskworker))
   {
   }
 
@@ -62,7 +63,7 @@ struct llarp_nodedb
     const llarp::RouterContact rc;
     llarp_time_t inserted;
 
-    NetDBEntry(const llarp::RouterContact &data);
+    NetDBEntry(llarp::RouterContact data);
   };
 
   using NetDBMap_t =

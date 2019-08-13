@@ -1,7 +1,7 @@
 #include <ev/ev_libuv.hpp>
 #include <net/net_addr.hpp>
 
-#include <string.h>
+#include <cstring>
 
 namespace libuv
 {
@@ -65,7 +65,7 @@ namespace libuv
     static void
     OnOutboundConnect(uv_connect_t* c, int status)
     {
-      conn_glue* self = static_cast< conn_glue* >(c->data);
+      auto* self = static_cast< conn_glue* >(c->data);
       self->HandleConnectResult(status);
       c->data = nullptr;
     }
@@ -181,9 +181,9 @@ namespace libuv
     {
       m_WriteQueue.emplace_back(sz);
       std::copy_n(data, sz, m_WriteQueue.back().begin());
-      auto buf        = uv_buf_init(m_WriteQueue.back().data(), sz);
-      uv_write_t* req = new uv_write_t();
-      req->data       = this;
+      auto buf  = uv_buf_init(m_WriteQueue.back().data(), sz);
+      auto* req = new uv_write_t();
+      req->data = this;
       return uv_write(req, Stream(), &buf, 1, &OnWritten) == 0 ? sz : 0;
     }
 
@@ -196,8 +196,8 @@ namespace libuv
     static void
     FullClose(uv_handle_t* h)
     {
-      conn_glue* self = static_cast< conn_glue* >(h->data);
-      h->data         = nullptr;
+      auto* self = static_cast< conn_glue* >(h->data);
+      h->data    = nullptr;
       delete self;
       llarp::LogInfo("deleted");
     }
@@ -225,7 +225,7 @@ namespace libuv
     OnShutdown(uv_shutdown_t* shut, int code)
     {
       llarp::LogDebug("shut down ", code);
-      conn_glue* self = static_cast< conn_glue* >(shut->data);
+      auto* self = static_cast< conn_glue* >(shut->data);
       uv_close((uv_handle_t*)&self->m_Handle, &OnClosed);
       delete shut;
     }
@@ -236,8 +236,8 @@ namespace libuv
       llarp::LogDebug("close tcp connection");
       uv_check_stop(&m_Ticker);
       uv_read_stop(Stream());
-      uv_shutdown_t* shut = new uv_shutdown_t();
-      shut->data          = this;
+      auto* shut = new uv_shutdown_t();
+      shut->data = this;
       uv_shutdown(shut, Stream(), &OnShutdown);
     }
 
@@ -285,7 +285,7 @@ namespace libuv
     {
       if(m_Accept && m_Accept->accepted)
       {
-        conn_glue* child = new conn_glue(this);
+        auto* child = new conn_glue(this);
         llarp::LogDebug("accepted new connection");
         child->m_Conn.impl  = child;
         child->m_Conn.loop  = m_Accept->loop;
@@ -375,7 +375,7 @@ namespace libuv
     static int
     SendTo(llarp_udp_io* udp, const sockaddr* to, const byte_t* ptr, size_t sz)
     {
-      udp_glue* self = static_cast< udp_glue* >(udp->impl);
+      auto* self = static_cast< udp_glue* >(udp->impl);
       if(self == nullptr)
         return -1;
       uv_buf_t buf = uv_buf_init((char*)ptr, sz);
@@ -410,7 +410,7 @@ namespace libuv
     static void
     OnClosed(uv_handle_t* h)
     {
-      udp_glue* glue = static_cast< udp_glue* >(h->data);
+      auto* glue = static_cast< udp_glue* >(h->data);
       if(glue)
       {
         h->data           = nullptr;
@@ -443,7 +443,7 @@ namespace libuv
       readpkt       = false;
     }
 
-    ~tun_glue()
+    ~tun_glue() override
     {
       tuntap_destroy(m_Device);
     }
@@ -488,7 +488,7 @@ namespace libuv
     static void
     OnClosed(uv_handle_t* h)
     {
-      tun_glue* self = static_cast< tun_glue* >(h->data);
+      auto* self = static_cast< tun_glue* >(h->data);
       if(self)
       {
         self->m_Tun->impl = nullptr;
@@ -597,8 +597,8 @@ namespace libuv
   bool
   Loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
   {
-    conn_glue* impl = new conn_glue(m_Impl.get(), tcp, addr);
-    tcp->impl       = impl;
+    auto* impl = new conn_glue(m_Impl.get(), tcp, addr);
+    tcp->impl  = impl;
     if(impl->ConnectAsync())
       return true;
     delete impl;
@@ -655,8 +655,8 @@ namespace libuv
   bool
   Loop::udp_listen(llarp_udp_io* udp, const sockaddr* src)
   {
-    udp_glue* impl = new udp_glue(m_Impl.get(), udp, src);
-    udp->impl      = impl;
+    auto* impl = new udp_glue(m_Impl.get(), udp, src);
+    udp->impl  = impl;
     if(impl->Bind())
     {
       return true;
@@ -670,7 +670,7 @@ namespace libuv
   {
     if(udp == nullptr)
       return false;
-    udp_glue* glue = static_cast< udp_glue* >(udp->impl);
+    auto* glue = static_cast< udp_glue* >(udp->impl);
     if(glue == nullptr)
       return false;
     glue->Close();
@@ -680,8 +680,8 @@ namespace libuv
   bool
   Loop::tun_listen(llarp_tun_io* tun)
   {
-    tun_glue* glue = new tun_glue(tun);
-    tun->impl      = glue;
+    auto* glue = new tun_glue(tun);
+    tun->impl  = glue;
     if(glue->Init(m_Impl.get()))
     {
       return true;
@@ -693,8 +693,8 @@ namespace libuv
   bool
   Loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
   {
-    conn_glue* glue = new conn_glue(m_Impl.get(), tcp, addr);
-    tcp->impl       = glue;
+    auto* glue = new conn_glue(m_Impl.get(), tcp, addr);
+    tcp->impl  = glue;
     if(glue->Server())
       return true;
     tcp->impl = nullptr;

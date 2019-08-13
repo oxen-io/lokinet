@@ -20,7 +20,7 @@ namespace llarp
 
     /// pump tx queue
     void
-    Session::PumpWrite()
+    Session::PumpWrite(size_t numSend)
     {
       if(!sock)
         return;
@@ -31,10 +31,11 @@ namespace llarp
       {
         for(const auto& vec : msg.vecs)
         {
-          if(vec.iov_len)
+          if(vec.iov_len > 0)
           {
             expect += vec.iov_len;
             send.emplace_back(vec);
+            numSend--;
           }
         }
       }
@@ -147,10 +148,15 @@ namespace llarp
     Session::Tick(llarp_time_t now)
     {
       PruneInboundMessages(now);
-      m_TXRate = 0;
-      m_RXRate = 0;
-      metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
-                           RouterID(remoteRC.pubkey).ToString());
+      // ensure that this section is called every 1s or so
+      if(now - m_LastTick >= 1000)
+      {
+        m_TXRate = 0;
+        m_RXRate = 0;
+        metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
+                             RouterID(remoteRC.pubkey).ToString());
+        m_LastTick = now;
+      }
     }
 
     /// low level read
@@ -209,13 +215,29 @@ namespace llarp
         return now - lastActive > 5000;
       if(state == eSessionReady)
       {
-        // don't time out the connection if backlogged in downstream direction
-        // for clients dangling off the side of the network
-        const auto timestamp =
-            remoteRC.IsPublicRouter() ? lastSend : lastActive;
-        if(now <= timestamp)
-          return false;
-        return now - timestamp > 30000;
+        const bool remoteIsSNode = remoteRC.IsPublicRouter();
+        const bool weAreSnode    = parent->GetOurRC().IsPublicRouter();
+        const bool recvTimeout =
+            (now > lastActive) && now - lastActive > sessionTimeout;
+        const bool sendTimeout =
+            (now > lastSend) && now - lastSend > sessionTimeout;
+        if(remoteIsSNode && weAreSnode)
+        {
+          /// for s2s connections only check write direction
+          return sendTimeout;
+        }
+        else if(weAreSnode)
+        {
+          // for edge connection as service node check either direction for
+          // timeout
+          return recvTimeout || sendTimeout;
+        }
+        else
+        {
+          /// for edge connections as client we check if both directions have
+          /// been silent for 60s
+          return recvTimeout && sendTimeout;
+        }
       }
       if(state == eLinkEstablished)
         return now - lastActive
@@ -268,8 +290,10 @@ namespace llarp
     void
     Session::Pump()
     {
-      // pump write queue
-      PumpWrite();
+      if(sendq.size() > (MaxSendQueueSize / 4))
+        PumpWrite(sendq.size() / 2);
+      else
+        PumpWrite(sendq.size());
       // prune inbound messages
       PruneInboundMessages(parent->Now());
     }
@@ -282,7 +306,7 @@ namespace llarp
       if(SendQueueBacklog() >= MaxSendQueueSize)
       {
         // pump write queue if we seem to be full
-        PumpWrite();
+        PumpWrite(MaxSendQueueSize / 2);
       }
       if(SendQueueBacklog() >= MaxSendQueueSize)
       {
@@ -308,7 +332,7 @@ namespace llarp
         sz -= s;
       }
       if(state != eSessionReady)
-        PumpWrite();
+        PumpWrite(sendq.size());
       return true;
     }
 

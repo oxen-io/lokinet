@@ -18,7 +18,7 @@ namespace llarp
   struct LinkManager final : public ILinkManager
   {
    public:
-    ~LinkManager() = default;
+    ~LinkManager() override = default;
 
     LinkLayer_ptr
     GetCompatibleLink(const RouterContact &rc) const override;
@@ -71,7 +71,7 @@ namespace llarp
     void
     CheckPersistingSessions(llarp_time_t now) override;
 
-    virtual util::StatusObject
+    util::StatusObject
     ExtractStatus() const override;
 
     void

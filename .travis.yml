@@ -3,7 +3,18 @@ language: cpp
 cache: ccache
 
 matrix:
+  fast_finish: true
   include:
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-7/bin:$PATH"
+    addons:
+      apt:
+        sources:
+          - llvm-toolchain-xenial-7
+        packages:
+          - clang-format-7
   - os: linux
     dist: xenial
     compiler: gcc
@@ -47,6 +58,12 @@ matrix:
     osx_image: xcode10.2
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release
+  - os: osx
     osx_image: xcode11
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - os: osx
@@ -65,6 +82,12 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release
 
 env:
   global:
@@ -76,6 +99,7 @@ addons:
     packages:
     - binutils-gold
     - build-essential
+    - clang-format
     - cmake
     - curl
     - docker-ce
@@ -93,8 +117,10 @@ addons:
     - cmake
     - libuv
     - llvm
-    - ninja
     - make
+    - mingw-w64
+    - ninja
+    update: true
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then

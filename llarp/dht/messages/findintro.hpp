@@ -45,7 +45,7 @@ namespace llarp
           R = 1;
       }
 
-      ~FindIntroMessage();
+      ~FindIntroMessage() override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

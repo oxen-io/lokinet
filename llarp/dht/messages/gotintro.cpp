@@ -1,29 +1,27 @@
 #include <dht/messages/gotintro.hpp>
 
 #include <dht/context.hpp>
+#include <memory>
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
+#include <utility>
 
 namespace llarp
 {
   namespace dht
   {
-    GotIntroMessage::GotIntroMessage(
-        const std::vector< llarp::service::IntroSet > &results, uint64_t tx)
-        : IMessage({}), I(results), T(tx)
-    {
-    }
-
-    GotIntroMessage::~GotIntroMessage()
+    GotIntroMessage::GotIntroMessage(std::vector< service::IntroSet > results,
+                                     uint64_t tx)
+        : IMessage({}), I(std::move(results)), T(tx)
     {
     }
 
     bool
     GotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
-        __attribute__((unused))
-        std::vector< std::unique_ptr< IMessage > > &replies) const
+        ABSL_ATTRIBUTE_UNUSED std::vector< std::unique_ptr< IMessage > >
+            &replies) const
     {
       auto &dht = *ctx->impl;
 
@@ -31,7 +29,7 @@ namespace llarp
       {
         if(!introset.Verify(dht.Now()))
         {
-          llarp::LogWarn(
+          LogWarn(
               "Invalid introset while handling direct GotIntro "
               "from ",
               From);
@@ -59,7 +57,7 @@ namespace llarp
         }
         return true;
       }
-      llarp::LogError("no pending TX for GIM from ", From, " txid=", T);
+      LogError("no pending TX for GIM from ", From, " txid=", T);
       return false;
     }
 
@@ -77,7 +75,7 @@ namespace llarp
         auto copy = std::make_shared< const RelayedGotIntroMessage >(*this);
         return pathset->HandleGotIntroMessage(copy);
       }
-      llarp::LogWarn("No path for got intro message pathid=", pathID);
+      LogWarn("No path for got intro message pathid=", pathID);
       return false;
     }
 
@@ -92,7 +90,7 @@ namespace llarp
       {
         if(K)  // duplicate key?
           return false;
-        K.reset(new dht::Key_t());
+        K = std::make_unique< dht::Key_t >();
         return K->BDecode(buf);
       }
       bool read = false;

@@ -26,7 +26,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType);
 /// hook function to handle an dns client request
 // should we pass by llarp::Addr
 // not as long as we're supporting raw
-typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
+using dnsc_answer_hook_func = void (*)(dnsc_answer_request *);
 
 /// struct for dns client requests
 struct dnsc_answer_request

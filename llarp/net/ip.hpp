@@ -88,6 +88,7 @@ struct ipv6_header
 
 #include <memory>
 #include <service/protocol.hpp>
+#include <utility>
 
 struct llarp_ev_loop;
 
@@ -136,7 +137,7 @@ namespace llarp
       struct PutTime
       {
         llarp_ev_loop_ptr loop;
-        PutTime(llarp_ev_loop_ptr evloop) : loop(evloop)
+        PutTime(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
         {
         }
         void
@@ -149,7 +150,7 @@ namespace llarp
       struct GetNow
       {
         llarp_ev_loop_ptr loop;
-        GetNow(llarp_ev_loop_ptr evloop) : loop(evloop)
+        GetNow(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
         {
         }
         llarp_time_t
@@ -224,10 +225,10 @@ namespace llarp
       {
         if(IsV4())
           return service::eProtocolTrafficV4;
-        else if(IsV6())
+        if(IsV6())
           return service::eProtocolTrafficV6;
-        else
-          return service::eProtocolControl;
+
+        return service::eProtocolControl;
       }
 
       huint128_t

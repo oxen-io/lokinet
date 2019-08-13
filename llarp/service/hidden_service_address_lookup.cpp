@@ -2,6 +2,7 @@
 
 #include <dht/messages/findintro.hpp>
 #include <service/endpoint.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -11,7 +12,7 @@ namespace llarp
                                                            HandlerFunc h,
                                                            const Address& addr,
                                                            uint64_t tx)
-        : IServiceLookup(p, tx, "HSLookup"), remote(addr), handle(h)
+        : IServiceLookup(p, tx, "HSLookup"), remote(addr), handle(std::move(h))
     {
     }
 

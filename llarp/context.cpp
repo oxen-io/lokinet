@@ -19,7 +19,7 @@
 
 #include <absl/strings/str_split.h>
 #include <cxxopts.hpp>
-#include <signal.h>
+#include <csignal>
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -27,9 +27,7 @@
 
 namespace llarp
 {
-  Context::Context()
-  {
-  }
+  Context::Context() = default;
 
   Context::~Context()
   {
@@ -421,8 +419,8 @@ extern "C"
     {
       cSetLogLevel(eLogDebug);
     }
-    llarp_main *m = new llarp_main;
-    m->ctx        = std::make_unique< llarp::Context >();
+    auto *m = new llarp_main;
+    m->ctx  = std::make_unique< llarp::Context >();
     if(!m->ctx->LoadConfig(fname))
     {
       m->ctx->Close();

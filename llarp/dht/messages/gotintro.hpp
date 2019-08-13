@@ -15,7 +15,7 @@ namespace llarp
     struct GotIntroMessage : public IMessage
     {
       /// the found introsets
-      std::vector< llarp::service::IntroSet > I;
+      std::vector< service::IntroSet > I;
       /// txid
       uint64_t T = 0;
       /// the key of a router closer in keyspace if iterative lookup
@@ -41,10 +41,9 @@ namespace llarp
       }
 
       /// for recursive reply
-      GotIntroMessage(const std::vector< llarp::service::IntroSet >& results,
-                      uint64_t txid);
+      GotIntroMessage(std::vector< service::IntroSet > results, uint64_t txid);
 
-      ~GotIntroMessage();
+      ~GotIntroMessage() override = default;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -52,7 +51,7 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      virtual bool
+      bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage::Ptr_t >& replies) const override;
     };

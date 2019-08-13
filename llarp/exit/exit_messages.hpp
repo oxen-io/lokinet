@@ -14,20 +14,18 @@ namespace llarp
     struct ObtainExitMessage final : public IMessage
     {
       std::vector< llarp::exit::Policy > B;
-      uint64_t E;
+      uint64_t E{0};
       llarp::PubKey I;
-      uint64_t T;
+      uint64_t T{0};
       std::vector< llarp::exit::Policy > W;
-      llarp_time_t X;
+      llarp_time_t X{0};
       llarp::Signature Z;
 
-      ObtainExitMessage() : IMessage(), E(0), T(0), X(0)
+      ObtainExitMessage() : IMessage()
       {
       }
 
-      ~ObtainExitMessage()
-      {
-      }
+      ~ObtainExitMessage() override = default;
 
       void
       Clear() override
@@ -132,7 +130,7 @@ namespace llarp
       Nonce_t Y;
       llarp::Signature Z;
 
-      ~UpdateExitVerifyMessage() = default;
+      ~UpdateExitVerifyMessage() override = default;
 
       void
       Clear() override
