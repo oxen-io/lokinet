@@ -1,3 +1,51 @@
+lokinet (0.5.0~pre20190813-1) sid; urgency=medium
+
+  [ Michael ]
+  * Set fast_finish so we don't need to wait for the sloooow 'make windows' target
+  * WIP on docker-compose workflow
+
+  [ Jeff Becker ]
+  * drop missmatched convotags
+
+  [ Michael ]
+  * Fix a deadlock when link fails to establish
+
+  [ Jeff ]
+  * don't expire based on reply intro
+
+  [ Michael ]
+  * Fix suspicious thread-unsafety
+  * Make format
+
+  [ Jeff Becker ]
+  * also check if we are a public router when checking for timeout in read direction
+  * make it compile
+  * move convotag missmatch check to the right place
+  * make format
+  * more consise utp timeout logic
+  * make it compile
+  * lokinet monitor
+  * when pushing large amounts per tick try not to bottleneck on utp_writev
+  * pumpwrite -> pump
+  * make sure stats are called every 1s
+  * redo commit
+
+  [ Michael ]
+  * CI to catch missing `make format`
+  * Test make windows on macOS, and avoid timeouts
+  * clang-tidy modernize pass
+  * Fix format verify
+  * Bump version of cxxopts
+  * Update rcutil and add to build
+  * Include json output
+  * make format
+  * Add missing header
+  * Dump config
+  * make windows fixes
+  * try with clang-format 7
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 13 Aug 2019 10:58:15 -0300
+
 lokinet (0.5.0~pre20190805-1) sid; urgency=medium
 
   [ Rick V ]
