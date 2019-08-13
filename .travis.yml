@@ -82,6 +82,12 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release
 
 env:
   global:
