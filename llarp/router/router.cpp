@@ -658,9 +658,9 @@ namespace llarp
 
     const size_t connected = NumberOfConnectedRouters();
     const size_t N         = nodedb()->num_loaded();
-    if(N < 4)
+    if(N < llarp::path::default_len)
     {
-      LogInfo("We need at least ", 4,
+      LogInfo("We need at least ", llarp::path::default_len,
               " service nodes to build paths but we have ", N, " in nodedb");
 
       _rcLookupHandler.ExploreNetwork();
