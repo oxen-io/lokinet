@@ -12,7 +12,7 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index a51f123..5ead30f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -298,9 +298,6 @@ else()
+@@ -305,9 +305,6 @@ else()
      install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
    endif()
  
@@ -21,4 +21,4 @@ index a51f123..5ead30f 100644
 -  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
    if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
      target_link_directories(${EXE} PRIVATE /usr/local/lib)
-   endif()
+     target_link_directories(lokinet-rcutil PRIVATE /usr/local/lib)
