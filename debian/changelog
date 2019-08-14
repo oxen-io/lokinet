@@ -1,3 +1,27 @@
+lokinet (0.5.0~pre20190814-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * try adding proper limits
+  * add limits files
+  * include header
+  * limit connections in outbound session maker
+  * more
+  * pump to make stuff speed up if stuck
+  * ensure timestamp is not in future
+  * use llarp::path::default_len to inform how many routers we need
+
+  [ Jason Rhinelander ]
+  * Refresh patches
+
+  [ Jeff Becker ]
+  * correct header?
+
+  [ Michael ]
+  * Use the right version of clang-tidy
+  * Fix make install
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 14 Aug 2019 16:12:26 -0300
+
 lokinet (0.5.0~pre20190813-1) sid; urgency=medium
 
   [ Michael ]
