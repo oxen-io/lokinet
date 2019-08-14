@@ -52,10 +52,19 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
+    bool
+    ShouldConnectTo(const RouterID &router) const override
+        LOCKS_EXCLUDED(_mutex);
+
     void
     Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
          std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
          std::shared_ptr< llarp::thread::ThreadPool > threadpool);
+
+    /// always maintain this many connections to other routers
+    size_t minConnectedRouters = 4;
+    /// hard upperbound limit on the number of router to router connections
+    size_t maxConnectedRouters = 6;
 
    private:
     void

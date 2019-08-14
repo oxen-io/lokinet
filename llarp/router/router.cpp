@@ -2,6 +2,7 @@
 
 #include <config/config.hpp>
 #include <constants/proto.hpp>
+#include <constants/limits.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
@@ -374,14 +375,16 @@ namespace llarp
     m_OutboundPort = conf->iwp_links.outboundPort();
     // Router config
     _rc.SetNick(conf->router.nickname());
-    maxConnectedRouters = conf->router.maxConnectedRouters();
-    minConnectedRouters = conf->router.minConnectedRouters();
-    encryption_keyfile  = conf->router.encryptionKeyfile();
-    our_rc_file         = conf->router.ourRcFile();
-    transport_keyfile   = conf->router.transportKeyfile();
-    addrInfo            = conf->router.addrInfo();
-    publicOverride      = conf->router.publicOverride();
-    ip4addr             = conf->router.ip4addr();
+    _outboundSessionMaker.maxConnectedRouters =
+        conf->router.maxConnectedRouters();
+    _outboundSessionMaker.minConnectedRouters =
+        conf->router.minConnectedRouters();
+    encryption_keyfile = conf->router.encryptionKeyfile();
+    our_rc_file        = conf->router.ourRcFile();
+    transport_keyfile  = conf->router.transportKeyfile();
+    addrInfo           = conf->router.addrInfo();
+    publicOverride     = conf->router.publicOverride();
+    ip4addr            = conf->router.ip4addr();
 
     // Lokid Config
     usingSNSeed      = conf->lokid.usingSNSeed;
@@ -656,16 +659,16 @@ namespace llarp
 
     const size_t connected = NumberOfConnectedRouters();
     const size_t N         = nodedb()->num_loaded();
-    if(N < minRequiredRouters)
+    if(N < llarp::path::default_len)
     {
-      LogInfo("We need at least ", minRequiredRouters,
+      LogInfo("We need at least ", llarp::path::default_len,
               " service nodes to build paths but we have ", N, " in nodedb");
 
       _rcLookupHandler.ExploreNetwork();
     }
-    if(connected < minConnectedRouters)
+    if(connected < _outboundSessionMaker.minConnectedRouters)
     {
-      size_t dlt = minConnectedRouters - connected;
+      size_t dlt = _outboundSessionMaker.minConnectedRouters - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
     }
@@ -887,6 +890,14 @@ namespace llarp
 
     EnsureNetConfigDefaultsSane(netConfig);
 
+    const auto limits =
+        IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
+
+    _outboundSessionMaker.minConnectedRouters = std::max(
+        _outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
+    _outboundSessionMaker.maxConnectedRouters = std::max(
+        _outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
+
     if(IsServiceNode())
     {
       // initialize as service node
@@ -897,14 +908,12 @@ namespace llarp
       }
       RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
-      if(minConnectedRouters < 6)
-        minConnectedRouters = 6;
+
       // relays do not use profiling
       routerProfiling().Disable();
     }
     else
     {
-      maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
       CryptoManager::instance()->identity_keygen(_identity);

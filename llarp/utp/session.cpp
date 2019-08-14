@@ -149,13 +149,18 @@ namespace llarp
     {
       PruneInboundMessages(now);
       // ensure that this section is called every 1s or so
-      if(now - m_LastTick >= 1000)
+      if(now > m_LastTick && now - m_LastTick >= 1000)
       {
         m_TXRate = 0;
         m_RXRate = 0;
         metrics::integerTick("utp.session.sendq", "size", sendq.size(), "id",
                              RouterID(remoteRC.pubkey).ToString());
         m_LastTick = now;
+      }
+      else
+      {
+        // try sending 1 segment
+        PumpWrite(1);
       }
     }
 

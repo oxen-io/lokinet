@@ -52,6 +52,9 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    virtual bool
+    ShouldConnectTo(const RouterID &router) const = 0;
   };
 
 }  // namespace llarp

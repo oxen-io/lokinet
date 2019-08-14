@@ -199,7 +199,7 @@ namespace libuv
       auto* self = static_cast< conn_glue* >(h->data);
       h->data    = nullptr;
       delete self;
-      llarp::LogInfo("deleted");
+      llarp::LogDebug("deleted");
     }
 
     void
@@ -217,7 +217,7 @@ namespace libuv
         m_Conn.closed(&m_Conn);
       }
       m_Conn.impl = nullptr;
-      llarp::LogInfo("closed");
+      llarp::LogDebug("closed");
       uv_close((uv_handle_t*)&m_Ticker, &FullClose);
     }
 

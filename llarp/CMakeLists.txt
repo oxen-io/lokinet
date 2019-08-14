@@ -2,6 +2,7 @@ set(LIB_UTIL_SRC
   config/config.cpp
   config/ini.cpp
   constants/defaults.cpp
+  constants/limits.cpp
   constants/link_layer.cpp
   constants/path.cpp
   constants/proto.cpp
