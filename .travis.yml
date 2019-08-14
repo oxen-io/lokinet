@@ -8,13 +8,13 @@ matrix:
   - os: linux
     dist: xenial
     compiler: gcc
-    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-7/bin:$PATH"
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
     addons:
       apt:
         sources:
-          - llvm-toolchain-xenial-7
+          - llvm-toolchain-xenial-8
         packages:
-          - clang-format-7
+          - clang-format-8
   - os: linux
     dist: xenial
     compiler: gcc

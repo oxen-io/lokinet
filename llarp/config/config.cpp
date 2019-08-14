@@ -2,6 +2,7 @@
 
 #include <config/ini.hpp>
 #include <constants/defaults.hpp>
+#include <constants/limits.hpp>
 #include <net/net.hpp>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
@@ -501,7 +502,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
     return false;
   }
   auto &f = optional_f.value();
-  llarp_generic_ensure_config(f, basepath);
+  llarp_generic_ensure_config(f, basepath, asRouter);
   if(asRouter)
   {
     llarp_ensure_router_config(f, basepath);
@@ -515,7 +516,8 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
 }
 
 void
-llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
+llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
+                            bool isRouter)
 {
   f << "# this configuration was auto generated with 'sane' defaults"
     << std::endl;
@@ -536,6 +538,13 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# uncomment following line to set router nickname to 'lokinet'"
     << std::endl;
   f << "#nickname=lokinet" << std::endl;
+  const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
+
+  f << "# maintain min connections to other routers" << std::endl;
+  f << "min-routers=" << std::to_string(limits.DefaultMinRouters) << std::endl;
+  f << "# hard limit of routers globally we are connected to at any given time"
+    << std::endl;
+  f << "max-routers=" << std::to_string(limits.DefaultMaxRouters) << std::endl;
   f << std::endl << std::endl;
 
   // logging
@@ -693,7 +702,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   // now do up fname
   f << std::endl << std::endl;
   f << "# snapps configuration section" << std::endl;
-  f << "[services]";
+  f << "[services]" << std::endl;
   f << "# uncomment next line to enable a snapp" << std::endl;
   f << "#example-snapp=" << snappExample_fpath << std::endl;
   f << std::endl << std::endl;

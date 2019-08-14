@@ -199,7 +199,7 @@ namespace libuv
       auto* self = static_cast< conn_glue* >(h->data);
       h->data    = nullptr;
       delete self;
-      llarp::LogInfo("deleted");
+      llarp::LogDebug("deleted");
     }
 
     void
@@ -217,7 +217,7 @@ namespace libuv
         m_Conn.closed(&m_Conn);
       }
       m_Conn.impl = nullptr;
-      llarp::LogInfo("closed");
+      llarp::LogDebug("closed");
       uv_close((uv_handle_t*)&m_Ticker, &FullClose);
     }
 
@@ -633,16 +633,17 @@ namespace libuv
   Loop::CloseAll()
   {
     llarp::LogInfo("Closing all handles");
-    uv_walk(m_Impl.get(),
-            [](uv_handle_t* h, void*) {
-              if(uv_is_closing(h))
-                return;
-              if(h->data && uv_is_active(h))
-              {
-                static_cast< glue* >(h->data)->Close();
-              }
-            },
-            nullptr);
+    uv_walk(
+        m_Impl.get(),
+        [](uv_handle_t* h, void*) {
+          if(uv_is_closing(h))
+            return;
+          if(h->data && uv_is_active(h))
+          {
+            static_cast< glue* >(h->data)->Close();
+          }
+        },
+        nullptr);
   }
 
   void
