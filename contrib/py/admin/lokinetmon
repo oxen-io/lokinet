@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+import requests
+import json
+import time
+import curses
+import math
+import traceback
+
+
+class Monitor:
+
+    _speedSamples = 8
+    _globalspeed = []
+
+    def __init__(self, url):
+        self.data = dict()
+        self.win = curses.initscr()
+        self._url = url
+        while len(self._globalspeed) < self._speedSamples:
+            self._globalspeed.append((0, 0))
+
+    def __del__(self):
+        curses.endwin()
+
+    def on_timer(self, event):
+        """called on timer event"""
+        self.update_data()
+
+    def jsonrpc(self, meth, params):
+        r = requests.post(
+            self._url,
+            headers={"Content-Type": "application/json"},
+            json={
+                "jsonrpc": "2.0",
+                "id": "0",
+                "method": "{}".format(meth),
+                "params": params,
+            },
+        )
+        return r.json()
+
+    def update_data(self):
+        """update data from lokinet"""
+        try:
+            j = self.jsonrpc("llarp.admin.dumpstate", {})
+            self.data = j["result"]
+        except Exception as ex:
+            self.data = None
+
+    def _render_path(self, y, path, name):
+        """render a path at current position"""
+        self.win.move(y, 1)
+        self.win.addstr("({}) ".format(name))
+        y += 1
+        self.win.move(y, 1)
+        y += 1
+        self.win.addstr("me -> ")
+        for hop in path["hops"]:
+            self.win.addstr(" {} ->".format(hop["router"][:4]))
+        self.win.addstr(" [{} ms latency]".format(path["intro"]["latency"]))
+        self.win.addstr(" [{} until expire]".format(self.timeTo(path["expiresAt"])))
+        if path["expiresSoon"]:
+            self.win.addstr("(expiring)")
+        elif path["expired"]:
+            self.win.addstr("(expired)")
+        return y
+
+    def timeTo(self, ts):
+        """ return time until timestamp in seconds formatted"""
+        now = time.time() * 1000
+        return "{} seconds".format(int((ts - now) / 1000))
+
+    def speedOf(self, rate):
+        """turn int speed into string formatted"""
+        units = ["B", "KB", "MB", "GB"]
+        idx = 0
+        while rate > 1000 and idx < len(units):
+            rate /= 1000.0
+            idx += 1
+        return "{} {}ps".format("%.2f" % rate, units[idx])
+
+    def display_service(self, y, name, status):
+        """display a service at current position"""
+        self.win.move(y, 1)
+        self.win.addstr("service [{}]".format(name))
+        build = status["buildStats"]
+        ratio = build["success"] / (build["attempts"] or 1)
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr("build success: {} %".format(int(100 * ratio)))
+        y += 1
+        self.win.move(y, 1)
+        paths = status["paths"]
+        self.win.addstr("paths: {}".format(len(paths)))
+        for path in paths:
+            y = self._render_path(y, path, "inbound")
+        for session in status["remoteSessions"]:
+            for path in session["paths"]:
+                y = self._render_path(
+                    y, path, "[active] {}".format(session["currentConvoTag"])
+                )
+        for session in status["snodeSessions"]:
+            for path in session["paths"]:
+                y = self._render_path(y, path, "[snode]")
+        return y
+
+        # for k in status:
+        #  self.win.move(y + 1, 1)
+        #  y += 1
+        #  self.win.addstr('{}: {}'.format(k, json.dumps(status[k])))
+
+    def display_links(self, y, data):
+        self.txrate = 0
+        self.rxrate = 0
+        for link in data["outbound"]:
+            y += 1
+            self.win.move(y, 1)
+            self.win.addstr("outbound sessions:")
+            y = self.display_link(y, link)
+        for link in data["inbound"]:
+            y += 1
+            self.win.move(y, 1)
+            self.win.addstr("inbound sessions:")
+            y = self.display_link(y, link)
+        y += 2
+        self.win.move(y, 1)
+        self.win.addstr(
+            "global speed:\t\t[{}\ttx]\t[{}\trx]".format(
+                self.speedOf(self.txrate), self.speedOf(self.rxrate)
+            )
+        )
+
+        self._globalspeed.append((self.txrate, self.rxrate))
+        while len(self._globalspeed) > self._speedSamples:
+            self._globalspeed.pop(0)
+        return self.display_speedgraph(y + 2, self._globalspeed)
+
+    def display_speedgraph(self, y, samps, maxsz=20):
+        """ display global speed graph """
+
+        def scale(x, n):
+            while n > 0:
+                x /= 2
+                n -= 1
+            return int(x)
+
+        txmax, rxmax = 1000, 1000
+        for tx, rx in samps:
+            if tx > txmax:
+                txmax = tx
+            if rx > rxmax:
+                rxmax = rx
+
+        rxscale = 0
+        while rxmax > maxsz:
+            rxscale += 1
+            rxmax /= 2
+
+        txscale = 0
+        while txmax > maxsz:
+            txscale += 1
+            txmax /= 2
+
+        def makebar(samp, max):
+            bar = "#" * samp
+            pad = " " * (max - samp)
+            return pad, bar
+
+        txlabelpad = int(txmax / 2) - 1
+        rxlabelpad = int(rxmax / 2) - 1
+        if txlabelpad <= 0:
+            txlabelpad = 1
+        if rxlabelpad <= 0:
+            rxlabelpad = 1
+        txlabelpad = " " * txlabelpad
+        rxlabelpad = " " * rxlabelpad
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr(
+            "{}tx{}{}rx{}".format(txlabelpad, txlabelpad, rxlabelpad, rxlabelpad)
+        )
+        for tx, rx in samps:
+            y += 1
+            self.win.move(y, 1)
+            txpad, txbar = makebar(scale(tx, txscale), int(txmax))
+            rxpad, rxbar = makebar(scale(rx, rxscale), int(rxmax))
+            self.win.addstr("{}{}|{}{}".format(txpad, txbar, rxbar, rxpad))
+        return y + 2
+
+    def display_link(self, y, link):
+        y += 1
+        self.win.move(y, 1)
+        sessions = link["sessions"]["established"]
+        for s in sessions:
+            y += 1
+            self.win.move(y, 1)
+            self.txrate += s["tx"]
+            self.rxrate += s["rx"]
+            self.win.addstr(
+                "{}\t[{}\ttx]\t[{}\trx]".format(
+                    s["remoteAddr"], self.speedOf(s["tx"]), self.speedOf(s["rx"])
+                )
+            )
+            if s["sendBacklog"] > 0:
+                self.win.addstr("[backlog {}]".format(s["sendBacklog"]))
+        return y
+
+    def display_dht(self, y, data):
+        y += 2
+        self.win.move(y, 1)
+        self.win.addstr("DHT:")
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr("introset lookups")
+        y = self.display_bucket(y, data["pendingIntrosetLookups"])
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr("router lookups")
+        return self.display_bucket(y, data["pendingRouterLookups"])
+
+    def display_bucket(self, y, data):
+        txs = data["tx"]
+        self.win.addstr(" ({} lookups)".format(len(txs)))
+        for tx in txs:
+            y += 1
+            self.win.move(y, 1)
+            self.win.addstr("search for {}".format(tx["tx"]["target"]))
+        return y
+
+    def display_data(self):
+        """draw main window"""
+        if self.data is not None:
+            self.win.addstr(1, 1, "lokinet online")
+            # print(self.data)
+            services = self.data["services"] or {}
+            y = 3
+            try:
+                y = self.display_links(y, self.data["links"])
+                for k in services:
+                    y = self.display_service(y, k, services[k])
+                y = self.display_dht(y, self.data["dht"])
+            except Exception as exc:
+                pass
+        else:
+            self.win.move(1, 1)
+            self.win.addstr("lokinet offline")
+
+    def run(self):
+        while True:
+            self.win.clear()
+            self.win.box()
+            self.update_data()
+            self.display_data()
+            self.win.refresh()
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    import sys
+
+    mon = Monitor(
+        "http://{}/jsonrpc".format(
+            len(sys.argv) > 1 and sys.argv[1] or "127.0.0.1:1190"
+        )
+    )
+    mon.run()

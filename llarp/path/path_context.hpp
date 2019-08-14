@@ -107,6 +107,7 @@ namespace llarp
 
         void
         ForEach(std::function< void(const TransitHop_ptr&) > visit)
+            LOCKS_EXCLUDED(first)
         {
           util::Lock lock(&first);
           for(const auto& item : second)

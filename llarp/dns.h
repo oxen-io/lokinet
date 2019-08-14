@@ -14,7 +14,7 @@ extern "C"
   // fwd declr
   struct dnsc_answer_request;
 
-  typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
+  using dnsc_answer_hook_func = void (*)(dnsc_answer_request *);
 
 #ifdef __cplusplus
 }

@@ -32,7 +32,7 @@ namespace llarp
     this->reset();
 
     // maybe refactor the family detection out
-    struct addrinfo hint, *res = NULL;
+    struct addrinfo hint, *res = nullptr;
     int ret;
 
     memset(&hint, '\0', sizeof hint);
@@ -40,7 +40,7 @@ namespace llarp
     hint.ai_family = PF_UNSPEC;
     hint.ai_flags  = AI_NUMERICHOST;
 
-    ret = getaddrinfo(str, NULL, &hint, &res);
+    ret = getaddrinfo(str, nullptr, &hint, &res);
     if(ret)
     {
       llarp::LogError("failed to determine address family: ", str);

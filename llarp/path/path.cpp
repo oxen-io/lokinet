@@ -103,8 +103,8 @@ namespace llarp
     }
 
     bool
-    Path::HandleLRSM(uint64_t status,
-                     std::array< EncryptedFrame, 8 >& frames, AbstractRouter* r)
+    Path::HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
+                     AbstractRouter* r)
     {
       uint64_t currentStatus = status;
 
@@ -215,7 +215,7 @@ namespace llarp
         m_PathSet->HandlePathBuildFailed(shared_from_this());
         return;
       }
-      else if(st == ePathExpired && _status == ePathBuilding)
+      if(st == ePathExpired && _status == ePathBuilding)
       {
         _status = st;
         m_PathSet->HandlePathBuildTimeout(shared_from_this());

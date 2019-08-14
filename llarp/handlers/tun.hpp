@@ -21,7 +21,7 @@ namespace llarp
     {
       TunEndpoint(const std::string& nickname, AbstractRouter* r,
                   llarp::service::Context* parent);
-      ~TunEndpoint();
+      ~TunEndpoint() override;
 
       path::PathSet_ptr
       GetSelf() override
@@ -29,10 +29,10 @@ namespace llarp
         return shared_from_this();
       }
 
-      virtual bool
+      bool
       SetOption(const std::string& k, const std::string& v) override;
 
-      virtual void
+      void
       Tick(llarp_time_t now) override;
 
       util::StatusObject
@@ -165,7 +165,7 @@ namespace llarp
       void
       Flush();
 
-      virtual void
+      void
       ResetInternalState() override;
 
      protected:

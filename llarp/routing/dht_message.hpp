@@ -15,7 +15,7 @@ namespace llarp
       std::vector< llarp::dht::IMessage::Ptr_t > M;
       uint64_t V = 0;
 
-      ~DHTMessage() = default;
+      ~DHTMessage() override = default;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;

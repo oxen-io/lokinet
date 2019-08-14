@@ -1,4 +1,5 @@
 #include <iwp/outermessage.hpp>
+#include <memory>
 
 namespace llarp
 {
@@ -15,9 +16,7 @@ namespace llarp
       Clear();
     }
 
-    OuterMessage::~OuterMessage()
-    {
-    }
+    OuterMessage::~OuterMessage() = default;
 
     void
     OuterMessage::Clear()
@@ -131,7 +130,7 @@ namespace llarp
             return false;
           if(buf->size_left() == Zsig.size() + 32)
           {
-            A.reset(new AlignedBuffer< 32 >());
+            A = std::make_unique< AlignedBuffer< 32 > >();
             if(!buf->read_into(A->begin(), A->end()))
               return false;
           }

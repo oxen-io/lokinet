@@ -34,7 +34,7 @@ namespace llarp
       void
       DoNextRequest(const Key_t &ask) override;
 
-      virtual void
+      void
       SendReply() override;
     };
   }  // namespace dht

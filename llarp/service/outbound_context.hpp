@@ -21,7 +21,7 @@ namespace llarp
           public std::enable_shared_from_this< OutboundContext >
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
-      ~OutboundContext();
+      ~OutboundContext() override;
 
       util::StatusObject
       ExtractStatus() const;

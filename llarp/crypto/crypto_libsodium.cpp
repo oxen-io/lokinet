@@ -5,7 +5,7 @@
 #include <sodium/crypto_stream_xchacha20.h>
 #include <util/mem.hpp>
 
-#include <assert.h>
+#include <cassert>
 
 extern "C"
 {

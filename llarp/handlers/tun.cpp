@@ -31,7 +31,7 @@ namespace llarp
     static void
     tunifTick(llarp_tun_io *tun)
     {
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       self->Flush();
     }
 
@@ -412,7 +412,7 @@ namespace llarp
           }
           else
           {
-            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            auto *replyMsg = new dns::Message(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -432,7 +432,7 @@ namespace llarp
           }
           else
           {
-            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            auto *replyMsg = new dns::Message(std::move(msg));
             EnsurePathToSNode(addr.as_array(),
                               [=](const RouterID &, exit::BaseSession_ptr s) {
                                 SendDNSReply(addr, s, replyMsg, reply, true,
@@ -577,7 +577,7 @@ namespace llarp
         return false;
       }
 
-      struct addrinfo hint, *res = NULL;
+      struct addrinfo hint, *res = nullptr;
       int ret;
 
       memset(&hint, 0, sizeof hint);
@@ -585,7 +585,7 @@ namespace llarp
       hint.ai_family = PF_UNSPEC;
       hint.ai_flags  = AI_NUMERICHOST;
 
-      ret = getaddrinfo(tunif.ifaddr, NULL, &hint, &res);
+      ret = getaddrinfo(tunif.ifaddr, nullptr, &hint, &res);
       if(ret)
       {
         llarp::LogError(Name(),
@@ -909,7 +909,7 @@ namespace llarp
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
       // called in the isolated network thread
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       // flush user to network
       self->FlushSend();
       // flush exit traffic queues if it's there
@@ -928,15 +928,13 @@ namespace llarp
     TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &b)
     {
       // called for every packet read from user in isolated network thread
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       const ManagedBuffer buf(b);
       self->m_UserToNetworkPktQueue.EmplaceIf(
           [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
     }
 
-    TunEndpoint::~TunEndpoint()
-    {
-    }
+    TunEndpoint::~TunEndpoint() = default;
 
   }  // namespace handlers
 }  // namespace llarp

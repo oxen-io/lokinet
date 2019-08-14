@@ -8,7 +8,6 @@
 
 #include <string>
 #include <vector>
-#include <stdbool.h>
 
 /**
  * address_info.hpp

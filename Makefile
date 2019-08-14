@@ -243,6 +243,11 @@ abyss: debug
 format:
 	clang-format -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
+format-verify: format
+	(type clang-format)
+	clang-format --version
+	git diff --quiet || (echo 'Please run make format!!' && git --no-pager diff ; exit 1)
+
 analyze-config: clean
 	mkdir -p '$(BUILD_ROOT)'
 	$(ANALYZE_CONFIG_CMD)

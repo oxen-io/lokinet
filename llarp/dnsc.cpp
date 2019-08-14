@@ -10,12 +10,12 @@
 #include <unistd.h> /* close */
 #endif
 
-#include <stdlib.h> /* exit */
-#include <string.h> /* memset */
+#include <cstdlib> /* exit */
+#include <cstring> /* memset */
 #include <sys/types.h>
 
 #include <algorithm>  // for std::find_if
-#include <stdio.h>    // sprintf
+#include <cstdio>     // sprintf
 
 dns_tracker dns_udp_tracker;
 
@@ -36,8 +36,8 @@ struct dns_query
 struct dns_query *
 build_dns_packet(char *url, uint16_t id, uint16_t reqType)
 {
-  dns_query *dnsQuery = new dns_query;
-  dnsQuery->length    = 12;
+  auto *dnsQuery   = new dns_query;
+  dnsQuery->length = 12;
   // ID
   // buffer[0] = (value & 0xFF00) >> 8;
   // buffer[1] = value & 0xFF;
@@ -505,7 +505,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   }
   else if(answer->type == 15)
   {
-    llarp::dns::type_15mx *record =
+    auto *record =
         dynamic_cast< llarp::dns::type_15mx * >(answer->record.get());
     llarp::LogDebug("Resolving MX ", record->mx, "@", record->priority);
     request->found = true;
@@ -639,7 +639,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
   llarp::LogInfo("response header says it belongs to id #", hdr.id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
+  auto *tracker                       = (struct dns_tracker *)dnsc->tracker;
   struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   if(request)
@@ -675,7 +675,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   llarp::LogDebug("Header got client responses for id: ", hdr.id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
+  auto *tracker                       = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   // sometimes we'll get double responses
@@ -766,8 +766,8 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
 void
 llarp_host_resolved(dnsc_answer_request *const request)
 {
-  dns_tracker *tracker = (dns_tracker *)request->context->tracker;
-  auto val             = std::find_if(
+  auto *tracker = (dns_tracker *)request->context->tracker;
+  auto val      = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
       [request](
           std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >

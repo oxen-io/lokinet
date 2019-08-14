@@ -26,7 +26,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(std::shared_ptr< Logic > l, const ServiceInfo& r,
+      AsyncKeyExchange(std::shared_ptr< Logic > l, ServiceInfo r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,

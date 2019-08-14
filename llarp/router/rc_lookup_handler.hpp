@@ -28,28 +28,32 @@ namespace llarp
    public:
     using CallbacksQueue = std::list< RCRequestCallback >;
 
-    ~RCLookupHandler() = default;
+    ~RCLookupHandler() override = default;
 
     void
-    AddValidRouter(const RouterID &router) override;
+    AddValidRouter(const RouterID &router) override LOCKS_EXCLUDED(_mutex);
 
     void
-    RemoveValidRouter(const RouterID &router) override;
+    RemoveValidRouter(const RouterID &router) override LOCKS_EXCLUDED(_mutex);
 
     void
-    SetRouterWhitelist(const std::vector< RouterID > &routers) override;
+    SetRouterWhitelist(const std::vector< RouterID > &routers) override
+        LOCKS_EXCLUDED(_mutex);
 
     void
-    GetRC(const RouterID &router, RCRequestCallback callback) override;
+    GetRC(const RouterID &router, RCRequestCallback callback) override
+        LOCKS_EXCLUDED(_mutex);
 
     bool
-    RemoteIsAllowed(const RouterID &remote) const override;
+    RemoteIsAllowed(const RouterID &remote) const override
+        LOCKS_EXCLUDED(_mutex);
 
     bool
     CheckRC(const RouterContact &rc) const override;
 
     bool
-    GetRandomWhitelistRouter(RouterID &router) const override;
+    GetRandomWhitelistRouter(RouterID &router) const override
+        LOCKS_EXCLUDED(_mutex);
 
     bool
     CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc) override;
@@ -74,14 +78,14 @@ namespace llarp
                           const std::vector< RouterContact > &results);
 
     bool
-    HavePendingLookup(RouterID remote) const;
+    HavePendingLookup(RouterID remote) const LOCKS_EXCLUDED(_mutex);
 
     bool
     RemoteInBootstrap(const RouterID &remote) const;
 
     void
     FinalizeRequest(const RouterID &router, const RouterContact *const rc,
-                    RCRequestResult result);
+                    RCRequestResult result) LOCKS_EXCLUDED(_mutex);
 
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 

@@ -25,7 +25,7 @@ namespace llarp
         K.Randomize();
       }
 
-      ~FindRouterMessage();
+      ~FindRouterMessage() override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -33,7 +33,7 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      virtual bool
+      bool
       HandleMessage(
           llarp_dht_context* ctx,
           std::vector< std::unique_ptr< IMessage > >& replies) const override;
@@ -55,7 +55,7 @@ namespace llarp
       /// handle a relayed FindRouterMessage, do a lookup on the dht and inform
       /// the path of the result
       /// TODO: smart path expiration logic needs to be implemented
-      virtual bool
+      bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage::Ptr_t >& replies) const override;
     };

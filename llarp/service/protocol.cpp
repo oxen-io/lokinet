@@ -5,6 +5,7 @@
 #include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/memfn.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -19,9 +20,7 @@ namespace llarp
     {
     }
 
-    ProtocolMessage::~ProtocolMessage()
-    {
-    }
+    ProtocolMessage::~ProtocolMessage() = default;
 
     void
     ProtocolMessage::PutBuffer(const llarp_buffer_t& buf)
@@ -92,9 +91,7 @@ namespace llarp
       return bencode_end(buf);
     }
 
-    ProtocolFrame::~ProtocolFrame()
-    {
-    }
+    ProtocolFrame::~ProtocolFrame() = default;
 
     bool
     ProtocolFrame::BEncode(llarp_buffer_t* buf) const
@@ -255,11 +252,10 @@ namespace llarp
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(std::shared_ptr< Logic > l, const Identity& localIdent,
-                        IDataHandler* h,
-                        const std::shared_ptr< ProtocolMessage >& m,
+                        IDataHandler* h, std::shared_ptr< ProtocolMessage > m,
                         const ProtocolFrame& f, const Introduction& recvIntro)
-          : logic(l)
-          , msg(m)
+          : logic(std::move(l))
+          , msg(std::move(m))
           , m_LocalIdentity(localIdent)
           , handler(h)
           , frame(f)
@@ -270,8 +266,8 @@ namespace llarp
       static void
       Work(void* user)
       {
-        AsyncFrameDecrypt* self = static_cast< AsyncFrameDecrypt* >(user);
-        auto crypto             = CryptoManager::instance();
+        auto* self  = static_cast< AsyncFrameDecrypt* >(user);
+        auto crypto = CryptoManager::instance();
         SharedSecret K;
         SharedSecret sharedKey;
         // copy
@@ -403,6 +399,11 @@ namespace llarp
       if(!DecryptPayloadInto(shared, *msg))
       {
         LogError("failed to decrypt message");
+        return false;
+      }
+      if(T != msg->tag && !msg->tag.IsZero())
+      {
+        LogError("convotag missmatch: ", T, " != ", msg->tag);
         return false;
       }
       msg->handler            = handler;

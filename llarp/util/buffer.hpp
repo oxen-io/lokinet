@@ -7,10 +7,10 @@
 
 #include <cassert>
 #include <iterator>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <utility>
 #include <algorithm>
 
@@ -64,20 +64,18 @@ struct ManagedBuffer;
 struct llarp_buffer_t
 {
   /// starting memory address
-  byte_t *base;
+  byte_t *base{nullptr};
   /// memory address of stream position
-  byte_t *cur;
+  byte_t *cur{nullptr};
   /// max size of buffer
-  size_t sz;
+  size_t sz{0};
 
   byte_t operator[](size_t x)
   {
     return *(this->base + x);
   }
 
-  llarp_buffer_t() : base(nullptr), cur(nullptr), sz(0)
-  {
-  }
+  llarp_buffer_t() = default;
 
   llarp_buffer_t(byte_t *b, byte_t *c, size_t s) : base(b), cur(c), sz(s)
   {

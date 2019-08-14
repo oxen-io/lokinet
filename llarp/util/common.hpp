@@ -5,7 +5,7 @@
 #else
 #define INLINE inline
 #endif
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+
+#include <cstdint>
+#include <cstdlib>
 #endif

@@ -57,9 +57,7 @@ namespace llarp
       return true;
     }
 
-    FindRouterMessage::~FindRouterMessage()
-    {
-    }
+    FindRouterMessage::~FindRouterMessage() = default;
 
     bool
     FindRouterMessage::BEncode(llarp_buffer_t *buf) const
@@ -183,8 +181,8 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
-      else
-        dht.LookupRouterRelayed(From, txid, k, !iterative, replies);
+
+      dht.LookupRouterRelayed(From, txid, k, !iterative, replies);
       return true;
     }
   }  // namespace dht

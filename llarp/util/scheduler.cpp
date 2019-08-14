@@ -1,4 +1,5 @@
 #include <util/scheduler.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -152,9 +153,9 @@ namespace llarp
       }
     }
 
-    Scheduler::Scheduler(const EventDispatcher& dispatcher, const Clock& clock)
-        : m_clock(clock)
-        , m_dispatcher(dispatcher)
+    Scheduler::Scheduler(EventDispatcher dispatcher, Clock clock)
+        : m_clock(std::move(clock))
+        , m_dispatcher(std::move(dispatcher))
         , m_running(false)
         , m_iterationCount(0)
         , m_eventIt()

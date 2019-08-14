@@ -26,7 +26,7 @@ namespace llarp
     using CallbacksQueue = std::list< RouterCallback >;
 
    public:
-    ~OutboundSessionMaker() = default;
+    ~OutboundSessionMaker() override = default;
 
     bool
     OnSessionEstablished(ILinkSession *session) override;
@@ -35,13 +35,16 @@ namespace llarp
     OnConnectTimeout(ILinkSession *session) override;
 
     void
-    CreateSessionTo(const RouterID &router, RouterCallback on_result) override;
+    CreateSessionTo(const RouterID &router, RouterCallback on_result) override
+        LOCKS_EXCLUDED(_mutex);
 
     void
-    CreateSessionTo(const RouterContact &rc, RouterCallback on_result) override;
+    CreateSessionTo(const RouterContact &rc, RouterCallback on_result) override
+        LOCKS_EXCLUDED(_mutex);
 
     bool
-    HavePendingSessionTo(const RouterID &router) const override;
+    HavePendingSessionTo(const RouterID &router) const override
+        LOCKS_EXCLUDED(_mutex);
 
     void
     ConnectToRandomRouters(int numDesired, llarp_time_t now) override;
@@ -49,17 +52,27 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
+    bool
+    ShouldConnectTo(const RouterID &router) const override
+        LOCKS_EXCLUDED(_mutex);
+
     void
     Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
          std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
          std::shared_ptr< llarp::thread::ThreadPool > threadpool);
 
+    /// always maintain this many connections to other routers
+    size_t minConnectedRouters = 4;
+    /// hard upperbound limit on the number of router to router connections
+    size_t maxConnectedRouters = 6;
+
    private:
     void
-    DoEstablish(const RouterID &router);
+    DoEstablish(const RouterID &router) LOCKS_EXCLUDED(_mutex);
 
     void
-    GotRouterContact(const RouterID &router, const RouterContact &rc);
+    GotRouterContact(const RouterID &router, const RouterContact &rc)
+        LOCKS_EXCLUDED(_mutex);
 
     void
     InvalidRouter(const RouterID &router);
@@ -75,10 +88,11 @@ namespace llarp
     VerifyRC(const RouterContact rc);
 
     void
-    CreatePendingSession(const RouterID &router);
+    CreatePendingSession(const RouterID &router) LOCKS_EXCLUDED(_mutex);
 
     void
-    FinalizeRequest(const RouterID &router, const SessionResult type);
+    FinalizeRequest(const RouterID &router, const SessionResult type)
+        LOCKS_EXCLUDED(_mutex);
 
     mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
 

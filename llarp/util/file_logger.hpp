@@ -15,7 +15,7 @@ namespace llarp
     FileLogStream(std::shared_ptr< thread::ThreadPool > disk, FILE* f,
                   llarp_time_t flushInterval, bool closefile = true);
 
-    ~FileLogStream();
+    ~FileLogStream() override;
 
     void
     PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,
