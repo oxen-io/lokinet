@@ -29,34 +29,20 @@ namespace llarp
   {
     if(!isConsoleModern)
     {
-      GetConsoleScreenBufferInfo(fd1, &consoleInfo);
-      old_attrs = consoleInfo.wAttributes;
       switch(lvl)
       {
         case eLogNone:
           break;
         case eLogDebug:
-          SetConsoleTextAttribute(fd1,
-                                  FOREGROUND_RED | FOREGROUND_GREEN
-                                      | FOREGROUND_BLUE);  // low white on black
           ss << "[DBG] ";
           break;
         case eLogInfo:
-          SetConsoleTextAttribute(
-              fd1,
-              FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN
-                  | FOREGROUND_BLUE);  // high white on black
           ss << "[NFO] ";
           break;
         case eLogWarn:
-          SetConsoleTextAttribute(fd1,
-                                  FOREGROUND_RED | FOREGROUND_GREEN
-                                      | FOREGROUND_INTENSITY);  // bright yellow
           ss << "[WRN] ";
           break;
         case eLogError:
-          SetConsoleTextAttribute(
-              fd1, FOREGROUND_RED | FOREGROUND_INTENSITY);  // bright red
           ss << "[ERR] ";
           break;
       }
@@ -72,13 +58,54 @@ namespace llarp
   Win32LogStream::PostLog(std::stringstream& ss) const
   {
     if(!isConsoleModern)
-    {
-      SetConsoleTextAttribute(
-          fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
       ss << std::endl;
-    }
     else
       OStreamLogStream::PostLog(ss);
   }
+
+  void
+  Win32LogStream::Print(LogLevel lvl, const char*, const std::string& msg)
+  {
+    if(!isConsoleModern)
+    {
+      GetConsoleScreenBufferInfo(fd1, &consoleInfo);
+      old_attrs = consoleInfo.wAttributes;
+      switch(lvl)
+      {
+        case eLogNone:
+          break;
+        case eLogDebug:
+          SetConsoleTextAttribute(fd1,
+                                  FOREGROUND_RED | FOREGROUND_GREEN
+                                      | FOREGROUND_BLUE);  // low white on black
+          break;
+        case eLogInfo:
+          SetConsoleTextAttribute(
+              fd1,
+              FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN
+                  | FOREGROUND_BLUE);  // high white on black
+          break;
+        case eLogWarn:
+          SetConsoleTextAttribute(fd1,
+                                  FOREGROUND_RED | FOREGROUND_GREEN
+                                      | FOREGROUND_INTENSITY);  // bright yellow
+          break;
+        case eLogError:
+          SetConsoleTextAttribute(
+              fd1, FOREGROUND_RED | FOREGROUND_INTENSITY);  // bright red
+          break;
+      }
+    }
+    
+	m_Out << msg << std::flush;
+
+    if(!isConsoleModern)
+    {
+      ss << std::endl;
+      SetConsoleTextAttribute(
+          fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+  }
+
 }  // namespace llarp
 #endif
