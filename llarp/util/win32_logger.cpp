@@ -7,7 +7,7 @@ static short old_attrs;
 
 namespace llarp
 {
-  Win32LogStream::Win32LogStream(std::ostream& out) : OStreamLogStream(out)
+  Win32LogStream::Win32LogStream(std::ostream& out) : OStreamLogStream(out), m_Out(out)
   {
     // Attempt to use ANSI escapes directly
     // if the modern console is active.
@@ -101,7 +101,6 @@ namespace llarp
 
     if(!isConsoleModern)
     {
-      ss << std::endl;
       SetConsoleTextAttribute(
           fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
     }
