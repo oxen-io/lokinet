@@ -7,7 +7,8 @@ static short old_attrs;
 
 namespace llarp
 {
-  Win32LogStream::Win32LogStream(std::ostream& out) : OStreamLogStream(out), m_Out(out)
+  Win32LogStream::Win32LogStream(std::ostream& out)
+      : OStreamLogStream(out), m_Out(out)
   {
     // Attempt to use ANSI escapes directly
     // if the modern console is active.
@@ -96,8 +97,8 @@ namespace llarp
           break;
       }
     }
-    
-	m_Out << msg << std::flush;
+
+    m_Out << msg << std::flush;
 
     if(!isConsoleModern)
     {

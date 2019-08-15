@@ -19,7 +19,7 @@ namespace llarp
     PostLog(std::stringstream& s) const override;
 
     void Tick(llarp_time_t) override{};
-	
+
     void
     Print(LogLevel lvl, const char*, const std::string& msg) override;
 
