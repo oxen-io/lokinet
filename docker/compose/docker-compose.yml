@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.4'
 services:
   bootstrap-router:
     build:
@@ -53,6 +53,8 @@ volumes:
 
 networks:
   testing_net:
+    driver: bridge
+    internal: true
     ipam:
       driver: default
       config:
