@@ -25,6 +25,8 @@ endif()
 include_directories(${LIBUV_INCLUDE_DIRS})
 
 function(check_working_cxx_atomics64 varname)
+  set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=c++14")
   check_cxx_source_compiles("
 #include <atomic>
 #include <cstdint>
@@ -34,6 +36,7 @@ int main() {
   return 0;
 }
 " ${varname})
+  set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
 endfunction()
 
 function(link_libatomic)
