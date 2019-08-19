@@ -51,7 +51,7 @@ namespace llarp
       util::StatusObject exitsObj{};
       for(const auto &item : m_ActiveExits)
       {
-        exitsObj[item.first.ToHex()] = item.second->ExtractStatus();
+        exitsObj[item.first.ToString()] = item.second->ExtractStatus();
       }
       obj["exits"] = exitsObj;
       return obj;
