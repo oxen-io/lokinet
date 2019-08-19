@@ -197,8 +197,7 @@ namespace llarp
       Response
       DumpState() const
       {
-        const util::StatusObject dump = router->ExtractStatus();
-        return dump.get();
+        return router->ExtractStatus();
       }
 
       Response

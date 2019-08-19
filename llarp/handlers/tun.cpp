@@ -66,14 +66,14 @@ namespace llarp
     util::StatusObject
     TunEndpoint::ExtractStatus() const
     {
-      auto obj = service::Endpoint::ExtractStatus();
-      obj.Put("ifaddr", m_OurRange.ToString());
+      auto obj      = service::Endpoint::ExtractStatus();
+      obj["ifaddr"] = m_OurRange.ToString();
 
       std::vector< std::string > resolvers;
       for(const auto &addr : m_UpstreamResolvers)
         resolvers.emplace_back(addr.ToString());
-      obj.Put("ustreamResolvers", resolvers);
-      obj.Put("localResolver", m_LocalResolverAddr.ToString());
+      obj["ustreamResolvers"] = resolvers;
+      obj["localResolver"]    = m_LocalResolverAddr.ToString();
       util::StatusObject ips{};
       for(const auto &item : m_IPActivity)
       {
@@ -84,14 +84,14 @@ namespace llarp
           remoteStr = RouterID(addr.as_array()).ToString();
         else
           remoteStr = service::Address(addr.as_array()).ToString();
-        ipObj.Put("remote", remoteStr);
+        ipObj["remote"]    = remoteStr;
         std::string ipaddr = item.first.ToString();
-        ips.Put(ipaddr.c_str(), ipObj);
+        ips[ipaddr]        = ipObj;
       }
-      obj.Put("addrs", ips);
-      obj.Put("ourIP", m_OurIP.ToString());
-      obj.Put("nextIP", m_NextIP.ToString());
-      obj.Put("maxIP", m_MaxIP.ToString());
+      obj["addrs"]  = ips;
+      obj["ourIP"]  = m_OurIP.ToString();
+      obj["nextIP"] = m_NextIP.ToString();
+      obj["maxIP"]  = m_MaxIP.ToString();
       return obj;
     }
 

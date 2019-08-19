@@ -116,31 +116,40 @@ namespace llarp
     util::StatusObject
     EndpointState::ExtractStatus(util::StatusObject& obj) const
     {
-      obj.Put("lastPublished", m_LastPublish);
-      obj.Put("lastPublishAttempt", m_LastPublishAttempt);
-      obj.Put("introset", m_IntroSet.ExtractStatus());
+      obj["lastPublished"]      = m_LastPublish;
+      obj["lastPublishAttempt"] = m_LastPublishAttempt;
+      obj["introset"]           = m_IntroSet.ExtractStatus();
 
       if(!m_Tag.IsZero())
-        obj.Put("tag", m_Tag.ToString());
-      static auto getSecond = [](const auto& item) -> const auto&
       {
-        return item.second;
+        obj["tag"] = m_Tag.ToString();
+      }
+
+      static auto getSecond = [](const auto& item) -> auto
+      {
+        return item.second->ExtractStatus();
       };
-      obj.PutContainer("deadSessions", m_DeadSessions, getSecond);
-      obj.PutContainer("remoteSessions", m_RemoteSessions, getSecond);
-      obj.PutContainer("lookups", m_PendingLookups, getSecond);
-      obj.PutContainer("snodeSessions", m_SNodeSessions,
-                       [](const auto& item) { return item.second.first; });
+
+      std::transform(m_DeadSessions.begin(), m_DeadSessions.end(),
+                     std::back_inserter(obj["deadSessions"]), getSecond);
+      std::transform(m_RemoteSessions.begin(), m_RemoteSessions.end(),
+                     std::back_inserter(obj["remoteSessions"]), getSecond);
+      std::transform(m_PendingLookups.begin(), m_PendingLookups.end(),
+                     std::back_inserter(obj["lookups"]), getSecond);
+      std::transform(
+          m_SNodeSessions.begin(), m_SNodeSessions.end(),
+          std::back_inserter(obj["snodeSessions"]),
+          [](const auto& item) { return item.second.first->ExtractStatus(); });
 
       util::StatusObject sessionObj{};
 
       for(const auto& item : m_Sessions)
       {
         std::string k = item.first.ToHex();
-        sessionObj.Put(k, item.second.ExtractStatus());
+        sessionObj[k] = item.second.ExtractStatus();
       }
 
-      obj.Put("converstations", sessionObj);
+      obj["converstations"] = sessionObj;
       return obj;
     }
   }  // namespace service

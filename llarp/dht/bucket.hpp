@@ -30,7 +30,7 @@ namespace llarp
         util::StatusObject obj{};
         for(const auto& item : nodes)
         {
-          obj.Put(item.first.ToHex(), item.second.ExtractStatus());
+          obj[item.first.ToString()] = item.second.ExtractStatus();
         }
         return obj;
       }
