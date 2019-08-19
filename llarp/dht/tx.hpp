@@ -42,7 +42,7 @@ namespace llarp
       ExtractStatus() const
       {
         util::StatusObject obj{{"whoasked", whoasked.ExtractStatus()},
-                               {"target", target.ToHex()}};
+                               {"target", target.ToString()}};
         std::vector< util::StatusObject > foundObjs;
         std::transform(valuesFound.begin(), valuesFound.end(),
                        std::back_inserter(foundObjs),
@@ -54,7 +54,7 @@ namespace llarp
         std::vector< std::string > asked;
         std::transform(
             peersAsked.begin(), peersAsked.end(), std::back_inserter(asked),
-            [](const auto& item) -> std::string { return item.ToHex(); });
+            [](const auto& item) -> std::string { return item.ToString(); });
         obj["asked"] = asked;
         return obj;
       }

@@ -163,7 +163,7 @@ namespace llarp
     util::StatusObject obj{{"lastUpdated", last_updated},
                            {"exit", IsExit()},
                            {"publicRouter", IsPublicRouter()},
-                           {"identity", pubkey.ToHex()}};
+                           {"identity", pubkey.ToString()}};
     if(HasNick())
       obj["nickname"] = Nick();
     return obj;
