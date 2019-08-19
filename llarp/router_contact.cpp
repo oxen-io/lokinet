@@ -165,7 +165,7 @@ namespace llarp
                            {"publicRouter", IsPublicRouter()},
                            {"identity", pubkey.ToHex()}};
     if(HasNick())
-      obj.Put("nickname", Nick());
+      obj["nickname"] = Nick();
     return obj;
   }
 

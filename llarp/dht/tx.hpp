@@ -50,12 +50,12 @@ namespace llarp
                          return item.ExtractStatus();
                        });
 
-        obj.Put("found", foundObjs);
+        obj["found"] = foundObjs;
         std::vector< std::string > asked;
         std::transform(
             peersAsked.begin(), peersAsked.end(), std::back_inserter(asked),
             [](const auto& item) -> std::string { return item.ToHex(); });
-        obj.Put("asked", asked);
+        obj["asked"] = asked;
         return obj;
       }
 

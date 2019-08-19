@@ -213,27 +213,25 @@ namespace llarp
     util::StatusObject
     OutboundContext::ExtractStatus() const
     {
-      auto obj = path::Builder::ExtractStatus();
-      obj.Put("currentConvoTag", currentConvoTag.ToHex());
-      obj.Put("remoteIntro", remoteIntro.ExtractStatus());
-      obj.Put("sessionCreatedAt", createdAt);
-      obj.Put("lastGoodSend", lastGoodSend);
-      obj.Put("seqno", sequenceNo);
-      obj.Put("markedBad", markedBad);
-      obj.Put("lastShift", lastShift);
-      obj.Put("remoteIdentity", remoteIdent.Addr().ToString());
-      obj.Put("currentRemoteIntroset", currentIntroSet.ExtractStatus());
-      obj.Put("nextIntro", m_NextIntro.ExtractStatus());
-      std::vector< util::StatusObject > badIntrosObj;
+      auto obj                     = path::Builder::ExtractStatus();
+      obj["currentConvoTag"]       = currentConvoTag.ToHex();
+      obj["remoteIntro"]           = remoteIntro.ExtractStatus();
+      obj["sessionCreatedAt"]      = createdAt;
+      obj["lastGoodSend"]          = lastGoodSend;
+      obj["seqno"]                 = sequenceNo;
+      obj["markedBad"]             = markedBad;
+      obj["lastShift"]             = lastShift;
+      obj["remoteIdentity"]        = remoteIdent.Addr().ToString();
+      obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
+      obj["nextIntro"]             = m_NextIntro.ExtractStatus();
+
       std::transform(m_BadIntros.begin(), m_BadIntros.end(),
-                     std::back_inserter(badIntrosObj),
+                     std::back_inserter(obj["badIntros"]),
                      [](const auto& item) -> util::StatusObject {
-                       util::StatusObject o{
+                       return util::StatusObject{
                            {"count", item.second},
                            {"intro", item.first.ExtractStatus()}};
-                       return o;
                      });
-      obj.Put("badIntros", badIntrosObj);
       return obj;
     }
 

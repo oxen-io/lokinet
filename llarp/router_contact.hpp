@@ -111,7 +111,7 @@ namespace llarp
     nlohmann::json
     ToJson() const
     {
-      return ExtractStatus().get();
+      return ExtractStatus();
     }
 
     bool

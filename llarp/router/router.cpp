@@ -110,13 +110,11 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    util::StatusObject obj{{"dht", _dht->impl->ExtractStatus()},
-                           {"services", _hiddenServiceContext.ExtractStatus()},
-                           {"exit", _exitContext.ExtractStatus()}};
-
-    obj.Put("links", _linkManager.ExtractStatus());
-
-    return obj;
+    return util::StatusObject{
+        {"dht", _dht->impl->ExtractStatus()},
+        {"services", _hiddenServiceContext.ExtractStatus()},
+        {"exit", _exitContext.ExtractStatus()},
+        {"links", _linkManager.ExtractStatus()}};
   }
 
   bool
