@@ -52,6 +52,9 @@ namespace llarp
     };
   };
 
+  void
+  to_json(nlohmann::json& j, const AddressInfo& a);
+
   inline std::ostream&
   operator<<(std::ostream& out, const AddressInfo& a)
   {
