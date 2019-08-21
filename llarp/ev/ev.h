@@ -23,9 +23,9 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <memory>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+
+#include <cstdint>
+#include <cstdlib>
 
 #if !defined(WIN32)
 #include <uv.h>

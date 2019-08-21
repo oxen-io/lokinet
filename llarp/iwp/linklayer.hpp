@@ -19,7 +19,7 @@ namespace llarp
                 SessionRenegotiateHandler reneg, SignBufferFunc sign,
                 TimeoutHandler timeout, SessionClosedHandler closed);
 
-      ~LinkLayer();
+      ~LinkLayer() override;
 
       bool
       Start(std::shared_ptr< Logic > l) override;

@@ -2,6 +2,7 @@
 
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -12,20 +13,18 @@ namespace llarp
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed)
-      : HandleMessage(handler)
-      , HandleTimeout(timeout)
-      , Sign(signbuf)
-      , GetOurRC(getrc)
-      , SessionEstablished(establishedSession)
-      , SessionClosed(closed)
-      , SessionRenegotiate(reneg)
+      : HandleMessage(std::move(handler))
+      , HandleTimeout(std::move(timeout))
+      , Sign(std::move(signbuf))
+      , GetOurRC(std::move(getrc))
+      , SessionEstablished(std::move(establishedSession))
+      , SessionClosed(std::move(closed))
+      , SessionRenegotiate(std::move(reneg))
       , m_RouterEncSecret(routerEncSecret)
   {
   }
 
-  ILinkLayer::~ILinkLayer()
-  {
-  }
+  ILinkLayer::~ILinkLayer() = default;
 
   bool
   ILinkLayer::HasSessionTo(const RouterID& id)

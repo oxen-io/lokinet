@@ -96,7 +96,7 @@ getDNSstring(const char *const buffer, uint32_t *pos)
 }
 
 void
-code_domain(char *&buffer, const std::string &domain) throw()
+code_domain(char *&buffer, const std::string &domain) noexcept
 {
   std::string::size_type start(0);
   std::string::size_type end;  // indexes
@@ -124,7 +124,7 @@ code_domain(char *&buffer, const std::string &domain) throw()
 }
 
 void
-vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw()
+vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) noexcept
 {
   std::string::size_type start(0);
   std::string::size_type end;  // indexes
@@ -153,7 +153,7 @@ vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw()
 
 // expects host order
 void
-vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw()
+vput16bits(std::vector< byte_t > &bytes, uint16_t value) noexcept
 {
   char buf[2]        = {0};
   char *write_buffer = buf;
@@ -164,7 +164,7 @@ vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw()
 
 // expects host order
 void
-vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw()
+vput32bits(std::vector< byte_t > &bytes, uint32_t value) noexcept
 {
   char buf[4]        = {0};
   char *write_buffer = buf;
@@ -178,7 +178,7 @@ vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw()
 void
 dns_writeType(std::vector< byte_t > &bytes, llarp::dns::record *record)
 {
-  llarp::dns::type_1a *type1a = dynamic_cast< llarp::dns::type_1a * >(record);
+  auto *type1a = dynamic_cast< llarp::dns::type_1a * >(record);
   if(type1a)
   {
     std::vector< byte_t > more_bytes = type1a->to_bytes();
@@ -186,8 +186,7 @@ dns_writeType(std::vector< byte_t > &bytes, llarp::dns::record *record)
     bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
   }
 
-  llarp::dns::type_2ns *type2ns =
-      dynamic_cast< llarp::dns::type_2ns * >(record);
+  auto *type2ns = dynamic_cast< llarp::dns::type_2ns * >(record);
   if(type2ns)
   {
     std::vector< byte_t > more_bytes = type2ns->to_bytes();
@@ -195,8 +194,7 @@ dns_writeType(std::vector< byte_t > &bytes, llarp::dns::record *record)
     bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
   }
 
-  llarp::dns::type_5cname *type5cname =
-      dynamic_cast< llarp::dns::type_5cname * >(record);
+  auto *type5cname = dynamic_cast< llarp::dns::type_5cname * >(record);
   if(type5cname)
   {
     std::vector< byte_t > more_bytes = type5cname->to_bytes();
@@ -204,24 +202,21 @@ dns_writeType(std::vector< byte_t > &bytes, llarp::dns::record *record)
     bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
   }
 
-  llarp::dns::type_12ptr *type12ptr =
-      dynamic_cast< llarp::dns::type_12ptr * >(record);
+  auto *type12ptr = dynamic_cast< llarp::dns::type_12ptr * >(record);
   if(type12ptr)
   {
     std::vector< byte_t > more_bytes = type12ptr->to_bytes();
     llarp::LogDebug("[12]Adding ", more_bytes.size());
     bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
   }
-  llarp::dns::type_15mx *type15mx =
-      dynamic_cast< llarp::dns::type_15mx * >(record);
+  auto *type15mx = dynamic_cast< llarp::dns::type_15mx * >(record);
   if(type15mx)
   {
     std::vector< byte_t > more_bytes = type15mx->to_bytes();
     llarp::LogDebug("[15]Adding ", more_bytes.size());
     bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
   }
-  llarp::dns::type_16txt *type16txt =
-      dynamic_cast< llarp::dns::type_16txt * >(record);
+  auto *type16txt = dynamic_cast< llarp::dns::type_16txt * >(record);
   if(type16txt)
   {
     std::vector< byte_t > more_bytes = type16txt->to_bytes();
@@ -292,7 +287,7 @@ packet2bytes(dns_packet &in)
 extern "C"
 {
   uint16_t
-  get16bits(const char *&buffer) throw()
+  get16bits(const char *&buffer) noexcept
   {
     uint16_t value = bufbe16toh(buffer);
     buffer += 2;
@@ -300,7 +295,7 @@ extern "C"
   }
 
   uint32_t
-  get32bits(const char *&buffer) throw()
+  get32bits(const char *&buffer) noexcept
   {
     uint32_t value = bufbe32toh(buffer);
     buffer += 4;
@@ -350,7 +345,7 @@ extern "C"
   dns_msg_question *
   decode_question(const char *buffer, uint32_t *pos)
   {
-    dns_msg_question *question = new dns_msg_question;
+    auto *question = new dns_msg_question;
 
     std::string m_qName = getDNSstring(buffer, pos);
     llarp::LogDebug("Got question name: ", m_qName);
@@ -369,7 +364,7 @@ extern "C"
   dns_msg_answer *
   decode_answer(const char *const buffer, uint32_t *pos)
   {
-    dns_msg_answer *answer = new dns_msg_answer;
+    auto *answer = new dns_msg_answer;
     /*
     llarp_buffer_t bob;
     bob.base = (unsigned char *)buffer;
@@ -589,14 +584,14 @@ extern "C"
   }
 
   void
-  put16bits(char *&buffer, uint16_t value) throw()
+  put16bits(char *&buffer, uint16_t value) noexcept
   {
     htobe16buf(buffer, value);
     buffer += 2;
   }
 
   void
-  put32bits(char *&buffer, uint32_t value) throw()
+  put32bits(char *&buffer, uint32_t value) noexcept
   {
     htobe32buf(buffer, value);
     buffer += 4;

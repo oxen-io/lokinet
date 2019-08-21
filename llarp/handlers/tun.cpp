@@ -31,7 +31,7 @@ namespace llarp
     static void
     tunifTick(llarp_tun_io *tun)
     {
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       self->Flush();
     }
 
@@ -66,14 +66,14 @@ namespace llarp
     util::StatusObject
     TunEndpoint::ExtractStatus() const
     {
-      auto obj = service::Endpoint::ExtractStatus();
-      obj.Put("ifaddr", m_OurRange.ToString());
+      auto obj      = service::Endpoint::ExtractStatus();
+      obj["ifaddr"] = m_OurRange.ToString();
 
       std::vector< std::string > resolvers;
       for(const auto &addr : m_UpstreamResolvers)
         resolvers.emplace_back(addr.ToString());
-      obj.Put("ustreamResolvers", resolvers);
-      obj.Put("localResolver", m_LocalResolverAddr.ToString());
+      obj["ustreamResolvers"] = resolvers;
+      obj["localResolver"]    = m_LocalResolverAddr.ToString();
       util::StatusObject ips{};
       for(const auto &item : m_IPActivity)
       {
@@ -84,14 +84,14 @@ namespace llarp
           remoteStr = RouterID(addr.as_array()).ToString();
         else
           remoteStr = service::Address(addr.as_array()).ToString();
-        ipObj.Put("remote", remoteStr);
+        ipObj["remote"]    = remoteStr;
         std::string ipaddr = item.first.ToString();
-        ips.Put(ipaddr.c_str(), ipObj);
+        ips[ipaddr]        = ipObj;
       }
-      obj.Put("addrs", ips);
-      obj.Put("ourIP", m_OurIP.ToString());
-      obj.Put("nextIP", m_NextIP.ToString());
-      obj.Put("maxIP", m_MaxIP.ToString());
+      obj["addrs"]  = ips;
+      obj["ourIP"]  = m_OurIP.ToString();
+      obj["nextIP"] = m_NextIP.ToString();
+      obj["maxIP"]  = m_MaxIP.ToString();
       return obj;
     }
 
@@ -412,7 +412,7 @@ namespace llarp
           }
           else
           {
-            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            auto *replyMsg = new dns::Message(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -432,7 +432,7 @@ namespace llarp
           }
           else
           {
-            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            auto *replyMsg = new dns::Message(std::move(msg));
             EnsurePathToSNode(addr.as_array(),
                               [=](const RouterID &, exit::BaseSession_ptr s) {
                                 SendDNSReply(addr, s, replyMsg, reply, true,
@@ -577,7 +577,7 @@ namespace llarp
         return false;
       }
 
-      struct addrinfo hint, *res = NULL;
+      struct addrinfo hint, *res = nullptr;
       int ret;
 
       memset(&hint, 0, sizeof hint);
@@ -585,7 +585,7 @@ namespace llarp
       hint.ai_family = PF_UNSPEC;
       hint.ai_flags  = AI_NUMERICHOST;
 
-      ret = getaddrinfo(tunif.ifaddr, NULL, &hint, &res);
+      ret = getaddrinfo(tunif.ifaddr, nullptr, &hint, &res);
       if(ret)
       {
         llarp::LogError(Name(),
@@ -909,7 +909,7 @@ namespace llarp
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
       // called in the isolated network thread
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       // flush user to network
       self->FlushSend();
       // flush exit traffic queues if it's there
@@ -928,15 +928,13 @@ namespace llarp
     TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &b)
     {
       // called for every packet read from user in isolated network thread
-      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      auto *self = static_cast< TunEndpoint * >(tun->user);
       const ManagedBuffer buf(b);
       self->m_UserToNetworkPktQueue.EmplaceIf(
           [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
     }
 
-    TunEndpoint::~TunEndpoint()
-    {
-    }
+    TunEndpoint::~TunEndpoint() = default;
 
   }  // namespace handlers
 }  // namespace llarp

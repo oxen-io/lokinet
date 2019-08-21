@@ -71,8 +71,8 @@ namespace llarp
     {
       if(IsV6())
         return In6ToHUInt(HeaderV6()->srcaddr);
-      else
-        return ExpandV4(srcv4());
+
+      return ExpandV4(srcv4());
     }
 
     huint128_t
@@ -80,8 +80,8 @@ namespace llarp
     {
       if(IsV6())
         return In6ToHUInt(HeaderV6()->dstaddr);
-      else
-        return ExpandV4(dstv4());
+
+      return ExpandV4(dstv4());
     }
 
     bool

@@ -11,7 +11,7 @@
 #include <util/bits.hpp>
 
 #include <functional>
-#include <stdlib.h>  // for itoa
+#include <cstdlib>  // for itoa
 #include <vector>
 
 // for addrinfo

@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace llarp
@@ -32,9 +33,7 @@ namespace llarp
       {
       }
 
-      ~MetricTankPublisherInterface()
-      {
-      }
+      ~MetricTankPublisherInterface() override = default;
 
       static std::string
       makeSuffix(const Tags& tags);
@@ -66,16 +65,16 @@ namespace llarp
       work();
 
      public:
-      MetricTankPublisher(const Tags& tags, const std::string& host, short port)
+      MetricTankPublisher(const Tags& tags, std::string host, short port)
           : MetricTankPublisherInterface(tags)
-          , m_host(host)
+          , m_host(std::move(host))
           , m_port(port)
           , m_queue(100)
           , m_worker(&MetricTankPublisher::work, this)
       {
       }
 
-      ~MetricTankPublisher()
+      ~MetricTankPublisher() override
       {
         // Push back a signal value onto the queue
         m_queue.pushBack(StopStruct());

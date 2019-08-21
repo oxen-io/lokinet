@@ -786,7 +786,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
         if(af == AF_INET6)
         {
           // set scope id
-          sockaddr_in6* ip6addr  = (sockaddr_in6*)addr;
+          auto* ip6addr          = (sockaddr_in6*)addr;
           ip6addr->sin6_scope_id = if_nametoindex(ifname);
           ip6addr->sin6_flowinfo = 0;
         }
@@ -861,8 +861,8 @@ namespace llarp
         const auto fam = i->ifa_addr->sa_family;
         if(fam != AF_INET)
           return;
-        sockaddr_in* addr = (sockaddr_in*)i->ifa_addr;
-        sockaddr_in* mask = (sockaddr_in*)i->ifa_netmask;
+        auto* addr = (sockaddr_in*)i->ifa_addr;
+        auto* mask = (sockaddr_in*)i->ifa_netmask;
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
         currentRanges.emplace_back(
@@ -926,7 +926,7 @@ namespace llarp
   GetIFAddr(const std::string& ifname, Addr& addr, int af)
   {
     sockaddr_storage s;
-    sockaddr* sptr = (sockaddr*)&s;
+    auto* sptr = (sockaddr*)&s;
     if(!llarp_getifaddr(ifname.c_str(), af, sptr))
       return false;
     addr = *sptr;

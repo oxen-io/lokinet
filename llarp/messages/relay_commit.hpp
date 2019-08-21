@@ -9,6 +9,7 @@
 
 #include <array>
 #include <memory>
+#include <utility>
 
 namespace llarp
 {
@@ -49,14 +50,14 @@ namespace llarp
   {
     std::array< EncryptedFrame, 8 > frames;
 
-    LR_CommitMessage(const std::array< EncryptedFrame, 8 > &_frames)
-        : ILinkMessage(), frames(_frames)
+    LR_CommitMessage(std::array< EncryptedFrame, 8 > _frames)
+        : ILinkMessage(), frames(std::move(_frames))
     {
     }
 
     LR_CommitMessage() = default;
 
-    ~LR_CommitMessage() = default;
+    ~LR_CommitMessage() override = default;
 
     void
     Clear() override;

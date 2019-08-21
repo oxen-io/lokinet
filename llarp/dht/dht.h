@@ -33,7 +33,7 @@ llarp_dht_context_start(struct llarp_dht_context* ctx, const byte_t* key);
 // remove this? dns needs it atm
 struct llarp_router_lookup_job;
 
-typedef void (*llarp_router_lookup_handler)(struct llarp_router_lookup_job*);
+using llarp_router_lookup_handler = void (*)(struct llarp_router_lookup_job*);
 
 struct llarp_router_lookup_job
 {

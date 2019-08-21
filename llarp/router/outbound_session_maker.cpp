@@ -10,6 +10,7 @@
 #include <util/threading.hpp>
 #include <util/status.hpp>
 #include <crypto/crypto.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -22,8 +23,8 @@ namespace llarp
 
     size_t attemptCount = 0;
 
-    PendingSession(const RouterContact &_rc, LinkLayer_ptr _link)
-        : rc(_rc), link(_link)
+    PendingSession(RouterContact _rc, LinkLayer_ptr _link)
+        : rc(std::move(_rc)), link(std::move(_link))
     {
     }
   };
@@ -215,9 +216,26 @@ namespace llarp
 
       itr->second = session;
     }
+    if(ShouldConnectTo(router))
+    {
+      auto fn = std::bind(&OutboundSessionMaker::DoEstablish, this, router);
+      _logic->queue_func(fn);
+    }
+  }
 
-    auto fn = std::bind(&OutboundSessionMaker::DoEstablish, this, router);
-    _logic->queue_func(fn);
+  bool
+  OutboundSessionMaker::ShouldConnectTo(const RouterID &router) const
+  {
+    size_t numPending = 0;
+    {
+      util::Lock lock(&_mutex);
+      if(pendingSessions.find(router) == pendingSessions.end())
+        numPending += pendingSessions.size();
+    }
+    if(_linkManager->HasSessionTo(router))
+      return false;
+    return _linkManager->NumberOfConnectedRouters() + numPending
+        < maxConnectedRouters;
   }
 
   void

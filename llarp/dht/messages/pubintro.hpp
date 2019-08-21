@@ -3,6 +3,7 @@
 #include <dht/message.hpp>
 #include <service/intro_set.hpp>
 
+#include <utility>
 #include <vector>
 
 namespace llarp
@@ -22,14 +23,14 @@ namespace llarp
       }
 
       PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx,
-                          uint64_t s, const std::vector< Key_t >& exclude = {})
-          : IMessage({}), E(exclude), txID(tx)
+                          uint64_t s, std::vector< Key_t > exclude = {})
+          : IMessage({}), E(std::move(exclude)), txID(tx)
       {
         I = i;
         S = s;
       }
 
-      ~PublishIntroMessage();
+      ~PublishIntroMessage() override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -37,7 +38,7 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
-      virtual bool
+      bool
       HandleMessage(
           llarp_dht_context* ctx,
           std::vector< std::unique_ptr< IMessage > >& replies) const override;

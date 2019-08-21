@@ -3,6 +3,7 @@
 #include <crypto/crypto.hpp>
 #include <util/logic.hpp>
 #include <array>
+#include <utility>
 
 namespace llarp
 {
@@ -11,10 +12,10 @@ namespace llarp
     Proxy::Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic,
                  llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
                  IQueryHandler* h)
-        : m_ServerLoop(serverLoop)
-        , m_ClientLoop(clientLoop)
-        , m_ServerLogic(serverLogic)
-        , m_ClientLogic(clientLogic)
+        : m_ServerLoop(std::move(serverLoop))
+        , m_ClientLoop(std::move(clientLoop))
+        , m_ServerLogic(std::move(serverLogic))
+        , m_ClientLogic(std::move(clientLogic))
         , m_QueryHandler(h)
     {
       m_Client.user     = this;

@@ -1,5 +1,6 @@
 #include <dht/context.hpp>
 
+#include <memory>
 #include <util/bencode.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
@@ -46,29 +47,29 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'F':
-              msg.reset(new FindIntroMessage(From, relayed));
+              msg = std::make_unique< FindIntroMessage >(From, relayed);
               break;
             case 'R':
               if(relayed)
-                msg.reset(new RelayedFindRouterMessage(From));
+                msg = std::make_unique< RelayedFindRouterMessage >(From);
               else
-                msg.reset(new FindRouterMessage(From));
+                msg = std::make_unique< FindRouterMessage >(From);
               break;
             case 'S':
-              msg.reset(new GotRouterMessage(From, relayed));
+              msg = std::make_unique< GotRouterMessage >(From, relayed);
               break;
             case 'I':
-              msg.reset(new PublishIntroMessage());
+              msg = std::make_unique< PublishIntroMessage >();
               break;
             case 'G':
               if(relayed)
               {
-                msg.reset(new RelayedGotIntroMessage());
+                msg = std::make_unique< RelayedGotIntroMessage >();
                 break;
               }
               else
               {
-                msg.reset(new GotIntroMessage(From));
+                msg = std::make_unique< GotIntroMessage >(From);
                 break;
               }
             default:

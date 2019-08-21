@@ -18,7 +18,7 @@ namespace llarp
       {
       }
 
-      ~StreamPublisher() = default;
+      ~StreamPublisher() override = default;
 
       void
       publish(const Sample& values) override;

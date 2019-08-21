@@ -4,6 +4,7 @@
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <util/buffer.hpp>
+#include <utility>
 #include <util/mem.h>
 #include <util/threadpool.h>
 
@@ -60,8 +61,7 @@ namespace llarp
     static void
     Decrypt(void* user)
     {
-      AsyncFrameDecrypter< User >* ctx =
-          static_cast< AsyncFrameDecrypter< User >* >(user);
+      auto* ctx = static_cast< AsyncFrameDecrypter< User >* >(user);
 
       if(ctx->target.DecryptInPlace(ctx->seckey))
       {
@@ -75,7 +75,7 @@ namespace llarp
     }
 
     AsyncFrameDecrypter(const SecretKey& secretkey, DecryptHandler h)
-        : result(h), seckey(secretkey)
+        : result(std::move(h)), seckey(secretkey)
     {
     }
 

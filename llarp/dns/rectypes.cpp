@@ -5,9 +5,7 @@ namespace llarp
 {
   namespace dns
   {
-    record::~record()
-    {
-    }
+    record::~record() = default;
 
     bool
     record::parse(std::vector< byte_t > bytes)

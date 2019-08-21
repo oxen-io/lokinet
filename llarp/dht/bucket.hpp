@@ -19,7 +19,8 @@ namespace llarp
       using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
       using Random_t        = std::function< uint64_t() >;
 
-      Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r)
+      Bucket(const Key_t& us, Random_t r)
+          : nodes(XorMetric(us)), random(std::move(r))
       {
       }
 
@@ -29,7 +30,7 @@ namespace llarp
         util::StatusObject obj{};
         for(const auto& item : nodes)
         {
-          obj.Put(item.first.ToHex(), item.second.ExtractStatus());
+          obj[item.first.ToString()] = item.second.ExtractStatus();
         }
         return obj;
       }

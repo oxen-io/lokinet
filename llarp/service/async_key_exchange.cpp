@@ -4,20 +4,18 @@
 #include <crypto/types.hpp>
 #include <util/logic.hpp>
 #include <util/memfn.hpp>
+#include <utility>
 
 namespace llarp
 {
   namespace service
   {
-    AsyncKeyExchange::AsyncKeyExchange(std::shared_ptr< Logic > l,
-                                       const ServiceInfo& r,
-                                       const Identity& localident,
-                                       const PQPubKey& introsetPubKey,
-                                       const Introduction& remote,
-                                       IDataHandler* h, const ConvoTag& t,
-                                       ProtocolType proto)
-        : logic(l)
-        , m_remote(r)
+    AsyncKeyExchange::AsyncKeyExchange(
+        std::shared_ptr< Logic > l, ServiceInfo r, const Identity& localident,
+        const PQPubKey& introsetPubKey, const Introduction& remote,
+        IDataHandler* h, const ConvoTag& t, ProtocolType proto)
+        : logic(std::move(l))
+        , m_remote(std::move(r))
         , m_LocalIdentity(localident)
         , introPubKey(introsetPubKey)
         , remoteIntro(remote)
@@ -30,7 +28,7 @@ namespace llarp
     void
     AsyncKeyExchange::Result(void* user)
     {
-      AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
+      auto* self = static_cast< AsyncKeyExchange* >(user);
       // put values
       self->handler->PutSenderFor(self->msg.tag, self->m_remote, false);
       self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
@@ -43,7 +41,7 @@ namespace llarp
     void
     AsyncKeyExchange::Encrypt(void* user)
     {
-      AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
+      auto* self = static_cast< AsyncKeyExchange* >(user);
       // derive ntru session key component
       SharedSecret K;
       auto crypto = CryptoManager::instance();

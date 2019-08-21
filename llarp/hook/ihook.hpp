@@ -26,9 +26,7 @@ namespace llarp
 
     using Backend_ptr = std::shared_ptr< IBackend >;
 
-    inline IBackend::~IBackend()
-    {
-    }
+    inline IBackend::~IBackend() = default;
   }  // namespace hooks
 }  // namespace llarp
 
