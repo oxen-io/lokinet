@@ -1,6 +1,8 @@
 #ifndef LLARP_ROUTER_I_OUTBOUND_MESSAGE_HANDLER_HPP
 #define LLARP_ROUTER_I_OUTBOUND_MESSAGE_HANDLER_HPP
 
+#include <util/status.hpp>
+
 #include <cstdint>
 #include <functional>
 
@@ -18,11 +20,6 @@ namespace llarp
 
   struct ILinkMessage;
   struct RouterID;
-
-  namespace util
-  {
-    struct StatusObject;
-  }
 
   using SendStatusHandler = std::function< void(SendStatus) >;
 

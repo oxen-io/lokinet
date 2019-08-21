@@ -272,30 +272,30 @@ namespace llarp
                      [](const auto& hop) -> util::StatusObject {
                        return hop.ExtractStatus();
                      });
-      obj.Put("hops", hopsObj);
+      obj["hops"] = hopsObj;
 
       switch(_status)
       {
         case ePathBuilding:
-          obj.Put("status", "building");
+          obj["status"] = "building";
           break;
         case ePathEstablished:
-          obj.Put("status", "established");
+          obj["status"] = "established";
           break;
         case ePathTimeout:
-          obj.Put("status", "timeout");
+          obj["status"] = "timeout";
           break;
         case ePathExpired:
-          obj.Put("status", "expired");
+          obj["status"] = "expired";
           break;
         case ePathFailed:
-          obj.Put("status", "failed");
+          obj["status"] = "failed";
           break;
         case ePathIgnore:
-          obj.Put("status", "ignored");
+          obj["status"] = "ignored";
           break;
         default:
-          obj.Put("status", "unknown");
+          obj["status"] = "unknown";
           break;
       }
       return obj;

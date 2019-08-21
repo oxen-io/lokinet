@@ -15,9 +15,9 @@ namespace llarp
                      [](const auto& intro) -> util::StatusObject {
                        return intro.ExtractStatus();
                      });
-      obj.Put("intros", introsObjs);
+      obj["intros"] = introsObjs;
       if(!topic.IsZero())
-        obj.Put("topic", topic.ToString());
+        obj["topic"] = topic.ToString();
       return obj;
     }
 
