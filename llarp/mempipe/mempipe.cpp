@@ -2,6 +2,7 @@
 #include <messages/discard.hpp>
 #include <util/logic.hpp>
 #include <util/time.hpp>
+#include <ev/pipe.hpp>
 
 namespace llarp
 {
@@ -18,9 +19,8 @@ namespace llarp
       using SendEvent = std::tuple< RouterID, RouterID, std::vector< byte_t >,
                                     ILinkSession::CompletionHandler >;
 
-      std::deque< SendEvent > _sendQueue;
-
       /// (src, dst, session, hook)
+      std::vector< SendEvent > _sendQueue;
       using NodeConnection_t = std::tuple< RouterID, RouterID >;
 
       struct NodeConnectionHash
@@ -76,7 +76,10 @@ namespace llarp
       void
       CallLater(std::function< void(void) > f)
       {
-        m_Logic->call_later(10, f);
+        if(m_Logic && f)
+          m_Logic->queue_func(f);
+        else if(f)
+          LogError("dropping call");
       }
 
       bool
@@ -88,34 +91,38 @@ namespace llarp
       Pump() LOCKS_EXCLUDED(_access);
 
       void
-      Start()
+      Start(llarp_ev_loop_ptr loop)
       {
+        evloop = loop;
         m_Run.store(true);
-        m_Thread = new std::thread{[&]() {
+        std::promise< void > p;
+        m_Thread = std::make_unique< std::thread >([&]() {
+          LogDebug("mempipe started");
           m_Logic = std::make_shared< Logic >();
+          p.set_value();
           while(m_Run.load())
           {
-            Pump();
             m_Logic->tick(time_now_ms());
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            Pump();
           }
-          m_Logic = nullptr;
-        }};
+          m_Logic->stop();
+        });
+        p.get_future().wait();
+        LogDebug("mempipe up");
       }
 
       ~MempipeContext()
       {
         m_Run.store(false);
         if(m_Thread)
-        {
           m_Thread->join();
-          delete m_Thread;
-        }
       }
 
       std::atomic< bool > m_Run;
-      std::shared_ptr< Logic > m_Logic = nullptr;
-      std::thread* m_Thread            = nullptr;
+      std::shared_ptr< Logic > m_Logic;
+      std::unique_ptr< std::thread > m_Thread = nullptr;
+      llarp_ev_loop_ptr evloop                = nullptr;
     };
 
     using Globals_ptr = std::unique_ptr< MempipeContext >;
@@ -123,15 +130,21 @@ namespace llarp
     Globals_ptr _globals;
 
     struct MemSession : public ILinkSession,
+                        public llarp_ev_pkt_pipe,
                         public std::enable_shared_from_this< MemSession >
     {
-      MemSession(LinkLayer_ptr _local, LinkLayer_ptr _remote)
-          : remote(std::move(_remote)), parent(std::move(_local))
+      MemSession(llarp_ev_loop_ptr ev, LinkLayer_ptr _local,
+                 LinkLayer_ptr _remote, bool inbound)
+          : llarp_ev_pkt_pipe(ev)
+          , remote{std::move(_remote)}
+          , parent{std::move(_local)}
+          , isInbound{inbound}
       {
       }
 
       LinkLayer_ptr remote;
       LinkLayer_ptr parent;
+      const bool isInbound;
 
       util::Mutex _access;
 
@@ -158,6 +171,15 @@ namespace llarp
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
         return SendMessageBuffer(buf, nullptr);
+      }
+
+      void
+      OnRead(const llarp_buffer_t& pkt) override
+      {
+        std::vector< byte_t > buf;
+        buf.resize(pkt.sz);
+        std::copy_n(pkt.base, pkt.sz, buf.begin());
+        Recv(std::move(buf));
       }
 
       void
@@ -218,6 +240,7 @@ namespace llarp
 
       void Tick(llarp_time_t) override
       {
+        Pump();
       }
 
       void
@@ -265,9 +288,16 @@ namespace llarp
       void
       Start() override
       {
+        if(!StartPipe())
+          return;
+        if(isInbound)
+          return;
+        LogDebug("outbound start");
         auto self = shared_from_this();
-        _globals->CallLater(
-            [=]() { _globals->InboundConnection(self->GetPubKey(), self); });
+        _globals->CallLater([=]() {
+          LogDebug("Called inbound connection");
+          _globals->InboundConnection(self->GetPubKey(), self);
+        });
       }
 
       bool
@@ -349,15 +379,48 @@ namespace llarp
       }
 
       void
+      Pump() override
+      {
+        LogDebug("memlink pump");
+        std::set< RouterID > sessions;
+        {
+          Lock l(&m_AuthedLinksMutex);
+          auto itr = m_AuthedLinks.begin();
+          while(itr != m_AuthedLinks.end())
+          {
+            sessions.insert(itr->first);
+            ++itr;
+          }
+        }
+        ILinkLayer::Pump();
+        {
+          Lock l(&m_AuthedLinksMutex);
+          for(const auto& pk : sessions)
+          {
+            if(m_AuthedLinks.count(pk) == 0)
+            {
+              // all sessions were removed
+              SessionClosed(pk);
+            }
+          }
+        }
+      }
+
+      void
       RecvFrom(const llarp::Addr&, const void*, size_t) override
       {
       }
 
       bool
-      Configure(llarp_ev_loop_ptr, const std::string&, int, uint16_t) override
+      Configure(llarp_ev_loop_ptr ev, const std::string&, int,
+                uint16_t) override
       {
+        m_Loop = ev;
         if(_globals == nullptr)
+        {
           _globals = std::make_unique< MempipeContext >();
+          _globals->Start(ev);
+        }
         return _globals != nullptr;
       }
 
@@ -370,7 +433,8 @@ namespace llarp
         auto remote = _globals->FindNode(rc.pubkey);
         if(remote == nullptr)
           return nullptr;
-        return std::make_shared< MemSession >(shared_from_this(), remote);
+        return std::make_shared< MemSession >(m_Loop, shared_from_this(),
+                                              remote, false);
       }
 
       bool
@@ -416,6 +480,7 @@ namespace llarp
     {
       util::Lock lock(&_access);
       _nodes.emplace(RouterID(ptr->GetOurRC().pubkey), ptr);
+      LogInfo("add mempipe node: ", RouterID(ptr->GetOurRC().pubkey));
     }
 
     bool
@@ -433,19 +498,30 @@ namespace llarp
     MempipeContext::InboundConnection(const RouterID to,
                                       const std::shared_ptr< MemSession >& ob)
     {
+      LogDebug("inbound connect to ", to, " from ",
+               RouterID(ob->parent->GetOurRC().pubkey));
       std::shared_ptr< MemSession > other;
       {
         util::Lock lock(&_access);
         auto itr = _nodes.find(to);
         if(itr != _nodes.end())
         {
-          other = std::make_shared< MemSession >(itr->second, ob->parent);
+          other = std::make_shared< MemSession >(evloop, itr->second,
+                                                 ob->parent, true);
         }
       }
       if(other)
       {
         ConnectNode(other->GetPubKey(), ob->GetPubKey(), other);
         ConnectNode(ob->GetPubKey(), other->GetPubKey(), ob);
+        ob->parent->logic()->queue_func([ob]() {
+          ob->parent->MapAddr(RouterID{ob->GetPubKey()}, ob.get());
+          ob->parent->SessionEstablished(ob.get());
+        });
+        other->parent->logic()->queue_func([other]() {
+          other->parent->MapAddr(RouterID{other->GetPubKey()}, other.get());
+          other->parent->SessionEstablished(other.get());
+        });
       }
       else
       {
@@ -457,6 +533,7 @@ namespace llarp
     MempipeContext::ConnectNode(const RouterID src, const RouterID dst,
                                 const std::shared_ptr< MemSession >& session)
     {
+      LogDebug("connect ", src, " to ", dst);
       util::Lock lock(&_access);
       _connections.emplace(std::make_pair(std::make_tuple(src, dst), session));
     }
@@ -464,6 +541,7 @@ namespace llarp
     void
     MempipeContext::DisconnectNode(const RouterID src, const RouterID dst)
     {
+      LogDebug("connect ", src, " from ", dst);
       util::Lock lock(&_access);
       _connections.erase({src, dst});
     }
@@ -507,27 +585,28 @@ namespace llarp
     void
     MempipeContext::Pump()
     {
-      std::deque< SendEvent > q;
+      std::vector< SendEvent > q;
       {
         util::Lock lock(&_access);
         q = std::move(_sendQueue);
       }
-      while(q.size())
+      for(auto& f : q)
       {
-        const auto& f = q.front();
+        ILinkSession::DeliveryStatus status =
+            ILinkSession::DeliveryStatus::eDeliveryDropped;
         {
           util::Lock lock(&_access);
           auto itr = _connections.find({std::get< 0 >(f), std::get< 1 >(f)});
-          ILinkSession::DeliveryStatus status =
-              ILinkSession::DeliveryStatus::eDeliveryDropped;
           if(itr != _connections.end())
           {
-            status = ILinkSession::DeliveryStatus::eDeliverySuccess;
-            itr->second->Recv(std::get< 2 >(f));
+            const llarp_buffer_t pkt{std::get< 2 >(f)};
+            if(itr->second->Write(pkt))
+              status = ILinkSession::DeliveryStatus::eDeliverySuccess;
           }
-          CallLater(std::bind(std::get< 3 >(f), status));
         }
-        q.pop_front();
+        LogDebug(std::get< 0 >(f), "->", std::get< 1 >(f),
+                 " status=", (int)status);
+        CallLater(std::bind(std::get< 3 >(f), status));
       }
     }
   }  // namespace mempipe

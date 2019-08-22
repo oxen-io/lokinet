@@ -10,7 +10,7 @@ struct llarp_ev_pkt_pipe : public llarp::ev_io
 
   /// start the pipe, initialize fds
   bool
-  Start();
+  StartPipe();
 
   /// write to the pipe from outside the event loop
   /// returns true on success

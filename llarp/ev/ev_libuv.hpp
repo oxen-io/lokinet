@@ -1,6 +1,7 @@
 #ifndef LLARP_EV_LIBUV_HPP
 #define LLARP_EV_LIBUV_HPP
 #include <ev/ev.hpp>
+#include <ev/pipe.hpp>
 #include <uv.h>
 #include <vector>
 #include <functional>
@@ -67,6 +68,9 @@ namespace libuv
 
     bool
     tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr) override;
+
+    bool
+    add_pipe(llarp_ev_pkt_pipe* p) override;
 
     llarp::ev_io*
     bind_tcp(llarp_tcp_acceptor*, const sockaddr*) override
