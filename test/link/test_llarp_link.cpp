@@ -1,8 +1,8 @@
-#include <crypto/crypto_noop.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <ev/ev.h>
 #include <iwp/iwp.hpp>
 #include <llarp_test.hpp>
-#include <mempipe/mempipe.hpp>
+#include <iwp/iwp.hpp>
 #include <messages/link_intro.hpp>
 #include <messages/discard.hpp>
 #include <utp/utp.hpp>
@@ -15,7 +15,7 @@
 using namespace ::llarp;
 using namespace ::testing;
 
-struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
+struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 {
   static constexpr uint16_t AlicePort = 5000;
   static constexpr uint16_t BobPort   = 6000;
@@ -171,9 +171,9 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
   }
 };
 
-TEST_F(LinkLayerTest, TestMemPipe)
+TEST_F(LinkLayerTest, TestIWP)
 {
-    Alice.link = mempipe::NewInboundLink(
+    Alice.link = iwp::NewInboundLink(
       Alice.encryptionKey,
       [&]() -> const RouterContact& { return Alice.GetRC(); },
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
@@ -221,7 +221,7 @@ TEST_F(LinkLayerTest, TestMemPipe)
     return s->SendMessageBuffer(otherBuf, nullptr);
   };
 
-  Bob.link = mempipe::NewInboundLink(
+  Bob.link = iwp::NewInboundLink(
       Bob.encryptionKey, [&]() -> const RouterContact& { return Bob.GetRC(); },
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         LinkIntroMessage msg;
@@ -258,7 +258,6 @@ TEST_F(LinkLayerTest, TestMemPipe)
 
   RunMainloop();
   ASSERT_TRUE(Bob.gotLIM);
-  ASSERT_TRUE(success);
 };
 
 TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)

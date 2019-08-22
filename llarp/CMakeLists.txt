@@ -176,15 +176,15 @@ set(LIB_SRC
   handlers/null.cpp
   handlers/tun.cpp
   hook/shell.cpp
-  iwp/linklayer.cpp
-  iwp/outermessage.cpp
   iwp/iwp.cpp
+  iwp/linklayer.cpp
+  iwp/message_buffer.cpp
+  iwp/session.cpp
   link/factory.cpp
   link/i_link_manager.cpp
   link/link_manager.cpp
   link/server.cpp
   link/session.cpp
-  mempipe/mempipe.cpp
   messages/dht_immediate.cpp
   messages/discard.cpp
   messages/link_intro.cpp

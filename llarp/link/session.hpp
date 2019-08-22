@@ -27,7 +27,7 @@ namespace llarp
 
     /// hook for utp for when we have established a connection
     virtual void
-    OnLinkEstablished(ILinkLayer *p) = 0;
+    OnLinkEstablished(ILinkLayer *){};
 
     /// called every event loop tick
     virtual void
@@ -49,6 +49,13 @@ namespace llarp
 
     virtual void
     Close() = 0;
+
+    /// recv packet on low layer
+    /// not used by utp
+    virtual void
+    Recv_LL(const llarp_buffer_t &)
+    {
+    }
 
     /// send a keepalive to the remote endpoint
     virtual bool

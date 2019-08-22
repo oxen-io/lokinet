@@ -1,6 +1,6 @@
 #include <link/factory.hpp>
+#include <iwp/iwp.hpp>
 #include <utp/utp.hpp>
-#include <mempipe/mempipe.hpp>
 
 namespace llarp
 {
@@ -41,10 +41,10 @@ namespace llarp
         if(permitInbound)
           return llarp::utp::NewInboundLink;
         return llarp::utp::NewOutboundLink;
-      case LinkType::eLinkMempipe:
+      case LinkType::eLinkIWP:
         if(permitInbound)
-          return llarp::mempipe::NewInboundLink;
-        return llarp::mempipe::NewOutboundLink;
+          return llarp::iwp::NewInboundLink;
+        return llarp::iwp::NewOutboundLink;
       default:
         return nullptr;
     }
