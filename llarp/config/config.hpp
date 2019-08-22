@@ -118,7 +118,7 @@ namespace llarp
     int m_workerThreads = 1;
     int m_numNetThreads = 1;
 
-    std::string m_DefaultLinkProto = "utp";
+    std::string m_DefaultLinkProto = "iwp";
 
    public:
     // clang-format off
