@@ -11,7 +11,7 @@ namespace llarp
 
     OutboundMessage::OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
                                      ILinkSession::CompletionHandler handler)
-        : m_Size{std::min(pkt.sz, MAX_LINK_MSG_SIZE)}
+        : m_Size{(uint16_t)std::min(pkt.sz, MAX_LINK_MSG_SIZE)}
         , m_MsgID{msgid}
         , m_Completed{handler}
     {
@@ -124,9 +124,17 @@ namespace llarp
     std::vector< byte_t >
     InboundMessage::ACKS() const
     {
-      std::vector< byte_t > acks{
-          LLARP_PROTO_VERSION,       Command::eACKS, 0, 0, 0, 0, 0, 0, 0, 0,
-          uint8_t{m_Acks.to_ulong()}};
+      std::vector< byte_t > acks{LLARP_PROTO_VERSION,
+                                 Command::eACKS,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 0,
+                                 uint8_t{(uint8_t)m_Acks.to_ulong()}};
 
       htobe64buf(acks.data() + 2, m_MsgID);
       return acks;
