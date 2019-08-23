@@ -906,7 +906,7 @@ namespace llarp
       LogError("failed to save RC");
       return false;
     }
-
+    _outboundSessionMaker.SetOurRouter(pubkey());
     if(!_linkManager.StartLinks(_logic))
     {
       LogWarn("One or more links failed to start.");

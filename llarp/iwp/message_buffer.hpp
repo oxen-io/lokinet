@@ -21,8 +21,10 @@ namespace llarp
       eDATA = 2,
       /// acknolege fragments
       eACKS = 3,
+      /// negative ack
+      eNACK = 4,
       /// close session
-      eCLOS = 4
+      eCLOS = 5
     };
 
     static constexpr size_t FragmentSize = 1024;
@@ -30,26 +32,27 @@ namespace llarp
     struct OutboundMessage
     {
       OutboundMessage();
-      OutboundMessage(uint64_t msgid, const llarp_buffer_t& pkt,
+      OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
                       ILinkSession::CompletionHandler handler);
 
       AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
-      uint16_t m_Size = 0;
+      uint16_t m_Size  = 0;
       uint64_t m_MsgID = 0;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
       ILinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0;
 
-      std::vector<byte_t>
+      std::vector< byte_t >
       XMIT() const;
 
       void
       Ack(byte_t bitmask);
 
-      void 
-      FlushUnAcked(std::function<void(const llarp_buffer_t &)> sendpkt, llarp_time_t now);
+      void
+      FlushUnAcked(std::function< void(const llarp_buffer_t &) > sendpkt,
+                   llarp_time_t now);
 
-      bool 
+      bool
       ShouldFlush(llarp_time_t now) const;
 
       void
@@ -66,29 +69,29 @@ namespace llarp
 
       AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
       ShortHash m_Digset;
-      uint16_t m_Size = 0;
-      uint64_t m_MsgID = 0;
+      uint16_t m_Size            = 0;
+      uint64_t m_MsgID           = 0;
       llarp_time_t m_LastACKSent = 0;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void
-      HandleData(uint16_t idx, const byte_t * ptr);
+      HandleData(uint16_t idx, const byte_t *ptr);
 
-      bool 
+      bool
       IsCompleted() const;
 
-      bool 
+      bool
       Verify() const;
 
-      bool 
+      bool
       ShouldSendACKS(llarp_time_t now) const;
 
-      void 
-      SendACKS(std::function<void(const llarp_buffer_t &)> sendpkt, llarp_time_t now);
+      void
+      SendACKS(std::function< void(const llarp_buffer_t &) > sendpkt,
+               llarp_time_t now);
 
-      std::vector<byte_t>
+      std::vector< byte_t >
       ACKS() const;
-
     };
 
   }  // namespace iwp

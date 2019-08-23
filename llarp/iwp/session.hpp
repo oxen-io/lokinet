@@ -97,7 +97,7 @@ namespace llarp
       {
         /// we have no data recv'd
         Initial,
-        /// we are in introduction/intro ack phase
+        /// we are in introduction phase
         Introduction,
         /// we sent our LIM
         LinkIntro,
@@ -120,7 +120,7 @@ namespace llarp
       /// session key
       SharedSecret m_SessionKey;
       /// session token
-      AlignedBuffer<16> token;
+      AlignedBuffer< 24 > token;
 
       PubKey m_RemoteOnionKey;
 
@@ -142,46 +142,46 @@ namespace llarp
       HandleCreateSessionRequest(const llarp_buffer_t& buf);
 
       void
-      ProcessSessionRequest(const llarp_buffer_t& buf);
-
-      void
-      ProcessCreateSessionReply(const llarp_buffer_t& buf);
+      HandleAckSession(const llarp_buffer_t& buf);
 
       void
       HandleSessionData(const llarp_buffer_t& buf);
 
-      bool 
-      DecryptMessage(const llarp_buffer_t & buf, std::vector<byte_t> & result);
+      bool
+      DecryptMessage(const llarp_buffer_t& buf, std::vector< byte_t >& result);
 
-      void 
+      void
       GenerateAndSendIntro();
 
       bool
-      GotInboundLIM(const LinkIntroMessage * msg);
-      
-      bool
-      GotOutboundLIM(const LinkIntroMessage * msg);
+      GotInboundLIM(const LinkIntroMessage* msg);
 
       bool
-      GotRenegLIM(const LinkIntroMessage * msg);
-      
+      GotOutboundLIM(const LinkIntroMessage* msg);
+
+      bool
+      GotRenegLIM(const LinkIntroMessage* msg);
+
       void
-      SendOurLIM();
+      SendOurLIM(ILinkSession::CompletionHandler h = nullptr);
 
-      void 
-      HandleXMIT(std::vector<byte_t> msg);
-    
-      void 
-      HandleDATA(std::vector<byte_t> msg);
+      void
+      HandleXMIT(std::vector< byte_t > msg);
 
-      void 
-      HandleACKS(std::vector<byte_t> msg);
+      void
+      HandleDATA(std::vector< byte_t > msg);
 
-      void 
-      HandlePING(std::vector<byte_t> msg);
+      void
+      HandleACKS(std::vector< byte_t > msg);
 
-      void 
-      HandleCLOS(std::vector<byte_t> msg);
+      void
+      HandleNACK(std::vector< byte_t > msg);
+
+      void
+      HandlePING(std::vector< byte_t > msg);
+
+      void
+      HandleCLOS(std::vector< byte_t > msg);
     };
   }  // namespace iwp
 }  // namespace llarp

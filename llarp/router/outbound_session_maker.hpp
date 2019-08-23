@@ -61,6 +61,12 @@ namespace llarp
          std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
          std::shared_ptr< llarp::thread::ThreadPool > threadpool);
 
+    void
+    SetOurRouter(RouterID r)
+    {
+      us = std::move(r);
+    }
+
     /// always maintain this many connections to other routers
     size_t minConnectedRouters = 4;
     /// hard upperbound limit on the number of router to router connections
@@ -108,6 +114,7 @@ namespace llarp
     std::shared_ptr< Logic > _logic;
     llarp_nodedb *_nodedb;
     std::shared_ptr< llarp::thread::ThreadPool > _threadpool;
+    RouterID us;
   };
 
 }  // namespace llarp

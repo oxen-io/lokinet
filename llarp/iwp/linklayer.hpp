@@ -43,7 +43,14 @@ namespace llarp
       void
       RecvFrom(const Addr &from, const void *buf, size_t sz) override;
 
+      bool
+      MapAddr(const RouterID &pk, ILinkSession *s) override;
+
+      void
+      UnmapAddr(const Addr &addr);
+
      private:
+      std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;
       const bool permitInbound;
     };
 

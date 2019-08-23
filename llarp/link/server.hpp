@@ -186,7 +186,7 @@ namespace llarp
     bool
     GenEphemeralKeys();
 
-    bool
+    virtual bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
     void
