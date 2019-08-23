@@ -171,6 +171,9 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 
 TEST_F(LinkLayerTest, TestIWP)
 {
+#ifdef WIN32
+    GTEST_SKIP();
+#else
     Alice.link = iwp::NewInboundLink(
       Alice.encryptionKey,
       [&]() -> const RouterContact& { return Alice.GetRC(); },
@@ -256,6 +259,7 @@ TEST_F(LinkLayerTest, TestIWP)
 
   RunMainloop();
   ASSERT_TRUE(Bob.gotLIM);
+#endif
 };
 
 TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
