@@ -175,6 +175,7 @@ namespace llarp
     {
       if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
       {
+        LogWarn("too many session for ", pk);
         s->Close();
         return false;
       }

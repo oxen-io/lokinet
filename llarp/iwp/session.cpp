@@ -204,7 +204,7 @@ namespace llarp
     bool
     Session::ShouldPing() const
     {
-      if(m_State == State::Ready || m_State == State::LinkIntro)
+      if(m_State == State::Ready)
       {
         static constexpr llarp_time_t PingInterval = 500;
         const auto now                             = m_Parent->Now();
@@ -451,6 +451,7 @@ namespace llarp
         const llarp_buffer_t pkt{xmit};
         EncryptAndSend(pkt);
       }
+      m_LastRX = m_Parent->Now();
     }
 
     void
