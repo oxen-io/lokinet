@@ -242,8 +242,8 @@ namespace llarp
 
     if(key == "*")
     {
-      m_OutboundLink = {"*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"),
-                        std::move(opts)};
+      m_OutboundLink = std::make_tuple(
+          "*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
     }
     else
     {
