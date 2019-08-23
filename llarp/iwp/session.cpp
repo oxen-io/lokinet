@@ -170,6 +170,8 @@ namespace llarp
       const auto now = m_Parent->Now();
       if(m_State == State::Ready || m_State == State::LinkIntro)
       {
+        if(ShouldPing())
+          SendKeepAlive();
         for(auto itr = m_RXMsgs.begin(); itr != m_RXMsgs.end(); ++itr)
         {
           if(itr->second.ShouldSendACKS(now))
