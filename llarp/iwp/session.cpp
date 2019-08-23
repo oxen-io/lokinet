@@ -504,16 +504,15 @@ namespace llarp
                              m_Parent->Now());
         if(itr->second.Verify())
         {
-          const llarp_buffer_t buf{itr->second.m_Data.data(),
-                                   itr->second.m_Size};
-          LogDebug("got message ", itr->first);
+          auto msg = std::move(itr->second);
+          const llarp_buffer_t buf{msg.m_Data.data(), msg.m_Size};
           m_Parent->HandleMessage(this, buf);
         }
         else
         {
           LogError("hash missmatch for message ", itr->first);
         }
-        m_RXMsgs.erase(itr);
+        m_RXMsgs.erase(rxid);
       }
     }
 
