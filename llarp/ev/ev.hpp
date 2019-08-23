@@ -775,7 +775,10 @@ struct llarp_ev_loop
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
 
   virtual bool
-  add_pipe(llarp_ev_pkt_pipe* p) = 0;
+  add_pipe(llarp_ev_pkt_pipe*)
+  {
+    return false;
+  }
 
   /// register event listener
   virtual bool
