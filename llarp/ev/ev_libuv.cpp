@@ -456,7 +456,7 @@ namespace libuv
       int r = glue->m_Pipe->read(glue->m_Buffer, sizeof(glue->m_Buffer));
       if(r <= 0)
         return;
-      const llarp_buffer_t buf{glue->m_Buffer, size_t{r}};
+      const llarp_buffer_t buf{glue->m_Buffer, static_cast< size_t >(r)};
       glue->m_Pipe->OnRead(buf);
     }
 
