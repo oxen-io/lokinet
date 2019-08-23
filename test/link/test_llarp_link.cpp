@@ -120,7 +120,6 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   void
   SetUp()
   {
-    SetLogLevel(eLogDebug);
     oldRCLifetime               = RouterContact::Lifetime;
     RouterContact::IgnoreBogons = true;
     RouterContact::Lifetime     = 500;
@@ -137,7 +136,6 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     netLoop.reset();
     RouterContact::IgnoreBogons = false;
     RouterContact::Lifetime     = oldRCLifetime;
-    SetLogLevel(eLogInfo);
   }
 
   static void
