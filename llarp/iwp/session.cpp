@@ -192,7 +192,7 @@ namespace llarp
     bool
     Session::GotRenegLIM(const LinkIntroMessage* lim)
     {
-      LogInfo("renegotiate session on ", m_RemoteAddr);
+      LogDebug("renegotiate session on ", m_RemoteAddr);
       return m_Parent->SessionRenegotiate(lim->rc, m_RemoteRC);
     }
 
