@@ -13,7 +13,8 @@ CXX ?= c++
 
 BUILD_TYPE ?= Debug
 
-PYTHON ?= python3
+PYTHON ?= python
+PYTHON3 ?= python3
 
 SETCAP ?= which setcap && setcap cap_net_admin,cap_net_bind_service=+eip
 
@@ -165,7 +166,7 @@ shadow-build: shadow-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
 shadow-run: shadow-build
-	$(PYTHON) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
+	$(PYTHON3) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
 	cp $(SHADOW_PLUGIN) $(REPO)/libshadow-plugin-lokinet.so
 	$(SHADOW_BIN) $(SHADOW_OPTS) $(SHADOW_CONFIG) | $(SHADOW_PARSE)
 
@@ -187,7 +188,7 @@ testnet-build: testnet-configure
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	$(PYTHON) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
+	$(PYTHON3) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 $(TEST_EXE): debug
@@ -279,7 +280,7 @@ docker-kubernetes:
 	docker build -f docker/loki-svc-kubernetes.Dockerfile .
 
 install-pylokinet:
-	cd $(REPO)/contrib/py/pylokinet && $(PYTHON) setup.py install
+	cd $(REPO)/contrib/py/pylokinet && $(PYTHON3) setup.py install
 
 kubernetes-install: install install-pylokinet
 
