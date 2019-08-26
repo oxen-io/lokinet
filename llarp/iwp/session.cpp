@@ -416,25 +416,24 @@ namespace llarp
       {
         case Command::eXMIT:
           HandleXMIT(std::move(result));
-          break;
+          return;
         case Command::eDATA:
           HandleDATA(std::move(result));
-          break;
+          return;
         case Command::eACKS:
           HandleACKS(std::move(result));
-          break;
+          return;
         case Command::ePING:
           HandlePING(std::move(result));
-          break;
+          return;
         case Command::eNACK:
           HandleNACK(std::move(result));
-          break;
+          return;
         case Command::eCLOS:
           HandleCLOS(std::move(result));
-          break;
-        default:
-          LogError("invalid command ", int(result[1]));
+          return;
       }
+      LogError("invalid command ", int(result[1]));
     }
 
     void

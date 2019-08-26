@@ -207,17 +207,30 @@ namespace llarp
     std::unordered_set< std::string > parsed_opts;
     std::string v = tostr(val);
     std::string::size_type idx;
+    static constexpr char delimiter = ',';
+    static const auto strip_spaces  = [](const auto &begin,
+                                        const auto &end) -> std::string {
+      std::string val;
+      std::for_each(begin, end, [&val](const char &ch) {
+        // strip spaces
+        if(::isspace(ch) || ch == delimiter)
+          return;
+        val += ch;
+      });
+      return val;
+    };
+
     do
     {
-      idx = v.find_first_of(',');
+      idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        parsed_opts.insert(v.substr(0, idx));
+        parsed_opts.emplace(strip_spaces(v.begin(), v.begin() + idx));
         v = v.substr(idx + 1);
       }
       else
       {
-        parsed_opts.insert(v);
+        parsed_opts.insert(strip_spaces(v.begin(), v.end()));
       }
     } while(idx != std::string::npos);
     std::unordered_set< std::string > opts;
