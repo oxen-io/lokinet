@@ -4,9 +4,10 @@
 #include <constants/defaults.hpp>
 #include <constants/limits.hpp>
 #include <net/net.hpp>
+#include <router_contact.hpp>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
 #include <util/logger_syslog.hpp>
+#include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/memfn.hpp>
 #include <util/str.hpp>
@@ -29,6 +30,20 @@ namespace llarp
   {
     auto str = tostr(val);
     return std::atoi(str.c_str());
+  }
+
+  absl::optional< bool >
+  setOptBool(string_view val)
+  {
+    if(IsTrueValue(val))
+    {
+      return true;
+    }
+    else if(IsFalseValue(val))
+    {
+      return false;
+    }
+    return {};
   }
 
   void
@@ -139,6 +154,10 @@ namespace llarp
         LogDebug("set to use ", m_numNetThreads, " net threads");
       }
     }
+    if(key == "block-bogons")
+    {
+      m_blockBogons = setOptBool(val);
+    }
   }
 
   void
@@ -146,14 +165,7 @@ namespace llarp
   {
     if(key == "profiling")
     {
-      if(IsTrueValue(val))
-      {
-        m_enableProfiling.emplace(true);
-      }
-      else if(IsFalseValue(val))
-      {
-        m_enableProfiling.emplace(false);
-      }
+      m_enableProfiling = setOptBool(val);
     }
     else if(key == "profiles")
     {
@@ -398,7 +410,9 @@ namespace llarp
     };
 
     if(c.VisitSection(name.c_str(), visitor))
+    {
       return ret;
+    }
 
     return {};
   }
@@ -465,7 +479,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
     return false;
   }
 
-  std::string basepath = "";
+  std::string basepath;
   if(basedir)
   {
     basepath = basedir;
@@ -641,10 +655,14 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   // get ifname
   std::string ifname;
   if(llarp::GetBestNetIF(ifname, AF_INET))
+  {
     f << ifname << "=1090\n";
+  }
   else
+  {
     f << "# could not autodetect network interface\n"
       << "#eth0=1090\n";
+  }
 
   f << std::endl;
 }
@@ -658,7 +676,9 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     auto stream = llarp::util::OpenFileStream< std::ofstream >(
         snappExample_fpath, std::ios::binary);
     if(!stream)
+    {
       return false;
+    }
     auto &example_f = stream.value();
     if(example_f.is_open())
     {
