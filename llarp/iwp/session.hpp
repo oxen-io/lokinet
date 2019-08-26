@@ -17,7 +17,7 @@ namespace llarp
       /// inbound session
       Session(LinkLayer* parent, Addr from);
 
-      ~Session();
+      ~Session() = default;
 
       void
       Pump() override;

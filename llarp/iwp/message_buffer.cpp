@@ -5,10 +5,6 @@ namespace llarp
 {
   namespace iwp
   {
-    OutboundMessage::OutboundMessage() : m_Size{0}
-    {
-    }
-
     OutboundMessage::OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
                                      ILinkSession::CompletionHandler handler)
         : m_Size{(uint16_t)std::min(pkt.sz, MAX_LINK_MSG_SIZE)}
@@ -17,6 +13,8 @@ namespace llarp
     {
       m_Data.Zero();
       std::copy_n(pkt.base, m_Size, m_Data.begin());
+      const llarp_buffer_t buf{m_Data.data(), m_Size};
+      CryptoManager::instance()->shorthash(digest, buf);
     }
 
     std::vector< byte_t >
@@ -26,11 +24,7 @@ namespace llarp
           LLARP_PROTO_VERSION, Command::eXMIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
       htobe16buf(xmit.data() + 2, m_Size);
       htobe64buf(xmit.data() + 4, m_MsgID);
-      const llarp_buffer_t buf{m_Data.data(), m_Size};
-      ShortHash H;
-      CryptoManager::instance()->shorthash(H, buf);
-      std::copy(H.begin(), H.end(), std::back_inserter(xmit));
-      LogDebug("xmit H=", H.ToHex());
+      std::copy(digest.begin(), digest.end(), std::back_inserter(xmit));
       return xmit;
     }
 
@@ -99,10 +93,6 @@ namespace llarp
           return false;
       }
       return true;
-    }
-
-    InboundMessage::InboundMessage() : m_Size{0}
-    {
     }
 
     InboundMessage::InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h)

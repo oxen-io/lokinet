@@ -204,7 +204,7 @@ namespace llarp
   {
     uint16_t proto = 0;
 
-    std::set< std::string > parsed_opts;
+    std::unordered_set< std::string > parsed_opts;
     std::string v = tostr(val);
     std::string::size_type idx;
     do
@@ -220,7 +220,7 @@ namespace llarp
         parsed_opts.insert(v);
       }
     } while(idx != std::string::npos);
-    std::set< std::string > opts;
+    std::unordered_set< std::string > opts;
     /// for each option
     for(const auto &item : parsed_opts)
     {

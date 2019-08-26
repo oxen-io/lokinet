@@ -31,7 +31,7 @@ namespace llarp
 
     struct OutboundMessage
     {
-      OutboundMessage();
+      OutboundMessage() = default;
       OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
                       ILinkSession::CompletionHandler handler);
 
@@ -41,6 +41,7 @@ namespace llarp
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
       ILinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0;
+      ShortHash digest;
 
       std::vector< byte_t >
       XMIT() const;
@@ -64,7 +65,7 @@ namespace llarp
 
     struct InboundMessage
     {
-      InboundMessage();
+      InboundMessage() = default;
       InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h);
 
       AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;

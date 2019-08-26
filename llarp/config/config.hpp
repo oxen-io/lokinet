@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -195,7 +196,7 @@ namespace llarp
     static constexpr int Port          = 2;
     static constexpr int Options       = 3;
 
-    using ServerOptions = std::set< std::string >;
+    using ServerOptions = std::unordered_set< std::string >;
     using LinkInfo = std::tuple< std::string, int, uint16_t, ServerOptions >;
     using Links    = std::vector< LinkInfo >;
 

@@ -33,10 +33,6 @@ namespace llarp
       GotLIM = util::memFn(&Session::GotInboundLIM, this);
     }
 
-    Session::~Session()
-    {
-    }
-
     void
     Session::Send_LL(const llarp_buffer_t& pkt)
     {
@@ -444,6 +440,11 @@ namespace llarp
     void
     Session::HandleNACK(std::vector< byte_t > data)
     {
+      if(data.size() < 10)
+      {
+        LogError("short nack from ", m_RemoteAddr);
+        return;
+      }
       uint64_t txid = bufbe64toh(data.data() + 2);
       LogDebug("got nack on ", txid, " from ", m_RemoteAddr);
       auto itr = m_TXMsgs.find(txid);
