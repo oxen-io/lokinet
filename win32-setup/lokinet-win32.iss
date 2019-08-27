@@ -89,6 +89,7 @@ Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags:
 #endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\lokinet-rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC. The UI has its own bootstrap built-in!

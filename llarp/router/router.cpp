@@ -392,6 +392,11 @@ namespace llarp
     publicOverride     = conf->router.publicOverride();
     ip4addr            = conf->router.ip4addr();
 
+    if(!conf->router.blockBogons().value_or(true))
+    {
+      RouterContact::BlockBogons = false;
+    }
+
     // Lokid Config
     usingSNSeed      = conf->lokid.usingSNSeed;
     ident_keyfile    = conf->lokid.ident_keyfile;
@@ -878,7 +883,7 @@ namespace llarp
           ai.ip   = *publicAddr.addr6();
           ai.port = publicAddr.port();
         }
-        if(IsBogon(ai.ip))
+        if(RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
         _rc.addrs.push_back(ai);
         if(ExitEnabled())
