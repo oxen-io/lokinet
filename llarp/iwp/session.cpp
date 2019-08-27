@@ -504,7 +504,7 @@ namespace llarp
         m_RXMsgs.emplace(
             rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()});
       else
-        LogWarn("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
+        LogDebug("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
     }
 
@@ -522,7 +522,7 @@ namespace llarp
       auto itr      = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
       {
-        LogWarn("no rxid=", rxid, " for ", m_RemoteAddr);
+        LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
         std::vector< byte_t > nack = {
             LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
         htobe64buf(nack.data() + 2, rxid);
@@ -563,7 +563,7 @@ namespace llarp
       auto itr      = m_TXMsgs.find(txid);
       if(itr == m_TXMsgs.end())
       {
-        LogWarn("no txid=", txid, " for ", m_RemoteAddr);
+        LogDebug("no txid=", txid, " for ", m_RemoteAddr);
         return;
       }
       itr->second.Ack(data[10]);
