@@ -1,3 +1,10 @@
+lokinet (0.5.0~pre20190827-2) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * fix log level
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 27 Aug 2019 16:41:25 -0300
+
 lokinet (0.5.0~pre20190827-1) sid; urgency=medium
 
   [ Jeff Becker ]
