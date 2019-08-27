@@ -11,6 +11,8 @@
 #include <util/memfn.hpp>
 #include <util/str.hpp>
 
+#include <absl/strings/strip.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <ios>
@@ -208,29 +210,20 @@ namespace llarp
     std::string v = tostr(val);
     std::string::size_type idx;
     static constexpr char delimiter = ',';
-    static const auto strip_spaces  = [](const auto &begin,
-                                        const auto &end) -> std::string {
-      std::string val;
-      std::for_each(begin, end, [&val](const char &ch) {
-        // strip spaces
-        if(::isspace(ch) || ch == delimiter)
-          return;
-        val += ch;
-      });
-      return val;
-    };
-
     do
     {
       idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        parsed_opts.emplace(strip_spaces(v.begin(), v.begin() + idx));
+        std::string val = v.substr(0, idx);
+        absl::StripAsciiWhitespace(&val);
+        parsed_opts.emplace(std::move(val));
         v = v.substr(idx + 1);
       }
       else
       {
-        parsed_opts.insert(strip_spaces(v.begin(), v.end()));
+        absl::StripAsciiWhitespace(&v);
+        parsed_opts.insert(std::move(v));
       }
     } while(idx != std::string::npos);
     std::unordered_set< std::string > opts;

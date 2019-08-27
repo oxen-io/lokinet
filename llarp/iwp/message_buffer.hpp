@@ -33,6 +33,7 @@ namespace llarp
     {
       OutboundMessage() = default;
       OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
+                      llarp_time_t now,
                       ILinkSession::CompletionHandler handler);
 
       AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
@@ -42,6 +43,7 @@ namespace llarp
       ILinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0;
       ShortHash digest;
+      llarp_time_t m_StartedAt = 0;
 
       std::vector< byte_t >
       XMIT() const;
@@ -61,25 +63,36 @@ namespace llarp
 
       bool
       IsTransmitted() const;
+
+      bool
+      IsTimedOut(llarp_time_t now) const;
+
+      void
+      InformTimeout();
     };
 
     struct InboundMessage
     {
       InboundMessage() = default;
-      InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h);
+      InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h,
+                     llarp_time_t now);
 
       AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
       ShortHash m_Digset;
-      uint16_t m_Size            = 0;
-      uint64_t m_MsgID           = 0;
-      llarp_time_t m_LastACKSent = 0;
+      uint16_t m_Size             = 0;
+      uint64_t m_MsgID            = 0;
+      llarp_time_t m_LastACKSent  = 0;
+      llarp_time_t m_LastActiveAt = 0;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void
-      HandleData(uint16_t idx, const byte_t *ptr);
+      HandleData(uint16_t idx, const byte_t *ptr, llarp_time_t now);
 
       bool
       IsCompleted() const;
+
+      bool
+      IsTimedOut(llarp_time_t now) const;
 
       bool
       Verify() const;

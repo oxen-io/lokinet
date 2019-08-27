@@ -147,15 +147,15 @@ namespace llarp
     Session::SendMessageBuffer(const llarp_buffer_t& buf,
                                ILinkSession::CompletionHandler completed)
     {
+      const auto now   = m_Parent->Now();
       const auto msgid = m_TXID++;
       auto& msg =
-          m_TXMsgs.emplace(msgid, OutboundMessage{msgid, buf, completed})
+          m_TXMsgs.emplace(msgid, OutboundMessage{msgid, buf, now, completed})
               .first->second;
       const auto xmit = msg.XMIT();
       const llarp_buffer_t pkt{xmit};
       EncryptAndSend(pkt);
-      msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this),
-                       m_Parent->Now());
+      msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       LogDebug("send message ", msgid);
       return true;
     }
@@ -168,19 +168,21 @@ namespace llarp
       {
         if(ShouldPing())
           SendKeepAlive();
-        for(auto itr = m_RXMsgs.begin(); itr != m_RXMsgs.end(); ++itr)
+        for(auto& item : m_RXMsgs)
         {
-          if(itr->second.ShouldSendACKS(now))
+          if(item.second.ShouldSendACKS(now))
           {
-            itr->second.SendACKS(util::memFn(&Session::EncryptAndSend, this),
+            item.second.SendACKS(util::memFn(&Session::EncryptAndSend, this),
                                  now);
           }
         }
-        for(auto itr = m_TXMsgs.begin(); itr != m_TXMsgs.end(); ++itr)
+        for(auto& item : m_TXMsgs)
         {
-          if(itr->second.ShouldFlush(now))
-            itr->second.FlushUnAcked(
+          if(item.second.ShouldFlush(now))
+          {
+            item.second.FlushUnAcked(
                 util::memFn(&Session::EncryptAndSend, this), now);
+          }
         }
       }
     }
@@ -229,8 +231,27 @@ namespace llarp
       return now - m_CreatedAt > SessionAliveTimeout;
     }
 
-    void Session::Tick(llarp_time_t)
+    void
+    Session::Tick(llarp_time_t now)
     {
+      // remove pending outbound messsages that timed out
+      // inform waiters
+      auto itr = m_TXMsgs.begin();
+      while(itr != m_TXMsgs.end())
+      {
+        if(itr->second.IsTimedOut(now))
+        {
+          itr->second.InformTimeout();
+          itr = m_TXMsgs.erase(itr);
+        }
+        else
+          ++itr;
+      }
+      // remove pending inbound messages that timed out
+      std::remove_if(m_RXMsgs.begin(), m_RXMsgs.end(),
+                     [now](const auto& item) -> bool {
+                       return item.second.IsTimedOut(now);
+                     });
     }
 
     using Introduction = AlignedBuffer< 64 >;

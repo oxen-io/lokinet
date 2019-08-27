@@ -6,10 +6,12 @@ namespace llarp
   namespace iwp
   {
     OutboundMessage::OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
+                                     llarp_time_t now,
                                      ILinkSession::CompletionHandler handler)
         : m_Size{(uint16_t)std::min(pkt.sz, MAX_LINK_MSG_SIZE)}
         , m_MsgID{msgid}
         , m_Completed{handler}
+        , m_StartedAt{now}
     {
       m_Data.Zero();
       std::copy_n(pkt.base, m_Size, m_Data.begin());
@@ -95,13 +97,35 @@ namespace llarp
       return true;
     }
 
-    InboundMessage::InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h)
-        : m_Digset{std::move(h)}, m_Size{sz}, m_MsgID{msgid}
+    bool
+    OutboundMessage::IsTimedOut(const llarp_time_t now) const
+    {
+      // TODO: make configurable by outbound message deliverer
+      return now > m_StartedAt && now - m_StartedAt > 5000;
+    }
+
+    void
+    OutboundMessage::InformTimeout()
+    {
+      if(m_Completed)
+      {
+        m_Completed(ILinkSession::DeliveryStatus::eDeliveryDropped);
+      }
+      m_Completed = nullptr;
+    }
+
+    InboundMessage::InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h,
+                                   llarp_time_t now)
+        : m_Digset{std::move(h)}
+        , m_Size{sz}
+        , m_MsgID{msgid}
+        , m_LastActiveAt{now}
     {
     }
 
     void
-    InboundMessage::HandleData(uint16_t idx, const byte_t *ptr)
+    InboundMessage::HandleData(uint16_t idx, const byte_t *ptr,
+                               llarp_time_t now)
     {
       if(idx + FragmentSize > MAX_LINK_MSG_SIZE)
         return;
@@ -109,6 +133,7 @@ namespace llarp
       std::copy_n(ptr, FragmentSize, dst);
       m_Acks.set(idx / FragmentSize);
       LogDebug("got fragment ", idx / FragmentSize, " of ", m_Size);
+      m_LastActiveAt = now;
     }
 
     std::vector< byte_t >
