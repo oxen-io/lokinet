@@ -1,3 +1,68 @@
+lokinet (0.5.0~pre20190827-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * initial mempipe implementation
+
+  [ Michael ]
+  * docker-compose fixes
+  * Give explicit names to builds so we know wtf failed
+  * Fix static linking on macOS
+  * Find libatomic fix cmake magics
+  * Fix on compilers which aren't C++11 by default
+  * Replace StatusObject with underlying JSON type
+  * Use ToString instead
+  * Use ToString over ToHex
+  * Dump more info from router contact
+  * replace endl with '\n in config.cpp
+
+  [ Jeff Becker ]
+  * more
+  * initial iwp
+  * default to iwp
+  * update iwp , add NACK
+  * mark alive on nack
+  * don't crash
+  * send keep alive on pump when needed
+  * disable log spew
+  * lower log level for renegotiate
+  * use std::make_tuple
+  * silence clang errors
+  * silence clang errors again
+  * default to no implementation on pipe for pleasing win32
+  * ignore test on win32
+
+  [ Rick V ]
+  * reeeee
+  * header got stripped
+  * fix log colours on old win32 platforms
+  * add new and improved 32-bit lokinet-rcutil to install pkg
+  * override print
+  * ok use clang-format v8
+
+  [ Jeff Becker ]
+  * code review fixes:
+  * more fixups
+
+  [ Michael ]
+  * Partial fixes for shadow
+  * Fix docker-compose isolated network
+
+  [ Rick V ]
+  * sun fix
+
+  [ despair ]
+  * fix cmake (restore crypto opts)
+
+  [ Rick V ]
+  * add native build option
+
+  [ Jeff Becker ]
+  * add likn layer delivery timeout notification for iwp
+  * add forgotten bits
+  * use correct constructor for llarp_buffer_t
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 27 Aug 2019 11:48:39 -0300
+
 lokinet (0.5.0~pre20190814-1) sid; urgency=medium
 
   [ Jeff Becker ]
