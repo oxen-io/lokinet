@@ -26,7 +26,12 @@ include_directories(${LIBUV_INCLUDE_DIRS})
 
 function(check_working_cxx_atomics64 varname)
   set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=c++14")
+  if (EMBEDDED_CFG)
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -m32 -march=i486")
+  else()
+  # CMAKE_CXX_STANDARD does not propagate to cmake compile tests
+    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=c++14")
+  endif()
   check_cxx_source_compiles("
 #include <atomic>
 #include <cstdint>
@@ -62,10 +67,13 @@ function(link_libatomic)
   message(FATAL_ERROR "Host compiler must support 64-bit std::atomic!")
 endfunction()
 
+if(EMBEDDED_CFG)
+  link_libatomic()
+endif()
+
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(FS_LIB stdc++fs)
   get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c ABSOLUTE)
-
   link_libatomic()
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
   find_library(FS_LIB NAMES c++fs c++experimental stdc++fs)
@@ -96,6 +104,9 @@ elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
   set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
   # Apple C++ screws up name decorations in stdc++fs, causing link to fail
   # Samsung does not build c++experimental or c++fs in their Apple libc++ pkgsrc build
+  if (LIBUV_USE_STATIC)
+    link_libraries(-lkstat -lsendfile)
+  endif()
   if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_subdirectory(vendor)
     include_directories("${CMAKE_CURRENT_LIST_DIR}/../vendor/cppbackport-master/lib")
