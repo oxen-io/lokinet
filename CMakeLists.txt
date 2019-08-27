@@ -106,13 +106,10 @@ if(WITH_SHELLHOOKS)
   add_definitions(-DENABLE_SHELLHOOKS)
 endif(WITH_SHELLHOOKS)
 
-add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
-
 # Always build PIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(ABSEIL_DIR vendor/abseil-cpp)
-
 add_subdirectory(vendor/gtest)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(SYSTEM ${ABSEIL_DIR})
@@ -159,6 +156,8 @@ if(AMD_RYZEN_HACK AND USE_AVX2)
   set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
   message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
 endif(AMD_RYZEN_HACK AND USE_AVX2)
+
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
