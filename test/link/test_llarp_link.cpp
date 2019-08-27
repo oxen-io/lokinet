@@ -62,7 +62,7 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
     localLoopBack()
     {
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
+    || (__APPLE__ && __MACH__) || (__sun)
       return "lo0";
 #else
       return "lo";
