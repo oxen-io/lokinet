@@ -23,7 +23,7 @@ namespace llarp
     return defaultID;
   }
 
-  bool RouterContact::IgnoreBogons = false;
+  bool RouterContact::BlockBogons = true;
 
 #ifdef TESTNET
   // 1 minute for testnet
@@ -37,7 +37,7 @@ namespace llarp
   /// an RC inserted long enough ago (30 min) is considered stale and is removed
   llarp_time_t RouterContact::StaleInsertionAge = 30 * 60 * 1000;
 
-  NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
+  NetID::NetID(const byte_t *val)
   {
     size_t len = strnlen(reinterpret_cast< const char * >(val), size());
     std::copy(val, val + len, begin());
@@ -67,6 +67,7 @@ namespace llarp
     llarp_buffer_t strbuf;
     if(!bencode_read_string(buf, &strbuf))
       return false;
+
     if(strbuf.sz > size())
       return false;
 
@@ -106,13 +107,17 @@ namespace llarp
       return false;
 
     std::string nick = Nick();
-    if(nick.size())
+    if(!nick.empty())
     {
       /* write nickname */
       if(!bencode_write_bytestring(buf, "n", 1))
+      {
         return false;
+      }
       if(!bencode_write_bytestring(buf, nick.c_str(), nick.size()))
+      {
         return false;
+      }
     }
 
     /* write encryption pubkey */
@@ -163,9 +168,14 @@ namespace llarp
     util::StatusObject obj{{"lastUpdated", last_updated},
                            {"exit", IsExit()},
                            {"publicRouter", IsPublicRouter()},
-                           {"identity", pubkey.ToHex()}};
+                           {"identity", pubkey.ToString()},
+                           {"addresses", addrs}};
+
     if(HasNick())
-      obj.Put("nickname", Nick());
+    {
+      obj["nickname"] = Nick();
+    }
+
     return obj;
   }
 
@@ -186,9 +196,13 @@ namespace llarp
     {
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
+      {
         return false;
-      if(strbuf.sz > nickname.size())
+      }
+      if(strbuf.sz > llarp::AlignedBuffer< (32) >::size())
+      {
         return false;
+      }
       nickname.Zero();
       std::copy(strbuf.base, strbuf.base + strbuf.sz, nickname.begin());
       return true;
@@ -215,7 +229,7 @@ namespace llarp
   bool
   RouterContact::IsPublicRouter() const
   {
-    return addrs.size() > 0;
+    return !addrs.empty();
   }
 
   bool
@@ -274,7 +288,9 @@ namespace llarp
     signature.Zero();
     last_updated = time_now_ms();
     if(!BEncode(&buf))
+    {
       return false;
+    }
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
     return CryptoManager::instance()->sign(signature, secretkey, buf);
@@ -300,7 +316,7 @@ namespace llarp
     }
     for(const auto &a : addrs)
     {
-      if(IsBogon(a.ip) && !IgnoreBogons)
+      if(IsBogon(a.ip) && BlockBogons)
       {
         llarp::LogError("invalid address info: ", a);
         return false;
@@ -346,17 +362,23 @@ namespace llarp
     std::array< byte_t, MAX_RC_SIZE > tmp;
     llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
+    {
       return false;
+    }
     buf.sz               = buf.cur - buf.base;
     buf.cur              = buf.base;
     const fs::path fpath = std::string(fname); /*  */
     auto optional_f =
         llarp::util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
     if(!optional_f)
+    {
       return false;
+    }
     auto &f = optional_f.value();
     if(!f.is_open())
+    {
       return false;
+    }
     f.write((char *)buf.base, buf.sz);
     return true;
   }
@@ -376,7 +398,9 @@ namespace llarp
     f.seekg(0, std::ios::end);
     auto l = f.tellg();
     if(l > static_cast< std::streamoff >(sizeof tmp))
+    {
       return false;
+    }
     f.seekg(0, std::ios::beg);
     f.read((char *)tmp.data(), l);
     return BDecode(&buf);

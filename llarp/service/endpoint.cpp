@@ -162,8 +162,8 @@ namespace llarp
     util::StatusObject
     Endpoint::ExtractStatus() const
     {
-      auto obj = path::Builder::ExtractStatus();
-      obj.Put("identity", m_Identity.pub.Addr().ToString());
+      auto obj        = path::Builder::ExtractStatus();
+      obj["identity"] = m_Identity.pub.Addr().ToString();
       return m_state->ExtractStatus(obj);
     }
 
@@ -509,7 +509,7 @@ namespace llarp
       {
         auto msg = std::make_shared< routing::DHTMessage >();
         msg->M.emplace_back(
-            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, 1));
+            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, 5));
         return msg;
       }
 

@@ -10,6 +10,7 @@
 
 // these need to be in a specific order
 #include <assert.h>
+#include <stdbool.h>
 #include <net/net.h>
 #include <windows.h>
 #include <iphlpapi.h>

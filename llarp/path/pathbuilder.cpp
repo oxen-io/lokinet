@@ -186,13 +186,11 @@ namespace llarp
       util::StatusObject obj{{"buildStats", m_BuildStats.ExtractStatus()},
                              {"numHops", uint64_t(numHops)},
                              {"numPaths", uint64_t(numPaths)}};
-      std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
-                     std::back_inserter(pathObjs),
+                     std::back_inserter(obj["paths"]),
                      [](const auto& item) -> util::StatusObject {
                        return item.second->ExtractStatus();
                      });
-      obj.Put("paths", pathObjs);
       return obj;
     }
 

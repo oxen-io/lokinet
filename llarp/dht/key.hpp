@@ -37,6 +37,12 @@ namespace llarp
         return rid.ToString();
       }
 
+      std::string
+      ToString() const
+      {
+        return SNode();
+      }
+
       Key_t
       operator^(const Key_t& other) const
       {

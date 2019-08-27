@@ -13,6 +13,7 @@ project(${PROJECT_NAME} C CXX)
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support. Linux only" )
 option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
+option(NATIVE_BUILD "optimise for host system and FPU, may not be portable" )
 if (NOT MSVC)
 option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads")
 endif()
@@ -106,19 +107,16 @@ if(WITH_SHELLHOOKS)
   add_definitions(-DENABLE_SHELLHOOKS)
 endif(WITH_SHELLHOOKS)
 
-add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
+# Always build PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(ABSEIL_DIR vendor/abseil-cpp)
-
 add_subdirectory(vendor/gtest)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(SYSTEM ${ABSEIL_DIR})
 add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
 include_directories(SYSTEM vendor/cxxopts/include)
-
-# Always build PIC
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unknown-warning-option)
@@ -160,39 +158,18 @@ if(AMD_RYZEN_HACK AND USE_AVX2)
   message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
 endif(AMD_RYZEN_HACK AND USE_AVX2)
 
+if(NATIVE_BUILD)
+  message(WARNING "May fail at runtime if the floating-point unit on the target system does not implement required features, some platforms will check this for you")
+  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mtune=native)
+endif()
+
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
+
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-# not supported on Solaris - system libraries are not available as archives
-# LTO is supported only for native builds
-if(STATIC_LINK_RUNTIME)
-  if (NOT SOLARIS)
-    if(NOT CMAKE_CROSSCOMPILING)
-      add_compile_options(-static -flto)
-    else()
-      add_compile_options(-static)
-    endif()
-
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      link_libraries( -static -static-libstdc++ -pthread -flto )
-    elseif(NOT CMAKE_CROSSCOMPILING)
-      # this is messing with release builds
-      add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
-      set(CMAKE_AR "gcc-ar")
-      set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-      set(CMAKE_C_ARCHIVE_FINISH "true")
-      set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-      set(CMAKE_CXX_ARCHIVE_FINISH "true")
-      link_libraries( -flto -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
-    else()
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
-      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    endif()
-  else()
-      link_libraries( -static-libstdc++ -static-libgcc )
- endif()
-endif(STATIC_LINK_RUNTIME)
+include(cmake/static_link.cmake)
 
 if(USE_NETNS)
   add_definitions(-DNETNS=1)

@@ -110,13 +110,11 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    util::StatusObject obj{{"dht", _dht->impl->ExtractStatus()},
-                           {"services", _hiddenServiceContext.ExtractStatus()},
-                           {"exit", _exitContext.ExtractStatus()}};
-
-    obj.Put("links", _linkManager.ExtractStatus());
-
-    return obj;
+    return util::StatusObject{
+        {"dht", _dht->impl->ExtractStatus()},
+        {"services", _hiddenServiceContext.ExtractStatus()},
+        {"exit", _exitContext.ExtractStatus()},
+        {"links", _linkManager.ExtractStatus()}};
   }
 
   bool
@@ -370,9 +368,17 @@ namespace llarp
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
+    const auto linktypename = conf->router.defaultLinkProto();
+    _defaultLinkType        = LinkFactory::TypeFromName(linktypename);
+    if(_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
+    {
+      LogError("failed to set link type to '", linktypename,
+               "' as that is invalid");
+      return false;
+    }
 
     // IWP config
-    m_OutboundPort = conf->iwp_links.outboundPort();
+    m_OutboundPort = std::get< LinksConfig::Port >(conf->links.outboundLink());
     // Router config
     _rc.SetNick(conf->router.nickname());
     _outboundSessionMaker.maxConnectedRouters =
@@ -386,6 +392,11 @@ namespace llarp
     publicOverride     = conf->router.publicOverride();
     ip4addr            = conf->router.ip4addr();
 
+    if(!conf->router.blockBogons().value_or(true))
+    {
+      RouterContact::BlockBogons = false;
+    }
+
     // Lokid Config
     usingSNSeed      = conf->lokid.usingSNSeed;
     ident_keyfile    = conf->lokid.ident_keyfile;
@@ -395,7 +406,7 @@ namespace llarp
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     // TODO: add config flag for "is service node"
-    if(conf->iwp_links.servers().size())
+    if(conf->links.inboundLinks().size())
     {
       m_isServiceNode = true;
     }
@@ -483,15 +494,34 @@ namespace llarp
     }
 
     // create inbound links, if we are a service node
-    for(const auto &serverConfig : conf->iwp_links.servers())
+    for(const auto &serverConfig : conf->links.inboundLinks())
     {
-      auto server = llarp::utp::NewInboundLink(
+      // get default factory
+      auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
+      // for each option if provided ...
+      for(const auto &opt : std::get< LinksConfig::Options >(serverConfig))
+      {
+        // try interpreting it as a link type
+        const auto linktype = LinkFactory::TypeFromName(opt);
+        if(linktype != LinkFactory::LinkType::eLinkUnknown)
+        {
+          // override link factory if it's a valid link type
+          auto factory = LinkFactory::Obtain(linktype, true);
+          if(factory)
+          {
+            inboundLinkFactory = std::move(factory);
+            break;
+          }
+        }
+      }
+
+      auto server = inboundLinkFactory(
           encryption(), util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
+          util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
                       &_outboundSessionMaker),
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                       &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this));
@@ -502,9 +532,9 @@ namespace llarp
         return false;
       }
 
-      const auto &key = std::get< 0 >(serverConfig);
-      int af          = std::get< 1 >(serverConfig);
-      uint16_t port   = std::get< 2 >(serverConfig);
+      const auto &key = std::get< LinksConfig::Interface >(serverConfig);
+      int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
+      uint16_t port   = std::get< LinksConfig::Port >(serverConfig);
       if(!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
@@ -853,7 +883,7 @@ namespace llarp
           ai.ip   = *publicAddr.addr6();
           ai.port = publicAddr.port();
         }
-        if(IsBogon(ai.ip))
+        if(RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
         _rc.addrs.push_back(ai);
         if(ExitEnabled())
@@ -881,7 +911,7 @@ namespace llarp
       LogError("failed to save RC");
       return false;
     }
-
+    _outboundSessionMaker.SetOurRouter(pubkey());
     if(!_linkManager.StartLinks(_logic))
     {
       LogWarn("One or more links failed to start.");
@@ -1069,48 +1099,44 @@ namespace llarp
   bool
   Router::InitOutboundLinks()
   {
-    using LinkFactory = std::function< LinkLayer_ptr(
-        const SecretKey &, GetRCFunc, LinkMessageHandler,
-        SessionEstablishedHandler, SessionRenegotiateHandler, SignBufferFunc,
-        TimeoutHandler, SessionClosedHandler) >;
-
-    static std::list< LinkFactory > linkFactories = {utp::NewOutboundLink,
-                                                     iwp::NewServer};
-
-    bool addedAtLeastOne = false;
-    for(const auto &factory : linkFactories)
+    const auto linkTypeName = LinkFactory::NameFromType(_defaultLinkType);
+    LogInfo("initialize outbound link: ", linkTypeName);
+    auto factory = LinkFactory::Obtain(_defaultLinkType, false);
+    if(factory == nullptr)
     {
-      auto link = factory(
-          encryption(), util::memFn(&AbstractRouter::rc, this),
-          util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-          util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
-                      &_outboundSessionMaker),
-          util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&AbstractRouter::Sign, this),
-          util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
-                      &_outboundSessionMaker),
-          util::memFn(&AbstractRouter::SessionClosed, this));
-
-      if(!link)
-        continue;
-      if(!link->EnsureKeys(transport_keyfile.string().c_str()))
-      {
-        LogError("failed to load ", transport_keyfile);
-        continue;
-      }
-
-      const auto afs = {AF_INET, AF_INET6};
-
-      for(const auto af : afs)
-      {
-        if(!link->Configure(netloop(), "*", af, m_OutboundPort))
-          continue;
-        _linkManager.AddLink(std::move(link), false);
-        addedAtLeastOne = true;
-        break;
-      }
+      LogError("cannot initialize outbound link of type '", linkTypeName,
+               "' as it has no implementation");
+      return false;
     }
-    return addedAtLeastOne;
+    auto link =
+        factory(encryption(), util::memFn(&AbstractRouter::rc, this),
+                util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
+                util::memFn(&AbstractRouter::Sign, this),
+                util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
+                            &_outboundSessionMaker),
+                util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
+                util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
+                            &_outboundSessionMaker),
+                util::memFn(&AbstractRouter::SessionClosed, this));
+
+    if(!link)
+      return false;
+    if(!link->EnsureKeys(transport_keyfile.string().c_str()))
+    {
+      LogError("failed to load ", transport_keyfile);
+      return false;
+    }
+
+    const auto afs = {AF_INET, AF_INET6};
+
+    for(const auto af : afs)
+    {
+      if(!link->Configure(netloop(), "*", af, m_OutboundPort))
+        continue;
+      _linkManager.AddLink(std::move(link), false);
+      return true;
+    }
+    return false;
   }
 
   bool

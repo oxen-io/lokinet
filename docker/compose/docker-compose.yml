@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.4'
 services:
   bootstrap-router:
     build:
@@ -12,10 +12,8 @@ services:
     ports:
       - target: 1090
         protocol: udp
-        mode: host
       - target: 1190
         protocol: tcp
-        mode: host
     volumes:
       - bootstrap-dir:/root/.lokinet/
     environment:
@@ -48,11 +46,41 @@ services:
     networks:
       testing_net:
 
+  client:
+    depends_on:
+      - bootstrap-router
+    build:
+      context: .
+      dockerfile: docker/compose/router.Dockerfile
+    image: router
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    ports:
+      - target: 1090
+        protocol: udp
+        mode: host
+      - target: 1190
+        protocol: tcp
+        mode: host
+      - target: 53
+        protocol: tcp
+        mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - bootstrap-dir:/bootstrap/
+    environment:
+      - LOKINET_NETID=docker
+    networks:
+      testing_net:
+
 volumes:
   bootstrap-dir:
 
 networks:
   testing_net:
+    driver: bridge
+    internal: true
     ipam:
       driver: default
       config:

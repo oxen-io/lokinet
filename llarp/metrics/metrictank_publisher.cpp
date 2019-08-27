@@ -205,7 +205,8 @@ namespace llarp
       publishData(const std::vector< std::string > &toSend,
                   const std::string &host, short port)
       {
-        struct addrinfo hints, *addrs;
+        struct addrinfo hints;
+        struct addrinfo *addrs;
         bzero(&hints, sizeof(hints));
         hints.ai_family   = AF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;

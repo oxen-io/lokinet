@@ -21,9 +21,7 @@ if(NOT MSVC_VERSION)
   # GNU ld sees fit to merge *all* the .ident sections in object files
   # to .r[o]data section one after the other!
   add_compile_options(-fno-ident -Wa,-mbig-obj)
-  find_library(shlwapi_lib shlwapi)
-  find_library(dbghelp_lib dbghelp)
-  link_libraries( ${shlwapi_lib} ${dbghelp_lib} )
+  link_libraries( -lshlwapi -ldbghelp )
   add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
   # Wait a minute, if we're not Microsoft C++, nor a Clang paired with Microsoft C++,
   # then the only possible option has to be GNU or a GNU-linked Clang!
@@ -35,10 +33,7 @@ endif()
 get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
 get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
 add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500)
-
-find_library(ws2_32_lib ws2_32)
-find_library(iphlpapi_lib iphlpapi)
-set(EXE_LIBS ${STATIC_LIB} ${FS_LIB} ${ws2_32_lib} ${iphlpapi_lib})
+set(EXE_LIBS ${STATIC_LIB} ${FS_LIB} ws2_32 iphlpapi)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")

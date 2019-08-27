@@ -160,4 +160,17 @@ namespace llarp
 
     return stream;
   }
+
+  void
+  to_json(nlohmann::json &j, const AddressInfo &a)
+  {
+    char tmp[128] = {0};
+    inet_ntop(AF_INET6, (void *)&a.ip, tmp, sizeof(tmp));
+
+    j = nlohmann::json{{"rank", a.rank},
+                       {"dialect", a.dialect},
+                       {"pubkey", a.pubkey.ToString()},
+                       {"in6_addr", tmp},
+                       {"port", a.port}};
+  }
 }  // namespace llarp

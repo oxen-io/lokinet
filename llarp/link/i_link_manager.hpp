@@ -18,11 +18,6 @@ namespace llarp
   struct IOutboundSessionMaker;
   struct RouterID;
 
-  namespace util
-  {
-    struct StatusObject;
-  }  // namespace util
-
   struct ILinkManager
   {
     virtual ~ILinkManager() = default;

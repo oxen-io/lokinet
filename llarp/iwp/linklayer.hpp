@@ -6,7 +6,6 @@
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
-#include <iwp/outermessage.hpp>
 
 namespace llarp
 {
@@ -14,10 +13,11 @@ namespace llarp
   {
     struct LinkLayer final : public ILinkLayer
     {
-      LinkLayer(const SecretKey &encryptionSecretKey, GetRCFunc getrc,
-                LinkMessageHandler h, SessionEstablishedHandler established,
-                SessionRenegotiateHandler reneg, SignBufferFunc sign,
-                TimeoutHandler timeout, SessionClosedHandler closed);
+      LinkLayer(const SecretKey &routerEncSecret, GetRCFunc getrc,
+                LinkMessageHandler h, SignBufferFunc sign,
+                SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
+                TimeoutHandler timeout, SessionClosedHandler closed,
+                bool permitInbound);
 
       ~LinkLayer() override;
 
@@ -40,41 +40,21 @@ namespace llarp
       uint16_t
       Rank() const override;
 
-      /// verify that a new flow id matches addresses and pubkey
-      bool
-      VerifyFlowID(const PubKey &pk, const Addr &from,
-                   const FlowID_t &flow) const;
-
       void
       RecvFrom(const Addr &from, const void *buf, size_t sz) override;
 
+      bool
+      MapAddr(const RouterID &pk, ILinkSession *s) override;
+
+      void
+      UnmapAddr(const Addr &addr);
+
      private:
-      bool
-      GenFlowIDFor(const PubKey &pk, const Addr &from, FlowID_t &flow) const;
-
-      bool
-      ShouldSendFlowID(const Addr &from) const;
-
-      void
-      SendReject(const Addr &to, const char *msg);
-
-      void
-      SendFlowID(const Addr &to, const FlowID_t &flow);
-
-      using ActiveFlows_t =
-          std::unordered_map< FlowID_t, RouterID, FlowID_t::Hash >;
-
-      ActiveFlows_t m_ActiveFlows;
-
-      using PendingFlows_t = std::unordered_map< Addr, FlowID_t, Addr::Hash >;
-      /// flows that are pending authentication
-      PendingFlows_t m_PendingFlows;
-
-      /// cookie used in flow id computation
-      AlignedBuffer< 32 > m_FlowCookie;
-
-      OuterMessage m_OuterMsg;
+      std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;
+      const bool permitInbound;
     };
+
+    using LinkLayer_ptr = std::shared_ptr< LinkLayer >;
   }  // namespace iwp
 }  // namespace llarp
 

@@ -67,7 +67,7 @@ namespace llarp
   struct RouterContact
   {
     /// for unit tests
-    static bool IgnoreBogons;
+    static bool BlockBogons;
 
     static llarp_time_t Lifetime;
     static llarp_time_t UpdateInterval;
@@ -111,7 +111,7 @@ namespace llarp
     nlohmann::json
     ToJson() const
     {
-      return ExtractStatus().get();
+      return ExtractStatus();
     }
 
     bool
@@ -144,7 +144,7 @@ namespace llarp
     bool
     IsExit() const
     {
-      return exits.size() > 0;
+      return !exits.empty();
     }
 
     bool

@@ -37,10 +37,10 @@ namespace llarp
     util::StatusObject
     BaseSession::ExtractStatus() const
     {
-      auto obj = path::Builder::ExtractStatus();
-      obj.Put("lastExitUse", m_LastUse);
-      auto pub = m_ExitIdentity.toPublic();
-      obj.Put("exitIdentity", pub.ToString());
+      auto obj            = path::Builder::ExtractStatus();
+      obj["lastExitUse"]  = m_LastUse;
+      auto pub            = m_ExitIdentity.toPublic();
+      obj["exitIdentity"] = pub.ToString();
       return obj;
     }
 

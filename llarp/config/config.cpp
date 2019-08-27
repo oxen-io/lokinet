@@ -4,12 +4,15 @@
 #include <constants/defaults.hpp>
 #include <constants/limits.hpp>
 #include <net/net.hpp>
+#include <router_contact.hpp>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
 #include <util/logger_syslog.hpp>
+#include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/memfn.hpp>
 #include <util/str.hpp>
+
+#include <absl/strings/strip.h>
 
 #include <cstdlib>
 #include <fstream>
@@ -31,9 +34,28 @@ namespace llarp
     return std::atoi(str.c_str());
   }
 
+  absl::optional< bool >
+  setOptBool(string_view val)
+  {
+    if(IsTrueValue(val))
+    {
+      return true;
+    }
+    else if(IsFalseValue(val))
+    {
+      return false;
+    }
+    return {};
+  }
+
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
+    if(key == "default-protocol")
+    {
+      m_DefaultLinkProto = tostr(val);
+      LogInfo("overriding default link protocol to '", val, "'");
+    }
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
@@ -139,6 +161,10 @@ namespace llarp
         LogDebug("set to use ", m_numNetThreads, " net threads");
       }
     }
+    if(key == "block-bogons")
+    {
+      m_blockBogons = setOptBool(val);
+    }
   }
 
   void
@@ -146,14 +172,7 @@ namespace llarp
   {
     if(key == "profiling")
     {
-      if(IsTrueValue(val))
-      {
-        m_enableProfiling.emplace(true);
-      }
-      else if(IsFalseValue(val))
-      {
-        m_enableProfiling.emplace(false);
-      }
+      m_enableProfiling = setOptBool(val);
     }
     else if(key == "profiles")
     {
@@ -195,28 +214,31 @@ namespace llarp
   }
 
   void
-  IwpConfig::fromSection(string_view key, string_view val)
+  LinksConfig::fromSection(string_view key, string_view val)
   {
-    // try IPv4 first
     uint16_t proto = 0;
 
-    std::set< std::string > parsed_opts;
+    std::unordered_set< std::string > parsed_opts;
     std::string v = tostr(val);
     std::string::size_type idx;
+    static constexpr char delimiter = ',';
     do
     {
-      idx = v.find_first_of(',');
+      idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        parsed_opts.insert(v.substr(0, idx));
+        std::string val = v.substr(0, idx);
+        absl::StripAsciiWhitespace(&val);
+        parsed_opts.emplace(std::move(val));
         v = v.substr(idx + 1);
       }
       else
       {
-        parsed_opts.insert(v);
+        absl::StripAsciiWhitespace(&v);
+        parsed_opts.insert(std::move(v));
       }
     } while(idx != std::string::npos);
-
+    std::unordered_set< std::string > opts;
     /// for each option
     for(const auto &item : parsed_opts)
     {
@@ -230,15 +252,20 @@ namespace llarp
           proto = port;
         }
       }
+      else
+      {
+        opts.insert(item);
+      }
     }
 
     if(key == "*")
     {
-      m_OutboundPort = proto;
+      m_OutboundLink = std::make_tuple(
+          "*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
     }
     else
     {
-      m_servers.emplace_back(tostr(key), AF_INET, proto);
+      m_InboundLinks.emplace_back(tostr(key), AF_INET, proto, std::move(opts));
     }
   }
 
@@ -398,7 +425,9 @@ namespace llarp
     };
 
     if(c.VisitSection(name.c_str(), visitor))
+    {
       return ret;
+    }
 
     return {};
   }
@@ -435,7 +464,7 @@ namespace llarp
     connect   = find_section< ConnectConfig >(parser, "connect");
     netdb     = find_section< NetdbConfig >(parser, "netdb");
     dns       = find_section< DnsConfig >(parser, "dns");
-    iwp_links = find_section< IwpConfig >(parser, "bind");
+    links     = find_section< LinksConfig >(parser, "bind");
     services  = find_section< ServicesConfig >(parser, "services");
     system    = find_section< SystemConfig >(parser, "system");
     metrics   = find_section< MetricsConfig >(parser, "metrics");
@@ -465,7 +494,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
     return false;
   }
 
-  std::string basepath = "";
+  std::string basepath;
   if(basedir)
   {
     basepath = basedir;
@@ -519,68 +548,67 @@ void
 llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
                             bool isRouter)
 {
-  f << "# this configuration was auto generated with 'sane' defaults"
-    << std::endl;
-  f << "# change these values as desired" << std::endl;
-  f << std::endl << std::endl;
-  f << "[router]" << std::endl;
-  f << "# number of crypto worker threads " << std::endl;
-  f << "threads=4" << std::endl;
-  f << "# path to store signed RC" << std::endl;
-  f << "contact-file=" << basepath << "self.signed" << std::endl;
-  f << "# path to store transport private key" << std::endl;
-  f << "transport-privkey=" << basepath << "transport.private" << std::endl;
-  f << "# path to store identity signing key" << std::endl;
-  f << "ident-privkey=" << basepath << "identity.private" << std::endl;
-  f << "# encryption key for onion routing" << std::endl;
-  f << "encryption-privkey=" << basepath << "encryption.private" << std::endl;
+  f << "# this configuration was auto generated with 'sane' defaults\n";
+  f << "# change these values as desired\n";
+  f << "\n\n";
+  f << "[router]\n";
+  f << "# number of crypto worker threads \n";
+  f << "threads=4\n";
+  f << "# path to store signed RC\n";
+  f << "contact-file=" << basepath << "self.signed\n";
+  f << "# path to store transport private key\n";
+  f << "transport-privkey=" << basepath << "transport.private\n";
+  f << "# path to store identity signing key\n";
+  f << "ident-privkey=" << basepath << "identity.private\n";
+  f << "# encryption key for onion routing\n";
+  f << "encryption-privkey=" << basepath << "encryption.private\n";
   f << std::endl;
   f << "# uncomment following line to set router nickname to 'lokinet'"
     << std::endl;
-  f << "#nickname=lokinet" << std::endl;
+  f << "#nickname=lokinet\n";
   const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
 
-  f << "# maintain min connections to other routers" << std::endl;
+  f << "# maintain min connections to other routers\n";
   f << "min-routers=" << std::to_string(limits.DefaultMinRouters) << std::endl;
-  f << "# hard limit of routers globally we are connected to at any given time"
-    << std::endl;
+  f << "# hard limit of routers globally we are connected to at any given "
+       "time\n";
   f << "max-routers=" << std::to_string(limits.DefaultMaxRouters) << std::endl;
-  f << std::endl << std::endl;
+  f << "\n\n";
 
   // logging
-  f << "[logging]" << std::endl;
-  f << "level=info" << std::endl;
-  f << "# uncomment for logging to file" << std::endl;
-  f << "#type=file" << std::endl;
-  f << "#file=/path/to/logfile" << std::endl;
-  f << "# uncomment for syslog logging" << std::endl;
-  f << "#type=syslog" << std::endl;
+  f << "[logging]\n";
+  f << "level=info\n";
+  f << "# uncomment for logging to file\n";
+  f << "#type=file\n";
+  f << "#file=/path/to/logfile\n";
+  f << "# uncomment for syslog logging\n";
+  f << "#type=syslog\n";
 
   // metrics
-  f << "[metrics]" << std::endl;
-  f << "json-metrics-path=" << basepath << "metrics.json" << std::endl;
+  f << "[metrics]\n";
+  f << "json-metrics-path=" << basepath << "metrics.json\n";
 
-  f << std::endl << std::endl;
+  f << "\n\n";
 
-  f << "# admin api (disabled by default)" << std::endl;
-  f << "[api]" << std::endl;
-  f << "enabled=false" << std::endl;
-  f << "#authkey=insertpubkey1here" << std::endl;
-  f << "#authkey=insertpubkey2here" << std::endl;
-  f << "#authkey=insertpubkey3here" << std::endl;
-  f << "bind=127.0.0.1:1190" << std::endl;
-  f << std::endl << std::endl;
+  f << "# admin api (disabled by default)\n";
+  f << "[api]\n";
+  f << "enabled=false\n";
+  f << "#authkey=insertpubkey1here\n";
+  f << "#authkey=insertpubkey2here\n";
+  f << "#authkey=insertpubkey3here\n";
+  f << "bind=127.0.0.1:1190\n";
+  f << "\n\n";
 
-  f << "# system settings for privileges and such" << std::endl;
-  f << "[system]" << std::endl;
+  f << "# system settings for privileges and such\n";
+  f << "[system]\n";
   f << "user=" << DEFAULT_LOKINET_USER << std::endl;
   f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
-  f << "pidfile=" << basepath << "lokinet.pid" << std::endl;
-  f << std::endl << std::endl;
+  f << "pidfile=" << basepath << "lokinet.pid\n";
+  f << "\n\n";
 
-  f << "# dns provider configuration section" << std::endl;
-  f << "[dns]" << std::endl;
-  f << "# resolver" << std::endl;
+  f << "# dns provider configuration section\n";
+  f << "[dns]\n";
+  f << "# resolver\n";
   f << "upstream=" << DEFAULT_RESOLVER_US << std::endl;
 
 // Make auto-config smarter
@@ -588,65 +616,68 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
 // (probably)
 #ifdef __linux__
 #ifdef ANDROID
-  f << "bind=127.0.0.1:1153" << std::endl;
+  f << "bind=127.0.0.1:1153\n";
 #else
-  f << "bind=127.3.2.1:53" << std::endl;
+  f << "bind=127.3.2.1:53\n";
 #endif
 #else
-  f << "bind=127.0.0.1:53" << std::endl;
+  f << "bind=127.0.0.1:53\n";
 #endif
-  f << std::endl << std::endl;
+  f << "\n\n";
 
-  f << "# network database settings block " << std::endl;
-  f << "[netdb]" << std::endl;
-  f << "# directory for network database skiplist storage" << std::endl;
-  f << "dir=" << basepath << "netdb" << std::endl;
-  f << std::endl << std::endl;
+  f << "# network database settings block \n";
+  f << "[netdb]\n";
+  f << "# directory for network database skiplist storage\n";
+  f << "dir=" << basepath << "netdb\n";
+  f << "\n\n";
 
-  f << "# bootstrap settings" << std::endl;
-  f << "[bootstrap]" << std::endl;
+  f << "# bootstrap settings\n";
+  f << "[bootstrap]\n";
   f << "# add a bootstrap node's signed identity to the list of nodes we want "
-       "to bootstrap from"
-    << std::endl;
-  f << "# if we don't have any peers we connect to this router" << std::endl;
-  f << "add-node=" << basepath << "bootstrap.signed" << std::endl;
+       "to bootstrap from\n";
+  f << "# if we don't have any peers we connect to this router\n";
+  f << "add-node=" << basepath << "bootstrap.signed\n";
   // we only process one of these...
-  // f << "# add another bootstrap node" << std::endl;
-  // f << "#add-node=/path/to/alternative/self.signed" << std::endl;
-  f << std::endl << std::endl;
+  // f << "# add another bootstrap node\n";
+  // f << "#add-node=/path/to/alternative/self.signed\n";
+  f << "\n\n";
 }
 
 void
 llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 {
-  f << "# lokid settings (disabled by default)" << std::endl;
-  f << "[lokid]" << std::endl;
-  f << "enabled=false" << std::endl;
-  f << "jsonrpc=127.0.0.1:22023" << std::endl;
-  f << "#service-node-seed=/path/to/servicenode/seed" << std::endl;
+  f << "# lokid settings (disabled by default)\n";
+  f << "[lokid]\n";
+  f << "enabled=false\n";
+  f << "jsonrpc=127.0.0.1:22023\n";
+  f << "#service-node-seed=/path/to/servicenode/seed\n";
   f << std::endl;
-  f << "# network settings " << std::endl;
-  f << "[network]" << std::endl;
-  f << "profiles=" << basepath << "profiles.dat" << std::endl;
+  f << "# network settings \n";
+  f << "[network]\n";
+  f << "profiles=" << basepath << "profiles.dat\n";
   // better to let the routers auto-configure
-  // f << "ifaddr=auto" << std::endl;
-  // f << "ifname=auto" << std::endl;
-  f << "enabled=true" << std::endl;
-  f << "exit=false" << std::endl;
-  f << "#exit-blacklist=tcp:25" << std::endl;
-  f << "#exit-whitelist=tcp:*" << std::endl;
-  f << "#exit-whitelist=udp:*" << std::endl;
+  // f << "ifaddr=auto\n";
+  // f << "ifname=auto\n";
+  f << "enabled=true\n";
+  f << "exit=false\n";
+  f << "#exit-blacklist=tcp:25\n";
+  f << "#exit-whitelist=tcp:*\n";
+  f << "#exit-whitelist=udp:*\n";
   f << std::endl;
-  f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
-    << std::endl;
-  f << "[bind]" << std::endl;
+  f << "# ROUTERS ONLY: publish network interfaces for handling inbound "
+       "traffic\n";
+  f << "[bind]\n";
   // get ifname
   std::string ifname;
   if(llarp::GetBestNetIF(ifname, AF_INET))
-    f << ifname << "=1090" << std::endl;
+  {
+    f << ifname << "=1090\n";
+  }
   else
-    f << "# could not autodetect network interface" << std::endl
-      << "#eth0=1090" << std::endl;
+  {
+    f << "# could not autodetect network interface\n"
+      << "#eth0=1090\n";
+  }
 
   f << std::endl;
 }
@@ -660,7 +691,9 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     auto stream = llarp::util::OpenFileStream< std::ofstream >(
         snappExample_fpath, std::ios::binary);
     if(!stream)
+    {
       return false;
+    }
     auto &example_f = stream.value();
     if(example_f.is_open())
     {
@@ -676,23 +709,18 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
         return false;
       }
      */
-      example_f << "# this is an example configuration for a snapp"
-                << std::endl;
-      example_f << "[example-snapp]" << std::endl;
+      example_f << "# this is an example configuration for a snapp\n";
+      example_f << "[example-snapp]\n";
       example_f << "# keyfile is the path to the private key of the snapp, "
-                   "your .loki is tied to this key, DON'T LOSE IT"
-                << std::endl;
-      example_f << "keyfile=" << basepath << "example-snap-keyfile.private"
-                << std::endl;
-      example_f << "# ifaddr is the ip range to allocate to this snapp"
-                << std::endl;
+                   "your .loki is tied to this key, DON'T LOSE IT\n";
+      example_f << "keyfile=" << basepath << "example-snap-keyfile.private\n";
+      example_f << "# ifaddr is the ip range to allocate to this snapp\n";
       example_f << "ifaddr=" << ip << std::endl;
       // probably fine to leave this (and not-auto-detect it) I'm not worried
       // about any collisions
       example_f << "# ifname is the name to try and give to the network "
-                   "interface this snap owns"
-                << std::endl;
-      example_f << "ifname=snapp-tun0" << std::endl;
+                   "interface this snap owns\n";
+      example_f << "ifname=snapp-tun0\n";
     }
     else
     {
@@ -700,31 +728,29 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     }
   }
   // now do up fname
-  f << std::endl << std::endl;
-  f << "# snapps configuration section" << std::endl;
-  f << "[services]" << std::endl;
-  f << "# uncomment next line to enable a snapp" << std::endl;
+  f << "\n\n";
+  f << "# snapps configuration section\n";
+  f << "[services]\n";
+  f << "# uncomment next line to enable a snapp\n";
   f << "#example-snapp=" << snappExample_fpath << std::endl;
-  f << std::endl << std::endl;
+  f << "\n\n";
 
-  f << "# network settings " << std::endl;
-  f << "[network]" << std::endl;
-  f << "profiles=" << basepath << "profiles.dat" << std::endl;
+  f << "# network settings \n";
+  f << "[network]\n";
+  f << "profiles=" << basepath << "profiles.dat\n";
   f << "# uncomment next line to add router with pubkey to list of routers we "
-       "connect directly to"
-    << std::endl;
-  f << "#strict-connect=pubkey" << std::endl;
-  f << "# uncomment next line to use router with pubkey as an exit node"
-    << std::endl;
-  f << "#exit-node=pubkey" << std::endl;
+       "connect directly to\n";
+  f << "#strict-connect=pubkey\n";
+  f << "# uncomment next line to use router with pubkey as an exit node\n";
+  f << "#exit-node=pubkey\n";
 
   // better to set them to auto then to hard code them now
   // operating environment may change over time and this will help adapt
-  // f << "ifname=auto" << std::endl;
-  // f << "ifaddr=auto" << std::endl;
+  // f << "ifname=auto\n";
+  // f << "ifaddr=auto\n";
 
   // should this also be auto? or not declared?
   // probably auto in case they want to set up a hidden service
-  f << "enabled=true" << std::endl;
+  f << "enabled=true\n";
   return true;
 }

@@ -129,7 +129,7 @@ namespace llarp
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        if(itr->second.get() && !itr->second->TimedOut(_now))
+        if(not itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -149,7 +149,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(itr->second.get() && !itr->second->TimedOut(_now))
+        if(not itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -175,6 +175,7 @@ namespace llarp
     {
       if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
       {
+        LogWarn("too many session for ", pk);
         s->Close();
         return false;
       }
