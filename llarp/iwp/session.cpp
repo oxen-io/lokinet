@@ -236,22 +236,32 @@ namespace llarp
     {
       // remove pending outbound messsages that timed out
       // inform waiters
-      auto itr = m_TXMsgs.begin();
-      while(itr != m_TXMsgs.end())
       {
-        if(itr->second.IsTimedOut(now))
+        auto itr = m_TXMsgs.begin();
+        while(itr != m_TXMsgs.end())
         {
-          itr->second.InformTimeout();
-          itr = m_TXMsgs.erase(itr);
+          if(itr->second.IsTimedOut(now))
+          {
+            itr->second.InformTimeout();
+            itr = m_TXMsgs.erase(itr);
+          }
+          else
+            ++itr;
         }
-        else
-          ++itr;
       }
-      // remove pending inbound messages that timed out
-      std::remove_if(m_RXMsgs.begin(), m_RXMsgs.end(),
-                     [now](const auto& item) -> bool {
-                       return item.second.IsTimedOut(now);
-                     });
+      {
+        // remove pending inbound messages that timed out
+        auto itr = m_RXMsgs.begin();
+        while(itr != m_RXMsgs.end())
+        {
+          if(itr->second.IsTimedOut(now))
+          {
+            itr = m_RXMsgs.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
     }
 
     using Introduction = AlignedBuffer< 64 >;
@@ -491,7 +501,8 @@ namespace llarp
       LogDebug("rxid=", rxid, " sz=", sz, " h=", h.ToHex());
       auto itr = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
-        m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, std::move(h)});
+        m_RXMsgs.emplace(
+            rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()});
       else
         LogWarn("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
@@ -519,7 +530,7 @@ namespace llarp
         EncryptAndSend(nackbuf);
         return;
       }
-      itr->second.HandleData(sz, data.data() + 12);
+      itr->second.HandleData(sz, data.data() + 12, m_Parent->Now());
 
       if(itr->second.IsCompleted())
       {

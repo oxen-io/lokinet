@@ -172,6 +172,12 @@ namespace llarp
       return now - m_LastACKSent > 1000 || IsCompleted();
     }
 
+    bool
+    InboundMessage::IsTimedOut(const llarp_time_t now) const
+    {
+      return now > m_LastActiveAt && now - m_LastActiveAt > 5000;
+    }
+
     void
     InboundMessage::SendACKS(
         std::function< void(const llarp_buffer_t &) > sendpkt, llarp_time_t now)
