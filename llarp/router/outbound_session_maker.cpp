@@ -226,6 +226,8 @@ namespace llarp
   bool
   OutboundSessionMaker::ShouldConnectTo(const RouterID &router) const
   {
+    if(router == us)
+      return false;
     size_t numPending = 0;
     {
       util::Lock lock(&_mutex);

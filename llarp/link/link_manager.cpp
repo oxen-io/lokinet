@@ -346,13 +346,6 @@ namespace llarp
     if(stopping)
       return nullptr;
 
-    for(const auto &link : inboundLinks)
-    {
-      if(link->HasSessionTo(remote))
-      {
-        return link;
-      }
-    }
     for(const auto &link : outboundLinks)
     {
       if(link->HasSessionTo(remote))
@@ -360,7 +353,13 @@ namespace llarp
         return link;
       }
     }
-
+    for(const auto &link : inboundLinks)
+    {
+      if(link->HasSessionTo(remote))
+      {
+        return link;
+      }
+    }
     return nullptr;
   }
 

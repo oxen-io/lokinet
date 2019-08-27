@@ -103,7 +103,7 @@ namespace llarp
       llarp_ev_udp_sendto(&m_udp, to, pkt);
     }
 
-    bool
+    virtual bool
     Configure(llarp_ev_loop_ptr loop, const std::string& ifname, int af,
               uint16_t port);
 
@@ -125,7 +125,7 @@ namespace llarp
     virtual bool
     Start(std::shared_ptr< llarp::Logic > l);
 
-    void
+    virtual void
     Stop();
 
     virtual const char*
@@ -140,11 +140,11 @@ namespace llarp
     void
     KeepAliveSessionTo(const RouterID& remote);
 
-    bool
+    virtual bool
     SendTo(const RouterID& remote, const llarp_buffer_t& buf,
            ILinkSession::CompletionHandler completed);
 
-    bool
+    virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
     bool
@@ -186,7 +186,7 @@ namespace llarp
     bool
     GenEphemeralKeys();
 
-    bool
+    virtual bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
     void
@@ -199,6 +199,12 @@ namespace llarp
     SessionEstablishedHandler SessionEstablished;
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
+
+    std::shared_ptr< Logic >
+    logic()
+    {
+      return m_Logic;
+    }
 
     bool
     operator<(const ILinkLayer& other) const
