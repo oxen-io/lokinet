@@ -108,6 +108,9 @@ endif(WITH_SHELLHOOKS)
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
+# Always build PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 set(ABSEIL_DIR vendor/abseil-cpp)
 
 add_subdirectory(vendor/gtest)
@@ -116,9 +119,6 @@ include_directories(SYSTEM ${ABSEIL_DIR})
 add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
 include_directories(SYSTEM vendor/cxxopts/include)
-
-# Always build PIC
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unknown-warning-option)
