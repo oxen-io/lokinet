@@ -91,7 +91,7 @@ namespace llarp
         return;
       }
       AlignedBuffer< LinkIntroMessage::MaxSize > data;
-      llarp_buffer_t buf{data};
+      llarp_buffer_t buf(data);
       if(not msg.BEncode(&buf))
       {
         LogError("failed to encode LIM for ", m_RemoteAddr);
@@ -111,7 +111,7 @@ namespace llarp
       std::vector< byte_t > pkt;
       pkt.resize(data.sz + PacketOverhead);
       CryptoManager::instance()->randbytes(pkt.data(), pkt.size());
-      llarp_buffer_t pktbuf{pkt};
+      llarp_buffer_t pktbuf(pkt);
       pktbuf.base += PacketOverhead;
       pktbuf.sz -= PacketOverhead;
       byte_t* nonce_ptr = pkt.data() + HMACSIZE;
@@ -135,7 +135,7 @@ namespace llarp
         return;
       const std::vector< byte_t > close_msg = {LLARP_PROTO_VERSION,
                                                Command::eCLOS};
-      const llarp_buffer_t buf{close_msg};
+      const llarp_buffer_t buf(close_msg);
       EncryptAndSend(buf);
       if(m_State == State::Ready)
         m_Parent->UnmapAddr(m_RemoteAddr);
@@ -290,7 +290,7 @@ namespace llarp
       req.resize(intro.size() + (randint() % 64));
       CryptoManager::instance()->randbytes(req.data(), req.size());
       std::copy_n(intro.begin(), intro.size(), req.begin());
-      const llarp_buffer_t buf{req};
+      const llarp_buffer_t buf(req);
       Send_LL(buf);
       m_State = State::Introduction;
       LogDebug("sent intro to ", m_RemoteAddr);
@@ -387,7 +387,7 @@ namespace llarp
         return false;
       }
       ShortHash H;
-      llarp_buffer_t curbuf{buf.base, buf.sz};
+      llarp_buffer_t curbuf(buf.base, buf.sz);
       curbuf.base += ShortHash::SIZE;
       curbuf.sz -= ShortHash::SIZE;
       if(not CryptoManager::instance()->hmac(H.data(), curbuf, m_SessionKey))
@@ -406,7 +406,7 @@ namespace llarp
       curbuf.base += 32;
       curbuf.sz -= 32;
       result.resize(buf.sz - PacketOverhead);
-      const llarp_buffer_t outbuf{result};
+      const llarp_buffer_t outbuf(result);
       LogDebug("decrypt: ", result.size(), " bytes from ", m_RemoteAddr);
       return CryptoManager::instance()->xchacha20_alt(outbuf, curbuf,
                                                       m_SessionKey, nonce_ptr);
@@ -432,7 +432,7 @@ namespace llarp
       if(result.size() == token.size())
       {
         /// we got a token so we return it
-        const llarp_buffer_t pktbuf{token};
+        const llarp_buffer_t pktbuf(token);
         EncryptAndSend(pktbuf);
         return;
       }
@@ -481,7 +481,7 @@ namespace llarp
       if(itr != m_TXMsgs.end())
       {
         auto xmit = itr->second.XMIT();
-        const llarp_buffer_t pkt{xmit};
+        const llarp_buffer_t pkt(xmit);
         EncryptAndSend(pkt);
       }
       m_LastRX = m_Parent->Now();
@@ -526,7 +526,7 @@ namespace llarp
         std::vector< byte_t > nack = {
             LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
         htobe64buf(nack.data() + 2, rxid);
-        const llarp_buffer_t nackbuf{nack};
+        const llarp_buffer_t nackbuf(nack);
         EncryptAndSend(nackbuf);
         return;
       }
@@ -539,7 +539,7 @@ namespace llarp
         if(itr->second.Verify())
         {
           auto msg = std::move(itr->second);
-          const llarp_buffer_t buf{msg.m_Data.data(), msg.m_Size};
+          const llarp_buffer_t buf(msg.m_Data.data(), msg.m_Size);
           m_Parent->HandleMessage(this, buf);
         }
         else
@@ -593,7 +593,7 @@ namespace llarp
       if(m_State == State::Ready)
       {
         std::vector< byte_t > ping{LLARP_PROTO_VERSION, Command::ePING};
-        const llarp_buffer_t buf{ping};
+        const llarp_buffer_t buf(ping);
         EncryptAndSend(buf);
         return true;
       }
