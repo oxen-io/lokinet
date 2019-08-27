@@ -111,6 +111,8 @@ namespace llarp
     // long term identity key
     std::string m_identKeyfile = "identity.key";
 
+    absl::optional< bool > m_blockBogons;
+
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
     AddressInfo m_addrInfo;
@@ -120,19 +122,20 @@ namespace llarp
 
    public:
     // clang-format off
-    size_t minConnectedRouters() const        { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
-    size_t maxConnectedRouters() const        { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
-    std::string encryptionKeyfile() const        { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
-    std::string ourRcFile() const                { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
-    std::string transportKeyfile() const         { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
-    std::string identKeyfile() const             { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
-    std::string netId() const                 { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const              { return fromEnv(m_nickname, "NICKNAME"); }
-    bool publicOverride() const               { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
-    const struct sockaddr_in& ip4addr() const { return m_ip4addr; }
-    const AddressInfo& addrInfo() const       { return m_addrInfo; }
-    int workerThreads() const                 { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
-    int numNetThreads() const                 { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
+    size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
+    size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
+    std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
+    std::string ourRcFile() const              { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
+    std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
+    std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
+    std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
+    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); }
+    bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
+    const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
+    const AddressInfo& addrInfo() const        { return m_addrInfo; }
+    int workerThreads() const                  { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
+    int numNetThreads() const                  { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
+    absl::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
     // clang-format on
 
     void

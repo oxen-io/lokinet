@@ -21,7 +21,9 @@ namespace llarp
   {
     auto pos = str.find(".snode");
     if(pos == std::string::npos || pos == 0)
+    {
       return false;
+    }
     return Base32Decode(str.substr(0, pos), *this);
   }
 }  // namespace llarp

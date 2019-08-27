@@ -118,10 +118,10 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
   void
   SetUp()
   {
-    oldRCLifetime               = RouterContact::Lifetime;
-    RouterContact::IgnoreBogons = true;
-    RouterContact::Lifetime     = 500;
-    netLoop                     = llarp_make_ev_loop();
+    oldRCLifetime              = RouterContact::Lifetime;
+    RouterContact::BlockBogons = false;
+    RouterContact::Lifetime    = 500;
+    netLoop                    = llarp_make_ev_loop();
     m_logic.reset(new Logic());
   }
 
@@ -132,8 +132,8 @@ struct LinkLayerTest : public test::LlarpTest< NoOpCrypto >
     Bob.TearDown();
     m_logic.reset();
     netLoop.reset();
-    RouterContact::IgnoreBogons = false;
-    RouterContact::Lifetime     = oldRCLifetime;
+    RouterContact::BlockBogons = true;
+    RouterContact::Lifetime    = oldRCLifetime;
   }
 
   static void
