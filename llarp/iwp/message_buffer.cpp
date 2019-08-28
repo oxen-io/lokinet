@@ -1,4 +1,5 @@
 #include <iwp/message_buffer.hpp>
+#include <iwp/session.hpp>
 #include <crypto/crypto.hpp>
 
 namespace llarp
@@ -43,8 +44,7 @@ namespace llarp
     bool
     OutboundMessage::ShouldFlush(llarp_time_t now) const
     {
-      static constexpr llarp_time_t FlushInterval = 500;
-      return now - m_LastFlush >= FlushInterval;
+      return now - m_LastFlush >= Session::TXFlushInterval;
     }
 
     void
@@ -76,8 +76,12 @@ namespace llarp
                                      0};
           htobe16buf(frag.data() + 2, idx);
           htobe64buf(frag.data() + 4, m_MsgID);
-          std::copy(m_Data.begin() + idx, m_Data.begin() + idx + FragmentSize,
-                    std::back_inserter(frag));
+          if(idx + FragmentSize < m_Size)
+            std::copy(m_Data.begin() + idx, m_Data.begin() + idx + FragmentSize,
+                      std::back_inserter(frag));
+          else
+            std::copy(m_Data.begin() + idx, m_Data.begin() + m_Size,
+                      std::back_inserter(frag));
           const llarp_buffer_t pkt{frag};
           sendpkt(pkt);
         }
@@ -101,7 +105,7 @@ namespace llarp
     OutboundMessage::IsTimedOut(const llarp_time_t now) const
     {
       // TODO: make configurable by outbound message deliverer
-      return now > m_StartedAt && now - m_StartedAt > 5000;
+      return now > m_StartedAt && now - m_StartedAt > Session::DeliveryTimeout;
     }
 
     void
@@ -124,13 +128,13 @@ namespace llarp
     }
 
     void
-    InboundMessage::HandleData(uint16_t idx, const byte_t *ptr,
+    InboundMessage::HandleData(uint16_t idx, const llarp_buffer_t &buf,
                                llarp_time_t now)
     {
-      if(idx + FragmentSize > MAX_LINK_MSG_SIZE)
+      if(idx + buf.sz > MAX_LINK_MSG_SIZE)
         return;
       auto *dst = m_Data.data() + idx;
-      std::copy_n(ptr, FragmentSize, dst);
+      std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
       LogDebug("got fragment ", idx / FragmentSize, " of ", m_Size);
       m_LastActiveAt = now;
@@ -175,7 +179,8 @@ namespace llarp
     bool
     InboundMessage::IsTimedOut(const llarp_time_t now) const
     {
-      return now > m_LastActiveAt && now - m_LastActiveAt > 5000;
+      return now > m_LastActiveAt
+          && now - m_LastActiveAt > Session::DeliveryTimeout;
     }
 
     void
@@ -183,6 +188,7 @@ namespace llarp
         std::function< void(const llarp_buffer_t &) > sendpkt, llarp_time_t now)
     {
       auto acks = ACKS();
+      AddRandomPadding(acks);
       const llarp_buffer_t pkt{acks};
       sendpkt(pkt);
       m_LastACKSent = now;

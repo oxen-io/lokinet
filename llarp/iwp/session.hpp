@@ -9,9 +9,30 @@ namespace llarp
 {
   namespace iwp
   {
+    void
+    AddRandomPadding(std::vector< byte_t >& pkt, size_t min = 16,
+                     size_t variance = 16);
+
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
     {
+      /// Time how long we try delivery for
+      static constexpr llarp_time_t DeliveryTimeout = 5000;
+      /// How long to keep a replay window for
+      static constexpr llarp_time_t ReplayWindow = (DeliveryTimeout * 3) / 2;
+      /// Time how long we wait to recieve a message
+      static constexpr llarp_time_t RecievalTimeout = (DeliveryTimeout * 8) / 5;
+      /// How often to acks RX messages
+      static constexpr llarp_time_t ACKResendInterval = 500;
+      /// How often to retransmit TX fragments
+      static constexpr llarp_time_t TXFlushInterval =
+          (ACKResendInterval * 3) / 2;
+      /// How often we send a keepalive
+      static constexpr llarp_time_t PingInterval = 2000;
+      /// How long we wait for a session to die with no tx from them
+      static constexpr llarp_time_t SessionAliveTimeout =
+          (PingInterval * 13) / 3;
+
       /// outbound session
       Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
       /// inbound session
@@ -131,6 +152,9 @@ namespace llarp
 
       std::unordered_map< uint64_t, InboundMessage > m_RXMsgs;
       std::unordered_map< uint64_t, OutboundMessage > m_TXMsgs;
+
+      /// maps rxid to time recieved
+      std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
 
       void
       HandleGotIntro(const llarp_buffer_t& buf);
