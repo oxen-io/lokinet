@@ -1,5 +1,4 @@
 #include "params.h"
-#include <sodium/crypto_uint32.h>
 #include "rq.h"
 
 void
