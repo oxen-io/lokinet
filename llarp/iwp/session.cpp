@@ -270,12 +270,19 @@ namespace llarp
             ++itr;
         }
       }
-      // decay replay window
-      m_ReplayFilter.erase(
-          std::remove_if(m_ReplayFilter.begin(), m_ReplayFilter.end(),
-                         [now](const auto& item) -> bool {
-                           return item.second + ReplayWindow > now;
-                         }));
+      {
+        // decay replay window
+        auto itr = m_ReplayFilter.begin();
+        while(itr != m_ReplayFilter.end())
+        {
+          if(itr->second + ReplayWindow > now)
+          {
+            itr = m_ReplayFilter.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
     }
 
     using Introduction = AlignedBuffer< 64 >;
