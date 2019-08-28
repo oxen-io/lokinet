@@ -1,3 +1,18 @@
+lokinet (0.5.0~pre20190828-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * bump path build handover window, check cooldown on build.
+  * use estimated build time instead of expiration time for delta when determining when to space out builds
+  * add short data fragments and rx replay filter
+  * please the CI gods, wololo
+  * correct constructors on llarp_buffer_t and check rc on regen
+  * quick little fixes
+  * fix explore
+  * get rid of dead code
+  * fix sign
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 28 Aug 2019 12:39:29 -0300
+
 lokinet (0.5.0~pre20190827-2) sid; urgency=medium
 
   [ Jeff Becker ]
