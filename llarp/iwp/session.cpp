@@ -122,6 +122,7 @@ namespace llarp
       CryptoManager::instance()->randbytes(pkt.data(), pkt.size());
       llarp_buffer_t pktbuf(pkt);
       pktbuf.base += PacketOverhead;
+      pktbuf.cur = pktbuf.base;
       pktbuf.sz -= PacketOverhead;
       byte_t* nonce_ptr = pkt.data() + HMACSIZE;
 
@@ -133,6 +134,7 @@ namespace llarp
       CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
 
       pktbuf.base = pkt.data();
+      pktbuf.cur  = pkt.data();
       pktbuf.sz   = pkt.size();
       Send_LL(pktbuf);
     }
@@ -583,7 +585,7 @@ namespace llarp
         {
           LogError("hash missmatch for message ", itr->first);
         }
-        m_RXMsgs.erase(rxid);
+        m_RXMsgs.erase(itr);
       }
     }
 
