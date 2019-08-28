@@ -1205,11 +1205,12 @@ namespace llarp
       // time from now that the newest intro expires at
       if(intro.ExpiresSoon(now))
         return should;
-      const auto dlt = intro.expiresAt - now;
+      const auto dlt = now - (intro.expiresAt - path::default_lifetime);
       return should
           || (  // try spacing tunnel builds out evenly in time
-                 (dlt <= (path::default_lifetime / 4))
-                 && (NumInStatus(path::ePathBuilding) < numPaths));
+                 (dlt >= (path::default_lifetime / 4))
+                 && (NumInStatus(path::ePathBuilding) < numPaths)
+                 && !path::Builder::BuildCooldownHit(now));
     }
 
     std::shared_ptr< Logic >

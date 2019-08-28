@@ -86,7 +86,7 @@ namespace llarp
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void
-      HandleData(uint16_t idx, const byte_t *ptr, llarp_time_t now);
+      HandleData(uint16_t idx, const llarp_buffer_t &buf, llarp_time_t now);
 
       bool
       IsCompleted() const;

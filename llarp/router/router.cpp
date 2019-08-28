@@ -336,10 +336,11 @@ namespace llarp
         _encryption   = nextOnionKey;
       }
     }
-    nextRC.last_updated = Now();
     if(!nextRC.Sign(identity()))
       return false;
-    _rc = nextRC;
+    if(!nextRC.Verify(time_now_ms(), false))
+      return false;
+    _rc = std::move(nextRC);
     // propagate RC by renegotiating sessions
     ForEachPeer([](ILinkSession *s) {
       if(s->RenegotiateSession())

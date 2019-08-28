@@ -9,6 +9,15 @@ namespace llarp
   {
     static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
 
+    void
+    AddRandomPadding(std::vector< byte_t >& pkt, size_t min, size_t variance)
+    {
+      const auto sz        = pkt.size();
+      const size_t randpad = min + randint() % variance;
+      pkt.resize(sz + randpad);
+      CryptoManager::instance()->randbytes(pkt.data() + sz, randpad);
+    }
+
     Session::Session(LinkLayer* p, RouterContact rc, AddressInfo ai)
         : m_State{State::Initial}
         , m_Inbound{false}
@@ -113,6 +122,7 @@ namespace llarp
       CryptoManager::instance()->randbytes(pkt.data(), pkt.size());
       llarp_buffer_t pktbuf(pkt);
       pktbuf.base += PacketOverhead;
+      pktbuf.cur = pktbuf.base;
       pktbuf.sz -= PacketOverhead;
       byte_t* nonce_ptr = pkt.data() + HMACSIZE;
 
@@ -124,6 +134,7 @@ namespace llarp
       CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
 
       pktbuf.base = pkt.data();
+      pktbuf.cur  = pkt.data();
       pktbuf.sz   = pkt.size();
       Send_LL(pktbuf);
     }
@@ -133,8 +144,8 @@ namespace llarp
     {
       if(m_State == State::Closed)
         return;
-      const std::vector< byte_t > close_msg = {LLARP_PROTO_VERSION,
-                                               Command::eCLOS};
+      std::vector< byte_t > close_msg = {LLARP_PROTO_VERSION, Command::eCLOS};
+      AddRandomPadding(close_msg);
       const llarp_buffer_t buf(close_msg);
       EncryptAndSend(buf);
       if(m_State == State::Ready)
@@ -152,8 +163,9 @@ namespace llarp
       auto& msg =
           m_TXMsgs.emplace(msgid, OutboundMessage{msgid, buf, now, completed})
               .first->second;
-      const auto xmit = msg.XMIT();
-      const llarp_buffer_t pkt{xmit};
+      auto xmit = msg.XMIT();
+      AddRandomPadding(xmit);
+      const llarp_buffer_t pkt(xmit);
       EncryptAndSend(pkt);
       msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       LogDebug("send message ", msgid);
@@ -206,8 +218,7 @@ namespace llarp
     {
       if(m_State == State::Ready)
       {
-        static constexpr llarp_time_t PingInterval = 500;
-        const auto now                             = m_Parent->Now();
+        const auto now = m_Parent->Now();
         return now - m_LastTX > PingInterval;
       }
       return false;
@@ -223,7 +234,6 @@ namespace llarp
     bool
     Session::TimedOut(llarp_time_t now) const
     {
-      static constexpr llarp_time_t SessionAliveTimeout = 10000;
       if(m_State == State::Ready || m_State == State::LinkIntro)
       {
         return now > m_LastRX && now - m_LastRX > SessionAliveTimeout;
@@ -262,6 +272,19 @@ namespace llarp
             ++itr;
         }
       }
+      {
+        // decay replay window
+        auto itr = m_ReplayFilter.begin();
+        while(itr != m_ReplayFilter.end())
+        {
+          if(itr->second + ReplayWindow <= now)
+          {
+            itr = m_ReplayFilter.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
     }
 
     using Introduction = AlignedBuffer< 64 >;
@@ -283,13 +306,12 @@ namespace llarp
       }
       const auto pk = m_Parent->RouterEncryptionSecret().toPublic();
       std::copy_n(pk.begin(), pk.size(), intro.begin());
-      std::copy(N.begin(), N.end(), intro.begin() + 32);
+      std::copy(N.begin(), N.end(), intro.begin() + PubKey::SIZE);
       LogDebug("pk=", pk.ToHex(), " N=", N.ToHex(),
                " remote-pk=", m_ChosenAI.pubkey.ToHex());
       std::vector< byte_t > req;
-      req.resize(intro.size() + (randint() % 64));
-      CryptoManager::instance()->randbytes(req.data(), req.size());
-      std::copy_n(intro.begin(), intro.size(), req.begin());
+      std::copy_n(intro.begin(), intro.size(), std::back_inserter(req));
+      AddRandomPadding(req);
       const llarp_buffer_t buf(req);
       Send_LL(buf);
       m_State = State::Introduction;
@@ -344,10 +366,9 @@ namespace llarp
         return;
       }
       std::vector< byte_t > reply;
-      reply.resize(token.size() + (randint() % 32));
-      CryptoManager::instance()->randbytes(reply.data(), reply.size());
-      std::copy_n(token.begin(), token.size(), reply.begin());
-      const llarp_buffer_t pkt{reply};
+      std::copy_n(token.begin(), token.size(), std::back_inserter(reply));
+      AddRandomPadding(reply);
+      const llarp_buffer_t pkt(reply);
       m_LastRX = m_Parent->Now();
       EncryptAndSend(pkt);
       LogDebug("sent intro ack to ", m_RemoteAddr);
@@ -371,7 +392,7 @@ namespace llarp
       }
       m_LastRX = m_Parent->Now();
       std::copy_n(reply.begin(), token.size(), token.begin());
-      const llarp_buffer_t pkt{token};
+      const llarp_buffer_t pkt(token);
       EncryptAndSend(pkt);
       LogDebug("sent session request to ", m_RemoteAddr);
       m_State = State::LinkIntro;
@@ -429,13 +450,6 @@ namespace llarp
         LogError("failed to decrypt session data from ", m_RemoteAddr);
         return;
       }
-      if(result.size() == token.size())
-      {
-        /// we got a token so we return it
-        const llarp_buffer_t pktbuf(token);
-        EncryptAndSend(pktbuf);
-        return;
-      }
       if(result[0] != LLARP_PROTO_VERSION)
       {
         LogError("protocol version missmatch ", int(result[0]),
@@ -481,6 +495,7 @@ namespace llarp
       if(itr != m_TXMsgs.end())
       {
         auto xmit = itr->second.XMIT();
+        AddRandomPadding(xmit);
         const llarp_buffer_t pkt(xmit);
         EncryptAndSend(pkt);
       }
@@ -499,19 +514,30 @@ namespace llarp
       uint64_t rxid = bufbe64toh(data.data() + 4);
       ShortHash h{data.data() + 12};
       LogDebug("rxid=", rxid, " sz=", sz, " h=", h.ToHex());
-      auto itr = m_RXMsgs.find(rxid);
-      if(itr == m_RXMsgs.end())
-        m_RXMsgs.emplace(
-            rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()});
-      else
-        LogDebug("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
       m_LastRX = m_Parent->Now();
+      {
+        // check for replay
+        auto itr = m_ReplayFilter.find(rxid);
+        if(itr != m_ReplayFilter.end())
+        {
+          LogDebug("duplicate rxid=", rxid, " from ", m_RemoteAddr);
+          return;
+        }
+      }
+      {
+        auto itr = m_RXMsgs.find(rxid);
+        if(itr == m_RXMsgs.end())
+          m_RXMsgs.emplace(
+              rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()});
+        else
+          LogDebug("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
+      }
     }
 
     void
     Session::HandleDATA(std::vector< byte_t > data)
     {
-      if(data.size() < FragmentSize + 12)
+      if(data.size() <= 12)
       {
         LogError("short DATA from ", m_RemoteAddr, " ", data.size());
         return;
@@ -526,11 +552,16 @@ namespace llarp
         std::vector< byte_t > nack = {
             LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
         htobe64buf(nack.data() + 2, rxid);
+        AddRandomPadding(nack);
         const llarp_buffer_t nackbuf(nack);
         EncryptAndSend(nackbuf);
         return;
       }
-      itr->second.HandleData(sz, data.data() + 12, m_Parent->Now());
+
+      {
+        const llarp_buffer_t buf(data.data() + 12, data.size() - 12);
+        itr->second.HandleData(sz, buf, m_Parent->Now());
+      }
 
       if(itr->second.IsCompleted())
       {
@@ -541,12 +572,13 @@ namespace llarp
           auto msg = std::move(itr->second);
           const llarp_buffer_t buf(msg.m_Data.data(), msg.m_Size);
           m_Parent->HandleMessage(this, buf);
+          m_ReplayFilter.emplace(itr->first, m_Parent->Now());
         }
         else
         {
           LogError("hash missmatch for message ", itr->first);
         }
-        m_RXMsgs.erase(rxid);
+        m_RXMsgs.erase(itr);
       }
     }
 
@@ -558,9 +590,10 @@ namespace llarp
         LogError("short ACKS from ", m_RemoteAddr, " ", data.size(), " < 11");
         return;
       }
-      m_LastRX      = m_Parent->Now();
-      uint64_t txid = bufbe64toh(data.data() + 2);
-      auto itr      = m_TXMsgs.find(txid);
+      const auto now = m_Parent->Now();
+      m_LastRX       = now;
+      uint64_t txid  = bufbe64toh(data.data() + 2);
+      auto itr       = m_TXMsgs.find(txid);
       if(itr == m_TXMsgs.end())
       {
         LogDebug("no txid=", txid, " for ", m_RemoteAddr);
@@ -573,6 +606,11 @@ namespace llarp
         LogDebug("sent message ", itr->first);
         itr->second.Completed();
         itr = m_TXMsgs.erase(itr);
+      }
+      else
+      {
+        itr->second.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this),
+                                 now);
       }
     }
 
