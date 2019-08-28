@@ -277,7 +277,7 @@ namespace llarp
         auto itr = m_ReplayFilter.begin();
         while(itr != m_ReplayFilter.end())
         {
-          if(itr->second + ReplayWindow > now)
+          if(itr->second + ReplayWindow <= now)
           {
             itr = m_ReplayFilter.erase(itr);
           }
