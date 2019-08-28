@@ -76,11 +76,10 @@ namespace llarp
         parent->DHTSendTo(
             whoasked.node.as_array(),
             new GotRouterMessage({}, whoasked.txid, valuesFound, false), false);
-
-        // store this in our nodedb for caching
-        if(valuesFound.size() > 0)
-          parent->StoreRC(valuesFound[0]);
       }
+      // store this in our nodedb for caching
+      if(valuesFound.size() > 0)
+        parent->StoreRC(valuesFound[0]);
     }
   }  // namespace dht
 }  // namespace llarp

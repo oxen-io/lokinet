@@ -133,6 +133,7 @@ namespace llarp
 
     if(not rc.Verify(_dht->impl->Now()))
     {
+      LogWarn("RC for ", RouterID(rc.pubkey), " is invalid");
       return false;
     }
 
