@@ -16,7 +16,7 @@ namespace llarp
     {
       m_Data.Zero();
       std::copy_n(pkt.base, m_Size, m_Data.begin());
-      const llarp_buffer_t buf{m_Data.data(), m_Size};
+      const llarp_buffer_t buf(m_Data.data(), m_Size);
       CryptoManager::instance()->shorthash(digest, buf);
     }
 
@@ -82,7 +82,7 @@ namespace llarp
           else
             std::copy(m_Data.begin() + idx, m_Data.begin() + m_Size,
                       std::back_inserter(frag));
-          const llarp_buffer_t pkt{frag};
+          const llarp_buffer_t pkt(frag);
           sendpkt(pkt);
         }
         idx += FragmentSize;
@@ -131,7 +131,7 @@ namespace llarp
     InboundMessage::HandleData(uint16_t idx, const llarp_buffer_t &buf,
                                llarp_time_t now)
     {
-      if(idx + buf.sz > MAX_LINK_MSG_SIZE)
+      if(idx + buf.sz > m_Data.size())
         return;
       auto *dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
@@ -189,7 +189,7 @@ namespace llarp
     {
       auto acks = ACKS();
       AddRandomPadding(acks);
-      const llarp_buffer_t pkt{acks};
+      const llarp_buffer_t pkt(acks);
       sendpkt(pkt);
       m_LastACKSent = now;
     }
@@ -198,7 +198,7 @@ namespace llarp
     InboundMessage::Verify() const
     {
       ShortHash gotten;
-      const llarp_buffer_t buf{m_Data.data(), m_Size};
+      const llarp_buffer_t buf(m_Data.data(), m_Size);
       CryptoManager::instance()->shorthash(gotten, buf);
       LogDebug("gotten=", gotten.ToHex());
       if(gotten != m_Digset)
