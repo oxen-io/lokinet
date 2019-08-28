@@ -450,13 +450,6 @@ namespace llarp
         LogError("failed to decrypt session data from ", m_RemoteAddr);
         return;
       }
-      if(result.size() == token.size())
-      {
-        /// we got a token so we return it
-        const llarp_buffer_t pktbuf(token);
-        EncryptAndSend(pktbuf);
-        return;
-      }
       if(result[0] != LLARP_PROTO_VERSION)
       {
         LogError("protocol version missmatch ", int(result[0]),
