@@ -40,7 +40,7 @@ namespace llarp
 
       ~Session() = default;
 
-      std::shared_ptr<ILinkSession>
+      std::shared_ptr< ILinkSession >
       BorrowSelf() override
       {
         return shared_from_this();
