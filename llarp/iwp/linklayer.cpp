@@ -75,6 +75,7 @@ namespace llarp
     void
     LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
     {
+      util::Lock linksLock(&m_AuthedLinksMutex);
       std::shared_ptr< ILinkSession > session;
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
@@ -105,6 +106,7 @@ namespace llarp
     {
       if(!ILinkLayer::MapAddr(r, s))
         return false;
+      util::Lock lock(&m_AuthedLinksMutex);
       m_AuthedAddrs.emplace(s->GetRemoteEndpoint(), r);
       return true;
     }
@@ -112,6 +114,7 @@ namespace llarp
     void
     LinkLayer::UnmapAddr(const Addr& a)
     {
+      util::Lock lock(&m_AuthedLinksMutex);
       m_AuthedAddrs.erase(a);
     }
 

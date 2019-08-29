@@ -29,7 +29,7 @@ namespace llarp
                          const AddressInfo &ai) override;
 
       void
-      Pump() override;
+      Pump() override LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
       bool
       KeyGen(SecretKey &k) override;
@@ -41,16 +41,19 @@ namespace llarp
       Rank() const override;
 
       void
-      RecvFrom(const Addr &from, const void *buf, size_t sz) override;
+      RecvFrom(const Addr &from, const void *buf, size_t sz) override
+          LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
       bool
-      MapAddr(const RouterID &pk, ILinkSession *s) override;
+      MapAddr(const RouterID &pk, ILinkSession *s) override
+          LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
       void
-      UnmapAddr(const Addr &addr);
+      UnmapAddr(const Addr &addr) LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
      private:
-      std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;
+      std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs
+          GUARDED_BY(m_AuthedLinksMutex);
       const bool permitInbound;
     };
 

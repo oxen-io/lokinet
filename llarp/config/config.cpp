@@ -227,9 +227,9 @@ namespace llarp
       idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        std::string val = v.substr(0, idx);
-        absl::StripAsciiWhitespace(&val);
-        parsed_opts.emplace(std::move(val));
+        std::string opt = v.substr(0, idx);
+        absl::StripAsciiWhitespace(&opt);
+        parsed_opts.emplace(std::move(opt));
         v = v.substr(idx + 1);
       }
       else

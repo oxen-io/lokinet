@@ -62,7 +62,7 @@ namespace llarp
     }
 
     bool
-    HasSessionTo(const RouterID& pk);
+    HasSessionTo(const RouterID& pk) LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     bool
     HasSessionVia(const Addr& addr);
@@ -111,7 +111,7 @@ namespace llarp
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
     virtual void
-    Pump();
+    Pump() LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     virtual void
     RecvFrom(const Addr& from, const void* buf, size_t sz) = 0;
@@ -120,29 +120,32 @@ namespace llarp
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
 
     bool
-    TryEstablishTo(RouterContact rc);
+    TryEstablishTo(RouterContact rc)
+        LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     virtual bool
     Start(std::shared_ptr< llarp::Logic > l);
 
     virtual void
-    Stop();
+    Stop() LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     virtual const char*
     Name() const = 0;
 
     util::StatusObject
-    ExtractStatus() const LOCKS_EXCLUDED(m_AuthedLinksMutex);
+    ExtractStatus() const LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     void
-    CloseSessionTo(const RouterID& remote);
+    CloseSessionTo(const RouterID& remote) LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     void
-    KeepAliveSessionTo(const RouterID& remote);
+    KeepAliveSessionTo(const RouterID& remote)
+        LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     virtual bool
     SendTo(const RouterID& remote, const llarp_buffer_t& buf,
-           ILinkSession::CompletionHandler completed);
+           ILinkSession::CompletionHandler completed)
+        LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     virtual bool
     GetOurAddressInfo(AddressInfo& addr) const;
@@ -187,10 +190,11 @@ namespace llarp
     GenEphemeralKeys();
 
     virtual bool
-    MapAddr(const RouterID& pk, ILinkSession* s);
+    MapAddr(const RouterID& pk, ILinkSession* s)
+        LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     void
-    Tick(llarp_time_t now);
+    Tick(llarp_time_t now) LOCKS_EXCLUDED(m_PendingMutex, m_AuthedLinksMutex);
 
     LinkMessageHandler HandleMessage;
     TimeoutHandler HandleTimeout;
@@ -241,7 +245,8 @@ namespace llarp
     using Mutex = util::Mutex;
 
     bool
-    PutSession(const std::shared_ptr< ILinkSession >& s);
+    PutSession(const std::shared_ptr< ILinkSession >& s)
+        LOCKS_EXCLUDED(m_PendingMutex);
 
     std::shared_ptr< llarp::Logic > m_Logic = nullptr;
     llarp_ev_loop_ptr m_Loop;
