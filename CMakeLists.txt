@@ -175,6 +175,10 @@ endif()
 add_subdirectory(${ABSEIL_DIR})
 add_subdirectory(vendor/gtest)
 
+if (FS_LIB STREQUAL "cppbackport")
+  add_subdirectory(vendor)
+endif()
+
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
