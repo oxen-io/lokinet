@@ -32,6 +32,7 @@ option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for developmen
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
+include(cmake/libatomic.cmake)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
