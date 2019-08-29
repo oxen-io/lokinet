@@ -29,12 +29,12 @@ namespace llarp
       operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
 
      private:
-      bool firstKey;
-      char ourKey;
+      bool firstKey{false};
+      char ourKey{'\0'};
 
       struct MessageHolder;
 
-      IMessage* msg;
+      IMessage* msg{nullptr};
       std::unique_ptr< MessageHolder > m_Holder;
     };
   }  // namespace routing

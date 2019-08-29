@@ -6,6 +6,7 @@
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/memfn.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -17,7 +18,7 @@ namespace llarp
         AbstractRouter* r, size_t numpaths, size_t hoplen, bool bundleRC)
         : llarp::path::Builder(r, numpaths, hoplen)
         , m_ExitRouter(routerId)
-        , m_WritePacket(writepkt)
+        , m_WritePacket(std::move(writepkt))
         , m_Counter(0)
         , m_LastUse(0)
         , m_BundleRC(bundleRC)
@@ -25,9 +26,7 @@ namespace llarp
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
     }
 
-    BaseSession::~BaseSession()
-    {
-    }
+    BaseSession::~BaseSession() = default;
 
     void
     BaseSession::HandlePathDied(path::Path_ptr p)
@@ -38,10 +37,10 @@ namespace llarp
     util::StatusObject
     BaseSession::ExtractStatus() const
     {
-      auto obj = path::Builder::ExtractStatus();
-      obj.Put("lastExitUse", m_LastUse);
-      auto pub = m_ExitIdentity.toPublic();
-      obj.Put("exitIdentity", pub.ToString());
+      auto obj            = path::Builder::ExtractStatus();
+      obj["lastExitUse"]  = m_LastUse;
+      auto pub            = m_ExitIdentity.toPublic();
+      obj["exitIdentity"] = pub.ToString();
       return obj;
     }
 

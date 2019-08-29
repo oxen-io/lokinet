@@ -53,7 +53,7 @@ namespace llarp
                 SessionClosedHandler closed, bool acceptInbound);
 
       /// destruct
-      ~LinkLayer();
+      ~LinkLayer() override;
 
       /// get AI rank
       uint16_t

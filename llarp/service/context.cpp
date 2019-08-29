@@ -49,9 +49,7 @@ namespace llarp
     {
     }
 
-    Context::~Context()
-    {
-    }
+    Context::~Context() = default;
 
     bool
     Context::StopAll()
@@ -73,7 +71,7 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        obj.Put(itr->first, itr->second->ExtractStatus());
+        obj[itr->first] = itr->second->ExtractStatus();
         ++itr;
       }
       return obj;

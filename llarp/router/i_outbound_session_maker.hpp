@@ -1,17 +1,13 @@
 #ifndef LLARP_ROUTER_I_OUTBOUND_SESSION_MAKER_HPP
 #define LLARP_ROUTER_I_OUTBOUND_SESSION_MAKER_HPP
 
+#include <util/status.hpp>
 #include <util/types.hpp>
 
 #include <functional>
 
 namespace llarp
 {
-  namespace util
-  {
-    struct StatusObject;
-  }  // namespace util
-
   struct ILinkSession;
   struct RouterID;
   struct RouterContact;
@@ -52,6 +48,9 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
+
+    virtual bool
+    ShouldConnectTo(const RouterID &router) const = 0;
   };
 
 }  // namespace llarp

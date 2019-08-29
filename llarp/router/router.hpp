@@ -28,6 +28,7 @@
 #include <router/outbound_message_handler.hpp>
 #include <router/outbound_session_maker.hpp>
 #include <link/link_manager.hpp>
+#include <link/factory.hpp>
 #include <router/rc_lookup_handler.hpp>
 
 #include <functional>
@@ -175,6 +176,8 @@ namespace llarp
     struct sockaddr_in ip4addr;
     AddressInfo addrInfo;
 
+    LinkFactory::LinkType _defaultLinkType;
+
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
     std::shared_ptr< Logic > _logic;
@@ -194,13 +197,6 @@ namespace llarp
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;
 
     uint16_t m_OutboundPort = 0;
-
-    /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 2;
-    /// hard upperbound limit on the number of router to router connections
-    size_t maxConnectedRouters = 2000;
-
-    size_t minRequiredRouters = 4;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
     llarp_time_t rcRegenInterval = 60 * 60 * 1000;
@@ -297,7 +293,7 @@ namespace llarp
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
 
-    ~Router();
+    ~Router() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,

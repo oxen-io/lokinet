@@ -5,58 +5,82 @@ cache: ccache
 matrix:
   fast_finish: true
   include:
-  - os: linux
+  - name: "lint check"
+    os: linux
+    dist: xenial
+    compiler: gcc
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
+    addons:
+      apt:
+        sources:
+          - llvm-toolchain-xenial-8
+        packages:
+          - clang-format-8
+  - name: "make debug (linux/gcc)"
+    os: linux
     dist: xenial
     compiler: gcc
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
-  - os: linux
+  - name: "make release (linux/gcc)"
+    os: linux
+    dist: xenial
+    compiler: gcc
+    env: BUILD_TYPE=Release
+  - name: "make debug (linux/clang)"
+    os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Debug
+  - name: "make release (linux/clang)"
+    os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Release
+  - name: "make debug (macOS/clang)"
+    os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (macOS/clang)"
+    os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make windows (macOS)"
+    os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make windows-release (macOS)"
+    os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (macOS beta/clang)"
+    os: osx
+    osx_image: xcode11
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "address sanitizer"
+    os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Debug ASAN=ON PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
+  - name: "router docker image"
+    os: linux
     dist: xenial
     env: DOCKER_FILE=docker/router.Dockerfile
     services: docker
-  - os: linux
+  - name: "make windows docker image"
+    os: linux
     dist: xenial
     env: DOCKER_FILE=docker/alpine-windows.Dockerfile
     services: docker
-  - os: linux
+  - name: "gcc trunk"
+    os: linux
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
-  - os: linux
-    dist: xenial
-    compiler: gcc
-    env: BUILD_TYPE=Release
-  - os: linux
-    dist: xenial
-    compiler: clang
-    env: BUILD_TYPE=Debug
-  - os: linux
-    dist: xenial
-    compiler: clang
-    env: BUILD_TYPE=Release
-  - os: osx
-    osx_image: xcode10.2
-    compiler: gcc
-    env: BUILD_TYPE=Debug
-  - os: osx
-    osx_image: xcode10.2
-    compiler: gcc
-    env: BUILD_TYPE=Release
-  - os: osx
-    osx_image: xcode10.2
-    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - os: osx
-    osx_image: xcode10.2
-    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - os: osx
-    osx_image: xcode11
-    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - os: osx
-    osx_image: xcode10.2
-    env: BUILD_TYPE=Debug ASAN=ON PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
-  - os: windows
-    env: BUILD_TYPE=Debug
-  - os: windows
-    env: BUILD_TYPE=Release
   allow_failures:
   - os: linux
     dist: xenial
@@ -66,6 +90,12 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - os: osx
+    osx_image: xcode10.2
+    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
 
 env:
   global:
@@ -77,6 +107,7 @@ addons:
     packages:
     - binutils-gold
     - build-essential
+    - clang-format
     - cmake
     - curl
     - docker-ce
@@ -94,8 +125,9 @@ addons:
     - cmake
     - libuv
     - llvm
-    - ninja
     - make
+    - mingw-w64
+    - ninja
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then

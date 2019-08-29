@@ -20,7 +20,7 @@ namespace llarp
 
       PublishServiceJob(const TXOwner &asker, const service::IntroSet &introset,
                         AbstractContext *ctx, uint64_t s,
-                        const std::set< Key_t > &exclude);
+                        std::set< Key_t > exclude);
 
       bool
       Validate(const service::IntroSet &introset) const override;

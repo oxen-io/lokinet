@@ -14,7 +14,7 @@ namespace llarp
     struct ExitEndpoint : public dns::IQueryHandler
     {
       ExitEndpoint(const std::string& name, AbstractRouter* r);
-      ~ExitEndpoint();
+      ~ExitEndpoint() override;
 
       void
       Tick(llarp_time_t now);

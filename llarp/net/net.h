@@ -25,7 +25,11 @@ typedef unsigned int in_addr_t;
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
+
+#ifndef __cplusplus
 #include <stdbool.h>
+#endif
+
 #include <sys/types.h>
 
 bool

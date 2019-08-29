@@ -29,9 +29,7 @@ namespace llarp
       {
       }
 
-      virtual ~TX()
-      {
-      }
+      virtual ~TX() = default;
 
       void
       OnFound(const Key_t& askedPeer, const V& value);
@@ -44,7 +42,7 @@ namespace llarp
       ExtractStatus() const
       {
         util::StatusObject obj{{"whoasked", whoasked.ExtractStatus()},
-                               {"target", target.ToHex()}};
+                               {"target", target.ToString()}};
         std::vector< util::StatusObject > foundObjs;
         std::transform(valuesFound.begin(), valuesFound.end(),
                        std::back_inserter(foundObjs),
@@ -52,12 +50,12 @@ namespace llarp
                          return item.ExtractStatus();
                        });
 
-        obj.Put("found", foundObjs);
+        obj["found"] = foundObjs;
         std::vector< std::string > asked;
         std::transform(
             peersAsked.begin(), peersAsked.end(), std::back_inserter(asked),
-            [](const auto& item) -> std::string { return item.ToHex(); });
-        obj.Put("asked", asked);
+            [](const auto& item) -> std::string { return item.ToString(); });
+        obj["asked"] = asked;
         return obj;
       }
 

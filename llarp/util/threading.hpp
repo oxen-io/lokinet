@@ -32,6 +32,7 @@ namespace llarp
 
       ~NullLock() UNLOCK_FUNCTION()
       {
+        (void)this;  // trick clang-tidy
       }
     };
 

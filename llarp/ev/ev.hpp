@@ -16,6 +16,7 @@
 #include <deque>
 #include <list>
 #include <future>
+#include <utility>
 
 #ifdef _WIN32
 #include <win32/win32_up.h>
@@ -38,6 +39,8 @@ typedef struct sockaddr_un
 
 #include <sys/un.h>
 #endif
+
+struct llarp_ev_pkt_pipe;
 
 #ifndef MAX_WRITE_QUEUE_SIZE
 #define MAX_WRITE_QUEUE_SIZE (1024UL)
@@ -305,7 +308,7 @@ namespace llarp
       struct GetNow
       {
         llarp_ev_loop_ptr loop;
-        GetNow(llarp_ev_loop_ptr l) : loop(l)
+        GetNow(llarp_ev_loop_ptr l) : loop(std::move(l))
         {
         }
 
@@ -319,7 +322,7 @@ namespace llarp
       struct PutTime
       {
         llarp_ev_loop_ptr loop;
-        PutTime(llarp_ev_loop_ptr l) : loop(l)
+        PutTime(llarp_ev_loop_ptr l) : loop(std::move(l))
         {
         }
         void
@@ -570,9 +573,7 @@ namespace llarp
       tcp.close  = &DoClose;
     }
 
-    virtual ~tcp_conn()
-    {
-    }
+    ~tcp_conn() override = default;
 
     /// start connecting
     void
@@ -631,10 +632,10 @@ namespace llarp
       errno = 0;
     }
 
-    virtual ssize_t
+    ssize_t
     do_write(void* buf, size_t sz) override;
 
-    virtual int
+    int
     read(byte_t* buf, size_t sz) override;
 
     bool
@@ -652,7 +653,7 @@ namespace llarp
     }
 
     bool
-    tick()
+    tick() override
     {
       if(tcp->tick)
         tcp->tick(tcp);
@@ -660,8 +661,8 @@ namespace llarp
     }
 
     /// actually does accept() :^)
-    virtual int
-    read(byte_t*, size_t);
+    int
+    read(byte_t*, size_t) override;
   };
 
 }  // namespace llarp
@@ -773,6 +774,12 @@ struct llarp_ev_loop
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
 
+  virtual bool
+  add_pipe(llarp_ev_pkt_pipe*)
+  {
+    return false;
+  }
+
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
@@ -784,9 +791,7 @@ struct llarp_ev_loop
     return conn && add_ev(conn, true);
   }
 
-  virtual ~llarp_ev_loop()
-  {
-  }
+  virtual ~llarp_ev_loop() = default;
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 

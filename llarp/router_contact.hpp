@@ -10,6 +10,7 @@
 #include <util/status.hpp>
 
 #include <functional>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
@@ -66,7 +67,7 @@ namespace llarp
   struct RouterContact
   {
     /// for unit tests
-    static bool IgnoreBogons;
+    static bool BlockBogons;
 
     static llarp_time_t Lifetime;
     static llarp_time_t UpdateInterval;
@@ -107,6 +108,12 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const;
 
+    nlohmann::json
+    ToJson() const
+    {
+      return ExtractStatus();
+    }
+
     bool
     BEncode(llarp_buffer_t *buf) const;
 
@@ -137,7 +144,7 @@ namespace llarp
     bool
     IsExit() const
     {
-      return exits.size() > 0;
+      return !exits.empty();
     }
 
     bool

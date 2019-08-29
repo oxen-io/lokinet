@@ -1,3 +1,4 @@
+ARG bootstrap="https://i2p.rocks/i2procks.signed"
 FROM alpine:edge as builder
 
 RUN apk update && \
@@ -7,7 +8,7 @@ WORKDIR /src/
 COPY . /src/
 
 RUN make NINJA=ninja STATIC_LINK=ON BUILD_TYPE=Release
-RUN ./lokinet-bootstrap
+RUN ./lokinet-bootstrap ${bootstrap}
 
 FROM alpine:latest
 

@@ -23,9 +23,7 @@ namespace llarp
     PubKey pubkey;
     uint64_t version = LLARP_PROTO_VERSION;
 
-    ExitInfo()
-    {
-    }
+    ExitInfo() = default;
 
     ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit) : pubkey(pk)
     {

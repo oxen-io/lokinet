@@ -53,18 +53,18 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
-      virtual bool
+      bool
       SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
                 RouterContact& cur, size_t hop, PathRole roles) override;
 
-      virtual bool
+      bool
       ShouldBuildMore(llarp_time_t now) const override;
 
       /// should we bundle RCs in builds?
       virtual bool
       ShouldBundleRC() const = 0;
 
-      virtual void
+      void
       ResetInternalState() override;
 
       /// return true if we hit our soft limit for building paths too fast
@@ -78,7 +78,7 @@ namespace llarp
         return ePathRoleAny;
       }
 
-      virtual bool
+      bool
       Stop() override;
 
       bool
@@ -90,7 +90,7 @@ namespace llarp
       llarp_time_t
       Now() const override;
 
-      virtual void
+      void
       Tick(llarp_time_t now) override;
 
       void
@@ -113,13 +113,13 @@ namespace llarp
       virtual const SecretKey&
       GetTunnelEncryptionSecretKey() const;
 
-      virtual void
+      void
       HandlePathBuilt(Path_ptr p) override;
 
-      virtual void
+      void
       HandlePathBuildTimeout(Path_ptr p) override;
 
-      virtual void
+      void
       HandlePathBuildFailed(Path_ptr p) override;
     };
 

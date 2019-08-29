@@ -3,6 +3,7 @@
 
 #include <crypto/crypto.hpp>
 #include <link/session.hpp>
+#include <utility>
 #include <utp/inbound_message.hpp>
 #include <deque>
 
@@ -14,7 +15,8 @@ namespace llarp
   {
     struct LinkLayer;
 
-    struct Session : public ILinkSession
+    struct Session : public ILinkSession,
+                     public std::enable_shared_from_this< Session >
     {
       /// remote router's rc
       RouterContact remoteRC;
@@ -42,7 +44,7 @@ namespace llarp
       struct OutboundMessage
       {
         OutboundMessage(uint32_t id, CompletionHandler func)
-            : msgid{id}, completed{func}
+            : msgid{id}, completed{std::move(func)}
         {
         }
 
@@ -101,6 +103,8 @@ namespace llarp
       uint64_t m_RXRate = 0;
       uint64_t m_TXRate = 0;
 
+      llarp_time_t m_LastTick = 0;
+
       /// mark session as alive
       void
       Alive();
@@ -108,7 +112,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
-      virtual ~Session() = 0;
+      ~Session() override = 0;
 
       /// base
       explicit Session(LinkLayer* p);
@@ -147,10 +151,16 @@ namespace llarp
 
       /// pump tx queue
       void
-      PumpWrite();
+      PumpWrite(size_t numMessages);
 
       void
       Pump() override;
+
+      std::shared_ptr< ILinkSession >
+      BorrowSelf() override
+      {
+        return shared_from_this();
+      }
 
       bool
       SendKeepAlive() override;

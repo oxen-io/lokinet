@@ -31,7 +31,7 @@ namespace llarp
                   AbstractRouter* r, size_t numpaths, size_t hoplen,
                   bool bundleRC);
 
-      virtual ~BaseSession();
+      ~BaseSession() override;
 
       std::shared_ptr< path::PathSet >
       GetSelf() override
@@ -51,7 +51,7 @@ namespace llarp
         return m_BundleRC;
       }
 
-      virtual void
+      void
       ResetInternalState() override;
 
       bool UrgentBuild(llarp_time_t) const override;
@@ -175,13 +175,13 @@ namespace llarp
       {
       }
 
-      ~ExitSession() = default;
+      ~ExitSession() override = default;
 
       std::string
       Name() const override;
 
      protected:
-      virtual void
+      void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
       {
         // TODO: set expiration time
@@ -197,7 +197,7 @@ namespace llarp
                    AbstractRouter* r, size_t numpaths, size_t hoplen,
                    bool useRouterSNodeKey, bool bundleRC);
 
-      ~SNodeSession() = default;
+      ~SNodeSession() override = default;
 
       std::string
       Name() const override;

@@ -29,7 +29,8 @@ namespace llarp
         , m_Resolver(std::make_shared< dns::Proxy >(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0, 0}
+        , m_Tun{{0},     0,       {0},     nullptr, nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr, nullptr}
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
 
@@ -40,9 +41,7 @@ namespace llarp
       m_ShouldInitTun = true;
     }
 
-    ExitEndpoint::~ExitEndpoint()
-    {
-    }
+    ExitEndpoint::~ExitEndpoint() = default;
 
     util::StatusObject
     ExitEndpoint::ExtractStatus() const
@@ -52,9 +51,9 @@ namespace llarp
       util::StatusObject exitsObj{};
       for(const auto &item : m_ActiveExits)
       {
-        exitsObj.Put(item.first.ToHex(), item.second->ExtractStatus());
+        exitsObj[item.first.ToString()] = item.second->ExtractStatus();
       }
-      obj.Put("exits", exitsObj);
+      obj["exits"] = exitsObj;
       return obj;
     }
 

@@ -2,6 +2,7 @@
 
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -12,20 +13,18 @@ namespace llarp
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed)
-      : HandleMessage(handler)
-      , HandleTimeout(timeout)
-      , Sign(signbuf)
-      , GetOurRC(getrc)
-      , SessionEstablished(establishedSession)
-      , SessionClosed(closed)
-      , SessionRenegotiate(reneg)
+      : HandleMessage(std::move(handler))
+      , HandleTimeout(std::move(timeout))
+      , Sign(std::move(signbuf))
+      , GetOurRC(std::move(getrc))
+      , SessionEstablished(std::move(establishedSession))
+      , SessionClosed(std::move(closed))
+      , SessionRenegotiate(std::move(reneg))
       , m_RouterEncSecret(routerEncSecret)
   {
   }
 
-  ILinkLayer::~ILinkLayer()
-  {
-  }
+  ILinkLayer::~ILinkLayer() = default;
 
   bool
   ILinkLayer::HasSessionTo(const RouterID& id)
@@ -130,7 +129,7 @@ namespace llarp
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        if(itr->second.get() && !itr->second->TimedOut(_now))
+        if(not itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -150,7 +149,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(itr->second.get() && !itr->second->TimedOut(_now))
+        if(not itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -158,7 +157,12 @@ namespace llarp
         else
         {
           LogInfo("pending session at ", itr->first, " timed out");
-          itr->second->Close();
+          // defer call so we can acquire mutexes later
+          auto self = itr->second->BorrowSelf();
+          m_Logic->queue_func([&, self]() {
+            this->HandleTimeout(self.get());
+            self->Close();
+          });
           itr = m_Pending.erase(itr);
         }
       }
@@ -176,6 +180,7 @@ namespace llarp
     {
       if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
       {
+        LogWarn("too many session for ", pk);
         s->Close();
         return false;
       }

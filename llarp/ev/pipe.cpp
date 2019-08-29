@@ -1,4 +1,5 @@
 #include <ev/pipe.hpp>
+#include <utility>
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -6,12 +7,12 @@
 #include <fcntl.h>
 
 llarp_ev_pkt_pipe::llarp_ev_pkt_pipe(llarp_ev_loop_ptr loop)
-    : llarp::ev_io(-1, new LosslessWriteQueue_t()), m_Loop(loop)
+    : llarp::ev_io(-1, new LosslessWriteQueue_t()), m_Loop(std::move(loop))
 {
 }
 
 bool
-llarp_ev_pkt_pipe::Start()
+llarp_ev_pkt_pipe::StartPipe()
 {
 #if defined(_WIN32)
   llarp::LogError("llarp_ev_pkt_pipe not supported on win32");
@@ -25,7 +26,7 @@ llarp_ev_pkt_pipe::Start()
   }
   fd      = _fds[0];
   writefd = _fds[1];
-  return true;
+  return m_Loop->add_pipe(this);
 #endif
 }
 

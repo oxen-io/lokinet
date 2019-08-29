@@ -1,8 +1,8 @@
 #ifndef LLARP_MEM_H_
 #define LLARP_MEM_H_
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
+
+#include <cstdint>
+#include <cstdlib>
 
 /** constant time memcmp */
 bool

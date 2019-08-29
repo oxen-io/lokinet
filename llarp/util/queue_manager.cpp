@@ -226,7 +226,7 @@ namespace llarp
 
         uint32_t elemGen = decodeGenerationFromElementState(compare);
 
-        int32_t difference = static_cast< int32_t >(currGen - elemGen);
+        auto difference = static_cast< int32_t >(currGen - elemGen);
 
         if(difference == 1
            || (difference == -static_cast< int32_t >(m_maxGeneration)))
@@ -326,7 +326,7 @@ namespace llarp
         uint32_t elemGen   = decodeGenerationFromElementState(compare);
         ElementState state = decodeStateFromElementState(compare);
 
-        int32_t difference = static_cast< int32_t >(currGen - elemGen);
+        auto difference = static_cast< int32_t >(currGen - elemGen);
 
         if(difference == 1
            || (difference == -static_cast< int32_t >(m_maxGeneration)))
@@ -455,9 +455,9 @@ namespace llarp
         assert(0 < circularDifference(endCombinedIndex, loadedCombinedIndex,
                                       m_maxCombinedIndex + 1));
 
-        uint32_t currIdx =
+        auto currIdx =
             static_cast< uint32_t >(loadedCombinedIndex % m_capacity);
-        uint32_t currGen =
+        auto currGen =
             static_cast< uint32_t >(loadedCombinedIndex / m_capacity);
 
         // Try to swap this cell from Full to Reading.

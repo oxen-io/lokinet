@@ -2,21 +2,25 @@
 #define LLARP_IWP_HPP
 
 #include <link/server.hpp>
-
+#include <iwp/linklayer.hpp>
 #include <memory>
 
 namespace llarp
 {
-  struct AbstractRouter;
-
   namespace iwp
   {
-    std::unique_ptr< ILinkLayer >
-    NewServer(const SecretKey& routerEncSecret, llarp::GetRCFunc getrc,
-              llarp::LinkMessageHandler h, llarp::SessionEstablishedHandler est,
-              llarp::SessionRenegotiateHandler reneg,
-              llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
-              llarp::SessionClosedHandler closed);
+    LinkLayer_ptr
+    NewInboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                   LinkMessageHandler h, SignBufferFunc sign,
+                   SessionEstablishedHandler est,
+                   SessionRenegotiateHandler reneg, TimeoutHandler timeout,
+                   SessionClosedHandler closed);
+    LinkLayer_ptr
+    NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                    LinkMessageHandler h, SignBufferFunc sign,
+                    SessionEstablishedHandler est,
+                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
+                    SessionClosedHandler closed);
 
   }  // namespace iwp
 }  // namespace llarp

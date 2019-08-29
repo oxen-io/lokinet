@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -27,10 +28,8 @@ namespace llarp
     {
       return ptr;
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -43,10 +42,8 @@ namespace llarp
     {
       return std::atoi(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -59,10 +56,8 @@ namespace llarp
     {
       return std::atoi(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -75,10 +70,8 @@ namespace llarp
     {
       return std::atoll(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   template <>
@@ -92,10 +85,8 @@ namespace llarp
     {
       return IsTrueValue(ptr);
     }
-    else
-    {
-      return val;
-    }
+
+    return val;
   }
 
   class RouterConfig
@@ -105,7 +96,7 @@ namespace llarp
     size_t m_minConnectedRouters = 2;
 
     /// hard upperbound limit on the number of router to router connections
-    size_t m_maxConnectedRouters = 2000;
+    size_t m_maxConnectedRouters = 5;
 
     std::string m_netId;
     std::string m_nickname;
@@ -121,6 +112,8 @@ namespace llarp
     // long term identity key
     std::string m_identKeyfile = "identity.key";
 
+    absl::optional< bool > m_blockBogons;
+
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
     AddressInfo m_addrInfo;
@@ -128,21 +121,25 @@ namespace llarp
     int m_workerThreads = 1;
     int m_numNetThreads = 1;
 
+    std::string m_DefaultLinkProto = "iwp";
+
    public:
     // clang-format off
-    size_t minConnectedRouters() const        { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
-    size_t maxConnectedRouters() const        { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
-    std::string encryptionKeyfile() const        { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
-    std::string ourRcFile() const                { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
-    std::string transportKeyfile() const         { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
-    std::string identKeyfile() const             { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
-    std::string netId() const                 { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const              { return fromEnv(m_nickname, "NICKNAME"); }
-    bool publicOverride() const               { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
-    const struct sockaddr_in& ip4addr() const { return m_ip4addr; }
-    const AddressInfo& addrInfo() const       { return m_addrInfo; }
-    int workerThreads() const                 { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
-    int numNetThreads() const                 { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
+    size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
+    size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
+    std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
+    std::string ourRcFile() const              { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
+    std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
+    std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
+    std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
+    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); } 
+    bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
+    const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
+    const AddressInfo& addrInfo() const        { return m_addrInfo; }
+    int workerThreads() const                  { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
+    int numNetThreads() const                  { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
+    std::string defaultLinkProto() const       { return fromEnv(m_DefaultLinkProto, "LINK_PROTO"); }
+    absl::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
     // clang-format on
 
     void
@@ -194,20 +191,27 @@ namespace llarp
     fromSection(string_view key, string_view val);
   };
 
-  class IwpConfig
+  class LinksConfig
   {
    public:
-    using Servers = std::vector< std::tuple< std::string, int, uint16_t > >;
+    static constexpr int Interface     = 0;
+    static constexpr int AddressFamily = 1;
+    static constexpr int Port          = 2;
+    static constexpr int Options       = 3;
+
+    using ServerOptions = std::unordered_set< std::string >;
+    using LinkInfo = std::tuple< std::string, int, uint16_t, ServerOptions >;
+    using Links    = std::vector< LinkInfo >;
 
    private:
-    uint16_t m_OutboundPort = 0;
-
-    Servers m_servers;
+    LinkInfo m_OutboundLink;
+    Links m_InboundLinks;
 
    public:
     // clang-format off
-    uint16_t outboundPort() const  { return fromEnv(m_OutboundPort, "OUTBOUND_PORT"); }
-    const Servers& servers() const { return m_servers; }
+    const LinkInfo& outboundLink() const  { return m_OutboundLink; }
+
+    const Links& inboundLinks() const { return m_InboundLinks; }
     // clang-format on
 
     void
@@ -306,7 +310,7 @@ namespace llarp
     ConnectConfig connect;
     NetdbConfig netdb;
     DnsConfig dns;
-    IwpConfig iwp_links;
+    LinksConfig links;
     ServicesConfig services;
     SystemConfig system;
     MetricsConfig metrics;
@@ -325,7 +329,8 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath);
+llarp_generic_ensure_config(std::ofstream& f, std::string basepath,
+                            bool isRouter);
 
 void
 llarp_ensure_router_config(std::ofstream& f, std::string basepath);

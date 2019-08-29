@@ -4,6 +4,7 @@
 #include <dht/key.hpp>
 #include <router_contact.hpp>
 #include <service/intro_set.hpp>
+#include <utility>
 
 namespace llarp
 {
@@ -47,7 +48,7 @@ namespace llarp
         ID.Zero();
       }
 
-      ISNode(const service::IntroSet& other) : introset(other)
+      ISNode(service::IntroSet other) : introset(std::move(other))
       {
         introset.A.CalculateAddress(ID.as_array());
       }

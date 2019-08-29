@@ -18,7 +18,7 @@
 #endif
 
 #include <functional>
-#include <string.h>
+#include <cstring>
 
 namespace llarp
 {
@@ -27,9 +27,9 @@ namespace llarp
     uint64
     LinkLayer::OnConnect(utp_callback_arguments* arg)
     {
-      LinkLayer* l =
+      auto* l =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
-      Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
+      auto* session = static_cast< Session* >(utp_get_userdata(arg->socket));
       if(session && l)
         session->OutboundLinkEstablished(l);
       return 0;
@@ -38,7 +38,7 @@ namespace llarp
     uint64
     LinkLayer::SendTo(utp_callback_arguments* arg)
     {
-      LinkLayer* l =
+      auto* l =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       if(l == nullptr)
         return 0;
@@ -49,9 +49,9 @@ namespace llarp
     uint64
     LinkLayer::OnError(utp_callback_arguments* arg)
     {
-      Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
+      auto* session = static_cast< Session* >(utp_get_userdata(arg->socket));
 
-      LinkLayer* link =
+      auto* link =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
 
       if(session && link)
@@ -270,7 +270,7 @@ namespace llarp
     uint64
     LinkLayer::OnRead(utp_callback_arguments* arg)
     {
-      Session* self = static_cast< Session* >(utp_get_userdata(arg->socket));
+      auto* self = static_cast< Session* >(utp_get_userdata(arg->socket));
 
       if(self)
       {
@@ -297,12 +297,12 @@ namespace llarp
     uint64
     LinkLayer::OnStateChange(utp_callback_arguments* arg)
     {
-      Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
+      auto* session = static_cast< Session* >(utp_get_userdata(arg->socket));
       if(session)
       {
         if(arg->state == UTP_STATE_WRITABLE)
         {
-          session->PumpWrite();
+          session->Pump();
         }
         else if(arg->state == UTP_STATE_EOF)
         {
@@ -316,7 +316,7 @@ namespace llarp
     uint64
     LinkLayer::OnAccept(utp_callback_arguments* arg)
     {
-      LinkLayer* self =
+      auto* self =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       Addr remote(*arg->address);
 
