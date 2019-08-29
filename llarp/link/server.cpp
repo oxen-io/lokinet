@@ -157,12 +157,7 @@ namespace llarp
         else
         {
           LogInfo("pending session at ", itr->first, " timed out");
-          // defer call so we can acquire mutexes later
-          auto self = itr->second->BorrowSelf();
-          m_Logic->queue_func([&, self]() {
-            this->HandleTimeout(self.get());
-            self->Close();
-          });
+          itr->second->Close();
           itr = m_Pending.erase(itr);
         }
       }

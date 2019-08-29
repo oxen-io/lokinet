@@ -15,8 +15,7 @@ namespace llarp
   {
     struct LinkLayer;
 
-    struct Session : public ILinkSession,
-                     public std::enable_shared_from_this< Session >
+    struct Session : public ILinkSession
     {
       /// remote router's rc
       RouterContact remoteRC;
@@ -155,12 +154,6 @@ namespace llarp
 
       void
       Pump() override;
-
-      std::shared_ptr< ILinkSession >
-      BorrowSelf() override
-      {
-        return shared_from_this();
-      }
 
       bool
       SendKeepAlive() override;
