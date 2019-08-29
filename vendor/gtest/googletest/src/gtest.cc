@@ -4739,7 +4739,7 @@ void UnitTest::AddTestPartResult(
     ((defined(__clang__) || defined(__GNUC__)) && \
      (defined(__x86_64__) || defined(__i386__)))
       // with clang/gcc we can achieve the same effect on x86 by invoking int3
-      asm("int3");
+      asm("int $0x3");
 #else
       // Dereference nullptr through a volatile pointer to prevent the compiler
       // from removing. We use this rather than abort() or __builtin_trap() for

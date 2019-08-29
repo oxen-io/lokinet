@@ -427,6 +427,77 @@ namespace libuv
     }
   };
 
+  struct pipe_glue : public glue
+  {
+    byte_t m_Buffer[1024 * 8];
+    llarp_ev_pkt_pipe* const m_Pipe;
+    pipe_glue(uv_loop_t* loop, llarp_ev_pkt_pipe* pipe) : m_Pipe(pipe)
+    {
+      m_Handle.data = this;
+      m_Ticker.data = this;
+      uv_poll_init(loop, &m_Handle, m_Pipe->fd);
+      uv_check_init(loop, &m_Ticker);
+    }
+
+    void
+    Tick()
+    {
+      m_Pipe->tick();
+    }
+
+    static void
+    OnRead(uv_poll_t* handle, int status, int)
+    {
+      if(status)
+      {
+        return;
+      }
+      pipe_glue* glue = static_cast< pipe_glue* >(handle->data);
+      int r = glue->m_Pipe->read(glue->m_Buffer, sizeof(glue->m_Buffer));
+      if(r <= 0)
+        return;
+      const llarp_buffer_t buf{glue->m_Buffer, static_cast< size_t >(r)};
+      glue->m_Pipe->OnRead(buf);
+    }
+
+    static void
+    OnClosed(uv_handle_t* h)
+    {
+      auto* self = static_cast< pipe_glue* >(h->data);
+      if(self)
+      {
+        h->data = nullptr;
+        delete self;
+      }
+    }
+
+    void
+    Close() override
+    {
+      uv_check_stop(&m_Ticker);
+      uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+    }
+
+    static void
+    OnTick(uv_check_t* h)
+    {
+      static_cast< pipe_glue* >(h->data)->Tick();
+    }
+
+    bool
+    Start()
+    {
+      if(uv_poll_start(&m_Handle, UV_READABLE, &OnRead))
+        return false;
+      if(uv_check_start(&m_Ticker, &OnTick))
+        return false;
+      return true;
+    }
+
+    uv_poll_t m_Handle;
+    uv_check_t m_Ticker;
+  };
+
   struct tun_glue : public glue
   {
     uv_poll_t m_Handle;
@@ -699,6 +770,16 @@ namespace libuv
     if(glue->Server())
       return true;
     tcp->impl = nullptr;
+    delete glue;
+    return false;
+  }
+
+  bool
+  Loop::add_pipe(llarp_ev_pkt_pipe* p)
+  {
+    auto* glue = new pipe_glue(m_Impl.get(), p);
+    if(glue->Start())
+      return true;
     delete glue;
     return false;
   }

@@ -25,9 +25,14 @@ namespace llarp
       eDeliveryDropped = 1
     };
 
+    /// equiv of shared_from_this but for the interface type so
+    /// that each implementation can use shared_from_this
+    virtual std::shared_ptr< ILinkSession >
+    BorrowSelf() = 0;
+
     /// hook for utp for when we have established a connection
     virtual void
-    OnLinkEstablished(ILinkLayer *p) = 0;
+    OnLinkEstablished(ILinkLayer *){};
 
     /// called every event loop tick
     virtual void
@@ -49,6 +54,13 @@ namespace llarp
 
     virtual void
     Close() = 0;
+
+    /// recv packet on low layer
+    /// not used by utp
+    virtual void
+    Recv_LL(const llarp_buffer_t &)
+    {
+    }
 
     /// send a keepalive to the remote endpoint
     virtual bool

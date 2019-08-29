@@ -7,22 +7,26 @@ namespace llarp
 {
   namespace iwp
   {
-    std::unique_ptr< ILinkLayer >
-    NewServer(const SecretKey& enckey, GetRCFunc getrc, LinkMessageHandler h,
-              SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
-              SignBufferFunc sign, TimeoutHandler t,
-              SessionClosedHandler closed)
+    LinkLayer_ptr
+    NewInboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                   LinkMessageHandler h, SignBufferFunc sign,
+                   SessionEstablishedHandler est,
+                   SessionRenegotiateHandler reneg, TimeoutHandler timeout,
+                   SessionClosedHandler closed)
     {
-      (void)enckey;
-      (void)getrc;
-      (void)h;
-      (void)est;
-      (void)reneg;
-      (void)sign;
-      (void)t;
-      (void)closed;
-      // TODO: implement me
-      return nullptr;
+      return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
+                                           reneg, timeout, closed, true);
+    }
+
+    LinkLayer_ptr
+    NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                    LinkMessageHandler h, SignBufferFunc sign,
+                    SessionEstablishedHandler est,
+                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
+                    SessionClosedHandler closed)
+    {
+      return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
+                                           reneg, timeout, closed, false);
     }
   }  // namespace iwp
 }  // namespace llarp

@@ -40,6 +40,8 @@ typedef struct sockaddr_un
 #include <sys/un.h>
 #endif
 
+struct llarp_ev_pkt_pipe;
+
 #ifndef MAX_WRITE_QUEUE_SIZE
 #define MAX_WRITE_QUEUE_SIZE (1024UL)
 #endif
@@ -771,6 +773,12 @@ struct llarp_ev_loop
 
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
+
+  virtual bool
+  add_pipe(llarp_ev_pkt_pipe*)
+  {
+    return false;
+  }
 
   /// register event listener
   virtual bool

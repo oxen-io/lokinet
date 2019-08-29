@@ -184,7 +184,11 @@ int GetCPU() {
 // global constructors.
 static class VDSOInitHelper {
  public:
-  VDSOInitHelper() { VDSOSupport::Init(); }
+  VDSOInitHelper() {
+#ifndef LOKINET_SHADOW
+    VDSOSupport::Init();
+#endif
+  }
 } vdso_init_helper;
 
 }  // namespace debugging_internal

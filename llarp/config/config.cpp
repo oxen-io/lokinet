@@ -4,12 +4,15 @@
 #include <constants/defaults.hpp>
 #include <constants/limits.hpp>
 #include <net/net.hpp>
+#include <router_contact.hpp>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
 #include <util/logger_syslog.hpp>
+#include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/memfn.hpp>
 #include <util/str.hpp>
+
+#include <absl/strings/strip.h>
 
 #include <cstdlib>
 #include <fstream>
@@ -31,9 +34,28 @@ namespace llarp
     return std::atoi(str.c_str());
   }
 
+  absl::optional< bool >
+  setOptBool(string_view val)
+  {
+    if(IsTrueValue(val))
+    {
+      return true;
+    }
+    else if(IsFalseValue(val))
+    {
+      return false;
+    }
+    return {};
+  }
+
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
+    if(key == "default-protocol")
+    {
+      m_DefaultLinkProto = tostr(val);
+      LogInfo("overriding default link protocol to '", val, "'");
+    }
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
@@ -139,6 +161,10 @@ namespace llarp
         LogDebug("set to use ", m_numNetThreads, " net threads");
       }
     }
+    if(key == "block-bogons")
+    {
+      m_blockBogons = setOptBool(val);
+    }
   }
 
   void
@@ -146,14 +172,7 @@ namespace llarp
   {
     if(key == "profiling")
     {
-      if(IsTrueValue(val))
-      {
-        m_enableProfiling.emplace(true);
-      }
-      else if(IsFalseValue(val))
-      {
-        m_enableProfiling.emplace(false);
-      }
+      m_enableProfiling = setOptBool(val);
     }
     else if(key == "profiles")
     {
@@ -195,28 +214,31 @@ namespace llarp
   }
 
   void
-  IwpConfig::fromSection(string_view key, string_view val)
+  LinksConfig::fromSection(string_view key, string_view val)
   {
-    // try IPv4 first
     uint16_t proto = 0;
 
-    std::set< std::string > parsed_opts;
+    std::unordered_set< std::string > parsed_opts;
     std::string v = tostr(val);
     std::string::size_type idx;
+    static constexpr char delimiter = ',';
     do
     {
-      idx = v.find_first_of(',');
+      idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        parsed_opts.insert(v.substr(0, idx));
+        std::string val = v.substr(0, idx);
+        absl::StripAsciiWhitespace(&val);
+        parsed_opts.emplace(std::move(val));
         v = v.substr(idx + 1);
       }
       else
       {
-        parsed_opts.insert(v);
+        absl::StripAsciiWhitespace(&v);
+        parsed_opts.insert(std::move(v));
       }
     } while(idx != std::string::npos);
-
+    std::unordered_set< std::string > opts;
     /// for each option
     for(const auto &item : parsed_opts)
     {
@@ -230,15 +252,20 @@ namespace llarp
           proto = port;
         }
       }
+      else
+      {
+        opts.insert(item);
+      }
     }
 
     if(key == "*")
     {
-      m_OutboundPort = proto;
+      m_OutboundLink = std::make_tuple(
+          "*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
     }
     else
     {
-      m_servers.emplace_back(tostr(key), AF_INET, proto);
+      m_InboundLinks.emplace_back(tostr(key), AF_INET, proto, std::move(opts));
     }
   }
 
@@ -398,7 +425,9 @@ namespace llarp
     };
 
     if(c.VisitSection(name.c_str(), visitor))
+    {
       return ret;
+    }
 
     return {};
   }
@@ -435,7 +464,7 @@ namespace llarp
     connect   = find_section< ConnectConfig >(parser, "connect");
     netdb     = find_section< NetdbConfig >(parser, "netdb");
     dns       = find_section< DnsConfig >(parser, "dns");
-    iwp_links = find_section< IwpConfig >(parser, "bind");
+    links     = find_section< LinksConfig >(parser, "bind");
     services  = find_section< ServicesConfig >(parser, "services");
     system    = find_section< SystemConfig >(parser, "system");
     metrics   = find_section< MetricsConfig >(parser, "metrics");
@@ -465,7 +494,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
     return false;
   }
 
-  std::string basepath = "";
+  std::string basepath;
   if(basedir)
   {
     basepath = basedir;
@@ -641,10 +670,14 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   // get ifname
   std::string ifname;
   if(llarp::GetBestNetIF(ifname, AF_INET))
+  {
     f << ifname << "=1090\n";
+  }
   else
+  {
     f << "# could not autodetect network interface\n"
       << "#eth0=1090\n";
+  }
 
   f << std::endl;
 }
@@ -658,7 +691,9 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     auto stream = llarp::util::OpenFileStream< std::ofstream >(
         snappExample_fpath, std::ios::binary);
     if(!stream)
+    {
       return false;
+    }
     auto &example_f = stream.value();
     if(example_f.is_open())
     {

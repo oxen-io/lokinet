@@ -13,7 +13,7 @@ def getSetting(s, name, fallback): return name in s and s[name] or fallback
 shadowRoot = getSetting(os.environ, "SHADOW_ROOT",
                         os.path.join(os.environ['HOME'], '.shadow'))
 
-libpath = 'libshadow-plugin-lokinet-shared.so'
+libpath = 'libshadow-plugin-lokinet.so'
 
 
 def nodeconf(conf, baseDir, name, ifname=None, port=None):

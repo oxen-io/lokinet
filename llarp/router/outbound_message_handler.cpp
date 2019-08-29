@@ -170,18 +170,13 @@ namespace llarp
   {
     const llarp_buffer_t buf(msg.first);
     auto callback = msg.second;
-    if(!_linkManager->SendTo(
-           remote, buf, [=](ILinkSession::DeliveryStatus status) {
-             if(status == ILinkSession::DeliveryStatus::eDeliverySuccess)
-               DoCallback(callback, SendStatus::Success);
-             else
-               DoCallback(callback, SendStatus::Congestion);
-           }))
-    {
-      DoCallback(callback, SendStatus::Congestion);
-      return false;
-    }
-    return true;
+    return _linkManager->SendTo(
+        remote, buf, [=](ILinkSession::DeliveryStatus status) {
+          if(status == ILinkSession::DeliveryStatus::eDeliverySuccess)
+            DoCallback(callback, SendStatus::Success);
+          else
+            DoCallback(callback, SendStatus::Congestion);
+        });
   }
 
   bool

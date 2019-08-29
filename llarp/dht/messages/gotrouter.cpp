@@ -97,6 +97,7 @@ namespace llarp
 
       if(dht.pendingExploreLookups().HasPendingLookupFrom(owner))
       {
+        LogDebug("got ", N.size(), " results in GRM for explore");
         if(N.size() == 0)
           dht.pendingExploreLookups().NotFound(owner, K);
         else
@@ -108,6 +109,7 @@ namespace llarp
       // not explore lookup
       if(dht.pendingRouterLookups().HasPendingLookupFrom(owner))
       {
+        LogDebug("got ", R.size(), " results in GRM for lookup");
         if(R.size() == 0)
           dht.pendingRouterLookups().NotFound(owner, K);
         else

@@ -20,8 +20,15 @@ namespace llarp
 
     void Tick(llarp_time_t) override{};
 
+    void
+    Print(LogLevel lvl, const char*, const std::string& msg) override;
+
+   private:
+    std::ostream& m_Out;
+
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes
+
     HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
   };
 }  // namespace llarp

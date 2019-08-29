@@ -1,16 +1,20 @@
 #include <iwp/linklayer.hpp>
+#include <iwp/session.hpp>
 
 namespace llarp
 {
   namespace iwp
   {
-    LinkLayer::LinkLayer(const SecretKey& enckey, GetRCFunc getrc,
-                         LinkMessageHandler h, SessionEstablishedHandler est,
-                         SessionRenegotiateHandler reneg, SignBufferFunc sign,
-                         TimeoutHandler t, SessionClosedHandler closed)
-        : ILinkLayer(enckey, getrc, h, sign, est, reneg, t, closed)
+    LinkLayer::LinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+                         LinkMessageHandler h, SignBufferFunc sign,
+                         SessionEstablishedHandler est,
+                         SessionRenegotiateHandler reneg,
+                         TimeoutHandler timeout, SessionClosedHandler closed,
+                         bool allowInbound)
+        : ILinkLayer(routerEncSecret, getrc, h, sign, est, reneg, timeout,
+                     closed)
+        , permitInbound{allowInbound}
     {
-      m_FlowCookie.Randomize();
     }
 
     LinkLayer::~LinkLayer() = default;
@@ -18,7 +22,28 @@ namespace llarp
     void
     LinkLayer::Pump()
     {
+      std::set< RouterID > sessions;
+      {
+        Lock l(&m_AuthedLinksMutex);
+        auto itr = m_AuthedLinks.begin();
+        while(itr != m_AuthedLinks.end())
+        {
+          sessions.insert(itr->first);
+          ++itr;
+        }
+      }
       ILinkLayer::Pump();
+      {
+        Lock l(&m_AuthedLinksMutex);
+        for(const auto& pk : sessions)
+        {
+          if(m_AuthedLinks.count(pk) == 0)
+          {
+            // all sessions were removed
+            SessionClosed(pk);
+          }
+        }
+      }
     }
 
     const char*
@@ -44,135 +69,57 @@ namespace llarp
     bool
     LinkLayer::Start(std::shared_ptr< Logic > l)
     {
-      if(!ILinkLayer::Start(l))
-        return false;
-      return false;
+      return ILinkLayer::Start(l);
     }
 
     void
     LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
     {
-      m_OuterMsg.Clear();
-      llarp_buffer_t sigbuf(pkt, sz);
-      llarp_buffer_t decodebuf(pkt, sz);
-      if(!m_OuterMsg.Decode(&decodebuf))
+      std::shared_ptr< ILinkSession > session;
+      auto itr = m_AuthedAddrs.find(from);
+      if(itr == m_AuthedAddrs.end())
       {
-        LogError("failed to decode outer message");
-        return;
+        util::Lock lock(&m_PendingMutex);
+        if(m_Pending.count(from) == 0)
+        {
+          if(not permitInbound)
+            return;
+          m_Pending.insert({from, std::make_shared< Session >(this, from)});
+        }
+        session = m_Pending.find(from)->second;
       }
-      NetID ourNetID;
-      switch(m_OuterMsg.command)
+      else
       {
-        case eOCMD_ObtainFlowID:
-          sigbuf.sz -= m_OuterMsg.Zsig.size();
-          if(!CryptoManager::instance()->verify(m_OuterMsg.pubkey, sigbuf,
-                                                m_OuterMsg.Zsig))
-          {
-            LogError("failed to verify signature on '",
-                     (char)m_OuterMsg.command, "' message from ", from);
-            return;
-          }
-          if(!ShouldSendFlowID(from))
-          {
-            SendReject(from, "no flo 4u :^)");
-            return;
-          }
-          if(m_OuterMsg.netid == ourNetID)
-          {
-            if(GenFlowIDFor(m_OuterMsg.pubkey, from, m_OuterMsg.flow))
-              SendFlowID(from, m_OuterMsg.flow);
-            else
-              SendReject(from, "genflow fail");
-          }
-          else
-            SendReject(from, "bad netid");
+        auto range = m_AuthedLinks.equal_range(itr->second);
+        session    = range.first->second;
       }
+      if(session)
+      {
+        const llarp_buffer_t buf{pkt, sz};
+        session->Recv_LL(buf);
+      }
+    }
+
+    bool
+    LinkLayer::MapAddr(const RouterID& r, ILinkSession* s)
+    {
+      if(!ILinkLayer::MapAddr(r, s))
+        return false;
+      m_AuthedAddrs.emplace(s->GetRemoteEndpoint(), r);
+      return true;
+    }
+
+    void
+    LinkLayer::UnmapAddr(const Addr& a)
+    {
+      m_AuthedAddrs.erase(a);
     }
 
     std::shared_ptr< ILinkSession >
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& ai)
     {
-      (void)rc;
-      (void)ai;
-      // TODO: implement me
-      return {};
-    }
-
-    void
-    LinkLayer::SendFlowID(const Addr& to, const FlowID_t& flow)
-    {
-      // TODO: implement me
-      (void)to;
-      (void)flow;
-    }
-
-    bool
-    LinkLayer::VerifyFlowID(const PubKey& pk, const Addr& from,
-                            const FlowID_t& flow) const
-    {
-      FlowID_t expected;
-      if(!GenFlowIDFor(pk, from, expected))
-        return false;
-      return expected == flow;
-    }
-
-    bool
-    LinkLayer::GenFlowIDFor(const PubKey& pk, const Addr& from,
-                            FlowID_t& flow) const
-    {
-      std::array< byte_t, 128 > tmp = {{0}};
-      if(inet_ntop(AF_INET6, from.addr6(), (char*)tmp.data(), tmp.size())
-         == nullptr)
-        return false;
-      std::copy_n(pk.begin(), pk.size(), tmp.begin() + 64);
-      std::copy_n(m_FlowCookie.begin(), m_FlowCookie.size(),
-                  tmp.begin() + 64 + pk.size());
-      llarp_buffer_t buf(tmp);
-      ShortHash h;
-      if(!CryptoManager::instance()->shorthash(h, buf))
-        return false;
-      std::copy_n(h.begin(), flow.size(), flow.begin());
-      return true;
-    }
-
-    bool
-    LinkLayer::ShouldSendFlowID(const Addr& to) const
-    {
-      (void)to;
-      // TODO: implement me
-      return false;
-    }
-
-    void
-    LinkLayer::SendReject(const Addr& to, const char* msg)
-    {
-      if(strlen(msg) > 14)
-      {
-        throw std::logic_error("reject message too big");
-      }
-      std::array< byte_t, 120 > pkt;
-      auto now  = Now();
-      PubKey pk = GetOurRC().pubkey;
-      OuterMessage m;
-      m.CreateReject(msg, now, pk);
-      llarp_buffer_t encodebuf(pkt);
-      if(!m.Encode(&encodebuf))
-      {
-        LogError("failed to encode reject message to ", to);
-        return;
-      }
-      llarp_buffer_t signbuf(pkt.data(), pkt.size() - m.Zsig.size());
-      if(!Sign(m.Zsig, signbuf))
-      {
-        LogError("failed to sign reject messsage to ", to);
-        return;
-      }
-      std::copy_n(m.Zsig.begin(), m.Zsig.size(),
-                  pkt.begin() + (pkt.size() - m.Zsig.size()));
-      llarp_buffer_t pktbuf(pkt);
-      SendTo_LL(to, pktbuf);
+      return std::make_shared< Session >(this, rc, ai);
     }
   }  // namespace iwp
-
 }  // namespace llarp
