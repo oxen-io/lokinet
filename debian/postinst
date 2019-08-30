@@ -18,6 +18,7 @@ if [ "$1" = configure ]; then
         adduser --force-badname --quiet _lokinet _loki
     fi
 
+    mkdir -p /etc/loki
     mkdir -p /var/lib/lokinet
     su -s /bin/sh _lokinet -c "test -O /var/lib/lokinet && test -G /var/lib/lokinet" || \
         chown _lokinet:_loki /var/lib/lokinet
