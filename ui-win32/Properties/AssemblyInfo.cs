@@ -1,3 +1,8 @@
+// WARNING: for the love of all that is good and holy
+// please DO NOT convert this file to UTF-8, much less
+// UTF-16 - the UNIX port of Roslyn does not understand UTF-16,
+// and UTF-8 chews up the copyright symbols.
+// -rick
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -10,8 +15,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Loki Project")]
 [assembly: AssemblyProduct("LokiNET Launcher")]
-[assembly: AssemblyCopyright("Copyright Â©2018-2019 Loki Project. All rights reserved. See LICENSE for more details.")]
-[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are â„¢ & Â©2018-2019 Loki Foundation")]
+[assembly: AssemblyCopyright("Copyright ©2018-2019 Loki Project. All rights reserved. See LICENSE for more details.")]
+[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2019 Loki Foundation")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
