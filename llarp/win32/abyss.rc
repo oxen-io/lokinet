@@ -7,7 +7,7 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
-#include <llarp/constants/version.hpp>
+#include <constants/version.hpp>
 #ifdef __GNUC__
 #include <winresrc.h>
 #endif
