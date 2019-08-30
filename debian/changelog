@@ -1,3 +1,13 @@
+lokinet (0.5.0~pre20190830-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * optimize
+
+  [ Jason Rhinelander ]
+  * Make sure /etc/loki exists during postinst
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 30 Aug 2019 13:13:47 -0300
+
 lokinet (0.5.0~pre20190829-1) sid; urgency=medium
 
   [ Jeff Becker ]
