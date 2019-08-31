@@ -10,9 +10,9 @@ static uint64_t
 load_3(const unsigned char *in)
 {
   uint64_t result;
-  result = (uint64_t) in[0];
-  result |= ((uint64_t) in[1]) << 8;
-  result |= ((uint64_t) in[2]) << 16;
+  result = (uint64_t)in[0];
+  result |= ((uint64_t)in[1]) << 8;
+  result |= ((uint64_t)in[2]) << 16;
   return result;
 }
 
@@ -20,10 +20,10 @@ static uint64_t
 load_4(const unsigned char *in)
 {
   uint64_t result;
-  result = (uint64_t) in[0];
-  result |= ((uint64_t) in[1]) << 8;
-  result |= ((uint64_t) in[2]) << 16;
-  result |= ((uint64_t) in[3]) << 24;
+  result = (uint64_t)in[0];
+  result |= ((uint64_t)in[1]) << 8;
+  result |= ((uint64_t)in[2]) << 16;
+  result |= ((uint64_t)in[3]) << 24;
   return result;
 }
 
@@ -51,17 +51,37 @@ fe_frombytes(fe h, const unsigned char *s)
   uint64_t carry8;
   uint64_t carry9;
 
-  carry9 = h9 >> 25; h0 += carry9 * 19; h9 &= 0x1FFFFFF;
-  carry1 = h1 >> 25; h2 += carry1; h1 &= 0x1FFFFFF;
-  carry3 = h3 >> 25; h4 += carry3; h3 &= 0x1FFFFFF;
-  carry5 = h5 >> 25; h6 += carry5; h5 &= 0x1FFFFFF;
-  carry7 = h7 >> 25; h8 += carry7; h7 &= 0x1FFFFFF;
+  carry9 = h9 >> 25;
+  h0 += carry9 * 19;
+  h9 &= 0x1FFFFFF;
+  carry1 = h1 >> 25;
+  h2 += carry1;
+  h1 &= 0x1FFFFFF;
+  carry3 = h3 >> 25;
+  h4 += carry3;
+  h3 &= 0x1FFFFFF;
+  carry5 = h5 >> 25;
+  h6 += carry5;
+  h5 &= 0x1FFFFFF;
+  carry7 = h7 >> 25;
+  h8 += carry7;
+  h7 &= 0x1FFFFFF;
 
-  carry0 = h0 >> 26; h1 += carry0; h0 &= 0x3FFFFFF;
-  carry2 = h2 >> 26; h3 += carry2; h2 &= 0x3FFFFFF;
-  carry4 = h4 >> 26; h5 += carry4; h4 &= 0x3FFFFFF;
-  carry6 = h6 >> 26; h7 += carry6; h6 &= 0x3FFFFFF;
-  carry8 = h8 >> 26; h9 += carry8; h8 &= 0x3FFFFFF;
+  carry0 = h0 >> 26;
+  h1 += carry0;
+  h0 &= 0x3FFFFFF;
+  carry2 = h2 >> 26;
+  h3 += carry2;
+  h2 &= 0x3FFFFFF;
+  carry4 = h4 >> 26;
+  h5 += carry4;
+  h4 &= 0x3FFFFFF;
+  carry6 = h6 >> 26;
+  h7 += carry6;
+  h6 &= 0x3FFFFFF;
+  carry8 = h8 >> 26;
+  h9 += carry8;
+  h8 &= 0x3FFFFFF;
 
   h[0] = h0;
   h[1] = h1;

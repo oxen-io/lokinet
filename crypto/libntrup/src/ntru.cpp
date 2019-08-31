@@ -1,7 +1,7 @@
 #include <libntrup/ntru.h>
 #include <stdbool.h>
 
-#include <stdio.h> // printf
+#include <stdio.h>  // printf
 
 #if __AVX2__
 #include <cpuid.h>

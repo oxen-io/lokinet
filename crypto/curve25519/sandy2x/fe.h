@@ -21,6 +21,7 @@ Bounds on each t[i] vary depending on context.
 
 #define fe_frombytes crypto_scalarmult_curve25519_sandy2x_fe_frombytes
 
-extern void fe_frombytes(fe, const unsigned char *);
+extern void
+fe_frombytes(fe, const unsigned char *);
 
 #endif
