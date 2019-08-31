@@ -7,7 +7,7 @@ typedef crypto_int32 int32;
 static inline void
 minmax(int32 *x, int32 *y)
 {
-  asm("movl (%0),%%eax;movl (%1),%%ebx;cmpl %%ebx,%%eax;mov %%eax,%%edx;cmovg "
+  __asm__("movl (%0),%%eax;movl (%1),%%ebx;cmpl %%ebx,%%eax;mov %%eax,%%edx;cmovg "
       "%%ebx,%%eax;cmovg %%edx,%%ebx;movl %%eax,(%0);movl %%ebx,(%1)"
       :
       : "r"(x), "r"(y)
