@@ -1,4 +1,4 @@
-#include <util/json_logger.hpp>
+#include <util/logging/json_logger.hpp>
 #include <util/json.hpp>
 
 namespace llarp

@@ -1,7 +1,7 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
 
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/threading.hpp>
 #include <util/time.hpp>

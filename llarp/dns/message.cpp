@@ -3,7 +3,7 @@
 #include <dns/dns.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/printer.hpp>
 #include <net/ip.hpp>
 

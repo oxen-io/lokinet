@@ -3,7 +3,7 @@
 
 #include <util/bencode.h>
 #include <util/encode.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/printer.hpp>
 #include <util/traits.hpp>
 

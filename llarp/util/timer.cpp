@@ -1,4 +1,3 @@
-#include <util/logger.hpp>
 #include <util/time.hpp>
 #include <util/timer.hpp>
 

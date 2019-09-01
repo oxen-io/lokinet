@@ -1,6 +1,8 @@
 #if defined(ANDROID)
-#include <util/android_logger.hpp>
-#include <util/logger_internal.hpp>
+
+#include <util/logging/android_logger.hpp>
+#include <util/logging/logger_internal.hpp>
+
 #include <android/log.h>
 namespace llarp
 {

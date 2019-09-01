@@ -2,7 +2,7 @@
 
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <router_id.hpp>
 #include <exit/context.hpp>
 

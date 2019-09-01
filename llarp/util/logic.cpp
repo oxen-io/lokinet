@@ -1,6 +1,6 @@
 #include <util/logic.hpp>
 
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/mem.h>
 
 namespace llarp

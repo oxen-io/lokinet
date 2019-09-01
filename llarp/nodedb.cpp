@@ -5,7 +5,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/thread_pool.hpp>

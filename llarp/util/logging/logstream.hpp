@@ -1,10 +1,12 @@
 #ifndef LLARP_UTIL_LOG_STREAM_HPP
 #define LLARP_UTIL_LOG_STREAM_HPP
+#include <util/logging/loglevel.hpp>
+
+#include <util/time.hpp>
+
 #include <memory>
 #include <string>
-#include <util/loglevel.hpp>
 #include <sstream>
-#include <util/time.hpp>
 
 namespace llarp
 {

@@ -12,7 +12,7 @@
 #include <metrics/stream_publisher.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
-#include <util/logger.h>
+#include <util/logging/logger.h>
 #include <util/memfn.hpp>
 #include <util/metrics.hpp>
 #include <util/scheduler.hpp>

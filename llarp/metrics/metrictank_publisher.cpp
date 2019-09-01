@@ -1,6 +1,6 @@
 #include <metrics/metrictank_publisher.hpp>
 
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/variant.hpp>
 
 #include <cstdio>

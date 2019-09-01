@@ -17,25 +17,25 @@ set(LIB_UTIL_SRC
   util/endian.cpp
   util/fs.cpp
   util/json.cpp
-  util/logger.cpp
-  util/android_logger.cpp
-  util/file_logger.cpp
+  util/logging/android_logger.cpp
+  util/logging/file_logger.cpp
+  util/logging/json_logger.cpp
+  util/logging/logger.cpp
+  util/logging/loglevel.cpp
+  util/logging/ostream_logger.cpp
+  util/logging/syslog_logger.cpp
+  util/logging/win32_logger.cpp
   util/logic.cpp
-  util/loglevel.cpp
   util/mem.cpp
-  util/memfn_traits.cpp
   util/memfn.cpp
+  util/memfn_traits.cpp
+  util/metrics.cpp
   util/metrics_core.cpp
   util/metrics_types.cpp
-  util/json_logger.cpp
-  util/ostream_logger.cpp
-  util/syslog_logger.cpp
-  util/win32_logger.cpp
-  util/metrics.cpp
   util/object.cpp
   util/printer.cpp
-  util/queue_manager.cpp
   util/queue.cpp
+  util/queue_manager.cpp
   util/scheduler.cpp
   util/status.cpp
   util/stopwatch.cpp

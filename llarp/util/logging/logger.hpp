@@ -2,8 +2,8 @@
 #define LLARP_UTIL_LOGGER_HPP
 
 #include <util/time.hpp>
-#include <util/logstream.hpp>
-#include <util/logger_internal.hpp>
+#include <util/logging/logstream.hpp>
+#include <util/logging/logger_internal.hpp>
 /*
 #ifdef _WIN32
 #define VC_EXTRALEAN

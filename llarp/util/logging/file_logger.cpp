@@ -1,5 +1,6 @@
-#include <util/file_logger.hpp>
-#include <util/logger_internal.hpp>
+#include <util/logging/file_logger.hpp>
+#include <util/logging/logger_internal.hpp>
+
 #include <utility>
 
 namespace llarp

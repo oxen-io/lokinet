@@ -2,7 +2,7 @@
 
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 void
 hexDump(const char *buffer, uint16_t size)

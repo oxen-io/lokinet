@@ -1,7 +1,8 @@
 #ifndef LLARP_UTIL_FILE_LOGGER_HPP
 #define LLARP_UTIL_FILE_LOGGER_HPP
 
-#include <util/logstream.hpp>
+#include <util/logging/logstream.hpp>
+
 #include <util/thread_pool.hpp>
 #include <util/time.hpp>
 

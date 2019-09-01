@@ -1,7 +1,7 @@
 #ifndef LLARP_UTIL_WIN32_LOGGER_HPP
 #define LLARP_UTIL_WIN32_LOGGER_HPP
 #if defined(_WIN32)
-#include <util/ostream_logger.hpp>
+#include <util/logging/ostream_logger.hpp>
 #define VC_EXTRALEAN
 #include <windows.h>
 

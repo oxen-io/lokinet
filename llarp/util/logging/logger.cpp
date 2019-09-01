@@ -1,11 +1,11 @@
-#include <util/logger.hpp>
-#include <util/logger.h>
-#include <util/ostream_logger.hpp>
+#include <util/logging/logger.hpp>
+#include <util/logging/logger.h>
+#include <util/logging/ostream_logger.hpp>
 #if defined(_WIN32)
-#include <util/win32_logger.hpp>
+#include <util/logging/win32_logger.hpp>
 #endif
 #if defined(ANDROID)
-#include <util/android_logger.hpp>
+#include <util/logging/android_logger.hpp>
 #endif
 
 namespace llarp

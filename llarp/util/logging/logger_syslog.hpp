@@ -1,6 +1,7 @@
 #ifndef LLARP_UTIL_LOGGER_SYSLOG_HPP
 #define LLARP_UTIL_LOGGER_SYSLOG_HPP
-#include <util/logstream.hpp>
+
+#include <util/logging/logstream.hpp>
 #include <iostream>
 
 namespace llarp
