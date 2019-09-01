@@ -3,7 +3,7 @@
 
 #include <util/logging/logstream.hpp>
 
-#include <util/thread_pool.hpp>
+#include <util/thread/thread_pool.hpp>
 #include <util/time.hpp>
 
 #include <deque>

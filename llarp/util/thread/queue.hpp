@@ -1,8 +1,8 @@
 #ifndef LLARP_QUEUE_HPP
 #define LLARP_QUEUE_HPP
 
-#include <util/queue_manager.hpp>
-#include <util/threading.hpp>
+#include <util/thread/queue_manager.hpp>
+#include <util/thread/threading.hpp>
 
 #include <absl/types/optional.h>
 #include <atomic>

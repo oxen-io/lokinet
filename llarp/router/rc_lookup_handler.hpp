@@ -3,8 +3,8 @@
 
 #include <router/i_rc_lookup_handler.hpp>
 
-#include <util/threading.hpp>
-#include <util/thread_pool.hpp>
+#include <util/thread/threading.hpp>
+#include <util/thread/thread_pool.hpp>
 
 #include <unordered_map>
 #include <set>

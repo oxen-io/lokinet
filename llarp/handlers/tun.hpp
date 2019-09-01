@@ -7,7 +7,7 @@
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 #include <future>
 

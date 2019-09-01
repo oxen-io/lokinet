@@ -1,5 +1,6 @@
+#include <util/thread/timer.hpp>
+
 #include <util/time.hpp>
-#include <util/timer.hpp>
 
 #include <atomic>
 #include <condition_variable>

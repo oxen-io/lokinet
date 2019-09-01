@@ -1,4 +1,4 @@
-#include <util/timerqueue.hpp>
+#include <util/thread/timerqueue.hpp>
 
 #include <thread>
 
@@ -277,7 +277,8 @@ TEST(TimerQueue, ThreadSafety)
           std::vector< StringItem >* vPtr = nfo->second;
 
           // We stagger the removeAll steps among the threads.
-          const unsigned int STEP_REMOVE_ALL = THREAD_ID * NUM_REMOVE_ALL / NUM_THREADS;
+          const unsigned int STEP_REMOVE_ALL =
+              THREAD_ID * NUM_REMOVE_ALL / NUM_THREADS;
 
           std::ostringstream oss;
           oss << THREAD_ID;

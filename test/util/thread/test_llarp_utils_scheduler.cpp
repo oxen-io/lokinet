@@ -1,4 +1,4 @@
-#include <util/scheduler.hpp>
+#include <util/thread/scheduler.hpp>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

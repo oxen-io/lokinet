@@ -2,8 +2,8 @@
 #define LLARP_LOGIC_HPP
 
 #include <util/mem.h>
-#include <util/threadpool.h>
-#include <util/timer.hpp>
+#include <util/thread/threadpool.h>
+#include <util/thread/timer.hpp>
 
 namespace llarp
 {

@@ -15,7 +15,7 @@
 #include <util/metrics/metrics.hpp>
 #include <util/metrics/metrictank_publisher.hpp>
 #include <util/metrics/stream_publisher.hpp>
-#include <util/scheduler.hpp>
+#include <util/thread/scheduler.hpp>
 
 #include <absl/strings/str_split.h>
 #include <cxxopts.hpp>

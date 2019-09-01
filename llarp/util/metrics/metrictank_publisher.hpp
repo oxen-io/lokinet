@@ -3,7 +3,7 @@
 
 #include <util/metrics/core.hpp>
 
-#include <util/queue.hpp>
+#include <util/thread/queue.hpp>
 
 #include <absl/types/variant.h>
 #include <string>

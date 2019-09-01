@@ -6,9 +6,9 @@
 #include <util/encode.hpp>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
-#include <util/logic.hpp>
 #include <util/mem.hpp>
-#include <util/thread_pool.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/thread_pool.hpp>
 
 #include <fstream>
 #include <unordered_map>

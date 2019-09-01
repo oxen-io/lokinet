@@ -1,7 +1,7 @@
 #include <ev/ev.h>
-#include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
+#include <util/thread/logic.hpp>
 #include <net/net_addr.hpp>
 
 #include <cstddef>

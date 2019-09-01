@@ -1,6 +1,6 @@
-#include <util/thread_pool.hpp>
+#include <util/thread/thread_pool.hpp>
 
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 namespace llarp
 {

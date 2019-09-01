@@ -17,7 +17,7 @@
 #include <service/tag_lookup_job.hpp>
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL

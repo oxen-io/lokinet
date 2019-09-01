@@ -2,7 +2,7 @@
 #define LLARP_UTIL_TIMERQUEUE_HPP
 
 #include <util/meta/object.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 #include <atomic>
 #include <absl/time/time.h>

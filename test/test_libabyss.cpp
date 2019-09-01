@@ -4,7 +4,7 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <ev/ev.h>
 #include <net/net.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 #include <gtest/gtest.h>
 

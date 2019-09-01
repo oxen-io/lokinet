@@ -1,10 +1,10 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
 
-#include <util/queue.hpp>
 #include <util/string_view.hpp>
-#include <util/thread_pool.hpp>
-#include <util/threading.hpp>
+#include <util/thread/queue.hpp>
+#include <util/thread/thread_pool.hpp>
+#include <util/thread/threading.hpp>
 
 #include <absl/base/thread_annotations.h>
 #include <memory>

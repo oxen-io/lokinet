@@ -1,10 +1,9 @@
-#include <util/thread_pool.hpp>
-#include <util/threading.hpp>
-#include <condition_variable>
+#include <util/thread/thread_pool.hpp>
+#include <util/thread/threading.hpp>
 
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include <gtest/gtest.h>
 

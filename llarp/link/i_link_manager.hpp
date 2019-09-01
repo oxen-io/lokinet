@@ -2,8 +2,8 @@
 #define LLARP_I_LINK_MANAGER_HPP
 
 #include <link/server.hpp>
+#include <util/thread/logic.hpp>
 #include <util/types.hpp>
-#include <util/logic.hpp>
 
 #include <functional>
 

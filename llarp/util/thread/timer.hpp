@@ -2,7 +2,7 @@
 #define LLARP_TIMER_HPP
 
 #include <util/common.hpp>
-#include <util/threadpool.h>
+#include <util/thread/threadpool.h>
 #include <util/time.hpp>
 
 #include <functional>

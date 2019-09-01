@@ -2,7 +2,7 @@
 #define LLARP_SCHEDULER_HPP
 
 #include <util/meta/object.hpp>
-#include <util/timerqueue.hpp>
+#include <util/thread/timerqueue.hpp>
 
 #include <absl/time/time.h>
 #include <atomic>

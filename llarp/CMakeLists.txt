@@ -25,7 +25,6 @@ set(LIB_UTIL_SRC
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
-  util/logic.cpp
   util/mem.cpp
   util/meta/memfn_traits.cpp
   util/meta/memfn.cpp
@@ -39,19 +38,20 @@ set(LIB_UTIL_SRC
   util/metrics/stream_publisher.cpp
   util/metrics/types.cpp
   util/printer.cpp
-  util/queue_manager.cpp
-  util/queue.cpp
-  util/scheduler.cpp
   util/status.cpp
   util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
-  util/thread_pool.cpp
-  util/threading.cpp
-  util/threadpool.cpp
+  util/thread/logic.cpp
+  util/thread/queue_manager.cpp
+  util/thread/queue.cpp
+  util/thread/scheduler.cpp
+  util/thread/thread_pool.cpp
+  util/thread/threading.cpp
+  util/thread/threadpool.cpp
+  util/thread/timer.cpp
+  util/thread/timerqueue.cpp
   util/time.cpp
-  util/timer.cpp
-  util/timerqueue.cpp
   util/types.cpp
 )
 

@@ -4,7 +4,7 @@
 #include <ev/ev.h>
 #include <util/buffer.hpp>
 #include <util/codel.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 // writev
 #ifndef _WIN32

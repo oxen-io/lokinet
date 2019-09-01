@@ -11,8 +11,8 @@
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
-#include <util/logic.hpp>
 #include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
 
 #include <functional>
 

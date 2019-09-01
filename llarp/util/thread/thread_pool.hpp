@@ -1,9 +1,9 @@
 #ifndef LLARP_THREAD_POOL_HPP
 #define LLARP_THREAD_POOL_HPP
 
-#include <util/queue.hpp>
 #include <util/string_view.hpp>
-#include <util/threading.hpp>
+#include <util/thread/queue.hpp>
+#include <util/thread/threading.hpp>
 
 #include <atomic>
 #include <functional>

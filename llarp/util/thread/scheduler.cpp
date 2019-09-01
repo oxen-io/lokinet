@@ -1,4 +1,4 @@
-#include <util/scheduler.hpp>
+#include <util/thread/scheduler.hpp>
 #include <utility>
 
 namespace llarp

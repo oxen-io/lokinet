@@ -2,9 +2,9 @@
 #define LLARP_METRICS_CORE_HPP
 
 #include <util/metrics/types.hpp>
-#include <util/scheduler.hpp>
 #include <util/stopwatch.hpp>
-#include <util/threading.hpp>
+#include <util/thread/scheduler.hpp>
+#include <util/thread/threading.hpp>
 
 #include <map>
 #include <memory>

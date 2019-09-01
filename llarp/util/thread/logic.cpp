@@ -1,4 +1,4 @@
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 
 #include <util/logging/logger.hpp>
 #include <util/mem.h>

@@ -1,10 +1,10 @@
-#include <util/queue.hpp>
-#include <util/threading.hpp>
+#include <util/thread/queue.hpp>
+#include <util/thread/threading.hpp>
 
 #include <array>
+#include <condition_variable>
 #include <functional>
 #include <thread>
-#include <condition_variable>
 
 #include <gtest/gtest.h>
 

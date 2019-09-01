@@ -1,4 +1,4 @@
-#include <util/queue_manager.hpp>
+#include <util/thread/queue_manager.hpp>
 
 #include <absl/types/optional.h>
 #include <vector>

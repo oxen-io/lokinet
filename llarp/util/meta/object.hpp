@@ -1,7 +1,7 @@
 #ifndef LLARP_OBJECT_HPP
 #define LLARP_OBJECT_HPP
 
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 #include <absl/types/optional.h>
 #include <vector>
