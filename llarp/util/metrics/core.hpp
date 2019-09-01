@@ -1,7 +1,7 @@
 #ifndef LLARP_METRICS_CORE_HPP
 #define LLARP_METRICS_CORE_HPP
 
-#include <util/metrics_types.hpp>
+#include <util/metrics/types.hpp>
 #include <util/scheduler.hpp>
 #include <util/stopwatch.hpp>
 #include <util/threading.hpp>

@@ -10,7 +10,7 @@
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
-#include <util/metrics.hpp>
+#include <util/metrics/metrics.hpp>
 
 #include <memory>
 

@@ -19,7 +19,7 @@
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/metrics.hpp>
+#include <util/metrics/metrics.hpp>
 #include <util/str.hpp>
 #include <utp/utp.hpp>
 

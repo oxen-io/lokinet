@@ -3,7 +3,7 @@
 #include <utp/linklayer.hpp>
 #include <messages/discard.hpp>
 #include <messages/link_intro.hpp>
-#include <util/metrics.hpp>
+#include <util/metrics/metrics.hpp>
 #include <util/meta/memfn.hpp>
 
 namespace llarp

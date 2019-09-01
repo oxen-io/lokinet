@@ -1,7 +1,7 @@
 #ifndef LLARP_METRICS_METRICTANK_PUBLISHER_HPP
 #define LLARP_METRICS_METRICTANK_PUBLISHER_HPP
 
-#include <util/metrics_core.hpp>
+#include <util/metrics/core.hpp>
 
 #include <util/queue.hpp>
 

@@ -32,9 +32,12 @@ set(LIB_UTIL_SRC
   util/meta/object.cpp
   util/meta/traits.cpp
   util/meta/variant.cpp
-  util/metrics_core.cpp
-  util/metrics_types.cpp
-  util/metrics.cpp
+  util/metrics/core.cpp
+  util/metrics/json_publisher.cpp
+  util/metrics/metrics.cpp
+  util/metrics/metrictank_publisher.cpp
+  util/metrics/stream_publisher.cpp
+  util/metrics/types.cpp
   util/printer.cpp
   util/queue_manager.cpp
   util/queue.cpp
@@ -75,9 +78,6 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
-  metrics/metrictank_publisher.cpp
-  metrics/json_publisher.cpp
-  metrics/stream_publisher.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp

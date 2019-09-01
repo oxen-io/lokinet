@@ -1,4 +1,4 @@
-#include <metrics/stream_publisher.hpp>
+#include <util/metrics/stream_publisher.hpp>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

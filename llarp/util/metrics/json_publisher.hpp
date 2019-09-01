@@ -2,7 +2,7 @@
 #define LLARP_METRICS_JSON_PUBLISHER_HPP
 
 #include <util/fs.hpp>
-#include <util/metrics_core.hpp>
+#include <util/metrics/core.hpp>
 
 #include <nlohmann/json.hpp>
 

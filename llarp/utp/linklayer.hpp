@@ -75,7 +75,7 @@ namespace llarp
 
       /// stop link layer
       void
-      Stop();
+      Stop() override;
 
       /// regenerate transport keypair
       bool

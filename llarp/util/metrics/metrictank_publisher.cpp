@@ -1,4 +1,4 @@
-#include <metrics/metrictank_publisher.hpp>
+#include <util/metrics/metrictank_publisher.hpp>
 
 #include <util/logging/logger.hpp>
 #include <util/meta/variant.hpp>
