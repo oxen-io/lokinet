@@ -372,7 +372,6 @@ int
 tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
 {
   IPADDR sock[3];
-  IPADDR pp[2];
   DWORD len, ret;
   IPADDR ep[4];
 #pragma pack(push)
@@ -390,18 +389,6 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   sock[1] = sock[0] & sock[2];
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_TUN, &sock, sizeof(sock),
                         &sock, sizeof(sock), &len, NULL);
-  if(!ret)
-  {
-    int errcode = GetLastError();
-    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-    return -1;
-  }
-
-  pp[0] = s->S_un.S_addr;
-  pp[1] = mask;
-
-  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_POINT_TO_POINT, &pp, sizeof(pp),
-                        &pp, sizeof(pp), &len, NULL);
   if(!ret)
   {
     int errcode = GetLastError();
