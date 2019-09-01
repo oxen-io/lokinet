@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 
@@ -57,6 +58,11 @@ namespace network.loki.lokinet.win32.ui
             VisualSettings v = new VisualSettings();
             v.ShowDialog();
             v.Dispose();
+        }
+
+        private void BtnEditCfg_Click(object sender, EventArgs e)
+        {
+            Process.Start(string.Format("{0}/lokinet.ini", config_path));
         }
     }
 }

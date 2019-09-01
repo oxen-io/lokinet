@@ -79,7 +79,7 @@ namespace network.loki.lokinet.win32.ui
 
         private void btnDrop_Click(object sender, EventArgs e)
         {
-            lokiNetDaemon.CancelOutputRead();
+            //lokiNetDaemon.CancelOutputRead();
             lokiNetDaemon.Kill();
             btnConnect.Enabled = true;
             TrayConnect.Enabled = true;
