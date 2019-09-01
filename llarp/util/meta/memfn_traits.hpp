@@ -1,8 +1,8 @@
 #ifndef LLARP_UTIL_MEMFN_TRAITS
 #define LLARP_UTIL_MEMFN_TRAITS
 
-#include <util/object.hpp>
-#include <util/traits.hpp>
+#include <util/meta/object.hpp>
+#include <util/meta/traits.hpp>
 
 #include <functional>
 #include <utility>

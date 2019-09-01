@@ -18,7 +18,7 @@
 #include <util/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
 #include <utility>
 

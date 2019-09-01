@@ -3,7 +3,7 @@
 #include <crypto/crypto.hpp>
 #include <crypto/types.hpp>
 #include <util/logic.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <utility>
 
 namespace llarp

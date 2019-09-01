@@ -39,14 +39,14 @@ list(APPEND TEST_SRC
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_metrics_core.cpp
     util/test_llarp_util_metrics_types.cpp
-    util/test_llarp_util_memfn.cpp
-    util/test_llarp_util_object.cpp
+    util/meta/test_llarp_util_memfn.cpp
+    util/meta/test_llarp_util_object.cpp
     util/test_llarp_util_printer.cpp
     util/test_llarp_util_queue_manager.cpp
     util/test_llarp_util_queue.cpp
     util/test_llarp_util_thread_pool.cpp
     util/test_llarp_util_timerqueue.cpp
-    util/test_llarp_util_traits.cpp
+    util/meta/test_llarp_util_traits.cpp
     util/test_llarp_utils_scheduler.cpp
     util/test_llarp_utils_str.cpp
 )

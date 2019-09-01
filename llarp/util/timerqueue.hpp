@@ -1,7 +1,7 @@
 #ifndef LLARP_UTIL_TIMERQUEUE_HPP
 #define LLARP_UTIL_TIMERQUEUE_HPP
 
-#include <util/object.hpp>
+#include <util/meta/object.hpp>
 #include <util/threading.hpp>
 
 #include <atomic>

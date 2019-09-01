@@ -5,7 +5,7 @@
 #include <util/string_view.hpp>
 #include <util/threading.hpp>
 #include <util/types.hpp>
-#include <util/variant.hpp>
+#include <util/meta/variant.hpp>
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>

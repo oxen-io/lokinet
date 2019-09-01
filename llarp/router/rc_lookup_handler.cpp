@@ -5,7 +5,7 @@
 #include <crypto/crypto.hpp>
 #include <service/context.hpp>
 #include <router_contact.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <util/types.hpp>
 #include <util/threading.hpp>
 #include <nodedb.hpp>

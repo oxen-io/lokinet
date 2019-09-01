@@ -1,7 +1,7 @@
 #ifndef LLARP_SCHEDULER_HPP
 #define LLARP_SCHEDULER_HPP
 
-#include <util/object.hpp>
+#include <util/meta/object.hpp>
 #include <util/timerqueue.hpp>
 
 #include <absl/time/time.h>

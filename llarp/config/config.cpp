@@ -9,7 +9,7 @@
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <util/str.hpp>
 
 #include <absl/strings/strip.h>

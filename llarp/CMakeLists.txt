@@ -27,15 +27,17 @@ set(LIB_UTIL_SRC
   util/logging/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
-  util/memfn.cpp
-  util/memfn_traits.cpp
-  util/metrics.cpp
+  util/meta/memfn_traits.cpp
+  util/meta/memfn.cpp
+  util/meta/object.cpp
+  util/meta/traits.cpp
+  util/meta/variant.cpp
   util/metrics_core.cpp
   util/metrics_types.cpp
-  util/object.cpp
+  util/metrics.cpp
   util/printer.cpp
-  util/queue.cpp
   util/queue_manager.cpp
+  util/queue.cpp
   util/scheduler.cpp
   util/status.cpp
   util/stopwatch.cpp
@@ -47,9 +49,7 @@ set(LIB_UTIL_SRC
   util/time.cpp
   util/timer.cpp
   util/timerqueue.cpp
-  util/traits.cpp
   util/types.cpp
-  util/variant.cpp
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})

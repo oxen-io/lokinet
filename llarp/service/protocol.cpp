@@ -4,7 +4,7 @@
 #include <util/buffer.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <utility>
 
 namespace llarp

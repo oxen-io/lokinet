@@ -13,7 +13,7 @@
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logging/logger.h>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <util/metrics.hpp>
 #include <util/scheduler.hpp>
 

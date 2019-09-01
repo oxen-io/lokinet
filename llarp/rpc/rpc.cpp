@@ -7,7 +7,7 @@
 #include <exit/context.hpp>
 
 #include <util/encode.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <libabyss.hpp>
 #include <utility>
 

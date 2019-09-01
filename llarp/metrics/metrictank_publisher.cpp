@@ -1,7 +1,7 @@
 #include <metrics/metrictank_publisher.hpp>
 
 #include <util/logging/logger.hpp>
-#include <util/variant.hpp>
+#include <util/meta/variant.hpp>
 
 #include <cstdio>
 #include <absl/strings/str_cat.h>

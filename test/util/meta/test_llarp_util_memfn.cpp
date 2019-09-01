@@ -1,4 +1,4 @@
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

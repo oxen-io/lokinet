@@ -1,7 +1,7 @@
 #include <utp/utp.hpp>
 
 #include <router/abstractrouter.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <utp/linklayer.hpp>
 
 namespace llarp
