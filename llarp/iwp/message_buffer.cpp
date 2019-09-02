@@ -76,12 +76,12 @@ namespace llarp
                                      0};
           htobe16buf(frag.data() + 2, idx);
           htobe64buf(frag.data() + 4, m_MsgID);
-          if(idx + FragmentSize < m_Size)
-            std::copy(m_Data.begin() + idx, m_Data.begin() + idx + FragmentSize,
-                      std::back_inserter(frag));
-          else
-            std::copy(m_Data.begin() + idx, m_Data.begin() + m_Size,
-                      std::back_inserter(frag));
+          const size_t fragsz =
+              idx + FragmentSize < m_Size ? FragmentSize : m_Size - idx;
+          const auto sz = frag.size();
+          frag.resize(sz + fragsz);
+          std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
+                    frag.begin() + sz);
           const llarp_buffer_t pkt(frag);
           sendpkt(pkt);
         }
