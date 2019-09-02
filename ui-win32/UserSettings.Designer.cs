@@ -33,6 +33,7 @@
             this.btnDumpLog = new System.Windows.Forms.Button();
             this.btnVSettings = new System.Windows.Forms.Button();
             this.btnEditCfg = new System.Windows.Forms.Button();
+            this.btnNewCfg = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnOK
@@ -87,6 +88,16 @@
             this.btnEditCfg.UseVisualStyleBackColor = true;
             this.btnEditCfg.Click += new System.EventHandler(this.BtnEditCfg_Click);
             // 
+            // btnNewCfg
+            // 
+            this.btnNewCfg.Location = new System.Drawing.Point(12, 131);
+            this.btnNewCfg.Name = "btnNewCfg";
+            this.btnNewCfg.Size = new System.Drawing.Size(270, 23);
+            this.btnNewCfg.TabIndex = 5;
+            this.btnNewCfg.Text = "New Configuration File...";
+            this.btnNewCfg.UseVisualStyleBackColor = true;
+            this.btnNewCfg.Click += new System.EventHandler(this.BtnNewCfg_Click);
+            // 
             // UserSettingsForm
             // 
             this.AcceptButton = this.btnOK;
@@ -95,6 +106,7 @@
             this.CancelButton = this.btnOK;
             this.ClientSize = new System.Drawing.Size(295, 202);
             this.ControlBox = false;
+            this.Controls.Add(this.btnNewCfg);
             this.Controls.Add(this.btnEditCfg);
             this.Controls.Add(this.btnVSettings);
             this.Controls.Add(this.btnDumpLog);
@@ -120,5 +132,6 @@
         private System.Windows.Forms.Button btnDumpLog;
         private System.Windows.Forms.Button btnVSettings;
         private System.Windows.Forms.Button btnEditCfg;
+        private System.Windows.Forms.Button btnNewCfg;
     }
 }
