@@ -53,7 +53,7 @@ TYPED_TEST_SUITE_P(MemFnType);
 
 TYPED_TEST_P(MemFnType, Smoke)
 {
-  TypeParam foo;
+  TypeParam foo{};
   ASSERT_TRUE(util::memFn(&Foo::constEmpty, foo)());
   ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
 }

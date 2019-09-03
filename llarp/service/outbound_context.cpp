@@ -135,7 +135,7 @@ namespace llarp
           util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if(p->Endpoint() == m_NextIntro.router && remoteIntro.router.IsZero())
+      if(p->Endpoint() == m_NextIntro.router)
         SwapIntros();
     }
 
