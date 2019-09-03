@@ -548,13 +548,16 @@ namespace llarp
       auto itr      = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
       {
-        LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
-        std::vector< byte_t > nack = {
-            LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
-        htobe64buf(nack.data() + 2, rxid);
-        AddRandomPadding(nack);
-        const llarp_buffer_t nackbuf(nack);
-        EncryptAndSend(nackbuf);
+        if(m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
+        {
+          LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
+          std::vector< byte_t > nack = {
+              LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
+          htobe64buf(nack.data() + 2, rxid);
+          AddRandomPadding(nack);
+          const llarp_buffer_t nackbuf(nack);
+          EncryptAndSend(nackbuf);
+        }
         return;
       }
 
