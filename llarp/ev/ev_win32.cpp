@@ -2,6 +2,8 @@
 
 #ifdef _WIN32
 
+#include <util/logging/logger.hpp>
+
 // a single event queue for the TUN interface
 static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 
