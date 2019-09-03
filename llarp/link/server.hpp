@@ -237,8 +237,8 @@ namespace llarp
     const SecretKey& m_RouterEncSecret;
 
    protected:
-    using Lock  = util::Lock;
-    using Mutex = util::Mutex;
+    using Lock  = util::NullLock;
+    using Mutex = util::NullMutex;
 
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
