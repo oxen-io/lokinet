@@ -214,7 +214,8 @@ namespace llarp
               if(s && s->IsEstablished() && isOutbound && !got)
               {
                 const RouterContact rc = s->GetRemoteRC();
-                if(got || exclude.count(rc.pubkey))
+                if(got || exclude.count(rc.pubkey)
+                   || m_router->IsBootstrapNode(rc.pubkey))
                   return;
                 cur = rc;
                 got = true;

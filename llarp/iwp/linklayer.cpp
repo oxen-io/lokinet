@@ -24,7 +24,7 @@ namespace llarp
     {
       std::set< RouterID > sessions;
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
@@ -34,7 +34,7 @@ namespace llarp
       }
       ILinkLayer::Pump();
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         for(const auto& pk : sessions)
         {
           if(m_AuthedLinks.count(pk) == 0)
@@ -79,7 +79,7 @@ namespace llarp
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
-        util::Lock lock(&m_PendingMutex);
+        // ACQUIRE_LOCK(Lock_t lock , m_PendingMutex);
         if(m_Pending.count(from) == 0)
         {
           if(not permitInbound)

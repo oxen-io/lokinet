@@ -13,6 +13,22 @@ using pid_t = int;
 #include <unistd.h>
 #endif
 
+#ifdef TRACY_ENABLE
+#include "Tracy.hpp"
+#define DECLARE_LOCK(type, var, ...) TracyLockable(type, var)
+#define ACQUIRE_LOCK(lock, mtx) lock(mtx)
+#else
+#define DECLARE_LOCK(type, var, ...) type var __VA_ARGS__
+#define ACQUIRE_LOCK(lock, mtx) lock(&mtx)
+#endif
+
+#ifdef YOLO_DISABLE_LOCKING
+#warning \
+    "!!! locking disabled !!! This may cause hella crashes, please mind the gap."
+#undef ACQUIRE_LOCK
+#define ACQUIRE_LOCK(lock, mtx)
+#endif
+
 namespace llarp
 {
   namespace util
@@ -36,8 +52,9 @@ namespace llarp
       }
     };
 
-    using Mutex          = absl::Mutex;
-    using Lock           = absl::MutexLock;
+    using Mutex = absl::Mutex;
+    using Lock  = absl::MutexLock;
+
     using ReleasableLock = absl::ReleasableMutexLock;
     using Condition      = absl::CondVar;
 

@@ -149,6 +149,12 @@ namespace llarp
     return true;
   }
 
+  size_t
+  RCLookupHandler::NumberOfStrictConnectRouters() const
+  {
+    return _strictConnectPubkeys.size();
+  }
+
   bool
   RCLookupHandler::GetRandomWhitelistRouter(RouterID &router) const
   {

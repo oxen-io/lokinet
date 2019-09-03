@@ -627,7 +627,22 @@ namespace llarp
       std::set< RouterID > exclude = prev;
       for(const auto& snode : SnodeBlacklist())
         exclude.insert(snode);
+      if(hop == 0)
+      {
+        const auto exits = GetExitRouters();
+        // exclude exit node as first hop in any paths
+        exclude.insert(exits.begin(), exits.end());
+      }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    std::set< RouterID >
+    Endpoint::GetExitRouters() const
+    {
+      return m_ExitMap.TransformValues< RouterID >(
+          [](const exit::BaseSession_ptr& ptr) -> RouterID {
+            return ptr->Endpoint();
+          });
     }
 
     bool

@@ -237,9 +237,13 @@ namespace llarp
     const SecretKey& m_RouterEncSecret;
 
    protected:
-    using Lock  = util::Lock;
-    using Mutex = util::Mutex;
-
+#ifdef TRACY_ENABLE
+    using Lock_t  = std::lock_guard< LockableBase(std::mutex) >;
+    using Mutex_t = std::mutex;
+#else
+    using Lock_t  = util::NullLock;
+    using Mutex_t = util::NullMutex;
+#endif
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
 
@@ -255,10 +259,11 @@ namespace llarp
     using Pending =
         std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
                                  llarp::Addr::Hash >;
-
-    mutable Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
+    mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex,
+                         ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
-    mutable Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
+    mutable DECLARE_LOCK(Mutex_t, m_PendingMutex,
+                         ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
 

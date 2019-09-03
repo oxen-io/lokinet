@@ -27,6 +27,7 @@ option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
 option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
+option(TRACY_ROOT "include tracy profiler source")
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -195,6 +196,11 @@ add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
 
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
+if(TRACY_ROOT)
+  include_directories(${TRACY_ROOT})
+  add_definitions(-DTRACY_ENABLE)
+  list(APPEND EXE_SRC ${TRACY_ROOT}/TracyClient.cpp)
+endif()
 
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
@@ -223,6 +229,9 @@ else()
 endif()
 
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
+if(TRACY_ROOT)
+  list(APPEND LIBS -ldl)
+endif()
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)
@@ -239,6 +248,7 @@ else()
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
 endif(NOT WIN32)
+
 
 # Why does abyss not inherit the existing include folders?
 target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
@@ -262,7 +272,11 @@ if(SHADOW)
 else()
   if(NOT WIN32)
     add_executable(${EXE} ${EXE_SRC})
-    add_executable(lokinet-rcutil daemon/rcutil.cpp)
+    if(TRACY_ROOT)
+      add_executable(lokinet-rcutil daemon/rcutil.cpp ${TRACY_ROOT}/TracyClient.cpp)
+    else()
+      add_executable(lokinet-rcutil daemon/rcutil.cpp)
+    endif()
   elseif(NOT MSVC_VERSION)
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
     add_executable(lokinet-rcutil daemon/rcutil.cpp llarp/win32/version.rc)

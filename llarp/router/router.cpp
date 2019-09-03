@@ -697,9 +697,16 @@ namespace llarp
 
       _rcLookupHandler.ExploreNetwork();
     }
-    if(connected < _outboundSessionMaker.minConnectedRouters)
+    size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
+    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
+    if(strictConnect > 0 && connectToNum > strictConnect)
     {
-      size_t dlt = _outboundSessionMaker.minConnectedRouters - connected;
+      connectToNum = strictConnect;
+    }
+
+    if(connected < connectToNum)
+    {
+      size_t dlt = connectToNum - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
     }
