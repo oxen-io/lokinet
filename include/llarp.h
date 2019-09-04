@@ -7,7 +7,7 @@
 #include <handlers/tun.hpp>     // for handlers
 #include <service/address.hpp>  // for service::address
 #include <service/endpoint.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <util/mem.h>
 
 extern "C"

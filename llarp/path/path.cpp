@@ -13,7 +13,7 @@
 #include <routing/transfer_traffic_message.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 
 #include <deque>
 

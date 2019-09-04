@@ -3,7 +3,7 @@
 #include <abyss/md5.hpp>
 #include <crypto/crypto.hpp>
 #include <util/buffer.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 namespace abyss
 {

@@ -4,19 +4,21 @@
 
 #ifdef __native_client__
 
-# include "export.h"
-# include "randombytes.h"
+#include "export.h"
+#include "randombytes.h"
 
-# ifdef __cplusplus
-extern "C" {
-# endif
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-SODIUM_EXPORT
-extern struct randombytes_implementation randombytes_nativeclient_implementation;
+  SODIUM_EXPORT
+  extern struct randombytes_implementation
+      randombytes_nativeclient_implementation;
 
-# ifdef __cplusplus
+#ifdef __cplusplus
 }
-# endif
+#endif
 
 #endif
 

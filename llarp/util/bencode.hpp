@@ -4,7 +4,7 @@
 #include <util/buffer.hpp>
 #include <util/bencode.h>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 
 #include <fstream>

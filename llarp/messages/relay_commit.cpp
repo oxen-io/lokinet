@@ -10,9 +10,9 @@
 #include <routing/path_confirm_message.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
-#include <util/logger.hpp>
-#include <util/logic.hpp>
-#include <util/memfn.hpp>
+#include <util/logging/logger.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
 
 #include <functional>
 

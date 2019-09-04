@@ -3,7 +3,6 @@
 
 #include <dht/tx.hpp>
 #include <dht/txowner.hpp>
-#include <util/logger.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
 

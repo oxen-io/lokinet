@@ -26,9 +26,9 @@
                 <method_credential user="lokinet" group="lokinet"/>
             </method_context>
 
-            <exec_method type="method" name="start" exec="/usr/bin/lokinet" timeout_seconds="60"/>
+            <exec_method type="method" name="start" exec="/usr/bin/lokinet %{config_file}" timeout_seconds="60"/>
 
-            <exec_method type="method" name="stop" exec="/usr/bin/kill -INT &lt;&lt;&lt; /path/to/lokinet.pid" timeout_seconds="60"/>
+            <exec_method type="method" name="stop" exec="/usr/bin/kill -INT &lt;&lt;&lt; `pgrep lokinet`" timeout_seconds="60"/>
 
             <property_group name="startd" type="framework">
                 <propval name="duration" type="astring" value="child"/>
@@ -38,7 +38,7 @@
             </property_group>
 
             <property_group name="application" type="application">
-                <propval name="config_file" type="astring" value="/etc/lokinet.ini"/>
+                <propval name="config_file" type="astring" value="/etc/loki/lokinet.ini"/>
             </property_group>
 
         </instance>
@@ -50,7 +50,7 @@
         <template>
             <common_name>
                 <loctext xml:lang="C">
-                    LokiNET
+                    LokiNET: Anonymous Network layer thingydoo.
                 </loctext>
             </common_name>
         </template>

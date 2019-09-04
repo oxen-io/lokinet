@@ -12,8 +12,8 @@
 #include <ev/ev.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
-#include <util/logic.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 
 #include <util/str.hpp>

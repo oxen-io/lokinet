@@ -9,7 +9,7 @@ NC='\033[0m' # No Color
 set -e
 
 helpme=
-default_url="https://i2p.rocks/i2procks.signed"
+default_url="https://seed.lokinet.org/bootstrap.signed"
 default_dest="$HOME/.lokinet/bootstrap.signed"
 
 if [ "$#" -gt 2 ]; then

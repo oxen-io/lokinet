@@ -4,7 +4,7 @@
 #include <path/path.hpp>
 #include <router_id.hpp>
 #include <util/bencode.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 
 #include <absl/base/thread_annotations.h>
 #include <map>

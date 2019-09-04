@@ -17,7 +17,7 @@
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 
 #include <vector>

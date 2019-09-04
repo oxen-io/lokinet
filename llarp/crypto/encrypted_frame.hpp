@@ -6,7 +6,7 @@
 #include <util/buffer.hpp>
 #include <utility>
 #include <util/mem.h>
-#include <util/threadpool.h>
+#include <util/thread/threadpool.h>
 
 namespace llarp
 {

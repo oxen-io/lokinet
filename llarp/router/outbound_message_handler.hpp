@@ -3,8 +3,8 @@
 
 #include <router/i_outbound_message_handler.hpp>
 
-#include <util/threading.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/threading.hpp>
 #include <router_id.hpp>
 
 #include <list>

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "loki-network"
-#define MyAppVersion "0.4.3"
+#define MyAppVersion "0.5.0"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://loki.network"
 #define MyAppExeName "lokinetui.exe"
@@ -39,18 +39,18 @@ OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.4.3
+VersionInfoVersion=0.5.0
 VersionInfoCompany=Loki Project
 VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
 #ifndef RELEASE
-VersionInfoTextVersion=0.4.3-dev-{#VCSRev}
-VersionInfoProductTextVersion=0.4.3-dev-{#VCSRev}
+VersionInfoTextVersion=0.5.0-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.5.0-dev-{#VCSRev}
 #else
-VersionInfoTextVersion=0.4.3
-VersionInfoProductTextVersion=0.4.3 ({#Codename})
+VersionInfoTextVersion=0.5.0
+VersionInfoProductTextVersion=0.5.0 ({#Codename})
 #endif
 VersionInfoProductName=LokiNET
-VersionInfoProductVersion=0.4.3
+VersionInfoProductVersion=0.5.0
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
@@ -217,7 +217,7 @@ Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Descr
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
-Filename: "{tmp}\lokinet-bootstrap.exe"; Parameters:"https://i2p.rocks/bootstrap.signed {userappdata}\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
+Filename: "{tmp}\lokinet-bootstrap.exe"; Parameters:"https://seed.lokinet.org/bootstrap.signed {userappdata}\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
 ; then ask to install drivers
 Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
 Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0; Check: not IsTapInstalled

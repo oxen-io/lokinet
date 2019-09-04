@@ -7,15 +7,15 @@
 #include <dht/context.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
-#include <metrics/metrictank_publisher.hpp>
-#include <metrics/json_publisher.hpp>
-#include <metrics/stream_publisher.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
-#include <util/logger.h>
-#include <util/memfn.hpp>
-#include <util/metrics.hpp>
-#include <util/scheduler.hpp>
+#include <util/logging/logger.h>
+#include <util/meta/memfn.hpp>
+#include <util/metrics/json_publisher.hpp>
+#include <util/metrics/metrics.hpp>
+#include <util/metrics/metrictank_publisher.hpp>
+#include <util/metrics/stream_publisher.hpp>
+#include <util/thread/scheduler.hpp>
 
 #include <absl/strings/str_split.h>
 #include <cxxopts.hpp>

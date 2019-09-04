@@ -5,7 +5,6 @@
 #include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
-#include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
 #include <util/bits.hpp>

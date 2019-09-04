@@ -3,7 +3,7 @@
 #include <router/abstractrouter.hpp>
 #include <routing/path_transfer_message.hpp>
 #include <service/endpoint.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <utility>
 
 namespace llarp

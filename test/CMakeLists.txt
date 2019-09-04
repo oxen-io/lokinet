@@ -18,8 +18,6 @@ list(APPEND TEST_SRC
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
     llarp_test.cpp
-    metrics/test_llarp_metrics_metricktank.cpp
-    metrics/test_llarp_metrics_publisher.cpp
     net/test_llarp_net_inaddr.cpp
     net/test_llarp_net.cpp
     routing/llarp_routing_transfer_traffic.cpp
@@ -33,22 +31,24 @@ list(APPEND TEST_SRC
     test_llarp_router_contact.cpp
     test_llarp_router.cpp
     test_md5.cpp
+    util/meta/test_llarp_util_memfn.cpp
+    util/meta/test_llarp_util_object.cpp
+    util/meta/test_llarp_util_traits.cpp
+    util/metrics/test_llarp_metrics_metricktank.cpp
+    util/metrics/test_llarp_metrics_publisher.cpp
+    util/metrics/test_llarp_util_metrics_core.cpp
+    util/metrics/test_llarp_util_metrics_types.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
     util/test_llarp_util_bits.cpp
     util/test_llarp_util_encode.cpp
-    util/test_llarp_util_metrics_core.cpp
-    util/test_llarp_util_metrics_types.cpp
-    util/test_llarp_util_memfn.cpp
-    util/test_llarp_util_object.cpp
     util/test_llarp_util_printer.cpp
-    util/test_llarp_util_queue_manager.cpp
-    util/test_llarp_util_queue.cpp
-    util/test_llarp_util_thread_pool.cpp
-    util/test_llarp_util_timerqueue.cpp
-    util/test_llarp_util_traits.cpp
-    util/test_llarp_utils_scheduler.cpp
     util/test_llarp_utils_str.cpp
+    util/thread/test_llarp_util_queue_manager.cpp
+    util/thread/test_llarp_util_queue.cpp
+    util/thread/test_llarp_util_thread_pool.cpp
+    util/thread/test_llarp_util_timerqueue.cpp
+    util/thread/test_llarp_utils_scheduler.cpp
 )
 
 add_executable(${TEST_EXE}

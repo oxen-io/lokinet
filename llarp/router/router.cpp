@@ -1,10 +1,10 @@
 #include <router/router.hpp>
 
 #include <config/config.hpp>
-#include <constants/proto.hpp>
 #include <constants/limits.hpp>
-#include <crypto/crypto.hpp>
+#include <constants/proto.hpp>
 #include <crypto/crypto_libsodium.hpp>
+#include <crypto/crypto.hpp>
 #include <dht/context.hpp>
 #include <dht/node.hpp>
 #include <iwp/iwp.hpp>
@@ -14,20 +14,20 @@
 #include <rpc/rpc.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
-#include <util/logger.hpp>
-#include <util/memfn.hpp>
-#include <util/file_logger.hpp>
-#include <util/json_logger.hpp>
-#include <util/logger_syslog.hpp>
-#include <util/metrics.hpp>
+#include <util/logging/file_logger.hpp>
+#include <util/logging/json_logger.hpp>
+#include <util/logging/logger_syslog.hpp>
+#include <util/logging/logger.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/metrics/metrics.hpp>
 #include <util/str.hpp>
-#include <utility>
 #include <utp/utp.hpp>
 
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
 #include <unordered_map>
+#include <utility>
 #if defined(RPI) || defined(ANDROID)
 #include <unistd.h>
 #endif

@@ -15,7 +15,7 @@
 #include <service/intro.hpp>
 #include <util/aligned.hpp>
 #include <util/compare_ptr.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 #include <util/time.hpp>
 
 #include <algorithm>
