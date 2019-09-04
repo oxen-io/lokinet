@@ -74,8 +74,8 @@ randombytes_stir(void)
       try
       {
         var window_ = 'object' == = typeof window ? window : self;
-        var crypto_ = typeof window_.crypto != = 'undefined' ? window_.crypto
-                                                             : window_.msCrypto;
+        var crypto_               = typeof window_.crypto != =
+            'undefined' ? window_.crypto : window_.msCrypto;
         var randomValuesStandard = function()
         {
           var buf = new Uint32Array(1);

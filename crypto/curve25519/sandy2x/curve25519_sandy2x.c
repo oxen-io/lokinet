@@ -26,13 +26,14 @@ crypto_scalarmult_curve25519_sandy2x(unsigned char *q, const unsigned char *n,
                                      const unsigned char *p)
 {
   unsigned char *t = q;
-  fe             var[3];
-  fe51           x_51;
-  fe51           z_51;
-  unsigned int   i;
+  fe var[3];
+  fe51 x_51;
+  fe51 z_51;
+  unsigned int i;
 
-  for (i = 0; i < 32; i++) {
-      t[i] = n[i];
+  for(i = 0; i < 32; i++)
+  {
+    t[i] = n[i];
   }
   t[0] &= 248;
   t[31] &= 127;
@@ -72,13 +73,14 @@ crypto_scalarmult_curve25519_sandy2x_base(unsigned char *q,
                                           const unsigned char *n)
 {
   unsigned char *t = q;
-  fe             var[3];
-  fe51           x_51;
-  fe51           z_51;
-  unsigned int   i;
+  fe var[3];
+  fe51 x_51;
+  fe51 z_51;
+  unsigned int i;
 
-  for (i = 0;i < 32; i++) {
-      t[i] = n[i];
+  for(i = 0; i < 32; i++)
+  {
+    t[i] = n[i];
   }
   t[0] &= 248;
   t[31] &= 127;
@@ -106,9 +108,8 @@ crypto_scalarmult_curve25519_sandy2x_base(unsigned char *q,
 }
 
 struct crypto_scalarmult_curve25519_implementation
-crypto_scalarmult_curve25519_sandy2x_implementation = {
-    SODIUM_C99(.mult = ) crypto_scalarmult_curve25519_sandy2x,
-    SODIUM_C99(.mult_base = ) crypto_scalarmult_curve25519_sandy2x_base
-};
+    crypto_scalarmult_curve25519_sandy2x_implementation = {
+        SODIUM_C99(.mult =) crypto_scalarmult_curve25519_sandy2x,
+        SODIUM_C99(.mult_base =) crypto_scalarmult_curve25519_sandy2x_base};
 
 #endif

@@ -17,4 +17,3 @@
 #define REDMASK51 crypto_scalarmult_curve25519_sandy2x_REDMASK51
 
 #endif /* ifndef consts_namespace_H */
-

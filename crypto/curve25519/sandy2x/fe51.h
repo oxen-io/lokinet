@@ -9,7 +9,8 @@
 #define fe51_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include <stdint.h>
@@ -17,16 +18,19 @@ extern "C" {
 
 #include "fe51_namespace.h"
 
-typedef struct
-{
+  typedef struct
+  {
     uint64_t v[5];
-}
-fe51;
+  } fe51;
 
-extern void fe51_pack(unsigned char *, const fe51 *);
-extern void fe51_mul(fe51 *, const fe51 *, const fe51 *);
-extern void fe51_nsquare(fe51 *, const fe51 *, int);
-extern void fe51_invert(fe51 *, const fe51 *);
+  extern void
+  fe51_pack(unsigned char *, const fe51 *);
+  extern void
+  fe51_mul(fe51 *, const fe51 *, const fe51 *);
+  extern void
+  fe51_nsquare(fe51 *, const fe51 *, int);
+  extern void
+  fe51_invert(fe51 *, const fe51 *);
 
 #ifdef __cplusplus
 }
