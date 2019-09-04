@@ -1,0 +1,23 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Wed, 4 Sep 2019 15:50:06 -0300
+Subject: Make root bootstraps to system path
+
+---
+ lokinet-bootstrap | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lokinet-bootstrap b/lokinet-bootstrap
+index 690eb9b..feed8cd 100755
+--- a/lokinet-bootstrap
++++ b/lokinet-bootstrap
+@@ -12,6 +12,10 @@ helpme=
+ default_url="https://seed.lokinet.org/bootstrap.signed"
+ default_dest="$HOME/.lokinet/bootstrap.signed"
+ 
++if [ "$UID" == 0 ]; then
++  default_dest=/var/lib/lokinet/bootstrap.signed
++fi
++
+ if [ "$#" -gt 2 ]; then
+   helpme=y
+ fi
