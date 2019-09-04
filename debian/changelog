@@ -1,3 +1,42 @@
+lokinet (0.5.0-1) sid; urgency=medium
+
+  [ Rick V ]
+  * add build option for constrained node ops and make sure everything is now target-optimised in all configurations (allows debugging on the target using the debug build config)
+  * new cmake module
+  * bump version for release
+  * if cppbackport is built, make that consistent too
+  * add description to lokinet svc manifest
+  * undo utf8 conversion
+  * set point-to-point mode on TAP
+  * iconv 🅱roke
+  * move non-string version info to common header
+  * derp
+  * make format crypto/
+  * clang-format remaining code, use __asm__ for avx2 port since we insist on straight C99 without extensions (asm isn't special in C99, __asm__ is)
+  * this kills the TAP
+  * add config edit button, and see if this fixes the pipe read bug
+  * add config file options
+
+  [ Michael ]
+  * Move logging to subdirectory
+  * Move meta programming to subdirectory
+  * Move metrics to subdirectory
+  * Move thread stuff to subdirectory
+  * Fix windows
+
+  [ Rick V ]
+  * oops
+
+  [ Jeff ]
+  * Update motto.txt
+  * Update lokinet-bootstrap
+
+  [ Jeff Becker ]
+  * change default url for bootstrap
+  * update default netid
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 04 Sep 2019 13:37:57 -0300
+
 lokinet (0.5.0~pre20190902-1) sid; urgency=medium
 
   [ Jeff ]
