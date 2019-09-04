@@ -1,7 +1,7 @@
 #include <config/config.hpp>  // for ensure_config
 #include <llarp.h>
 #include <util/fs.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 #include <csignal>
 

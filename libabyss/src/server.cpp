@@ -2,7 +2,7 @@
 
 #include <abyss/http.hpp>
 #include <util/buffer.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/time.hpp>
 
 #include <algorithm>

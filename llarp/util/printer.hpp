@@ -2,8 +2,8 @@
 #define LLARP_PRINTER_HPP
 
 #include <util/string_view.hpp>
-#include <util/traits.hpp>
-#include <util/variant.hpp>
+#include <util/meta/traits.hpp>
+#include <util/meta/variant.hpp>
 
 #include <absl/types/variant.h>
 #include <functional>

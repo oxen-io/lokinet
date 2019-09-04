@@ -4,9 +4,9 @@
 #include <router/i_outbound_session_maker.hpp>
 
 #include <router/i_rc_lookup_handler.hpp>
-#include <util/threading.hpp>
-#include <util/thread_pool.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/threading.hpp>
+#include <util/thread/thread_pool.hpp>
 
 #include <unordered_map>
 #include <list>

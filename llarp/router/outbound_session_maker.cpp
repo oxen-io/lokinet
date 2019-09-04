@@ -5,9 +5,9 @@
 #include <nodedb.hpp>
 #include <router/i_rc_lookup_handler.hpp>
 #include <link/i_link_manager.hpp>
-#include <util/logic.hpp>
-#include <util/memfn.hpp>
-#include <util/threading.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/threading.hpp>
 #include <util/status.hpp>
 #include <crypto/crypto.hpp>
 #include <utility>

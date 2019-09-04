@@ -1,5 +1,5 @@
 #include <util/bencode.h>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <cstdlib>
 #include <cinttypes>
 #include <cstdio>

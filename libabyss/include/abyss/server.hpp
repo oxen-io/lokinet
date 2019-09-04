@@ -3,8 +3,8 @@
 
 #include <ev/ev.h>
 #include <util/json.hpp>
-#include <util/logic.hpp>
 #include <util/string_view.hpp>
+#include <util/thread/logic.hpp>
 #include <util/time.hpp>
 
 #include <absl/types/optional.h>

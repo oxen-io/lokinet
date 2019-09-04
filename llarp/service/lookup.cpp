@@ -3,7 +3,7 @@
 #include <path/path.hpp>
 #include <util/time.hpp>
 #include <router/abstractrouter.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <utility>
 
 namespace llarp

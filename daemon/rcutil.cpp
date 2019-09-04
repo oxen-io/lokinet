@@ -1,6 +1,6 @@
 #include <router_contact.hpp>
-#include <util/logger.hpp>
-#include <util/ostream_logger.hpp>
+#include <util/logging/logger.hpp>
+#include <util/logging/ostream_logger.hpp>
 
 #include <absl/synchronization/mutex.h>
 #include <cxxopts.hpp>

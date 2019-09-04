@@ -1,7 +1,7 @@
 #include <dns/server.hpp>
 
 #include <crypto/crypto.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <array>
 #include <utility>
 

@@ -1,6 +1,6 @@
 #include <dnsc.hpp>
 #include <net/net.hpp>  // for llarp::Addr
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 #ifndef _WIN32
 #include <arpa/inet.h>

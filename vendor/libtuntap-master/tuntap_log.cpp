@@ -24,7 +24,7 @@
 #include <string.h>
 
 #include <tuntap.h>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 extern "C"
 {

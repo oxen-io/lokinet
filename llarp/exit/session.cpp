@@ -5,7 +5,7 @@
 #include <path/path_context.hpp>
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <utility>
 
 namespace llarp

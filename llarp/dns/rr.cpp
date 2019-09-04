@@ -1,6 +1,6 @@
 #include <dns/rr.hpp>
 
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/printer.hpp>
 
 namespace llarp

@@ -5,7 +5,7 @@
 #include <ev/ev.h>
 #include <net/net.hpp>
 #include <util/string_view.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 
 #include <unordered_map>
 

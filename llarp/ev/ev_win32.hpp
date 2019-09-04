@@ -5,7 +5,6 @@
 #include <net/net.h>
 #include <net/net.hpp>
 #include <util/buffer.hpp>
-#include <util/logger.hpp>
 
 #include <windows.h>
 #include <process.h>

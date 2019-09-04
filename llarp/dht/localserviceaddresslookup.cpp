@@ -5,7 +5,7 @@
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 namespace llarp
 {
