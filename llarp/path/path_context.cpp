@@ -88,7 +88,7 @@ namespace llarp
     HopHandler_ptr
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
-      util::Lock lock(&map.first);
+      Map_t::Lock_t lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -102,7 +102,7 @@ namespace llarp
     bool
     MapHas(Map_t& map, const Key_t& k, CheckValue_t check)
     {
-      util::Lock lock(&map.first);
+      Map_t::Lock_t lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -116,7 +116,7 @@ namespace llarp
     void
     MapPut(Map_t& map, const Key_t& k, const Value_t& v)
     {
-      util::Lock lock(&map.first);
+      Map_t::Lock_t lock(&map.first);
       map.second.emplace(k, v);
     }
 
@@ -124,7 +124,7 @@ namespace llarp
     void
     MapIter(Map_t& map, Visit_t v)
     {
-      util::Lock lock(map.first);
+      Map_t::Lock_t lock(map.first);
       for(const auto& item : map.second)
         v(item);
     }
@@ -133,7 +133,7 @@ namespace llarp
     void
     MapDel(Map_t& map, const Key_t& k, Check_t check)
     {
-      util::Lock lock(map.first);
+      Map_t::Lock_t lock(map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second;)
       {
@@ -190,7 +190,7 @@ namespace llarp
     PathContext::TransitHopPreviousIsRouter(const PathID_t& path,
                                             const RouterID& otherRouter)
     {
-      util::Lock lock(&m_TransitPaths.first);
+      decltype(m_TransitPaths)::Lock_t lock(&m_TransitPaths.first);
       auto itr = m_TransitPaths.second.find(path);
       if(itr == m_TransitPaths.second.end())
         return false;
@@ -214,7 +214,7 @@ namespace llarp
     PathContext::GetLocalPathSet(const PathID_t& id)
     {
       auto& map = m_OurPaths;
-      util::Lock lock(&map.first);
+      decltype(m_OurPaths)::Lock_t lock(&map.first);
       auto itr = map.second.find(id);
       if(itr != map.second.end())
       {
@@ -241,7 +241,7 @@ namespace llarp
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(&map.first);
+        decltype(m_TransitPaths)::Lock_t lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -263,7 +263,7 @@ namespace llarp
     PathContext::ExpirePaths(llarp_time_t now)
     {
       {
-        util::Lock lock(&m_TransitPaths.first);
+        decltype(m_TransitPaths)::Lock_t lock(&m_TransitPaths.first);
         auto& map = m_TransitPaths.second;
         auto itr  = map.begin();
         while(itr != map.end())
@@ -277,7 +277,7 @@ namespace llarp
         }
       }
       {
-        util::Lock lock(&m_OurPaths.first);
+        decltype(m_OurPaths)::Lock_t lock(&m_OurPaths.first);
         auto& map = m_OurPaths.second;
         for(auto& item : map)
         {
@@ -299,7 +299,7 @@ namespace llarp
       const RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(&map.first);
+        decltype(m_TransitPaths)::Lock_t lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -313,7 +313,7 @@ namespace llarp
     void
     PathContext::RemovePathSet(PathSet_ptr set)
     {
-      util::Lock lock(&m_OurPaths.first);
+      decltype(m_OurPaths)::Lock_t lock(&m_OurPaths.first);
       auto& map = m_OurPaths.second;
       auto itr  = map.begin();
       while(itr != map.end())

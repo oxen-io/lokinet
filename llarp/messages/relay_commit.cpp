@@ -238,6 +238,15 @@ namespace llarp
     static void
     SendLRCM(std::shared_ptr< LRCMFrameDecrypt > self)
     {
+      if(self->context->HasTransitHop(self->hop->info))
+      {
+        llarp::LogError("duplicate transit hop", self->hop->info);
+        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
+                            self->hop->info.downstream, self->hop->pathKey,
+                            SendStatus::Congestion);
+        self->hop = nullptr;
+        return;
+      }
       if(!self->context->Router()->ConnectionToRouterAllowed(
              self->hop->info.upstream))
       {
@@ -287,15 +296,21 @@ namespace llarp
     static void
     SendPathConfirm(std::shared_ptr< LRCMFrameDecrypt > self)
     {
-      // persist session to downstream until path expiration
-      self->context->Router()->PersistSessionUntil(
-          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
-      // put hop
-      self->context->PutTransitHop(self->hop);
-
       // send path confirmation
       // TODO: other status flags?
       uint64_t status = LR_StatusRecord::SUCCESS;
+      if(self->context->HasTransitHop(self->hop->info))
+      {
+        status = LR_StatusRecord::FAIL_DUPLICATE_HOP;
+      }
+      else
+      {
+        // persist session to downstream until path expiration
+        self->context->Router()->PersistSessionUntil(
+            self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+        // put hop
+        self->context->PutTransitHop(self->hop);
+      }
 
       if(!LR_StatusMessage::CreateAndSend(
              self->context->Router(), self->hop->info.rxID,
@@ -332,12 +347,7 @@ namespace llarp
       info.txID     = self->record.txid;
       info.rxID     = self->record.rxid;
       info.upstream = self->record.nextHop;
-      if(self->context->HasTransitHop(info))
-      {
-        llarp::LogError("duplicate transit hop ", info);
-        self->decrypter = nullptr;
-        return;
-      }
+
       // generate path key as we are in a worker thread
       auto crypto = CryptoManager::instance();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
@@ -387,7 +397,7 @@ namespace llarp
       {
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
-        // send a LRAM down the path
+        // send a LRSM down the path
         self->context->logic()->queue_func([=]() {
           SendPathConfirm(self);
           self->decrypter = nullptr;
