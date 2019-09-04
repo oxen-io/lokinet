@@ -14,7 +14,7 @@
 
 #include <net/net_addr.hpp>
 #include <net/ip.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/str.hpp>
 
 #include <cstdio>

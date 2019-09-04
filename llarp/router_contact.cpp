@@ -5,7 +5,7 @@
 #include <net/net.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/printer.hpp>
 #include <util/time.hpp>

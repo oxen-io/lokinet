@@ -3,7 +3,7 @@
 
 #include <dht/key.hpp>
 #include <dht/txowner.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <util/status.hpp>
 
 #include <set>

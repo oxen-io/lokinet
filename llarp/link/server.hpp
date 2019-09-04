@@ -6,9 +6,9 @@
 #include <link/session.hpp>
 #include <net/net.hpp>
 #include <router_contact.hpp>
-#include <util/logic.hpp>
-#include <util/threading.hpp>
 #include <util/status.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/threading.hpp>
 
 #include <list>
 #include <memory>

@@ -6,7 +6,7 @@
 #include <routing/message.hpp>
 #include <service/intro_set.hpp>
 #include <util/status.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 #include <util/time.hpp>
 
 #include <functional>

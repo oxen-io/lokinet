@@ -1,7 +1,7 @@
 #include <iwp/iwp.hpp>
 #include <iwp/linklayer.hpp>
 #include <router/abstractrouter.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 
 namespace llarp
 {

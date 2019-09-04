@@ -2,12 +2,12 @@
 
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 #include <router_id.hpp>
 #include <exit/context.hpp>
 
 #include <util/encode.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <libabyss.hpp>
 #include <utility>
 

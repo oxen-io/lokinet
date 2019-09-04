@@ -2,9 +2,10 @@
 #include <path/path.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
-#include <util/logic.hpp>
 #include <util/mem.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
+
 #include <utility>
 
 namespace llarp

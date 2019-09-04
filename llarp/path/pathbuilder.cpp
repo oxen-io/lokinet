@@ -7,8 +7,8 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
-#include <util/logic.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
+#include <util/thread/logic.hpp>
 
 #include <functional>
 

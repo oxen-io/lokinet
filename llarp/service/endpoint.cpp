@@ -15,11 +15,12 @@
 #include <service/hidden_service_address_lookup.hpp>
 #include <service/outbound_context.hpp>
 #include <service/protocol.hpp>
-#include <util/logic.hpp>
+#include <util/thread/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
+
 #include <utility>
 
 namespace llarp

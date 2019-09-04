@@ -6,7 +6,7 @@
 #include <service/endpoint.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 
 namespace llarp
 {

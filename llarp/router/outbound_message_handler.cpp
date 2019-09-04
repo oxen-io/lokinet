@@ -4,7 +4,7 @@
 #include <router/i_outbound_session_maker.hpp>
 #include <link/i_link_manager.hpp>
 #include <constants/link_layer.hpp>
-#include <util/memfn.hpp>
+#include <util/meta/memfn.hpp>
 #include <util/status.hpp>
 
 #include <algorithm>

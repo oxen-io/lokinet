@@ -2,9 +2,9 @@
 
 #include <dnsd.hpp>
 
-#include <llarp.h>         // for llarp_main_init
-#include <net/net.hpp>     // for llarp::Addr
-#include <util/logic.hpp>  // for threadpool/llarp::Logic
+#include <llarp.h>                // for llarp_main_init
+#include <net/net.hpp>            // for llarp::Addr
+#include <util/thread/logic.hpp>  // for threadpool/llarp::Logic
 
 unsigned int g_length = 0;
 std::string g_result  = "";

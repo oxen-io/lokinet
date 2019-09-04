@@ -4,7 +4,7 @@
 #include <router_contact.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/bencode.h>
-#include <util/logger.hpp>
+#include <util/logging/logger.hpp>
 
 namespace llarp
 {

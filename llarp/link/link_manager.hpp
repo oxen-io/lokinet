@@ -4,7 +4,7 @@
 #include <link/i_link_manager.hpp>
 
 #include <util/compare_ptr.hpp>
-#include <util/threading.hpp>
+#include <util/thread/threading.hpp>
 #include <link/server.hpp>
 
 #include <unordered_map>

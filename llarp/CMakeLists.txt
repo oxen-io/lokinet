@@ -17,39 +17,42 @@ set(LIB_UTIL_SRC
   util/endian.cpp
   util/fs.cpp
   util/json.cpp
-  util/logger.cpp
-  util/android_logger.cpp
-  util/file_logger.cpp
-  util/logic.cpp
-  util/loglevel.cpp
+  util/logging/android_logger.cpp
+  util/logging/file_logger.cpp
+  util/logging/json_logger.cpp
+  util/logging/logger.cpp
+  util/logging/loglevel.cpp
+  util/logging/ostream_logger.cpp
+  util/logging/syslog_logger.cpp
+  util/logging/win32_logger.cpp
   util/mem.cpp
-  util/memfn_traits.cpp
-  util/memfn.cpp
-  util/metrics_core.cpp
-  util/metrics_types.cpp
-  util/json_logger.cpp
-  util/ostream_logger.cpp
-  util/syslog_logger.cpp
-  util/win32_logger.cpp
-  util/metrics.cpp
-  util/object.cpp
+  util/meta/memfn_traits.cpp
+  util/meta/memfn.cpp
+  util/meta/object.cpp
+  util/meta/traits.cpp
+  util/meta/variant.cpp
+  util/metrics/core.cpp
+  util/metrics/json_publisher.cpp
+  util/metrics/metrics.cpp
+  util/metrics/metrictank_publisher.cpp
+  util/metrics/stream_publisher.cpp
+  util/metrics/types.cpp
   util/printer.cpp
-  util/queue_manager.cpp
-  util/queue.cpp
-  util/scheduler.cpp
   util/status.cpp
   util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
-  util/thread_pool.cpp
-  util/threading.cpp
-  util/threadpool.cpp
+  util/thread/logic.cpp
+  util/thread/queue_manager.cpp
+  util/thread/queue.cpp
+  util/thread/scheduler.cpp
+  util/thread/thread_pool.cpp
+  util/thread/threading.cpp
+  util/thread/threadpool.cpp
+  util/thread/timer.cpp
+  util/thread/timerqueue.cpp
   util/time.cpp
-  util/timer.cpp
-  util/timerqueue.cpp
-  util/traits.cpp
   util/types.cpp
-  util/variant.cpp
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
@@ -75,9 +78,6 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
-  metrics/metrictank_publisher.cpp
-  metrics/json_publisher.cpp
-  metrics/stream_publisher.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
