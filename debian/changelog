@@ -1,3 +1,9 @@
+lokinet (0.5.0-2) sid; urgency=medium
+
+  * Patch lokinet-bootstrap to use system bootstrap path when run as root
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 04 Sep 2019 15:54:48 -0300
+
 lokinet (0.5.0-1) sid; urgency=medium
 
   [ Rick V ]
