@@ -79,7 +79,8 @@ namespace llarp
     static void
     udp_tick(llarp_udp_io* udp)
     {
-      static_cast< ILinkLayer* >(udp->user)->Pump();
+      ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
+      link->logic()->queue_func([link]() { link->Pump(); });
     }
 
     static void
@@ -90,11 +91,15 @@ namespace llarp
         llarp::LogWarn("no udp set");
         return;
       }
+      std::vector< byte_t > pkt(buf.underlying.sz);
+      std::copy_n(buf.underlying.base, buf.underlying.sz, pkt.begin());
       const llarp::Addr srcaddr(*from);
       // maybe check from too?
       // no it's never null
-      static_cast< ILinkLayer* >(udp->user)->RecvFrom(
-          srcaddr, buf.underlying.base, buf.underlying.sz);
+      ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
+      link->logic()->queue_func([link, srcaddr, pkt]() {
+        link->RecvFrom(srcaddr, pkt.data(), pkt.size());
+      });
     }
 
     void

@@ -98,9 +98,14 @@ namespace libuv
     OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     {
       if(nread >= 0)
-        static_cast< conn_glue* >(stream->data)->Read(buf->base, nread);
+      {
+        auto* conn = static_cast< conn_glue* >(stream->data);
+        conn->Read(buf->base, nread);
+      }
       else if(nread < 0)
+      {
         static_cast< conn_glue* >(stream->data)->Close();
+      }
       delete[] buf->base;
     }
 
@@ -257,7 +262,8 @@ namespace libuv
     static void
     OnTick(uv_check_t* t)
     {
-      static_cast< conn_glue* >(t->data)->Tick();
+      auto* conn = static_cast< conn_glue* >(t->data);
+      conn->Tick();
     }
 
     void

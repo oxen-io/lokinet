@@ -44,7 +44,6 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     {
       ev->update_time();
       logic->tick_async(ev->time_now());
-      llarp_threadpool_tick(logic->thread);
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }

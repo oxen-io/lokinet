@@ -709,13 +709,13 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      // call tun code in endpoint logic in case of network isolation
-      // EndpointLogic()->queue_job({this, handleTickTun});
-      m_ExitMap.ForEachValue([&](const auto &exit) {
-        EnsureRouterIsKnown(exit->Endpoint());
-        exit->Tick(now);
+      EndpointLogic()->queue_func([&]() {
+        m_ExitMap.ForEachValue([&](const auto &exit) {
+          this->EnsureRouterIsKnown(exit->Endpoint());
+          exit->Tick(now);
+        });
+        Endpoint::Tick(now);
       });
-      Endpoint::Tick(now);
     }
 
     bool
@@ -934,10 +934,13 @@ namespace llarp
       // called in the isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
       // flush user to network
-      self->FlushSend();
+      self->EndpointLogic()->queue_func(
+          std::bind(&TunEndpoint::FlushSend, self));
       // flush exit traffic queues if it's there
-      self->m_ExitMap.ForEachValue(
-          [](const auto &exit) { exit->FlushDownstream(); });
+      self->EndpointLogic()->queue_func([self] {
+        self->m_ExitMap.ForEachValue(
+            [](const auto &exit) { exit->FlushDownstream(); });
+      });
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPPacket &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
@@ -950,9 +953,9 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      const ManagedBuffer buf(b);
+      const ManagedBuffer pkt(b);
       self->m_UserToNetworkPktQueue.EmplaceIf(
-          [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
+          [&pkt](net::IPPacket &p) -> bool { return p.Load(pkt); });
     }
 
     TunEndpoint::~TunEndpoint() = default;

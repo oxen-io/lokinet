@@ -294,7 +294,7 @@ namespace llarp
       return;
     auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
-    self->Tick();
+    self->logic()->queue_func(std::bind(&Router::Tick, self));
     self->ScheduleTicker(orig);
   }
 
@@ -998,7 +998,6 @@ namespace llarp
     }
 
     LogInfo("have ", nodedb->num_loaded(), " routers");
-    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();

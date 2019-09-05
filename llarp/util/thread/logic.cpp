@@ -13,11 +13,17 @@ namespace llarp
     llarp_threadpool_tick(this->thread);
   }
 
+  Logic::~Logic()
+  {
+    llarp_threadpool_stop(this->thread);
+    llarp_threadpool_join(this->thread);
+    llarp_free_threadpool(&this->thread);
+  }
+
   void
   Logic::tick_async(llarp_time_t now)
   {
     llarp_timer_tick_all_async(this->timer, this->thread, now);
-    llarp_threadpool_tick(this->thread);
   }
 
   void
@@ -97,7 +103,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return ourID == std::this_thread::get_id();
+    return false;
   }
 
 }  // namespace llarp
