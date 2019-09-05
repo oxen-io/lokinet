@@ -33,7 +33,7 @@ namespace llarp
       static constexpr llarp_time_t SessionAliveTimeout =
           (PingInterval * 13) / 3;
       /// maximum number of messages we can ack in a multiack
-      static constexpr size_t MaxACKSInMACK = 1024 / 8;
+      static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
       /// outbound session
       Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);

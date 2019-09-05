@@ -186,12 +186,14 @@ namespace llarp
       // send multi acks
       while(!m_SendMACKS.empty())
       {
-        byte_t numAcks = std::min(m_SendMACKS.size(), MaxACKSInMACK);
+        const auto sz  = m_SendMACKS.size();
+        const auto max = Session::MaxACKSInMACK;
+        auto numAcks   = std::min(sz, max);
         std::vector< byte_t > mack;
         mack.resize(2 + 1 + (numAcks * sizeof(uint64_t)));
         mack[0]     = LLARP_PROTO_VERSION;
         mack[1]     = Command::eMACK;
-        mack[2]     = numAcks;
+        mack[2]     = byte_t{numAcks};
         byte_t* ptr = mack.data() + 3;
         while(numAcks > 0)
         {
