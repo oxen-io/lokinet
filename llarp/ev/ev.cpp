@@ -93,7 +93,6 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
-#if !defined(_WIN32)
   if(tun->ifaddr[0] == 0 || strcmp(tun->ifaddr, "auto") == 0)
   {
     LogError("invalid ifaddr on tun: ", tun->ifaddr);
@@ -104,6 +103,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
     LogError("invalid ifname on tun: ", tun->ifname);
     return false;
   }
+#if !defined(_WIN32)
   return loop->tun_listen(tun);
 #else
   UNREFERENCED_PARAMETER(loop);
