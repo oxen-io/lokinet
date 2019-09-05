@@ -167,6 +167,20 @@ namespace llarp
       /// list of rx messages to send in next set of multiacks
       std::vector< uint64_t > m_SendMACKS;
 
+      using CryptoQueue_t = std::vector< std::vector< byte_t > >;
+
+      CryptoQueue_t m_EncryptNext;
+      CryptoQueue_t m_DecryptNext;
+
+      void
+      EncryptWorker(CryptoQueue_t msgs);
+
+      void
+      DecryptWorker(CryptoQueue_t msgs);
+
+      void
+      HandlePlaintext(CryptoQueue_t msgs);
+
       void
       HandleGotIntro(const llarp_buffer_t& buf);
 

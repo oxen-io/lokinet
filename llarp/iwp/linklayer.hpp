@@ -6,6 +6,7 @@
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
+#include <util/thread/thread_pool.hpp>
 
 namespace llarp
 {
@@ -37,6 +38,9 @@ namespace llarp
       const char *
       Name() const override;
 
+      void
+      Stop() override;
+
       uint16_t
       Rank() const override;
 
@@ -49,9 +53,13 @@ namespace llarp
       void
       UnmapAddr(const Addr &addr);
 
+      void
+      QueueWork(std::function< void(void) > work);
+
      private:
       std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;
       const bool permitInbound;
+      thread::ThreadPool m_CryptoWorker;
     };
 
     using LinkLayer_ptr = std::shared_ptr< LinkLayer >;

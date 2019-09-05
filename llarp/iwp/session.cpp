@@ -123,26 +123,36 @@ namespace llarp
     void
     Session::EncryptAndSend(const llarp_buffer_t& data)
     {
-      std::vector< byte_t > pkt;
-      pkt.resize(data.sz + PacketOverhead);
-      CryptoManager::instance()->randbytes(pkt.data(), pkt.size());
-      llarp_buffer_t pktbuf(pkt);
-      pktbuf.base += PacketOverhead;
-      pktbuf.cur = pktbuf.base;
-      pktbuf.sz -= PacketOverhead;
-      byte_t* nonce_ptr = pkt.data() + HMACSIZE;
+      m_EncryptNext.emplace_back(data.sz + PacketOverhead);
+      auto& pkt = m_EncryptNext.back();
+      std::copy_n(data.base, data.sz, pkt.begin() + PacketOverhead);
+      if(!IsEstablished())
+        EncryptWorker(std::move(m_EncryptNext));
+    }
 
-      CryptoManager::instance()->xchacha20_alt(pktbuf, data, m_SessionKey,
-                                               nonce_ptr);
-
-      pktbuf.base = nonce_ptr;
-      pktbuf.sz   = data.sz + 32;
-      CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
-
-      pktbuf.base = pkt.data();
-      pktbuf.cur  = pkt.data();
-      pktbuf.sz   = pkt.size();
-      Send_LL(pktbuf);
+    void
+    Session::EncryptWorker(CryptoQueue_t msgs)
+    {
+      LogDebug("encrypt worker ", msgs.size(), " messages");
+      for(auto& pkt : msgs)
+      {
+        llarp_buffer_t pktbuf(pkt);
+        byte_t* nonce_ptr = pkt.data() + HMACSIZE;
+        CryptoManager::instance()->randbytes(nonce_ptr,
+                                             PacketOverhead - HMACSECSIZE);
+        pktbuf.base += PacketOverhead;
+        pktbuf.cur = pktbuf.base;
+        pktbuf.sz -= PacketOverhead;
+        CryptoManager::instance()->xchacha20_alt(pktbuf, pktbuf, m_SessionKey,
+                                                 nonce_ptr);
+        pktbuf.base = nonce_ptr;
+        pktbuf.sz   = pkt.size() - HMACSIZE;
+        CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
+        pktbuf.base = pkt.data();
+        pktbuf.cur  = pkt.data();
+        pktbuf.sz   = pkt.size();
+        Send_LL(pktbuf);
+      }
     }
 
     void
@@ -233,6 +243,16 @@ namespace llarp
           }
         }
       }
+
+      if(!m_EncryptNext.empty())
+        m_Parent->QueueWork(std::bind(&Session::EncryptWorker,
+                                      shared_from_this(),
+                                      std::move(m_EncryptNext)));
+
+      if(!m_DecryptNext.empty())
+        m_Parent->QueueWork(std::bind(&Session::DecryptWorker,
+                                      shared_from_this(),
+                                      std::move(m_DecryptNext)));
     }
 
     bool
@@ -332,14 +352,6 @@ namespace llarp
     {
       TunnelNonce N;
       N.Randomize();
-      if(not CryptoManager::instance()->transport_dh_client(
-             m_SessionKey, m_ChosenAI.pubkey,
-             m_Parent->RouterEncryptionSecret(), N))
-      {
-        LogError("failed to transport_dh_client on outbound session to ",
-                 m_RemoteAddr);
-        return;
-      }
       std::vector< byte_t > req;
       req.resize(Introduction::SIZE - Signature::SIZE);
       const auto pk   = m_Parent->GetOurRC().pubkey;
@@ -360,6 +372,14 @@ namespace llarp
       const llarp_buffer_t buf(req);
       EncryptAndSend(buf);
       m_State = State::Introduction;
+      if(not CryptoManager::instance()->transport_dh_client(
+             m_SessionKey, m_ChosenAI.pubkey,
+             m_Parent->RouterEncryptionSecret(), N))
+      {
+        LogError("failed to transport_dh_client on outbound session to ",
+                 m_RemoteAddr);
+        return;
+      }
       LogDebug("sent intro to ", m_RemoteAddr);
     }
 
@@ -504,44 +524,71 @@ namespace llarp
     void
     Session::HandleSessionData(const llarp_buffer_t& buf)
     {
-      std::vector< byte_t > result;
-      if(not DecryptMessage(buf, result))
+      m_DecryptNext.emplace_back(buf.sz);
+      auto& pkt = m_DecryptNext.back();
+      std::copy_n(buf.base, buf.sz, pkt.begin());
+    }
+
+    void
+    Session::DecryptWorker(CryptoQueue_t msgs)
+    {
+      CryptoQueue_t recvMsgs;
+      for(const auto& pkt : msgs)
       {
-        LogError("failed to decrypt session data from ", m_RemoteAddr);
-        return;
+        std::vector< byte_t > result;
+        const llarp_buffer_t buf(pkt);
+        if(not DecryptMessage(buf, result))
+        {
+          LogError("failed to decrypt session data from ", m_RemoteAddr);
+          continue;
+        }
+        if(result[0] != LLARP_PROTO_VERSION)
+        {
+          LogError("protocol version missmatch ", int(result[0]),
+                   " != ", LLARP_PROTO_VERSION);
+          continue;
+        }
+        recvMsgs.emplace_back(std::move(result));
       }
-      if(result[0] != LLARP_PROTO_VERSION)
+      LogDebug("decrypted ", recvMsgs.size(), " packets from ", m_RemoteAddr);
+      m_Parent->logic()->queue_func(std::bind(
+          &Session::HandlePlaintext, shared_from_this(), std::move(recvMsgs)));
+    }
+
+    void
+    Session::HandlePlaintext(CryptoQueue_t msgs)
+    {
+      for(auto& result : msgs)
       {
-        LogError("protocol version missmatch ", int(result[0]),
-                 " != ", LLARP_PROTO_VERSION);
-        return;
+        LogDebug("command ", int(result[1]), " from ", m_RemoteAddr);
+        switch(result[1])
+        {
+          case Command::eXMIT:
+            HandleXMIT(std::move(result));
+            break;
+          case Command::eDATA:
+            HandleDATA(std::move(result));
+            break;
+          case Command::eACKS:
+            HandleACKS(std::move(result));
+            break;
+          case Command::ePING:
+            HandlePING(std::move(result));
+            break;
+          case Command::eNACK:
+            HandleNACK(std::move(result));
+            break;
+          case Command::eCLOS:
+            HandleCLOS(std::move(result));
+            break;
+          case Command::eMACK:
+            HandleMACK(std::move(result));
+            break;
+          default:
+            LogError("invalid command ", int(result[1]), " from ",
+                     m_RemoteAddr);
+        }
       }
-      LogDebug("command ", int(result[1]), " from ", m_RemoteAddr);
-      switch(result[1])
-      {
-        case Command::eXMIT:
-          HandleXMIT(std::move(result));
-          return;
-        case Command::eDATA:
-          HandleDATA(std::move(result));
-          return;
-        case Command::eACKS:
-          HandleACKS(std::move(result));
-          return;
-        case Command::ePING:
-          HandlePING(std::move(result));
-          return;
-        case Command::eNACK:
-          HandleNACK(std::move(result));
-          return;
-        case Command::eCLOS:
-          HandleCLOS(std::move(result));
-          return;
-        case Command::eMACK:
-          HandleMACK(std::move(result));
-          return;
-      }
-      LogError("invalid command ", int(result[1]));
     }
 
     void
