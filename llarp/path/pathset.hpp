@@ -275,6 +275,9 @@ namespace llarp
         }
       }
 
+      void
+      FlushQueues(AbstractRouter* r);
+
       size_t numPaths;
 
      protected:

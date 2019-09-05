@@ -38,6 +38,9 @@ namespace llarp
       ExpirePaths(llarp_time_t now);
 
       void
+      Pump();
+
+      void
       AllowTransit();
 
       void

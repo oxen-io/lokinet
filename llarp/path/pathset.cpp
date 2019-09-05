@@ -375,5 +375,12 @@ namespace llarp
       return nullptr;
     }
 
+    void
+    PathSet::FlushQueues(AbstractRouter* r)
+
+    {
+      ForEachPath([r](const Path_ptr& ptr) { ptr->FlushQueues(r); });
+    }
+
   }  // namespace path
 }  // namespace llarp

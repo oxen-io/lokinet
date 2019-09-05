@@ -30,12 +30,20 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       rc.enckey = encryptionKey.toPublic();
     }
 
+    std::shared_ptr<thread::ThreadPool> worker;
+
     SecretKey signingKey;
     SecretKey encryptionKey;
 
     RouterContact rc;
 
     bool gotLIM = false;
+
+    void Setup()
+    {
+        worker = std::make_shared<thread::ThreadPool>(1, 128, "test-worker");
+        worker->start();
+    }
 
     const RouterContact&
     GetRC() const
@@ -85,7 +93,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
         return false;
       if(!rc.Sign(signingKey))
         return false;
-      return link->Start(logic);
+      return link->Start(logic, worker);
     }
 
     void
@@ -93,6 +101,8 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     {
       if(link)
         link->Stop();
+      if(worker)
+        worker->stop();
     }
 
     void
@@ -100,6 +110,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     {
       Stop();
       link.reset();
+      worker.reset();
     }
   };
 
@@ -125,6 +136,8 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     RouterContact::Lifetime    = 500;
     netLoop                    = llarp_make_ev_loop();
     m_logic.reset(new Logic());
+    Alice.Setup();
+    Bob.Setup();
   }
 
   void

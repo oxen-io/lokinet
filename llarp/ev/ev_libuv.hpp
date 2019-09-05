@@ -78,6 +78,9 @@ namespace libuv
       return nullptr;
     }
 
+    bool
+    add_ticker(std::function< void(void) > ticker) override;
+
     /// register event listener
     bool
     add_ev(llarp::ev_io*, bool) override

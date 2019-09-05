@@ -14,14 +14,10 @@ namespace llarp
         : ILinkLayer(routerEncSecret, getrc, h, sign, est, reneg, timeout,
                      closed)
         , permitInbound{allowInbound}
-        , m_CryptoWorker(4, 1024 * 8, "iwp-worker")
     {
     }
 
-    LinkLayer::~LinkLayer()
-    {
-      m_CryptoWorker.stop();
-    }
+    LinkLayer::~LinkLayer() = default;
 
     void
     LinkLayer::Pump()
@@ -73,21 +69,7 @@ namespace llarp
     void
     LinkLayer::QueueWork(std::function< void(void) > func)
     {
-      m_CryptoWorker.addJob(func);
-    }
-
-    bool
-    LinkLayer::Start(std::shared_ptr< Logic > l)
-    {
-      if(!ILinkLayer::Start(l))
-        return false;
-      return m_CryptoWorker.start();
-    }
-
-    void
-    LinkLayer::Stop()
-    {
-      ILinkLayer::Stop();
+      m_Worker->addJob(func);
     }
 
     void

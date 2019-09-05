@@ -744,6 +744,9 @@ struct llarp_ev_loop
   virtual int
   tick(int ms) = 0;
 
+  virtual bool
+  add_ticker(std::function< void(void) > ticker) = 0;
+
   virtual void
   stop() = 0;
 

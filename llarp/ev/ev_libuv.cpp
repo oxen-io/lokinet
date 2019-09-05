@@ -312,6 +312,39 @@ namespace libuv
     }
   };
 
+  struct ticker_glue : public glue
+  {
+    std::function< void(void) > func;
+
+    ticker_glue(uv_loop_t* loop, std::function< void(void) > tick) : func(tick)
+    {
+      m_Ticker.data = this;
+      uv_check_init(loop, &m_Ticker);
+    }
+
+    static void
+    OnTick(uv_check_t* t)
+    {
+      static_cast< ticker_glue* >(t->data)->func();
+    }
+
+    bool
+    Start()
+    {
+      return uv_check_start(&m_Ticker, &OnTick) != -1;
+    }
+
+    void
+    Close() override
+    {
+      uv_check_stop(&m_Ticker);
+      m_Ticker.data = nullptr;
+      delete this;
+    }
+
+    uv_check_t m_Ticker;
+  };
+
   struct udp_glue : public glue
   {
     uv_udp_t m_Handle;
@@ -734,6 +767,18 @@ namespace libuv
       return true;
     }
     delete impl;
+    return false;
+  }
+
+  bool
+  Loop::add_ticker(std::function< void(void) > func)
+  {
+    auto* ticker = new ticker_glue(m_Impl.get(), func);
+    if(ticker->Start())
+    {
+      return true;
+    }
+    delete ticker;
     return false;
   }
 

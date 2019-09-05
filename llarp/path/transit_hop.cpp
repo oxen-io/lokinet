@@ -114,39 +114,96 @@ namespace llarp
       return HandleDownstream(buf, N, r);
     }
 
-    bool
-    TransitHop::HandleDownstream(const llarp_buffer_t& buf,
-                                 const TunnelNonce& Y, AbstractRouter* r)
+    void
+    TransitHop::DownstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
-      RelayDownstreamMessage msg;
-      msg.pathid = info.rxID;
-      msg.Y      = Y ^ nonceXOR;
-      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
-      msg.X = buf;
-      llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
-                      info.upstream, " to ", info.downstream);
-      return r->SendToOrQueue(info.downstream, &msg);
+      std::vector< RelayDownstreamMessage > sendmsgs(msgs.size());
+      size_t idx = 0;
+      for(auto& ev : msgs)
+      {
+        const llarp_buffer_t buf(ev.first);
+        auto& msg  = sendmsgs[idx];
+        msg.pathid = info.rxID;
+        msg.Y      = ev.second ^ nonceXOR;
+        CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
+        msg.X = buf;
+        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
+                        info.upstream, " to ", info.downstream);
+        ++idx;
+      }
+      r->logic()->queue_func(std::bind(&TransitHop::HandleAllDownstream,
+                                       shared_from_this(), std::move(sendmsgs),
+                                       r));
     }
 
-    bool
-    TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                               AbstractRouter* r)
+    void
+    TransitHop::UpstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
     {
-      CryptoManager::instance()->xchacha20(buf, pathKey, Y);
+      std::vector< RelayUpstreamMessage > sendmsgs(msgs.size());
+      size_t idx = 0;
+      for(auto& ev : msgs)
+      {
+        const llarp_buffer_t buf(ev.first);
+        auto& msg = sendmsgs[idx];
+        CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
+        msg.pathid = info.txID;
+        msg.Y      = ev.second ^ nonceXOR;
+        msg.X      = buf;
+        ++idx;
+      }
+      r->logic()->queue_func(std::bind(&TransitHop::HandleAllUpstream,
+                                       shared_from_this(), std::move(sendmsgs),
+                                       r));
+    }
+
+    void
+    TransitHop::HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                                  AbstractRouter* r)
+    {
       if(IsEndpoint(r->pubkey()))
       {
-        m_LastActivity = r->Now();
-        return r->ParseRoutingMessageBuffer(buf, this, info.rxID);
+        for(const auto& msg : msgs)
+        {
+          const llarp_buffer_t buf(msg.X);
+          if(!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
+            continue;
+          m_LastActivity = r->Now();
+        }
       }
+      else
+      {
+        for(const auto& msg : msgs)
+        {
+          llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
+                          info.downstream, " to ", info.upstream);
+          r->SendToOrQueue(info.upstream, &msg);
+        }
+      }
+    }
 
-      RelayUpstreamMessage msg;
-      msg.pathid = info.txID;
-      msg.Y      = Y ^ nonceXOR;
+    void
+    TransitHop::HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                                    AbstractRouter* r)
+    {
+      for(const auto& msg : msgs)
+      {
+        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
+                        info.downstream, " to ", info.upstream);
+        r->SendToOrQueue(info.downstream, &msg);
+      }
+    }
 
-      msg.X = buf;
-      llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
-                      info.downstream, " to ", info.upstream);
-      return r->SendToOrQueue(info.upstream, &msg);
+    void
+    TransitHop::FlushQueues(AbstractRouter* r)
+    {
+      if(!m_UpstreamQueue.empty())
+        r->threadpool()->addJob(std::bind(&TransitHop::UpstreamWork,
+                                          shared_from_this(),
+                                          std::move(m_UpstreamQueue), r));
+      if(!m_DownstreamQueue.empty())
+        r->threadpool()->addJob(std::bind(&TransitHop::DownstreamWork,
+                                          shared_from_this(),
+                                          std::move(m_DownstreamQueue), r));
     }
 
     bool
@@ -228,7 +285,6 @@ namespace llarp
         {
           if(SendRoutingMessage(reply, r))
           {
-            r->PumpLL();
             ep->Close();
             return true;
           }

@@ -286,16 +286,6 @@ namespace llarp
       bool
       HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r);
 
-      // handle data in upstream direction
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     AbstractRouter* r) override;
-
-      // handle data in downstream direction
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       AbstractRouter* r) override;
-
       bool
       IsReady() const;
 
@@ -333,6 +323,24 @@ namespace llarp
 
       bool
       SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r);
+
+      void
+      FlushQueues(AbstractRouter* r) override;
+
+     protected:
+      void
+      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+
+      void
+      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+
+      void
+      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                        AbstractRouter* r) override;
+
+      void
+      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                          AbstractRouter* r) override;
 
      private:
       /// call obtained exit hooks

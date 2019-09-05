@@ -122,8 +122,9 @@ namespace llarp
     bool
     TryEstablishTo(RouterContact rc);
 
-    virtual bool
-    Start(std::shared_ptr< llarp::Logic > l);
+    bool
+    Start(std::shared_ptr< llarp::Logic > l,
+          std::shared_ptr< thread::ThreadPool > worker);
 
     virtual void
     Stop();
@@ -243,7 +244,8 @@ namespace llarp
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
 
-    std::shared_ptr< llarp::Logic > m_Logic = nullptr;
+    std::shared_ptr< llarp::Logic > m_Logic               = nullptr;
+    std::shared_ptr< llarp::thread::ThreadPool > m_Worker = nullptr;
     llarp_ev_loop_ptr m_Loop;
     Addr m_ourAddr;
     llarp_udp_io m_udp;

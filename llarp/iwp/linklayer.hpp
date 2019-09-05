@@ -22,9 +22,6 @@ namespace llarp
 
       ~LinkLayer() override;
 
-      bool
-      Start(std::shared_ptr< Logic > l) override;
-
       std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,
                          const AddressInfo &ai) override;
@@ -37,9 +34,6 @@ namespace llarp
 
       const char *
       Name() const override;
-
-      void
-      Stop() override;
 
       uint16_t
       Rank() const override;
@@ -59,7 +53,6 @@ namespace llarp
      private:
       std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;
       const bool permitInbound;
-      thread::ThreadPool m_CryptoWorker;
     };
 
     using LinkLayer_ptr = std::shared_ptr< LinkLayer >;

@@ -264,9 +264,11 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(std::shared_ptr< Logic > l)
+  ILinkLayer::Start(std::shared_ptr< Logic > l,
+                    std::shared_ptr< thread::ThreadPool > worker)
   {
-    m_Logic = l;
+    m_Worker = worker;
+    m_Logic  = l;
     ScheduleTick(100);
     return true;
   }

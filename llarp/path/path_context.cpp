@@ -253,6 +253,13 @@ namespace llarp
     }
 
     void
+    PathContext::Pump()
+    {
+      m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushQueues(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushQueues(m_Router); });
+    }
+
+    void
     PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
       MapPut(m_TransitPaths, hop->info.txID, hop);

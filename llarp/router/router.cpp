@@ -22,6 +22,7 @@
 #include <util/metrics/metrics.hpp>
 #include <util/str.hpp>
 #include <utp/utp.hpp>
+#include <ev/ev.hpp>
 
 #include <fstream>
 #include <cstdlib>
@@ -164,6 +165,9 @@ namespace llarp
   void
   Router::PumpLL()
   {
+    _logic->tick(time_now_ms());
+    paths.Pump();
+    _logic->tick(time_now_ms());
     _linkManager.PumpLinks();
   }
 
@@ -913,7 +917,7 @@ namespace llarp
       return false;
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if(!_linkManager.StartLinks(_logic))
+    if(!_linkManager.StartLinks(_logic, cryptoworker))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -987,7 +991,7 @@ namespace llarp
     }
 
     LogInfo("have ", nodedb->num_loaded(), " routers");
-
+    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();
@@ -1039,6 +1043,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
+    paths.Pump();
     _linkManager.PumpLinks();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }
