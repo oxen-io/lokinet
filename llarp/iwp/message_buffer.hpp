@@ -23,10 +23,10 @@ namespace llarp
       eACKS = 3,
       /// negative ack
       eNACK = 4,
-      /// close session
-      eCLOS = 5,
       /// multiack
-      eMACK = 6,
+      eMACK = 5,
+      /// close session
+      eCLOS = 6,
     };
 
     static constexpr size_t FragmentSize = 1024;
