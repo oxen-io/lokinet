@@ -24,7 +24,9 @@ namespace llarp
       /// negative ack
       eNACK = 4,
       /// close session
-      eCLOS = 5
+      eCLOS = 5,
+      /// multiack
+      eMACK = 6,
     };
 
     static constexpr size_t FragmentSize = 1024;
@@ -96,6 +98,9 @@ namespace llarp
 
       bool
       Verify() const;
+
+      byte_t
+      AcksBitmask() const;
 
       bool
       ShouldSendACKS(llarp_time_t now) const;

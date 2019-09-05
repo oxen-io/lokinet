@@ -143,20 +143,18 @@ namespace llarp
     std::vector< byte_t >
     InboundMessage::ACKS() const
     {
-      std::vector< byte_t > acks{LLARP_PROTO_VERSION,
-                                 Command::eACKS,
-                                 0,
-                                 0,
-                                 0,
-                                 0,
-                                 0,
-                                 0,
-                                 0,
-                                 0,
-                                 uint8_t{(uint8_t)m_Acks.to_ulong()}};
+      std::vector< byte_t > acks{
+          LLARP_PROTO_VERSION, Command::eACKS, 0, 0, 0, 0, 0, 0, 0, 0,
+          AcksBitmask()};
 
       htobe64buf(acks.data() + 2, m_MsgID);
       return acks;
+    }
+
+    byte_t
+    InboundMessage::AcksBitmask() const
+    {
+      return byte_t{(byte_t)m_Acks.to_ulong()};
     }
 
     bool

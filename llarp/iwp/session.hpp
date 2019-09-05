@@ -32,6 +32,8 @@ namespace llarp
       /// How long we wait for a session to die with no tx from them
       static constexpr llarp_time_t SessionAliveTimeout =
           (PingInterval * 13) / 3;
+      /// maximum number of messages we can ack in a multiack
+      static constexpr size_t MaxACKSInMACK = 1024 / 8;
 
       /// outbound session
       Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
@@ -149,6 +151,7 @@ namespace llarp
       /// session token
       AlignedBuffer< 24 > token;
 
+      PubKey m_ExpectedIdent;
       PubKey m_RemoteOnionKey;
 
       llarp_time_t m_LastTX = 0;
@@ -161,6 +164,8 @@ namespace llarp
 
       /// maps rxid to time recieved
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
+      /// list of rx messages to send in next set of multiacks
+      std::vector< uint64_t > m_SendMACKS;
 
       void
       HandleGotIntro(const llarp_buffer_t& buf);
@@ -179,6 +184,9 @@ namespace llarp
 
       bool
       DecryptMessage(const llarp_buffer_t& buf, std::vector< byte_t >& result);
+
+      void
+      SendMACK();
 
       void
       GenerateAndSendIntro();
@@ -212,6 +220,9 @@ namespace llarp
 
       void
       HandleCLOS(std::vector< byte_t > msg);
+
+      void
+      HandleMACK(std::vector< byte_t > msg);
     };
   }  // namespace iwp
 }  // namespace llarp
