@@ -206,7 +206,7 @@ namespace llarp
       utp_issue_deferred_acks(_utp_ctx);
       std::set< RouterID > sessions;
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
@@ -216,7 +216,7 @@ namespace llarp
       }
       ILinkLayer::Pump();
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         for(const auto& pk : sessions)
         {
           if(m_AuthedLinks.count(pk) == 0)

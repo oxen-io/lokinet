@@ -4,6 +4,7 @@
 #include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
+#include <net/ip_range_map.hpp>
 #include <net/net.hpp>
 #include <path/path.hpp>
 #include <path/pathbuilder.hpp>
@@ -144,6 +145,10 @@ namespace llarp
 
       std::string
       Name() const override;
+
+      /// get a set of all the routers we use as exit node
+      std::set< RouterID >
+      GetExitRouters() const;
 
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
@@ -417,7 +422,7 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      std::shared_ptr< exit::BaseSession > m_Exit;
+      net::IPRangeMap< exit::BaseSession_ptr > m_ExitMap;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;

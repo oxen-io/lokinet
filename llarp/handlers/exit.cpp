@@ -5,6 +5,7 @@
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/str.hpp>
+#include <util/bits.hpp>
 
 #include <cassert>
 
@@ -547,6 +548,11 @@ namespace llarp
       }
       if(k == "ifaddr")
       {
+        if(!m_OurRange.FromString(v))
+        {
+          LogError(Name(), " has invalid address range: ", v);
+          return false;
+        }
         auto pos = v.find("/");
         if(pos == std::string::npos)
         {
@@ -558,26 +564,9 @@ namespace llarp
         // string, or just a plain char array?
         strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
         m_Tun.netmask = std::atoi(nmask_str.c_str());
-
-        huint32_t ip;
-        if(ip.FromString(host_str))
-        {
-          m_IfAddr                = net::IPPacket::ExpandV4(ip);
-          m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask + 96);
-        }
-        else if(m_IfAddr.FromString(host_str))
-        {
-          m_UseV6                 = true;
-          m_OurRange.netmask_bits = netmask_ipv6_bits(m_Tun.netmask);
-        }
-        else
-        {
-          LogError(Name(), " invalid ifaddr: ", v);
-          return false;
-        }
-        m_OurRange.addr = m_IfAddr;
-        m_NextAddr      = m_IfAddr;
-        m_HigestAddr    = m_IfAddr | (~m_OurRange.netmask_bits);
+        m_IfAddr      = m_OurRange.addr;
+        m_NextAddr    = m_IfAddr;
+        m_HigestAddr  = m_OurRange.HighestAddr();
         LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
                 m_Tun.netmask, " lo=", m_IfAddr, " hi=", m_HigestAddr);
       }

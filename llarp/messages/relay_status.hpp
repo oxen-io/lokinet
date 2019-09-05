@@ -23,7 +23,7 @@ namespace llarp
 
   struct LR_StatusRecord
   {
-    static constexpr uint64_t SUCCESS               = 1;
+    static constexpr uint64_t SUCCESS               = 1 << 0;
     static constexpr uint64_t FAIL_TIMEOUT          = 1 << 1;
     static constexpr uint64_t FAIL_CONGESTION       = 1 << 2;
     static constexpr uint64_t FAIL_DEST_UNKNOWN     = 1 << 3;
@@ -31,6 +31,7 @@ namespace llarp
     static constexpr uint64_t FAIL_MALFORMED_RECORD = 1 << 5;
     static constexpr uint64_t FAIL_DEST_INVALID     = 1 << 6;
     static constexpr uint64_t FAIL_CANNOT_CONNECT   = 1 << 7;
+    static constexpr uint64_t FAIL_DUPLICATE_HOP    = 1 << 8;
 
     uint64_t status  = 0;
     uint64_t version = 0;

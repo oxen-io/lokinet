@@ -433,7 +433,8 @@ extern "C"
   void
   llarp_main_signal(struct llarp_main *ptr, int sig)
   {
-    ptr->ctx->HandleSignal(sig);
+    ptr->ctx->logic->queue_func(
+        std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
   }
 
   int

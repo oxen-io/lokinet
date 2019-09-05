@@ -691,18 +691,16 @@ namespace llarp
       auto itr      = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
       {
-        if(m_ReplayFilter.find(rxid) != m_ReplayFilter.end())
+        if(m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
         {
-          // don't nack if we already got it
-          return;
+          LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
+          std::vector< byte_t > nack = {
+              LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
+          htobe64buf(nack.data() + 2, rxid);
+          AddRandomPadding(nack);
+          const llarp_buffer_t nackbuf(nack);
+          EncryptAndSend(nackbuf);
         }
-        LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
-        std::vector< byte_t > nack = {
-            LLARP_PROTO_VERSION, Command::eNACK, 0, 0, 0, 0, 0, 0, 0, 0};
-        htobe64buf(nack.data() + 2, rxid);
-        AddRandomPadding(nack);
-        const llarp_buffer_t nackbuf(nack);
-        EncryptAndSend(nackbuf);
         return;
       }
 
