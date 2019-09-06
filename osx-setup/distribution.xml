@@ -10,7 +10,7 @@
   <conclusion file="conclusion.html" mime-type="text/html" />
   <!-- List all component packages -->
   <pkg-ref id="network.loki.lokinet"
-           version="0.4"
+           version="0.5"
            auth="root">lokinet.pkg</pkg-ref>
   <!-- List them again here. They can now be organized
        as a hierarchy if you want. -->
@@ -21,7 +21,7 @@
   <choice
       id="network.loki.lokinet"
       visible="false"
-      title="LokiNET"
+      title="Lokinet"
       description='Lokinet is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network'
       start_selected="true">
     <pkg-ref id="network.loki.lokinet"/>

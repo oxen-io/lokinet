@@ -356,7 +356,7 @@ namespace llarp
   Router::FromConfig(Config *conf)
   {
     // Set netid before anything else
-    if(!conf->router.netId().empty())
+    if(!conf->router.netId().empty() && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
     {
       const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
