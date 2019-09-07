@@ -79,7 +79,7 @@ namespace llarp
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
-        util::Lock lock(&m_PendingMutex);
+        Lock lock(&m_PendingMutex);
         if(m_Pending.count(from) == 0)
         {
           if(not permitInbound)
