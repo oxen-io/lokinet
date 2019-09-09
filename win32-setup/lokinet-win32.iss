@@ -93,7 +93,7 @@ Source: "{#DevPath}build\lokinet-rcutil.exe"; DestDir: "{app}"; Flags: ignorever
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC. The UI has its own bootstrap built-in!
-Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{tmp}\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external
 ; if nonexistent, then inet6 was already installed
 Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1

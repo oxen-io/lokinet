@@ -60,3 +60,6 @@ GTAGS
 GRTAGS
 GPATH
 version.txt
+
+lokinet-bootstrap.exe
+regdbhelper.dll
