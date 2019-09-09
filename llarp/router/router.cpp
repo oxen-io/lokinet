@@ -804,7 +804,9 @@ namespace llarp
       auto found = netConfig.find(itr->first);
       if(found == netConfig.end() || found->second.empty())
       {
-        netConfig.emplace(itr->first, itr->second());
+        auto val = itr->second();
+        if(!val.empty())
+          netConfig.emplace(itr->first, std::move(val));
       }
       ++itr;
     }
