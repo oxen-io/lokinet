@@ -856,7 +856,7 @@ namespace llarp
   {
     std::vector< IPRange > currentRanges;
     IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if(i && i->ifa_addr)
+      if(i)
       {
         const auto fam = i->ifa_addr->sa_family;
         if(fam != AF_INET)

@@ -148,6 +148,7 @@ before_install:
       choco upgrade cmake.install;
       choco install innosetup --version 5.6.1.20190126;
       choco install inno-download-plugin;
+      /c/Windows/system32/dism.exe -online -enable-feature -featurename:NetFx3 -norestart -All 
       export CC="/c/Program Files/LLVM/bin/clang-cl";
       export CXX="/c/Program Files/LLVM/bin/clang-cl";
     fi
