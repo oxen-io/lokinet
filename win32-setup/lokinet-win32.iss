@@ -68,14 +68,14 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 #ifdef SINGLE_ARCH
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{tmp}\dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion external
 #else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
-Source: "dbghelp32.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: not IsWin64
+Source: "{tmp}\dbghelp32.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion external; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
 Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
-Source: "dbghelp64.dll"; DestDir: "{app}"; DestName: "dbghelp.dll"; Flags: ignoreversion; Check: IsWin64
+Source: "{tmp}\dbghelp64.dll"; DestDir: "{app}"; DestName: "dbghelp.dll"; Flags: ignoreversion external; Check: IsWin64
 #endif
 ; UI has landed!
 #ifndef RELEASE
@@ -94,7 +94,7 @@ Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC. The UI has its own bootstrap built-in!
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "{#DevPath}win32-setup\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "{tmp}\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external
 ; if nonexistent, then inet6 was already installed
 Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1
 ; Copy the correct tuntap driver for the selected platform
@@ -192,15 +192,18 @@ begin
   begin
     // current versions of windows :-)
     // (Arguably, one could pull this from any of the forks.)
-    idpAddFile('https://github.com/despair86/loki-network/raw/master/contrib/tuntapv9-ndis/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
+    idpAddFile('https://snowlight.net/loki/win32-dist/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
   end;
   // Windows 2000 only, we need to install inet6 separately
   if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
   begin
     idpAddFile('http://www.rvx86.net/files/inet6.7z', ExpandConstant('{tmp}\inet6.7z'));
   end;
-    idpDownloadAfter(wpReady);
   end;
+    idpAddFile('http://www.rvx86.net/files/7z.exe', ExpandConstant('{tmp}\7z.exe'));
+    idpAddFile('http://www.rvx86.net/files/dbghelp32.dll', ExpandConstant('{tmp}\dbghelp32.dll'));
+    idpAddFile('http://www.rvx86.net/files/dbghelp64.dll', ExpandConstant('{tmp}\dbghelp64.dll'));
+    idpDownloadAfter(wpReady);
 end;
 
 [Icons]
