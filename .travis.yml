@@ -144,8 +144,10 @@ addons:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      choco install make ninja;
+      choco install make ninja dotnet3.5;
       choco upgrade cmake.install;
+      choco install innosetup --version 5.6.1.20190126;
+      choco install inno-download-plugin;
       export CC="/c/Program Files/LLVM/bin/clang-cl";
       export CXX="/c/Program Files/LLVM/bin/clang-cl";
     fi
