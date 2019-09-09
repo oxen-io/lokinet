@@ -356,7 +356,8 @@ namespace llarp
   Router::FromConfig(Config *conf)
   {
     // Set netid before anything else
-    if(!conf->router.netId().empty() && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
+    if(!conf->router.netId().empty()
+       && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
     {
       const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
@@ -803,7 +804,9 @@ namespace llarp
       auto found = netConfig.find(itr->first);
       if(found == netConfig.end() || found->second.empty())
       {
-        netConfig.emplace(itr->first, itr->second());
+        auto val = itr->second();
+        if(!val.empty())
+          netConfig.emplace(itr->first, std::move(val));
       }
       ++itr;
     }
@@ -1174,7 +1177,7 @@ namespace llarp
     }
     else
     {
-      LogWarn("Message failed sending to ", remote);
+      LogDebug("Message failed sending to ", remote);
     }
   }
 }  // namespace llarp
