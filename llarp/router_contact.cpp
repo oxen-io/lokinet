@@ -250,7 +250,7 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    (void) now;
+    (void)now;
     return false;
     // return Age(now) >= Lifetime;
   }

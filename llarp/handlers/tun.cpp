@@ -733,11 +733,6 @@ namespace llarp
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
           }
-          else
-          {
-            llarp::LogWarn(Name(), " has no endpoint for ", dst);
-            llarp::DumpBuffer(pkt.ConstBuffer());
-          }
           return;
         }
         if(m_SNodes.at(itr->second))
