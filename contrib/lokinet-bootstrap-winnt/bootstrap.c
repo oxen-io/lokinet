@@ -34,6 +34,7 @@
 #include <windows.h>
 #include <wincrypt.h>
 #include "miniz.h"
+#include "http.h"
 
 /* PolarSSL */
 #include <mbedtls/ssl.h>
@@ -2452,22 +2453,136 @@ const void *b;
 size_t bn;
 size_t s;
 {
-  char *p = malloc(s * (an + bn));
-  memset(p, '\0', s * (an + bn));
-  memcpy(p, a, an*s);
-  memcpy(p + an*s, b, bn*s);
-  return p;
+	char *p = malloc(s * (an + bn));
+	memset(p, '\0', s * (an + bn));
+	memcpy(p, a, an*s);
+	memcpy(p + an*s, b, bn*s);
+	return p;
 }
+
+bool open_tls_sock(host, port)
+char* host, *port;
+{
+	int r;
+	DWORD flags;
+
+	r = mbedtls_net_connect(&server_fd, host, port, MBEDTLS_NET_PROTO_TCP);
+	if (r)
+	{
+		printf("error - failed to connect to server: %d\n", r);
+		return false;
+	}
+
+	r = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+	if (r)
+	{
+		printf("error - failed to set TLS options: %d\n", r);
+		return false;
+	}
+
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+
+	r = mbedtls_ssl_setup(&ssl, &conf);
+	if (r)
+	{
+		printf("error - failed to setup TLS session: %d\n", r);
+		return false;
+	}
+
+	r = mbedtls_ssl_set_hostname(&ssl, host);
+
+	if (r)
+	{
+		printf("error - failed to perform SNI: %d\n", r);
+		return false;
+	}
+
+	mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+	while ((r = mbedtls_ssl_handshake(&ssl)) != 0)
+	{
+		if (r != MBEDTLS_ERR_SSL_WANT_READ && r != MBEDTLS_ERR_SSL_WANT_WRITE)
+		{
+			printf(" failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -r);
+			return false;
+		}
+	}
+	if ((flags = mbedtls_ssl_get_verify_result(&ssl)) != 0)
+	{
+		char vrfy_buf[512];
+		printf(" failed\n");
+		mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", flags);
+		printf("%s\n", vrfy_buf);
+		return false;
+	}
+	return true;
+}
+
+// Response data/funcs
+struct HttpResponse {
+	char* body;
+	int code;
+	size_t size;
+};
+
+static void* response_realloc(opaque, ptr, size)
+void* opaque, *ptr;
+{
+	return realloc(ptr, size);
+}
+
+static void response_body(opaque, data, size)
+void* opaque;
+const char* data;
+{
+	struct HttpResponse* response = (struct HttpResponse*)opaque;
+	response->body = memncat(response->body, response->size, data, size, sizeof(char));
+	response->size += size;
+}
+
+static void response_header(opaque, ckey, nkey, cvalue, nvalue)
+void* opaque;
+const char* ckey, *cvalue;
+{ 
+#if 0
+	printf("%s, %d, %s, %d\n", ckey, nkey, cvalue, nvalue);
+#endif
+}
+
+static void response_code(opaque, code)
+void* opaque;
+{
+	struct HttpResponse* response = (struct HttpResponse*)opaque;
+	response->code = code;
+}
+
+static const struct http_funcs callbacks = 
+{
+	response_realloc,
+	response_body,
+	response_header,
+	response_code,
+};
 
 main(argc, argv)
 char** argv; /* It never occurred to me that this was writable to begin with... */
 {
-	DWORD version, major, minor, build, flags;
-	int r, len;
+	DWORD version, major, minor, build;
+	int r, s, len;
 	FILE *bootstrapRC;
 	char path[MAX_PATH], buf[1024], port[8];
-	char *ua, *rq, *resp, *uri, *savePath;
+	char *ua, *resp, *uri, *savePath;
+	char rq[1024];
 	url_parser_url_t *parsed_uri;
+	struct HttpResponse rsp;
+	struct http_roundtripper rt;
+
+	http_init(&rt, callbacks, &rsp);
+	rsp.size = 0;
+	rsp.body = malloc(0);
+	rsp.code = 0;
 
 	if (argc == 1)
 	{
@@ -2494,7 +2609,7 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 		printf("Failed to initialise polarssl\n");
 		return -1;
 	}
-	
+
 	/* fill in user-agent string */
 	version = GetVersion();
 	major = (DWORD)(LOBYTE(LOWORD(version)));
@@ -2502,7 +2617,6 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 	if (version < 0x80000000)
 		build = (DWORD)(HIWORD(version));
 	ua = malloc(512);
-	rq = malloc(4096);
 	snprintf(ua, 512, "%s%d.%d", userAgent, major, minor);
 
 	/* get host name, set port if blank */
@@ -2510,53 +2624,14 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 		parsed_uri->port = 443;
 
 	printf("connecting to %s on port %d...",parsed_uri->host, parsed_uri->port);
-	sprintf(port, "%d", parsed_uri->port);
-	r = mbedtls_net_connect(&server_fd, parsed_uri->host, port, MBEDTLS_NET_PROTO_TCP);
-	if (r)
-	{
-		printf("error - failed to connect to server: %d\n", r);
-		goto exit;
-	}
 
-	r = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
-	if (r)
-	{
-		printf("error - failed to set TLS options: %d\n", r);
+	sprintf(port, "%d", parsed_uri->port);
+
+	if (!open_tls_sock(parsed_uri->host, port))
 		goto exit;
-	}
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
-	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
-	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-	r = mbedtls_ssl_setup(&ssl, &conf);
-	if (r)
-	{
-		printf("error - failed to setup TLS session: %d\n", r);
-		goto exit;
-	}
-	r = mbedtls_ssl_set_hostname(&ssl, parsed_uri->host);
-	if (r)
-	{
-		printf("error - failed to perform SNI: %d\n", r);
-		goto exit;
-	}
-	mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
-	while ((r = mbedtls_ssl_handshake(&ssl)) != 0)
-	{
-		if (r != MBEDTLS_ERR_SSL_WANT_READ && r != MBEDTLS_ERR_SSL_WANT_WRITE)
-		{
-			printf(" failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -r);
-			goto exit;
-		}
-	}
-	if ((flags = mbedtls_ssl_get_verify_result(&ssl)) != 0)
-	{
-		char vrfy_buf[512];
-		printf(" failed\n");
-		mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", flags);
-		printf("%s\n", vrfy_buf);
-		goto exit;
-	}
-	printf("\nDownloading %s...", &parsed_uri->path[1]);
+
+	printf("\nDownloading %s...", argv[1]);
+
 	snprintf(rq, 512, "GET %s HTTP/1.0\r\nHost: %s\r\nUser-Agent: %s\r\n\r\n", parsed_uri->path, parsed_uri->host, ua);
 	while ((r = mbedtls_ssl_write(&ssl, (unsigned char*)rq, strlen(rq))) <= 0)
 	{
@@ -2566,7 +2641,7 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 			goto exit;
 		}
 	}
-	memset(rq, 0, 4096);
+
 	len = 0;
 	do {
 		r = mbedtls_ssl_read(&ssl, (unsigned char*)buf, 1024);
@@ -2574,29 +2649,24 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 			break;
 		else 
 		{
-			rq = memncat(rq, len, buf, r, sizeof(char));
-			len += r;
+			s = http_data(&rt, buf, r, &len);
 		}
-	} while (r);
-	printf("%d bytes downloaded to core.\n", len);
+	} while (r && s);
+
+	printf("%d bytes downloaded to core.\n", rsp.size);
 	mbedtls_ssl_close_notify(&ssl);
-	if (!strstr(rq, "200 OK"))
+
+	if (rsp.code != 200)
 	{
 		printf("An error occurred.\n");
-		printf("Server response:\n%s", rq);
+		printf("Server response:\n%s", rsp.body);
 		goto exit;
 	}
+
 	snprintf(path, MAX_PATH, savePath);
-	resp = strstr(rq, "Content-Length");
-	r = strcspn(resp, "0123456789");
-	memcpy(buf, &resp[r], 4);
-	buf[3] = '\0';
-	r = atoi(buf);
-	resp = strstr(rq, "\r\n\r\n");
-	memcpy(buf, &resp[4], r);
 	printf("Writing %s...\n", path);
 	bootstrapRC = fopen(path, "wb");
-	fwrite(buf, 1, r, bootstrapRC);
+	fwrite(rsp.body, 1, rsp.size, bootstrapRC);
 	fclose(bootstrapRC);
 
 	r = 0;
@@ -2610,8 +2680,8 @@ exit:
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
 	free(ua);
-	free(rq);
 	free(ca_certs);
 	free_parsed_url(parsed_uri);
+	http_free(&rt);
 	return r;
 }

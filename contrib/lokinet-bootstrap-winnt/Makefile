@@ -22,11 +22,18 @@ LTO_FLAG = -flto
 LTO_LDFLAG = -flto -march=nocona -mfpmath=sse -Ofast
 endif
 
+ifndef DEBUG
+CFLAGS = -Ofast -march=nocona -mfpmath=sse
+LDFLAGS = -s
+else
+CFLAGS = -O0 -g3
+endif
+
 .PHONY: download prepare all default
 
 # windows target only
 .c.o:
-	$(CC) $(WINNT_INCLUDE) -Iinclude $(LTO_FLAG) -Ofast -march=nocona -mfpmath=sse $< -c
+	$(CC) $(WINNT_INCLUDE) -Iinclude $(LTO_FLAG) $(CFLAGS) $< -c
 
 zpipe: zpipe.c miniz.c
 	$(NATIVE_CC) $(INCLUDE) -Iinclude $(LIBS) $^ -s -static -o $@
@@ -56,11 +63,9 @@ prepare-testnet: zpipe base64enc download
 	echo ';' >> out.bin
 	sed -i '57r out.bin' testnet.c
 
-lokinet-bootstrap: bootstrap.o miniz.o
-	$(CC) $(WINNT_LIBS) -s -static $^ -o $@.exe $(LTO_LDFLAG) -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
+lokinet-bootstrap: bootstrap.o miniz.o http.o header.o chunk.o
+	$(CC) $(WINNT_LIBS) $(LDFLAGS) -static $^ -o $@.exe $(LTO_LDFLAG) -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 
-lokinet-bootstrap-testnet: testnet.o miniz.o
-	$(CC) $(WINNT_LIBS) -s -static $^ -o $@.exe $(LTO_LDFLAG) -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 clean:
 	-@rm lokinet*.exe
 	-@rm base64enc
