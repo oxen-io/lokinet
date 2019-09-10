@@ -719,6 +719,18 @@ namespace llarp
       diskworker()->addJob(
           [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
+
+    // get connected peers
+    std::set< dht::Key_t > peersWeHave;
+    _linkManager.ForEachPeer([&peersWeHave](ILinkSession *s) {
+      if(!s->IsEstablished())
+        return;
+      peersWeHave.emplace(s->GetPubKey());
+    });
+    // remove any nodes we don't have connections to
+    _dht->impl->Nodes()->RemoveIf([&peersWeHave](const dht::Key_t &k) -> bool {
+      return peersWeHave.count(k) == 0;
+    });
   }  // namespace llarp
 
   bool
