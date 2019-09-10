@@ -1,3 +1,37 @@
+lokinet (0.5.1-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * disable link layer locking because there was no contention
+
+  [ Michael ]
+  * Abort when a null mutex is locked from a different thread (in debug mode only)
+
+  [ Rick V ]
+  * auto config has been removed for months now
+  * some people set the netid explicitly, and set it to default anyway
+  * 0.6 relate and other general updates to MacOS packaging
+  * fix
+  * Update distribution.xml
+
+  [ Jeff Becker ]
+  * disable rc expiration
+  * reduce logging and make format
+  * try more ranges
+
+  [ Jason Rhinelander ]
+  * Move default user/group define into a debian patch
+  * Fix x86-isms in debs
+
+  [ Jeff Becker ]
+  * prune dht peers every router tick
+
+  [ Jason Rhinelander ]
+  * Add lokinet DNS for systemd-resolved and resolvconf
+  * Add no-resolvconf hack for deb install to deb config file
+  * Bump version to 0.5.1 for minor fixes for 0.5.0
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 10 Sep 2019 19:44:51 -0300
+
 lokinet (0.5.0-2) sid; urgency=medium
 
   * Patch lokinet-bootstrap to use system bootstrap path when run as root
