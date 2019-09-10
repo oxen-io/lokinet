@@ -6,6 +6,17 @@
 #export DH_VERBOSE = 1
 
 include /usr/share/dpkg/pkg-info.mk
+include /usr/share/dpkg/architecture.mk
+
+ifeq ($(DEB_TARGET_ARCH),$(filter $(DEB_TARGET_ARCH),amd64 i386))
+    DEB_CMAKE_ARCH_OPTIONS=-DCMAKE_CXX_FLAGS="-march=westmere -mtune=haswell" -DCMAKE_C_FLAGS="-march=westmere -mtune=haswell"
+else ifeq ($(DEB_TARGET_ARCH),arm64)
+    DEB_CMAKE_ARCH_OPTIONS=-DNON_PC_TARGET=ON -DCMAKE_CXX_FLAGS="-march=armv8-a+crc -mtune=cortex-a72" -DCMAKE_C_FLAGS="-march=armv8-a+crc -mtune=cortex-a72"
+else ifeq ($(DEB_TARGET_ARCH),armhf)
+    DEB_CMAKE_ARCH_OPTIONS=-DNON_PC_TARGET=ON -DCMAKE_CXX_FLAGS="-marm -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp" -DCMAKE_C_FLAGS="-marm -march=armv6 -mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp"
+else
+    DEB_CMAKE_ARCH_OPTIONS=
+endif
 
 %:
 	dh $@ --buildsystem=cmake --with-systemd
@@ -26,8 +37,7 @@ endif
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" \
 		-DGIT_VERSION="$(DEB_VERSION)" \
-		-DCMAKE_CXX_FLAGS="-march=westmere -mtune=haswell" \
-		-DCMAKE_C_FLAGS="-march=westmere -mtune=haswell" \
+		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DUSE_AVX2=OFF
 
 #override_dh_auto_test:
