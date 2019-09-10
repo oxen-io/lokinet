@@ -866,9 +866,11 @@ namespace llarp
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
         LogInfo("found ", ifaddr, "with mask ", ifmask);
-        currentRanges.emplace_back(
-            IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
-                    net::IPPacket::ExpandV4(xntohl(ifmask))});
+        if(addr->sin_addr.s_addr) 
+        // skip unconfig'd adapters (windows passes these through the unix-y wrapper)
+          currentRanges.emplace_back(
+              IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
+                      net::IPPacket::ExpandV4(xntohl(ifmask))});
       }
     });
     // try 10.x.0.0/16
