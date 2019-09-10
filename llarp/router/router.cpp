@@ -356,7 +356,8 @@ namespace llarp
   Router::FromConfig(Config *conf)
   {
     // Set netid before anything else
-    if(!conf->router.netId().empty())
+    if(!conf->router.netId().empty()
+       && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
     {
       const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
@@ -718,6 +719,18 @@ namespace llarp
       diskworker()->addJob(
           [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
+
+    // get connected peers
+    std::set< dht::Key_t > peersWeHave;
+    _linkManager.ForEachPeer([&peersWeHave](ILinkSession *s) {
+      if(!s->IsEstablished())
+        return;
+      peersWeHave.emplace(s->GetPubKey());
+    });
+    // remove any nodes we don't have connections to
+    _dht->impl->Nodes()->RemoveIf([&peersWeHave](const dht::Key_t &k) -> bool {
+      return peersWeHave.count(k) == 0;
+    });
   }  // namespace llarp
 
   bool
@@ -803,7 +816,9 @@ namespace llarp
       auto found = netConfig.find(itr->first);
       if(found == netConfig.end() || found->second.empty())
       {
-        netConfig.emplace(itr->first, itr->second());
+        auto val = itr->second();
+        if(!val.empty())
+          netConfig.emplace(itr->first, std::move(val));
       }
       ++itr;
     }
@@ -1174,7 +1189,7 @@ namespace llarp
     }
     else
     {
-      LogWarn("Message failed sending to ", remote);
+      LogDebug("Message failed sending to ", remote);
     }
   }
 }  // namespace llarp

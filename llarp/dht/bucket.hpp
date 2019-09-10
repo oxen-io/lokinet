@@ -193,6 +193,21 @@ namespace llarp
         return nodes.find(key) != nodes.end();
       }
 
+      // remove all nodes who's key matches a predicate
+      template < typename Predicate >
+      void
+      RemoveIf(Predicate pred)
+      {
+        auto itr = nodes.begin();
+        while(itr != nodes.end())
+        {
+          if(pred(itr->first))
+            itr = nodes.erase(itr);
+          else
+            ++itr;
+        }
+      }
+
       void
       Clear()
       {

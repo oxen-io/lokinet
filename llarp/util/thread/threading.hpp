@@ -3,7 +3,11 @@
 
 #include <absl/synchronization/barrier.h>
 #include <absl/synchronization/mutex.h>
+#include <absl/types/optional.h>
 #include <absl/time/time.h>
+
+#include <iostream>
+#include <thread>
 
 #if defined(WIN32) && !defined(__GNUC__)
 #include <process.h>
@@ -20,6 +24,29 @@ namespace llarp
     /// a mutex that does nothing
     struct LOCKABLE NullMutex
     {
+#ifdef LOKINET_DEBUG
+      mutable absl::optional< std::thread::id > m_id;
+      void
+      lock() const
+      {
+        if(!m_id)
+        {
+          m_id.emplace(std::this_thread::get_id());
+        }
+        else if(m_id.value() != std::this_thread::get_id())
+        {
+          std::cerr << "NullMutex " << this << " was locked by "
+                    << std::this_thread::get_id()
+                    << " and was previously locked by " << m_id.value() << "\n";
+          std::abort();
+        }
+      }
+#else
+      void
+      lock() const
+      {
+      }
+#endif
     };
 
     /// a lock that does nothing
@@ -28,6 +55,7 @@ namespace llarp
       NullLock(ABSL_ATTRIBUTE_UNUSED const NullMutex* mtx)
           EXCLUSIVE_LOCK_FUNCTION(mtx)
       {
+        mtx->lock();
       }
 
       ~NullLock() UNLOCK_FUNCTION()
