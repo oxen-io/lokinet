@@ -2,3 +2,4 @@
 0002-Remove-setcap.patch
 0003-Remove-ccache.patch
 0004-Make-root-bootstraps-to-system-path.patch
+0005-Move-default-user-group-into-deb-patch.patch

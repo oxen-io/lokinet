@@ -26,7 +26,7 @@ endif
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" \
 		-DGIT_VERSION="$(DEB_VERSION)" \
-		-DCMAKE_CXX_FLAGS="-march=westmere -mtune=haswell -DDEFAULT_LOKINET_USER=\\\"_lokinet\\\" -DDEFAULT_LOKINET_GROUP=\\\"_loki\\\"" \
+		-DCMAKE_CXX_FLAGS="-march=westmere -mtune=haswell" \
 		-DCMAKE_C_FLAGS="-march=westmere -mtune=haswell" \
 		-DUSE_AVX2=OFF
 
