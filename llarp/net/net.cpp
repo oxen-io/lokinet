@@ -860,14 +860,18 @@ namespace llarp
       {
         const auto fam = i->ifa_addr->sa_family;
         if(fam != AF_INET)
-          return "";
+          return;
         auto* addr = (sockaddr_in*)i->ifa_addr;
         auto* mask = (sockaddr_in*)i->ifa_netmask;
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
-        LogInfo("found ", ifaddr, "with mask ", ifmask);
-        if(addr->sin_addr.s_addr) 
-        // skip unconfig'd adapters (windows passes these through the unix-y wrapper)
+#ifdef _WIN32
+        // do not delete, otherwise GCC will do horrible things to this lambda
+        LogDebug("found ", ifaddr, " with mask ", ifmask);
+#endif
+        if(addr->sin_addr.s_addr)
+          // skip unconfig'd adapters (windows passes these through the unix-y
+          // wrapper)
           currentRanges.emplace_back(
               IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
                       net::IPPacket::ExpandV4(xntohl(ifmask))});
@@ -882,7 +886,6 @@ namespace llarp
       bool hit               = false;
       for(const auto& range : currentRanges)
       {
-        LogInfo("testing ", loaddr.ToString());
         hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
       if(!hit)
