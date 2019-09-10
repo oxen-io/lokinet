@@ -856,15 +856,16 @@ namespace llarp
   {
     std::vector< IPRange > currentRanges;
     IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if(i)
+      if(i && i->ifa_addr)
       {
         const auto fam = i->ifa_addr->sa_family;
         if(fam != AF_INET)
-          return;
+          return "";
         auto* addr = (sockaddr_in*)i->ifa_addr;
         auto* mask = (sockaddr_in*)i->ifa_netmask;
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
+        LogInfo("found ", ifaddr, "with mask ", ifmask);
         currentRanges.emplace_back(
             IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
                     net::IPPacket::ExpandV4(xntohl(ifmask))});
@@ -879,6 +880,7 @@ namespace llarp
       bool hit               = false;
       for(const auto& range : currentRanges)
       {
+        LogInfo("testing ", loaddr.ToString());
         hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
       if(!hit)
