@@ -8,6 +8,8 @@ User=_lokinet
 SyslogIdentifier=lokinet
 RequireFileExists=/var/lib/lokinet/bootstrap.signed
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
+ExecStartPost=+/usr/sbin/lokinet-resolvconf add /var/lib/lokinet/lokinet.ini
+ExecStopPost=+/usr/sbin/lokinet-resolvconf remove /var/lib/lokinet/lokinet.ini
 Restart=always
 
 [Install]

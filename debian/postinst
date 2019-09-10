@@ -45,6 +45,10 @@ if [ "$1" = configure ]; then
     ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
     ucfr lokinet /etc/loki/lokinet.ini
 
+    if [ -x /bin/systemctl ] && /bin/systemctl --quiet is-active systemd-resolved.service; then
+        /bin/systemctl restart systemd-resolved.service
+    fi
+
 fi
 
 #DEBHELPER#
