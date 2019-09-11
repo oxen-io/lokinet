@@ -3,7 +3,10 @@ VERSION=$1
 
 echo "Copying latest build"
 mkdir -p osx-pkg/usr/local/bin
+mkdir osx-pkg/usr/local/lib
 cp ../lokinet osx-pkg/usr/local/bin
+echo "Copying /usr/local/lib/libuv.dylib into package"
+cp /usr/local/lib/libuv.dylib osx-pkg/usr/local/lib
 # just incase they want to switch networks later
 cp ../lokinet-bootstrap osx-pkg/usr/local/bin
 
