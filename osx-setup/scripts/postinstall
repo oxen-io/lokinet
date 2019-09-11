@@ -10,7 +10,7 @@ rm $HOME/.lokinet/*.key >> /tmp/lokinet_postinstall.log
 rm $HOME/.lokinet/*.private >> /tmp/lokinet_postinstall.log
 rm -fr $HOME/.lokinet/netdb >> /tmp/lokinet_postinstall.log
 
-url="https://i2p.rocks/i2procks.signed"
+url="https://seed.lokinet.org/bootstrap.signed"
 echo "downloading $url" >> /tmp/lokinet_postinstall.log
 echo "to $HOME/.lokinet/bootstrap.signed" >> /tmp/lokinet_postinstall.log
 

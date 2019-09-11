@@ -870,10 +870,10 @@ namespace llarp
                     net::IPPacket::ExpandV4(xntohl(ifmask))});
       }
     });
+    // try 10.x.0.0/16
     byte_t oct = 0;
     while(oct < 255)
     {
-      // TODO: check for range inbetween these
       const huint32_t loaddr = ipaddr_ipv4_bits(10, oct, 0, 1);
       const huint32_t hiaddr = ipaddr_ipv4_bits(10, oct, 255, 255);
       bool hit               = false;
@@ -885,6 +885,38 @@ namespace llarp
         return loaddr.ToString() + "/16";
       ++oct;
     }
+    // try 192.168.x.0/24
+    oct = 0;
+    while(oct < 255)
+    {
+      const huint32_t loaddr = ipaddr_ipv4_bits(192, 168, oct, 1);
+      const huint32_t hiaddr = ipaddr_ipv4_bits(192, 168, oct, 255);
+      bool hit               = false;
+      for(const auto& range : currentRanges)
+      {
+        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
+      }
+      if(!hit)
+        return loaddr.ToString() + "/24";
+    }
+    // try 172.16.x.0/24
+    oct = 0;
+    while(oct < 255)
+    {
+      const huint32_t loaddr = ipaddr_ipv4_bits(172, 16, oct, 1);
+      const huint32_t hiaddr = ipaddr_ipv4_bits(172, 16, oct, 255);
+      bool hit               = false;
+      for(const auto& range : currentRanges)
+      {
+        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
+      }
+      if(!hit)
+        return loaddr.ToString() + "/24";
+      ++oct;
+    }
+    LogError(
+        "cannot autodetect any free ip ranges on your system for use, please "
+        "configure this manually");
     return "";
   }
 
