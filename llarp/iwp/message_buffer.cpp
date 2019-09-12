@@ -6,28 +6,28 @@ namespace llarp
 {
   namespace iwp
   {
-    OutboundMessage::OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
+    OutboundMessage::OutboundMessage(uint64_t msgid,
+                                     ILinkSession::Message_t msg,
                                      llarp_time_t now,
                                      ILinkSession::CompletionHandler handler)
-        : m_Size{(uint16_t)std::min(pkt.sz, MAX_LINK_MSG_SIZE)}
+        : m_Data{std::move(msg)}
         , m_MsgID{msgid}
         , m_Completed{handler}
         , m_StartedAt{now}
     {
-      m_Data.Zero();
-      std::copy_n(pkt.base, m_Size, m_Data.begin());
-      const llarp_buffer_t buf(m_Data.data(), m_Size);
-      CryptoManager::instance()->shorthash(digest, buf);
+      const llarp_buffer_t buf(m_Data);
+      CryptoManager::instance()->shorthash(m_Digest, buf);
     }
 
-    std::vector< byte_t >
+    ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      std::vector< byte_t > xmit{
-          LLARP_PROTO_VERSION, Command::eXMIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-      htobe16buf(xmit.data() + 2, m_Size);
+      ILinkSession::Packet_t xmit(12 + 32);
+      xmit[0] = LLARP_PROTO_VERSION;
+      xmit[1] = Command::eXMIT;
+      htobe16buf(xmit.data() + 2, m_Data.size());
       htobe64buf(xmit.data() + 4, m_MsgID);
-      std::copy(digest.begin(), digest.end(), std::back_inserter(xmit));
+      std::copy_n(m_Digest.begin(), m_Digest.size(), xmit.begin() + 12);
       return xmit;
     }
 
@@ -55,35 +55,27 @@ namespace llarp
 
     void
     OutboundMessage::FlushUnAcked(
-        std::function< void(const llarp_buffer_t &) > sendpkt, llarp_time_t now)
+        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
     {
-      uint16_t idx = 0;
-      while(idx < m_Size)
+      /// overhead for a data packet in plaintext
+      static constexpr size_t Overhead = 12;
+      uint16_t idx                     = 0;
+      const auto datasz                = m_Data.size();
+      while(idx < datasz)
       {
         if(not m_Acks[idx / FragmentSize])
         {
-          std::vector< byte_t > frag{LLARP_PROTO_VERSION,
-                                     Command::eDATA,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0,
-                                     0};
+          const size_t fragsz =
+              idx + FragmentSize < datasz ? FragmentSize : datasz - idx;
+          ILinkSession::Packet_t frag(fragsz + Overhead);
+
+          frag[0] = LLARP_PROTO_VERSION;
+          frag[1] = Command::eDATA;
           htobe16buf(frag.data() + 2, idx);
           htobe64buf(frag.data() + 4, m_MsgID);
-          const size_t fragsz =
-              idx + FragmentSize < m_Size ? FragmentSize : m_Size - idx;
-          const auto sz = frag.size();
-          frag.resize(sz + fragsz);
           std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
-                    frag.begin() + sz);
-          const llarp_buffer_t pkt(frag);
-          sendpkt(pkt);
+                    frag.begin() + Overhead);
+          sendpkt(std::move(frag));
         }
         idx += FragmentSize;
       }
@@ -93,7 +85,8 @@ namespace llarp
     bool
     OutboundMessage::IsTransmitted() const
     {
-      for(uint16_t idx = 0; idx < m_Size; idx += FragmentSize)
+      const auto sz = m_Data.size();
+      for(uint16_t idx = 0; idx < sz; idx += FragmentSize)
       {
         if(!m_Acks.test(idx / FragmentSize))
           return false;
@@ -140,14 +133,14 @@ namespace llarp
       m_LastActiveAt = now;
     }
 
-    std::vector< byte_t >
+    ILinkSession::Packet_t
     InboundMessage::ACKS() const
     {
-      std::vector< byte_t > acks{
-          LLARP_PROTO_VERSION, Command::eACKS, 0, 0, 0, 0, 0, 0, 0, 0,
-          AcksBitmask()};
-
+      ILinkSession::Packet_t acks(9);
+      acks[0] = LLARP_PROTO_VERSION;
+      acks[1] = Command::eACKS;
       htobe64buf(acks.data() + 2, m_MsgID);
+      acks[8] = AcksBitmask();
       return acks;
     }
 
@@ -183,12 +176,11 @@ namespace llarp
 
     void
     InboundMessage::SendACKS(
-        std::function< void(const llarp_buffer_t &) > sendpkt, llarp_time_t now)
+        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
     {
       auto acks = ACKS();
       AddRandomPadding(acks);
-      const llarp_buffer_t pkt(acks);
-      sendpkt(pkt);
+      sendpkt(std::move(acks));
       m_LastACKSent = now;
     }
 
@@ -198,13 +190,7 @@ namespace llarp
       ShortHash gotten;
       const llarp_buffer_t buf(m_Data.data(), m_Size);
       CryptoManager::instance()->shorthash(gotten, buf);
-      LogDebug("gotten=", gotten.ToHex());
-      if(gotten != m_Digset)
-      {
-        DumpBuffer(buf);
-        return false;
-      }
-      return true;
+      return gotten == m_Digset;
     }
 
   }  // namespace iwp

@@ -34,27 +34,26 @@ namespace llarp
     struct OutboundMessage
     {
       OutboundMessage() = default;
-      OutboundMessage(uint64_t msgid, const llarp_buffer_t &pkt,
+      OutboundMessage(uint64_t msgid, ILinkSession::Message_t data,
                       llarp_time_t now,
                       ILinkSession::CompletionHandler handler);
 
-      AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
-      uint16_t m_Size  = 0;
+      ILinkSession::Message_t m_Data;
       uint64_t m_MsgID = 0;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
       ILinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0;
-      ShortHash digest;
+      ShortHash m_Digest;
       llarp_time_t m_StartedAt = 0;
 
-      std::vector< byte_t >
+      ILinkSession::Packet_t
       XMIT() const;
 
       void
       Ack(byte_t bitmask);
 
       void
-      FlushUnAcked(std::function< void(const llarp_buffer_t &) > sendpkt,
+      FlushUnAcked(std::function< void(ILinkSession::Packet_t) > sendpkt,
                    llarp_time_t now);
 
       bool
@@ -88,7 +87,7 @@ namespace llarp
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void
-      HandleData(uint16_t idx, const llarp_buffer_t &buf, llarp_time_t now);
+      HandleData(uint16_t idx, const llarp_buffer_t& buf, llarp_time_t now);
 
       bool
       IsCompleted() const;
@@ -106,10 +105,10 @@ namespace llarp
       ShouldSendACKS(llarp_time_t now) const;
 
       void
-      SendACKS(std::function< void(const llarp_buffer_t &) > sendpkt,
+      SendACKS(std::function< void(ILinkSession::Packet_t) > sendpkt,
                llarp_time_t now);
 
-      std::vector< byte_t >
+      ILinkSession::Packet_t
       ACKS() const;
     };
 

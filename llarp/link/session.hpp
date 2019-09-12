@@ -44,9 +44,12 @@ namespace llarp
     /// message delivery result hook function
     using CompletionHandler = std::function< void(DeliveryStatus) >;
 
+    using Packet_t  = std::vector< byte_t >;
+    using Message_t = std::vector< byte_t >;
+
     /// send a message buffer to the remote endpoint
     virtual bool
-    SendMessageBuffer(const llarp_buffer_t &, CompletionHandler handler) = 0;
+    SendMessageBuffer(Message_t, CompletionHandler handler) = 0;
 
     /// start the connection
     virtual void
@@ -57,8 +60,7 @@ namespace llarp
 
     /// recv packet on low layer
     /// not used by utp
-    virtual void
-    Recv_LL(const llarp_buffer_t &)
+    virtual void Recv_LL(Packet_t)
     {
     }
 

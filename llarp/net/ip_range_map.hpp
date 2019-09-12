@@ -37,7 +37,7 @@ namespace llarp
           functor(entry.second);
       }
 
-      /// convert all values into type T
+      /// convert all values into type T using a transformer
       template < typename T, typename Transformer >
       std::set< T >
       TransformValues(Transformer transform) const

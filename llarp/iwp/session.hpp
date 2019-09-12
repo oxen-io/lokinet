@@ -9,9 +9,11 @@ namespace llarp
 {
   namespace iwp
   {
-    void
-    AddRandomPadding(std::vector< byte_t >& pkt, size_t min = 16,
-                     size_t variance = 16);
+    static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
+    /// creates a packet with plaintext size + wire overhead + random pad
+    ILinkSession::Packet_t
+    CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
+                 size_t pad_variance = 16);
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
@@ -55,14 +57,13 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       bool
-      SendMessageBuffer(const llarp_buffer_t& buf,
+      SendMessageBuffer(ILinkSession::Message_t msg,
                         CompletionHandler resultHandler) override;
 
       void
       Send_LL(const llarp_buffer_t& pkt);
 
-      void
-      EncryptAndSend(const llarp_buffer_t& data);
+      void EncryptAndSend(ILinkSession::Packet_t);
 
       void
       Start() override;
@@ -70,8 +71,7 @@ namespace llarp
       void
       Close() override;
 
-      void
-      Recv_LL(const llarp_buffer_t& pkt) override;
+      void Recv_LL(ILinkSession::Packet_t) override;
 
       bool
       SendKeepAlive() override;
@@ -167,7 +167,7 @@ namespace llarp
       /// list of rx messages to send in next set of multiacks
       std::vector< uint64_t > m_SendMACKS;
 
-      using CryptoQueue_t = std::vector< std::vector< byte_t > >;
+      using CryptoQueue_t = std::vector< Packet_t >;
 
       CryptoQueue_t m_EncryptNext;
       CryptoQueue_t m_DecryptNext;
@@ -182,22 +182,22 @@ namespace llarp
       HandlePlaintext(CryptoQueue_t msgs);
 
       void
-      HandleGotIntro(const llarp_buffer_t& buf);
+      HandleGotIntro(Packet_t pkt);
 
       void
-      HandleGotIntroAck(const llarp_buffer_t& buf);
+      HandleGotIntroAck(Packet_t pkt);
 
       void
-      HandleCreateSessionRequest(const llarp_buffer_t& buf);
+      HandleCreateSessionRequest(Packet_t pkt);
 
       void
-      HandleAckSession(const llarp_buffer_t& buf);
+      HandleAckSession(Packet_t pkt);
 
       void
-      HandleSessionData(const llarp_buffer_t& buf);
+      HandleSessionData(Packet_t pkt);
 
       bool
-      DecryptMessage(const llarp_buffer_t& buf, std::vector< byte_t >& result);
+      DecryptMessageInPlace(Packet_t& pkt);
 
       void
       SendMACK();
