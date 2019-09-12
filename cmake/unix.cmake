@@ -73,7 +73,7 @@ else()
 endif()
 
 
-set(EXE_LIBS ${STATIC_LIB} libutp)
+set(EXE_LIBS ${STATIC_LIB})
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")

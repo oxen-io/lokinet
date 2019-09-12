@@ -38,15 +38,6 @@ struct llarp_threadpool
       return jobs->size();
     return 0;
   }
-
-  bool
-  QueueFunc(std::function< void(void) > f)
-  {
-    if(impl)
-      return impl->tryAddJob(f);
-
-    return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
-  }
 };
 
 struct llarp_threadpool *

@@ -11,7 +11,6 @@
 struct AbyssTestBase : public ::testing::Test
 {
   llarp::sodium::CryptoLibSodium crypto;
-  llarp_threadpool* threadpool = nullptr;
   llarp_ev_loop_ptr loop       = nullptr;
   std::shared_ptr< llarp::Logic > logic;
   abyss::httpd::BaseReqHandler* server = nullptr;
@@ -49,7 +48,6 @@ struct AbyssTestBase : public ::testing::Test
   {
     loop       = llarp_make_ev_loop();
     logic      = std::make_shared< llarp::Logic >();
-    threadpool = logic->thread;
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr.sin_port        = htons((llarp::randint() % 2000) + 2000);
@@ -83,7 +81,6 @@ struct AbyssTestBase : public ::testing::Test
   ~AbyssTestBase()
   {
     logic.reset();
-    llarp_free_threadpool(&threadpool);
     llarp::SetLogLevel(llarp::eLogInfo);
   }
 };

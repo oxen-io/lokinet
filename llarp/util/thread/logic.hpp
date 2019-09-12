@@ -43,7 +43,7 @@ namespace llarp
     queue_job(struct llarp_thread_job job);
 
     bool
-    queue_func(std::function< void(void) > func);
+    queue_func(std::function< void(void) >&& func);
 
     uint32_t
     call_later(const llarp_timeout_job& job);

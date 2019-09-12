@@ -39,7 +39,7 @@ namespace llarp
       Rank() const override;
 
       void
-      RecvFrom(const Addr &from, const void *buf, size_t sz) override;
+      RecvFrom(const Addr &from, ILinkSession::Packet_t pkt) override;
 
       bool
       MapAddr(const RouterID &pk, ILinkSession *s) override;

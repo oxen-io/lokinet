@@ -105,7 +105,7 @@ else()
 endif(WIN32)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads ${LIBS})
+target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} Threads::Threads ${LIBS})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   if(NON_PC_TARGET)
@@ -247,17 +247,12 @@ set(LIB_SRC
   service/tag_lookup_job.cpp
   service/tag.cpp
   service/vanity.cpp
-  utp/inbound_message.cpp
-  utp/linklayer.cpp
-  utp/session.cpp
-  utp/utp.cpp
 )
 if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)
 endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-set(LIBS ${LIBS} libutp)
 target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")

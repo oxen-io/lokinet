@@ -22,12 +22,11 @@ namespace llarp
     ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      ILinkSession::Packet_t xmit(12 + 32);
-      xmit[0] = LLARP_PROTO_VERSION;
-      xmit[1] = Command::eXMIT;
-      htobe16buf(xmit.data() + 2, m_Data.size());
-      htobe64buf(xmit.data() + 4, m_MsgID);
-      std::copy_n(m_Digest.begin(), m_Digest.size(), xmit.begin() + 12);
+      auto xmit = CreatePacket(Command::eXMIT, 12 + 32, 0, 0);
+      htobe16buf(xmit.data() + 2 + PacketOverhead, m_Data.size());
+      htobe64buf(xmit.data() + 4 + PacketOverhead, m_MsgID);
+      std::copy_n(m_Digest.begin(), m_Digest.size(),
+                  xmit.begin() + 12 + PacketOverhead);
       return xmit;
     }
 
@@ -58,7 +57,7 @@ namespace llarp
         std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
     {
       /// overhead for a data packet in plaintext
-      static constexpr size_t Overhead = 12;
+      static constexpr size_t Overhead = 10;
       uint16_t idx                     = 0;
       const auto datasz                = m_Data.size();
       while(idx < datasz)
@@ -67,14 +66,11 @@ namespace llarp
         {
           const size_t fragsz =
               idx + FragmentSize < datasz ? FragmentSize : datasz - idx;
-          ILinkSession::Packet_t frag(fragsz + Overhead);
-
-          frag[0] = LLARP_PROTO_VERSION;
-          frag[1] = Command::eDATA;
-          htobe16buf(frag.data() + 2, idx);
-          htobe64buf(frag.data() + 4, m_MsgID);
+          auto frag = CreatePacket(Command::eDATA, fragsz + Overhead, 0, 0);
+          htobe16buf(frag.data() + 2 + PacketOverhead, idx);
+          htobe64buf(frag.data() + 4 + PacketOverhead, m_MsgID);
           std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
-                    frag.begin() + Overhead);
+                    frag.begin() + PacketOverhead + Overhead + 2);
           sendpkt(std::move(frag));
         }
         idx += FragmentSize;
@@ -136,11 +132,9 @@ namespace llarp
     ILinkSession::Packet_t
     InboundMessage::ACKS() const
     {
-      ILinkSession::Packet_t acks(9);
-      acks[0] = LLARP_PROTO_VERSION;
-      acks[1] = Command::eACKS;
-      htobe64buf(acks.data() + 2, m_MsgID);
-      acks[8] = AcksBitmask();
+      auto acks = CreatePacket(Command::eACKS, 9, 0, 0);
+      htobe64buf(acks.data() + 2 + PacketOverhead, m_MsgID);
+      acks[PacketOverhead + 8] = AcksBitmask();
       return acks;
     }
 
@@ -178,9 +172,7 @@ namespace llarp
     InboundMessage::SendACKS(
         std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
     {
-      auto acks = ACKS();
-      AddRandomPadding(acks);
-      sendpkt(std::move(acks));
+      sendpkt(ACKS());
       m_LastACKSent = now;
     }
 

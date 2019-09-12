@@ -73,7 +73,7 @@ namespace llarp
     }
 
     void
-    LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
+    LinkLayer::RecvFrom(const Addr& from, ILinkSession::Packet_t pkt)
     {
       std::shared_ptr< ILinkSession > session;
       auto itr = m_AuthedAddrs.find(from);
@@ -95,8 +95,7 @@ namespace llarp
       }
       if(session)
       {
-        const llarp_buffer_t buf{pkt, sz};
-        session->Recv_LL(buf);
+        session->Recv_LL(std::move(pkt));
       }
     }
 

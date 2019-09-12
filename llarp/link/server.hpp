@@ -77,30 +77,10 @@ namespace llarp
         LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     static void
-    udp_tick(llarp_udp_io* udp)
-    {
-      ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
-      link->logic()->queue_func([link]() { link->Pump(); });
-    }
+    udp_tick(llarp_udp_io* udp);
 
     static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, ManagedBuffer buf)
-    {
-      if(!udp)
-      {
-        llarp::LogWarn("no udp set");
-        return;
-      }
-      std::vector< byte_t > pkt(buf.underlying.sz);
-      std::copy_n(buf.underlying.base, buf.underlying.sz, pkt.begin());
-      const llarp::Addr srcaddr(*from);
-      // maybe check from too?
-      // no it's never null
-      ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
-      link->logic()->queue_func([link, srcaddr, pkt]() {
-        link->RecvFrom(srcaddr, pkt.data(), pkt.size());
-      });
-    }
+    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, ManagedBuffer buf);
 
     void
     SendTo_LL(const llarp::Addr& to, const llarp_buffer_t& pkt)
@@ -119,7 +99,7 @@ namespace llarp
     Pump();
 
     virtual void
-    RecvFrom(const Addr& from, const void* buf, size_t sz) = 0;
+    RecvFrom(const Addr& from, ILinkSession::Packet_t pkt) = 0;
 
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
@@ -272,6 +252,11 @@ namespace llarp
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex,
                          ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
+
+    using TrafficEvent_t = std::pair< Addr, ILinkSession::Packet_t >;
+    using TrafficQueue_t = std::vector< TrafficEvent_t >;
+
+    std::shared_ptr< TrafficQueue_t > m_Recv;
   };
 
   using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;

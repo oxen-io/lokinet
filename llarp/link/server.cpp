@@ -267,6 +267,7 @@ namespace llarp
   ILinkLayer::Start(std::shared_ptr< Logic > l,
                     std::shared_ptr< thread::ThreadPool > worker)
   {
+    m_Recv   = std::make_shared< TrafficQueue_t >();
     m_Worker = worker;
     m_Logic  = l;
     ScheduleTick(100);
@@ -320,6 +321,7 @@ namespace llarp
         ++itr;
       }
     }
+    m_Recv.reset();
   }
 
   void
@@ -374,7 +376,9 @@ namespace llarp
         ++itr;
       }
     }
-    return s && s->SendMessageBuffer(buf, completed);
+    ILinkSession::Message_t pkt(buf.sz);
+    std::copy_n(buf.base, buf.sz, pkt.begin());
+    return s && s->SendMessageBuffer(std::move(pkt), completed);
   }
 
   bool
@@ -453,6 +457,36 @@ namespace llarp
   ILinkLayer::ScheduleTick(uint64_t interval)
   {
     tick_id = m_Logic->call_later({interval, this, &ILinkLayer::on_timer_tick});
+  }
+
+  void
+  ILinkLayer::udp_tick(llarp_udp_io* udp)
+  {
+    ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
+    if(link->m_Recv == nullptr)
+      return;
+    link->logic()->queue_func([traffic = std::move(link->m_Recv), l = link]() {
+      auto itr = traffic->begin();
+      while(itr != traffic->end())
+      {
+        l->RecvFrom(itr->first, std::move(itr->second));
+        ++itr;
+      }
+      l->Pump();
+    });
+    link->m_Recv.reset(new TrafficQueue_t());
+  }
+
+  void
+  ILinkLayer::udp_recv_from(llarp_udp_io* udp, const sockaddr* from,
+                            ManagedBuffer buf)
+  {
+    ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
+    if(link->m_Recv == nullptr)
+      return;
+    link->m_Recv->emplace_back(std::make_pair(*from, buf.underlying.sz));
+    std::copy_n(buf.underlying.base, buf.underlying.sz,
+                link->m_Recv->back().second.begin());
   }
 
 }  // namespace llarp

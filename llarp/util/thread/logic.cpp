@@ -62,14 +62,9 @@ namespace llarp
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > f)
+  Logic::queue_func(std::function< void(void) >&& f)
   {
-    if(!this->thread->QueueFunc(f))
-    {
-      // try calling it later if the job queue overflows
-      this->call_later(1, f);
-    }
-    return true;
+    return this->thread->impl->addJob(f);
   }
 
   void
