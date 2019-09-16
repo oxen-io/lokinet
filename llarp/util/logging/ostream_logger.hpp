@@ -8,7 +8,7 @@ namespace llarp
 {
   struct OStreamLogStream : public ILogStream
   {
-    OStreamLogStream(std::ostream& out);
+    OStreamLogStream(bool withColours, std::ostream& out);
 
     ~OStreamLogStream() override = default;
 
@@ -27,6 +27,7 @@ namespace llarp
     }
 
    private:
+    bool m_withColours;
     std::ostream& m_Out;
   };
 }  // namespace llarp
