@@ -115,11 +115,11 @@ namespace llarp
     }
 
     void
-    TransitHop::DownstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
+    TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayDownstreamMessage > sendmsgs(msgs.size());
+      std::vector< RelayDownstreamMessage > sendmsgs(msgs->size());
       size_t idx = 0;
-      for(auto& ev : msgs)
+      for(auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
         auto& msg  = sendmsgs[idx];
@@ -137,11 +137,11 @@ namespace llarp
     }
 
     void
-    TransitHop::UpstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
+    TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayUpstreamMessage > sendmsgs(msgs.size());
+      std::vector< RelayUpstreamMessage > sendmsgs(msgs->size());
       size_t idx = 0;
-      for(auto& ev : msgs)
+      for(auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
         auto& msg = sendmsgs[idx];
@@ -166,7 +166,9 @@ namespace llarp
         {
           const llarp_buffer_t buf(msg.X);
           if(!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
-            continue;
+          {
+            LogWarn("invalid upstream data on endpoint ", info);
+          }
           m_LastActivity = r->Now();
         }
       }
@@ -188,22 +190,30 @@ namespace llarp
       for(const auto& msg : msgs)
       {
         llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
-                        info.downstream, " to ", info.upstream);
+                        info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
     }
 
     void
-    TransitHop::FlushQueues(AbstractRouter* r)
+    TransitHop::FlushUpstream(AbstractRouter* r)
     {
-      if(!m_UpstreamQueue.empty())
+      if(m_UpstreamQueue && !m_UpstreamQueue->empty())
         r->threadpool()->addJob(std::bind(&TransitHop::UpstreamWork,
                                           shared_from_this(),
                                           std::move(m_UpstreamQueue), r));
-      if(!m_DownstreamQueue.empty())
+
+      m_UpstreamQueue = nullptr;
+    }
+
+    void
+    TransitHop::FlushDownstream(AbstractRouter* r)
+    {
+      if(m_DownstreamQueue && !m_DownstreamQueue->empty())
         r->threadpool()->addJob(std::bind(&TransitHop::DownstreamWork,
                                           shared_from_this(),
                                           std::move(m_DownstreamQueue), r));
+      m_DownstreamQueue = nullptr;
     }
 
     bool

@@ -27,8 +27,7 @@ namespace llarp
       /// How often to acks RX messages
       static constexpr llarp_time_t ACKResendInterval = 250;
       /// How often to retransmit TX fragments
-      static constexpr llarp_time_t TXFlushInterval =
-          (ACKResendInterval * 3) / 2;
+      static constexpr llarp_time_t TXFlushInterval = ACKResendInterval * 2;
       /// How often we send a keepalive
       static constexpr llarp_time_t PingInterval = 2000;
       /// How long we wait for a session to die with no tx from them
@@ -165,7 +164,7 @@ namespace llarp
       /// maps rxid to time recieved
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
       /// list of rx messages to send in next set of multiacks
-      std::vector< uint64_t > m_SendMACKS;
+      std::set< uint64_t > m_SendMACKS;
 
       using CryptoQueue_t   = std::vector< Packet_t >;
       using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;

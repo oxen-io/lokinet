@@ -5,6 +5,7 @@
 #include <uv.h>
 #include <vector>
 #include <functional>
+#include <util/thread/logic.hpp>
 
 namespace libuv
 {
@@ -88,6 +89,20 @@ namespace libuv
       return false;
     }
 
+    void
+    give_logic(std::shared_ptr< llarp::Logic > l) override
+    {
+      m_Logic = l;
+    }
+
+    /// call function in logic thread
+    template < typename F >
+    void
+    Call(F f)
+    {
+      m_Logic->queue_func(f);
+    }
+
    private:
     struct DestructLoop
     {
@@ -101,6 +116,7 @@ namespace libuv
     std::unique_ptr< uv_loop_t, DestructLoop > m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
+    std::shared_ptr< llarp::Logic > m_Logic;
   };
 
 }  // namespace libuv

@@ -1065,6 +1065,7 @@ namespace llarp
       for(const auto& item : m_state->m_SendQueue)
         item.second->SendRoutingMessage(*item.first, router);
       m_state->m_SendQueue.clear();
+      SendAllUpstream(Router());
     }
 
     bool

@@ -121,7 +121,11 @@ namespace llarp
                                llarp_time_t now)
     {
       if(idx + buf.sz > m_Data.size())
+      {
+        LogWarn("invalid fragment offset ", idx);
         return;
+      }
+
       auto *dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
@@ -134,7 +138,7 @@ namespace llarp
     {
       auto acks = CreatePacket(Command::eACKS, 9, 0, 0);
       htobe64buf(acks.data() + 2 + PacketOverhead, m_MsgID);
-      acks[PacketOverhead + 8] = AcksBitmask();
+      acks[PacketOverhead + 10] = AcksBitmask();
       return acks;
     }
 

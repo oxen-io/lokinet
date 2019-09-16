@@ -396,7 +396,7 @@ namespace llarp
       for(size_t idx = 0; idx < hops.size(); ++idx)
       {
         hops[idx].Clear();
-        size_t tries = 4;
+        size_t tries = 32;
         while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
         {
           --tries;
@@ -406,7 +406,7 @@ namespace llarp
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
         }
-        exclude.insert(hops[idx].pubkey);
+        exclude.emplace(hops[idx].pubkey);
       }
       return true;
     }

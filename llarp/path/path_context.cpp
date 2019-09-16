@@ -257,10 +257,18 @@ namespace llarp
     }
 
     void
-    PathContext::Pump()
+    PathContext::PumpUpstream()
     {
-      m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushQueues(m_Router); });
-      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushQueues(m_Router); });
+      m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->SendAllUpstream(m_Router); });
+    }
+
+    void
+    PathContext::PumpDownstream()
+    {
+      m_TransitPaths.ForEach(
+          [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->SendAllDownstream(m_Router); });
     }
 
     void

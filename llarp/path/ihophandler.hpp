@@ -24,8 +24,9 @@ namespace llarp
   {
     struct IHopHandler
     {
-      using TrafficEvent_t = std::pair< std::vector< byte_t >, TunnelNonce >;
-      using TrafficQueue_t = std::vector< TrafficEvent_t >;
+      using TrafficEvent_t   = std::pair< std::vector< byte_t >, TunnelNonce >;
+      using TrafficQueue_t   = std::vector< TrafficEvent_t >;
+      using TrafficQueue_ptr = std::shared_ptr< TrafficQueue_t >;
 
       virtual ~IHopHandler() = default;
 
@@ -44,8 +45,10 @@ namespace llarp
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                      AbstractRouter*)
       {
-        m_UpstreamQueue.emplace_back();
-        auto& pkt = m_UpstreamQueue.back();
+        if(m_UpstreamQueue == nullptr)
+          m_UpstreamQueue = std::make_shared< TrafficQueue_t >();
+        m_UpstreamQueue->emplace_back();
+        auto& pkt = m_UpstreamQueue->back();
         pkt.first.resize(X.sz);
         std::copy_n(X.base, X.sz, pkt.first.begin());
         pkt.second = Y;
@@ -57,8 +60,10 @@ namespace llarp
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        AbstractRouter*)
       {
-        m_DownstreamQueue.emplace_back();
-        auto& pkt = m_DownstreamQueue.back();
+        if(m_DownstreamQueue == nullptr)
+          m_DownstreamQueue = std::make_shared< TrafficQueue_t >();
+        m_DownstreamQueue->emplace_back();
+        auto& pkt = m_DownstreamQueue->back();
         pkt.first.resize(X.sz);
         std::copy_n(X.base, X.sz, pkt.first.begin());
         pkt.second = Y;
@@ -79,18 +84,21 @@ namespace llarp
         return m_SequenceNum++;
       }
       virtual void
-      FlushQueues(AbstractRouter* r) = 0;
+      FlushUpstream(AbstractRouter* r) = 0;
+
+      virtual void
+      FlushDownstream(AbstractRouter* r) = 0;
 
      protected:
       uint64_t m_SequenceNum = 0;
-      TrafficQueue_t m_UpstreamQueue;
-      TrafficQueue_t m_DownstreamQueue;
+      TrafficQueue_ptr m_UpstreamQueue;
+      TrafficQueue_ptr m_DownstreamQueue;
 
       virtual void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) = 0;
+      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
 
       virtual void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) = 0;
+      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
 
       virtual void
       HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,

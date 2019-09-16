@@ -12,13 +12,9 @@ namespace llarp
    public:
     struct llarp_threadpool* thread;
     struct llarp_timer_context* timer;
+    std::optional< std::thread::id > id;
 
-    Logic()
-        : thread(llarp_init_threadpool(1, "llarp-logic"))
-        , timer(llarp_init_timer())
-    {
-      llarp_threadpool_start(thread);
-    }
+    Logic();
 
     ~Logic();
 

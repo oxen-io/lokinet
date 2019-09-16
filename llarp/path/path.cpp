@@ -377,11 +377,11 @@ namespace llarp
     }
 
     void
-    Path::UpstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
+    Path::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayUpstreamMessage > sendmsgs(msgs.size());
+      std::vector< RelayUpstreamMessage > sendmsgs(msgs->size());
       size_t idx = 0;
-      for(const auto& ev : msgs)
+      for(auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
         TunnelNonce n = ev.second;
@@ -402,16 +402,27 @@ namespace llarp
     }
 
     void
-    Path::FlushQueues(AbstractRouter* r)
+    Path::FlushUpstream(AbstractRouter* r)
     {
-      if(!m_UpstreamQueue.empty())
+      if(m_UpstreamQueue && !m_UpstreamQueue->empty())
+      {
         r->threadpool()->addJob(std::bind(&Path::UpstreamWork,
                                           shared_from_this(),
                                           std::move(m_UpstreamQueue), r));
-      if(!m_DownstreamQueue.empty())
+      }
+      m_UpstreamQueue = nullptr;
+    }
+
+    void
+    Path::FlushDownstream(AbstractRouter* r)
+    {
+      if(m_DownstreamQueue && !m_DownstreamQueue->empty())
+      {
         r->threadpool()->addJob(std::bind(&Path::DownstreamWork,
                                           shared_from_this(),
                                           std::move(m_DownstreamQueue), r));
+      }
+      m_DownstreamQueue = nullptr;
     }
 
     bool
@@ -438,11 +449,11 @@ namespace llarp
     }
 
     void
-    Path::DownstreamWork(TrafficQueue_t msgs, AbstractRouter* r)
+    Path::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayDownstreamMessage > sendMsgs(msgs.size());
+      std::vector< RelayDownstreamMessage > sendMsgs(msgs->size());
       size_t idx = 0;
-      for(auto& ev : msgs)
+      for(auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
         sendMsgs[idx].Y = ev.second;

@@ -314,11 +314,7 @@ namespace llarp
       RouterLogic()->queue_func([=] {
         self->m_ExitMap.ForEachValue(
             [](const auto &exit) { exit->FlushUpstream(); });
-        self->Router()->PumpLL();
-      });
-      RouterLogic()->queue_func([=]() {
         self->Pump(self->Now());
-        self->Router()->PumpLL();
       });
     }
 
@@ -788,6 +784,7 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
+      SendAllDownstream(Router());
     }
 
     bool

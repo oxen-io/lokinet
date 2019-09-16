@@ -325,14 +325,17 @@ namespace llarp
       SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r);
 
       void
-      FlushQueues(AbstractRouter* r) override;
+      FlushUpstream(AbstractRouter* r) override;
+
+      void
+      FlushDownstream(AbstractRouter* r) override;
 
      protected:
       void
-      UpstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(TrafficQueue_t queue, AbstractRouter* r) override;
+      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
 
       void
       HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,

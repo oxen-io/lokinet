@@ -376,10 +376,15 @@ namespace llarp
     }
 
     void
-    PathSet::FlushQueues(AbstractRouter* r)
-
+    PathSet::SendAllUpstream(AbstractRouter* r)
     {
-      ForEachPath([r](const Path_ptr& ptr) { ptr->FlushQueues(r); });
+      ForEachPath([r](const Path_ptr& p) { p->FlushUpstream(r); });
+    }
+
+    void
+    PathSet::SendAllDownstream(AbstractRouter* r)
+    {
+      ForEachPath([r](const Path_ptr& p) { p->FlushDownstream(r); });
     }
 
   }  // namespace path

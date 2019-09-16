@@ -276,7 +276,10 @@ namespace llarp
       }
 
       void
-      FlushQueues(AbstractRouter* r);
+      SendAllUpstream(AbstractRouter* r);
+
+      void
+      SendAllDownstream(AbstractRouter* r);
 
       size_t numPaths;
 

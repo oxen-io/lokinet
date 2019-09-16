@@ -198,19 +198,21 @@ namespace llarp
     Session::SendMACK()
     {
       // send multi acks
-      while(!m_SendMACKS.empty())
+      while(m_SendMACKS.size() > 0)
       {
-        const auto sz  = m_SendMACKS.size();
-        const auto max = Session::MaxACKSInMACK;
-        auto numAcks   = std::min(sz, max);
-        auto mack =
-            CreatePacket(Command::eMACK, numAcks * sizeof(uint64_t), 0, 0);
+        const auto sz            = m_SendMACKS.size();
+        const auto max           = Session::MaxACKSInMACK;
+        auto numAcks             = std::min(sz, max);
+        auto mack                = CreatePacket(Command::eMACK,
+                                 1 + (numAcks * sizeof(uint64_t)), 0, 0);
         mack[PacketOverhead + 2] = byte_t{numAcks};
         byte_t* ptr              = mack.data() + 3 + PacketOverhead;
+        LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
+        auto itr = m_SendMACKS.begin();
         while(numAcks > 0)
         {
-          htobe64buf(ptr, m_SendMACKS.back());
-          m_SendMACKS.pop_back();
+          htobe64buf(ptr, *itr);
+          itr = m_SendMACKS.erase(itr);
           numAcks--;
           ptr += sizeof(uint64_t);
         }
@@ -226,7 +228,6 @@ namespace llarp
       {
         if(ShouldPing())
           SendKeepAlive();
-        SendMACK();
         for(auto& item : m_RXMsgs)
         {
           if(item.second.ShouldSendACKS(now))
@@ -562,6 +563,7 @@ namespace llarp
     {
       for(auto& result : msgs)
       {
+        LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
         {
           case Command::eXMIT:
@@ -590,6 +592,7 @@ namespace llarp
                      " from ", m_RemoteAddr);
         }
       }
+      SendMACK();
     }
 
     void
@@ -601,16 +604,18 @@ namespace llarp
         return;
       }
       byte_t numAcks = data[2 + PacketOverhead];
-      if(data.size() < ((numAcks * sizeof(uint64_t)) + 3))
+      if(data.size() < 3 + PacketOverhead + (numAcks * sizeof(uint64_t)))
       {
         LogError("short mack from ", m_RemoteAddr);
         return;
       }
+      LogDebug("got ", int(numAcks), " mack from ", m_RemoteAddr);
       byte_t* ptr = data.data() + 3 + PacketOverhead;
       while(numAcks > 0)
       {
         uint64_t acked = bufbe64toh(ptr);
-        auto itr       = m_TXMsgs.find(acked);
+        LogDebug("mack containing txid=", acked, " from ", m_RemoteAddr);
+        auto itr = m_TXMsgs.find(acked);
         if(itr != m_TXMsgs.end())
         {
           itr->second.Completed();
@@ -697,6 +702,11 @@ namespace llarp
           htobe64buf(nack.data() + PacketOverhead + 2, rxid);
           EncryptAndSend(std::move(nack));
         }
+        else
+        {
+          LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr);
+          m_SendMACKS.emplace(rxid);
+        }
         return;
       }
 
@@ -714,7 +724,7 @@ namespace llarp
           const llarp_buffer_t buf(msg.m_Data.data(), msg.m_Size);
           m_Parent->HandleMessage(this, buf);
           m_ReplayFilter.emplace(itr->first, m_Parent->Now());
-          m_SendMACKS.emplace_back(itr->first);
+          m_SendMACKS.emplace(itr->first);
         }
         else
         {

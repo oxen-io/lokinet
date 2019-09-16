@@ -13,6 +13,15 @@ namespace llarp
     llarp_threadpool_tick(this->thread);
   }
 
+  Logic::Logic()
+      : thread(llarp_init_threadpool(1, "llarp-logic"))
+      , timer(llarp_init_timer())
+  {
+    llarp_threadpool_start(thread);
+    /// set thread id
+    thread->impl->addJob([&]() { id.emplace(std::this_thread::get_id()); });
+  }
+
   Logic::~Logic()
   {
     llarp_threadpool_stop(this->thread);
@@ -64,7 +73,11 @@ namespace llarp
   bool
   Logic::queue_func(std::function< void(void) >&& f)
   {
-    return this->thread->impl->addJob(f);
+    if(!this->thread->impl->tryAddJob(f))
+    {
+      call_later(0, f);
+    }
+    return true;
   }
 
   void
@@ -98,7 +111,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return false;
+    return id.has_value() && id.value() == std::this_thread::get_id();
   }
 
 }  // namespace llarp

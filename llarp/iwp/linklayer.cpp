@@ -28,7 +28,7 @@ namespace llarp
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
-          sessions.insert(itr->first);
+          sessions.emplace(itr->first);
           ++itr;
         }
       }

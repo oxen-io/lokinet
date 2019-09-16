@@ -36,6 +36,7 @@ void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
                                  std::shared_ptr< llarp::Logic > logic)
 {
+  ev->give_logic(logic);
   while(ev->running())
   {
     ev->update_time();

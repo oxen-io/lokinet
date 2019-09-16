@@ -164,10 +164,9 @@ namespace llarp
   void
   Router::PumpLL()
   {
-    _logic->tick(time_now_ms());
-    paths.Pump();
-    _logic->tick(time_now_ms());
+    paths.PumpDownstream();
     _linkManager.PumpLinks();
+    paths.PumpUpstream();
   }
 
   bool
@@ -1063,7 +1062,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
-    paths.Pump();
+    paths.PumpUpstream();
     _linkManager.PumpLinks();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }

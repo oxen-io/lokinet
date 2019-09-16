@@ -484,7 +484,8 @@ namespace llarp
     ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
     if(link->m_Recv == nullptr)
       return;
-    link->m_Recv->emplace_back(std::make_pair(*from, buf.underlying.sz));
+    link->m_Recv->emplace_back(
+        std::make_pair(Addr(*from), ILinkSession::Packet_t(buf.underlying.sz)));
     std::copy_n(buf.underlying.base, buf.underlying.sz,
                 link->m_Recv->back().second.begin());
   }
