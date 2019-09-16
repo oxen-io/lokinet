@@ -164,9 +164,11 @@ namespace llarp
   void
   Router::PumpLL()
   {
+    if(_stopping.load())
+      return;
+    paths.PumpUpstream();
     paths.PumpDownstream();
     _linkManager.PumpLinks();
-    paths.PumpUpstream();
   }
 
   bool
@@ -1011,6 +1013,7 @@ namespace llarp
     }
 
     LogInfo("have ", nodedb->num_loaded(), " routers");
+    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();

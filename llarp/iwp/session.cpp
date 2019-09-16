@@ -11,13 +11,15 @@ namespace llarp
     ILinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t minpad, size_t variance)
     {
-      const size_t pad = minpad > 0 ? minpad + randint() % variance : 0;
-      ILinkSession::Packet_t pkt(PacketOverhead + plainsize + pad + 2);
+      const size_t pad =
+          minpad > 0 ? minpad + (variance > 0 ? randint() % variance : 0) : 0;
+      ILinkSession::Packet_t pkt(PacketOverhead + plainsize + pad
+                                 + CommandOverhead);
       // randomize pad
       if(pad)
       {
         CryptoManager::instance()->randbytes(
-            pkt.data() + PacketOverhead + 2 + plainsize, pad);
+            pkt.data() + PacketOverhead + CommandOverhead + plainsize, pad);
       }
       // randomize nounce
       CryptoManager::instance()->randbytes(pkt.data() + HMACSIZE, TUNNONCESIZE);
@@ -39,8 +41,6 @@ namespace llarp
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
       CryptoManager::instance()->shorthash(m_SessionKey,
                                            llarp_buffer_t(rc.pubkey));
-      m_EncryptNext = std::make_shared< CryptoQueue_t >();
-      m_DecryptNext = std::make_shared< CryptoQueue_t >();
     }
 
     Session::Session(LinkLayer* p, Addr from)
@@ -54,8 +54,6 @@ namespace llarp
       GotLIM          = util::memFn(&Session::GotInboundLIM, this);
       const PubKey pk = m_Parent->GetOurRC().pubkey;
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(pk));
-      m_EncryptNext = std::make_shared< CryptoQueue_t >();
-      m_DecryptNext = std::make_shared< CryptoQueue_t >();
     }
 
     void
@@ -132,11 +130,13 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
+      if(m_EncryptNext == nullptr)
+        m_EncryptNext = std::make_shared< CryptoQueue_t >();
       m_EncryptNext->emplace_back(std::move(data));
       if(!IsEstablished())
       {
         EncryptWorker(std::move(m_EncryptNext));
-        m_EncryptNext = std::make_shared< CryptoQueue_t >();
+        m_EncryptNext = nullptr;
       }
     }
 
@@ -198,21 +198,21 @@ namespace llarp
     Session::SendMACK()
     {
       // send multi acks
-      while(m_SendMACKS.size() > 0)
+      while(m_SendMACKs.size() > 0)
       {
-        const auto sz            = m_SendMACKS.size();
-        const auto max           = Session::MaxACKSInMACK;
-        auto numAcks             = std::min(sz, max);
-        auto mack                = CreatePacket(Command::eMACK,
-                                 1 + (numAcks * sizeof(uint64_t)), 0, 0);
-        mack[PacketOverhead + 2] = byte_t{numAcks};
-        byte_t* ptr              = mack.data() + 3 + PacketOverhead;
+        const auto sz  = m_SendMACKs.size();
+        const auto max = Session::MaxACKSInMACK;
+        auto numAcks   = std::min(sz, max);
+        auto mack =
+            CreatePacket(Command::eMACK, 1 + (numAcks * sizeof(uint64_t)));
+        mack[PacketOverhead + CommandOverhead] = byte_t{numAcks};
+        byte_t* ptr = mack.data() + 3 + PacketOverhead;
         LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
-        auto itr = m_SendMACKS.begin();
+        auto itr = m_SendMACKs.begin();
         while(numAcks > 0)
         {
           htobe64buf(ptr, *itr);
-          itr = m_SendMACKS.erase(itr);
+          itr = m_SendMACKs.erase(itr);
           numAcks--;
           ptr += sizeof(uint64_t);
         }
@@ -246,20 +246,20 @@ namespace llarp
         }
       }
       auto self = shared_from_this();
-      if(!m_EncryptNext->empty())
+      if(m_EncryptNext && !m_EncryptNext->empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
           self->EncryptWorker(data);
         });
-        m_EncryptNext = std::make_shared< CryptoQueue_t >();
+        m_EncryptNext = nullptr;
       }
 
-      if(!m_DecryptNext->empty())
+      if(m_DecryptNext && !m_DecryptNext->empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
           self->DecryptWorker(data);
         });
-        m_DecryptNext = std::make_shared< CryptoQueue_t >();
+        m_DecryptNext = nullptr;
       }
     }
 
@@ -531,6 +531,8 @@ namespace llarp
     void
     Session::HandleSessionData(Packet_t pkt)
     {
+      if(m_DecryptNext == nullptr)
+        m_DecryptNext = std::make_shared< CryptoQueue_t >();
       m_DecryptNext->emplace_back(pkt);
     }
 
@@ -603,14 +605,15 @@ namespace llarp
         LogError("impossibly short mack from ", m_RemoteAddr);
         return;
       }
-      byte_t numAcks = data[2 + PacketOverhead];
-      if(data.size() < 3 + PacketOverhead + (numAcks * sizeof(uint64_t)))
+      byte_t numAcks = data[CommandOverhead + PacketOverhead];
+      if(data.size()
+         < 1 + CommandOverhead + PacketOverhead + (numAcks * sizeof(uint64_t)))
       {
         LogError("short mack from ", m_RemoteAddr);
         return;
       }
       LogDebug("got ", int(numAcks), " mack from ", m_RemoteAddr);
-      byte_t* ptr = data.data() + 3 + PacketOverhead;
+      byte_t* ptr = data.data() + CommandOverhead + PacketOverhead + 1;
       while(numAcks > 0)
       {
         uint64_t acked = bufbe64toh(ptr);
@@ -633,18 +636,18 @@ namespace llarp
     void
     Session::HandleNACK(std::vector< byte_t > data)
     {
-      if(data.size() < 10 + PacketOverhead)
+      if(data.size() < CommandOverhead + sizeof(uint64_t) + PacketOverhead)
       {
         LogError("short nack from ", m_RemoteAddr);
         return;
       }
-      uint64_t txid = bufbe64toh(data.data() + 2 + PacketOverhead);
+      uint64_t txid =
+          bufbe64toh(data.data() + CommandOverhead + PacketOverhead);
       LogDebug("got nack on ", txid, " from ", m_RemoteAddr);
       auto itr = m_TXMsgs.find(txid);
       if(itr != m_TXMsgs.end())
       {
-        auto xmit = itr->second.XMIT();
-        EncryptAndSend(std::move(xmit));
+        EncryptAndSend(itr->second.XMIT());
       }
       m_LastRX = m_Parent->Now();
     }
@@ -652,14 +655,17 @@ namespace llarp
     void
     Session::HandleXMIT(std::vector< byte_t > data)
     {
-      if(data.size() < 44 + PacketOverhead)
+      if(data.size() < CommandOverhead + PacketOverhead + sizeof(uint16_t)
+             + sizeof(uint64_t) + ShortHash::SIZE)
       {
         LogError("short XMIT from ", m_RemoteAddr);
         return;
       }
-      uint16_t sz   = bufbe16toh(data.data() + 2 + PacketOverhead);
-      uint64_t rxid = bufbe64toh(data.data() + 4 + PacketOverhead);
-      ShortHash h{data.data() + 12 + PacketOverhead};
+      uint16_t sz = bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
+      uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
+                                 + sizeof(uint16_t) + PacketOverhead);
+      ShortHash h{data.data() + CommandOverhead + sizeof(uint16_t)
+                  + sizeof(uint64_t) + PacketOverhead};
       LogDebug("rxid=", rxid, " sz=", sz, " h=", h.ToHex());
       m_LastRX = m_Parent->Now();
       {
@@ -667,6 +673,7 @@ namespace llarp
         auto itr = m_ReplayFilter.find(rxid);
         if(itr != m_ReplayFilter.end())
         {
+          m_SendMACKs.emplace(rxid);
           LogDebug("duplicate rxid=", rxid, " from ", m_RemoteAddr);
           return;
         }
@@ -684,14 +691,16 @@ namespace llarp
     void
     Session::HandleDATA(std::vector< byte_t > data)
     {
-      if(data.size() <= 12 + PacketOverhead)
+      if(data.size() <= CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
+             + PacketOverhead)
       {
         LogError("short DATA from ", m_RemoteAddr, " ", data.size());
         return;
       }
-      m_LastRX      = m_Parent->Now();
-      uint16_t sz   = bufbe16toh(data.data() + 2 + PacketOverhead);
-      uint64_t rxid = bufbe64toh(data.data() + 4 + PacketOverhead);
+      m_LastRX    = m_Parent->Now();
+      uint16_t sz = bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
+      uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
+                                 + sizeof(uint16_t) + PacketOverhead);
       auto itr      = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
       {
@@ -699,13 +708,13 @@ namespace llarp
         {
           LogDebug("no rxid=", rxid, " for ", m_RemoteAddr);
           auto nack = CreatePacket(Command::eNACK, 8);
-          htobe64buf(nack.data() + PacketOverhead + 2, rxid);
+          htobe64buf(nack.data() + PacketOverhead + CommandOverhead, rxid);
           EncryptAndSend(std::move(nack));
         }
         else
         {
           LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr);
-          m_SendMACKS.emplace(rxid);
+          m_SendMACKs.emplace(rxid);
         }
         return;
       }
@@ -721,10 +730,10 @@ namespace llarp
         if(itr->second.Verify())
         {
           auto msg = std::move(itr->second);
-          const llarp_buffer_t buf(msg.m_Data.data(), msg.m_Size);
+          const llarp_buffer_t buf(msg.m_Data);
           m_Parent->HandleMessage(this, buf);
           m_ReplayFilter.emplace(itr->first, m_Parent->Now());
-          m_SendMACKS.emplace(itr->first);
+          m_SendMACKs.emplace(itr->first);
         }
         else
         {

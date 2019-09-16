@@ -276,10 +276,10 @@ namespace llarp
       }
 
       void
-      SendAllUpstream(AbstractRouter* r);
+      UpstreamFlush(AbstractRouter* r);
 
       void
-      SendAllDownstream(AbstractRouter* r);
+      DownstreamFlush(AbstractRouter* r);
 
       size_t numPaths;
 

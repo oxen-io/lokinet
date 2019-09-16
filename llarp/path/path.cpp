@@ -1,6 +1,7 @@
 #include <path/path.hpp>
 
 #include <exit/exit_messages.hpp>
+#include <link/i_link_manager.hpp>
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay_status.hpp>
@@ -341,6 +342,7 @@ namespace llarp
           m_LastLatencyTestID   = latency.T;
           m_LastLatencyTestTime = now;
           SendRoutingMessage(latency, r);
+          FlushUpstream(r);
           return;
         }
         if(m_LastRecvMessage && now > m_LastRecvMessage)
@@ -374,6 +376,7 @@ namespace llarp
           LogDebug("failed to send upstream to ", Upstream());
         }
       }
+      r->linkManager().PumpLinks();
     }
 
     void
@@ -485,6 +488,7 @@ namespace llarp
         }
         m_LastRecvMessage = r->Now();
       }
+      FlushUpstream(r);
     }
 
     bool
@@ -586,7 +590,10 @@ namespace llarp
         latency.T             = randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
-        return SendRoutingMessage(latency, r);
+        if(!SendRoutingMessage(latency, r))
+          return false;
+        FlushUpstream(r);
+        return true;
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(),
               " rx=", RXID());

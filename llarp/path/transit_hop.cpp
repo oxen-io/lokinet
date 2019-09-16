@@ -3,6 +3,7 @@
 #include <dht/context.hpp>
 #include <exit/context.hpp>
 #include <exit/exit_messages.hpp>
+#include <link/i_link_manager.hpp>
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay_status.hpp>
@@ -171,6 +172,7 @@ namespace llarp
           }
           m_LastActivity = r->Now();
         }
+        FlushDownstream(r);
       }
       else
       {
@@ -181,6 +183,7 @@ namespace llarp
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
+      r->linkManager().PumpLinks();
     }
 
     void
@@ -193,6 +196,7 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
+      r->linkManager().PumpLinks();
     }
 
     void
@@ -430,7 +434,7 @@ namespace llarp
     void
     TransitHop::QueueDestroySelf(AbstractRouter* r)
     {
-      auto func = std::bind(&TransitHop::SetSelfDestruct, this);
+      auto func = std::bind(&TransitHop::SetSelfDestruct, shared_from_this());
       r->logic()->queue_func(func);
     }
   }  // namespace path

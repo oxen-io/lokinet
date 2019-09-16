@@ -784,7 +784,7 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
-      SendAllDownstream(Router());
+      Router()->PumpLL();
     }
 
     bool

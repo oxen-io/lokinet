@@ -4,11 +4,13 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
+#include <unordered_set>
 
 namespace llarp
 {
   namespace iwp
   {
+    /// packet crypto overhead size
     static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
     /// creates a packet with plaintext size + wire overhead + random pad
     ILinkSession::Packet_t
@@ -19,20 +21,19 @@ namespace llarp
                      public std::enable_shared_from_this< Session >
     {
       /// Time how long we try delivery for
-      static constexpr llarp_time_t DeliveryTimeout = 2000;
+      static constexpr llarp_time_t DeliveryTimeout = 1000;
       /// Time how long we wait to recieve a message
       static constexpr llarp_time_t RecievalTimeout = (DeliveryTimeout * 8) / 5;
       /// How long to keep a replay window for
       static constexpr llarp_time_t ReplayWindow = (RecievalTimeout * 3) / 2;
       /// How often to acks RX messages
-      static constexpr llarp_time_t ACKResendInterval = 250;
+      static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 4;
       /// How often to retransmit TX fragments
-      static constexpr llarp_time_t TXFlushInterval = ACKResendInterval * 2;
+      static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 2;
       /// How often we send a keepalive
-      static constexpr llarp_time_t PingInterval = 2000;
+      static constexpr llarp_time_t PingInterval = 5000;
       /// How long we wait for a session to die with no tx from them
-      static constexpr llarp_time_t SessionAliveTimeout =
-          (PingInterval * 13) / 3;
+      static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
@@ -163,10 +164,10 @@ namespace llarp
 
       /// maps rxid to time recieved
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
-      /// list of rx messages to send in next set of multiacks
-      std::set< uint64_t > m_SendMACKS;
+      /// set of rx messages to send in next round of multiacks
+      std::unordered_set< uint64_t > m_SendMACKs;
 
-      using CryptoQueue_t   = std::vector< Packet_t >;
+      using CryptoQueue_t   = std::list< Packet_t >;
       using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;

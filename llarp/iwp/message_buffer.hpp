@@ -26,10 +26,13 @@ namespace llarp
       /// multiack
       eMACK = 5,
       /// close session
-      eCLOS = 6,
+      eCLOS = 0xff,
     };
 
+    /// max size of data fragments
     static constexpr size_t FragmentSize = 1024;
+    /// plaintext header overhead size
+    static constexpr size_t CommandOverhead = 2;
 
     struct OutboundMessage
     {
@@ -78,9 +81,8 @@ namespace llarp
       InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h,
                      llarp_time_t now);
 
-      AlignedBuffer< MAX_LINK_MSG_SIZE > m_Data;
+      ILinkSession::Message_t m_Data;
       ShortHash m_Digset;
-      uint16_t m_Size             = 0;
       uint64_t m_MsgID            = 0;
       llarp_time_t m_LastACKSent  = 0;
       llarp_time_t m_LastActiveAt = 0;

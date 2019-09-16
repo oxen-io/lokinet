@@ -1,5 +1,6 @@
 #include <iwp/linklayer.hpp>
 #include <iwp/session.hpp>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -22,13 +23,14 @@ namespace llarp
     void
     LinkLayer::Pump()
     {
-      std::set< RouterID > sessions;
+      std::unordered_set< RouterID, RouterID::Hash > sessions;
       {
         ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
-          sessions.emplace(itr->first);
+          const RouterID r{itr->first};
+          sessions.emplace(r);
           ++itr;
         }
       }

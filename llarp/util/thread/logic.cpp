@@ -55,9 +55,7 @@ namespace llarp
     if(this->thread)
     {
       llarp_threadpool_stop(this->thread);
-      llarp_threadpool_join(this->thread);
     }
-    llarp_free_threadpool(&this->thread);
 
     llarp::LogDebug("logic timer stop");
     if(this->timer)
