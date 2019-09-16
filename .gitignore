@@ -60,3 +60,6 @@ GTAGS
 GRTAGS
 GPATH
 version.txt
+
+# xcode
+xcuserdata/
