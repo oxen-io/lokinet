@@ -65,8 +65,10 @@ TOOLCHAIN ?=
 AVX2 ?= OFF
 # non x86 target
 NON_PC_TARGET ?= OFF
-# statically link
+# statically link everything
 STATIC_LINK ?= OFF
+# statically link dependencies
+STATIC ?= OFF
 # enable network namespace isolation
 NETNS ?= OFF
 # enable shell hooks callbacks
@@ -139,7 +141,7 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)

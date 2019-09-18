@@ -8,7 +8,7 @@ include(CheckLibraryExists)
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
-if (STATIC_LINK_RUNTIME)
+if (STATIC_LINK_RUNTIME OR STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
 endif()
 
