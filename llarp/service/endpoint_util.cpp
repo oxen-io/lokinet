@@ -96,6 +96,7 @@ namespace llarp
         itr->second->Tick(now);
         if(itr->second->Pump(now))
         {
+          LogInfo("marking session as dead T=", itr->first);
           itr->second->Stop();
           deadSessions.emplace(std::move(*itr));
           itr = remoteSessions.erase(itr);
