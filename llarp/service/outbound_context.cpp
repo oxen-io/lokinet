@@ -64,6 +64,7 @@ namespace llarp
         if(intro.expiresAt > m_NextIntro.expiresAt)
           m_NextIntro = intro;
       }
+      currentConvoTag.Randomize();
     }
 
     OutboundContext::~OutboundContext() = default;
@@ -160,7 +161,6 @@ namespace llarp
           return;
         }
       }
-      currentConvoTag.Randomize();
       AsyncKeyExchange* ex = new AsyncKeyExchange(
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
           currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
@@ -245,7 +245,8 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro if it expires "soon"
-        ShiftIntroduction();
+        if(ShiftIntroduction())
+          SwapIntros();  // swap intros if we shifted
       }
       // lookup router in intro if set and unknown
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
@@ -253,7 +254,7 @@ namespace llarp
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
       {
-        if(now - itr->second > path::default_lifetime)
+        if(now > itr->second && now - itr->second > path::default_lifetime)
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
@@ -274,8 +275,6 @@ namespace llarp
             tmp.Randomize();
             llarp_buffer_t buf(tmp.data(), tmp.size());
             AsyncEncryptAndSendTo(buf, eProtocolControl);
-            if(currentConvoTag.IsZero())
-              return false;
             return !m_DataHandler->HasConvoTag(currentConvoTag);
           }
         }
