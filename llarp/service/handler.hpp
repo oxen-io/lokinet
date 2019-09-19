@@ -30,6 +30,9 @@ namespace llarp
                              const SharedSecret& secret) = 0;
 
       virtual void
+      MarkConvoTagActive(const ConvoTag& tag) = 0;
+
+      virtual void
       RemoveConvoTag(const ConvoTag& remote) = 0;
 
       virtual bool

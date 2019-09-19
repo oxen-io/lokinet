@@ -259,6 +259,10 @@ namespace llarp
         else
           ++itr;
       }
+      if(currentIntroSet.HasExpiredIntros(now))
+      {
+        UpdateIntroSet(true);
+      }
       // send control message if we look too quiet
       if(lastGoodSend)
       {
@@ -275,7 +279,6 @@ namespace llarp
             tmp.Randomize();
             llarp_buffer_t buf(tmp.data(), tmp.size());
             AsyncEncryptAndSendTo(buf, eProtocolControl);
-            return !m_DataHandler->HasConvoTag(currentConvoTag);
           }
         }
       }
@@ -316,10 +319,7 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      const bool should =
-          (!(path::Builder::BuildCooldownHit(now)
-             || path::Builder::NumInStatus(path::ePathBuilding) >= numPaths))
-          && path::Builder::ShouldBuildMore(now);
+      const bool should = path::Builder::BuildCooldownHit(now);
 
       if(!ReadyToSend())
       {
