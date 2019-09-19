@@ -1132,30 +1132,30 @@ namespace llarp
           if(p)
           {
             // TODO: check expiration of our end
-            ProtocolMessage m(f.T);
-            m.PutBuffer(data);
+            auto m = std::make_shared< ProtocolMessage >(f.T);
+            m->PutBuffer(data);
             f.N.Randomize();
             f.C.Zero();
             transfer->Y.Randomize();
-            m.proto      = t;
-            m.introReply = p->intro;
-            PutReplyIntroFor(f.T, m.introReply);
-            m.sender    = m_Identity.pub;
-            m.seqno     = GetSeqNoForConvo(f.T);
+            m->proto      = t;
+            m->introReply = p->intro;
+            PutReplyIntroFor(f.T, m->introReply);
+            m->sender   = m_Identity.pub;
+            m->seqno    = GetSeqNoForConvo(f.T);
             f.S         = 1;
-            f.F         = m.introReply.pathID;
+            f.F         = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(m, K, m_Identity))
-            {
-              LogError("failed to encrypt and sign");
-              return false;
-            }
-            LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-            {
-              util::Lock lock(&m_state->m_SendQueueMutex);
-              m_state->m_SendQueue.emplace_back(transfer, p);
-            }
-            return true;
+            auto self   = this;
+            return CryptoWorker()->addJob([transfer, p, m, K, self]() {
+              if(not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
+              {
+                LogError("failed to encrypt and sign");
+                return;
+              }
+
+              util::Lock lock(&self->m_state->m_SendQueueMutex);
+              self->m_state->m_SendQueue.emplace_back(transfer, p);
+            });
           }
         }
       }
@@ -1193,7 +1193,7 @@ namespace llarp
             }
             m_state->m_PendingTraffic.erase(r);
           },
-          5000, true);
+          5000);
     }
 
     bool

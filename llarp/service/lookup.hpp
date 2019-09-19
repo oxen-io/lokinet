@@ -19,7 +19,7 @@ namespace llarp
   {
     struct ILookupHolder;
 
-    constexpr size_t MaxConcurrentLookups = size_t(4);
+    constexpr size_t MaxConcurrentLookups = size_t(16);
 
     struct IServiceLookup
     {

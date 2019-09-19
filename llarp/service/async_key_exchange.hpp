@@ -12,17 +12,18 @@ namespace llarp
   namespace service
   {
     struct AsyncKeyExchange
+        : public std::enable_shared_from_this< AsyncKeyExchange >
     {
       std::shared_ptr< Logic > logic;
       SharedSecret sharedKey;
       ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
       ProtocolMessage msg;
-      ProtocolFrame frame;
+      std::shared_ptr< ProtocolFrame > frame;
       Introduction intro;
       const PQPubKey introPubKey;
       Introduction remoteIntro;
-      std::function< void(ProtocolFrame&) > hook;
+      std::function< void(std::shared_ptr< ProtocolFrame >) > hook;
       IDataHandler* handler;
       ConvoTag tag;
 
@@ -33,11 +34,11 @@ namespace llarp
                        const ConvoTag& t, ProtocolType proto);
 
       static void
-      Result(void* user);
+      Result(std::shared_ptr< AsyncKeyExchange > user);
 
       /// given protocol message make protocol frame
       static void
-      Encrypt(void* user);
+      Encrypt(std::shared_ptr< AsyncKeyExchange > user);
     };
 
   }  // namespace service

@@ -108,6 +108,34 @@ namespace llarp
         return _role;
       }
 
+      struct Hash
+      {
+        size_t
+        operator()(const Path& p) const
+        {
+          const auto& tx = p.hops[0].txID;
+          const auto& rx = p.hops[0].rxID;
+          const auto& r  = p.hops[0].upstream;
+          const size_t rhash =
+              std::accumulate(r.begin(), r.end(), 0, std::bit_xor< size_t >());
+          return std::accumulate(rx.begin(), rx.begin(),
+                                 std::accumulate(tx.begin(), tx.end(), rhash,
+                                                 std::bit_xor< size_t >()),
+                                 std::bit_xor< size_t >());
+        }
+      };
+
+      struct Ptr_Hash
+      {
+        size_t
+        operator()(const std::shared_ptr< Path >& p) const
+        {
+          if(p == nullptr)
+            return 0;
+          return Hash{}(*p);
+        }
+      };
+
       bool
       operator<(const Path& other) const
       {
