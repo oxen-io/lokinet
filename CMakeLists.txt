@@ -239,7 +239,6 @@ endif()
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
 
 add_subdirectory(crypto)
-add_subdirectory(libutp)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 
