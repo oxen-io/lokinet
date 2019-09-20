@@ -20,7 +20,7 @@ if(NOT MSVC_VERSION)
   # GNU ld sees fit to merge *all* the .ident sections in object files
   # to .r[o]data section one after the other!
   add_compile_options(-fno-ident -Wa,-mbig-obj)
-  link_libraries( -lshlwapi -ldbghelp )
+  link_libraries( -lws2_32 -liphlpapi -lshlwapi -ldbghelp )
   add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
   # Wait a minute, if we're not Microsoft C++, nor a Clang paired with Microsoft C++,
   # then the only possible option has to be GNU or a GNU-linked Clang!
