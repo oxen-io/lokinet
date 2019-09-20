@@ -1,2 +1,6 @@
 mbedtls*.tgz*
 mbedtls-*/
+curl*.tar.xz*
+curl-*/
+include/
+lib/

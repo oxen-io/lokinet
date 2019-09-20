@@ -91,9 +91,10 @@ Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags:
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\lokinet-rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC. The UI has its own bootstrap built-in!
-Source: "lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{tmp}\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external
 ; if nonexistent, then inet6 was already installed
 Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1
@@ -225,7 +226,7 @@ Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Descr
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
-Filename: "{tmp}\lokinet-bootstrap.exe"; Parameters:"https://seed.lokinet.org/bootstrap.signed {userappdata}\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
+Filename: "{app}\lokinet-bootstrap.exe"; Parameters:"-L https://seed.lokinet.org/bootstrap.signed --cacert {app}\rootcerts.pem > {userappdata}\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
 ; then ask to install drivers
 Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
 Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0; Check: not IsTapInstalled
