@@ -1,13 +1,13 @@
 # Makefile for windows install pkg and helper library
 
-all: regdbhelper.dll lokinet-bootstrap.exe
-
 CC=i686-w64-mingw32-gcc
 CXX=i686-w64-mingw32-g++
 CFLAGS=-Ofast -march=nocona -mfpmath=sse
 LIBS=-lws2_32
 LDFLAGS=-static
 
+ifndef RELEASE
+all: regdbhelper.dll lokinet-bootstrap.exe
 default: all
 
 regdbhelper.dll:
@@ -32,6 +32,17 @@ curl:
 lokinet-bootstrap.exe: mbedtls curl
 	cp curl-7.66.0/src/curl.exe $@
 	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
+else
+
+all: regdbhelper.dll lokinet-bootstrap.exe
+
+regdbhelper.dll:
+	scp despair@10.10.10.6:loki-network/win32-setup/*.dll .
+
+lokinet-bootstrap.exe:
+	scp despair@10.10.10.6:loki-network/win32-setup/*.exe .
+	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
+endif
 
 clean:
-	rm -rf curl-7* include lib mbedtls-2* *.exe *.dll *.pem
+	-rm -rf curl-7* include lib mbedtls-2* *.exe *.dll *.pem
