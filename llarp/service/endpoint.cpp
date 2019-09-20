@@ -434,6 +434,16 @@ namespace llarp
       itr->second.lastUsed  = Now();
     }
 
+    void
+    Endpoint::MarkConvoTagActive(const ConvoTag& tag)
+    {
+      auto itr = Sessions().find(tag);
+      if(itr != Sessions().end())
+      {
+        itr->second.lastUsed = Now();
+      }
+    }
+
     bool
     Endpoint::LoadKeyFile()
     {
@@ -1048,7 +1058,10 @@ namespace llarp
       util::Lock lock(&m_state->m_SendQueueMutex);
       // send outbound traffic
       for(const auto& item : m_state->m_SendQueue)
+      {
         item.second->SendRoutingMessage(*item.first, router);
+        MarkConvoTagActive(item.first->T.T);
+      }
       m_state->m_SendQueue.clear();
     }
 

@@ -1,14 +1,11 @@
 #include <link/factory.hpp>
 #include <iwp/iwp.hpp>
-#include <utp/utp.hpp>
 
 namespace llarp
 {
   LinkFactory::LinkType
   LinkFactory::TypeFromName(string_view str)
   {
-    if(str == "utp")
-      return LinkType::eLinkUTP;
     if(str == "iwp")
       return LinkType::eLinkIWP;
     if(str == "mempipe")
@@ -21,8 +18,6 @@ namespace llarp
   {
     switch(tp)
     {
-      case LinkType::eLinkUTP:
-        return "utp";
       case LinkType::eLinkIWP:
         return "iwp";
       case LinkType::eLinkMempipe:
@@ -37,10 +32,6 @@ namespace llarp
   {
     switch(tp)
     {
-      case LinkType::eLinkUTP:
-        if(permitInbound)
-          return llarp::utp::NewInboundLink;
-        return llarp::utp::NewOutboundLink;
       case LinkType::eLinkIWP:
         if(permitInbound)
           return llarp::iwp::NewInboundLink;
