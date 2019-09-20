@@ -19,7 +19,6 @@ namespace llarp
         , m_Endpoint(ep)
     {
       createdAt = ep->Now();
-      currentConvoTag.Zero();
     }
 
     bool

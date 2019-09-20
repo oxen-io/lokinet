@@ -113,13 +113,13 @@ namespace llarp
       virtual const SecretKey&
       GetTunnelEncryptionSecretKey() const;
 
-      void
+      virtual void
       HandlePathBuilt(Path_ptr p) override;
 
-      void
+      virtual void
       HandlePathBuildTimeout(Path_ptr p) override;
 
-      void
+      virtual void
       HandlePathBuildFailed(Path_ptr p) override;
     };
 
