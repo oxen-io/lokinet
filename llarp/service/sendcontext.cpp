@@ -19,7 +19,6 @@ namespace llarp
         , m_Endpoint(ep)
     {
       createdAt = ep->Now();
-      currentConvoTag.Zero();
     }
 
     bool
@@ -43,6 +42,7 @@ namespace llarp
         if(item.second->SendRoutingMessage(*item.first, r))
         {
           lastGoodSend = r->Now();
+          m_Endpoint->MarkConvoTagActive(item.first->T.T);
         }
         else
           LogError(m_Endpoint->Name(), " failed to send frame on path");

@@ -8,7 +8,7 @@ include(CheckLibraryExists)
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
-if (STATIC_LINK_RUNTIME)
+if (STATIC_LINK_RUNTIME OR STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
 endif()
 
@@ -73,7 +73,7 @@ else()
 endif()
 
 
-set(EXE_LIBS ${STATIC_LIB} libutp)
+set(EXE_LIBS ${STATIC_LIB})
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")

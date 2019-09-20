@@ -16,6 +16,7 @@ option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU,
 option(NATIVE_BUILD "optimise for host system and FPU, may not be portable" )
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems")
 if (NOT MSVC)
+option(STATIC_LINK "link statically against dependencies" OFF)
 option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads")
 endif()
 option(NON_PC_TARGET "non-pc target build: iphone, andriod, embedded non-i386 SBC, etc" )
@@ -33,6 +34,10 @@ include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
 include(cmake/libatomic.cmake)
+
+if (STATIC_LINK AND STATIC_LINK_RUNTIME)
+  message(FATAL "Cannot set both STATIC_LINK and STATIC_LINK_RUNTIME")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -183,6 +188,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
+include(cmake/static_link_runtime.cmake)
 include(cmake/static_link.cmake)
 
 if(USE_NETNS)
@@ -239,7 +245,6 @@ endif()
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
 
 add_subdirectory(crypto)
-add_subdirectory(libutp)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 
