@@ -4,3 +4,4 @@ curl*.tar.xz*
 curl-*/
 include/
 lib/
+*.pem
