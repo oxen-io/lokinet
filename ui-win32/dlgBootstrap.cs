@@ -49,7 +49,7 @@ namespace network.loki.lokinet.win32.ui
                 lokinet_bootstrap.StartInfo.CreateNoWindow = true;
                 lokinet_bootstrap.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
                 lokinet_bootstrap.StartInfo.FileName = lokinetExeString;
-                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} -o {1}", uriBox.Text, default_path);
+                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} --output {1}", uriBox.Text, default_path);
                 lokinet_bootstrap.Start();
                 lokinet_bootstrap.WaitForExit();
                 if (lokinet_bootstrap.ExitCode == 0)
