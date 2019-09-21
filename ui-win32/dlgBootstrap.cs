@@ -24,18 +24,18 @@ namespace network.loki.lokinet.win32.ui
         private string default_path;
         private void button1_Click(object sender, EventArgs e)
         {
-            ServicePointManager.ServerCertificateValidationCallback += cert_check;
-            ServicePointManager.SecurityProtocol = (SecurityProtocolType)48 | 0 | (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
-            wc = new WebClient();
             // add something more unique, this is the IE 5.0 default string
-            wc.Headers.Add("User-Agent","Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0)");
             try
             {
+                ServicePointManager.ServerCertificateValidationCallback += cert_check;
+                ServicePointManager.SecurityProtocol = (SecurityProtocolType)48 | 0 | (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
+                wc = new WebClient();
+                wc.Headers.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0)");
                 wc.DownloadFile(uriBox.Text, default_path);
                 MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
             }
-            catch (NotSupportedException ex)
+            catch (Exception ex)
             {
                 string lokinetExeString;
                 Process lokinet_bootstrap = new Process();
@@ -49,20 +49,20 @@ namespace network.loki.lokinet.win32.ui
                 lokinet_bootstrap.StartInfo.CreateNoWindow = true;
                 lokinet_bootstrap.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
                 lokinet_bootstrap.StartInfo.FileName = lokinetExeString;
-                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} --output {1}", uriBox.Text, default_path);
+                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} --output \"{1}\"", uriBox.Text, default_path);
                 lokinet_bootstrap.Start();
                 lokinet_bootstrap.WaitForExit();
                 if (lokinet_bootstrap.ExitCode == 0)
+                {
                     DialogResult = DialogResult.OK;
+                    MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 else
-                    throw (ex); // pass the original exception back to the caller, TLS failed
+                {
+                    MessageBox.Show(string.Format("An error occured while downloading data. {0}", ex.Message), "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+                    DialogResult = DialogResult.Abort;
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(string.Format("An error occured while downloading data. {0}", ex.Message), "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
-                DialogResult = DialogResult.Abort;
-            }
-            wc.Dispose();
             Close();
         }
 
