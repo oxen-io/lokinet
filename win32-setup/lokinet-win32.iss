@@ -4,7 +4,7 @@
 #define MyAppName "Lokinet"
 #define MyAppVersion "0.5.2"
 #define MyAppPublisher "Loki Project"
-#define MyAppURL "https://loki.network"
+#define MyAppURL "https://lokinet.org"
 #define MyAppExeName "lokinetui.exe"
 ; change this to avoid compiler errors  -despair
 #ifndef DevPath
