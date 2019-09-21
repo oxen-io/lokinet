@@ -5,3 +5,4 @@ curl-*/
 include/
 lib/
 *.pem
+LICENSE

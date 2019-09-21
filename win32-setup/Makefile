@@ -32,6 +32,7 @@ curl:
 lokinet-bootstrap.exe: mbedtls curl
 	cp curl-7.66.0/src/curl.exe $@
 	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
+	cp ../LICENSE .;unix2dos LICENSE LICENSE
 else
 
 all: regdbhelper.dll lokinet-bootstrap.exe
@@ -42,6 +43,7 @@ regdbhelper.dll:
 lokinet-bootstrap.exe:
 	scp despair@10.10.10.6:loki-network/win32-setup/*.exe .
 	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
+	cp ../LICENSE .;unix2dos LICENSE LICENSE
 endif
 
 clean:
