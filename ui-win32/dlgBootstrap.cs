@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
@@ -32,6 +34,28 @@ namespace network.loki.lokinet.win32.ui
                 wc.DownloadFile(uriBox.Text, default_path);
                 MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
+            }
+            catch (NotSupportedException ex)
+            {
+                string lokinetExeString;
+                Process lokinet_bootstrap = new Process();
+
+                if (Program.platform == PlatformID.Win32NT)
+                    lokinetExeString = String.Format("{0}\\lokinet-bootstrap.exe", Directory.GetCurrentDirectory());
+                else
+                    lokinetExeString = String.Format("{0}/lokinet-bootstrap", Directory.GetCurrentDirectory());
+
+                lokinet_bootstrap.StartInfo.UseShellExecute = false;
+                lokinet_bootstrap.StartInfo.CreateNoWindow = true;
+                lokinet_bootstrap.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
+                lokinet_bootstrap.StartInfo.FileName = lokinetExeString;
+                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} -o {1}", uriBox.Text, default_path);
+                lokinet_bootstrap.Start();
+                lokinet_bootstrap.WaitForExit();
+                if (lokinet_bootstrap.ExitCode == 0)
+                    DialogResult = DialogResult.OK;
+                else
+                    throw (ex); // pass the original exception back to the caller, TLS failed
             }
             catch (Exception ex)
             {
