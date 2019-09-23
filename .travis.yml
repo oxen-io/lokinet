@@ -59,7 +59,20 @@ matrix:
   - name: "address sanitizer"
     os: osx
     osx_image: xcode10.2
-    env: BUILD_TYPE=Debug ASAN=ON PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+    env: BUILD_TYPE=Debug XSAN=address PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - name: "thread sanitizer"
+    os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Debug XSAN=thread PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - name: "undefined sanitizer"
+    os: osx
+    osx_image: xcode10.2
+    env: BUILD_TYPE=Debug XSAN=undefined PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - name: "memory sanitizer"
+    os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Debug XSAN=memory
   - name: "native windows debug"
     os: windows
     env: BUILD_TYPE=Debug
