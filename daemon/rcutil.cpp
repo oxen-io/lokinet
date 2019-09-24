@@ -55,6 +55,7 @@ main(int argc, char* argv[])
 
   options.add_options()
       ("v,verbose", "Verbose", cxxopts::value<bool>())
+      ("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
       ("h,help", "help", cxxopts::value<bool>())
       ("j,json", "output in json", cxxopts::value<bool>())
       ("dump", "dump rc file", cxxopts::value<std::vector<std::string> >(), "FILE");
@@ -70,7 +71,8 @@ main(int argc, char* argv[])
     {
       SetLogLevel(llarp::eLogDebug);
       llarp::LogContext::Instance().logStream =
-          std::make_unique< llarp::OStreamLogStream >(std::cerr);
+          std::make_unique< llarp::OStreamLogStream >(
+              result["colour"].as< bool >(), std::cerr);
       llarp::LogDebug("debug logging activated");
     }
 

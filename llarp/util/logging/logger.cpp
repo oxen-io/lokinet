@@ -19,7 +19,7 @@ namespace llarp
 #define _LOGSTREAM_INIT
 #else
   using Stream_t = OStreamLogStream;
-#define _LOGSTREAM_INIT std::cout
+#define _LOGSTREAM_INIT true, std::cout
 #endif
 #endif
 
