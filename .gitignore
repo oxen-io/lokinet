@@ -61,5 +61,8 @@ GRTAGS
 GPATH
 version.txt
 
+lokinet-bootstrap.exe
+regdbhelper.dll
 # xcode
 xcuserdata/
+

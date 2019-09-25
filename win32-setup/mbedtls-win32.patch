@@ -1,6 +1,6 @@
-diff -ruN polarssl-master/include/mbedtls/aesni.h polarssl/include/mbedtls/aesni.h
---- polarssl-master/include/mbedtls/aesni.h	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/include/mbedtls/aesni.h	2018-04-17 15:47:59.320514100 -0500
+diff -ruN include/mbedtls/aesni.h include/mbedtls/aesni.h
+--- include/mbedtls/aesni.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/aesni.h	2018-04-17 15:47:59.320514100 -0500
 @@ -26,17 +26,16 @@
  
  #include "aes.h"
@@ -33,9 +33,9 @@ diff -ruN polarssl-master/include/mbedtls/aesni.h polarssl/include/mbedtls/aesni
 -#endif /* MBEDTLS_HAVE_X86_64 */
 -
  #endif /* MBEDTLS_AESNI_H */
-diff -ruN polarssl-master/include/mbedtls/bn_mul.h polarssl/include/mbedtls/bn_mul.h
---- polarssl-master/include/mbedtls/bn_mul.h	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/include/mbedtls/bn_mul.h	2018-04-17 15:42:09.045117300 -0500
+diff -ruN include/mbedtls/bn_mul.h include/mbedtls/bn_mul.h
+--- include/mbedtls/bn_mul.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/bn_mul.h	2018-04-17 15:42:09.045117300 -0500
 @@ -754,7 +754,9 @@
  #if defined(MBEDTLS_HAVE_SSE2)
  
@@ -47,9 +47,9 @@ diff -ruN polarssl-master/include/mbedtls/bn_mul.h polarssl/include/mbedtls/bn_m
  #define MULADDC_HUIT                            \
      EMIT 0x0F  EMIT 0x6E  EMIT 0xC9             \
      EMIT 0x0F  EMIT 0x6E  EMIT 0xC3             \
-diff -ruN polarssl-master/include/mbedtls/config.h polarssl/include/mbedtls/config.h
---- polarssl-master/include/mbedtls/config.h	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/include/mbedtls/config.h	2018-04-17 17:27:18.350938700 -0500
+diff -ruN include/mbedtls/config.h include/mbedtls/config.h
+--- include/mbedtls/config.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/config.h	2018-04-17 17:27:18.350938700 -0500
 @@ -91,7 +91,7 @@
   *
   * Uncomment if the CPU supports SSE2 (IA-32 specific).
@@ -86,9 +86,9 @@ diff -ruN polarssl-master/include/mbedtls/config.h polarssl/include/mbedtls/conf
  
  /**
   * \def MBEDTLS_HMAC_DRBG_C
-diff -ruN polarssl-master/library/aes.c polarssl/library/aes.c
---- polarssl-master/library/aes.c	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/library/aes.c	2018-04-17 16:51:37.098413400 -0500
+diff -ruN library/aes.c library/aes.c
+--- library/aes.c	2018-03-16 11:25:12.000000000 -0500
++++ library/aes.c	2018-04-17 16:51:37.098413400 -0500
 @@ -514,7 +514,7 @@
  #endif
      ctx->rk = RK = ctx->buf;
@@ -107,18 +107,18 @@ diff -ruN polarssl-master/library/aes.c polarssl/library/aes.c
      if( mbedtls_aesni_has_support( MBEDTLS_AESNI_AES ) )
      {
          mbedtls_aesni_inverse_key( (unsigned char *) ctx->rk,
-@@ -850,7 +850,7 @@
-                     const unsigned char input[16],
-                     unsigned char output[16] )
- {
+@@ -1016,7 +1016,7 @@
+    AES_VALIDATE_RET( mode == MBEDTLS_AES_ENCRYPT ||
+                      mode == MBEDTLS_AES_DECRYPT );
+
 -#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
 +#if defined(MBEDTLS_AESNI_C)
      if( mbedtls_aesni_has_support( MBEDTLS_AESNI_AES ) )
          return( mbedtls_aesni_crypt_ecb( ctx, mode, input, output ) );
  #endif
-diff -ruN polarssl-master/library/aesni.c polarssl/library/aesni.c
---- polarssl-master/library/aesni.c	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/library/aesni.c	2018-04-17 16:09:26.050605000 -0500
+diff -ruN library/aesni.c library/aesni.c
+--- library/aesni.c	2018-03-16 11:25:12.000000000 -0500
++++ library/aesni.c	2018-04-17 16:09:26.050605000 -0500
 @@ -30,7 +30,16 @@
  #include MBEDTLS_CONFIG_FILE
  #endif
@@ -153,9 +153,9 @@ diff -ruN polarssl-master/library/aesni.c polarssl/library/aesni.c
 -#endif /* MBEDTLS_HAVE_X86_64 */
 -
  #endif /* MBEDTLS_AESNI_C */
-diff -ruN polarssl-master/library/entropy_poll.c polarssl/library/entropy_poll.c
---- polarssl-master/library/entropy_poll.c	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/library/entropy_poll.c	2018-04-17 15:52:13.013004200 -0500
+diff -ruN library/entropy_poll.c library/entropy_poll.c
+--- library/entropy_poll.c	2018-03-16 11:25:12.000000000 -0500
++++ library/entropy_poll.c	2018-04-17 15:52:13.013004200 -0500
 @@ -56,6 +56,12 @@
  #include <windows.h>
  #include <wincrypt.h>
@@ -169,9 +169,9 @@ diff -ruN polarssl-master/library/entropy_poll.c polarssl/library/entropy_poll.c
  int mbedtls_platform_entropy_poll( void *data, unsigned char *output, size_t len,
                             size_t *olen )
  {
-diff -ruN polarssl-master/library/gcm.c polarssl/library/gcm.c
---- polarssl-master/library/gcm.c	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/library/gcm.c	2018-04-17 16:53:18.630262400 -0500
+diff -ruN library/gcm.c library/gcm.c
+--- library/gcm.c	2018-03-16 11:25:12.000000000 -0500
++++ library/gcm.c	2018-04-17 16:53:18.630262400 -0500
 @@ -126,7 +126,7 @@
      ctx->HL[8] = vl;
      ctx->HH[8] = vh;
@@ -190,9 +190,9 @@ diff -ruN polarssl-master/library/gcm.c polarssl/library/gcm.c
      if( mbedtls_aesni_has_support( MBEDTLS_AESNI_CLMUL ) ) {
          unsigned char h[16];
  
-diff -ruN polarssl-master/library/net_sockets.c polarssl/library/net_sockets.c
---- polarssl-master/library/net_sockets.c	2018-03-16 11:25:12.000000000 -0500
-+++ polarssl/library/net_sockets.c	2018-04-17 15:50:08.118440600 -0500
+diff -ruN library/net_sockets.c library/net_sockets.c
+--- library/net_sockets.c	2018-03-16 11:25:12.000000000 -0500
++++ library/net_sockets.c	2018-04-17 15:50:08.118440600 -0500
 @@ -51,7 +51,8 @@
  /* Enables getaddrinfo() & Co */
  #define _WIN32_WINNT 0x0501
