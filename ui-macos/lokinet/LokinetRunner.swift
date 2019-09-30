@@ -6,35 +6,18 @@
 //
 
 import Foundation
+import Cocoa
 
 class LokinetRunner {
-    static let PATH_KEY = "lokinetPath"
-    static let DEFAULT_PATH = URL(fileURLWithPath: "/usr/local/bin/lokinet")
-
-    var lokinetPath: URL?
-    var process = Process()
     let dnsManager: DNSManager
-    weak var window: LokinetLog?
+    let lokinetPath: URL
+    var process = Process()
 
-    init(window: LokinetLog, interface: String) {
+    var logAppender: Appendable? = nil
+
+    init(interface: String, path: String) {
+        self.lokinetPath = URL(fileURLWithPath: path)
         self.dnsManager = DNSManager(interface: interface)
-        self.window = window
-        configure()
-    }
-
-    func configure() {
-        let defaults = UserDefaults.standard;
-
-        self.lokinetPath = defaults.url(forKey: LokinetRunner.PATH_KEY) ?? LokinetRunner.DEFAULT_PATH
-        defaults.set(self.lokinetPath, forKey: LokinetRunner.PATH_KEY)
-    }
-
-    func enableDNS() {
-        do {
-            try dnsManager.setNewSettings()
-        } catch {
-            self.window?.presentError(error)
-        }
     }
 
     func start() {
@@ -45,32 +28,33 @@ class LokinetRunner {
         process.standardError = outputPipe
 
         do {
+            try self.dnsManager.setNewSettings()
             try process.run()
         } catch {
-            self.window?.presentError(error)
+            NSApp.presentError(error)
         }
 
         guard let reader = StreamReader(fh: outputPipe.fileHandleForReading) else {
             let err = NSError(domain: "lokinet", code: 0, userInfo: ["msg": "Failed to read from filehandle"])
-            self.window?.presentError(err)
+            NSApp.presentError(err)
             return
         }
 
         DispatchQueue.global(qos: .background).async {
             for line in reader {
+                print(line)
                 DispatchQueue.main.async {
-                    self.window?.append(string: line)
+                    self.logAppender?.append(string: line)
                 }
             }
         }
-
-        enableDNS()
     }
 
-    deinit {
+    func stop() {
         if process.isRunning {
             process.terminate()
             process.waitUntilExit()
         }
+        dnsManager.restoreOldSettings()
     }
 }
