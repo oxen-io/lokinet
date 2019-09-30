@@ -1,0 +1,16 @@
+# Basic definitions
+set(LIB lokinet)
+set(SHARED_LIB ${LIB}-shared)
+set(STATIC_LIB ${LIB}-static)
+set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(UTIL_LIB ${LIB}-util)
+set(PLATFORM_LIB ${LIB}-platform)
+set(ANDROID_LIB ${LIB}android)
+set(ABYSS libabyss)
+set(ABYSS_LIB abyss)
+set(ABYSS_EXE ${ABYSS_LIB}-main)
+get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
+add_definitions(-D${CMAKE_SYSTEM_NAME})
+
+get_filename_component(CORE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include" ABSOLUTE)
+get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" ABSOLUTE)
