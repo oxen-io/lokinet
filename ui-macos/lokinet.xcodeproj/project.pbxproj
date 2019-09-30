@@ -9,8 +9,12 @@
 /* Begin PBXBuildFile section */
 		7B28BD1A232EA8B40073B955 /* DNSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B28BD19232EA8B40073B955 /* DNSManager.swift */; };
 		7B28BD1C232EB6EF0073B955 /* LokinetRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B28BD1B232EB6EF0073B955 /* LokinetRunner.swift */; };
+		7BA4FB642340D5940098E20A /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA4FB632340D5940098E20A /* Preferences.swift */; };
+		7BA4FB662340DA820098E20A /* StatusMenuExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA4FB652340DA820098E20A /* StatusMenuExt.swift */; };
+		7BA4FB6C2340F2270098E20A /* WindowsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA4FB6B2340F2270098E20A /* WindowsManager.swift */; };
+		7BA4FB7023411FF60098E20A /* PrefsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA4FB6E23411FF60098E20A /* PrefsViewController.swift */; };
+		7BA4FB7323412D700098E20A /* Interfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA4FB7223412D700098E20A /* Interfaces.swift */; };
 		7BED5B7A232D78D900DF603F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BED5B79232D78D900DF603F /* AppDelegate.swift */; };
-		7BED5B7C232D78D900DF603F /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BED5B7B232D78D900DF603F /* ViewController.swift */; };
 		7BED5B7E232D78DB00DF603F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7BED5B7D232D78DB00DF603F /* Assets.xcassets */; };
 		7BED5B81232D78DB00DF603F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7BED5B7F232D78DB00DF603F /* Main.storyboard */; };
 		7BED5B8D232D78DB00DF603F /* lokinetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BED5B8C232D78DB00DF603F /* lokinetTests.swift */; };
@@ -39,9 +43,13 @@
 /* Begin PBXFileReference section */
 		7B28BD19232EA8B40073B955 /* DNSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DNSManager.swift; sourceTree = "<group>"; };
 		7B28BD1B232EB6EF0073B955 /* LokinetRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LokinetRunner.swift; sourceTree = "<group>"; };
+		7BA4FB632340D5940098E20A /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
+		7BA4FB652340DA820098E20A /* StatusMenuExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuExt.swift; sourceTree = "<group>"; };
+		7BA4FB6B2340F2270098E20A /* WindowsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowsManager.swift; sourceTree = "<group>"; };
+		7BA4FB6E23411FF60098E20A /* PrefsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrefsViewController.swift; sourceTree = "<group>"; };
+		7BA4FB7223412D700098E20A /* Interfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Interfaces.swift; sourceTree = "<group>"; };
 		7BED5B76232D78D900DF603F /* lokinet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lokinet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7BED5B79232D78D900DF603F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		7BED5B7B232D78D900DF603F /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		7BED5B7D232D78DB00DF603F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7BED5B80232D78DB00DF603F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		7BED5B82232D78DB00DF603F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -84,6 +92,7 @@
 		7BED5B6D232D78D900DF603F = {
 			isa = PBXGroup;
 			children = (
+				7BA4FB6B2340F2270098E20A /* WindowsManager.swift */,
 				7BED5B78232D78D900DF603F /* lokinet */,
 				7BED5B8B232D78DB00DF603F /* lokinetTests */,
 				7BED5B96232D78DB00DF603F /* lokinetUITests */,
@@ -106,7 +115,9 @@
 			isa = PBXGroup;
 			children = (
 				7BED5B79232D78D900DF603F /* AppDelegate.swift */,
-				7BED5B7B232D78D900DF603F /* ViewController.swift */,
+				7BA4FB652340DA820098E20A /* StatusMenuExt.swift */,
+				7BA4FB632340D5940098E20A /* Preferences.swift */,
+				7BA4FB6E23411FF60098E20A /* PrefsViewController.swift */,
 				7BED5B7D232D78DB00DF603F /* Assets.xcassets */,
 				7BED5B7F232D78DB00DF603F /* Main.storyboard */,
 				7BED5B82232D78DB00DF603F /* Info.plist */,
@@ -115,6 +126,7 @@
 				7B28BD19232EA8B40073B955 /* DNSManager.swift */,
 				7BED5BA7232E831B00DF603F /* StreamReader.swift */,
 				7B28BD1B232EB6EF0073B955 /* LokinetRunner.swift */,
+				7BA4FB7223412D700098E20A /* Interfaces.swift */,
 			);
 			path = lokinet;
 			sourceTree = "<group>";
@@ -286,10 +298,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				7BED5BA8232E831B00DF603F /* StreamReader.swift in Sources */,
-				7BED5B7C232D78D900DF603F /* ViewController.swift in Sources */,
+				7BA4FB7023411FF60098E20A /* PrefsViewController.swift in Sources */,
 				7BED5BA6232E7E6600DF603F /* LokinetLog.swift in Sources */,
+				7BA4FB662340DA820098E20A /* StatusMenuExt.swift in Sources */,
 				7B28BD1A232EA8B40073B955 /* DNSManager.swift in Sources */,
 				7B28BD1C232EB6EF0073B955 /* LokinetRunner.swift in Sources */,
+				7BA4FB6C2340F2270098E20A /* WindowsManager.swift in Sources */,
+				7BA4FB7323412D700098E20A /* Interfaces.swift in Sources */,
+				7BA4FB642340D5940098E20A /* Preferences.swift in Sources */,
 				7BED5B7A232D78D900DF603F /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

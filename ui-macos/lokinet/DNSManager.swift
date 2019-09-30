@@ -15,10 +15,10 @@ func split(str: String?) -> [String] {
 class DNSManager {
     static let netSetup = URL(fileURLWithPath: "/usr/sbin/networksetup")
 
-    let oldDNSSettings: [String]
     let interface: String
+    var oldDNSSettings: [String] = []
 
-    static func getOldSettings(interface: String) -> [String] {
+    func getOldSettings() -> [String] {
         let netprocess = Process()
         netprocess.executableURL = DNSManager.netSetup
         netprocess.arguments = ["-getdnsservers", interface]
@@ -30,13 +30,20 @@ class DNSManager {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let asStr = String(data: data, encoding: .ascii)
 
-            return split(str: asStr).filter({$0 != "127.0.0.1"})
+            if asStr?.contains("There aren't any DNS Servers") ?? true {
+                return []
+            } else {
+                return split(str: asStr).filter({$0 != "127.0.0.1"})
+            }
         } catch {
             return []
         }
     }
 
     func setNewSettings() throws {
+        self.oldDNSSettings = getOldSettings()
+        print("Overriding DNS Settings of \(self.oldDNSSettings)")
+
         let netprocess = Process()
         netprocess.executableURL = DNSManager.netSetup
 
@@ -50,11 +57,17 @@ class DNSManager {
         netprocess.executableURL = DNSManager.netSetup
 
         netprocess.arguments = ["-setdnsservers", self.interface]
-        netprocess.arguments?.append(contentsOf: oldDNSSettings)
+
+        if oldDNSSettings.isEmpty {
+            // networkmsetup uses "networksetup -setdnsservers <interface> Empty" to reset
+            netprocess.arguments?.append("Empty")
+        } else {
+            netprocess.arguments?.append(contentsOf: oldDNSSettings)
+        }
 
         do {
             try netprocess.run()
-            print("Overriding DNS Settings of \(self.oldDNSSettings)")
+            print("Resetting DNS Settings to \(self.oldDNSSettings)")
         } catch {
             // do nothing
         }
@@ -62,11 +75,5 @@ class DNSManager {
 
     init(interface: String) {
         self.interface = interface
-        self.oldDNSSettings = DNSManager.getOldSettings(interface: interface)
-        print("Overriding DNS Settings of \(self.oldDNSSettings)")
-    }
-
-    deinit {
-        restoreOldSettings()
     }
 }

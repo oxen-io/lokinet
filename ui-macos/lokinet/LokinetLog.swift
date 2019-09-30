@@ -7,24 +7,29 @@
 
 import AppKit
 
-final class LokinetLog : NSTextView {
-
-    var runner: LokinetRunner?
-
-    override init(frame: NSRect, textContainer: NSTextContainer?) {
-        super.init(frame: frame, textContainer: textContainer)
-        self.runner = LokinetRunner(window: self, interface: "Wi-Fi")
-
-        self.runner?.start()
+class LokinetLogController : NSViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
     }
 
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        self.runner = LokinetRunner(window: self, interface: "Wi-Fi")
-
-        self.runner?.start()
+    var log: LokinetLog {
+        get {
+            // this is walking down the UI stack.
+            // TODO: work out a better way of doing this
+            let scroll = self.view.subviews[0] as! NSScrollView
+            let clip = scroll.subviews[0] as! NSClipView
+            let log = clip.subviews[0] as! LokinetLog
+            return log
+        }
     }
 
+}
+
+protocol Appendable {
+    func append(string: String)
+}
+
+final class LokinetLog : NSTextView, Appendable {
     func append(string: String) {
         self.textStorage?.append(NSAttributedString(string: string + "\n"))
         self.scrollToEndOfDocument(nil)
