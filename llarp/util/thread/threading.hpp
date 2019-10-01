@@ -26,13 +26,6 @@ using pid_t = int;
 #define ACQUIRE_LOCK(lock, mtx) lock(&mtx)
 #endif
 
-#ifdef YOLO_DISABLE_LOCKING
-#warning \
-    "!!! locking disabled !!! This may cause hella crashes, please mind the gap."
-#undef ACQUIRE_LOCK
-#define ACQUIRE_LOCK(lock, mtx)
-#endif
-
 namespace llarp
 {
   namespace util
