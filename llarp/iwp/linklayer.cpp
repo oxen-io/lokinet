@@ -92,6 +92,7 @@ namespace llarp
       }
       else
       {
+        Lock lock(&m_AuthedLinksMutex);
         auto range = m_AuthedLinks.equal_range(itr->second);
         session    = range.first->second;
       }

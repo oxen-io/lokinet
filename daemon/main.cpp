@@ -2,6 +2,7 @@
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
+#include <util/logging/ostream_logger.hpp>
 
 #include <csignal>
 
@@ -138,6 +139,7 @@ main(int argc, char *argv[])
 		("g,generate", "generate client config", cxxopts::value<bool>())
 		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
+		("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
 		("d,debug", "debug mode - UNENCRYPTED TRAFFIC", cxxopts::value<bool>())
     ("config","path to configuration file", cxxopts::value<std::string>());
 
@@ -158,6 +160,12 @@ main(int argc, char *argv[])
     {
       SetLogLevel(llarp::eLogDebug);
       llarp::LogDebug("debug logging activated");
+    }
+
+    if(!result["colour"].as< bool >())
+    {
+      llarp::LogContext::Instance().logStream =
+          std::make_unique< llarp::OStreamLogStream >(false, std::cerr);
     }
 
     if(result.count("help"))

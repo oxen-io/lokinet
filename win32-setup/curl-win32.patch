@@ -1,0 +1,82 @@
+diff --git a/curl-7.66.0/include/curl/curl.h b/curl-patched/include/curl/curl.h
+index ff0c7749..4d3fdbb5 100644
+--- a/curl-7.66.0/include/curl/curl.h
++++ b/curl-patched/include/curl/curl.h
+@@ -65,6 +65,7 @@
+    included, since they can't co-exist without problems */
+ #include <winsock2.h>
+ #include <ws2tcpip.h>
++#include <wspiapi.h>
+ #endif
+ #endif
+ 
+diff --git a/curl-7.66.0/include/curl/system.h b/curl-patched/include/curl/system.h
+index cd37c2bf..b96cfd8c 100644
+--- a/curl-7.66.0/include/curl/system.h
++++ b/curl-patched/include/curl/system.h
+@@ -411,6 +411,7 @@
+ #  include <winsock2.h>
+ #  include <windows.h>
+ #  include <ws2tcpip.h>
++#  include <wspiapi.h>
+ #endif
+ 
+ /* CURL_PULL_SYS_TYPES_H is defined above when inclusion of header file  */
+diff --git a/curl-7.66.0/lib/curl_setup.h b/curl-patched/lib/curl_setup.h
+index 13af8cde..a0408d5c 100644
+--- a/curl-7.66.0/lib/curl_setup.h
++++ b/curl-patched/lib/curl_setup.h
+@@ -255,6 +255,7 @@
+ #    include <winsock2.h>
+ #    ifdef HAVE_WS2TCPIP_H
+ #      include <ws2tcpip.h>
++#      include <wspiapi.h>
+ #    endif
+ #  else
+ #    ifdef HAVE_WINSOCK_H
+diff --git a/curl-7.66.0/lib/inet_pton.h b/curl-patched/lib/inet_pton.h
+index 0209b9b7..67774fb9 100644
+--- a/curl-7.66.0/lib/inet_pton.h
++++ b/curl-patched/lib/inet_pton.h
+@@ -32,6 +32,7 @@ int Curl_inet_pton(int, const char *, void *);
+ #elif defined(HAVE_WS2TCPIP_H)
+ /* inet_pton() exists in Vista or later */
+ #include <ws2tcpip.h>
++#include <wspiapi.h>
+ #endif
+ #define Curl_inet_pton(x,y,z) inet_pton(x,y,z)
+ #endif
+diff --git a/curl-7.66.0/src/tool_util.c b/curl-patched/src/tool_util.c
+index 9990a463..8ea37f37 100644
+--- a/curl-7.66.0/src/tool_util.c
++++ b/curl-patched/src/tool_util.c
+@@ -40,12 +40,7 @@ struct timeval tvnow(void)
+   ** is typically in the range of 10 milliseconds to 16 milliseconds.
+   */
+   struct timeval now;
+-#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600) && \
+-    (!defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR))
+-  ULONGLONG milliseconds = GetTickCount64();
+-#else
+   DWORD milliseconds = GetTickCount();
+-#endif
+   now.tv_sec = (long)(milliseconds / 1000);
+   now.tv_usec = (long)((milliseconds % 1000) * 1000);
+   return now;
+diff --git a/curl-7.66.0/tests/server/util.c b/curl-patched/tests/server/util.c
+index b0613380..00d0b0c3 100644
+--- a/curl-7.66.0/tests/server/util.c
++++ b/curl-patched/tests/server/util.c
+@@ -415,12 +415,7 @@ static struct timeval tvnow(void)
+   ** is typically in the range of 10 milliseconds to 16 milliseconds.
+   */
+   struct timeval now;
+-#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600) && \
+-    (!defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR))
+-  ULONGLONG milliseconds = GetTickCount64();
+-#else
+   DWORD milliseconds = GetTickCount();
+-#endif
+   now.tv_sec = (long)(milliseconds / 1000);
+   now.tv_usec = (long)((milliseconds % 1000) * 1000);
+   return now;

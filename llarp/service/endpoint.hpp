@@ -323,6 +323,9 @@ namespace llarp
       RemoveConvoTag(const ConvoTag& remote) override;
 
       void
+      MarkConvoTagActive(const ConvoTag& remote) override;
+
+      void
       PutReplyIntroFor(const ConvoTag& remote,
                        const Introduction& intro) override;
 

@@ -20,7 +20,6 @@ namespace llarp
         , m_Endpoint(ep)
     {
       createdAt = ep->Now();
-      currentConvoTag.Zero();
     }
 
     bool
@@ -47,11 +46,9 @@ namespace llarp
           {
             lastGoodSend = r->Now();
             flushpaths.emplace(item.second);
+            m_Endpoint->MarkConvoTagActive(item.first->T.T);
           }
-          else
-            LogError(m_Endpoint->Name(), " failed to send frame on path");
         }
-
         m_SendQueue.clear();
       }
       // flush the select path's upstream
