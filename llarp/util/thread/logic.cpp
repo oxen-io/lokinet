@@ -109,7 +109,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return id.has_value() && id.value() == std::this_thread::get_id();
+    return id.value() == std::this_thread::get_id();
   }
 
 }  // namespace llarp

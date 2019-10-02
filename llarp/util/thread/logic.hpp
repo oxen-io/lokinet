@@ -4,6 +4,7 @@
 #include <util/mem.h>
 #include <util/thread/threadpool.h>
 #include <util/thread/timer.hpp>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -12,7 +13,7 @@ namespace llarp
    public:
     struct llarp_threadpool* thread;
     struct llarp_timer_context* timer;
-    std::optional< std::thread::id > id;
+    absl::optional< std::thread::id > id;
 
     Logic();
 
