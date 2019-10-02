@@ -205,7 +205,8 @@ namespace llarp
         auto numAcks   = std::min(sz, max);
         auto mack =
             CreatePacket(Command::eMACK, 1 + (numAcks * sizeof(uint64_t)));
-        mack[PacketOverhead + CommandOverhead] = byte_t{numAcks};
+        mack[PacketOverhead + CommandOverhead] =
+            byte_t{static_cast< byte_t >(numAcks)};
         byte_t* ptr = mack.data() + 3 + PacketOverhead;
         LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
         auto itr = m_SendMACKs.begin();
