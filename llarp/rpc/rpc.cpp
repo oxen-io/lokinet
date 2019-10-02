@@ -1,5 +1,6 @@
 #include <rpc/rpc.hpp>
 
+#include <constants/version.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
 #include <util/logging/logger.hpp>
@@ -259,6 +260,13 @@ namespace llarp
         return resp;
       }
 
+      Response
+      DumpVersion() const
+      {
+        const Response resp{{"version", LLARP_VERSION}};
+        return resp;
+      }
+
       absl::optional< Response >
       HandleJSONRPC(Method_t method,
                     ABSL_ATTRIBUTE_UNUSED const Params& params) override
@@ -278,6 +286,10 @@ namespace llarp
         if(method == "llarp.admin.status")
         {
           return DumpStatus();
+        }
+        if(method == "llarp.version")
+        {
+          return DumpVersion();
         }
         return false;
       }
