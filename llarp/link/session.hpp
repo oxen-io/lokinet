@@ -3,6 +3,7 @@
 
 #include <crypto/types.hpp>
 #include <net/net.hpp>
+#include <ev/ev.hpp>
 #include <router_contact.hpp>
 #include <util/types.hpp>
 
@@ -44,7 +45,7 @@ namespace llarp
     /// message delivery result hook function
     using CompletionHandler = std::function< void(DeliveryStatus) >;
 
-    using Packet_t  = std::vector< byte_t >;
+    using Packet_t  = PacketBuffer;
     using Message_t = std::vector< byte_t >;
 
     /// send a message buffer to the remote endpoint

@@ -26,7 +26,7 @@ namespace llarp
       htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
       htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
       std::copy_n(m_Digest.begin(), m_Digest.size(),
-                  xmit.begin() + 10 + CommandOverhead + PacketOverhead);
+                  xmit.data() + 10 + CommandOverhead + PacketOverhead);
       return xmit;
     }
 
@@ -70,7 +70,7 @@ namespace llarp
           htobe16buf(frag.data() + 2 + PacketOverhead, idx);
           htobe64buf(frag.data() + 4 + PacketOverhead, m_MsgID);
           std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
-                    frag.begin() + PacketOverhead + Overhead + 2);
+                    frag.data() + PacketOverhead + Overhead + 2);
           sendpkt(std::move(frag));
         }
         idx += FragmentSize;

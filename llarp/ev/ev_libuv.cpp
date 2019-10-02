@@ -371,14 +371,14 @@ namespace libuv
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::Addr m_Addr;
-    bool gotpkts;
+    llarp_pkt_list m_LastPackets;
+    std::array< char, 1500 > m_Buffer;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
         : m_UDP(udp), m_Addr(*src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
-      gotpkts       = false;
       uv_udp_init(loop, &m_Handle);
       uv_check_init(loop, &m_Ticker);
     }
@@ -386,27 +386,44 @@ namespace libuv
     static void
     Alloc(uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
     {
-      buf->base = new char[suggested_size];
-      buf->len  = suggested_size;
+      const size_t sz = std::min(suggested_size, size_t{1500});
+      buf->base       = new char[sz];
+      buf->len        = sz;
     }
 
     static void
     OnRecv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
            const struct sockaddr* addr, unsigned)
     {
+      udp_glue* glue = static_cast< udp_glue* >(handle->data);
       if(addr)
-        static_cast< udp_glue* >(handle->data)->RecvFrom(nread, buf, addr);
-      delete[] buf->base;
+        glue->RecvFrom(nread, buf, addr);
+      if(glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
+        delete[] buf->base;
+    }
+
+    bool
+    RecvMany(llarp_pkt_list* pkts)
+    {
+      *pkts         = std::move(m_LastPackets);
+      m_LastPackets = llarp_pkt_list();
+      return pkts->size() > 0;
     }
 
     void
     RecvFrom(ssize_t sz, const uv_buf_t* buf, const struct sockaddr* fromaddr)
     {
-      if(sz >= 0 && m_UDP && m_UDP->recvfrom)
+      if(sz > 0 && m_UDP)
       {
         const size_t pktsz = sz;
         const llarp_buffer_t pkt{(const byte_t*)buf->base, pktsz};
-        m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+        if(m_UDP->recvfrom)
+          m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+        else
+        {
+          m_LastPackets.emplace_back(
+              PacketEvent{llarp::Addr(*fromaddr), PacketBuffer(buf->base, sz)});
+        }
       }
     }
 
@@ -855,3 +872,9 @@ namespace libuv
   }
 
 }  // namespace libuv
+
+bool
+llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
+{
+  return static_cast< libuv::udp_glue* >(u->impl)->RecvMany(pkts);
+}

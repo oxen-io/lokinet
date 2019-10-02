@@ -90,7 +90,7 @@ namespace libuv
     }
 
     void
-    give_logic(std::shared_ptr< llarp::Logic > l) override
+    set_logic(std::shared_ptr< llarp::Logic > l) override
     {
       m_Logic = l;
     }

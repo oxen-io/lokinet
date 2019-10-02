@@ -5,6 +5,7 @@
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
 #include <unordered_set>
+#include <deque>
 
 namespace llarp
 {
@@ -167,7 +168,7 @@ namespace llarp
       /// set of rx messages to send in next round of multiacks
       std::unordered_set< uint64_t > m_SendMACKs;
 
-      using CryptoQueue_t   = std::list< Packet_t >;
+      using CryptoQueue_t   = std::vector< Packet_t >;
       using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
@@ -179,7 +180,7 @@ namespace llarp
       DecryptWorker(CryptoQueue_ptr msgs);
 
       void
-      HandlePlaintext(CryptoQueue_t msgs);
+      HandlePlaintext(CryptoQueue_ptr msgs);
 
       void
       HandleGotIntro(Packet_t pkt);
@@ -218,25 +219,25 @@ namespace llarp
       SendOurLIM(ILinkSession::CompletionHandler h = nullptr);
 
       void
-      HandleXMIT(std::vector< byte_t > msg);
+      HandleXMIT(Packet_t msg);
 
       void
-      HandleDATA(std::vector< byte_t > msg);
+      HandleDATA(Packet_t msg);
 
       void
-      HandleACKS(std::vector< byte_t > msg);
+      HandleACKS(Packet_t msg);
 
       void
-      HandleNACK(std::vector< byte_t > msg);
+      HandleNACK(Packet_t msg);
 
       void
-      HandlePING(std::vector< byte_t > msg);
+      HandlePING(Packet_t msg);
 
       void
-      HandleCLOS(std::vector< byte_t > msg);
+      HandleCLOS(Packet_t msg);
 
       void
-      HandleMACK(std::vector< byte_t > msg);
+      HandleMACK(Packet_t msg);
     };
   }  // namespace iwp
 }  // namespace llarp

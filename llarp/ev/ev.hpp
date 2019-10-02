@@ -1,6 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 
+#include <net/net_addr.hpp>
 #include <ev/ev.h>
 #include <util/buffer.hpp>
 #include <util/codel.hpp>
@@ -784,7 +785,7 @@ struct llarp_ev_loop
   }
 
   /// give this event loop a logic thread for calling
-  virtual void give_logic(std::shared_ptr< llarp::Logic >) = 0;
+  virtual void set_logic(std::shared_ptr< llarp::Logic >) = 0;
 
   /// register event listener
   virtual bool
@@ -801,7 +802,7 @@ struct llarp_ev_loop
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 
-  void
+  virtual void
   tick_listeners()
   {
     auto itr = handlers.begin();
@@ -816,6 +817,65 @@ struct llarp_ev_loop
       }
     }
   }
+};
+
+struct PacketBuffer
+{
+  PacketBuffer(PacketBuffer&& other)
+  {
+    _ptr       = other._ptr;
+    _sz        = other._sz;
+    other._ptr = nullptr;
+    other._sz  = 0;
+  }
+
+  PacketBuffer() : PacketBuffer(nullptr, 0){};
+  explicit PacketBuffer(size_t sz) : PacketBuffer(new char[sz], sz)
+  {
+  }
+  PacketBuffer(char* buf, size_t sz) : _ptr{buf}, _sz{sz}
+  {
+  }
+  ~PacketBuffer()
+  {
+    if(_ptr)
+      delete[] _ptr;
+  }
+  byte_t*
+  data()
+  {
+    return (byte_t*)_ptr;
+  }
+  size_t
+  size()
+  {
+    return _sz;
+  }
+  byte_t& operator[](size_t sz)
+  {
+    return data()[sz];
+  }
+  void
+  reserve(size_t sz)
+  {
+    if(_ptr)
+      delete[] _ptr;
+    _ptr = new char[sz];
+  }
+
+ private:
+  char* _ptr = nullptr;
+  size_t _sz = 0;
+};
+
+struct PacketEvent
+{
+  llarp::Addr remote = {};
+  PacketBuffer pkt   = {};
+};
+
+struct llarp_pkt_list : public std::vector< PacketEvent >
+{
 };
 
 #endif

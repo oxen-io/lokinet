@@ -1,5 +1,5 @@
 #include <link/server.hpp>
-
+#include <ev/ev.hpp>
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
 #include <utility>
@@ -107,7 +107,7 @@ namespace llarp
   {
     m_Loop         = loop;
     m_udp.user     = this;
-    m_udp.recvfrom = &ILinkLayer::udp_recv_from;
+    m_udp.recvfrom = nullptr;
     m_udp.tick     = &ILinkLayer::udp_tick;
     if(ifname == "*")
     {
@@ -357,7 +357,7 @@ namespace llarp
   ILinkLayer::SendTo(const RouterID& remote, const llarp_buffer_t& buf,
                      ILinkSession::CompletionHandler completed)
   {
-    ILinkSession* s = nullptr;
+    std::shared_ptr< ILinkSession > s;
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
       auto range = m_AuthedLinks.equal_range(remote);
@@ -367,10 +367,10 @@ namespace llarp
 
       while(itr != range.second)
       {
-        auto backlog = itr->second->SendQueueBacklog();
+        const auto backlog = itr->second->SendQueueBacklog();
         if(backlog < min)
         {
-          s   = itr->second.get();
+          s   = itr->second;
           min = backlog;
         }
         ++itr;
@@ -463,31 +463,18 @@ namespace llarp
   ILinkLayer::udp_tick(llarp_udp_io* udp)
   {
     ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
-    if(link->m_Recv == nullptr)
-      return;
-    link->logic()->queue_func([traffic = std::move(link->m_Recv), l = link]() {
-      auto itr = traffic->begin();
-      while(itr != traffic->end())
+    auto pkts        = std::make_shared< llarp_pkt_list >();
+    llarp_ev_udp_recvmany(&link->m_udp, pkts.get());
+
+    link->logic()->queue_func([pkts, link]() {
+      auto itr = pkts->begin();
+      while(itr != pkts->end())
       {
-        l->RecvFrom(itr->first, std::move(itr->second));
+        link->RecvFrom(itr->remote, std::move(itr->pkt));
         ++itr;
       }
-      l->Pump();
+      link->Pump();
     });
-    link->m_Recv.reset(new TrafficQueue_t());
-  }
-
-  void
-  ILinkLayer::udp_recv_from(llarp_udp_io* udp, const sockaddr* from,
-                            ManagedBuffer buf)
-  {
-    ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
-    if(link->m_Recv == nullptr)
-      return;
-    link->m_Recv->emplace_back(
-        std::make_pair(Addr(*from), ILinkSession::Packet_t(buf.underlying.sz)));
-    std::copy_n(buf.underlying.base, buf.underlying.sz,
-                link->m_Recv->back().second.begin());
   }
 
 }  // namespace llarp

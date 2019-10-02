@@ -81,7 +81,7 @@ namespace llarp
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
-        // ACQUIRE_LOCK(Lock_t lock , m_PendingMutex);
+        ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
         if(m_Pending.count(from) == 0)
         {
           if(not permitInbound)
@@ -92,7 +92,7 @@ namespace llarp
       }
       else
       {
-        Lock lock(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t lock, m_AuthedLinksMutex);
         auto range = m_AuthedLinks.equal_range(itr->second);
         session    = range.first->second;
       }

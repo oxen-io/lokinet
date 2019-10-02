@@ -79,9 +79,6 @@ namespace llarp
     static void
     udp_tick(llarp_udp_io* udp);
 
-    static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, ManagedBuffer buf);
-
     void
     SendTo_LL(const llarp::Addr& to, const llarp_buffer_t& pkt)
     {
