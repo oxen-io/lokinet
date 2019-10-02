@@ -1,4 +1,5 @@
 #include <config/config.hpp>  // for ensure_config
+#include <constants/version.hpp>
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
@@ -134,6 +135,7 @@ main(int argc, char *argv[])
   options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
 		("h,help", "help", cxxopts::value<bool>())
+		("version", "version", cxxopts::value<bool>())
 		("g,generate", "generate client config", cxxopts::value<bool>())
 		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
@@ -169,6 +171,12 @@ main(int argc, char *argv[])
     if(result.count("help"))
     {
       std::cout << options.help() << std::endl;
+      return 0;
+    }
+
+    if(result.count("version"))
+    {
+      std::cout << LLARP_VERSION << std::endl;
       return 0;
     }
 
