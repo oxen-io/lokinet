@@ -42,22 +42,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# Basic definitions
-set(LIB lokinet)
-set(SHARED_LIB ${LIB}-shared)
-set(STATIC_LIB ${LIB}-static)
-set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
-set(UTIL_LIB ${LIB}-util)
-set(PLATFORM_LIB ${LIB}-platform)
-set(ANDROID_LIB ${LIB}android)
-set(ABYSS libabyss)
-set(ABYSS_LIB abyss)
-set(ABYSS_EXE ${ABYSS_LIB}-main)
-get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
-add_definitions(-D${CMAKE_SYSTEM_NAME})
-
-get_filename_component(CORE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include" ABSOLUTE)
-get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" ABSOLUTE)
+include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
   enable_language(ASM_MASM)
@@ -211,7 +196,7 @@ if(NOT GIT_VERSION)
   string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
 endif(NOT GIT_VERSION)
 
-string(REGEX REPLACE ^fatal.*$ nogit GIT_VERSION_REAL "${GIT_VERSION}")
+string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
 
 set(EXE lokinet)

@@ -127,7 +127,10 @@ namespace llarp
     Configure(Config *conf, llarp_nodedb *nodedb) = 0;
 
     virtual bool
-    Run(struct llarp_nodedb *nodedb) = 0;
+    StartJsonRpc() = 0;
+
+    virtual bool
+    Run() = 0;
 
     /// stop running the router logic gracefully
     virtual void

@@ -3,6 +3,7 @@
 
 #include <dns/server.hpp>
 #include <ev/ev.h>
+#include <ev/vpnio.hpp>
 #include <net/ip.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
@@ -20,7 +21,7 @@ namespace llarp
                          public std::enable_shared_from_this< TunEndpoint >
     {
       TunEndpoint(const std::string& nickname, AbstractRouter* r,
-                  llarp::service::Context* parent);
+                  llarp::service::Context* parent, bool lazyVPN = false);
       ~TunEndpoint() override;
 
       path::PathSet_ptr
@@ -114,8 +115,17 @@ namespace llarp
       bool
       HasLocalIP(const huint128_t& ip) const;
 
-      llarp_tun_io tunif;
-      std::unique_ptr< llarp_fd_promise > Promise;
+      std::unique_ptr< llarp_tun_io > tunif;
+      llarp_vpn_io* vpnif = nullptr;
+
+      bool
+      InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info)
+      {
+        if(tunif)
+          return false;
+        m_LazyVPNPromise.set_value(lazy_vpn{info, io});
+        return true;
+      }
 
       /// called before writing to tun interface
       static void
@@ -206,6 +216,14 @@ namespace llarp
           m_SNodes;
 
      private:
+      llarp_vpn_io_impl*
+      GetVPNImpl()
+      {
+        if(vpnif && vpnif->impl)
+          return static_cast< llarp_vpn_io_impl* >(vpnif->impl);
+        return nullptr;
+      }
+
       bool
       QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
@@ -255,12 +273,6 @@ namespace llarp
         reply(*query);
         delete query;
       }
-
-#ifndef WIN32
-      /// handles fd injection force android
-      std::promise< std::pair< int, int > > m_VPNPromise;
-#endif
-
       /// our dns resolver
       std::shared_ptr< dns::Proxy > m_Resolver;
 
@@ -283,6 +295,18 @@ namespace llarp
       std::vector< llarp::Addr > m_StrictConnectAddrs;
       /// use v6?
       bool m_UseV6;
+      struct lazy_vpn
+      {
+        llarp_vpn_ifaddr_info info;
+        llarp_vpn_io* io;
+      };
+      std::promise< lazy_vpn > m_LazyVPNPromise;
+
+      /// send packets on endpoint to user using send function
+      /// send function returns true to indicate stop iteration and do codel
+      /// drop
+      void
+      FlushToUser(std::function< bool(net::IPPacket&) > sendfunc);
     };
   }  // namespace handlers
 }  // namespace llarp

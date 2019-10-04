@@ -1,4 +1,5 @@
 #include <config/config.hpp>  // for ensure_config
+#include <constants/version.hpp>
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
@@ -13,6 +14,7 @@
 #include <cxxopts.hpp>
 #include <string>
 #include <iostream>
+#include <future>
 
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
@@ -84,12 +86,12 @@ resolvePath(std::string conffname)
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(std::string conffname, bool multiThreaded, bool debugMode)
+run_main_context(std::string conffname, llarp_main_runtime_opts opts)
 {
   // this is important, can downgrade from Info though
   llarp::LogDebug("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
-  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
+  ctx      = llarp_main_init(conffname.c_str());
   int code = 1;
   if(ctx)
   {
@@ -98,10 +100,10 @@ run_main_context(std::string conffname, bool multiThreaded, bool debugMode)
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_setup(ctx, debugMode);
+    code = llarp_main_setup(ctx);
     llarp::util::SetThreadName("llarp-mainloop");
     if(code == 0)
-      code = llarp_main_run(ctx);
+      code = llarp_main_run(ctx, opts);
     llarp_main_free(ctx);
   }
   exit_code.set_value(code);
@@ -110,11 +112,11 @@ run_main_context(std::string conffname, bool multiThreaded, bool debugMode)
 int
 main(int argc, char *argv[])
 {
-  bool multiThreaded          = true;
+  llarp_main_runtime_opts opts;
   const char *singleThreadVar = getenv("LLARP_SHADOW");
   if(singleThreadVar && std::string(singleThreadVar) == "1")
   {
-    multiThreaded = false;
+    opts.singleThreaded = true;
   }
 
 #ifdef _WIN32
@@ -136,22 +138,21 @@ main(int argc, char *argv[])
   options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
 		("h,help", "help", cxxopts::value<bool>())
+		("version", "version", cxxopts::value<bool>())
 		("g,generate", "generate client config", cxxopts::value<bool>())
 		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
 		("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
-		("d,debug", "debug mode - UNENCRYPTED TRAFFIC", cxxopts::value<bool>())
+		("b,background", "background mode (start, but do not connect to the network)", cxxopts::value<bool>())
     ("config","path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
   // clang-format on
 
-  bool genconfigOnly = false;
-  bool asRouter      = false;
-  bool overWrite     = false;
-  bool debugMode     = false;
+  bool genconfigOnly  = false;
+  bool asRouter       = false;
+  bool overWrite      = false;
   std::string conffname;  // suggestions: confFName? conf_fname?
-
   try
   {
     auto result = options.parse(argc, argv);
@@ -174,14 +175,20 @@ main(int argc, char *argv[])
       return 0;
     }
 
+    if(result.count("version"))
+    {
+      std::cout << llarp_version() << std::endl;
+      return 0;
+    }
+
     if(result.count("generate") > 0)
     {
       genconfigOnly = true;
     }
 
-    if(result.count("debug") > 0)
+    if(result.count("background") > 0)
     {
-      debugMode = true;
+      opts.background = true;
     }
 
     if(result.count("force") > 0)
@@ -313,7 +320,7 @@ main(int argc, char *argv[])
   }
 
   std::thread main_thread{
-      std::bind(&run_main_context, conffname, multiThreaded, debugMode)};
+      std::bind(&run_main_context, conffname, opts)};
   auto ftr = exit_code.get_future();
   do
   {
@@ -321,11 +328,9 @@ main(int argc, char *argv[])
   } while(ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
   main_thread.join();
-
+  const auto code = ftr.get();
 #ifdef _WIN32
   ::WSACleanup();
 #endif
-  const auto code = ftr.get();
-  exit(code);
   return code;
 }

@@ -1,6 +1,7 @@
 #ifndef LLARP_H_
 #define LLARP_H_
-#include <sys/socket.h>
+#include <stdint.h>
+#include <unistd.h>
 #ifdef __cplusplus
 extern "C"
 {
@@ -18,6 +19,14 @@ extern "C"
 
   /// llarp application context for C api
   struct llarp_main;
+
+  /// runtime options for main context from cli
+  struct llarp_main_runtime_opts
+  {
+    bool background     = false;
+    bool debug          = false;
+    bool singleThreaded = false;
+  };
 
   /// llarp_application config
   struct llarp_config;
@@ -57,23 +66,24 @@ extern "C"
   {
     /// name of the network interface
     char ifname[64];
-    /// interface's address
-    struct sockaddr_storage ifaddr;
-    /// interface's netmask
-    struct sockaddr_storage netmask;
+    /// interface's address as string
+    char ifaddr[128];
+    /// netmask bits
+    unsigned char netmask;
   };
 
   /// initialize llarp_vpn_io private implementation
-  void
-  llarp_vpn_io_init(struct llarp_vpn_io *io);
+  /// returns false if either parameter is nullptr
+  bool
+  llarp_vpn_io_init(struct llarp_main *m, struct llarp_vpn_io *io);
 
   /// get the packet pipe for writing IP packets to lokinet internals
-  /// can return nullptr
+  /// returns nullptr if llarp_vpn_io is nullptr or not initialized
   struct llarp_vpn_pkt_writer *
   llarp_vpn_io_packet_writer(struct llarp_vpn_io *io);
 
   /// get the packet pipe for reading IP packets from lokinet internals
-  /// can return nullptr
+  /// returns nullptr if llarp_vpn_io is nullptr or not initialized
   struct llarp_vpn_pkt_reader *
   llarp_vpn_io_packet_reader(struct llarp_vpn_io *io);
 
@@ -107,18 +117,18 @@ extern "C"
   /// associated info tries to give the vpn io to endpoint with name epName a
   /// deferred call to llarp_vpn_io.injected is queued unconditionally
   /// thread safe
-  void
+  bool
   llarp_main_inject_vpn_by_name(struct llarp_main *m, const char *epName,
                                 struct llarp_vpn_io *io,
                                 struct llarp_vpn_ifaddr_info info);
 
   /// give main context a vpn io on its default endpoint
-  static void
+  static bool
   llarp_main_inject_default_vpn(struct llarp_main *m, struct llarp_vpn_io *io,
                                 struct llarp_vpn_ifaddr_info info)
   {
-    llarp_main_inject_vpn_by_name(m, llarp_main_get_default_endpoint_name(m),
-                                  io, info);
+    return llarp_main_inject_vpn_by_name(
+        m, llarp_main_get_default_endpoint_name(m), io, info);
   }
 
   /// load config from file by name
@@ -131,13 +141,13 @@ extern "C"
 
   /// initialize application context and load config
   static struct llarp_main *
-  llarp_main_init(const char *fname, bool)
+  llarp_main_init(const char *fname)
   {
-    struct llarp_config *conf = NULL;
+    struct llarp_config *conf = 0;
     if(!llarp_config_load_file(fname, &conf))
-      return NULL;
+      return 0;
     if(conf == NULL)
-      return NULL;
+      return 0;
     return llarp_main_init_from_config(conf);
   }
 
@@ -147,8 +157,8 @@ extern "C"
   {
     struct llarp_config *conf;
     conf = llarp_default_config();
-    if(conf == NULL)
-      return NULL;
+    if(conf == 0)
+      return 0;
     return llarp_main_init_from_config(conf);
   }
 
@@ -158,15 +168,19 @@ extern "C"
 
   /// setup main context, returns 0 on success
   int
-  llarp_main_setup(struct llarp_main *ptr, bool debugMode);
+  llarp_main_setup(struct llarp_main *ptr);
 
   /// run main context, returns 0 on success, blocks until program end
   int
-  llarp_main_run(struct llarp_main *ptr);
+  llarp_main_run(struct llarp_main *ptr, struct llarp_main_runtime_opts opts);
 
   /// free main context and end all operations
   void
   llarp_main_free(struct llarp_main *ptr);
+
+  /// get version string
+  const char *
+  llarp_version();
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,6 @@
 #include <rpc/rpc.hpp>
 
+#include <constants/version.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
 #include <util/logging/logger.hpp>
@@ -195,6 +196,13 @@ namespace llarp
       ~Handler() override = default;
 
       Response
+      StartRouter() const
+      {
+        const bool rc = router->Run();
+        return Response{{"status", rc}};
+      }
+
+      Response
       DumpState() const
       {
         return router->ExtractStatus();
@@ -259,10 +267,21 @@ namespace llarp
         return resp;
       }
 
+      Response
+      DumpVersion() const
+      {
+        const Response resp{{"version", LLARP_VERSION}};
+        return resp;
+      }
+
       absl::optional< Response >
       HandleJSONRPC(Method_t method,
                     ABSL_ATTRIBUTE_UNUSED const Params& params) override
       {
+        if(method == "llarp.admin.start")
+        {
+          return StartRouter();
+        }
         if(method == "llarp.admin.link.neighboors")
         {
           return ListNeighboors();
@@ -278,6 +297,10 @@ namespace llarp
         if(method == "llarp.admin.status")
         {
           return DumpStatus();
+        }
+        if(method == "llarp.version")
+        {
+          return DumpVersion();
         }
         return false;
       }
