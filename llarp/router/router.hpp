@@ -327,7 +327,10 @@ namespace llarp
     Configure(Config *conf, llarp_nodedb *nodedb = nullptr) override;
 
     bool
-    Run(struct llarp_nodedb *nodedb) override;
+    StartJsonRpc() override;
+
+    bool
+    Run() override;
 
     /// stop running the router logic gracefully
     void
