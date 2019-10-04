@@ -196,6 +196,13 @@ namespace llarp
       ~Handler() override = default;
 
       Response
+      StartRouter() const
+      {
+        const bool rc = router->Run();
+        return Response{{"status", rc}};
+      }
+
+      Response
       DumpState() const
       {
         return router->ExtractStatus();
@@ -271,6 +278,10 @@ namespace llarp
       HandleJSONRPC(Method_t method,
                     ABSL_ATTRIBUTE_UNUSED const Params& params) override
       {
+        if(method == "llarp.admin.start")
+        {
+          return StartRouter();
+        }
         if(method == "llarp.admin.link.neighboors")
         {
           return ListNeighboors();
