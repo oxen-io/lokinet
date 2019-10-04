@@ -113,6 +113,7 @@ namespace llarp
     if(_running)
     {
       return util::StatusObject{
+          {"running", true},
           {"dht", _dht->impl->ExtractStatus()},
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
@@ -120,7 +121,7 @@ namespace llarp
     }
     else
     {
-      return util::StatusObject{{"notRunning", true}};
+      return util::StatusObject{{"running", false}};
     }
   }
 

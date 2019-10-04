@@ -278,7 +278,7 @@ namespace llarp
       HandleJSONRPC(Method_t method,
                     ABSL_ATTRIBUTE_UNUSED const Params& params) override
       {
-        if(method == "llarp.admin.start")
+        if(method == "llarp.admin.wakeup")
         {
           return StartRouter();
         }
