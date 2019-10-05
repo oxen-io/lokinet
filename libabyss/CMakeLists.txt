@@ -4,6 +4,24 @@ add_library(${ABYSS_LIB} "${CMAKE_CURRENT_SOURCE_DIR}/src/md5.cpp"
                          "${CMAKE_CURRENT_SOURCE_DIR}/src/server.cpp")
 
 target_include_directories(${ABYSS_LIB} PUBLIC include)
+
 if(NOT WIN32)
   target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB} ${LIBUV_LIBRARY})
-endif()
+  add_executable(${ABYSS_EXE} main.cpp)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads ${LIBS})
+elseif(NOT MSVC_VERSION)
+  add_executable(${ABYSS_EXE} main.cpp llarp/win32/abyss.rc)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+else()
+  add_executable(${ABYSS_EXE} main.cpp)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+endif(NOT WIN32)
+
+# for freebsd
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  target_link_directories(${ABYSS_EXE} PRIVATE /usr/local/lib)
+  target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+
+add_log_tag(${ABYSS_EXE})
+add_log_tag(${ABYSS_LIB})
