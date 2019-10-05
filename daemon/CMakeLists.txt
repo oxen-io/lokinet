@@ -32,7 +32,6 @@ else()
 
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
-    endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
         target_link_directories(${EXE} PRIVATE /usr/local/lib)
         target_link_directories(lokinet-rcutil PRIVATE /usr/local/lib)
