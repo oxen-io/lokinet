@@ -201,6 +201,7 @@ namespace llarp
                 {"llarp.admin.exit.list", [=]() { return ListExitLevels(); }},
                 {"llarp.admin.dumpstate", [=]() { return DumpState(); }},
                 {"llarp.admin.status", [=]() { return DumpStatus(); }},
+                {"llarp.our.addresses", [=]() { return OurAddresses(); }},
                 {"llarp.version", [=]() { return DumpVersion(); }}}
       {
       }
@@ -277,6 +278,21 @@ namespace llarp
                             {"servicesReady", numServicesReady},
                             {"services", services}};
         return resp;
+      }
+
+      Response
+      OurAddresses() const
+      {
+        Response services;
+        router->hiddenServiceContext().ForEachService(
+            [&](const std::string&,
+                const std::shared_ptr< service::Endpoint >& service) {
+              const service::Address addr = service->GetIdentity().pub.Addr();
+              services.push_back(addr.ToString());
+              return true;
+            });
+
+        return Response{{"services", services}};
       }
 
       Response
