@@ -42,4 +42,13 @@ else()
     endif()
     target_link_libraries(${EXE} PUBLIC ${EXE_LIBS} ${LIBS})
     target_link_libraries(lokinet-rcutil PUBLIC ${EXE_LIBS} ${LIBS})
+
+    find_package(CURL)
+
+    if(CURL_FOUND)
+        target_include_directories(lokinet-rcutil PRIVATE ${CURL_INCLUDE_DIRS})
+        target_link_libraries(lokinet-rcutil PRIVATE ${CURL_LIBRARIES})
+        target_compile_definitions(lokinet-rcutil PRIVATE -DWITH_CURL=1)
+    endif(CURL_FOUND)
+
 endif(SHADOW)

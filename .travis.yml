@@ -133,6 +133,7 @@ addons:
     - gcc-mingw-w64-base
     - git
     - libcap-dev
+    - libcurl-dev
     - libuv1-dev
     - mingw-w64 mingw-w64-common
     - ninja-build
@@ -140,6 +141,7 @@ addons:
     packages:
     - ccache
     - cmake
+    - curl
     - libuv
     - llvm
     - make
@@ -148,7 +150,7 @@ addons:
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      choco install make ninja;
+      choco install curl make ninja;
       choco upgrade cmake.install;
       export CC="/c/Program Files/LLVM/bin/clang-cl";
       export CXX="/c/Program Files/LLVM/bin/clang-cl";

@@ -132,7 +132,7 @@ namespace llarp
     std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
     std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
     std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); } 
+    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); }
     bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
     const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
     const AddressInfo& addrInfo() const        { return m_addrInfo; }
@@ -325,6 +325,12 @@ namespace llarp
     bool
     LoadFromStr(string_view str);
   };
+
+  fs::path
+  GetDefaultConfigDir();
+
+  fs::path
+  GetDefaultConfigPath();
 
 }  // namespace llarp
 
