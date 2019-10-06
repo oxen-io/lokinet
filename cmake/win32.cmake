@@ -31,7 +31,7 @@ if(EMBEDDED_CFG)
   link_libatomic()
 endif()
 
-get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
+list(APPEND LIBTUNTAP_SRC ${TT_ROOT}/tuntap-windows.c)
 get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
 add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500)
 set(EXE_LIBS ${STATIC_LIB} ${FS_LIB} ws2_32 iphlpapi)

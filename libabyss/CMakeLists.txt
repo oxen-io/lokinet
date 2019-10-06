@@ -4,20 +4,19 @@ add_library(${ABYSS_LIB} "${CMAKE_CURRENT_SOURCE_DIR}/src/md5.cpp"
                          "${CMAKE_CURRENT_SOURCE_DIR}/src/server.cpp")
 
 target_include_directories(${ABYSS_LIB} PUBLIC include)
+target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 
-if(NOT WIN32)
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB} ${LIBUV_LIBRARY})
+if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL iOS)
+  target_link_libraries(${ABYSS_LIB} PUBLIC ${LIBUV_LIBRARY})
   add_executable(${ABYSS_EXE} main.cpp)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads ${LIBS})
-elseif(NOT MSVC_VERSION)
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
-  add_executable(${ABYSS_EXE} main.cpp llarp/win32/abyss.rc)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-else()
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
+elseif(MSVC_VERSION)
   add_executable(${ABYSS_EXE} main.cpp)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-endif(NOT WIN32)
+elseif(NOT CMAKE_SYSTEM_NAME STREQUAL iOS)
+  add_executable(${ABYSS_EXE} main.cpp llarp/win32/abyss.rc)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+endif()
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")

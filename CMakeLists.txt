@@ -213,17 +213,6 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
-set(LIBTUNTAP_SRC_BASE
-  ${TT_ROOT}/tuntap.cpp
-  ${TT_ROOT}/tuntap_log.cpp
-  ${LIBTUNTAP_IMPL})
-
-if(UNIX)
-  set(LIBTUNTAP_SRC ${TT_ROOT}/tuntap-unix.c ${LIBTUNTAP_SRC_BASE})
-else()
-  set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
-endif()
-
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
 
 add_subdirectory(crypto)

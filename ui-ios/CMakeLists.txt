@@ -31,7 +31,9 @@ add_subdirectory(${libuv_SOURCE_DIR} ${libuv_BINARY_DIR})
 
 include("${LOKINET_ROOT}/cmake/basic_definitions.cmake")
 set(LIBUV_IN_SOURCE ON)
+set(LIBUV_LIBRARY uv_a)
 include("${LOKINET_ROOT}/cmake/unix.cmake")
+unset(LIBTUNTAP_SRC)
 
 find_package(Threads REQUIRED)
 
