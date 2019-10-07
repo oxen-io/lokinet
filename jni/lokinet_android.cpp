@@ -39,10 +39,10 @@ struct AndroidMain
   {
     if(m_impl || m_thread)
       return true;
-    m_impl = llarp_main_init(configFile.c_str(), true);
+    m_impl = llarp_main_default_init();
     if(m_impl == nullptr)
       return false;
-    if(llarp_main_setup(m_impl, false))
+    if(llarp_main_setup(m_impl))
     {
       llarp_main_free(m_impl);
       m_impl = nullptr;
@@ -63,7 +63,8 @@ struct AndroidMain
   void
   Run()
   {
-    if(llarp_main_run(m_impl))
+    llarp_main_runtime_opts opts;
+    if(llarp_main_run(m_impl, opts))
     {
       // on error
       llarp::LogError("daemon run fail");
@@ -72,50 +73,6 @@ struct AndroidMain
       llarp_main_signal(ptr, SIGINT);
       llarp_main_free(ptr);
     }
-  }
-
-  const char*
-  GetIfAddr()
-  {
-    std::string addr;
-    if(m_impl)
-    {
-      auto* ctx = llarp_main_get_context(m_impl);
-      if(!ctx)
-        return "";
-
-      ctx->router->hiddenServiceContext().ForEachService(
-          [&addr](const std::string&,
-                  const llarp::service::Endpoint_ptr& ep) -> bool {
-            if(addr.empty())
-            {
-              if(ep->HasIfAddr())
-              {
-                // TODO: v4
-                const auto ip = ep->GetIfAddr();
-                if(ip.h)
-                {
-                  addr = ip.ToString();
-                  return false;
-                }
-              }
-            }
-            return true;
-          });
-    }
-    return addr.c_str();
-  }
-
-  int
-  GetIfRange() const
-  {
-    if(m_impl)
-    {
-      auto* ctx = llarp_main_get_context(m_impl);
-      if(!ctx)
-        return -1;
-    }
-    return -1;
   }
 
   void
@@ -200,19 +157,13 @@ extern "C"
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr(JNIEnv* env, jclass)
   {
-    if(daemon_ptr)
-      return env->NewStringUTF(daemon_ptr->GetIfAddr());
-    else
-      return env->NewStringUTF("");
+    return env->NewStringUTF("");
   }
 
   JNIEXPORT jint JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_getIfRange(JNIEnv*, jclass)
   {
-    if(daemon_ptr)
-      return daemon_ptr->GetIfRange();
-    else
-      return -1;
+    return -1;
   }
 
   JNIEXPORT void JNICALL
