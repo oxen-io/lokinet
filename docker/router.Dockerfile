@@ -13,7 +13,7 @@ RUN ./lokinet-bootstrap ${bootstrap}
 FROM alpine:latest
 
 COPY lokinet-docker.ini /root/.lokinet/lokinet.ini
-COPY --from=builder /src/build/lokinet .
+COPY --from=builder /src/build/daemon/lokinet .
 COPY --from=builder /root/.lokinet/bootstrap.signed /root/.lokinet/
 
 CMD ["./lokinet"]
