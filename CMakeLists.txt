@@ -42,22 +42,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# Basic definitions
-set(LIB lokinet)
-set(SHARED_LIB ${LIB}-shared)
-set(STATIC_LIB ${LIB}-static)
-set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
-set(UTIL_LIB ${LIB}-util)
-set(PLATFORM_LIB ${LIB}-platform)
-set(ANDROID_LIB ${LIB}android)
-set(ABYSS libabyss)
-set(ABYSS_LIB abyss)
-set(ABYSS_EXE ${ABYSS_LIB}-main)
-get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
-add_definitions(-D${CMAKE_SYSTEM_NAME})
-
-get_filename_component(CORE_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include" ABSOLUTE)
-get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" ABSOLUTE)
+include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
   enable_language(ASM_MASM)
@@ -117,6 +102,11 @@ endif(WITH_SHELLHOOKS)
 
 # Always build PIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(TRACY_ROOT)
+  include_directories(${TRACY_ROOT})
+  add_definitions(-DTRACY_ENABLE)
+endif()
 
 set(ABSEIL_DIR vendor/abseil-cpp)
 include_directories(SYSTEM ${ABSEIL_DIR})
@@ -211,16 +201,8 @@ if(NOT GIT_VERSION)
   string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
 endif(NOT GIT_VERSION)
 
-string(REGEX REPLACE ^fatal.*$ nogit GIT_VERSION_REAL "${GIT_VERSION}")
+string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
-
-set(EXE lokinet)
-set(EXE_SRC daemon/main.cpp)
-if(TRACY_ROOT)
-  include_directories(${TRACY_ROOT})
-  add_definitions(-DTRACY_ENABLE)
-  list(APPEND EXE_SRC ${TRACY_ROOT}/TracyClient.cpp)
-endif()
 
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
@@ -237,17 +219,6 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
-set(LIBTUNTAP_SRC_BASE
-  ${TT_ROOT}/tuntap.cpp
-  ${TT_ROOT}/tuntap_log.cpp
-  ${LIBTUNTAP_IMPL})
-
-if(UNIX)
-  set(LIBTUNTAP_SRC ${TT_ROOT}/tuntap-unix.c ${LIBTUNTAP_SRC_BASE})
-else()
-  set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
-endif()
-
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
 if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
@@ -256,85 +227,16 @@ endif()
 add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
+add_subdirectory(daemon)
 
-if (NOT WIN32)
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads ${LIBS})
-elseif(NOT MSVC_VERSION)
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-else()
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-endif(NOT WIN32)
+enable_testing()
 
-
-# Why does abyss not inherit the existing include folders?
-target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
-target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include" llarp vendor/nlohmann/include include crypto/include)
-
-# for freebsd
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_link_directories(${ABYSS_EXE} PRIVATE /usr/local/lib)
-  target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-add_log_tag(${ABYSS_EXE})
-add_log_tag(${ABYSS_LIB})
-
-
-if(SHADOW)
-  set(LOKINET_SHADOW shadow-plugin-${SHARED_LIB})
-  set(LOKINET_SHADOW_LIBS ${SHARED_LIB})
-  add_shadow_plugin(${LOKINET_SHADOW} ${EXE_SRC})
-  target_link_libraries(${LOKINET_SHADOW} ${LOKINET_SHADOW_LIBS})
-  target_include_directories(${LOKINET_SHADOW} PUBLIC ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/llarp ${PROJECT_SOURCE_DIR}/crypto/include)
-else()
-  if(NOT WIN32)
-    add_executable(${EXE} ${EXE_SRC})
-    if(TRACY_ROOT)
-      add_executable(lokinet-rcutil daemon/rcutil.cpp ${TRACY_ROOT}/TracyClient.cpp)
-    else()
-      add_executable(lokinet-rcutil daemon/rcutil.cpp)
-    endif()
-  elseif(NOT MSVC_VERSION)
-    add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
-    add_executable(lokinet-rcutil daemon/rcutil.cpp llarp/win32/version.rc)
-  else()
-    add_executable(${EXE} ${EXE_SRC})
-    add_executable(lokinet-rcutil daemon/rcutil.cpp)
-  endif(NOT WIN32)
-
-  add_log_tag(${EXE})
-  add_log_tag(lokinet-rcutil)
-
-  install(TARGETS ${EXE} RUNTIME DESTINATION bin)
-  install(TARGETS lokinet-rcutil RUNTIME DESTINATION bin)
-  if(WIN32)
-    install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)
-  else()
-    install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
-  endif()
-
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_link_directories(${EXE} PRIVATE /usr/local/lib)
-    target_link_directories(lokinet-rcutil PRIVATE /usr/local/lib)
-  endif()
-  target_link_libraries(${EXE} PUBLIC ${EXE_LIBS} ${LIBS})
-  target_link_libraries(lokinet-rcutil PUBLIC ${EXE_LIBS} ${LIBS})
-
+if (NOT SHADOW)
+  add_subdirectory(test)
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
     set_property(TARGET ${ANDROID_LIB} PROPERTY CXX_STANDARD 14)
     add_log_tag(${ANDROID_LIB})
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)
-endif(SHADOW)
-
-enable_testing()
-
-if (NOT SHADOW)
-  add_subdirectory(test)
 endif()

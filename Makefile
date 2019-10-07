@@ -120,7 +120,7 @@ endif
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
-EXE = $(BUILD_ROOT)/lokinet
+EXE = $(BUILD_ROOT)/daemon/lokinet
 TEST_EXE = $(BUILD_ROOT)/test/testAll
 ABYSS_EXE = $(BUILD_ROOT)/abyss-main
 
@@ -207,6 +207,10 @@ test: $(TEST_EXE)
 $(LIBUV_PREFIX):
 	mkdir -p $(BUILD_ROOT)
 	git clone -b "$(LIBUV_VERSION)" https://github.com/libuv/libuv "$(LIBUV_PREFIX)"
+
+ios:
+	cmake -S ui-ios -B build -G Xcode -DCMAKE_TOOLCHAIN_FILE=$(shell pwd)/ui-ios/ios-toolchain.cmake -DCMAKE_SYSTEM_NAME=iOS "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.2 -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=NO -DCMAKE_IOS_INSTALL_COMBINED=YES
+	cmake --build build
 
 android-gradle-prepare: $(LIBUV_PREFIX)
 	rm -f $(ANDROID_PROPS)

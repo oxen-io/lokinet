@@ -81,10 +81,10 @@ namespace llarp
     GetDatabase(const byte_t *pk);
 
     int
-    Setup(bool debug = false);
+    Setup();
 
     int
-    Run();
+    Run(bool daemonMode);
 
     void
     HandleSignal(int sig);

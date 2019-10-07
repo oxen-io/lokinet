@@ -110,11 +110,19 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    return util::StatusObject{
-        {"dht", _dht->impl->ExtractStatus()},
-        {"services", _hiddenServiceContext.ExtractStatus()},
-        {"exit", _exitContext.ExtractStatus()},
-        {"links", _linkManager.ExtractStatus()}};
+    if(_running)
+    {
+      return util::StatusObject{
+          {"running", true},
+          {"dht", _dht->impl->ExtractStatus()},
+          {"services", _hiddenServiceContext.ExtractStatus()},
+          {"exit", _exitContext.ExtractStatus()},
+          {"links", _linkManager.ExtractStatus()}};
+    }
+    else
+    {
+      return util::StatusObject{{"running", false}};
+    }
   }
 
   bool
@@ -836,11 +844,10 @@ namespace llarp
   }
 
   bool
-  Router::Run(struct llarp_nodedb *nodedb)
+  Router::StartJsonRpc()
   {
     if(_running || _stopping)
       return false;
-    this->_nodedb = nodedb;
 
     if(enableRPCServer)
     {
@@ -860,6 +867,16 @@ namespace llarp
       }
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
+
+    return true;
+  }
+
+  bool
+  Router::Run()
+  {
+    if(_running || _stopping)
+      return false;
+
     if(whitelistRouters)
     {
       rpcCaller = std::make_unique< rpc::Caller >(this);
@@ -1012,8 +1029,10 @@ namespace llarp
       _dht->impl->Nodes()->PutNode(rc);
     }
 
-    LogInfo("have ", nodedb->num_loaded(), " routers");
+    LogInfo("have ", _nodedb->num_loaded(), " routers");
+
     _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();

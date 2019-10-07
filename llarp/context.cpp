@@ -193,39 +193,13 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   int
-  Context::Setup(bool debug)
+  Context::Setup()
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
 
-    if(debug)
-    {
-      static std::string WARNING = R"(
-__        ___    ____  _   _ ___ _   _  ____
-\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
- \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
-  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
-   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
-
-This Lokinet session is not private!!
-
-Sending traffic unencrypted!!
-__        ___    ____  _   _ ___ _   _  ____
-\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
- \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
-  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
-   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
-
-        )";
-
-      std::cerr << WARNING << '\n';
-      crypto = std::make_unique< NoOpCrypto >();
-    }
-    else
-    {
-      crypto = std::make_unique< sodium::CryptoLibSodium >();
-    }
+    crypto        = std::make_unique< sodium::CryptoLibSodium >();
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
     router = std::make_unique< Router >(worker, mainloop, logic);
@@ -248,7 +222,7 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   int
-  Context::Run()
+  Context::Run(bool backgroundMode)
   {
     if(router == nullptr)
     {
@@ -259,8 +233,14 @@ __        ___    ____  _   _ ___ _   _  ____
     if(!WritePIDFile())
       return 1;
     // run
-    if(!router->Run(nodedb.get()))
+    if(!router->StartJsonRpc())
       return 1;
+
+    if(!backgroundMode)
+    {
+      if(!router->Run())
+        return 2;
+    }
 
     // run net io thread
     llarp::LogInfo("running mainloop");
@@ -438,20 +418,20 @@ extern "C"
   }
 
   int
-  llarp_main_setup(struct llarp_main *ptr, bool debug)
+  llarp_main_setup(struct llarp_main *ptr)
   {
-    return ptr->ctx->Setup(debug);
+    return ptr->ctx->Setup();
   }
 
   int
-  llarp_main_run(struct llarp_main *ptr)
+  llarp_main_run(struct llarp_main *ptr, bool backgroundMode)
   {
     if(!ptr)
     {
       llarp::LogError("No ptr passed in");
       return 1;
     }
-    return ptr->ctx->Run();
+    return ptr->ctx->Run(backgroundMode);
   }
 
   void
