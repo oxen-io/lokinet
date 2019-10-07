@@ -41,7 +41,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 VersionInfoVersion=0.5.2
 VersionInfoCompany=Loki Project
-VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
+VersionInfoDescription=LokiNET for Microsoftï¿½ Windowsï¿½ NTï¿½
 #ifndef RELEASE
 VersionInfoTextVersion=0.5.2-dev-{#VCSRev}
 VersionInfoProductTextVersion=0.5.2-dev-{#VCSRev}
@@ -54,7 +54,7 @@ VersionInfoProductVersion=0.5.2
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
-VersionInfoCopyright=Copyright ©2018-2019 Loki Project
+VersionInfoCopyright=Copyright ï¿½2018-2019 Loki Project
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -89,7 +89,7 @@ Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags:
 #endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\lokinet-rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\lokinetctl.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
@@ -144,7 +144,7 @@ Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9
 Name: "{userappdata}\.lokinet"
 
 [Code]
-var 
+var
 TapInstalled: Boolean;
 
 function reg_query_helper(): Integer;

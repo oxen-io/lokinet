@@ -479,9 +479,9 @@ namespace llarp
   GetDefaultConfigDir()
   {
 #ifdef _WIN32
-    fs::path homedir = fs::path(getenv("APPDATA"));
+    const fs::path homedir = fs::path(getenv("APPDATA"));
 #else
-    fs::path homedir = fs::path(getenv("HOME"));
+    const fs::path homedir = fs::path(getenv("HOME"));
 #endif
     return homedir / fs::path(".lokinet");
   }

@@ -116,7 +116,7 @@ main(int argc, char* argv[])
 
   // clang-format off
   cxxopts::Options options(
-    "lokinet-rcutil",
+    "lokinetctl",
     "LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
   );
 
