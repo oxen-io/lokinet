@@ -35,6 +35,10 @@ extern "C"
   struct llarp_config *
   llarp_default_config();
 
+  /// free previously allocated configuration
+  void
+  llarp_config_free(struct llarp_config *);
+
   /// packet writer to send packets to lokinet internals
   struct llarp_vpn_writer_pipe;
   /// packet reader to recv packets from lokinet internals
@@ -68,8 +72,8 @@ extern "C"
     char ifname[64];
     /// interface's address as string
     char ifaddr[128];
-    /// netmask bits
-    unsigned char netmask;
+    /// netmask number of bits set
+    uint8_t netmask;
   };
 
   /// initialize llarp_vpn_io private implementation
@@ -132,10 +136,19 @@ extern "C"
   }
 
   /// load config from file by name
+  /// allocates new config and puts it into c
+  /// return false on failure
   bool
-  llarp_config_load_file(const char *fname, struct llarp_config **config);
+  llarp_config_load_file(const char *fname, struct llarp_config **c);
+
+  /// loads config from file by name
+  /// uses already allocated config
+  /// return false on failure
+  bool
+  llarp_config_read_file(struct llarp_config *c, const char *f);
 
   /// make a main context from configuration
+  /// copies config contents
   struct llarp_main *
   llarp_main_init_from_config(struct llarp_config *conf);
 
@@ -143,24 +156,40 @@ extern "C"
   static struct llarp_main *
   llarp_main_init(const char *fname)
   {
+    struct llarp_main *m      = 0;
     struct llarp_config *conf = 0;
     if(!llarp_config_load_file(fname, &conf))
       return 0;
     if(conf == NULL)
       return 0;
-    return llarp_main_init_from_config(conf);
+    m = llarp_main_init_from_config(conf);
+    llarp_config_free(conf);
+    return m;
   }
 
   /// initialize applicatin context with all defaults
   static struct llarp_main *
   llarp_main_default_init()
   {
+    struct llarp_main *m;
     struct llarp_config *conf;
     conf = llarp_default_config();
     if(conf == 0)
       return 0;
-    return llarp_main_init_from_config(conf);
+    m = llarp_main_init_from_config(conf);
+    llarp_config_free(conf);
+    return m;
   }
+
+  /// (re)configure main context
+  /// return true if (re)configuration was successful
+  bool
+  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf);
+
+  /// return true if this main context is running
+  /// return false otherwise
+  bool
+  llarp_main_is_running(struct llarp_main *ptr);
 
   /// handle signal for main context
   void
@@ -174,6 +203,11 @@ extern "C"
   int
   llarp_main_run(struct llarp_main *ptr, struct llarp_main_runtime_opts opts);
 
+  /// tell main context to stop and wait for complete stop
+  /// after calling this you can call llarp_main_free safely
+  void
+  llarp_main_stop(struct llarp_main *ptr);
+
   /// free main context and end all operations
   void
   llarp_main_free(struct llarp_main *ptr);
@@ -181,6 +215,14 @@ extern "C"
   /// get version string
   const char *
   llarp_version();
+
+  /// return sizeof(llarp_main); for jni
+  size_t
+  llarp_main_size();
+
+  /// return sizeof(llarp_config); for jni
+  size_t
+  llarp_config_size();
 
 #ifdef __cplusplus
 }

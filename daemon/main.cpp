@@ -149,9 +149,9 @@ main(int argc, char *argv[])
   options.parse_positional("config");
   // clang-format on
 
-  bool genconfigOnly  = false;
-  bool asRouter       = false;
-  bool overWrite      = false;
+  bool genconfigOnly = false;
+  bool asRouter      = false;
+  bool overWrite     = false;
   std::string conffname;  // suggestions: confFName? conf_fname?
   try
   {
@@ -319,8 +319,7 @@ main(int argc, char *argv[])
     return 0;
   }
 
-  std::thread main_thread{
-      std::bind(&run_main_context, conffname, opts)};
+  std::thread main_thread{std::bind(&run_main_context, conffname, opts)};
   auto ftr = exit_code.get_future();
   do
   {

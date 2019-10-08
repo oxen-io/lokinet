@@ -173,7 +173,7 @@ namespace llarp
     }
 
     Endpoint_ptr
-    Context::GetEndpointByName(const std::string & name)
+    Context::GetEndpointByName(const std::string &name)
     {
       auto itr = m_Endpoints.find(name);
       if(itr != m_Endpoints.end())

@@ -1,5 +1,4 @@
 #include <llarp.hpp>
-#include <llarp.h>
 #include <constants/version.hpp>
 
 #include <config/config.hpp>
@@ -371,43 +370,62 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 }  // namespace llarp
 
+struct llarp_main
+{
+  llarp_main(llarp_config *conf);
+  ~llarp_main() = default;
+  std::unique_ptr< llarp::Context > ctx;
+};
+
+struct llarp_config
+{
+  llarp::Config impl;
+  llarp_config() = default;
+
+  llarp_config(const llarp_config *other) : impl(other->impl)
+  {
+  }
+};
+
 extern "C"
 {
-  struct llarp_main
+  size_t
+  llarp_main_size()
   {
-    llarp_main(llarp_config *conf);
-    ~llarp_main() = default;
-    std::unique_ptr< llarp::Context > ctx;
-  };
+    return sizeof(llarp_main);
+  }
 
-  struct llarp_config
+  size_t
+  llarp_config_size()
   {
-    llarp::Config impl;
-    llarp_config() = default;
-
-    llarp_config(const llarp_config *other) : impl(other->impl)
-    {
-    }
-  };
+    return sizeof(llarp_config);
+  }
 
   struct llarp_config *
   llarp_default_config()
   {
-    static llarp_config conf;
+    llarp_config *conf = new llarp_config();
 #ifdef ANDROID
     // put andrid config overrides here
 #endif
 #ifdef IOS
     // put IOS config overrides here
 #endif
-    return &conf;
+    return conf;
+  }
+
+  void
+  llarp_config_free(struct llarp_config *conf)
+  {
+    if(conf)
+      delete conf;
   }
 
   struct llarp_main *
   llarp_main_init_from_config(struct llarp_config *conf)
   {
     if(conf == nullptr)
-      conf = new llarp_config(llarp_default_config());
+      return nullptr;
     llarp_main *m = new llarp_main(conf);
     if(m->ctx->Configure())
       return m;
