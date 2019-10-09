@@ -24,7 +24,7 @@ VisitStringAsStringView(JNIEnv* env, jobject str, V visit)
   jbyte* pBytes       = env->GetByteArrayElements(stringJbytes, NULL);
 
   T result =
-      visit(llarp::string_view(static_cast< const char* >(pBytes), length));
+      visit(llarp::string_view((const char*)pBytes, length));
 
   env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
   env->DeleteLocalRef(stringJbytes);
