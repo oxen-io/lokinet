@@ -5,7 +5,7 @@
 extern "C"
 {
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass* c)
+  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass)
   {
     llarp_config* conf = llarp_default_config();
     if(conf == nullptr)
@@ -14,7 +14,7 @@ extern "C"
   }
 
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Free(JNIEnv* env, jclass c,
+  Java_network_loki_lokinet_LokinetConfig_Free(JNIEnv* env, jclass,
                                                jobject buf)
   {
     llarp_config_free(FromBuffer< llarp_config >(env, buf));
