@@ -21,8 +21,6 @@ public class NetworkStateChangeReceiver extends BroadcastReceiver {
 			boolean isConnected = activeNetworkInfo!=null && activeNetworkInfo.isConnected();
 			// https://developer.android.com/training/monitoring-device-state/connectivity-monitoring.html?hl=ru
 			// boolean isWiFi = activeNetworkInfo!=null && (activeNetworkInfo.getType() == ConnectivityManager.TYPE_WIFI);
-
-			Lokinet_JNI.onNetworkStateChanged(isConnected);
 		} catch (Throwable tr) {
 			Log.d(TAG,"",tr);
 		}
