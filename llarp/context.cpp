@@ -242,7 +242,7 @@ __        ___    ____  _   _ ___ _   _  ____
     llarp_ev_loop_run_single_process(mainloop, logic);
     if(closeWaiter)
     {
-      // inform promise if called by Stop
+      // inform promise if called by CloseAsync
       closeWaiter->set_value();
     }
     return 0;
@@ -254,7 +254,7 @@ __        ___    ____  _   _ ___ _   _  ____
     /// already closing
     if(closeWaiter)
       return;
-    if(CallSafe(std::bind(&Context::HandleSignal, this, SIGINT)))
+    if(CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
       closeWaiter = std::make_unique< std::promise< void > >();
   }
 
