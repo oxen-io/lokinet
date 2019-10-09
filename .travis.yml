@@ -133,7 +133,7 @@ addons:
     - gcc-mingw-w64-base
     - git
     - libcap-dev
-    - libcurl-dev
+    - libcurl4-openssl-dev
     - libuv1-dev
     - mingw-w64 mingw-w64-common
     - ninja-build
