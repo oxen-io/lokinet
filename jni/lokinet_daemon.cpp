@@ -31,7 +31,7 @@ extern "C"
       return JNI_FALSE;
     if(llarp_main_configure(ptr, config))
       return JNI_TRUE;
-    return JNI_FALSE;
+    return llarp_main_setup(ptr) == 0 ? JNI_TRUE : JNI_FALSE;
   }
 
   JNIEXPORT jint JNICALL

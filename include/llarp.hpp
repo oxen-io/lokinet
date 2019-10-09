@@ -87,6 +87,14 @@ namespace llarp
     bool
     Configure();
 
+    /// close async
+    void
+    Close();
+
+    /// wait until closed and done
+    void
+    Wait();
+
     /// call a function in logic thread
     /// return true if queued for calling
     /// return false if not queued for calling
@@ -117,6 +125,7 @@ namespace llarp
 
     std::string configfile;
     std::string pidfile;
+    std::unique_ptr< std::promise< void > > closeWaiter;
   };
 }  // namespace llarp
 

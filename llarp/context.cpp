@@ -240,8 +240,32 @@ __        ___    ____  _   _ ___ _   _  ____
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, logic);
-    // waits for router graceful stop
+    if(closeWaiter)
+    {
+      // inform promise if called by Stop
+      closeWaiter->set_value();
+    }
     return 0;
+  }
+
+  void
+  Context::Close()
+  {
+    /// already closing
+    if(closeWaiter)
+      return;
+    if(CallSafe(std::bind(&Context::HandleSignal, this, SIGINT)))
+      closeWaiter = std::make_unique< std::promise< void > >();
+  }
+
+  void
+  Context::Wait()
+  {
+    if(closeWaiter)
+    {
+      closeWaiter->get_future().wait();
+      closeWaiter.reset();
+    }
   }
 
   bool
@@ -434,6 +458,14 @@ extern "C"
   }
 
   bool
+  llarp_config_read_file(struct llarp_config *conf, const char *fname)
+  {
+    if(conf == nullptr)
+      return false;
+    return conf->impl.Load(fname);
+  }
+
+  bool
   llarp_config_load_file(const char *fname, struct llarp_config **conf)
   {
     llarp_config *c = new llarp_config();
@@ -564,6 +596,31 @@ extern "C"
   llarp_main_get_default_endpoint_name(struct llarp_main *)
   {
     return "default";
+  }
+
+  void
+  llarp_main_stop(struct llarp_main *ptr)
+  {
+    if(ptr == nullptr)
+      return;
+    ptr->ctx->Close();
+    ptr->ctx->Wait();
+  }
+
+  bool
+  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf)
+  {
+    if(ptr == nullptr || conf == nullptr)
+      return false;
+    // give new config
+    ptr->ctx->config.reset(new llarp::Config(conf->impl));
+    return ptr->ctx->Configure();
+  }
+
+  bool
+  llarp_main_is_running(struct llarp_main *ptr)
+  {
+    return ptr && ptr->ctx->router && ptr->ctx->router->IsRunning();
   }
 }
 
