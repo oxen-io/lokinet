@@ -69,6 +69,10 @@ llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &ev);
 void
 llarp_ev_loop_stop(const llarp_ev_loop_ptr &ev);
 
+/// list of packets we recv'd
+/// forward declared
+struct llarp_pkt_list;
+
 /// UDP handling configuration
 struct llarp_udp_io
 {
@@ -87,6 +91,11 @@ struct llarp_udp_io
   int (*sendto)(struct llarp_udp_io *, const struct sockaddr *, const byte_t *,
                 size_t);
 };
+
+/// get all packets recvieved last tick
+/// return true if we got packets return false if we didn't
+bool
+llarp_ev_udp_recvmany(struct llarp_udp_io *udp, struct llarp_pkt_list *pkts);
 
 /// add UDP handler
 int

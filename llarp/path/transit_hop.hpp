@@ -79,7 +79,9 @@ namespace llarp
       return info.print(out, -1, -1);
     }
 
-    struct TransitHop : public IHopHandler, public routing::IMessageHandler
+    struct TransitHop : public IHopHandler,
+                        public routing::IMessageHandler,
+                        std::enable_shared_from_this< TransitHop >
     {
       TransitHop();
 
@@ -193,15 +195,26 @@ namespace llarp
       bool
       HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
 
-      // handle data in upstream direction
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     AbstractRouter* r) override;
+      void
+      FlushUpstream(AbstractRouter* r) override;
 
-      // handle data in downstream direction
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       AbstractRouter* r) override;
+      void
+      FlushDownstream(AbstractRouter* r) override;
+
+     protected:
+      void
+      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+
+      void
+      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+
+      void
+      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                        AbstractRouter* r) override;
+
+      void
+      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                          AbstractRouter* r) override;
 
      private:
       void

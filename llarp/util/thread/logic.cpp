@@ -13,11 +13,26 @@ namespace llarp
     llarp_threadpool_tick(this->thread);
   }
 
+  Logic::Logic()
+      : thread(llarp_init_threadpool(1, "llarp-logic"))
+      , timer(llarp_init_timer())
+  {
+    llarp_threadpool_start(thread);
+    /// set thread id
+    thread->impl->addJob([&]() { id.emplace(std::this_thread::get_id()); });
+  }
+
+  Logic::~Logic()
+  {
+    llarp_threadpool_stop(this->thread);
+    llarp_threadpool_join(this->thread);
+    llarp_free_threadpool(&this->thread);
+  }
+
   void
   Logic::tick_async(llarp_time_t now)
   {
     llarp_timer_tick_all_async(this->timer, this->thread, now);
-    llarp_threadpool_tick(this->thread);
   }
 
   void
@@ -40,9 +55,7 @@ namespace llarp
     if(this->thread)
     {
       llarp_threadpool_stop(this->thread);
-      llarp_threadpool_join(this->thread);
     }
-    llarp_free_threadpool(&this->thread);
 
     llarp::LogDebug("logic timer stop");
     if(this->timer)
@@ -56,12 +69,11 @@ namespace llarp
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > f)
+  Logic::queue_func(std::function< void(void) >&& f)
   {
-    if(!this->thread->QueueFunc(f))
+    if(!this->thread->impl->tryAddJob(f))
     {
-      // try calling it later if the job queue overflows
-      this->call_later(1, f);
+      call_later(0, f);
     }
     return true;
   }
@@ -97,7 +109,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return ourID == std::this_thread::get_id();
+    return id.value() == std::this_thread::get_id();
   }
 
 }  // namespace llarp

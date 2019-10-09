@@ -29,6 +29,7 @@ option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
 option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
+option(TRACY_ROOT "include tracy profiler source")
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -101,6 +102,11 @@ endif(WITH_SHELLHOOKS)
 
 # Always build PIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if(TRACY_ROOT)
+  include_directories(${TRACY_ROOT})
+  add_definitions(-DTRACY_ENABLE)
+endif()
 
 set(ABSEIL_DIR vendor/abseil-cpp)
 include_directories(SYSTEM ${ABSEIL_DIR})
@@ -214,6 +220,9 @@ if(ANDROID)
 endif(ANDROID)
 
 set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
+if(TRACY_ROOT)
+  list(APPEND LIBS -ldl)
+endif()
 
 add_subdirectory(crypto)
 add_subdirectory(llarp)

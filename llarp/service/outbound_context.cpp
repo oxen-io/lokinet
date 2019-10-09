@@ -193,7 +193,7 @@ namespace llarp
           return;
         }
       }
-      AsyncKeyExchange* ex = new AsyncKeyExchange(
+      auto ex = std::make_shared< AsyncKeyExchange >(
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
           currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
 
@@ -202,7 +202,7 @@ namespace llarp
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
-      ex->frame.F        = ex->msg.introReply.pathID;
+      ex->frame->F       = ex->msg.introReply.pathID;
       m_Endpoint->CryptoWorker()->addJob(
           std::bind(&AsyncKeyExchange::Encrypt, ex));
     }
@@ -337,6 +337,12 @@ namespace llarp
       exclude.insert(m_NextIntro.router);
       for(const auto& snode : m_Endpoint->SnodeBlacklist())
         exclude.insert(snode);
+      if(hop == 0)
+      {
+        // exclude any exits as our first hop
+        const auto exits = m_Endpoint->GetExitRouters();
+        exclude.insert(exits.begin(), exits.end());
+      }
       if(hop == numHops - 1)
       {
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);

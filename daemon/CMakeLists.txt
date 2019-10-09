@@ -1,6 +1,10 @@
 set(EXE lokinet)
 set(EXE_SRC main.cpp)
 
+if(TRACY_ROOT)
+    list(APPEND EXE_SRC ${TRACY_ROOT}/TracyClient.cpp)
+endif()
+
 if(SHADOW)
     set(LOKINET_SHADOW shadow-plugin-${SHARED_LIB})
     set(LOKINET_SHADOW_LIBS ${SHARED_LIB})

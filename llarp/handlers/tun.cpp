@@ -18,6 +18,8 @@
 
 #include <util/str.hpp>
 
+#include <absl/strings/ascii.h>
+
 namespace llarp
 {
   namespace handlers
@@ -143,18 +145,39 @@ namespace llarp
       // the keyfile
       if(k == "exit-node")
       {
+        IPRange exitRange;
         llarp::RouterID exitRouter;
-        if(!(exitRouter.FromString(v)
-             || HexDecode(v.c_str(), exitRouter.begin(), exitRouter.size())))
+        std::string routerStr;
+        const auto pos = v.find(",");
+        if(pos != std::string::npos)
         {
-          llarp::LogError(Name(), " bad exit router key: ", v);
+          auto range_str = v.substr(1 + pos);
+          if(!exitRange.FromString(range_str))
+          {
+            LogError("bad exit range: '", range_str, "'");
+            return false;
+          }
+          routerStr = v.substr(0, pos);
+        }
+        else
+        {
+          routerStr = v;
+        }
+        absl::StripAsciiWhitespace(&routerStr);
+        if(!(exitRouter.FromString(routerStr)
+             || HexDecode(routerStr.c_str(), exitRouter.begin(),
+                          exitRouter.size())))
+        {
+          llarp::LogError(Name(), " bad exit router key: ", routerStr);
           return false;
         }
-        m_Exit = std::make_shared< llarp::exit::ExitSession >(
+        auto exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
             util::memFn(&TunEndpoint::QueueInboundPacketForExit, this),
             m_router, numPaths, numHops, ShouldBundleRC());
-        llarp::LogInfo(Name(), " using exit at ", exitRouter);
+        m_ExitMap.Insert(exitRange, exit);
+        llarp::LogInfo(Name(), " using exit at ", exitRouter, " for ",
+                       exitRange);
       }
       if(k == "local-dns")
       {
@@ -288,16 +311,10 @@ namespace llarp
     {
       auto self = shared_from_this();
       FlushSend();
-      if(m_Exit)
-      {
-        RouterLogic()->queue_func([=] {
-          self->m_Exit->FlushUpstream();
-          self->Router()->PumpLL();
-        });
-      }
-      RouterLogic()->queue_func([=]() {
+      RouterLogic()->queue_func([=] {
+        self->m_ExitMap.ForEachValue(
+            [](const auto &exit) { exit->FlushUpstream(); });
         self->Pump(self->Now());
-        self->Router()->PumpLL();
       });
     }
 
@@ -487,8 +504,8 @@ namespace llarp
     TunEndpoint::ResetInternalState()
     {
       service::Endpoint::ResetInternalState();
-      if(m_Exit)
-        m_Exit->ResetInternalState();
+      m_ExitMap.ForEachValue(
+          [](const auto &exit) { exit->ResetInternalState(); });
     }
 
     bool
@@ -550,11 +567,11 @@ namespace llarp
         llarp::LogWarn("Couldn't start endpoint");
         return false;
       }
-      if(m_Exit)
-      {
-        for(const auto &snode : SnodeBlacklist())
-          m_Exit->BlacklistSnode(snode);
-      }
+      const auto blacklist = SnodeBlacklist();
+      m_ExitMap.ForEachValue([blacklist](const auto &exit) {
+        for(const auto &snode : blacklist)
+          exit->BlacklistSnode(snode);
+      });
       return SetupNetworking();
     }
 
@@ -639,7 +656,7 @@ namespace llarp
 
       m_NextIP        = m_OurIP;
       m_OurRange.addr = m_OurIP;
-      m_MaxIP         = m_OurIP | (~m_OurRange.netmask_bits);
+      m_MaxIP         = m_OurRange.HighestAddr();
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
                      m_OurIP);
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
@@ -688,21 +705,19 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      // call tun code in endpoint logic in case of network isolation
-      // EndpointLogic()->queue_job({this, handleTickTun});
-      if(m_Exit)
-      {
-        EnsureRouterIsKnown(m_Exit->Endpoint());
-        m_Exit->Tick(now);
-      }
-      Endpoint::Tick(now);
+      EndpointLogic()->queue_func([&]() {
+        m_ExitMap.ForEachValue([&](const auto &exit) {
+          this->EnsureRouterIsKnown(exit->Endpoint());
+          exit->Tick(now);
+        });
+        Endpoint::Tick(now);
+      });
     }
 
     bool
     TunEndpoint::Stop()
     {
-      if(m_Exit)
-        m_Exit->Stop();
+      m_ExitMap.ForEachValue([](const auto &exit) { exit->Stop(); });
       return llarp::service::Endpoint::Stop();
     }
 
@@ -721,17 +736,26 @@ namespace llarp
         auto itr = m_IPToAddr.find(dst);
         if(itr == m_IPToAddr.end())
         {
-          if(m_Exit && pkt.IsV4() && !llarp::IsIPv4Bogon(pkt.dstv4()))
+          const auto exits = m_ExitMap.FindAll(dst);
+          if(exits.empty())
           {
-            pkt.UpdateIPv4Address({0}, xhtonl(pkt.dstv4()));
-            m_Exit->QueueUpstreamTraffic(std::move(pkt),
-                                         llarp::routing::ExitPadSize);
+            llarp::LogWarn(Name(), " has no exit mapped for ", dst);
+            return;
           }
-          else if(m_Exit && pkt.IsV6())
+          for(const auto &exit : exits)
           {
-            pkt.UpdateIPv6Address({0}, pkt.dstv6());
-            m_Exit->QueueUpstreamTraffic(std::move(pkt),
+            if(pkt.IsV4() && !llarp::IsIPv4Bogon(pkt.dstv4()))
+            {
+              pkt.UpdateIPv4Address({0}, xhtonl(pkt.dstv4()));
+              exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
+            }
+            else if(pkt.IsV6())
+            {
+              pkt.UpdateIPv6Address({0}, pkt.dstv6());
+              exit->QueueUpstreamTraffic(std::move(pkt),
+                                         llarp::routing::ExitPadSize);
+            }
           }
           return;
         }
@@ -760,6 +784,7 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
+      Router()->PumpLL();
     }
 
     bool
@@ -906,12 +931,13 @@ namespace llarp
       // called in the isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
       // flush user to network
-      self->FlushSend();
+      self->EndpointLogic()->queue_func(
+          std::bind(&TunEndpoint::FlushSend, self));
       // flush exit traffic queues if it's there
-      if(self->m_Exit)
-      {
-        self->m_Exit->FlushDownstream();
-      }
+      self->EndpointLogic()->queue_func([self] {
+        self->m_ExitMap.ForEachValue(
+            [](const auto &exit) { exit->FlushDownstream(); });
+      });
       // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPPacket &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
@@ -924,9 +950,9 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      const ManagedBuffer buf(b);
+      const ManagedBuffer pkt(b);
       self->m_UserToNetworkPktQueue.EmplaceIf(
-          [&buf](net::IPPacket &pkt) -> bool { return pkt.Load(buf); });
+          [&pkt](net::IPPacket &p) -> bool { return p.Load(pkt); });
     }
 
     TunEndpoint::~TunEndpoint() = default;

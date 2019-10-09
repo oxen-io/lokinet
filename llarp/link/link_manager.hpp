@@ -40,7 +40,8 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(Logic_ptr logic) override;
+    StartLinks(Logic_ptr logic,
+               std::shared_ptr< thread::ThreadPool > worker) override;
 
     void
     Stop() override;

@@ -29,7 +29,9 @@ void
 handle_signal(int sig)
 {
   if(ctx)
+  {
     llarp_main_signal(ctx, sig);
+  }
 }
 
 #ifdef _WIN32

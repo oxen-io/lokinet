@@ -30,12 +30,20 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       rc.enckey = encryptionKey.toPublic();
     }
 
+    std::shared_ptr<thread::ThreadPool> worker;
+
     SecretKey signingKey;
     SecretKey encryptionKey;
 
     RouterContact rc;
 
     bool gotLIM = false;
+
+    void Setup()
+    {
+        worker = std::make_shared<thread::ThreadPool>(1, 128, "test-worker");
+        worker->start();
+    }
 
     const RouterContact&
     GetRC() const
@@ -85,7 +93,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
         return false;
       if(!rc.Sign(signingKey))
         return false;
-      return link->Start(logic);
+      return link->Start(logic, worker);
     }
 
     void
@@ -93,13 +101,18 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     {
       if(link)
         link->Stop();
+      if(worker)
+      {
+        worker->drain();
+        worker->stop();
+      }
     }
 
     void
     TearDown()
     {
-      Stop();
       link.reset();
+      worker.reset();
     }
   };
 
@@ -125,6 +138,8 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     RouterContact::Lifetime    = 500;
     netLoop                    = llarp_make_ev_loop();
     m_logic.reset(new Logic());
+    Alice.Setup();
+    Bob.Setup();
   }
 
   void
@@ -157,7 +172,11 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   void
   Stop()
   {
-    llarp_ev_loop_stop(netLoop);
+    m_logic->queue_func([&]() {
+      Alice.Stop();
+      Bob.Stop();
+      llarp_ev_loop_stop(netLoop);
+    });
   }
 
   bool
@@ -212,14 +231,12 @@ TEST_F(LinkLayerTest, TestIWP)
 
   auto sendDiscardMessage = [](ILinkSession* s) -> bool {
     // send discard message in reply to complete unit test
-    std::array< byte_t, 32 > tmp;
+    std::vector< byte_t> tmp(32);
     llarp_buffer_t otherBuf(tmp);
     DiscardMessage discard;
     if(!discard.BEncode(&otherBuf))
       return false;
-    otherBuf.sz = otherBuf.cur - otherBuf.base;
-    otherBuf.cur = otherBuf.base;
-    return s->SendMessageBuffer(otherBuf, nullptr);
+    return s->SendMessageBuffer(std::move(tmp), nullptr);
   };
 
   Bob.link = iwp::NewInboundLink(
@@ -255,7 +272,7 @@ TEST_F(LinkLayerTest, TestIWP)
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
-  ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
+  m_logic->queue_func([&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
 
   RunMainloop();
   ASSERT_TRUE(Bob.gotLIM);

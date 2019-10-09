@@ -172,6 +172,10 @@ namespace llarp
   void
   Router::PumpLL()
   {
+    if(_stopping.load())
+      return;
+    paths.PumpUpstream();
+    paths.PumpDownstream();
     _linkManager.PumpLinks();
   }
 
@@ -298,7 +302,7 @@ namespace llarp
       return;
     auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
-    self->Tick();
+    self->logic()->queue_func(std::bind(&Router::Tick, self));
     self->ScheduleTicker(orig);
   }
 
@@ -706,9 +710,16 @@ namespace llarp
 
       _rcLookupHandler.ExploreNetwork();
     }
-    if(connected < _outboundSessionMaker.minConnectedRouters)
+    size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
+    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
+    if(strictConnect > 0 && connectToNum > strictConnect)
     {
-      size_t dlt = _outboundSessionMaker.minConnectedRouters - connected;
+      connectToNum = strictConnect;
+    }
+
+    if(connected < connectToNum)
+    {
+      size_t dlt = connectToNum - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
       _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
     }
@@ -945,7 +956,7 @@ namespace llarp
       return false;
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if(!_linkManager.StartLinks(_logic))
+    if(!_linkManager.StartLinks(_logic, cryptoworker))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1020,6 +1031,8 @@ namespace llarp
 
     LogInfo("have ", _nodedb->num_loaded(), " routers");
 
+    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();
@@ -1071,6 +1084,7 @@ namespace llarp
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
+    paths.PumpUpstream();
     _linkManager.PumpLinks();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }

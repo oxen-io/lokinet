@@ -1,5 +1,6 @@
 #include <iwp/linklayer.hpp>
 #include <iwp/session.hpp>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -22,19 +23,20 @@ namespace llarp
     void
     LinkLayer::Pump()
     {
-      std::set< RouterID > sessions;
+      std::unordered_set< RouterID, RouterID::Hash > sessions;
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
-          sessions.insert(itr->first);
+          const RouterID r{itr->first};
+          sessions.emplace(r);
           ++itr;
         }
       }
       ILinkLayer::Pump();
       {
-        Lock l(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
         for(const auto& pk : sessions)
         {
           if(m_AuthedLinks.count(pk) == 0)
@@ -66,20 +68,20 @@ namespace llarp
       return 2;
     }
 
-    bool
-    LinkLayer::Start(std::shared_ptr< Logic > l)
+    void
+    LinkLayer::QueueWork(std::function< void(void) > func)
     {
-      return ILinkLayer::Start(l);
+      m_Worker->addJob(func);
     }
 
     void
-    LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
+    LinkLayer::RecvFrom(const Addr& from, ILinkSession::Packet_t pkt)
     {
       std::shared_ptr< ILinkSession > session;
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
-        Lock lock(&m_PendingMutex);
+        ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
         if(m_Pending.count(from) == 0)
         {
           if(not permitInbound)
@@ -90,14 +92,13 @@ namespace llarp
       }
       else
       {
-        Lock lock(&m_AuthedLinksMutex);
+        ACQUIRE_LOCK(Lock_t lock, m_AuthedLinksMutex);
         auto range = m_AuthedLinks.equal_range(itr->second);
         session    = range.first->second;
       }
       if(session)
       {
-        const llarp_buffer_t buf{pkt, sz};
-        session->Recv_LL(buf);
+        session->Recv_LL(std::move(pkt));
       }
     }
 

@@ -38,6 +38,12 @@ namespace llarp
       ExpirePaths(llarp_time_t now);
 
       void
+      PumpUpstream();
+
+      void
+      PumpDownstream();
+
+      void
       AllowTransit();
 
       void
@@ -102,14 +108,17 @@ namespace llarp
 
       struct SyncTransitMap_t
       {
-        util::Mutex first;  // protects second
+        using Mutex_t = util::NullMutex;
+        using Lock_t  = util::NullLock;
+
+        Mutex_t first;  // protects second
         TransitHopsMap_t second GUARDED_BY(first);
 
         void
         ForEach(std::function< void(const TransitHop_ptr&) > visit)
             LOCKS_EXCLUDED(first)
         {
-          util::Lock lock(&first);
+          Lock_t lock(&first);
           for(const auto& item : second)
             visit(item.second);
         }
@@ -120,13 +129,15 @@ namespace llarp
 
       struct SyncOwnedPathsMap_t
       {
-        util::Mutex first;  // protects second
+        using Mutex_t = util::Mutex;
+        using Lock_t  = util::Lock;
+        Mutex_t first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 
         void
         ForEach(std::function< void(const PathSet_ptr&) > visit)
         {
-          util::Lock lock(&first);
+          Lock_t lock(&first);
           for(const auto& item : second)
             visit(item.second);
         }

@@ -366,8 +366,23 @@ namespace llarp
     if(static_cast< size_t >(ret) > sz)
       return -1;
     b.sz = ret;
-    udp->recvfrom(udp, addr, ManagedBuffer{b});
+    if(udp->recvfrom)
+      udp->recvfrom(udp, addr, ManagedBuffer{b});
+    else
+    {
+      m_RecvPackets.emplace_back(
+          PacketEvent{llarp::Addr(*addr), PacketBuffer(ret)});
+      std::copy_n(buf, ret, m_RecvPackets.back().pkt.data());
+    }
     return 0;
+  }
+
+  bool
+  udp_listener::RecvMany(llarp_pkt_list* pkts)
+  {
+    *pkts         = std::move(m_RecvPackets);
+    m_RecvPackets = llarp_pkt_list();
+    return pkts->size() > 0;
   }
 
   static int
@@ -694,6 +709,20 @@ llarp_win32_loop::stop()
     upoll_destroy(upollfd);
   upollfd = nullptr;
   llarp::LogDebug("destroy upoll");
+}
+
+void
+llarp_win32_loop::tick_listeners()
+{
+  llarp_ev_loop::tick_listeners();
+  for(auto& func : m_Tickers)
+    m_Logic->queue_func([func]() { func(); });
+}
+
+bool
+llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
+{
+  return static_cast< llarp::udp_listener* >(u->impl)->RecvMany(pkts);
 }
 
 #endif

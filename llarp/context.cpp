@@ -43,6 +43,7 @@ namespace llarp
   bool
   Context::Configure()
   {
+    logic = std::make_shared< Logic >();
     // llarp::LogInfo("loading config at ", configfile);
     if(!config->Load(configfile.c_str()))
     {
@@ -197,7 +198,6 @@ __        ___    ____  _   _ ___ _   _  ____
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
-    logic    = std::make_shared< Logic >();
 
     crypto        = std::make_unique< sodium::CryptoLibSodium >();
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
@@ -413,7 +413,8 @@ extern "C"
   void
   llarp_main_signal(struct llarp_main *ptr, int sig)
   {
-    ptr->ctx->HandleSignal(sig);
+    ptr->ctx->logic->queue_func(
+        std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
   }
 
   int

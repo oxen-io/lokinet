@@ -77,25 +77,7 @@ namespace llarp
         LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     static void
-    udp_tick(llarp_udp_io* udp)
-    {
-      static_cast< ILinkLayer* >(udp->user)->Pump();
-    }
-
-    static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, ManagedBuffer buf)
-    {
-      if(!udp)
-      {
-        llarp::LogWarn("no udp set");
-        return;
-      }
-      const llarp::Addr srcaddr(*from);
-      // maybe check from too?
-      // no it's never null
-      static_cast< ILinkLayer* >(udp->user)->RecvFrom(
-          srcaddr, buf.underlying.base, buf.underlying.sz);
-    }
+    udp_tick(llarp_udp_io* udp);
 
     void
     SendTo_LL(const llarp::Addr& to, const llarp_buffer_t& pkt)
@@ -114,7 +96,7 @@ namespace llarp
     Pump();
 
     virtual void
-    RecvFrom(const Addr& from, const void* buf, size_t sz) = 0;
+    RecvFrom(const Addr& from, ILinkSession::Packet_t pkt) = 0;
 
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
@@ -122,8 +104,9 @@ namespace llarp
     bool
     TryEstablishTo(RouterContact rc);
 
-    virtual bool
-    Start(std::shared_ptr< llarp::Logic > l);
+    bool
+    Start(std::shared_ptr< llarp::Logic > l,
+          std::shared_ptr< thread::ThreadPool > worker);
 
     virtual void
     Stop();
@@ -237,13 +220,18 @@ namespace llarp
     const SecretKey& m_RouterEncSecret;
 
    protected:
-    using Lock  = util::NullLock;
-    using Mutex = util::NullMutex;
-
+#ifdef TRACY_ENABLE
+    using Lock_t  = std::lock_guard< LockableBase(std::mutex) >;
+    using Mutex_t = std::mutex;
+#else
+    using Lock_t  = util::NullLock;
+    using Mutex_t = util::NullMutex;
+#endif
     bool
     PutSession(const std::shared_ptr< ILinkSession >& s);
 
-    std::shared_ptr< llarp::Logic > m_Logic = nullptr;
+    std::shared_ptr< llarp::Logic > m_Logic               = nullptr;
+    std::shared_ptr< llarp::thread::ThreadPool > m_Worker = nullptr;
     llarp_ev_loop_ptr m_Loop;
     Addr m_ourAddr;
     llarp_udp_io m_udp;
@@ -255,11 +243,17 @@ namespace llarp
     using Pending =
         std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
                                  llarp::Addr::Hash >;
-
-    mutable Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
+    mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex,
+                         ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
-    mutable Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
+    mutable DECLARE_LOCK(Mutex_t, m_PendingMutex,
+                         ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
+
+    using TrafficEvent_t = std::pair< Addr, ILinkSession::Packet_t >;
+    using TrafficQueue_t = std::vector< TrafficEvent_t >;
+
+    std::shared_ptr< TrafficQueue_t > m_Recv;
   };
 
   using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;

@@ -6,6 +6,7 @@
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
+#include <util/thread/thread_pool.hpp>
 
 namespace llarp
 {
@@ -20,9 +21,6 @@ namespace llarp
                 bool permitInbound);
 
       ~LinkLayer() override;
-
-      bool
-      Start(std::shared_ptr< Logic > l) override;
 
       std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,
@@ -41,13 +39,16 @@ namespace llarp
       Rank() const override;
 
       void
-      RecvFrom(const Addr &from, const void *buf, size_t sz) override;
+      RecvFrom(const Addr &from, ILinkSession::Packet_t pkt) override;
 
       bool
       MapAddr(const RouterID &pk, ILinkSession *s) override;
 
       void
       UnmapAddr(const Addr &addr);
+
+      void
+      QueueWork(std::function< void(void) > work);
 
      private:
       std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;

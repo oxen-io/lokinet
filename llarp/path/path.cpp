@@ -1,6 +1,7 @@
 #include <path/path.hpp>
 
 #include <exit/exit_messages.hpp>
+#include <link/i_link_manager.hpp>
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay_status.hpp>
@@ -341,6 +342,7 @@ namespace llarp
           m_LastLatencyTestID   = latency.T;
           m_LastLatencyTestTime = now;
           SendRoutingMessage(latency, r);
+          FlushUpstream(r);
           return;
         }
         if(m_LastRecvMessage && now > m_LastRecvMessage)
@@ -363,24 +365,67 @@ namespace llarp
       }
     }
 
-    bool
-    Path::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                         AbstractRouter* r)
+    void
+    Path::HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                            AbstractRouter* r)
     {
-      TunnelNonce n = Y;
-      for(const auto& hop : hops)
+      for(const auto& msg : msgs)
       {
-        CryptoManager::instance()->xchacha20(buf, hop.shared, n);
-        n ^= hop.nonceXOR;
+        if(!r->SendToOrQueue(Upstream(), &msg))
+        {
+          LogDebug("failed to send upstream to ", Upstream());
+        }
       }
-      RelayUpstreamMessage msg;
-      msg.X      = buf;
-      msg.Y      = Y;
-      msg.pathid = TXID();
-      if(r->SendToOrQueue(Upstream(), &msg))
-        return true;
-      LogError("send to ", Upstream(), " failed");
-      return false;
+      r->linkManager().PumpLinks();
+    }
+
+    void
+    Path::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    {
+      std::vector< RelayUpstreamMessage > sendmsgs(msgs->size());
+      size_t idx = 0;
+      for(auto& ev : *msgs)
+      {
+        const llarp_buffer_t buf(ev.first);
+        TunnelNonce n = ev.second;
+        for(const auto& hop : hops)
+        {
+          CryptoManager::instance()->xchacha20(buf, hop.shared, n);
+          n ^= hop.nonceXOR;
+        }
+        auto& msg  = sendmsgs[idx];
+        msg.X      = buf;
+        msg.Y      = ev.second;
+        msg.pathid = TXID();
+        ++idx;
+      }
+      r->logic()->queue_func(std::bind(&Path::HandleAllUpstream,
+                                       shared_from_this(), std::move(sendmsgs),
+                                       r));
+    }
+
+    void
+    Path::FlushUpstream(AbstractRouter* r)
+    {
+      if(m_UpstreamQueue && !m_UpstreamQueue->empty())
+      {
+        r->threadpool()->addJob(std::bind(&Path::UpstreamWork,
+                                          shared_from_this(),
+                                          std::move(m_UpstreamQueue), r));
+      }
+      m_UpstreamQueue = nullptr;
+    }
+
+    void
+    Path::FlushDownstream(AbstractRouter* r)
+    {
+      if(m_DownstreamQueue && !m_DownstreamQueue->empty())
+      {
+        r->threadpool()->addJob(std::bind(&Path::DownstreamWork,
+                                          shared_from_this(),
+                                          std::move(m_DownstreamQueue), r));
+      }
+      m_DownstreamQueue = nullptr;
     }
 
     bool
@@ -406,20 +451,44 @@ namespace llarp
       return ss.str();
     }
 
-    bool
-    Path::HandleDownstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                           AbstractRouter* r)
+    void
+    Path::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      TunnelNonce n = Y;
-      for(const auto& hop : hops)
+      std::vector< RelayDownstreamMessage > sendMsgs(msgs->size());
+      size_t idx = 0;
+      for(auto& ev : *msgs)
       {
-        n ^= hop.nonceXOR;
-        CryptoManager::instance()->xchacha20(buf, hop.shared, n);
+        const llarp_buffer_t buf(ev.first);
+        sendMsgs[idx].Y = ev.second;
+        for(const auto& hop : hops)
+        {
+          sendMsgs[idx].Y ^= hop.nonceXOR;
+          CryptoManager::instance()->xchacha20(buf, hop.shared,
+                                               sendMsgs[idx].Y);
+        }
+        sendMsgs[idx].X = buf;
+        ++idx;
       }
-      if(!HandleRoutingMessage(buf, r))
-        return false;
-      m_LastRecvMessage = r->Now();
-      return true;
+      r->logic()->queue_func(std::bind(&Path::HandleAllDownstream,
+                                       shared_from_this(), std::move(sendMsgs),
+                                       r));
+    }
+
+    void
+    Path::HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                              AbstractRouter* r)
+    {
+      for(const auto& msg : msgs)
+      {
+        const llarp_buffer_t buf(msg.X);
+        if(!HandleRoutingMessage(buf, r))
+        {
+          LogWarn("failed to handle downstream message");
+          continue;
+        }
+        m_LastRecvMessage = r->Now();
+      }
+      FlushUpstream(r);
     }
 
     bool
@@ -521,7 +590,10 @@ namespace llarp
         latency.T             = randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
-        return SendRoutingMessage(latency, r);
+        if(!SendRoutingMessage(latency, r))
+          return false;
+        FlushUpstream(r);
+        return true;
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(),
               " rx=", RXID());

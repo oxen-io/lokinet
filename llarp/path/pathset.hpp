@@ -275,6 +275,12 @@ namespace llarp
         }
       }
 
+      void
+      UpstreamFlush(AbstractRouter* r);
+
+      void
+      DownstreamFlush(AbstractRouter* r);
+
       size_t numPaths;
 
      protected:

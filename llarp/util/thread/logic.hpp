@@ -4,6 +4,7 @@
 #include <util/mem.h>
 #include <util/thread/threadpool.h>
 #include <util/thread/timer.hpp>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -12,14 +13,11 @@ namespace llarp
    public:
     struct llarp_threadpool* thread;
     struct llarp_timer_context* timer;
-    const std::thread::id ourID;
+    absl::optional< std::thread::id > id;
 
-    Logic()
-        : thread(llarp_init_same_process_threadpool())
-        , timer(llarp_init_timer())
-        , ourID(std::this_thread::get_id())
-    {
-    }
+    Logic();
+
+    ~Logic();
 
     /// single threaded tick
     void
@@ -42,7 +40,7 @@ namespace llarp
     queue_job(struct llarp_thread_job job);
 
     bool
-    queue_func(std::function< void(void) > func);
+    queue_func(std::function< void(void) >&& func);
 
     uint32_t
     call_later(const llarp_timeout_job& job);

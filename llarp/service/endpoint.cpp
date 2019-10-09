@@ -638,7 +638,22 @@ namespace llarp
       std::set< RouterID > exclude = prev;
       for(const auto& snode : SnodeBlacklist())
         exclude.insert(snode);
+      if(hop == 0)
+      {
+        const auto exits = GetExitRouters();
+        // exclude exit node as first hop in any paths
+        exclude.insert(exits.begin(), exits.end());
+      }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    std::set< RouterID >
+    Endpoint::GetExitRouters() const
+    {
+      return m_ExitMap.TransformValues< RouterID >(
+          [](const exit::BaseSession_ptr& ptr) -> RouterID {
+            return ptr->Endpoint();
+          });
     }
 
     bool
@@ -1063,6 +1078,7 @@ namespace llarp
         MarkConvoTagActive(item.first->T.T);
       }
       m_state->m_SendQueue.clear();
+      router->PumpLL();
     }
 
     bool
@@ -1129,30 +1145,30 @@ namespace llarp
           if(p)
           {
             // TODO: check expiration of our end
-            ProtocolMessage m(f.T);
-            m.PutBuffer(data);
+            auto m = std::make_shared< ProtocolMessage >(f.T);
+            m->PutBuffer(data);
             f.N.Randomize();
             f.C.Zero();
             transfer->Y.Randomize();
-            m.proto      = t;
-            m.introReply = p->intro;
-            PutReplyIntroFor(f.T, m.introReply);
-            m.sender    = m_Identity.pub;
-            m.seqno     = GetSeqNoForConvo(f.T);
+            m->proto      = t;
+            m->introReply = p->intro;
+            PutReplyIntroFor(f.T, m->introReply);
+            m->sender   = m_Identity.pub;
+            m->seqno    = GetSeqNoForConvo(f.T);
             f.S         = 1;
-            f.F         = m.introReply.pathID;
+            f.F         = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(m, K, m_Identity))
-            {
-              LogError("failed to encrypt and sign");
-              return false;
-            }
-            LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-            {
-              util::Lock lock(&m_state->m_SendQueueMutex);
-              m_state->m_SendQueue.emplace_back(transfer, p);
-            }
-            return true;
+            auto self   = this;
+            return CryptoWorker()->addJob([transfer, p, m, K, self]() {
+              if(not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
+              {
+                LogError("failed to encrypt and sign");
+                return;
+              }
+
+              util::Lock lock(&self->m_state->m_SendQueueMutex);
+              self->m_state->m_SendQueue.emplace_back(transfer, p);
+            });
           }
         }
       }
@@ -1190,7 +1206,7 @@ namespace llarp
             }
             m_state->m_PendingTraffic.erase(r);
           },
-          5000, true);
+          5000);
     }
 
     bool
