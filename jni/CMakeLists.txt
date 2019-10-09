@@ -1,8 +1,8 @@
     
     set(ANDROID_SRC 
-        jni/lokinet_config.cpp
-        jni/lokinet_daemon.cpp
-        jni/lokinet_vnp.cpp
+        lokinet_config.cpp
+        lokinet_daemon.cpp
+        lokinet_vnp.cpp
     )
     add_library(${ANDROID_LIB} SHARED ${ANDROID_SRC})
     set_property(TARGET ${ANDROID_LIB} PROPERTY CXX_STANDARD 14)
