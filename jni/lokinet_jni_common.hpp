@@ -22,7 +22,7 @@ VisitStringAsStringView(JNIEnv* env, jobject str, V visit)
   const jsize length  = env->GetArrayLength(stringJbytes);
   const jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
 
-  T result = visit(llarp::string_view(bBytes, length));
+  T result = visit(llarp::string_view(pBytes, length));
 
   env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
   env->DeleteLocalRef(stringJbytes);
@@ -60,7 +60,7 @@ VisitObjectMemberStringAsStringView(JNIEnv* env, jobject self,
   jclass cl     = env->GetObjectClass(self);
   jfieldID name = env->GetFieldID(cl, membername, "Ljava/lang/String;");
   jobject str   = env->GetObjectField(self, name);
-  return VisitStringAsStringView(env, str, v);
+  return VisitStringAsStringView< T, V >(env, str, v);
 }
 
 /// get object member int called membername
