@@ -89,7 +89,7 @@ namespace llarp
 
     /// close async
     void
-    Close();
+    CloseAsync();
 
     /// wait until closed and done
     void
