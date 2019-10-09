@@ -2,7 +2,7 @@
 #include <llarp.hpp>
 #include "lokinet_jni_common.hpp"
 
-extern "C
+extern "C"
 {
   JNIEXPORT jobject JNICALL
   Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass* c)
