@@ -29,8 +29,7 @@ extern "C"
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_LokinetVPN_Stop(JNIEnv *env, jobject self)
   {
-    lokinet_jni_vpnio *vpn =
-        FromObjectMember< lokinet_jni_vpnio >(env, self, "impl");
+    lokinet_jni_vpnio *vpn = GetImpl< lokinet_jni_vpnio >(env, self);
     if(vpn)
     {
       vpn->Close();
@@ -41,8 +40,7 @@ extern "C"
   Java_network_loki_lokinet_LokinetVPN_ReadPkt(JNIEnv *env, jobject self,
                                                jobject pkt)
   {
-    lokinet_jni_vpnio *vpn =
-        FromObjectMember< lokinet_jni_vpnio >(env, self, "impl");
+    lokinet_jni_vpnio *vpn = GetImpl< lokinet_jni_vpnio >(env, self);
     if(vpn == nullptr)
       return -1;
     void *pktbuf = env->GetDirectBufferAddress(pkt);
@@ -56,8 +54,7 @@ extern "C"
   Java_network_loki_lokinet_LokinetVPN_WritePkt(JNIEnv *env, jobject self,
                                                 jobject pkt)
   {
-    lokinet_jni_vpnio *vpn =
-        FromObjectMember< lokinet_jni_vpnio >(env, self, "impl");
+    lokinet_jni_vpnio *vpn = GetImpl< lokinet_jni_vpnio >(env, self);
     if(vpn == nullptr)
       return false;
     void *pktbuf = env->GetDirectBufferAddress(pkt);
@@ -71,8 +68,7 @@ extern "C"
   Java_network_loki_lokinet_LokinetVPN_SetInfo(JNIEnv *env, jobject self,
                                                jobject info)
   {
-    lokinet_jni_vpnio *vpn =
-        FromObjectMember< lokinet_jni_vpnio >(env, self, "impl");
+    lokinet_jni_vpnio *vpn = GetImpl< lokinet_jni_vpnio >(env, self);
     if(vpn == nullptr)
       return;
     VisitObjectMemberStringAsStringView< bool >(
@@ -85,6 +81,6 @@ extern "C"
           vpn->SetIfName(val);
           return true;
         });
-    GetObjectMemberAsInt(env, info, "netmask", vpn->info.netmask);
+    vpn->info.netmask = GetObjectMemberAsInt< uint8_t >(env, info, "netmask");
   }
 }

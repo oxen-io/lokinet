@@ -24,7 +24,7 @@ extern "C
   Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv* env, jobject self,
                                                jstring fname)
   {
-    llarp_config* conf = FromObjectMember< llarp_config >(env, self, "impl");
+    llarp_config* conf = GetImpl< llarp_config >(env, self);
     if(conf == nullptr)
       return JNI_FALSE;
     return VisitStringAsStringView< jboolean >(

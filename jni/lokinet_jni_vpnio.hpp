@@ -6,6 +6,7 @@
 #include <future>
 #include <util/string_view.hpp>
 #include <algorithm>
+#include <jni.h>
 
 namespace lokinet
 {
@@ -27,7 +28,7 @@ namespace lokinet
     Closed()
     {
       if(closeWaiter)
-        closeWaiter->get_future().set_value();
+        closeWaiter->set_value();
     }
 
     virtual void
@@ -57,19 +58,27 @@ namespace lokinet
     bool
     Init(llarp_main *ptr)
     {
+      if(Ready())
+        return false;
       return llarp_vpn_io_init(ptr, &io);
+    }
+
+    bool
+    Ready() const
+    {
+      return io.impl != nullptr;
     }
 
     void
     Close()
     {
-      if(io.impl == nullptr)
+      if(not Ready())
         return;
       if(closeWaiter)
         return;
-      closerWaiter = std::make_unique< std::promise< void > >();
+      closeWaiter = std::make_unique< std::promise< void > >();
       llarp_vpn_io_close_async(&io);
-      closeWaiter->wait();
+      closeWaiter->get_future().wait();
       closeWaiter.reset();
       io.impl = nullptr;
     }
@@ -89,7 +98,7 @@ namespace lokinet
     ssize_t
     ReadPacket(void *dst, size_t len)
     {
-      if(io.impl == nullptr)
+      if(not Ready())
         return -1;
       unsigned char *buf = (unsigned char *)dst;
       return llarp_vpn_io_readpkt(Reader(), buf, len);
@@ -98,7 +107,7 @@ namespace lokinet
     bool
     WritePacket(void *pkt, size_t len)
     {
-      if(io.impl == nullptr)
+      if(not Ready())
         return false;
       unsigned char *buf = (unsigned char *)pkt;
       return llarp_vpn_io_writepkt(Writer(), buf, len);

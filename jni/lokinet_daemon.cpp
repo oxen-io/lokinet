@@ -25,8 +25,8 @@ extern "C"
   Java_network_loki_lokinet_LokinetDaemon_Configure(JNIEnv *env, jobject self,
                                                     jobject conf)
   {
-    llarp_main *ptr      = FromObjectMember< llarp_main >(env, self, "impl");
-    llarp_config *config = FromObjectMember< llarp_config >(env, conf, "impl");
+    llarp_main *ptr      = GetImpl< llarp_main >(env, self);
+    llarp_config *config = GetImpl< llarp_config >(env, conf);
     if(ptr == nullptr || config == nullptr)
       return JNI_FALSE;
     if(llarp_main_configure(ptr, config))
@@ -38,7 +38,7 @@ extern "C"
   Java_network_loki_lokinet_LokinetDaemon_Mainloop(JNIEnv *env, jobject self)
   {
     static llarp_main_runtime_opts opts;
-    llarp_main *ptr = FromObjectMember< llarp_main >(env, self, "impl");
+    llarp_main *ptr = GetImpl< llarp_main >(env, self);
     if(ptr == nullptr)
       return -1;
     return llarp_main_run(ptr, opts);
@@ -47,7 +47,7 @@ extern "C"
   JNIEXPORT jboolean JNICALL
   Java_network_loki_lokinet_LokinetDaemon_IsRunning(JNIEnv *env, jobject self)
   {
-    llarp_main *ptr = FromObjectMember< llarp_main >(env, self, "impl");
+    llarp_main *ptr = GetImpl< llarp_main >(env, self);
     return (ptr != nullptr && llarp_main_is_running(ptr)) ? JNI_TRUE
                                                           : JNI_FALSE;
   }
@@ -55,7 +55,7 @@ extern "C"
   JNIEXPORT jboolean JNICALL
   Java_network_loki_lokinet_LokinetDaemon_Stop(JNIEnv *env, jobject self)
   {
-    llarp_main *ptr = FromObjectMember< llarp_main >(env, self, "impl");
+    llarp_main *ptr = GetImpl< llarp_main >(env, self);
     if(ptr == nullptr)
       return JNI_FALSE;
     if(not llarp_main_is_running(ptr))
@@ -68,13 +68,14 @@ extern "C"
   Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv *env, jobject self,
                                                     jobject vpn)
   {
-    llarp_main *ptr = FromObjectMember< llarp_main >(env, self, "impl");
-    lokinet_jni_vpnio *impl =
-        FromObjectMember< lokinet_jni_vpnio >(env, vpn, "impl");
+    llarp_main *ptr         = GetImpl< llarp_main >(env, self);
+    lokinet_jni_vpnio *impl = GetImpl< lokinet_jni_vpnio >(env, vpn);
     if(ptr == nullptr || impl == nullptr)
       return JNI_FALSE;
+    if(impl->info.netmask == 0)
+      return JNI_FALSE;
     if(not impl->Init(ptr))
-      return JNI_FASE;
+      return JNI_FALSE;
     return llarp_main_inject_default_vpn(ptr, &impl->io, impl->info)
         ? JNI_TRUE
         : JNI_FALSE;

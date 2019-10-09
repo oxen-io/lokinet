@@ -6,6 +6,7 @@
 #include <functional>
 
 /// visit string as native bytes
+/// jvm uses some unholy encoding internally so we convert it to utf-8
 template < typename T, typename V >
 static T
 VisitStringAsStringView(JNIEnv* env, jobject str, V visit)
@@ -19,10 +20,11 @@ VisitStringAsStringView(JNIEnv* env, jobject str, V visit)
       (jbyteArray)env->CallObjectMethod(str, getBytes, charsetName);
   env->DeleteLocalRef(charsetName);
 
-  const jsize length  = env->GetArrayLength(stringJbytes);
-  const jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
+  const size_t length = env->GetArrayLength(stringJbytes);
+  jbyte* pBytes       = env->GetByteArrayElements(stringJbytes, NULL);
 
-  T result = visit(llarp::string_view(pBytes, length));
+  T result =
+      visit(llarp::string_view(static_cast< const char* >(pBytes), length));
 
   env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
   env->DeleteLocalRef(stringJbytes);
@@ -65,13 +67,20 @@ VisitObjectMemberStringAsStringView(JNIEnv* env, jobject self,
 
 /// get object member int called membername
 template < typename Int_t >
-void
-GetObjectMemberAsInt(JNIEnv* env, jobject self, const char* membername,
-                     Int_t& result)
+Int_t
+GetObjectMemberAsInt(JNIEnv* env, jobject self, const char* membername)
 {
   jclass cl     = env->GetObjectClass(self);
   jfieldID name = env->GetFieldID(cl, membername, "I");
-  result        = env->GetIntField(self, name);
+  return env->GetIntField(self, name);
+}
+
+/// get implementation on jni type
+template < typename T >
+T*
+GetImpl(JNIEnv* env, jobject self)
+{
+  return FromObjectMember< T >(env, self, "impl");
 }
 
 #endif
