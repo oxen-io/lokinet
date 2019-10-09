@@ -14,7 +14,7 @@ elseif(MSVC_VERSION)
   add_executable(${ABYSS_EXE} main.cpp)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
 elseif(NOT CMAKE_SYSTEM_NAME STREQUAL iOS)
-  add_executable(${ABYSS_EXE} main.cpp llarp/win32/abyss.rc)
+  add_executable(${ABYSS_EXE} main.cpp ../llarp/win32/abyss.rc)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
 endif()
 

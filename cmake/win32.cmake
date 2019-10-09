@@ -24,7 +24,7 @@ if(NOT MSVC_VERSION)
   add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
   # Wait a minute, if we're not Microsoft C++, nor a Clang paired with Microsoft C++,
   # then the only possible option has to be GNU or a GNU-linked Clang!
-  set(FS_LIB stdc++fs)
+  # set(FS_LIB stdc++fs)
 endif()
 
 if(EMBEDDED_CFG)
