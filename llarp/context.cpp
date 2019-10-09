@@ -249,7 +249,7 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   void
-  Context::Close()
+  Context::CloseAsync()
   {
     /// already closing
     if(closeWaiter)
@@ -603,7 +603,7 @@ extern "C"
   {
     if(ptr == nullptr)
       return;
-    ptr->ctx->Close();
+    ptr->ctx->CloseAsync();
     ptr->ctx->Wait();
   }
 
