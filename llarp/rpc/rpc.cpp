@@ -188,8 +188,21 @@ namespace llarp
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
       AbstractRouter* router;
+      std::unordered_map< absl::string_view, std::function< Response() >,
+                          absl::Hash< absl::string_view > >
+          m_dispatch;
       Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
-          : ::abyss::httpd::IRPCHandler(conn), router(r)
+          : ::abyss::httpd::IRPCHandler(conn)
+          , router(r)
+          , m_dispatch{
+                {"llarp.admin.wakeup", [=]() { return StartRouter(); }},
+                {"llarp.admin.link.neighbor",
+                 [=]() { return ListNeighbors(); }},
+                {"llarp.admin.exit.list", [=]() { return ListExitLevels(); }},
+                {"llarp.admin.dumpstate", [=]() { return DumpState(); }},
+                {"llarp.admin.status", [=]() { return DumpStatus(); }},
+                {"llarp.our.addresses", [=]() { return OurAddresses(); }},
+                {"llarp.version", [=]() { return DumpVersion(); }}}
       {
       }
 
@@ -227,7 +240,7 @@ namespace llarp
       }
 
       Response
-      ListNeighboors() const
+      ListNeighbors() const
       {
         Response resp = Response::array();
         router->ForEachPeer(
@@ -268,6 +281,21 @@ namespace llarp
       }
 
       Response
+      OurAddresses() const
+      {
+        Response services;
+        router->hiddenServiceContext().ForEachService(
+            [&](const std::string&,
+                const std::shared_ptr< service::Endpoint >& service) {
+              const service::Address addr = service->GetIdentity().pub.Addr();
+              services.push_back(addr.ToString());
+              return true;
+            });
+
+        return Response{{"services", services}};
+      }
+
+      Response
       DumpVersion() const
       {
         const Response resp{{"version", LLARP_VERSION}};
@@ -278,29 +306,10 @@ namespace llarp
       HandleJSONRPC(Method_t method,
                     ABSL_ATTRIBUTE_UNUSED const Params& params) override
       {
-        if(method == "llarp.admin.wakeup")
+        auto it = m_dispatch.find(method);
+        if(it != m_dispatch.end())
         {
-          return StartRouter();
-        }
-        if(method == "llarp.admin.link.neighboors")
-        {
-          return ListNeighboors();
-        }
-        if(method == "llarp.admin.exit.list")
-        {
-          return ListExitLevels();
-        }
-        if(method == "llarp.admin.dumpstate")
-        {
-          return DumpState();
-        }
-        if(method == "llarp.admin.status")
-        {
-          return DumpStatus();
-        }
-        if(method == "llarp.version")
-        {
-          return DumpVersion();
+          return it->second();
         }
         return false;
       }
