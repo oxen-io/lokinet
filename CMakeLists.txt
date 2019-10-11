@@ -1,5 +1,4 @@
-# Lowest version - android ndk 3.6.0
-cmake_minimum_required(VERSION 3.6.0)
+cmake_minimum_required(VERSION 3.5.1)  # xenial's cmake version
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
