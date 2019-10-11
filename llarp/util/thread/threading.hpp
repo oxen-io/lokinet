@@ -32,9 +32,13 @@ namespace llarp
   {
     /// a mutex that does nothing
     /// 
-    /// this exists to convert "old" mutexes that may no longer be necessary
-    /// into no-op placeholders (except in debug mode where they complain loudly
-    /// when they are actually accessed across different threads; see below).
+    /// this exists to convert mutexes that were initially in use (but may no 
+    /// longer be necessary) into no-op placeholders (except in debug mode 
+    /// where they complain loudly when they are actually accessed across 
+    /// different threads; see below).
+    /// 
+    /// the idea is to "turn off" the mutexes and see where they are actually
+    /// needed.
     struct LOCKABLE NullMutex
     {
 #ifdef LOKINET_DEBUG
