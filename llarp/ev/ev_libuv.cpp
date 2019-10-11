@@ -110,7 +110,8 @@ namespace libuv
       if(nread >= 0)
       {
         auto* conn = static_cast< conn_glue* >(stream->data);
-        conn->Read(buf->base, nread);
+        Call(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
+        return;
       }
       else if(nread < 0)
       {
@@ -135,6 +136,7 @@ namespace libuv
         const llarp_buffer_t buf(ptr, sz);
         m_Conn.read(&m_Conn, buf);
       }
+      delete[] ptr;
     }
 
     void
