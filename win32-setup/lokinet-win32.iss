@@ -10,7 +10,6 @@
 #ifndef DevPath
 #define DevPath "D:\dev\external\llarp\"
 #endif
-#include <idp.iss>
 #include "version.txt"
 
 ; see ../LICENSE
