@@ -10,7 +10,7 @@ if(SOLARIS)
 endif()
 
 if(NOT CMAKE_CROSSCOMPILING)
-  add_compile_options(-static -flto ${CMAKE_CXX_FLAGS} ${CRYPTO_FLAGS})
+  add_compile_options(-static -flto)
 else()
   add_compile_options(-static)
 endif()
