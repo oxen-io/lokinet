@@ -31,12 +31,12 @@ namespace llarp
   namespace util
   {
     /// a mutex that does nothing
-    /// 
-    /// this exists to convert mutexes that were initially in use (but may no 
-    /// longer be necessary) into no-op placeholders (except in debug mode 
-    /// where they complain loudly when they are actually accessed across 
+    ///
+    /// this exists to convert mutexes that were initially in use (but may no
+    /// longer be necessary) into no-op placeholders (except in debug mode
+    /// where they complain loudly when they are actually accessed across
     /// different threads; see below).
-    /// 
+    ///
     /// the idea is to "turn off" the mutexes and see where they are actually
     /// needed.
     struct LOCKABLE NullMutex
@@ -55,7 +55,8 @@ namespace llarp
         }
         else if(m_id.value() != std::this_thread::get_id())
         {
-          std::cerr << "NullMutex " << this << " was used across threads: locked by "
+          std::cerr << "NullMutex " << this
+                    << " was used across threads: locked by "
                     << std::this_thread::get_id()
                     << " and was previously locked by " << m_id.value() << "\n";
           // if you're encountering this abort() call, you may have discovered a
