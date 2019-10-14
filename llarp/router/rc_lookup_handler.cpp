@@ -33,6 +33,8 @@ namespace llarp
   void
   RCLookupHandler::SetRouterWhitelist(const std::vector< RouterID > &routers)
   {
+    if(routers.empty())
+      return;
     util::Lock l(&_mutex);
 
     whitelistRouters.clear();

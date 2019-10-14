@@ -71,37 +71,37 @@ namespace llarp
       HandleJSONResult(const nlohmann::json& result) override
       {
         PubkeyList_t keys;
-        if(!result.is_object())
+        if(not result.is_object())
         {
           LogWarn("Invalid result: not an object");
           handler({}, false);
           return false;
         }
-        const auto itr = result.find("keys");
+        const auto itr = result.find("service_node_states");
         if(itr == result.end())
         {
-          LogWarn("Invalid result: no keys member");
+          LogWarn("Invalid result: no service_node_states member");
           handler({}, false);
           return false;
         }
-        if(!itr.value().is_array())
+        if(not itr.value().is_array())
         {
-          LogWarn("Invalid result: keys is not an array");
+          LogWarn("Invalid result: service_node_states is not an array");
           handler({}, false);
           return false;
         }
         for(const auto item : itr.value())
         {
-          if(item.is_string())
-          {
-            keys.emplace_back();
-            std::string str = item.get< std::string >();
-            if(!Base32Decode(str, keys.back()))
-            {
-              LogWarn("Invalid key: ", str);
-              keys.pop_back();
-            }
-          }
+          if(not item.is_object())
+            continue;
+          if(not item.value("active", false))
+            continue;
+          if(not item.value("funded", false))
+            continue;
+          const std::string pk = item.value("ed25519_pubkey", "");
+          PubKey k;
+          if(pk.size() > 0 && k.FromString(pk))
+            keys.emplace_back(std::move(k));
         }
         handler(keys, true);
         return true;
@@ -147,7 +147,10 @@ namespace llarp
       AsyncUpdatePubkeyList()
       {
         LogInfo("Updating service node list");
-        QueueRPC("get_all_service_nodes_keys", nlohmann::json::object(),
+        nlohmann::json params = {
+            {"service_node_pubkeys", nlohmann::json::array()},
+            {"include_json", false}};
+        QueueRPC("get_service_nodes", std::move(params),
                  util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
       }
 

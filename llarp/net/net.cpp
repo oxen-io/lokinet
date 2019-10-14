@@ -6,6 +6,7 @@
 
 #ifndef _WIN32
 #include <arpa/inet.h>
+#endif
 #ifndef ANDROID
 #include <ifaddrs.h>
 #endif
