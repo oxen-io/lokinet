@@ -23,6 +23,7 @@ extern "C" unsigned int if_nametoindex (const char *__ifname) __THROW;
 # endif
 #else
 # include <net/if.h>
+#endif 
 #endif
 
 #include <net/net_addr.hpp>
