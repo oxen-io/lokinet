@@ -114,6 +114,7 @@ namespace llarp
     {
       return util::StatusObject{
           {"running", true},
+          {"numNodesKnown", _nodedb->num_loaded()},
           {"dht", _dht->impl->ExtractStatus()},
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
