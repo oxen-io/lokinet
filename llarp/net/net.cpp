@@ -15,15 +15,17 @@
 // (which tuntap.h includes) impossible.  When we stop supporting xenial we can
 // remove this mess and just include net/if.h here.
 #if defined(Linux) && __GLIBC__ == 2 && __GLIBC_MINOR__ == 23
-# include <linux/version.h>
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0) && LINUX_VERSION_CODE < KERNEL_VERSION(4,5,0)
-#  define _NET_IF_H 1
-#  include <linux/if.h>
-extern "C" unsigned int if_nametoindex (const char *__ifname) __THROW;
-# endif
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) \
+    && LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#define _NET_IF_H 1
+#include <linux/if.h>
+extern "C" unsigned int
+if_nametoindex(const char* __ifname) __THROW;
+#endif
 #else
-# include <net/if.h>
-#endif 
+#include <net/if.h>
+#endif
 #endif
 
 #include <net/net_addr.hpp>
