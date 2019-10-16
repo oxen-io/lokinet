@@ -714,20 +714,19 @@ namespace libuv
   bool
   Loop::init()
   {
-    m_Impl.reset(uv_loop_new());
-    if(uv_loop_init(m_Impl.get()) == -1)
+    if(uv_loop_init(&m_Impl) == -1)
       return false;
-    m_Impl->data = this;
-    uv_loop_configure(m_Impl.get(), UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
+    m_Impl.data = this;
+    uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
     m_TickTimer.data = this;
     m_Run.store(true);
-    return uv_timer_init(m_Impl.get(), &m_TickTimer) != -1;
+    return uv_timer_init(&m_Impl, &m_TickTimer) != -1;
   }
 
   void
   Loop::update_time()
   {
-    uv_update_time(m_Impl.get());
+    uv_update_time(&m_Impl);
   }
 
   bool
@@ -745,7 +744,7 @@ namespace libuv
   bool
   Loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
   {
-    auto* impl = new conn_glue(m_Impl.get(), tcp, addr);
+    auto* impl = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl  = impl;
     if(impl->ConnectAsync())
       return true;
@@ -764,14 +763,14 @@ namespace libuv
   Loop::tick(int ms)
   {
     uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
-    uv_run(m_Impl.get(), UV_RUN_ONCE);
+    uv_run(&m_Impl, UV_RUN_ONCE);
     return 0;
   }
 
   void
   Loop::stop()
   {
-    uv_stop(m_Impl.get());
+    uv_stop(&m_Impl);
     llarp::LogInfo("stopping event loop");
     m_Run.store(false);
     CloseAll();
@@ -782,7 +781,7 @@ namespace libuv
   {
     llarp::LogInfo("Closing all handles");
     uv_walk(
-        m_Impl.get(),
+        &m_Impl,
         [](uv_handle_t* h, void*) {
           if(uv_is_closing(h))
             return;
@@ -804,7 +803,7 @@ namespace libuv
   bool
   Loop::udp_listen(llarp_udp_io* udp, const sockaddr* src)
   {
-    auto* impl = new udp_glue(m_Impl.get(), udp, src);
+    auto* impl = new udp_glue(&m_Impl, udp, src);
     udp->impl  = impl;
     if(impl->Bind())
     {
@@ -817,7 +816,7 @@ namespace libuv
   bool
   Loop::add_ticker(std::function< void(void) > func)
   {
-    auto* ticker = new ticker_glue(m_Impl.get(), func);
+    auto* ticker = new ticker_glue(&m_Impl, func);
     if(ticker->Start())
     {
       return true;
@@ -843,7 +842,7 @@ namespace libuv
   {
     auto* glue = new tun_glue(tun);
     tun->impl  = glue;
-    if(glue->Init(m_Impl.get()))
+    if(glue->Init(&m_Impl))
     {
       return true;
     }
@@ -854,7 +853,7 @@ namespace libuv
   bool
   Loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
   {
-    auto* glue = new conn_glue(m_Impl.get(), tcp, addr);
+    auto* glue = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl  = glue;
     if(glue->Server())
       return true;
@@ -866,7 +865,7 @@ namespace libuv
   bool
   Loop::add_pipe(llarp_ev_pkt_pipe* p)
   {
-    auto* glue = new pipe_glue(m_Impl.get(), p);
+    auto* glue = new pipe_glue(&m_Impl, p);
     if(glue->Start())
       return true;
     delete glue;

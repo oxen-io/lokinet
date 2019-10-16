@@ -104,16 +104,7 @@ namespace libuv
     }
 
    private:
-    struct DestructLoop
-    {
-      void
-      operator()(uv_loop_t* l) const
-      {
-        uv_loop_close(l);
-      }
-    };
-
-    std::unique_ptr< uv_loop_t, DestructLoop > m_Impl;
+    uv_loop_t m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
     std::shared_ptr< llarp::Logic > m_Logic;
