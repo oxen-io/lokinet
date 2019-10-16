@@ -465,8 +465,10 @@ namespace llarp
     ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
     auto pkts        = std::make_shared< llarp_pkt_list >();
     llarp_ev_udp_recvmany(&link->m_udp, pkts.get());
-
-    link->logic()->queue_func([pkts, link]() {
+    auto logic = link->logic();
+    if(logic == nullptr)
+      return;
+    logic->queue_func([pkts, link]() {
       auto itr = pkts->begin();
       while(itr != pkts->end())
       {
