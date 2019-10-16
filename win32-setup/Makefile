@@ -40,10 +40,12 @@ dbghelp:
 
 else
 regdbhelper.dll:
-	scp despair@10.10.10.3:web/loki/win32-dist/*.dll .
+	wget https://snowlight.net/loki/win32-dist/dbghelp32.dll
+	wget https://snowlight.net/loki/win32-dist/dbghelp64.dll
+	wget https://snowlight.net/loki/win32-dist/regdbhelper.dll
 
 lokinet-bootstrap.exe:
-	scp despair@10.10.10.3:web/loki/win32-dist/*.exe .
+	wget https://snowlight.net/loki/win32-dist/lokinet-bootstrap.exe
 	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
 	cp ../LICENSE .;unix2dos LICENSE LICENSE
 
