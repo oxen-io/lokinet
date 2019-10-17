@@ -59,8 +59,8 @@ namespace abyss
 #ifdef _WIN32
         _conn->write = &TCPWrite;
 #endif
-        m_Bad         = false;
-        m_State       = eReadHTTPMethodLine;
+        m_Bad   = false;
+        m_State = eReadHTTPMethodLine;
       }
 
       ~ConnImpl() = default;

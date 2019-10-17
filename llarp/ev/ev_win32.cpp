@@ -443,7 +443,7 @@ llarp_win32_loop::tcp_connect(struct llarp_tcp_connecter* tcp,
   if(fd == -1)
     return false;
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
-  conn->tcp.write           = &TCPWrite;
+  conn->tcp.write       = &TCPWrite;
   add_ev(conn, true);
   conn->connect();
   return true;
