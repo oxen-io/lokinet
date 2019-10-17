@@ -26,8 +26,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(NOT CMAKE_CROSSCOMPILING)
-  # this is messing with release builds
-  add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
   set(CMAKE_AR "gcc-ar")
   set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
   set(CMAKE_C_ARCHIVE_FINISH "true")
