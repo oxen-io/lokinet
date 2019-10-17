@@ -234,6 +234,19 @@ exit_tun_loop()
   }
 }
 
+std::deque< std::vector< char > > m_WriteQueue;
+
+ssize_t
+TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
+{
+  llarp::ev_io* io = (llarp::ev_io*)conn->impl;
+  m_WriteQueue.emplace_back(sz);
+  std::copy_n(ptr, sz, m_WriteQueue.back().begin());
+  byte_t* buf = new byte_t[sz];
+  memcpy(buf, m_WriteQueue.back().data(), sz);
+  return uwrite(io->fd, (char*)buf, sz);
+}
+
 llarp_win32_loop::~llarp_win32_loop()
 {
   exit_tun_loop();
@@ -276,19 +289,6 @@ namespace llarp
     if(_shouldClose)
       return -1;
     return uwrite(fd, (char*)buf, sz);
-  }
-
-  std::deque< std::vector< char > > m_WriteQueue;
-
-  static ssize_t
-  TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
-  {
-    llarp::ev_io* io = (llarp::ev_io*)conn->impl;
-    m_WriteQueue.emplace_back(sz);
-    std::copy_n(ptr, sz, m_WriteQueue.back().begin());
-    byte_t* buf = new byte_t[sz];
-    memcpy(buf, m_WriteQueue.back().data(), sz);
-    return uwrite(io->fd, (char*)buf, sz);
   }
 
   void
@@ -443,7 +443,7 @@ llarp_win32_loop::tcp_connect(struct llarp_tcp_connecter* tcp,
   if(fd == -1)
     return false;
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
-  conn->tcp.write           = &llarp::TCPWrite;
+  conn->tcp.write           = &TCPWrite;
   add_ev(conn, true);
   conn->connect();
   return true;
@@ -731,14 +731,6 @@ llarp_win32_loop::tick_listeners()
   llarp_ev_loop::tick_listeners();
   for(auto& func : m_Tickers)
     m_Logic->queue_func([func]() { func(); });
-}
-
-bool
-llarp_win32_loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
-{
-  auto conn = bind_tcp(tcp, addr);
-  conn->tcp.write = &llarp::TCPWrite;
-  return conn && add_ev(conn, true);
 }
 
 bool

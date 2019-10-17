@@ -157,9 +157,6 @@ struct llarp_win32_loop : public llarp_ev_loop
   stop();
 
   bool
-  tcp_listen(llarp_tcp_acceptor*, const sockaddr*);
-
-  bool
   add_ticker(std::function< void(void) > func) override
   {
     m_Tickers.emplace_back(func);
