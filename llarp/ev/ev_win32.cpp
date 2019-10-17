@@ -234,17 +234,12 @@ exit_tun_loop()
   }
 }
 
-std::deque< std::vector< char > > m_WriteQueue;
-
+// now zero-copy
 ssize_t
 TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
 {
   llarp::ev_io* io = (llarp::ev_io*)conn->impl;
-  m_WriteQueue.emplace_back(sz);
-  std::copy_n(ptr, sz, m_WriteQueue.back().begin());
-  byte_t* buf = new byte_t[sz];
-  memcpy(buf, m_WriteQueue.back().data(), sz);
-  return uwrite(io->fd, (char*)buf, sz);
+  return uwrite(io->fd, (char*)ptr, sz);
 }
 
 llarp_win32_loop::~llarp_win32_loop()
