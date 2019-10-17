@@ -734,6 +734,14 @@ llarp_win32_loop::tick_listeners()
 }
 
 bool
+llarp_win32_loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+{
+  auto conn = bind_tcp(tcp, addr);
+  conn->tcp.write = &llarp::TCPWrite;
+  return conn && add_ev(conn, true);
+}
+
+bool
 llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
 {
   return static_cast< llarp::udp_listener* >(u->impl)->RecvMany(pkts);
