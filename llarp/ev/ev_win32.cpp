@@ -278,6 +278,19 @@ namespace llarp
     return uwrite(fd, (char*)buf, sz);
   }
 
+  std::deque< std::vector< char > > m_WriteQueue;
+
+  static ssize_t
+  TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
+  {
+    llarp::ev_io* io = (llarp::ev_io*)conn->impl;
+    m_WriteQueue.emplace_back(sz);
+    std::copy_n(ptr, sz, m_WriteQueue.back().begin());
+    byte_t* buf = new byte_t[sz];
+    memcpy(buf, m_WriteQueue.back().data(), sz);
+    return uwrite(io->fd, (char*)buf, sz);
+  }
+
   void
   tcp_conn::connect()
   {
@@ -430,6 +443,7 @@ llarp_win32_loop::tcp_connect(struct llarp_tcp_connecter* tcp,
   if(fd == -1)
     return false;
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+  conn->tcp.write           = &llarp::TCPWrite;
   add_ev(conn, true);
   conn->connect();
   return true;
