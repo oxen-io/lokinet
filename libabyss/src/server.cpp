@@ -50,8 +50,8 @@ namespace abyss
         _conn->read   = &ConnImpl::OnRead;
         _conn->tick   = &ConnImpl::OnTick;
         _conn->closed = &ConnImpl::OnClosed;
-        m_Bad   = false;
-        m_State = eReadHTTPMethodLine;
+        m_Bad         = false;
+        m_State       = eReadHTTPMethodLine;
       }
 
       ~ConnImpl() = default;
@@ -217,7 +217,7 @@ namespace abyss
 
         if(!sz)
           return true;
-        
+
         bool done    = false;
         m_LastActive = _parent->now();
 

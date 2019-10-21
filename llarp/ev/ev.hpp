@@ -22,8 +22,6 @@
 #ifdef _WIN32
 #include <win32/win32_up.h>
 #include <win32/win32_upoll.h>
-// libuv style wrapper
-ssize_t TCPWrite(llarp_tcp_conn*, const byte_t*, size_t);
 // From the preview SDK, should take a look at that
 // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
@@ -553,9 +551,6 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
-#ifdef _WIN32
-      tcp.write  = &TCPWrite;
-#endif
       tcp.close  = &DoClose;
     }
 
@@ -576,9 +571,6 @@ namespace llarp
       tcp.user   = nullptr;
       tcp.read   = nullptr;
       tcp.tick   = nullptr;
-#ifdef _WIN32
-      tcp.write  = &TCPWrite;
-#endif      
       tcp.close  = &DoClose;
     }
 

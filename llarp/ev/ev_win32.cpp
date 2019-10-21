@@ -339,6 +339,8 @@ namespace llarp
     }
     // build handler
     llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
+    connimpl->tcp.write       = &TCPWrite;
+    connimpl->tcp.loop        = loop;
     if(loop->add_ev(connimpl, true))
     {
       // call callback
