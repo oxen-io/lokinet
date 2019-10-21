@@ -10,12 +10,6 @@
 #include <string>
 #include <unordered_map>
 
-#ifdef _WIN32
-// we don't use libuv
-ssize_t
-TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz);
-#endif
-
 namespace abyss
 {
   namespace httpd
@@ -56,9 +50,6 @@ namespace abyss
         _conn->read   = &ConnImpl::OnRead;
         _conn->tick   = &ConnImpl::OnTick;
         _conn->closed = &ConnImpl::OnClosed;
-#ifdef _WIN32
-        _conn->write = &TCPWrite;
-#endif
         m_Bad   = false;
         m_State = eReadHTTPMethodLine;
       }
@@ -221,15 +212,12 @@ namespace abyss
       bool
       ProcessRead(const char* buf, size_t sz)
       {
-        llarp::LogDebug("http read ", sz, " bytes");
         if(m_Bad)
-        {
           return false;
-        }
 
         if(!sz)
           return true;
-
+        
         bool done    = false;
         m_LastActive = _parent->now();
 
@@ -260,6 +248,7 @@ namespace abyss
             end = strstr(buf, "\r\n");
           }
         }
+        llarp::LogDebug("http read ", sz, " bytes");
         if(m_State == eReadHTTPBody)
           return FeedBody(buf, sz);
         return false;
@@ -276,9 +265,9 @@ namespace abyss
       static void
       OnClosed(llarp_tcp_conn* conn)
       {
-        llarp::LogDebug("connection closed");
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         self->_conn    = nullptr;
+        llarp::LogDebug("connection closed");
       }
 
       static void
