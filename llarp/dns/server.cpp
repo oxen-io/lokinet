@@ -158,6 +158,25 @@ namespace llarp
         llarp::LogWarn("failed to parse dns message from ", from);
         return;
       }
+
+      // we don't provide a DoH resolver because it requires verified TLS
+      // TLS needs X509/ASN.1-DER and opting into the Root CA Cabal
+      // thankfully mozilla added a backdoor that allows ISPs to turn it off
+      // so we disable DoH for firefox using mozilla's ISP backdoor
+      // see: https://github.com/loki-project/loki-network/issues/832
+      for(const auto & q : msg.questions)
+      {
+        // is this firefox looking for their backdoor record?
+        if(q.IsName("use-application-dns.net"))
+        {
+          // yea it is, let's turn off DoH because god is dead.
+          msg.AddNXReply();
+          // press F to pay respects
+          SendServerMessageTo(from, std::move(msg));
+          return;
+        }
+      }
+
       auto self = shared_from_this();
       if(m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
       {
