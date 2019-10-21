@@ -475,6 +475,23 @@ namespace llarp
     return true;
   }
 
+  fs::path
+  GetDefaultConfigDir()
+  {
+#ifdef _WIN32
+    const fs::path homedir = fs::path(getenv("APPDATA"));
+#else
+    const fs::path homedir = fs::path(getenv("HOME"));
+#endif
+    return homedir / fs::path(".lokinet");
+  }
+
+  fs::path
+  GetDefaultConfigPath()
+  {
+    return GetDefaultConfigDir() / "lokinet.ini";
+  }
+
 }  // namespace llarp
 
 /// fname should be a relative path (from CWD) or absolute path to the config

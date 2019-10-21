@@ -282,14 +282,7 @@ main(int argc, char *argv[])
   }
   else
   {
-// no explicit config file provided
-#ifdef _WIN32
-    fs::path homedir = fs::path(getenv("APPDATA"));
-#else
-    fs::path homedir = fs::path(getenv("HOME"));
-#endif
-    fs::path basepath = homedir / fs::path(".lokinet");
-    fs::path fpath    = basepath / "lokinet.ini";
+    auto basepath = llarp::GetDefaultConfigDir();
     // I don't think this is necessary with this condition
     // conffname = resolvePath(conffname);
 
@@ -306,6 +299,8 @@ main(int argc, char *argv[])
         return 1;
       }
     }
+
+    auto fpath = llarp::GetDefaultConfigPath();
 
     // if using default INI file, we're create it even if you don't ask us too
     if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),

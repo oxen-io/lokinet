@@ -113,6 +113,8 @@ namespace llarp
     if(_running)
     {
       return util::StatusObject{
+          {"running", true},
+          {"numNodesKnown", _nodedb->num_loaded()},
           {"dht", _dht->impl->ExtractStatus()},
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
@@ -120,7 +122,7 @@ namespace llarp
     }
     else
     {
-      return util::StatusObject{{"notRunning", true}};
+      return util::StatusObject{{"running", false}};
     }
   }
 
@@ -1029,7 +1031,9 @@ namespace llarp
     }
 
     LogInfo("have ", _nodedb->num_loaded(), " routers");
+
     _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();

@@ -120,7 +120,7 @@ endif
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
-EXE = $(BUILD_ROOT)/lokinet
+EXE = $(BUILD_ROOT)/daemon/lokinet
 TEST_EXE = $(BUILD_ROOT)/test/testAll
 ABYSS_EXE = $(BUILD_ROOT)/abyss-main
 

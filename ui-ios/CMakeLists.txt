@@ -31,7 +31,9 @@ add_subdirectory(${libuv_SOURCE_DIR} ${libuv_BINARY_DIR})
 
 include("${LOKINET_ROOT}/cmake/basic_definitions.cmake")
 set(LIBUV_IN_SOURCE ON)
+set(LIBUV_LIBRARY uv_a)
 include("${LOKINET_ROOT}/cmake/unix.cmake")
+unset(LIBTUNTAP_SRC)
 
 find_package(Threads REQUIRED)
 
@@ -50,6 +52,10 @@ include_directories("${libuv_SOURCE_DIR}/include")
 
 add_loki_dir(vendor/gtest)
 add_subdirectory(${ABSEIL_DIR} "vendor/abseil-cpp")
+
+if (FS_LIB STREQUAL "cppbackport")
+  add_loki_dir(vendor)
+endif()
 
 add_loki_dir(crypto)
 add_loki_dir(llarp)
