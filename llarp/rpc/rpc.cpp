@@ -98,12 +98,14 @@ namespace llarp
             continue;
           if(not item.value("funded", false))
             continue;
-          const std::string pk = item.value("ed25519_pubkey", "");
+          const std::string pk = item.value("pubkey_ed25519", "");
+          if(pk.empty())
+            continue;
           PubKey k;
-          if(pk.size() > 0 && k.FromString(pk))
+          if(k.FromString(pk))
             keys.emplace_back(std::move(k));
         }
-        handler(keys, true);
+        handler(keys, not keys.empty());
         return true;
       }
 
@@ -148,9 +150,9 @@ namespace llarp
       {
         LogInfo("Updating service node list");
         nlohmann::json params = {
-            {"service_node_pubkeys", nlohmann::json::array()},
-            {"include_json", false}};
-        QueueRPC("get_service_nodes", std::move(params),
+            {"fields",
+             {{"pubkey_ed25519", true}, {"active", true}, {"funded", true}}}};
+        QueueRPC("get_n_service_nodes", std::move(params),
                  util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
       }
 
