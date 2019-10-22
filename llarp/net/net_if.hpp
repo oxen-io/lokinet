@@ -1,6 +1,6 @@
 #ifndef LLARP_NET_NET_IF_HPP
 #define LLARP_NET_NET_IF_HPP
-
+#ifndef _WIN32
 // this file is a shim include for #include <net/if.h>
 
 // Work around for broken glibc/linux header definitions in xenial that makes
@@ -21,5 +21,6 @@ if_nametoindex(const char* __ifname) __THROW;
 #endif
 #else
 #include <net/if.h>
+#endif
 #endif
 #endif
