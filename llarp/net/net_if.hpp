@@ -12,6 +12,9 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) \
     && LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #define _NET_IF_H 1
+#ifndef IFNAMSIZ
+#define IFNAMSIZ (16)
+#endif
 #include <linux/if.h>
 extern "C" unsigned int
 if_nametoindex(const char* __ifname) __THROW;
