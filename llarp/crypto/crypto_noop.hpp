@@ -144,11 +144,12 @@ namespace llarp
       m_value += sz;
     }
 
-    void
+    bool
     identity_keygen(SecretKey &key) override
     {
       std::iota(key.begin(), key.end(), m_value.load() % MAX_BYTE);
       m_value += key.size();
+      return true;
     }
 
     void
