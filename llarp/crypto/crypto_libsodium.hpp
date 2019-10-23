@@ -52,6 +52,7 @@ namespace llarp
       bool
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
+
       /// seed to secretkey
       bool
       seed_to_secretkey(llarp::SecretKey &,
@@ -63,7 +64,7 @@ namespace llarp
       void
       randbytes(byte_t *, size_t) override;
       /// generate signing keypair
-      void
+      bool
       identity_keygen(SecretKey &) override;
       /// generate encryption keypair
       void

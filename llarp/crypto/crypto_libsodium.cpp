@@ -185,8 +185,9 @@ namespace llarp
                                        const llarp::IdentitySecret &seed)
     {
       PubKey pk;
-      byte_t *sk = secret.data();
-      return crypto_sign_ed25519_seed_keypair(pk.data(), sk, seed.data()) != -1;
+      return crypto_sign_ed25519_seed_keypair(pk.data(), secret.data(),
+                                              seed.data())
+          != -1;
     }
 
     void
@@ -201,12 +202,13 @@ namespace llarp
       randombytes((unsigned char *)ptr, sz);
     }
 
-    void
+    bool
     CryptoLibSodium::identity_keygen(llarp::SecretKey &keys)
     {
       PubKey pk;
-      byte_t *sk = keys.data();
-      crypto_sign_keypair(pk.data(), sk);
+      crypto_sign_keypair(pk.data(), keys.data());
+      const PubKey sk_pk = keys.toPublic();
+      return pk == sk_pk;
     }
 
     void

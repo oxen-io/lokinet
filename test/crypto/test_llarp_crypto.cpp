@@ -15,10 +15,16 @@ namespace llarp
     }
   };
 
+  TEST_F(IdentityKeyTest, TestKeyGen)
+  {
+    SecretKey secret;
+    ASSERT_TRUE(crypto.identity_keygen(secret));
+  }
+
   TEST_F(IdentityKeyTest, TestSignVerify)
   {
     SecretKey secret;
-    crypto.identity_keygen(secret);
+    ASSERT_TRUE(crypto.identity_keygen(secret));
     AlignedBuffer< 128 > random;
     random.Randomize();
     Signature sig;

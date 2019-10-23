@@ -58,7 +58,7 @@ namespace llarp
 
       MOCK_METHOD2(randbytes, void(byte_t *, size_t));
 
-      MOCK_METHOD1(identity_keygen, void(SecretKey &));
+      MOCK_METHOD1(identity_keygen, bool(SecretKey &));
 
       MOCK_METHOD1(encryption_keygen, void(SecretKey &));
 
