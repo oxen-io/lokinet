@@ -33,20 +33,16 @@ import android.widget.TextView;
 public class LokiNetActivity extends Activity {
 	private static final String TAG = "lokinet-activity";
 	private TextView textView;
-	private static final String DefaultBootstrapURL = "https://i2p.rocks/bootstrap.signed";
+	private static final String DefaultBootstrapURL = "https://seed.lokinet.org/bootstrap.signed";
 
 	private AsyncBootstrap bootstrapper;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-
-		// copy assets
-		//String conf = copyFileAsset("daemon.ini");
 		textView = new TextView(this);
 		setContentView(textView);
-
-		Lokinet_JNI.loadLibraries();
+		System.loadLibrary("lokinetandroid");
 	}
 
 

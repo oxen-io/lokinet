@@ -14,6 +14,7 @@
 #include <cxxopts.hpp>
 #include <string>
 #include <iostream>
+#include <future>
 
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
@@ -85,12 +86,12 @@ resolvePath(std::string conffname)
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(std::string conffname, bool multiThreaded, bool backgroundMode)
+run_main_context(std::string conffname, llarp_main_runtime_opts opts)
 {
   // this is important, can downgrade from Info though
   llarp::LogDebug("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
-  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
+  ctx      = llarp_main_init(conffname.c_str());
   int code = 1;
   if(ctx)
   {
@@ -102,7 +103,7 @@ run_main_context(std::string conffname, bool multiThreaded, bool backgroundMode)
     code = llarp_main_setup(ctx);
     llarp::util::SetThreadName("llarp-mainloop");
     if(code == 0)
-      code = llarp_main_run(ctx, backgroundMode);
+      code = llarp_main_run(ctx, opts);
     llarp_main_free(ctx);
   }
   exit_code.set_value(code);
@@ -111,11 +112,11 @@ run_main_context(std::string conffname, bool multiThreaded, bool backgroundMode)
 int
 main(int argc, char *argv[])
 {
-  bool multiThreaded          = true;
+  llarp_main_runtime_opts opts;
   const char *singleThreadVar = getenv("LLARP_SHADOW");
   if(singleThreadVar && std::string(singleThreadVar) == "1")
   {
-    multiThreaded = false;
+    opts.singleThreaded = true;
   }
 
 #ifdef _WIN32
@@ -148,12 +149,10 @@ main(int argc, char *argv[])
   options.parse_positional("config");
   // clang-format on
 
-  bool genconfigOnly  = false;
-  bool asRouter       = false;
-  bool overWrite      = false;
-  bool backgroundMode = false;
+  bool genconfigOnly = false;
+  bool asRouter      = false;
+  bool overWrite     = false;
   std::string conffname;  // suggestions: confFName? conf_fname?
-
   try
   {
     auto result = options.parse(argc, argv);
@@ -178,7 +177,7 @@ main(int argc, char *argv[])
 
     if(result.count("version"))
     {
-      std::cout << LLARP_VERSION << std::endl;
+      std::cout << llarp_version() << std::endl;
       return 0;
     }
 
@@ -189,7 +188,7 @@ main(int argc, char *argv[])
 
     if(result.count("background") > 0)
     {
-      backgroundMode = true;
+      opts.background = true;
     }
 
     if(result.count("force") > 0)
@@ -315,8 +314,7 @@ main(int argc, char *argv[])
     return 0;
   }
 
-  std::thread main_thread{
-      std::bind(&run_main_context, conffname, multiThreaded, backgroundMode)};
+  std::thread main_thread{std::bind(&run_main_context, conffname, opts)};
   auto ftr = exit_code.get_future();
   do
   {
@@ -324,11 +322,9 @@ main(int argc, char *argv[])
   } while(ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
   main_thread.join();
-
+  const auto code = ftr.get();
 #ifdef _WIN32
   ::WSACleanup();
 #endif
-  const auto code = ftr.get();
-  exit(code);
   return code;
 }
