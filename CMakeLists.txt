@@ -41,6 +41,10 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+# No in-source building
+include(MacroEnsureOutOfSourceBuild)
+macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
+
 include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
