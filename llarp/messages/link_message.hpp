@@ -4,6 +4,7 @@
 #include <link/session.hpp>
 #include <router_id.hpp>
 #include <util/bencode.hpp>
+#include <path/path_types.hpp>
 
 #include <vector>
 
@@ -18,6 +19,8 @@ namespace llarp
     /// who did this message come from or is going to
     ILinkSession* session = nullptr;
     uint64_t version      = LLARP_PROTO_VERSION;
+
+    PathID_t pathid;
 
     ILinkMessage() = default;
 
