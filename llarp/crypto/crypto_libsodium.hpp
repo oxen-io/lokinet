@@ -64,7 +64,7 @@ namespace llarp
       void
       randbytes(byte_t *, size_t) override;
       /// generate signing keypair
-      bool
+      void
       identity_keygen(SecretKey &) override;
       /// generate encryption keypair
       void

@@ -202,13 +202,14 @@ namespace llarp
       randombytes((unsigned char *)ptr, sz);
     }
 
-    bool
+    void
     CryptoLibSodium::identity_keygen(llarp::SecretKey &keys)
     {
       PubKey pk;
-      crypto_sign_keypair(pk.data(), keys.data());
+      int result = crypto_sign_keypair(pk.data(), keys.data());
+      assert(result != -1);
       const PubKey sk_pk = keys.toPublic();
-      return pk == sk_pk;
+      assert(pk == sk_pk);
     }
 
     void

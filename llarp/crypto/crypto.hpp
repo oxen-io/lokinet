@@ -73,7 +73,7 @@ namespace llarp
     virtual void
     randbytes(byte_t *, size_t) = 0;
     /// generate signing keypair
-    virtual bool
+    virtual void
     identity_keygen(SecretKey &) = 0;
     /// generate encryption keypair
     virtual void
