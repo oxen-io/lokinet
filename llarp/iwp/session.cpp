@@ -365,17 +365,17 @@ namespace llarp
       const auto pk   = m_Parent->GetOurRC().pubkey;
       const auto e_pk = m_Parent->RouterEncryptionSecret().toPublic();
       auto itr        = req.data() + PacketOverhead;
-      std::copy_n(pk.begin(), pk.size(), itr);
+      std::copy_n(pk.data(), pk.size(), itr);
       itr += pk.size();
-      std::copy_n(e_pk.begin(), e_pk.size(), itr);
+      std::copy_n(e_pk.data(), e_pk.size(), itr);
       itr += e_pk.size();
-      std::copy(N.begin(), N.end(), itr);
+      std::copy_n(N.data(), N.size(), itr);
       Signature Z;
       llarp_buffer_t signbuf(req.data() + PacketOverhead,
                              Introduction::SIZE - Signature::SIZE);
       m_Parent->Sign(Z, signbuf);
       std::copy_n(
-          Z.begin(), Z.size(),
+          Z.data(), Z.size(),
           req.data() + PacketOverhead + (Introduction::SIZE - Signature::SIZE));
       CryptoManager::instance()->randbytes(req.data() + HMACSIZE, TUNNONCESIZE);
       EncryptAndSend(std::move(req));
@@ -406,7 +406,7 @@ namespace llarp
         return;
       }
       const auto begin = pkt.data() + PacketOverhead;
-      if(not std::equal(begin, begin + token.size(), token.begin()))
+      if(not std::equal(begin, begin + token.size(), token.data()))
       {
         LogError("token missmatch from ", m_RemoteAddr);
         return;
@@ -426,14 +426,14 @@ namespace llarp
       }
       byte_t* ptr = pkt.data() + PacketOverhead;
       TunnelNonce N;
-      std::copy_n(ptr, PubKey::SIZE, m_ExpectedIdent.begin());
+      std::copy_n(ptr, PubKey::SIZE, m_ExpectedIdent.data());
       ptr += PubKey::SIZE;
-      std::copy_n(ptr, PubKey::SIZE, m_RemoteOnionKey.begin());
+      std::copy_n(ptr, PubKey::SIZE, m_RemoteOnionKey.data());
       ptr += PubKey::SIZE;
-      std::copy_n(ptr, TunnelNonce::SIZE, N.begin());
+      std::copy_n(ptr, TunnelNonce::SIZE, N.data());
       ptr += TunnelNonce::SIZE;
       Signature Z;
-      std::copy_n(ptr, Z.size(), Z.begin());
+      std::copy_n(ptr, Z.size(), Z.data()));
       const llarp_buffer_t verifybuf(pkt.data() + PacketOverhead,
                                      Introduction::SIZE - Signature::SIZE);
       if(!CryptoManager::instance()->verify(m_ExpectedIdent, verifybuf, Z))
@@ -456,7 +456,7 @@ namespace llarp
       CryptoManager::instance()->randbytes(reply.data() + HMACSIZE,
                                            TUNNONCESIZE);
       // set token
-      std::copy_n(token.begin(), token.size(), reply.data() + PacketOverhead);
+      std::copy_n(token.data(), token.size(), reply.data() + PacketOverhead);
       m_LastRX = m_Parent->Now();
       EncryptAndSend(std::move(reply));
       LogDebug("sent intro ack to ", m_RemoteAddr);
@@ -479,8 +479,8 @@ namespace llarp
         return;
       }
       m_LastRX = m_Parent->Now();
-      std::copy_n(pkt.data() + PacketOverhead, token.size(), token.begin());
-      std::copy_n(token.begin(), token.size(), reply.data() + PacketOverhead);
+      std::copy_n(pkt.data() + PacketOverhead, token.size(), token.data());
+      std::copy_n(token.data(), token.size(), reply.data() + PacketOverhead);
       // random nounce
       CryptoManager::instance()->randbytes(reply.data() + HMACSIZE,
                                            TUNNONCESIZE);
