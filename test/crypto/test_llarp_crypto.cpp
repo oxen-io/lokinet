@@ -15,6 +15,13 @@ namespace llarp
     }
   };
 
+  TEST_F(IdentityKeyTest, TestKeyGen)
+  {
+    SecretKey secret;
+    crypto.identity_keygen(secret);
+    ASSERT_FALSE(secret.IsZero());
+  }
+
   TEST_F(IdentityKeyTest, TestSignVerify)
   {
     SecretKey secret;
@@ -23,7 +30,7 @@ namespace llarp
     random.Randomize();
     Signature sig;
 
-    llarp_buffer_t buf(random);
+    const llarp_buffer_t buf(random);
     ASSERT_TRUE(crypto.sign(sig, secret, buf));
     ASSERT_TRUE(crypto.verify(secret.toPublic(), buf, sig));
     random.Randomize();

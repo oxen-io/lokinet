@@ -142,13 +142,6 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
-elseif(NOT ANDROID AND NOT NON_PC_TARGET)
-  if (NOT USE_AVX2)
-    # Public binary releases
-    set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
-  else()
-    set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
-  endif()
 endif()
 
 # only needed if using AVX2

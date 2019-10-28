@@ -52,6 +52,7 @@ namespace llarp
       bool
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
+
       /// seed to secretkey
       bool
       seed_to_secretkey(llarp::SecretKey &,

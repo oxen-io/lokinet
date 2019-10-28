@@ -20,6 +20,7 @@ typedef SSIZE_T ssize_t;
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <net/net_if.hpp>
 #endif
 
 #include <memory>
