@@ -829,9 +829,15 @@ struct PacketBuffer
     other._sz  = 0;
   }
 
+  PacketBuffer(const PacketBuffer&) = delete;
+
+  PacketBuffer&
+  operator=(const PacketBuffer&) = delete;
+
   PacketBuffer() : PacketBuffer(nullptr, 0){};
-  explicit PacketBuffer(size_t sz) : PacketBuffer(new char[sz], sz)
+  explicit PacketBuffer(size_t sz) : _sz{sz}
   {
+    _ptr = new char[sz];
   }
   PacketBuffer(char* buf, size_t sz) : _ptr{buf}, _sz{sz}
   {
@@ -861,6 +867,7 @@ struct PacketBuffer
     if(_ptr)
       delete[] _ptr;
     _ptr = new char[sz];
+    _sz  = sz;
   }
 
  private:
@@ -870,8 +877,8 @@ struct PacketBuffer
 
 struct PacketEvent
 {
-  llarp::Addr remote = {};
-  PacketBuffer pkt   = {};
+  llarp::Addr remote;
+  PacketBuffer pkt;
 };
 
 struct llarp_pkt_list : public std::vector< PacketEvent >
