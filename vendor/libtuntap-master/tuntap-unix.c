@@ -381,7 +381,7 @@ tuntap_set_debug(struct device *dev, int set)
     return 0;
   }
 
-#ifndef Darwin
+#if defined(__linux__)
   if(ioctl(dev->tun_fd, TUNSETDEBUG, &set) == -1)
   {
     switch(set)
