@@ -1,6 +1,7 @@
 #include <ev/ev_libuv.hpp>
 #include <net/net_addr.hpp>
 #include <util/thread/logic.hpp>
+#include <util/thread/queue.hpp>
 
 #include <cstring>
 
@@ -24,6 +25,33 @@ namespace libuv
   /// tcp connection glue between llarp and libuv
   struct conn_glue : public glue
   {
+    using WriteBuffer_t = std::vector< char >;
+
+    struct WriteEvent
+    {
+      WriteBuffer_t data;
+      uv_write_t request;
+
+      WriteEvent() = default;
+
+      explicit WriteEvent(WriteBuffer_t buf) : data(std::move(buf))
+      {
+        request.data = this;
+      }
+
+      uv_buf_t
+      Buffer()
+      {
+        return uv_buf_init(data.data(), data.size());
+      }
+
+      uv_write_t*
+      Request()
+      {
+        return &request;
+      }
+    };
+
     uv_tcp_t m_Handle;
     uv_connect_t m_Connect;
     uv_check_t m_Ticker;
@@ -31,11 +59,11 @@ namespace libuv
     llarp_tcp_acceptor* const m_Accept;
     llarp_tcp_conn m_Conn;
     llarp::Addr m_Addr;
-
-    std::deque< std::vector< char > > m_WriteQueue;
+    llarp::thread::Queue< WriteBuffer_t > m_WriteQueue;
+    uv_async_t m_WriteNotify;
 
     conn_glue(uv_loop_t* loop, llarp_tcp_connecter* tcp, const sockaddr* addr)
-        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr)
+        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr), m_WriteQueue(32)
     {
       m_Connect.data = this;
       m_Handle.data  = this;
@@ -43,24 +71,29 @@ namespace libuv
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Conn.close = &ExplicitClose;
-      m_Conn.write = &ExplicitWrite;
+      m_Conn.close       = &ExplicitClose;
+      m_Conn.write       = &ExplicitWrite;
+      m_WriteNotify.data = this;
+      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
     }
 
     conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const sockaddr* addr)
-        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr)
+        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr), m_WriteQueue(32)
     {
       m_Connect.data = nullptr;
       m_Handle.data  = this;
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Accept->close = &ExplicitCloseAccept;
-      m_Conn.write    = nullptr;
-      m_Conn.closed   = nullptr;
+      m_Accept->close    = &ExplicitCloseAccept;
+      m_Conn.write       = nullptr;
+      m_Conn.closed      = nullptr;
+      m_WriteNotify.data = this;
+      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
     }
 
-    conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
+    conn_glue(conn_glue* parent)
+        : m_TCP(nullptr), m_Accept(nullptr), m_WriteQueue(32)
     {
       m_Connect.data = nullptr;
       m_Conn.close   = &ExplicitClose;
@@ -69,6 +102,8 @@ namespace libuv
       uv_tcp_init(parent->m_Handle.loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(parent->m_Handle.loop, &m_Ticker);
+      m_WriteNotify.data = this;
+      uv_async_init(parent->m_Handle.loop, &m_WriteNotify, &OnShouldWrite);
     }
 
     static void
@@ -177,32 +212,50 @@ namespace libuv
     static void
     OnWritten(uv_write_t* req, int status)
     {
-      conn_glue* conn = static_cast< conn_glue* >(req->data);
-      if(status)
+      WriteEvent* ev = static_cast< WriteEvent* >(req->data);
+      if(status == 0)
       {
-        llarp::LogError("write failed on tcp: ", uv_strerror(status));
-        conn->Close();
+        llarp::LogDebug("wrote ", ev->data.size());
       }
       else
-        Call(conn->Stream(), std::bind(&conn_glue::DrainOne, conn));
-      delete req;
-    }
-
-    void
-    DrainOne()
-    {
-      m_WriteQueue.pop_front();
+      {
+        llarp::LogDebug("write fail");
+      }
+      delete ev;
     }
 
     int
     WriteAsync(char* data, size_t sz)
     {
-      m_WriteQueue.emplace_back(sz);
-      std::copy_n(data, sz, m_WriteQueue.back().begin());
-      auto buf  = uv_buf_init(m_WriteQueue.back().data(), sz);
-      auto* req = new uv_write_t();
-      req->data = this;
-      return uv_write(req, Stream(), &buf, 1, &OnWritten) == 0 ? sz : 0;
+      if(uv_is_closing((const uv_handle_t*)&m_Handle))
+        return -1;
+      if(uv_is_closing((const uv_handle_t*)&m_WriteNotify))
+        return -1;
+      WriteBuffer_t buf(sz);
+      std::copy_n(data, sz, buf.begin());
+      if(m_WriteQueue.pushBack(std::move(buf))
+         == llarp::thread::QueueReturn::Success)
+      {
+        uv_async_send(&m_WriteNotify);
+        return sz;
+      }
+      return -1;
+    }
+
+    void
+    FlushWrite()
+    {
+      while(not m_WriteQueue.empty())
+      {
+        auto data      = m_WriteQueue.popFront();
+        WriteEvent* ev = new WriteEvent(std::move(data));
+        auto buf       = ev->Buffer();
+        if(uv_write(ev->Request(), Stream(), &buf, 1, &OnWritten) != 0)
+        {
+          Close();
+          return;
+        }
+      }
     }
 
     static void
@@ -249,15 +302,25 @@ namespace libuv
       delete shut;
     }
 
+    static void
+    OnWriteClosed(uv_handle_t* h)
+    {
+      conn_glue* conn = static_cast< conn_glue* >(h->data);
+      auto* shut      = new uv_shutdown_t();
+      shut->data      = conn;
+      uv_shutdown(shut, conn->Stream(), &OnShutdown);
+    }
+
     void
     Close() override
     {
+      if(uv_is_closing((uv_handle_t*)&m_WriteNotify))
+        return;
       llarp::LogDebug("close tcp connection");
+      m_WriteQueue.disable();
+      uv_close((uv_handle_t*)&m_WriteNotify, &OnWriteClosed);
       uv_check_stop(&m_Ticker);
       uv_read_stop(Stream());
-      auto* shut = new uv_shutdown_t();
-      shut->data = this;
-      uv_shutdown(shut, Stream(), &OnShutdown);
     }
 
     static void
@@ -272,6 +335,12 @@ namespace libuv
       {
         llarp::LogError("tcp accept failed: ", uv_strerror(status));
       }
+    }
+
+    static void
+    OnShouldWrite(uv_async_t* h)
+    {
+      static_cast< conn_glue* >(h->data)->FlushWrite();
     }
 
     static void
