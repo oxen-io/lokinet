@@ -419,7 +419,7 @@ namespace llarp
     void
     Session::HandleGotIntro(Packet_t pkt)
     {
-      if(pkt.size() < Introduction::SIZE + PacketOverhead)
+      if(pkt.size() < (Introduction::SIZE + PacketOverhead))
       {
         LogWarn("intro too small from ", m_RemoteAddr);
         return;
@@ -466,7 +466,7 @@ namespace llarp
     void
     Session::HandleGotIntroAck(Packet_t pkt)
     {
-      if(pkt.size() < token.size() + PacketOverhead)
+      if(pkt.size() < (token.size() + PacketOverhead))
       {
         LogError("bad intro ack size ", pkt.size(), " < ",
                  token.size() + PacketOverhead, " from ", m_RemoteAddr);
@@ -601,7 +601,7 @@ namespace llarp
     void
     Session::HandleMACK(Packet_t data)
     {
-      if(data.size() < 3 + PacketOverhead)
+      if(data.size() < (3 + PacketOverhead))
       {
         LogError("impossibly short mack from ", m_RemoteAddr);
         return;
@@ -637,7 +637,7 @@ namespace llarp
     void
     Session::HandleNACK(Packet_t data)
     {
-      if(data.size() < CommandOverhead + sizeof(uint64_t) + PacketOverhead)
+      if(data.size() < (CommandOverhead + sizeof(uint64_t) + PacketOverhead))
       {
         LogError("short nack from ", m_RemoteAddr);
         return;
@@ -656,8 +656,8 @@ namespace llarp
     void
     Session::HandleXMIT(Packet_t data)
     {
-      if(data.size() < CommandOverhead + PacketOverhead + sizeof(uint16_t)
-             + sizeof(uint64_t) + ShortHash::SIZE)
+      if(data.size() < (CommandOverhead + PacketOverhead + sizeof(uint16_t)
+                        + sizeof(uint64_t) + ShortHash::SIZE))
       {
         LogError("short XMIT from ", m_RemoteAddr);
         return;
@@ -692,8 +692,8 @@ namespace llarp
     void
     Session::HandleDATA(Packet_t data)
     {
-      if(data.size() <= CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
-             + PacketOverhead)
+      if(data.size() < (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
+                        + PacketOverhead))
       {
         LogError("short DATA from ", m_RemoteAddr, " ", data.size());
         return;
@@ -747,7 +747,7 @@ namespace llarp
     void
     Session::HandleACKS(Packet_t data)
     {
-      if(data.size() < 11 + PacketOverhead)
+      if(data.size() < (11 + PacketOverhead))
       {
         LogError("short ACKS from ", m_RemoteAddr);
         return;
