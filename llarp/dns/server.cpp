@@ -164,7 +164,7 @@ namespace llarp
       // thankfully mozilla added a backdoor that allows ISPs to turn it off
       // so we disable DoH for firefox using mozilla's ISP backdoor
       // see: https://github.com/loki-project/loki-network/issues/832
-      for(const auto & q : msg.questions)
+      for(const auto& q : msg.questions)
       {
         // is this firefox looking for their backdoor record?
         if(q.IsName("use-application-dns.net"))
