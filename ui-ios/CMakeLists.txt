@@ -55,6 +55,5 @@ add_subdirectory(${ABSEIL_DIR} "vendor/abseil-cpp")
 
 add_loki_dir(crypto)
 add_loki_dir(llarp)
-add_loki_dir(libabyss)
 
 add_subdirectory(lokinet)
