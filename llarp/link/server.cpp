@@ -469,11 +469,9 @@ namespace llarp
     if(logic == nullptr)
       return;
     logic->queue_func([pkts, link]() {
-      auto itr = pkts->begin();
-      while(itr != pkts->end())
+      for(auto & item : *pkts)
       {
-        link->RecvFrom(itr->remote, std::move(itr->pkt));
-        ++itr;
+        link->RecvFrom(item.remote, std::move(item.pkt));
       }
       link->Pump();
     });
