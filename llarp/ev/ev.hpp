@@ -831,6 +831,9 @@ struct PacketBuffer
 
   PacketBuffer(const PacketBuffer&) = delete;
 
+  PacketBuffer&
+  operator=(const PacketBuffer&) = delete;
+
   PacketBuffer() : PacketBuffer(nullptr, 0){};
   explicit PacketBuffer(size_t sz) : _sz{sz}
   {
@@ -864,6 +867,7 @@ struct PacketBuffer
     if(_ptr)
       delete[] _ptr;
     _ptr = new char[sz];
+    _sz  = sz;
   }
 
  private:
