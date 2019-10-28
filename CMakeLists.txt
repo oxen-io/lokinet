@@ -41,6 +41,10 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
+# No in-source building
+include(MacroEnsureOutOfSourceBuild)
+macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
+
 include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
@@ -138,13 +142,6 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
-elseif(NOT ANDROID AND NOT NON_PC_TARGET)
-  if (NOT USE_AVX2)
-    # Public binary releases
-    set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
-  else()
-    set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
-  endif()
 endif()
 
 # only needed if using AVX2
@@ -167,8 +164,8 @@ endif()
 if (NOT MSVC OR NOT MSVC_VERSION)
   add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 endif()
-add_subdirectory(${ABSEIL_DIR})
 add_subdirectory(vendor/gtest)
+add_subdirectory(${ABSEIL_DIR})
 
 if (FS_LIB STREQUAL "cppbackport")
   add_subdirectory(vendor)
@@ -233,9 +230,6 @@ enable_testing()
 if (NOT SHADOW)
   add_subdirectory(test)
   if(ANDROID)
-    add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
-    set_property(TARGET ${ANDROID_LIB} PROPERTY CXX_STANDARD 14)
-    add_log_tag(${ANDROID_LIB})
-    target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
+    add_subdirectory(jni)
   endif(ANDROID)
 endif()

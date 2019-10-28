@@ -78,6 +78,7 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
+  ev/vpnio.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
@@ -137,7 +138,6 @@ set(LIB_SRC
   crypto/crypto_libsodium.cpp
   crypto/crypto_noop.cpp
   crypto/crypto.cpp
-  crypto/ec.cpp
   crypto/encrypted_frame.cpp
   crypto/encrypted.cpp
   crypto/types.cpp

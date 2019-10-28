@@ -1040,6 +1040,12 @@ namespace llarp
     return _running;
   }
 
+  bool
+  Router::IsRunning() const
+  {
+    return _running;
+  }
+
   llarp_time_t
   Router::Uptime() const
   {

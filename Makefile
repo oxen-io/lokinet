@@ -16,6 +16,8 @@ BUILD_TYPE ?= Debug
 PYTHON ?= python
 PYTHON3 ?= python3
 
+FORMAT ?= clang-format
+
 SETCAP ?= which setcap && setcap cap_net_admin,cap_net_bind_service=+eip
 
 SHADOW_ROOT ?= $(HOME)/.shadow
@@ -252,11 +254,11 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	clang-format -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
+	$(FORMAT) -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
 format-verify: format
-	(type clang-format)
-	clang-format --version
+	(type $(FORMAT))
+	$(FORMAT) --version
 	git diff --quiet || (echo 'Please run make format!!' && git --no-pager diff ; exit 1)
 
 analyze-config: clean

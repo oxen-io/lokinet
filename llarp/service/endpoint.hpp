@@ -1,6 +1,6 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
-
+#include <llarp.h>
 #include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
@@ -101,6 +101,14 @@ namespace llarp
       /// return true if we have a resolvable ip address
       virtual bool
       HasIfAddr() const
+      {
+        return false;
+      }
+
+      /// inject vpn io
+      /// return false if not supported
+      virtual bool
+      InjectVPN(llarp_vpn_io*, llarp_vpn_ifaddr_info)
       {
         return false;
       }
@@ -253,9 +261,6 @@ namespace llarp
 
       bool
       ShouldBundleRC() const override;
-
-      static void
-      HandlePathDead(void*);
 
       /// return true if we have a convotag as an exit session
       /// or as a hidden service session

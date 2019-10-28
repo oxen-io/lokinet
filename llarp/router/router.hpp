@@ -310,6 +310,9 @@ namespace llarp
     bool
     InitServiceNode();
 
+    bool
+    IsRunning() const override;
+
     /// return true if we are running in service node mode
     bool
     IsServiceNode() const;

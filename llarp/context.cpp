@@ -1,5 +1,5 @@
 #include <llarp.hpp>
-#include <llarp.h>
+#include <constants/version.hpp>
 
 #include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
@@ -7,8 +7,10 @@
 #include <dht/context.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
+#include <ev/vpnio.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
+#include <service/context.hpp>
 #include <util/logging/logger.h>
 #include <util/meta/memfn.hpp>
 #include <util/metrics/json_publisher.hpp>
@@ -34,6 +36,12 @@ namespace llarp
     m_scheduler->stop();
   }
 
+  bool
+  Context::CallSafe(std::function< void(void) > f)
+  {
+    return logic && logic->queue_func(std::move(f));
+  }
+
   void
   Context::progress()
   {
@@ -45,11 +53,14 @@ namespace llarp
   {
     logic = std::make_shared< Logic >();
     // llarp::LogInfo("loading config at ", configfile);
-    if(!config->Load(configfile.c_str()))
+    if(configfile.size())
     {
-      config.release();
-      llarp::LogError("failed to load config file ", configfile);
-      return false;
+      if(!config->Load(configfile.c_str()))
+      {
+        config.release();
+        llarp::LogError("failed to load config file ", configfile);
+        return false;
+      }
     }
 
     // System config
@@ -176,22 +187,6 @@ __        ___    ____  _   _ ___ _   _  ____
     return 1;
   }
 
-  bool
-  Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
-  {
-    // FIXME
-    // return llarp_nodedb_put_rc(nodedb, rc);
-    return false;
-  }
-
-  llarp::RouterContact *
-  Context::GetDatabase(__attribute__((unused)) const byte_t *pk)
-  {
-    // FIXME
-    // return llarp_nodedb_get_rc(nodedb, pk);
-    return nullptr;
-  }
-
   int
   Context::Setup()
   {
@@ -222,7 +217,7 @@ __        ___    ____  _   _ ___ _   _  ____
   }
 
   int
-  Context::Run(bool backgroundMode)
+  Context::Run(llarp_main_runtime_opts opts)
   {
     if(router == nullptr)
     {
@@ -236,7 +231,7 @@ __        ___    ____  _   _ ___ _   _  ____
     if(!router->StartJsonRpc())
       return 1;
 
-    if(!backgroundMode)
+    if(!opts.background)
     {
       if(!router->Run())
         return 2;
@@ -245,8 +240,32 @@ __        ___    ____  _   _ ___ _   _  ____
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, logic);
-    // waits for router graceful stop
+    if(closeWaiter)
+    {
+      // inform promise if called by CloseAsync
+      closeWaiter->set_value();
+    }
     return 0;
+  }
+
+  void
+  Context::CloseAsync()
+  {
+    /// already closing
+    if(closeWaiter)
+      return;
+    if(CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
+      closeWaiter = std::make_unique< std::promise< void > >();
+  }
+
+  void
+  Context::Wait()
+  {
+    if(closeWaiter)
+    {
+      closeWaiter->get_future().wait();
+      closeWaiter.reset();
+    }
   }
 
   bool
@@ -377,37 +396,87 @@ __        ___    ____  _   _ ___ _   _  ____
 
 struct llarp_main
 {
+  llarp_main(llarp_config *conf);
+  ~llarp_main() = default;
   std::unique_ptr< llarp::Context > ctx;
 };
 
-llarp::Context *
-llarp_main_get_context(llarp_main *m)
+struct llarp_config
 {
-  return m->ctx.get();
-}
+  llarp::Config impl;
+  llarp_config() = default;
+
+  llarp_config(const llarp_config *other) : impl(other->impl)
+  {
+  }
+};
 
 extern "C"
 {
-  struct llarp_main *
-  llarp_main_init(const char *fname, bool multiProcess)
+  size_t
+  llarp_main_size()
   {
-    (void)multiProcess;
-    if(!fname)
-      fname = "daemon.ini";
-    char *var = getenv("LLARP_DEBUG");
-    if(var && *var == '1')
-    {
-      cSetLogLevel(eLogDebug);
-    }
-    auto *m = new llarp_main;
-    m->ctx  = std::make_unique< llarp::Context >();
-    if(!m->ctx->LoadConfig(fname))
-    {
-      m->ctx->Close();
-      delete m;
+    return sizeof(llarp_main);
+  }
+
+  size_t
+  llarp_config_size()
+  {
+    return sizeof(llarp_config);
+  }
+
+  struct llarp_config *
+  llarp_default_config()
+  {
+    llarp_config *conf = new llarp_config();
+#ifdef ANDROID
+    // put andrid config overrides here
+#endif
+#ifdef IOS
+    // put IOS config overrides here
+#endif
+    return conf;
+  }
+
+  void
+  llarp_config_free(struct llarp_config *conf)
+  {
+    if(conf)
+      delete conf;
+  }
+
+  struct llarp_main *
+  llarp_main_init_from_config(struct llarp_config *conf)
+  {
+    if(conf == nullptr)
       return nullptr;
+    llarp_main *m = new llarp_main(conf);
+    if(m->ctx->Configure())
+      return m;
+    delete m;
+    return nullptr;
+  }
+
+  bool
+  llarp_config_read_file(struct llarp_config *conf, const char *fname)
+  {
+    if(conf == nullptr)
+      return false;
+    return conf->impl.Load(fname);
+  }
+
+  bool
+  llarp_config_load_file(const char *fname, struct llarp_config **conf)
+  {
+    llarp_config *c = new llarp_config();
+    if(c->impl.Load(fname))
+    {
+      *conf = c;
+      return true;
     }
-    return m;
+    delete c;
+    *conf = nullptr;
+    return false;
   }
 
   void
@@ -424,47 +493,97 @@ extern "C"
   }
 
   int
-  llarp_main_run(struct llarp_main *ptr, bool backgroundMode)
+  llarp_main_run(struct llarp_main *ptr, struct llarp_main_runtime_opts opts)
   {
-    if(!ptr)
-    {
-      llarp::LogError("No ptr passed in");
-      return 1;
-    }
-    return ptr->ctx->Run(backgroundMode);
+    return ptr->ctx->Run(opts);
   }
 
-  void
-  llarp_main_abort(struct llarp_main *ptr)
+  const char *
+  llarp_version()
   {
-    ptr->ctx->router->logic()->stop_timer();
+    return LLARP_VERSION;
   }
 
-  void
-  llarp_main_queryDHT_RC(struct llarp_main *ptr,
-                         struct llarp_router_lookup_job *job)
+  ssize_t
+  llarp_vpn_io_readpkt(struct llarp_vpn_pkt_reader *r, unsigned char *dst,
+                       size_t dstlen)
   {
-    llarp_dht_lookup_router(ptr->ctx->router->dht(), job);
-  }
-
-  bool
-  llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       const llarp::Addr &dnsd_sockaddr,
-                       const llarp::Addr &dnsc_sockaddr)
-  {
-    return llarp_dnsd_init(dnsd, ptr->ctx->logic.get(),
-                           ptr->ctx->mainloop.get(), dnsd_sockaddr,
-                           dnsc_sockaddr);
+    if(r == nullptr)
+      return -1;
+    if(not r->queue.enabled())
+      return -1;
+    auto pkt                  = r->queue.popFront();
+    ManagedBuffer mbuf        = pkt.ConstBuffer();
+    const llarp_buffer_t &buf = mbuf;
+    if(buf.sz > dstlen || buf.sz == 0)
+      return -1;
+    std::copy_n(buf.base, buf.sz, dst);
+    return buf.sz;
   }
 
   bool
-  llarp_main_init_dotLokiLookup(struct llarp_main *ptr,
-                                struct dotLokiLookup *dll)
+  llarp_vpn_io_writepkt(struct llarp_vpn_pkt_writer *w, unsigned char *pktbuf,
+                        size_t pktlen)
   {
-    (void)ptr;
-    (void)dll;
-    // TODO: gut me
-    return false;
+    if(pktlen == 0 || pktbuf == nullptr)
+      return false;
+    if(w == nullptr)
+      return false;
+    llarp_vpn_pkt_queue::Packet_t pkt;
+    llarp_buffer_t buf(pktbuf, pktlen);
+    if(not pkt.Load(buf))
+      return false;
+    return w->queue.pushBack(std::move(pkt))
+        == llarp::thread::QueueReturn::Success;
+  }
+
+  bool
+  llarp_main_inject_vpn_by_name(struct llarp_main *ptr, const char *name,
+                                struct llarp_vpn_io *io,
+                                struct llarp_vpn_ifaddr_info info)
+  {
+    if(name == nullptr || io == nullptr)
+      return false;
+    if(ptr == nullptr || ptr->ctx == nullptr || ptr->ctx->router == nullptr)
+      return false;
+    auto ep = ptr->ctx->router->hiddenServiceContext().GetEndpointByName(name);
+    return ep && ep->InjectVPN(io, info);
+  }
+
+  void
+  llarp_vpn_io_close_async(struct llarp_vpn_io *io)
+  {
+    if(io == nullptr || io->impl == nullptr)
+      return;
+    static_cast< llarp_vpn_io_impl * >(io->impl)->AsyncClose();
+  }
+
+  bool
+  llarp_vpn_io_init(struct llarp_main *ptr, struct llarp_vpn_io *io)
+  {
+    if(io == nullptr || ptr == nullptr)
+      return false;
+    llarp_vpn_io_impl *impl = new llarp_vpn_io_impl(ptr, io);
+    io->impl                = impl;
+    return true;
+  }
+
+  struct llarp_vpn_pkt_writer *
+  llarp_vpn_io_packet_writer(struct llarp_vpn_io *io)
+  {
+    if(io == nullptr || io->impl == nullptr)
+      return nullptr;
+    llarp_vpn_io_impl *vpn = static_cast< llarp_vpn_io_impl * >(io->impl);
+    return &vpn->writer;
+  }
+
+  struct llarp_vpn_pkt_reader *
+  llarp_vpn_io_packet_reader(struct llarp_vpn_io *io)
+  {
+    if(io == nullptr || io->impl == nullptr)
+      return nullptr;
+    llarp_vpn_io_impl *vpn = static_cast< llarp_vpn_io_impl * >(io->impl);
+    return &vpn->reader;
   }
 
   void
@@ -473,49 +592,52 @@ extern "C"
     delete ptr;
   }
 
-  int
-  llarp_main_loadDatabase(struct llarp_main *ptr)
+  const char *
+  llarp_main_get_default_endpoint_name(struct llarp_main *)
   {
-    return ptr->ctx->LoadDatabase();
+    return "default";
   }
 
-  const char *
-  handleBaseCmdLineArgs(int argc, char *argv[])
+  void
+  llarp_main_stop(struct llarp_main *ptr)
   {
-    // clang-format off
-    cxxopts::Options options(
-		"lokinet",
-		"Lokinet is a private, decentralized and IP based overlay network for the internet"
-    );
-    options.add_options()
-		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
-		("o,logLevel", "logging level");
-    // clang-format on
+    if(ptr == nullptr)
+      return;
+    ptr->ctx->CloseAsync();
+    ptr->ctx->Wait();
+  }
 
-    auto result          = options.parse(argc, argv);
-    std::string logLevel = result["logLevel"].as< std::string >();
+  bool
+  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf)
+  {
+    if(ptr == nullptr || conf == nullptr)
+      return false;
+    // give new config
+    ptr->ctx->config.reset(new llarp::Config(conf->impl));
+    return ptr->ctx->Configure();
+  }
 
-    if(logLevel == "debug")
-    {
-      cSetLogLevel(eLogDebug);
-    }
-    else if(logLevel == "info")
-    {
-      cSetLogLevel(eLogInfo);
-    }
-    else if(logLevel == "warn")
-    {
-      cSetLogLevel(eLogWarn);
-    }
-    else if(logLevel == "error")
-    {
-      cSetLogLevel(eLogError);
-    }
-
-    // this isn't thread safe, but reconfiguring during run is likely unsafe
-    // either way
-    static std::string confname = result["config"].as< std::string >();
-
-    return confname.c_str();
+  bool
+  llarp_main_is_running(struct llarp_main *ptr)
+  {
+    return ptr && ptr->ctx->router && ptr->ctx->router->IsRunning();
   }
 }
+
+llarp_main::llarp_main(llarp_config *conf)
+
+    : ctx(new llarp::Context())
+{
+  ctx->config.reset(new llarp::Config(conf->impl));
+}
+
+namespace llarp
+{
+  Context *
+  Context::Get(llarp_main *m)
+  {
+    if(m == nullptr || m->ctx == nullptr)
+      return nullptr;
+    return m->ctx.get();
+  }
+}  // namespace llarp
