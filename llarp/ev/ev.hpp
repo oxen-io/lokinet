@@ -830,8 +830,9 @@ struct PacketBuffer
   }
 
   PacketBuffer() : PacketBuffer(nullptr, 0){};
-  explicit PacketBuffer(size_t sz) : PacketBuffer(new char[sz], sz)
+  explicit PacketBuffer(size_t sz) : _sz{sz}
   {
+    _ptr = new char[sz];
   }
   PacketBuffer(char* buf, size_t sz) : _ptr{buf}, _sz{sz}
   {
@@ -870,8 +871,8 @@ struct PacketBuffer
 
 struct PacketEvent
 {
-  llarp::Addr remote = {};
-  PacketBuffer pkt   = {};
+  llarp::Addr remote;
+  PacketBuffer pkt;
 };
 
 struct llarp_pkt_list : public std::vector< PacketEvent >
