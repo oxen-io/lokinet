@@ -829,6 +829,8 @@ struct PacketBuffer
     other._sz  = 0;
   }
 
+  PacketBuffer(const PacketBuffer&) = delete;
+
   PacketBuffer() : PacketBuffer(nullptr, 0){};
   explicit PacketBuffer(size_t sz) : _sz{sz}
   {
