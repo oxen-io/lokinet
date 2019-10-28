@@ -433,7 +433,7 @@ namespace llarp
       std::copy_n(ptr, TunnelNonce::SIZE, N.data());
       ptr += TunnelNonce::SIZE;
       Signature Z;
-      std::copy_n(ptr, Z.size(), Z.data()));
+      std::copy_n(ptr, Z.size(), Z.data());
       const llarp_buffer_t verifybuf(pkt.data() + PacketOverhead,
                                      Introduction::SIZE - Signature::SIZE);
       if(!CryptoManager::instance()->verify(m_ExpectedIdent, verifybuf, Z))
