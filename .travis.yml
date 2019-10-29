@@ -137,6 +137,7 @@ addons:
     - libuv1-dev
     - mingw-w64 mingw-w64-common
     - ninja-build
+    - libsodium-dev
   homebrew:
     packages:
     - ccache
@@ -147,6 +148,7 @@ addons:
     - make
     - mingw-w64
     - ninja
+    - libsodium
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
