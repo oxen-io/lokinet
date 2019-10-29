@@ -3,30 +3,28 @@
 set -e
 
 if [ "$1" = configure ]; then
-    # Create the loki_ group (shared with lokid)
-    if ! getent group _loki >/dev/null; then
-        addgroup --force-badname --system --quiet _loki
+    mkdir -p /etc/loki
+    datadir=/var/lib/lokinet
+    mkdir -p $datadir
+    su -s /bin/sh _lokinet -c "test -O $datadir && test -G $datadir" || \
+        chown _lokinet:_loki $datadir
+
+    if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
+        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
     fi
 
-    # Create _lokinet user if it doesn't exist
-    if ! getent passwd _lokinet >/dev/null; then
-        adduser --force-badname --system --quiet --home /var/lib/lokinet --ingroup _loki --gecos "Lokinet system user" _lokinet
-    fi
+    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
+    /usr/bin/lokinet -g $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#$datadir#; s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#" $tmpdir/lokinet.ini
+    chmod 640 $tmpdir/lokinet.ini
+    chgrp _loki $tmpdir/lokinet.ini
+    ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
+    ucfr lokinet /etc/loki/lokinet.ini
 
-    # Make sure the _lokinet user is part of the _loki group (in case it already existed)
-    if ! id -Gn _lokinet | grep -qw _loki; then
-        adduser --force-badname --quiet _lokinet _loki
+    if [ -x /bin/systemctl ] && /bin/systemctl --quiet is-active systemd-resolved.service; then
+        /bin/systemctl restart systemd-resolved.service
     fi
-
-    if ! dpkg-statoverride --list /usr/bin/lokinet >/dev/null 2>&1; then
-        dpkg-statoverride --update --add root _loki 750 /usr/bin/lokinet
-    fi
-
-    if ! setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet; then
-        echo "failed to setcap lokinet" >&2
-        exit 1
-    fi
-
 fi
 
 #DEBHELPER#

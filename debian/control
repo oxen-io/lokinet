@@ -8,22 +8,22 @@ Homepage: https://loki.network/
 Vcs-Git: git://github.com/loki-project/lokinet-builder.git
 Vcs-Browser: https://github.com/loki-project/lokinet-builder
 
-Package: lokinet
+Package: lokinet-bin
 Architecture: any
+Replaces: lokinet (<< 0.5.2-4~)
+Breaks: lokinet (<< 0.5.2-4~)
 Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, libcap2-bin, curl
-Recommends: lokinet-client | lokinet-router
-Description: Lokinet anonymous, decentralized overlay network
+Description: Lokinet anonymous, decentralized overlay network -- binaries
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
  for the internet.
  .
  This package contains the lokinet binaries; most users will want to install
- the lokinet-client or lokinet-router packages to run lokinet as a system
- service.
+ the lokinet or lokinet-router packages to run lokinet as a system service.
 
-Package: lokinet-client
+Package: lokinet
 Architecture: all
 Pre-Depends: adduser
-Depends: lokinet (=${binary:Version})
+Depends: lokinet-bin (=${binary:Version})
 Recommends: resolvconf
 Description: Lokinet anonymous, decentralized overlay network - client service
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
@@ -32,14 +32,18 @@ Description: Lokinet anonymous, decentralized overlay network - client service
  This package contains contains the configuration needed to run lokinet as a
  system service to allow the local system to access lokinet either as an
  anonymous client or as a lokinet "snapp".
+ .
+ Most users looking to access lokinet want to install this package.
 
 Package: lokinet-router
 Architecture: all
 Pre-Depends: adduser
-Depends: lokinet (=${binary:Version})
+Depends: lokinet-bin (=${binary:Version})
 Description: Lokinet anonymous, decentralized overlay network - client service
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
  for the internet.
  .
  This package contains contains the configuration needed to run a lokinet
  router as a system service.
+ .
+ Users just looking to access lokinet want the 'lokinet' package instead.

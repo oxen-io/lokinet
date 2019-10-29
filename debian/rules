@@ -41,7 +41,7 @@ override_dh_auto_configure:
 		-DUSE_AVX2=OFF
 
 override_dh_installsystemd:
-	dh_installsystemd --name=lokinet-client
+	dh_installsystemd --name=lokinet
 	dh_installsystemd --name=lokinet-router
 
 #override_dh_auto_test:
