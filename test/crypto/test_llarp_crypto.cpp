@@ -30,7 +30,7 @@ namespace llarp
     random.Randomize();
     Signature sig;
 
-    const llarp_buffer_t buf(random);
+    const llarp_buffer_t buf(random.data(), random.size());
     ASSERT_TRUE(crypto.sign(sig, secret, buf));
     ASSERT_TRUE(crypto.verify(secret.toPublic(), buf, sig));
     random.Randomize();

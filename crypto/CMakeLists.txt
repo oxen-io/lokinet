@@ -42,6 +42,16 @@ set(NTRU_SRC
   libntrup/src/ntru.cpp
   )
 
+set(CRYPTOGRAPHY_SRC ${NTRU_SRC})
+
+if(NOT VENDOR_LIBSODIUM)
+  find_package(Sodium 1.0.16)
+  if(NOT sodium_FOUND)
+    set(VENDOR_LIBSODIUM ON)
+  endif()
+endif()
+
+if(VENDOR_LIBSODIUM)
 set(SHA512_SRC
   sha512/sha512.c)
 
@@ -98,7 +108,7 @@ set(X25519_SRC
   ed25519/ref10/sign.c
   ed25519/sign_ed25519.c)
 
-set(CRYPTOGRAPHY_SRC
+set(CRYPTOGRAPHY_SRC ${CRYPTOGRAPHY_SRC}
   libsodium/init.c
   libsodium/runtime.c
   verify/crypto_verify.c
@@ -108,9 +118,15 @@ set(CRYPTOGRAPHY_SRC
   ${CHACHA_SRC}
   ${ED25519_SRC}
   ${X25519_SRC}
-  ${SHA512_SRC}
-  ${NTRU_SRC})
+  ${SHA512_SRC})
+endif()
 
 add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 add_log_tag(${CRYPTOGRAPHY_LIB})
-target_include_directories (${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libntrup/include")
+if(VENDOR_LIBSODIUM)
+  target_include_directories (${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+else()
+  target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC ${sodium_INCLUDE_DIR})
+  target_link_libraries(${CRYPOGRAPHY_LIB} sodium)
+endif()
