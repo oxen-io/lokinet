@@ -10,10 +10,36 @@ Vcs-Browser: https://github.com/loki-project/lokinet-builder
 
 Package: lokinet
 Architecture: any
-Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, libcap2-bin, curl
-Description: Reference implementation for LLARP.
- Lokinet is a private, decentralized and Market based, Sybil
- resistant overlay network for the internet.
+Recommends: lokinet-client | lokinet-router
+Description: Lokinet anonymous, decentralized overlay network
+ Lokinet private, decentralized, market-based, Sybil resistant overlay network
+ for the internet.
  .
- This package contains the reference implementation of LLARP.
+ This package contains the lokinet binaries; most users will want to install
+ the lokinet-client or lokinet-router packages to run lokinet as a system
+ service.
+
+Package: lokinet-client
+Architecture: all
+Pre-Depends: adduser
+Depends: lokinet (=${binary:Version})
+Recommends: resolvconf
+Description: Lokinet anonymous, decentralized overlay network - client service
+ Lokinet private, decentralized, market-based, Sybil resistant overlay network
+ for the internet.
+ .
+ This package contains contains the configuration needed to run lokinet as a
+ system service to allow the local system to access lokinet either as an
+ anonymous client or as a lokinet "snapp".
+
+Package: lokinet-router
+Architecture: all
+Pre-Depends: adduser
+Depends: lokinet (=${binary:Version})
+Description: Lokinet anonymous, decentralized overlay network - client service
+ Lokinet private, decentralized, market-based, Sybil resistant overlay network
+ for the internet.
+ .
+ This package contains contains the configuration needed to run a lokinet
+ router as a system service.

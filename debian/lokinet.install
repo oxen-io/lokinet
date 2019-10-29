@@ -1,2 +1,3 @@
-debian/00-lokinet.conf /etc/systemd/resolved.conf.d
-debian/lokinet-resolvconf /usr/sbin
+/usr/bin/lokinet
+/usr/bin/lokinet-bootstrap
+/usr/bin/lokinet-rcutil

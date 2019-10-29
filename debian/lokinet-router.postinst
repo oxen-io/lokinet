@@ -1,0 +1,26 @@
+#!/bin/sh -e
+
+set -e
+
+if [ "$1" = configure ]; then
+    mkdir -p /etc/loki
+    datadir=/var/lib/lokinet/router
+    mkdir -p $datadir
+    su -s /bin/sh _lokinet -c "test -O $datadir && test -G $datadir" || \
+        chown _lokinet:_loki $datadir
+
+    if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
+        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
+    fi
+
+    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
+    /usr/bin/lokinet -r $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#$datadir#; s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#" $tmpdir/lokinet.ini
+    chmod 640 $tmpdir/lokinet.ini
+    chgrp _loki $tmpdir/lokinet.ini
+    ucf $tmpdir/lokinet.ini /etc/loki/lokinet-router.ini
+    ucfr lokinet /etc/loki/lokinet-router.ini
+fi
+
+#DEBHELPER#

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = purge ]; then
+    ucf --purge /etc/loki/lokinet-client.ini
+    ucfr --purge lokinet /etc/loki/lokinet-client.ini
+    rm -f /etc/loki/lokinet-client.ini
+    rm -rf /var/lib/lokinet/client
+fi
+
+#DEBHELPER#
+

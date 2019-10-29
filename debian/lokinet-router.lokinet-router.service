@@ -1,0 +1,16 @@
+[Unit]
+Description=LokiNET: Anonymous Network layer thingydoo, router
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=_lokinet
+SyslogIdentifier=lokinet-router
+WorkingDirectory=/var/lib/lokinet/router
+RequireFileExists=/var/lib/lokinet/bootstrap.signed
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/router/lokinet.ini
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

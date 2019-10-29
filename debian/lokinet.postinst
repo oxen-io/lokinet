@@ -18,11 +18,6 @@ if [ "$1" = configure ]; then
         adduser --force-badname --quiet _lokinet _loki
     fi
 
-    mkdir -p /etc/loki
-    mkdir -p /var/lib/lokinet
-    su -s /bin/sh _lokinet -c "test -O /var/lib/lokinet && test -G /var/lib/lokinet" || \
-        chown _lokinet:_loki /var/lib/lokinet
-
     if ! dpkg-statoverride --list /usr/bin/lokinet >/dev/null 2>&1; then
         dpkg-statoverride --update --add root _loki 750 /usr/bin/lokinet
     fi
@@ -30,23 +25,6 @@ if [ "$1" = configure ]; then
     if ! setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet; then
         echo "failed to setcap lokinet" >&2
         exit 1
-    fi
-
-    if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
-        chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
-    fi
-
-    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
-    /usr/bin/lokinet -g $tmpdir/lokinet.ini
-    sed -i -e "s#$tmpdir#/var/lib/lokinet#" $tmpdir/lokinet.ini
-    chmod 640 $tmpdir/lokinet.ini
-    chgrp _loki $tmpdir/lokinet.ini
-    ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
-    ucfr lokinet /etc/loki/lokinet.ini
-
-    if [ -x /bin/systemctl ] && /bin/systemctl --quiet is-active systemd-resolved.service; then
-        /bin/systemctl restart systemd-resolved.service
     fi
 
 fi

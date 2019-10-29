@@ -1,0 +1,2 @@
+debian/00-lokinet.conf /etc/systemd/resolved.conf.d
+debian/lokinet-resolvconf /usr/sbin
