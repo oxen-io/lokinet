@@ -51,7 +51,7 @@ if (UNIX)
     # import pkg-config
     find_package(PkgConfig QUIET)
     if (PKG_CONFIG_FOUND)
-        pkg_check_modules(sodium_PKG QUIET libsodium)
+        pkg_check_modules(sodium_PKG QUIET libsodium>=1.0.16)
     endif()
 
     if(sodium_USE_STATIC_LIBS)
