@@ -61,7 +61,6 @@ include(cmake/unix.cmake)
 include(cmake/win32.cmake)
 
 if(WIN32)
-  set(VENDOR_LIBSODIUM ON)
   set(CMAKE_CXX_STANDARD 17)
 else()
   set(CMAKE_CXX_STANDARD 14)

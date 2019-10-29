@@ -44,6 +44,13 @@ set(NTRU_SRC
 
 set(CRYPTOGRAPHY_SRC ${NTRU_SRC})
 
+if(NOT VENDOR_LIBSODIUM)
+  find_package(Sodium 1.0.16)
+  if(NOT sodium_FOUND)
+    set(VENDOR_LIBSODIUM ON)
+  endif()
+endif()
+
 if(VENDOR_LIBSODIUM)
 set(SHA512_SRC
   sha512/sha512.c)
@@ -112,8 +119,6 @@ set(CRYPTOGRAPHY_SRC ${CRYPTOGRAPHY_SRC}
   ${ED25519_SRC}
   ${X25519_SRC}
   ${SHA512_SRC})
-else()
-  find_package(Sodium REQUIRED)
 endif()
 
 add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
