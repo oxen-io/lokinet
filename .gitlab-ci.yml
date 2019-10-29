@@ -26,7 +26,7 @@ build:linux:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y build-essential cmake git libcap-dev bsdmainutils ninja-build curl git ca-certificates ccache libuv1-dev
+    - apt-get update && apt-get install -y build-essential cmake git libcap-dev bsdmainutils ninja-build curl git ca-certificates ccache libuv1-dev libsodium-dev
   script:
     - make STATIC_LINK=OFF
   artifacts:
