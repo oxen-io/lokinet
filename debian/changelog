@@ -1,3 +1,9 @@
+lokinet (0.5.2-3) sid; urgency=medium
+
+  * Fix broken RequireFileExists systemd directive
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Oct 2019 15:13:13 -0300
+
 lokinet (0.5.2-2) sid; urgency=medium
 
   * Split client and router config/services into separate packages
