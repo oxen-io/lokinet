@@ -123,7 +123,9 @@ namespace llarp
     ILinkManager *_linkManager;
     std::shared_ptr< Logic > _logic;
 
-    const PathID_t zeroID;
+    // paths cannot have pathid "0", so it can be used as the "pathid"
+    // for non-traffic (control) messages, so they can be prioritized.
+    static const PathID_t zeroID;
   };
 
 }  // namespace llarp

@@ -263,14 +263,7 @@ namespace llarp
   void
   OutboundMessageHandler::RemoveEmptyPathQueues()
   {
-    if(not removedPaths.empty())
-    {
-      removedSomePaths = true;
-    }
-    else
-    {
-      removedSomePaths = false;
-    }
+    removedSomePaths = (not removedPaths.empty());
 
     while(not removedPaths.empty())
     {

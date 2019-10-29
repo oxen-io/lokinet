@@ -322,6 +322,9 @@ namespace llarp
       self->hop = nullptr;
     }
 
+    // TODO: If decryption has succeeded here but we otherwise don't
+    //       want to or can't accept the path build request, send
+    //       a status message saying as much.
     static void
     HandleDecrypted(llarp_buffer_t* buf,
                     std::shared_ptr< LRCMFrameDecrypt > self)
@@ -344,8 +347,16 @@ namespace llarp
         return;
       }
 
-      info.txID     = self->record.txid;
-      info.rxID     = self->record.rxid;
+      info.txID = self->record.txid;
+      info.rxID = self->record.rxid;
+
+      if(info.txID.IsZero() || info.rxID.IsZero())
+      {
+        llarp::LogError("LRCM refusing zero pathid");
+        self->decrypter = nullptr;
+        return;
+      }
+
       info.upstream = self->record.nextHop;
 
       // generate path key as we are in a worker thread
