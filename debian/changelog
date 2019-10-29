@@ -1,3 +1,9 @@
+lokinet (0.5.2-4) sid; urgency=medium
+
+  * Rename split packages to lokinet{,-bin,-router}
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Oct 2019 16:18:08 -0300
+
 lokinet (0.5.2-3) sid; urgency=medium
 
   * Fix broken RequireFileExists systemd directive
