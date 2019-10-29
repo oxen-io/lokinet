@@ -1,3 +1,9 @@
+lokinet (0.5.2-2) sid; urgency=medium
+
+  * Split client and router config/services into separate packages
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 29 Oct 2019 14:06:58 -0300
+
 lokinet (0.5.2-1) sid; urgency=medium
 
   [ Ryan Tharp ]
