@@ -12,6 +12,8 @@
 
 namespace llarp
 {
+  const PathID_t OutboundMessageHandler::zeroID;
+
   OutboundMessageHandler::OutboundMessageHandler(size_t maxQueueSize)
       : outboundQueue(maxQueueSize), removedPaths(20), removedSomePaths(false)
   {
@@ -306,6 +308,11 @@ namespace llarp
     }
 
     size_t sent_count = 0;
+    if (roundRobinOrder.empty())
+    {
+      return;
+    }
+
     while(sent_count
           < MAX_OUTBOUND_MESSAGES_PER_TICK)  // TODO: better stop condition
     {
