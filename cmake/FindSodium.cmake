@@ -51,7 +51,7 @@ if (UNIX)
     # import pkg-config
     find_package(PkgConfig QUIET)
     if (PKG_CONFIG_FOUND)
-        pkg_check_modules(sodium_PKG QUIET libsodium>=${PACKAGE_FIND_VERSION})
+        pkg_check_modules(sodium_PKG QUIET libsodium>=${Sodium_FIND_VERSION})
     endif()
 
     if(sodium_USE_STATIC_LIBS)
@@ -213,8 +213,8 @@ endif()
 
 # extract sodium version
 if (sodium_INCLUDE_DIR)
-    set(_VERSION_HEADER "${_INCLUDE_DIR}/sodium/version.h")
-    if (EXISTS _VERSION_HEADER)
+    set(_VERSION_HEADER "${sodium_INCLUDE_DIR}/sodium/version.h")
+    if (EXISTS "${_VERSION_HEADER}")
         file(READ "${_VERSION_HEADER}" _VERSION_HEADER_CONTENT)
         string(REGEX REPLACE ".*#[ \t]*define[ \t]*SODIUM_VERSION_STRING[ \t]*\"([^\n]*)\".*" "\\1"
             sodium_VERSION "${_VERSION_HEADER_CONTENT}")

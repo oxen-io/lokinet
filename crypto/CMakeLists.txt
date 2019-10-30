@@ -48,6 +48,7 @@ if(NOT VENDOR_LIBSODIUM)
   find_package(Sodium 1.0.16)
   if(NOT sodium_FOUND)
     set(VENDOR_LIBSODIUM ON)
+    message(STATUS "Could not find libsodium >= 1.0.16, using vendored copy")
   endif()
 endif()
 
