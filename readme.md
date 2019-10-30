@@ -95,7 +95,7 @@ this puts the built packages in `../`
 ### MacOS
 
 build:
-    make sure you have cmake and xcode command line tools installed
+    make sure you have cmake, libuv and xcode command line tools installed
     
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network

@@ -171,17 +171,9 @@ after_script:
   - echo $TRAVIS_COMMIT_RANGE
   - echo $TRAVIS_COMMIT_LOG
 
-after_success:
-  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
-  - chmod +x send.sh
-  - if [[ -z $IS_NOTIFICATION ]]; then ./send.sh success $WEBHOOK_URL; fi
-
-after_failure:
-  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
-  - chmod +x send.sh
-  - if [[ ! -z $IS_NOTIFICATION ]]; then ./send.sh failure $WEBHOOK_URL; fi
-
 notifications:
+  webhooks:
+    urls: $WEBHOOK_URL
   irc:
     on_success: change
     on_failure: change
