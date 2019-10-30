@@ -68,9 +68,12 @@ if(ANDROID)
   set(LOG_LIB log)
 endif()
 
-target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB})
+set(ZMQ_LIBS zmq sodium)
+
+target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${ZMQ_LIBS})
 
 target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
+include_directories(../vendor/zmq)
 
 # cut back on fluff
 if (NOT WIN32)

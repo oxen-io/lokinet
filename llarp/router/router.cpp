@@ -729,8 +729,9 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if(rpcCaller)
-      rpcCaller->Tick(now);
+    if (rpcServer)
+      rpcServer->Tick(now);
+
     // save profiles async
     if(routerProfiling().ShouldSave(now))
     {
@@ -859,7 +860,7 @@ namespace llarp
         rpcBindAddr = DefaultRPCBindAddr;
       }
       rpcServer = std::make_unique< rpc::Server >(this);
-      while(!rpcServer->Start(rpcBindAddr))
+      while(!rpcServer->Start())
       {
         LogError("failed to bind jsonrpc to ", rpcBindAddr);
 #if defined(ANDROID) || defined(RPI)
@@ -879,22 +880,6 @@ namespace llarp
   {
     if(_running || _stopping)
       return false;
-
-    if(whitelistRouters)
-    {
-      rpcCaller = std::make_unique< rpc::Caller >(this);
-      rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
-      while(!rpcCaller->Start(lokidRPCAddr))
-      {
-        LogError("failed to start jsonrpc caller to ", lokidRPCAddr);
-#if defined(ANDROID) || defined(RPI)
-        sleep(1);
-#else
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-#endif
-      }
-      LogInfo("RPC Caller to ", lokidRPCAddr, " started");
-    }
 
     if(!cryptoworker->start())
     {

@@ -1,5 +1,7 @@
 #include <rpc/rpc.hpp>
 
+#include <zmq.hpp>
+
 #include <constants/version.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
@@ -16,147 +18,94 @@ namespace llarp
   namespace rpc
   {
 
-    struct CallerImpl
-    {
-      /*
-      AbstractRouter* router;
-      llarp_time_t m_NextKeyUpdate         = 0;
-      const llarp_time_t KeyUpdateInterval = 5000;
-      using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
-
-      CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
-      {
-      }
-
-      void
-      Tick(llarp_time_t now)
-      {
-        if(now >= m_NextKeyUpdate)
-        {
-          AsyncUpdatePubkeyList();
-          m_NextKeyUpdate = now + KeyUpdateInterval;
-        }
-        Flush();
-      }
-
-      void
-      SetAuth(const std::string& user, const std::string& passwd)
-      {
-        username = user;
-        password = passwd;
-      }
-
-      void
-      AsyncUpdatePubkeyList()
-      {
-        LogInfo("Updating service node list");
-        QueueRPC("get_all_service_nodes_keys", nlohmann::json::object(),
-                 util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
-      }
-
-      bool
-      Start(const std::string& remote)
-      {
-        return RunAsync(router->netloop(), remote);
-      }
-
-      abyss::http::IRPCClientHandler*
-      NewAsyncUpdatePubkeyListConn(abyss::http::ConnImpl* impl)
-      {
-        return new GetServiceNodeListHandler(
-            impl, this,
-            util::memFn(&CallerImpl::HandleServiceNodeListUpdated, this));
-      }
-
-      void
-      HandleServiceNodeListUpdated(const PubkeyList_t& list, bool updated)
-      {
-        if(updated)
-        {
-          router->SetRouterWhitelist(list);
-        }
-        else
-          LogError("service node list not updated");
-      }
-
-      ~CallerImpl() = default;
-      */
-    };
-
-
     struct ServerImpl
     {
-      /*
-      AbstractRouter* router;
-      ReqHandlerImpl _handler;
+      AbstractRouter* m_router;
+      zmq::context_t m_context;
+      std::unique_ptr<zmq::socket_t> m_socket;
+      zmq::message_t m_recvBuffer;
 
-      ServerImpl(AbstractRouter* r) : router(r), _handler(r, 2000)
+      /**
+       * Constructor
+       */
+      ServerImpl(AbstractRouter* r)
+        : m_router(r)
+        , m_context()
       {
-      }
 
-      ~ServerImpl() = default;
-
-      void
-      Stop()
-      {
-        _handler.Close();
-      }
-
-      bool
-      Start(const std::string& addr)
-      {
-        uint16_t port = 0;
-        auto idx      = addr.find_first_of(':');
-        Addr netaddr;
-        if(idx != std::string::npos)
+        /*
+        bool success = m_jsonRpcServer.bindAndAddMethod("test", [](const Json::Value &parameter, Json::Value &result)
         {
-          port    = std::stoi(addr.substr(1 + idx));
-          netaddr = Addr(addr.substr(0, idx));
+          (void)parameter;
+          result = "hello, world";
+        });
+
+        if (! success) {
+          LogWarn("Failed to inject 'test' method");
         }
-        sockaddr_in saddr;
-        saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        saddr.sin_family      = AF_INET;
-        saddr.sin_port        = htons(port);
-        return _handler.ServeAsync(router->netloop(), router->logic(),
-                                   (const sockaddr*)&saddr);
+        */
       }
-      */
+
+      /**
+       * Listen on the specified port.
+       */
+      bool
+      start()
+      {
+        if (m_socket)
+          return false;
+
+        try {
+          m_socket.reset(new zmq::socket_t(m_context, ZMQ_REP));
+          m_socket->bind("ipc:///tmp/lokinetrpc");
+        } catch(const std::exception& e) {
+          LogWarn("Caught exception while trying to bring up zmq", e.what());
+          m_socket.release();
+          return false;
+        }
+
+        return true;
+      }
+
+      /**
+       * Stop listening
+       */
+      bool
+      stop()
+      {
+        if (! m_socket)
+          return false;
+
+        m_socket.release();
+        return true;
+      }
+
+      /**
+       * Tick - handle any incoming requests
+       */
+      void
+      tick(llarp_time_t now)
+      {
+        try {
+          auto result = m_socket->recv(m_recvBuffer, zmq::recv_flags::dontwait);
+          if (result) {
+            LogInfo("Received ZMQ message");
+
+            zmq::message_t response("ACK", 3);
+            m_socket->send(std::move(response), zmq::send_flags::dontwait);
+          }
+        } catch (const std::exception& e) {
+          LogWarn("Caught exception while trying to recv() on ZMQ socket", e.what());
+          LogWarn("ZMQ requires explicit request/response pairing, we may be in a bad state");
+          // TODO: as this warning suggests, we need to make sure we always send a response if
+          //       we received a request
+        }
+      }
+
     };
 
-    Caller::Caller(AbstractRouter* r)
-        // : m_Impl(std::make_unique< CallerImpl >(r))
-    {
-    }
-
-    Caller::~Caller() = default;
-
-    void
-    Caller::Stop()
-    {
-      // m_Impl->Stop();
-    }
-
-    bool
-    Caller::Start(const std::string& addr)
-    {
-      return false; // TODO:
-      // return m_Impl->Start(addr);
-    }
-
-    void
-    Caller::Tick(llarp_time_t now)
-    {
-      // m_Impl->Tick(now);
-    }
-
-    void
-    Caller::SetAuth(const std::string& user, const std::string& passwd)
-    {
-      // m_Impl->SetAuth(user, passwd);
-    }
-
     Server::Server(AbstractRouter* r)
-        // : m_Impl(std::make_unique< ServerImpl >(r))
+        : m_Impl(new ServerImpl(r))
     {
     }
 
@@ -165,14 +114,19 @@ namespace llarp
     void
     Server::Stop()
     {
-      // m_Impl->Stop();
+      m_Impl->stop();
     }
 
     bool
-    Server::Start(const std::string& addr)
+    Server::Start()
     {
-      return false; // TODO
-      // return m_Impl->Start(addr);
+      return m_Impl->start();
+    }
+
+    void
+    Server::Tick(llarp_time_t now)
+    {
+      m_Impl->tick(now);
     }
 
   }  // namespace rpc

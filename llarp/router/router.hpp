@@ -261,7 +261,6 @@ namespace llarp
     std::string rpcBindAddr = DefaultRPCBindAddr;
 
     /// lokid caller
-    std::unique_ptr< rpc::Caller > rpcCaller;
     std::string lokidRPCAddr = "127.0.0.1:22023";
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
