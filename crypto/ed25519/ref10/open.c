@@ -21,7 +21,8 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
   unsigned char rcheck[32];
   ge25519_p3 A;
   ge25519_p2 R;
-
+  size_t idx;
+  unsigned char d;
 #ifndef ED25519_COMPAT
   if(sc25519_is_canonical(sig + 32) == 0 || ge25519_has_small_order(sig) != 0)
   {
@@ -51,8 +52,15 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
 
   ge25519_double_scalarmult_vartime(&R, h, &A, sig + 32);
   ge25519_tobytes(rcheck, &R);
-
-  return crypto_verify_32(rcheck, sig);
+  d = 0;
+  for(idx = 0; idx < 32; ++idx)
+  {
+    if(rcheck[idx] ^ sig[idx])
+    {
+      d += 1;
+    }
+  }
+  return d;
 }
 
 int
