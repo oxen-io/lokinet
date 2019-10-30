@@ -134,7 +134,11 @@ namespace llarp
 #ifdef ANDROID
       return "android";
 #else
+#ifdef IOS
+      return "ios";
+#else
       return "tun";
+#endif
 #endif
     }
 
