@@ -308,7 +308,7 @@ namespace llarp
     }
 
     size_t sent_count = 0;
-    if (roundRobinOrder.empty())
+    if(roundRobinOrder.empty())
     {
       return;
     }

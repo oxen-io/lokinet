@@ -116,7 +116,7 @@ namespace llarp
         pendingSessionMessageQueues GUARDED_BY(_mutex);
 
     std::unordered_map< PathID_t, MessageQueue, PathID_t::Hash >
-        outboundMessageQueues GUARDED_BY(_mutex);
+        outboundMessageQueues;
 
     std::queue< PathID_t > roundRobinOrder;
 

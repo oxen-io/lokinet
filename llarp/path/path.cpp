@@ -31,14 +31,15 @@ namespace llarp
       for(size_t idx = 0; idx < hsz; ++idx)
       {
         hops[idx].rc = h[idx];
-        while(hops[idx].txID.IsZero())
+        do
         {
           hops[idx].txID.Randomize();
-        }
-        while(hops[idx].rxID.IsZero())
+        } while(hops[idx].txID.IsZero());
+
+        do
         {
           hops[idx].rxID.Randomize();
-        }
+        } while(hops[idx].rxID.IsZero());
       }
 
       for(size_t idx = 0; idx < hsz - 1; ++idx)
