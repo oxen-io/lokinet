@@ -212,8 +212,11 @@ namespace abyss
       bool
       ProcessRead(const char* buf, size_t sz)
       {
+        llarp::LogDebug("http read ", sz, " bytes");
         if(m_Bad)
+        {
           return false;
+        }
 
         if(!sz)
           return true;
@@ -248,7 +251,6 @@ namespace abyss
             end = strstr(buf, "\r\n");
           }
         }
-        llarp::LogDebug("http read ", sz, " bytes");
         if(m_State == eReadHTTPBody)
           return FeedBody(buf, sz);
         return false;
@@ -265,9 +267,9 @@ namespace abyss
       static void
       OnClosed(llarp_tcp_conn* conn)
       {
+        llarp::LogDebug("connection closed");
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         self->_conn    = nullptr;
-        llarp::LogDebug("connection closed");
       }
 
       static void
