@@ -1,4 +1,15 @@
-Configure with: ./configure [--host=i686-w64-mingw32 --target=i686-w64-mingw32] CFLAGS=-march=nocona -mfpmath=sse -O3 --disable-shared CPPFLAGS=-DZMQ_HAVE_WINDOWS_TARGET_XP -rick
+From 00440f91ebbae83d7d2aeb429b306bee27f3b165 Mon Sep 17 00:00:00 2001
+From: Rick V <rick@snowlight.net>
+Date: Wed, 31 Oct 2019 17:20:05 -0500
+Subject: ZMQ patches for Windows
+
+Configure with: ./configure [--host=i686-w64-mingw32 --target=i686-w64-mingw32] --disable-shared 
+CFLAGS='-march=nocona -mfpmath=sse -O3'  CPPFLAGS=-DZMQ_HAVE_WINDOWS_TARGET_XP 
+
+-rick
+
+---
+
 diff --git a/include/zmq.h b/include/zmq.h
 index f5713f80..bb7b818e 100644
 --- a/include/zmq.h
