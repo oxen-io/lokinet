@@ -234,6 +234,14 @@ exit_tun_loop()
   }
 }
 
+// now zero-copy
+ssize_t
+TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
+{
+  llarp::ev_io* io = (llarp::ev_io*)conn->impl;
+  return uwrite(io->fd, (char*)ptr, sz);
+}
+
 llarp_win32_loop::~llarp_win32_loop()
 {
   exit_tun_loop();
@@ -331,6 +339,8 @@ namespace llarp
     }
     // build handler
     llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
+    connimpl->tcp.write       = &TCPWrite;
+    connimpl->tcp.loop        = loop;
     if(loop->add_ev(connimpl, true))
     {
       // call callback
@@ -430,6 +440,7 @@ llarp_win32_loop::tcp_connect(struct llarp_tcp_connecter* tcp,
   if(fd == -1)
     return false;
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+  conn->tcp.write       = &TCPWrite;
   add_ev(conn, true);
   conn->connect();
   return true;

@@ -6,3 +6,6 @@ include/
 lib/
 *.pem
 LICENSE
+7z.exe
+dbghelp*
+*.7z

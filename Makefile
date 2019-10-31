@@ -238,7 +238,7 @@ windows-debug-configure: clean
 
 windows-debug: windows-debug-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+	cp '$(BUILD_ROOT)/daemon/lokinet.exe' '$(REPO)/lokinet.exe'
 
 windows-release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
@@ -246,7 +246,7 @@ windows-release-configure: clean
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+	cp '$(BUILD_ROOT)/daemon/lokinet.exe' '$(REPO)/lokinet.exe'
 
 windows: windows-debug
 

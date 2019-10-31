@@ -10,7 +10,6 @@
 #ifndef DevPath
 #define DevPath "D:\dev\external\llarp\"
 #endif
-#include <idp.iss>
 #include "version.txt"
 
 ; see ../LICENSE
@@ -41,7 +40,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 VersionInfoVersion=0.5.2
 VersionInfoCompany=Loki Project
-VersionInfoDescription=LokiNET for Microsoftï¿½ Windowsï¿½ NTï¿½
+VersionInfoDescription=Lokinet for Microsoft® Windows® NT™
 #ifndef RELEASE
 VersionInfoTextVersion=0.5.2-dev-{#VCSRev}
 VersionInfoProductTextVersion=0.5.2-dev-{#VCSRev}
@@ -49,12 +48,12 @@ VersionInfoProductTextVersion=0.5.2-dev-{#VCSRev}
 VersionInfoTextVersion=0.5.2
 VersionInfoProductTextVersion=0.5.2 ({#Codename})
 #endif
-VersionInfoProductName=LokiNET
+VersionInfoProductName=Lokinet
 VersionInfoProductVersion=0.5.2
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
-VersionInfoCopyright=Copyright ï¿½2018-2019 Loki Project
+VersionInfoCopyright=Copyright ©2018-2019 Loki Project
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -68,14 +67,14 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 #ifdef SINGLE_ARCH
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{tmp}\dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion external
+Source: "dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion
 #else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
-Source: "{tmp}\dbghelp32.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion external; Check: not IsWin64
+Source: "dbghelp32.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
 Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
-Source: "{tmp}\dbghelp64.dll"; DestDir: "{app}"; DestName: "dbghelp.dll"; Flags: ignoreversion external; Check: IsWin64
+Source: "dbghelp64.dll"; DestDir: "{app}"; DestName: "dbghelp.dll"; Flags: ignoreversion; Check: IsWin64
 #endif
 ; UI has landed!
 #ifndef RELEASE
@@ -93,14 +92,12 @@ Source: "{#DevPath}build\lokinetctl.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
-; delet this after finishing setup, we only need it to extract the drivers
-; and download an initial RC. The UI has its own bootstrap built-in!
-Source: "{tmp}\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall external
+Source: "7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; if nonexistent, then inet6 was already installed
-Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1
+Source: "inet6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1; Check: not IsTcp6Installed
 ; Copy the correct tuntap driver for the selected platform
-Source: "{tmp}\tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; OnlyBelowVersion: 0, 6.0
-Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,6.0
+Source: "tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
+Source: "tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; MinVersion: 0,6.0; Check: not IsTapInstalled
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "regdbhelper.dll"; Flags: dontcopy
@@ -146,17 +143,15 @@ Name: "{userappdata}\.lokinet"
 [Code]
 var
 TapInstalled: Boolean;
-
+TCP6Installed: Boolean;
+Version: TWindowsVersion;
 function reg_query_helper(): Integer;
 external 'reg_query_helper@files:regdbhelper.dll cdecl setuponly';
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  Version: TWindowsVersion;
 begin
   if CurStep = ssPostInstall then
   begin
-  GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
      // I need a better message...
     MsgBox('Restart your computer, then set up IPv6 in Network Connections. [Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
@@ -168,48 +163,29 @@ begin
 Result := TapInstalled;
 end;
 
-procedure InitializeWizard();
-var
-  Version: TWindowsVersion;
+function IsTcp6Installed(): Boolean;
 begin
-  GetWindowsVersionEx(Version);
-  // if we already have a generic openvpn tap driver installed, then skip all the downloading
-  // lokinet is coded to enumerate all generic tap virtual adapters and use the first free device
-if (reg_query_helper() = 0) then
-begin
-TapInstalled := false;
-end
-else
-begin
-TapInstalled := true;
-end;
-
-if (reg_query_helper() = 0) then
-begin
-  if Version.NTPlatform and
-     (Version.Major < 6) then
+  if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
   begin
-    // Windows 2000, XP, .NET Svr 2003
-    // these have a horribly crippled WinInet that issues TLSv1-RSA-SHA1-Triple-DES as its most secure
-    // cipher suite
-    idpAddFile('http://www.rvx86.net/files/tuntapv9.7z', ExpandConstant('{tmp}\tuntapv9.7z'));
+    Result := true;
   end
   else
   begin
-    // current versions of windows :-)
-    // (Arguably, one could pull this from any of the forks.)
-    idpAddFile('https://snowlight.net/loki/win32-dist/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
+    Result := false;
   end;
-  // Windows 2000 only, we need to install inet6 separately
-  if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
+end;
+
+procedure InitializeWizard();
+begin
+GetWindowsVersionEx(Version);
+if (reg_query_helper() = 0) then
   begin
-    idpAddFile('http://www.rvx86.net/files/inet6.7z', ExpandConstant('{tmp}\inet6.7z'));
+    TapInstalled := false;
+  end
+else
+  begin
+    TapInstalled := true;
   end;
-  end;
-    idpAddFile('http://www.rvx86.net/files/7z.exe', ExpandConstant('{tmp}\7z.exe'));
-    idpAddFile('http://www.rvx86.net/files/dbghelp32.dll', ExpandConstant('{tmp}\dbghelp32.dll'));
-    idpAddFile('http://www.rvx86.net/files/dbghelp64.dll', ExpandConstant('{tmp}\dbghelp64.dll'));
-    idpDownloadAfter(wpReady);
 end;
 
 [Icons]

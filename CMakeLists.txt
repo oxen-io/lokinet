@@ -72,6 +72,9 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+# this is messing with release builds
+add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
@@ -143,6 +146,13 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
+  elseif(NOT ANDROID AND NOT NON_PC_TARGET)
+  if (NOT USE_AVX2)
+    # Public binary releases
+    set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
+  else()
+    set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
+  endif()
 endif()
 
 # only needed if using AVX2
