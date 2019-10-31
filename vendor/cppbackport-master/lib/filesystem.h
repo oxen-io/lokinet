@@ -30,7 +30,7 @@
 #ifndef PBL_CPP_FILESYSTEM_H
 #define PBL_CPP_FILESYSTEM_H
 
-#include "version.h"
+#include "cppbackport_version.h"
 
 #if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
 #include <experimental/filesystem>
