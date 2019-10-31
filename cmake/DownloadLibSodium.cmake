@@ -6,7 +6,7 @@ set(SODIUM_PRETEND_TO_BE_CONFIGURED ON)
 file(DOWNLOAD
     https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz
     ${LIBSODIUM_TARBALL}
-    SHA512=7cc9e4f11e656008ce9dff735acea95acbcb91ae4936de4d26f7798093766a77c373e9bd4a7b45b60ef8a11de6c55bc8dcac13bebf8c23c671d0536430501da1
+    EXPECTED_HASH SHA512=7cc9e4f11e656008ce9dff735acea95acbcb91ae4936de4d26f7798093766a77c373e9bd4a7b45b60ef8a11de6c55bc8dcac13bebf8c23c671d0536430501da1
     SHOW_PROGRESS)
 execute_process(COMMAND mkdir -p ${LIBSODIUM_ROOT})
 execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_ROOT})
@@ -273,13 +273,16 @@ target_compile_definitions(sodium_vendor
         $<$<BOOL:${SODIUM_MINIMAL}>:MINIMAL>
         $<$<BOOL:${SODIUM_PRETEND_TO_BE_CONFIGURED}>:CONFIGURED>
 )
+
 # Variables that need to be exported to version.h.in
-set(SODIUM_VERSION 1.0.17)
+set(VERSION_ORIG "${VERSION}") # an included module sets things in the calling scope :(
+set(VERSION 1.0.17)
 set(SODIUM_LIBRARY_VERSION_MAJOR 10)
 set(SODIUM_LIBRARY_VERSION_MINOR 2)
-
 
 configure_file(
   ${LIBSODIUM_SRC}/src/libsodium/include/sodium/version.h.in
   ${LIBSODIUM_SRC}/src/libsodium/include/sodium/version.h
 )
+
+set(VERSION "${VERSION_ORIG}")
