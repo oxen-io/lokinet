@@ -1,17 +1,21 @@
 set(LIBSODIUM_PREFIX ${CMAKE_BINARY_DIR}/libsodium)
-set(LIBSODIUM_ROOT ${LIBSODIUM_PREFIX}/src)
-set(LIBSODIUM_SRC ${LIBSODIUM_ROOT}/libsodium-1.0.17)
+set(LIBSODIUM_SRC ${LIBSODIUM_PREFIX}/libsodium-1.0.17)
 set(LIBSODIUM_TARBALL ${LIBSODIUM_PREFIX}/libsodium-1.0.17.tar.gz)
+set(LIBSODIUM_URL https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz)
+if(SODIUM_TARBALL_URL)
+    # make a build time override of the tarball url so we can fetch it if the original link goes away
+    set(LIBSODIUM_URL ${SODIUM_TARBALL_URL})
+endif()
 set(SODIUM_PRETEND_TO_BE_CONFIGURED ON)
 file(DOWNLOAD
-    https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz
+    ${LIBSODIUM_URL}
     ${LIBSODIUM_TARBALL}
     EXPECTED_HASH SHA512=7cc9e4f11e656008ce9dff735acea95acbcb91ae4936de4d26f7798093766a77c373e9bd4a7b45b60ef8a11de6c55bc8dcac13bebf8c23c671d0536430501da1
     SHOW_PROGRESS)
-execute_process(COMMAND mkdir -p ${LIBSODIUM_ROOT})
-execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_ROOT})
+
+execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_PREFIX})
 if(WIN32)
-  execute_process(COMMAND patch -p0 -d ${LIBSODIUM_SRC} < ../llarp/win32/libsodium-1.0.17-win32.patch)
+  execute_process(COMMAND patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch)
 endif()
 add_library(sodium_vendor
     ${LIBSODIUM_SRC}/src/libsodium/crypto_aead/aes256gcm/aesni/aead_aes256gcm_aesni.c
