@@ -48,18 +48,36 @@ namespace llarp
       return true;
     }
 
+    static Proxy::Buffer_t
+    CopyBuffer(const llarp_buffer_t& buf)
+    {
+      std::vector< byte_t > msgbuf(buf.sz);
+      std::copy_n(buf.base, buf.sz, msgbuf.data());
+      return msgbuf;
+    }
+
     void
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from,
                                 ManagedBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf.underlying);
+      const llarp::Addr addr(*from);
+      Buffer_t msgbuf = CopyBuffer(buf.underlying);
+      auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
+      // yes we use the server loop here because if the server loop is not the
+      // client loop we'll crash again
+      self->m_ServerLogic->queue_func(
+          [self, addr, msgbuf]() { self->HandlePktServer(addr, msgbuf); });
     }
 
     void
     Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from,
                                 ManagedBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf.underlying);
+      const llarp::Addr addr(*from);
+      Buffer_t msgbuf = CopyBuffer(buf.underlying);
+      auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
+      self->m_ServerLogic->queue_func(
+          [self, addr, msgbuf]() { self->HandlePktClient(addr, msgbuf); });
     }
 
     llarp::Addr
@@ -115,13 +133,16 @@ namespace llarp
     }
 
     void
-    Proxy::HandlePktClient(llarp::Addr from, llarp_buffer_t* pkt)
+    Proxy::HandlePktClient(llarp::Addr from, Buffer_t buf)
     {
       MessageHeader hdr;
-      if(!hdr.Decode(pkt))
       {
-        llarp::LogWarn("failed to parse dns header from ", from);
-        return;
+        llarp_buffer_t pkt(buf);
+        if(!hdr.Decode(&pkt))
+        {
+          llarp::LogWarn("failed to parse dns header from ", from);
+          return;
+        }
       }
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
@@ -129,12 +150,10 @@ namespace llarp
         return;
 
       const Addr requester = itr->second;
-      std::vector< byte_t > tmp(pkt->sz);
-      std::copy_n(pkt->base, pkt->sz, tmp.begin());
-      auto self = shared_from_this();
+      auto self            = shared_from_this();
       m_ServerLogic->queue_func([=]() {
         // forward reply to requester via server
-        llarp_buffer_t tmpbuf(tmp);
+        const llarp_buffer_t tmpbuf(buf);
         llarp_ev_udp_sendto(&self->m_Server, requester, tmpbuf);
       });
       // remove pending
@@ -142,18 +161,20 @@ namespace llarp
     }
 
     void
-    Proxy::HandlePktServer(llarp::Addr from, llarp_buffer_t* pkt)
+    Proxy::HandlePktServer(llarp::Addr from, Buffer_t buf)
     {
       MessageHeader hdr;
-      if(!hdr.Decode(pkt))
+      llarp_buffer_t pkt(buf);
+      if(!hdr.Decode(&pkt))
       {
         llarp::LogWarn("failed to parse dns header from ", from);
         return;
       }
+
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
       Message msg(hdr);
-      if(!msg.Decode(pkt))
+      if(!msg.Decode(&pkt))
       {
         llarp::LogWarn("failed to parse dns message from ", from);
         return;
@@ -182,18 +203,21 @@ namespace llarp
         // new forwarded query
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
-        std::vector< byte_t > tmp(pkt->sz);
-        std::copy_n(pkt->base, pkt->sz, tmp.begin());
-
         m_ClientLogic->queue_func([=] {
           // do query
-          llarp_buffer_t buf(tmp);
-          llarp_ev_udp_sendto(&self->m_Client, tx.from, buf);
+          const llarp_buffer_t tmpbuf(buf);
+          llarp_ev_udp_sendto(&self->m_Client, tx.from, tmpbuf);
         });
       }
       else
       {
-        // drop (?)
+        // send the query again because it's probably FEC from the requester
+        const auto resolver = itr->first.from;
+        m_ClientLogic->queue_func([=] {
+          // send it
+          const llarp_buffer_t tmpbuf(buf);
+          llarp_ev_udp_sendto(&self->m_Client, resolver, tmpbuf);
+        });
       }
     }
 
