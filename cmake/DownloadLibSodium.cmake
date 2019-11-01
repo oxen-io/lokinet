@@ -10,6 +10,9 @@ file(DOWNLOAD
     SHOW_PROGRESS)
 execute_process(COMMAND mkdir -p ${LIBSODIUM_ROOT})
 execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_ROOT})
+if(WIN32)
+  execute_process(COMMAND patch -p0 -d ${LIBSODIUM_SRC} < ../llarp/win32/libsodium-1.0.17-win32.patch)
+endif()
 add_library(sodium_vendor
     ${LIBSODIUM_SRC}/src/libsodium/crypto_aead/aes256gcm/aesni/aead_aes256gcm_aesni.c
     ${LIBSODIUM_SRC}/src/libsodium/crypto_aead/chacha20poly1305/sodium/aead_chacha20poly1305.c
