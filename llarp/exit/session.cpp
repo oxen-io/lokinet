@@ -223,7 +223,8 @@ namespace llarp
     bool
     BaseSession::QueueUpstreamTraffic(llarp::net::IPPacket pkt, const size_t N)
     {
-      const llarp_buffer_t& buf = pkt.Buffer();
+      const auto pktbuf         = pkt.ConstBuffer();
+      const llarp_buffer_t& buf = pktbuf;
       auto& queue               = m_Upstream[buf.sz / N];
       // queue overflow
       if(queue.size() >= MaxUpstreamQueueLength)

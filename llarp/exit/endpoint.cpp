@@ -155,7 +155,8 @@ namespace llarp
       else
         src = pkt.srcv6();
       pkt.UpdateIPv6Address(src, m_IP);
-      const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
+      const auto _pktbuf           = pkt.Buffer();
+      const llarp_buffer_t& pktbuf = _pktbuf.underlying;
       const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
       if(m_DownstreamQueues.find(queue_idx) == m_DownstreamQueues.end())
         m_DownstreamQueues.emplace(queue_idx, InboundTrafficQueue_t{});
@@ -163,7 +164,7 @@ namespace llarp
       if(queue.size() == 0)
       {
         queue.emplace_back();
-        return queue.back().PutBuffer(buf.underlying, m_Counter++);
+        return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
       auto& msg = queue.back();
       if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
