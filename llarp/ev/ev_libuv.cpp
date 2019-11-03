@@ -469,7 +469,8 @@ namespace libuv
       udp_glue* glue = static_cast< udp_glue* >(handle->data);
       if(addr)
         glue->RecvFrom(nread, buf, addr);
-      if(glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
+      if(nread <= 0 || glue->m_UDP == nullptr
+         || glue->m_UDP->recvfrom != nullptr)
         delete[] buf->base;
     }
 
@@ -487,13 +488,15 @@ namespace libuv
       if(sz > 0 && m_UDP)
       {
         const size_t pktsz = sz;
-        const llarp_buffer_t pkt{(const byte_t*)buf->base, pktsz};
         if(m_UDP->recvfrom)
+        {
+          const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
           m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+        }
         else
         {
-          m_LastPackets.emplace_back(
-              PacketEvent{llarp::Addr(*fromaddr), PacketBuffer(buf->base, sz)});
+          PacketBuffer pbuf(buf->base, pktsz);
+          m_LastPackets.emplace_back(PacketEvent{*fromaddr, std::move(pbuf)});
         }
       }
     }
