@@ -41,4 +41,8 @@ bencode_start_dict(llarp_buffer_t* buff);
 bool
 bencode_end(llarp_buffer_t* buff);
 
+/// read next member, discard it and advance buffer
+bool
+bencode_discard(llarp_buffer_t* buf);
+
 #endif

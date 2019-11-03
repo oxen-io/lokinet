@@ -8,6 +8,7 @@ namespace llarp
   DHTImmediateMessage::Clear()
   {
     msgs.clear();
+    version = 0;
   }
 
   bool

@@ -37,6 +37,7 @@ namespace llarp
   LR_CommitMessage::Clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
+    version = 0;
   }
 
   bool

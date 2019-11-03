@@ -12,6 +12,7 @@ namespace llarp
     pathid.Zero();
     X.Clear();
     Y.Zero();
+    version = 0;
   }
 
   bool
@@ -67,6 +68,7 @@ namespace llarp
     pathid.Zero();
     X.Clear();
     Y.Zero();
+    version = 0;
   }
 
   bool

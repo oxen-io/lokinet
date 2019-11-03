@@ -1,4 +1,4 @@
-#include <util/bencode.h>
+#include <util/bencode.hpp>
 #include <util/logging/logger.hpp>
 #include <cstdlib>
 #include <cinttypes>
@@ -24,7 +24,8 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
   buffer->cur++;
 
   numbuf[len] = '\0';
-  *result     = std::strtoull(numbuf, nullptr, 10);
+  if(result)
+    *result = std::strtoull(numbuf, nullptr, 10);
   return true;
 }
 
@@ -53,10 +54,12 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
   {
     return false;
   }
-
-  result->base = buffer->cur;
-  result->cur  = buffer->cur;
-  result->sz   = slen;
+  if(result)
+  {
+    result->base = buffer->cur;
+    result->cur  = buffer->cur;
+    result->sz   = slen;
+  }
   buffer->cur += slen;
   return true;
 }
@@ -90,6 +93,49 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
   static const char letter[1] = {'e'};
   assert(std::distance(std::begin(letter), std::end(letter)) == 1);
   return buff->write(std::begin(letter), std::end(letter));
+}
+
+bool
+bencode_discard(llarp_buffer_t* buf)
+{
+  if(buf->size_left() == 0)
+    return true;
+  switch(*buf->cur)
+  {
+    case 'l':
+      return llarp::bencode_read_list(
+          [](llarp_buffer_t* buffer, bool more) -> bool {
+            if(more)
+            {
+              return bencode_discard(buffer);
+            }
+            return true;
+          },
+          buf);
+    case 'i':
+      return bencode_read_integer(buf, nullptr);
+    case 'd':
+      return llarp::bencode_read_dict(
+          [](llarp_buffer_t* buffer, llarp_buffer_t* key) -> bool {
+            if(key)
+              return bencode_discard(buffer);
+            return true;
+          },
+          buf);
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+      return bencode_read_string(buf, nullptr);
+    default:
+      return false;
+  }
 }
 
 bool

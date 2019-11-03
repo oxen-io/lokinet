@@ -29,6 +29,7 @@ namespace llarp
     void
     Clear() override
     {
+      version = 0;
     }
 
     const char*
@@ -68,6 +69,7 @@ namespace llarp
       void
       Clear() override
       {
+        version = 0;
       }
 
       bool

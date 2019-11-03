@@ -114,6 +114,7 @@ namespace llarp
     N.Zero();
     rc.Clear();
     Z.Zero();
+    version = 0;
   }
 
   bool

@@ -30,6 +30,7 @@ namespace llarp
       {
         pathLifetime = 0;
         pathCreated  = 0;
+        version      = 0;
       }
     };
   }  // namespace routing
