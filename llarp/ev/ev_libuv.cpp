@@ -469,7 +469,7 @@ namespace libuv
       udp_glue* glue = static_cast< udp_glue* >(handle->data);
       if(addr)
         glue->RecvFrom(nread, buf, addr);
-      if(nread == 0 || glue->m_UDP == nullptr
+      if(nread <= 0 || glue->m_UDP == nullptr
          || glue->m_UDP->recvfrom != nullptr)
         delete[] buf->base;
     }
