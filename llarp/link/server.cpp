@@ -12,7 +12,8 @@ namespace llarp
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
-                         TimeoutHandler timeout, SessionClosedHandler closed)
+                         TimeoutHandler timeout, SessionClosedHandler closed,
+                         PumpDoneHandler pumpDone)
       : HandleMessage(std::move(handler))
       , HandleTimeout(std::move(timeout))
       , Sign(std::move(signbuf))
@@ -20,6 +21,7 @@ namespace llarp
       , SessionEstablished(std::move(establishedSession))
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
+      , PumpDone(std::move(pumpDone))
       , m_RouterEncSecret(routerEncSecret)
   {
   }

@@ -1172,7 +1172,8 @@ namespace llarp
                 util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
                 util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                             &_outboundSessionMaker),
-                util::memFn(&AbstractRouter::SessionClosed, this));
+                util::memFn(&AbstractRouter::SessionClosed, this),
+                util::memFn(&AbstractRouter::PumpLL, this));
 
     if(!link)
       return false;
