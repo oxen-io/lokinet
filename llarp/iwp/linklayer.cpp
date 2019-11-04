@@ -11,9 +11,9 @@ namespace llarp
                          SessionEstablishedHandler est,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed,
-                         bool allowInbound)
+                         PumpDoneHandler pumpDone, bool allowInbound)
         : ILinkLayer(routerEncSecret, getrc, h, sign, est, reneg, timeout,
-                     closed)
+                     closed, pumpDone)
         , permitInbound{allowInbound}
     {
     }

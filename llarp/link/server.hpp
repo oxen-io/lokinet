@@ -45,13 +45,17 @@ namespace llarp
   /// handles close of all sessions with pubkey
   using SessionClosedHandler = std::function< void(llarp::RouterID) >;
 
+  /// notifies router that a link session has ended its pump and we should flush
+  /// messages to upper layers
+  using PumpDoneHandler = std::function< void(void) >;
+
   struct ILinkLayer
   {
     ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
                SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
-               SessionClosedHandler closed);
+               SessionClosedHandler closed, PumpDoneHandler pumpDone);
     virtual ~ILinkLayer();
 
     /// get current time via event loop
@@ -182,6 +186,7 @@ namespace llarp
     SessionEstablishedHandler SessionEstablished;
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
+    PumpDoneHandler PumpDone;
 
     std::shared_ptr< Logic >
     logic()

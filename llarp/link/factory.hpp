@@ -22,7 +22,7 @@ namespace llarp
     using Factory = std::function< LinkLayer_ptr(
         const SecretKey&, GetRCFunc, LinkMessageHandler, SignBufferFunc,
         SessionEstablishedHandler, SessionRenegotiateHandler, TimeoutHandler,
-        SessionClosedHandler) >;
+        SessionClosedHandler, PumpDoneHandler) >;
 
     /// get link type by name string
     /// if invalid returns eLinkUnspec
