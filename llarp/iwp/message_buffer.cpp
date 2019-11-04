@@ -163,8 +163,7 @@ namespace llarp
     bool
     InboundMessage::ShouldSendACKS(llarp_time_t now) const
     {
-      return (now > m_LastACKSent
-              && now - m_LastACKSent > (Session::DeliveryTimeout / 4));
+      return now > m_LastACKSent + (Session::DeliveryTimeout / 4);
     }
 
     bool

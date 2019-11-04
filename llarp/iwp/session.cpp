@@ -598,10 +598,10 @@ namespace llarp
       SendMACK();
       if(m_EncryptNext && !m_EncryptNext->empty())
       {
-        auto self = shared_from_this();
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
-          self->EncryptWorker(data);
-        });
+        m_Parent->QueueWork(
+            [self = shared_from_this(), data = std::move(m_EncryptNext)] {
+              self->EncryptWorker(data);
+            });
         m_EncryptNext = nullptr;
       }
     }
