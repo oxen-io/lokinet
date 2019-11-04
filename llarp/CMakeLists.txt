@@ -227,6 +227,7 @@ set(LIB_SRC
   routing/path_transfer_message.cpp
   routing/transfer_traffic_message.cpp
   rpc/rpc.cpp
+  rpc/json_rpc_dispatcher.cpp
   service/address.cpp
   service/async_key_exchange.cpp
   service/config.cpp

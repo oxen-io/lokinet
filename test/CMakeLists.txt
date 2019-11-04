@@ -21,6 +21,7 @@ list(APPEND TEST_SRC
     net/test_llarp_net.cpp
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp
+    rpc/test_llarp_json_rpc_dispatcher.cpp
     service/test_llarp_service_address.cpp
     service/test_llarp_service_identity.cpp
     test_llarp_encrypted_frame.cpp
