@@ -175,8 +175,8 @@ namespace llarp
   {
     if(_stopping.load())
       return;
-    paths.PumpUpstream();
     paths.PumpDownstream();
+    paths.PumpUpstream();
     _linkManager.PumpLinks();
   }
 
