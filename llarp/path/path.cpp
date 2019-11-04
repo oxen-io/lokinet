@@ -619,7 +619,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg,
                                    AbstractRouter* r)
     {
-      auto now = r->Now();
+      const auto now = r->Now();
       MarkActive(now);
       if(msg.L == m_LastLatencyTestID)
       {
