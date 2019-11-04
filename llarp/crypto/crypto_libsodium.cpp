@@ -210,6 +210,8 @@ namespace llarp
       assert(result != -1);
       const PubKey sk_pk = keys.toPublic();
       assert(pk == sk_pk);
+      (void)result;
+      (void)sk_pk;
     }
 
     void
