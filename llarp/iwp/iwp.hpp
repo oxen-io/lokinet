@@ -14,13 +14,13 @@ namespace llarp
                    LinkMessageHandler h, SignBufferFunc sign,
                    SessionEstablishedHandler est,
                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                   SessionClosedHandler closed);
+                   SessionClosedHandler closed, PumpDoneHandler pumpDone);
     LinkLayer_ptr
     NewOutboundLink(const SecretKey& routerEncSecret, GetRCFunc getrc,
                     LinkMessageHandler h, SignBufferFunc sign,
                     SessionEstablishedHandler est,
                     SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                    SessionClosedHandler closed);
+                    SessionClosedHandler closed, PumpDoneHandler pumpDone);
 
   }  // namespace iwp
 }  // namespace llarp

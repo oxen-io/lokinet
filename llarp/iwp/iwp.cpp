@@ -12,10 +12,11 @@ namespace llarp
                    LinkMessageHandler h, SignBufferFunc sign,
                    SessionEstablishedHandler est,
                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                   SessionClosedHandler closed)
+                   SessionClosedHandler closed, PumpDoneHandler pumpDone)
     {
       return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
-                                           reneg, timeout, closed, true);
+                                           reneg, timeout, closed, pumpDone,
+                                           true);
     }
 
     LinkLayer_ptr
@@ -23,10 +24,11 @@ namespace llarp
                     LinkMessageHandler h, SignBufferFunc sign,
                     SessionEstablishedHandler est,
                     SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                    SessionClosedHandler closed)
+                    SessionClosedHandler closed, PumpDoneHandler pumpDone)
     {
       return std::make_shared< LinkLayer >(routerEncSecret, getrc, h, sign, est,
-                                           reneg, timeout, closed, false);
+                                           reneg, timeout, closed, pumpDone,
+                                           false);
     }
   }  // namespace iwp
 }  // namespace llarp

@@ -18,7 +18,7 @@ namespace llarp
                 LinkMessageHandler h, SignBufferFunc sign,
                 SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
                 TimeoutHandler timeout, SessionClosedHandler closed,
-                bool permitInbound);
+                PumpDoneHandler pumpDone, bool permitInbound);
 
       ~LinkLayer() override;
 

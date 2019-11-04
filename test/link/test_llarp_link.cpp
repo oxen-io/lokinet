@@ -227,7 +227,9 @@ TEST_F(LinkLayerTest, TestIWP)
         ASSERT_FALSE(session->IsEstablished());
         Stop();
       },
-      [&](RouterID router) { ASSERT_EQ(router, Bob.GetRouterID()); });
+      [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
+      []() {})
+      ;
 
   auto sendDiscardMessage = [](ILinkSession* s) -> bool {
     // send discard message in reply to complete unit test
@@ -267,7 +269,9 @@ TEST_F(LinkLayerTest, TestIWP)
         return true;
       },
       [&](ILinkSession* session) { ASSERT_FALSE(session->IsEstablished()); },
-      [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
+      [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
+      []() {})
+      ;
 
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
