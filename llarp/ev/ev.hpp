@@ -839,8 +839,10 @@ struct PacketBuffer
   {
     _ptr = new char[sz];
   }
-  PacketBuffer(char* buf, size_t sz) : _ptr{buf}, _sz{sz}
+  PacketBuffer(char* buf, size_t sz)
   {
+    _ptr = buf;
+    _sz  = sz;
   }
   ~PacketBuffer()
   {
