@@ -584,12 +584,6 @@ namespace llarp
 
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
-
-        EnterState(ePathEstablished, now);
-        if(m_BuiltHook)
-          m_BuiltHook(shared_from_this());
-        m_BuiltHook = nullptr;
-
         MarkActive(now);
         // send path latency test
         routing::PathLatencyMessage latency;
@@ -631,6 +625,10 @@ namespace llarp
       {
         intro.latency       = now - m_LastLatencyTestTime;
         m_LastLatencyTestID = 0;
+        EnterState(ePathEstablished, now);
+        if(m_BuiltHook)
+          m_BuiltHook(shared_from_this());
+        m_BuiltHook = nullptr;
         LogDebug("path latency is now ", intro.latency, " for ", Name());
         return true;
       }
