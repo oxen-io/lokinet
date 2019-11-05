@@ -94,7 +94,7 @@ namespace llarp
 
       service::Introduction intro;
 
-      llarp_time_t buildStarted;
+      llarp_time_t buildStarted = 0;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
            PathRole startingRoles);

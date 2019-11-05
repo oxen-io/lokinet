@@ -287,7 +287,7 @@ namespace llarp
       BuildStats m_BuildStats;
 
       void
-      TickPaths(llarp_time_t now, AbstractRouter* r);
+      TickPaths(AbstractRouter* r);
 
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 
@@ -299,10 +299,20 @@ namespace llarp
           return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
         }
       };
-      using Mtx_t  = util::NullMutex;
-      using Lock_t = util::NullLock;
-      using PathMap_t =
-          std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash >;
+
+      struct PathInfoEquals
+      {
+        bool
+        operator()(const PathInfo_t& left, const PathInfo_t& right) const
+        {
+          return left.first == right.first && left.second == right.second;
+        }
+      };
+
+      using Mtx_t     = util::NullMutex;
+      using Lock_t    = util::NullLock;
+      using PathMap_t = std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash,
+                                            PathInfoEquals >;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };

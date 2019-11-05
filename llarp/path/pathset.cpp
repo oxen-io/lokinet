@@ -3,6 +3,7 @@
 #include <dht/messages/pubintro.hpp>
 #include <path/path.hpp>
 #include <routing/dht_message.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -17,10 +18,10 @@ namespace llarp
     {
       (void)now;
       const auto building = NumInStatus(ePathBuilding);
-      if(building > numPaths)
+      if(building >= numPaths)
         return false;
       const auto established = NumInStatus(ePathEstablished);
-      return established <= numPaths;
+      return established < numPaths;
     }
 
     bool
@@ -61,8 +62,9 @@ namespace llarp
     }
 
     void
-    PathSet::TickPaths(llarp_time_t now, AbstractRouter* r)
+    PathSet::TickPaths(AbstractRouter* r)
     {
+      const auto now = llarp::time_now_ms();
       Lock_t l(&m_PathsMutex);
       for(auto& item : m_Paths)
       {
@@ -80,7 +82,9 @@ namespace llarp
       while(itr != m_Paths.end())
       {
         if(itr->second->Expired(now))
+        {
           itr = m_Paths.erase(itr);
+        }
         else
           ++itr;
       }
@@ -221,9 +225,14 @@ namespace llarp
     PathSet::AddPath(Path_ptr path)
     {
       Lock_t l(&m_PathsMutex);
-      auto upstream = path->Upstream();  // RouterID
-      auto RXID     = path->RXID();      // PathID
-      m_Paths.emplace(std::make_pair(upstream, RXID), std::move(path));
+      const auto upstream = path->Upstream();  // RouterID
+      const auto RXID     = path->RXID();      // PathID
+      if(not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
+      {
+        LogError(Name(),
+                 " failed to add own path, duplicate info wtf? upstream=",
+                 upstream, " rxid=", RXID);
+      }
     }
 
     void

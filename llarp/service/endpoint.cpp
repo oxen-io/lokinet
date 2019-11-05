@@ -67,13 +67,13 @@ namespace llarp
     }
 
     void
-    Endpoint::RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild)
+    Endpoint::RegenAndPublishIntroSet(bool forceRebuild)
     {
+      const auto now = llarp::time_now_ms();
       std::set< Introduction > I;
       if(!GetCurrentIntroductionsWithFilter(
              I, [now](const service::Introduction& intro) -> bool {
-               return now < intro.expiresAt
-                   && intro.expiresAt - now > (2 * 60 * 1000);
+               return not intro.ExpiresSoon(now, 2 * 60 * 1000);
              }))
       {
         LogWarn("could not publish descriptors for endpoint ", Name(),
@@ -169,13 +169,14 @@ namespace llarp
     }
 
     void
-    Endpoint::Tick(llarp_time_t now)
+    Endpoint::Tick(llarp_time_t)
     {
+      const auto now = llarp::time_now_ms();
       path::Builder::Tick(now);
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {
-        RegenAndPublishIntroSet(now);
+        RegenAndPublishIntroSet();
       }
 
       // expire snode sessions
@@ -542,7 +543,7 @@ namespace llarp
       auto now = Now();
       if(ShouldPublishDescriptors(now))
       {
-        RegenAndPublishIntroSet(now);
+        RegenAndPublishIntroSet();
       }
       else if(NumInStatus(path::ePathEstablished) < 3)
       {
@@ -581,8 +582,6 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
-      if(NumInStatus(path::ePathEstablished) < 3)
-        return false;
       // make sure we have all paths that are established
       // in our introset
       size_t numNotInIntroset = 0;
@@ -597,7 +596,7 @@ namespace llarp
         ++numNotInIntroset;
       });
 
-      auto lastpub = m_state->m_LastPublishAttempt;
+      const auto lastpub = m_state->m_LastPublishAttempt;
       if(m_state->m_IntroSet.HasExpiredIntros(now) || numNotInIntroset > 1)
       {
         return now - lastpub >= INTROSET_PUBLISH_RETRY_INTERVAL;
@@ -905,7 +904,7 @@ namespace llarp
 
     void Endpoint::HandlePathDied(path::Path_ptr)
     {
-      RegenAndPublishIntroSet(Now(), true);
+      RegenAndPublishIntroSet(true);
     }
 
     bool
@@ -1227,6 +1226,8 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
+      if(path::Builder::BuildCooldownHit(now))
+        return false;
       const bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;
@@ -1235,12 +1236,13 @@ namespace llarp
       // time from now that the newest intro expires at
       if(intro.ExpiresSoon(now))
         return should;
+
       const auto dlt = now - (intro.expiresAt - path::default_lifetime);
+
       return should
           || (  // try spacing tunnel builds out evenly in time
                  (dlt >= (path::default_lifetime / 4))
-                 && (NumInStatus(path::ePathBuilding) < numPaths)
-                 && !path::Builder::BuildCooldownHit(now));
+                 && (NumInStatus(path::ePathBuilding) < numPaths));
     }
 
     std::shared_ptr< Logic >

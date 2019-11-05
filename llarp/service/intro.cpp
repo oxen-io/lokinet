@@ -67,6 +67,7 @@ namespace llarp
     {
       Printer printer(stream, level, spaces);
       printer.printAttribute("k", RouterID(router));
+      printer.printAttribute("l", latency);
       printer.printAttribute("p", pathID);
       printer.printAttribute("v", version);
       printer.printAttribute("x", expiresAt);

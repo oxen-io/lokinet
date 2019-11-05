@@ -295,15 +295,8 @@ namespace llarp
             ++itr;
         }
       }
-      {
-        SyncOwnedPathsMap_t::Lock_t lock(&m_OurPaths.first);
-        auto& map = m_OurPaths.second;
-        for(auto& item : map)
-        {
-          item.second->ExpirePaths(now);
-        }
-      }
     }
+
     routing::MessageHandler_ptr
     PathContext::GetHandler(const PathID_t& id)
     {

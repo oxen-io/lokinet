@@ -798,6 +798,7 @@ namespace libuv
   void
   Loop::update_time()
   {
+    llarp_ev_loop::update_time();
     uv_update_time(&m_Impl);
   }
 
@@ -805,12 +806,6 @@ namespace libuv
   Loop::running() const
   {
     return m_Run.load();
-  }
-
-  llarp_time_t
-  Loop::time_now() const
-  {
-    return llarp::time_now_ms();
   }
 
   bool

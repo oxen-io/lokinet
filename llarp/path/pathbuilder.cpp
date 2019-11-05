@@ -162,13 +162,13 @@ namespace llarp
       lastBuild          = 0;
     }
 
-    void
-    Builder::Tick(llarp_time_t now)
+    void Builder::Tick(llarp_time_t)
     {
+      const auto now = llarp::time_now_ms();
       ExpirePaths(now);
       if(ShouldBuildMore(now))
         BuildOne();
-      TickPaths(now, m_router);
+      TickPaths(m_router);
       if(m_BuildStats.attempts > 50)
       {
         if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
@@ -281,7 +281,9 @@ namespace llarp
     {
       if(IsStopped())
         return false;
-      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
+      if(BuildCooldownHit(now))
+        return false;
+      return PathSet::ShouldBuildMore(now);
     }
 
     void
@@ -426,11 +428,12 @@ namespace llarp
       // async generate keys
       auto ctx     = std::make_shared< AsyncPathKeyExchangeContext >();
       ctx->router  = m_router;
-      ctx->pathset = GetSelf();
-      auto path    = std::make_shared< path::Path >(hops, this, roles);
+      auto self    = GetSelf();
+      ctx->pathset = self;
+      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
-          [this](Path_ptr p) { this->HandlePathBuilt(p); });
+          [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),
                              &PathBuilderKeysGenerated);
     }
