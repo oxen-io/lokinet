@@ -168,8 +168,7 @@ namespace llarp
       return m_state->ExtractStatus(obj);
     }
 
-    void
-    Endpoint::Tick(llarp_time_t)
+    void Endpoint::Tick(llarp_time_t)
     {
       const auto now = llarp::time_now_ms();
       path::Builder::Tick(now);
