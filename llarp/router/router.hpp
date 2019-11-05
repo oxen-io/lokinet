@@ -30,6 +30,7 @@
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/threadpool.h>
+#include <util/time.hpp>
 
 #include <functional>
 #include <list>
@@ -416,11 +417,10 @@ namespace llarp
     void
     Tick();
 
-    /// get time from event loop
     llarp_time_t
     Now() const override
     {
-      return llarp_ev_loop_time_now_ms(_netloop);
+      return llarp::time_now_ms();
     }
 
     /// schedule ticker to call i ms from now
