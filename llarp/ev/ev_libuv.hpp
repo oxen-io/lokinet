@@ -26,9 +26,6 @@ namespace libuv
     void
     update_time() override;
 
-    llarp_time_t
-    time_now() const override;
-
     /// return false on socket error (non blocking)
     bool
     tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) override;

@@ -377,7 +377,7 @@ namespace llarp
       SupportsV6() const = 0;
 
       void
-      RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
+      RegenAndPublishIntroSet(bool forceRebuild = false);
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);

@@ -320,11 +320,14 @@ namespace llarp
 
       if(_status == ePathBuilding)
       {
+        if(buildStarted == 0)
+          return;
         if(now >= buildStarted)
         {
-          auto dlt = now - buildStarted;
+          const auto dlt = now - buildStarted;
           if(dlt >= path::build_timeout)
           {
+            LogWarn(Name(), " waited for ", dlt, "ms and no path was built");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathExpired, now);
             return;
@@ -350,6 +353,7 @@ namespace llarp
           const auto delay = now - m_LastRecvMessage;
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
           {
+            LogWarn(Name(), " waited for ", dlt, "ms and path is unresponsive");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
@@ -358,6 +362,7 @@ namespace llarp
         {
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
           {
+            LogWarn(Name(), " waited for ", dlt, "ms and path looks dead");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
@@ -433,11 +438,12 @@ namespace llarp
     {
       if(_status == ePathFailed)
         return true;
-      if(_status == ePathEstablished || _status == ePathTimeout)
-        return now >= ExpireTime();
       if(_status == ePathBuilding)
         return false;
-
+      if(_status == ePathEstablished || _status == ePathTimeout)
+      {
+        return now >= ExpireTime();
+      }
       return true;
     }
 
@@ -574,7 +580,7 @@ namespace llarp
     Path::HandlePathConfirmMessage(AbstractRouter* r)
     {
       LogDebug("Path Build Confirm, path: ", HopsString());
-      auto now = r->Now();
+      const auto now = llarp::time_now_ms();
       if(_status == ePathBuilding)
       {
         // finish initializing introduction

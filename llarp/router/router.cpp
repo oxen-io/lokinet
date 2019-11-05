@@ -668,7 +668,7 @@ namespace llarp
     if(_stopping)
       return;
     // LogDebug("tick router");
-    auto now = Now();
+    const auto now = Now();
 
     routerProfiling().Tick();
 
@@ -698,8 +698,6 @@ namespace llarp
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
-    // expire paths
-    paths.ExpirePaths(now);
 
     _linkManager.CheckPersistingSessions(now);
 
@@ -726,12 +724,9 @@ namespace llarp
       _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
     }
 
-    if(!isSvcNode)
-    {
-      _hiddenServiceContext.Tick(now);
-    }
-
+    _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
+
     if(rpcCaller)
       rpcCaller->Tick(now);
     // save profiles async
@@ -752,6 +747,8 @@ namespace llarp
     _dht->impl->Nodes()->RemoveIf([&peersWeHave](const dht::Key_t &k) -> bool {
       return peersWeHave.count(k) == 0;
     });
+    // expire paths
+    paths.ExpirePaths(now);
   }  // namespace llarp
 
   bool

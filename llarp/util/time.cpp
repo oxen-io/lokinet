@@ -1,7 +1,11 @@
 #include <util/time.hpp>
+#include <chrono>
+#include <util/logging/logger.hpp>
 
 namespace llarp
 {
+  using Clock_t = std::chrono::system_clock;
+
   template < typename Res >
   static llarp_time_t
   time_since_epoch()
@@ -18,6 +22,27 @@ namespace llarp
   llarp_time_t
   time_now_ms()
   {
-    return llarp::time_since_epoch< std::chrono::milliseconds >();
+    static llarp_time_t lastTime = 0;
+    auto t = llarp::time_since_epoch< std::chrono::milliseconds >();
+    if(t <= lastTime)
+    {
+      return lastTime;
+    }
+    if(lastTime == 0)
+    {
+      lastTime = t;
+    }
+    const auto dlt = t - lastTime;
+    if(dlt > 5000)
+    {
+      // big timeskip
+      t        = lastTime;
+      lastTime = 0;
+    }
+    else
+    {
+      lastTime = t;
+    }
+    return t;
   }
 }  // namespace llarp
