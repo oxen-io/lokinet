@@ -15,7 +15,8 @@ file(DOWNLOAD
 
 execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_PREFIX})
 if(WIN32)
-  execute_process(COMMAND patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch)
+  message("patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch")
+  execute_process(COMMAND "patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch")
 endif()
 add_library(sodium_vendor
     ${LIBSODIUM_SRC}/src/libsodium/crypto_aead/aes256gcm/aesni/aead_aes256gcm_aesni.c
