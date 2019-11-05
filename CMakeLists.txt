@@ -177,7 +177,7 @@ if(AMD_RYZEN_HACK AND USE_AVX2)
   message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
 endif(AMD_RYZEN_HACK AND USE_AVX2)
 
-if(NATIVE_BUILD)
+if(NATIVE_BUILD AND NOT DEBIAN)
   set(CRYPTO_FLAGS -march=native -mtune=native)
 endif()
 
