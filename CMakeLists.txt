@@ -184,18 +184,6 @@ endif()
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
-set(ABSEIL_DIR vendor/abseil-cpp)
-include_directories(SYSTEM ${ABSEIL_DIR})
-add_subdirectory(vendor/cxxopts)
-add_subdirectory(vendor/nlohmann)
-include_directories(SYSTEM vendor/cxxopts/include)
-add_subdirectory(vendor/gtest)
-add_subdirectory(${ABSEIL_DIR})
-
-if (FS_LIB STREQUAL "cppbackport")
-  add_subdirectory(vendor)
-endif()
-
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
@@ -225,6 +213,8 @@ endif(NOT GIT_VERSION)
 string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
 
+
+
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
 # this is _the_ system allocator on BSD UNIX
@@ -233,6 +223,18 @@ add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif(JEMALLOC)
+
+set(ABSEIL_DIR vendor/abseil-cpp)
+include_directories(SYSTEM ${ABSEIL_DIR})
+add_subdirectory(vendor/cxxopts)
+add_subdirectory(vendor/nlohmann)
+include_directories(SYSTEM vendor/cxxopts/include)
+add_subdirectory(vendor/gtest)
+add_subdirectory(${ABSEIL_DIR})
+
+if (FS_LIB STREQUAL "cppbackport")
+  add_subdirectory(vendor)
+endif()
 
 if(ANDROID)
   list(APPEND LIBS log)
