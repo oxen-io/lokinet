@@ -36,7 +36,6 @@ namespace llarp
     if(dlt > 5000)
     {
       // big timeskip
-      printf("big timeskip %ld ms\n", dlt);
       t        = lastTime;
       lastTime = 0;
     }
