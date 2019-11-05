@@ -46,16 +46,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
 
-# try detecting the target arch and set the flags needed here
-if(NOT WIN32)
-  include(TargetArch)
-  target_architecture(COMPILE_ARCH)
-  if(COMPILE_ARCH MATCHES i386 OR COMPILE_ARCH MATCHES x86_64)
-    set(NON_PC_TARGET OFF)
-  else()
-    set(NON_PC_TARGET ON)
-  endif()
-endif()
+
 
 include(cmake/basic_definitions.cmake)
 
@@ -70,6 +61,16 @@ endif(MSVC_VERSION)
 include(cmake/solaris.cmake)
 include(cmake/unix.cmake)
 include(cmake/win32.cmake)
+# try detecting the target arch and set the flags needed here
+if(NOT WIN32)
+  include(TargetArch)
+  target_architecture(COMPILE_ARCH)
+  if(COMPILE_ARCH MATCHES i386 OR COMPILE_ARCH MATCHES x86_64)
+    set(NON_PC_TARGET OFF)
+  else()
+    set(NON_PC_TARGET ON)
+  endif()
+endif()
 
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
