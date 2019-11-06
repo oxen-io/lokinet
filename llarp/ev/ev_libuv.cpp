@@ -553,9 +553,16 @@ namespace libuv
     RecvMany()
     {
       const auto idx = m_BufferIndex;
-      m_BufferIndex  = (m_BufferIndex + 1) % Buckets;
-      if(m_BucketPosition == 0)
-        return nullptr;
+      // find a good bucket
+      do
+      {
+        m_BufferIndex = (m_BufferIndex + 1) % Buckets;
+      } while(m_BuffersAllocated.test(m_BufferIndex) && m_BufferIndex != idx);
+      if(m_BufferIndex == idx)
+      {
+        // full
+        EnsureBufferSpace();
+      }
       m_BucketPosition = 0;
       return &m_Buffers[idx];
     }
