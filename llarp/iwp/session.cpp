@@ -759,8 +759,8 @@ namespace llarp
           const llarp_buffer_t buf(msg.m_Data);
           m_Parent->HandleMessage(this, buf);
           m_ReplayFilter.emplace(itr->first, now);
-          // m_SendMACKs.emplace(itr->first);
-          msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
+          m_SendMACKs.emplace(itr->first);
+          // msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
         }
         else
         {
