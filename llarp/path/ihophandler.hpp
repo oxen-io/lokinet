@@ -24,9 +24,34 @@ namespace llarp
   {
     struct IHopHandler
     {
-      using TrafficEvent_t   = std::pair< std::vector< byte_t >, TunnelNonce >;
-      using TrafficQueue_t   = std::vector< TrafficEvent_t >;
+      using TrafficEvent_t = std::pair< std::vector< byte_t >, TunnelNonce >;
+
+      template < typename T >
+      struct Batch
+      {
+        std::vector< T > msgs;
+        uint64_t seqno;
+
+        bool
+        operator<(const UpstreamBatch& other) const
+        {
+          return seqno < other.seqno;
+        }
+
+        bool
+        empty() const
+        {
+          return msgs.empty();
+        }
+      };
+
+      using TrafficQueue_t   = Batch< TrafficEvent_t >;
       using TrafficQueue_ptr = std::shared_ptr< TrafficQueue_t >;
+
+      using UpstreamQueue_t =
+          std::priority_queue< Batch< RelayUpstreamMessage > >;
+      using DownstreamQueue_t =
+          std::priority_queue< Batch< RelayDownstreamMessage > >;
 
       virtual ~IHopHandler() = default;
 
@@ -62,16 +87,29 @@ namespace llarp
       {
         return m_SequenceNum++;
       }
-      virtual void
-      FlushUpstream(AbstractRouter* r) = 0;
 
-      virtual void
-      FlushDownstream(AbstractRouter* r) = 0;
+      void
+      FlushUpstream(AbstractRouter* r);
+
+      void
+      FlushDownstream(AbstractRouter* r);
 
      protected:
       uint64_t m_SequenceNum = 0;
-      TrafficQueue_ptr m_UpstreamQueue;
-      TrafficQueue_ptr m_DownstreamQueue;
+      TrafficQueue_ptr m_UpstreamIngest;
+      TrafficQueue_ptr m_DownstreamIngest;
+      uint64_t m_UpstreamSequence   = 0;
+      uint64_t m_DownstreamSequence = 0;
+
+      std::priority_queue< Batch< RelayUpstreamMessage > > m_UpstreamEgress;
+      std::priority_queue< Batch< RelayDownstreamMessage > > m_DownstreamEgress;
+
+      void
+      CollectDownstream(AbstractRouter* r,
+                        Batch< RelayDownstreamMessage > data);
+
+      void
+      CollectUpstream(AbstractRouter* r, Batch< RelayUpstreamMessage > data);
 
       virtual void
       UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
@@ -80,11 +118,14 @@ namespace llarp
       DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
 
       virtual void
-      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+      HandleAllUpstream(const std::vector< RelayUpstreamMessage >& msgs,
                         AbstractRouter* r) = 0;
       virtual void
-      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+      HandleAllDownstream(const std::vector< RelayDownstreamMessage >& msgs,
                           AbstractRouter* r) = 0;
+
+      virtual std::shared_ptr< IHopHandler >
+      GetSelf() = 0;
     };
 
     using HopHandler_ptr = std::shared_ptr< IHopHandler >;

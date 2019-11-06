@@ -352,12 +352,6 @@ namespace llarp
       bool
       SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r);
 
-      void
-      FlushUpstream(AbstractRouter* r) override;
-
-      void
-      FlushDownstream(AbstractRouter* r) override;
-
      protected:
       void
       UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
@@ -366,12 +360,18 @@ namespace llarp
       DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+      HandleAllUpstream(const std::vector< RelayUpstreamMessage >& msgs,
                         AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+      HandleAllDownstream(const std::vector< RelayDownstreamMessage >& msgs,
                           AbstractRouter* r) override;
+
+      std::shared_ptr< IHopHandler >
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
      private:
       /// call obtained exit hooks

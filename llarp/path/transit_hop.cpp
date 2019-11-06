@@ -118,12 +118,14 @@ namespace llarp
     void
     TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayDownstreamMessage > sendmsgs(msgs->size());
+      IHopHandler::Batch< RelayDownstreamMessage > batch;
+      batch.seqno = msgs->seqno;
+      batch.msgs.resize(msgs->msgs.size());
       size_t idx = 0;
-      for(auto& ev : *msgs)
+      for(auto& ev : msgs->msgs)
       {
         const llarp_buffer_t buf(ev.first);
-        auto& msg  = sendmsgs[idx];
+        auto& msg  = batch.msgs[idx];
         msg.pathid = info.rxID;
         msg.Y      = ev.second ^ nonceXOR;
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
@@ -132,34 +134,38 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllDownstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      r->logic()->queue_func(
+          [self = shared_from_this(), r, data = std::move(batch)]() {
+            self->CollectDownstream(r, std::move(data));
+          });
     }
 
     void
     TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayUpstreamMessage > sendmsgs(msgs->size());
+      IHopHandler::Batch< RelayUpstreamMessage > batch;
+      batch.seqno = msgs.seqno;
+      batch.msgs.resize(msgs->msgs.size());
       size_t idx = 0;
-      for(auto& ev : *msgs)
+      for(auto& ev : msgs->pkts)
       {
         const llarp_buffer_t buf(ev.first);
-        auto& msg = sendmsgs[idx];
+        auto& msg = batch.msgs[idx];
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
         msg.pathid = info.txID;
         msg.Y      = ev.second ^ nonceXOR;
         msg.X      = buf;
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllUpstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      r->logic()->queue_func(
+          [self = shared_from_this(), r, data = std::move(batch)]() {
+            self->CollectUpstream(r, std::move(data));
+          });
     }
 
     void
-    TransitHop::HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
-                                  AbstractRouter* r)
+    TransitHop::HandleAllUpstream(
+        const std::vector< RelayUpstreamMessage >& msgs, AbstractRouter* r)
     {
       if(IsEndpoint(r->pubkey()))
       {
@@ -183,12 +189,11 @@ namespace llarp
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
-      r->linkManager().PumpLinks();
     }
 
     void
-    TransitHop::HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
-                                    AbstractRouter* r)
+    TransitHop::HandleAllDownstream(
+        const std::vector< RelayDownstreamMessage >& msgs, AbstractRouter* r)
     {
       for(const auto& msg : msgs)
       {
@@ -196,28 +201,6 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
-      r->linkManager().PumpLinks();
-    }
-
-    void
-    TransitHop::FlushUpstream(AbstractRouter* r)
-    {
-      if(m_UpstreamQueue && !m_UpstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(&TransitHop::UpstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_UpstreamQueue), r));
-
-      m_UpstreamQueue = nullptr;
-    }
-
-    void
-    TransitHop::FlushDownstream(AbstractRouter* r)
-    {
-      if(m_DownstreamQueue && !m_DownstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(&TransitHop::DownstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_DownstreamQueue), r));
-      m_DownstreamQueue = nullptr;
     }
 
     bool
