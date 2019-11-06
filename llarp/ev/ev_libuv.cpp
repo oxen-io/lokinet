@@ -563,6 +563,8 @@ namespace libuv
         // full
         EnsureBufferSpace();
       }
+      if(m_BucketPosition == 0)
+        return nullptr;
       m_BucketPosition = 0;
       return &m_Buffers[idx];
     }
