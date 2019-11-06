@@ -477,9 +477,9 @@ namespace llarp
       if(pkts)
       {
         pkts->ForEachPacket(util::memFn(&ILinkLayer::RecvFrom, link));
+        llarp_ev_udp_free_pkt_list(pkts);
       }
       link->Pump();
-      llarp_ev_udp_free_pkt_list(pkts);
     });
   }
 
