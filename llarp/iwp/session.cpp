@@ -140,7 +140,7 @@ namespace llarp
       }
     }
 
-    uint64_t CryptoQueue::sequences = 0;
+    uint64_t Session::CryptoQueue::sequences = 0;
 
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
@@ -269,7 +269,7 @@ namespace llarp
         m_EncryptNext = nullptr;
       }
 
-      if(m_DecryptNext && !m_DecryptNext->pts.empty())
+      if(m_DecryptNext && !m_DecryptNext->pkts.empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
           self->DecryptWorker(data);
@@ -571,7 +571,7 @@ namespace llarp
                    " != ", LLARP_PROTO_VERSION);
           continue;
         }
-        recvMsgs->emplace_back(std::move(pkt));
+        recvMsgs->pkts.emplace_back(std::move(pkt));
       }
       LogDebug("decrypted ", recvMsgs->pkts.size(), " packets from ",
                m_RemoteAddr);
