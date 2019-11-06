@@ -2,6 +2,7 @@
 #include <ev/ev.hpp>
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
+#include <util/meta/memfn.hpp>
 #include <utility>
 
 namespace llarp
@@ -464,20 +465,21 @@ namespace llarp
   void
   ILinkLayer::udp_tick(llarp_udp_io* udp)
   {
-    ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
-    auto pkts        = std::make_shared< llarp_pkt_list >();
-    llarp_ev_udp_recvmany(&link->m_udp, pkts.get());
-    auto logic = link->logic();
+    ILinkLayer* link           = static_cast< ILinkLayer* >(udp->user);
+    llarp_pkt_list* const pkts = llarp_ev_udp_recvmany(udp);
+    auto logic                 = link->logic();
     if(logic == nullptr)
+    {
+      llarp_ev_udp_free_pkt_list(pkts);
       return;
+    }
     logic->queue_func([pkts, link]() {
-      auto itr = pkts->begin();
-      while(itr != pkts->end())
+      if(pkts)
       {
-        link->RecvFrom(itr->remote, std::move(itr->pkt));
-        ++itr;
+        pkts->ForEachPacket(util::memFn(&ILinkLayer::RecvFrom, link));
       }
       link->Pump();
+      llarp_ev_udp_free_pkt_list(pkts);
     });
   }
 

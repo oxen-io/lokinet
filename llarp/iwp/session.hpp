@@ -72,7 +72,8 @@ namespace llarp
       void
       Close() override;
 
-      void Recv_LL(ILinkSession::Packet_t) override;
+      void
+      Recv_LL(byte_t*, size_t) override;
 
       bool
       SendKeepAlive() override;
@@ -183,22 +184,24 @@ namespace llarp
       HandlePlaintext(CryptoQueue_ptr msgs);
 
       void
-      HandleGotIntro(Packet_t pkt);
+      HandleGotIntro(byte_t*, size_t);
 
       void
-      HandleGotIntroAck(Packet_t pkt);
+      HandleGotIntroAck(byte_t*, size_t);
 
       void
-      HandleCreateSessionRequest(Packet_t pkt);
-
+      HandleCreateSessionRequest(byte_t*, size_t);
       void
-      HandleAckSession(Packet_t pkt);
-
-      void
-      HandleSessionData(Packet_t pkt);
+      HandleSessionData(byte_t*, size_t);
 
       bool
-      DecryptMessageInPlace(Packet_t& pkt);
+      DecryptMessageInPlace(Packet_t& pkt)
+      {
+        return DecryptBuffer(pkt.data(), pkt.size());
+      }
+
+      bool
+      DecryptBuffer(byte_t* ptr, size_t sz);
 
       void
       SendMACK();

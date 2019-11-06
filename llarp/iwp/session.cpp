@@ -392,20 +392,20 @@ namespace llarp
     }
 
     void
-    Session::HandleCreateSessionRequest(Packet_t pkt)
+    Session::HandleCreateSessionRequest(byte_t* ptr, size_t sz)
     {
-      if(not DecryptMessageInPlace(pkt))
+      if(not DecryptBuffer(ptr, sz))
       {
         LogError("failed to decrypt session request from ", m_RemoteAddr);
         return;
       }
-      if(pkt.size() < token.size() + PacketOverhead)
+      if(sz < token.size() + PacketOverhead)
       {
-        LogError("bad session request size, ", pkt.size(), " < ",
+        LogError("bad session request size, ", sz " < ",
                  token.size() + PacketOverhead, " from ", m_RemoteAddr);
         return;
       }
-      const auto begin = pkt.data() + PacketOverhead;
+      const auto begin = ptr + PacketOverhead;
       if(not std::equal(begin, begin + token.size(), token.data()))
       {
         LogError("token missmatch from ", m_RemoteAddr);
@@ -417,14 +417,14 @@ namespace llarp
     }
 
     void
-    Session::HandleGotIntro(Packet_t pkt)
+    Session::HandleGotIntro(byte_t* pkt, size_t sz)
     {
-      if(pkt.size() < (Introduction::SIZE + PacketOverhead))
+      if(sz < (Introduction::SIZE + PacketOverhead))
       {
         LogWarn("intro too small from ", m_RemoteAddr);
         return;
       }
-      byte_t* ptr = pkt.data() + PacketOverhead;
+      byte_t* ptr = pkt + PacketOverhead;
       TunnelNonce N;
       std::copy_n(ptr, PubKey::SIZE, m_ExpectedIdent.data());
       ptr += PubKey::SIZE;
@@ -434,7 +434,7 @@ namespace llarp
       ptr += TunnelNonce::SIZE;
       Signature Z;
       std::copy_n(ptr, Z.size(), Z.data());
-      const llarp_buffer_t verifybuf(pkt.data() + PacketOverhead,
+      const llarp_buffer_t verifybuf(pkt + PacketOverhead,
                                      Introduction::SIZE - Signature::SIZE);
       if(!CryptoManager::instance()->verify(m_ExpectedIdent, verifybuf, Z))
       {
@@ -464,22 +464,22 @@ namespace llarp
     }
 
     void
-    Session::HandleGotIntroAck(Packet_t pkt)
+    Session::HandleGotIntroAck(byte_t* pkt, size_t sz)
     {
-      if(pkt.size() < (token.size() + PacketOverhead))
+      if(sz < (token.size() + PacketOverhead))
       {
-        LogError("bad intro ack size ", pkt.size(), " < ",
+        LogError("bad intro ack size ", sz, " < ",
                  token.size() + PacketOverhead, " from ", m_RemoteAddr);
         return;
       }
       Packet_t reply(token.size() + PacketOverhead);
-      if(not DecryptMessageInPlace(pkt))
+      if(not DecryptBuffer(pkt, sz))
       {
         LogError("intro ack decrypt failed from ", m_RemoteAddr);
         return;
       }
       m_LastRX = m_Parent->Now();
-      std::copy_n(pkt.data() + PacketOverhead, token.size(), token.data());
+      std::copy_n(pkt + PacketOverhead, token.size(), token.data());
       std::copy_n(token.data(), token.size(), reply.data() + PacketOverhead);
       // random nounce
       CryptoManager::instance()->randbytes(reply.data() + HMACSIZE,
@@ -490,14 +490,14 @@ namespace llarp
     }
 
     bool
-    Session::DecryptMessageInPlace(Packet_t& pkt)
+    Session::DecryptBuffer(byte_t* ptr, size_t sz)
     {
-      if(pkt.size() <= PacketOverhead)
+      if(sz <= PacketOverhead)
       {
         LogError("packet too small from ", m_RemoteAddr);
         return false;
       }
-      const llarp_buffer_t buf(pkt);
+      const llarp_buffer_t buf(ptr, sz);
       ShortHash H;
       llarp_buffer_t curbuf(buf.base, buf.sz);
       curbuf.base += ShortHash::SIZE;
@@ -530,11 +530,13 @@ namespace llarp
     }
 
     void
-    Session::HandleSessionData(Packet_t pkt)
+    Session::HandleSessionData(byte_t* pkt, size_t sz)
     {
       if(m_DecryptNext == nullptr)
         m_DecryptNext = std::make_shared< CryptoQueue_t >();
-      m_DecryptNext->emplace_back(std::move(pkt));
+      m_DecryptNext->emplace_back(sz);
+      auto& buf = m_DecryptNext->back();
+      std::copy_n(pkt, sz, buf.data());
     }
 
     void
@@ -806,7 +808,7 @@ namespace llarp
     }
 
     void
-    Session::Recv_LL(ILinkSession::Packet_t data)
+    Session::Recv_LL(byte_t* buf, size_t sz)
     {
       switch(m_State)
       {
@@ -815,8 +817,8 @@ namespace llarp
           {
             // initial data
             // enter introduction phase
-            if(DecryptMessageInPlace(data))
-              HandleGotIntro(std::move(data));
+            if(DecryptBuffer(buf, sz))
+              HandleGotIntro(buf, sz);
             else
               LogError("bad intro from ", m_RemoteAddr);
           }
@@ -830,18 +832,18 @@ namespace llarp
           if(m_Inbound)
           {
             // we are replying to an intro ack
-            HandleCreateSessionRequest(std::move(data));
+            HandleCreateSessionRequest(buf, sz);
           }
           else
           {
             // we got an intro ack
             // send a session request
-            HandleGotIntroAck(std::move(data));
+            HandleGotIntroAck(buf, sz);
           }
           break;
         case State::LinkIntro:
         default:
-          HandleSessionData(std::move(data));
+          HandleSessionData(buf, sz);
           break;
       }
     }

@@ -380,19 +380,21 @@ namespace llarp
       udp->recvfrom(udp, addr, ManagedBuffer{b});
     else
     {
-      m_RecvPackets.emplace_back(
-          PacketEvent{llarp::Addr(*addr), PacketBuffer(ret)});
-      std::copy_n(buf, ret, m_RecvPackets.back().pkt.data());
+      if(m_RecvPackets == nullptr)
+      {
+        m_RecvPackets = new llarp_pkt_list();
+      }
+      m_RecvPackets->GotPacket(*addr, buf, ret);
     }
     return 0;
   }
 
-  bool
-  udp_listener::RecvMany(llarp_pkt_list* pkts)
+  llarp_pkt_list*
+  udp_listener::RecvMany()
   {
-    *pkts         = std::move(m_RecvPackets);
-    m_RecvPackets = llarp_pkt_list();
-    return pkts->size() > 0;
+    auto ret      = m_RecvPackets;
+    m_RecvPackets = nullptr;
+    return ret;
   }
 
   static int
@@ -730,10 +732,17 @@ llarp_win32_loop::tick_listeners()
     m_Logic->queue_func([func]() { func(); });
 }
 
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
+struct llarp_pkt_list*
+llarp_ev_udp_recvmany(struct llarp_udp_io* u)
 {
-  return static_cast< llarp::udp_listener* >(u->impl)->RecvMany(pkts);
+  return static_cast< llarp::udp_listener* >(u->impl)->RecvMany();
+}
+
+void
+llarp_ev_udp_free_pkt_list(struct llarp_pkt_list* l)
+{
+  if(l)
+    delete l;
 }
 
 #endif

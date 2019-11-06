@@ -96,9 +96,11 @@ struct llarp_udp_io
 };
 
 /// get all packets recvieved last tick
-/// return true if we got packets return false if we didn't
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io *udp, struct llarp_pkt_list *pkts);
+struct llarp_pkt_list *
+llarp_ev_udp_recvmany(struct llarp_udp_io *udp);
+
+void
+llarp_ev_udp_free_pkt_list(struct llarp_pkt_list *);
 
 /// add UDP handler
 int

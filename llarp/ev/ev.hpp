@@ -817,72 +817,56 @@ struct llarp_ev_loop
   }
 };
 
-struct PacketBuffer
+struct llarp_pkt_list
 {
-  PacketBuffer(PacketBuffer&& other)
-  {
-    _ptr       = other._ptr;
-    _sz        = other._sz;
-    other._ptr = nullptr;
-    other._sz  = 0;
-  }
+  static constexpr size_t Events = 1024;
+  static constexpr size_t MaxMTU = 1500;
 
-  PacketBuffer(const PacketBuffer&) = delete;
+  using Packet_t = std::array< byte_t, MaxMTU >;
 
-  PacketBuffer&
-  operator=(const PacketBuffer&) = delete;
+  llarp_udp_io* m_Parent = nullptr;
+  size_t numEvents       = 0;
+  size_t bufferIndex;
 
-  PacketBuffer() : PacketBuffer(nullptr, 0){};
-  explicit PacketBuffer(size_t sz) : _sz{sz}
-  {
-    _ptr = new char[sz];
-  }
-  PacketBuffer(char* buf, size_t sz)
-  {
-    _ptr = buf;
-    _sz  = sz;
-  }
-  ~PacketBuffer()
-  {
-    if(_ptr)
-      delete[] _ptr;
-  }
-  byte_t*
-  data()
-  {
-    return (byte_t*)_ptr;
-  }
-  size_t
-  size()
-  {
-    return _sz;
-  }
-  byte_t& operator[](size_t sz)
-  {
-    return data()[sz];
-  }
+  std::array< llarp::Addr, Events > addrs;
+  std::array< Packet_t, Events > datas;
+  std::array< size_t, Events > sizes;
+
+#if defined(_WIN32)
   void
-  reserve(size_t sz)
+  GotPacket(const llarp::Addr& from, const byte_t* data, size_t sz)
   {
-    if(_ptr)
-      delete[] _ptr;
-    _ptr = new char[sz];
-    _sz  = sz;
+    if(sz > MaxMTU)
+      return;
+    addrs[numEvents] = from;
+    sizes[numEvents] = sz;
+    std::copy_n(data, datas[numEvents].data(), sz);
+    numEvents++;
+  }
+#endif
+
+  template < typename Visit >
+  void
+  ForEachPacket(Visit&& v)
+  {
+    for(size_t idx = 0; idx < numEvents; ++idx)
+    {
+      v(addrs[idx], datas[idx].data(), sizes[idx]);
+    }
   }
 
- private:
-  char* _ptr = nullptr;
-  size_t _sz = 0;
-};
+  bool
+  IsFull() const
+  {
+    return numEvents >= Events;
+  }
 
-struct PacketEvent
-{
-  llarp::Addr remote;
-  PacketBuffer pkt;
-};
-
-struct llarp_pkt_list : public std::vector< PacketEvent >
-{
+  void
+  GotEvent(size_t idx, const llarp::Addr& from, size_t sz)
+  {
+    addrs[idx] = from;
+    sizes[idx] = sz;
+  }
 };
 
 #endif

@@ -100,7 +100,7 @@ namespace llarp
     Pump();
 
     virtual void
-    RecvFrom(const Addr& from, ILinkSession::Packet_t pkt) = 0;
+    RecvFrom(const Addr& from, byte_t*, size_t) = 0;
 
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;

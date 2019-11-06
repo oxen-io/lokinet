@@ -37,7 +37,7 @@ namespace llarp
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
-    llarp_pkt_list m_RecvPackets;
+    llarp_pkt_list* m_RecvPackets = nullptr;
 
     udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
@@ -45,8 +45,8 @@ namespace llarp
     {
     }
 
-    bool
-    RecvMany(llarp_pkt_list*);
+    llarp_pkt_list*
+    RecvMany();
 
     bool
     tick();

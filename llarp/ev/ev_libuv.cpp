@@ -438,28 +438,99 @@ namespace libuv
 
   struct udp_glue : public glue
   {
+    static constexpr size_t Buckets = 256;
     uv_udp_t m_Handle;
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::Addr m_Addr;
-    llarp_pkt_list m_LastPackets;
-    std::array< char, 1500 > m_Buffer;
+    std::array< llarp_pkt_list, Buckets > m_Buffers;
+    llarp::thread::Queue< size_t > m_FreeQueue;
+    std::bitset< Buckets > m_BuffersAllocated;
+    size_t m_BufferIndex    = 0;
+    size_t m_BucketPosition = 0;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
-        : m_UDP(udp), m_Addr(*src)
+        : m_UDP(udp), m_Addr(*src), m_FreeQueue(Buckets / 2)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
       uv_udp_init(loop, &m_Handle);
       uv_check_init(loop, &m_Ticker);
+      size_t idx = 0;
+      for(auto& buf : m_Buffers)
+      {
+        buf.bufferIndex = idx;
+        buf.m_Parent    = udp;
+        ++idx;
+      }
+      m_BuffersAllocated.reset();
+    }
+
+    std::optional< size_t >
+    FindNextGoodBufferIndex() const
+    {
+      size_t idx = 0;
+      while(idx < Buckets)
+      {
+        if(not m_BuffersAllocated.test(idx))
+          return idx;
+        ++idx;
+      }
+      return {};
+    }
+
+    void
+    QueuePacketForFree(llarp_pkt_list* l)
+    {
+      m_FreeQueue.pushBack(l->bufferIndex);
+    }
+
+    void
+    DrainBuffers()
+    {
+      do
+      {
+        auto val = m_FreeQueue.tryPopFront();
+        if(not val.has_value())
+          return;
+        // mark this buffer as free
+        const size_t idx = val.value();
+        m_BuffersAllocated.reset(idx);
+        m_Buffers[idx].numEvents = 0;
+      } while(true);
     }
 
     static void
-    Alloc(uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
+    Alloc(uv_handle_t* h, size_t suggested_size, uv_buf_t* buf)
     {
       const size_t sz = std::min(suggested_size, size_t{1500});
-      buf->base       = new char[sz];
-      buf->len        = sz;
+      udp_glue* glue  = static_cast< udp_glue* >(h->data);
+      if(glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
+      {
+        buf->base = new char[sz];
+        buf->len  = sz;
+      }
+      else if(glue->m_UDP)
+      {
+        glue->m_BuffersAllocated.set(glue->m_BufferIndex);
+        auto& bucket = glue->m_Buffers[glue->m_BufferIndex];
+        if(bucket.IsFull())
+        {
+          buf->base = nullptr;
+          buf->len  = 0;
+        }
+        else
+        {
+          buf->base = (char*)bucket.datas[bucket.numEvents].data();
+          buf->len  = bucket.datas[bucket.numEvents].size();
+          bucket.numEvents++;
+        }
+      }
+      else
+      {
+        buf->base = nullptr;
+        buf->len  = 0;
+      }
     }
 
     static void
@@ -469,35 +540,35 @@ namespace libuv
       udp_glue* glue = static_cast< udp_glue* >(handle->data);
       if(addr)
         glue->RecvFrom(nread, buf, addr);
-      if(nread <= 0 || glue->m_UDP == nullptr
-         || glue->m_UDP->recvfrom != nullptr)
+      if(glue->m_UDP && glue->m_UDP->recvfrom != nullptr)
         delete[] buf->base;
     }
 
-    bool
-    RecvMany(llarp_pkt_list* pkts)
+    llarp_pkt_list*
+    RecvMany()
     {
-      *pkts         = std::move(m_LastPackets);
-      m_LastPackets = llarp_pkt_list();
-      return pkts->size() > 0;
+      const auto idx = m_BufferIndex;
+      m_BufferIndex  = (m_BufferIndex + 1) % Buckets;
+      if(m_BucketPosition == 0)
+        return nullptr;
+      m_BucketPosition = 0;
+      return &m_Buffers[idx];
     }
 
     void
     RecvFrom(ssize_t sz, const uv_buf_t* buf, const struct sockaddr* fromaddr)
     {
-      if(sz > 0 && m_UDP)
+      if(m_UDP)
       {
-        const size_t pktsz = sz;
+        const size_t pktsz = sz > 0 ? sz : 0;
         if(m_UDP->recvfrom)
         {
           const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
           m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+          return;
         }
-        else
-        {
-          PacketBuffer pbuf(buf->base, pktsz);
-          m_LastPackets.emplace_back(PacketEvent{*fromaddr, std::move(pbuf)});
-        }
+        m_Buffers[m_BufferIndex].GotEvent(m_BucketPosition, *fromaddr, sz);
+        m_BucketPosition++;
       }
     }
 
@@ -508,11 +579,30 @@ namespace libuv
       udp->Tick();
     }
 
+    /// runs until we have enough buffer space to do allocations
+    void
+    EnsureBufferSpace()
+    {
+      do
+      {
+        DrainBuffers();
+        auto idx = FindNextGoodBufferIndex();
+        if(idx.has_value())
+        {
+          m_BufferIndex = idx.value();
+          return;
+        }
+        // we don't have any free buffers yet... suya..
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+      } while(true);
+    }
+
     void
     Tick()
     {
       if(m_UDP && m_UDP->tick)
         m_UDP->tick(m_UDP);
+      EnsureBufferSpace();
     }
 
     static int
@@ -941,8 +1031,15 @@ namespace libuv
 
 }  // namespace libuv
 
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
+struct llarp_pkt_list*
+llarp_ev_udp_recvmany(struct llarp_udp_io* u)
 {
-  return static_cast< libuv::udp_glue* >(u->impl)->RecvMany(pkts);
+  return static_cast< libuv::udp_glue* >(u->impl)->RecvMany();
+}
+
+void
+llarp_ev_udp_free_pkt_list(struct llarp_pkt_list* l)
+{
+  if(l)
+    static_cast< libuv::udp_glue* >(l->m_Parent->impl)->QueuePacketsForFree(l);
 }
