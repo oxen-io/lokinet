@@ -482,7 +482,12 @@ namespace libuv
     void
     QueuePacketsForFree(llarp_pkt_list* l)
     {
-      m_FreeQueue.pushBack(l->bufferIndex);
+      while(m_FreeQueue.tryPushBack(l->bufferIndex)
+            == llarp::thread::QueueReturn::QueueFull)
+      {
+        // suya..
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+      }
     }
 
     void
