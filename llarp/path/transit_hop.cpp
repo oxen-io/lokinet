@@ -393,7 +393,10 @@ namespace llarp
       buf.cur = buf.base;
       // send
       if(path->HandleDownstream(buf, msg.Y, r))
+      {
+        path->FlushDownstream(r);
         return true;
+      }
       return SendRoutingMessage(discarded, r);
     }
 
