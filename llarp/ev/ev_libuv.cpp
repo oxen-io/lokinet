@@ -588,18 +588,12 @@ namespace libuv
     void
     EnsureBufferSpace()
     {
-      do
+      DrainBuffers();
+      auto idx = FindNextGoodBufferIndex();
+      if(idx.has_value())
       {
-        DrainBuffers();
-        auto idx = FindNextGoodBufferIndex();
-        if(idx.has_value())
-        {
-          m_BufferIndex = idx.value();
-          return;
-        }
-        // we don't have any free buffers yet... suya..
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
-      } while(true);
+        m_BufferIndex = idx.value();
+      }
     }
 
     void
