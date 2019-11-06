@@ -401,7 +401,7 @@ namespace llarp
       }
       if(sz < token.size() + PacketOverhead)
       {
-        LogError("bad session request size, ", sz " < ",
+        LogError("bad session request size, ", sz, " < ",
                  token.size() + PacketOverhead, " from ", m_RemoteAddr);
         return;
       }
