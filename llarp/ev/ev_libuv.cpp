@@ -2,7 +2,7 @@
 #include <net/net_addr.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
-
+#include <absl/types/optional.h>
 #include <cstring>
 
 namespace libuv
@@ -480,7 +480,7 @@ namespace libuv
     }
 
     void
-    QueuePacketForFree(llarp_pkt_list* l)
+    QueuePackestForFree(llarp_pkt_list* l)
     {
       m_FreeQueue.pushBack(l->bufferIndex);
     }
