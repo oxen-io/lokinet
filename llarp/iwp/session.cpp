@@ -162,7 +162,7 @@ namespace llarp
         pktbuf.sz   = pkt.size();
       }
       // call this in logic thread to help with re-odering
-      m_Parent->logic()->call_soon([self = shared_from_this(), msgs]() {
+      m_Parent->logic()->queue_func([self = shared_from_this(), msgs]() {
         self->m_SendQueue.emplace(std::move(*msgs));
       });
     }
@@ -261,7 +261,7 @@ namespace llarp
         }
       }
       auto self = shared_from_this();
-      if(m_EncryptNext && !m_EncryptNext->empty())
+      if(m_EncryptNext && !m_EncryptNext->pkts.empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
           self->EncryptWorker(data);
@@ -269,7 +269,7 @@ namespace llarp
         m_EncryptNext = nullptr;
       }
 
-      if(m_DecryptNext && !m_DecryptNext->empty())
+      if(m_DecryptNext && !m_DecryptNext->pts.empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
           self->DecryptWorker(data);
