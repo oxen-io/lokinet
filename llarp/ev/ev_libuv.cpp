@@ -466,7 +466,7 @@ namespace libuv
       m_BuffersAllocated.reset();
     }
 
-    std::optional< size_t >
+    absl::optional< size_t >
     FindNextGoodBufferIndex() const
     {
       size_t idx = 0;
@@ -480,7 +480,7 @@ namespace libuv
     }
 
     void
-    QueuePackestForFree(llarp_pkt_list* l)
+    QueuePacketsForFree(llarp_pkt_list* l)
     {
       m_FreeQueue.pushBack(l->bufferIndex);
     }
@@ -658,6 +658,7 @@ namespace libuv
       m_UDP->impl = nullptr;
       uv_check_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      m_FreeQueue.disable();
     }
   };
 
