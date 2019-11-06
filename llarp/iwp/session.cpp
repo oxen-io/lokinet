@@ -132,7 +132,7 @@ namespace llarp
     {
       if(m_EncryptNext == nullptr)
         m_EncryptNext = std::make_shared< CryptoQueue_t >();
-      m_EncryptNext->emplace_back(std::move(data));
+      m_EncryptNext->pkts.emplace_back(std::move(data));
       if(!IsEstablished())
       {
         EncryptWorker(std::move(m_EncryptNext));
@@ -140,11 +140,13 @@ namespace llarp
       }
     }
 
+    static uint64_t CryptoQueue::sequences = 0;
+
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
     {
-      LogDebug("encrypt worker ", msgs->size(), " messages");
-      for(auto& pkt : *msgs)
+      LogDebug("encrypt worker ", msgs->pkts.size(), " messages");
+      for(auto& pkt : msgs->pkts)
       {
         llarp_buffer_t pktbuf(pkt);
         const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
@@ -158,8 +160,11 @@ namespace llarp
         pktbuf.base = pkt.data();
         pktbuf.cur  = pkt.data();
         pktbuf.sz   = pkt.size();
-        Send_LL(pktbuf);
       }
+      // call this in logic thread to help with re-odering
+      m_Parent->logic()->call_soon([self = shared_from_this(), msgs]() {
+        self->m_SendQueue.emplace(std::move(*msgs));
+      });
     }
 
     void
@@ -224,6 +229,15 @@ namespace llarp
     void
     Session::Pump()
     {
+      while(not m_SendQueue.empty())
+      {
+        for(const auto& pkt : m_SendQueue.top().pkts)
+        {
+          const llarp_buffer_t buf(pkt);
+          Send_LL(buf);
+        }
+        m_SendQueue.pop();
+      }
       const auto now = m_Parent->Now();
       if(m_State == State::Ready || m_State == State::LinkIntro)
       {
@@ -534,8 +548,8 @@ namespace llarp
     {
       if(m_DecryptNext == nullptr)
         m_DecryptNext = std::make_shared< CryptoQueue_t >();
-      m_DecryptNext->emplace_back(sz);
-      auto& buf = m_DecryptNext->back();
+      m_DecryptNext->pkts.emplace_back(sz);
+      auto& buf = m_DecryptNext->pkts.back();
       std::copy_n(pkt, sz, buf.data());
     }
 
@@ -543,6 +557,7 @@ namespace llarp
     Session::DecryptWorker(CryptoQueue_ptr msgs)
     {
       CryptoQueue_ptr recvMsgs = std::make_shared< CryptoQueue_t >();
+      recvMsgs->seqno          = msgs->seqno;
       for(auto& pkt : *msgs)
       {
         if(not DecryptMessageInPlace(pkt))

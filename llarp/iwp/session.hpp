@@ -6,6 +6,7 @@
 #include <iwp/message_buffer.hpp>
 #include <unordered_set>
 #include <deque>
+#include <queue>
 
 namespace llarp
 {
@@ -169,10 +170,28 @@ namespace llarp
       /// set of rx messages to send in next round of multiacks
       std::unordered_set< uint64_t > m_SendMACKs;
 
-      using CryptoQueue_t   = std::vector< Packet_t >;
+      // using CryptoQueue_t   = std::vector< Packet_t >;
+
+      struct CryptoQueue
+      {
+        static uint64_t sequences;
+        std::vector< Packet_t > pkts;
+        uint64_t seqno = sequences++;
+
+        bool
+        operator<(const CryptoQueue& other) const
+        {
+          return seqno < other.seqno;
+        }
+      };
+
+      using CryptoQueue_t = CryptoQueue;
+
       using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
+
+      std::priority_queue< CryptoQueue_t > m_SendQueue;
 
       void
       EncryptWorker(CryptoQueue_ptr msgs);
