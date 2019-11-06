@@ -864,6 +864,8 @@ struct llarp_pkt_list
   void
   GotEvent(size_t idx, const llarp::Addr& from, size_t sz)
   {
+    if(idx > Events || sz > MaxMTU)
+      return;
     addrs[idx] = from;
     sizes[idx] = sz;
   }
