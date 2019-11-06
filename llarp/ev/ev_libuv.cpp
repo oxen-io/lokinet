@@ -438,7 +438,7 @@ namespace libuv
 
   struct udp_glue : public glue
   {
-    static constexpr size_t Buckets = 256;
+    static constexpr size_t Buckets = 1024;
     uv_udp_t m_Handle;
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;

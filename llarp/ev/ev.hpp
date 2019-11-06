@@ -819,7 +819,7 @@ struct llarp_ev_loop
 
 struct llarp_pkt_list
 {
-  static constexpr size_t Events = 1024;
+  static constexpr size_t Events = 256;
   static constexpr size_t MaxMTU = 1500;
 
   using Packet_t = std::array< byte_t, MaxMTU >;
