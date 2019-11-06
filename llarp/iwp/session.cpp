@@ -140,7 +140,7 @@ namespace llarp
       }
     }
 
-    static uint64_t CryptoQueue::sequences = 0;
+    uint64_t CryptoQueue::sequences = 0;
 
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
@@ -558,7 +558,7 @@ namespace llarp
     {
       CryptoQueue_ptr recvMsgs = std::make_shared< CryptoQueue_t >();
       recvMsgs->seqno          = msgs->seqno;
-      for(auto& pkt : *msgs)
+      for(auto& pkt : msgs->pkts)
       {
         if(not DecryptMessageInPlace(pkt))
         {
@@ -573,7 +573,8 @@ namespace llarp
         }
         recvMsgs->emplace_back(std::move(pkt));
       }
-      LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
+      LogDebug("decrypted ", recvMsgs->pkts.size(), " packets from ",
+               m_RemoteAddr);
       m_Parent->logic()->queue_func(
           std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
     }
@@ -581,7 +582,7 @@ namespace llarp
     void
     Session::HandlePlaintext(CryptoQueue_ptr msgs)
     {
-      for(auto& result : *msgs)
+      for(auto& result : msgs->pkts)
       {
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
