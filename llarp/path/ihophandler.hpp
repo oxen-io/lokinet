@@ -33,7 +33,7 @@ namespace llarp
         uint64_t seqno;
 
         bool
-        operator<(const UpstreamBatch& other) const
+        operator<(const Batch& other) const
         {
           return seqno < other.seqno;
         }
