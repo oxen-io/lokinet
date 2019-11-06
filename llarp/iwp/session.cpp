@@ -163,6 +163,11 @@ namespace llarp
       }
       // call this in logic thread to help with re-odering
       m_Parent->logic()->queue_func([self = shared_from_this(), msgs]() {
+        if(self->m_SendQueue.empty())
+        {
+          // queue a pump if this is our first batch
+          self->m_Parent->logic()->queue_func(std::bind(&Session::Pump, self));
+        }
         self->m_SendQueue.emplace(std::move(*msgs));
       });
     }
