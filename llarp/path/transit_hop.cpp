@@ -144,10 +144,10 @@ namespace llarp
     TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
       IHopHandler::Batch< RelayUpstreamMessage > batch;
-      batch.seqno = msgs.seqno;
+      batch.seqno = msgs->seqno;
       batch.msgs.resize(msgs->msgs.size());
       size_t idx = 0;
-      for(auto& ev : msgs->pkts)
+      for(auto& ev : msgs->msgs)
       {
         const llarp_buffer_t buf(ev.first);
         auto& msg = batch.msgs[idx];

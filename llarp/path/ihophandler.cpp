@@ -1,5 +1,5 @@
 #include <path/ihophandler.hpp>
-#include <router/abstractrouter.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {
@@ -90,7 +90,7 @@ namespace llarp
     }
 
     void
-    TransitHop::FlushDownstream(AbstractRouter* r)
+    IHopHandler::FlushDownstream(AbstractRouter* r)
     {
       if(m_DownstreamIngest && !m_DownstreamIngest->empty())
         r->threadpool()->addJob(std::bind(&IHopHandler::DownstreamWork,
