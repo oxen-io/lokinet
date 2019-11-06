@@ -701,7 +701,8 @@ namespace llarp
         LogError("short DATA from ", m_RemoteAddr, " ", data.size());
         return;
       }
-      m_LastRX    = m_Parent->Now();
+      const auto now = m_Parent->Now();
+      m_LastRX       = now;
       uint16_t sz = bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
       uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
                                  + sizeof(uint16_t) + PacketOverhead);
@@ -726,7 +727,7 @@ namespace llarp
       {
         const llarp_buffer_t buf(data.data() + PacketOverhead + 12,
                                  data.size() - (PacketOverhead + 12));
-        itr->second.HandleData(sz, buf, m_Parent->Now());
+        itr->second.HandleData(sz, buf, now);
       }
 
       if(itr->second.IsCompleted())
@@ -736,8 +737,9 @@ namespace llarp
           auto msg = std::move(itr->second);
           const llarp_buffer_t buf(msg.m_Data);
           m_Parent->HandleMessage(this, buf);
-          m_ReplayFilter.emplace(itr->first, m_Parent->Now());
-          m_SendMACKs.emplace(itr->first);
+          m_ReplayFilter.emplace(itr->first, now);
+          // m_SendMACKs.emplace(itr->first);
+          msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
         }
         else
         {
