@@ -243,11 +243,11 @@ namespace llarp
     SecretKey m_SecretKey;
 
     using AuthedLinks =
-        std::unordered_multimap< RouterID, std::shared_ptr< ILinkSession >,
-                                 RouterID::Hash >;
+        std::unordered_map< RouterID, std::shared_ptr< ILinkSession >,
+                            RouterID::Hash >;
     using Pending =
-        std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
-                                 llarp::Addr::Hash >;
+        std::unordered_map< llarp::Addr, std::shared_ptr< ILinkSession >,
+                            llarp::Addr::Hash >;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex,
                          ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);

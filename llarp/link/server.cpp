@@ -79,12 +79,10 @@ namespace llarp
     std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-      auto range = m_AuthedLinks.equal_range(pk);
-      auto itr   = range.first;
-      while(itr != range.second)
+      auto itr = m_AuthedLinks.find(pk);
+      if(itr != m_AuthedLinks.end())
       {
         sessions.emplace_back(itr->second);
-        ++itr;
       }
     }
     bool result = not sessions.empty();
@@ -187,7 +185,7 @@ namespace llarp
     auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
     {
-      if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
+      if(m_AuthedLinks.find(pk) != m_AuthedLinks.end())
       {
         LogWarn("too many session for ", pk);
         s->Close();
@@ -251,7 +249,7 @@ namespace llarp
   {
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-      if(m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
+      if(m_AuthedLinks.find(rc.pubkey) != m_AuthedLinks.end())
         return false;
     }
     llarp::AddressInfo to;
@@ -339,9 +337,8 @@ namespace llarp
     ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
     RouterID r = remote;
     llarp::LogInfo("Closing all to ", r);
-    auto range = m_AuthedLinks.equal_range(r);
-    auto itr   = range.first;
-    while(itr != range.second)
+    auto itr = m_AuthedLinks.find(r);
+    if(itr != m_AuthedLinks.end())
     {
       itr->second->Close();
       itr = m_AuthedLinks.erase(itr);
@@ -352,13 +349,11 @@ namespace llarp
   ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
     ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-    auto range = m_AuthedLinks.equal_range(remote);
-    auto itr   = range.first;
-    while(itr != range.second)
+    auto itr = m_AuthedLinks.find(remote);
+    if(itr != m_AuthedLinks.end())
     {
       if(itr->second->ShouldPing())
         itr->second->SendKeepAlive();
-      ++itr;
     }
   }
 
@@ -369,25 +364,15 @@ namespace llarp
     std::shared_ptr< ILinkSession > s;
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-      auto range = m_AuthedLinks.equal_range(remote);
-      auto itr   = range.first;
-      // pick lowest backlog session
-      size_t min = std::numeric_limits< size_t >::max();
-
-      while(itr != range.second)
-      {
-        const auto backlog = itr->second->SendQueueBacklog();
-        if(backlog < min)
-        {
-          s   = itr->second;
-          min = backlog;
-        }
-        ++itr;
-      }
+      auto itr = m_AuthedLinks.find(remote);
+      if(itr != m_AuthedLinks.end())
+        s = itr->second;
     }
+    if(s == nullptr)
+      return false;
     ILinkSession::Message_t pkt(buf.sz);
     std::copy_n(buf.base, buf.sz, pkt.begin());
-    return s && s->SendMessageBuffer(std::move(pkt), completed);
+    return s->SendMessageBuffer(std::move(pkt), completed);
   }
 
   bool
