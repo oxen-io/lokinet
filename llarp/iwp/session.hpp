@@ -178,9 +178,8 @@ namespace llarp
 
       struct CryptoQueue
       {
-        static uint64_t sequences;
         std::vector< Packet_t > pkts;
-        uint64_t seqno = sequences++;
+        uint64_t seqno;
 
         bool
         operator<(const CryptoQueue& other) const
@@ -195,7 +194,11 @@ namespace llarp
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
 
+      std::priority_queue< CryptoQueue_t > m_RecvQueue;
       std::priority_queue< CryptoQueue_t > m_SendQueue;
+
+      uint64_t m_DecryptSeqno = 0;
+      uint64_t m_EncryptSeqno = 0;
 
       void
       EncryptWorker(CryptoQueue_ptr msgs);
@@ -204,7 +207,10 @@ namespace llarp
       DecryptWorker(CryptoQueue_ptr msgs);
 
       void
-      HandlePlaintext(CryptoQueue_ptr msgs);
+      PumpRecv();
+
+      void
+      HandlePlaintext(const CryptoQueue_t& msgs);
 
       void
       HandleGotIntro(byte_t*, size_t);

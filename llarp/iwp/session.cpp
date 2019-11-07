@@ -131,7 +131,10 @@ namespace llarp
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
       if(m_EncryptNext == nullptr)
-        m_EncryptNext = std::make_shared< CryptoQueue_t >();
+      {
+        m_EncryptNext        = std::make_shared< CryptoQueue_t >();
+        m_EncryptNext->seqno = m_EncryptSeqno++;
+      }
       m_EncryptNext->pkts.emplace_back(std::move(data));
       if(!IsEstablished())
       {
@@ -139,8 +142,6 @@ namespace llarp
         m_EncryptNext = nullptr;
       }
     }
-
-    uint64_t Session::CryptoQueue::sequences = 0;
 
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
@@ -553,7 +554,10 @@ namespace llarp
     Session::HandleSessionData(byte_t* pkt, size_t sz)
     {
       if(m_DecryptNext == nullptr)
-        m_DecryptNext = std::make_shared< CryptoQueue_t >();
+      {
+        m_DecryptNext        = std::make_shared< CryptoQueue_t >();
+        m_DecryptNext->seqno = m_DecryptSeqno++;
+      }
       m_DecryptNext->pkts.emplace_back(sz);
       auto& buf = m_DecryptNext->pkts.back();
       std::copy_n(pkt, sz, buf.data());
@@ -581,14 +585,33 @@ namespace llarp
       }
       LogDebug("decrypted ", recvMsgs->pkts.size(), " packets from ",
                m_RemoteAddr);
-      m_Parent->logic()->queue_func(
-          std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
+      m_Parent->logic()->queue_func([self = shared_from_this(), recvMsgs]() {
+        if(self->m_RecvQueue.empty())
+        {
+          // queue a pump if this is our first batch
+          self->m_Parent->logic()->queue_func(
+              std::bind(&Session::PumpRecv, self));
+        }
+        self->m_RecvQueue.emplace(std::move(*recvMsgs));
+      });
     }
 
     void
-    Session::HandlePlaintext(CryptoQueue_ptr msgs)
+    Session::PumpRecv()
     {
-      for(auto& result : msgs->pkts)
+      while(not m_RecvQueue.empty())
+      {
+        HandlePlaintext(m_RecvQueue.top());
+        m_RecvQueue.pop();
+      }
+      SendMACK();
+      m_Parent->PumpDone(this);
+    }
+
+    void
+    Session::HandlePlaintext(const CryptoQueue_t& msgs)
+    {
+      for(auto& result : msgs.pkts)
       {
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
@@ -622,8 +645,6 @@ namespace llarp
                      " from ", m_RemoteAddr);
         }
       }
-      SendMACK();
-      m_Parent->PumpDone(this);
     }
 
     void
