@@ -11,7 +11,6 @@
 #include <service/handler.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>
-#include <path/pathset.hpp>
 
 #include <vector>
 
@@ -157,6 +156,7 @@ namespace llarp
         N.Zero();
         Z.Zero();
         R       = 0;
+        S       = 0;
         version = LLARP_PROTO_VERSION;
       }
 

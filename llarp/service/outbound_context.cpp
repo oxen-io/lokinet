@@ -201,8 +201,10 @@ namespace llarp
           std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
+      ex->msg.seqno      = 0;
       ex->msg.introReply = path->intro;
       ex->frame->F       = ex->msg.introReply.pathID;
+      ex->frame->S       = path->NextSeqNo();
       m_Endpoint->CryptoWorker()->addJob(
           std::bind(&AsyncKeyExchange::Encrypt, ex));
     }

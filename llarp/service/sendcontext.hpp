@@ -52,7 +52,16 @@ namespace llarp
       using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
       using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
       util::Mutex m_SendQueueMutex;
-      std::deque< SendEvent_t > m_SendQueue;
+      struct SendOrder
+      {
+        bool
+        operator()(const SendEvent_t& left, const SendEvent_t& right) const
+        {
+          return right.first->S < left.first->S;
+        }
+      };
+      std::priority_queue< SendEvent_t, std::vector< SendEvent_t >, SendOrder >
+          m_SendQueue;
 
       virtual bool
       ShiftIntroduction(bool rebuild = true)

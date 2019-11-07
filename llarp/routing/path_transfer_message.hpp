@@ -17,9 +17,11 @@ namespace llarp
       TunnelNonce Y;
 
       PathTransferMessage() = default;
-      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p)
+      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p,
+                          uint64_t s)
           : P(p), T(f)
       {
+        S = s;
         Y.Randomize();
       }
       ~PathTransferMessage() override = default;
@@ -39,6 +41,13 @@ namespace llarp
         P.Zero();
         T.Clear();
         Y.Zero();
+        S = 0;
+      }
+
+      bool
+      operator<(const PathTransferMessage& other) const
+      {
+        return other.S < S;
       }
     };
 

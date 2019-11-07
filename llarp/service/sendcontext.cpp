@@ -26,9 +26,9 @@ namespace llarp
     SendContext::Send(std::shared_ptr< ProtocolFrame > msg, path::Path_ptr path)
     {
       util::Lock lock(&m_SendQueueMutex);
-      m_SendQueue.emplace_back(
+      m_SendQueue.emplace(
           std::make_shared< const routing::PathTransferMessage >(
-              *msg, remoteIntro.pathID),
+              *msg, remoteIntro.pathID, msg->S),
           path);
       return true;
     }
@@ -40,16 +40,17 @@ namespace llarp
       std::unordered_set< path::Path_ptr, path::Path::Ptr_Hash > flushpaths;
       {
         util::Lock lock(&m_SendQueueMutex);
-        for(const auto& item : m_SendQueue)
+        while(not m_SendQueue.empty())
         {
+          const auto& item = m_SendQueue.top();
           if(item.second->SendRoutingMessage(*item.first, r))
           {
             lastGoodSend = r->Now();
             flushpaths.emplace(item.second);
             m_Endpoint->MarkConvoTagActive(item.first->T.T);
           }
+          m_SendQueue.pop();
         }
-        m_SendQueue.clear();
       }
       // flush the select path's upstream
       for(const auto& path : flushpaths)
@@ -90,6 +91,7 @@ namespace llarp
       m->seqno      = m_Endpoint->GetSeqNoForConvo(f->T);
       m->introReply = path->intro;
       f->F          = m->introReply.pathID;
+      f->S          = path->NextSeqNo();
       m->sender     = m_Endpoint->GetIdentity().pub;
       m->tag        = f->T;
       m->PutBuffer(payload);

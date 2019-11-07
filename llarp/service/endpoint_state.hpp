@@ -3,6 +3,7 @@
 
 #include <hook/ihook.hpp>
 #include <router_id.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <service/address.hpp>
 #include <service/pendingbuffer.hpp>
 #include <service/router_lookup_job.hpp>
@@ -56,7 +57,17 @@ namespace llarp
       bool m_BundleRC = false;
 
       util::Mutex m_SendQueueMutex;  // protects m_SendQueue
-      std::deque< SendEvent_t > m_SendQueue GUARDED_BY(m_SendQueueMutex);
+      struct SendOrder
+      {
+        bool
+        operator()(const SendEvent_t& left, const SendEvent_t& right) const
+        {
+          return right.first->S < left.first->S;
+        }
+      };
+
+      std::priority_queue< SendEvent_t, std::vector< SendEvent_t >, SendOrder >
+          m_SendQueue GUARDED_BY(m_SendQueueMutex);
 
       PendingTraffic m_PendingTraffic;
 

@@ -257,7 +257,7 @@ namespace llarp
       bool
       CheckPathIsDead(path::Path_ptr p, llarp_time_t latency);
 
-      using PendingBufferQueue = std::deque< PendingBuffer >;
+      using PendingBufferQueue = std::priority_queue< PendingBuffer >;
 
       bool
       ShouldBundleRC() const override;

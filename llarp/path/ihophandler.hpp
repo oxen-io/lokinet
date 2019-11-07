@@ -102,6 +102,43 @@ namespace llarp
       virtual const RouterID
       Upstream() const = 0;
 
+      virtual const PathID_t
+      TXID() const = 0;
+
+      virtual const PathID_t
+      RXID() const = 0;
+
+      struct Hash
+      {
+        size_t
+        operator()(const IHopHandler& p) const
+        {
+          const auto tx      = p.TXID();
+          const auto rx      = p.RXID();
+          const auto u       = p.Upstream();
+          const auto d       = p.Downstream();
+          const size_t rhash = std::accumulate(
+              u.begin(), u.end(),
+              std::accumulate(d.begin(), d.end(), 0, std::bit_xor< size_t >()),
+              std::bit_xor< size_t >());
+          return std::accumulate(rx.begin(), rx.begin(),
+                                 std::accumulate(tx.begin(), tx.end(), rhash,
+                                                 std::bit_xor< size_t >()),
+                                 std::bit_xor< size_t >());
+        }
+      };
+
+      struct Ptr_Hash
+      {
+        size_t
+        operator()(const std::shared_ptr< IHopHandler >& p) const
+        {
+          if(p == nullptr)
+            return 0;
+          return Hash{}(*p);
+        }
+      };
+
      protected:
       uint64_t m_SequenceNum = 0;
       TrafficQueue_ptr m_UpstreamIngest;

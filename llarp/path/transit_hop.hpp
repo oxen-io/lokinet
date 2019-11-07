@@ -4,9 +4,10 @@
 #include <constants/path.hpp>
 #include <path/ihophandler.hpp>
 #include <path/path_types.hpp>
+#include <path/path.hpp>
 #include <routing/handler.hpp>
 #include <router_id.hpp>
-
+#include <unordered_set>
 namespace llarp
 {
   struct LR_CommitRecord;
@@ -14,6 +15,11 @@ namespace llarp
   namespace dht
   {
     struct GotIntroMessage;
+  }
+
+  namespace routing
+  {
+    struct PathTransferMessage;
   }
 
   namespace path
@@ -93,7 +99,9 @@ namespace llarp
       llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
-      std::set< RouterID > m_FlushOthers;
+      std::priority_queue< llarp::routing::PathTransferMessage >
+          m_PathTransferQueue;
+      std::unordered_set< HopHandler_ptr, IHopHandler::Ptr_Hash > m_FlushOthers;
 
       bool destroy = false;
 
@@ -107,6 +115,18 @@ namespace llarp
       Downstream() const override
       {
         return info.downstream;
+      }
+
+      const PathID_t
+      TXID() const override
+      {
+        return info.txID;
+      }
+
+      const PathID_t
+      RXID() const override
+      {
+        return info.rxID;
       }
 
       bool
@@ -209,6 +229,10 @@ namespace llarp
       HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
 
      protected:
+      void
+      ProcessPathTransfer(const routing::PathTransferMessage& msg,
+                          AbstractRouter* r);
+
       void
       AfterCollectUpstream(AbstractRouter* r) override;
 

@@ -886,14 +886,15 @@ namespace llarp
         f.R = 1;
         f.T = frame.T;
         f.F = p->intro.pathID;
+        f.S = p->NextSeqNo();
 
         if(!f.Sign(m_Identity))
           return false;
         {
           util::Lock lock(&m_state->m_SendQueueMutex);
-          m_state->m_SendQueue.emplace_back(
-              std::make_shared< const routing::PathTransferMessage >(f,
-                                                                     frame.F),
+          m_state->m_SendQueue.emplace(
+              std::make_shared< const routing::PathTransferMessage >(f, frame.F,
+                                                                     f.S),
               p);
         }
         return true;
@@ -1052,7 +1053,7 @@ namespace llarp
           item.second.first->FlushDownstream();
         // send downstream traffic to user for hidden service
         util::Lock lock(&m_state->m_InboundTrafficQueueMutex);
-        while(queue.size())
+        while(not queue.empty())
         {
           const auto& msg = queue.top();
           const llarp_buffer_t buf(msg->payload);
@@ -1070,12 +1071,13 @@ namespace llarp
         item.second.first->FlushUpstream();
       util::Lock lock(&m_state->m_SendQueueMutex);
       // send outbound traffic
-      for(const auto& item : m_state->m_SendQueue)
+      while(not m_state->m_SendQueue.empty())
       {
+        const auto& item = m_state->m_SendQueue.top();
         item.second->SendRoutingMessage(*item.first, router);
         MarkConvoTagActive(item.first->T.T);
+        m_state->m_SendQueue.pop();
       }
-      m_state->m_SendQueue.clear();
       router->PumpLL();
     }
 
@@ -1153,9 +1155,10 @@ namespace llarp
             PutReplyIntroFor(f.T, m->introReply);
             m->sender   = m_Identity.pub;
             m->seqno    = GetSeqNoForConvo(f.T);
-            f.S         = 1;
+            f.S         = p->NextSeqNo();
             f.F         = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
+            transfer->S = f.S;
             auto self   = this;
             return CryptoWorker()->addJob([transfer, p, m, K, self]() {
               if(not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
@@ -1165,7 +1168,8 @@ namespace llarp
               }
 
               util::Lock lock(&self->m_state->m_SendQueueMutex);
-              self->m_state->m_SendQueue.emplace_back(transfer, p);
+              self->m_state->m_SendQueue.emplace(transfer, p);
+              ;
             });
           }
         }

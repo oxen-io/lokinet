@@ -1,5 +1,6 @@
-#include <path/path.hpp>
 
+#include <path/path.hpp>
+#include <path/transit_hop.hpp>
 #include <dht/context.hpp>
 #include <exit/context.hpp>
 #include <exit/exit_messages.hpp>
@@ -8,7 +9,6 @@
 #include <messages/relay_commit.hpp>
 #include <messages/relay_status.hpp>
 #include <path/path_context.hpp>
-#include <path/transit_hop.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/path_latency_message.hpp>
 #include <routing/path_transfer_message.hpp>
@@ -120,15 +120,24 @@ namespace llarp
     {
       // send any pending routing messages
       if(IsEndpoint(r->pubkey()))
-        FlushDownstream(r);
-      // flush any related paths to other routers for path transfer
-      for(const auto& other : m_FlushOthers)
       {
-        r->pathContext().PumpForSession(other, false);
+        // go through path transfer messages
+        while(not m_PathTransferQueue.empty())
+        {
+          ProcessPathTransfer(m_PathTransferQueue.top(), r);
+          m_PathTransferQueue.pop();
+        }
+        // flush related paths
+        for(const auto& other : m_FlushOthers)
+        {
+          other->FlushDownstream(r);
+        }
+        m_FlushOthers.clear();
+        // flush for routing messages replies
+        FlushDownstream(r);
       }
-      m_FlushOthers.clear();
+      // flush any related paths to other routers for path transfer
       r->linkManager().PumpLinksFor(Upstream());
-      r->linkManager().PumpLinksFor(Downstream());
     }
 
     void
@@ -200,7 +209,6 @@ namespace llarp
           }
           m_LastActivity = r->Now();
         }
-        m_FlushOthers.emplace(Downstream());
       }
       else
       {
@@ -394,13 +402,22 @@ namespace llarp
 
     bool
     TransitHop::HandlePathTransferMessage(
+        const llarp::routing::PathTransferMessage& msg, AbstractRouter*)
+    {
+      m_PathTransferQueue.emplace(msg);
+      return true;
+    }
+
+    void
+    TransitHop::ProcessPathTransfer(
         const llarp::routing::PathTransferMessage& msg, AbstractRouter* r)
     {
       auto path = r->pathContext().GetPathForTransfer(msg.P);
       llarp::routing::DataDiscardMessage discarded(msg.P, msg.S);
       if(path == nullptr || msg.T.F != info.txID)
       {
-        return SendRoutingMessage(discarded, r);
+        SendRoutingMessage(discarded, r);
+        return;
       }
 
       std::array< byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE > tmp;
@@ -408,7 +425,8 @@ namespace llarp
       if(!msg.T.BEncode(&buf))
       {
         llarp::LogWarn(info, " failed to transfer data message, encode failed");
-        return SendRoutingMessage(discarded, r);
+        SendRoutingMessage(discarded, r);
+        return;
       }
       // rewind
       buf.sz  = buf.cur - buf.base;
@@ -417,10 +435,10 @@ namespace llarp
       if(path->HandleDownstream(buf, msg.Y, r))
       {
         // flush the other guy later
-        m_FlushOthers.emplace(path->Downstream());
-        return true;
+        m_FlushOthers.emplace(path);
+        return;
       }
-      return SendRoutingMessage(discarded, r);
+      SendRoutingMessage(discarded, r);
     }
 
     std::ostream&

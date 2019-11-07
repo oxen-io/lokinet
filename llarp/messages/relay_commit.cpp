@@ -8,6 +8,7 @@
 #include <router/abstractrouter.hpp>
 #include <router/i_outbound_message_handler.hpp>
 #include <routing/path_confirm_message.hpp>
+#include <routing/path_transfer_message.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
