@@ -25,9 +25,9 @@ namespace llarp
       /// Time how long we try delivery for
       static constexpr llarp_time_t DeliveryTimeout = 1000;
       /// Time how long we wait to recieve a message
-      static constexpr llarp_time_t RecievalTimeout = (DeliveryTimeout * 8) / 5;
+      static constexpr llarp_time_t RecievalTimeout = DeliveryTimeout * 2;
       /// How long to keep a replay window for
-      static constexpr llarp_time_t ReplayWindow = (RecievalTimeout * 3) / 2;
+      static constexpr llarp_time_t ReplayWindow = RecievalTimeout * 2;
       /// How often to acks RX messages
       static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 4;
       /// How often to retransmit TX fragments
