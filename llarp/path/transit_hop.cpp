@@ -119,7 +119,7 @@ namespace llarp
     TransitHop::AfterCollectUpstream(AbstractRouter* r)
     {
       // send any pending routing messages
-      if(IsEndpoint(Upstream()))
+      if(IsEndpoint(r->pubkey())
         FlushDownstream(r);
       // flush any related paths to other routers for path transfer
       for(const auto& other : m_FlushOthers)
