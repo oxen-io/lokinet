@@ -190,7 +190,7 @@ namespace llarp
         bool
         operator<(const CryptoQueue& other) const
         {
-          return seqno < other.seqno;
+          return other.seqno < seqno;
         }
       };
 

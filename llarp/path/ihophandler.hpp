@@ -35,7 +35,7 @@ namespace llarp
         bool
         operator<(const Batch& other) const
         {
-          return seqno < other.seqno;
+          return other.seqno < seqno;
         }
 
         bool
