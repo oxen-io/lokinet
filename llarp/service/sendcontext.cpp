@@ -101,19 +101,17 @@ namespace llarp
           LogError(self->m_Endpoint->Name(), " failed to sign message");
           return;
         }
-        self->m_Endpoint->RouterLogic()->queue_func([self, f, path]() {
-          bool flush = false;
-          {
-            util::Lock lock(&self->m_SendQueueMutex);
-            flush = self->m_SendQueue.empty();
-          }
-          self->Send(f, path);
-          if(flush)
-          {
-            self->m_Endpoint->RouterLogic()->queue_func(
-                std::bind(&SendContext::FlushUpstream, self));
-          }
-        });
+        bool flush = false;
+        {
+          util::Lock lock(&self->m_SendQueueMutex);
+          flush = self->m_SendQueue.empty();
+        }
+        self->Send(f, path);
+        if(flush)
+        {
+          self->m_Endpoint->RouterLogic()->queue_func(
+              std::bind(&SendContext::FlushUpstream, self));
+        }
       });
     }
 
