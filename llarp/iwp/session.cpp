@@ -178,12 +178,14 @@ namespace llarp
     {
       if(m_State == State::Closed)
         return;
-      auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
-      EncryptAndSend(std::move(close_msg));
-      if(m_State == State::Ready)
-        m_Parent->UnmapAddr(m_RemoteAddr);
-      m_State = State::Closed;
-      LogInfo("closing connection to ", m_RemoteAddr);
+      m_Parent->logic()->queue_func([self = shared_from_this()]() {
+        auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
+        self->EncryptAndSend(std::move(close_msg));
+        if(self->m_State == State::Ready)
+          self->m_Parent->UnmapAddr(self->m_RemoteAddr);
+        self->m_State = State::Closed;
+        LogInfo("closing connection to ", self->m_RemoteAddr);
+      });
     }
 
     bool
