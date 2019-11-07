@@ -4,7 +4,7 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
-#include <unordered_set>
+#include <set>
 #include <deque>
 #include <queue>
 
@@ -174,9 +174,9 @@ namespace llarp
       /// maps rxid to time recieved
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
       /// set of rx messages to send in next round of multiacks
-      std::unordered_set< uint64_t > m_SendMACKs;
+      std::set< uint64_t > m_SendMACKs;
       // set of rx messages to send nack
-      std::unordered_set< uint64_t > m_SendNACKs;
+      std::set< uint64_t > m_SendNACKs;
 
       llarp_time_t m_LastSendMACKs = 0;
 
