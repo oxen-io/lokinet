@@ -724,10 +724,11 @@ namespace llarp
       }
       const auto now = m_Parent->Now();
       m_LastRX       = now;
-      uint16_t sz = bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
-      uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
-                                 + sizeof(uint16_t) + PacketOverhead);
-      auto itr      = m_RXMsgs.find(rxid);
+      const uint16_t sz =
+          bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
+      const uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
+                                       + sizeof(uint16_t) + PacketOverhead);
+      auto itr            = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
       {
         if(m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
@@ -758,8 +759,8 @@ namespace llarp
           auto msg = std::move(itr->second);
           const llarp_buffer_t buf(msg.m_Data);
           m_Parent->HandleMessage(this, buf);
-          m_ReplayFilter.emplace(itr->first, now);
-          m_SendMACKs.emplace(itr->first);
+          m_ReplayFilter.emplace(rxid, now);
+          m_SendMACKs.emplace(rxid);
           // msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
         }
         else
