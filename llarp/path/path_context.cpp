@@ -158,6 +158,8 @@ namespace llarp
     bool
     PathContext::HasTransitHop(const TransitHopInfo& info)
     {
+      if(not m_AllowTransit)
+        return false;
       return MapHas< SyncTransitMap_t::Lock_t >(
           m_TransitPaths, info.txID,
           [info](const std::shared_ptr< TransitHop >& hop) -> bool {
@@ -179,7 +181,8 @@ namespace llarp
           });
       if(own)
         return own;
-
+      if(not m_AllowTransit)
+        return nullptr;
       return MapGet< SyncTransitMap_t::Lock_t >(
           m_TransitPaths, id,
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
@@ -194,6 +197,8 @@ namespace llarp
     PathContext::TransitHopPreviousIsRouter(const PathID_t& path,
                                             const RouterID& otherRouter)
     {
+      if(not m_AllowTransit)
+        return false;
       SyncTransitMap_t::Lock_t lock(&m_TransitPaths.first);
       auto itr = m_TransitPaths.second.find(path);
       if(itr == m_TransitPaths.second.end())
@@ -204,6 +209,8 @@ namespace llarp
     HopHandler_ptr
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
+      if(not m_AllowTransit)
+        return nullptr;
       return MapGet< SyncTransitMap_t::Lock_t >(
           m_TransitPaths, id,
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
@@ -242,6 +249,8 @@ namespace llarp
     HopHandler_ptr
     PathContext::GetPathForTransfer(const PathID_t& id)
     {
+      if(not m_AllowTransit)
+        return nullptr;
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
@@ -259,21 +268,59 @@ namespace llarp
     void
     PathContext::PumpUpstream()
     {
-      m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
+      if(m_AllowTransit)
+      {
+        m_TransitPaths.ForEach(
+            [&](auto& ptr) { ptr->FlushUpstream(m_Router); });
+      }
       m_OurPaths.ForEach([&](auto& ptr) { ptr->UpstreamFlush(m_Router); });
     }
 
     void
     PathContext::PumpDownstream()
     {
-      m_TransitPaths.ForEach(
-          [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
+      if(m_AllowTransit)
+      {
+        m_TransitPaths.ForEach(
+            [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
+      }
       m_OurPaths.ForEach([&](auto& ptr) { ptr->DownstreamFlush(m_Router); });
+    }
+
+    void
+    PathContext::PumpForSession(const RouterID pk)
+    {
+      if(m_AllowTransit)
+      {
+        m_TransitPaths.ForEach([&](auto& ptr) {
+          if(ptr->info.upstream == pk)
+          {
+            ptr->FlushDownstream(m_Router);
+          }
+          if(ptr->info.downstream == pk)
+          {
+            ptr->FlushUpstream(m_Router);
+          }
+        });
+      }
+      m_OurPaths.ForEach([&](auto& ptr) {
+        ptr->ForEachPath([&](auto& path) {
+          if(path->Upstream() == pk)
+          {
+            ptr->DownstreamFlush(m_Router);
+          }
+        });
+      });
     }
 
     void
     PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
+      if(not m_AllowTransit)
+      {
+        LogError("not putting transit hop we are not allowing transit traffic");
+        return;
+      }
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.txID, hop);
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.rxID, hop);
     }
@@ -281,6 +328,7 @@ namespace llarp
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
+      if(m_AllowTransit)
       {
         SyncTransitMap_t::Lock_t lock(&m_TransitPaths.first);
         auto& map = m_TransitPaths.second;
@@ -308,15 +356,18 @@ namespace llarp
       }
       if(h)
         return h;
-      const RouterID us(OurRouterID());
-      auto& map = m_TransitPaths;
+      if(m_AllowTransit)
       {
-        SyncTransitMap_t::Lock_t lock(&map.first);
-        auto range = map.second.equal_range(id);
-        for(auto i = range.first; i != range.second; ++i)
+        const RouterID us(OurRouterID());
+        auto& map = m_TransitPaths;
         {
-          if(i->second->info.upstream == us)
-            return i->second;
+          SyncTransitMap_t::Lock_t lock(&map.first);
+          auto range = map.second.equal_range(id);
+          for(auto i = range.first; i != range.second; ++i)
+          {
+            if(i->second->info.upstream == us)
+              return i->second;
+          }
         }
       }
       return nullptr;

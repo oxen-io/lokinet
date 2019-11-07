@@ -145,6 +145,10 @@ namespace llarp
       LinkLayer* const m_Parent;
       const llarp_time_t m_CreatedAt;
       const Addr m_RemoteAddr;
+      /// set me to true to send multiacks otherwise we will do explict acks
+      const bool m_MACK = false;
+      /// set me to true to send DROP messages
+      const bool m_DROP = false;
 
       AddressInfo m_ChosenAI;
       /// remote rc
@@ -219,6 +223,9 @@ namespace llarp
         return DecryptBuffer(pkt.data(), pkt.size());
       }
 
+      void
+      SendACKSFor(uint64_t rxid, byte_t bitmask, bool replayHit);
+
       bool
       DecryptBuffer(byte_t* ptr, size_t sz);
 
@@ -260,6 +267,9 @@ namespace llarp
 
       void
       HandleMACK(Packet_t msg);
+
+      void
+      HandleDROP(Packet_t msg);
     };
   }  // namespace iwp
 }  // namespace llarp

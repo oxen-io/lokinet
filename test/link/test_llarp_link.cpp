@@ -228,7 +228,7 @@ TEST_F(LinkLayerTest, TestIWP)
         Stop();
       },
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
-      []() {})
+      [](llarp::ILinkSession *) {})
       ;
 
   auto sendDiscardMessage = [](ILinkSession* s) -> bool {
@@ -270,7 +270,7 @@ TEST_F(LinkLayerTest, TestIWP)
       },
       [&](ILinkSession* session) { ASSERT_FALSE(session->IsEstablished()); },
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
-      []() {})
+      [](llarp::ILinkSession *) {})
       ;
 
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));

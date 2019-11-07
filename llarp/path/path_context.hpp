@@ -44,6 +44,9 @@ namespace llarp
       PumpDownstream();
 
       void
+      PumpForSession(const RouterID router);
+
+      void
       AllowTransit();
 
       void

@@ -25,6 +25,8 @@ namespace llarp
       eNACK = 4,
       /// multiack
       eMACK = 5,
+      /// drop a pending transmission
+      eDROP = 6,
       /// close session
       eCLOS = 0xff,
     };
@@ -48,6 +50,7 @@ namespace llarp
       llarp_time_t m_LastFlush = 0;
       ShortHash m_Digest;
       llarp_time_t m_StartedAt = 0;
+      llarp_time_t m_LastXMIT  = 0;
 
       ILinkSession::Packet_t
       XMIT() const;
@@ -59,8 +62,15 @@ namespace llarp
       FlushUnAcked(std::function< void(ILinkSession::Packet_t) > sendpkt,
                    llarp_time_t now);
 
+      void
+      MaybeSendXMIT(std::function< void(ILinkSession::Packet_t) > sendpkt,
+                    llarp_time_t now);
+
       bool
       ShouldFlush(llarp_time_t now) const;
+
+      bool
+      ShouldSendXMIT(llarp_time_t now) const;
 
       void
       Completed();

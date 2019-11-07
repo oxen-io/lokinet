@@ -197,7 +197,7 @@ __        ___    ____  _   _ ___ _   _  ____
     crypto        = std::make_unique< sodium::CryptoLibSodium >();
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
-    router = std::make_unique< Router >(worker, mainloop, logic);
+    router = std::make_shared< Router >(worker, mainloop, logic);
 
     nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
 
@@ -377,7 +377,7 @@ __        ___    ____  _   _ ___ _   _  ____
     nodedb.release();
 
     llarp::LogDebug("free router");
-    router.release();
+    router.reset();
 
     llarp::LogDebug("free logic");
     logic.reset();

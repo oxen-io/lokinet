@@ -171,13 +171,22 @@ namespace llarp
   }
 
   void
-  Router::PumpLL()
+  Router::PumpLL(ILinkSession *peer)
   {
     if(_stopping.load())
       return;
-    paths.PumpDownstream();
-    paths.PumpUpstream();
-    _linkManager.PumpLinks();
+    if(peer)
+    {
+      const auto pk = peer->GetPubKey();
+      paths.PumpForSession(pk);
+      peer->Pump();
+    }
+    else
+    {
+      paths.PumpDownstream();
+      paths.PumpUpstream();
+      _linkManager.PumpLinks();
+    }
   }
 
   bool
@@ -1030,7 +1039,7 @@ namespace llarp
 
     LogInfo("have ", _nodedb->num_loaded(), " routers");
 
-    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+    _netloop->add_ticker([self = shared_from_this()]() { self->PumpLL(); });
 
     ScheduleTicker(1000);
     _running.store(true);

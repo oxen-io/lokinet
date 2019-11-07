@@ -47,7 +47,7 @@ namespace llarp
 
   /// notifies router that a link session has ended its pump and we should flush
   /// messages to upper layers
-  using PumpDoneHandler = std::function< void(void) >;
+  using PumpDoneHandler = std::function< void(ILinkSession*) >;
 
   struct ILinkLayer
   {

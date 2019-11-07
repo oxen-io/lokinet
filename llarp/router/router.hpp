@@ -58,7 +58,8 @@ llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
 
 namespace llarp
 {
-  struct Router final : public AbstractRouter
+  struct Router final : public AbstractRouter,
+                        public std::enable_shared_from_this< Router >
   {
     bool ready;
     // transient iwp encryption key
@@ -243,7 +244,7 @@ namespace llarp
     }
 
     void
-    PumpLL() override;
+    PumpLL(ILinkSession *peer = nullptr) override;
 
     bool
     CreateDefaultHiddenService();

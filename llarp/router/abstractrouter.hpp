@@ -141,7 +141,7 @@ namespace llarp
 
     /// pump low level links
     virtual void
-    PumpLL() = 0;
+    PumpLL(ILinkSession *peer = nullptr) = 0;
 
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;

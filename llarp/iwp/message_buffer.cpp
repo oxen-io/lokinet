@@ -30,6 +30,23 @@ namespace llarp
       return xmit;
     }
 
+    bool
+    OutboundMessage::ShouldSendXMIT(llarp_time_t now) const
+    {
+      return now > m_LastXMIT + Session::TXFlushInterval;
+    }
+
+    void
+    OutboundMessage::MaybeSendXMIT(
+        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
+    {
+      if(ShouldSendXMIT(now))
+      {
+        sendpkt(XMIT());
+        m_LastXMIT = now;
+      }
+    }
+
     void
     OutboundMessage::Completed()
     {
@@ -43,7 +60,7 @@ namespace llarp
     bool
     OutboundMessage::ShouldFlush(llarp_time_t now) const
     {
-      return now - m_LastFlush >= Session::TXFlushInterval;
+      return now > m_LastFlush + Session::TXFlushInterval;
     }
 
     void
