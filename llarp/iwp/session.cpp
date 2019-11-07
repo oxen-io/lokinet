@@ -209,6 +209,11 @@ namespace llarp
     void
     Session::SendMACK()
     {
+      const auto now = m_Parent->Now();
+      if(now < m_LastSendMACKs + Session::SendMACKsInterval)
+      {
+        return;
+      }
       // send multi acks
       while(not m_SendMACKs.empty())
       {
@@ -240,6 +245,7 @@ namespace llarp
         itr = m_SendNACKs.erase(itr);
         EncryptAndSend(std::move(nack));
       }
+      m_LastSendMACKs = now;
     }
 
     void

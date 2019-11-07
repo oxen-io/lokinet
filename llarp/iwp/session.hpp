@@ -38,6 +38,8 @@ namespace llarp
       static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
+      /// how often to batch multiacks andnacks
+      static constexpr llarp_time_t SendMACKsInterval = DeliveryTimeout / 2;
 
       /// outbound session
       Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
@@ -175,6 +177,8 @@ namespace llarp
       std::unordered_set< uint64_t > m_SendMACKs;
       // set of rx messages to send nack
       std::unordered_set< uint64_t > m_SendNACKs;
+
+      llarp_time_t m_LastSendMACKs = 0;
 
       // using CryptoQueue_t   = std::vector< Packet_t >;
 
