@@ -146,7 +146,7 @@ namespace llarp
       const llarp_time_t m_CreatedAt;
       const Addr m_RemoteAddr;
       /// set me to true to send multiacks otherwise we will do explict acks
-      const bool m_MACK = false;
+      const bool m_MACK = true;
       /// set me to true to send DROP messages
       const bool m_DROP = false;
 
