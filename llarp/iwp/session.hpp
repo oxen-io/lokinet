@@ -173,6 +173,8 @@ namespace llarp
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
       /// set of rx messages to send in next round of multiacks
       std::unordered_set< uint64_t > m_SendMACKs;
+      // set of rx messages to send nack
+      std::unordered_set< uint64_t > m_SendNACKs;
 
       // using CryptoQueue_t   = std::vector< Packet_t >;
 

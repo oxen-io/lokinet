@@ -210,7 +210,7 @@ namespace llarp
     Session::SendMACK()
     {
       // send multi acks
-      while(m_SendMACKs.size() > 0)
+      while(not m_SendMACKs.empty())
       {
         const auto sz  = m_SendMACKs.size();
         const auto max = Session::MaxACKSInMACK;
@@ -230,6 +230,15 @@ namespace llarp
           ptr += sizeof(uint64_t);
         }
         EncryptAndSend(std::move(mack));
+      }
+      // send nacks
+      auto itr = m_SendNACKs.begin();
+      while(itr != m_SendNACKs.end())
+      {
+        auto nack = CreatePacket(Command::eNACK, 8);
+        htobe64buf(mack.data() + CommandOverhead + PacketOverhead, *itr);
+        itr = m_SendNACKs.erase(itr);
+        EncryptAndSend(std::move(nack));
       }
     }
 
@@ -788,24 +797,24 @@ namespace llarp
     void
     Session::SendACKSFor(uint64_t rxid, byte_t bitmask, bool replayHit)
     {
-      auto msg = replayHit ? CreatePacket(Command::eACKS, 9)
-                           : CreatePacket(Command::eNACK, 8);
-      htobe64buf(msg.data() + PacketOverhead + CommandOverhead, rxid);
       if(replayHit)
       {
+        auto msg = CreatePacket(Command::eACKS, 9);
         // data fragment for previosuly gotten message
         // send explicit ack
         LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr,
                  " sending explicit ACK");
+        htobe64buf(msg.data() + PacketOverhead + CommandOverhead, rxid);
         msg[PacketOverhead + CommandOverhead + sizeof(uint64_t)] = bitmask;
+        EncryptAndSend(std::move(msg));
       }
       else
       {
         // data fragment with no xmit
         // send nack
         LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
+        m_SendNACKs.emplace(rxid);
       }
-      EncryptAndSend(std::move(msg));
     }
 
     void
@@ -843,9 +852,7 @@ namespace llarp
           {
             // data fragment with no xmit
             LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
-            auto nack = CreatePacket(Command::eNACK, 8);
-            htobe64buf(nack.data() + PacketOverhead + CommandOverhead, rxid);
-            EncryptAndSend(std::move(nack));
+            m_SendNACKs.emplace(rxid);
           }
         }
         else
