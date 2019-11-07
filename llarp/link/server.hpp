@@ -58,11 +58,11 @@ namespace llarp
                SessionClosedHandler closed, PumpDoneHandler pumpDone);
     virtual ~ILinkLayer();
 
-    /// get current time via event loop
+    /// get timestamp for now
     llarp_time_t
     Now() const
     {
-      return llarp_ev_loop_time_now_ms(m_Loop);
+      return llarp::time_now_ms();
     }
 
     bool
