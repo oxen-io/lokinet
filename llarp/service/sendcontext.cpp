@@ -67,7 +67,6 @@ namespace llarp
       auto f = std::make_shared< ProtocolFrame >();
       f->N.Randomize();
       f->T = currentConvoTag;
-      f->S = ++sequenceNo;
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
@@ -103,8 +102,17 @@ namespace llarp
           return;
         }
         self->m_Endpoint->RouterLogic()->queue_func([self, f, path]() {
+          bool flush = false;
+          {
+            util::Lock lock(&self->m_SendQueueMutex);
+            flush = self->m_SendQueue.empty();
+          }
           self->Send(f, path);
-          self->FlushUpstream();
+          if(flush)
+          {
+            self->m_Endpoint->RouterLogic()->queue_func(
+                std::bind(&SendContext::FlushUpstream, self));
+          }
         });
       });
     }
