@@ -240,10 +240,15 @@ namespace llarp
       auto itr = m_SendNACKs.begin();
       while(itr != m_SendNACKs.end())
       {
-        auto nack = CreatePacket(Command::eNACK, 8);
-        htobe64buf(nack.data() + CommandOverhead + PacketOverhead, *itr);
+        const auto txid = *itr;
+        // send nack only if still applicable
+        if(m_TXMsgs.find(txid) == m_TXMsgs.end())
+        {
+          auto nack = CreatePacket(Command::eNACK, 8);
+          htobe64buf(nack.data() + CommandOverhead + PacketOverhead, txid);
+          EncryptAndSend(std::move(nack));
+        }
         itr = m_SendNACKs.erase(itr);
-        EncryptAndSend(std::move(nack));
       }
       m_LastSendMACKs = now;
     }
