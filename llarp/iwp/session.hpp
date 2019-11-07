@@ -39,7 +39,7 @@ namespace llarp
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
       /// how often to batch multiacks andnacks
-      static constexpr llarp_time_t SendMACKsInterval = DeliveryTimeout / 2;
+      static constexpr llarp_time_t SendMACKsInterval = 100;
 
       /// outbound session
       Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
