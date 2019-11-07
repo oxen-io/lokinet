@@ -281,17 +281,17 @@ namespace llarp
   OutboundMessageHandler::SendRoundRobin()
   {
     // send non-routing messages first priority
-    while(!outboundMessageQueues[zeroID].empty())
+    auto &non_routing_mq = outboundMessageQueues[zeroID];
+    while(!non_routing_mq.empty())
     {
-      MessageQueueEntry entry =
-          std::move(outboundMessageQueues[zeroID].front());
-      outboundMessageQueues[zeroID].pop();
+      MessageQueueEntry entry = std::move(non_routing_mq.front());
+      non_routing_mq.pop();
 
       Send(entry.router, entry.message);
     }
 
     size_t empty_count = 0;
-    size_t num_queues  = outboundMessageQueues.size();
+    size_t num_queues  = roundRobinOrder.size();
 
     if(removedSomePaths)
     {
@@ -307,8 +307,9 @@ namespace llarp
       }
     }
 
+    num_queues        = roundRobinOrder.size();
     size_t sent_count = 0;
-    if(roundRobinOrder.empty())
+    if(num_queues == 0)  // if no queues, return
     {
       return;
     }
@@ -319,11 +320,11 @@ namespace llarp
       PathID_t pathid = std::move(roundRobinOrder.front());
       roundRobinOrder.pop();
 
-      if(outboundMessageQueues[pathid].size() > 0)
+      auto &message_queue = outboundMessageQueues[pathid];
+      if(message_queue.size() > 0)
       {
-        MessageQueueEntry entry =
-            std::move(outboundMessageQueues[pathid].front());
-        outboundMessageQueues[pathid].pop();
+        MessageQueueEntry entry = std::move(message_queue.front());
+        message_queue.pop();
 
         Send(entry.router, entry.message);
         empty_count = 0;
