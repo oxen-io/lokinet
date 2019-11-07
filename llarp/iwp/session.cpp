@@ -236,7 +236,7 @@ namespace llarp
       while(itr != m_SendNACKs.end())
       {
         auto nack = CreatePacket(Command::eNACK, 8);
-        htobe64buf(mack.data() + CommandOverhead + PacketOverhead, *itr);
+        htobe64buf(nack.data() + CommandOverhead + PacketOverhead, *itr);
         itr = m_SendNACKs.erase(itr);
         EncryptAndSend(std::move(nack));
       }
