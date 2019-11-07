@@ -229,7 +229,9 @@ namespace llarp
         auto itr = m_SendMACKs.begin();
         while(numAcks > 0)
         {
-          htobe64buf(ptr, *itr);
+          const auto rxid = *itr;
+          LogDebug("sending MACK for rxid=", rxid, " for ", m_RemoteAddr);
+          htobe64buf(ptr, rxid);
           itr = m_SendMACKs.erase(itr);
           numAcks--;
           ptr += sizeof(uint64_t);
@@ -245,6 +247,7 @@ namespace llarp
         if(m_RXMsgs.find(rxid) == m_RXMsgs.end()
            && m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
         {
+          LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
           auto nack = CreatePacket(Command::eNACK, 8);
           htobe64buf(nack.data() + CommandOverhead + PacketOverhead, rxid);
           EncryptAndSend(std::move(nack));
@@ -824,7 +827,6 @@ namespace llarp
       {
         // data fragment with no xmit
         // send nack
-        LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
         m_SendNACKs.emplace(rxid);
       }
     }
@@ -856,14 +858,11 @@ namespace llarp
           {
             // data fragment for previosuly gotten message
             // queue multiack
-            LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr,
-                     " sending MACK");
             m_SendMACKs.emplace(rxid);
           }
           else
           {
             // data fragment with no xmit
-            LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
             m_SendNACKs.emplace(rxid);
           }
         }
