@@ -69,7 +69,7 @@ namespace llarp
       bool
       operator<(const ProtocolMessage& other) const
       {
-        return seqno < other.seqno;
+        return other.seqno < seqno;
       }
     };
 
