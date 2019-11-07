@@ -851,7 +851,8 @@ struct llarp_pkt_list
   {
     for(size_t idx = 0; idx < numEvents; ++idx)
     {
-      v(addrs[idx], datas[idx].data(), sizes[idx]);
+      if(sizes[idx] > 0)
+        v(addrs[idx], datas[idx].data(), sizes[idx]);
     }
   }
 
