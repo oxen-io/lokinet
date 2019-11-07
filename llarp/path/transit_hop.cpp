@@ -118,6 +118,8 @@ namespace llarp
     void
     TransitHop::AfterCollectUpstream(AbstractRouter* r)
     {
+      // send any pending routing messages
+      FlushDownstream(r);
       // flush any related paths to other routers for path transfer
       for(const auto& other : m_FlushOthers)
       {
