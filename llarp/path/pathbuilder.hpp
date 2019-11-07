@@ -50,6 +50,9 @@ namespace llarp
 
       virtual ~Builder() = default;
 
+      const RouterID
+      OurRouterID() const override;
+
       util::StatusObject
       ExtractStatus() const;
 

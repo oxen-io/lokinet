@@ -438,6 +438,12 @@ namespace llarp
                              &PathBuilderKeysGenerated);
     }
 
+    const RouterID
+    Builder::OurRouterID() const
+    {
+      return m_router->pubkey();
+    }
+
     void
     Builder::HandlePathBuilt(Path_ptr p)
     {

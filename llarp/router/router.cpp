@@ -178,7 +178,7 @@ namespace llarp
     if(peer)
     {
       const auto pk = peer->GetPubKey();
-      paths.PumpForSession(pk);
+      paths.PumpForSession(pk, true);
       peer->Pump();
     }
     else

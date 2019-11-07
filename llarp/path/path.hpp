@@ -102,6 +102,12 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
+      void
+      AfterCollectUpstream(AbstractRouter* r) override;
+
+      void
+      AfterCollectDownstream(AbstractRouter* r) override;
+
       PathRole
       Role() const
       {
@@ -334,8 +340,11 @@ namespace llarp
       PathID_t
       RXID() const;
 
-      RouterID
-      Upstream() const;
+      const RouterID
+      Upstream() const override;
+
+      const RouterID
+      Downstream() const override;
 
       std::string
       Name() const;

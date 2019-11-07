@@ -88,10 +88,16 @@ namespace llarp
           && hops[hops.size() - 1].txID == id;
     }
 
-    RouterID
+    const RouterID
     Path::Upstream() const
     {
       return hops[0].rc.pubkey;
+    }
+
+    const RouterID
+    Path::Downstream() const
+    {
+      return m_PathSet->OurRouterID();
     }
 
     std::string
@@ -101,6 +107,20 @@ namespace llarp
       for(const auto& hop : hops)
         ss << RouterID(hop.rc.pubkey) << " -> ";
       return ss.str();
+    }
+
+    void
+    Path::AfterCollectDownstream(AbstractRouter* r)
+    {
+      // send any pending upstream
+      FlushUpstream(r);
+    }
+
+    void
+    Path::AfterCollectUpstream(AbstractRouter* r)
+    {
+      // send any pending upstream
+      r->linkManager().PumpLinksFor(Upstream());
     }
 
     bool
@@ -475,7 +495,6 @@ namespace llarp
         }
         m_LastRecvMessage = r->Now();
       }
-      FlushUpstream(r);
     }
 
     bool

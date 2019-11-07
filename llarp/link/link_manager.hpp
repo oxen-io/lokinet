@@ -37,6 +37,9 @@ namespace llarp
     PumpLinks() override;
 
     void
+    PumpLinksFor(const RouterID &remote) override;
+
+    void
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool

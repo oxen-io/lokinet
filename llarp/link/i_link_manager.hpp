@@ -38,6 +38,10 @@ namespace llarp
     virtual void
     PumpLinks() = 0;
 
+    /// selective pump for only sessions with this pubkey
+    virtual void
+    PumpLinksFor(const RouterID &remote) = 0;
+
     virtual void
     AddLink(LinkLayer_ptr link, bool inbound = false) = 0;
 

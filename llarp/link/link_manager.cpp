@@ -74,6 +74,31 @@ namespace llarp
   }
 
   void
+  LinkManager::PumpLinksFor(const RouterID &remote)
+  {
+    if(stopping)
+      return;
+    const auto now   = llarp::time_now_ms();
+    auto pumpSession = [now](ILinkSession *s) -> bool {
+      if(s && not s->TimedOut(now))
+      {
+        s->Pump();
+      }
+      return false;
+    };
+    for(const auto &link : inboundLinks)
+    {
+      if(link->VisitSessionByPubkey(remote, pumpSession))
+        return;
+    }
+    for(const auto &link : outboundLinks)
+    {
+      if(link->VisitSessionByPubkey(remote, pumpSession))
+        return;
+    }
+  }
+
+  void
   LinkManager::AddLink(LinkLayer_ptr link, bool inbound)
   {
     util::Lock l(&_mutex);

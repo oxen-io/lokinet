@@ -288,18 +288,24 @@ namespace llarp
     }
 
     void
-    PathContext::PumpForSession(const RouterID pk)
+    PathContext::PumpForSession(const RouterID pk, bool inbound)
     {
       if(m_AllowTransit)
       {
         m_TransitPaths.ForEach([&](auto& ptr) {
           if(ptr->info.upstream == pk)
           {
-            ptr->FlushDownstream(m_Router);
+            if(inbound)
+              ptr->FlushDownstream(m_Router);
+            else
+              ptr->FlushUpstream(m_Router);
           }
           if(ptr->info.downstream == pk)
           {
-            ptr->FlushUpstream(m_Router);
+            if(inbound)
+              ptr->FlushUpstream(m_Router);
+            else
+              ptr->FlushDownstream(m_Router);
           }
         });
       }
@@ -307,7 +313,10 @@ namespace llarp
         ptr->ForEachPath([&](auto& path) {
           if(path->Upstream() == pk)
           {
-            ptr->DownstreamFlush(m_Router);
+            if(inbound)
+              ptr->DownstreamFlush(m_Router);
+            else
+              ptr->UpstreamFlush(m_Router);
           }
         });
       });

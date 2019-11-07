@@ -116,6 +116,25 @@ namespace llarp
     }
 
     void
+    TransitHop::AfterCollectUpstream(AbstractRouter* r)
+    {
+      // flush any related paths to other routers for path transfer
+      for(const auto& other : m_FlushOthers)
+      {
+        r->pathContext().PumpForSession(other, false);
+      }
+      m_FlushOthers.clear();
+      r->linkManager().PumpLinksFor(Upstream());
+      r->linkManager().PumpLinksFor(Downstream());
+    }
+
+    void
+    TransitHop::AfterCollectDownstream(AbstractRouter* r)
+    {
+      r->linkManager().PumpLinksFor(Downstream());
+    }
+
+    void
     TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
       IHopHandler::Batch< RelayDownstreamMessage > batch;
@@ -178,7 +197,7 @@ namespace llarp
           }
           m_LastActivity = r->Now();
         }
-        FlushDownstream(r);
+        m_FlushOthers.emplace(Downstream());
       }
       else
       {
@@ -391,10 +410,11 @@ namespace llarp
       // rewind
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      // send
+      // queue send
       if(path->HandleDownstream(buf, msg.Y, r))
       {
-        path->FlushDownstream(r);
+        // flush the other guy later
+        m_FlushOthers.emplace(path->Downstream());
         return true;
       }
       return SendRoutingMessage(discarded, r);

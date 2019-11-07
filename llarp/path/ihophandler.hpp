@@ -94,6 +94,14 @@ namespace llarp
       void
       FlushDownstream(AbstractRouter* r);
 
+      /// get downstream router id
+      virtual const RouterID
+      Downstream() const = 0;
+
+      /// get upstream router id
+      virtual const RouterID
+      Upstream() const = 0;
+
      protected:
       uint64_t m_SequenceNum = 0;
       TrafficQueue_ptr m_UpstreamIngest;
@@ -103,6 +111,12 @@ namespace llarp
 
       std::priority_queue< Batch< RelayUpstreamMessage > > m_UpstreamEgress;
       std::priority_queue< Batch< RelayDownstreamMessage > > m_DownstreamEgress;
+
+      virtual void
+      AfterCollectUpstream(AbstractRouter* r) = 0;
+
+      virtual void
+      AfterCollectDownstream(AbstractRouter* r) = 0;
 
       void
       CollectDownstream(AbstractRouter* r,

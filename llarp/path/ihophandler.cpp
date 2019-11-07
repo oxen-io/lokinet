@@ -54,7 +54,7 @@ namespace llarp
             self->HandleAllUpstream(top.msgs, r);
             self->m_UpstreamEgress.pop();
           }
-          r->linkManager().PumpLinks();
+          self->AfterCollectUpstream(r);
         });
       }
       m_UpstreamEgress.emplace(std::move(batch));
@@ -73,7 +73,7 @@ namespace llarp
             self->HandleAllDownstream(top.msgs, r);
             self->m_DownstreamEgress.pop();
           }
-          r->linkManager().PumpLinks();
+          self->AfterCollectDownstream(r);
         });
       }
       m_DownstreamEgress.emplace(std::move(batch));

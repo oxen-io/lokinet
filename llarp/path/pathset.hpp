@@ -141,6 +141,9 @@ namespace llarp
       bool
       GetNewestIntro(service::Introduction& intro) const;
 
+      virtual const RouterID
+      OurRouterID() const = 0;
+
       void
       AddPath(Path_ptr path);
 

@@ -93,8 +93,21 @@ namespace llarp
       llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
+      std::set< RouterID > m_FlushOthers;
 
       bool destroy = false;
+
+      const RouterID
+      Upstream() const override
+      {
+        return info.upstream;
+      }
+
+      const RouterID
+      Downstream() const override
+      {
+        return info.downstream;
+      }
 
       bool
       IsEndpoint(const RouterID& us) const
@@ -196,6 +209,12 @@ namespace llarp
       HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r) override;
 
      protected:
+      void
+      AfterCollectUpstream(AbstractRouter* r) override;
+
+      void
+      AfterCollectDownstream(AbstractRouter* r) override;
+
       void
       UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
 

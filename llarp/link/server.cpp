@@ -76,15 +76,21 @@ namespace llarp
   ILinkLayer::VisitSessionByPubkey(const RouterID& pk,
                                    std::function< bool(ILinkSession*) > visit)
   {
-    std::shared_ptr< ILinkSession > session;
+    std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-      auto itr = m_AuthedLinks.find(pk);
-      if(itr == m_AuthedLinks.end())
-        return false;
-      session = itr->second;
+      auto range = m_AuthedLinks.equal_range(pk);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        sessions.emplace_back(itr->second);
+        ++itr;
+      }
     }
-    return visit(session.get());
+    bool result = not sessions.empty();
+    for(const auto& s : sessions)
+      result = visit(s.get()) && result;
+    return result;
   }
 
   void
