@@ -148,7 +148,7 @@ namespace llarp
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
-      ExpirePaths(llarp_time_t now);
+      ExpirePaths(llarp_time_t now, AbstractRouter* router);
 
       /// get the number of paths in this status
       size_t

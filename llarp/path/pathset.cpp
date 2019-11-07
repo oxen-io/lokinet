@@ -73,7 +73,7 @@ namespace llarp
     }
 
     void
-    PathSet::ExpirePaths(llarp_time_t now)
+    PathSet::ExpirePaths(llarp_time_t now, AbstractRouter* router)
     {
       Lock_t l(&m_PathsMutex);
       if(m_Paths.size() == 0)
@@ -83,6 +83,7 @@ namespace llarp
       {
         if(itr->second->Expired(now))
         {
+          router->outboundMessageHandler().QueueRemoveEmptyPath(itr->second->TXID());
           itr = m_Paths.erase(itr);
         }
         else
