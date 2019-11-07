@@ -242,7 +242,8 @@ namespace llarp
       {
         const auto rxid = *itr;
         // send nack only if still applicable
-        if(m_RXMsgs.find(rxid) == m_RXMsgs.end())
+        if(m_RXMsgs.find(rxid) == m_RXMsgs.end()
+           && m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
         {
           auto nack = CreatePacket(Command::eNACK, 8);
           htobe64buf(nack.data() + CommandOverhead + PacketOverhead, rxid);
