@@ -83,7 +83,8 @@ namespace llarp
       {
         if(itr->second->Expired(now))
         {
-          router->outboundMessageHandler().QueueRemoveEmptyPath(itr->second->TXID());
+          router->outboundMessageHandler().QueueRemoveEmptyPath(
+              itr->second->TXID());
           itr = m_Paths.erase(itr);
         }
         else
