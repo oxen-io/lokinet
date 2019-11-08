@@ -591,6 +591,7 @@ namespace llarp
     void
     Session::HandlePlaintext()
     {
+      auto num = m_PlaintextQueue.size();
       do
       {
         auto msg = m_PlaintextQueue.tryPopFront();
@@ -625,7 +626,8 @@ namespace llarp
             LogError("invalid command ", int(result[PacketOverhead + 1]),
                      " from ", m_RemoteAddr);
         }
-      } while(true);
+        num--;
+      } while(num > 0);
       SendMACK();
       m_Parent->PumpDone();
     }
