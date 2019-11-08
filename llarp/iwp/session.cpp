@@ -29,6 +29,7 @@ namespace llarp
     }
 
     /// how big the encrypt and decrypt queues are
+    /// TODO: no idea if this is the right size
     static constexpr size_t BatchSize = 64;
 
     Session::Session(LinkLayer* p, RouterContact rc, AddressInfo ai)
@@ -39,8 +40,9 @@ namespace llarp
         , m_RemoteAddr{ai}
         , m_ChosenAI{std::move(ai)}
         , m_RemoteRC{std::move(rc)}
-        , m_EncryptNext(BatchSize)
-        , m_DecryptNext(BatchSize)
+        , m_EncryptQueue(BatchSize)
+        , m_DecryptQueue(BatchSize)
+        , m_PlaintextQueue(BatchSize)
     {
       token.Zero();
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
@@ -54,8 +56,9 @@ namespace llarp
         , m_Parent{p}
         , m_CreatedAt{p->Now()}
         , m_RemoteAddr{from}
-        , m_EncryptNext(BatchSize)
-        , m_DecryptNext(BatchSize)
+        , m_EncryptQueue(BatchSize)
+        , m_DecryptQueue(BatchSize)
+        , m_PlaintextQueue(BatchSize)
     {
       token.Randomize();
       GotLIM          = util::memFn(&Session::GotInboundLIM, this);
@@ -139,24 +142,22 @@ namespace llarp
     {
       if(IsEstablished())
       {
-        if(m_EncryptNext.full())
+        if(m_EncryptQueue.full())
         {
           // flush it if the queue is full
           m_Parent->QueueWork(
               std::bind(&Session::EncryptWorker, shared_from_this()));
         }
-        m_EncryptNext.pushBack(std::move(data));
+        m_EncryptQueue.pushBack(std::move(data));
       }
       else
       {
-        EncrptInPlace(data);
-        const llarp_buffer_t pktbuf(data);
-        Send_LL(pktbuf);
+        EncryptInPlaceThenSend(std::move(data));
       }
     }
 
     void
-    Session::EncrpytInPlace(Packet_t& pkt)
+    Session::EncryptInPlaceThenSend(Packet_t pkt)
     {
       llarp_buffer_t pktbuf(pkt);
       const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
@@ -170,6 +171,7 @@ namespace llarp
       pktbuf.base = pkt.data();
       pktbuf.cur  = pkt.data();
       pktbuf.sz   = pkt.size();
+      Send_LL(pktbuf);
     }
 
     void
@@ -180,10 +182,7 @@ namespace llarp
         auto msg = m_EncryptQueue.tryPopFront();
         if(not msg.has_value())
           break;
-        auto& pkt = msg.value();
-        EncryptInPlace(pkt);
-        const llarp_buffer_t pktbuf(pkt);
-        Send_LL(pktbuf);
+        EncryptInPlaceThenSend(std::move(msg.value()));
       } while(true);
     }
 
@@ -560,7 +559,6 @@ namespace llarp
     void
     Session::DecryptWorker()
     {
-      std::vector< Packet_t > pkts;
       do
       {
         auto msg = m_DecryptQueue.tryPopFront();
@@ -578,20 +576,27 @@ namespace llarp
                    " != ", LLARP_PROTO_VERSION);
           continue;
         }
-        pkts.emplace_back(stdmove(pkt));
+        if(m_PlaintextQueue.full())
+        {
+          m_Parent->logic()->queue_func(
+              std::bind(&Session::HandlePlaintext, shared_from_this()));
+        }
+        m_PlaintextQueue.pushBack(std::move(pkt));
       } while(true);
-      if(pkts.empty())
-        return;
-      LogDebug("decrypted ", pkts->size(), " packets from ", m_RemoteAddr);
-      m_Parent->logic()->queue_func(std::bind(
-          &Session::HandlePlaintext, shared_from_this(), std::move(pkts)));
+      if(not m_PlaintextQueue.empty())
+        m_Parent->logic()->queue_func(
+            std::bind(&Session::HandlePlaintext, shared_from_this()));
     }
 
     void
-    Session::HandlePlaintext(std::vector< Packet_t > msgs)
+    Session::HandlePlaintext()
     {
-      for(auto& result : msgs)
+      do
       {
+        auto msg = m_PlaintextQueue.tryPopFront();
+        if(not msg.has_value())
+          break;
+        Packet_t result(std::move(msg.value()));
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
         {
@@ -620,7 +625,7 @@ namespace llarp
             LogError("invalid command ", int(result[PacketOverhead + 1]),
                      " from ", m_RemoteAddr);
         }
-      }
+      } while(true);
       SendMACK();
       m_Parent->PumpDone();
     }

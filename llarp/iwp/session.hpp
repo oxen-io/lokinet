@@ -170,8 +170,9 @@ namespace llarp
 
       using CryptoQueue_t = thread::Queue< Packet_t >;
 
-      CryptoQueue_t m_EncryptNext;
-      CryptoQueue_t m_DecryptNext;
+      CryptoQueue_t m_EncryptQueue;
+      CryptoQueue_t m_DecryptQueue;
+      CryptoQueue_t m_PlaintextQueue;
 
       void
       EncryptWorker();
@@ -180,7 +181,10 @@ namespace llarp
       DecryptWorker();
 
       void
-      HandlePlaintext(std::vector< Packet_t > pkts);
+      EncryptInPlaceThenSend(Packet_t pkt);
+
+      void
+      HandlePlaintext();
 
       void
       HandleGotIntro(Packet_t pkt);
