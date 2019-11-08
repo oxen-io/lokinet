@@ -48,6 +48,9 @@ namespace llarp
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
       CryptoManager::instance()->shorthash(m_SessionKey,
                                            llarp_buffer_t(rc.pubkey));
+      m_EncryptQueue.enable();
+      m_DecryptQueue.enable();
+      m_PlaintextQueue.enable();
     }
 
     Session::Session(LinkLayer* p, Addr from)
@@ -64,6 +67,9 @@ namespace llarp
       GotLIM          = util::memFn(&Session::GotInboundLIM, this);
       const PubKey pk = m_Parent->GetOurRC().pubkey;
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(pk));
+      m_EncryptQueue.enable();
+      m_DecryptQueue.enable();
+      m_PlaintextQueue.enable();
     }
 
     void
