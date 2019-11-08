@@ -168,19 +168,19 @@ namespace llarp
       /// set of rx messages to send in next round of multiacks
       std::unordered_set< uint64_t > m_SendMACKs;
 
-      using CryptoQueue_t   = std::vector< Packet_t >;
-      using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
-      CryptoQueue_ptr m_EncryptNext;
-      CryptoQueue_ptr m_DecryptNext;
+      using CryptoQueue_t = thread::Queue< Packet_t >;
+
+      CryptoQueue_t m_EncryptNext;
+      CryptoQueue_t m_DecryptNext;
 
       void
-      EncryptWorker(CryptoQueue_ptr msgs);
+      EncryptWorker();
 
       void
-      DecryptWorker(CryptoQueue_ptr msgs);
+      DecryptWorker();
 
       void
-      HandlePlaintext(CryptoQueue_ptr msgs);
+      HandlePlaintext(std::vector< Packet_t > pkts);
 
       void
       HandleGotIntro(Packet_t pkt);

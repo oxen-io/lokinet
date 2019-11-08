@@ -28,6 +28,9 @@ namespace llarp
       return pkt;
     }
 
+    /// how big the encrypt and decrypt queues are
+    static constexpr size_t BatchSize = 64;
+
     Session::Session(LinkLayer* p, RouterContact rc, AddressInfo ai)
         : m_State{State::Initial}
         , m_Inbound{false}
@@ -36,6 +39,8 @@ namespace llarp
         , m_RemoteAddr{ai}
         , m_ChosenAI{std::move(ai)}
         , m_RemoteRC{std::move(rc)}
+        , m_EncryptNext(BatchSize)
+        , m_DecryptNext(BatchSize)
     {
       token.Zero();
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
@@ -49,6 +54,8 @@ namespace llarp
         , m_Parent{p}
         , m_CreatedAt{p->Now()}
         , m_RemoteAddr{from}
+        , m_EncryptNext(BatchSize)
+        , m_DecryptNext(BatchSize)
     {
       token.Randomize();
       GotLIM          = util::memFn(&Session::GotInboundLIM, this);
@@ -130,36 +137,54 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
-      if(m_EncryptNext == nullptr)
-        m_EncryptNext = std::make_shared< CryptoQueue_t >();
-      m_EncryptNext->emplace_back(std::move(data));
-      if(!IsEstablished())
+      if(IsEstablished())
       {
-        EncryptWorker(std::move(m_EncryptNext));
-        m_EncryptNext = nullptr;
+        if(m_EncryptNext.full())
+        {
+          // flush it if the queue is full
+          m_Parent->QueueWork(
+              std::bind(&Session::EncryptWorker, shared_from_this()));
+        }
+        m_EncryptNext.pushBack(std::move(data));
+      }
+      else
+      {
+        EncrptInPlace(data);
+        const llarp_buffer_t pktbuf(data);
+        Send_LL(pktbuf);
       }
     }
 
     void
-    Session::EncryptWorker(CryptoQueue_ptr msgs)
+    Session::EncrpytInPlace(Packet_t& pkt)
     {
-      LogDebug("encrypt worker ", msgs->size(), " messages");
-      for(auto& pkt : *msgs)
+      llarp_buffer_t pktbuf(pkt);
+      const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
+      pktbuf.base += PacketOverhead;
+      pktbuf.cur = pktbuf.base;
+      pktbuf.sz -= PacketOverhead;
+      CryptoManager::instance()->xchacha20(pktbuf, m_SessionKey, nonce_ptr);
+      pktbuf.base = pkt.data() + HMACSIZE;
+      pktbuf.sz   = pkt.size() - HMACSIZE;
+      CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
+      pktbuf.base = pkt.data();
+      pktbuf.cur  = pkt.data();
+      pktbuf.sz   = pkt.size();
+    }
+
+    void
+    Session::EncryptWorker()
+    {
+      do
       {
-        llarp_buffer_t pktbuf(pkt);
-        const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
-        pktbuf.base += PacketOverhead;
-        pktbuf.cur = pktbuf.base;
-        pktbuf.sz -= PacketOverhead;
-        CryptoManager::instance()->xchacha20(pktbuf, m_SessionKey, nonce_ptr);
-        pktbuf.base = pkt.data() + HMACSIZE;
-        pktbuf.sz   = pkt.size() - HMACSIZE;
-        CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
-        pktbuf.base = pkt.data();
-        pktbuf.cur  = pkt.data();
-        pktbuf.sz   = pkt.size();
+        auto msg = m_EncryptQueue.tryPopFront();
+        if(not msg.has_value())
+          break;
+        auto& pkt = msg.value();
+        EncryptInPlace(pkt);
+        const llarp_buffer_t pktbuf(pkt);
         Send_LL(pktbuf);
-      }
+      } while(true);
     }
 
     void
@@ -246,22 +271,13 @@ namespace llarp
           }
         }
       }
-      auto self = shared_from_this();
-      if(m_EncryptNext && !m_EncryptNext->empty())
-      {
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
-          self->EncryptWorker(data);
-        });
-        m_EncryptNext = nullptr;
-      }
 
-      if(m_DecryptNext && !m_DecryptNext->empty())
-      {
-        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
-          self->DecryptWorker(data);
-        });
-        m_DecryptNext = nullptr;
-      }
+      auto self = shared_from_this();
+      if(not m_EncryptQueue.empty())
+        m_Parent->QueueWork(std::bind(&Session::EncryptWorker, self));
+
+      if(not m_DecryptQueue.empty())
+        m_Parent->QueueWork(std::bind(&Session::DecryptWorker, self));
     }
 
     bool
@@ -532,17 +548,25 @@ namespace llarp
     void
     Session::HandleSessionData(Packet_t pkt)
     {
-      if(m_DecryptNext == nullptr)
-        m_DecryptNext = std::make_shared< CryptoQueue_t >();
-      m_DecryptNext->emplace_back(std::move(pkt));
+      if(m_DecryptQueue.full())
+      {
+        // flush the decrypt queue if it is full before queuing more
+        m_Parent->QueueWork(
+            std::bind(&Session::DecryptWorker, shared_from_this()));
+      }
+      m_DecryptQueue.pushBack(std::move(pkt));
     }
 
     void
-    Session::DecryptWorker(CryptoQueue_ptr msgs)
+    Session::DecryptWorker()
     {
-      CryptoQueue_ptr recvMsgs = std::make_shared< CryptoQueue_t >();
-      for(auto& pkt : *msgs)
+      std::vector< Packet_t > pkts;
+      do
       {
+        auto msg = m_DecryptQueue.tryPopFront();
+        if(not msg.has_value())
+          break;
+        auto& pkt = msg.value();
         if(not DecryptMessageInPlace(pkt))
         {
           LogError("failed to decrypt session data from ", m_RemoteAddr);
@@ -554,17 +578,19 @@ namespace llarp
                    " != ", LLARP_PROTO_VERSION);
           continue;
         }
-        recvMsgs->emplace_back(std::move(pkt));
-      }
-      LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      m_Parent->logic()->queue_func(
-          std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
+        pkts.emplace_back(stdmove(pkt));
+      } while(true);
+      if(pkts.empty())
+        return;
+      LogDebug("decrypted ", pkts->size(), " packets from ", m_RemoteAddr);
+      m_Parent->logic()->queue_func(std::bind(
+          &Session::HandlePlaintext, shared_from_this(), std::move(pkts)));
     }
 
     void
-    Session::HandlePlaintext(CryptoQueue_ptr msgs)
+    Session::HandlePlaintext(std::vector< Packet_t > msgs)
     {
-      for(auto& result : *msgs)
+      for(auto& result : msgs)
       {
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
