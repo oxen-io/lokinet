@@ -33,10 +33,10 @@ namespace llarp
     }
 
     static void
-    tunifTick(llarp_tun_io *tun)
+    tunifTick(llarp_tun_io *)
     {
-      auto *self = static_cast< TunEndpoint * >(tun->user);
-      self->Flush();
+      // auto *self = static_cast< TunEndpoint * >(tun->user);
+      // self->Flush();
     }
 
     TunEndpoint::TunEndpoint(const std::string &nickname, AbstractRouter *r,
@@ -306,15 +306,11 @@ namespace llarp
     }
 
     void
-    TunEndpoint::Flush()
+    TunEndpoint::Pump(llarp_time_t now)
     {
-      auto self = shared_from_this();
+      service::Endpoint::Pump(now);
       FlushSend();
-      RouterLogic()->queue_func([=] {
-        self->m_ExitMap.ForEachValue(
-            [](const auto &exit) { exit->FlushUpstream(); });
-        self->Pump(self->Now());
-      });
+      m_ExitMap.ForEachValue([](const auto &exit) { exit->FlushUpstream(); });
     }
 
     static bool
@@ -636,7 +632,6 @@ namespace llarp
           // process packets queued from vpn
           if(running)
           {
-            ep->Flush();
             ep->FlushToUser(sendpkt);
           }
           // if impl has a tick function call it
@@ -749,13 +744,17 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      EndpointLogic()->queue_func([&]() {
+      auto tickit = [&, now]() {
         m_ExitMap.ForEachValue([&](const auto &exit) {
           this->EnsureRouterIsKnown(exit->Endpoint());
           exit->Tick(now);
         });
         Endpoint::Tick(now);
-      });
+      };
+      if(NetworkIsIsolated())
+        EndpointLogic()->queue_func(tickit);
+      else
+        tickit();
     }
 
     bool
@@ -800,8 +799,8 @@ namespace llarp
               exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
             }
+            return;
           }
-          return;
         }
         if(m_SNodes.at(itr->second))
         {
@@ -828,7 +827,6 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
-      Router()->PumpLL();
     }
 
     bool

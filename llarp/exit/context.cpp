@@ -34,6 +34,17 @@ namespace llarp
     }
 
     void
+    Context::FlushAll()
+    {
+      auto itr = m_Exits.begin();
+      while(itr != m_Exits.end())
+      {
+        itr->second->Flush();
+        ++itr;
+      }
+    }
+
+    void
     Context::Stop()
     {
       auto itr = m_Exits.begin();

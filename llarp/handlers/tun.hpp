@@ -173,7 +173,7 @@ namespace llarp
 
       /// flush network traffic
       void
-      Flush();
+      Pump(llarp_time_t now) override;
 
       void
       ResetInternalState() override;

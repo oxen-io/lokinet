@@ -1046,7 +1046,7 @@ namespace llarp
     {
       const auto& sessions = m_state->m_SNodeSessions;
       auto& queue          = m_state->m_InboundTrafficQueue;
-      EndpointLogic()->queue_func([&]() {
+      auto pumpit          = [&]() {
         // send downstream packets to user for snode
         for(const auto& item : sessions)
           item.second.first->FlushDownstream();
@@ -1059,7 +1059,12 @@ namespace llarp
           HandleInboundPacket(msg->tag, buf, msg->proto);
           queue.pop();
         }
-      });
+      };
+
+      if(NetworkIsIsolated())
+        EndpointLogic()->queue_func(pumpit);
+      else
+        pumpit();
 
       auto router = Router();
       // TODO: locking on this container
@@ -1076,7 +1081,6 @@ namespace llarp
         MarkConvoTagActive(item.first->T.T);
       }
       m_state->m_SendQueue.clear();
-      router->PumpLL();
     }
 
     bool

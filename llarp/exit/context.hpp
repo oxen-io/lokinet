@@ -41,6 +41,9 @@ namespace llarp
       exit::Endpoint *
       FindEndpointForPath(const PathID_t &path) const;
 
+      void
+      FlushAll();
+
       /// calculate (pk, tx, rx) for all exit traffic
       using TrafficStats =
           std::unordered_map< PubKey, std::pair< uint64_t, uint64_t >,

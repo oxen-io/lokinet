@@ -175,6 +175,13 @@ namespace llarp
   {
     if(_stopping.load())
       return;
+    const auto now = Now();
+    _hiddenServiceContext.ForEachService(
+        [now](const auto &, const auto &ptr) -> bool {
+          ptr->Pump(now);
+          return true;
+        });
+    _exitContext.FlushAll();
     paths.PumpDownstream();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
