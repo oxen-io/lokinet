@@ -188,7 +188,8 @@ namespace llarp
         auto msg = m_EncryptQueue.tryPopFront();
         if(not msg.has_value())
           break;
-        EncryptInPlaceThenSend(std::move(msg.value()));
+        auto&& pkt = msg.value();
+        EncryptInPlaceThenSend(std::move(pkt));
       } while(true);
     }
 
@@ -570,7 +571,7 @@ namespace llarp
         auto msg = m_DecryptQueue.tryPopFront();
         if(not msg.has_value())
           break;
-        auto& pkt = msg.value();
+        auto&& pkt = msg.value();
         if(not DecryptMessageInPlace(pkt))
         {
           LogError("failed to decrypt session data from ", m_RemoteAddr);
@@ -603,7 +604,7 @@ namespace llarp
         auto msg = m_PlaintextQueue.tryPopFront();
         if(not msg.has_value())
           break;
-        Packet_t result(std::move(msg.value()));
+        auto&& result = msg.value();
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
         {
