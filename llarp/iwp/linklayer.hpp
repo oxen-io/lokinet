@@ -47,8 +47,12 @@ namespace llarp
       void
       UnmapAddr(const Addr &addr);
 
+      template < typename F >
       void
-      QueueWork(std::function< void(void) > work);
+      QueueWork(F &&work)
+      {
+        m_Worker->addJob(work);
+      }
 
      private:
       std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;

@@ -56,6 +56,14 @@ namespace llarp
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(pk));
     }
 
+    Session::~Session()
+    {
+      if(m_EncryptQueue)
+        delete m_EncryptQueue;
+      if(m_DecryptQueue)
+        delete m_DecryptQueue;
+    }
+
     void
     Session::Send_LL(const llarp_buffer_t& pkt)
     {
@@ -130,25 +138,21 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
-      if(m_EncryptNext == nullptr)
+      if(m_EncryptQueue == nullptr)
       {
-        m_EncryptNext        = std::make_shared< CryptoQueue_t >();
-        m_EncryptNext->seqno = m_EncryptSeqno++;
+        m_EncryptQueue = new CryptoQueue_t();
       }
-      m_EncryptNext->pkts.emplace_back(std::move(data));
-      if(!IsEstablished())
-      {
-        EncryptWorker(std::move(m_EncryptNext));
-        m_EncryptNext = nullptr;
-      }
+      m_EncryptQueue->emplace(m_EncryptSeqno++, std::move(data));
     }
 
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
     {
-      LogDebug("encrypt worker ", msgs->pkts.size(), " messages");
-      for(auto& pkt : msgs->pkts)
+      LogDebug("encrypt worker ", msgs->size(), " messages");
+      while(not msgs->empty())
       {
+        Packet_t pkt = std::move(msgs->top().pkt);
+        msgs->pop();
         llarp_buffer_t pktbuf(pkt);
         const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
         pktbuf.base += PacketOverhead;
@@ -161,16 +165,8 @@ namespace llarp
         pktbuf.base = pkt.data();
         pktbuf.cur  = pkt.data();
         pktbuf.sz   = pkt.size();
+        Send_LL(pktbuf);
       }
-      // call this in logic thread to help with re-odering
-      m_Parent->logic()->queue_func([self = shared_from_this(), msgs]() {
-        if(self->m_SendQueue.empty())
-        {
-          // queue a pump if this is our first batch
-          self->m_Parent->logic()->queue_func(std::bind(&Session::Pump, self));
-        }
-        self->m_SendQueue.emplace(std::move(*msgs));
-      });
     }
 
     void
@@ -178,14 +174,13 @@ namespace llarp
     {
       if(m_State == State::Closed)
         return;
-      m_Parent->logic()->queue_func([self = shared_from_this()]() {
-        auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
-        self->EncryptAndSend(std::move(close_msg));
-        if(self->m_State == State::Ready)
-          self->m_Parent->UnmapAddr(self->m_RemoteAddr);
-        self->m_State = State::Closed;
-        LogInfo("closing connection to ", self->m_RemoteAddr);
-      });
+
+      auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
+      EncryptAndSend(std::move(close_msg));
+      if(m_State == State::Ready)
+        m_Parent->UnmapAddr(m_RemoteAddr);
+      m_State = State::Closed;
+      LogInfo("closing connection to ", m_RemoteAddr);
     }
 
     bool
@@ -262,15 +257,6 @@ namespace llarp
     void
     Session::Pump()
     {
-      while(not m_SendQueue.empty())
-      {
-        for(const auto& pkt : m_SendQueue.top().pkts)
-        {
-          const llarp_buffer_t buf(pkt);
-          Send_LL(buf);
-        }
-        m_SendQueue.pop();
-      }
       const auto now = m_Parent->Now();
       if(m_State == State::Ready || m_State == State::LinkIntro)
       {
@@ -294,20 +280,32 @@ namespace llarp
         }
       }
       auto self = shared_from_this();
-      if(m_EncryptNext && !m_EncryptNext->pkts.empty())
+      if(m_EncryptQueue && not m_EncryptQueue->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
-          self->EncryptWorker(data);
-        });
-        m_EncryptNext = nullptr;
+        if(IsEstablished())
+        {
+          m_Parent->QueueWork(
+              std::bind(&Session::EncryptWorker, self, m_EncryptQueue));
+        }
+        else
+        {
+          EncryptWorker(m_EncryptQueue);
+        }
+        m_EncryptQueue = nullptr;
       }
 
-      if(m_DecryptNext && !m_DecryptNext->pkts.empty())
+      if(m_DecryptQueue && not m_DecryptQueue->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
-          self->DecryptWorker(data);
-        });
-        m_DecryptNext = nullptr;
+        if(IsEstablished())
+        {
+          m_Parent->QueueWork(
+              std::bind(&Session::DecryptWorker, self, m_DecryptQueue));
+        }
+        else
+        {
+          DecryptWorker(m_DecryptQueue);
+        }
+        m_DecryptQueue = nullptr;
       }
     }
 
@@ -577,25 +575,25 @@ namespace llarp
     }
 
     void
-    Session::HandleSessionData(byte_t* pkt, size_t sz)
-    {
-      if(m_DecryptNext == nullptr)
-      {
-        m_DecryptNext        = std::make_shared< CryptoQueue_t >();
-        m_DecryptNext->seqno = m_DecryptSeqno++;
-      }
-      m_DecryptNext->pkts.emplace_back(sz);
-      auto& buf = m_DecryptNext->pkts.back();
-      std::copy_n(pkt, sz, buf.data());
-    }
-
-    void
     Session::DecryptWorker(CryptoQueue_ptr msgs)
     {
-      CryptoQueue_ptr recvMsgs = std::make_shared< CryptoQueue_t >();
-      recvMsgs->seqno          = msgs->seqno;
-      for(auto& pkt : msgs->pkts)
+      if(not IsEstablished())
       {
+        while(not msgs->empty())
+        {
+          HandleCipherText(std::move(msgs->top().pkt));
+          msgs->pop();
+        }
+        delete msgs;
+        return;
+      }
+      CryptoQueue_ptr recvMsgs = new CryptoQueue_t();
+      while(not msgs->empty())
+      {
+        const uint64_t s = msgs->top().seqno;
+        Packet_t pkt     = std::move(msgs->top().pkt);
+        msgs->pop();
+
         if(not DecryptMessageInPlace(pkt))
         {
           LogError("failed to decrypt session data from ", m_RemoteAddr);
@@ -607,19 +605,34 @@ namespace llarp
                    " != ", LLARP_PROTO_VERSION);
           continue;
         }
-        recvMsgs->pkts.emplace_back(std::move(pkt));
+        recvMsgs->emplace(s, std::move(pkt));
       }
-      LogDebug("decrypted ", recvMsgs->pkts.size(), " packets from ",
-               m_RemoteAddr);
-      m_Parent->logic()->queue_func([self = shared_from_this(), recvMsgs]() {
-        if(self->m_RecvQueue.empty())
-        {
-          // queue a pump if this is our first batch
-          self->m_Parent->logic()->queue_func(
-              std::bind(&Session::PumpRecv, self));
-        }
-        self->m_RecvQueue.emplace(std::move(*recvMsgs));
-      });
+      LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
+      if(recvMsgs->empty())
+      {
+        delete recvMsgs;
+        return;
+      }
+      m_Parent->logic()->queue_func(
+          std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
+    }
+
+    void
+    Session::HandlePlaintext(CryptoQueue_ptr msgs)
+    {
+      if(m_RecvQueue.empty())
+      {
+        m_Parent->logic()->queue_func(
+            std::bind(&Session::PumpRecv, shared_from_this()));
+      }
+      while(not msgs->empty())
+      {
+        const uint64_t s = msgs->top().seqno;
+        Packet_t pkt     = std::move(msgs->top().pkt);
+        m_RecvQueue.emplace(s, std::move(pkt));
+        msgs->pop();
+      }
+      delete msgs;
     }
 
     void
@@ -627,18 +640,8 @@ namespace llarp
     {
       while(not m_RecvQueue.empty())
       {
-        HandlePlaintext(m_RecvQueue.top());
+        Packet_t result = std::move(m_RecvQueue.top().pkt);
         m_RecvQueue.pop();
-      }
-      SendMACK();
-      m_Parent->PumpDone(this);
-    }
-
-    void
-    Session::HandlePlaintext(const CryptoQueue_t& msgs)
-    {
-      for(auto& result : msgs.pkts)
-      {
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch(result[PacketOverhead + 1])
         {
@@ -671,6 +674,8 @@ namespace llarp
                      " from ", m_RemoteAddr);
         }
       }
+      SendMACK();
+      m_Parent->PumpDone(this);
     }
 
     void
@@ -973,6 +978,16 @@ namespace llarp
     void
     Session::Recv_LL(byte_t* buf, size_t sz)
     {
+      if(m_DecryptQueue == nullptr)
+      {
+        m_DecryptQueue = new CryptoQueue_t();
+      }
+      m_DecryptQueue->emplace(m_DecryptSeqno++, buf, sz);
+    }
+
+    void
+    Session::HandleCipherText(Packet_t pkt)
+    {
       switch(m_State)
       {
         case State::Initial:
@@ -980,8 +995,8 @@ namespace llarp
           {
             // initial data
             // enter introduction phase
-            if(DecryptBuffer(buf, sz))
-              HandleGotIntro(buf, sz);
+            if(DecryptMessageInPlace(pkt))
+              HandleGotIntro(pkt.data(), pkt.size());
             else
               LogError("bad intro from ", m_RemoteAddr);
           }
@@ -995,18 +1010,16 @@ namespace llarp
           if(m_Inbound)
           {
             // we are replying to an intro ack
-            HandleCreateSessionRequest(buf, sz);
+            HandleCreateSessionRequest(pkt.data(), pkt.size());
           }
           else
           {
             // we got an intro ack
             // send a session request
-            HandleGotIntroAck(buf, sz);
+            HandleGotIntroAck(pkt.data(), pkt.size());
           }
           break;
-        case State::LinkIntro:
         default:
-          HandleSessionData(buf, sz);
           break;
       }
     }

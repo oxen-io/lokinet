@@ -46,7 +46,7 @@ namespace llarp
       /// inbound session
       Session(LinkLayer* parent, Addr from);
 
-      ~Session() = default;
+      ~Session();
 
       std::shared_ptr< ILinkSession >
       BorrowSelf() override
@@ -182,26 +182,59 @@ namespace llarp
 
       // using CryptoQueue_t   = std::vector< Packet_t >;
 
-      struct CryptoQueue
+      struct PacketEvent
       {
-        std::vector< Packet_t > pkts;
-        uint64_t seqno;
+        PacketEvent() = default;
 
+        PacketEvent(uint64_t s, byte_t* ptr, size_t sz)
+        {
+          seqno = s;
+          pkt.resize(sz);
+          std::copy_n(ptr, sz, pkt.begin());
+        }
+
+        PacketEvent(uint64_t s, Packet_t&& p)
+        {
+          seqno = s;
+          pkt   = std::move(p);
+        }
+
+        PacketEvent(const PacketEvent&) = delete;
+
+        PacketEvent&
+        operator=(const PacketEvent&) = delete;
+
+        PacketEvent&
+        operator=(PacketEvent&& other)
+        {
+          seqno       = other.seqno;
+          other.seqno = 0;
+          pkt         = std::move(other.pkt);
+          return *this;
+        }
+
+        PacketEvent(PacketEvent&& other)
+        {
+          seqno       = other.seqno;
+          other.seqno = 0;
+          pkt         = std::move(other.pkt);
+        }
+
+        uint64_t seqno;
+        Packet_t pkt;
         bool
-        operator<(const CryptoQueue& other) const
+        operator<(const PacketEvent& other) const
         {
           return other.seqno < seqno;
         }
       };
 
-      using CryptoQueue_t = CryptoQueue;
+      using CryptoQueue_t   = std::priority_queue< PacketEvent >;
+      using CryptoQueue_ptr = CryptoQueue_t*;
 
-      using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
-      CryptoQueue_ptr m_EncryptNext;
-      CryptoQueue_ptr m_DecryptNext;
-
-      std::priority_queue< CryptoQueue_t > m_RecvQueue;
-      std::priority_queue< CryptoQueue_t > m_SendQueue;
+      CryptoQueue_ptr m_EncryptQueue = nullptr;
+      CryptoQueue_ptr m_DecryptQueue = nullptr;
+      CryptoQueue_t m_RecvQueue;
 
       uint64_t m_DecryptSeqno = 0;
       uint64_t m_EncryptSeqno = 0;
@@ -216,7 +249,7 @@ namespace llarp
       PumpRecv();
 
       void
-      HandlePlaintext(const CryptoQueue_t& msgs);
+      HandlePlaintext(CryptoQueue_ptr msgs);
 
       void
       HandleGotIntro(byte_t*, size_t);
@@ -226,8 +259,9 @@ namespace llarp
 
       void
       HandleCreateSessionRequest(byte_t*, size_t);
+
       void
-      HandleSessionData(byte_t*, size_t);
+      HandleCipherText(Packet_t pkt);
 
       bool
       DecryptMessageInPlace(Packet_t& pkt)

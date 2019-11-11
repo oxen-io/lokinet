@@ -39,8 +39,23 @@ namespace llarp
     void
     queue_job(struct llarp_thread_job job);
 
+    template < typename F >
     bool
-    queue_func(std::function< void(void) >&& func);
+    queue_func(F&& func)
+    {
+      while(not thread->impl->tryAddJob(func))
+      {
+        if(can_flush())
+        {
+          thread->impl->drain();
+        }
+        else
+        {
+          return thread->impl->addJob(func);
+        }
+      }
+      return true;
+    }
 
     uint32_t
     call_later(const llarp_timeout_job& job);

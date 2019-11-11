@@ -68,16 +68,6 @@ namespace llarp
     llarp_timer_run(this->timer, this->thread);
   }
 
-  bool
-  Logic::queue_func(std::function< void(void) >&& f)
-  {
-    if(!this->thread->impl->tryAddJob(f))
-    {
-      call_later(0, f);
-    }
-    return true;
-  }
-
   void
   Logic::call_later(llarp_time_t timeout, std::function< void(void) > func)
   {

@@ -69,12 +69,6 @@ namespace llarp
     }
 
     void
-    LinkLayer::QueueWork(std::function< void(void) > func)
-    {
-      m_Worker->addJob(func);
-    }
-
-    void
     LinkLayer::RecvFrom(const Addr& from, byte_t* ptr, size_t sz)
     {
       std::shared_ptr< ILinkSession > session;
