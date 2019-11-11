@@ -273,7 +273,7 @@ namespace llarp
         m_TransitPaths.ForEach(
             [&](auto& ptr) { ptr->FlushUpstream(m_Router); });
       }
-      m_OurPaths.ForEach([&](auto& ptr) { ptr->UpstreamFlush(m_Router); });
+      // m_OurPaths.ForEach([&](auto& ptr) { ptr->UpstreamFlush(m_Router); });
     }
 
     void
@@ -284,7 +284,8 @@ namespace llarp
         m_TransitPaths.ForEach(
             [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
       }
-      m_OurPaths.ForEach([&](auto& ptr) { ptr->DownstreamFlush(m_Router); });
+      //  m_OurPaths.ForEach([&](auto& ptr) { ptr->DownstreamFlush(m_Router);
+      //  });
     }
 
     void
@@ -309,6 +310,7 @@ namespace llarp
           }
         });
       }
+      /*
       m_OurPaths.ForEach([&](auto& ptr) {
         ptr->ForEachPath([&](auto& path) {
           if(path->Upstream() == pk)
@@ -320,6 +322,7 @@ namespace llarp
           }
         });
       });
+      */
     }
 
     void
