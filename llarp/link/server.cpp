@@ -7,7 +7,7 @@
 
 namespace llarp
 {
-  static constexpr size_t MaxSessionsPerKey = 16;
+  static constexpr size_t MaxSessionsPerKey = 1;
 
   ILinkLayer::ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
@@ -430,7 +430,7 @@ namespace llarp
   bool
   ILinkLayer::PutSession(const std::shared_ptr< ILinkSession >& s)
   {
-    static constexpr size_t MaxSessionsPerEndpoint = 5;
+    static constexpr size_t MaxSessionsPerEndpoint = 1;
     ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     if(m_Pending.count(addr) >= MaxSessionsPerEndpoint)
