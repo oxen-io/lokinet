@@ -393,10 +393,11 @@ namespace llarp
     void
     Path::HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r)
     {
+      const auto up = Upstream();
       msgs->ForEach([&](auto& msg) {
-        if(!r->SendToOrQueue(Upstream(), &msg))
+        if(!r->SendToOrQueue(up, &msg))
         {
-          LogDebug("failed to send upstream to ", Upstream());
+          LogDebug("failed to send upstream to ", up);
         }
       });
     }
@@ -501,12 +502,12 @@ namespace llarp
     {
       msgs->ForEach([&](auto& msg) {
         const llarp_buffer_t buf(msg.X);
-        if(!HandleRoutingMessage(buf, r))
+        if(!this->HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");
           return;
         }
-        m_LastRecvMessage = r->Now();
+        this->m_LastRecvMessage = r->Now();
       });
     }
 
