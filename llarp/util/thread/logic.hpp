@@ -43,18 +43,16 @@ namespace llarp
     bool
     queue_func(F&& func)
     {
-      while(not thread->impl->tryAddJob(func))
+      const std::function< void(void) > f = std::move(func);
+      if(not thread->impl->tryAddJob(f))
       {
         if(can_flush())
         {
-          thread->impl->drain();
-        }
-        else
-        {
-          return thread->impl->addJob(func);
+          llarp_timer_call_func_later(timer, 5, f);
+          return true;
         }
       }
-      return true;
+      return thread->impl->addJob(f);
     }
 
     uint32_t
@@ -71,6 +69,9 @@ namespace llarp
 
     bool
     can_flush() const;
+
+   private:
+    size_t m_Jobs = 0;
   };
 }  // namespace llarp
 

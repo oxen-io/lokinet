@@ -113,11 +113,9 @@ int
 main(int argc, char *argv[])
 {
   llarp_main_runtime_opts opts;
-  const char *singleThreadVar = getenv("LLARP_SHADOW");
-  if(singleThreadVar && std::string(singleThreadVar) == "1")
-  {
-    opts.singleThreaded = true;
-  }
+  opts.singleThreaded = false;
+  opts.background     = false;
+  opts.debug          = false;
 
 #ifdef _WIN32
   if(startWinsock())
@@ -159,8 +157,7 @@ main(int argc, char *argv[])
 
     if(result.count("verbose") > 0)
     {
-      SetLogLevel(llarp::eLogDebug);
-      llarp::LogDebug("debug logging activated");
+      opts.debug = true;
     }
 
     if(!result["colour"].as< bool >())
@@ -218,6 +215,12 @@ main(int argc, char *argv[])
     std::cerr << ex.what();
     std::cout << options.help() << std::endl;
     return 1;
+  }
+
+  if(opts.debug)
+  {
+    SetLogLevel(llarp::eLogDebug);
+    llarp::LogDebug("debug logging activated");
   }
 
   if(!conffname.empty())

@@ -76,19 +76,22 @@ namespace llarp
     PathSet::ExpirePaths(llarp_time_t now)
     {
       Lock_t l(&m_PathsMutex);
-      if(m_Paths.size() == 0)
-        return;
-      auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      if(m_Paths.size() > 0)
       {
-        if(itr->second->Expired(now))
+        return;
+        auto itr = m_Paths.begin();
+        while(itr != m_Paths.end())
         {
-          itr->second->Destroy();
-          itr = m_Paths.erase(itr);
+          if(itr->second->Expired(now))
+          {
+            itr->second->Destroy();
+            itr = m_Paths.erase(itr);
+          }
+          else
+            ++itr;
         }
-        else
-          ++itr;
       }
+      Cleanup();
     }
 
     Path_ptr

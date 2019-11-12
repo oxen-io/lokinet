@@ -18,14 +18,13 @@ namespace llarp
           m_Uses++;
         }
 
-        bool
+        void
         DecRef()
         {
           if(m_Uses)
           {
             m_Uses--;
           }
-          return Done();
         }
 
         bool
@@ -53,13 +52,15 @@ namespace llarp
       static T *
       Obtain(std::list< PoolHolder< T > > &l)
       {
-        for(auto &holder : l)
+        auto itr = l.begin();
+        while(itr != l.end())
         {
-          if(holder.CanHoldMore())
+          if(itr->CanHoldMore())
           {
-            holder.IncRef();
-            return &holder.m_Pool;
+            itr->IncRef();
+            return &itr->m_Pool;
           }
+          ++itr;
         }
         const auto idx = l.size();
         l.emplace_back();
@@ -73,24 +74,37 @@ namespace llarp
       static void
       Return(std::list< PoolHolder< T > > &l, T *pool)
       {
-        assert(pool != nullptr);
         auto itr = l.begin();
         for(size_t idx = 0; idx < pool->Index; itr++)
         {
         };
-        if(itr->DecRef())
-        {
+        itr->DecRef();
+        if(itr->Done())
           itr->m_Pool.Finish();
-          l.erase(itr);
-          // reindex pools
-          size_t idx = 0;
-          itr        = l.begin();
-          while(itr != l.end())
+      }
+
+      template < typename T >
+      static void
+      Cleanup(T &l)
+      {
+        auto itr = l.begin();
+        while(itr != l.end())
+        {
+          if(itr->Done())
           {
-            itr->m_Pool.Index = idx;
-            ++idx;
-            ++itr;
+            itr = l.erase(itr);
           }
+          else
+            ++itr;
+        }
+        // reindex pools
+        size_t idx = 0;
+        itr        = l.begin();
+        while(itr != l.end())
+        {
+          itr->m_Pool.Index = idx;
+          ++idx;
+          ++itr;
         }
       }
 
@@ -103,7 +117,8 @@ namespace llarp
       void
       ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t pool)
       {
-        Return(m_Downstream, pool);
+        if(pool)
+          Return(m_Downstream, pool);
       }
 
       UpstreamBufferPool_t::Ptr_t
@@ -115,7 +130,15 @@ namespace llarp
       void
       ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t pool)
       {
-        Return(m_Upstream, pool);
+        if(pool)
+          Return(m_Upstream, pool);
+      }
+
+      void
+      CleanupPools()
+      {
+        Cleanup(m_Upstream);
+        Cleanup(m_Downstream);
       }
     };
 
@@ -149,6 +172,12 @@ namespace llarp
     MemPool::ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t p)
     {
       m_Impl->ReturnDownstreamBufferPool(p);
+    }
+
+    void
+    MemPool::Cleanup()
+    {
+      m_Impl->CleanupPools();
     }
 
   }  // namespace path

@@ -121,7 +121,7 @@ type=null
     with open(args.out, 'w') as f:
         f.write('''[program:svc-node]
 directory = {}
-command = {} daemon.ini
+command = bash -c "{} daemon.ini"
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
@@ -129,7 +129,7 @@ stdout_logfile={}/svc-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), exe, args.dir, args.svc))
+'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), (nodeid is not 0 and 'sleep 1 && ' or '') + exe, args.dir, args.svc))
         f.write('''[program:Client-node]
 directory = {}
 command = bash -c "sleep 5 && {} client.ini"

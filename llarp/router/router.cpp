@@ -187,6 +187,7 @@ namespace llarp
       paths.PumpUpstream();
       _linkManager.PumpLinks();
     }
+    paths.CleanupMemPools();
   }
 
   bool

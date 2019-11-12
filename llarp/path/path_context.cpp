@@ -264,6 +264,15 @@ namespace llarp
     }
 
     void
+    PathContext::CleanupMemPools()
+    {
+      /// clean up our mempool
+      Cleanup();
+      /// clean up all pathset mempools
+      m_OurPaths.ForEach([](auto& ptr) { ptr->Cleanup(); });
+    }
+
+    void
     PathContext::PumpUpstream()
     {
       if(m_AllowTransit)
@@ -350,6 +359,7 @@ namespace llarp
           else
             ++itr;
         }
+        Cleanup();
       }
     }
 

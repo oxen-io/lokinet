@@ -17,15 +17,24 @@ namespace llarp
 
       using Ptr_t = BufferPool*;
 
-      BufferPool(size_t sz = Buckets / 4) : m_FreeQueue(sz)
+      BufferPool() : m_FreeQueue(Buckets / 4)
       {
         size_t idx = 0;
         for(auto& buf : m_Buffers)
         {
+          buf.Clear();
           buf.Index = idx;
           ++idx;
         }
         m_BuffersAllocated.reset();
+        m_FreeQueue.enable();
+      }
+
+      void
+      Clear()
+      {
+        for(auto& buf : m_Buffers)
+          buf.Clear();
       }
 
       void
@@ -33,8 +42,10 @@ namespace llarp
       {
         if(t == nullptr)
           return;
+        if(not m_FreeQueue.enabled())
+          return;
         while(m_FreeQueue.tryPushBack(t->Index)
-              == llarp::thread::QueueReturn::QueueFull)
+              != llarp::thread::QueueReturn::Success)
         {
           if(multithread)
           {

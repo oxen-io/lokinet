@@ -125,11 +125,9 @@ namespace llarp
       };
 
      protected:
-      uint64_t m_SequenceNum                   = 0;
-      UpstreamTraffic_ptr m_UpstreamIngest     = nullptr;
-      DownstreamTraffic_ptr m_DownstreamIngest = nullptr;
-      uint64_t m_UpstreamSequence              = 0;
-      uint64_t m_DownstreamSequence            = 0;
+      uint64_t m_SequenceNum        = 0;
+      uint64_t m_UpstreamSequence   = 0;
+      uint64_t m_DownstreamSequence = 0;
       UpstreamQueue_t m_UpstreamEgress;
       DownstreamQueue_t m_DownstreamEgress;
 
@@ -176,14 +174,7 @@ namespace llarp
       DownstreamBufferPool_t::Ptr_t m_DownstreamPool = nullptr;
 
      private:
-      UpstreamTraffic_ptr
-      NewUpstream();
-
       void FreeUpstream(UpstreamTraffic_ptr);
-
-      DownstreamTraffic_ptr
-      NewDownstream();
-
       void FreeDownstream(DownstreamTraffic_ptr);
     };
 

@@ -107,6 +107,9 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
+      void
+      CleanupMemPools();
+
       /// queues work for symettric crypto on paths
       template < typename F >
       bool
@@ -142,8 +145,8 @@ namespace llarp
 
       struct SyncOwnedPathsMap_t
       {
-        using Mutex_t = util::Mutex;
-        using Lock_t  = util::Lock;
+        using Mutex_t = util::NullMutex;
+        using Lock_t  = util::NullLock;
         Mutex_t first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 

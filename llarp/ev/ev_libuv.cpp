@@ -512,12 +512,15 @@ namespace libuv
         if(m_UDP->recvfrom)
         {
           const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
-          m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+          m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer(pkt));
           return;
         }
-        UseCurrentBuffer([fromaddr, sz](auto& buf, auto idx) {
-          buf.GotEvent(idx, *fromaddr, sz);
-        });
+        else
+        {
+          UseCurrentBuffer([fromaddr, pktsz](auto& buf, auto idx) {
+            buf.GotEvent(idx, *fromaddr, pktsz);
+          });
+        }
       }
     }
 
@@ -532,15 +535,10 @@ namespace libuv
     Tick()
     {
       if(m_UDP && m_UDP->tick)
-      {
         m_UDP->tick(m_UDP);
-      }
-      else
-      {
-        auto pkts = PopNextBuffer();
-        FreeBuffer(pkts);
-      }
-      EnsureBufferSpace();
+
+      if(m_UDP && m_UDP->recvfrom == nullptr)
+        EnsureBufferSpace();
     }
 
     static int

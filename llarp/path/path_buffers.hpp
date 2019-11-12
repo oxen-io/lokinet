@@ -105,6 +105,9 @@ namespace llarp
 
       void ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t);
 
+      void
+      Cleanup();
+
      private:
       MemPool_Impl *m_Impl;
     };

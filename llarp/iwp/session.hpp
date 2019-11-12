@@ -261,7 +261,7 @@ namespace llarp
       HandleCreateSessionRequest(byte_t*, size_t);
 
       void
-      HandleCipherText(Packet_t pkt);
+      HandleCipherText(byte_t*, size_t);
 
       bool
       DecryptMessageInPlace(Packet_t& pkt)
@@ -316,6 +316,9 @@ namespace llarp
 
       void
       HandleDROP(Packet_t msg);
+
+      void
+      DoEncryptThenSend(Packet_t msg);
     };
   }  // namespace iwp
 }  // namespace llarp

@@ -8,39 +8,67 @@ namespace llarp
     // handle data in upstream direction
     bool
     IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                                AbstractRouter*)
+                                AbstractRouter* r)
     {
-      if(m_UpstreamIngest == nullptr)
+      if(m_UpstreamPool == nullptr)
       {
-        m_UpstreamIngest = NewUpstream();
-        if(m_UpstreamIngest == nullptr)
+        m_UpstreamPool = ObtainUpstreamBufferPool();
+        if(m_UpstreamPool == nullptr)
           return false;
       }
-      if(m_UpstreamPool == nullptr)
+      if(m_UpstreamPool->AllocBuffer([&](auto& buf) -> bool {
+           if(buf.IsFull())
+           {
+             FlushUpstream(r);
+             m_UpstreamPool->EnsureBufferSpace();
+             return buf.Index == m_UpstreamPool->Current().Index;
+           }
+           return false;
+         })
+         == nullptr)
         return false;
-      m_UpstreamPool->UseCurrentBuffer([&X, &Y](auto& bucket, auto idx) {
-        bucket.GiveMessageAt(X, Y, idx);
-      });
-      return true;
+      bool success = true;
+      m_UpstreamPool->UseCurrentBuffer(
+          [&X, &Y, &success](auto& bucket, auto idx) {
+            if(bucket.IsFull())
+              success = false;
+            else
+              bucket.GiveMessageAt(X, Y, idx);
+          });
+      return success;
     }
 
     // handle data in downstream direction
     bool
     IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                                  AbstractRouter*)
+                                  AbstractRouter* r)
     {
-      if(m_DownstreamIngest == nullptr)
+      if(m_DownstreamPool == nullptr)
       {
-        m_DownstreamIngest = NewDownstream();
-        if(m_DownstreamIngest == nullptr)
+        m_DownstreamPool = ObtainDownstreamBufferPool();
+        if(m_DownstreamPool == nullptr)
           return false;
       }
-      if(m_DownstreamPool == nullptr)
+      if(m_DownstreamPool->AllocBuffer([&](auto& buf) -> bool {
+           if(buf.IsFull())
+           {
+             FlushDownstream(r);
+             m_DownstreamPool->EnsureBufferSpace();
+             return buf.Index == m_DownstreamPool->Current().Index;
+           }
+           return false;
+         })
+         == nullptr)
         return false;
-      m_DownstreamPool->UseCurrentBuffer([&X, &Y](auto& bucket, auto idx) {
-        bucket.GiveMessageAt(X, Y, idx);
-      });
-      return true;
+      bool success = true;
+      m_DownstreamPool->UseCurrentBuffer(
+          [&X, &Y, &success](auto& bucket, auto idx) {
+            if(bucket.IsFull())
+              success = false;
+            else
+              bucket.GiveMessageAt(X, Y, idx);
+          });
+      return success;
     }
 
     void
@@ -82,85 +110,58 @@ namespace llarp
       m_DownstreamEgress.emplace(batch);
     }
 
-    UpstreamTraffic_ptr
-    IHopHandler::NewUpstream()
-    {
-      if(m_UpstreamPool == nullptr)
-      {
-        m_UpstreamPool = ObtainUpstreamBufferPool();
-        if(m_UpstreamPool == nullptr)
-          return nullptr;
-      }
-      auto t = m_UpstreamPool->AllocBuffer([&](auto& buf) -> bool {
-        if(buf.IsFull())
-        {
-          m_UpstreamPool->EnsureBufferSpace();
-          return m_UpstreamPool->Current().Index == buf.Index;
-        }
-        return false;
-      });
-      if(t)
-      {
-        t->seqno = m_UpstreamSequence++;
-      }
-      return t;
-    }
-
     void
     IHopHandler::FreeUpstream(UpstreamTraffic_ptr t)
     {
-      if(m_UpstreamPool)
-        m_UpstreamPool->FreeBuffer(t);
-    }
-
-    DownstreamTraffic_ptr
-    IHopHandler::NewDownstream()
-    {
-      if(m_DownstreamPool == nullptr)
-      {
-        m_DownstreamPool = ObtainDownstreamBufferPool();
-        if(m_DownstreamPool == nullptr)
-          return nullptr;
-      }
-      auto t = m_DownstreamPool->AllocBuffer([&](auto& buf) -> bool {
-        if(buf.IsFull())
-        {
-          m_DownstreamPool->EnsureBufferSpace();
-          return m_DownstreamPool->Current().Index == buf.Index;
-        }
-        return false;
-      });
-      if(t)
-      {
-        t->seqno = m_DownstreamSequence++;
-      }
-      return t;
+      m_UpstreamPool->FreeBuffer(t);
     }
 
     void
     IHopHandler::FreeDownstream(DownstreamTraffic_ptr t)
     {
-      if(m_DownstreamPool)
-        m_DownstreamPool->FreeBuffer(t);
+      m_DownstreamPool->FreeBuffer(t);
     }
 
     void
     IHopHandler::FlushUpstream(AbstractRouter* r)
     {
-      if(m_UpstreamIngest && not m_UpstreamIngest->empty())
-        r->pathContext().QueuePathWork(std::bind(
-            &IHopHandler::UpstreamWork, GetSelf(), m_UpstreamIngest, r));
-
-      m_UpstreamIngest = nullptr;
+      if(m_UpstreamPool == nullptr)
+        return;
+      auto pool = m_UpstreamPool->PopNextBuffer();
+      if(pool)
+      {
+        if(pool->empty())
+        {
+          m_UpstreamPool->FreeBuffer(pool);
+        }
+        else
+        {
+          pool->seqno = m_UpstreamSequence++;
+          r->pathContext().QueuePathWork(
+              std::bind(&IHopHandler::UpstreamWork, GetSelf(), pool, r));
+        }
+      }
     }
 
     void
     IHopHandler::FlushDownstream(AbstractRouter* r)
     {
-      if(m_DownstreamIngest && not m_DownstreamIngest->empty())
-        r->pathContext().QueuePathWork(std::bind(
-            &IHopHandler::DownstreamWork, GetSelf(), m_DownstreamIngest, r));
-      m_DownstreamIngest = nullptr;
+      if(m_DownstreamPool == nullptr)
+        return;
+      auto pool = m_DownstreamPool->PopNextBuffer();
+      if(pool)
+      {
+        if(pool->empty())
+        {
+          m_DownstreamPool->FreeBuffer(pool);
+        }
+        else
+        {
+          pool->seqno = m_DownstreamSequence++;
+          r->pathContext().QueuePathWork(
+              std::bind(&IHopHandler::DownstreamWork, GetSelf(), pool, r));
+        }
+      }
     }
 
   }  // namespace path
