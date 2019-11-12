@@ -91,8 +91,7 @@ namespace llarp
                         public routing::IMessageHandler,
                         std::enable_shared_from_this< TransitHop >
     {
-
-      TransitHop(PathContext * ctx);
+      TransitHop(PathContext* ctx);
 
       TransitHopInfo info;
       SharedSecret pathKey;
@@ -252,8 +251,7 @@ namespace llarp
       DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(UpstreamTraffic_ptr msgs,
-                        AbstractRouter* r) override;
+      HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r) override;
 
       void
       HandleAllDownstream(DownstreamTraffic_ptr msgs,
@@ -265,25 +263,22 @@ namespace llarp
         return shared_from_this();
       }
 
-    protected: 
-
-      DownstreamBufferPool_t::Ptr_t 
+     protected:
+      DownstreamBufferPool_t::Ptr_t
       ObtainDownstreamBufferPool() override;
 
-      UpstreamBufferPool_t::Ptr_t 
+      UpstreamBufferPool_t::Ptr_t
       ObtainUpstreamBufferPool() override;
 
-      void 
-      ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
+      void ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
 
-      void 
-      ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
+      void ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
 
       void
       QueueDestroySelf(AbstractRouter* r);
-    private:
-      PathContext * const m_PathContext;
 
+     private:
+      PathContext* const m_PathContext;
     };
 
     inline std::ostream&

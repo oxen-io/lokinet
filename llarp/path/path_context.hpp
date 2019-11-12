@@ -108,9 +108,9 @@ namespace llarp
       RemovePathSet(PathSet_ptr set);
 
       /// queues work for symettric crypto on paths
-      template<typename F>
+      template < typename F >
       bool
-      QueuePathWork(F && work)
+      QueuePathWork(F&& work)
       {
         if(m_CryptoWorker == nullptr || not m_CryptoWorker->enabled())
           return false;
@@ -173,8 +173,7 @@ namespace llarp
       bool m_AllowTransit;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
-      std::unique_ptr<thread::ThreadPool> m_CryptoWorker;
-      
+      std::unique_ptr< thread::ThreadPool > m_CryptoWorker;
     };
   }  // namespace path
 }  // namespace llarp

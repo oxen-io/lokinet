@@ -289,7 +289,6 @@ namespace llarp
       size_t numPaths;
 
      protected:
-
       BuildStats m_BuildStats;
 
       void

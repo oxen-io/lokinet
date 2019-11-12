@@ -6,16 +6,16 @@ namespace llarp
   {
     struct MemPool_Impl
     {
-      template<typename Pool_t>
+      template < typename Pool_t >
       struct PoolHolder
       {
         Pool_t m_Pool;
         size_t m_Uses = 0;
 
-        void 
+        void
         IncRef()
         {
-          m_Uses ++;
+          m_Uses++;
         }
 
         bool
@@ -28,33 +28,32 @@ namespace llarp
           return Done();
         }
 
-        bool 
+        bool
         Done() const
         {
           return m_Uses == 0;
         }
 
-        bool 
+        bool
         CanHoldMore() const
         {
           return m_Uses < 32;
         }
 
         using Ptr_t = PoolHolder *;
-
       };
 
-      using UpstreamHolder_t = PoolHolder<UpstreamBufferPool_t>;
-      using DownstreamHolder_t = PoolHolder<DownstreamBufferPool_t>;
-      
-      std::list<UpstreamHolder_t> m_Upstream;
-      std::list<DownstreamHolder_t> m_Downstream;
+      using UpstreamHolder_t   = PoolHolder< UpstreamBufferPool_t >;
+      using DownstreamHolder_t = PoolHolder< DownstreamBufferPool_t >;
 
-      template<typename T>
+      std::list< UpstreamHolder_t > m_Upstream;
+      std::list< DownstreamHolder_t > m_Downstream;
+
+      template < typename T >
       static T *
-      Obtain(std::list<PoolHolder<T> > & l) 
+      Obtain(std::list< PoolHolder< T > > &l)
       {
-        for(auto & holder : l)
+        for(auto &holder : l)
         {
           if(holder.CanHoldMore())
           {
@@ -64,26 +63,28 @@ namespace llarp
         }
         const auto idx = l.size();
         l.emplace_back();
-        auto & h = l.back();
+        auto &h        = l.back();
         h.m_Pool.Index = idx;
         h.IncRef();
         return &h.m_Pool;
       }
 
-      template<typename T> 
+      template < typename T >
       static void
-      Return(std::list<PoolHolder< T> > & l, T * pool)
+      Return(std::list< PoolHolder< T > > &l, T *pool)
       {
         assert(pool != nullptr);
         auto itr = l.begin();
-        for(size_t idx = 0; idx < pool->Index; itr ++) {};
+        for(size_t idx = 0; idx < pool->Index; itr++)
+        {
+        };
         if(itr->DecRef())
         {
           itr->m_Pool.Finish();
           l.erase(itr);
           // reindex pools
           size_t idx = 0;
-          itr = l.begin();
+          itr        = l.begin();
           while(itr != l.end())
           {
             itr->m_Pool.Index = idx;
@@ -116,11 +117,15 @@ namespace llarp
       {
         Return(m_Upstream, pool);
       }
-
     };
 
-    MemPool::MemPool() : m_Impl(new MemPool_Impl()) {}
-    MemPool::~MemPool() { delete m_Impl; }
+    MemPool::MemPool() : m_Impl(new MemPool_Impl())
+    {
+    }
+    MemPool::~MemPool()
+    {
+      delete m_Impl;
+    }
 
     UpstreamBufferPool_t::Ptr_t
     MemPool::ObtainUpstreamBufferPool()
@@ -128,7 +133,7 @@ namespace llarp
       return m_Impl->ObtainUpstreamBufferPool();
     }
 
-    void 
+    void
     MemPool::ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t p)
     {
       m_Impl->ReturnUpstreamBufferPool(p);
@@ -140,13 +145,11 @@ namespace llarp
       return m_Impl->ObtainDownstreamBufferPool();
     }
 
-    void 
+    void
     MemPool::ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t p)
     {
       m_Impl->ReturnDownstreamBufferPool(p);
     }
 
-    
-
-  }
-}
+  }  // namespace path
+}  // namespace llarp

@@ -862,7 +862,7 @@ struct llarp_pkt_list
     return numEvents >= Events;
   }
 
-  void 
+  void
   Clear()
   {
     numEvents = 0;

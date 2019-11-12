@@ -23,12 +23,15 @@ namespace llarp
   namespace path
   {
     struct IHopHandler
-    {      
-
+    {
       using UpstreamQueue_t =
-          std::priority_queue< UpstreamTraffic_ptr, std::vector<UpstreamTraffic_ptr>, llarp::ComparePtr<UpstreamTraffic_ptr> >;
+          std::priority_queue< UpstreamTraffic_ptr,
+                               std::vector< UpstreamTraffic_ptr >,
+                               llarp::ComparePtr< UpstreamTraffic_ptr > >;
       using DownstreamQueue_t =
-          std::priority_queue< DownstreamTraffic_ptr, std::vector<DownstreamTraffic_ptr>, llarp::ComparePtr<DownstreamTraffic_ptr> >;
+          std::priority_queue< DownstreamTraffic_ptr,
+                               std::vector< DownstreamTraffic_ptr >,
+                               llarp::ComparePtr< DownstreamTraffic_ptr > >;
 
       virtual ~IHopHandler() = default;
 
@@ -40,7 +43,7 @@ namespace llarp
 
       /// called to kill this ihop handler
       /// any further use on it will not fowrard or process traffiy any more
-      virtual void 
+      virtual void
       Destroy() = 0;
 
       /// send routing message and increment sequence number
@@ -121,15 +124,13 @@ namespace llarp
         }
       };
 
-      
-
      protected:
-      uint64_t m_SequenceNum = 0;
-      UpstreamTraffic_ptr m_UpstreamIngest = nullptr;
+      uint64_t m_SequenceNum                   = 0;
+      UpstreamTraffic_ptr m_UpstreamIngest     = nullptr;
       DownstreamTraffic_ptr m_DownstreamIngest = nullptr;
-      uint64_t m_UpstreamSequence   = 0;
-      uint64_t m_DownstreamSequence = 0;
-      UpstreamQueue_t  m_UpstreamEgress;
+      uint64_t m_UpstreamSequence              = 0;
+      uint64_t m_DownstreamSequence            = 0;
+      UpstreamQueue_t m_UpstreamEgress;
       DownstreamQueue_t m_DownstreamEgress;
 
       virtual void
@@ -139,8 +140,7 @@ namespace llarp
       AfterCollectDownstream(AbstractRouter* r) = 0;
 
       void
-      CollectDownstream(AbstractRouter* r,
-                        DownstreamTraffic_ptr data);
+      CollectDownstream(AbstractRouter* r, DownstreamTraffic_ptr data);
 
       void
       CollectUpstream(AbstractRouter* r, UpstreamTraffic_ptr data);
@@ -152,53 +152,39 @@ namespace llarp
       DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) = 0;
 
       virtual void
-      HandleAllUpstream(UpstreamTraffic_ptr msgs,
-                        AbstractRouter* r) = 0;
+      HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r) = 0;
       virtual void
-      HandleAllDownstream(DownstreamTraffic_ptr msgs,
-                          AbstractRouter* r) = 0;
+      HandleAllDownstream(DownstreamTraffic_ptr msgs, AbstractRouter* r) = 0;
 
       virtual std::shared_ptr< IHopHandler >
       GetSelf() = 0;
 
       /// get the upstream message buffer pool for this ihop handler
-      virtual 
-      UpstreamBufferPool_t::Ptr_t 
+      virtual UpstreamBufferPool_t::Ptr_t
       ObtainUpstreamBufferPool() = 0;
 
-        /// get the downstream message buffer pool for this ihop handler
-      virtual 
-      DownstreamBufferPool_t::Ptr_t
+      /// get the downstream message buffer pool for this ihop handler
+      virtual DownstreamBufferPool_t::Ptr_t
       ObtainDownstreamBufferPool() = 0;
 
-      virtual 
-      void 
-      ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) = 0;
+      virtual void ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) = 0;
 
-      virtual
-      void 
-      ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) = 0;
+      virtual void ReturnDownstreamBufferPool(
+          DownstreamBufferPool_t::Ptr_t) = 0;
 
-      UpstreamBufferPool_t::Ptr_t m_UpstreamPool = nullptr;
+      UpstreamBufferPool_t::Ptr_t m_UpstreamPool     = nullptr;
       DownstreamBufferPool_t::Ptr_t m_DownstreamPool = nullptr;
 
-      private: 
-
-      UpstreamTraffic_ptr 
+     private:
+      UpstreamTraffic_ptr
       NewUpstream();
 
-      void
-      FreeUpstream(UpstreamTraffic_ptr);
-
+      void FreeUpstream(UpstreamTraffic_ptr);
 
       DownstreamTraffic_ptr
       NewDownstream();
 
-      void
-      FreeDownstream(DownstreamTraffic_ptr);
-
-      
-
+      void FreeDownstream(DownstreamTraffic_ptr);
     };
 
     using HopHandler_ptr = std::shared_ptr< IHopHandler >;

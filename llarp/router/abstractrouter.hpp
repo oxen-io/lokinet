@@ -41,7 +41,7 @@ namespace llarp
     struct IHopHandler;
     struct UpstreamBufferPool;
     struct DownstreamBufferPool;
-  }
+  }  // namespace path
 
   namespace routing
   {
@@ -245,7 +245,6 @@ namespace llarp
 
     void
     EnsureRouter(RouterID router, RouterLookupHandler handler);
-
   };
 }  // namespace llarp
 

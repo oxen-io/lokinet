@@ -437,7 +437,7 @@ namespace libuv
     uv_check_t m_Ticker;
   };
 
-  using udp_mempool_t = llarp::util::BufferPool<llarp_pkt_list>;
+  using udp_mempool_t = llarp::util::BufferPool< llarp_pkt_list >;
 
   struct udp_glue : public glue, public udp_mempool_t
   {
@@ -447,21 +447,17 @@ namespace libuv
     llarp::Addr m_Addr;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
-        : udp_mempool_t(),
-        m_UDP(udp), m_Addr(*src)
+        : udp_mempool_t(), m_UDP(udp), m_Addr(*src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
       uv_udp_init(loop, &m_Handle);
       uv_check_init(loop, &m_Ticker);
-      for(auto & buf : m_Buffers)
+      for(auto& buf : m_Buffers)
       {
         buf.m_Parent = udp;
       }
     }
-
-    
-    
 
     static void
     Alloc(uv_handle_t* h, size_t suggested_size, uv_buf_t* buf)
@@ -475,19 +471,18 @@ namespace libuv
       }
       else if(glue->m_UDP)
       {
-        auto pkts = glue->AllocBuffer([](auto & buf) -> bool {
-          return buf.IsFull();
-        });
+        auto pkts =
+            glue->AllocBuffer([](auto& buf) -> bool { return buf.IsFull(); });
         if(pkts == nullptr)
         {
           buf->base = nullptr;
-          buf->len = 0;
+          buf->len  = 0;
         }
         else
         {
-          buf->base = (char*) pkts->datas[pkts->numEvents].data();
-          buf->len = pkts->datas[pkts->numEvents].size();
-          pkts->numEvents ++;
+          buf->base = (char*)pkts->datas[pkts->numEvents].data();
+          buf->len  = pkts->datas[pkts->numEvents].size();
+          pkts->numEvents++;
         }
       }
       else
@@ -520,8 +515,7 @@ namespace libuv
           m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
           return;
         }
-        UseCurrentBuffer([fromaddr,sz](auto & buf, auto idx)
-        {
+        UseCurrentBuffer([fromaddr, sz](auto& buf, auto idx) {
           buf.GotEvent(idx, *fromaddr, sz);
         });
       }

@@ -391,10 +391,9 @@ namespace llarp
     }
 
     void
-    Path::HandleAllUpstream(UpstreamTraffic_ptr msgs,
-                            AbstractRouter* r)
+    Path::HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto & msg ) {
+      msgs->ForEach([&](auto& msg) {
         if(!r->SendToOrQueue(Upstream(), &msg))
         {
           LogDebug("failed to send upstream to ", Upstream());
@@ -405,8 +404,7 @@ namespace llarp
     void
     Path::UpstreamWork(UpstreamTraffic_ptr msgs, AbstractRouter* r)
     {
-
-      msgs->ForEach([&](auto & msg) {
+      msgs->ForEach([&](auto& msg) {
         const llarp_buffer_t buf(msg.X);
         TunnelNonce n = msg.Y;
         for(const auto& hop : hops)
@@ -415,10 +413,9 @@ namespace llarp
           n ^= hop.nonceXOR;
         }
       });
-      r->logic()->queue_func(
-          [self = shared_from_this(), r, msgs]() {
-            self->CollectUpstream(r, msgs);
-          });
+      r->logic()->queue_func([self = shared_from_this(), r, msgs]() {
+        self->CollectUpstream(r, msgs);
+      });
     }
 
     bool
@@ -445,7 +442,7 @@ namespace llarp
       return ss.str();
     }
 
-    DownstreamBufferPool_t::Ptr_t 
+    DownstreamBufferPool_t::Ptr_t
     Path::ObtainDownstreamBufferPool()
     {
       if(_status == ePathDestroy)
@@ -453,7 +450,7 @@ namespace llarp
       return m_PathSet->ObtainDownstreamBufferPool();
     }
 
-    UpstreamBufferPool_t::Ptr_t 
+    UpstreamBufferPool_t::Ptr_t
     Path::ObtainUpstreamBufferPool()
     {
       if(_status == ePathDestroy)
@@ -466,15 +463,14 @@ namespace llarp
     {
       m_PathSet->ReturnDownstreamBufferPool(pool);
     }
-    
+
     void
     Path::ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t pool)
     {
       m_PathSet->ReturnUpstreamBufferPool(pool);
     }
 
-
-    void 
+    void
     Path::Destroy()
     {
       _status = ePathDestroy;
@@ -487,26 +483,23 @@ namespace llarp
     void
     Path::DownstreamWork(DownstreamTraffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto & msg) {
+      msgs->ForEach([&](auto& msg) {
         const llarp_buffer_t buf(msg.X);
         for(const auto& hop : hops)
         {
           msg.Y ^= hop.nonceXOR;
-          CryptoManager::instance()->xchacha20(buf, hop.shared,
-                                               msg.Y);
+          CryptoManager::instance()->xchacha20(buf, hop.shared, msg.Y);
         }
       });
-      r->logic()->queue_func(
-          [self = shared_from_this(), r, msgs]() {
-            self->CollectDownstream(r, msgs);
-          });
+      r->logic()->queue_func([self = shared_from_this(), r, msgs]() {
+        self->CollectDownstream(r, msgs);
+      });
     }
 
     void
-    Path::HandleAllDownstream(DownstreamTraffic_ptr msgs,
-                              AbstractRouter* r)
+    Path::HandleAllDownstream(DownstreamTraffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto & msg) {
+      msgs->ForEach([&](auto& msg) {
         const llarp_buffer_t buf(msg.X);
         if(!HandleRoutingMessage(buf, r))
         {
