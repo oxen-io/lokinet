@@ -2,6 +2,7 @@
 #define LLARP_PATHSET_HPP
 
 #include <path/path_types.hpp>
+#include <path/ihophandler.hpp>
 #include <router_id.hpp>
 #include <routing/message.hpp>
 #include <service/intro_set.hpp>
@@ -36,7 +37,8 @@ namespace llarp
       ePathTimeout,
       ePathFailed,
       ePathIgnore,
-      ePathExpired
+      ePathExpired,
+      ePathDestroy
     };
 
     /// Stats about all our path builds
@@ -91,7 +93,7 @@ namespace llarp
     using PathSet_ptr = std::shared_ptr< PathSet >;
 
     /// a set of paths owned by an entity
-    struct PathSet
+    struct PathSet : public MemPool
     {
       /// maximum number of paths a path set can maintain
       static constexpr size_t max_paths = 32;
@@ -287,6 +289,7 @@ namespace llarp
       size_t numPaths;
 
      protected:
+
       BuildStats m_BuildStats;
 
       void

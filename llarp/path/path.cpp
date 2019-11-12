@@ -391,43 +391,33 @@ namespace llarp
     }
 
     void
-    Path::HandleAllUpstream(const std::vector< RelayUpstreamMessage >& msgs,
+    Path::HandleAllUpstream(UpstreamTraffic_ptr msgs,
                             AbstractRouter* r)
     {
-      for(const auto& msg : msgs)
-      {
+      msgs->ForEach([&](auto & msg ) {
         if(!r->SendToOrQueue(Upstream(), &msg))
         {
           LogDebug("failed to send upstream to ", Upstream());
         }
-      }
+      });
     }
 
     void
-    Path::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    Path::UpstreamWork(UpstreamTraffic_ptr msgs, AbstractRouter* r)
     {
-      IHopHandler::Batch< RelayUpstreamMessage > batch;
-      batch.seqno = msgs->seqno;
-      batch.msgs.resize(msgs->msgs.size());
-      size_t idx = 0;
-      for(auto& ev : msgs->msgs)
-      {
-        const llarp_buffer_t buf(ev.first);
-        TunnelNonce n = ev.second;
+
+      msgs->ForEach([&](auto & msg) {
+        const llarp_buffer_t buf(msg.X);
+        TunnelNonce n = msg.Y;
         for(const auto& hop : hops)
         {
           CryptoManager::instance()->xchacha20(buf, hop.shared, n);
           n ^= hop.nonceXOR;
         }
-        auto& msg  = batch.msgs[idx];
-        msg.X      = buf;
-        msg.Y      = ev.second;
-        msg.pathid = TXID();
-        ++idx;
-      }
+      });
       r->logic()->queue_func(
-          [self = shared_from_this(), r, data = std::move(batch)]() {
-            self->CollectUpstream(r, std::move(data));
+          [self = shared_from_this(), r, msgs]() {
+            self->CollectUpstream(r, msgs);
           });
     }
 
@@ -455,46 +445,76 @@ namespace llarp
       return ss.str();
     }
 
-    void
-    Path::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
+    DownstreamBufferPool_t::Ptr_t 
+    Path::ObtainDownstreamBufferPool()
     {
-      IHopHandler::Batch< RelayDownstreamMessage > batch;
-      batch.seqno = msgs->seqno;
-      batch.msgs.resize(msgs->msgs.size());
-      size_t idx = 0;
-      for(auto& ev : msgs->msgs)
-      {
-        const llarp_buffer_t buf(ev.first);
-        batch.msgs[idx].Y = ev.second;
+      if(_status == ePathDestroy)
+        return nullptr;
+      return m_PathSet->ObtainDownstreamBufferPool();
+    }
+
+    UpstreamBufferPool_t::Ptr_t 
+    Path::ObtainUpstreamBufferPool()
+    {
+      if(_status == ePathDestroy)
+        return nullptr;
+      return m_PathSet->ObtainUpstreamBufferPool();
+    }
+
+    void
+    Path::ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t pool)
+    {
+      m_PathSet->ReturnDownstreamBufferPool(pool);
+    }
+    
+    void
+    Path::ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t pool)
+    {
+      m_PathSet->ReturnUpstreamBufferPool(pool);
+    }
+
+
+    void 
+    Path::Destroy()
+    {
+      _status = ePathDestroy;
+      ReturnDownstreamBufferPool(m_DownstreamPool);
+      m_DownstreamPool = nullptr;
+      ReturnUpstreamBufferPool(m_UpstreamPool);
+      m_UpstreamPool = nullptr;
+    }
+
+    void
+    Path::DownstreamWork(DownstreamTraffic_ptr msgs, AbstractRouter* r)
+    {
+      msgs->ForEach([&](auto & msg) {
+        const llarp_buffer_t buf(msg.X);
         for(const auto& hop : hops)
         {
-          batch.msgs[idx].Y ^= hop.nonceXOR;
+          msg.Y ^= hop.nonceXOR;
           CryptoManager::instance()->xchacha20(buf, hop.shared,
-                                               batch.msgs[idx].Y);
+                                               msg.Y);
         }
-        batch.msgs[idx].X = buf;
-        ++idx;
-      }
+      });
       r->logic()->queue_func(
-          [self = shared_from_this(), r, data = std::move(batch)]() {
-            self->CollectDownstream(r, std::move(data));
+          [self = shared_from_this(), r, msgs]() {
+            self->CollectDownstream(r, msgs);
           });
     }
 
     void
-    Path::HandleAllDownstream(const std::vector< RelayDownstreamMessage >& msgs,
+    Path::HandleAllDownstream(DownstreamTraffic_ptr msgs,
                               AbstractRouter* r)
     {
-      for(const auto& msg : msgs)
-      {
+      msgs->ForEach([&](auto & msg) {
         const llarp_buffer_t buf(msg.X);
         if(!HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");
-          continue;
+          return;
         }
         m_LastRecvMessage = r->Now();
-      }
+      });
     }
 
     bool

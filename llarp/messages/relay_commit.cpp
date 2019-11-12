@@ -189,7 +189,7 @@ namespace llarp
         : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
-        , hop(std::make_shared< Hop >())
+        , hop(std::make_shared< Hop >(ctx))
     {
       hop->info.downstream = commit->session->GetPubKey();
     }
@@ -242,6 +242,7 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         llarp::LogError("duplicate transit hop", self->hop->info);
+        self->hop->Destroy();
         OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                             self->hop->info.downstream, self->hop->pathKey,
                             SendStatus::Congestion);
@@ -254,6 +255,7 @@ namespace llarp
         // we are not allowed to forward it ... now what?
         llarp::LogError("path to ", self->hop->info.upstream,
                         "not allowed, dropping build request on the floor");
+        self->hop->Destroy();
         OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                             self->hop->info.downstream, self->hop->pathKey,
                             SendStatus::InvalidRouter);
@@ -303,6 +305,7 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         status = LR_StatusRecord::FAIL_DUPLICATE_HOP;
+        self->hop->Destroy();
       }
       else
       {
@@ -427,7 +430,7 @@ namespace llarp
 
     // decrypt frames async
     frameDecrypt->decrypter->AsyncDecrypt(
-        context->Worker(), frameDecrypt->frames[0], frameDecrypt);
+        context->Router()->threadpool(), frameDecrypt->frames[0], frameDecrypt);
     return true;
   }
 }  // namespace llarp

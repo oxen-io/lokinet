@@ -222,6 +222,11 @@ namespace llarp
       bool
       Expired(llarp_time_t now) const override;
 
+
+      void 
+      Destroy() override;
+
+
       /// build a new path on the same set of hops as us
       /// regenerates keys
       void
@@ -334,18 +339,30 @@ namespace llarp
 
      protected:
       void
-      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      UpstreamWork(UpstreamTraffic_ptr queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(const std::vector< RelayUpstreamMessage >& msgs,
+      HandleAllUpstream(UpstreamTraffic_ptr msgs,
                         AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(const std::vector< RelayDownstreamMessage >& msgs,
+      HandleAllDownstream(DownstreamTraffic_ptr msgs,
                           AbstractRouter* r) override;
+
+      DownstreamBufferPool_t::Ptr_t 
+      ObtainDownstreamBufferPool() override;
+
+      UpstreamBufferPool_t::Ptr_t 
+      ObtainUpstreamBufferPool() override;
+
+      void 
+      ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
+
+      void 
+      ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
 
       std::shared_ptr< IHopHandler >
       GetSelf() override

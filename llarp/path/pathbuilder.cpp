@@ -143,14 +143,17 @@ namespace llarp
         ctx->pathset->PathBuildStarted(ctx->path);
       }
       else
+      {
         LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
+        ctx->path->Destroy();
+      }
     }
   }
 
   namespace path
   {
     Builder::Builder(AbstractRouter* p_router, size_t pathNum, size_t hops)
-        : path::PathSet(pathNum), _run(true), m_router(p_router), numHops(hops)
+        : PathSet(pathNum), _run(true), m_router(p_router), numHops(hops)
     {
       CryptoManager::instance()->encryption_keygen(enckey);
     }

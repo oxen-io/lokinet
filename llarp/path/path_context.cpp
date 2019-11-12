@@ -10,7 +10,8 @@ namespace llarp
   namespace path
   {
     PathContext::PathContext(AbstractRouter* router)
-        : m_Router(router), m_AllowTransit(false)
+        : path::MemPool(), m_Router(router), m_AllowTransit(false), 
+        m_CryptoWorker(std::make_unique<thread::ThreadPool>(1, 1024, "llarp-pathworker"))
     {
     }
 
@@ -24,12 +25,6 @@ namespace llarp
     PathContext::AllowingTransit() const
     {
       return m_AllowTransit;
-    }
-
-    std::shared_ptr< thread::ThreadPool >
-    PathContext::Worker()
-    {
-      return m_Router->threadpool();
     }
 
     std::shared_ptr< Logic >

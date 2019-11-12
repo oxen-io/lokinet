@@ -9,7 +9,9 @@ namespace llarp
 {
   namespace path
   {
-    PathSet::PathSet(size_t num) : numPaths(num)
+    PathSet::PathSet(size_t num) : 
+      MemPool(),
+      numPaths(num)
     {
     }
 
@@ -83,6 +85,7 @@ namespace llarp
       {
         if(itr->second->Expired(now))
         {
+          itr->second->Destroy();
           itr = m_Paths.erase(itr);
         }
         else
@@ -240,6 +243,7 @@ namespace llarp
     {
       Lock_t l(&m_PathsMutex);
       m_Paths.erase({path->Upstream(), path->RXID()});
+      path->Destroy();
     }
 
     Path_ptr

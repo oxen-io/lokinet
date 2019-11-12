@@ -85,11 +85,14 @@ namespace llarp
       return info.print(out, -1, -1);
     }
 
+    struct PathContext;
+
     struct TransitHop : public IHopHandler,
                         public routing::IMessageHandler,
                         std::enable_shared_from_this< TransitHop >
     {
-      TransitHop();
+
+      TransitHop(PathContext * ctx);
 
       TransitHopInfo info;
       SharedSecret pathKey;
@@ -153,6 +156,9 @@ namespace llarp
 
       bool
       Expired(llarp_time_t now) const override;
+
+      void
+      Destroy() override;
 
       bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const override
@@ -240,17 +246,17 @@ namespace llarp
       AfterCollectDownstream(AbstractRouter* r) override;
 
       void
-      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      UpstreamWork(UpstreamTraffic_ptr queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+      DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(const std::vector< RelayUpstreamMessage >& msgs,
+      HandleAllUpstream(UpstreamTraffic_ptr msgs,
                         AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(const std::vector< RelayDownstreamMessage >& msgs,
+      HandleAllDownstream(DownstreamTraffic_ptr msgs,
                           AbstractRouter* r) override;
 
       std::shared_ptr< IHopHandler >
@@ -259,12 +265,25 @@ namespace llarp
         return shared_from_this();
       }
 
-     private:
-      void
-      SetSelfDestruct();
+    protected: 
+
+      DownstreamBufferPool_t::Ptr_t 
+      ObtainDownstreamBufferPool() override;
+
+      UpstreamBufferPool_t::Ptr_t 
+      ObtainUpstreamBufferPool() override;
+
+      void 
+      ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
+
+      void 
+      ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
 
       void
       QueueDestroySelf(AbstractRouter* r);
+    private:
+      PathContext * const m_PathContext;
+
     };
 
     inline std::ostream&

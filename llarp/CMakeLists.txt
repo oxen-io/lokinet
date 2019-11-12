@@ -11,6 +11,7 @@ set(LIB_UTIL_SRC
   util/bencode.cpp
   util/bits.cpp
   util/buffer.cpp
+  util/buffer_pool.cpp
   util/codel.cpp
   util/common.cpp
   util/encode.cpp
@@ -197,6 +198,7 @@ set(LIB_SRC
   net/exit_info.cpp
   nodedb.cpp
   path/ihophandler.cpp
+  path/path_buffers.cpp
   path/path_context.cpp
   path/path_types.cpp
   path/path.cpp

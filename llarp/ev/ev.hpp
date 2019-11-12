@@ -826,7 +826,7 @@ struct llarp_pkt_list
 
   llarp_udp_io* m_Parent = nullptr;
   size_t numEvents       = 0;
-  size_t bufferIndex;
+  size_t Index;
 
   std::array< llarp::Addr, Events > addrs;
   std::array< Packet_t, Events > datas;
@@ -860,6 +860,12 @@ struct llarp_pkt_list
   IsFull() const
   {
     return numEvents >= Events;
+  }
+
+  void 
+  Clear()
+  {
+    numEvents = 0;
   }
 
   void
