@@ -344,6 +344,7 @@ namespace llarp
         {
           if(itr->second->Expired(now))
           {
+            itr->second->Destroy();
             itr = map.erase(itr);
           }
           else
