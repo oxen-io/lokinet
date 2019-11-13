@@ -343,8 +343,15 @@ namespace llarp
         }
         if(not work.empty())
         {
-          m_Parent->QueueWork(
+          if(IsEstablished())
+          {
+            m_Parent->QueueWork(
               std::bind(&Session::DecryptWorker, self, std::move(work)));
+          }
+          else
+          {
+            DecryptWorker(std::move(work));
+          }
         }
       }
     }
