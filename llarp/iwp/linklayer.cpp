@@ -74,11 +74,6 @@ namespace llarp
     {
       std::shared_ptr< ILinkSession > session;
 
-      if(m_Closing.count(from) > 0)
-      {
-        // drop traffic if we think it's from a closed session
-        return;
-      }
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
@@ -87,6 +82,11 @@ namespace llarp
         {
           if(not permitInbound)
             return;
+          if(m_Closing.count(from) > 0)
+          {
+            // drop traffic if we think it's from a closed session
+            return;
+          }
           m_Pending.insert({from, std::make_shared< Session >(this, from)});
         }
         session = m_Pending.find(from)->second;

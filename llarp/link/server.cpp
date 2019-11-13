@@ -253,6 +253,7 @@ namespace llarp
     if(!PickAddress(rc, to))
       return false;
     const llarp::Addr addr(to);
+    m_Closing.erase(addr);
     {
       ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
       if(m_Pending.count(addr) >= MaxSessionsPerKey)
@@ -261,7 +262,6 @@ namespace llarp
     std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
     {
-      m_Closing.erase(to);
       s->Start();
       return true;
     }

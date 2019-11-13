@@ -346,7 +346,7 @@ namespace llarp
           if(IsEstablished())
           {
             m_Parent->QueueWork(
-              std::bind(&Session::DecryptWorker, self, std::move(work)));
+                std::bind(&Session::DecryptWorker, self, std::move(work)));
           }
           else
           {
