@@ -760,6 +760,8 @@ namespace llarp
     });
     // expire paths
     paths.ExpirePaths(now);
+
+    PumpLL();
   }  // namespace llarp
 
   bool
