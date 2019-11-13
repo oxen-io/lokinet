@@ -11,7 +11,7 @@ namespace llarp
 {
   namespace util
   {
-    template < typename T, bool multithread = true, size_t Buckets = 1024 >
+    template < typename T, bool multithread = true, size_t Buckets = 32 >
     struct BufferPool
     {
       static constexpr size_t Buffers = Buckets;
