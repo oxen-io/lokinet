@@ -7,12 +7,16 @@
 #include <crypto/types.hpp>
 #include <link/server.hpp>
 #include <util/thread/thread_pool.hpp>
+#include <util/buffer_pool.hpp>
+#include <unordered_set>
 
 namespace llarp
 {
   namespace iwp
   {
-    struct LinkLayer final : public ILinkLayer
+    using PacketPool_t = util::BufferPool< PacketEvent, false, 256 >;
+
+    struct LinkLayer final : public ILinkLayer, public PacketPool_t
     {
       LinkLayer(const SecretKey &routerEncSecret, GetRCFunc getrc,
                 LinkMessageHandler h, SignBufferFunc sign,
@@ -53,6 +57,12 @@ namespace llarp
       {
         m_Worker->addJob(work);
       }
+
+      PacketEvent::Ptr_t
+      ObtainPacket(uint64_t sqno, byte_t *ptr, size_t sz);
+
+      void
+      ReleasePacket(PacketEvent::Ptr_t p);
 
      private:
       std::unordered_map< Addr, RouterID, Addr::Hash > m_AuthedAddrs;

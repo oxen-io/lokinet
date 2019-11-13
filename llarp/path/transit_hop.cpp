@@ -32,7 +32,7 @@ namespace llarp
       return stream;
     }
 
-    TransitHop::TransitHop(PathContext* ctx) : m_PathContext(ctx)
+    TransitHop::TransitHop(PathContext* ctx) : IHopHandler(ctx)
     {
     }
 
@@ -149,14 +149,13 @@ namespace llarp
     }
 
     void
-    TransitHop::DownstreamWork(DownstreamTraffic_ptr msgs, AbstractRouter* r)
+    TransitHop::DownstreamWork(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        const llarp_buffer_t buf(msg.X);
-        msg.pathid = info.rxID;
-        CryptoManager::instance()->xchacha20(buf, pathKey, msg.Y);
-        msg.Y ^= nonceXOR;
-        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
+      msgs->ForEach([&](auto& X, auto& Y) {
+        const llarp_buffer_t buf(X);
+        CryptoManager::instance()->xchacha20(buf, pathKey, Y);
+        Y ^= nonceXOR;
+        llarp::LogDebug("relay ", X.size(), " bytes downstream from ",
                         info.upstream, " to ", info.downstream);
       });
       r->logic()->queue_func([self = shared_from_this(), r, msgs]() {
@@ -165,13 +164,14 @@ namespace llarp
     }
 
     void
-    TransitHop::UpstreamWork(UpstreamTraffic_ptr msgs, AbstractRouter* r)
+    TransitHop::UpstreamWork(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        const llarp_buffer_t buf(msg.X);
-        CryptoManager::instance()->xchacha20(buf, pathKey, msg.Y);
-        msg.pathid = info.txID;
-        msg.Y ^= nonceXOR;
+      msgs->ForEach([&](auto& X, auto& Y) {
+        const llarp_buffer_t buf(X);
+        CryptoManager::instance()->xchacha20(buf, pathKey, Y);
+        Y ^= nonceXOR;
+        llarp::LogDebug("relay ", X.size(), " bytes upstream from ",
+                        info.downstream, " to ", info.upstream);
       });
       r->logic()->queue_func([self = shared_from_this(), r, msgs]() {
         self->CollectUpstream(r, msgs);
@@ -179,12 +179,12 @@ namespace llarp
     }
 
     void
-    TransitHop::HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r)
+    TransitHop::HandleAllUpstream(Traffic_ptr msgs, AbstractRouter* r)
     {
       if(IsEndpoint(r->pubkey()))
       {
-        msgs->ForEach([&](auto& msg) {
-          const llarp_buffer_t buf(msg.X);
+        msgs->ForEach([&](auto& X, auto&) {
+          const llarp_buffer_t buf(X);
           if(!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
           {
             LogWarn("invalid upstream data on endpoint ", info);
@@ -194,22 +194,34 @@ namespace llarp
       }
       else
       {
-        msgs->ForEach([&](auto& msg) {
-          llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
-                          info.downstream, " to ", info.upstream);
-          r->SendToOrQueue(info.upstream, &msg);
+        RelayUpstreamMessage msg;
+        msg.pathid = info.txID;
+        msgs->ForEach([&](auto& X, auto& Y) {
+          msg.X = X;
+          msg.Y = Y;
+          if(r->SendToOrQueue(info.upstream, &msg))
+          {
+            llarp::LogDebug("relayed ", msg.X.size(), " bytes upstream from ",
+                            info.downstream, " to ", info.upstream);
+          }
         });
       }
     }
 
     void
-    TransitHop::HandleAllDownstream(DownstreamTraffic_ptr msgs,
-                                    AbstractRouter* r)
+    TransitHop::HandleAllDownstream(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
-                        info.upstream, " to ", info.downstream);
-        r->SendToOrQueue(info.downstream, &msg);
+      RelayDownstreamMessage msg;
+      msg.pathid = info.rxID;
+      msgs->ForEach([&](auto& X, auto& Y) {
+        msg.X = X;
+        msg.Y = Y;
+
+        if(r->SendToOrQueue(info.downstream, &msg))
+        {
+          llarp::LogDebug("relayed ", msg.X.size(), " bytes downstream from ",
+                          info.upstream, " to ", info.downstream);
+        }
       });
     }
 
@@ -436,22 +448,6 @@ namespace llarp
     TransitHop::Destroy()
     {
       destroy = true;
-      ReturnUpstreamBufferPool(m_UpstreamPool);
-      m_UpstreamPool = nullptr;
-      ReturnDownstreamBufferPool(m_DownstreamPool);
-      m_DownstreamPool = nullptr;
-    }
-
-    void
-    TransitHop::ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t pool)
-    {
-      m_PathContext->ReturnUpstreamBufferPool(pool);
-    }
-
-    void
-    TransitHop::ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t pool)
-    {
-      m_PathContext->ReturnDownstreamBufferPool(pool);
     }
 
     void
@@ -459,22 +455,6 @@ namespace llarp
     {
       auto func = std::bind(&TransitHop::Destroy, shared_from_this());
       r->logic()->queue_func(func);
-    }
-
-    DownstreamBufferPool_t::Ptr_t
-    TransitHop::ObtainDownstreamBufferPool()
-    {
-      if(destroy)
-        return nullptr;
-      return m_PathContext->ObtainDownstreamBufferPool();
-    }
-
-    UpstreamBufferPool_t::Ptr_t
-    TransitHop::ObtainUpstreamBufferPool()
-    {
-      if(destroy)
-        return nullptr;
-      return m_PathContext->ObtainUpstreamBufferPool();
     }
   }  // namespace path
 }  // namespace llarp

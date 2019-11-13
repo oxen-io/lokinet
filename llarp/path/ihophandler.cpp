@@ -1,41 +1,41 @@
 #include <path/ihophandler.hpp>
+#include <path/path_context.hpp>
 #include <router/router.hpp>
 
 namespace llarp
 {
   namespace path
   {
+    IHopHandler::IHopHandler(PathContext* ctx) : m_Context(ctx)
+    {
+    }
+
     // handle data in upstream direction
     bool
     IHopHandler::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                                 AbstractRouter* r)
     {
-      if(m_UpstreamPool == nullptr)
-      {
-        m_UpstreamPool = ObtainUpstreamBufferPool();
-        if(m_UpstreamPool == nullptr)
-          return false;
-      }
-      if(m_UpstreamPool->AllocBuffer([&](auto& buf) -> bool {
-           if(buf.IsFull())
-           {
-             FlushUpstream(r);
-             m_UpstreamPool->EnsureBufferSpace();
-             return buf.Index == m_UpstreamPool->Current().Index;
-           }
-           return false;
-         })
-         == nullptr)
+      static const auto nop = [](auto&) -> bool { return false; };
+      if(m_UpstreamIngest == nullptr)
+        m_UpstreamIngest = m_Context->AllocBuffer(nop);
+      // can't allocate more
+      if(m_UpstreamIngest == nullptr)
         return false;
-      bool success = true;
-      m_UpstreamPool->UseCurrentBuffer(
-          [&X, &Y, &success](auto& bucket, auto idx) {
-            if(bucket.IsFull())
-              success = false;
-            else
-              bucket.GiveMessageAt(X, Y, idx);
-          });
-      return success;
+      // batch is full so flush it
+      if(m_UpstreamIngest->IsFull())
+      {
+        // flush
+        FlushUpstream(r);
+        // get next batch
+        m_UpstreamIngest = m_Context->AllocBuffer(nop);
+        if(m_UpstreamIngest == nullptr)
+        {
+          // can't allocate more so bail
+          return false;
+        }
+      }
+      m_UpstreamIngest->QueueTraffic(X, Y);
+      return true;
     }
 
     // handle data in downstream direction
@@ -43,45 +43,40 @@ namespace llarp
     IHopHandler::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                                   AbstractRouter* r)
     {
-      if(m_DownstreamPool == nullptr)
-      {
-        m_DownstreamPool = ObtainDownstreamBufferPool();
-        if(m_DownstreamPool == nullptr)
-          return false;
-      }
-      if(m_DownstreamPool->AllocBuffer([&](auto& buf) -> bool {
-           if(buf.IsFull())
-           {
-             FlushDownstream(r);
-             m_DownstreamPool->EnsureBufferSpace();
-             return buf.Index == m_DownstreamPool->Current().Index;
-           }
-           return false;
-         })
-         == nullptr)
+      static const auto nop = [](auto&) -> bool { return false; };
+      if(m_DownstreamIngest == nullptr)
+        m_DownstreamIngest = m_Context->AllocBuffer(nop);
+      // can't allocate more
+      if(m_DownstreamIngest == nullptr)
         return false;
-      bool success = true;
-      m_DownstreamPool->UseCurrentBuffer(
-          [&X, &Y, &success](auto& bucket, auto idx) {
-            if(bucket.IsFull())
-              success = false;
-            else
-              bucket.GiveMessageAt(X, Y, idx);
-          });
-      return success;
+      // batch is full so flush it
+      if(m_DownstreamIngest->IsFull())
+      {
+        // flush
+        FlushDownstream(r);
+        // get next batch
+        m_DownstreamIngest = m_Context->AllocBuffer(nop);
+        if(m_DownstreamIngest == nullptr)
+        {
+          // can't allocate more so bail
+          return false;
+        }
+      }
+      m_DownstreamIngest->QueueTraffic(X, Y);
+      return true;
     }
 
     void
-    IHopHandler::CollectUpstream(AbstractRouter* r, UpstreamTraffic_ptr batch)
+    IHopHandler::CollectUpstream(AbstractRouter* r, Traffic_ptr batch)
     {
       if(m_UpstreamEgress.empty())
       {
         r->logic()->queue_func([self = GetSelf(), r] {
           while(not self->m_UpstreamEgress.empty())
           {
-            UpstreamTraffic_ptr t = self->m_UpstreamEgress.top();
+            Traffic_ptr t = self->m_UpstreamEgress.top();
             self->HandleAllUpstream(t, r);
-            self->FreeUpstream(t);
+            self->m_Context->FreeBuffer(t);
             self->m_UpstreamEgress.pop();
           }
           self->AfterCollectUpstream(r);
@@ -91,17 +86,16 @@ namespace llarp
     }
 
     void
-    IHopHandler::CollectDownstream(AbstractRouter* r,
-                                   DownstreamTraffic_ptr batch)
+    IHopHandler::CollectDownstream(AbstractRouter* r, Traffic_ptr batch)
     {
       if(m_DownstreamEgress.empty())
       {
         r->logic()->queue_func([self = GetSelf(), r] {
           while(not self->m_DownstreamEgress.empty())
           {
-            DownstreamTraffic_ptr t = self->m_DownstreamEgress.top();
+            Traffic_ptr t = self->m_DownstreamEgress.top();
             self->HandleAllDownstream(t, r);
-            self->FreeDownstream(t);
+            self->m_Context->FreeBuffer(t);
             self->m_DownstreamEgress.pop();
           }
           self->AfterCollectDownstream(r);
@@ -111,57 +105,49 @@ namespace llarp
     }
 
     void
-    IHopHandler::FreeUpstream(UpstreamTraffic_ptr t)
-    {
-      m_UpstreamPool->FreeBuffer(t);
-    }
-
-    void
-    IHopHandler::FreeDownstream(DownstreamTraffic_ptr t)
-    {
-      m_DownstreamPool->FreeBuffer(t);
-    }
-
-    void
     IHopHandler::FlushUpstream(AbstractRouter* r)
     {
-      if(m_UpstreamPool == nullptr)
-        return;
-      auto pool = m_UpstreamPool->PopNextBuffer();
+      auto pool = m_UpstreamIngest;
       if(pool)
       {
         if(pool->empty())
         {
-          m_UpstreamPool->FreeBuffer(pool);
+          m_Context->FreeBuffer(pool);
         }
         else
         {
           pool->seqno = m_UpstreamSequence++;
-          r->pathContext().QueuePathWork(
-              std::bind(&IHopHandler::UpstreamWork, GetSelf(), pool, r));
+          if(not m_Context->QueuePathWork(
+                 std::bind(&IHopHandler::UpstreamWork, GetSelf(), pool, r)))
+          {
+            m_Context->FreeBuffer(pool);
+          }
         }
       }
+      m_UpstreamIngest = nullptr;
     }
 
     void
     IHopHandler::FlushDownstream(AbstractRouter* r)
     {
-      if(m_DownstreamPool == nullptr)
-        return;
-      auto pool = m_DownstreamPool->PopNextBuffer();
+      auto pool = m_DownstreamIngest;
       if(pool)
       {
         if(pool->empty())
         {
-          m_DownstreamPool->FreeBuffer(pool);
+          m_Context->FreeBuffer(pool);
         }
         else
         {
           pool->seqno = m_DownstreamSequence++;
-          r->pathContext().QueuePathWork(
-              std::bind(&IHopHandler::DownstreamWork, GetSelf(), pool, r));
+          if(not m_Context->QueuePathWork(
+                 std::bind(&IHopHandler::DownstreamWork, GetSelf(), pool, r)))
+          {
+            m_Context->FreeBuffer(pool);
+          }
         }
       }
+      m_DownstreamIngest = nullptr;
     }
 
   }  // namespace path

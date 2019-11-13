@@ -187,7 +187,6 @@ namespace llarp
       paths.PumpUpstream();
       _linkManager.PumpLinks();
     }
-    paths.CleanupMemPools();
   }
 
   bool
@@ -301,6 +300,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
+    paths.Stop();
     llarp_ev_loop_stop(_netloop);
     disk->stop();
     disk->shutdown();
@@ -677,6 +677,7 @@ namespace llarp
   {
     if(_stopping)
       return;
+
     // LogDebug("tick router");
     const auto now = Now();
 
@@ -1041,7 +1042,7 @@ namespace llarp
     LogInfo("have ", _nodedb->num_loaded(), " routers");
 
     _netloop->add_ticker([self = shared_from_this()]() { self->PumpLL(); });
-
+    paths.Start();
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();

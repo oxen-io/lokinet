@@ -43,16 +43,15 @@ namespace llarp
     bool
     queue_func(F&& func)
     {
-      const std::function< void(void) > f = std::move(func);
-      if(not thread->impl->tryAddJob(f))
+      if(can_flush() && thread->impl->jobCount() == thread->impl->capacity())
       {
-        if(can_flush())
-        {
-          llarp_timer_call_func_later(timer, 5, f);
-          return true;
-        }
+        // we are in the logic thread and our job queue is full
+        // we want to defer this call with a timer job
+        call_later(5, func);
+        return true;
       }
-      return thread->impl->addJob(f);
+      // otherwise just add it
+      return thread->impl->addJob(func);
     }
 
     uint32_t

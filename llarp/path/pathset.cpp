@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace path
   {
-    PathSet::PathSet(size_t num) : MemPool(), numPaths(num)
+    PathSet::PathSet(size_t num) : numPaths(num)
     {
     }
 
@@ -91,7 +91,6 @@ namespace llarp
             ++itr;
         }
       }
-      Cleanup();
     }
 
     Path_ptr

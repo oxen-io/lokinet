@@ -14,7 +14,8 @@ namespace llarp
                          PumpDoneHandler pumpDone, bool allowInbound)
         : ILinkLayer(routerEncSecret, getrc, h, sign, est, reneg, timeout,
                      closed, pumpDone)
-        , permitInbound{allowInbound}
+        , PacketPool_t(PacketPool_t::Buffers / 4)
+        , permitInbound(allowInbound)
     {
     }
 
@@ -72,6 +73,12 @@ namespace llarp
     LinkLayer::RecvFrom(const Addr& from, byte_t* ptr, size_t sz)
     {
       std::shared_ptr< ILinkSession > session;
+
+      if(m_Closing.count(from) > 0)
+      {
+        // drop traffic if we think it's from a closed session
+        return;
+      }
       auto itr = m_AuthedAddrs.find(from);
       if(itr == m_AuthedAddrs.end())
       {
@@ -87,8 +94,9 @@ namespace llarp
       else
       {
         ACQUIRE_LOCK(Lock_t lock, m_AuthedLinksMutex);
-        auto range = m_AuthedLinks.equal_range(itr->second);
-        session    = range.first->second;
+        auto i = m_AuthedLinks.find(itr->second);
+        if(i != m_AuthedLinks.end())
+          session = i->second;
       }
       if(session)
       {
@@ -109,6 +117,8 @@ namespace llarp
     LinkLayer::UnmapAddr(const Addr& a)
     {
       m_AuthedAddrs.erase(a);
+      const auto expireAt = Now() + Session::PingInterval;
+      m_Closing[a]        = expireAt;
     }
 
     std::shared_ptr< ILinkSession >
@@ -116,6 +126,23 @@ namespace llarp
                                   const AddressInfo& ai)
     {
       return std::make_shared< Session >(this, rc, ai);
+    }
+
+    ILinkSession::Packet_t
+    LinkLayer::ObtainPacket(uint64_t s, byte_t* ptr, size_t sz)
+    {
+      const static auto nop = [](auto&) -> bool { return false; };
+      auto pkt              = AllocBuffer(nop);
+      if(ptr == nullptr)
+      {
+        EnsureBufferSpace();
+        pkt = AllocBuffer(nop);
+      }
+      if(pkt)
+      {
+        pkt->Load(s, ptr, sz);
+      }
+      return pkt;
     }
   }  // namespace iwp
 }  // namespace llarp

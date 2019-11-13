@@ -447,7 +447,7 @@ namespace libuv
     llarp::Addr m_Addr;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
-        : udp_mempool_t(), m_UDP(udp), m_Addr(*src)
+        : udp_mempool_t(udp_mempool_t::Buffers / 4), m_UDP(udp), m_Addr(*src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
@@ -464,12 +464,12 @@ namespace libuv
     {
       const size_t sz = std::min(suggested_size, size_t{1500});
       udp_glue* glue  = static_cast< udp_glue* >(h->data);
-      if(glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
+      if(glue->m_UDP != nullptr && glue->m_UDP->recvfrom != nullptr)
       {
         buf->base = new char[sz];
         buf->len  = sz;
       }
-      else if(glue->m_UDP)
+      else if(glue->m_UDP != nullptr)
       {
         auto pkts =
             glue->AllocBuffer([](auto& buf) -> bool { return buf.IsFull(); });
@@ -497,8 +497,7 @@ namespace libuv
            const struct sockaddr* addr, unsigned)
     {
       udp_glue* glue = static_cast< udp_glue* >(handle->data);
-      if(addr)
-        glue->RecvFrom(nread, buf, addr);
+      glue->RecvFrom(nread, buf, addr);
       if(glue->m_UDP && glue->m_UDP->recvfrom != nullptr)
         delete[] buf->base;
     }
@@ -511,6 +510,8 @@ namespace libuv
         const size_t pktsz = sz > 0 ? sz : 0;
         if(m_UDP->recvfrom)
         {
+          if(fromaddr == nullptr)
+            return;
           const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
           m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer(pkt));
           return;
@@ -518,7 +519,7 @@ namespace libuv
         else
         {
           UseCurrentBuffer([fromaddr, pktsz](auto& buf, auto idx) {
-            buf.GotEvent(idx, *fromaddr, pktsz);
+            buf.GotEvent(idx, fromaddr, pktsz);
           });
         }
       }
@@ -979,6 +980,8 @@ llarp_ev_udp_recvmany(struct llarp_udp_io* u)
 void
 llarp_ev_udp_free_pkt_list(struct llarp_pkt_list* l)
 {
-  if(l)
+  if(l && l->m_Parent && l->m_Parent->impl)
+  {
     static_cast< libuv::udp_glue* >(l->m_Parent->impl)->FreeBuffer(l);
+  }
 }

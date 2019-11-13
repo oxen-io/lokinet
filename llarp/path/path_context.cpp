@@ -10,12 +10,24 @@ namespace llarp
   namespace path
   {
     PathContext::PathContext(AbstractRouter* router)
-        : path::MemPool()
+        : TrafficBufferPool_t(TrafficBufferPool_t::Buffers / 4)
         , m_Router(router)
         , m_AllowTransit(false)
-        , m_CryptoWorker(std::make_unique< thread::ThreadPool >(
-              1, 1024, "llarp-pathworker"))
+        , m_CryptoWorker(1, 1024, "llarp-worker")
     {
+    }
+
+    void
+    PathContext::Start()
+    {
+      m_CryptoWorker.start();
+    }
+
+    void
+    PathContext::Stop()
+    {
+      m_CryptoWorker.stop();
+      m_CryptoWorker.shutdown();
     }
 
     void
@@ -264,15 +276,6 @@ namespace llarp
     }
 
     void
-    PathContext::CleanupMemPools()
-    {
-      /// clean up our mempool
-      Cleanup();
-      /// clean up all pathset mempools
-      m_OurPaths.ForEach([](auto& ptr) { ptr->Cleanup(); });
-    }
-
-    void
     PathContext::PumpUpstream()
     {
       if(m_AllowTransit)
@@ -359,7 +362,6 @@ namespace llarp
           else
             ++itr;
         }
-        Cleanup();
       }
     }
 

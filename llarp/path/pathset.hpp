@@ -93,7 +93,7 @@ namespace llarp
     using PathSet_ptr = std::shared_ptr< PathSet >;
 
     /// a set of paths owned by an entity
-    struct PathSet : public MemPool
+    struct PathSet
     {
       /// maximum number of paths a path set can maintain
       static constexpr size_t max_paths = 32;

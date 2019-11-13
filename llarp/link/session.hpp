@@ -15,6 +15,64 @@ namespace llarp
   struct ILinkMessage;
   struct ILinkLayer;
 
+  struct PacketEvent
+  {
+    static constexpr size_t MaxMTU = 1500;
+    std::array< byte_t, MaxMTU > _data;
+    size_t _sz = 0;
+    size_t Index;
+
+    void
+    Load(uint64_t s, byte_t *ptr, size_t sz)
+    {
+      if(sz > MaxMTU)
+      {
+        assert(false);
+        return;
+      }
+      seqno = s;
+      _sz   = sz;
+      if(ptr)
+        std::copy_n(ptr, sz, _data.data());
+      assert(_sz <= MaxMTU);
+    }
+
+    void
+    Clear()
+    {
+      _sz   = 0;
+      seqno = 0;
+    }
+
+    byte_t *
+    Data()
+    {
+      return _data.data();
+    }
+
+    const byte_t *
+    Data() const
+    {
+      return _data.data();
+    }
+
+    size_t
+    Size() const
+    {
+      assert(_sz <= MaxMTU);
+      return _sz;
+    }
+
+    uint64_t seqno;
+
+    bool
+    operator<(const PacketEvent &other) const
+    {
+      return other.seqno < seqno;
+    }
+    using Ptr_t = PacketEvent *;
+  };
+
   struct ILinkSession
   {
     virtual ~ILinkSession() = default;
@@ -45,7 +103,7 @@ namespace llarp
     /// message delivery result hook function
     using CompletionHandler = std::function< void(DeliveryStatus) >;
 
-    using Packet_t  = std::vector< byte_t >;
+    using Packet_t  = PacketEvent::Ptr_t;
     using Message_t = std::vector< byte_t >;
 
     /// send a message buffer to the remote endpoint

@@ -3,6 +3,7 @@
 
 #include <absl/types/optional.h>
 #include <util/thread/queue.hpp>
+#include <util/thread/threading.hpp>
 #include <bitset>
 #include <array>
 
@@ -13,11 +14,10 @@ namespace llarp
     template < typename T, bool multithread = true, size_t Buckets = 1024 >
     struct BufferPool
     {
-      size_t Index = 0;
+      static constexpr size_t Buffers = Buckets;
+      using Ptr_t                     = BufferPool*;
 
-      using Ptr_t = BufferPool*;
-
-      BufferPool() : m_FreeQueue(Buckets / 4)
+      BufferPool(size_t _sz) : m_FreeQueue(_sz)
       {
         size_t idx = 0;
         for(auto& buf : m_Buffers)
@@ -30,101 +30,118 @@ namespace llarp
         m_FreeQueue.enable();
       }
 
-      void
-      Clear()
-      {
-        for(auto& buf : m_Buffers)
-          buf.Clear();
-      }
+      virtual ~BufferPool() = default;
 
       void
       FreeBuffer(T* t)
       {
         if(t == nullptr)
           return;
-        if(not m_FreeQueue.enabled())
-          return;
-        while(m_FreeQueue.tryPushBack(t->Index)
-              != llarp::thread::QueueReturn::Success)
-        {
-          if(multithread)
+        Call< void >([&]() {
+          assert(m_BuffersAllocated.test(t->Index));
+          if(not multithread)
           {
-            std::this_thread::sleep_for(std::chrono::microseconds(500));
+            if(m_FreeQueue.full())
+            {
+              DrainBuffers();
+            }
           }
-          else
-          {
-            DrainBuffers();
-          }
-        }
+          m_FreeQueue.pushBack(t);
+        });
       }
 
       T*
       AllocBuffer(std::function< bool(T&) > full)
       {
-        m_BuffersAllocated.set(m_BufferIndex);
-        auto& bucket = m_Buffers[m_BufferIndex];
-        if(full(bucket))
+        if(multithread)
         {
-          return nullptr;
+          m_BuffersAllocated.set(m_BufferIndex);
+          auto& bucket = m_Buffers[m_BufferIndex];
+          if(full(bucket))
+          {
+            return nullptr;
+          }
+          else
+          {
+            return &bucket;
+          }
         }
         else
         {
-          m_BuffersAllocated.set(m_BufferIndex);
-          return &m_Buffers[m_BufferIndex];
+          return Call< T* >([&]() { return PopNextBuffer(); });
         }
       }
 
       template < typename F >
       void
-      UseCurrentBuffer(F&& f)
+      UseCurrentBuffer(F f)
       {
-        f(m_Buffers[m_BufferIndex], m_BucketPosition);
-        m_BucketPosition++;
+        if(multithread)
+        {
+          f(m_Buffers[m_BufferIndex], m_BucketPosition);
+          m_BucketPosition++;
+        }
       }
 
       T*
       PopNextBuffer()
       {
         const auto idx = m_BufferIndex;
-        // find a good bucket
-        do
+        T* ptr         = nullptr;
+        if(multithread)
         {
-          m_BufferIndex = (m_BufferIndex + 1) % Buckets;
-        } while(m_BuffersAllocated.test(m_BufferIndex) && m_BufferIndex != idx);
-        if(m_BufferIndex == idx)
-        {
-          // full
-          EnsureBufferSpace();
-        }
-        if(m_BucketPosition == 0)
-          return nullptr;
-        m_BucketPosition = 0;
-        return &m_Buffers[idx];
-      }
+          if(m_BucketPosition)
+          {
+            m_BucketPosition = 0;
+            ptr              = &m_Buffers[idx];
+          }
+          else
+          {
+            m_Buffers[idx].Clear();
+            m_BuffersAllocated.reset(idx);
+          }
 
-      /// cease all allocations
-      void
-      Finish()
-      {
-        DrainBuffers();
-        EndAllocator();
+          if(ptr)
+          {
+            // advance to next good buffer
+            do
+            {
+              m_BufferIndex = (m_BufferIndex + 1) % Buckets;
+              if(m_BufferIndex == idx)
+                break;
+            } while(m_BuffersAllocated.test(m_BufferIndex));
+          }
+        }
+        else
+        {
+          // find good bucket
+          while(m_BuffersAllocated.test(m_BufferIndex))
+          {
+            m_BufferIndex = (m_BufferIndex + 1) % Buckets;
+            // looks full?
+            if(m_BufferIndex == idx)
+              return nullptr;
+          }
+          // acquire bucket
+          assert(not m_BuffersAllocated.test(m_BufferIndex));
+          m_BuffersAllocated.set(m_BufferIndex);
+          ptr = &m_Buffers[m_BufferIndex];
+          ptr->Clear();
+        }
+        return ptr;
       }
 
       void
       EnsureBufferSpace()
       {
-        DrainBuffers();
-        auto idx = FindNextGoodBufferIndex();
-        if(idx.has_value())
-        {
-          m_BufferIndex = idx.value();
-        }
-      }
-
-      const T&
-      Current() const
-      {
-        return m_Buffers[m_BufferIndex];
+        Call< void >([&]() {
+          DrainBuffers();
+          auto idx = FindNextGoodBufferIndex();
+          if(idx.has_value())
+          {
+            m_BufferIndex = idx.value();
+          }
+        });
       }
 
      private:
@@ -141,21 +158,6 @@ namespace llarp
         return {};
       }
 
-      void
-      DrainBuffers()
-      {
-        do
-        {
-          auto val = m_FreeQueue.tryPopFront();
-          if(not val.has_value())
-            return;
-          // mark this buffer as free
-          const size_t idx = val.value();
-          m_BuffersAllocated.reset(idx);
-          m_Buffers[idx].Clear();
-        } while(true);
-      }
-
      protected:
       void
       EndAllocator()
@@ -166,10 +168,44 @@ namespace llarp
       std::array< T, Buckets > m_Buffers;
 
      private:
-      llarp::thread::Queue< size_t > m_FreeQueue;
+      void
+      DrainBuffers()
+      {
+        do
+        {
+          auto val = m_FreeQueue.tryPopFront();
+          if(not val.has_value())
+            return;
+          // mark this buffer as free
+          const size_t idx = val.value()->Index;
+          assert(m_BuffersAllocated.test(idx));
+          m_Buffers[idx].Clear();
+          m_BuffersAllocated.reset(idx);
+        } while(true);
+      }
+
+      using BufferLock_t  = NullLock;
+      using BufferMutex_t = NullMutex;
+      llarp::thread::Queue< T* > m_FreeQueue;
       std::bitset< Buckets > m_BuffersAllocated;
       size_t m_BucketPosition = 0;
       size_t m_BufferIndex    = 0;
+      BufferMutex_t m_Access;
+
+      template < typename Val_t >
+      Val_t
+      Call(std::function< Val_t(void) > f)
+      {
+        if(multithread)
+        {
+          return f();
+        }
+        else
+        {
+          BufferLock_t lock(&m_Access);
+          return f();
+        }
+      }
     };
   }  // namespace util
 }  // namespace llarp

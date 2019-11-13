@@ -10,10 +10,11 @@
 
 namespace llarp
 {
+  using TrafficBuffer_t = Encrypted< MAX_LINK_MSG_SIZE - 128 >;
   struct RelayUpstreamMessage : public ILinkMessage
   {
     PathID_t pathid;
-    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
+    TrafficBuffer_t X;
     TunnelNonce Y;
 
     bool
@@ -38,7 +39,7 @@ namespace llarp
   struct RelayDownstreamMessage : public ILinkMessage
   {
     PathID_t pathid;
-    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
+    TrafficBuffer_t X;
     TunnelNonce Y;
 
     bool

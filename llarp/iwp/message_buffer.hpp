@@ -36,6 +36,8 @@ namespace llarp
     /// plaintext header overhead size
     static constexpr size_t CommandOverhead = 2;
 
+    struct Session;
+
     struct OutboundMessage
     {
       OutboundMessage() = default;
@@ -53,18 +55,16 @@ namespace llarp
       llarp_time_t m_LastXMIT  = 0;
 
       ILinkSession::Packet_t
-      XMIT() const;
+      XMIT(Session *s) const;
 
       void
       Ack(byte_t bitmask);
 
       void
-      FlushUnAcked(std::function< void(ILinkSession::Packet_t) > sendpkt,
-                   llarp_time_t now);
+      FlushUnAcked(Session *s, llarp_time_t now);
 
       void
-      MaybeSendXMIT(std::function< void(ILinkSession::Packet_t) > sendpkt,
-                    llarp_time_t now);
+      MaybeSendXMIT(Session *s, llarp_time_t now);
 
       bool
       ShouldFlush(llarp_time_t now) const;
@@ -99,7 +99,7 @@ namespace llarp
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void
-      HandleData(uint16_t idx, const llarp_buffer_t& buf, llarp_time_t now);
+      HandleData(uint16_t idx, const llarp_buffer_t &buf, llarp_time_t now);
 
       bool
       IsCompleted() const;
@@ -117,11 +117,10 @@ namespace llarp
       ShouldSendACKS(llarp_time_t now) const;
 
       void
-      SendACKS(std::function< void(ILinkSession::Packet_t) > sendpkt,
-               llarp_time_t now);
+      SendACKS(Session *session, llarp_time_t now);
 
       ILinkSession::Packet_t
-      ACKS() const;
+      ACKS(Session *) const;
     };
 
   }  // namespace iwp

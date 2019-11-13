@@ -29,9 +29,15 @@ namespace llarp
 
     using TransitHop_ptr = std::shared_ptr< TransitHop >;
 
-    struct PathContext : public path::MemPool
+    struct PathContext : public TrafficBufferPool_t
     {
       PathContext(AbstractRouter* router);
+
+      void
+      Start();
+
+      void
+      Stop();
 
       /// called from router tick function
       void
@@ -107,17 +113,14 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
-      void
-      CleanupMemPools();
-
       /// queues work for symettric crypto on paths
       template < typename F >
       bool
       QueuePathWork(F&& work)
       {
-        if(m_CryptoWorker == nullptr || not m_CryptoWorker->enabled())
+        if(not m_CryptoWorker.enabled())
           return false;
-        return m_CryptoWorker->addJob(work);
+        return m_CryptoWorker.addJob(work);
       }
 
       using TransitHopsMap_t = std::multimap< PathID_t, TransitHop_ptr >;
@@ -176,7 +179,7 @@ namespace llarp
       bool m_AllowTransit;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
-      std::unique_ptr< thread::ThreadPool > m_CryptoWorker;
+      thread::ThreadPool m_CryptoWorker;
     };
   }  // namespace path
 }  // namespace llarp

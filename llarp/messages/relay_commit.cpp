@@ -305,7 +305,6 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         status = LR_StatusRecord::FAIL_DUPLICATE_HOP;
-        self->hop->Destroy();
       }
       else
       {

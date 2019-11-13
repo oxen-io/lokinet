@@ -81,6 +81,9 @@ namespace llarp
     virtual path::PathContext &
     pathContext() = 0;
 
+    virtual path::PathContext *
+    pathContextPtr() = 0;
+
     virtual const RouterContact &
     rc() const = 0;
 

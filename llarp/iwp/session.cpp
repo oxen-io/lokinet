@@ -9,22 +9,26 @@ namespace llarp
   namespace iwp
   {
     ILinkSession::Packet_t
-    CreatePacket(Command cmd, size_t plainsize, size_t minpad, size_t variance)
+    Session::CreatePacket(Command cmd, size_t plainsize, size_t minpad,
+                          size_t variance)
     {
       const size_t pad =
           minpad > 0 ? minpad + (variance > 0 ? randint() % variance : 0) : 0;
-      ILinkSession::Packet_t pkt(PacketOverhead + plainsize + pad
-                                 + CommandOverhead);
+      const size_t pktsz = PacketOverhead + plainsize + pad + CommandOverhead;
+      auto pkt = m_Parent->ObtainPacket(m_EncryptSeqno++, nullptr, pktsz);
+      if(pkt == nullptr)
+        return nullptr;
       // randomize pad
       if(pad)
       {
         CryptoManager::instance()->randbytes(
-            pkt.data() + PacketOverhead + CommandOverhead + plainsize, pad);
+            pkt->Data() + PacketOverhead + CommandOverhead + plainsize, pad);
       }
       // randomize nounce
-      CryptoManager::instance()->randbytes(pkt.data() + HMACSIZE, TUNNONCESIZE);
-      pkt[PacketOverhead]     = LLARP_PROTO_VERSION;
-      pkt[PacketOverhead + 1] = cmd;
+      CryptoManager::instance()->randbytes(pkt->Data() + HMACSIZE,
+                                           TUNNONCESIZE);
+      pkt->Data()[PacketOverhead]     = LLARP_PROTO_VERSION;
+      pkt->Data()[PacketOverhead + 1] = cmd;
       return pkt;
     }
 
@@ -58,10 +62,6 @@ namespace llarp
 
     Session::~Session()
     {
-      if(m_EncryptQueue)
-        delete m_EncryptQueue;
-      if(m_DecryptQueue)
-        delete m_DecryptQueue;
     }
 
     void
@@ -138,46 +138,46 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
+      if(data == nullptr)
+        return;
       if(not IsEstablished())
       {
-        DoEncryptThenSend(std::move(data));
+        DoEncryptThenSend(data);
+        m_Parent->FreeBuffer(data);
         return;
       }
-      if(m_EncryptQueue == nullptr)
-      {
-        m_EncryptQueue = new CryptoQueue_t();
-      }
-      m_EncryptQueue->emplace(m_EncryptSeqno++, std::move(data));
+      m_EncryptQueue.emplace(data);
     }
 
     void
     Session::DoEncryptThenSend(ILinkSession::Packet_t pkt)
     {
-      llarp_buffer_t pktbuf(pkt);
-      const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
+      assert(pkt->Size() > PacketOverhead);
+      llarp_buffer_t pktbuf(pkt->Data(), pkt->Size());
+      const TunnelNonce nonce_ptr(pkt->Data() + HMACSIZE);
       pktbuf.base += PacketOverhead;
       pktbuf.cur = pktbuf.base;
       pktbuf.sz -= PacketOverhead;
       CryptoManager::instance()->xchacha20(pktbuf, m_SessionKey, nonce_ptr);
-      pktbuf.base = pkt.data() + HMACSIZE;
-      pktbuf.sz   = pkt.size() - HMACSIZE;
-      CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
-      pktbuf.base = pkt.data();
-      pktbuf.cur  = pkt.data();
-      pktbuf.sz   = pkt.size();
+      pktbuf.base = pkt->Data() + HMACSIZE;
+      pktbuf.sz   = pkt->Size() - HMACSIZE;
+      CryptoManager::instance()->hmac(pkt->Data(), pktbuf, m_SessionKey);
+      pktbuf.base = pkt->Data();
+      pktbuf.cur  = pkt->Data();
+      pktbuf.sz   = pkt->Size();
       Send_LL(pktbuf);
     }
 
     void
     Session::EncryptWorker(CryptoQueue_ptr msgs)
     {
-      LogDebug("encrypt worker ", msgs->size(), " messages");
-      while(not msgs->empty())
+      LogDebug("encrypt worker ", msgs.size(), " messages");
+      for(auto msg : msgs)
       {
-        DoEncryptThenSend(std::move(msgs->top().pkt));
-        msgs->pop();
+        DoEncryptThenSend(msg);
       }
-      delete msgs;
+      m_Parent->logic()->queue_func(std::bind(
+          &Session::FreePackets, shared_from_this(), std::move(msgs)));
     }
 
     void
@@ -187,11 +187,14 @@ namespace llarp
         return;
 
       auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
-      EncryptAndSend(std::move(close_msg));
-      if(m_State == State::Ready)
-        m_Parent->UnmapAddr(m_RemoteAddr);
-      m_State = State::Closed;
-      LogInfo("closing connection to ", m_RemoteAddr);
+      if(close_msg)
+      {
+        EncryptAndSend(close_msg);
+        if(m_State == State::Ready)
+          m_Parent->UnmapAddr(m_RemoteAddr);
+        m_State = State::Closed;
+        LogInfo("closing connection to ", m_RemoteAddr);
+      }
     }
 
     bool
@@ -207,10 +210,9 @@ namespace llarp
               .emplace(msgid,
                        OutboundMessage{msgid, std::move(buf), now, completed})
               .first->second;
-      auto sendfunc = util::memFn(&Session::EncryptAndSend, this);
-      msg.MaybeSendXMIT(sendfunc, now);
-      msg.FlushUnAcked(sendfunc, now);
       LogDebug("send message ", msgid);
+      msg.MaybeSendXMIT(this, now);
+      msg.FlushUnAcked(this, now);
       return true;
     }
 
@@ -222,6 +224,7 @@ namespace llarp
       {
         return;
       }
+      bool fail = false;
       // send multi acks
       while(not m_SendMACKs.empty())
       {
@@ -230,39 +233,61 @@ namespace llarp
         auto numAcks   = std::min(sz, max);
         auto mack =
             CreatePacket(Command::eMACK, 1 + (numAcks * sizeof(uint64_t)));
-        mack[PacketOverhead + CommandOverhead] =
-            byte_t{static_cast< byte_t >(numAcks)};
-        byte_t* ptr = mack.data() + CommandOverhead + PacketOverhead + 1;
-        LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
-        auto itr = m_SendMACKs.begin();
-        while(numAcks > 0)
+        if(mack)
+        {
+          mack->Data()[PacketOverhead + CommandOverhead] =
+              byte_t{static_cast< byte_t >(numAcks)};
+          byte_t* ptr = mack->Data() + CommandOverhead + PacketOverhead + 1;
+          LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
+          auto itr = m_SendMACKs.begin();
+          while(numAcks > 0)
+          {
+            const auto rxid = *itr;
+            LogDebug("sending MACK for rxid=", rxid, " for ", m_RemoteAddr);
+            htobe64buf(ptr, rxid);
+            itr = m_SendMACKs.erase(itr);
+            numAcks--;
+            ptr += sizeof(uint64_t);
+          }
+        }
+        else
+        {
+          fail = true;
+          break;
+        }
+        EncryptAndSend(mack);
+      }
+      if(not fail)
+      {
+        // send nacks
+        auto itr = m_SendNACKs.begin();
+        while(itr != m_SendNACKs.end())
         {
           const auto rxid = *itr;
-          LogDebug("sending MACK for rxid=", rxid, " for ", m_RemoteAddr);
-          htobe64buf(ptr, rxid);
-          itr = m_SendMACKs.erase(itr);
-          numAcks--;
-          ptr += sizeof(uint64_t);
+          // send nack only if still applicable
+          if(m_RXMsgs.find(rxid) == m_RXMsgs.end()
+             && m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
+          {
+            LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
+            auto nack = CreatePacket(Command::eNACK, 8);
+            if(nack)
+            {
+              htobe64buf(nack->Data() + CommandOverhead + PacketOverhead, rxid);
+            }
+            else
+            {
+              fail = true;
+              break;
+            }
+            EncryptAndSend(nack);
+          }
+          itr = m_SendNACKs.erase(itr);
         }
-        EncryptAndSend(std::move(mack));
       }
-      // send nacks
-      auto itr = m_SendNACKs.begin();
-      while(itr != m_SendNACKs.end())
+      if(not fail)
       {
-        const auto rxid = *itr;
-        // send nack only if still applicable
-        if(m_RXMsgs.find(rxid) == m_RXMsgs.end()
-           && m_ReplayFilter.find(rxid) == m_ReplayFilter.end())
-        {
-          LogDebug("no rxid=", rxid, " for ", m_RemoteAddr, " sending NACK");
-          auto nack = CreatePacket(Command::eNACK, 8);
-          htobe64buf(nack.data() + CommandOverhead + PacketOverhead, rxid);
-          EncryptAndSend(std::move(nack));
-        }
-        itr = m_SendNACKs.erase(itr);
+        m_LastSendMACKs = now;
       }
-      m_LastSendMACKs = now;
     }
 
     void
@@ -273,37 +298,50 @@ namespace llarp
       {
         if(ShouldPing())
           SendKeepAlive();
-        auto sendfunc = util::memFn(&Session::EncryptAndSend, this);
         for(auto& item : m_RXMsgs)
         {
           if(item.second.ShouldSendACKS(now))
           {
-            item.second.SendACKS(sendfunc, now);
+            item.second.SendACKS(this, now);
           }
         }
         for(auto& item : m_TXMsgs)
         {
-          item.second.MaybeSendXMIT(sendfunc, now);
+          item.second.MaybeSendXMIT(this, now);
           if(item.second.ShouldFlush(now))
           {
-            item.second.FlushUnAcked(sendfunc, now);
+            item.second.FlushUnAcked(this, now);
           }
         }
       }
       auto self = shared_from_this();
-      if(m_EncryptQueue && not m_EncryptQueue->empty())
+      if(not m_EncryptQueue.empty())
       {
+        CryptoQueue_ptr work;
+        while(not m_EncryptQueue.empty())
+        {
+          work.emplace_back(m_EncryptQueue.top());
+          m_EncryptQueue.pop();
+        }
         m_Parent->QueueWork(
-            std::bind(&Session::EncryptWorker, self, m_EncryptQueue));
-
-        m_EncryptQueue = nullptr;
+            std::bind(&Session::EncryptWorker, self, std::move(work)));
       }
 
-      if(m_DecryptQueue && not m_DecryptQueue->empty())
+      if(not m_DecryptQueue.empty())
       {
-        m_Parent->QueueWork(
-            std::bind(&Session::DecryptWorker, self, m_DecryptQueue));
-        m_DecryptQueue = nullptr;
+        CryptoQueue_ptr work;
+        while(not m_DecryptQueue.empty())
+        {
+          ILinkSession::Packet_t pkt = m_DecryptQueue.top();
+          m_DecryptQueue.pop();
+          if(pkt)
+            work.emplace_back(pkt);
+        }
+        if(not work.empty())
+        {
+          m_Parent->QueueWork(
+              std::bind(&Session::DecryptWorker, self, std::move(work)));
+        }
       }
     }
 
@@ -402,27 +440,33 @@ namespace llarp
     void
     Session::GenerateAndSendIntro()
     {
+      if(m_State != State::Initial)
+        return;
+      auto req = m_Parent->ObtainPacket(m_EncryptSeqno++, nullptr,
+                                        Introduction::SIZE + PacketOverhead);
+      if(req == nullptr)
+        return;
       TunnelNonce N;
       N.Randomize();
-      ILinkSession::Packet_t req(Introduction::SIZE + PacketOverhead);
       const auto pk   = m_Parent->GetOurRC().pubkey;
       const auto e_pk = m_Parent->RouterEncryptionSecret().toPublic();
-      auto itr        = req.data() + PacketOverhead;
+      auto itr        = req->Data() + PacketOverhead;
       std::copy_n(pk.data(), pk.size(), itr);
       itr += pk.size();
       std::copy_n(e_pk.data(), e_pk.size(), itr);
       itr += e_pk.size();
       std::copy_n(N.data(), N.size(), itr);
       Signature Z;
-      llarp_buffer_t signbuf(req.data() + PacketOverhead,
+      llarp_buffer_t signbuf(req->Data() + PacketOverhead,
                              Introduction::SIZE - Signature::SIZE);
       m_Parent->Sign(Z, signbuf);
-      std::copy_n(
-          Z.data(), Z.size(),
-          req.data() + PacketOverhead + (Introduction::SIZE - Signature::SIZE));
-      CryptoManager::instance()->randbytes(req.data() + HMACSIZE, TUNNONCESIZE);
-      EncryptAndSend(std::move(req));
+      std::copy_n(Z.data(), Z.size(),
+                  req->Data() + PacketOverhead
+                      + (Introduction::SIZE - Signature::SIZE));
+      CryptoManager::instance()->randbytes(req->Data() + HMACSIZE,
+                                           TUNNONCESIZE);
       m_State = State::Introduction;
+      EncryptAndSend(req);
       if(not CryptoManager::instance()->transport_dh_client(
              m_SessionKey, m_ChosenAI.pubkey,
              m_Parent->RouterEncryptionSecret(), N))
@@ -484,6 +528,7 @@ namespace llarp
         LogError("intro verify failed from ", m_RemoteAddr);
         return;
       }
+
       const PubKey pk = m_Parent->TransportSecretKey().toPublic();
       LogDebug("got intro: remote-pk=", m_RemoteOnionKey.ToHex(),
                " N=", N.ToHex(), " local-pk=", pk.ToHex());
@@ -494,14 +539,18 @@ namespace llarp
                  m_RemoteAddr);
         return;
       }
-      Packet_t reply(token.size() + PacketOverhead);
+      auto reply = m_Parent->ObtainPacket(m_EncryptSeqno++, nullptr,
+                                          token.size() + PacketOverhead);
+      if(reply == nullptr)
+        return;
+
       // random nonce
-      CryptoManager::instance()->randbytes(reply.data() + HMACSIZE,
+      CryptoManager::instance()->randbytes(reply->Data() + HMACSIZE,
                                            TUNNONCESIZE);
       // set token
-      std::copy_n(token.data(), token.size(), reply.data() + PacketOverhead);
+      std::copy_n(token.data(), token.size(), reply->Data() + PacketOverhead);
       m_LastRX = m_Parent->Now();
-      EncryptAndSend(std::move(reply));
+      EncryptAndSend(reply);
       LogDebug("sent intro ack to ", m_RemoteAddr);
       m_State = State::Introduction;
     }
@@ -515,19 +564,23 @@ namespace llarp
                  token.size() + PacketOverhead, " from ", m_RemoteAddr);
         return;
       }
-      Packet_t reply(token.size() + PacketOverhead);
+
       if(not DecryptBuffer(pkt, sz))
       {
         LogError("intro ack decrypt failed from ", m_RemoteAddr);
         return;
       }
+      auto reply = m_Parent->ObtainPacket(m_EncryptSeqno++, nullptr,
+                                          token.size() + PacketOverhead);
+      if(reply == nullptr)
+        return;
       m_LastRX = m_Parent->Now();
       std::copy_n(pkt + PacketOverhead, token.size(), token.data());
-      std::copy_n(token.data(), token.size(), reply.data() + PacketOverhead);
+      std::copy_n(token.data(), token.size(), reply->Data() + PacketOverhead);
       // random nounce
-      CryptoManager::instance()->randbytes(reply.data() + HMACSIZE,
+      CryptoManager::instance()->randbytes(reply->Data() + HMACSIZE,
                                            TUNNONCESIZE);
-      EncryptAndSend(std::move(reply));
+      EncryptAndSend(reply);
       LogDebug("sent session request to ", m_RemoteAddr);
       m_State = State::LinkIntro;
     }
@@ -575,34 +628,47 @@ namespace llarp
     void
     Session::DecryptWorker(CryptoQueue_ptr msgs)
     {
-      CryptoQueue_ptr recvMsgs = new CryptoQueue_t();
-      while(not msgs->empty())
+      CryptoQueue_ptr discardMsgs;
+      CryptoQueue_ptr recvMsgs;
+      for(auto msg : msgs)
       {
-        const uint64_t s = msgs->top().seqno;
-        Packet_t pkt     = std::move(msgs->top().pkt);
-        msgs->pop();
-
-        if(not DecryptMessageInPlace(pkt))
+        if(not DecryptBuffer(msg->Data(), msg->Size()))
         {
           LogError("failed to decrypt session data from ", m_RemoteAddr);
+          discardMsgs.emplace_back(msg);
           continue;
         }
-        if(pkt[PacketOverhead] != LLARP_PROTO_VERSION)
+        if(msg->Data()[PacketOverhead] != LLARP_PROTO_VERSION)
         {
-          LogError("protocol version missmatch ", int(pkt[PacketOverhead]),
+          LogError("protocol version missmatch ",
+                   int(msg->Data()[PacketOverhead]),
                    " != ", LLARP_PROTO_VERSION);
+          discardMsgs.emplace_back(msg);
           continue;
         }
-        recvMsgs->emplace(s, std::move(pkt));
+        recvMsgs.emplace_back(msg);
       }
-      LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      if(recvMsgs->empty())
+      LogDebug("decrypted ", recvMsgs.size(), " packets from ", m_RemoteAddr);
+      if(not discardMsgs.empty())
       {
-        delete recvMsgs;
-        return;
+        m_Parent->logic()->queue_func(std::bind(
+            &Session::FreePackets, shared_from_this(), std::move(recvMsgs)));
       }
-      m_Parent->logic()->queue_func(
-          std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
+      if(not recvMsgs.empty())
+      {
+        m_Parent->logic()->queue_func(std::bind(&Session::HandlePlaintext,
+                                                shared_from_this(),
+                                                std::move(recvMsgs)));
+      }
+    }
+
+    void
+    Session::FreePackets(CryptoQueue_ptr msgs)
+    {
+      for(auto msg : msgs)
+      {
+        m_Parent->FreeBuffer(msg);
+      }
     }
 
     void
@@ -613,14 +679,10 @@ namespace llarp
         m_Parent->logic()->queue_func(
             std::bind(&Session::PumpRecv, shared_from_this()));
       }
-      while(not msgs->empty())
+      for(auto msg : msgs)
       {
-        const uint64_t s = msgs->top().seqno;
-        Packet_t pkt     = std::move(msgs->top().pkt);
-        m_RecvQueue.emplace(s, std::move(pkt));
-        msgs->pop();
+        m_RecvQueue.emplace(msg);
       }
-      delete msgs;
     }
 
     void
@@ -628,39 +690,41 @@ namespace llarp
     {
       while(not m_RecvQueue.empty())
       {
-        Packet_t result = std::move(m_RecvQueue.top().pkt);
+        Packet_t pkt = m_RecvQueue.top();
+        assert(pkt != nullptr);
         m_RecvQueue.pop();
-        LogDebug("Command ", int(result[PacketOverhead + 1]));
-        switch(result[PacketOverhead + 1])
+        LogDebug("Command ", int(pkt->Data()[PacketOverhead + 1]));
+        switch(pkt->Data()[PacketOverhead + 1])
         {
           case Command::eXMIT:
-            HandleXMIT(std::move(result));
+            HandleXMIT(pkt);
             break;
           case Command::eDATA:
-            HandleDATA(std::move(result));
+            HandleDATA(pkt);
             break;
           case Command::eACKS:
-            HandleACKS(std::move(result));
+            HandleACKS(pkt);
             break;
           case Command::ePING:
-            HandlePING(std::move(result));
+            HandlePING(pkt);
             break;
           case Command::eNACK:
-            HandleNACK(std::move(result));
+            HandleNACK(pkt);
             break;
           case Command::eCLOS:
-            HandleCLOS(std::move(result));
+            HandleCLOS(pkt);
             break;
           case Command::eMACK:
-            HandleMACK(std::move(result));
+            HandleMACK(pkt);
             break;
           case Command::eDROP:
-            HandleDROP(std::move(result));
+            HandleDROP(pkt);
             break;
           default:
-            LogError("invalid command ", int(result[PacketOverhead + 1]),
+            LogError("invalid command ", int(pkt->Data()[PacketOverhead + 1]),
                      " from ", m_RemoteAddr);
         }
+        m_Parent->FreeBuffer(pkt);
       }
       SendMACK();
       m_Parent->PumpDone(this);
@@ -669,13 +733,13 @@ namespace llarp
     void
     Session::HandleDROP(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + sizeof(uint64_t) + PacketOverhead))
+      if(data->Size() < (CommandOverhead + sizeof(uint64_t) + PacketOverhead))
       {
         LogError("short DROP from ", m_RemoteAddr);
         return;
       }
       const uint64_t rxid =
-          bufbe64toh(data.data() + CommandOverhead + PacketOverhead);
+          bufbe64toh(data->Data() + CommandOverhead + PacketOverhead);
       auto itr = m_RXMsgs.find(rxid);
       if(itr != m_RXMsgs.end())
       {
@@ -693,20 +757,20 @@ namespace llarp
     void
     Session::HandleMACK(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + PacketOverhead + 1))
+      if(data->Size() < (CommandOverhead + PacketOverhead + 1))
       {
         LogError("impossibly short mack from ", m_RemoteAddr);
         return;
       }
-      byte_t numAcks = data[CommandOverhead + PacketOverhead];
-      if(data.size()
+      byte_t numAcks = data->Data()[CommandOverhead + PacketOverhead];
+      if(data->Size()
          < 1 + CommandOverhead + PacketOverhead + (numAcks * sizeof(uint64_t)))
       {
         LogError("short mack from ", m_RemoteAddr);
         return;
       }
       LogDebug("got ", int(numAcks), " mack from ", m_RemoteAddr);
-      byte_t* ptr = data.data() + CommandOverhead + PacketOverhead + 1;
+      byte_t* ptr = data->Data() + CommandOverhead + PacketOverhead + 1;
       while(numAcks > 0)
       {
         uint64_t acked = bufbe64toh(ptr);
@@ -723,8 +787,11 @@ namespace llarp
           if(m_DROP)
           {
             auto msg = CreatePacket(Command::eDROP, 8);
-            htobe64buf(msg.data() + PacketOverhead + CommandOverhead, acked);
-            EncryptAndSend(std::move(msg));
+            if(msg)
+            {
+              htobe64buf(msg->Data() + PacketOverhead + CommandOverhead, acked);
+            }
+            EncryptAndSend(msg);
           }
         }
         ptr += sizeof(uint64_t);
@@ -735,20 +802,20 @@ namespace llarp
     void
     Session::HandleNACK(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + sizeof(uint64_t) + PacketOverhead))
+      if(data->Size() < (CommandOverhead + sizeof(uint64_t) + PacketOverhead))
       {
         LogError("short nack from ", m_RemoteAddr);
         return;
       }
       const auto now = m_Parent->Now();
       const uint64_t txid =
-          bufbe64toh(data.data() + CommandOverhead + PacketOverhead);
+          bufbe64toh(data->Data() + CommandOverhead + PacketOverhead);
       LogDebug("got nack on ", txid, " from ", m_RemoteAddr);
       auto itr = m_TXMsgs.find(txid);
       if(itr != m_TXMsgs.end())
       {
         itr->second.m_LastXMIT = now;
-        EncryptAndSend(itr->second.XMIT());
+        EncryptAndSend(itr->second.XMIT(this));
       }
       m_LastRX = now;
     }
@@ -756,18 +823,18 @@ namespace llarp
     void
     Session::HandleXMIT(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + PacketOverhead + sizeof(uint16_t)
-                        + sizeof(uint64_t) + ShortHash::SIZE))
+      if(data->Size() < (CommandOverhead + PacketOverhead + sizeof(uint16_t)
+                         + sizeof(uint64_t) + ShortHash::SIZE))
       {
         LogError("short XMIT from ", m_RemoteAddr);
         return;
       }
       const auto now = m_Parent->Now();
       const uint16_t sz =
-          bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
-      const uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
+          bufbe16toh(data->Data() + CommandOverhead + PacketOverhead);
+      const uint64_t rxid = bufbe64toh(data->Data() + CommandOverhead
                                        + sizeof(uint16_t) + PacketOverhead);
-      ShortHash h{data.data() + CommandOverhead + sizeof(uint16_t)
+      ShortHash h{data->Data() + CommandOverhead + sizeof(uint16_t)
                   + sizeof(uint64_t) + PacketOverhead};
       LogDebug("rxid=", rxid, " sz=", sz, " h=", h.ToHex());
       m_LastRX = now;
@@ -810,13 +877,16 @@ namespace llarp
       if(replayHit)
       {
         auto msg = CreatePacket(Command::eACKS, 9);
+        if(msg == nullptr)
+          return;
         // data fragment for previosuly gotten message
         // send explicit ack
         LogDebug("replay hit for rxid=", rxid, " for ", m_RemoteAddr,
                  " sending explicit ACK");
-        htobe64buf(msg.data() + PacketOverhead + CommandOverhead, rxid);
-        msg[PacketOverhead + CommandOverhead + sizeof(uint64_t)] = bitmask;
-        EncryptAndSend(std::move(msg));
+        htobe64buf(msg->Data() + PacketOverhead + CommandOverhead, rxid);
+        msg->Data()[PacketOverhead + CommandOverhead + sizeof(uint64_t)] =
+            bitmask;
+        EncryptAndSend(msg);
       }
       else
       {
@@ -829,17 +899,17 @@ namespace llarp
     void
     Session::HandleDATA(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
-                        + PacketOverhead))
+      if(data->Size() < (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
+                         + PacketOverhead))
       {
-        LogError("short DATA from ", m_RemoteAddr, " ", data.size());
+        LogError("short DATA from ", m_RemoteAddr, " ", data->Size());
         return;
       }
       const auto now = m_Parent->Now();
       m_LastRX       = now;
       const uint16_t sz =
-          bufbe16toh(data.data() + CommandOverhead + PacketOverhead);
-      const uint64_t rxid = bufbe64toh(data.data() + CommandOverhead
+          bufbe16toh(data->Data() + CommandOverhead + PacketOverhead);
+      const uint64_t rxid = bufbe64toh(data->Data() + CommandOverhead
                                        + sizeof(uint16_t) + PacketOverhead);
       auto itr            = m_RXMsgs.find(rxid);
       if(itr == m_RXMsgs.end())
@@ -869,7 +939,7 @@ namespace llarp
       {
         constexpr auto offset = PacketOverhead + CommandOverhead
             + sizeof(uint16_t) + sizeof(uint64_t);
-        const llarp_buffer_t buf(data.data() + offset, data.size() - offset);
+        const llarp_buffer_t buf(data->Data() + offset, data->Size() - offset);
         itr->second.HandleData(sz, buf, now);
       }
 
@@ -884,7 +954,7 @@ namespace llarp
           if(m_MACK)
             m_SendMACKs.emplace(rxid);
           else
-            msg.SendACKS(util::memFn(&Session::EncryptAndSend, this), now);
+            msg.SendACKS(this, now);
         }
         else
         {
@@ -897,7 +967,7 @@ namespace llarp
     void
     Session::HandleACKS(Packet_t data)
     {
-      if(data.size()
+      if(data->Size()
          < (1 + PacketOverhead + CommandOverhead + sizeof(uint64_t)))
       {
         LogError("short ACKS from ", m_RemoteAddr);
@@ -906,7 +976,7 @@ namespace llarp
       const auto now = m_Parent->Now();
       m_LastRX       = now;
       const uint64_t txid =
-          bufbe64toh(data.data() + CommandOverhead + PacketOverhead);
+          bufbe64toh(data->Data() + CommandOverhead + PacketOverhead);
       auto itr = m_TXMsgs.find(txid);
       if(itr == m_TXMsgs.end())
       {
@@ -914,13 +984,16 @@ namespace llarp
         if(m_DROP)
         {
           auto msg = CreatePacket(Command::eDROP, 8);
-          htobe64buf(msg.data() + PacketOverhead + CommandOverhead, txid);
-          EncryptAndSend(std::move(msg));
+          if(msg)
+          {
+            htobe64buf(msg->Data() + PacketOverhead + CommandOverhead, txid);
+          }
+          EncryptAndSend(msg);
         }
         return;
       }
       itr->second.Ack(
-          data[CommandOverhead + PacketOverhead + sizeof(uint64_t)]);
+          data->Data()[CommandOverhead + PacketOverhead + sizeof(uint64_t)]);
 
       if(itr->second.IsTransmitted())
       {
@@ -930,8 +1003,7 @@ namespace llarp
       }
       else
       {
-        itr->second.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this),
-                                 now);
+        itr->second.FlushUnAcked(this, now);
       }
     }
 
@@ -966,15 +1038,11 @@ namespace llarp
     void
     Session::Recv_LL(byte_t* buf, size_t sz)
     {
-      LogDebug("got ", sz, " from ", m_RemoteAddr);
-      HandleCipherText(buf, sz);
-    }
-
-    void
-    Session::HandleCipherText(byte_t* buf, size_t sz)
-    {
+      LogDebug("got ", sz, " from ", m_RemoteAddr, " state=", int(m_State));
       switch(m_State)
       {
+        case State::Closed:
+          break;
         case State::Initial:
           if(m_Inbound)
           {
@@ -984,11 +1052,6 @@ namespace llarp
               HandleGotIntro(buf, sz);
             else
               LogError("bad intro from ", m_RemoteAddr);
-          }
-          else
-          {
-            // this case should never happen
-            ::abort();
           }
           break;
         case State::Introduction:
@@ -1005,9 +1068,9 @@ namespace llarp
           }
           break;
         default:
-          m_DecryptQueue =
-              m_DecryptQueue == nullptr ? new CryptoQueue_t() : m_DecryptQueue;
-          m_DecryptQueue->emplace(m_DecryptSeqno++, buf, sz);
+
+          m_DecryptQueue.emplace(
+              m_Parent->ObtainPacket(m_DecryptSeqno++, buf, sz));
           break;
       }
     }

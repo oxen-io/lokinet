@@ -847,7 +847,7 @@ struct llarp_pkt_list
 
   template < typename Visit >
   void
-  ForEachPacket(Visit&& v)
+  ForEachPacket(Visit v)
   {
     for(size_t idx = 0; idx < numEvents; ++idx)
     {
@@ -869,11 +869,11 @@ struct llarp_pkt_list
   }
 
   void
-  GotEvent(size_t idx, const llarp::Addr& from, size_t sz)
+  GotEvent(size_t idx, const sockaddr* from, size_t sz)
   {
-    if(idx > Events || sz > MaxMTU)
+    if(idx > Events || sz > MaxMTU || from == nullptr)
       return;
-    addrs[idx] = from;
+    addrs[idx] = *from;
     sizes[idx] = sz;
   }
 };

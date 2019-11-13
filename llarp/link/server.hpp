@@ -13,6 +13,7 @@
 #include <list>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -254,11 +255,8 @@ namespace llarp
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex,
                          ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
-
-    using TrafficEvent_t = std::pair< Addr, ILinkSession::Packet_t >;
-    using TrafficQueue_t = std::vector< TrafficEvent_t >;
-
-    std::shared_ptr< TrafficQueue_t > m_Recv;
+    std::unordered_map< llarp::Addr, llarp_time_t, llarp::Addr::Hash >
+        m_Closing;
   };
 
   using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;

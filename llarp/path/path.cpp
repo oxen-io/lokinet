@@ -5,6 +5,7 @@
 #include <messages/discard.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay_status.hpp>
+#include <path/path_context.hpp>
 #include <path/pathbuilder.hpp>
 #include <path/transit_hop.hpp>
 #include <profiling.hpp>
@@ -23,8 +24,8 @@ namespace llarp
   namespace path
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
-               PathRole startingRoles)
-        : m_PathSet(parent), _role(startingRoles)
+               PathRole startingRoles, PathContext* ctx)
+        : IHopHandler(ctx), m_PathSet(parent), _role(startingRoles)
     {
       hops.resize(h.size());
       size_t hsz = h.size();
@@ -391,11 +392,15 @@ namespace llarp
     }
 
     void
-    Path::HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r)
+    Path::HandleAllUpstream(Traffic_ptr msgs, AbstractRouter* r)
     {
       const auto up = Upstream();
-      msgs->ForEach([&](auto& msg) {
-        if(!r->SendToOrQueue(up, &msg))
+      RelayUpstreamMessage msg;
+      msg.pathid = TXID();
+      msgs->ForEach([&](auto& X, auto& Y) {
+        msg.X = X;
+        msg.Y = Y;
+        if(not r->SendToOrQueue(up, &msg))
         {
           LogDebug("failed to send upstream to ", up);
         }
@@ -403,11 +408,11 @@ namespace llarp
     }
 
     void
-    Path::UpstreamWork(UpstreamTraffic_ptr msgs, AbstractRouter* r)
+    Path::UpstreamWork(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        const llarp_buffer_t buf(msg.X);
-        TunnelNonce n = msg.Y;
+      msgs->ForEach([&](auto& X, auto& Y) {
+        const llarp_buffer_t buf(X);
+        TunnelNonce n = Y;
         for(const auto& hop : hops)
         {
           CryptoManager::instance()->xchacha20(buf, hop.shared, n);
@@ -443,53 +448,21 @@ namespace llarp
       return ss.str();
     }
 
-    DownstreamBufferPool_t::Ptr_t
-    Path::ObtainDownstreamBufferPool()
-    {
-      if(_status == ePathDestroy)
-        return nullptr;
-      return m_PathSet->ObtainDownstreamBufferPool();
-    }
-
-    UpstreamBufferPool_t::Ptr_t
-    Path::ObtainUpstreamBufferPool()
-    {
-      if(_status == ePathDestroy)
-        return nullptr;
-      return m_PathSet->ObtainUpstreamBufferPool();
-    }
-
-    void
-    Path::ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t pool)
-    {
-      m_PathSet->ReturnDownstreamBufferPool(pool);
-    }
-
-    void
-    Path::ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t pool)
-    {
-      m_PathSet->ReturnUpstreamBufferPool(pool);
-    }
-
     void
     Path::Destroy()
     {
       _status = ePathDestroy;
-      ReturnDownstreamBufferPool(m_DownstreamPool);
-      m_DownstreamPool = nullptr;
-      ReturnUpstreamBufferPool(m_UpstreamPool);
-      m_UpstreamPool = nullptr;
     }
 
     void
-    Path::DownstreamWork(DownstreamTraffic_ptr msgs, AbstractRouter* r)
+    Path::DownstreamWork(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        const llarp_buffer_t buf(msg.X);
+      msgs->ForEach([&](auto& X, auto& Y) {
+        const llarp_buffer_t buf(X);
         for(const auto& hop : hops)
         {
-          msg.Y ^= hop.nonceXOR;
-          CryptoManager::instance()->xchacha20(buf, hop.shared, msg.Y);
+          Y ^= hop.nonceXOR;
+          CryptoManager::instance()->xchacha20(buf, hop.shared, Y);
         }
       });
       r->logic()->queue_func([self = shared_from_this(), r, msgs]() {
@@ -498,10 +471,10 @@ namespace llarp
     }
 
     void
-    Path::HandleAllDownstream(DownstreamTraffic_ptr msgs, AbstractRouter* r)
+    Path::HandleAllDownstream(Traffic_ptr msgs, AbstractRouter* r)
     {
-      msgs->ForEach([&](auto& msg) {
-        const llarp_buffer_t buf(msg.X);
+      msgs->ForEach([&](auto& X, auto&) {
+        const llarp_buffer_t buf(X);
         if(!this->HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");

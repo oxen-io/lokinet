@@ -20,13 +20,18 @@ namespace llarp
     }
 
     ILinkSession::Packet_t
-    OutboundMessage::XMIT() const
+    OutboundMessage::XMIT(Session *s) const
     {
-      auto xmit = CreatePacket(Command::eXMIT, 10 + 32);
-      htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
-      htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
-      std::copy_n(m_Digest.begin(), m_Digest.size(),
-                  xmit.data() + 10 + CommandOverhead + PacketOverhead);
+      auto xmit = s->CreatePacket(Command::eXMIT, 10 + 32);
+      if(xmit)
+      {
+        htobe16buf(xmit->Data() + CommandOverhead + PacketOverhead,
+                   m_Data.size());
+        htobe64buf(xmit->Data() + 2 + CommandOverhead + PacketOverhead,
+                   m_MsgID);
+        std::copy_n(m_Digest.begin(), m_Digest.size(),
+                    xmit->Data() + 10 + CommandOverhead + PacketOverhead);
+      }
       return xmit;
     }
 
@@ -37,13 +42,16 @@ namespace llarp
     }
 
     void
-    OutboundMessage::MaybeSendXMIT(
-        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
+    OutboundMessage::MaybeSendXMIT(Session *s, llarp_time_t now)
     {
       if(ShouldSendXMIT(now))
       {
-        sendpkt(XMIT());
-        m_LastXMIT = now;
+        auto pkt = XMIT(s);
+        if(pkt)
+        {
+          s->EncryptAndSend(pkt);
+          m_LastXMIT = now;
+        }
       }
     }
 
@@ -70,29 +78,38 @@ namespace llarp
     }
 
     void
-    OutboundMessage::FlushUnAcked(
-        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
+    OutboundMessage::FlushUnAcked(Session *s, llarp_time_t now)
     {
       /// overhead for a data packet in plaintext
       static constexpr size_t Overhead = 10;
       uint16_t idx                     = 0;
       const auto datasz                = m_Data.size();
+      bool fail                        = false;
       while(idx < datasz)
       {
         if(not m_Acks[idx / FragmentSize])
         {
           const size_t fragsz =
               idx + FragmentSize < datasz ? FragmentSize : datasz - idx;
-          auto frag = CreatePacket(Command::eDATA, fragsz + Overhead, 0, 0);
-          htobe16buf(frag.data() + 2 + PacketOverhead, idx);
-          htobe64buf(frag.data() + 4 + PacketOverhead, m_MsgID);
-          std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
-                    frag.data() + PacketOverhead + Overhead + 2);
-          sendpkt(std::move(frag));
+          auto frag = s->CreatePacket(Command::eDATA, fragsz + Overhead, 0, 0);
+          if(frag)
+          {
+            htobe16buf(frag->Data() + 2 + PacketOverhead, idx);
+            htobe64buf(frag->Data() + 4 + PacketOverhead, m_MsgID);
+            std::copy(m_Data.begin() + idx, m_Data.begin() + idx + fragsz,
+                      frag->Data() + PacketOverhead + Overhead + 2);
+            s->EncryptAndSend(frag);
+          }
+          else
+          {
+            fail = false;
+            break;
+          }
         }
         idx += FragmentSize;
       }
-      m_LastFlush = now;
+      if(not fail)
+        m_LastFlush = now;
     }
 
     bool
@@ -150,11 +167,14 @@ namespace llarp
     }
 
     ILinkSession::Packet_t
-    InboundMessage::ACKS() const
+    InboundMessage::ACKS(Session *s) const
     {
-      auto acks = CreatePacket(Command::eACKS, 9);
-      htobe64buf(acks.data() + CommandOverhead + PacketOverhead, m_MsgID);
-      acks[PacketOverhead + 10] = AcksBitmask();
+      auto acks = s->CreatePacket(Command::eACKS, 9);
+      if(acks)
+      {
+        htobe64buf(acks->Data() + CommandOverhead + PacketOverhead, m_MsgID);
+        acks->Data()[PacketOverhead + 10] = AcksBitmask();
+      }
       return acks;
     }
 
@@ -190,11 +210,14 @@ namespace llarp
     }
 
     void
-    InboundMessage::SendACKS(
-        std::function< void(ILinkSession::Packet_t) > sendpkt, llarp_time_t now)
+    InboundMessage::SendACKS(Session *s, llarp_time_t now)
     {
-      sendpkt(ACKS());
-      m_LastACKSent = now;
+      auto pkt = ACKS(s);
+      if(pkt)
+      {
+        s->EncryptAndSend(pkt);
+        m_LastACKSent = now;
+      }
     }
 
     bool

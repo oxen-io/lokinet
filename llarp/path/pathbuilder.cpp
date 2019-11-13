@@ -433,7 +433,8 @@ namespace llarp
       ctx->router  = m_router;
       auto self    = GetSelf();
       ctx->pathset = self;
-      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
+      auto path    = std::make_shared< path::Path >(hops, self.get(), roles,
+                                                 m_router->pathContextPtr());
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });

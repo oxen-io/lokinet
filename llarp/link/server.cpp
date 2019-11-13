@@ -166,10 +166,7 @@ namespace llarp
           LogInfo("pending session at ", itr->first, " timed out");
           // defer call so we can acquire mutexes later
           auto self = itr->second->BorrowSelf();
-          m_Logic->queue_func([&, self]() {
-            this->HandleTimeout(self.get());
-            self->Close();
-          });
+          m_Logic->queue_func([&, self]() { this->HandleTimeout(self.get()); });
           itr = m_Pending.erase(itr);
         }
       }
@@ -264,19 +261,9 @@ namespace llarp
     std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
     {
+      m_Closing.erase(to);
       s->Start();
       return true;
-    }
-    else
-    {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
-      auto range = m_Pending.equal_range(addr);
-      auto itr   = range.first;
-      while(itr != range.second)
-      {
-        itr->second->Start();
-        itr++;
-      }
     }
     return false;
   }
@@ -285,7 +272,6 @@ namespace llarp
   ILinkLayer::Start(std::shared_ptr< Logic > l,
                     std::shared_ptr< thread::ThreadPool > worker)
   {
-    m_Recv   = std::make_shared< TrafficQueue_t >();
     m_Worker = worker;
     m_Logic  = l;
     ScheduleTick(100);
@@ -314,6 +300,18 @@ namespace llarp
         ++itr;
       }
     }
+    auto itr = m_Closing.begin();
+    while(itr != m_Closing.end())
+    {
+      if(now >= itr->second)
+      {
+        itr = m_Closing.erase(itr);
+      }
+      else
+      {
+        ++itr;
+      }
+    }
   }
 
   void
@@ -339,7 +337,6 @@ namespace llarp
         ++itr;
       }
     }
-    m_Recv.reset();
   }
 
   void
@@ -464,25 +461,26 @@ namespace llarp
     tick_id = m_Logic->call_later({interval, this, &ILinkLayer::on_timer_tick});
   }
 
+  static void
+  ProcessPackets(ILinkLayer* link, llarp_pkt_list* const pkts)
+  {
+    if(pkts)
+    {
+      pkts->ForEachPacket(util::memFn(&ILinkLayer::RecvFrom, link));
+      llarp_ev_udp_free_pkt_list(pkts);
+    }
+    link->Pump();
+  }
+
   void
   ILinkLayer::udp_tick(llarp_udp_io* udp)
   {
-    ILinkLayer* link           = static_cast< ILinkLayer* >(udp->user);
-    llarp_pkt_list* const pkts = llarp_ev_udp_recvmany(udp);
-    auto logic                 = link->logic();
+    ILinkLayer* link = static_cast< ILinkLayer* >(udp->user);
+    auto logic       = link->logic();
     if(logic == nullptr)
-    {
-      llarp_ev_udp_free_pkt_list(pkts);
       return;
-    }
-    logic->queue_func([pkts, link]() {
-      if(pkts)
-      {
-        pkts->ForEachPacket(util::memFn(&ILinkLayer::RecvFrom, link));
-        llarp_ev_udp_free_pkt_list(pkts);
-      }
-      link->Pump();
-    });
+    llarp_pkt_list* const pkts = llarp_ev_udp_recvmany(udp);
+    logic->queue_func(std::bind(&ProcessPackets, link, pkts));
   }
 
 }  // namespace llarp

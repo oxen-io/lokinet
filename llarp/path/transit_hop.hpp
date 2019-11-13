@@ -107,6 +107,12 @@ namespace llarp
 
       bool destroy = false;
 
+      bool
+      IsDestroyed() const override
+      {
+        return destroy;
+      }
+
       const RouterID
       Upstream() const override
       {
@@ -245,17 +251,16 @@ namespace llarp
       AfterCollectDownstream(AbstractRouter* r) override;
 
       void
-      UpstreamWork(UpstreamTraffic_ptr queue, AbstractRouter* r) override;
+      UpstreamWork(Traffic_ptr queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) override;
+      DownstreamWork(Traffic_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r) override;
+      HandleAllUpstream(Traffic_ptr msgs, AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(DownstreamTraffic_ptr msgs,
-                          AbstractRouter* r) override;
+      HandleAllDownstream(Traffic_ptr msgs, AbstractRouter* r) override;
 
       std::shared_ptr< IHopHandler >
       GetSelf() override
@@ -264,21 +269,8 @@ namespace llarp
       }
 
      protected:
-      DownstreamBufferPool_t::Ptr_t
-      ObtainDownstreamBufferPool() override;
-
-      UpstreamBufferPool_t::Ptr_t
-      ObtainUpstreamBufferPool() override;
-
-      void ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
-
-      void ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
-
       void
       QueueDestroySelf(AbstractRouter* r);
-
-     private:
-      PathContext* const m_PathContext;
     };
 
     inline std::ostream&

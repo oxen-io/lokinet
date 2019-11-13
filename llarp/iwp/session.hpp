@@ -4,6 +4,7 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
+#include <util/compare_ptr.hpp>
 #include <set>
 #include <deque>
 #include <queue>
@@ -15,9 +16,6 @@ namespace llarp
     /// packet crypto overhead size
     static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
     /// creates a packet with plaintext size + wire overhead + random pad
-    ILinkSession::Packet_t
-    CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
-                 size_t pad_variance = 16);
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
@@ -126,6 +124,10 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      ILinkSession::Packet_t
+      CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
+                   size_t pad_variance = 16);
+
      private:
       enum class State
       {
@@ -150,7 +152,7 @@ namespace llarp
       /// set me to true to send multiacks otherwise we will do explict acks
       const bool m_MACK = false;
       /// set me to true to send DROP messages
-      const bool m_DROP = false;
+      const bool m_DROP = true;
 
       AddressInfo m_ChosenAI;
       /// remote rc
@@ -182,58 +184,14 @@ namespace llarp
 
       // using CryptoQueue_t   = std::vector< Packet_t >;
 
-      struct PacketEvent
-      {
-        PacketEvent() = default;
+      using CryptoQueue_t =
+          std::priority_queue< PacketEvent::Ptr_t,
+                               std::vector< PacketEvent::Ptr_t >,
+                               llarp::ComparePtr< PacketEvent::Ptr_t > >;
+      using CryptoQueue_ptr = std::vector< PacketEvent::Ptr_t >;
 
-        PacketEvent(uint64_t s, byte_t* ptr, size_t sz)
-        {
-          seqno = s;
-          pkt.resize(sz);
-          std::copy_n(ptr, sz, pkt.begin());
-        }
-
-        PacketEvent(uint64_t s, Packet_t&& p)
-        {
-          seqno = s;
-          pkt   = std::move(p);
-        }
-
-        PacketEvent(const PacketEvent&) = delete;
-
-        PacketEvent&
-        operator=(const PacketEvent&) = delete;
-
-        PacketEvent&
-        operator=(PacketEvent&& other)
-        {
-          seqno       = other.seqno;
-          other.seqno = 0;
-          pkt         = std::move(other.pkt);
-          return *this;
-        }
-
-        PacketEvent(PacketEvent&& other)
-        {
-          seqno       = other.seqno;
-          other.seqno = 0;
-          pkt         = std::move(other.pkt);
-        }
-
-        uint64_t seqno;
-        Packet_t pkt;
-        bool
-        operator<(const PacketEvent& other) const
-        {
-          return other.seqno < seqno;
-        }
-      };
-
-      using CryptoQueue_t   = std::priority_queue< PacketEvent >;
-      using CryptoQueue_ptr = CryptoQueue_t*;
-
-      CryptoQueue_ptr m_EncryptQueue = nullptr;
-      CryptoQueue_ptr m_DecryptQueue = nullptr;
+      CryptoQueue_t m_EncryptQueue;
+      CryptoQueue_t m_DecryptQueue;
       CryptoQueue_t m_RecvQueue;
 
       uint64_t m_DecryptSeqno = 0;
@@ -244,6 +202,9 @@ namespace llarp
 
       void
       DecryptWorker(CryptoQueue_ptr msgs);
+
+      void
+      FreePackets(CryptoQueue_ptr msgs);
 
       void
       PumpRecv();
@@ -259,15 +220,6 @@ namespace llarp
 
       void
       HandleCreateSessionRequest(byte_t*, size_t);
-
-      void
-      HandleCipherText(byte_t*, size_t);
-
-      bool
-      DecryptMessageInPlace(Packet_t& pkt)
-      {
-        return DecryptBuffer(pkt.data(), pkt.size());
-      }
 
       void
       SendACKSFor(uint64_t rxid, byte_t bitmask, bool replayHit);

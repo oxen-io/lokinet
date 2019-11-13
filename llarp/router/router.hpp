@@ -122,6 +122,12 @@ namespace llarp
       return paths;
     }
 
+    path::PathContext *
+    pathContextPtr() override
+    {
+      return &paths;
+    }
+
     const RouterContact &
     rc() const override
     {

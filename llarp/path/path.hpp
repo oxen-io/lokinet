@@ -68,6 +68,8 @@ namespace llarp
           < std::tie(rhs.txID, rhs.rxID, rhs.rc, rhs.upstream, rhs.lifetime);
     }
 
+    struct PathContext;
+
     /// A path we made
     struct Path final : public IHopHandler,
                         public routing::IMessageHandler,
@@ -96,7 +98,7 @@ namespace llarp
       llarp_time_t buildStarted = 0;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
-           PathRole startingRoles);
+           PathRole startingRoles, PathContext* ctx);
 
       util::StatusObject
       ExtractStatus() const;
@@ -225,6 +227,12 @@ namespace llarp
       void
       Destroy() override;
 
+      bool
+      IsDestroyed() const override
+      {
+        return _status == ePathDestroy;
+      }
+
       /// build a new path on the same set of hops as us
       /// regenerates keys
       void
@@ -337,27 +345,16 @@ namespace llarp
 
      protected:
       void
-      UpstreamWork(UpstreamTraffic_ptr queue, AbstractRouter* r) override;
+      UpstreamWork(Traffic_ptr queue, AbstractRouter* r) override;
 
       void
-      DownstreamWork(DownstreamTraffic_ptr queue, AbstractRouter* r) override;
+      DownstreamWork(Traffic_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(UpstreamTraffic_ptr msgs, AbstractRouter* r) override;
+      HandleAllUpstream(Traffic_ptr msgs, AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(DownstreamTraffic_ptr msgs,
-                          AbstractRouter* r) override;
-
-      DownstreamBufferPool_t::Ptr_t
-      ObtainDownstreamBufferPool() override;
-
-      UpstreamBufferPool_t::Ptr_t
-      ObtainUpstreamBufferPool() override;
-
-      void ReturnUpstreamBufferPool(UpstreamBufferPool_t::Ptr_t) override;
-
-      void ReturnDownstreamBufferPool(DownstreamBufferPool_t::Ptr_t) override;
+      HandleAllDownstream(Traffic_ptr msgs, AbstractRouter* r) override;
 
       std::shared_ptr< IHopHandler >
       GetSelf() override
