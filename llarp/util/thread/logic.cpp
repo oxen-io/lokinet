@@ -71,11 +71,12 @@ namespace llarp
   bool
   Logic::queue_func(std::function< void(void) >&& f)
   {
-    if(!this->thread->impl->tryAddJob(f))
+    if(can_flush() && thread->impl->capacity() == thread->impl->capacity())
     {
-      call_later(0, f);
+      call_later(5, f);
+      return true;
     }
-    return true;
+    return thread->impl->addJob(f);
   }
 
   void
