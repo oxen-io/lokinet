@@ -106,6 +106,10 @@ namespace llarp
           self->m_Parent->MapAddr(self->m_RemoteRC.pubkey, self.get());
           self->m_Parent->SessionEstablished(self.get());
         }
+        else
+        {
+          self->Close();
+        }
       });
       return true;
     }
