@@ -53,5 +53,13 @@ namespace llarp
       (void)name;
 #endif
     }
+
+    void
+    ContentionKiller::TryAccess(std::function< void(void) > visit) const
+    {
+      NullLock lock(&__access);
+      visit();
+    }
+
   }  // namespace util
 }  // namespace llarp

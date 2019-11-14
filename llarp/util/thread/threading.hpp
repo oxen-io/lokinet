@@ -156,6 +156,16 @@ namespace llarp
       return ::getpid();
 #endif
     }
+
+    // type for detecting contention on a resource
+    struct ContentionKiller
+    {
+      void
+      TryAccess(std::function< void(void) > visit) const;
+
+     private:
+      mutable NullMutex __access;
+    };
   }  // namespace util
 }  // namespace llarp
 

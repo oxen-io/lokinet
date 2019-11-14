@@ -10,7 +10,7 @@ namespace libuv
   /// call a function in logic thread via a handle
   template < typename Handle, typename Func >
   void
-  Call(Handle* h, Func&& f)
+  Call(Handle* h, Func f)
   {
     static_cast< Loop* >(h->loop->data)->Call(f);
   }
@@ -416,7 +416,7 @@ namespace libuv
     OnTick(uv_check_t* t)
     {
       ticker_glue* ticker = static_cast< ticker_glue* >(t->data);
-      Call(&ticker->m_Ticker, [ticker]() { ticker->func(); });
+      Call(t, ticker->func);
     }
 
     bool

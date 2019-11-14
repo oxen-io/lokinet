@@ -71,9 +71,12 @@ namespace llarp
   void
   OutboundMessageHandler::Tick()
   {
-    ProcessOutboundQueue();
-    RemoveEmptyPathQueues();
-    SendRoundRobin();
+    auto self = this;
+    m_Killer.TryAccess([self]() {
+      self->ProcessOutboundQueue();
+      self->RemoveEmptyPathQueues();
+      self->SendRoundRobin();
+    });
   }
 
   void
@@ -265,7 +268,9 @@ namespace llarp
   void
   OutboundMessageHandler::RemoveEmptyPathQueues()
   {
-    removedSomePaths = (not removedPaths.empty());
+    removedSomePaths = false;
+    if(removedPaths.empty())
+      return;
 
     while(not removedPaths.empty())
     {
@@ -275,6 +280,7 @@ namespace llarp
         outboundMessageQueues.erase(itr);
       }
     }
+    removedSomePaths = true;
   }
 
   void
@@ -282,7 +288,7 @@ namespace llarp
   {
     // send non-routing messages first priority
     auto &non_routing_mq = outboundMessageQueues[zeroID];
-    while(!non_routing_mq.empty())
+    while(not non_routing_mq.empty())
     {
       MessageQueueEntry entry = std::move(non_routing_mq.front());
       non_routing_mq.pop();
