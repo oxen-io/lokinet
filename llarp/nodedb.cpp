@@ -122,7 +122,7 @@ llarp_nodedb::InsertAsync(llarp::RouterContact rc,
     this->Insert(rc);
     if(logic && completionHandler)
     {
-      logic->queue_func([completionHandler] { completionHandler(); });
+      LogicCall(logic, completionHandler);
     }
   });
 }

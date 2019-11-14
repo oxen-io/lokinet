@@ -7,6 +7,7 @@ namespace llarp
   // probably will need to move out of llarp namespace for c api
   enum LogLevel
   {
+    eLogTrace,
     eLogDebug,
     eLogInfo,
     eLogWarn,

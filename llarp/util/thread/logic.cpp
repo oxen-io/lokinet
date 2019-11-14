@@ -39,7 +39,8 @@ namespace llarp
   bool
   Logic::queue_job(struct llarp_thread_job job)
   {
-    return job.user && job.work && queue_func(std::bind(job.work, job.user));
+    return job.user && job.work
+        && LogicCall(this, std::bind(job.work, job.user));
   }
 
   void
@@ -47,31 +48,50 @@ namespace llarp
   {
     llarp::LogDebug("logic thread stop");
     // stop all timers from happening in the future
-    queue_func(std::bind(&llarp_timer_stop, m_Timer));
+    LogicCall(this, std::bind(&llarp_timer_stop, m_Timer));
     // stop all operations on threadpool
     llarp_threadpool_stop(m_Thread);
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > func)
+  Logic::_traceLogicCall(std::function< void(void) > func, const char* tag,
+                         int line)
   {
+#define TAG (tag ? tag : LOG_TAG)
+#define LINE (line ? line : __LINE__)
     // wrap the function so that we ensure that it's always calling stuff one at
     // a time
-    auto f = [self = this, func]() { self->m_Killer.TryAccess(func); };
+
+    LogTraceExplicit(TAG, LINE, "queue");
+
+    auto f = [self = this, func, tag, line]() {
+      LogTraceExplicit(TAG, LINE, "exec");
+      self->m_Killer.TryAccess(func);
+      LogTraceExplicit(TAG, LINE, "return");
+    };
     if(m_Thread->LooksFull(5))
     {
-      LogWarn(
-          "holy crap, we are trying to queue a job onto the logic thread but "
-          "it looks full");
+      LogWarnExplicit(TAG, LINE,
+                      "holy crap, we are trying to queue a job onto the logic "
+                      "thread but "
+                      "it looks full");
+
       if(can_flush())
       {
         // we are calling in the logic thread and our queue looks full
         // defer call to a later time so we don't die like a little bitch
-        call_later(m_Thread->GuessJobLatency() / 2, f);
+        const auto delay = m_Thread->GuessJobLatency() / 2;
+
+        LogWarnExplicit(TAG, LINE, "deferring call by ", delay, " ms");
+        call_later(delay, f);
         return true;
       }
     }
-    return llarp_threadpool_queue_job(m_Thread, f);
+    auto ret = llarp_threadpool_queue_job(m_Thread, f);
+    LogTraceExplicit(TAG, LINE, "==");
+    return ret;
+#undef TAG
+#undef LINE
   }
 
   void

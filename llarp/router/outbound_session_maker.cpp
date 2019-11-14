@@ -219,7 +219,7 @@ namespace llarp
     if(ShouldConnectTo(router))
     {
       auto fn = std::bind(&OutboundSessionMaker::DoEstablish, this, router);
-      _logic->queue_func(fn);
+      LogicCall(_logic, fn);
     }
   }
 
@@ -326,7 +326,7 @@ namespace llarp
     for(const auto &callback : movedCallbacks)
     {
       auto func = std::bind(callback, router, type);
-      _logic->queue_func(func);
+      LogicCall(_logic, func);
     }
 
     {

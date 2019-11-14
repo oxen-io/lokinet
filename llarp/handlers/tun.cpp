@@ -310,7 +310,7 @@ namespace llarp
     {
       auto self = shared_from_this();
       FlushSend();
-      RouterLogic()->queue_func([=] {
+      LogicCall(RouterLogic(), [=] {
         self->m_ExitMap.ForEachValue(
             [](const auto &exit) { exit->FlushUpstream(); });
         self->Pump(self->Now());
@@ -749,7 +749,7 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      EndpointLogic()->queue_func([&]() {
+      LogicCall(EndpointLogic(), [&]() {
         m_ExitMap.ForEachValue([&](const auto &exit) {
           this->EnsureRouterIsKnown(exit->Endpoint());
           exit->Tick(now);
@@ -982,8 +982,9 @@ namespace llarp
         }
         return false;
       };
-      self->EndpointLogic()->queue_func(std::bind(
-          &TunEndpoint::FlushToUser, self->shared_from_this(), sendpkt));
+      LogicCall(self->EndpointLogic(),
+                std::bind(&TunEndpoint::FlushToUser, self->shared_from_this(),
+                          sendpkt));
     }
 
     void

@@ -23,7 +23,7 @@ namespace llarp
     ExitHandlerFlush(llarp_tun_io *tun)
     {
       auto *ep = static_cast< ExitEndpoint * >(tun->user);
-      ep->GetRouter()->logic()->queue_func(std::bind(&ExitEndpoint::Flush, ep));
+      LogicCall(ep->GetRouter()->logic(), std::bind(&ExitEndpoint::Flush, ep));
     }
 
     ExitEndpoint::ExitEndpoint(const std::string &name, AbstractRouter *r)

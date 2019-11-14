@@ -167,9 +167,8 @@ namespace llarp
   {
     if(callback)
     {
-      auto func = std::bind(callback, status);
-      _logic->queue_func(
-          [self = this, func]() { self->m_Killer.TryAccess(func); });
+      auto f = std::bind(callback, status);
+      LogicCall(_logic, [self = this, f]() { self->m_Killer.TryAccess(f); });
     }
   }
 

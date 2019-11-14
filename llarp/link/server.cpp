@@ -161,7 +161,7 @@ namespace llarp
           LogInfo("pending session at ", itr->first, " timed out");
           // defer call so we can acquire mutexes later
           auto self = itr->second->BorrowSelf();
-          m_Logic->queue_func([&, self]() {
+          LogicCall(m_Logic, [&, self]() {
             this->HandleTimeout(self.get());
             self->Close();
           });
@@ -470,7 +470,7 @@ namespace llarp
     auto logic = link->logic();
     if(logic == nullptr)
       return;
-    logic->queue_func([pkts, link]() {
+    LogicCall(logic, [pkts, link]() {
       auto itr = pkts->begin();
       while(itr != pkts->end())
       {

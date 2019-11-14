@@ -132,9 +132,9 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllDownstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      LogicCall(r->logic(),
+                std::bind(&TransitHop::HandleAllDownstream, shared_from_this(),
+                          std::move(sendmsgs), r));
     }
 
     void
@@ -152,9 +152,9 @@ namespace llarp
         msg.X      = buf;
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllUpstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      LogicCall(r->logic(),
+                std::bind(&TransitHop::HandleAllUpstream, shared_from_this(),
+                          std::move(sendmsgs), r));
     }
 
     void
@@ -183,7 +183,7 @@ namespace llarp
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
-      r->linkManager().PumpLinks();
+      r->PumpLL();
     }
 
     void
@@ -196,7 +196,7 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
-      r->linkManager().PumpLinks();
+      r->PumpLL();
     }
 
     void
@@ -435,7 +435,7 @@ namespace llarp
     TransitHop::QueueDestroySelf(AbstractRouter* r)
     {
       auto func = std::bind(&TransitHop::SetSelfDestruct, shared_from_this());
-      r->logic()->queue_func(func);
+      LogicCall(r->logic(), func);
     }
   }  // namespace path
 }  // namespace llarp

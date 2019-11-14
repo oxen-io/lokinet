@@ -343,8 +343,8 @@ namespace llarp
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
         path::Path_ptr path                    = std::move(self->path);
         const PathID_t from                    = self->frame.F;
-        self->logic->queue_func(
-            [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
+        LogicCall(self->logic,
+                  [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
         delete self;
       }
     };
@@ -409,8 +409,9 @@ namespace llarp
       }
       msg->handler            = handler;
       const PathID_t fromPath = F;
-      logic->queue_func(
-          [=]() { ProtocolMessage::ProcessAsync(recvPath, fromPath, msg); });
+      LogicCall(logic, [=]() {
+        ProtocolMessage::ProcessAsync(recvPath, fromPath, msg);
+      });
       return true;
     }
 

@@ -557,7 +557,8 @@ namespace llarp
         recvMsgs->emplace_back(std::move(pkt));
       }
       LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      m_Parent->logic()->queue_func(
+      LogicCall(
+          m_Parent->logic(),
           std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
     }
 

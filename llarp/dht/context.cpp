@@ -199,14 +199,14 @@ namespace llarp
       PutRCNodeAsync(const RCNode& val) override
       {
         auto func = std::bind(&Bucket< RCNode >::PutNode, Nodes(), val);
-        router->logic()->queue_func(func);
+        LogicCall(router->logic(), func);
       }
 
       void
       DelRCNodeAsync(const Key_t& val) override
       {
         auto func = std::bind(&Bucket< RCNode >::DelNode, Nodes(), val);
-        router->logic()->queue_func(func);
+        LogicCall(router->logic(), func);
       }
 
       const Key_t&
