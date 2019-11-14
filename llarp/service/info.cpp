@@ -65,7 +65,8 @@ namespace llarp
       return m_CachedAddr.ToString();
     }
 
-    bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
+    bool
+    ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
     {
       std::array< byte_t, 256 > tmp;
       llarp_buffer_t buf(tmp);

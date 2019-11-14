@@ -175,8 +175,12 @@ namespace llarp
   {
     if(_stopping.load())
       return;
+
     paths.PumpDownstream();
     paths.PumpUpstream();
+
+    _outboundMessageHandler.Tick();
+
     _linkManager.PumpLinks();
   }
 

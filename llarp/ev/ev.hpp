@@ -671,8 +671,7 @@ namespace llarp
 #ifdef _WIN32
 struct llarp_fd_promise
 {
-  void
-  Set(std::pair< int, int >)
+  void Set(std::pair< int, int >)
   {
   }
 
