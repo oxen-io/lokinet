@@ -62,7 +62,7 @@ namespace llarp
 #define LogicCall(l, ...) l->_traceLogicCall(__VA_ARGS__, __FILE__, __LINE__)
 #endif
 #else
-#define LogicCall(l, ...) l->_traceLogicCall(__VG_ARGS__, 0, 0)
+#define LogicCall(l, ...) l->_traceLogicCall(__VA_ARGS__, 0, 0)
 #endif
 #endif
 
