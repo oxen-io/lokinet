@@ -148,7 +148,7 @@ namespace llarp
       GetByUpstream(RouterID remote, PathID_t rxid) const;
 
       void
-      ExpirePaths(llarp_time_t now);
+      ExpirePaths(llarp_time_t now, AbstractRouter* router);
 
       /// get the number of paths in this status
       size_t
@@ -199,15 +199,15 @@ namespace llarp
       }
 
       /// override me in subtype
-      virtual bool
-      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
+      virtual bool HandleGotIntroMessage(
+          std::shared_ptr< const dht::GotIntroMessage >)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool
-      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
+      virtual bool HandleGotRouterMessage(
+          std::shared_ptr< const dht::GotRouterMessage >)
       {
         return false;
       }
