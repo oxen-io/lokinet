@@ -55,12 +55,18 @@ namespace llarp
   bool
   Logic::queue_func(std::function< void(void) > f)
   {
-    if(can_flush() and m_Thread->LooksFull())
+    if(m_Thread->LooksFull(5))
     {
-      // we are calling in the logic thread and our queue looks full
-      // defer call to a later time so we don't die like a little bitch
-      call_later(m_Thread->GuessJobLatency() / 2, f);
-      return true;
+      LogWarn(
+          "holy crap, we are trying to queue a job onto the logic thread but "
+          "it looks full");
+      if(can_flush())
+      {
+        // we are calling in the logic thread and our queue looks full
+        // defer call to a later time so we don't die like a little bitch
+        call_later(m_Thread->GuessJobLatency() / 2, f);
+        return true;
+      }
     }
     return llarp_threadpool_queue_job(m_Thread, f);
   }

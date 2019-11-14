@@ -38,10 +38,11 @@ struct llarp_threadpool
   llarp_time_t
   GuessJobLatency(llarp_time_t granulairty = 1000) const;
 
+  /// see if this thread is full given lookahead amount
   bool
-  LooksFull() const
+  LooksFull(size_t lookahead) const
   {
-    return pendingJobs() >= size();
+    return (pendingJobs() + lookahead) >= size();
   }
 };
 #endif
