@@ -120,11 +120,13 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   Context Bob;
 
   bool success = false;
+  const bool shouldDebug = false;
 
   llarp_ev_loop_ptr netLoop;
   std::shared_ptr< Logic > m_logic;
 
   llarp_time_t oldRCLifetime;
+  llarp::LogLevel oldLevel;
 
   LinkLayerTest() : netLoop(nullptr)
   {
@@ -133,6 +135,9 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   void
   SetUp()
   {
+    oldLevel = llarp::LogContext::Instance().minLevel;
+    if(shouldDebug)
+      llarp::SetLogLevel(eLogDebug);
     oldRCLifetime              = RouterContact::Lifetime;
     RouterContact::BlockBogons = false;
     RouterContact::Lifetime    = 500;
@@ -151,32 +156,23 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     netLoop.reset();
     RouterContact::BlockBogons = true;
     RouterContact::Lifetime    = oldRCLifetime;
-  }
-
-  static void
-  OnTimeout(void* u, uint64_t, uint64_t left)
-  {
-    if(left)
-      return;
-    llarp::LogInfo("timed out test");
-    static_cast< LinkLayerTest* >(u)->Stop();
+    llarp::SetLogLevel(oldLevel);
   }
 
   void
   RunMainloop()
   {
-    m_logic->call_later({5000, this, &OnTimeout});
+    m_logic->call_later(5000, std::bind(&LinkLayerTest::Stop, this));
     llarp_ev_loop_run_single_process(netLoop, m_logic);
   }
 
   void
   Stop()
   {
-    m_logic->queue_func([&]() {
-      Alice.Stop();
-      Bob.Stop();
-      llarp_ev_loop_stop(netLoop);
-    });
+    Alice.Stop();
+    Bob.Stop();
+    llarp_ev_loop_stop(netLoop);
+    m_logic->stop();
   }
 
   bool
