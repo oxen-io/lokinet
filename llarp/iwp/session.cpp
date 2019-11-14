@@ -596,6 +596,7 @@ namespace llarp
         }
       }
       SendMACK();
+      Pump();
       m_Parent->PumpDone();
     }
 

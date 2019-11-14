@@ -38,9 +38,17 @@ namespace llarp
     }
 
     bool
-    DecodeKey(ABSL_ATTRIBUTE_UNUSED const llarp_buffer_t& key,
-              ABSL_ATTRIBUTE_UNUSED llarp_buffer_t* buf) override
+    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override
     {
+      if(key == "a")
+      {
+        llarp_buffer_t strbuf;
+        if(!bencode_read_string(buf, &strbuf))
+          return false;
+        if(strbuf.sz != 1)
+          return false;
+        return *strbuf.cur == 'x';
+      }
       return false;
     }
 
