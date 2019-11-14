@@ -53,8 +53,11 @@ namespace llarp
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > f)
+  Logic::queue_func(std::function< void(void) > func)
   {
+    // wrap the function so that we ensure that it's always calling stuff one at
+    // a time
+    auto f = [self = this, func]() { self->m_Killer.TryAccess(func); };
     if(m_Thread->LooksFull(5))
     {
       LogWarn(

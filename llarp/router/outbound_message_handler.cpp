@@ -71,8 +71,7 @@ namespace llarp
   void
   OutboundMessageHandler::Tick()
   {
-    auto self = this;
-    m_Killer.TryAccess([self]() {
+    m_Killer.TryAccess([self = this]() {
       self->ProcessOutboundQueue();
       self->RemoveEmptyPathQueues();
       self->SendRoundRobin();
@@ -82,7 +81,8 @@ namespace llarp
   void
   OutboundMessageHandler::QueueRemoveEmptyPath(const PathID_t &pathid)
   {
-    removedPaths.pushBack(pathid);
+    m_Killer.TryAccess(
+        [self = this, pathid]() { self->removedPaths.pushBack(pathid); });
   }
 
   // TODO: this
@@ -168,7 +168,8 @@ namespace llarp
     if(callback)
     {
       auto func = std::bind(callback, status);
-      _logic->queue_func(func);
+      _logic->queue_func(
+          [self = this, func]() { self->m_Killer.TryAccess(func); });
     }
   }
 

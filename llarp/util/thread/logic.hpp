@@ -49,6 +49,7 @@ namespace llarp
     llarp_threadpool* const m_Thread;
     llarp_timer_context* const m_Timer;
     absl::optional< ID_t > m_ID;
+    util::ContentionKiller m_Killer;
   };
 }  // namespace llarp
 
