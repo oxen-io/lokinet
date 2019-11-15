@@ -5,95 +5,99 @@
 
 namespace llarp
 {
-  namespace
+  void
+  FileLogStream::Flush(Lines_t *lines, FILE *const f)
   {
-    template < typename T >
-    static void
-    Flush(T *lines, FILE *const f)
+    bool wrote_stuff = false;
+    do
     {
-      bool wrote_stuff = false;
-      do
-      {
-        auto maybe_line = lines->tryPopFront();
-        if(not maybe_line.has_value())
-          break;
-        const auto &line = maybe_line.value();
-        if(fprintf(f, "%s\n", line.c_str()) > 0)
-          wrote_stuff = true;
-      } while(true);
+      auto maybe_line = lines->tryPopFront();
+      if(not maybe_line.has_value())
+        break;
+      const auto &line = maybe_line.value();
+      if(fprintf(f, "%s\n", line.c_str()) >= 0)
+        wrote_stuff = true;
+    } while(true);
 
-      if(wrote_stuff)
-        fflush(f);
-    }
-    // namespace
-    FileLogStream::FileLogStream(std::shared_ptr< thread::ThreadPool > disk,
-                                 FILE *f, llarp_time_t flushInterval,
-                                 bool closeFile)
-        : m_Lines(512)
-        , m_Disk(std::move(disk))
-        , m_File(f)
-        , m_FlushInterval(flushInterval)
-        , m_Close(closeFile)
-    {
-      m_Lines.enable();
-    }
+    if(wrote_stuff)
+      fflush(f);
+  }
 
-    FileLogStream::~FileLogStream()
-    {
-      m_Lines.disable();
-      do
-      {
-        auto line = m_Lines.tryPopFront();
-        if(not line.has_value())
-          break;
-      } while(true);
-      fflush(m_File);
-      if(m_Close)
-        fclose(m_File);
-    }
+  // namespace
+  FileLogStream::FileLogStream(std::shared_ptr< thread::ThreadPool > disk,
+                               FILE *f, llarp_time_t flushInterval,
+                               bool closeFile)
+      : m_Lines(1024 * 8)
+      , m_Disk(std::move(disk))
+      , m_File(f)
+      , m_FlushInterval(flushInterval)
+      , m_Close(closeFile)
+  {
+    m_Lines.enable();
+  }
 
-    bool
-    FileLogStream::ShouldFlush(llarp_time_t now) const
+  FileLogStream::~FileLogStream()
+  {
+    m_Lines.disable();
+    do
     {
-      if(m_Lines.full())
-        return true;
-      if(m_LastFlush >= now)
-        return false;
-      const auto dlt = now - m_LastFlush;
-      return dlt >= m_FlushInterval;
-    }
+      auto line = m_Lines.tryPopFront();
+      if(not line.has_value())
+        break;
+    } while(true);
+    fflush(m_File);
+    if(m_Close)
+      fclose(m_File);
+  }
 
-    void
-    FileLogStream::PreLog(std::stringstream &ss, LogLevel lvl,
-                          const char *fname, int lineno,
-                          const std::string &nodename) const
-    {
-      ss << "[" << LogLevelToString(lvl) << "] ";
-      ss << "[" << nodename << "]"
-         << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
-         << ":" << lineno << "\t";
-    }
+  bool
+  FileLogStream::ShouldFlush(llarp_time_t now) const
+  {
+    if(m_Lines.full())
+      return true;
+    if(m_LastFlush >= now)
+      return false;
+    const auto dlt = now - m_LastFlush;
+    return dlt >= m_FlushInterval;
+  }
 
-    void
-    FileLogStream::Print(LogLevel, const char *, const std::string &msg)
-    {
-      m_Lines.pushBack(msg);
-      Tick(llarp::time_now_ms());
-    }
+  void
+  FileLogStream::PreLog(std::stringstream &ss, LogLevel lvl, const char *fname,
+                        int lineno, const std::string &nodename) const
+  {
+    ss << "[" << LogLevelToString(lvl) << "] ";
+    ss << "[" << nodename << "]"
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
+       << ":" << lineno << "\t";
+  }
 
-    void
-    FileLogStream::Tick(llarp_time_t now)
-    {
-      if(ShouldFlush(now))
-        FlushLinesToDisk(now);
-    }
+  void
+  FileLogStream::Print(LogLevel, const char *, const std::string &msg)
+  {
+    m_Lines.pushBack(msg);
+  }
 
-    void
-    FileLogStream::FlushLinesToDisk(llarp_time_t now)
-    {
-      FILE *const f = m_File;
-      auto lines    = &m_Lines;
-      m_Disk->addJob([f, lines]() { Flush(lines, f); });
-      m_LastFlush = now;
-    }
-  }  // namespace
+  void
+  FileLogStream::AppendLog(LogLevel lvl, const char *fname, int lineno,
+                           const std::string &nodename, const std::string msg)
+  {
+    ILogStream::AppendLog(lvl, fname, lineno, nodename, msg);
+    Tick(llarp::time_now_ms());
+  }
+
+  void
+  FileLogStream::Tick(llarp_time_t now)
+  {
+    if(ShouldFlush(now))
+      FlushLinesToDisk(now);
+  }
+
+  void
+  FileLogStream::FlushLinesToDisk(llarp_time_t now)
+  {
+    FILE *const f = m_File;
+    auto lines    = &m_Lines;
+    m_Disk->addJob([f, lines]() { Flush(lines, f); });
+    m_LastFlush = now;
+  }
+}  // namespace llarp

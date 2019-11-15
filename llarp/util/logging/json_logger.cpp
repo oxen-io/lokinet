@@ -14,7 +14,7 @@ namespace llarp
     obj["line"]     = lineno;
     obj["level"]    = LogLevelToString(lvl);
     obj["message"]  = msg;
-    m_Lines.emplace_back(obj.dump());
+    m_Lines.pushBack(obj.dump());
   }
 
 }  // namespace llarp

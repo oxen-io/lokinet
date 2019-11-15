@@ -30,9 +30,11 @@ namespace llarp
     Tick(llarp_time_t now) override;
 
     void
-    PostLog(std::stringstream&) const override
-    {
-    }
+    PostLog(std::stringstream&) const override{};
+
+    void
+    AppendLog(LogLevel lvl, const char* fname, int lineno,
+              const std::string& nodename, const std::string msg) override;
 
     using Lines_t = thread::Queue< std::string >;
 
@@ -40,6 +42,9 @@ namespace llarp
     Lines_t m_Lines;
 
    private:
+    static void
+    Flush(Lines_t* const, FILE* const);
+
     bool
     ShouldFlush(llarp_time_t now) const;
 
