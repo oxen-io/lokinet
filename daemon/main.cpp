@@ -1,6 +1,7 @@
 #include <config/config.hpp>  // for ensure_config
 #include <constants/version.hpp>
 #include <llarp.h>
+#include <util/lokinet_init.h>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
@@ -83,6 +84,11 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
 int
 main(int argc, char *argv[])
 {
+  auto result = Lokinet_INIT();
+  if(result)
+  {
+    return result;
+  }
   llarp_main_runtime_opts opts;
   const char *singleThreadVar = getenv("LLARP_SHADOW");
   if(singleThreadVar && std::string(singleThreadVar) == "1")
