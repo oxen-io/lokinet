@@ -4,6 +4,7 @@
 #include <util/logging/logstream.hpp>
 
 #include <util/thread/thread_pool.hpp>
+#include <util/thread/queue.hpp>
 #include <util/time.hpp>
 
 #include <deque>
@@ -33,8 +34,10 @@ namespace llarp
     {
     }
 
+    using Lines_t = thread::Queue< std::string >;
+
    protected:
-    std::deque< std::string > m_Lines;
+    Lines_t m_Lines;
 
    private:
     bool
