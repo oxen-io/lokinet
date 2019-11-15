@@ -16,9 +16,10 @@ Lokinet_INIT(void)
     {
       static const char *text =
           "dont run lokinet in wine like wtf man we support linux and pretty "
-          "much every flavor of BSD.\nThis Program Will now crash lmao.";
+          "much every flavour of BSD, and even some flavours of unix system "
+          "5.x.\nThis Program Will now crash lmao.";
       static const char *title = "srsly fam wtf";
-      MessageBoxA(NULL, text, title, MB_ICONEXCLAMATION | MB_OK);
+      MessageBoxA(NULL, text, title, MB_ICONHAND);
       abort();
     }
   }
