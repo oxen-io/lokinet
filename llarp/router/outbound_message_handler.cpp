@@ -15,7 +15,7 @@ namespace llarp
   const PathID_t OutboundMessageHandler::zeroID;
 
   OutboundMessageHandler::OutboundMessageHandler(size_t maxQueueSize)
-      : outboundQueue(maxQueueSize), removedPaths(20), removedSomePaths(false)
+      : outboundQueue(maxQueueSize), removedPaths(20)
   {
   }
 
@@ -265,36 +265,16 @@ namespace llarp
   void
   OutboundMessageHandler::RemoveEmptyPathQueues()
   {
-    removedSomePaths = (not removedPaths.empty());
+    bool removedSomePaths = (not removedPaths.empty());
 
     while(not removedPaths.empty())
     {
-      auto itr = outboundMessageQueues.find(removedPaths.popFront());
-      if(itr != outboundMessageQueues.end())
-      {
-        outboundMessageQueues.erase(itr);
-      }
+      outboundMessageQueues.erase(removedPaths.popFront());
     }
-  }
-
-  void
-  OutboundMessageHandler::SendRoundRobin()
-  {
-    // send non-routing messages first priority
-    auto &non_routing_mq = outboundMessageQueues[zeroID];
-    while(!non_routing_mq.empty())
-    {
-      MessageQueueEntry entry = std::move(non_routing_mq.front());
-      non_routing_mq.pop();
-
-      Send(entry.router, entry.message);
-    }
-
-    size_t empty_count = 0;
-    size_t num_queues  = roundRobinOrder.size();
 
     if(removedSomePaths)
     {
+      size_t num_queues = roundRobinOrder.size();
       for(size_t i = 0; i < num_queues; i++)
       {
         PathID_t pathid = std::move(roundRobinOrder.front());
@@ -306,9 +286,24 @@ namespace llarp
         }
       }
     }
+  }
 
-    num_queues        = roundRobinOrder.size();
-    size_t sent_count = 0;
+  void
+  OutboundMessageHandler::SendRoundRobin()
+  {
+    // send non-routing messages first priority
+    auto &non_routing_mq = outboundMessageQueues[zeroID];
+    while(not non_routing_mq.empty())
+    {
+      MessageQueueEntry entry = std::move(non_routing_mq.front());
+      non_routing_mq.pop();
+
+      Send(entry.router, entry.message);
+    }
+
+    size_t empty_count = 0;
+    size_t sent_count  = 0;
+    size_t num_queues  = roundRobinOrder.size();
     if(num_queues == 0)  // if no queues, return
     {
       return;

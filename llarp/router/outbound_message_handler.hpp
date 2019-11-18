@@ -108,7 +108,6 @@ namespace llarp
 
     llarp::thread::Queue< MessageQueueEntry > outboundQueue;
     llarp::thread::Queue< PathID_t > removedPaths;
-    bool removedSomePaths;
 
     mutable util::Mutex _mutex;  // protects pendingSessionMessageQueues
 
