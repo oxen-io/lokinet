@@ -22,8 +22,9 @@ namespace llarp
       void
       Clear() override
       {
-        T = 0;
-        L = 0;
+        T       = 0;
+        L       = 0;
+        version = 0;
       }
 
       bool

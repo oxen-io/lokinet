@@ -39,6 +39,7 @@ namespace llarp
         P.Zero();
         T.Clear();
         Y.Zero();
+        version = 0;
       }
     };
 
