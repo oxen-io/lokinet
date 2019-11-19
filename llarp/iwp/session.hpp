@@ -62,7 +62,7 @@ namespace llarp
                         CompletionHandler resultHandler) override;
 
       void
-      Send_LL(const llarp_buffer_t& pkt);
+      Send_LL(const byte_t* buf, size_t sz);
 
       void EncryptAndSend(ILinkSession::Packet_t);
 

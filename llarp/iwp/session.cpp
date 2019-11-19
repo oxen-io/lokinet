@@ -57,9 +57,10 @@ namespace llarp
     }
 
     void
-    Session::Send_LL(const llarp_buffer_t& pkt)
+    Session::Send_LL(const byte_t* buf, size_t sz)
     {
-      LogDebug("send ", pkt.sz, " to ", m_RemoteAddr);
+      LogDebug("send ", sz, " to ", m_RemoteAddr);
+      const llarp_buffer_t pkt(buf, sz);
       m_Parent->SendTo_LL(m_RemoteAddr, pkt);
       m_LastTX = time_now_ms();
     }
@@ -155,10 +156,7 @@ namespace llarp
         pktbuf.base = pkt.data() + HMACSIZE;
         pktbuf.sz   = pkt.size() - HMACSIZE;
         CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
-        pktbuf.base = pkt.data();
-        pktbuf.cur  = pkt.data();
-        pktbuf.sz   = pkt.size();
-        Send_LL(pktbuf);
+        Send_LL(pkt.data(), pkt.size());
       }
     }
 
