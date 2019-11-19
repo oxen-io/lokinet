@@ -160,8 +160,13 @@ namespace llarp
     // type for detecting contention on a resource
     struct ContentionKiller
     {
+      template < typename F >
       void
-      TryAccess(std::function< void(void) > visit) const;
+      TryAccess(F visit) const
+      {
+        NullLock lock(&__access);
+        visit();
+      }
 
      private:
       mutable NullMutex __access;
