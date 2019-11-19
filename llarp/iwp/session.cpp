@@ -821,7 +821,7 @@ namespace llarp
             }
             else
             {
-              LogError("bad intro from ", m_RemoteAddr);
+              LogWarn("bad intro from ", m_RemoteAddr);
               return false;
             }
           }
