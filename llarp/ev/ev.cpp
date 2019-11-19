@@ -44,7 +44,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     if(ev->running())
     {
       ev->update_time();
-      logic->tick_async(ev->time_now());
+      logic->tick(ev->time_now());
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }

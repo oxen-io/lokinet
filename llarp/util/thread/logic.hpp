@@ -11,36 +11,23 @@ namespace llarp
   class Logic
   {
    public:
-    struct llarp_threadpool* thread;
-    struct llarp_timer_context* timer;
-    absl::optional< std::thread::id > id;
-
     Logic();
 
     ~Logic();
 
-    /// single threaded tick
+    /// trigger times as needed
     void
     tick(llarp_time_t now);
 
-    /// isolated tick
-    void
-    tick_async(llarp_time_t now);
-
-    void
-    stop_timer();
-
+    /// stop all operation and wait for that to die
     void
     stop();
 
-    void
-    mainloop();
-
-    void
+    bool
     queue_job(struct llarp_thread_job job);
 
     bool
-    queue_func(std::function< void(void) >&& func);
+    queue_func(std::function< void(void) > func);
 
     uint32_t
     call_later(const llarp_timeout_job& job);
@@ -56,6 +43,12 @@ namespace llarp
 
     bool
     can_flush() const;
+
+   private:
+    using ID_t = std::thread::id;
+    llarp_threadpool* const m_Thread;
+    llarp_timer_context* const m_Timer;
+    absl::optional< ID_t > m_ID;
   };
 }  // namespace llarp
 
