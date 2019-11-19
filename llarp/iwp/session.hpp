@@ -72,7 +72,7 @@ namespace llarp
       void
       Close() override;
 
-      void Recv_LL(ILinkSession::Packet_t) override;
+      bool Recv_LL(ILinkSession::Packet_t) override;
 
       bool
       SendKeepAlive() override;

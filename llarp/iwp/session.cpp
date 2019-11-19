@@ -805,7 +805,7 @@ namespace llarp
       return m_State == State::Ready;
     }
 
-    void
+    bool
     Session::Recv_LL(ILinkSession::Packet_t data)
     {
       switch(m_State)
@@ -816,9 +816,14 @@ namespace llarp
             // initial data
             // enter introduction phase
             if(DecryptMessageInPlace(data))
+            {
               HandleGotIntro(std::move(data));
+            }
             else
-              LogError("bad intro from ", m_RemoteAddr);
+            {
+              LogWarn("bad intro from ", m_RemoteAddr);
+              return false;
+            }
           }
           else
           {
@@ -844,6 +849,7 @@ namespace llarp
           HandleSessionData(std::move(data));
           break;
       }
+      return true;
     }
   }  // namespace iwp
 }  // namespace llarp
