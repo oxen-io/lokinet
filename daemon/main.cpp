@@ -215,7 +215,7 @@ main(int argc, char *argv[])
     if(genconfigOnly)
     {
       if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
-            overWrite, asRouter))
+                              overWrite, asRouter))
         return 1;
     }
     else
