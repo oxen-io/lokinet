@@ -424,8 +424,11 @@ namespace libuv
     Close() override
     {
       uv_check_stop(&m_Ticker);
-      m_Ticker.data = nullptr;
-      delete this;
+      uv_close((uv_handle_t*)&m_Ticker, [](auto h) {
+        ticker_glue* self = (ticker_glue*)h->data;
+        h->data           = nullptr;
+        delete self;
+      });
     }
 
     uv_check_t m_Ticker;
@@ -663,7 +666,7 @@ namespace libuv
     OnTick(uv_check_t* timer)
     {
       tun_glue* tun = static_cast< tun_glue* >(timer->data);
-      LoopCall(timer, std::bind(&tun_glue::Tick, tun));
+      tun->Tick();
     }
 
     static void
@@ -682,7 +685,7 @@ namespace libuv
       if(sz > 0)
       {
         llarp::LogDebug("tun read ", sz);
-        llarp_buffer_t pkt(m_Buffer, sz);
+        const llarp_buffer_t pkt(m_Buffer, sz);
         if(m_Tun && m_Tun->recvpkt)
           m_Tun->recvpkt(m_Tun, pkt);
       }
@@ -711,9 +714,14 @@ namespace libuv
     void
     Close() override
     {
+      if(m_Tun->impl == nullptr)
+        return;
       m_Tun->impl = nullptr;
       uv_check_stop(&m_Ticker);
-      uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      uv_close((uv_handle_t*)&m_Ticker, [](uv_handle_t* h) {
+        tun_glue* glue = static_cast< tun_glue* >(h->data);
+        uv_close((uv_handle_t*)&glue->m_Handle, &OnClosed);
+      });
     }
 
     bool
@@ -824,18 +832,24 @@ namespace libuv
   int
   Loop::tick(int ms)
   {
-    uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
-    uv_run(&m_Impl, UV_RUN_ONCE);
+    if(m_Run)
+    {
+      uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
+      uv_run(&m_Impl, UV_RUN_ONCE);
+    }
     return 0;
   }
 
   void
   Loop::stop()
   {
-    uv_stop(&m_Impl);
-    llarp::LogInfo("stopping event loop");
+    if(m_Run)
+    {
+      llarp::LogInfo("stopping event loop");
+      CloseAll();
+      // uv_stop(&m_Impl);
+    }
     m_Run.store(false);
-    CloseAll();
   }
 
   void

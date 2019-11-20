@@ -32,11 +32,11 @@ namespace llarp
       m_NetworkToUserPktQueue.Process(send);
     }
 
-    static void
-    tunifTick(llarp_tun_io *tun)
+    void
+    TunEndpoint::tunifTick(llarp_tun_io *tun)
     {
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      self->Flush();
+      LogicCall(self->m_router->logic(), [self]() { self->Flush(); });
     }
 
     TunEndpoint::TunEndpoint(const std::string &nickname, AbstractRouter *r,
@@ -308,13 +308,20 @@ namespace llarp
     void
     TunEndpoint::Flush()
     {
-      auto self = shared_from_this();
-      FlushSend();
-      LogicCall(RouterLogic(), [=] {
+      static const auto func = [](auto self) {
+        self->FlushSend();
         self->m_ExitMap.ForEachValue(
             [](const auto &exit) { exit->FlushUpstream(); });
         self->Pump(self->Now());
-      });
+      };
+      if(NetworkIsIsolated())
+      {
+        LogicCall(RouterLogic(), std::bind(func, shared_from_this()));
+      }
+      else
+      {
+        func(this);
+      }
     }
 
     static bool
@@ -749,13 +756,11 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      LogicCall(EndpointLogic(), [&]() {
-        m_ExitMap.ForEachValue([&](const auto &exit) {
-          this->EnsureRouterIsKnown(exit->Endpoint());
-          exit->Tick(now);
-        });
-        Endpoint::Tick(now);
+      m_ExitMap.ForEachValue([&](const auto &exit) {
+        this->EnsureRouterIsKnown(exit->Endpoint());
+        exit->Tick(now);
       });
+      Endpoint::Tick(now);
     }
 
     bool
@@ -983,8 +988,7 @@ namespace llarp
         return false;
       };
       LogicCall(self->EndpointLogic(),
-                std::bind(&TunEndpoint::FlushToUser, self->shared_from_this(),
-                          sendpkt));
+                std::bind(&TunEndpoint::FlushToUser, self, sendpkt));
     }
 
     void
@@ -992,9 +996,14 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      const ManagedBuffer pkt(b);
-      self->m_UserToNetworkPktQueue.EmplaceIf(
-          [&pkt](net::IPPacket &p) -> bool { return p.Load(pkt); });
+      std::vector< byte_t > pkt;
+      pkt.resize(b.sz);
+      std::copy_n(b.base, b.sz, pkt.data());
+      LogicCall(self->RouterLogic(), [self, buffer = std::move(pkt)]() {
+        const llarp_buffer_t pbuf(buffer);
+        self->m_UserToNetworkPktQueue.EmplaceIf(
+            [&pbuf](net::IPPacket &p) -> bool { return p.Load(pbuf); });
+      });
     }
 
     TunEndpoint::~TunEndpoint() = default;
