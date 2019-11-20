@@ -85,7 +85,7 @@ namespace llarp
                  const EncryptedFrame& frame, User_ptr u)
     {
       target = frame;
-      worker->addJob(std::bind(&Decrypt, this, u));
+      worker->addJob([self = this, user = u]() { self->Decrypt(user); });
     }
   };
 }  // namespace llarp
