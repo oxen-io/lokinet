@@ -16,7 +16,13 @@
 
 namespace llarp
 {
-  Addr::Addr()  = default;
+  Addr::Addr()
+  {
+    llarp::Zero(&_addr4, sizeof(_addr4));
+    _addr4.sin_family = AF_INET;
+    llarp::Zero(&_addr, sizeof(_addr));
+    _addr.sin6_family = AF_INET6;
+  }
   Addr::~Addr() = default;
 
   void
@@ -53,18 +59,18 @@ namespace llarp
     return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
   }
 
-  Addr::Addr(string_view str)
+  Addr::Addr(string_view str) : Addr()
   {
     this->from_char_array(str);
   }
 
-  Addr::Addr(string_view str, const uint16_t p_port)
+  Addr::Addr(string_view str, const uint16_t p_port) : Addr()
   {
     this->from_char_array(str);
     this->port(p_port);
   }
 
-  Addr::Addr(string_view addr_str, string_view port_str)
+  Addr::Addr(string_view addr_str, string_view port_str) : Addr()
   {
     this->from_char_array(string_view_string(addr_str).c_str());
     this->port(std::strtoul(string_view_string(port_str).c_str(), nullptr, 10));
@@ -174,18 +180,20 @@ namespace llarp
 
   Addr::Addr(const uint8_t one, const uint8_t two, const uint8_t three,
              const uint8_t four)
+      : Addr()
   {
     this->from_4int(one, two, three, four);
   }
 
   Addr::Addr(const uint8_t one, const uint8_t two, const uint8_t three,
              const uint8_t four, const uint16_t p_port)
+      : Addr()
   {
     this->from_4int(one, two, three, four);
     this->port(p_port);
   }
 
-  Addr::Addr(const AddressInfo& other)
+  Addr::Addr(const AddressInfo& other) : Addr()
   {
     memcpy(addr6(), other.ip.s6_addr, 16);
     _addr.sin6_port = htons(other.port);
@@ -200,7 +208,7 @@ namespace llarp
       _addr.sin6_family = AF_INET6;
   }
 
-  Addr::Addr(const sockaddr_in& other)
+  Addr::Addr(const sockaddr_in& other) : Addr()
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = AF_INET;
@@ -217,7 +225,7 @@ namespace llarp
     memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
   }
 
-  Addr::Addr(const sockaddr_in6& other)
+  Addr::Addr(const sockaddr_in6& other) : Addr()
   {
     memcpy(addr6(), other.sin6_addr.s6_addr, 16);
     _addr.sin6_port = htons(other.sin6_port);
@@ -236,7 +244,7 @@ namespace llarp
       _addr.sin6_family = AF_INET6;
   }
 
-  Addr::Addr(const sockaddr& other)
+  Addr::Addr(const sockaddr& other) : Addr()
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = other.sa_family;

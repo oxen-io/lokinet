@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <net/net.hpp>
-#include <net/net_inaddr.hpp>
 #include <net/net_int.hpp>
 #include <net/ip.hpp>
 

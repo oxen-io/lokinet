@@ -82,7 +82,6 @@ set(LIB_PLATFORM_SRC
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
-  net/net_inaddr.cpp
   net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}

@@ -16,7 +16,7 @@ namespace llarp
   {
     // network order
     sockaddr_in6 _addr;
-    sockaddr_in _addr4;  // why do we even have this? favor cpu over memory
+    sockaddr_in _addr4;
     ~Addr();
 
     Addr();

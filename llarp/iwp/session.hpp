@@ -39,9 +39,10 @@ namespace llarp
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
       /// outbound session
-      Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
+      Session(LinkLayer* parent, const RouterContact& rc,
+              const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, Addr from);
+      Session(LinkLayer* parent, const Addr& from);
 
       ~Session() = default;
 

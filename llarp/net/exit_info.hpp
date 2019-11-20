@@ -18,8 +18,8 @@ namespace llarp
 {
   struct ExitInfo
   {
-    struct in6_addr address;
-    struct in6_addr netmask;
+    in6_addr address = {0};
+    in6_addr netmask = {0};
     PubKey pubkey;
     uint64_t version = LLARP_PROTO_VERSION;
 
