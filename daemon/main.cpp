@@ -196,7 +196,6 @@ main(int argc, char *argv[])
     // when we have an explicit filepath
     fs::path fname   = fs::path(conffname);
     fs::path basedir = fname.parent_path();
-    conffname        = fname.string();
 
     if(!basedir.empty())
     {
