@@ -239,10 +239,10 @@ namespace llarp
       return m_Router;
     }
 
-    HopHandler_ptr
+    TransitHop_ptr
     PathContext::GetPathForTransfer(const PathID_t& id)
     {
-      RouterID us(OurRouterID());
+      const RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
         SyncTransitMap_t::Lock_t lock(&map.first);
