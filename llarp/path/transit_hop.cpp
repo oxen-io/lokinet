@@ -173,6 +173,11 @@ namespace llarp
           m_LastActivity = r->Now();
         }
         FlushDownstream(r);
+        for(const auto& other : m_FlushOthers)
+        {
+          other->FlushUpstream(r);
+        }
+        m_FlushOthers.clear();
       }
       else
       {
@@ -410,7 +415,10 @@ namespace llarp
       buf.cur = buf.base;
       // send
       if(path->HandleDownstream(buf, msg.Y, r))
+      {
+        m_FlushOthers.emplace(path);
         return true;
+      }
       return SendRoutingMessage(discarded, r);
     }
 

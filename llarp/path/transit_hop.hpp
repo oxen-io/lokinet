@@ -222,6 +222,8 @@ namespace llarp
 
       void
       QueueDestroySelf(AbstractRouter* r);
+
+      std::set< HopHandler_ptr, ComparePtr< HopHandler_Ptr > > m_FlushOthers;
     };
 
     inline std::ostream&
