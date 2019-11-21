@@ -7,10 +7,6 @@
 
 #include <csignal>
 
-#if !defined(_WIN32) && !defined(__OpenBSD__)
-#include <wordexp.h>
-#endif
-
 #include <cxxopts.hpp>
 #include <string>
 #include <iostream>
@@ -58,31 +54,6 @@ handle_signal_win32(DWORD fdwCtrlType)
   return TRUE;  // probably unreachable
 }
 #endif
-
-/// resolve ~ and symlinks into actual paths (so we know the real path on disk,
-/// to remove assumptions and confusion with permissions)
-std::string
-resolvePath(std::string conffname)
-{
-  // implemented in netbsd, removed downstream for security reasons
-  // even though it is defined by POSIX.1-2001+
-#if !defined(_WIN32) && !defined(__OpenBSD__)
-  wordexp_t exp_result;
-  wordexp(conffname.c_str(), &exp_result, 0);
-  char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
-  if(!resolvedPath)
-  {
-    // relative paths don't need to be resolved
-    // llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
-    return conffname;
-  }
-  return resolvedPath;
-#else
-  // TODO(despair): dig through LLVM local patch set
-  // one of these exists deep in the bowels of LLVMSupport
-  return conffname;  // eww, easier said than done outside of cygwin
-#endif
-}
 
 /// this sets up, configures and runs the main context
 static void
@@ -152,7 +123,7 @@ main(int argc, char *argv[])
   bool genconfigOnly = false;
   bool asRouter      = false;
   bool overWrite     = false;
-  std::string conffname;  // suggestions: confFName? conf_fname?
+  std::string conffname;
   try
   {
     auto result = options.parse(argc, argv);
@@ -225,34 +196,10 @@ main(int argc, char *argv[])
     // when we have an explicit filepath
     fs::path fname   = fs::path(conffname);
     fs::path basedir = fname.parent_path();
-    conffname        = fname.string();
-    conffname        = resolvePath(conffname);
-    std::error_code ec;
 
-    // llarp::LogDebug("Basedir: ", basedir);
-    if(basedir.string().empty())
+    if(!basedir.empty())
     {
-      // relative path to config
-
-      // does this file exist?
-      if(genconfigOnly)
-      {
-        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
-                                overWrite, asRouter))
-          return 1;
-      }
-      else
-      {
-        if(!fs::exists(fname, ec))
-        {
-          llarp::LogError("Config file not found ", conffname);
-          return 1;
-        }
-      }
-    }
-    else
-    {
-      // absolute path to config
+      std::error_code ec;
       if(!fs::create_directories(basedir, ec))
       {
         if(ec)
@@ -262,29 +209,27 @@ main(int argc, char *argv[])
           return 1;
         }
       }
-      if(genconfigOnly)
+    }
+
+    if(genconfigOnly)
+    {
+      if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
+                              overWrite, asRouter))
+        return 1;
+    }
+    else
+    {
+      std::error_code ec;
+      if(!fs::exists(fname, ec))
       {
-        // find or create file
-        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
-                                overWrite, asRouter))
-          return 1;
-      }
-      else
-      {
-        // does this file exist?
-        if(!fs::exists(conffname, ec))
-        {
-          llarp::LogError("Config file not found ", conffname);
-          return 1;
-        }
+        llarp::LogError("Config file not found ", conffname);
+        return 1;
       }
     }
   }
   else
   {
     auto basepath = llarp::GetDefaultConfigDir();
-    // I don't think this is necessary with this condition
-    // conffname = resolvePath(conffname);
 
     llarp::LogDebug("Find or create ", basepath.string());
     std::error_code ec;
