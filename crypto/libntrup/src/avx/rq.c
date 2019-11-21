@@ -25,15 +25,6 @@
 #define broadcast(r) _mm256_set1_pd(r)
 #define floor(x) _mm256_floor_pd(x)
 
-// 32-bit hosts only
-#ifndef __amd64__
-#define _mm_extract_epi64(X, N) \
-  (__extension__({              \
-    __v2di __a = (__v2di)(X);   \
-    __a[N];                     \
-  }))
-#endif
-
 void
 rq_encode(unsigned char *c, const modq *f)
 {
