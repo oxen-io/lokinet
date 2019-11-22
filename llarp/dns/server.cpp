@@ -39,10 +39,10 @@ namespace llarp
       m_Resolvers = resolvers;
       const llarp::Addr any("0.0.0.0", 0);
       auto self = shared_from_this();
-      m_ClientLogic->queue_func([=]() {
+      LogicCall(m_ClientLogic, [=]() {
         llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any);
       });
-      m_ServerLogic->queue_func([=]() {
+      LogicCall(m_ServerLogic, [=]() {
         llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr);
       });
       return true;
@@ -65,8 +65,9 @@ namespace llarp
       auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
       // yes we use the server loop here because if the server loop is not the
       // client loop we'll crash again
-      self->m_ServerLogic->queue_func(
-          [self, addr, msgbuf]() { self->HandlePktServer(addr, msgbuf); });
+      LogicCall(self->m_ServerLogic, [self, addr, msgbuf]() {
+        self->HandlePktServer(addr, msgbuf);
+      });
     }
 
     void
@@ -76,8 +77,9 @@ namespace llarp
       const llarp::Addr addr(*from);
       Buffer_t msgbuf = CopyBuffer(buf.underlying);
       auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
-      self->m_ServerLogic->queue_func(
-          [self, addr, msgbuf]() { self->HandlePktClient(addr, msgbuf); });
+      LogicCall(self->m_ServerLogic, [self, addr, msgbuf]() {
+        self->HandlePktClient(addr, msgbuf);
+      });
     }
 
     llarp::Addr
@@ -100,7 +102,7 @@ namespace llarp
     Proxy::SendServerMessageTo(llarp::Addr to, Message msg)
     {
       auto self = shared_from_this();
-      m_ServerLogic->queue_func([to, msg, self]() {
+      LogicCall(m_ServerLogic, [to, msg, self]() {
         std::array< byte_t, 1500 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(msg.Encode(&buf))
@@ -118,7 +120,7 @@ namespace llarp
     Proxy::SendClientMessageTo(llarp::Addr to, Message msg)
     {
       auto self = shared_from_this();
-      m_ClientLogic->queue_func([to, msg, self]() {
+      LogicCall(m_ClientLogic, [to, msg, self]() {
         std::array< byte_t, 1500 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(msg.Encode(&buf))
@@ -151,7 +153,7 @@ namespace llarp
 
       const Addr requester = itr->second;
       auto self            = shared_from_this();
-      m_ServerLogic->queue_func([=]() {
+      LogicCall(m_ServerLogic, [=]() {
         // forward reply to requester via server
         const llarp_buffer_t tmpbuf(buf);
         llarp_ev_udp_sendto(&self->m_Server, requester, tmpbuf);
@@ -222,7 +224,7 @@ namespace llarp
         // new forwarded query
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
-        m_ClientLogic->queue_func([=] {
+        LogicCall(m_ClientLogic, [=] {
           // do query
           const llarp_buffer_t tmpbuf(buf);
           llarp_ev_udp_sendto(&self->m_Client, tx.from, tmpbuf);
@@ -232,7 +234,7 @@ namespace llarp
       {
         // send the query again because it's probably FEC from the requester
         const auto resolver = itr->first.from;
-        m_ClientLogic->queue_func([=] {
+        LogicCall(m_ClientLogic, [=] {
           // send it
           const llarp_buffer_t tmpbuf(buf);
           llarp_ev_udp_sendto(&self->m_Client, resolver, tmpbuf);

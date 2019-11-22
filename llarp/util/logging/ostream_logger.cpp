@@ -18,7 +18,8 @@ namespace llarp
       switch(lvl)
       {
         case eLogNone:
-          break;
+          return;
+        case eLogTrace:
         case eLogDebug:
           ss << (char)27 << "[0m";
           break;

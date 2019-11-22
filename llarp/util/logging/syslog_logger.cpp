@@ -23,6 +23,7 @@ namespace llarp
     {
       case eLogNone:
         return;
+      case eLogTrace:
       case eLogDebug:
         ::syslog(LOG_DEBUG, "%s", msg.c_str());
         return;

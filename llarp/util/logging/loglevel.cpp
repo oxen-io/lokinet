@@ -7,6 +7,8 @@ namespace llarp
   {
     switch(lvl)
     {
+      case eLogTrace:
+        return "TRC";
       case eLogDebug:
         return "DBG";
       case eLogInfo:

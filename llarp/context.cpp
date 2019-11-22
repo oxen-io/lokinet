@@ -39,7 +39,7 @@ namespace llarp
   bool
   Context::CallSafe(std::function< void(void) > f)
   {
-    return logic && logic->queue_func(std::move(f));
+    return logic && LogicCall(logic, f);
   }
 
   void
@@ -482,8 +482,8 @@ extern "C"
   void
   llarp_main_signal(struct llarp_main *ptr, int sig)
   {
-    ptr->ctx->logic->queue_func(
-        std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
+    LogicCall(ptr->ctx->logic,
+              std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
   }
 
   int

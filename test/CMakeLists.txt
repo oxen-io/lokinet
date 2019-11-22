@@ -18,7 +18,6 @@ list(APPEND TEST_SRC
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
     llarp_test.cpp
-    net/test_llarp_net_inaddr.cpp
     net/test_llarp_net.cpp
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp

@@ -69,7 +69,7 @@ namespace llarp
       self->msg.version = LLARP_PROTO_VERSION;
       // encrypt and sign
       if(self->frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
-        self->logic->queue_func(std::bind(&AsyncKeyExchange::Result, self));
+        LogicCall(self->logic, std::bind(&AsyncKeyExchange::Result, self));
       else
       {
         LogError("failed to encrypt and sign");

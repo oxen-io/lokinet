@@ -1046,7 +1046,8 @@ namespace llarp
     {
       const auto& sessions = m_state->m_SNodeSessions;
       auto& queue          = m_state->m_InboundTrafficQueue;
-      EndpointLogic()->queue_func([&]() {
+
+      LogicCall(EndpointLogic(), [&]() {
         // send downstream packets to user for snode
         for(const auto& item : sessions)
           item.second.first->FlushDownstream();

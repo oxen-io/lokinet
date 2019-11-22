@@ -16,14 +16,20 @@ namespace llarp
     static void
     ExitHandlerRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &buf)
     {
-      static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(buf);
+      std::vector< byte_t > pkt;
+      pkt.resize(buf.sz);
+      std::copy_n(buf.base, buf.sz, pkt.data());
+      auto self = static_cast< ExitEndpoint * >(tun->user);
+      LogicCall(self->GetRouter()->logic(), [self, pktbuf = std::move(pkt)]() {
+        self->OnInetPacket(std::move(pktbuf));
+      });
     }
 
     static void
     ExitHandlerFlush(llarp_tun_io *tun)
     {
       auto *ep = static_cast< ExitEndpoint * >(tun->user);
-      ep->GetRouter()->logic()->queue_func(std::bind(&ExitEndpoint::Flush, ep));
+      LogicCall(ep->GetRouter()->logic(), std::bind(&ExitEndpoint::Flush, ep));
     }
 
     ExitEndpoint::ExitEndpoint(const std::string &name, AbstractRouter *r)
@@ -457,10 +463,13 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::OnInetPacket(const llarp_buffer_t &buf)
+    ExitEndpoint::OnInetPacket(std::vector< byte_t > buf)
     {
+      const llarp_buffer_t buffer(buf);
       m_InetToNetwork.EmplaceIf(
-          [b = ManagedBuffer(buf)](Pkt_t &pkt) -> bool { return pkt.Load(b); });
+          [b = ManagedBuffer(buffer)](Pkt_t &pkt) -> bool {
+            return pkt.Load(b);
+          });
     }
 
     bool

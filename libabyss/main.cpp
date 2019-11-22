@@ -39,7 +39,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   bool HandleResponse(abyss::http::RPC_Response) override
   {
     llarp::LogInfo("response get");
-    m_Logic->queue_func([=]() { m_Callback(); });
+    LogicCall(m_Logic, m_Callback);
     return true;
   }
 

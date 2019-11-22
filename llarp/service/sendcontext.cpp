@@ -100,7 +100,7 @@ namespace llarp
           LogError(self->m_Endpoint->Name(), " failed to sign message");
           return;
         }
-        self->m_Endpoint->RouterLogic()->queue_func([self, f, path]() {
+        LogicCall(self->m_Endpoint->RouterLogic(), [self, f, path]() {
           self->Send(f, path);
           self->FlushUpstream();
         });

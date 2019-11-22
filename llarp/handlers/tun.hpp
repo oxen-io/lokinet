@@ -56,6 +56,9 @@ namespace llarp
       void
       TickTun(llarp_time_t now);
 
+      static void
+      tunifTick(llarp_tun_io*);
+
       bool
       MapAddress(const service::Address& remote, huint128_t ip, bool SNode);
 

@@ -307,7 +307,7 @@ namespace llarp
       return;
     auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
-    self->logic()->queue_func(std::bind(&Router::Tick, self));
+    LogicCall(self->logic(), std::bind(&Router::Tick, self));
     self->ScheduleTicker(orig);
   }
 

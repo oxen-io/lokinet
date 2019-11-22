@@ -4,6 +4,7 @@
 #include <util/logging/logstream.hpp>
 
 #include <util/thread/thread_pool.hpp>
+#include <util/thread/queue.hpp>
 #include <util/time.hpp>
 
 #include <deque>
@@ -29,14 +30,21 @@ namespace llarp
     Tick(llarp_time_t now) override;
 
     void
-    PostLog(std::stringstream&) const override
-    {
-    }
+    PostLog(std::stringstream&) const override{};
+
+    void
+    AppendLog(LogLevel lvl, const char* fname, int lineno,
+              const std::string& nodename, const std::string msg) override;
+
+    using Lines_t = thread::Queue< std::string >;
 
    protected:
-    std::deque< std::string > m_Lines;
+    Lines_t m_Lines;
 
    private:
+    static void
+    Flush(Lines_t* const, FILE* const);
+
     bool
     ShouldFlush(llarp_time_t now) const;
 

@@ -6,6 +6,7 @@
 #include <path/path_types.hpp>
 #include <routing/handler.hpp>
 #include <router_id.hpp>
+#include <util/compare_ptr.hpp>
 
 namespace llarp
 {
@@ -95,6 +96,12 @@ namespace llarp
       llarp_time_t m_LastActivity = 0;
 
       bool destroy = false;
+
+      bool
+      operator<(const TransitHop& other) const
+      {
+        return info < other.info;
+      }
 
       bool
       IsEndpoint(const RouterID& us) const
@@ -222,6 +229,10 @@ namespace llarp
 
       void
       QueueDestroySelf(AbstractRouter* r);
+
+      std::set< std::shared_ptr< TransitHop >,
+                ComparePtr< std::shared_ptr< TransitHop > > >
+          m_FlushOthers;
     };
 
     inline std::ostream&
