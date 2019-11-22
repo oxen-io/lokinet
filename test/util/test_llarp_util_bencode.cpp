@@ -231,22 +231,22 @@ INSTANTIATE_TEST_CASE_P(
                       std::numeric_limits< uint64_t >::max() / 2,
                       std::numeric_limits< uint64_t >::max() / 3), );
 
-TEST(TestBencode, good_version)
+TEST(TestBencode, good_uint64_entry)
 {
   std::vector< byte_t > backingBuffer(100, 0);
   llarp_buffer_t buffer(backingBuffer);
 
-  ASSERT_TRUE(bencode_write_version_entry(&buffer));
+  ASSERT_TRUE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
 
   ASSERT_EQ(std::string(buffer.base, buffer.cur), "1:vi0e");
 }
 
-TEST(TestBencode, bad_version)
+TEST(TestBencode, bad_uint64_entry)
 {
   std::vector< byte_t > otherBuffer(1, 0);
   llarp_buffer_t buffer(otherBuffer);
 
-  ASSERT_FALSE(bencode_write_version_entry(&buffer));
+  ASSERT_FALSE(bencode_write_uint64_entry(&buffer, "v", 1, 0));
 }
 
 struct ValueData

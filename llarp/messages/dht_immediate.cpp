@@ -55,7 +55,7 @@ namespace llarp
       return false;
 
     // protocol version
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     return bencode_end(buf);

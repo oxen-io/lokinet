@@ -87,7 +87,7 @@ namespace llarp
     if(!rc.BEncode(buf))
       return false;
 
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     if(!bencode_write_bytestring(buf, "z", 1))

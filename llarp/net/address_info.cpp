@@ -142,7 +142,7 @@ namespace llarp
       return false;
 
     /** version */
-    if(!bencode_write_version_entry(buff))
+    if(!bencode_write_uint64_entry(buff, "v", 1, LLARP_PROTO_VERSION))
       return false;
     /** end */
     return bencode_end(buff);
