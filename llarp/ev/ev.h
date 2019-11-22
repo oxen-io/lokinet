@@ -40,7 +40,7 @@ typedef SSIZE_T ssize_t;
  * event handler (cross platform high performance event system for IO)
  */
 
-#define EV_TICK_INTERVAL 100
+#define EV_TICK_INTERVAL 10
 
 // forward declare
 struct llarp_threadpool;
