@@ -26,7 +26,7 @@ namespace llarp
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
                                 buf))
       return false;
 
@@ -134,7 +134,7 @@ namespace llarp
       nextRC = std::make_unique< RouterContact >();
       return nextRC->BDecode(buffer);
     }
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
                                 buffer))
       return false;
     if(*key == "w")

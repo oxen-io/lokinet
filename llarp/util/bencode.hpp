@@ -99,9 +99,11 @@ namespace llarp
     return true;
   }
 
+  /// If the key matches, reads in the version and ensures that it equals the
+  /// expected version
   template < typename Item_t >
   bool
-  BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,
+  BEncodeMaybeVerifyVersion(const char* k, Item_t& item, uint64_t expect,
                           bool& read, const llarp_buffer_t& key,
                           llarp_buffer_t* buf)
   {

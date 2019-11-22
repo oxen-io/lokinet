@@ -76,7 +76,7 @@ namespace llarp
     }
     else if(key == "v")
     {
-      if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+      if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
                                   buf))
       {
         return false;
@@ -262,7 +262,7 @@ namespace llarp
 
     if(!BEncodeMaybeReadDictInt("s", status, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
                                 buffer))
       return false;
 
