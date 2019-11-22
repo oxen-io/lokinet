@@ -61,7 +61,6 @@ llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey)
   return secretkey.LoadFromFile(fpath.c_str());
 }
 
-// C++ ...
 bool
 llarp_findOrCreateEncryption(const fs::path &path, llarp::SecretKey &encryption)
 {
