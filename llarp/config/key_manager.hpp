@@ -67,10 +67,13 @@ namespace llarp
   private:
 
     std::string m_rcPath;
-    std::string m_snKeyPath;
     std::string m_idKeyPath;
     std::string m_encKeyPath;
     std::string m_transportKeyPath;
+
+    /// Backup each key file (by copying, e.g. foo -> foo.bak)
+    bool
+    backupKeyFilesByMoving() const;
   };
 
 }  // namespace llarp
