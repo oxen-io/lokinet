@@ -132,7 +132,7 @@ namespace llarp
         bool
         operator<(const UpstreamBuffer& other) const
         {
-          return counter < other.counter;
+          return other.counter < counter;
         }
       };
 

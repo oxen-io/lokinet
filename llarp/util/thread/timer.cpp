@@ -1,6 +1,7 @@
 #include <util/thread/timer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/time.hpp>
+#include <util/compare_ptr.hpp>
 
 #include <atomic>
 #include <condition_variable>
@@ -49,7 +50,7 @@ namespace llarp
     bool
     operator<(const timer& other) const
     {
-      return (started + timeout) < (other.started + other.timeout);
+      return (other.started + other.timeout) < (started + timeout);
     }
   };
 }  // namespace llarp
@@ -59,7 +60,10 @@ struct llarp_timer_context
   llarp::util::Mutex timersMutex;  // protects timers
   std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers
       GUARDED_BY(timersMutex);
-  std::priority_queue< std::unique_ptr< llarp::timer > > calling;
+  using Timer_ptr = std::unique_ptr< llarp::timer >;
+  std::priority_queue< Timer_ptr, std::vector< Timer_ptr >,
+                       llarp::ComparePtr< Timer_ptr > >
+      calling;
   llarp::util::Mutex tickerMutex;
   std::unique_ptr< llarp::util::Condition > ticker;
   absl::Duration nextTickLen = absl::Milliseconds(100);

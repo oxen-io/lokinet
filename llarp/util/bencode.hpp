@@ -387,7 +387,8 @@ namespace llarp
             return bencode_read_integer(buffer, &v);
           }
           return bencode_discard(buffer);
-        }, buf);
+        },
+        buf);
     // rewind
     buf->cur = buf->base;
     return ret;
