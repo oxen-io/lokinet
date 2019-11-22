@@ -9,4 +9,8 @@
 #define LLARP_ETH_PROTO (0xD1CE)
 #endif
 
+#ifndef LLARP_KEYFILE_VERSION
+#define LLARP_KEYFILE_VERSION (1)
+#endif
+
 #endif

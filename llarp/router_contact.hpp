@@ -102,8 +102,9 @@ namespace llarp
     /// node nickname, yw kee
     llarp::AlignedBuffer< NICKLEN > nickname;
 
-    uint64_t last_updated = 0;
-    uint64_t version      = LLARP_PROTO_VERSION;
+    uint64_t last_updated   = 0;
+    uint64_t version        = LLARP_PROTO_VERSION;
+    uint64_t keyfileVersion = LLARP_KEYFILE_VERSION;
 
     util::StatusObject
     ExtractStatus() const;
@@ -151,7 +152,23 @@ namespace llarp
     BDecode(llarp_buffer_t *buf)
     {
       Clear();
-      return bencode_decode_dict(*this, buf);
+
+      // track whether or not keyfileVersion is found in the dict, default
+      // it if not found
+      uint64_t badValue = std::numeric_limits<uint64_t>::max();
+      keyfileVersion = badValue;
+
+      bool success = bencode_decode_dict(*this, buf);
+      if (! success)
+        return false;
+
+      // assume keyfileVersion is '0' if it wasn't found
+      // note that this behavior is different than what we want when RouterContact
+      // is normally used (e.g. when not deserializing something)
+      if (keyfileVersion == badValue)
+        keyfileVersion = 0;
+
+      return true;
     }
 
     bool
