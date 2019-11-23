@@ -49,10 +49,6 @@ llarp_timer_stop(struct llarp_timer_context *t);
 void
 llarp_timer_set_time(struct llarp_timer_context *t, llarp_time_t now);
 
-// blocking run timer and send events to thread pool
-void
-llarp_timer_run(struct llarp_timer_context *t, struct llarp_threadpool *pool);
-
 /// single threaded run timer, tick all timers
 void
 llarp_timer_tick_all(struct llarp_timer_context *t);

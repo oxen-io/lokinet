@@ -139,10 +139,15 @@ namespace llarp
     m_Queue([self = this]() { self->m_ID = std::this_thread::get_id(); });
   }
 
-  void
+  uint32_t
   Logic::call_later(llarp_time_t timeout, std::function< void(void) > func)
   {
-    llarp_timer_call_func_later(m_Timer, timeout, func);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      return loop->call_after_delay(timeout, func);
+    }
+    return 0;
   }
 
   uint32_t
@@ -159,18 +164,40 @@ namespace llarp
   Logic::cancel_call(uint32_t id)
   {
     llarp_timer_cancel_job(m_Timer, id);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      loop->cancel_delayed_call(id);
+    }
   }
 
   void
   Logic::remove_call(uint32_t id)
   {
     llarp_timer_remove_job(m_Timer, id);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      loop->cancel_delayed_call(id);
+    }
   }
 
   bool
   Logic::can_flush() const
   {
     return m_ID.value() == std::this_thread::get_id();
+  }
+
+  void
+  Logic::set_event_loop(llarp_ev_loop* loop)
+  {
+    m_Loop = loop;
+  }
+
+  void
+  Logic::clear_event_loop()
+  {
+    m_Loop = nullptr;
   }
 
 }  // namespace llarp

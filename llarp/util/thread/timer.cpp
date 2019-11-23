@@ -280,28 +280,6 @@ llarp_timer_tick_all_async(struct llarp_timer_context* t,
     llarp_threadpool_queue_job(pool, std::bind(&llarp_timer_tick_all, t));
 }
 
-void
-llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
-{
-  t->ticker = std::make_unique< llarp::util::Condition >();
-  while(t->run())
-  {
-    // wait for timer mutex
-    if(t->ticker)
-    {
-      llarp::util::Lock lock(&t->tickerMutex);
-      t->ticker->WaitWithTimeout(&t->tickerMutex, t->nextTickLen);
-    }
-
-    if(t->run())
-    {
-      llarp::util::Lock lock(&t->timersMutex);
-      // we woke up
-      llarp_timer_tick_all_async(t, pool, llarp::time_now_ms());
-    }
-  }
-}
-
 namespace llarp
 {
   void

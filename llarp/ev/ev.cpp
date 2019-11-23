@@ -38,6 +38,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
     }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }
+  logic->clear_event_loop();
   ev->stopped();
 }
 
