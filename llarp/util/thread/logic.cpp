@@ -76,8 +76,11 @@ namespace llarp
 
     METRIC("queue");
     auto f = [self = this, func, tag, line]() {
+#if defined(LOKINET_DEBUG)
+      metrics::TimerGuard g("logic",
+                            std::string(TAG) + ":" + std::to_string(LINE));
+#endif
       self->m_Killer.TryAccess(func);
-      METRIC("called");
     };
     if(m_Thread->LooksFull(5))
     {
