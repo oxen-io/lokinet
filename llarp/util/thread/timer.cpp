@@ -45,12 +45,6 @@ namespace llarp
     {
       static_cast< timer* >(user)->exec();
     }
-
-    bool
-    operator<(const timer& other) const
-    {
-      return (started + timeout) < (other.started + other.timeout);
-    }
   };
 }  // namespace llarp
 
@@ -59,7 +53,6 @@ struct llarp_timer_context
   llarp::util::Mutex timersMutex;  // protects timers
   std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers
       GUARDED_BY(timersMutex);
-  std::priority_queue< std::unique_ptr< llarp::timer > > calling;
   llarp::util::Mutex tickerMutex;
   std::unique_ptr< llarp::util::Condition > ticker;
   absl::Duration nextTickLen = absl::Milliseconds(100);
@@ -230,14 +223,15 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
 {
   if(!t->run())
     return;
-
+  const auto now = llarp::time_now_ms();
+  t->m_Now       = now;
   std::list< std::unique_ptr< llarp::timer > > hit;
   {
     llarp::util::Lock lock(&t->timersMutex);
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
     {
-      if(t->m_Now - itr->second->started >= itr->second->timeout
+      if(now - itr->second->started >= itr->second->timeout
          || itr->second->canceled)
       {
         // timer hit
@@ -253,14 +247,14 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
   while(not hit.empty())
   {
     const auto& h = hit.front();
-    h->called_at  = t->m_Now;
+    h->called_at  = now;
     h->exec();
     hit.pop_front();
   }
   // reindex next tick info
   {
     llarp::util::Lock lock(&t->timersMutex);
-    t->m_Now                = llarp::time_now_ms();
+    t->m_Now                = now;
     t->m_NextRequiredTickAt = std::numeric_limits< llarp_time_t >::max();
     for(const auto& item : t->timers)
     {
