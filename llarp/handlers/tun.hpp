@@ -185,6 +185,9 @@ namespace llarp
       using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
           net::IPPacket::CompareOrder, net::IPPacket::GetNow >;
+
+      /// queue packet for send on net thread from user
+      std::vector< net::IPPacket > m_TunPkts;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network
