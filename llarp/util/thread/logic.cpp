@@ -64,8 +64,9 @@ namespace llarp
     // a time
 
 #if defined(LOKINET_DEBUG)
-#define METRIC(action) \
-  metrics::integerTick("logic", action, 1, "tag", TAG, "line", LINE)
+#define METRIC(action)                                         \
+  metrics::integerTick("logic", action, 1, "tag", TAG, "line", \
+                       std::to_string(LINE))
 #else
 #define METRIC(action) \
   do                   \
