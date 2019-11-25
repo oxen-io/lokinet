@@ -62,12 +62,20 @@ namespace llarp
     // wrap the function so that we ensure that it's always calling stuff one at
     // a time
 
-    LogTraceExplicit(TAG, LINE, "queue");
+#if defined(LOKINET_DEBUG)
+#define METRIC(action) \
+  metrics::integerTick("logic", action, 1, "tag", TAG, "line", LINE)
+#else
+#define METRIC(action) \
+  do                   \
+  {                    \
+  } while(false)
+#endif
 
+    METRIC("queue");
     auto f = [self = this, func, tag, line]() {
-      LogTraceExplicit(TAG, LINE, "exec");
       self->m_Killer.TryAccess(func);
-      LogTraceExplicit(TAG, LINE, "return");
+      METRIC("called");
     };
     if(m_Thread->LooksFull(5))
     {
@@ -75,7 +83,7 @@ namespace llarp
                       "holy crap, we are trying to queue a job onto the logic "
                       "thread but "
                       "it looks full");
-
+      METRIC("full");
       if(can_flush())
       {
         // we are calling in the logic thread and our queue looks full
@@ -83,15 +91,20 @@ namespace llarp
         const auto delay = m_Thread->GuessJobLatency() / 2;
 
         LogWarnExplicit(TAG, LINE, "deferring call by ", delay, " ms");
+        METRIC("defer");
         call_later(delay, f);
         return true;
       }
     }
     auto ret = llarp_threadpool_queue_job(m_Thread, f);
-    LogTraceExplicit(TAG, LINE, "==");
+    if(not ret)
+    {
+      METRIC("dropped");
+    }
     return ret;
 #undef TAG
 #undef LINE
+#undef METRIC
   }
 
   void
