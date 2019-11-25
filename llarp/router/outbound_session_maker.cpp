@@ -123,11 +123,6 @@ namespace llarp
     int remainingDesired = numDesired;
 
     _nodedb->visit([&](const RouterContact &other) -> bool {
-      // check if we really remainingDesired to
-      if(other.ExpiresSoon(now, 30000))  // TODO: make delta configurable
-      {
-        return remainingDesired > 0;
-      }
       if(!_rcLookup->RemoteIsAllowed(other.pubkey))
       {
         return remainingDesired > 0;
