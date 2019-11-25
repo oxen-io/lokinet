@@ -19,7 +19,7 @@ struct llarp_threadpool
   std::unique_ptr< llarp::thread::ThreadPool > impl;
 
   llarp_threadpool(int workers, llarp::string_view name,
-                   size_t queueLength = size_t{1024})
+                   size_t queueLength = size_t{1024 * 8})
       : impl(std::make_unique< llarp::thread::ThreadPool >(
           workers, std::max(queueLength, size_t{32}), name))
   {
