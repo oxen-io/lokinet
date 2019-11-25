@@ -978,17 +978,25 @@ namespace llarp
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
       // called in the isolated network thread
-      auto *self   = static_cast< TunEndpoint * >(tun->user);
-      auto sendpkt = [self, tun](net::IPPacket &pkt) -> bool {
-        if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
+      auto *self      = static_cast< TunEndpoint * >(tun->user);
+      auto _pkts      = std::move(self->m_TunPkts);
+      self->m_TunPkts = std::vector< net::IPPacket >();
+
+      LogicCall(self->EndpointLogic(), [tun, self, pkts = std::move(_pkts)]() {
+        for(auto &pkt : pkts)
         {
-          llarp::LogWarn(self->Name(), " packet dropped");
-          return true;
+          self->m_UserToNetworkPktQueue.Emplace(pkt);
         }
-        return false;
-      };
-      LogicCall(self->EndpointLogic(),
-                std::bind(&TunEndpoint::FlushToUser, self, sendpkt));
+        self->Flush();
+        self->FlushToUser([self, tun](net::IPPacket &pkt) -> bool {
+          if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
+          {
+            llarp::LogWarn(self->Name(), " packet dropped");
+            return true;
+          }
+          return false;
+        });
+      });
     }
 
     void
@@ -996,14 +1004,10 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      std::vector< byte_t > pkt;
-      pkt.resize(b.sz);
-      std::copy_n(b.base, b.sz, pkt.data());
-      LogicCall(self->RouterLogic(), [self, buffer = std::move(pkt)]() {
-        const llarp_buffer_t pbuf(buffer);
-        self->m_UserToNetworkPktQueue.EmplaceIf(
-            [&pbuf](net::IPPacket &p) -> bool { return p.Load(pbuf); });
-      });
+      net::IPPacket pkt;
+      if(not pkt.Load(b))
+        return;
+      self->m_TunPkts.emplace_back(pkt);
     }
 
     TunEndpoint::~TunEndpoint() = default;

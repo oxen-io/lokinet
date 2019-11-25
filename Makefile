@@ -16,7 +16,7 @@ BUILD_TYPE ?= Debug
 PYTHON ?= python
 PYTHON3 ?= python3
 
-FORMAT ?= clang-format
+FORMAT ?= clang-format-8
 
 SETCAP ?= which setcap && setcap cap_net_admin,cap_net_bind_service=+eip
 

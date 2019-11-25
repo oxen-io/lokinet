@@ -1047,20 +1047,29 @@ namespace llarp
       const auto& sessions = m_state->m_SNodeSessions;
       auto& queue          = m_state->m_InboundTrafficQueue;
 
-      LogicCall(EndpointLogic(), [&]() {
+      auto epPump = [&]() {
         // send downstream packets to user for snode
         for(const auto& item : sessions)
           item.second.first->FlushDownstream();
         // send downstream traffic to user for hidden service
         util::Lock lock(&m_state->m_InboundTrafficQueueMutex);
-        while(queue.size())
+        while(not queue.empty())
         {
           const auto& msg = queue.top();
           const llarp_buffer_t buf(msg->payload);
           HandleInboundPacket(msg->tag, buf, msg->proto);
           queue.pop();
         }
-      });
+      };
+
+      if(NetworkIsIsolated())
+      {
+        LogicCall(EndpointLogic(), epPump);
+      }
+      else
+      {
+        epPump();
+      }
 
       auto router = Router();
       // TODO: locking on this container
@@ -1069,14 +1078,16 @@ namespace llarp
       // TODO: locking on this container
       for(const auto& item : sessions)
         item.second.first->FlushUpstream();
-      util::Lock lock(&m_state->m_SendQueueMutex);
-      // send outbound traffic
-      for(const auto& item : m_state->m_SendQueue)
       {
-        item.second->SendRoutingMessage(*item.first, router);
-        MarkConvoTagActive(item.first->T.T);
+        util::Lock lock(&m_state->m_SendQueueMutex);
+        // send outbound traffic
+        for(const auto& item : m_state->m_SendQueue)
+        {
+          item.second->SendRoutingMessage(*item.first, router);
+          MarkConvoTagActive(item.first->T.T);
+        }
+        m_state->m_SendQueue.clear();
       }
-      m_state->m_SendQueue.clear();
       router->PumpLL();
     }
 

@@ -407,11 +407,8 @@ namespace llarp
         LogError("convotag missmatch: ", T, " != ", msg->tag);
         return false;
       }
-      msg->handler            = handler;
-      const PathID_t fromPath = F;
-      LogicCall(logic, [=]() {
-        ProtocolMessage::ProcessAsync(recvPath, fromPath, msg);
-      });
+      msg->handler = handler;
+      ProtocolMessage::ProcessAsync(recvPath, F, msg);
       return true;
     }
 
