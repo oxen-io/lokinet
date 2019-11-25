@@ -7,6 +7,26 @@
 #include <functional>
 #include <queue>
 
+struct llarp_threadpool::Impl : public llarp::thread::ThreadPool
+{
+  Impl(size_t threads, size_t len, llarp::string_view name)
+      : llarp::thread::ThreadPool(threads, len, name)
+  {
+  }
+  ~Impl() = default;
+};
+
+llarp_threadpool::llarp_threadpool(int workers, llarp::string_view name,
+                                   size_t queueLength)
+    : impl(new Impl(workers, std::max(queueLength, size_t{32}), name))
+{
+}
+
+llarp_threadpool::~llarp_threadpool()
+{
+  delete impl;
+}
+
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
@@ -21,7 +41,7 @@ llarp_threadpool_join(struct llarp_threadpool *pool)
   llarp::LogDebug("threadpool join");
   if(pool->impl)
     pool->impl->stop();
-  pool->impl.reset();
+  pool->impl = nullptr;
 }
 
 void

@@ -3,7 +3,6 @@
 
 #include <util/string_view.hpp>
 #include <util/thread/queue.hpp>
-#include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
 #include <util/types.hpp>
 
@@ -16,14 +15,13 @@ struct llarp_threadpool;
 #ifdef __cplusplus
 struct llarp_threadpool
 {
-  std::unique_ptr< llarp::thread::ThreadPool > impl;
+  struct Impl;
+  Impl *impl;
 
   llarp_threadpool(int workers, llarp::string_view name,
-                   size_t queueLength = size_t{1024})
-      : impl(std::make_unique< llarp::thread::ThreadPool >(
-          workers, std::max(queueLength, size_t{32}), name))
-  {
-  }
+                   size_t queueLength = size_t{1024});
+
+  ~llarp_threadpool();
 
   size_t
   size() const;
@@ -68,7 +66,37 @@ struct llarp_thread_job
   {
   }
 
+  struct ContextWrapper
+  {
+    std::function< void(void) > func;
+
+    ContextWrapper(std::function< void(void) > f) : func(f)
+    {
+    }
+
+    static void
+    Work(void *user)
+    {
+      ContextWrapper *u = static_cast< ContextWrapper * >(user);
+      u->func();
+      delete u;
+    }
+  };
+
+  llarp_thread_job(std::function< void(void) > f)
+  {
+    user = new llarp_thread_job::ContextWrapper(f);
+    work = &llarp_thread_job::ContextWrapper::Work;
+  }
+
   llarp_thread_job() = default;
+
+  void
+  operator()() const
+  {
+    work(user);
+  }
+
 #else
   void *user;
   llarp_thread_work_func work;
@@ -94,5 +122,7 @@ void
 llarp_threadpool_start(struct llarp_threadpool *tp);
 void
 llarp_threadpool_stop(struct llarp_threadpool *tp);
+
+#include <util/thread/thread_pool.hpp>
 
 #endif

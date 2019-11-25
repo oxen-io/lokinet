@@ -4,6 +4,7 @@
 #include <util/string_view.hpp>
 #include <util/thread/queue.hpp>
 #include <util/thread/threading.hpp>
+#include <util/thread/threadpool.h>
 
 #include <atomic>
 #include <functional>
@@ -22,7 +23,8 @@ namespace llarp
       // - the number of threads
      public:
       using Job      = std::function< void() >;
-      using JobQueue = Queue< Job >;
+      using Job_impl = llarp_thread_job;
+      using JobQueue = Queue< Job_impl >;
 
       enum class Status
       {
