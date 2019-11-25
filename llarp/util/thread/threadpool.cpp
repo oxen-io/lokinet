@@ -8,11 +8,11 @@
 #include <queue>
 
 struct llarp_threadpool *
-llarp_init_threadpool(int workers, const char *name)
+llarp_init_threadpool(int workers, const char *name, size_t queueLength)
 {
   if(workers <= 0)
     workers = 1;
-  return new llarp_threadpool(workers, name);
+  return new llarp_threadpool(workers, name, queueLength);
 }
 
 void

@@ -121,10 +121,13 @@ namespace llarp
     int m_workerThreads = 1;
     int m_numNetThreads = 1;
 
+    size_t m_JobQueueSize = size_t{1024 * 8};
+
     std::string m_DefaultLinkProto = "iwp";
 
    public:
     // clang-format off
+    size_t jobQueueSize() const                { return fromEnv(m_JobQueueSize, "JOB_QUEUE_SIZE"); }
     size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
     size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
     std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }

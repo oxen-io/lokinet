@@ -11,7 +11,7 @@ namespace llarp
   class Logic
   {
    public:
-    Logic();
+    Logic(size_t queueLength = size_t{1024 * 8});
 
     ~Logic();
 

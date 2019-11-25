@@ -48,7 +48,7 @@ struct llarp_threadpool
 #endif
 
 struct llarp_threadpool *
-llarp_init_threadpool(int workers, const char *name);
+llarp_init_threadpool(int workers, const char *name, size_t queueLength);
 
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);
