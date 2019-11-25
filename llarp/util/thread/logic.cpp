@@ -78,7 +78,7 @@ namespace llarp
     auto f = [self = this, func, tag, line]() {
 #if defined(LOKINET_DEBUG)
       metrics::TimerGuard g("logic",
-                            std::to_string(TAG) + ":" + std::to_string(LINE));
+                            std::string(TAG) + ":" + std::to_string(LINE));
 #endif
       self->m_Killer.TryAccess(func);
     };
