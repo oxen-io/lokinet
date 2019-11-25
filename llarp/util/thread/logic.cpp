@@ -2,6 +2,7 @@
 #include <util/thread/timer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.h>
+#include <util/metrics/metrics.hpp>
 
 #include <future>
 
