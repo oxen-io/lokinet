@@ -282,6 +282,7 @@ namespace llarp
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &RecvIdentKey);
         do
         {
+          resp.clear();
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
           LogInfo("Getting Identity Keys from lokid...");
           res = curl_easy_perform(curl);
