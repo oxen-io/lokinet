@@ -3,6 +3,7 @@
 
 #include <router/abstractrouter.hpp>
 
+#include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
 #include <ev/ev.h>
@@ -44,13 +45,6 @@ namespace llarp
 {
   struct Config;
 }  // namespace llarp
-
-bool
-llarp_findOrCreateEncryption(const fs::path &fpath,
-                             llarp::SecretKey &encryption);
-
-bool
-llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey);
 
 bool
 llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
@@ -469,6 +463,8 @@ namespace llarp
     bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0;
+
+    llarp::KeyManager m_keyManager;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

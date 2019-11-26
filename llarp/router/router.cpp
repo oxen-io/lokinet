@@ -229,18 +229,21 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-    if(!EnsureEncryptionKey())
+
+    // TODO: handle loading SN identity instead
+    if (not m_keyManager.getIdentityKey(_identity))
       return false;
+
+    if (not m_keyManager.getEncryptionKey(_encryption))
+      return false;
+
     if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(ident_keyfile, _identity);
+    {
+      LogError("FIXME: load identity key from SNode seed");
+      return false;
+    }
 
-    return llarp_findOrCreateIdentity(ident_keyfile, _identity);
-  }
-
-  bool
-  Router::EnsureEncryptionKey()
-  {
-    return llarp_findOrCreateEncryption(encryption_keyfile, _encryption);
+    return true;
   }
 
   bool
@@ -259,6 +262,10 @@ namespace llarp
 
     if(!InitOutboundLinks())
       return false;
+
+    if (not m_keyManager.initializeFromDisk(*conf, true))
+      return false;
+
     return EnsureIdentity();
   }
 

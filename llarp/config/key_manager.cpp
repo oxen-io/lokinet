@@ -1,20 +1,28 @@
 #include <config/key_manager.hpp>
 
+#include <system_error>
 #include <util/logging/logger.hpp>
+#include "config/config.hpp"
+#include "crypto/crypto.hpp"
+#include "crypto/types.hpp"
 
 namespace llarp
 {
-  KeyManager::KeyManager(const llarp::Config& config)
-    : m_rcPath(config.router.ourRcFile())
-    , m_idKeyPath(config.router.identKeyfile())
-    , m_encKeyPath(config.router.encryptionKeyfile())
-    , m_transportKeyPath(config.router.transportKeyfile())
+  KeyManager::KeyManager()
+    : m_initialized(false)
   {
   }
 
   bool
-  KeyManager::initializeFromDisk(bool genIfAbsent)
+  KeyManager::initializeFromDisk(const llarp::Config& config, bool genIfAbsent)
   {
+    if (m_initialized)
+      return false;
+
+    m_rcPath = config.router.ourRcFile();
+    m_idKeyPath = config.router.identKeyfile();
+    m_encKeyPath = config.router.encryptionKeyfile();
+    m_transportKeyPath = config.router.transportKeyfile();
 
     RouterContact rc;
     if (!rc.Read(m_rcPath.c_str()))
@@ -36,36 +44,70 @@ namespace llarp
           return false;
         }
 
-        // TODO: generate files
+
+        // load identity key or create if needed
+        auto identityKeygen = [](llarp::SecretKey& key)
+        {
+          // TODO: handle generating from service node seed
+          llarp::CryptoManager::instance()->identity_keygen(key);
+        };
+        if (not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen))
+          return false;
+
+        // load encryption key
+        auto encryptionKeygen = [](llarp::SecretKey& key)
+        {
+          llarp::CryptoManager::instance()->encryption_keygen(key);
+        };
+        if (not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen))
+          return false;
+
+        // TODO: transport key (currently done in LinkLayer)
+
       }
     }
 
-    // TODO: load files
-
+    m_initialized = true;
     return true;
   }
 
   bool
   KeyManager::getIdentityKey(llarp::SecretKey &key) const
   {
+    if (! m_initialized)
+      return false;
+
+    key = m_idKey;
     return true;
   }
 
   bool
   KeyManager::getEncryptionKey(llarp::SecretKey &key) const
   {
+    if (! m_initialized)
+      return false;
+
+    key = m_encKey;
     return true;
   }
 
   bool
   KeyManager::getTransportKey(llarp::SecretKey &key) const
   {
+    if (! m_initialized)
+      return false;
+
+    key = m_transportKey;
     return true;
   }
 
   bool
   KeyManager::getRouterContact(llarp::RouterContact& rc) const
   {
+    if (! m_initialized)
+      return false;
+
+    rc = m_rc;
     return true;
   }
 
@@ -110,6 +152,37 @@ namespace llarp
         return false;
       }
     }
+
+    return true;
+  }
+
+  bool
+  KeyManager::loadOrCreateKey(
+      const std::string& filepath,
+      llarp::SecretKey key,
+      std::function<void(llarp::SecretKey&  key)> keygen)
+  {
+    fs::path path(filepath);
+    std::error_code ec;
+    if (! fs::exists(path, ec))
+    {
+      if (ec)
+      {
+        LogError("Error checking key", filepath, ec.message());
+        return false;
+      }
+
+      LogInfo("Generating new key", filepath);
+      keygen(key);
+
+      if (! key.SaveToFile(filepath.c_str()))
+      {
+        LogError("Failed to save new key");
+        return false;
+      }
+    }
+
+    return key.LoadFromFile(filepath.c_str());
   }
 
 }  // namespace llarp
