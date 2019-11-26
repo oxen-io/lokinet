@@ -31,7 +31,10 @@
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #else
+#if defined(_WIN32)
+#else
 #include <curl/curl.h>
+#endif
 #endif
 
 bool
@@ -248,6 +251,10 @@ namespace llarp
       LogError("running a service node on mobile device is not possible.");
       return false;
 #else
+#if defined(_WIN32)
+      LogError("running a service node on windows is not possible.");
+      return false;
+#else
       CURL *curl = curl_easy_init();
       if(curl)
       {
@@ -318,6 +325,7 @@ namespace llarp
         LogError("failed to init curl");
         return false;
       }
+#endif
 #endif
     }
     return llarp_findOrCreateIdentity(ident_keyfile, _identity);
