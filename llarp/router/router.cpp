@@ -275,6 +275,7 @@ namespace llarp
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &RecvIdentKey);
         do
         {
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
           LogInfo("Getting Identity Keys from lokid...");
           res = curl_easy_perform(curl);
           if(res == CURLE_OK)
@@ -300,13 +301,11 @@ namespace llarp
             catch(nlohmann::json::exception &ex)
             {
               LogError("Bad response from lokid: ", ex.what());
-              std::this_thread::sleep_for(std::chrono::seconds(1));
             }
           }
           else
           {
             LogError("failed to get identity Keys");
-            std::this_thread::sleep_for(std::chrono::seconds(1));
           }
         } while(res != CURLE_OK);
         curl_easy_cleanup(curl);
