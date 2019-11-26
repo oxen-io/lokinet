@@ -28,8 +28,10 @@
 #include <iterator>
 #include <unordered_map>
 #include <utility>
-#if defined(RPI) || defined(ANDROID)
+#if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
+#else
+#include <curl/curl.h>
 #endif
 
 bool
@@ -227,14 +229,97 @@ namespace llarp
       LogError(rcfile, " contains invalid RC");
   }
 
+  static size_t
+  RecvIdentKey(char *ptr, size_t, size_t nmemb, void *userdata)
+  {
+    for(size_t idx = 0; idx < nmemb; idx++)
+      static_cast< std::vector< char > * >(userdata)->push_back(ptr[idx]);
+    return nmemb;
+  }
+
   bool
   Router::EnsureIdentity()
   {
     if(!EnsureEncryptionKey())
       return false;
-    if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(ident_keyfile, _identity);
+    if(whitelistRouters)
+    {
+#if defined(ANDROID) || defined(IOS)
+      LogError("running a service node on mobile device is not possible.");
+      return false;
+#else
+      CURL *curl = curl_easy_init();
+      if(curl)
+      {
+        CURLcode res;
+        std::stringstream ss;
+        ss << "http://" << lokidRPCAddr << "/json_rpc";
+        const auto url = ss.str();
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
+        const auto auth = lokidRPCUser + ":" + lokidRPCPassword;
+        curl_easy_setopt(curl, CURLOPT_USERPWD, auth.c_str());
+        curl_slist *list = nullptr;
+        list = curl_slist_append(list, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 
+        nlohmann::json request = {{"id", "0"},
+                                  {"jsonrpc", "2.0"},
+                                  {"method", "get_service_node_privkey"}};
+        const auto data        = request.dump();
+        std::vector< char > resp;
+
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &RecvIdentKey);
+        do
+        {
+          LogInfo("Getting Identity Keys from lokid...");
+          res = curl_easy_perform(curl);
+          if(res == CURLE_OK)
+          {
+            try
+            {
+              auto j = nlohmann::json::parse(resp);
+              if(not j.is_object())
+                continue;
+
+              const auto itr = j.find("result");
+              if(itr == j.end())
+                continue;
+              if(not itr->is_object())
+                continue;
+              const auto k =
+                  (*itr)["service_node_ed25519_privkey"].get< std::string >();
+              if(k.empty())
+                continue;
+              if(not HexDecode(k.c_str(), _identity.data(), _identity.size()))
+                continue;
+            }
+            catch(nlohmann::json::exception &ex)
+            {
+              LogError("Bad response from lokid: ", ex.what());
+            }
+          }
+          else
+          {
+            LogError("failed to get identity Keys");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+          }
+        } while(res != CURLE_OK);
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(list);
+        LogInfo("Got Identity Keys from lokid");
+        return true;
+      }
+      else
+      {
+        LogError("failed to init curl");
+        return false;
+      }
+#endif
+    }
     return llarp_findOrCreateIdentity(ident_keyfile, _identity);
   }
 

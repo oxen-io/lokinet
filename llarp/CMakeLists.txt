@@ -252,7 +252,8 @@ if(TESTNET)
 endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB})
+target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
