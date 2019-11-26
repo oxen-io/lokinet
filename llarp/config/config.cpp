@@ -51,6 +51,15 @@ namespace llarp
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
+    if(key == "job-queue-size")
+    {
+      auto sval = svtoi(val);
+      if(sval >= 1024)
+      {
+        m_JobQueueSize = sval;
+        LogInfo("Set job queue size to ", m_JobQueueSize);
+      }
+    }
     if(key == "default-protocol")
     {
       m_DefaultLinkProto = tostr(val);

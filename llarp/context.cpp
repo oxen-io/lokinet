@@ -51,7 +51,6 @@ namespace llarp
   bool
   Context::Configure()
   {
-    logic = std::make_shared< Logic >();
     // llarp::LogInfo("loading config at ", configfile);
     if(configfile.size())
     {
@@ -73,6 +72,10 @@ namespace llarp
       threads = 1;
     worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024,
                                                            "llarp-worker");
+    auto jobQueueSize = config->router.jobQueueSize();
+    if(jobQueueSize < 1024)
+      jobQueueSize = 1024;
+    logic = std::make_shared< Logic >(jobQueueSize);
 
     nodedb_dir = config->netdb.nodedbDir();
 

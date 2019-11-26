@@ -13,8 +13,8 @@ namespace llarp
     llarp_timer_tick_all_async(m_Timer, m_Thread, now);
   }
 
-  Logic::Logic()
-      : m_Thread(llarp_init_threadpool(1, "llarp-logic"))
+  Logic::Logic(size_t sz)
+      : m_Thread(llarp_init_threadpool(1, "llarp-logic", sz))
       , m_Timer(llarp_init_timer())
   {
     llarp_threadpool_start(m_Thread);
