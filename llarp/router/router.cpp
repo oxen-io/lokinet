@@ -300,6 +300,7 @@ namespace llarp
             catch(nlohmann::json::exception &ex)
             {
               LogError("Bad response from lokid: ", ex.what());
+              std::this_thread::sleep_for(std::chrono::seconds(1));
             }
           }
           else
