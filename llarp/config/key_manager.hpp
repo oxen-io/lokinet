@@ -87,7 +87,7 @@ namespace llarp
     static bool
     loadOrCreateKey(
         const std::string& filepath,
-        llarp::SecretKey key,
+        llarp::SecretKey& key,
         std::function<void(llarp::SecretKey& key)> keygen);
   };
 

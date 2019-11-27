@@ -25,47 +25,56 @@ namespace llarp
     m_transportKeyPath = config.router.transportKeyfile();
 
     RouterContact rc;
-    if (!rc.Read(m_rcPath.c_str()))
+    bool exists = rc.Read(m_rcPath.c_str());
+    if (not exists and not genIfAbsent)
     {
-        LogWarn("Could not read RouterContact at path ", m_rcPath);
-        return false;
+      LogError("Could not read RouterContact at path ", m_rcPath);
+      return false;
     }
 
-    if (rc.keyfileVersion < LLARP_KEYFILE_VERSION) {
-      if (! genIfAbsent) {
-        LogError("Our RouterContact", m_rcPath, "is out of date");
-      } else {
-        LogWarn("Our RouterContact", m_rcPath,
-            "is out of date, backing up and regenerating private keys");
+    // if our RC file can't be verified, assume it is out of date (e.g. uses
+    // older encryption) and needs to be regenerated. before doing so, backup
+    // files that will be overwritten
+    if (exists and not rc.VerifySignature())
+    {
+      if (! genIfAbsent)
+      {
+        LogError("Our RouterContact ", m_rcPath, " is invalid or out of date");
+        return false;
+      }
+      else
+      {
+        LogWarn("Our RouterContact ", m_rcPath,
+            " seems out of date, backing up and regenerating private keys");
 
-        if (! backupKeyFilesByMoving()) {
+        if (! backupKeyFilesByMoving())
+        {
           LogError("Could not mv some key files, please ensure key files"
               " are backed up if needed and remove");
           return false;
         }
-
-
-        // load identity key or create if needed
-        auto identityKeygen = [](llarp::SecretKey& key)
-        {
-          // TODO: handle generating from service node seed
-          llarp::CryptoManager::instance()->identity_keygen(key);
-        };
-        if (not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen))
-          return false;
-
-        // load encryption key
-        auto encryptionKeygen = [](llarp::SecretKey& key)
-        {
-          llarp::CryptoManager::instance()->encryption_keygen(key);
-        };
-        if (not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen))
-          return false;
-
-        // TODO: transport key (currently done in LinkLayer)
-
       }
     }
+
+    // load identity key or create if needed
+    auto identityKeygen = [](llarp::SecretKey& key)
+    {
+      // TODO: handle generating from service node seed
+      llarp::CryptoManager::instance()->identity_keygen(key);
+    };
+    if (not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen))
+      return false;
+
+    // load encryption key
+    auto encryptionKeygen = [](llarp::SecretKey& key)
+    {
+      llarp::CryptoManager::instance()->encryption_keygen(key);
+    };
+    if (not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen))
+      return false;
+
+    // TODO: transport key (currently done in LinkLayer)
+
 
     m_initialized = true;
     return true;
@@ -136,6 +145,20 @@ namespace llarp
 
     for (auto& filepath : files)
     {
+      std::error_code ec;
+      bool exists = fs::exists(filepath, ec);
+      if (ec)
+      {
+        LogError("Could not determine status of file ", filepath, ": ", ec.message());
+        return false;
+      }
+
+      if (not exists)
+      {
+        LogInfo("File ", filepath, " doesn't exist; no backup needed");
+        continue;
+      }
+
       fs::path newFilepath = findFreeBackupFilename(filepath);
       if (newFilepath.empty())
       {
@@ -143,12 +166,11 @@ namespace llarp
         return false;
       }
 
-      LogInfo("Backing up (moving) key file", filepath, "to", newFilepath, "...");
+      LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath, "...");
 
-      std::error_code ec;
       fs::rename(filepath, newFilepath, ec);
       if (ec) {
-        LogError("Failed to move key file", ec.message());
+        LogError("Failed to move key file ", ec.message());
         return false;
       }
     }
@@ -159,7 +181,7 @@ namespace llarp
   bool
   KeyManager::loadOrCreateKey(
       const std::string& filepath,
-      llarp::SecretKey key,
+      llarp::SecretKey& key,
       std::function<void(llarp::SecretKey&  key)> keygen)
   {
     fs::path path(filepath);
@@ -182,6 +204,7 @@ namespace llarp
       }
     }
 
+    LogDebug("Loading key from file ", filepath);
     return key.LoadFromFile(filepath.c_str());
   }
 

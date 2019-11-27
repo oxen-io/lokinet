@@ -45,38 +45,6 @@ llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
   return llarp::CryptoManager::instance()->seed_to_secretkey(secret, ident);
 }
 
-bool
-llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new identity key");
-    llarp::CryptoManager::instance()->identity_keygen(secretkey);
-    if(!secretkey.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return secretkey.LoadFromFile(fpath.c_str());
-}
-
-bool
-llarp_findOrCreateEncryption(const fs::path &path, llarp::SecretKey &encryption)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new encryption key");
-    llarp::CryptoManager::instance()->encryption_keygen(encryption);
-    if(!encryption.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return encryption.LoadFromFile(fpath.c_str());
-}
-
 namespace llarp
 {
   Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,

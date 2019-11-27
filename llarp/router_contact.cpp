@@ -135,8 +135,6 @@ namespace llarp
     /* write versions */
     if(!bencode_write_uint64_entry(buf, "v", 1, version))
       return false;
-    if(!bencode_write_uint64_entry(buf, "c", 1, keyfileVersion))
-      return false;
 
     /* write xi if they exist */
     if(!bencode_write_bytestring(buf, "x", 1))
@@ -162,8 +160,6 @@ namespace llarp
     enckey.Zero();
     pubkey.Zero();
     last_updated = 0;
-    version = LLARP_PROTO_VERSION;
-    keyfileVersion = LLARP_KEYFILE_VERSION;
   }
 
   util::StatusObject
@@ -219,9 +215,6 @@ namespace llarp
       return false;
 
     if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
-      return false;
-
-    if(!BEncodeMaybeReadDictInt("c", keyfileVersion, read, key, buf))
       return false;
 
     if(!BEncodeMaybeReadDictList("x", exits, read, key, buf))
