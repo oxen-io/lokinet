@@ -53,6 +53,48 @@ namespace llarp
       PopulateReqHeaders(abyss::http::Headers_t& hdr) override;
     };
 
+    struct LokiPingHandler final : public CallerHandler
+    {
+      ~LokiPingHandler() override = default;
+      LokiPingHandler(::abyss::http::ConnImpl* impl, CallerImpl* parent)
+          : CallerHandler(impl, parent)
+      {
+      }
+      bool
+      HandleJSONResult(const nlohmann::json& result) override
+      {
+        if(not result.is_object())
+        {
+          LogError("invalid result from lokid ping, not an object");
+          return false;
+        }
+        const auto itr = result.find("status");
+        if(itr == result.end())
+        {
+          LogError("invalid result from lokid ping, no result");
+          return false;
+        }
+        if(not itr->is_string())
+        {
+          LogError("invalid result from lokid ping, status not an string");
+          return false;
+        }
+        const auto status = itr->get< std::string >();
+        if(status != "OK")
+        {
+          LogError("lokid ping failed: '", status, "'");
+          return false;
+        }
+        LogInfo("lokid ping: '", status, "'");
+        return true;
+      }
+      void
+      HandleError() override
+      {
+        LogError("Failed to ping lokid");
+      }
+    };
+
     struct GetServiceNodeListHandler final : public CallerHandler
     {
       using PubkeyList_t = std::vector< RouterID >;
@@ -120,7 +162,9 @@ namespace llarp
     {
       AbstractRouter* router;
       llarp_time_t m_NextKeyUpdate         = 0;
+      llarp_time_t m_NextPing              = 0;
       const llarp_time_t KeyUpdateInterval = 5000;
+      const llarp_time_t PingInterval      = 60 * 5 * 1000;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
 
       CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
@@ -130,10 +174,17 @@ namespace llarp
       void
       Tick(llarp_time_t now)
       {
+        if(not router->IsRunning())
+          return;
         if(now >= m_NextKeyUpdate)
         {
           AsyncUpdatePubkeyList();
           m_NextKeyUpdate = now + KeyUpdateInterval;
+        }
+        if(now >= m_NextPing)
+        {
+          AsyncLokiPing();
+          m_NextPing = now + PingInterval;
         }
         Flush();
       }
@@ -143,6 +194,20 @@ namespace llarp
       {
         username = user;
         password = passwd;
+      }
+
+      void
+      AsyncLokiPing()
+      {
+        LogInfo("Pinging Lokid");
+        static nlohmann::json::number_unsigned_t major(atoi(LLARP_VERSION_MAJ));
+        static nlohmann::json::number_unsigned_t minor(atoi(LLARP_VERSION_MIN));
+        static nlohmann::json::number_unsigned_t patch(
+            atoi(LLARP_VERSION_PATCH));
+        nlohmann::json params = {
+            {"version", nlohmann::json::array({major, minor, patch})}};
+        QueueRPC("lokinet_ping", std::move(params),
+                 util::memFn(&CallerImpl::NewLokinetPingConn, this));
       }
 
       void
@@ -160,6 +225,12 @@ namespace llarp
       Start(const std::string& remote)
       {
         return RunAsync(router->netloop(), remote);
+      }
+
+      abyss::http::IRPCClientHandler*
+      NewLokinetPingConn(abyss::http::ConnImpl* impl)
+      {
+        return new LokiPingHandler(impl, this);
       }
 
       abyss::http::IRPCClientHandler*
