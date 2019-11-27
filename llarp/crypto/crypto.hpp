@@ -87,6 +87,9 @@ namespace llarp
     /// post quantum encrypt (buffer, sharedkey_dst,  pub)
     virtual bool
     pqe_encrypt(PQCipherBlock &, SharedSecret &, const PQPubKey &) = 0;
+
+    virtual bool
+    check_identity_privkey(const SecretKey &) = 0;
   };
 
   inline Crypto::~Crypto() = default;

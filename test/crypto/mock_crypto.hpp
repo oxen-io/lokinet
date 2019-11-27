@@ -69,6 +69,8 @@ namespace llarp
 
       MOCK_METHOD3(pqe_encrypt,
                    bool(PQCipherBlock &, SharedSecret &, const PQPubKey &));
+
+      MOCK_METHOD1(check_identity_privkey, bool(const SecretKey&));
     };
   }  // namespace test
 }  // namespace llarp

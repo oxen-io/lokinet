@@ -258,7 +258,7 @@ namespace llarp
       CURL *curl = curl_easy_init();
       if(curl)
       {
-        CURLcode res;
+        bool ret = false;
         std::stringstream ss;
         ss << "http://" << lokidRPCAddr << "/json_rpc";
         const auto url = ss.str();
@@ -283,10 +283,8 @@ namespace llarp
         do
         {
           resp.clear();
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
           LogInfo("Getting Identity Keys from lokid...");
-          res = curl_easy_perform(curl);
-          if(res == CURLE_OK)
+          if(curl_easy_perform(curl) == CURLE_OK)
           {
             try
             {
@@ -301,10 +299,28 @@ namespace llarp
                 continue;
               const auto k =
                   (*itr)["service_node_ed25519_privkey"].get< std::string >();
-              if(k.empty())
-                continue;
+              if(k.size() != (_identity.size() * 2))
+              {
+                if(k.empty())
+                {
+                  LogError("lokid gave no identity key");
+                }
+                else
+                {
+                  LogError("lokid gave invalid identity key");
+                }
+                return false;
+              }
               if(not HexDecode(k.c_str(), _identity.data(), _identity.size()))
                 continue;
+              if(CryptoManager::instance()->check_identity_privkey(_identity))
+              {
+                ret = true;
+              }
+              else
+              {
+                LogError("lokid gave bogus identity key");
+              }
             }
             catch(nlohmann::json::exception &ex)
             {
@@ -313,13 +329,21 @@ namespace llarp
           }
           else
           {
-            LogError("failed to get identity Keys");
+            LogError("failed to get identity keys");
           }
-        } while(res != CURLE_OK);
+          if(ret)
+          {
+            LogInfo("Got Identity Keys from lokid: ", RouterID(pubkey()));
+            break;
+          }
+          else
+          {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        } while(true);
         curl_easy_cleanup(curl);
         curl_slist_free_all(list);
-        LogInfo("Got Identity Keys from lokid");
-        return true;
+        return ret;
       }
       else
       {
