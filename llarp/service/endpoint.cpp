@@ -29,12 +29,15 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, 3, path::default_len), context(parent)
+        : path::Builder(r, 3, path::default_len)
+        , context(parent)
+        , m_RecvQueue(128)
     {
       m_state           = std::make_unique< EndpointState >();
       m_state->m_Router = r;
       m_state->m_Name   = name;
       m_state->m_Tag.Zero();
+      m_RecvQueue.enable();
     }
 
     bool
@@ -805,6 +808,30 @@ namespace llarp
       return {{"LOKINET_ADDR", m_Identity.pub.Addr().ToString()}};
     }
 
+    void
+    Endpoint::FlushRecvData()
+    {
+      do
+      {
+        auto maybe = m_RecvQueue.tryPopFront();
+        if(not maybe.has_value())
+          return;
+        auto ev = std::move(maybe.value());
+        ProtocolMessage::ProcessAsync(ev.fromPath, ev.pathid, ev.msg);
+      } while(true);
+    }
+
+    void
+    Endpoint::QueueRecvData(RecvDataEvent ev)
+    {
+      if(m_RecvQueue.full() || m_RecvQueue.empty())
+      {
+        auto self = this;
+        LogicCall(m_router->logic(), [self]() { self->FlushRecvData(); });
+      }
+      m_RecvQueue.pushBack(std::move(ev));
+    }
+
     bool
     Endpoint::HandleDataMessage(path::Path_ptr path, const PathID_t from,
                                 std::shared_ptr< ProtocolMessage > msg)
@@ -1048,6 +1075,7 @@ namespace llarp
       auto& queue          = m_state->m_InboundTrafficQueue;
 
       auto epPump = [&]() {
+        FlushRecvData();
         // send downstream packets to user for snode
         for(const auto& item : sessions)
           item.second.first->FlushDownstream();
