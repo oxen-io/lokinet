@@ -791,6 +791,12 @@ namespace libuv
   {
     if(uv_loop_init(&m_Impl) == -1)
       return false;
+
+#ifdef LOKINET_DEBUG
+    last_time      = 0;
+    loop_run_count = 0;
+#endif
+
     m_Impl.data = this;
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
     m_TickTimer.data = this;
@@ -834,6 +840,16 @@ namespace libuv
   {
     if(m_Run)
     {
+#ifdef LOKINET_DEBUG
+      if ((uv_now(&m_Impl) - last_time) > 1000)
+      {
+        llarp::LogInfo("UV EVENT LOOP TICKS LAST SECOND: ", loop_run_count);
+        loop_run_count = 0;
+        last_time = uv_now(&m_Impl);
+      }
+      loop_run_count++;
+#endif
+
       uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
       uv_run(&m_Impl, UV_RUN_ONCE);
     }
