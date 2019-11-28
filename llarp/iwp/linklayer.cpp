@@ -20,34 +20,6 @@ namespace llarp
 
     LinkLayer::~LinkLayer() = default;
 
-    void
-    LinkLayer::Pump()
-    {
-      std::unordered_set< RouterID, RouterID::Hash > sessions;
-      {
-        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-        auto itr = m_AuthedLinks.begin();
-        while(itr != m_AuthedLinks.end())
-        {
-          const RouterID r{itr->first};
-          sessions.emplace(r);
-          ++itr;
-        }
-      }
-      ILinkLayer::Pump();
-      {
-        ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
-        for(const auto& pk : sessions)
-        {
-          if(m_AuthedLinks.count(pk) == 0)
-          {
-            // all sessions were removed
-            SessionClosed(pk);
-          }
-        }
-      }
-    }
-
     const char*
     LinkLayer::Name() const
     {
