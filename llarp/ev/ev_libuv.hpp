@@ -98,6 +98,9 @@ namespace libuv
     uv_loop_t m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
+
+    uint64_t last_time;
+    uint64_t loop_run_count;
   };
 
 }  // namespace libuv
