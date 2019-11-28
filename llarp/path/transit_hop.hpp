@@ -233,6 +233,8 @@ namespace llarp
       std::set< std::shared_ptr< TransitHop >,
                 ComparePtr< std::shared_ptr< TransitHop > > >
           m_FlushOthers;
+      thread::Queue< RelayUpstreamMessage > m_UpstreamGather;
+      thread::Queue< RelayDownstreamMessage > m_DownstreamGather;
     };
 
     inline std::ostream&
