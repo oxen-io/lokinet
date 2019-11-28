@@ -45,6 +45,14 @@ namespace llarp
     bool
     can_flush() const;
 
+#ifdef LOKINET_DEBUG
+    size_t
+    pendingThreadJobs() const
+    {
+      return m_Thread->pendingJobs();
+    }
+#endif
+
    private:
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
