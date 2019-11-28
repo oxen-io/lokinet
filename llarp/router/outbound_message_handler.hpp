@@ -118,6 +118,8 @@ namespace llarp
     std::unordered_map< PathID_t, MessageQueue, PathID_t::Hash >
         outboundMessageQueues;
 
+    MessageQueue nonRoutingMessageQueue;
+
     std::queue< PathID_t > roundRobinOrder;
 
     ILinkManager *_linkManager;

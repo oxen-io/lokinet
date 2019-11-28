@@ -287,11 +287,10 @@ namespace llarp
   OutboundMessageHandler::SendRoundRobin()
   {
     // send non-routing messages first priority
-    auto &non_routing_mq = outboundMessageQueues[zeroID];
-    while(not non_routing_mq.empty())
+    while(not nonRoutingMessageQueue.empty())
     {
-      MessageQueueEntry entry = std::move(non_routing_mq.front());
-      non_routing_mq.pop();
+      MessageQueueEntry entry = std::move(nonRoutingMessageQueue.front());
+      nonRoutingMessageQueue.pop();
 
       Send(entry.router, entry.message);
     }
