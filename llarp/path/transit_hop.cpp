@@ -235,6 +235,15 @@ namespace llarp
                                           std::move(m_UpstreamQueue), r));
 
       m_UpstreamQueue = nullptr;
+      std::vector< RelayUpstreamMessage > msgs;
+      do
+      {
+        auto maybe = m_UpstreamGather.tryPopFront();
+        if(not maybe.has_value())
+          break;
+        msgs.emplace_back(maybe.value());
+      } while(true);
+      HandleAllUpstream(std::move(msgs), r);
     }
 
     void
@@ -245,6 +254,15 @@ namespace llarp
                                           shared_from_this(),
                                           std::move(m_DownstreamQueue), r));
       m_DownstreamQueue = nullptr;
+      std::vector< RelayDownstreamMessage > msgs;
+      do
+      {
+        auto maybe = m_DownstreamGather.tryPopFront();
+        if(not maybe.has_value())
+          break;
+        msgs.emplace_back(maybe.value());
+      } while(true);
+      HandleAllDownstream(std::move(msgs), r);
     }
 
     bool
