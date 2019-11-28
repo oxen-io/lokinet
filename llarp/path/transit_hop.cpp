@@ -221,6 +221,8 @@ namespace llarp
           break;
         msgs.emplace_back(maybe.value());
       } while(true);
+      if(msgs.empty())
+        return;
       HandleAllUpstream(std::move(msgs), r);
     }
 
@@ -240,6 +242,8 @@ namespace llarp
           break;
         msgs.emplace_back(maybe.value());
       } while(true);
+      if(msgs.empty())
+        return;
       HandleAllDownstream(std::move(msgs), r);
     }
 
