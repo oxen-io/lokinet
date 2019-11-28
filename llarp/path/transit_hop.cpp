@@ -154,7 +154,7 @@ namespace llarp
       }
       m_DownstreamWorkCounter--;
       if(m_DownstreamWorkCounter == 0)
-        flushIt();
+        LogicCall(r->logic(), flushIt);
     }
 
     void
@@ -188,7 +188,7 @@ namespace llarp
       }
       m_UpstreamWorkCounter--;
       if(m_UpstreamWorkCounter == 0)
-        flushIt();
+        LogicCall(r->logic(), flushIt);
     }
 
     void
