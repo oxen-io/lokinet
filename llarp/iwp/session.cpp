@@ -229,7 +229,7 @@ namespace llarp
       const auto now = m_Parent->Now();
       if(m_State == State::Ready || m_State == State::LinkIntro)
       {
-        if(ShouldPing())
+        if(ShouldPing(now))
           SendKeepAlive();
         for(auto& item : m_RXMsgs)
         {
@@ -281,11 +281,17 @@ namespace llarp
     }
 
     bool
-    Session::ShouldPing() const
+    Session::ShouldPing(llarp_time_t now) const
     {
       if(m_State == State::Ready)
       {
-        const auto now = m_Parent->Now();
+        // some places call this already having called Now(), some don't
+        // and will call it with 0 instead.
+        if (now == 0)
+        {
+          now = m_Parent->Now();
+        }
+
         return now - m_LastTX > PingInterval;
       }
       return false;

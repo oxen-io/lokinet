@@ -362,7 +362,7 @@ namespace llarp
     auto itr   = range.first;
     while(itr != range.second)
     {
-      if(itr->second->ShouldPing())
+      if(itr->second->ShouldPing(0))
         itr->second->SendKeepAlive();
       ++itr;
     }

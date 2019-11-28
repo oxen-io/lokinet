@@ -107,7 +107,7 @@ namespace llarp
 
     /// return true if we should send an explicit keepalive message
     virtual bool
-    ShouldPing() const = 0;
+    ShouldPing(llarp_time_t now) const = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
