@@ -235,6 +235,8 @@ namespace llarp
           m_FlushOthers;
       thread::Queue< RelayUpstreamMessage > m_UpstreamGather;
       thread::Queue< RelayDownstreamMessage > m_DownstreamGather;
+      std::atomic< uint32_t > m_UpstreamWorkCounter;
+      std::atomic< uint32_t > m_DownstreamWorkCounter;
     };
 
     inline std::ostream&
