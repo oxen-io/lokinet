@@ -82,6 +82,12 @@ namespace llarp
 #endif
       self->m_Killer.TryAccess(func);
     };
+    if(can_flush())
+    {
+      METRIC("fired");
+      f();
+      return true;
+    }
     if(m_Thread->LooksFull(5))
     {
       LogWarnExplicit(TAG, LINE,
@@ -89,17 +95,6 @@ namespace llarp
                       "thread but "
                       "it looks full");
       METRIC("full");
-      if(can_flush())
-      {
-        // we are calling in the logic thread and our queue looks full
-        // defer call to a later time so we don't die like a little bitch
-        const auto delay = m_Thread->GuessJobLatency() / 2;
-
-        LogWarnExplicit(TAG, LINE, "deferring call by ", delay, " ms");
-        METRIC("defer");
-        call_later(delay, f);
-        return true;
-      }
     }
     auto ret = llarp_threadpool_queue_job(m_Thread, f);
     if(not ret)
