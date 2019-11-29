@@ -847,7 +847,7 @@ namespace libuv
       if((uv_now(&m_Impl) - last_time) > 1000)
       {
         llarp::LogInfo("UV EVENT LOOP TICKS LAST SECOND: ", loop_run_count,
-                       ", LOGIC THREAD JOBS: ", m_Logic->pendingThreadJobs());
+                       ", LOGIC THREAD JOBS: ", m_Logic->numPendingJobs());
         loop_run_count = 0;
         last_time      = uv_now(&m_Impl);
       }

@@ -37,6 +37,12 @@ namespace llarp
     llarp_free_timer(m_Timer);
   }
 
+  size_t
+  Logic::numPendingJobs() const
+  {
+    return m_Thread->pendingJobs();
+  }
+
   bool
   Logic::queue_job(struct llarp_thread_job job)
   {
@@ -90,10 +96,8 @@ namespace llarp
     }
     if(m_Thread->LooksFull(5))
     {
-      LogErrorExplicit(TAG, LINE,
-                      "holy crap, we are trying to queue a job onto the logic "
-                      "thread but "
-                      "it looks full");
+      LogErrorExplicit(TAG, LINE, "holy crap, we are trying to queue a job "
+                       "onto the logic thread but it looks full");
       METRIC("full");
       std::abort();
     }

@@ -42,16 +42,11 @@ namespace llarp
     void
     remove_call(uint32_t id);
 
+    size_t
+    numPendingJobs() const;
+
     bool
     can_flush() const;
-
-#ifdef LOKINET_DEBUG
-    size_t
-    pendingThreadJobs() const
-    {
-      return m_Thread->pendingJobs();
-    }
-#endif
 
    private:
     using ID_t = std::thread::id;
@@ -73,5 +68,4 @@ namespace llarp
 #define LogicCall(l, ...) l->_traceLogicCall(__VA_ARGS__, 0, 0)
 #endif
 #endif
-
 #endif
