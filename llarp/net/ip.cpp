@@ -87,7 +87,7 @@ namespace llarp
     bool
     IPPacket::Load(const llarp_buffer_t &pkt)
     {
-      if(pkt.sz > sizeof(buf))
+      if(pkt.sz > sizeof(buf) or pkt.sz == 0)
         return false;
       sz = pkt.sz;
       std::copy_n(pkt.base, sz, buf);

@@ -148,21 +148,23 @@ namespace llarp
       handleTickTun(void* u);
 
       /// get a key for ip address
-      template < typename Addr >
-      Addr
+      template < typename Addr_t >
+      Addr_t
       ObtainAddrForIP(huint128_t ip, bool isSNode)
       {
+        Addr_t addr;
         auto itr = m_IPToAddr.find(ip);
-        if(itr == m_IPToAddr.end() || m_SNodes[itr->second] != isSNode)
+        if(itr != m_IPToAddr.end() and m_SNodes[itr->second] == isSNode)
         {
-          // not found
-          Addr addr;
-          addr.Zero();
-          return addr;
+          addr = Addr_t(itr->second);
         }
         // found
-        return Addr{itr->second};
+        return addr;
       }
+
+      template < typename Addr_t >
+      bool
+      FindAddrForIP(Addr_t& addr, huint128_t ip);
 
       bool
       HasAddress(const AlignedBuffer< 32 >& addr) const
@@ -314,6 +316,7 @@ namespace llarp
       void
       FlushToUser(std::function< bool(net::IPPacket&) > sendfunc);
     };
+
   }  // namespace handlers
 }  // namespace llarp
 

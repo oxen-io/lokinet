@@ -1136,6 +1136,8 @@ namespace llarp
     Endpoint::SendToServiceOrQueue(const service::Address& remote,
                                    const llarp_buffer_t& data, ProtocolType t)
     {
+      if(data.sz == 0)
+        return false;
       // inbound converstation
       const auto now = Now();
 

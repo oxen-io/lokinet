@@ -150,7 +150,7 @@ namespace llarp
         {
           LogicCall(r->logic(), flushIt);
         }
-        if(not m_DownstreamGather.disabled())
+        if(m_DownstreamGather.enabled())
           m_DownstreamGather.pushBack(msg);
       }
       m_DownstreamWorkCounter--;
@@ -185,7 +185,7 @@ namespace llarp
         {
           LogicCall(r->logic(), flushIt);
         }
-        if(not m_UpstreamGather.disabled())
+        if(m_UpstreamGather.enabled())
           m_UpstreamGather.pushBack(msg);
       }
       m_UpstreamWorkCounter--;
