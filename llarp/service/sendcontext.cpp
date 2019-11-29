@@ -108,7 +108,7 @@ namespace llarp
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
                                        ProtocolType protocol)
     {
-      if(lastGoodSend)
+      if(lastGoodSend != 0)
       {
         EncryptAndSendTo(data, protocol);
       }
