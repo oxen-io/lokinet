@@ -708,7 +708,7 @@ namespace llarp
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
 
-      MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
+      MapAddress(m_Identity.pub.Addr(), GetIfAddr(), IsSNode());
       if(m_OnUp)
       {
         m_OnUp->NotifyAsync(NotifyParams());
@@ -717,7 +717,8 @@ namespace llarp
       {
         vpnif->injected(vpnif, true);
       }
-      return true;
+      auto itr = m_IPToAddr.find(GetIFAddr());
+      return itr != m_IPToAddr.end() && itr->second == m_Identity.pub.Addr();
     }
 
     std::unordered_map< std::string, std::string >

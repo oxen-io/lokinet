@@ -150,7 +150,8 @@ namespace llarp
         {
           LogicCall(r->logic(), flushIt);
         }
-        m_DownstreamGather.pushBack(msg);
+        if(not m_DownstreamGather.disabled())
+          m_DownstreamGather.pushBack(msg);
       }
       m_DownstreamWorkCounter--;
       if(m_DownstreamWorkCounter == 0)
@@ -184,7 +185,8 @@ namespace llarp
         {
           LogicCall(r->logic(), flushIt);
         }
-        m_UpstreamGather.pushBack(msg);
+        if(not m_UpstreamGather.disabled())
+          m_UpstreamGather.pushBack(msg);
       }
       m_UpstreamWorkCounter--;
       if(m_UpstreamWorkCounter == 0)
@@ -463,8 +465,14 @@ namespace llarp
       printer.printAttribute("TransitHop", info);
       printer.printAttribute("started", started);
       printer.printAttribute("lifetime", lifetime);
-
       return stream;
+    }
+
+    void
+    TransitHop::Stop()
+    {
+      m_UpstreamGather.disable();
+      m_DownstreamGather.disable();
     }
 
     void

@@ -95,6 +95,9 @@ namespace llarp
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
 
+      void
+      Stop();
+
       bool destroy = false;
 
       bool
