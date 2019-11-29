@@ -184,7 +184,15 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      using PacketQueue_t = llarp::util::CoDelQueue<
+      bool
+      ShouldFlushNow(llarp_time_t now) const
+      {
+        static constexpr llarp_time_t FlushInterval = 50;
+        return now >= m_LastFlushAt + FlushInterval;
+      }
+
+      llarp_time_t m_LastFlushAt = 0;
+      using PacketQueue_t        = llarp::util::CoDelQueue<
           net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
           net::IPPacket::CompareOrder, net::IPPacket::GetNow >;
 

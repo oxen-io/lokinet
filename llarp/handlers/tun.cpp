@@ -35,8 +35,13 @@ namespace llarp
     void
     TunEndpoint::tunifTick(llarp_tun_io *tun)
     {
-      auto *self = static_cast< TunEndpoint * >(tun->user);
-      LogicCall(self->m_router->logic(), [self]() { self->Flush(); });
+      auto *self     = static_cast< TunEndpoint * >(tun->user);
+      const auto now = self->Now();
+      if(self->ShouldFlushNow(now))
+      {
+        self->m_LastFlushAt = now;
+        LogicCall(self->m_router->logic(), [self]() { self->Flush(); });
+      }
     }
 
     TunEndpoint::TunEndpoint(const std::string &nickname, AbstractRouter *r,
