@@ -95,15 +95,12 @@ namespace llarp
       m->PutBuffer(payload);
       auto self = this;
       m_Endpoint->CryptoWorker()->addJob([f, m, shared, path, self]() {
-        if(!f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
+        if(not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
         {
           LogError(self->m_Endpoint->Name(), " failed to sign message");
           return;
         }
-        LogicCall(self->m_Endpoint->RouterLogic(), [self, f, path]() {
-          self->Send(f, path);
-          self->FlushUpstream();
-        });
+        self->Send(f, path);
       });
     }
 
