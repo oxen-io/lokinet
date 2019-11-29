@@ -90,11 +90,12 @@ namespace llarp
     }
     if(m_Thread->LooksFull(5))
     {
-      LogWarnExplicit(TAG, LINE,
+      LogErrorExplicit(TAG, LINE,
                       "holy crap, we are trying to queue a job onto the logic "
                       "thread but "
                       "it looks full");
       METRIC("full");
+      std::abort();
     }
     auto ret = llarp_threadpool_queue_job(m_Thread, f);
     if(not ret)
