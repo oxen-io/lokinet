@@ -763,6 +763,9 @@ namespace libuv
                         " has invalid fd: ", m_Device->tun_fd);
         return false;
       }
+
+      tuntap_set_nonblocking(m_Device, 1);
+
       if(uv_poll_init(loop, &m_Handle, m_Device->tun_fd) == -1)
       {
         llarp::LogError("failed to start polling on ", m_Tun->ifname);
