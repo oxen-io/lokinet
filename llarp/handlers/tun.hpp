@@ -185,11 +185,7 @@ namespace llarp
 
      protected:
       bool
-      ShouldFlushNow(llarp_time_t now) const
-      {
-        static constexpr llarp_time_t FlushInterval = 50;
-        return now >= m_LastFlushAt + FlushInterval;
-      }
+      ShouldFlushNow(llarp_time_t now) const;
 
       llarp_time_t m_LastFlushAt = 0;
       using PacketQueue_t        = llarp::util::CoDelQueue<

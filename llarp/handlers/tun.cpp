@@ -32,6 +32,13 @@ namespace llarp
       m_NetworkToUserPktQueue.Process(send);
     }
 
+    bool
+    TunEndpoint::ShouldFlushNow(llarp_time_t now) const
+    {
+      static constexpr llarp_time_t FlushInterval = 25;
+      return now >= m_LastFlushAt + FlushInterval;
+    }
+
     void
     TunEndpoint::tunifTick(llarp_tun_io *tun)
     {
