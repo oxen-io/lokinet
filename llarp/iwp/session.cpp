@@ -191,7 +191,10 @@ namespace llarp
                        OutboundMessage{msgid, std::move(buf), now, completed})
               .first->second;
       EncryptAndSend(msg.XMIT());
-      msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
+      if(buf.size() > FragmentSize)
+      {
+        msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
+      }
       LogDebug("send message ", msgid);
       return true;
     }
@@ -697,19 +700,21 @@ namespace llarp
                         rxid,
                         InboundMessage{rxid, sz, std::move(h), m_Parent->Now()})
                     .first;
-          size_t _sz =
-              std::min(data.size()
-                           - (CommandOverhead + sizeof(uint16_t)
-                              + sizeof(uint64_t) + PacketOverhead + 32),
-                       size_t{sz});
-          const llarp_buffer_t buf(data.data() + (data.size() - _sz), _sz);
-          itr->second.HandleData(0, buf, now);
-          if(_sz <= FragmentSize)
+
+          auto _sz = data.size()
+              - (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
+                 + PacketOverhead + 32);
+          if(sz <= FragmentSize && _sz == 0)
           {
-            if(not itr->second.Verify())
             {
-              LogError("bad short xmit hash from ", m_RemoteAddr);
-              return;
+              const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
+              LogInfo(_sz);
+              itr->second.HandleData(0, buf, now);
+              if(not itr->second.Verify())
+              {
+                LogError("bad short xmit hash from ", m_RemoteAddr);
+                return;
+              }
             }
             auto msg = std::move(itr->second);
             const llarp_buffer_t buf(msg.m_Data);

@@ -23,11 +23,11 @@ namespace llarp
     OutboundMessage::XMIT() const
     {
       size_t extra = 0;
-      if(m_Data.size() < FragmentSize)
+      if(m_Data.size() <= FragmentSize)
       {
         extra = m_Data.size();
       }
-      auto xmit = CreatePacket(Command::eXMIT, 10 + 32 + extra);
+      auto xmit = CreatePacket(Command::eXMIT, 10 + 32 + extra, 0, 0);
       htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
       htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
       std::copy_n(m_Digest.begin(), m_Digest.size(),
@@ -68,7 +68,7 @@ namespace llarp
     {
       /// overhead for a data packet in plaintext
       static constexpr size_t Overhead = 10;
-      uint16_t idx                     = FragmentSize;
+      uint16_t idx                     = 0;
       const auto datasz                = m_Data.size();
       while(idx < datasz)
       {
@@ -121,7 +121,7 @@ namespace llarp
                                    llarp_time_t now)
         : m_Data(size_t{sz})
         , m_Digset{std::move(h)}
-        , m_MsgID{msgid}
+        , m_MsgID(msgid)
         , m_LastActiveAt{now}
     {
     }
@@ -199,6 +199,5 @@ namespace llarp
       CryptoManager::instance()->shorthash(gotten, buf);
       return gotten == m_Digset;
     }
-
   }  // namespace iwp
 }  // namespace llarp
