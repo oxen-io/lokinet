@@ -22,11 +22,21 @@ namespace llarp
     ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      auto xmit = CreatePacket(Command::eXMIT, 10 + 32);
+      auto extra = 0;
+      if(m_Data.size() < FragmentSize)
+      {
+        extra = m_Data.size();
+      }
+      auto xmit = CreatePacket(Command::eXMIT, 10 + 32 + extra);
       htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
       htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
       std::copy_n(m_Digest.begin(), m_Digest.size(),
                   xmit.data() + 10 + CommandOverhead + PacketOverhead);
+      if(extra)
+      {
+        std::copy_n(m_Data.data(), extra,
+                    xmit.data() + 10 + CommandOverhead + PacketOverhead + 32);
+      }
       return xmit;
     }
 
@@ -58,7 +68,7 @@ namespace llarp
     {
       /// overhead for a data packet in plaintext
       static constexpr size_t Overhead = 10;
-      uint16_t idx                     = 0;
+      uint16_t idx                     = FragmentSize;
       const auto datasz                = m_Data.size();
       while(idx < datasz)
       {

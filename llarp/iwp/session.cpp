@@ -690,8 +690,33 @@ namespace llarp
       {
         auto itr = m_RXMsgs.find(rxid);
         if(itr == m_RXMsgs.end())
-          m_RXMsgs.emplace(
-              rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()});
+        {
+          auto msg_itr = m_RXMsgs
+                             .emplace(rxid,
+                                      InboundMessage{rxid, sz, std::move(h),
+                                                     m_Parent->Now()})
+                             .first;
+          sz = std::min(data.size()
+                            - (CommandOverhead + sizeof(uint16_t)
+                               + sizeof(uint64_t) + PacketOverhead + 32),
+                        sz);
+          const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
+          msg_itr->second.HandleData(0, buf, now);
+          if(sz <= FragmentSize)
+          {
+            if(not msg_itr->second.Verify())
+            {
+              LogError("bad short xmit hash from ", m_RemoteAddr);
+              return;
+            }
+            auto msg = std::move(msg_itr->second);
+            const llarp_buffer_t buf(msg.m_Data);
+            m_Parent->HandleMessage(this, buf);
+            m_ReplayFilter.emplace(rxid, m_Parent->Now());
+            m_SendMACKs.emplace(rxid);
+            m_RXMsgs.erase(rxid);
+          }
+        }
         else
           LogDebug("got duplicate xmit on ", rxid, " from ", m_RemoteAddr);
       }
