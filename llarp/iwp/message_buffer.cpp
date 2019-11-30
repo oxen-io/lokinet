@@ -22,7 +22,7 @@ namespace llarp
     ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      auto extra = 0;
+      size_t extra = 0;
       if(m_Data.size() < FragmentSize)
       {
         extra = m_Data.size();
