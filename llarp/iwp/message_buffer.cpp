@@ -22,21 +22,14 @@ namespace llarp
     ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      size_t extra = 0;
-      if(m_Data.size() <= FragmentSize)
-      {
-        extra = m_Data.size();
-      }
-      auto xmit = CreatePacket(Command::eXMIT, 10 + 32 + extra, 0, 0);
+      size_t extra = std::min(m_Data.size(), FragmentSize);
+      auto xmit    = CreatePacket(Command::eXMIT, 10 + 32 + extra, 0, 0);
       htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
       htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
       std::copy_n(m_Digest.begin(), m_Digest.size(),
                   xmit.data() + 10 + CommandOverhead + PacketOverhead);
-      if(extra)
-      {
-        std::copy_n(m_Data.data(), extra,
-                    xmit.data() + 10 + CommandOverhead + PacketOverhead + 32);
-      }
+      std::copy_n(m_Data.data(), extra,
+                  xmit.data() + 10 + CommandOverhead + PacketOverhead + 32);
       return xmit;
     }
 
@@ -135,7 +128,6 @@ namespace llarp
         LogWarn("invalid fragment offset ", idx);
         return;
       }
-
       byte_t *dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
