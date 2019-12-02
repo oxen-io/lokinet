@@ -159,6 +159,9 @@
   <data name="uriBox.TabIndex" type="System.Int32, mscorlib">
     <value>1</value>
   </data>
+  <data name="uriBox.Text" xml:space="preserve">
+    <value>https://seed.lokinet.org/bootstrap.signed</value>
+  </data>
   <data name="&gt;&gt;uriBox.Name" xml:space="preserve">
     <value>uriBox</value>
   </data>
@@ -268,7 +271,7 @@
     <value>bootstrap from web...</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
-    <value>bootstrap</value>
+    <value>dlgBootstrap</value>
   </data>
   <data name="&gt;&gt;$this.Type" xml:space="preserve">
     <value>System.Windows.Forms.Form, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
