@@ -96,7 +96,8 @@ namespace llarp
     }
     if(m_Thread->LooksFull(5))
     {
-      LogErrorExplicit(TAG, LINE, "holy crap, we are trying to queue a job "
+      LogErrorExplicit(TAG, LINE,
+                       "holy crap, we are trying to queue a job "
                        "onto the logic thread but it looks full");
       METRIC("full");
       std::abort();
