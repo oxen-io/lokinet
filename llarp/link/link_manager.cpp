@@ -241,6 +241,23 @@ namespace llarp
     return connectedClients.size();
   }
 
+  size_t
+  LinkManager::NumberOfPendingConnections() const
+  {
+    size_t pending = 0;
+    for(const auto &link : inboundLinks)
+    {
+      pending += link->NumberOfPendingSessions();
+    }
+
+    for(const auto &link : outboundLinks)
+    {
+      pending += link->NumberOfPendingSessions();
+    }
+
+    return pending;
+  }
+
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact &router) const
   {

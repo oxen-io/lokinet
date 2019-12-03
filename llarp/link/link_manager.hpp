@@ -66,6 +66,9 @@ namespace llarp
     size_t
     NumberOfConnectedClients() const override;
 
+    size_t
+    NumberOfPendingConnections() const override;
+
     bool
     GetRandomConnectedRouter(RouterContact &router) const override;
 

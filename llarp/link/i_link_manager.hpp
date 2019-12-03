@@ -67,6 +67,9 @@ namespace llarp
     virtual size_t
     NumberOfConnectedClients() const = 0;
 
+    virtual size_t
+    NumberOfPendingConnections() const = 0;
+
     virtual bool
     GetRandomConnectedRouter(RouterContact &router) const = 0;
 
