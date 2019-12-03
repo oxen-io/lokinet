@@ -6,9 +6,7 @@
 #include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
 
-#ifndef _WIN32
 #include <curl/curl.h>
-#endif
 
 /// curl callback
 static size_t

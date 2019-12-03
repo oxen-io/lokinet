@@ -188,6 +188,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
+# win32 is in tree
 if(NOT IOS AND NOT ANDROID AND NOT WIN32)
   find_package(CURL REQUIRED)
 endif()
