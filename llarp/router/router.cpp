@@ -339,8 +339,6 @@ namespace llarp
 #endif
 #endif
     }
-    return llarp_findOrCreateIdentity(ident_keyfile, _identity);
-  }
 
     if(usingSNSeed)
     {

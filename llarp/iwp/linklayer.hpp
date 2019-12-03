@@ -30,9 +30,6 @@ namespace llarp
                          const AddressInfo &ai) override;
 
 
-      void
-      Pump() override;
-
       const char *
       Name() const override;
 
