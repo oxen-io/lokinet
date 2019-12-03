@@ -75,7 +75,6 @@ namespace llarp
     std::string m_lokidRPCUser;
     std::string m_lokidRPCPassword;
 
-    llarp::RouterContact m_rc;
     llarp::SecretKey m_idKey;
     llarp::SecretKey m_encKey;
     llarp::SecretKey m_transportKey;

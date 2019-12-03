@@ -231,13 +231,13 @@ namespace llarp
     }
     _nodedb = nodedb;
 
+    if (not m_keyManager->initialize(*conf, true))
+      return false;
+
     if(!FromConfig(conf))
       return false;
 
     if(!InitOutboundLinks())
-      return false;
-
-    if (not m_keyManager->initialize(*conf, true))
       return false;
 
     return EnsureIdentity();

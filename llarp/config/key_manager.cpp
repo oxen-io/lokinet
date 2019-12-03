@@ -132,16 +132,6 @@ namespace llarp
   }
 
   bool
-  KeyManager::getRouterContact(llarp::RouterContact& rc) const
-  {
-    if (! m_initialized)
-      return false;
-
-    rc = m_rc;
-    return true;
-  }
-
-  bool
   KeyManager::backupKeyFilesByMoving() const
   {
     auto findFreeBackupFilename = [](const fs::path& filepath) {
