@@ -1,8 +1,19 @@
-all: test
 
-SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+
+NO_GIT := $(shell test -e $(REPO)/.git/ || echo 1)
+ifeq ($(NO_GIT),1)
+all: release
+else
+GIT_BRANCH ?= $(shell test -e $(REPO)/.git/ && git rev-parse --abbrev-ref HEAD)
+ifeq ($(GIT_BRANCH),master)
+all: release
+else
+all: test
+endif
+endif
 
 BUILD_ROOT = $(REPO)/build
 
@@ -151,18 +162,13 @@ debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
 	cp $(EXE) $(REPO)/lokinet
 
-
 release-compile: release-configure
 	$(MAKE) -C $(BUILD_ROOT)
 	strip $(EXE)
-	cp $(EXE) $(REPO)/lokinet
 
 $(TARGETS): release-compile
 
-%.sig: $(TARGETS)
-	$(SIGN) $*
-
-release: $(SIGS)
+release: $(TARGETS)
 
 shadow-configure: clean
 	mkdir -p $(BUILD_ROOT)
