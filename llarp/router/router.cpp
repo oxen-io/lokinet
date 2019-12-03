@@ -31,25 +31,7 @@
 #include <utility>
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
-#else
-#if defined(_WIN32)
-#else
-#include <curl/curl.h>
 #endif
-#endif
-
-bool
-llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
-                                 llarp::SecretKey &secret)
-{
-  std::string path = fpath.string();
-  llarp::IdentitySecret ident;
-
-  if(!ident.LoadFromFile(path.c_str()))
-    return false;
-
-  return llarp::CryptoManager::instance()->seed_to_secretkey(secret, ident);
-}
 
 namespace llarp
 {
@@ -210,26 +192,9 @@ namespace llarp
       LogError(rcfile, " contains invalid RC");
   }
 
-  static size_t
-  RecvIdentKey(char *ptr, size_t, size_t nmemb, void *userdata)
-  {
-    for(size_t idx = 0; idx < nmemb; idx++)
-      static_cast< std::vector< char > * >(userdata)->push_back(ptr[idx]);
-    return nmemb;
-  }
-
   bool
   Router::EnsureIdentity()
   {
-
-    // TODO: handle loading SN identity instead
-    _identity = m_keyManager->getIdentityKey();
-    _encryption = m_keyManager->getEncryptionKey();
-
-    if (_identity.IsZero())
-      return false;
-    if (_encryption.IsZero())
-      return false;
 
     if(whitelistRouters)
     {
@@ -240,111 +205,17 @@ namespace llarp
 #if defined(_WIN32)
       LogError("running a service node on windows is not possible.");
       return false;
-#else
-      CURL *curl = curl_easy_init();
-      if(curl)
-      {
-        bool ret = false;
-        std::stringstream ss;
-        ss << "http://" << lokidRPCAddr << "/json_rpc";
-        const auto url = ss.str();
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
-        const auto auth = lokidRPCUser + ":" + lokidRPCPassword;
-        curl_easy_setopt(curl, CURLOPT_USERPWD, auth.c_str());
-        curl_slist *list = nullptr;
-        list = curl_slist_append(list, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-        nlohmann::json request = {{"id", "0"},
-                                  {"jsonrpc", "2.0"},
-                                  {"method", "get_service_node_privkey"}};
-        const auto data        = request.dump();
-        std::vector< char > resp;
-
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &RecvIdentKey);
-        do
-        {
-          resp.clear();
-          LogInfo("Getting Identity Keys from lokid...");
-          if(curl_easy_perform(curl) == CURLE_OK)
-          {
-            try
-            {
-              auto j = nlohmann::json::parse(resp);
-              if(not j.is_object())
-                continue;
-
-              const auto itr = j.find("result");
-              if(itr == j.end())
-                continue;
-              if(not itr->is_object())
-                continue;
-              const auto k =
-                  (*itr)["service_node_ed25519_privkey"].get< std::string >();
-              if(k.size() != (_identity.size() * 2))
-              {
-                if(k.empty())
-                {
-                  LogError("lokid gave no identity key");
-                }
-                else
-                {
-                  LogError("lokid gave invalid identity key");
-                }
-                return false;
-              }
-              if(not HexDecode(k.c_str(), _identity.data(), _identity.size()))
-                continue;
-              if(CryptoManager::instance()->check_identity_privkey(_identity))
-              {
-                ret = true;
-              }
-              else
-              {
-                LogError("lokid gave bogus identity key");
-              }
-            }
-            catch(nlohmann::json::exception &ex)
-            {
-              LogError("Bad response from lokid: ", ex.what());
-            }
-          }
-          else
-          {
-            LogError("failed to get identity keys");
-          }
-          if(ret)
-          {
-            LogInfo("Got Identity Keys from lokid: ", RouterID(pubkey()));
-            break;
-          }
-          else
-          {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          }
-        } while(true);
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(list);
-        return ret;
-      }
-      else
-      {
-        LogError("failed to init curl");
-        return false;
-      }
 #endif
 #endif
     }
 
-    if(usingSNSeed)
-    {
-      LogError("FIXME: load identity key from SNode seed");
+    _identity = m_keyManager->getIdentityKey();
+    _encryption = m_keyManager->getEncryptionKey();
+
+    if (_identity.IsZero())
       return false;
-    }
+    if (_encryption.IsZero())
+      return false;
 
     return true;
   }
@@ -366,7 +237,7 @@ namespace llarp
     if(!InitOutboundLinks())
       return false;
 
-    if (not m_keyManager->initializeFromDisk(*conf, true))
+    if (not m_keyManager->initialize(*conf, true))
       return false;
 
     return EnsureIdentity();

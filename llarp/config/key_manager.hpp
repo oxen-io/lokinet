@@ -24,17 +24,18 @@ namespace llarp
     /// Constructor
     KeyManager();
 
-    /// Initializes from disk. This reads enough from disk to understand the current
-    /// state of the stored keys.
+    /// Initializes keys using the provided config, loading from disk and/or lokid
+    /// via HTTP request.
     ///
     /// NOTE: Must be called prior to obtaining any keys.
+    /// NOTE: blocks on I/O
     ///
     /// @param config should be a prepared config object
     /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
     /// @return true on success, false otherwise
     bool
-    initializeFromDisk(const llarp::Config& config, bool genIfAbsent);
+    initialize(const llarp::Config& config, bool genIfAbsent);
 
     /// Obtain the identity key (e.g. ~/.lokinet/identity.private)
     ///
@@ -69,6 +70,11 @@ namespace llarp
     std::string m_transportKeyPath;
     std::atomic_bool m_initialized;
 
+    bool m_usingLokid = false;
+    std::string m_lokidRPCAddr = "127.0.0.1:22023";
+    std::string m_lokidRPCUser;
+    std::string m_lokidRPCPassword;
+
     llarp::RouterContact m_rc;
     llarp::SecretKey m_idKey;
     llarp::SecretKey m_encKey;
@@ -86,6 +92,10 @@ namespace llarp
         const std::string& filepath,
         llarp::SecretKey& key,
         std::function<void(llarp::SecretKey& key)> keygen);
+
+    /// Requests the identity key from lokid via HTTP (curl)
+    bool
+    loadIdentityFromLokid();
   };
 
 }  // namespace llarp

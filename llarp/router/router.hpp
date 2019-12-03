@@ -46,10 +46,6 @@ namespace llarp
   struct Config;
 }  // namespace llarp
 
-bool
-llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
-                                 llarp::SecretKey &secretkey);
-
 namespace llarp
 {
   struct Router final : public AbstractRouter
