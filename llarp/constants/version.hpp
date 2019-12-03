@@ -2,7 +2,7 @@
 #define LLARP_VERSION_HPP
 
 #if defined(_WIN32) && defined(RC_INVOKED)
-#define LLARP_VERSION 0, 5, 2, 0
+#define LLARP_VERSION 0, 6, 0, 0
 #else
 
 #ifndef LLARP_VERSION_MAJ
@@ -10,11 +10,11 @@
 #endif
 
 #ifndef LLARP_VERSION_MIN
-#define LLARP_VERSION_MIN "5"
+#define LLARP_VERSION_MIN "6"
 #endif
 
 #ifndef LLARP_VERSION_PATCH
-#define LLARP_VERSION_PATCH "2"
+#define LLARP_VERSION_PATCH "0"
 #endif
 
 #ifndef LLARP_VERSION_NUM
