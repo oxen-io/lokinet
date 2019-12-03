@@ -2,6 +2,7 @@
 #include <util/thread/timer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.h>
+#include <util/metrics/metrics.hpp>
 
 #include <future>
 
@@ -36,6 +37,12 @@ namespace llarp
     llarp_free_timer(m_Timer);
   }
 
+  size_t
+  Logic::numPendingJobs() const
+  {
+    return m_Thread->pendingJobs();
+  }
+
   bool
   Logic::queue_job(struct llarp_thread_job job)
   {
@@ -62,36 +69,47 @@ namespace llarp
     // wrap the function so that we ensure that it's always calling stuff one at
     // a time
 
-    LogTraceExplicit(TAG, LINE, "queue");
+#if defined(LOKINET_DEBUG)
+#define METRIC(action)                                         \
+  metrics::integerTick("logic", action, 1, "tag", TAG, "line", \
+                       std::to_string(LINE))
+#else
+#define METRIC(action) \
+  do                   \
+  {                    \
+  } while(false)
+#endif
 
+    METRIC("queue");
     auto f = [self = this, func, tag, line]() {
-      LogTraceExplicit(TAG, LINE, "exec");
+#if defined(LOKINET_DEBUG)
+      metrics::TimerGuard g("logic",
+                            std::string(TAG) + ":" + std::to_string(LINE));
+#endif
       self->m_Killer.TryAccess(func);
-      LogTraceExplicit(TAG, LINE, "return");
     };
+    if(can_flush())
+    {
+      METRIC("fired");
+      f();
+      return true;
+    }
     if(m_Thread->LooksFull(5))
     {
-      LogWarnExplicit(TAG, LINE,
-                      "holy crap, we are trying to queue a job onto the logic "
-                      "thread but "
-                      "it looks full");
-
-      if(can_flush())
-      {
-        // we are calling in the logic thread and our queue looks full
-        // defer call to a later time so we don't die like a little bitch
-        const auto delay = m_Thread->GuessJobLatency() / 2;
-
-        LogWarnExplicit(TAG, LINE, "deferring call by ", delay, " ms");
-        call_later(delay, f);
-        return true;
-      }
+      LogErrorExplicit(TAG, LINE, "holy crap, we are trying to queue a job "
+                       "onto the logic thread but it looks full");
+      METRIC("full");
+      std::abort();
     }
     auto ret = llarp_threadpool_queue_job(m_Thread, f);
-    LogTraceExplicit(TAG, LINE, "==");
+    if(not ret)
+    {
+      METRIC("dropped");
+    }
     return ret;
 #undef TAG
 #undef LINE
+#undef METRIC
   }
 
   void

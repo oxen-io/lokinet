@@ -32,11 +32,23 @@ namespace llarp
       m_NetworkToUserPktQueue.Process(send);
     }
 
+    bool
+    TunEndpoint::ShouldFlushNow(llarp_time_t now) const
+    {
+      static constexpr llarp_time_t FlushInterval = 25;
+      return now >= m_LastFlushAt + FlushInterval;
+    }
+
     void
     TunEndpoint::tunifTick(llarp_tun_io *tun)
     {
-      auto *self = static_cast< TunEndpoint * >(tun->user);
-      LogicCall(self->m_router->logic(), [self]() { self->Flush(); });
+      auto *self     = static_cast< TunEndpoint * >(tun->user);
+      const auto now = self->Now();
+      if(self->ShouldFlushNow(now))
+      {
+        self->m_LastFlushAt = now;
+        LogicCall(self->m_router->logic(), [self]() { self->Flush(); });
+      }
     }
 
     TunEndpoint::TunEndpoint(const std::string &nickname, AbstractRouter *r,
@@ -336,6 +348,32 @@ namespace llarp
       return msg.questions[0].IsName("localhost.loki");
     }
 
+    template <>
+    bool
+    TunEndpoint::FindAddrForIP(service::Address &addr, huint128_t ip)
+    {
+      auto itr = m_IPToAddr.find(ip);
+      if(itr != m_IPToAddr.end() and not m_SNodes[itr->second])
+      {
+        addr = service::Address(itr->second.as_array());
+        return true;
+      }
+      return false;
+    }
+
+    template <>
+    bool
+    TunEndpoint::FindAddrForIP(RouterID &addr, huint128_t ip)
+    {
+      auto itr = m_IPToAddr.find(ip);
+      if(itr != m_IPToAddr.end() and m_SNodes[itr->second])
+      {
+        addr = RouterID(itr->second.as_array());
+        return true;
+      }
+      return false;
+    }
+
     bool
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
@@ -479,18 +517,17 @@ namespace llarp
           reply(msg);
           return true;
         }
-        llarp::service::Address addr(
-            ObtainAddrForIP< llarp::service::Address >(ip, true));
-        if(!addr.IsZero())
+        RouterID snodeAddr;
+        if(FindAddrForIP(snodeAddr, ip))
         {
-          msg.AddAReply(addr.ToString(".snode"));
+          msg.AddAReply(snodeAddr.ToString());
           reply(msg);
           return true;
         }
-        addr = ObtainAddrForIP< llarp::service::Address >(ip, false);
-        if(!addr.IsZero())
+        service::Address lokiAddr;
+        if(FindAddrForIP(lokiAddr, ip))
         {
-          msg.AddAReply(addr.ToString(".loki"));
+          msg.AddAReply(lokiAddr.ToString());
           reply(msg);
           return true;
         }
@@ -708,7 +745,13 @@ namespace llarp
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
 
-      MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
+      const service::Address ourAddr = m_Identity.pub.Addr();
+
+      if(not MapAddress(ourAddr, GetIfAddr(), false))
+      {
+        return false;
+      }
+
       if(m_OnUp)
       {
         m_OnUp->NotifyAsync(NotifyParams());
@@ -717,7 +760,8 @@ namespace llarp
       {
         vpnif->injected(vpnif, true);
       }
-      return true;
+
+      return HasAddress(ourAddr);
     }
 
     std::unordered_map< std::string, std::string >
@@ -978,17 +1022,24 @@ namespace llarp
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
       // called in the isolated network thread
-      auto *self   = static_cast< TunEndpoint * >(tun->user);
-      auto sendpkt = [self, tun](net::IPPacket &pkt) -> bool {
-        if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
+      auto *self      = static_cast< TunEndpoint * >(tun->user);
+      auto _pkts      = std::move(self->m_TunPkts);
+      self->m_TunPkts = std::vector< net::IPPacket >();
+
+      LogicCall(self->EndpointLogic(), [tun, self, pkts = std::move(_pkts)]() {
+        for(auto &pkt : pkts)
         {
-          llarp::LogWarn(self->Name(), " packet dropped");
-          return true;
+          self->m_UserToNetworkPktQueue.Emplace(pkt);
         }
-        return false;
-      };
-      LogicCall(self->EndpointLogic(),
-                std::bind(&TunEndpoint::FlushToUser, self, sendpkt));
+        self->FlushToUser([self, tun](net::IPPacket &pkt) -> bool {
+          if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
+          {
+            llarp::LogWarn(self->Name(), " packet dropped");
+            return true;
+          }
+          return false;
+        });
+      });
     }
 
     void
@@ -996,14 +1047,10 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       auto *self = static_cast< TunEndpoint * >(tun->user);
-      std::vector< byte_t > pkt;
-      pkt.resize(b.sz);
-      std::copy_n(b.base, b.sz, pkt.data());
-      LogicCall(self->RouterLogic(), [self, buffer = std::move(pkt)]() {
-        const llarp_buffer_t pbuf(buffer);
-        self->m_UserToNetworkPktQueue.EmplaceIf(
-            [&pbuf](net::IPPacket &p) -> bool { return p.Load(pbuf); });
-      });
+      net::IPPacket pkt;
+      if(not pkt.Load(b))
+        return;
+      self->m_TunPkts.emplace_back(pkt);
     }
 
     TunEndpoint::~TunEndpoint() = default;

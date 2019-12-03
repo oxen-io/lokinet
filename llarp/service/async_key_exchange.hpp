@@ -19,7 +19,6 @@ namespace llarp
       ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
       ProtocolMessage msg;
-      std::shared_ptr< ProtocolFrame > frame;
       Introduction intro;
       const PQPubKey introPubKey;
       Introduction remoteIntro;
@@ -34,11 +33,13 @@ namespace llarp
                        const ConvoTag& t, ProtocolType proto);
 
       static void
-      Result(std::shared_ptr< AsyncKeyExchange > user);
+      Result(std::shared_ptr< AsyncKeyExchange > user,
+             std::shared_ptr< ProtocolFrame > frame);
 
       /// given protocol message make protocol frame
       static void
-      Encrypt(std::shared_ptr< AsyncKeyExchange > user);
+      Encrypt(std::shared_ptr< AsyncKeyExchange > user,
+              std::shared_ptr< ProtocolFrame > frame);
     };
 
   }  // namespace service

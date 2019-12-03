@@ -42,6 +42,9 @@ namespace llarp
     void
     remove_call(uint32_t id);
 
+    size_t
+    numPendingJobs() const;
+
     bool
     can_flush() const;
 
@@ -65,5 +68,4 @@ namespace llarp
 #define LogicCall(l, ...) l->_traceLogicCall(__VA_ARGS__, 0, 0)
 #endif
 #endif
-
 #endif

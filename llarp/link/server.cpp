@@ -3,6 +3,7 @@
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
 #include <utility>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -125,6 +126,8 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
+    std::unordered_set< RouterID, RouterID::Hash > closedSessions;
+    std::vector< std::shared_ptr< ILinkSession > > closedPending;
     auto _now = Now();
     {
       ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
@@ -141,6 +144,7 @@ namespace llarp
           llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()),
                          " timed out");
           itr->second->Close();
+          closedSessions.emplace(itr->first);
           itr = m_AuthedLinks.erase(itr);
         }
       }
@@ -160,14 +164,24 @@ namespace llarp
         {
           LogInfo("pending session at ", itr->first, " timed out");
           // defer call so we can acquire mutexes later
-          auto self = itr->second->BorrowSelf();
-          LogicCall(m_Logic, [&, self]() {
-            this->HandleTimeout(self.get());
-            self->Close();
-          });
+          closedPending.emplace_back(std::move(itr->second));
           itr = m_Pending.erase(itr);
         }
       }
+    }
+    {
+      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      for(const auto& r : closedSessions)
+      {
+        if(m_AuthedLinks.count(r) == 0)
+        {
+          SessionClosed(r);
+        }
+      }
+    }
+    for(const auto& pending : closedPending)
+    {
+      HandleTimeout(pending.get());
     }
   }
 
