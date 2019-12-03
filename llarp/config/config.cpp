@@ -11,6 +11,7 @@
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/str.hpp>
+#include <util/lokinet_init.h>
 
 #include <absl/strings/strip.h>
 
@@ -468,6 +469,8 @@ namespace llarp
   bool
   Config::parse(const ConfigParser &parser)
   {
+    if(Lokinet_INIT())
+      return false;
     router    = find_section< RouterConfig >(parser, "router");
     network   = find_section< NetworkConfig >(parser, "network");
     connect   = find_section< ConnectConfig >(parser, "connect");
@@ -509,6 +512,8 @@ extern "C" bool
 llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
                     bool asRouter)
 {
+  if(Lokinet_INIT())
+    return false;
   std::error_code ec;
   if(fs::exists(fname, ec) && !overwrite)
   {

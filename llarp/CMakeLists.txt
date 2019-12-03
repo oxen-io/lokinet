@@ -25,6 +25,7 @@ set(LIB_UTIL_SRC
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
+  util/lokinet_init.c
   util/mem.cpp
   util/meta/memfn_traits.cpp
   util/meta/memfn.cpp
