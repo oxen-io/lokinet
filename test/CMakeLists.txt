@@ -60,7 +60,7 @@ add_executable(${TEST_EXE}
     ${TEST_SRC}
 )
 
-target_link_libraries(${TEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
+target_link_libraries(${TEST_EXE} PUBLIC gmock gtest curl ${STATIC_LIB})
 target_include_directories(${TEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(NOT WIN32)
