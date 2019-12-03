@@ -2,12 +2,17 @@
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-GIT_BRANCH ?= $(shell test -e $(REPO)/.git/ && git rev-parse --abbrev-ref HEAD)
 
+NO_GIT := $(shell test -e $(REPO)/.git/ || echo 1)
+ifeq ($(NO_GIT),1)
+all: release
+else
+GIT_BRANCH ?= $(shell test -e $(REPO)/.git/ && git rev-parse --abbrev-ref HEAD)
 ifeq ($(GIT_BRANCH),master)
 all: release
 else
 all: test
+endif
 endif
 
 BUILD_ROOT = $(REPO)/build
