@@ -139,9 +139,12 @@ bencode_discard(llarp_buffer_t* buf)
 }
 
 bool
-bencode_write_version_entry(llarp_buffer_t* buff)
+bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz, uint64_t i)
 {
-  return buff->writef("1:vi%de", LLARP_PROTO_VERSION);
+  if (! bencode_write_bytestring(buff, name, sz))
+    return false;
+
+  return bencode_write_uint64(buff, i);
 }
 
 bool

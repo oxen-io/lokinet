@@ -1,6 +1,7 @@
 set(LIB_UTIL_SRC
   config/config.cpp
   config/ini.cpp
+  config/key_manager.cpp
   constants/defaults.cpp
   constants/limits.cpp
   constants/link_layer.cpp

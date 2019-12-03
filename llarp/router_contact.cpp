@@ -132,8 +132,8 @@ namespace llarp
     if(!bencode_write_uint64(buf, last_updated))
       return false;
 
-    /* write version */
-    if(!bencode_write_version_entry(buf))
+    /* write versions */
+    if(!bencode_write_uint64_entry(buf, "v", 1, version))
       return false;
 
     /* write xi if they exist */

@@ -76,7 +76,7 @@ namespace llarp
     }
     else if(key == "v")
     {
-      if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+      if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
                                   buf))
       {
         return false;
@@ -111,7 +111,7 @@ namespace llarp
     if(!BEncodeWriteDictInt("s", status, buf))
       return false;
     // version
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     return bencode_end(buf);
@@ -248,7 +248,8 @@ namespace llarp
   LR_StatusRecord::BEncode(llarp_buffer_t* buf) const
   {
     return bencode_start_dict(buf) && BEncodeWriteDictInt("s", status, buf)
-        && bencode_write_version_entry(buf) && bencode_end(buf);
+        && bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION)
+        && bencode_end(buf);
   }
 
   bool
@@ -261,7 +262,7 @@ namespace llarp
 
     if(!BEncodeMaybeReadDictInt("s", status, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
                                 buffer))
       return false;
 

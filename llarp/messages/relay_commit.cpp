@@ -26,7 +26,7 @@ namespace llarp
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
                                 buf))
       return false;
 
@@ -52,7 +52,7 @@ namespace llarp
     if(!BEncodeWriteDictArray("c", frames, buf))
       return false;
     // version
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     return bencode_end(buf);
@@ -101,7 +101,7 @@ namespace llarp
       if(!BEncodeWriteDictEntry("u", *nextRC, buf))
         return false;
     }
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
     if(work && !BEncodeWriteDictEntry("w", *work, buf))
       return false;
@@ -134,7 +134,7 @@ namespace llarp
       nextRC = std::make_unique< RouterContact >();
       return nextRC->BDecode(buffer);
     }
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
                                 buffer))
       return false;
     if(*key == "w")

@@ -1,18 +1,20 @@
 #include <iwp/linklayer.hpp>
 #include <iwp/session.hpp>
+#include <config/key_manager.hpp>
+#include <memory>
 #include <unordered_set>
 
 namespace llarp
 {
   namespace iwp
   {
-    LinkLayer::LinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+    LinkLayer::LinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
                          LinkMessageHandler h, SignBufferFunc sign,
                          SessionEstablishedHandler est,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed,
                          PumpDoneHandler pumpDone, bool allowInbound)
-        : ILinkLayer(routerEncSecret, getrc, h, sign, est, reneg, timeout,
+        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout,
                      closed, pumpDone)
         , permitInbound{allowInbound}
     {
@@ -24,14 +26,6 @@ namespace llarp
     LinkLayer::Name() const
     {
       return "iwp";
-    }
-
-    bool
-    LinkLayer::KeyGen(SecretKey& k)
-    {
-      k.Zero();
-      CryptoManager::instance()->encryption_keygen(k);
-      return !k.IsZero();
     }
 
     uint16_t

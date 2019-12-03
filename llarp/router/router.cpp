@@ -1,3 +1,4 @@
+#include <memory>
 #include <router/router.hpp>
 
 #include <config/config.hpp>
@@ -50,39 +51,6 @@ llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
   return llarp::CryptoManager::instance()->seed_to_secretkey(secret, ident);
 }
 
-bool
-llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new identity key");
-    llarp::CryptoManager::instance()->identity_keygen(secretkey);
-    if(!secretkey.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return secretkey.LoadFromFile(fpath.c_str());
-}
-
-// C++ ...
-bool
-llarp_findOrCreateEncryption(const fs::path &path, llarp::SecretKey &encryption)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new encryption key");
-    llarp::CryptoManager::instance()->encryption_keygen(encryption);
-    if(!encryption.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return encryption.LoadFromFile(fpath.c_str());
-}
-
 namespace llarp
 {
   Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
@@ -99,6 +67,8 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
   {
+    m_keyManager = std::make_shared<KeyManager>();
+
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
     this->ip4addr.sin_port   = htons(1090);
@@ -251,8 +221,16 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-    if(!EnsureEncryptionKey())
+
+    // TODO: handle loading SN identity instead
+    _identity = m_keyManager->getIdentityKey();
+    _encryption = m_keyManager->getEncryptionKey();
+
+    if (_identity.IsZero())
       return false;
+    if (_encryption.IsZero())
+      return false;
+
     if(whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
@@ -364,10 +342,13 @@ namespace llarp
     return llarp_findOrCreateIdentity(ident_keyfile, _identity);
   }
 
-  bool
-  Router::EnsureEncryptionKey()
-  {
-    return llarp_findOrCreateEncryption(encryption_keyfile, _encryption);
+    if(usingSNSeed)
+    {
+      LogError("FIXME: load identity key from SNode seed");
+      return false;
+    }
+
+    return true;
   }
 
   bool
@@ -386,6 +367,10 @@ namespace llarp
 
     if(!InitOutboundLinks())
       return false;
+
+    if (not m_keyManager->initializeFromDisk(*conf, true))
+      return false;
+
     return EnsureIdentity();
   }
 
@@ -661,7 +646,7 @@ namespace llarp
       }
 
       auto server = inboundLinkFactory(
-          encryption(), util::memFn(&AbstractRouter::rc, this),
+          m_keyManager, util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -670,13 +655,8 @@ namespace llarp
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                       &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this));
-
-      if(!server->EnsureKeys(transport_keyfile.string().c_str()))
-      {
-        llarp::LogError("failed to ensure keyfile ", transport_keyfile);
-        return false;
-      }
+          util::memFn(&AbstractRouter::PumpLL, this)
+          );
 
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
@@ -1291,7 +1271,7 @@ namespace llarp
       return false;
     }
     auto link =
-        factory(encryption(), util::memFn(&AbstractRouter::rc, this),
+        factory(m_keyManager, util::memFn(&AbstractRouter::rc, this),
                 util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
                 util::memFn(&AbstractRouter::Sign, this),
                 util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -1300,15 +1280,11 @@ namespace llarp
                 util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                             &_outboundSessionMaker),
                 util::memFn(&AbstractRouter::SessionClosed, this),
-                util::memFn(&AbstractRouter::PumpLL, this));
+                util::memFn(&AbstractRouter::PumpLL, this)
+                );
 
     if(!link)
       return false;
-    if(!link->EnsureKeys(transport_keyfile.string().c_str()))
-    {
-      LogError("failed to load ", transport_keyfile);
-      return false;
-    }
 
     const auto afs = {AF_INET, AF_INET6};
 

@@ -206,7 +206,6 @@ namespace llarp
     bool
     Write(const char *fname) const;
 
-   private:
     bool
     VerifySignature() const;
   };

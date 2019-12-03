@@ -163,7 +163,7 @@ namespace llarp
         return false;
       if(!BEncodeMaybeReadDictEntry("T", T, read, key, val))
         return false;
-      if(!BEncodeMaybeReadVersion("V", version, LLARP_PROTO_VERSION, read, key,
+      if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, key,
                                   val))
         return false;
       if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, val))

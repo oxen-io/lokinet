@@ -9,6 +9,7 @@
 #include <util/status.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
+#include <config/key_manager.hpp>
 
 #include <list>
 #include <memory>
@@ -51,7 +52,7 @@ namespace llarp
 
   struct ILinkLayer
   {
-    ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+    ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
                SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
@@ -142,9 +143,6 @@ namespace llarp
     virtual uint16_t
     Rank() const = 0;
 
-    virtual bool
-    KeyGen(SecretKey&) = 0;
-
     const byte_t*
     TransportPubKey() const;
 
@@ -167,12 +165,6 @@ namespace llarp
       return false;
     }
 
-    bool
-    EnsureKeys(const char* fpath);
-
-    bool
-    GenEphemeralKeys();
-
     virtual bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
@@ -187,6 +179,7 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
     PumpDoneHandler PumpDone;
+    std::shared_ptr<KeyManager> keyManager;
 
     std::shared_ptr< Logic >
     logic()
