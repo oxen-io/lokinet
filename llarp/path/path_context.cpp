@@ -55,11 +55,9 @@ namespace llarp
     PathContext::FindOwnedPathsWithEndpoint(const RouterID& r)
     {
       EndpointPathPtrSet found;
-      m_OurPaths.ForEach([&](const PathSet_ptr& set) {
-        set->ForEachPath([&](const Path_ptr& p) {
-          if(p->Endpoint() == r && p->IsReady())
-            found.insert(p);
-        });
+      m_OurPaths.ForEach([&](const Path_ptr& p) {
+        if(p->Endpoint() == r && p->IsReady())
+          found.insert(p);
       });
       return found;
     }
@@ -151,8 +149,8 @@ namespace llarp
     PathContext::AddOwnPath(PathSet_ptr set, Path_ptr path)
     {
       set->AddPath(path);
-      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->TXID(), set);
-      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->RXID(), set);
+      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->TXID(), path);
+      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->RXID(), path);
     }
 
     bool
@@ -170,13 +168,11 @@ namespace llarp
     {
       auto own = MapGet< SyncOwnedPathsMap_t::Lock_t >(
           m_OurPaths, id,
-          [](const PathSet_ptr) -> bool {
+          [](const Path_ptr) -> bool {
             // TODO: is this right?
             return true;
           },
-          [remote, id](PathSet_ptr p) -> HopHandler_ptr {
-            return p->GetByUpstream(remote, id);
-          });
+          [](Path_ptr p) -> HopHandler_ptr { return p; });
       if(own)
         return own;
 
@@ -222,7 +218,7 @@ namespace llarp
       auto itr = map.second.find(id);
       if(itr != map.second.end())
       {
-        return itr->second;
+        return itr->second->m_PathSet->GetSelf();
       }
       return nullptr;
     }
@@ -260,7 +256,7 @@ namespace llarp
     PathContext::PumpUpstream()
     {
       m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
-      m_OurPaths.ForEach([&](auto& ptr) { ptr->UpstreamFlush(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
     }
 
     void
@@ -268,7 +264,7 @@ namespace llarp
     {
       m_TransitPaths.ForEach(
           [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
-      m_OurPaths.ForEach([&](auto& ptr) { ptr->DownstreamFlush(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(m_Router); });
     }
 
     void
@@ -290,6 +286,20 @@ namespace llarp
           if(itr->second->Expired(now))
           {
             m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
+            itr = map.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
+      {
+        SyncOwnedPathsMap_t::Lock_t lock(&m_OurPaths.first);
+        auto& map = m_OurPaths.second;
+        auto itr  = map.begin();
+        while(itr != map.end())
+        {
+          if(itr->second->Expired(now))
+          {
             itr = map.erase(itr);
           }
           else
@@ -323,19 +333,8 @@ namespace llarp
       return nullptr;
     }
 
-    void
-    PathContext::RemovePathSet(PathSet_ptr set)
+    void PathContext::RemovePathSet(PathSet_ptr)
     {
-      SyncOwnedPathsMap_t::Lock_t lock(&m_OurPaths.first);
-      auto& map = m_OurPaths.second;
-      auto itr  = map.begin();
-      while(itr != map.end())
-      {
-        if(itr->second.get() == set.get())
-          itr = map.erase(itr);
-        else
-          ++itr;
-      }
     }
   }  // namespace path
 }  // namespace llarp

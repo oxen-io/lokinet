@@ -125,7 +125,7 @@ namespace llarp
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::map< PathID_t, PathSet_ptr >;
+      using OwnedPathsMap_t = std::map< PathID_t, Path_ptr >;
 
       struct SyncOwnedPathsMap_t
       {
@@ -135,7 +135,7 @@ namespace llarp
         OwnedPathsMap_t second GUARDED_BY(first);
 
         void
-        ForEach(std::function< void(const PathSet_ptr&) > visit)
+        ForEach(std::function< void(const Path_ptr&) > visit)
         {
           Lock_t lock(&first);
           for(const auto& item : second)
