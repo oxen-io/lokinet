@@ -843,17 +843,12 @@ namespace libuv
   {
     if(m_Run)
     {
-#ifdef LOKINET_DEBUG
       if((uv_now(&m_Impl) - last_time) > 1000)
       {
-        llarp::LogInfo("UV EVENT LOOP TICKS LAST SECOND: ", loop_run_count,
-                       ", LOGIC THREAD JOBS: ", m_Logic->numPendingJobs());
         loop_run_count = 0;
         last_time      = uv_now(&m_Impl);
       }
       loop_run_count++;
-#endif
-
       uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
       uv_run(&m_Impl, UV_RUN_ONCE);
     }

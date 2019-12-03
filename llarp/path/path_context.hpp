@@ -12,6 +12,7 @@
 #include <util/types.hpp>
 
 #include <memory>
+#include <unordered_map>
 
 namespace llarp
 {
@@ -104,7 +105,8 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
-      using TransitHopsMap_t = std::multimap< PathID_t, TransitHop_ptr >;
+      using TransitHopsMap_t =
+          std::unordered_multimap< PathID_t, TransitHop_ptr, PathID_t::Hash >;
 
       struct SyncTransitMap_t
       {
@@ -125,7 +127,8 @@ namespace llarp
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::map< PathID_t, PathSet_ptr >;
+      using OwnedPathsMap_t =
+          std::unordered_map< PathID_t, Path_ptr, PathID_t::Hash >;
 
       struct SyncOwnedPathsMap_t
       {
@@ -135,7 +138,7 @@ namespace llarp
         OwnedPathsMap_t second GUARDED_BY(first);
 
         void
-        ForEach(std::function< void(const PathSet_ptr&) > visit)
+        ForEach(std::function< void(const Path_ptr&) > visit)
         {
           Lock_t lock(&first);
           for(const auto& item : second)

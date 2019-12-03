@@ -680,8 +680,12 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
-    const size_t connected = NumberOfConnectedRouters();
-    const size_t N         = nodedb()->num_loaded();
+    size_t connected = NumberOfConnectedRouters();
+    if(not isSvcNode)
+    {
+      connected += _linkManager.NumberOfPendingConnections();
+    }
+    const size_t N = nodedb()->num_loaded();
     if(N < llarp::path::default_len)
     {
       LogInfo("We need at least ", llarp::path::default_len,
@@ -1080,8 +1084,16 @@ namespace llarp
   }
 
   void
-  Router::ConnectToRandomRouters(int want)
+  Router::ConnectToRandomRouters(int _want)
   {
+    const size_t want = _want;
+    auto connected    = NumberOfConnectedRouters();
+    if(not IsServiceNode())
+    {
+      connected += _linkManager.NumberOfPendingConnections();
+    }
+    if(connected >= want)
+      return;
     _outboundSessionMaker.ConnectToRandomRouters(want, Now());
   }
 

@@ -22,11 +22,14 @@ namespace llarp
     ILinkSession::Packet_t
     OutboundMessage::XMIT() const
     {
-      auto xmit = CreatePacket(Command::eXMIT, 10 + 32);
+      size_t extra = std::min(m_Data.size(), FragmentSize);
+      auto xmit    = CreatePacket(Command::eXMIT, 10 + 32 + extra, 0, 0);
       htobe16buf(xmit.data() + CommandOverhead + PacketOverhead, m_Data.size());
       htobe64buf(xmit.data() + 2 + CommandOverhead + PacketOverhead, m_MsgID);
       std::copy_n(m_Digest.begin(), m_Digest.size(),
                   xmit.data() + 10 + CommandOverhead + PacketOverhead);
+      std::copy_n(m_Data.data(), extra,
+                  xmit.data() + 10 + CommandOverhead + PacketOverhead + 32);
       return xmit;
     }
 
@@ -111,7 +114,7 @@ namespace llarp
                                    llarp_time_t now)
         : m_Data(size_t{sz})
         , m_Digset{std::move(h)}
-        , m_MsgID{msgid}
+        , m_MsgID(msgid)
         , m_LastActiveAt{now}
     {
     }
@@ -125,7 +128,6 @@ namespace llarp
         LogWarn("invalid fragment offset ", idx);
         return;
       }
-
       byte_t *dst = m_Data.data() + idx;
       std::copy_n(buf.base, buf.sz, dst);
       m_Acks.set(idx / FragmentSize);
@@ -189,6 +191,5 @@ namespace llarp
       CryptoManager::instance()->shorthash(gotten, buf);
       return gotten == m_Digset;
     }
-
   }  // namespace iwp
 }  // namespace llarp

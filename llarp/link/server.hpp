@@ -198,6 +198,14 @@ namespace llarp
     // void
     // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
 
+    /// count the number of sessions that are yet to be fully connected
+    size_t
+    NumberOfPendingSessions() const
+    {
+      ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
+      return m_Pending.size();
+    }
+
    private:
     static void
     on_timer_tick(void* user, uint64_t orig, uint64_t left)
