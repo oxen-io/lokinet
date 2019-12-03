@@ -38,24 +38,21 @@ namespace llarp
 
     /// Obtain the identity key (e.g. ~/.lokinet/identity.private)
     ///
-    /// @param key (out) will be modified to contain the identity key
-    /// @return true on success, false otherwise
-    bool
-    getIdentityKey(llarp::SecretKey &key) const;
+    /// @return a reference to the identity key
+    const llarp::SecretKey&
+    getIdentityKey() const;
 
     /// Obtain the encryption key (e.g. ~/.lokinet/encryption.private)
     ///
-    /// @param key (out) will be modified to contain the encryption key
-    /// @return true on success, false otherwise
-    bool
-    getEncryptionKey(llarp::SecretKey &key) const;
+    /// @return a reference to the encryption key
+    const llarp::SecretKey&
+    getEncryptionKey() const;
 
     /// Obtain the transport key (e.g. ~/.lokinet/transport.private)
     ///
-    /// @param key (out) will be modified to contain the transport key
-    /// @return true on success, false otherwise
-    bool
-    getTransportKey(llarp::SecretKey &key) const;
+    /// @return a reference to the transport key
+    const llarp::SecretKey&
+    getTransportKey() const;
 
     /// Obtain the self-signed RouterContact
     ///

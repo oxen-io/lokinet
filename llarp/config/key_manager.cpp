@@ -74,40 +74,34 @@ namespace llarp
       return false;
 
     // TODO: transport key (currently done in LinkLayer)
-
+    auto transportKeygen = [](llarp::SecretKey& key)
+    {
+      key.Zero();
+      CryptoManager::instance()->encryption_keygen(key);
+    };
+    if (not loadOrCreateKey(m_transportKeyPath, m_transportKey, transportKeygen))
+      return false;
 
     m_initialized = true;
     return true;
   }
 
-  bool
-  KeyManager::getIdentityKey(llarp::SecretKey &key) const
+  const llarp::SecretKey&
+  KeyManager::getIdentityKey() const
   {
-    if (! m_initialized)
-      return false;
-
-    key = m_idKey;
-    return true;
+    return m_idKey;
   }
 
-  bool
-  KeyManager::getEncryptionKey(llarp::SecretKey &key) const
+  const llarp::SecretKey&
+  KeyManager::getEncryptionKey() const
   {
-    if (! m_initialized)
-      return false;
-
-    key = m_encKey;
-    return true;
+    return m_encKey;
   }
 
-  bool
-  KeyManager::getTransportKey(llarp::SecretKey &key) const
+  const llarp::SecretKey&
+  KeyManager::getTransportKey() const
   {
-    if (! m_initialized)
-      return false;
-
-    key = m_transportKey;
-    return true;
+    return m_transportKey;
   }
 
   bool

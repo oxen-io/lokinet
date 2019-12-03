@@ -7,6 +7,9 @@
 #include <crypto/types.hpp>
 #include <link/server.hpp>
 #include <util/thread/thread_pool.hpp>
+#include <config/key_manager.hpp>
+
+#include <memory>
 
 namespace llarp
 {
@@ -14,7 +17,7 @@ namespace llarp
   {
     struct LinkLayer final : public ILinkLayer
     {
-      LinkLayer(const SecretKey &routerEncSecret, GetRCFunc getrc,
+      LinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
                 LinkMessageHandler h, SignBufferFunc sign,
                 SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
                 TimeoutHandler timeout, SessionClosedHandler closed,
@@ -28,9 +31,6 @@ namespace llarp
 
       void
       Pump() override;
-
-      bool
-      KeyGen(SecretKey &k) override;
 
       const char *
       Name() const override;

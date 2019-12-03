@@ -1,6 +1,8 @@
 #include <link/server.hpp>
 #include <ev/ev.hpp>
 #include <crypto/crypto.hpp>
+#include <config/key_manager.hpp>
+#include <memory>
 #include <util/fs.hpp>
 #include <utility>
 
@@ -8,7 +10,7 @@ namespace llarp
 {
   static constexpr size_t MaxSessionsPerKey = 16;
 
-  ILinkLayer::ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
+  ILinkLayer::ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
@@ -22,7 +24,8 @@ namespace llarp
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
       , PumpDone(std::move(pumpDone))
-      , m_RouterEncSecret(routerEncSecret)
+      , m_RouterEncSecret(keyManager->getEncryptionKey())
+      , m_SecretKey(keyManager->getTransportKey())
   {
   }
 
@@ -404,35 +407,6 @@ namespace llarp
   ILinkLayer::TransportSecretKey() const
   {
     return m_SecretKey;
-  }
-
-  bool
-  ILinkLayer::GenEphemeralKeys()
-  {
-    return KeyGen(m_SecretKey);
-  }
-
-  bool
-  ILinkLayer::EnsureKeys(const char* f)
-  {
-    fs::path fpath(f);
-    llarp::SecretKey keys;
-    std::error_code ec;
-    if(!fs::exists(fpath, ec))
-    {
-      if(!KeyGen(m_SecretKey))
-        return false;
-      // generated new keys
-      if(!BEncodeWriteFile< decltype(keys), 128 >(f, m_SecretKey))
-        return false;
-    }
-    // load keys
-    if(!BDecodeReadFile(f, m_SecretKey))
-    {
-      llarp::LogError("Failed to load keyfile ", f);
-      return false;
-    }
-    return true;
   }
 
   bool

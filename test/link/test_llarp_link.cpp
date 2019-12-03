@@ -93,7 +93,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
         return false;
       if(!link->Configure(loop, localLoopBack(), AF_INET, port))
         return false;
-      if(!link->GenEphemeralKeys())
+      // if(!link->GenEphemeralKeys()) TODO: reimplement GenEphemeralKeys
         return false;
       rc.addrs.emplace_back();
       if(!link->GetOurAddressInfo(rc.addrs[0]))
@@ -188,6 +188,9 @@ TEST_F(LinkLayerTest, TestIWP)
 #ifdef WIN32
     GTEST_SKIP();
 #else
+    /*
+     * TODO: use KeyManager
+     *
     auto sendDiscardMessage = [](ILinkSession* s, auto callback) -> bool {
     // send discard message in reply to complete unit test
       std::vector< byte_t> tmp(32);
@@ -291,5 +294,7 @@ TEST_F(LinkLayerTest, TestIWP)
   ASSERT_TRUE(Alice.IsGucci());
   ASSERT_TRUE(Bob.IsGucci());
   ASSERT_TRUE(success);
+  */
+    ASSERT_TRUE(false); // FIXME, see above
 #endif
 };
