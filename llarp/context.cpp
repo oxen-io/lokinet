@@ -39,7 +39,7 @@ namespace llarp
   bool
   Context::CallSafe(std::function< void(void) > f)
   {
-    return logic && logic->queue_func(std::move(f));
+    return logic && LogicCall(logic, f);
   }
 
   void
@@ -51,7 +51,6 @@ namespace llarp
   bool
   Context::Configure()
   {
-    logic = std::make_shared< Logic >();
     // llarp::LogInfo("loading config at ", configfile);
     if(configfile.size())
     {
@@ -73,6 +72,10 @@ namespace llarp
       threads = 1;
     worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024,
                                                            "llarp-worker");
+    auto jobQueueSize = config->router.jobQueueSize();
+    if(jobQueueSize < 1024)
+      jobQueueSize = 1024;
+    logic = std::make_shared< Logic >(jobQueueSize);
 
     nodedb_dir = config->netdb.nodedbDir();
 
@@ -482,8 +485,8 @@ extern "C"
   void
   llarp_main_signal(struct llarp_main *ptr, int sig)
   {
-    ptr->ctx->logic->queue_func(
-        std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
+    LogicCall(ptr->ctx->logic,
+              std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
   }
 
   int

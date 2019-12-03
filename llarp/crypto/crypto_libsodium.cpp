@@ -214,6 +214,19 @@ namespace llarp
       (void)sk_pk;
     }
 
+    bool
+    CryptoLibSodium::check_identity_privkey(const llarp::SecretKey &keys)
+    {
+      AlignedBuffer< crypto_sign_SEEDBYTES > seed;
+      llarp::PubKey pk;
+      llarp::SecretKey sk;
+      if(crypto_sign_ed25519_sk_to_seed(seed.data(), keys.data()) == -1)
+        return false;
+      if(crypto_sign_seed_keypair(pk.data(), sk.data(), seed.data()) == -1)
+        return false;
+      return keys.toPublic() == pk && sk == keys;
+    }
+
     void
     CryptoLibSodium::encryption_keygen(llarp::SecretKey &keys)
     {

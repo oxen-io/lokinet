@@ -14,6 +14,14 @@ namespace llarp
   namespace service
   {
     using ConvoTag = AlignedBuffer< 16 >;
+    struct ProtocolMessage;
+
+    struct RecvDataEvent
+    {
+      path::Path_ptr fromPath;
+      PathID_t pathid;
+      std::shared_ptr< ProtocolMessage > msg;
+    };
 
     struct ProtocolMessage;
     struct IDataHandler
@@ -63,6 +71,9 @@ namespace llarp
 
       virtual bool
       HasInboundConvo(const Address& addr) const = 0;
+
+      virtual void
+      QueueRecvData(RecvDataEvent ev) = 0;
     };
   }  // namespace service
 }  // namespace llarp

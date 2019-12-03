@@ -32,7 +32,13 @@ namespace llarp
       return stream;
     }
 
-    TransitHop::TransitHop() = default;
+    TransitHop::TransitHop() : m_UpstreamGather(128), m_DownstreamGather(128)
+    {
+      m_UpstreamGather.enable();
+      m_DownstreamGather.enable();
+      m_UpstreamWorkCounter   = 0;
+      m_DownstreamWorkCounter = 0;
+    }
 
     bool
     TransitHop::Expired(llarp_time_t now) const
@@ -118,43 +124,73 @@ namespace llarp
     void
     TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayDownstreamMessage > sendmsgs(msgs->size());
-      size_t idx = 0;
+      m_DownstreamWorkCounter++;
+      auto flushIt = [self = shared_from_this(), r]() {
+        std::vector< RelayDownstreamMessage > msgs;
+        do
+        {
+          auto maybe = self->m_DownstreamGather.tryPopFront();
+          if(not maybe.has_value())
+            break;
+          msgs.emplace_back(maybe.value());
+        } while(true);
+        self->HandleAllDownstream(std::move(msgs), r);
+      };
       for(auto& ev : *msgs)
       {
+        RelayDownstreamMessage msg;
         const llarp_buffer_t buf(ev.first);
-        auto& msg  = sendmsgs[idx];
         msg.pathid = info.rxID;
         msg.Y      = ev.second ^ nonceXOR;
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
         msg.X = buf;
         llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
                         info.upstream, " to ", info.downstream);
-        ++idx;
+        if(m_DownstreamGather.full())
+        {
+          LogicCall(r->logic(), flushIt);
+        }
+        if(m_DownstreamGather.enabled())
+          m_DownstreamGather.pushBack(msg);
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllDownstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      m_DownstreamWorkCounter--;
+      if(m_DownstreamWorkCounter == 0)
+        LogicCall(r->logic(), flushIt);
     }
 
     void
     TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      std::vector< RelayUpstreamMessage > sendmsgs(msgs->size());
-      size_t idx = 0;
+      m_UpstreamWorkCounter++;
+      auto flushIt = [self = shared_from_this(), r]() {
+        std::vector< RelayUpstreamMessage > msgs;
+        do
+        {
+          auto maybe = self->m_UpstreamGather.tryPopFront();
+          if(not maybe.has_value())
+            break;
+          msgs.emplace_back(maybe.value());
+        } while(true);
+        self->HandleAllUpstream(std::move(msgs), r);
+      };
       for(auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
-        auto& msg = sendmsgs[idx];
+        RelayUpstreamMessage msg;
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
         msg.pathid = info.txID;
         msg.Y      = ev.second ^ nonceXOR;
         msg.X      = buf;
-        ++idx;
+        if(m_UpstreamGather.full())
+        {
+          LogicCall(r->logic(), flushIt);
+        }
+        if(m_UpstreamGather.enabled())
+          m_UpstreamGather.pushBack(msg);
       }
-      r->logic()->queue_func(std::bind(&TransitHop::HandleAllUpstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      m_UpstreamWorkCounter--;
+      if(m_UpstreamWorkCounter == 0)
+        LogicCall(r->logic(), flushIt);
     }
 
     void
@@ -173,6 +209,11 @@ namespace llarp
           m_LastActivity = r->Now();
         }
         FlushDownstream(r);
+        for(const auto& other : m_FlushOthers)
+        {
+          other->FlushUpstream(r);
+        }
+        m_FlushOthers.clear();
       }
       else
       {
@@ -183,7 +224,7 @@ namespace llarp
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
-      r->linkManager().PumpLinks();
+      r->PumpLL();
     }
 
     void
@@ -196,7 +237,7 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
-      r->linkManager().PumpLinks();
+      r->PumpLL();
     }
 
     void
@@ -410,7 +451,10 @@ namespace llarp
       buf.cur = buf.base;
       // send
       if(path->HandleDownstream(buf, msg.Y, r))
+      {
+        m_FlushOthers.emplace(path);
         return true;
+      }
       return SendRoutingMessage(discarded, r);
     }
 
@@ -421,8 +465,14 @@ namespace llarp
       printer.printAttribute("TransitHop", info);
       printer.printAttribute("started", started);
       printer.printAttribute("lifetime", lifetime);
-
       return stream;
+    }
+
+    void
+    TransitHop::Stop()
+    {
+      m_UpstreamGather.disable();
+      m_DownstreamGather.disable();
     }
 
     void
@@ -435,7 +485,7 @@ namespace llarp
     TransitHop::QueueDestroySelf(AbstractRouter* r)
     {
       auto func = std::bind(&TransitHop::SetSelfDestruct, shared_from_this());
-      r->logic()->queue_func(func);
+      LogicCall(r->logic(), func);
     }
   }  // namespace path
 }  // namespace llarp

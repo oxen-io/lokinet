@@ -155,7 +155,7 @@ namespace llarp
       {
         llarp::LogDebug("LR_Status message processed, path build successful");
         auto self = shared_from_this();
-        r->logic()->queue_func([=]() { self->HandlePathConfirmMessage(r); });
+        LogicCall(r->logic(), [=]() { self->HandlePathConfirmMessage(r); });
       }
       else
       {
@@ -206,8 +206,8 @@ namespace llarp
           llarp::LogDebug("Path build failed for an unspecified reason");
         }
         auto self = shared_from_this();
-        r->logic()->queue_func(
-            [=]() { self->EnterState(ePathFailed, r->Now()); });
+        LogicCall(r->logic(),
+                  [=]() { self->EnterState(ePathFailed, r->Now()); });
       }
 
       // TODO: meaningful return value?
@@ -411,9 +411,9 @@ namespace llarp
         msg.pathid = TXID();
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&Path::HandleAllUpstream,
-                                       shared_from_this(), std::move(sendmsgs),
-                                       r));
+      LogicCall(r->logic(),
+                std::bind(&Path::HandleAllUpstream, shared_from_this(),
+                          std::move(sendmsgs), r));
     }
 
     void
@@ -482,9 +482,9 @@ namespace llarp
         sendMsgs[idx].X = buf;
         ++idx;
       }
-      r->logic()->queue_func(std::bind(&Path::HandleAllDownstream,
-                                       shared_from_this(), std::move(sendMsgs),
-                                       r));
+      LogicCall(r->logic(),
+                std::bind(&Path::HandleAllDownstream, shared_from_this(),
+                          std::move(sendMsgs), r));
     }
 
     void

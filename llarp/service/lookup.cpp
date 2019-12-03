@@ -26,7 +26,7 @@ namespace llarp
       if(!msg)
         return false;
       endpoint = path->Endpoint();
-      r->logic()->queue_func([=]() { path->SendRoutingMessage(*msg, r); });
+      LogicCall(r->logic(), [=]() { path->SendRoutingMessage(*msg, r); });
       return true;
     }
   }  // namespace service

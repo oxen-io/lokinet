@@ -34,6 +34,8 @@ namespace llarp
       {
         case eLogNone:
           break;
+        case eLogTrace:
+          ss << "[TRC] ";
         case eLogDebug:
           ss << "[DBG] ";
           break;

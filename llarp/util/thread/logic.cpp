@@ -2,6 +2,7 @@
 #include <util/thread/timer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.h>
+#include <util/metrics/metrics.hpp>
 
 #include <future>
 
@@ -13,8 +14,8 @@ namespace llarp
     llarp_timer_tick_all_async(m_Timer, m_Thread, now);
   }
 
-  Logic::Logic()
-      : m_Thread(llarp_init_threadpool(1, "llarp-logic"))
+  Logic::Logic(size_t sz)
+      : m_Thread(llarp_init_threadpool(1, "llarp-logic", sz))
       , m_Timer(llarp_init_timer())
   {
     llarp_threadpool_start(m_Thread);
@@ -36,10 +37,17 @@ namespace llarp
     llarp_free_timer(m_Timer);
   }
 
+  size_t
+  Logic::numPendingJobs() const
+  {
+    return m_Thread->pendingJobs();
+  }
+
   bool
   Logic::queue_job(struct llarp_thread_job job)
   {
-    return job.user && job.work && queue_func(std::bind(job.work, job.user));
+    return job.user && job.work
+        && LogicCall(this, std::bind(job.work, job.user));
   }
 
   void
@@ -47,28 +55,61 @@ namespace llarp
   {
     llarp::LogDebug("logic thread stop");
     // stop all timers from happening in the future
-    queue_func(std::bind(&llarp_timer_stop, m_Timer));
+    LogicCall(this, std::bind(&llarp_timer_stop, m_Timer));
     // stop all operations on threadpool
     llarp_threadpool_stop(m_Thread);
   }
 
   bool
-  Logic::queue_func(std::function< void(void) > f)
+  Logic::_traceLogicCall(std::function< void(void) > func, const char* tag,
+                         int line)
   {
+#define TAG (tag ? tag : LOG_TAG)
+#define LINE (line ? line : __LINE__)
+    // wrap the function so that we ensure that it's always calling stuff one at
+    // a time
+
+#if defined(LOKINET_DEBUG)
+#define METRIC(action)                                         \
+  metrics::integerTick("logic", action, 1, "tag", TAG, "line", \
+                       std::to_string(LINE))
+#else
+#define METRIC(action) \
+  do                   \
+  {                    \
+  } while(false)
+#endif
+
+    METRIC("queue");
+    auto f = [self = this, func, tag, line]() {
+#if defined(LOKINET_DEBUG)
+      metrics::TimerGuard g("logic",
+                            std::string(TAG) + ":" + std::to_string(LINE));
+#endif
+      self->m_Killer.TryAccess(func);
+    };
+    if(can_flush())
+    {
+      METRIC("fired");
+      f();
+      return true;
+    }
     if(m_Thread->LooksFull(5))
     {
-      LogWarn(
-          "holy crap, we are trying to queue a job onto the logic thread but "
-          "it looks full");
-      if(can_flush())
-      {
-        // we are calling in the logic thread and our queue looks full
-        // defer call to a later time so we don't die like a little bitch
-        call_later(m_Thread->GuessJobLatency() / 2, f);
-        return true;
-      }
+      LogErrorExplicit(TAG, LINE, "holy crap, we are trying to queue a job "
+                       "onto the logic thread but it looks full");
+      METRIC("full");
+      std::abort();
     }
-    return llarp_threadpool_queue_job(m_Thread, f);
+    auto ret = llarp_threadpool_queue_job(m_Thread, f);
+    if(not ret)
+    {
+      METRIC("dropped");
+    }
+    return ret;
+#undef TAG
+#undef LINE
+#undef METRIC
   }
 
   void

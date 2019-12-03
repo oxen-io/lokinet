@@ -7,13 +7,8 @@
 
 namespace libuv
 {
-  /// call a function in logic thread via a handle
-  template < typename Handle, typename Func >
-  void
-  Call(Handle* h, Func&& f)
-  {
-    static_cast< Loop* >(h->loop->data)->Call(f);
-  }
+#define LoopCall(h, ...) \
+  LogicCall(static_cast< Loop* >((h)->loop->data)->m_Logic, __VA_ARGS__)
 
   struct glue
   {
@@ -110,8 +105,8 @@ namespace libuv
     OnOutboundConnect(uv_connect_t* c, int status)
     {
       conn_glue* self = static_cast< conn_glue* >(c->data);
-      Call(self->Stream(),
-           std::bind(&conn_glue::HandleConnectResult, self, status));
+      LoopCall(self->Stream(),
+               std::bind(&conn_glue::HandleConnectResult, self, status));
       c->data = nullptr;
     }
 
@@ -145,7 +140,7 @@ namespace libuv
       if(nread >= 0)
       {
         auto* conn = static_cast< conn_glue* >(stream->data);
-        Call(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
+        LoopCall(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
         return;
       }
       else if(nread < 0)
@@ -262,7 +257,7 @@ namespace libuv
     OnClosed(uv_handle_t* h)
     {
       conn_glue* conn = static_cast< conn_glue* >(h->data);
-      Call(h, std::bind(&conn_glue::HandleClosed, conn));
+      LoopCall(h, std::bind(&conn_glue::HandleClosed, conn));
     }
 
     static void
@@ -329,7 +324,7 @@ namespace libuv
       if(status == 0)
       {
         conn_glue* conn = static_cast< conn_glue* >(stream->data);
-        Call(stream, std::bind(&conn_glue::Accept, conn));
+        LoopCall(stream, std::bind(&conn_glue::Accept, conn));
       }
       else
       {
@@ -347,7 +342,7 @@ namespace libuv
     OnTick(uv_check_t* t)
     {
       conn_glue* conn = static_cast< conn_glue* >(t->data);
-      Call(t, std::bind(&conn_glue::Tick, conn));
+      LoopCall(t, std::bind(&conn_glue::Tick, conn));
     }
 
     void
@@ -416,7 +411,7 @@ namespace libuv
     OnTick(uv_check_t* t)
     {
       ticker_glue* ticker = static_cast< ticker_glue* >(t->data);
-      Call(&ticker->m_Ticker, [ticker]() { ticker->func(); });
+      LoopCall(t, ticker->func);
     }
 
     bool
@@ -429,8 +424,11 @@ namespace libuv
     Close() override
     {
       uv_check_stop(&m_Ticker);
-      m_Ticker.data = nullptr;
-      delete this;
+      uv_close((uv_handle_t*)&m_Ticker, [](auto h) {
+        ticker_glue* self = (ticker_glue*)h->data;
+        h->data           = nullptr;
+        delete self;
+      });
     }
 
     uv_check_t m_Ticker;
@@ -586,7 +584,7 @@ namespace libuv
     void
     Tick()
     {
-      Call(&m_Handle, std::bind(&llarp_ev_pkt_pipe::tick, m_Pipe));
+      LoopCall(&m_Handle, std::bind(&llarp_ev_pkt_pipe::tick, m_Pipe));
     }
 
     static void
@@ -626,7 +624,7 @@ namespace libuv
     OnTick(uv_check_t* h)
     {
       pipe_glue* pipe = static_cast< pipe_glue* >(h->data);
-      Call(h, std::bind(&pipe_glue::Tick, pipe));
+      LoopCall(h, std::bind(&pipe_glue::Tick, pipe));
     }
 
     bool
@@ -668,7 +666,7 @@ namespace libuv
     OnTick(uv_check_t* timer)
     {
       tun_glue* tun = static_cast< tun_glue* >(timer->data);
-      Call(timer, std::bind(&tun_glue::Tick, tun));
+      tun->Tick();
     }
 
     static void
@@ -687,7 +685,7 @@ namespace libuv
       if(sz > 0)
       {
         llarp::LogDebug("tun read ", sz);
-        llarp_buffer_t pkt(m_Buffer, sz);
+        const llarp_buffer_t pkt(m_Buffer, sz);
         if(m_Tun && m_Tun->recvpkt)
           m_Tun->recvpkt(m_Tun, pkt);
       }
@@ -716,9 +714,14 @@ namespace libuv
     void
     Close() override
     {
+      if(m_Tun->impl == nullptr)
+        return;
       m_Tun->impl = nullptr;
       uv_check_stop(&m_Ticker);
-      uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      uv_close((uv_handle_t*)&m_Ticker, [](uv_handle_t* h) {
+        tun_glue* glue = static_cast< tun_glue* >(h->data);
+        uv_close((uv_handle_t*)&glue->m_Handle, &OnClosed);
+      });
     }
 
     bool
@@ -760,6 +763,9 @@ namespace libuv
                         " has invalid fd: ", m_Device->tun_fd);
         return false;
       }
+
+      tuntap_set_nonblocking(m_Device, 1);
+
       if(uv_poll_init(loop, &m_Handle, m_Device->tun_fd) == -1)
       {
         llarp::LogError("failed to start polling on ", m_Tun->ifname);
@@ -788,6 +794,12 @@ namespace libuv
   {
     if(uv_loop_init(&m_Impl) == -1)
       return false;
+
+#ifdef LOKINET_DEBUG
+    last_time      = 0;
+    loop_run_count = 0;
+#endif
+
     m_Impl.data = this;
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
     m_TickTimer.data = this;
@@ -829,18 +841,35 @@ namespace libuv
   int
   Loop::tick(int ms)
   {
-    uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
-    uv_run(&m_Impl, UV_RUN_ONCE);
+    if(m_Run)
+    {
+#ifdef LOKINET_DEBUG
+      if((uv_now(&m_Impl) - last_time) > 1000)
+      {
+        llarp::LogInfo("UV EVENT LOOP TICKS LAST SECOND: ", loop_run_count,
+                       ", LOGIC THREAD JOBS: ", m_Logic->numPendingJobs());
+        loop_run_count = 0;
+        last_time      = uv_now(&m_Impl);
+      }
+      loop_run_count++;
+#endif
+
+      uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
+      uv_run(&m_Impl, UV_RUN_ONCE);
+    }
     return 0;
   }
 
   void
   Loop::stop()
   {
-    uv_stop(&m_Impl);
-    llarp::LogInfo("stopping event loop");
+    if(m_Run)
+    {
+      llarp::LogInfo("stopping event loop");
+      CloseAll();
+      // uv_stop(&m_Impl);
+    }
     m_Run.store(false);
-    CloseAll();
   }
 
   void

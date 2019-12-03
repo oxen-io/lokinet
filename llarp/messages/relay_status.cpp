@@ -222,7 +222,7 @@ namespace llarp
                                      std::shared_ptr< LR_StatusMessage > msg)
   {
     auto func = std::bind(&LR_StatusMessage::SendMessage, router, nextHop, msg);
-    router->pathContext().logic()->queue_func(func);
+    LogicCall(router->logic(), func);
   }
 
   void

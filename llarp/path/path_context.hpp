@@ -67,7 +67,7 @@ namespace llarp
       bool
       TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
 
-      HopHandler_ptr
+      TransitHop_ptr
       GetPathForTransfer(const PathID_t& topath);
 
       HopHandler_ptr

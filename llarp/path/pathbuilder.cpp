@@ -98,7 +98,7 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        logic->queue_func(std::bind(result, shared_from_this()));
+        LogicCall(logic, std::bind(result, shared_from_this()));
       }
       else
       {

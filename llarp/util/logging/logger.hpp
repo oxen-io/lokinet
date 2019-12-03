@@ -236,14 +236,28 @@ namespace llarp
   */
 }  // namespace llarp
 
+#define LogTrace(...) _Log(llarp::eLogTrace, LOG_TAG, __LINE__, __VA_ARGS__)
 #define LogDebug(...) _Log(llarp::eLogDebug, LOG_TAG, __LINE__, __VA_ARGS__)
 #define LogInfo(...) _Log(llarp::eLogInfo, LOG_TAG, __LINE__, __VA_ARGS__)
 #define LogWarn(...) _Log(llarp::eLogWarn, LOG_TAG, __LINE__, __VA_ARGS__)
 #define LogError(...) _Log(llarp::eLogError, LOG_TAG, __LINE__, __VA_ARGS__)
+
+#define LogTraceTag(tag, ...) _Log(llarp::eLogTrace, tag, __LINE__, __VA_ARGS__)
 #define LogDebugTag(tag, ...) _Log(llarp::eLogDebug, tag, __LINE__, __VA_ARGS__)
 #define LogInfoTag(tag, ...) _Log(llarp::eLogInfo, tag, __LINE__, __VA_ARGS__)
 #define LogWarnTag(tag, ...) _Log(llarp::eLogWarn, tag, __LINE__, __VA_ARGS__)
 #define LogErrorTag(tag, ...) _Log(llarp::eLogError, tag, __LINE__, __VA_ARGS__)
+
+#define LogTraceExplicit(tag, line, ...) \
+  _Log(llarp::eLogTrace, tag, line, __VA_ARGS__)
+#define LogDebugExplicit(tag, line, ...) \
+  _Log(llarp::eLogDebug, tag, line, __VA_ARGS__)
+#define LogInfoExplicit(tag, line, ...) \
+  _Log(llarp::eLogInfo, tag, line __VA_ARGS__)
+#define LogWarnExplicit(tag, line, ...) \
+  _Log(llarp::eLogWarn, tag, line, __VA_ARGS__)
+#define LogErrorExplicit(tag, line, ...) \
+  _Log(llarp::eLogError, tag, line, __VA_ARGS__)
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"

@@ -26,6 +26,7 @@ set(LIB_UTIL_SRC
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
+  util/lokinet_init.c
   util/mem.cpp
   util/meta/memfn_traits.cpp
   util/meta/memfn.cpp
@@ -83,7 +84,6 @@ set(LIB_PLATFORM_SRC
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
-  net/net_inaddr.cpp
   net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
@@ -254,7 +254,8 @@ if(TESTNET)
 endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB})
+target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)

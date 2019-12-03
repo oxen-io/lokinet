@@ -92,19 +92,17 @@ namespace libuv
       m_Logic = l;
     }
 
-    /// call function in logic thread
-    template < typename F >
-    void
-    Call(F f)
-    {
-      m_Logic->queue_func(f);
-    }
+    std::shared_ptr< llarp::Logic > m_Logic;
 
    private:
     uv_loop_t m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
-    std::shared_ptr< llarp::Logic > m_Logic;
+
+#ifdef LOKINET_DEBUG
+    uint64_t last_time;
+    uint64_t loop_run_count;
+#endif
   };
 
 }  // namespace libuv

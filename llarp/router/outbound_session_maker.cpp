@@ -123,11 +123,6 @@ namespace llarp
     int remainingDesired = numDesired;
 
     _nodedb->visit([&](const RouterContact &other) -> bool {
-      // check if we really remainingDesired to
-      if(other.ExpiresSoon(now, 30000))  // TODO: make delta configurable
-      {
-        return remainingDesired > 0;
-      }
       if(!_rcLookup->RemoteIsAllowed(other.pubkey))
       {
         return remainingDesired > 0;
@@ -219,7 +214,7 @@ namespace llarp
     if(ShouldConnectTo(router))
     {
       auto fn = std::bind(&OutboundSessionMaker::DoEstablish, this, router);
-      _logic->queue_func(fn);
+      LogicCall(_logic, fn);
     }
   }
 
@@ -326,7 +321,7 @@ namespace llarp
     for(const auto &callback : movedCallbacks)
     {
       auto func = std::bind(callback, router, type);
-      _logic->queue_func(func);
+      LogicCall(_logic, func);
     }
 
     {

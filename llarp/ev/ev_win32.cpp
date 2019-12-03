@@ -144,7 +144,7 @@ tun_ev_loop(void* unused)
   while(true)
   {
     alert =
-        GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, 100);
+        GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, EV_TICK_INTERVAL);
 
     if(!alert)
     {
@@ -727,7 +727,7 @@ llarp_win32_loop::tick_listeners()
 {
   llarp_ev_loop::tick_listeners();
   for(auto& func : m_Tickers)
-    m_Logic->queue_func([func]() { func(); });
+    LogicCall(m_Logic, func);
 }
 
 bool

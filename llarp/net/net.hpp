@@ -191,6 +191,5 @@ namespace llarp
 }  // namespace llarp
 
 #include <net/net_addr.hpp>
-#include <net/net_inaddr.hpp>
 
 #endif

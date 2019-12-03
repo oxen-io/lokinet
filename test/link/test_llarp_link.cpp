@@ -127,7 +127,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   Context Bob;
 
   bool success = false;
-  const bool shouldDebug = true;
+  const bool shouldDebug = false;
 
   llarp_ev_loop_ptr netLoop;
   std::shared_ptr< Logic > m_logic;
@@ -144,7 +144,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   {
     oldLevel = llarp::LogContext::Instance().minLevel;
     if(shouldDebug)
-      llarp::SetLogLevel(eLogDebug);
+      llarp::SetLogLevel(eLogTrace);
     oldRCLifetime              = RouterContact::Lifetime;
     RouterContact::BlockBogons = false;
     RouterContact::Lifetime    = 500;
@@ -288,7 +288,7 @@ TEST_F(LinkLayerTest, TestIWP)
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
-  m_logic->queue_func([&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
+  LogicCall(m_logic, [&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
 
   RunMainloop();
   ASSERT_TRUE(Alice.IsGucci());

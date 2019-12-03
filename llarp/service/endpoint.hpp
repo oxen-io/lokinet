@@ -78,6 +78,9 @@ namespace llarp
       bool
       IsReady() const;
 
+      void
+      QueueRecvData(RecvDataEvent ev) override;
+
       /// return true if our introset has expired intros
       bool
       IntrosetIsStale() const;
@@ -436,6 +439,9 @@ namespace llarp
       hooks::Backend_ptr m_OnReady;
 
      private:
+      void
+      FlushRecvData();
+
       friend struct EndpointUtil;
 
       // clang-format off
@@ -448,6 +454,7 @@ namespace llarp
       // clang-format on
 
       std::unique_ptr< EndpointState > m_state;
+      thread::Queue< RecvDataEvent > m_RecvQueue;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;
