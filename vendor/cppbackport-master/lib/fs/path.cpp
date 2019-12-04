@@ -50,6 +50,14 @@ namespace cpp17
     }
 
     path&
+    path::operator+=(const path& p)
+    {
+      s += p.s;
+
+      return *this;
+    }
+
+    path&
     path::operator=(const path& p)
     {
       s = p.s;

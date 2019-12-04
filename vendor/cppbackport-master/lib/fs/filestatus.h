@@ -66,6 +66,7 @@ file_status symlink_status(const path&);
 bool status_known(file_status);
 
 bool exists(file_status);
+bool exists(const path&);
 bool exists(const path&, std::error_code&);
 bool is_block_file(file_status);
 bool is_block_file(const path&);

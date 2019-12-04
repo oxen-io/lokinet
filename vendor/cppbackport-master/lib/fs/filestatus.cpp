@@ -182,6 +182,12 @@ namespace cpp17
     }
 
     bool
+    exists(const path& p)
+    {
+      return exists(status(p));
+    }
+
+    bool
     exists(const path& p, __attribute__((unused)) std::error_code& ec)
     {
       return exists(status(p));

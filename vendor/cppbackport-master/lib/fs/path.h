@@ -74,6 +74,9 @@ public:
 	/// Copy assignment
 	path& operator=(const path&);
 
+	/// Append oeprator
+	path& operator+=(const path&);
+
 	template< typename Source >
 	path& operator=(const Source& source)
 	{

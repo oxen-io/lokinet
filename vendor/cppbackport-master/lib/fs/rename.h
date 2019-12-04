@@ -36,7 +36,9 @@ namespace cpp17
 namespace filesystem
 {
 void rename(const path& from, const path& to);
+void rename(const path& from, const path& to, std::error_code& ec);
 }
+
 }
 
 #endif // PBL_CPP_FS_RENAME_H

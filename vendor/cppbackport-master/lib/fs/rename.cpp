@@ -45,7 +45,17 @@ void rename(const path& from, const path& to)
 		if (copy_file(from, to))
 			cpp17::filesystem::remove(from);
 	}
-}
+} // end rename
+
+void rename(const path& from, const path& to, __attribute__((unused)) std::error_code& ec)
+{
+	if (std::rename(from.c_str(), to.c_str()) != 0)
+	{
+		if (copy_file(from, to))
+			cpp17::filesystem::remove(from);
+	}
+} // end rename with ec
+
 }
 }
 
