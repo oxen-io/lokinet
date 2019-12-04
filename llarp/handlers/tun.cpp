@@ -830,11 +830,6 @@ namespace llarp
         if(itr == m_IPToAddr.end())
         {
           const auto exits = m_ExitMap.FindAll(dst);
-          if(exits.empty())
-          {
-            llarp::LogWarn(Name(), " has no exit mapped for ", dst);
-            return;
-          }
           for(const auto &exit : exits)
           {
             if(pkt.IsV4() && !llarp::IsIPv4Bogon(pkt.dstv4()))
