@@ -2,6 +2,7 @@
 
 #include <system_error>
 #include <util/logging/logger.hpp>
+#include <util/fs.hpp>
 #include "config/config.hpp"
 #include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
