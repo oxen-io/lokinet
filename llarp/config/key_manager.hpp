@@ -43,17 +43,35 @@ namespace llarp
     const llarp::SecretKey&
     getIdentityKey() const;
 
+    /// Set the identity key. This does not write anything to disk.
+    ///
+    /// @param key is the key that will be copied-from.
+    void
+    setIdentityKey(const llarp::SecretKey& key);
+
     /// Obtain the encryption key (e.g. ~/.lokinet/encryption.private)
     ///
     /// @return a reference to the encryption key
     const llarp::SecretKey&
     getEncryptionKey() const;
 
+    /// Set the encryption key. This does not write anything to disk.
+    ///
+    /// @param key is the key that will be copied-from.
+    void
+    setEncryptionKey(const llarp::SecretKey& key);
+
     /// Obtain the transport key (e.g. ~/.lokinet/transport.private)
     ///
     /// @return a reference to the transport key
     const llarp::SecretKey&
     getTransportKey() const;
+
+    /// Set the transport key. This does not write anything to disk.
+    ///
+    /// @param key is the key that will be copied-from.
+    void
+    setTransportKey(const llarp::SecretKey& key);
 
     /// Obtain the self-signed RouterContact
     ///

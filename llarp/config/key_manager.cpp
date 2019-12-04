@@ -119,16 +119,34 @@ namespace llarp
     return m_idKey;
   }
 
+  void
+  KeyManager::setIdentityKey(const llarp::SecretKey& key)
+  {
+    m_idKey = key;
+  }
+
   const llarp::SecretKey&
   KeyManager::getEncryptionKey() const
   {
     return m_encKey;
   }
 
+  void
+  KeyManager::setEncryptionKey(const llarp::SecretKey& key)
+  {
+    m_encKey = key;
+  }
+
   const llarp::SecretKey&
   KeyManager::getTransportKey() const
   {
     return m_transportKey;
+  }
+
+  void
+  KeyManager::setTransportKey(const llarp::SecretKey& key)
+  {
+    m_transportKey = key;
   }
 
   bool

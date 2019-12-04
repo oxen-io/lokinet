@@ -3,6 +3,7 @@
 #include <iwp/iwp.hpp>
 #include <llarp_test.hpp>
 #include <iwp/iwp.hpp>
+#include <memory>
 #include <messages/link_intro.hpp>
 #include <messages/discard.hpp>
 
@@ -17,23 +18,35 @@ using namespace ::testing;
 
 struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 {
-  static constexpr uint16_t AlicePort = 5000;
-  static constexpr uint16_t BobPort   = 6000;
+  static constexpr uint16_t AlicePort = 41163;
+  static constexpr uint16_t BobPort   = 8088;
 
   struct Context
   {
     Context()
     {
+      keyManager = std::make_shared<KeyManager>();
+
+      SecretKey signingKey;
       CryptoManager::instance()->identity_keygen(signingKey);
+      keyManager->setIdentityKey(signingKey);
+
+      SecretKey encryptionKey;
       CryptoManager::instance()->encryption_keygen(encryptionKey);
+      keyManager->setEncryptionKey(encryptionKey);
+
+      SecretKey transportKey;
+      CryptoManager::instance()->encryption_keygen(transportKey);
+      keyManager->setTransportKey(transportKey);
+
+
       rc.pubkey = signingKey.toPublic();
       rc.enckey = encryptionKey.toPublic();
     }
 
     std::shared_ptr<thread::ThreadPool> worker;
 
-    SecretKey signingKey;
-    SecretKey encryptionKey;
+    std::shared_ptr<KeyManager> keyManager;
 
     RouterContact rc;
 
@@ -64,15 +77,6 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       return rc.pubkey;
     }
 
-    /// regenerate rc and rotate onion key
-    bool
-    Regen()
-    {
-      CryptoManager::instance()->encryption_keygen(encryptionKey);
-      rc.enckey = seckey_topublic(encryptionKey);
-      return rc.Sign(signingKey);
-    }
-
     std::shared_ptr< ILinkLayer > link;
 
     static std::string
@@ -93,12 +97,15 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
         return false;
       if(!link->Configure(loop, localLoopBack(), AF_INET, port))
         return false;
-      // if(!link->GenEphemeralKeys()) TODO: reimplement GenEphemeralKeys
+      /*
+       * TODO: ephemeral key management
+      if(!link->GenEphemeralKeys())
         return false;
+       */
       rc.addrs.emplace_back();
       if(!link->GetOurAddressInfo(rc.addrs[0]))
         return false;
-      if(!rc.Sign(signingKey))
+      if(!rc.Sign(keyManager->getIdentityKey()))
         return false;
       return link->Start(logic, worker);
     }
@@ -188,9 +195,6 @@ TEST_F(LinkLayerTest, TestIWP)
 #ifdef WIN32
     GTEST_SKIP();
 #else
-    /*
-     * TODO: use KeyManager
-     *
     auto sendDiscardMessage = [](ILinkSession* s, auto callback) -> bool {
     // send discard message in reply to complete unit test
       std::vector< byte_t> tmp(32);
@@ -201,8 +205,13 @@ TEST_F(LinkLayerTest, TestIWP)
       return s->SendMessageBuffer(std::move(tmp), callback);
     };
     Alice.link = iwp::NewInboundLink(
-      Alice.encryptionKey,
+      // KeyManager
+      Alice.keyManager,
+
+      // GetRCFunc
       [&]() -> const RouterContact& { return Alice.GetRC(); },
+
+      // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
           llarp_buffer_t copy(buf.base, buf.sz);
           if(not Alice.gotLIM)
@@ -215,9 +224,13 @@ TEST_F(LinkLayerTest, TestIWP)
           }
           return Alice.gotLIM;
       },
+
+      // SignBufferFunc
       [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Alice.signingKey, buf);
+        return m_crypto.sign(sig, Alice.keyManager->getIdentityKey(), buf);
       },
+
+      // SessionEstablishedHandler
       [&](ILinkSession* s) -> bool {
         const auto rc = s->GetRemoteRC();
         if(rc.pubkey != Bob.GetRC().pubkey)
@@ -231,20 +244,33 @@ TEST_F(LinkLayerTest, TestIWP)
         });
         return true;
       },
+
+      // SessionRenegotiateHandler
       [&](RouterContact, RouterContact) -> bool { return true; },
      
+      // TimeoutHandler
       [&](ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
         Stop();
       },
+
+      // SessionClosedHandler
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
-      []() {})
-      ;
+
+      // PumpDoneHandler
+      []() {}
+    );
 
   
 
   Bob.link = iwp::NewInboundLink(
-      Bob.encryptionKey, [&]() -> const RouterContact& { return Bob.GetRC(); },
+      // KeyManager
+      Bob.keyManager,
+
+      // GetRCFunc
+      [&]() -> const RouterContact& { return Bob.GetRC(); },
+
+      // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
           
           llarp_buffer_t copy(buf.base, buf.sz);
@@ -266,9 +292,12 @@ TEST_F(LinkLayerTest, TestIWP)
           return false;
       },
 
+      // SignBufferFunc
       [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Bob.signingKey, buf);
+        return m_crypto.sign(sig, Bob.keyManager->getIdentityKey(), buf);
       },
+
+      //SessionEstablishedHandler
       [&](ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
@@ -277,13 +306,21 @@ TEST_F(LinkLayerTest, TestIWP)
         
         return true;
       },
+
+      // SessionRenegotiateHandler
       [&](RouterContact newrc, RouterContact oldrc) -> bool {
         return newrc.pubkey == oldrc.pubkey;
       },
+
+      // TimeoutHandler
       [&](ILinkSession* session) { ASSERT_FALSE(session->IsEstablished()); },
+
+      // SessionClosedHandler
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
-      []() {})
-      ;
+
+      // PumpDoneHandler
+      []() {}
+    );
 
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
@@ -294,7 +331,5 @@ TEST_F(LinkLayerTest, TestIWP)
   ASSERT_TRUE(Alice.IsGucci());
   ASSERT_TRUE(Bob.IsGucci());
   ASSERT_TRUE(success);
-  */
-    ASSERT_TRUE(false); // FIXME, see above
 #endif
 };
