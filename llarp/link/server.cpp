@@ -356,7 +356,7 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
-    static constexpr llarp_time_t CloseGraceWindow = 5000;
+    static constexpr llarp_time_t CloseGraceWindow = 500;
     const auto now                                 = Now();
     ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
     RouterID r = remote;
