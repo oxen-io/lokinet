@@ -323,11 +323,11 @@ namespace llarp
           itr = m_PersistingSessions.erase(itr);
           for(const auto &link : inboundLinks)
           {
-            link->CloseSesssionTo(r);
+            link->CloseSessionTo(r);
           }
           for(const auto &link : outboundLinks)
           {
-            link->CloseSesssionTo(r);
+            link->CloseSessionTo(r);
           }
         }
       }
