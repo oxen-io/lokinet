@@ -52,7 +52,7 @@ namespace llarp
 
   struct ILinkLayer
   {
-    ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
+    ILinkLayer(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
                SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
@@ -179,7 +179,7 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
     PumpDoneHandler PumpDone;
-    std::shared_ptr<KeyManager> keyManager;
+    std::shared_ptr< KeyManager > keyManager;
 
     std::shared_ptr< Logic >
     logic()
@@ -256,10 +256,8 @@ namespace llarp
                          ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    using TrafficEvent_t = std::pair< Addr, ILinkSession::Packet_t >;
-    using TrafficQueue_t = std::vector< TrafficEvent_t >;
-
-    std::shared_ptr< TrafficQueue_t > m_Recv;
+    std::unordered_map< llarp::Addr, llarp_time_t, llarp::Addr::Hash >
+        m_RecentlyClosed;
   };
 
   using LinkLayer_ptr = std::shared_ptr< ILinkLayer >;
