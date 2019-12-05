@@ -321,10 +321,6 @@ namespace llarp
           const RouterID r(itr->first);
           LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
-          for(const auto &link : inboundLinks)
-          {
-            link->CloseSessionTo(r);
-          }
           for(const auto &link : outboundLinks)
           {
             link->CloseSessionTo(r);
