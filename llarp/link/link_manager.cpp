@@ -302,9 +302,9 @@ namespace llarp
       auto itr = m_PersistingSessions.begin();
       while(itr != m_PersistingSessions.end())
       {
-        auto link = GetLinkWithSessionTo(itr->first);
         if(now < itr->second)
         {
+          auto link = GetLinkWithSessionTo(itr->first);
           if(link)
           {
             LogDebug("keepalive to ", itr->first);
@@ -321,6 +321,14 @@ namespace llarp
           const RouterID r(itr->first);
           LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
+          for(const auto &link : inboundLinks)
+          {
+            link->CloseSesssionTo(r);
+          }
+          for(const auto &link : outboundLinks)
+          {
+            link->CloseSesssionTo(r);
+          }
         }
       }
     }
