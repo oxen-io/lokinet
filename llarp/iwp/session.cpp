@@ -170,10 +170,10 @@ namespace llarp
       if(m_State == State::Closed)
         return;
       auto close_msg = CreatePacket(Command::eCLOS, 0, 16, 16);
-      EncryptAndSend(std::move(close_msg));
       if(m_State == State::Ready)
         m_Parent->UnmapAddr(m_RemoteAddr);
       m_State = State::Closed;
+      EncryptAndSend(std::move(close_msg));
       LogInfo("closing connection to ", m_RemoteAddr);
     }
 
