@@ -143,8 +143,8 @@ tun_ev_loop(void* unused)
 
   while(true)
   {
-    alert =
-        GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, EV_TICK_INTERVAL);
+    alert = GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl,
+                                      EV_TICK_INTERVAL);
 
     if(!alert)
     {

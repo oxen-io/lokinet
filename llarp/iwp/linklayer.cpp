@@ -8,14 +8,14 @@ namespace llarp
 {
   namespace iwp
   {
-    LinkLayer::LinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
-                         LinkMessageHandler h, SignBufferFunc sign,
-                         SessionEstablishedHandler est,
+    LinkLayer::LinkLayer(std::shared_ptr< KeyManager > keyManager,
+                         GetRCFunc getrc, LinkMessageHandler h,
+                         SignBufferFunc sign, SessionEstablishedHandler est,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed,
                          PumpDoneHandler pumpDone, bool allowInbound)
-        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout,
-                     closed, pumpDone)
+        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed,
+                     pumpDone)
         , permitInbound{allowInbound}
     {
     }

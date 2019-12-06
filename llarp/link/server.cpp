@@ -11,8 +11,9 @@ namespace llarp
 {
   static constexpr size_t MaxSessionsPerKey = 16;
 
-  ILinkLayer::ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
-                         LinkMessageHandler handler, SignBufferFunc signbuf,
+  ILinkLayer::ILinkLayer(std::shared_ptr< KeyManager > keyManager,
+                         GetRCFunc getrc, LinkMessageHandler handler,
+                         SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed,

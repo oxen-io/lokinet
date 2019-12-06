@@ -461,7 +461,7 @@ namespace llarp
 
     llarp_time_t m_LastStatsReport = 0;
 
-    std::shared_ptr<llarp::KeyManager> m_keyManager;
+    std::shared_ptr< llarp::KeyManager > m_keyManager;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

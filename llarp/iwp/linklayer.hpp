@@ -17,7 +17,7 @@ namespace llarp
   {
     struct LinkLayer final : public ILinkLayer
     {
-      LinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
+      LinkLayer(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
                 LinkMessageHandler h, SignBufferFunc sign,
                 SessionEstablishedHandler est, SessionRenegotiateHandler reneg,
                 TimeoutHandler timeout, SessionClosedHandler closed,
@@ -28,7 +28,6 @@ namespace llarp
       std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,
                          const AddressInfo &ai) override;
-
 
       const char *
       Name() const override;

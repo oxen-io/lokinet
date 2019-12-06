@@ -52,7 +52,7 @@ namespace llarp
 
   struct ILinkLayer
   {
-    ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
+    ILinkLayer(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
                SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
@@ -179,7 +179,7 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
     PumpDoneHandler PumpDone;
-    std::shared_ptr<KeyManager> keyManager;
+    std::shared_ptr< KeyManager > keyManager;
 
     std::shared_ptr< Logic >
     logic()

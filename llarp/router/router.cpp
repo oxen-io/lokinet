@@ -49,7 +49,7 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
   {
-    m_keyManager = std::make_shared<KeyManager>();
+    m_keyManager = std::make_shared< KeyManager >();
 
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
@@ -195,7 +195,6 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-
     if(whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
@@ -209,12 +208,12 @@ namespace llarp
 #endif
     }
 
-    _identity = m_keyManager->getIdentityKey();
+    _identity   = m_keyManager->getIdentityKey();
     _encryption = m_keyManager->getEncryptionKey();
 
-    if (_identity.IsZero())
+    if(_identity.IsZero())
       return false;
-    if (_encryption.IsZero())
+    if(_encryption.IsZero())
       return false;
 
     return true;
@@ -231,7 +230,7 @@ namespace llarp
     }
     _nodedb = nodedb;
 
-    if (not m_keyManager->initialize(*conf, true))
+    if(not m_keyManager->initialize(*conf, true))
       return false;
 
     if(!FromConfig(conf))
@@ -524,8 +523,7 @@ namespace llarp
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                       &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this)
-          );
+          util::memFn(&AbstractRouter::PumpLL, this));
 
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
@@ -1161,8 +1159,7 @@ namespace llarp
                 util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                             &_outboundSessionMaker),
                 util::memFn(&AbstractRouter::SessionClosed, this),
-                util::memFn(&AbstractRouter::PumpLL, this)
-                );
+                util::memFn(&AbstractRouter::PumpLL, this));
 
     if(!link)
       return false;

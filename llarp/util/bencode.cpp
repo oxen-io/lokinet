@@ -139,9 +139,10 @@ bencode_discard(llarp_buffer_t* buf)
 }
 
 bool
-bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz, uint64_t i)
+bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz,
+                           uint64_t i)
 {
-  if (! bencode_write_bytestring(buff, name, sz))
+  if(!bencode_write_bytestring(buff, name, sz))
     return false;
 
   return bencode_write_uint64(buff, i);
