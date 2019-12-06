@@ -21,7 +21,7 @@ curl_RecvIdentKey(char* ptr, size_t, size_t nmemb, void* userdata)
 
 namespace llarp
 {
-  KeyManager::KeyManager() : m_initialized(false)
+  KeyManager::KeyManager() : m_initialized(false), m_needBackup(false)
   {
   }
 
@@ -49,10 +49,14 @@ namespace llarp
       return false;
     }
 
+    // we need to back up keys if our self.signed doesn't appear to have a
+    // valid signature
+    m_needBackup = (not rc.VerifySignature());
+
     // if our RC file can't be verified, assume it is out of date (e.g. uses
     // older encryption) and needs to be regenerated. before doing so, backup
     // files that will be overwritten
-    if(exists and not rc.VerifySignature())
+    if(exists and m_needBackup)
     {
       if(!genIfAbsent)
       {
@@ -110,7 +114,7 @@ namespace llarp
   }
 
   bool
-  KeyManager::backupKeyFilesByMoving() const
+  KeyManager::backupFileByMoving(const std::string& filepath)
   {
     auto findFreeBackupFilename = [](const fs::path& filepath) {
       for(int i = 0; i < 9; i++)
@@ -125,42 +129,51 @@ namespace llarp
       return fs::path();
     };
 
+    std::error_code ec;
+    bool exists = fs::exists(filepath, ec);
+    if(ec)
+    {
+      LogError("Could not determine status of file ", filepath, ": ",
+               ec.message());
+      return false;
+    }
+
+    if(not exists)
+    {
+      LogInfo("File ", filepath, " doesn't exist; no backup needed");
+      return true;
+    }
+
+    fs::path newFilepath = findFreeBackupFilename(filepath);
+    if(newFilepath.empty())
+    {
+      LogWarn("Could not find an appropriate backup filename for", filepath);
+      return false;
+    }
+
+    LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath,
+            "...");
+
+    fs::rename(filepath, newFilepath, ec);
+    if(ec)
+    {
+      LogError("Failed to move key file ", ec.message());
+      return false;
+    }
+
+    return true;
+  }
+
+  bool
+  KeyManager::backupKeyFilesByMoving() const
+  {
     std::vector< std::string > files = {m_rcPath, m_idKeyPath, m_encKeyPath,
                                         m_transportKeyPath};
 
     for(auto& filepath : files)
     {
-      std::error_code ec;
-      bool exists = fs::exists(filepath, ec);
-      if(ec)
-      {
-        LogError("Could not determine status of file ", filepath, ": ",
-                 ec.message());
+      if(not backupFileByMoving(filepath))
         return false;
-      }
-
-      if(not exists)
-      {
-        LogInfo("File ", filepath, " doesn't exist; no backup needed");
-        continue;
-      }
-
-      fs::path newFilepath = findFreeBackupFilename(filepath);
-      if(newFilepath.empty())
-      {
-        LogWarn("Could not find an appropriate backup filename for", filepath);
-        return false;
-      }
-
-      LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath,
-              "...");
-
-      fs::rename(filepath, newFilepath, ec);
-      if(ec)
-      {
-        LogError("Failed to move key file ", ec.message());
-        return false;
-      }
     }
 
     return true;

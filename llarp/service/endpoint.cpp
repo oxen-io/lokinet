@@ -453,7 +453,8 @@ namespace llarp
       const auto& keyfile = m_state->m_Keyfile;
       if(!keyfile.empty())
       {
-        if(!m_Identity.EnsureKeys(keyfile))
+        if(!m_Identity.EnsureKeys(keyfile,
+                                  Router()->keyManager()->needBackup()))
         {
           LogError("Can't ensure keyfile [", keyfile, "]");
           return false;

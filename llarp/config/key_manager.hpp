@@ -21,6 +21,16 @@ namespace llarp
 
   struct KeyManager
   {
+    /// Utility function to backup a file by moving it. Attempts to find a new
+    /// filename based on the original that doesn't exist, then moves it. The
+    /// pattern used is originalFile.N.bak where N is the lowest integer
+    /// matching a filename that doesn't exist.
+    ///
+    /// @param filepath is the name of the original file to backup.
+    /// @return true if the file could be moved or didn't exist, false otherwise
+    static bool
+    backupFileByMoving(const std::string& filepath);
+
     /// Constructor
     KeyManager();
 
@@ -45,6 +55,13 @@ namespace llarp
     bool
     getRouterContact(llarp::RouterContact& rc) const;
 
+    /// Return whether or not we need to backup keys as we load them
+    bool
+    needBackup() const
+    {
+      return m_needBackup;
+    }
+
     llarp::SecretKey identityKey;
     llarp::SecretKey encryptionKey;
     llarp::SecretKey transportKey;
@@ -55,6 +72,7 @@ namespace llarp
     std::string m_encKeyPath;
     std::string m_transportKeyPath;
     std::atomic_bool m_initialized;
+    std::atomic_bool m_needBackup;
 
     bool m_usingLokid          = false;
     std::string m_lokidRPCAddr = "127.0.0.1:22023";

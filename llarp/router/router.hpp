@@ -127,6 +127,12 @@ namespace llarp
       return _exitContext;
     }
 
+    std::shared_ptr< KeyManager >
+    keyManager() const
+    {
+      return m_keyManager;
+    }
+
     const SecretKey &
     identity() const override
     {
