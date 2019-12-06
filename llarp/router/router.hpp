@@ -3,6 +3,7 @@
 
 #include <router/abstractrouter.hpp>
 
+#include <bootstrap.hpp>
 #include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
@@ -227,7 +228,7 @@ namespace llarp
     NetConfig_t netConfig;
 
     /// bootstrap RCs
-    std::set< RouterContact > bootstrapRCList;
+    BootstrapList bootstrapRCList;
 
     bool
     ExitEnabled() const

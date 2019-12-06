@@ -134,6 +134,7 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
+  bootstrap.cpp
   context.cpp
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp

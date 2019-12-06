@@ -312,12 +312,7 @@ namespace llarp
       f.read((char*)ptr.data(), sz);
     }
     llarp_buffer_t buf(ptr);
-    auto result = t.BDecode(&buf);
-    if(!result)
-    {
-      DumpBuffer(buf);
-    }
-    return result;
+    return t.BDecode(&buf);
   }
 
   /// read entire file and decode its contents into t
