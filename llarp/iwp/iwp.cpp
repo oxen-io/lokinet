@@ -9,7 +9,7 @@ namespace llarp
   namespace iwp
   {
     LinkLayer_ptr
-    NewInboundLink(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
+    NewInboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
                    LinkMessageHandler h, SignBufferFunc sign,
                    SessionEstablishedHandler est,
                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
@@ -21,7 +21,7 @@ namespace llarp
     }
 
     LinkLayer_ptr
-    NewOutboundLink(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
+    NewOutboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
                     LinkMessageHandler h, SignBufferFunc sign,
                     SessionEstablishedHandler est,
                     SessionRenegotiateHandler reneg, TimeoutHandler timeout,

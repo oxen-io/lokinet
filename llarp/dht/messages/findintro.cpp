@@ -27,7 +27,7 @@ namespace llarp
         return false;
 
       if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, k,
-                                  val))
+                                    val))
         return false;
 
       return read;

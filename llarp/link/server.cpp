@@ -26,8 +26,8 @@ namespace llarp
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
       , PumpDone(std::move(pumpDone))
-      , m_RouterEncSecret(keyManager->getEncryptionKey())
-      , m_SecretKey(keyManager->getTransportKey())
+      , m_RouterEncSecret(keyManager->encryptionKey)
+      , m_SecretKey(keyManager->transportKey)
   {
   }
 

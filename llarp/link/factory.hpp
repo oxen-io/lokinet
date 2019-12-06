@@ -22,9 +22,9 @@ namespace llarp
     };
 
     using Factory = std::function< LinkLayer_ptr(
-        std::shared_ptr<KeyManager>, GetRCFunc, LinkMessageHandler, SignBufferFunc,
-        SessionEstablishedHandler, SessionRenegotiateHandler, TimeoutHandler,
-        SessionClosedHandler, PumpDoneHandler) >;
+        std::shared_ptr< KeyManager >, GetRCFunc, LinkMessageHandler,
+        SignBufferFunc, SessionEstablishedHandler, SessionRenegotiateHandler,
+        TimeoutHandler, SessionClosedHandler, PumpDoneHandler) >;
 
     /// get link type by name string
     /// if invalid returns eLinkUnspec

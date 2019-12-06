@@ -104,8 +104,8 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeVerifyVersion(const char* k, Item_t& item, uint64_t expect,
-                          bool& read, const llarp_buffer_t& key,
-                          llarp_buffer_t* buf)
+                            bool& read, const llarp_buffer_t& key,
+                            llarp_buffer_t* buf)
   {
     if(key == k)
     {

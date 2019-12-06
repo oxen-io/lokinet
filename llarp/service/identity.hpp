@@ -1,8 +1,10 @@
 #ifndef LLARP_SERVICE_IDENTITY_HPP
 #define LLARP_SERVICE_IDENTITY_HPP
 
+#include <config/key_manager.hpp>
 #include <constants/proto.hpp>
 #include <crypto/types.hpp>
+#include <memory>
 #include <service/info.hpp>
 #include <service/intro_set.hpp>
 #include <service/vanity.hpp>
@@ -33,8 +35,9 @@ namespace llarp
       bool
       BEncode(llarp_buffer_t* buf) const;
 
+      /// @param needBackup determines whether existing keys will be cycled
       bool
-      EnsureKeys(const std::string& fpath);
+      EnsureKeys(const std::string& fpath, bool needBackup);
 
       bool
       KeyExchange(path_dh_func dh, SharedSecret& sharedkey,

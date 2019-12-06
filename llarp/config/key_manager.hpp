@@ -8,52 +8,45 @@
 
 namespace llarp
 {
-
-  /// KeyManager manages the cryptographic keys stored on disk for the local node.
-  /// This includes private keys as well as the self-signed router contact file
-  /// (e.g. "self.signed").
+  /// KeyManager manages the cryptographic keys stored on disk for the local
+  /// node. This includes private keys as well as the self-signed router contact
+  /// file (e.g. "self.signed").
   ///
-  /// Keys are either read from disk if they exist and are valid (see below) or are
-  /// generated and written to disk.
-  /// 
-  /// In addition, the KeyManager detects when the keys obsolete (e.g. as a result
-  /// of a software upgrade) and backs up existing keys before writing out new ones.
+  /// Keys are either read from disk if they exist and are valid (see below) or
+  /// are generated and written to disk.
+  ///
+  /// In addition, the KeyManager detects when the keys obsolete (e.g. as a
+  /// result of a software upgrade) and backs up existing keys before writing
+  /// out new ones.
 
-  struct KeyManager {
+  struct KeyManager
+  {
+    /// Utility function to backup a file by moving it. Attempts to find a new
+    /// filename based on the original that doesn't exist, then moves it. The
+    /// pattern used is originalFile.N.bak where N is the lowest integer
+    /// matching a filename that doesn't exist.
+    ///
+    /// @param filepath is the name of the original file to backup.
+    /// @return true if the file could be moved or didn't exist, false otherwise
+    static bool
+    backupFileByMoving(const std::string& filepath);
 
     /// Constructor
     KeyManager();
 
-    /// Initializes keys using the provided config, loading from disk and/or lokid
-    /// via HTTP request.
+    /// Initializes keys using the provided config, loading from disk and/or
+    /// lokid via HTTP request.
     ///
     /// NOTE: Must be called prior to obtaining any keys.
     /// NOTE: blocks on I/O
     ///
     /// @param config should be a prepared config object
-    /// @param genIfAbsent determines whether or not we will create files if they
+    /// @param genIfAbsent determines whether or not we will create files if
+    /// they
     ///        do not exist.
     /// @return true on success, false otherwise
     bool
     initialize(const llarp::Config& config, bool genIfAbsent);
-
-    /// Obtain the identity key (e.g. ~/.lokinet/identity.private)
-    ///
-    /// @return a reference to the identity key
-    const llarp::SecretKey&
-    getIdentityKey() const;
-
-    /// Obtain the encryption key (e.g. ~/.lokinet/encryption.private)
-    ///
-    /// @return a reference to the encryption key
-    const llarp::SecretKey&
-    getEncryptionKey() const;
-
-    /// Obtain the transport key (e.g. ~/.lokinet/transport.private)
-    ///
-    /// @return a reference to the transport key
-    const llarp::SecretKey&
-    getTransportKey() const;
 
     /// Obtain the self-signed RouterContact
     ///
@@ -62,22 +55,29 @@ namespace llarp
     bool
     getRouterContact(llarp::RouterContact& rc) const;
 
-  private:
+    /// Return whether or not we need to backup keys as we load them
+    bool
+    needBackup() const
+    {
+      return m_needBackup;
+    }
 
+    llarp::SecretKey identityKey;
+    llarp::SecretKey encryptionKey;
+    llarp::SecretKey transportKey;
+
+   private:
     std::string m_rcPath;
     std::string m_idKeyPath;
     std::string m_encKeyPath;
     std::string m_transportKeyPath;
     std::atomic_bool m_initialized;
+    std::atomic_bool m_needBackup;
 
-    bool m_usingLokid = false;
+    bool m_usingLokid          = false;
     std::string m_lokidRPCAddr = "127.0.0.1:22023";
     std::string m_lokidRPCUser;
     std::string m_lokidRPCPassword;
-
-    llarp::SecretKey m_idKey;
-    llarp::SecretKey m_encKey;
-    llarp::SecretKey m_transportKey;
 
     /// Backup each key file (by copying, e.g. foo -> foo.bak)
     bool
@@ -87,10 +87,8 @@ namespace llarp
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(
-        const std::string& filepath,
-        llarp::SecretKey& key,
-        std::function<void(llarp::SecretKey& key)> keygen);
+    loadOrCreateKey(const std::string& filepath, llarp::SecretKey& key,
+                    std::function< void(llarp::SecretKey& key) > keygen);
 
     /// Requests the identity key from lokid via HTTP (curl)
     bool
