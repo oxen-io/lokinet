@@ -11,8 +11,9 @@ namespace llarp
 {
   static constexpr size_t MaxSessionsPerKey = 16;
 
-  ILinkLayer::ILinkLayer(std::shared_ptr<KeyManager> keyManager, GetRCFunc getrc,
-                         LinkMessageHandler handler, SignBufferFunc signbuf,
+  ILinkLayer::ILinkLayer(std::shared_ptr< KeyManager > keyManager,
+                         GetRCFunc getrc, LinkMessageHandler handler,
+                         SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed,
@@ -25,8 +26,8 @@ namespace llarp
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
       , PumpDone(std::move(pumpDone))
-      , m_RouterEncSecret(keyManager->getEncryptionKey())
-      , m_SecretKey(keyManager->getTransportKey())
+      , m_RouterEncSecret(keyManager->encryptionKey)
+      , m_SecretKey(keyManager->transportKey)
   {
   }
 
@@ -286,7 +287,6 @@ namespace llarp
   ILinkLayer::Start(std::shared_ptr< Logic > l,
                     std::shared_ptr< thread::ThreadPool > worker)
   {
-    m_Recv   = std::make_shared< TrafficQueue_t >();
     m_Worker = worker;
     m_Logic  = l;
     ScheduleTick(100);
@@ -315,6 +315,17 @@ namespace llarp
         ++itr;
       }
     }
+    {
+      // decay recently closed list
+      auto itr = m_RecentlyClosed.begin();
+      while(itr != m_RecentlyClosed.end())
+      {
+        if(itr->second >= now)
+          itr = m_RecentlyClosed.erase(itr);
+        else
+          ++itr;
+      }
+    }
   }
 
   void
@@ -340,12 +351,13 @@ namespace llarp
         ++itr;
       }
     }
-    m_Recv.reset();
   }
 
   void
   ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
+    static constexpr llarp_time_t CloseGraceWindow = 500;
+    const auto now                                 = Now();
     ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
     RouterID r = remote;
     llarp::LogInfo("Closing all to ", r);
@@ -354,6 +366,8 @@ namespace llarp
     while(itr != range.second)
     {
       itr->second->Close();
+      m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(),
+                               now + CloseGraceWindow);
       itr = m_AuthedLinks.erase(itr);
     }
   }
@@ -462,7 +476,11 @@ namespace llarp
       auto itr = pkts->begin();
       while(itr != pkts->end())
       {
-        link->RecvFrom(itr->remote, std::move(itr->pkt));
+        if(link->m_RecentlyClosed.find(itr->remote)
+           == link->m_RecentlyClosed.end())
+        {
+          link->RecvFrom(itr->remote, std::move(itr->pkt));
+        }
         ++itr;
       }
       link->Pump();

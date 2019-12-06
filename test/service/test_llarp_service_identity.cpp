@@ -83,13 +83,13 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
       .WillOnce(WithArg< 0 >(FillArg< PQKeyPair >(0x03)));
 
   service::Identity identity;
-  ASSERT_TRUE(identity.EnsureKeys(p.string()));
+  ASSERT_TRUE(identity.EnsureKeys(p.string(), false));
   ASSERT_TRUE(fs::exists(fs::status(p)));
 
   // Verify what is on disk is what is what was generated
   service::Identity other;
   // No need to set more mocks, as we shouldn't need to re-keygen
-  ASSERT_TRUE(other.EnsureKeys(p.string()));
+  ASSERT_TRUE(other.EnsureKeys(p.string(), false));
   ASSERT_EQ(identity, other);
 }
 
@@ -103,7 +103,7 @@ TEST_F(ServiceIdentityTest, EnsureKeysDir)
   ASSERT_TRUE(fs::create_directory(p, code)) << code;
 
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string()));
+  ASSERT_FALSE(identity.EnsureKeys(p.string(), false));
 }
 
 TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
@@ -120,5 +120,5 @@ TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
   file.close();
 
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string()));
+  ASSERT_FALSE(identity.EnsureKeys(p.string(), false));
 }

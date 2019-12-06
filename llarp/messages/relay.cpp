@@ -42,7 +42,7 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
     if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+                                  buf))
       return false;
     if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
@@ -98,7 +98,7 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
     if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+                                  buf))
       return false;
     if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;

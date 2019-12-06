@@ -27,7 +27,7 @@ namespace llarp
     }
     bool read = false;
     if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+                                  buf))
       return false;
 
     return read;
@@ -135,7 +135,7 @@ namespace llarp
       return nextRC->BDecode(buffer);
     }
     if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
-                                buffer))
+                                  buffer))
       return false;
     if(*key == "w")
     {

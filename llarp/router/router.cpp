@@ -208,8 +208,8 @@ namespace llarp
 #endif
     }
 
-    _identity   = m_keyManager->getIdentityKey();
-    _encryption = m_keyManager->getEncryptionKey();
+    _identity   = m_keyManager->identityKey;
+    _encryption = m_keyManager->encryptionKey;
 
     if(_identity.IsZero())
       return false;
