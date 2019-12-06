@@ -479,7 +479,11 @@ namespace llarp
       if(!pkt.Load(buf))
         return false;
       // rewrite ip
-      pkt.UpdateIPv6Address(from, m_IfAddr);
+      if(m_UseV6)
+        pkt.UpdateIPv6Address(from, m_IfAddr);
+      else
+        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(from)),
+                              xhtonl(net::IPPacket::TruncateV6(m_IfAddr)));
       return llarp_ev_tun_async_write(&m_Tun, pkt.Buffer());
     }
 
@@ -579,6 +583,7 @@ namespace llarp
         m_HigestAddr  = m_OurRange.HighestAddr();
         LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
                 m_Tun.netmask, " lo=", m_IfAddr, " hi=", m_HigestAddr);
+        m_UseV6 = false;
       }
       if(k == "ifname")
       {

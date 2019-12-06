@@ -154,7 +154,12 @@ namespace llarp
         src = m_Parent->GetIfAddr();
       else
         src = pkt.srcv6();
-      pkt.UpdateIPv6Address(src, m_IP);
+      if(pkt.IsV6())
+        pkt.UpdateIPv6Address(src, m_IP);
+      else
+        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(src)),
+                              xhtonl(net::IPPacket::TruncateV6(m_IP)));
+
       const auto _pktbuf           = pkt.Buffer();
       const llarp_buffer_t& pktbuf = _pktbuf.underlying;
       const uint8_t queue_idx      = pktbuf.sz / llarp::routing::ExitPadSize;
