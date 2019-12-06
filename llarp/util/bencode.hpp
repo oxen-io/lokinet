@@ -104,8 +104,8 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeVerifyVersion(const char* k, Item_t& item, uint64_t expect,
-                          bool& read, const llarp_buffer_t& key,
-                          llarp_buffer_t* buf)
+                            bool& read, const llarp_buffer_t& key,
+                            llarp_buffer_t* buf)
   {
     if(key == k)
     {
@@ -312,12 +312,7 @@ namespace llarp
       f.read((char*)ptr.data(), sz);
     }
     llarp_buffer_t buf(ptr);
-    auto result = t.BDecode(&buf);
-    if(!result)
-    {
-      DumpBuffer(buf);
-    }
-    return result;
+    return t.BDecode(&buf);
   }
 
   /// read entire file and decode its contents into t

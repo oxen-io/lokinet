@@ -3,6 +3,7 @@
 
 #include <router/abstractrouter.hpp>
 
+#include <bootstrap.hpp>
 #include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
@@ -221,7 +222,7 @@ namespace llarp
     NetConfig_t netConfig;
 
     /// bootstrap RCs
-    std::set< RouterContact > bootstrapRCList;
+    BootstrapList bootstrapRCList;
 
     bool
     ExitEnabled() const
@@ -461,7 +462,7 @@ namespace llarp
 
     llarp_time_t m_LastStatsReport = 0;
 
-    std::shared_ptr<llarp::KeyManager> m_keyManager;
+    std::shared_ptr< llarp::KeyManager > m_keyManager;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

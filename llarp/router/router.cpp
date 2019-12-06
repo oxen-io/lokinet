@@ -49,7 +49,7 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
   {
-    m_keyManager = std::make_shared<KeyManager>();
+    m_keyManager = std::make_shared< KeyManager >();
 
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
@@ -195,7 +195,6 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-
     if(whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
@@ -209,12 +208,12 @@ namespace llarp
 #endif
     }
 
-    _identity = m_keyManager->getIdentityKey();
+    _identity   = m_keyManager->getIdentityKey();
     _encryption = m_keyManager->getEncryptionKey();
 
-    if (_identity.IsZero())
+    if(_identity.IsZero())
       return false;
-    if (_encryption.IsZero())
+    if(_encryption.IsZero())
       return false;
 
     return true;
@@ -231,7 +230,7 @@ namespace llarp
     }
     _nodedb = nodedb;
 
-    if (not m_keyManager->initialize(*conf, true))
+    if(not m_keyManager->initialize(*conf, true))
       return false;
 
     if(!FromConfig(conf))
@@ -446,37 +445,50 @@ namespace llarp
     std::vector< std::string > configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());
+    BootstrapList b_list;
     for(const auto &router : configRouters)
     {
-      // llarp::LogDebug("connect section has ", key, "=", val);
-      RouterContact rc;
-      if(!rc.Read(router.c_str()))
+      bool isListFile = false;
       {
-        llarp::LogWarn("failed to decode bootstrap RC, file='", router,
-                       "' rc=", rc);
-        return false;
+        std::ifstream inf(router, std::ios::binary);
+        if(inf.is_open())
+        {
+          const char ch = inf.get();
+          isListFile    = ch == 'l';
+        }
       }
-      if(rc.Verify(Now()))
+      if(isListFile)
       {
-        const auto result = bootstrapRCList.insert(rc);
-        if(result.second)
-          llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
-        else
-          llarp::LogWarn("Duplicate bootstrap node ", RouterID(rc.pubkey));
+        if(not BDecodeReadFile(router.c_str(), b_list))
+        {
+          LogWarn("failed to read bootstrap list file '", router, "'");
+          return false;
+        }
       }
       else
       {
-        if(rc.IsExpired(Now()))
+        RouterContact rc;
+        if(not rc.Read(router.c_str()))
         {
-          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                         " is too old and needs to be refreshed");
+          llarp::LogWarn("failed to decode bootstrap RC, file='", router,
+                         "' rc=", rc);
+          return false;
         }
-        else
-        {
-          llarp::LogError("malformed rc file='", router, "' rc=", rc);
-        }
+        b_list.insert(rc);
       }
     }
+
+    for(auto &rc : b_list)
+    {
+      if(not rc.Verify(Now()))
+      {
+        LogWarn("ignoring invalid RC: ", RouterID(rc.pubkey));
+        continue;
+      }
+      bootstrapRCList.emplace(std::move(rc));
+    }
+
+    LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
@@ -524,8 +536,7 @@ namespace llarp
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                       &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this)
-          );
+          util::memFn(&AbstractRouter::PumpLL, this));
 
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
@@ -1161,8 +1172,7 @@ namespace llarp
                 util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                             &_outboundSessionMaker),
                 util::memFn(&AbstractRouter::SessionClosed, this),
-                util::memFn(&AbstractRouter::PumpLL, this)
-                );
+                util::memFn(&AbstractRouter::PumpLL, this));
 
     if(!link)
       return false;
