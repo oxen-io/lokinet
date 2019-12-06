@@ -81,7 +81,7 @@ namespace llarp
         // TODO: handle generating from service node seed
         llarp::CryptoManager::instance()->identity_keygen(key);
       };
-      if(not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen))
+      if(not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
         return false;
     }
     else
@@ -94,7 +94,7 @@ namespace llarp
     auto encryptionKeygen = [](llarp::SecretKey& key) {
       llarp::CryptoManager::instance()->encryption_keygen(key);
     };
-    if(not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen))
+    if(not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
       return false;
 
     // TODO: transport key (currently done in LinkLayer)
@@ -102,47 +102,11 @@ namespace llarp
       key.Zero();
       CryptoManager::instance()->encryption_keygen(key);
     };
-    if(not loadOrCreateKey(m_transportKeyPath, m_transportKey, transportKeygen))
+    if(not loadOrCreateKey(m_transportKeyPath, transportKey, transportKeygen))
       return false;
 
     m_initialized = true;
     return true;
-  }
-
-  const llarp::SecretKey&
-  KeyManager::getIdentityKey() const
-  {
-    return m_idKey;
-  }
-
-  void
-  KeyManager::setIdentityKey(const llarp::SecretKey& key)
-  {
-    m_idKey = key;
-  }
-
-  const llarp::SecretKey&
-  KeyManager::getEncryptionKey() const
-  {
-    return m_encKey;
-  }
-
-  void
-  KeyManager::setEncryptionKey(const llarp::SecretKey& key)
-  {
-    m_encKey = key;
-  }
-
-  const llarp::SecretKey&
-  KeyManager::getTransportKey() const
-  {
-    return m_transportKey;
-  }
-
-  void
-  KeyManager::setTransportKey(const llarp::SecretKey& key)
-  {
-    m_transportKey = key;
   }
 
   bool
@@ -278,7 +242,7 @@ namespace llarp
               continue;
             const auto k =
                 (*itr)["service_node_ed25519_privkey"].get< std::string >();
-            if(k.size() != (m_idKey.size() * 2))
+            if(k.size() != (identityKey.size() * 2))
             {
               if(k.empty())
               {
@@ -290,9 +254,9 @@ namespace llarp
               }
               return false;
             }
-            if(not HexDecode(k.c_str(), m_idKey.data(), m_idKey.size()))
+            if(not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
               continue;
-            if(CryptoManager::instance()->check_identity_privkey(m_idKey))
+            if(CryptoManager::instance()->check_identity_privkey(identityKey))
             {
               ret = true;
             }
@@ -313,7 +277,7 @@ namespace llarp
         if(ret)
         {
           LogInfo("Got Identity Keys from lokid: ",
-                  RouterID(seckey_topublic(m_idKey)));
+                  RouterID(seckey_topublic(identityKey)));
           break;
         }
         else

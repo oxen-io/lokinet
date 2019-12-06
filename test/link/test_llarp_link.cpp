@@ -29,15 +29,15 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 
       SecretKey signingKey;
       CryptoManager::instance()->identity_keygen(signingKey);
-      keyManager->setIdentityKey(signingKey);
+      keyManager->identityKey = signingKey;
 
       SecretKey encryptionKey;
       CryptoManager::instance()->encryption_keygen(encryptionKey);
-      keyManager->setEncryptionKey(encryptionKey);
+      keyManager->encryptionKey = encryptionKey;
 
       SecretKey transportKey;
       CryptoManager::instance()->encryption_keygen(transportKey);
-      keyManager->setTransportKey(transportKey);
+      keyManager->transportKey = transportKey;
 
 
       rc.pubkey = signingKey.toPublic();
@@ -105,7 +105,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       rc.addrs.emplace_back();
       if(!link->GetOurAddressInfo(rc.addrs[0]))
         return false;
-      if(!rc.Sign(keyManager->getIdentityKey()))
+      if(!rc.Sign(keyManager->identityKey))
         return false;
       return link->Start(logic, worker);
     }
@@ -227,7 +227,7 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // SignBufferFunc
       [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Alice.keyManager->getIdentityKey(), buf);
+        return m_crypto.sign(sig, Alice.keyManager->identityKey, buf);
       },
 
       // SessionEstablishedHandler
@@ -294,7 +294,7 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // SignBufferFunc
       [&](Signature& sig, const llarp_buffer_t& buf) -> bool {
-        return m_crypto.sign(sig, Bob.keyManager->getIdentityKey(), buf);
+        return m_crypto.sign(sig, Bob.keyManager->identityKey, buf);
       },
 
       //SessionEstablishedHandler

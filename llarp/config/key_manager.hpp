@@ -38,48 +38,16 @@ namespace llarp
     bool
     initialize(const llarp::Config& config, bool genIfAbsent);
 
-    /// Obtain the identity key (e.g. ~/.lokinet/identity.private)
-    ///
-    /// @return a reference to the identity key
-    const llarp::SecretKey&
-    getIdentityKey() const;
-
-    /// Set the identity key. This does not write anything to disk.
-    ///
-    /// @param key is the key that will be copied-from.
-    void
-    setIdentityKey(const llarp::SecretKey& key);
-
-    /// Obtain the encryption key (e.g. ~/.lokinet/encryption.private)
-    ///
-    /// @return a reference to the encryption key
-    const llarp::SecretKey&
-    getEncryptionKey() const;
-
-    /// Set the encryption key. This does not write anything to disk.
-    ///
-    /// @param key is the key that will be copied-from.
-    void
-    setEncryptionKey(const llarp::SecretKey& key);
-
-    /// Obtain the transport key (e.g. ~/.lokinet/transport.private)
-    ///
-    /// @return a reference to the transport key
-    const llarp::SecretKey&
-    getTransportKey() const;
-
-    /// Set the transport key. This does not write anything to disk.
-    ///
-    /// @param key is the key that will be copied-from.
-    void
-    setTransportKey(const llarp::SecretKey& key);
-
     /// Obtain the self-signed RouterContact
     ///
     /// @param rc (out) will be modified to contian the RouterContact
     /// @return true on success, false otherwise
     bool
     getRouterContact(llarp::RouterContact& rc) const;
+
+    llarp::SecretKey identityKey;
+    llarp::SecretKey encryptionKey;
+    llarp::SecretKey transportKey;
 
    private:
     std::string m_rcPath;
@@ -92,10 +60,6 @@ namespace llarp
     std::string m_lokidRPCAddr = "127.0.0.1:22023";
     std::string m_lokidRPCUser;
     std::string m_lokidRPCPassword;
-
-    llarp::SecretKey m_idKey;
-    llarp::SecretKey m_encKey;
-    llarp::SecretKey m_transportKey;
 
     /// Backup each key file (by copying, e.g. foo -> foo.bak)
     bool
