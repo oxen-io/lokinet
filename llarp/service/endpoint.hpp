@@ -1,6 +1,7 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 #include <llarp.h>
+#include <config/key_manager.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>

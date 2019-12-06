@@ -1,8 +1,10 @@
 #ifndef LLARP_SERVICE_IDENTITY_HPP
 #define LLARP_SERVICE_IDENTITY_HPP
 
+#include <config/key_manager.hpp>
 #include <constants/proto.hpp>
 #include <crypto/types.hpp>
+#include <memory>
 #include <service/info.hpp>
 #include <service/intro_set.hpp>
 #include <service/vanity.hpp>
@@ -28,13 +30,13 @@ namespace llarp
 
       // regenerate secret keys
       void
-      RegenerateKeys();
+      RegenerateKeys(const std::string& fname, std::shared_ptr<KeyManager> keyManager);
 
       bool
       BEncode(llarp_buffer_t* buf) const;
 
       bool
-      EnsureKeys(const std::string& fpath);
+      EnsureKeys(const std::string& fpath, std::shared_ptr<KeyManager> keyManager);
 
       bool
       KeyExchange(path_dh_func dh, SharedSecret& sharedkey,

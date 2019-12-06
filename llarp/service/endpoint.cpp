@@ -27,8 +27,7 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
-                       Context* parent)
+    Endpoint::Endpoint(const std::string& name, AbstractRouter* r, Context* parent)
         : path::Builder(r, 3, path::default_len)
         , context(parent)
         , m_RecvQueue(128)
@@ -453,7 +452,7 @@ namespace llarp
       const auto& keyfile = m_state->m_Keyfile;
       if(!keyfile.empty())
       {
-        if(!m_Identity.EnsureKeys(keyfile))
+        if(!m_Identity.EnsureKeys(keyfile, Router()->keyManager()))
         {
           LogError("Can't ensure keyfile [", keyfile, "]");
           return false;
@@ -461,7 +460,7 @@ namespace llarp
       }
       else
       {
-        m_Identity.RegenerateKeys();
+        m_Identity.RegenerateKeys(keyfile, Router()->keyManager());
       }
       return true;
     }

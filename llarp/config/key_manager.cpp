@@ -19,10 +19,72 @@ curl_RecvIdentKey(char *ptr, size_t, size_t nmemb, void *userdata)
   return nmemb;
 }
 
+/// given a file name, tries to find a suitable backup file name
+fs::path findFreeBackupFilename(const fs::path& filepath)
+{
+  for (int i=0; i<9; i++)
+  {
+    std::string ext("." + std::to_string(i) + ".bak");
+    fs::path newPath = filepath;
+    newPath += ext;
+
+    if (not fs::exists(newPath))
+      return newPath;
+  }
+  return fs::path();
+};
+
+bool
+backupKeyByMoving(const std::string& filepath)
+{
+  std::error_code ec;
+  bool exists = fs::exists(filepath, ec);
+  if (ec)
+  {
+    LogError("Could not determine status of file ", filepath, ": ", ec.message());
+    return false;
+  }
+
+  if (not exists)
+  {
+    LogInfo("File ", filepath, " doesn't exist; no backup needed");
+    return true;
+  }
+
+  fs::path newFilepath = findFreeBackupFilename(filepath);
+  if (newFilepath.empty())
+  {
+    LogWarn("Could not find an appropriate backup filename for", filepath);
+    return false;
+  }
+
+  LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath, "...");
+
+  fs::rename(filepath, newFilepath, ec);
+  if (ec) {
+    LogError("Failed to move key file ", ec.message());
+    return false;
+  }
+
+  return true;
+}
+
+bool
+basicWriteKey(const llarp::SecretKey& key, const std::string filepath)
+{
+    if (! key.SaveToFile(filepath.c_str()))
+    {
+      LogError("Failed to save new key");
+      return false;
+    }
+    return true;
+}
+
 namespace llarp
 {
   KeyManager::KeyManager()
     : m_initialized(false)
+    , m_backupRequired(false)
   {
   }
 
@@ -66,7 +128,9 @@ namespace llarp
         LogWarn("Our RouterContact ", m_rcPath,
             " seems out of date, backing up and regenerating private keys");
 
-        if (! backupKeyFilesByMoving())
+        m_backupRequired = true;
+
+        if (! backupMainKeys())
         {
           LogError("Could not mv some key files, please ensure key files"
               " are backed up if needed and remove");
@@ -83,7 +147,7 @@ namespace llarp
         // TODO: handle generating from service node seed
         llarp::CryptoManager::instance()->identity_keygen(key);
       };
-      if (not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen))
+      if (not loadOrCreateKey(m_idKeyPath, m_idKey, identityKeygen, basicWriteKey))
         return false;
     }
     else
@@ -97,16 +161,15 @@ namespace llarp
     {
       llarp::CryptoManager::instance()->encryption_keygen(key);
     };
-    if (not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen))
+    if (not loadOrCreateKey(m_encKeyPath, m_encKey, encryptionKeygen, basicWriteKey))
       return false;
 
-    // TODO: transport key (currently done in LinkLayer)
     auto transportKeygen = [](llarp::SecretKey& key)
     {
       key.Zero();
       CryptoManager::instance()->encryption_keygen(key);
     };
-    if (not loadOrCreateKey(m_transportKeyPath, m_transportKey, transportKeygen))
+    if (not loadOrCreateKey(m_transportKeyPath, m_transportKey, transportKeygen, basicWriteKey))
       return false;
 
     m_initialized = true;
@@ -149,21 +212,57 @@ namespace llarp
     m_transportKey = key;
   }
 
-  bool
-  KeyManager::backupKeyFilesByMoving() const
+  llarp::SecretKey
+  KeyManager::getOtherKey(const std::string& id) const
   {
-    auto findFreeBackupFilename = [](const fs::path& filepath) {
-      for (int i=0; i<9; i++)
-      {
-        std::string ext("." + std::to_string(i) + ".bak");
-        fs::path newPath = filepath;
-        newPath += ext;
+    auto itr = m_otherKeys.find(id);
+    if (itr == m_otherKeys.end())
+      return llarp::SecretKey();
 
-        if (not fs::exists(newPath))
-          return newPath;
-      }
-      return fs::path();
-    };
+    return itr->second;
+  }
+
+  bool
+  KeyManager::loadOrCreateOtherKey(std::string id, const std::string& filepath,
+                                   bool genIfAbsent, KeyGenerator keygen, KeyWriter writer)
+  {
+    if (m_otherKeys.find(id) != m_otherKeys.end())
+    {
+      // TODO: support key regen / rotating
+      LogWarn("Attempt to recreate key ", id, ", ignoring");
+      return false;
+    }
+
+    std::error_code ec;
+    bool exists = fs::exists(filepath, ec);
+    if (ec)
+    {
+      LogError("Could not determine status of file ", filepath, ": ", ec.message());
+      return false;
+    }
+
+    if (exists && m_backupRequired)
+    {
+      if (not backupKeyByMoving(filepath))
+        return false;
+    }
+
+    if (not exists and not genIfAbsent)
+    {
+      LogError("Could not load key file ", filepath);
+      return false;
+    }
+
+    SecretKey key;
+    if (not loadOrCreateKey(filepath, key, keygen, writer))
+      return false;
+
+    m_otherKeys[id] = key;
+  }
+
+  bool
+  KeyManager::backupMainKeys() const
+  {
 
     std::vector<std::string> files = {
       m_rcPath,
@@ -174,34 +273,8 @@ namespace llarp
 
     for (auto& filepath : files)
     {
-      std::error_code ec;
-      bool exists = fs::exists(filepath, ec);
-      if (ec)
-      {
-        LogError("Could not determine status of file ", filepath, ": ", ec.message());
+      if (! backupKeyByMoving(filepath))
         return false;
-      }
-
-      if (not exists)
-      {
-        LogInfo("File ", filepath, " doesn't exist; no backup needed");
-        continue;
-      }
-
-      fs::path newFilepath = findFreeBackupFilename(filepath);
-      if (newFilepath.empty())
-      {
-        LogWarn("Could not find an appropriate backup filename for", filepath);
-        return false;
-      }
-
-      LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath, "...");
-
-      fs::rename(filepath, newFilepath, ec);
-      if (ec) {
-        LogError("Failed to move key file ", ec.message());
-        return false;
-      }
     }
 
     return true;
@@ -211,7 +284,8 @@ namespace llarp
   KeyManager::loadOrCreateKey(
       const std::string& filepath,
       llarp::SecretKey& key,
-      std::function<void(llarp::SecretKey&  key)> keygen)
+      KeyGenerator keygen,
+      KeyWriter writer)
   {
     fs::path path(filepath);
     std::error_code ec;
@@ -226,9 +300,9 @@ namespace llarp
       LogInfo("Generating new key", filepath);
       keygen(key);
 
-      if (! key.SaveToFile(filepath.c_str()))
+      if (not writer(key, filepath))
       {
-        LogError("Failed to save new key");
+        LogError("Failed to write key ", filepath);
         return false;
       }
     }

@@ -1,3 +1,4 @@
+#include <memory>
 #include <service/identity.hpp>
 
 #include <crypto/crypto.hpp>
@@ -54,9 +55,13 @@ namespace llarp
     }
 
     void
-    Identity::RegenerateKeys()
+    Identity::RegenerateKeys(const std::string& fname, std::shared_ptr<KeyManager> keyManager)
     {
       auto crypto = CryptoManager::instance();
+
+      // TODO: the service node combines its keys into one file, which dosen't
+      // fit the model created for KeyManager (where each key is expected to
+      // correspond to a single file)
       crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
       pub.Update(seckey_topublic(enckey), seckey_topublic(signkey));
@@ -78,7 +83,7 @@ namespace llarp
     }
 
     bool
-    Identity::EnsureKeys(const std::string& fname)
+    Identity::EnsureKeys(const std::string& fname, std::shared_ptr<KeyManager> keyManager)
     {
       std::array< byte_t, 4096 > tmp;
       llarp_buffer_t buf(tmp);
@@ -87,7 +92,7 @@ namespace llarp
       if(!fs::exists(fname, ec))
       {
         // regen and encode
-        RegenerateKeys();
+        RegenerateKeys(fname, keyManager);
         if(!BEncode(&buf))
           return false;
         // rewind

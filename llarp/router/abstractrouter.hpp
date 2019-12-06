@@ -1,6 +1,7 @@
 #ifndef LLARP_ABSTRACT_ROUTER_HPP
 #define LLARP_ABSTRACT_ROUTER_HPP
 
+#include <config/key_manager.hpp>
 #include <util/types.hpp>
 #include <util/status.hpp>
 #include <router/i_outbound_message_handler.hpp>
@@ -83,6 +84,9 @@ namespace llarp
 
     virtual exit::Context &
     exitContext() = 0;
+
+    virtual std::shared_ptr<KeyManager>
+    keyManager() const = 0;
 
     virtual const SecretKey &
     identity() const = 0;

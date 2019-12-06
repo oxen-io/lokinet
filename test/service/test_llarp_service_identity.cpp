@@ -1,6 +1,8 @@
+#include <config/key_manager.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <llarp_test.hpp>
+#include <memory>
 #include <path/path.hpp>
 #include <service/address.hpp>
 #include <service/identity.hpp>
@@ -82,14 +84,16 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
   EXPECT_CALL(m_crypto, pqe_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< PQKeyPair >(0x03)));
 
+  auto keyManager = std::make_shared<KeyManager>();
+
   service::Identity identity;
-  ASSERT_TRUE(identity.EnsureKeys(p.string()));
+  ASSERT_TRUE(identity.EnsureKeys(p.string(), keyManager));
   ASSERT_TRUE(fs::exists(fs::status(p)));
 
   // Verify what is on disk is what is what was generated
   service::Identity other;
   // No need to set more mocks, as we shouldn't need to re-keygen
-  ASSERT_TRUE(other.EnsureKeys(p.string()));
+  ASSERT_TRUE(other.EnsureKeys(p.string(), keyManager));
   ASSERT_EQ(identity, other);
 }
 
@@ -102,8 +106,10 @@ TEST_F(ServiceIdentityTest, EnsureKeysDir)
   std::error_code code;
   ASSERT_TRUE(fs::create_directory(p, code)) << code;
 
+  auto keyManager = std::make_shared<KeyManager>();
+
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string()));
+  ASSERT_FALSE(identity.EnsureKeys(p.string(), keyManager));
 }
 
 TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
@@ -119,6 +125,8 @@ TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
   ASSERT_TRUE(file.is_open()) << p;
   file.close();
 
+  auto keyManager = std::make_shared<KeyManager>();
+
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string()));
+  ASSERT_FALSE(identity.EnsureKeys(p.string(), keyManager));
 }
