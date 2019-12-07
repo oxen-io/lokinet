@@ -286,7 +286,7 @@ namespace llarp
       return;
     auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
-    LogicCall(self->logic(), std::bind(&Router::Tick, self));
+    self->Tick();
     self->ScheduleTicker(orig);
   }
 
