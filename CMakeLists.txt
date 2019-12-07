@@ -238,10 +238,6 @@ if(WITH_TESTS)
 endif()
 add_subdirectory(${ABSEIL_DIR})
 
-if (FS_LIB STREQUAL "cppbackport")
-  add_subdirectory(vendor)
-endif()
-
 if(ANDROID)
   list(APPEND LIBS log)
   add_definitions(-DANDROID)
