@@ -32,6 +32,9 @@
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
+#if defined(WITH_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
 
 namespace llarp
 {
@@ -660,6 +663,10 @@ namespace llarp
     // LogDebug("tick router");
     const auto now = Now();
 
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "WATCHDOG=1");
+#endif
+
     routerProfiling().Tick();
 
     if(ShouldReportStats(now))
@@ -1029,6 +1036,9 @@ namespace llarp
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "READY=1");
+#endif
     return _running;
   }
 

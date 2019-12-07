@@ -163,7 +163,9 @@ namespace llarp
       void
       TryAccess(F visit) const LOCKS_EXCLUDED(_access)
       {
+#if defined(LOKINET_DEBUG)
         NullLock lock(&_access);
+#endif
         visit();
       }
 
