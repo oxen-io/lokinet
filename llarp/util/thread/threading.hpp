@@ -75,8 +75,7 @@ namespace llarp
     /// a lock that does nothing
     struct SCOPED_LOCKABLE NullLock
     {
-      NullLock(ABSL_ATTRIBUTE_UNUSED const NullMutex* mtx)
-          EXCLUSIVE_LOCK_FUNCTION(mtx)
+      NullLock(const NullMutex* mtx) EXCLUSIVE_LOCK_FUNCTION(mtx)
       {
         mtx->lock();
       }
@@ -162,14 +161,14 @@ namespace llarp
     {
       template < typename F >
       void
-      TryAccess(F visit) const
+      TryAccess(F visit) const LOCKS_EXCLUDED(_access)
       {
-        NullLock lock(&__access);
+        NullLock lock(&_access);
         visit();
       }
 
      private:
-      mutable NullMutex __access;
+      mutable NullMutex _access;
     };
   }  // namespace util
 }  // namespace llarp
