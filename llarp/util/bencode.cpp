@@ -78,7 +78,7 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  if(!buff->writef("i%llu", i))
+  if(!buff->writef("i%" PRIu64, i))
   {
     return false;
   }
