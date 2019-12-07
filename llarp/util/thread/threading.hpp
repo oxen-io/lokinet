@@ -161,7 +161,10 @@ namespace llarp
     {
       template < typename F >
       void
-      TryAccess(F visit) const LOCKS_EXCLUDED(_access)
+      TryAccess(F visit) const
+#if defined(LOKINET_DEBUG)
+          LOCKS_EXCLUDED(_access)
+#endif
       {
 #if defined(LOKINET_DEBUG)
         NullLock lock(&_access);
