@@ -60,6 +60,7 @@ namespace llarp
 
     _stopping.store(false);
     _running.store(false);
+    _lastTick = llarp::time_now_ms();
   }
 
   Router::~Router()
@@ -750,7 +751,9 @@ namespace llarp
     });
     // expire paths
     paths.ExpirePaths(now);
-  }  // namespace llarp
+    // update tick timestamp
+    _lastTick = llarp::time_now_ms();
+  }
 
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
