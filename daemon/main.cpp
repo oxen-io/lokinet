@@ -275,7 +275,7 @@ main(int argc, char *argv[])
       auto ctx_pp = llarp::Context::Get(ctx);
       if(ctx_pp != nullptr)
       {
-        if(true)  // ctx_pp->IsUp() and not ctx_pp->LooksAlive())
+        if(ctx_pp->IsUp() and not ctx_pp->LooksAlive())
         {
           for(const auto &wtf : {"you have been visited by the mascott of the "
                                  "deadlocked router.",
