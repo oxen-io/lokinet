@@ -36,6 +36,18 @@ namespace llarp
     return ctx;
   }
 
+  void
+  LogContext::DropToRuntimeLevel()
+  {
+    curLevel = runtimeLevel;
+  }
+
+  void
+  LogContext::RevertRuntimeLevel()
+  {
+    curLevel = startupLevel;
+  }
+
   log_timestamp::log_timestamp() : log_timestamp("%c %Z")
   {
   }
@@ -50,7 +62,7 @@ namespace llarp
   void
   SetLogLevel(LogLevel lvl)
   {
-    LogContext::Instance().minLevel = lvl;
+    LogContext::Instance().curLevel = lvl;
   }
 }  // namespace llarp
 
