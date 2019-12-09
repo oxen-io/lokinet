@@ -29,7 +29,6 @@ list(APPEND TEST_SRC
     test_llarp_dnsd.cpp
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
-    test_llarp_router.cpp
     test_md5.cpp
     util/meta/test_llarp_util_memfn.cpp
     util/meta/test_llarp_util_object.cpp
