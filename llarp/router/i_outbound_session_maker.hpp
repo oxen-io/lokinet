@@ -44,7 +44,7 @@ namespace llarp
     HavePendingSessionTo(const RouterID &router) const = 0;
 
     virtual void
-    ConnectToRandomRouters(int numDesired, llarp_time_t now) = 0;
+    ConnectToRandomRouters(int numDesired) = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;

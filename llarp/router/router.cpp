@@ -723,7 +723,7 @@ namespace llarp
     {
       size_t dlt = connectToNum - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
-      _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
+      _outboundSessionMaker.ConnectToRandomRouters(dlt);
     }
 
     _hiddenServiceContext.Tick(now);
@@ -1118,7 +1118,7 @@ namespace llarp
     }
     if(connected >= want)
       return;
-    _outboundSessionMaker.ConnectToRandomRouters(want, Now());
+    _outboundSessionMaker.ConnectToRandomRouters(want);
   }
 
   bool

@@ -118,7 +118,7 @@ namespace llarp
   }
 
   void
-  OutboundSessionMaker::ConnectToRandomRouters(int numDesired, llarp_time_t now)
+  OutboundSessionMaker::ConnectToRandomRouters(int numDesired)
   {
     int remainingDesired = numDesired;
 
