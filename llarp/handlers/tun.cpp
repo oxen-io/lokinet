@@ -872,7 +872,6 @@ namespace llarp
         }
         llarp::LogWarn(Name(), " did not flush packets");
       });
-      Router()->PumpLL();
     }
 
     bool
