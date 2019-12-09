@@ -273,8 +273,7 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return std::accumulate(buf.begin(), buf.end(), 0,
-                               std::bit_xor< size_t >());
+        return *(reinterpret_cast< const size_t* >(buf.data()));
       }
     };
 
