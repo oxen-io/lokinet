@@ -83,7 +83,9 @@ namespace llarp
   struct LogContext
   {
     LogContext();
-    LogLevel minLevel = eLogInfo;
+    LogLevel curLevel     = eLogInfo;
+    LogLevel startupLevel = eLogInfo;
+    LogLevel runtimeLevel = eLogWarn;
     ILogStream_ptr logStream;
     std::string nodeName = "lokinet";
 
@@ -91,6 +93,12 @@ namespace llarp
 
     static LogContext&
     Instance();
+
+    void
+    DropToRuntimeLevel();
+
+    void
+    RevertRuntimeLevel();
   };
 
   void
@@ -102,7 +110,7 @@ namespace llarp
   _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
     auto& log = LogContext::Instance();
-    if(log.minLevel > lvl)
+    if(log.curLevel > lvl)
       return;
 
     std::stringstream ss;

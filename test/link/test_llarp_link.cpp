@@ -7,8 +7,6 @@
 #include <messages/link_intro.hpp>
 #include <messages/discard.hpp>
 
-
-
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -25,7 +23,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   {
     Context()
     {
-      keyManager = std::make_shared<KeyManager>();
+      keyManager = std::make_shared< KeyManager >();
 
       SecretKey signingKey;
       CryptoManager::instance()->identity_keygen(signingKey);
@@ -39,30 +37,30 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       CryptoManager::instance()->encryption_keygen(transportKey);
       keyManager->transportKey = transportKey;
 
-
       rc.pubkey = signingKey.toPublic();
       rc.enckey = encryptionKey.toPublic();
     }
 
-    std::shared_ptr<thread::ThreadPool> worker;
+    std::shared_ptr< thread::ThreadPool > worker;
 
-    std::shared_ptr<KeyManager> keyManager;
+    std::shared_ptr< KeyManager > keyManager;
 
     RouterContact rc;
 
     bool madeSession = false;
-    bool gotLIM = false;
+    bool gotLIM      = false;
 
-    bool 
+    bool
     IsGucci() const
     {
       return gotLIM && madeSession;
     }
 
-    void Setup()
+    void
+    Setup()
     {
-        worker = std::make_shared<thread::ThreadPool>(1, 128, "test-worker");
-        worker->start();
+      worker = std::make_shared< thread::ThreadPool >(1, 128, "test-worker");
+      worker->start();
     }
 
     const RouterContact&
@@ -133,7 +131,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   Context Alice;
   Context Bob;
 
-  bool success = false;
+  bool success           = false;
   const bool shouldDebug = false;
 
   llarp_ev_loop_ptr netLoop;
@@ -149,7 +147,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   void
   SetUp()
   {
-    oldLevel = llarp::LogContext::Instance().minLevel;
+    oldLevel = llarp::LogContext::Instance().curLevel;
     if(shouldDebug)
       llarp::SetLogLevel(eLogTrace);
     oldRCLifetime              = RouterContact::Lifetime;
@@ -193,18 +191,18 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 TEST_F(LinkLayerTest, TestIWP)
 {
 #ifdef WIN32
-    GTEST_SKIP();
+  GTEST_SKIP();
 #else
-    auto sendDiscardMessage = [](ILinkSession* s, auto callback) -> bool {
+  auto sendDiscardMessage = [](ILinkSession* s, auto callback) -> bool {
     // send discard message in reply to complete unit test
-      std::vector< byte_t> tmp(32);
-      llarp_buffer_t otherBuf(tmp);
-      DiscardMessage discard;
-      if(!discard.BEncode(&otherBuf))
-        return false;
-      return s->SendMessageBuffer(std::move(tmp), callback);
-    };
-    Alice.link = iwp::NewInboundLink(
+    std::vector< byte_t > tmp(32);
+    llarp_buffer_t otherBuf(tmp);
+    DiscardMessage discard;
+    if(!discard.BEncode(&otherBuf))
+      return false;
+    return s->SendMessageBuffer(std::move(tmp), callback);
+  };
+  Alice.link = iwp::NewInboundLink(
       // KeyManager
       Alice.keyManager,
 
@@ -213,16 +211,16 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
-          llarp_buffer_t copy(buf.base, buf.sz);
-          if(not Alice.gotLIM)
+        llarp_buffer_t copy(buf.base, buf.sz);
+        if(not Alice.gotLIM)
+        {
+          LinkIntroMessage msg;
+          if(msg.BDecode(&copy))
           {
-            LinkIntroMessage msg;
-            if(msg.BDecode(&copy))
-            { 
-              Alice.gotLIM = s->GotLIM(&msg);
-            }
+            Alice.gotLIM = s->GotLIM(&msg);
           }
-          return Alice.gotLIM;
+        }
+        return Alice.gotLIM;
       },
 
       // SignBufferFunc
@@ -238,7 +236,8 @@ TEST_F(LinkLayerTest, TestIWP)
         LogInfo("alice established with bob");
         Alice.madeSession = true;
         sendDiscardMessage(s, [&](auto status) {
-          success = status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
+          success =
+              status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
           LogInfo("message sent to bob suceess=", success);
           Stop();
         });
@@ -247,7 +246,7 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // SessionRenegotiateHandler
       [&](RouterContact, RouterContact) -> bool { return true; },
-     
+
       // TimeoutHandler
       [&](ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
@@ -258,10 +257,7 @@ TEST_F(LinkLayerTest, TestIWP)
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
 
       // PumpDoneHandler
-      []() {}
-    );
-
-  
+      []() {});
 
   Bob.link = iwp::NewInboundLink(
       // KeyManager
@@ -272,24 +268,23 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
-          
-          llarp_buffer_t copy(buf.base, buf.sz);
-          if(not Bob.gotLIM)
+        llarp_buffer_t copy(buf.base, buf.sz);
+        if(not Bob.gotLIM)
+        {
+          LinkIntroMessage msg;
+          if(msg.BDecode(&copy))
           {
-            LinkIntroMessage msg;
-            if(msg.BDecode(&copy))
-            { 
-              Bob.gotLIM = s->GotLIM(&msg);
-            }
-            return Bob.gotLIM;
+            Bob.gotLIM = s->GotLIM(&msg);
           }
-          DiscardMessage discard;
-          if(discard.BDecode(&copy))
-          {
-            LogInfo("bog got discard message from alice");
-            return true;
-          }
-          return false;
+          return Bob.gotLIM;
+        }
+        DiscardMessage discard;
+        if(discard.BDecode(&copy))
+        {
+          LogInfo("bog got discard message from alice");
+          return true;
+        }
+        return false;
       },
 
       // SignBufferFunc
@@ -297,13 +292,13 @@ TEST_F(LinkLayerTest, TestIWP)
         return m_crypto.sign(sig, Bob.keyManager->identityKey, buf);
       },
 
-      //SessionEstablishedHandler
+      // SessionEstablishedHandler
       [&](ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         LogInfo("bob established with alice");
         Bob.madeSession = true;
-        
+
         return true;
       },
 
@@ -319,13 +314,13 @@ TEST_F(LinkLayerTest, TestIWP)
       [&](RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); },
 
       // PumpDoneHandler
-      []() {}
-    );
+      []() {});
 
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
-  LogicCall(m_logic, [&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
+  LogicCall(m_logic,
+            [&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
 
   RunMainloop();
   ASSERT_TRUE(Alice.IsGucci());

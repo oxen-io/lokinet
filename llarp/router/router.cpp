@@ -1042,6 +1042,7 @@ namespace llarp
 #if defined(WITH_SYSTEMD)
     ::sd_notify(0, "READY=1");
 #endif
+    LogContext::Instance().DropToRuntimeLevel();
     return _running;
   }
 
@@ -1091,6 +1092,7 @@ namespace llarp
       return;
 
     _stopping.store(true);
+    LogContext::Instance().RevertRuntimeLevel();
     LogInfo("stopping router");
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
