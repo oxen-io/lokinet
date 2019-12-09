@@ -246,8 +246,8 @@ namespace llarp
 
   struct MetricsConfig
   {
-    bool disableMetrics    = false;
-    bool disableMetricLogs = false;
+    bool disableMetrics    = true;
+    bool disableMetricLogs = true;
     fs::path jsonMetricsPath;
     std::string metricTankHost;
     std::map< std::string, std::string > metricTags;
