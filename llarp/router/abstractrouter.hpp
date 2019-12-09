@@ -140,6 +140,9 @@ namespace llarp
     virtual bool
     IsRunning() const = 0;
 
+    virtual bool
+    LooksAlive() const = 0;
+
     /// stop running the router logic gracefully
     virtual void
     Stop() = 0;

@@ -32,6 +32,9 @@
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
+#if defined(WITH_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
 
 namespace llarp
 {
@@ -57,6 +60,7 @@ namespace llarp
 
     _stopping.store(false);
     _running.store(false);
+    _lastTick = llarp::time_now_ms();
   }
 
   Router::~Router()
@@ -286,7 +290,7 @@ namespace llarp
       return;
     auto *self          = static_cast< Router * >(user);
     self->ticker_job_id = 0;
-    LogicCall(self->logic(), std::bind(&Router::Tick, self));
+    self->Tick();
     self->ScheduleTicker(orig);
   }
 
@@ -660,6 +664,10 @@ namespace llarp
     // LogDebug("tick router");
     const auto now = Now();
 
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "WATCHDOG=1");
+#endif
+
     routerProfiling().Tick();
 
     if(ShouldReportStats(now))
@@ -743,7 +751,9 @@ namespace llarp
     });
     // expire paths
     paths.ExpirePaths(now);
-  }  // namespace llarp
+    // update tick timestamp
+    _lastTick = llarp::time_now_ms();
+  }
 
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
@@ -1029,6 +1039,9 @@ namespace llarp
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "READY=1");
+#endif
     return _running;
   }
 

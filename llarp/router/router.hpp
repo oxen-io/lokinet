@@ -222,6 +222,15 @@ namespace llarp
       return _hiddenServiceContext;
     }
 
+    llarp_time_t _lastTick = 0;
+
+    bool
+    LooksAlive() const override
+    {
+      const llarp_time_t now = Now();
+      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+    }
+
     using NetConfig_t = std::unordered_multimap< std::string, std::string >;
 
     /// default network config for default network interface

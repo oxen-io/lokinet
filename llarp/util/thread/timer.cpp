@@ -270,7 +270,7 @@ llarp_timer_tick_all_async(struct llarp_timer_context* t,
                            struct llarp_threadpool* pool, llarp_time_t now)
 {
   llarp_timer_set_time(t, now);
-  if(t->ShouldTriggerTimers(pool->GuessJobLatency()))
+  if(t->ShouldTriggerTimers(0))
     llarp_threadpool_queue_job(pool, std::bind(&llarp_timer_tick_all, t));
 }
 

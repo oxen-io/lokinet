@@ -42,12 +42,6 @@ namespace llarp
     return logic && LogicCall(logic, f);
   }
 
-  void
-  Context::progress()
-  {
-    std::cout << "." << std::flush;
-  }
-
   bool
   Context::Configure()
   {
@@ -167,6 +161,18 @@ __        ___    ____  _   _ ___ _   _  ____
   Context::SetPIDFile(const std::string &fname)
   {
     pidfile = fname;
+  }
+
+  bool
+  Context::IsUp() const
+  {
+    return router && router->IsRunning();
+  }
+
+  bool
+  Context::LooksAlive() const
+  {
+    return router && router->LooksAlive();
   }
 
   int

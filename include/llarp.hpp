@@ -87,6 +87,12 @@ namespace llarp
     bool
     Configure();
 
+    bool
+    IsUp() const;
+
+    bool
+    LooksAlive() const;
+
     /// close async
     void
     CloseAsync();
@@ -116,9 +122,6 @@ namespace llarp
 
     bool
     ReloadConfig();
-
-    void
-    progress();
 
     void
     setupMetrics(const MetricsConfig &metricsConfig);

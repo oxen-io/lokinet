@@ -30,6 +30,7 @@ option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for developmen
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(VENDOR_LIBSODIUM "use vendored libsodium" OFF)
 option(WITH_TESTS "build unit tests" ON)
+option(WITH_SYSTEMD "enable systemd integration for sd_notify" OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -45,8 +46,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
-
-
 
 include(cmake/basic_definitions.cmake)
 
@@ -228,6 +227,15 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif(JEMALLOC)
 
+
+if(WITH_SYSTEMD)
+  pkg_check_modules(SD REQUIRED libsystemd)
+  add_definitions(-DWITH_SYSTEMD)
+  include_directories(${SD_INCLUDE_DIRS})
+  set(SD_LIBS ${SD_LDFLAGS})
+endif()
+
+
 set(ABSEIL_DIR vendor/abseil-cpp)
 include_directories(SYSTEM ${ABSEIL_DIR})
 add_subdirectory(vendor/cxxopts)
@@ -244,7 +252,7 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
-set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY})
+set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
 endif()
