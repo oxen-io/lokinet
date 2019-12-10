@@ -265,6 +265,12 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
   }
 }
 
+bool
+llarp_timer_should_call(struct llarp_timer_context* t)
+{
+  return t->ShouldTriggerTimers(0);
+}
+
 void
 llarp_timer_tick_all_async(struct llarp_timer_context* t,
                            struct llarp_threadpool* pool, llarp_time_t now)
