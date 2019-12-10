@@ -2,7 +2,7 @@ ARG bootstrap="https://i2p.rocks/i2procks.signed"
 FROM alpine:edge as builder
 
 RUN apk update && \
-    apk add build-base cmake git libcap-dev libcap-static libuv-dev libuv-static curl ninja bash binutils-gold
+    apk add build-base cmake git libcap-dev libcap-static libuv-dev libuv-static curl ninja bash binutils-gold curl-dev
 
 WORKDIR /src/
 COPY . /src/
