@@ -14,7 +14,8 @@ namespace llarp
     if(m_Queue)
     {
       llarp_timer_set_time(m_Timer, now);
-      m_Queue(std::bind(&llarp_timer_tick_all, m_Timer));
+      if(llarp_timer_should_call(m_Timer))
+        m_Queue(std::bind(&llarp_timer_tick_all, m_Timer));
       return;
     }
     llarp_timer_tick_all_async(m_Timer, m_Thread, now);
