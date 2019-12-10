@@ -973,7 +973,7 @@ namespace libuv
   void
   Loop::call_soon(std::function< void(void) > f)
   {
-    m_LogicCalls.pushBack(f);
+    m_LogicCalls.tryPushBack(f);
     uv_async_send(&m_LogicCaller);
   }
 
