@@ -76,7 +76,6 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
     llarp::util::SetThreadName("llarp-mainloop");
     if(code == 0)
       code = llarp_main_run(ctx, opts);
-    llarp_main_free(ctx);
   }
   exit_code.set_value(code);
 }
@@ -311,5 +310,9 @@ main(int argc, char *argv[])
 #ifdef _WIN32
   ::WSACleanup();
 #endif
+  if(ctx)
+  {
+    llarp_main_free(ctx);
+  }
   return code;
 }

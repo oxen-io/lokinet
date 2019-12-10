@@ -94,6 +94,11 @@ namespace llarp
       f();
       return true;
     }
+    if(m_Queue)
+    {
+      m_Queue(f);
+      return true;
+    }
     if(m_Thread->LooksFull(5))
     {
       LogErrorExplicit(TAG, LINE,
@@ -111,6 +116,13 @@ namespace llarp
 #undef TAG
 #undef LINE
 #undef METRIC
+  }
+
+  void
+  Logic::SetQueuer(std::function< void(std::function< void(void) >) > q)
+  {
+    m_Queue = q;
+    m_Queue([self = this]() { self->m_ID = std::this_thread::get_id(); });
   }
 
   void
