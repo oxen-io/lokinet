@@ -200,11 +200,11 @@ namespace llarp
       AsyncLokiPing()
       {
         LogInfo("Pinging Lokid");
-        nlohmann::json::number_unsigned_t major(atoi(LLARP_VERSION_MAJ));
-        nlohmann::json::number_unsigned_t minor(atoi(LLARP_VERSION_MIN));
-        nlohmann::json::number_unsigned_t patch(atoi(LLARP_VERSION_PATCH));
-        nlohmann::json params = {
-            {"version", nlohmann::json::array({major, minor, patch})}};
+        nlohmann::json major(atoi(LLARP_VERSION_MAJ));
+        nlohmann::json minor(atoi(LLARP_VERSION_MIN));
+        nlohmann::json patch(atoi(LLARP_VERSION_PATCH));
+        nlohmann::json version({major, minor, patch});
+        nlohmann::json params({{"version", version}});
         QueueRPC("lokinet_ping", std::move(params),
                  util::memFn(&CallerImpl::NewLokinetPingConn, this));
       }
