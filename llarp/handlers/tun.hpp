@@ -122,7 +122,7 @@ namespace llarp
       llarp_vpn_io* vpnif = nullptr;
 
       bool
-      InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info)
+      InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info) override
       {
         if(tunif)
           return false;

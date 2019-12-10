@@ -171,9 +171,10 @@ namespace llarp
 #endif
         visit();
       }
-
+#if defined(LOKINET_DEBUG)
      private:
       mutable NullMutex _access;
+#endif
     };
   }  // namespace util
 }  // namespace llarp
