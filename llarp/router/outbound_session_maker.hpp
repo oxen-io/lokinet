@@ -47,7 +47,7 @@ namespace llarp
         LOCKS_EXCLUDED(_mutex);
 
     void
-    ConnectToRandomRouters(int numDesired, llarp_time_t now) override;
+    ConnectToRandomRouters(int numDesired) override;
 
     util::StatusObject
     ExtractStatus() const override;
