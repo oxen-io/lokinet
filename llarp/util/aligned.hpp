@@ -20,6 +20,9 @@ extern "C"
 {
   extern void
   randombytes(unsigned char* const ptr, unsigned long long sz);
+
+  extern int
+  sodium_is_zero(const unsigned char *n, const size_t nlen);
 }
 namespace llarp
 {
@@ -188,9 +191,7 @@ namespace llarp
     bool
     IsZero() const
     {
-      auto notZero = [](byte_t b) { return b != 0; };
-
-      return std::find_if(begin(), end(), notZero) == end();
+      return sodium_is_zero(data(), size());
     }
 
     void
