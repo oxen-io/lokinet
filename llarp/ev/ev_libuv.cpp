@@ -806,8 +806,7 @@ namespace libuv
     m_LogicCaller.data = this;
     uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
       Loop* l       = static_cast< Loop* >(h->data);
-      Queue_t* jobs = l->m_LogicCalls.load();
-      l->m_LogicCalls.store(new Queue_t());
+      Queue_t* jobs = l->m_LogicCalls.exchange(new Queue_t());
       while(not jobs->empty())
       {
         jobs->front()();

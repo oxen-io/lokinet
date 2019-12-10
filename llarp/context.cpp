@@ -204,6 +204,8 @@ __        ___    ____  _   _ ___ _   _  ____
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
 
+    mainloop->set_logic(logic);
+
     crypto        = std::make_unique< sodium::CryptoLibSodium >();
     cryptoManager = std::make_unique< CryptoManager >(crypto.get());
 
