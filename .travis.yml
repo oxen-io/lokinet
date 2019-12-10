@@ -36,12 +36,6 @@ matrix:
     dist: xenial
     compiler: clang
     env: BUILD_TYPE=Release
-  - name: "native windows debug"
-    os: windows
-    env: BUILD_TYPE=Debug
-  - name: "native windows release"
-    os: windows
-    env: BUILD_TYPE=Release
   - name: "make debug (macOS/clang)"
     os: osx
     osx_image: xcode10.2
@@ -99,6 +93,12 @@ matrix:
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
   allow_failures:
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
 #  - name: "native windows debug"
 #    os: windows
 #    env: BUILD_TYPE=Debug
