@@ -6,6 +6,7 @@
 #include <vector>
 #include <functional>
 #include <util/thread/logic.hpp>
+#include <util/thread/queue.hpp>
 #include <util/meta/memfn.hpp>
 
 namespace libuv
@@ -106,8 +107,7 @@ namespace libuv
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
     uv_async_t m_LogicCaller;
-    using Queue_t       = std::deque< std::function< void(void) > >;
-    using AtomicQueue_t = std::atomic< Queue_t* >;
+    using AtomicQueue_t = llarp::thread::Queue< std::function< void(void) > >;
     AtomicQueue_t m_LogicCalls;
 
 #ifdef LOKINET_DEBUG
