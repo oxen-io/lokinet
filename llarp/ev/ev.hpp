@@ -815,6 +815,9 @@ struct llarp_ev_loop
       }
     }
   }
+
+  virtual void
+  call_soon(std::function< void(void) > f) = 0;
 };
 
 struct PacketBuffer

@@ -63,6 +63,10 @@ namespace llarp
   SetLogLevel(LogLevel lvl)
   {
     LogContext::Instance().curLevel = lvl;
+    if(lvl == eLogDebug)
+    {
+      LogContext::Instance().runtimeLevel = lvl;
+    }
   }
 }  // namespace llarp
 

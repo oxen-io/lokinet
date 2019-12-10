@@ -6,11 +6,14 @@
 #include <vector>
 #include <functional>
 #include <util/thread/logic.hpp>
+#include <util/meta/memfn.hpp>
 
 namespace libuv
 {
   struct Loop final : public llarp_ev_loop
   {
+    Loop();
+
     bool
     init() override;
 
@@ -90,14 +93,22 @@ namespace libuv
     set_logic(std::shared_ptr< llarp::Logic > l) override
     {
       m_Logic = l;
+      m_Logic->SetQueuer(llarp::util::memFn(&Loop::call_soon, this));
     }
 
     std::shared_ptr< llarp::Logic > m_Logic;
+
+    void
+    call_soon(std::function< void(void) > f) override;
 
    private:
     uv_loop_t m_Impl;
     uv_timer_t m_TickTimer;
     std::atomic< bool > m_Run;
+    uv_async_t m_LogicCaller;
+    using Queue_t       = std::deque< std::function< void(void) > >;
+    using AtomicQueue_t = std::atomic< Queue_t* >;
+    AtomicQueue_t m_LogicCalls;
 
 #ifdef LOKINET_DEBUG
     uint64_t last_time;
