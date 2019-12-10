@@ -2,7 +2,7 @@
 
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
-#include <ev/ev.h>
+#include <ev/ev.hpp>
 #include <net/net.hpp>
 #include <util/thread/threading.hpp>
 
@@ -11,7 +11,7 @@
 struct AbyssTestBase : public ::testing::Test
 {
   llarp::sodium::CryptoLibSodium crypto;
-  llarp_ev_loop_ptr loop       = nullptr;
+  llarp_ev_loop_ptr loop = nullptr;
   std::shared_ptr< llarp::Logic > logic;
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
@@ -46,8 +46,9 @@ struct AbyssTestBase : public ::testing::Test
   void
   Start()
   {
-    loop       = llarp_make_ev_loop();
-    logic      = std::make_shared< llarp::Logic >();
+    loop  = llarp_make_ev_loop();
+    logic = std::make_shared< llarp::Logic >();
+    loop->set_logic(logic);
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr.sin_port        = htons((llarp::randint() % 2000) + 2000);

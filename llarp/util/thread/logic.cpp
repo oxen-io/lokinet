@@ -93,7 +93,14 @@ namespace llarp
       metrics::TimerGuard g("logic",
                             std::string(TAG) + ":" + std::to_string(LINE));
 #endif
-      self->m_Killer.TryAccess(func);
+      if(self->m_Queue)
+      {
+        func();
+      }
+      else
+      {
+        self->m_Killer.TryAccess(func);
+      }
     };
     if(can_flush())
     {
