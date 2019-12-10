@@ -86,7 +86,7 @@ namespace llarp
     {
       target = frame;
       worker->addJob(
-          [self = this, user = std::move(u)]() { self->Decrypt(user); });
+          std::bind(&AsyncFrameDecrypter< User >::Decrypt, this, std::move(u)));
     }
   };
 }  // namespace llarp
