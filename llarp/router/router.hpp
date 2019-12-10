@@ -129,7 +129,7 @@ namespace llarp
     }
 
     std::shared_ptr< KeyManager >
-    keyManager() const
+    keyManager() const override
     {
       return m_keyManager;
     }
