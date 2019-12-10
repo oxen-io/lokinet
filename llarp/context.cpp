@@ -33,7 +33,8 @@ namespace llarp
 
   Context::~Context()
   {
-    m_scheduler->stop();
+    if(m_scheduler)
+      m_scheduler->stop();
   }
 
   bool
