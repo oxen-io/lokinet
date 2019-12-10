@@ -805,14 +805,12 @@ namespace libuv
     m_TickTimer.data   = this;
     m_LogicCaller.data = this;
     uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
-      Loop* l       = static_cast< Loop* >(h->data);
-      Queue_t* jobs = l->m_LogicCalls.exchange(new Queue_t());
-      while(not jobs->empty())
+      Loop* l = static_cast< Loop* >(h->data);
+      while(not l->m_LogicCalls.empty())
       {
-        jobs->front()();
-        jobs->pop_front();
+        auto f = l->m_LogicCalls.popFront();
+        f();
       }
-      delete jobs;
     });
     m_Run.store(true);
     return uv_timer_init(&m_Impl, &m_TickTimer) != -1;
@@ -889,9 +887,8 @@ namespace libuv
         nullptr);
   }
 
-  Loop::Loop() : llarp_ev_loop()
+  Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024)
   {
-    m_LogicCalls.store(new Queue_t());
   }
 
   void
@@ -976,7 +973,7 @@ namespace libuv
   void
   Loop::call_soon(std::function< void(void) > f)
   {
-    m_LogicCalls.load()->emplace_back(f);
+    m_LogicCalls.pushBack(f);
     uv_async_send(&m_LogicCaller);
   }
 
