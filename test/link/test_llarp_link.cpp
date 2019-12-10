@@ -239,7 +239,7 @@ TEST_F(LinkLayerTest, TestIWP)
           success =
               status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
           LogInfo("message sent to bob suceess=", success);
-          Stop();
+          this->Stop();
         });
         return true;
       },
