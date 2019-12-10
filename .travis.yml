@@ -92,7 +92,18 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
   allow_failures:
+  - name: "make windows docker image"
+    os: linux
+    dist: xenial
+    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+    services: docker
   - name: "native windows debug"
     os: windows
     env: BUILD_TYPE=Debug
