@@ -8,25 +8,16 @@
 #include <cstring>
 
 // We libuv now
-#ifndef _WIN32
 #include <ev/ev_libuv.hpp>
-#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
 #define SHUT_RDWR SD_BOTH
 #include <ev/ev_win32.hpp>
-#else
-#error No async event loop for your platform, port libuv to your operating system
 #endif
 
 llarp_ev_loop_ptr
 llarp_make_ev_loop()
 {
-#ifndef _WIN32
   llarp_ev_loop_ptr r = std::make_shared< libuv::Loop >();
-#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
-  llarp_ev_loop_ptr r = std::make_shared< llarp_win32_loop >();
-#else
-#error no event loop subclass
-#endif
   r->init();
   r->update_time();
   return r;
