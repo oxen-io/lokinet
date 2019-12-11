@@ -121,10 +121,10 @@ TEST_F(KeyManagerTest, EnsureDefaultConfNames)
 
   // the default config filenames will suffice, this exists as sanity check to
   // protect against the assumptions made below
-  ASSERT_TRUE(conf.router.ourRcFile() == rcFile);
-  ASSERT_TRUE(conf.router.encryptionKeyfile() == encFile);
-  ASSERT_TRUE(conf.router.transportKeyfile() == transportFile);
-  ASSERT_TRUE(conf.router.identKeyfile() == identFile);
+  ASSERT_EQ(conf.router.ourRcFile(), rcFile);
+  ASSERT_EQ(conf.router.encryptionKeyfile(), encFile);
+  ASSERT_EQ(conf.router.transportKeyfile(), transportFile);
+  ASSERT_EQ(conf.router.identKeyfile(), identFile);
 }
 
 TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
