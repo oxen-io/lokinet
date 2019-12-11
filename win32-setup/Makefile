@@ -72,5 +72,14 @@ tap-win32:
 	wget https://snowlight.net/loki/win32-dist/tap-windows-9.9.2_3.7z
 	mv tap-windows-9.9.2_3.7z tuntapv9.7z
 
+libuv:
+	git clone https://github.com/libuv/libuv.git
+	cd libuv; ./autogen.sh; ./configure --host=i686-w64-mingw32 --target=i686-w64-mingw32 CC=$(CC) CXX=$(CXX) CFLAGS="$(CFLAGS)" --disable-shared --prefix=$(PWD)
+	make -C libuv -j48 install
+	make -C libuv -j48 distclean
+	cd libuv; ./configure --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 CC=$(CC64) CXX=$(CXX64) CFLAGS="$(CFLAGS)" --disable-shared
+	make -C libuv -j48
+	cp libuv/.libs/libuv.a $(PWD)/lib64
+
 clean:
 	-rm -rf curl-7* include lib mbedtls-2* *.exe *.dll *.pem *.7z
