@@ -112,7 +112,7 @@ struct win32_tun_io
 //
 // Not only that, the win32 IOCP facility handles timing on its own, you can
 // specify an interval to tick directly into the call to GetQueuedCompletionStatus(2)
-struct llarp_win32_loop : public llarp_ev_loop
+/*struct llarp_win32_loop : public llarp_ev_loop
 {
   upoll_t* upollfd;
   std::shared_ptr< llarp::Logic > m_Logic;
@@ -183,6 +183,6 @@ struct llarp_win32_loop : public llarp_ev_loop
   void
   tick_listeners() override;
 };
-
+*/
 #endif
 #endif
