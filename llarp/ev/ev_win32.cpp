@@ -105,7 +105,7 @@ win32_tun_io::do_write(void* data, size_t sz)
   pkt->sz           = sz;
   pkt->write        = true;
   memset(&pkt->pkt, '\0', sizeof(pkt->pkt));
-  WriteFile(tunif->tun_fd, data, sz, nullptr, p & pkt->pkt);
+  WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
 }
 
 // while this one is called from the event loop
@@ -153,7 +153,7 @@ tun_ev_loop(void* u)
       for(const auto& tun : tun_listeners)
       {
         EnterCriticalSection(&HandlerMtx);
-        logic->call_soon([tun = tun.get()]() {
+        logic->call_soon([tun]() {
           if(tun->t->tick)
             tun->t->tick(tun->t);
           tun->flush_write();

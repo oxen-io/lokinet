@@ -1,0 +1,7 @@
+[16:24:37] (Channel) despair86: http://files.jrsoftware.org/is/5/innosetup-5.6.1-unicode.exe
+[16:29:23] (Channel) despair86: wine [path to ISCC.exe] -DSINGLE_ARCH lokinet-win32.iss
+[16:29:28] (Channel) despair86: should work
+[16:30:11] (Channel) despair86: make -C win32-setup
+[16:30:33] (Channel) despair86: cmake . -DCMAKE_TOOLCHAIN_FILE [options] build
+[16:30:37] (Channel) despair86: make -C build
+[16:30:51] (Channel) despair86: then use wine to build package
