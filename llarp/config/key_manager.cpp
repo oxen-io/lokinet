@@ -211,6 +211,10 @@ namespace llarp
   bool
   KeyManager::loadIdentityFromLokid()
   {
+#if defined(_WIN32) || defined(_WIN64)
+    LogError("service node mode not supported on windows");
+    return false;
+#else
     CURL* curl = curl_easy_init();
     if(curl)
     {
@@ -307,6 +311,7 @@ namespace llarp
       LogError("failed to init curl");
       return false;
     }
+#endif
   }
 
 }  // namespace llarp

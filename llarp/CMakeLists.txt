@@ -96,14 +96,11 @@ set(LIB_PLATFORM_SRC
 
 if (WIN32)
   set(LIB_PLATFORM_SRC
+    ev/ev_win32.cpp
     ${LIB_PLATFORM_SRC}
     win32/win32_inet.c
     win32/win32_intrnl.c
     win32/win32_upoll.c)
-else()
-  set(LIB_PLATFORM_SRC
-      ${LIB_PLATFORM_SRC}
-      ev/ev_libuv.cpp)
 endif(WIN32)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})

@@ -542,8 +542,11 @@ namespace libuv
         llarp::LogError("failed to start ticker");
         return false;
       }
+#if defined(_WIN32) || defined(_WIN64)
+#else
       if(uv_fileno((const uv_handle_t*)&m_Handle, &m_UDP->fd))
         return false;
+#endif
       m_UDP->sendto = &SendTo;
       m_UDP->impl   = this;
       return true;
@@ -640,7 +643,8 @@ namespace libuv
     uv_poll_t m_Handle;
     uv_check_t m_Ticker;
   };
-
+#if defined(_WIN32) || defined(_WIN64)
+#else
   struct tun_glue : public glue
   {
     uv_poll_t m_Handle;
@@ -654,7 +658,7 @@ namespace libuv
     {
       m_Handle.data = this;
       m_Ticker.data = this;
-      readpkt       = false;
+      readpkt = false;
     }
 
     ~tun_glue() override
@@ -784,11 +788,11 @@ namespace libuv
         return false;
       }
       m_Tun->writepkt = &WritePkt;
-      m_Tun->impl     = this;
+      m_Tun->impl = this;
       return true;
     }
   };
-
+#endif
   bool
   Loop::init()
   {
@@ -801,7 +805,10 @@ namespace libuv
 #endif
 
     m_Impl.data = this;
+#if defined(_WIN32) || defined(_WIN64)
+#else
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
+#endif
     m_TickTimer.data   = this;
     m_LogicCaller.data = this;
     uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
@@ -938,14 +945,19 @@ namespace libuv
   bool
   Loop::tun_listen(llarp_tun_io* tun)
   {
+#if defined(_WIN32) || defined(_WIN64)
+    (void)tun;
+    return false;
+#else
     auto* glue = new tun_glue(tun);
-    tun->impl  = glue;
+    tun->impl = glue;
     if(glue->Init(&m_Impl))
     {
       return true;
     }
     delete glue;
     return false;
+#endif
   }
 
   bool

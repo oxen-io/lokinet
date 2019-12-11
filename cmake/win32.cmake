@@ -32,7 +32,7 @@ if(EMBEDDED_CFG)
 endif()
 
 list(APPEND LIBTUNTAP_SRC ${TT_ROOT}/tuntap-windows.c)
-get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
+get_filename_component(EV_SRC "llarp/ev/ev_libuv.cpp" ABSOLUTE)
 add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500)
 set(EXE_LIBS ${STATIC_LIB} ${FS_LIB} ws2_32 iphlpapi)
 
@@ -45,3 +45,19 @@ if (NOT STATIC_LINK_RUNTIME AND NOT MSVC)
   message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
 endif()
+
+if (STATIC_LINK_RUNTIME OR STATIC_LINK)
+  set(LIBUV_USE_STATIC ON)
+endif()
+
+if(LIBUV_ROOT)
+  add_subdirectory(${LIBUV_ROOT})
+  set(LIBUV_INCLUDE_DIRS ${LIBUV_ROOT}/include)
+  set(LIBUV_LIBRARY uv_a)
+  add_definitions(-D_LARGEFILE_SOURCE)
+  add_definitions(-D_FILE_OFFSET_BITS=64)
+elseif(NOT LIBUV_IN_SOURCE)
+  find_package(LibUV 1.28.0 REQUIRED)
+endif()
+
+include_directories(${LIBUV_INCLUDE_DIRS})
