@@ -103,7 +103,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   if(dev)
   {
     dev->setup();
-    return dev->add_ev();  // start up tun and add to event queue
+    return dev->add_ev(loop);  // start up tun and add to event queue
   }
   llarp::LogWarn("Loop could not create tun");
   return false;

@@ -78,7 +78,7 @@ struct win32_tun_io
 
   // first TUN device gets to set up the event port
   bool
-  add_ev();
+  add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
   void
