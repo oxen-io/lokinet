@@ -735,10 +735,4 @@ llarp_win32_loop::tick_listeners()
     LogicCall(m_Logic, func);
 }
 
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
-{
-  return static_cast< llarp::udp_listener* >(u->impl)->RecvMany(pkts);
-}
-
 #endif
