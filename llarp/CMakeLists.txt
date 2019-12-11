@@ -92,7 +92,6 @@ set(LIB_PLATFORM_SRC
 # tun
   ${LIBTUNTAP_SRC}
   ${EV_SRC}
-  ev/ev_libuv.cpp
 )
 
 if (WIN32)
