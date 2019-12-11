@@ -81,6 +81,7 @@ set(LIB_PLATFORM_SRC
   ev/ev.cpp
   ev/pipe.cpp
   ev/vpnio.cpp
+  ev/ev_libuv.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
