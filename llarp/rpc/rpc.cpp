@@ -201,7 +201,7 @@ namespace llarp
       {
         LogInfo("Pinging Lokid");
         nlohmann::json version(
-            {vLLARP_VERSION_MAJ, vLLARP_VERSION_MIN, vLLARP_VERSION_PATCH});
+            {LLARP_VERSION_MAJ, LLARP_VERSION_MIN, LLARP_VERSION_PATCH});
         nlohmann::json params({{"version", version}});
         QueueRPC("lokinet_ping", std::move(params),
                  util::memFn(&CallerImpl::NewLokinetPingConn, this));
