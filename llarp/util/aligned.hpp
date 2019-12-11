@@ -22,7 +22,7 @@ extern "C"
   randombytes(unsigned char* const ptr, unsigned long long sz);
 
   extern int
-  sodium_is_zero(const unsigned char *n, const size_t nlen);
+  sodium_is_zero(const unsigned char* n, const size_t nlen);
 }
 namespace llarp
 {
