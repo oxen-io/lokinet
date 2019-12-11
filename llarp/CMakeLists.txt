@@ -64,15 +64,6 @@ add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 add_dependencies(${UTIL_LIB} genversion)
 
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-if (WIN32)
-  target_include_directories(${UTIL_LIB} PUBLIC ../win32-setup/include)
-  target_compile_definitions(${UTIL_LIB} PUBLIC -DCURL_STATICLIB)
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${LOG_LIB} curl crypt32 ws2_32 iphlpapi)
-  else()
-    target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${LOG_LIB} curl mbedtls mbedx509 mbedcrypto ws2_32 iphlpapi)
-  endif()
-endif()
 if(ANDROID)
   set(LOG_LIB log)
 endif()
@@ -114,8 +105,7 @@ if (WIN32)
     ev/ev_win32.cpp
     ${LIB_PLATFORM_SRC}
     win32/win32_inet.c
-    win32/win32_intrnl.c
-    win32/win32_upoll.c)
+    win32/win32_intrnl.c)
 endif(WIN32)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
