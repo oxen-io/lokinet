@@ -152,13 +152,11 @@ tun_ev_loop(void* u)
       // of the tun logic
       for(const auto& tun : tun_listeners)
       {
-        EnterCriticalSection(&HandlerMtx);
         logic->call_soon([tun]() {
           if(tun->t->tick)
             tun->t->tick(tun->t);
           tun->flush_write();
         });
-        LeaveCriticalSection(&HandlerMtx);
       }
       continue;  // let's go at it once more
     }
@@ -194,13 +192,11 @@ tun_ev_loop(void* u)
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
-    EnterCriticalSection(&HandlerMtx);
     logic->call_soon([ev]() {
       if(ev->t->tick)
         ev->t->tick(ev->t);
       ev->flush_write();
     });
-    LeaveCriticalSection(&HandlerMtx);
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
   return 0;
