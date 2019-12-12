@@ -22,6 +22,9 @@ else()
     add_executable(${EXE} ${EXE_SRC})
     add_executable(${CTL} ${CTL_SRC})
 
+    target_compile_definitions(${EXE} PRIVATE -DVERSIONTAG=${VERSIONTAG})
+    target_compile_definitions(${CTL} PRIVATE -DVERSIONTAG=${VERSIONTAG})
+
     add_log_tag(${EXE})
     add_log_tag(${CTL})
 

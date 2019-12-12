@@ -200,7 +200,7 @@ __        ___    ____  _   _ ___ _   _  ____
   int
   Context::Setup()
   {
-    llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
+    llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
 
@@ -513,7 +513,7 @@ extern "C"
   const char *
   llarp_version()
   {
-    return LLARP_VERSION;
+    return llarp::VERSION_FULL;
   }
 
   ssize_t

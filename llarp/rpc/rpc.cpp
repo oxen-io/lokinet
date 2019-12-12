@@ -200,8 +200,7 @@ namespace llarp
       AsyncLokiPing()
       {
         LogInfo("Pinging Lokid");
-        nlohmann::json version(
-            {LLARP_VERSION_MAJ, LLARP_VERSION_MIN, LLARP_VERSION_PATCH});
+        nlohmann::json version(llarp::VERSION);
         nlohmann::json params({{"version", version}});
         QueueRPC("lokinet_ping", std::move(params),
                  util::memFn(&CallerImpl::NewLokinetPingConn, this));
@@ -371,7 +370,7 @@ namespace llarp
       Response
       DumpVersion() const
       {
-        const Response resp{{"version", LLARP_VERSION}};
+        const Response resp{{"version", llarp::VERSION_FULL}};
         return resp;
       }
 
