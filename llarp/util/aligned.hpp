@@ -28,7 +28,7 @@ namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
   template < size_t sz >
-  struct alignas(uint64_t) AlignedBuffer
+  struct alignas(std::max_align_t) AlignedBuffer
   {
     static constexpr size_t SIZE = sz;
 
