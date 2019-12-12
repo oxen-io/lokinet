@@ -53,10 +53,6 @@ include_directories("${libuv_SOURCE_DIR}/include")
 add_loki_dir(vendor/gtest)
 add_subdirectory(${ABSEIL_DIR} "vendor/abseil-cpp")
 
-if (FS_LIB STREQUAL "cppbackport")
-  add_loki_dir(vendor)
-endif()
-
 add_loki_dir(crypto)
 add_loki_dir(llarp)
 add_loki_dir(libabyss)

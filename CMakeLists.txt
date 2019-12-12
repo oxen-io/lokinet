@@ -249,7 +249,7 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
-set(LIBS ${MALLOC_LIB} ${FS_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
+set(LIBS ${MALLOC_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
 endif()
