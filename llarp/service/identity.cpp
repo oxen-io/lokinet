@@ -87,7 +87,7 @@ namespace llarp
       bool exists = fs::exists(fname, ec);
       if(ec)
       {
-        LogError("Could not query file status for ", fname);
+        LogError("Could not query file status for ", fname, ": ", ec.message());
         return false;
       }
 
