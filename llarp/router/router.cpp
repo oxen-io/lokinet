@@ -357,11 +357,11 @@ namespace llarp
   {
     // Set netid before anything else
     if(!conf->router.netId().empty()
-       && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
+       && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
     {
       const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
-                     "' which does not equal '", Version::LLARP_NET_ID,
+                     "' which does not equal '", llarp::DEFAULT_NETID,
                      "' you will run as a different network, good luck "
                      "and don't forget: something something MUH traffic "
                      "shape correlation !!!!");

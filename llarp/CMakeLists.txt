@@ -1,3 +1,5 @@
+include(Version)
+
 set(LIB_UTIL_SRC
   config/config.cpp
   config/ini.cpp
@@ -7,7 +9,7 @@ set(LIB_UTIL_SRC
   constants/link_layer.cpp
   constants/path.cpp
   constants/proto.cpp
-  constants/version.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/aligned.cpp
   util/bencode.cpp
   util/bits.cpp
@@ -58,6 +60,9 @@ set(LIB_UTIL_SRC
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+
+add_dependencies(${UTIL_LIB} genversion)
+
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 if(ANDROID)
   set(LOG_LIB log)

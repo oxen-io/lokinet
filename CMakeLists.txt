@@ -208,15 +208,6 @@ if(SHADOW)
   include(cmake/shadow.cmake)
 endif(SHADOW)
 
-if(NOT GIT_VERSION)
-  exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION_UNSTRIP)
-  string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
-endif(NOT GIT_VERSION)
-
-string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
-add_definitions("-DGIT_REV=\"${GIT_VERSION_REAL}\"")
-
-
 
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
