@@ -229,7 +229,7 @@ TEST_F(LinkLayerTest, TestIWP)
       },
 
       // SessionEstablishedHandler
-      [&](ILinkSession* s) -> bool {
+      [&, this](ILinkSession* s) -> bool {
         const auto rc = s->GetRemoteRC();
         if(rc.pubkey != Bob.GetRC().pubkey)
           return false;
@@ -239,7 +239,7 @@ TEST_F(LinkLayerTest, TestIWP)
           success =
               status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
           LogInfo("message sent to bob suceess=", success);
-          Stop();
+          this->Stop();
         });
         return true;
       },

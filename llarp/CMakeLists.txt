@@ -68,7 +68,7 @@ if(ANDROID)
   set(LOG_LIB log)
 endif()
 
-target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${LOG_LIB})
+target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB})
 
 target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
 
@@ -259,7 +259,7 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${CURL_LIBRARIES})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
@@ -271,7 +271,7 @@ if(WITH_SHARED)
   set(LIBS ${LIBS} Threads::Threads)
   target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ${FS_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
   else()
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()
