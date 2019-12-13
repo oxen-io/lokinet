@@ -4,6 +4,7 @@
 #include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
+#include <naming/lns_name_cache.hpp>
 #include <net/ip_range_map.hpp>
 #include <net/net.hpp>
 #include <path/path.hpp>
@@ -61,7 +62,8 @@ namespace llarp
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
-                      public IDataHandler
+                      public IDataHandler,
+                      public naming::INameLookupHandler
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
@@ -73,6 +75,11 @@ namespace llarp
 
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
       ~Endpoint() override;
+
+      /// do actual name lookup as client
+      bool
+      LookupNameAsync(const std::string name,
+                      naming::NameLookupResultHandler h) override;
 
       /// return true if we are ready to recv packets from the void
       bool
@@ -290,6 +297,10 @@ namespace llarp
       EnsurePathToService(const Address remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
+      /// same as ensure path to service but using LNS
+      bool
+      EnsurePathToName(const std::string name, PathEnsureHook hook);
+
       using SNodeEnsureHook =
           std::function< void(const RouterID, exit::BaseSession_ptr) >;
 
@@ -439,6 +450,13 @@ namespace llarp
       hooks::Backend_ptr m_OnReady;
 
      private:
+      naming::NameCache m_NameCache;
+
+      bool
+      DoNameLookup(const std::string name,
+                   const std::vector< path::Path_ptr >& paths,
+                   naming::NameLookupResultHandler h);
+
       void
       FlushRecvData();
 
@@ -455,6 +473,9 @@ namespace llarp
 
       std::unique_ptr< EndpointState > m_state;
       thread::Queue< RecvDataEvent > m_RecvQueue;
+
+      std::unordered_map< std::string, NameLookupBatchJob >
+          m_PendingNameLookupJobs;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;

@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -191,6 +192,15 @@ namespace llarp
       HasNode(const Key_t& key) const
       {
         return nodes.find(key) != nodes.end();
+      }
+
+      absl::optional< Val_t >
+      Get(const Key_t& k) const
+      {
+        auto itr = nodes.find(k);
+        if(itr == nodes.end())
+          return {};
+        return itr->second;
       }
 
       // remove all nodes who's key matches a predicate

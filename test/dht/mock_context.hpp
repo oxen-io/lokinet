@@ -11,7 +11,6 @@ namespace llarp
   {
     struct MockContext final : public dht::AbstractContext
     {
-
       MOCK_CONST_METHOD1(StoreRC, void(const RouterContact));
 
       MOCK_METHOD2(LookupRouter, bool(const RouterID&, RouterLookupHandler));
@@ -65,6 +64,9 @@ namespace llarp
           void(const dht::Key_t& requester, uint64_t txid,
                const dht::Key_t& target, bool recursive,
                std::vector< std::unique_ptr< dht::IMessage > >& replies));
+
+      MOCK_METHOD3(HandleLNSLookup,
+                   bool(const std::string, uint64_t, const PathID_t));
 
       MOCK_METHOD2(RelayRequestForPath,
                    bool(const PathID_t& localPath, const dht::IMessage& msg));

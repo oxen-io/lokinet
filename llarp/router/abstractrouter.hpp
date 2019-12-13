@@ -10,6 +10,7 @@
 #include <ev/ev.h>
 #include <functional>
 #include <router_contact.hpp>
+#include <naming/i_name_lookup_handler.hpp>
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
@@ -133,6 +134,9 @@ namespace llarp
 
     virtual bool
     StartJsonRpc() = 0;
+
+    virtual naming::INameLookupHandler &
+    NameLookupHandler() = 0;
 
     virtual bool
     Run() = 0;

@@ -159,6 +159,10 @@ namespace llarp
       static void
       handle_explore_timer(void* user, uint64_t orig, uint64_t left);
 
+      bool
+      HandleLNSLookup(const std::string, uint64_t txid,
+                      const PathID_t pathid) override;
+
       /// explore dht for new routers
       void
       Explore(size_t N = 3);
@@ -636,6 +640,49 @@ namespace llarp
       TXOwner whoasked(OurKey(), txid);
       _pendingTagLookups.NewTX(peer, whoasked, tag,
                                new LocalTagLookup(path, txid, tag, this));
+    }
+
+    bool
+    Context::HandleLNSLookup(const std::string name, uint64_t txid,
+                             const PathID_t pathid)
+    {
+      return router->NameLookupHandler().LookupNameAsync(
+          name,
+          [txid, pathid,
+           self = this](absl::optional< service::Address > result) {
+            auto path = self->GetRouter()->pathContext().GetByUpstream(
+                self->OurKey().as_array(), pathid);
+            if(path == nullptr)
+              return;
+            routing::DHTMessage msg;
+            if(not result.has_value())
+            {
+              msg.M.emplace_back(new GotIntroMessage({}, txid));
+              path->SendRoutingMessage(msg, self->GetRouter());
+              return;
+            }
+            const Key_t addr(result.value().data());
+            auto introset_maybe = self->services()->Get(addr);
+            if(introset_maybe.has_value())
+            {
+              msg.M.emplace_back(
+                  new GotIntroMessage({introset_maybe.value().introset}, txid));
+              path->SendRoutingMessage(msg, self->GetRouter());
+              return;
+            }
+            Key_t peer;
+            if(self->Nodes()->FindClosest(addr, peer))
+            {
+              if(peer != self->OurKey())
+              {
+                const service::Address saddr(addr);
+                self->LookupIntroSetForPath(saddr, txid, pathid, peer);
+                return;
+              }
+            }
+            msg.M.emplace_back(new GotIntroMessage({}, txid));
+            path->SendRoutingMessage(msg, self->GetRouter());
+          });
     }
 
     bool

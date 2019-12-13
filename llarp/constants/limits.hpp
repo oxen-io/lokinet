@@ -1,6 +1,8 @@
 #ifndef LLARP_CONSTANTS_LIMITS_HPP
 #define LLARP_CONSTANTS_LIMITS_HPP
 #include <cstddef>
+#include <util/buffer.hpp>
+
 namespace llarp
 {
   namespace limits
@@ -20,6 +22,18 @@ namespace llarp
 
     /// client limit parameters
     const extern LimitParameters client;
+
+    /// limits on lns
+    struct LNSLimits
+    {
+      std::size_t MaxNameSize;
+
+      bool
+      NameIsValid(const llarp_buffer_t& namebuf) const;
+    };
+
+    const extern LNSLimits lns;
+
   }  // namespace limits
 }  // namespace llarp
 

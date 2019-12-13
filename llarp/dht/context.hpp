@@ -69,6 +69,11 @@ namespace llarp
       virtual bool
       HasRouterLookup(const RouterID& target) const = 0;
 
+      /// handle an LMS name lookup
+      virtual bool
+      HandleLNSLookup(const std::string name, uint64_t txid,
+                      const PathID_t pathID) = 0;
+
       /// on behalf of whoasked request introsets with tag from dht router with
       /// key askpeer with Recursion depth R
       virtual void

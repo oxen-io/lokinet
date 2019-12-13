@@ -17,10 +17,16 @@ namespace llarp
       llarp::service::Tag N;
       uint64_t T   = 0;
       bool relayed = false;
+      std::string Name;
 
       FindIntroMessage(const Key_t& from, bool relay) : IMessage(from)
       {
         relayed = relay;
+      }
+
+      FindIntroMessage(uint64_t txid, const std::string name)
+          : IMessage({}), T(txid), Name(name)
+      {
       }
 
       FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid,

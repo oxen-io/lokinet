@@ -36,8 +36,22 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include <naming/i_name_lookup_handler.hpp>
+
 namespace llarp
 {
+  struct NopResolver final : public naming::INameLookupHandler
+  {
+    bool
+    LookupNameAsync(const std::string name,
+                    naming::NameLookupResultHandler h) override
+    {
+      (void)name;
+      h({});
+      return true;
+    }
+  };
+
   Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
                  llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > l)
       : ready(false)
@@ -106,6 +120,15 @@ namespace llarp
   Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);
+  }
+
+  naming::INameLookupHandler &
+  Router::NameLookupHandler()
+  {
+    static NopResolver nopResolver;
+    if(rpcCaller)
+      return *rpcCaller.get();
+    return nopResolver;
   }
 
   bool

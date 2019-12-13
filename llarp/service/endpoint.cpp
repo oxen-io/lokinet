@@ -22,6 +22,7 @@
 #include <hook/shell.hpp>
 
 #include <utility>
+#include <unordered_set>
 
 namespace llarp
 {
@@ -38,6 +39,73 @@ namespace llarp
       m_state->m_Name   = name;
       m_state->m_Tag.Zero();
       m_RecvQueue.enable();
+    }
+
+    bool
+    Endpoint::LookupNameAsync(const std::string name,
+                              naming::NameLookupResultHandler h)
+    {
+      if(HasNameLookupFor(name))
+        return false;
+
+      static constexpr size_t MinRequiredSNForLNS = 5;
+      std::unordered_set< RouterID, RouterID::Hash > endpoints;
+      std::vector< path::Path_ptr > chosen;
+      const llarp_time_t now = Now();
+      ForEachPath([&endpoints, &chosen, now](auto& path) {
+        if(path->IsReady()
+           && not path->ExpiresSoon(now, NameLookupBatchJob::Lifetime))
+        {
+          if(endpoints.emplace(path->Endpoint()).second)
+          {
+            chosen.emplace_back(path);
+          }
+        }
+      });
+      if(endpoints.size() < MinRequiredSNForLNS)
+      {
+        LogError(Name(),
+                 " does not have enough unique endpoints for lns lookup, need "
+                 "at least ",
+                 MinRequiredSNForLNS, " but have ", endpoints.size());
+        return false;
+      }
+
+      return DoNameLookup(name, chosen, h);
+    }
+
+    bool
+    Endpoint::HasNameLookupFor(const std::string name)
+    {
+      return m_PendingNameLookups.find(name) != m_PendingNameLookups.end();
+    }
+
+    bool
+    Endpoint::DoNameLookup(const std::string name,
+                           const std::vector< path::Path_ptr >& paths,
+                           naming::NameLoookupResultHandler h)
+    {
+      auto& job     = m_PendingNameLookups[name];
+      job.handler   = h;
+      job.Name      = name;
+      job.expiresAt = Now() + NameLookupBatchJob::Lifetime;
+      for(const auto& path : paths)
+      {
+        job.MakeRequest(this, path, GenTXID());
+      }
+      return true;
+    }
+
+    bool
+    Endpoint::EnsurePathToName(const std::string name, PathEnsureHook hook)
+    {
+      return m_NameCache.GetCachedOrLookupAsync(
+          name, *this, [self = this, hook](auto maybe) {
+            if(maybe.has_value())
+              self->EnsurePathToService(maybe.value(), hook);
+            else
+              hook({}, nullptr);
+          });
     }
 
     bool
@@ -175,6 +243,21 @@ namespace llarp
     {
       const auto now = llarp::time_now_ms();
       path::Builder::Tick(now);
+
+      // decay name cache
+      m_NameCache.Decay(now);
+
+      {
+        auto itr = m_PendingNameLookups.begin();
+        while(itr != m_PendingNameLookups.end())
+        {
+          if(itr->second.expiresAt <= now)
+            itr = m_PendingNameLookups.erase(itr);
+          else
+            ++itr;
+        }
+      }
+
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {

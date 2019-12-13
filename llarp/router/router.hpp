@@ -286,6 +286,9 @@ namespace llarp
       return _outboundSessionMaker;
     }
 
+    naming::INameLookupHandler &
+    NameLookupHandler() override;
+
     ILinkManager &
     linkManager() override
     {

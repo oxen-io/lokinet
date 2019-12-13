@@ -158,6 +158,88 @@ namespace llarp
       }
     };
 
+    struct NameLookupHandler final : public CallerHandler
+    {
+      const std::string name;
+      using Callback_t = llarp::naming::NameLookupResultHandler;
+      Callback_t handler;
+      ~NameLookupHandler() override = default;
+
+      NameLookupHandler(::abyss::http::ConnImpl* impl, CallerImpl* parent,
+                        const std::string req_name, Callback_t h)
+          : CallerHandler(impl, parent), name(req_name), handler(std::move(h))
+      {
+      }
+
+      bool
+      HandleJSONResult(const nlohmann::json& result) override
+      {
+        if(not result.is_object())
+        {
+          handler({});
+          return false;
+        }
+        {
+          const auto itr = result.find("status");
+          if(itr == result.end())
+          {
+            handler({});
+            return false;
+          }
+          if(not itr->is_string())
+          {
+            handler({});
+            return false;
+          }
+          const auto status = itr->get< std::string >();
+          if(status != "OK")
+          {
+            handler({});
+            return false;
+          }
+        }
+        {
+          const auto itr = result.find("results");
+          if(itr == result.end())
+          {
+            handler({});
+            return false;
+          }
+          if(not itr->is_object())
+          {
+            handler({});
+            return false;
+          }
+          const auto o_itr = itr->find(name);
+          if(o_itr == result.end())
+          {
+            handler({});
+            return false;
+          }
+          if(not o_itr->is_string())
+          {
+            handler({});
+            return false;
+          }
+          const auto found_addr = itr->get< std::string >();
+          llarp::service::Address addr;
+          if(not addr.FromString(found_addr))
+          {
+            handler({});
+            return false;
+          }
+          handler(addr);
+        }
+        return true;
+      }
+
+      void
+      HandleError() override
+      {
+        handler({});
+      }
+    };
+
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
       AbstractRouter* router;
@@ -169,6 +251,20 @@ namespace llarp
 
       CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
       {
+      }
+
+      bool
+      LookupNameAsync(const std::string name,
+                      llarp::naming::NameLookupResultHandler h)
+      {
+        nlohmann::json params = {{"name", name}};
+        QueueRPC("get_lns_pubkey", std::move(params),
+                 [name, h, self = this](abyss::http::ConnImpl* impl)
+                     -> abyss::http::IRPCClientHandler* {
+                   return new NameLookupHandler(impl, self, name, h);
+                 });
+        Flush();
+        return true;
       }
 
       void
@@ -444,6 +540,13 @@ namespace llarp
     }
 
     Caller::~Caller() = default;
+
+    bool
+    Caller::LookupNameAsync(const std::string name,
+                            llarp::naming::NameLookupResultHandler h)
+    {
+      return m_Impl->LookupNameAsync(name, h);
+    }
 
     void
     Caller::Stop()

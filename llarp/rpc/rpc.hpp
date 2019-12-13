@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+#include <naming/i_name_lookup_handler.hpp>
+
 namespace llarp
 {
   struct PubKey;
@@ -36,7 +38,7 @@ namespace llarp
     struct CallerImpl;
 
     /// jsonrpc caller
-    struct Caller
+    struct Caller : public llarp::naming::INameLookupHandler
     {
       Caller(AbstractRouter* r);
       ~Caller();
@@ -56,6 +58,10 @@ namespace llarp
       /// do per second tick
       void
       Tick(llarp_time_t now);
+
+      bool
+      LookupNameAsync(const std::string name,
+                      llarp::naming::NameLookupResultHandler h) override;
 
      private:
       std::unique_ptr< CallerImpl > m_Impl;

@@ -2,6 +2,7 @@
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
 #include <routing/message.hpp>
+#include <constants/limits.hpp>
 
 namespace llarp
 {
@@ -13,6 +14,18 @@ namespace llarp
     FindIntroMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val)
     {
       bool read = false;
+      if(k == "L")
+      {
+        llarp_buffer_t strbuf;
+        if(not bencode_read_string(val, &strbuf))
+          return false;
+        if(not llarp::limits::lns.NameIsValid(strbuf))
+        {
+          return false;
+        }
+        Name = std::string((char*)strbuf.base, strbuf.sz);
+        return true;
+      }
 
       if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
         return false;
@@ -42,6 +55,14 @@ namespace llarp
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
+
+      if(not Name.empty())
+      {
+        if(not bencode_write_bytestring(buf, "L", 1))
+          return false;
+        if(not bencode_write_bytestring(buf, Name.data(), Name.size()))
+          return false;
+      }
       if(N.Empty())
       {
         // recursion
@@ -86,6 +107,15 @@ namespace llarp
       }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
+      if(not Name.empty())
+      {
+        if(not relayed)
+        {
+          return false;
+        }
+        return dht.HandleLNSLookup(Name, T, pathID);
+      }
+
       if(N.Empty())
       {
         llarp::LogInfo("lookup ", S.ToString());

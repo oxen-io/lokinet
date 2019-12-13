@@ -193,6 +193,8 @@ set(LIB_SRC
   messages/relay.cpp
   messages/relay_commit.cpp
   messages/relay_status.cpp
+  naming/i_name_lookup_handler.cpp
+  naming/lns_name_cache.cpp
   net/address_info.cpp
   net/exit_info.cpp
   nodedb.cpp
