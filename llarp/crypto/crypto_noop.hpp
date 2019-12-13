@@ -180,6 +180,12 @@ namespace llarp
       std::copy_n(secret.begin(), SharedSecret::SIZE, block.begin());
       return true;
     }
+
+    bool
+    check_identity_privkey(const SecretKey &) override
+    {
+      return true;
+    }
   };
 }  // namespace llarp
 

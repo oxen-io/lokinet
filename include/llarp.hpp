@@ -1,6 +1,6 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
-
+#include <llarp.h>
 #include <util/fs.hpp>
 #include <util/types.hpp>
 #include <ev/ev.hpp>
@@ -43,6 +43,10 @@ namespace llarp
 
   struct Context
   {
+    /// get context from main pointer
+    static Context *
+    Get(llarp_main *);
+
     Context();
     ~Context();
 
@@ -72,22 +76,36 @@ namespace llarp
     LoadDatabase();
 
     int
-    IterateDatabase(llarp_nodedb_iter &i);
-
-    bool
-    PutDatabase(struct llarp::RouterContact &rc);
-
-    llarp::RouterContact *
-    GetDatabase(const byte_t *pk);
+    Setup();
 
     int
-    Setup(bool debug = false);
-
-    int
-    Run();
+    Run(llarp_main_runtime_opts opts);
 
     void
     HandleSignal(int sig);
+
+    bool
+    Configure();
+
+    bool
+    IsUp() const;
+
+    bool
+    LooksAlive() const;
+
+    /// close async
+    void
+    CloseAsync();
+
+    /// wait until closed and done
+    void
+    Wait();
+
+    /// call a function in logic thread
+    /// return true if queued for calling
+    /// return false if not queued for calling
+    bool
+    CallSafe(std::function< void(void) > f);
 
    private:
     void
@@ -99,9 +117,6 @@ namespace llarp
     void
     RemovePIDFile() const;
 
-    bool
-    Configure();
-
     void
     SigINT();
 
@@ -109,17 +124,12 @@ namespace llarp
     ReloadConfig();
 
     void
-    progress();
-
-    void
     setupMetrics(const MetricsConfig &metricsConfig);
 
     std::string configfile;
     std::string pidfile;
+    std::unique_ptr< std::promise< void > > closeWaiter;
   };
 }  // namespace llarp
-
-llarp::Context *
-llarp_main_get_context(llarp_main *m);
 
 #endif

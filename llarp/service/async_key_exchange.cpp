@@ -26,34 +26,33 @@ namespace llarp
     }
 
     void
-    AsyncKeyExchange::Result(void* user)
+    AsyncKeyExchange::Result(std::shared_ptr< AsyncKeyExchange > self,
+                             std::shared_ptr< ProtocolFrame > frame)
     {
-      auto* self = static_cast< AsyncKeyExchange* >(user);
       // put values
       self->handler->PutSenderFor(self->msg.tag, self->m_remote, false);
       self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
       self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
       self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
-      self->hook(self->frame);
-      delete self;
+      self->hook(frame);
     }
 
     void
-    AsyncKeyExchange::Encrypt(void* user)
+    AsyncKeyExchange::Encrypt(std::shared_ptr< AsyncKeyExchange > self,
+                              std::shared_ptr< ProtocolFrame > frame)
     {
-      auto* self = static_cast< AsyncKeyExchange* >(user);
       // derive ntru session key component
       SharedSecret K;
       auto crypto = CryptoManager::instance();
-      crypto->pqe_encrypt(self->frame.C, K, self->introPubKey);
+      crypto->pqe_encrypt(frame->C, K, self->introPubKey);
       // randomize Nonce
-      self->frame.N.Randomize();
+      frame->N.Randomize();
       // compure post handshake session key
       // PKE (A, B, N)
       SharedSecret sharedSecret;
       path_dh_func dh_client = util::memFn(&Crypto::dh_client, crypto);
       if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
-                                            self->m_remote, self->frame.N))
+                                            self->m_remote, frame->N))
       {
         LogError("failed to derive x25519 shared key component");
       }
@@ -70,12 +69,12 @@ namespace llarp
       // set version
       self->msg.version = LLARP_PROTO_VERSION;
       // encrypt and sign
-      if(self->frame.EncryptAndSign(self->msg, K, self->m_LocalIdentity))
-        self->logic->queue_job({self, &Result});
+      if(frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
+        LogicCall(self->logic,
+                  std::bind(&AsyncKeyExchange::Result, self, frame));
       else
       {
         LogError("failed to encrypt and sign");
-        delete self;
       }
     }
   }  // namespace service

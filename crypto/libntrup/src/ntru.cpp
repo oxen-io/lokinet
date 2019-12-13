@@ -1,24 +1,19 @@
 #include <libntrup/ntru.h>
-#include <stdbool.h>
-
-#include <stdio.h>  // printf
 
 #if __AVX2__
 #include <cpuid.h>
 #include <array>
 
-std::array< int, 4 >
-CPUID(int funcno)
-{
-  std::array< int, 4 > cpuinfo;
-  __cpuid(funcno, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
-  return cpuinfo;
-}
-
 bool
 supports_avx2()
 {
-  return CPUID(0).at(0) >= 7 && CPUID(7).at(1) & (1 << 5);
+  std::array< int, 4 > cpuinfo;
+  __cpuid(0, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
+  if (cpuinfo[0] < 7)
+    return false;
+
+  __cpuid_count(7, 0, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
+  return cpuinfo[1] & (1 << 5);
 }
 
 #else

@@ -4,6 +4,8 @@
 #include <crypto/types.hpp>
 #include <util/types.hpp>
 #include <crypto/encrypted_frame.hpp>
+#include <messages/relay.hpp>
+#include <vector>
 
 #include <memory>
 
@@ -22,6 +24,10 @@ namespace llarp
   {
     struct IHopHandler
     {
+      using TrafficEvent_t   = std::pair< std::vector< byte_t >, TunnelNonce >;
+      using TrafficQueue_t   = std::vector< TrafficEvent_t >;
+      using TrafficQueue_ptr = std::shared_ptr< TrafficQueue_t >;
+
       virtual ~IHopHandler() = default;
 
       virtual bool
@@ -35,14 +41,13 @@ namespace llarp
       SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) = 0;
 
       // handle data in upstream direction
-      virtual bool
+      bool
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     AbstractRouter* r) = 0;
-
+                     AbstractRouter*);
       // handle data in downstream direction
-      virtual bool
+      bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       AbstractRouter* r) = 0;
+                       AbstractRouter*);
 
       /// return timestamp last remote activity happened at
       virtual llarp_time_t
@@ -57,9 +62,29 @@ namespace llarp
       {
         return m_SequenceNum++;
       }
+      virtual void
+      FlushUpstream(AbstractRouter* r) = 0;
+
+      virtual void
+      FlushDownstream(AbstractRouter* r) = 0;
 
      protected:
       uint64_t m_SequenceNum = 0;
+      TrafficQueue_ptr m_UpstreamQueue;
+      TrafficQueue_ptr m_DownstreamQueue;
+
+      virtual void
+      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
+
+      virtual void
+      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;
+
+      virtual void
+      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                        AbstractRouter* r) = 0;
+      virtual void
+      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                          AbstractRouter* r) = 0;
     };
 
     using HopHandler_ptr = std::shared_ptr< IHopHandler >;

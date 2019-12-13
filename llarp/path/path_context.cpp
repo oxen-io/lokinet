@@ -55,11 +55,9 @@ namespace llarp
     PathContext::FindOwnedPathsWithEndpoint(const RouterID& r)
     {
       EndpointPathPtrSet found;
-      m_OurPaths.ForEach([&](const PathSet_ptr& set) {
-        set->ForEachPath([&](const Path_ptr& p) {
-          if(p->Endpoint() == r && p->IsReady())
-            found.insert(p);
-        });
+      m_OurPaths.ForEach([&](const Path_ptr& p) {
+        if(p->Endpoint() == r && p->IsReady())
+          found.insert(p);
       });
       return found;
     }
@@ -83,12 +81,12 @@ namespace llarp
 
       return true;
     }
-    template < typename Map_t, typename Key_t, typename CheckValue_t,
-               typename GetFunc_t >
+    template < typename Lock_t, typename Map_t, typename Key_t,
+               typename CheckValue_t, typename GetFunc_t >
     HopHandler_ptr
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
-      util::Lock lock(&map.first);
+      Lock_t lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -98,11 +96,12 @@ namespace llarp
       return nullptr;
     }
 
-    template < typename Map_t, typename Key_t, typename CheckValue_t >
+    template < typename Lock_t, typename Map_t, typename Key_t,
+               typename CheckValue_t >
     bool
     MapHas(Map_t& map, const Key_t& k, CheckValue_t check)
     {
-      util::Lock lock(&map.first);
+      Lock_t lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -112,28 +111,30 @@ namespace llarp
       return false;
     }
 
-    template < typename Map_t, typename Key_t, typename Value_t >
+    template < typename Lock_t, typename Map_t, typename Key_t,
+               typename Value_t >
     void
     MapPut(Map_t& map, const Key_t& k, const Value_t& v)
     {
-      util::Lock lock(&map.first);
+      Lock_t lock(&map.first);
       map.second.emplace(k, v);
     }
 
-    template < typename Map_t, typename Visit_t >
+    template < typename Lock_t, typename Map_t, typename Visit_t >
     void
     MapIter(Map_t& map, Visit_t v)
     {
-      util::Lock lock(map.first);
+      Lock_t lock(map.first);
       for(const auto& item : map.second)
         v(item);
     }
 
-    template < typename Map_t, typename Key_t, typename Check_t >
+    template < typename Lock_t, typename Map_t, typename Key_t,
+               typename Check_t >
     void
     MapDel(Map_t& map, const Key_t& k, Check_t check)
     {
-      util::Lock lock(map.first);
+      Lock_t lock(map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second;)
       {
@@ -148,35 +149,34 @@ namespace llarp
     PathContext::AddOwnPath(PathSet_ptr set, Path_ptr path)
     {
       set->AddPath(path);
-      MapPut(m_OurPaths, path->TXID(), set);
-      MapPut(m_OurPaths, path->RXID(), set);
+      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->TXID(), path);
+      MapPut< SyncOwnedPathsMap_t::Lock_t >(m_OurPaths, path->RXID(), path);
     }
 
     bool
     PathContext::HasTransitHop(const TransitHopInfo& info)
     {
-      return MapHas(m_TransitPaths, info.txID,
-                    [info](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return info == hop->info;
-                    });
+      return MapHas< SyncTransitMap_t::Lock_t >(
+          m_TransitPaths, info.txID,
+          [info](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return info == hop->info;
+          });
     }
 
     HopHandler_ptr
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(
+      auto own = MapGet< SyncOwnedPathsMap_t::Lock_t >(
           m_OurPaths, id,
-          [](const PathSet_ptr) -> bool {
+          [](const Path_ptr) -> bool {
             // TODO: is this right?
             return true;
           },
-          [remote, id](PathSet_ptr p) -> HopHandler_ptr {
-            return p->GetByUpstream(remote, id);
-          });
+          [](Path_ptr p) -> HopHandler_ptr { return p; });
       if(own)
         return own;
 
-      return MapGet(
+      return MapGet< SyncTransitMap_t::Lock_t >(
           m_TransitPaths, id,
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
             return hop->info.upstream == remote;
@@ -190,7 +190,7 @@ namespace llarp
     PathContext::TransitHopPreviousIsRouter(const PathID_t& path,
                                             const RouterID& otherRouter)
     {
-      util::Lock lock(&m_TransitPaths.first);
+      SyncTransitMap_t::Lock_t lock(&m_TransitPaths.first);
       auto itr = m_TransitPaths.second.find(path);
       if(itr == m_TransitPaths.second.end())
         return false;
@@ -200,7 +200,7 @@ namespace llarp
     HopHandler_ptr
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(
+      return MapGet< SyncTransitMap_t::Lock_t >(
           m_TransitPaths, id,
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
             return hop->info.downstream == remote;
@@ -214,11 +214,11 @@ namespace llarp
     PathContext::GetLocalPathSet(const PathID_t& id)
     {
       auto& map = m_OurPaths;
-      util::Lock lock(&map.first);
+      SyncOwnedPathsMap_t::Lock_t lock(&map.first);
       auto itr = map.second.find(id);
       if(itr != map.second.end())
       {
-        return itr->second;
+        return itr->second->m_PathSet->GetSelf();
       }
       return nullptr;
     }
@@ -235,13 +235,13 @@ namespace llarp
       return m_Router;
     }
 
-    HopHandler_ptr
+    TransitHop_ptr
     PathContext::GetPathForTransfer(const PathID_t& id)
     {
-      RouterID us(OurRouterID());
+      const RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(&map.first);
+        SyncTransitMap_t::Lock_t lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -253,18 +253,48 @@ namespace llarp
     }
 
     void
+    PathContext::PumpUpstream()
+    {
+      m_TransitPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushUpstream(m_Router); });
+    }
+
+    void
+    PathContext::PumpDownstream()
+    {
+      m_TransitPaths.ForEach(
+          [&](auto& ptr) { ptr->FlushDownstream(m_Router); });
+      m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(m_Router); });
+    }
+
+    void
     PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
-      MapPut(m_TransitPaths, hop->info.txID, hop);
-      MapPut(m_TransitPaths, hop->info.rxID, hop);
+      MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.txID, hop);
+      MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.rxID, hop);
     }
 
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
       {
-        util::Lock lock(&m_TransitPaths.first);
+        SyncTransitMap_t::Lock_t lock(&m_TransitPaths.first);
         auto& map = m_TransitPaths.second;
+        auto itr  = map.begin();
+        while(itr != map.end())
+        {
+          if(itr->second->Expired(now))
+          {
+            m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
+            itr = map.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
+      {
+        SyncOwnedPathsMap_t::Lock_t lock(&m_OurPaths.first);
+        auto& map = m_OurPaths.second;
         auto itr  = map.begin();
         while(itr != map.end())
         {
@@ -276,15 +306,8 @@ namespace llarp
             ++itr;
         }
       }
-      {
-        util::Lock lock(&m_OurPaths.first);
-        auto& map = m_OurPaths.second;
-        for(auto& item : map)
-        {
-          item.second->ExpirePaths(now);
-        }
-      }
     }
+
     routing::MessageHandler_ptr
     PathContext::GetHandler(const PathID_t& id)
     {
@@ -299,7 +322,7 @@ namespace llarp
       const RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(&map.first);
+        SyncTransitMap_t::Lock_t lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -310,19 +333,8 @@ namespace llarp
       return nullptr;
     }
 
-    void
-    PathContext::RemovePathSet(PathSet_ptr set)
+    void PathContext::RemovePathSet(PathSet_ptr)
     {
-      util::Lock lock(&m_OurPaths.first);
-      auto& map = m_OurPaths.second;
-      auto itr  = map.begin();
-      while(itr != map.end())
-      {
-        if(itr->second.get() == set.get())
-          itr = map.erase(itr);
-        else
-          ++itr;
-      }
     }
   }  // namespace path
 }  // namespace llarp

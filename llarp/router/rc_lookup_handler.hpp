@@ -64,6 +64,9 @@ namespace llarp
     void
     ExploreNetwork() override;
 
+    size_t
+    NumberOfStrictConnectRouters() const override;
+
     void
     Init(llarp_dht_context *dht, llarp_nodedb *nodedb,
          std::shared_ptr< llarp::thread::ThreadPool > threadpool,

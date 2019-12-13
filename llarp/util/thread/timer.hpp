@@ -37,6 +37,9 @@ llarp_timer_cancel_job(struct llarp_timer_context *t, uint32_t id);
 void
 llarp_timer_remove_job(struct llarp_timer_context *t, uint32_t id);
 
+bool
+llarp_timer_should_call(struct llarp_timer_context *t);
+
 // cancel all
 void
 llarp_timer_stop(struct llarp_timer_context *t);
@@ -60,6 +63,6 @@ llarp_timer_tick_all_async(struct llarp_timer_context *t,
                            struct llarp_threadpool *pool, llarp_time_t now);
 
 void
-llarp_free_timer(struct llarp_timer_context **t);
+llarp_free_timer(struct llarp_timer_context *t);
 
 #endif

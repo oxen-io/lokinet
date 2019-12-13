@@ -29,8 +29,10 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz);
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i);
 
+/// Write a dictionary entry with a uint64_t value
 bool
-bencode_write_version_entry(llarp_buffer_t* buff);
+bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz,
+                           uint64_t i);
 
 bool
 bencode_start_list(llarp_buffer_t* buff);
@@ -40,5 +42,9 @@ bencode_start_dict(llarp_buffer_t* buff);
 
 bool
 bencode_end(llarp_buffer_t* buff);
+
+/// read next member, discard it and advance buffer
+bool
+bencode_discard(llarp_buffer_t* buf);
 
 #endif

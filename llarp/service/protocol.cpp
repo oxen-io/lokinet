@@ -163,8 +163,8 @@ namespace llarp
         return false;
       if(!BEncodeMaybeReadDictEntry("T", T, read, key, val))
         return false;
-      if(!BEncodeMaybeReadVersion("V", version, LLARP_PROTO_VERSION, read, key,
-                                  val))
+      if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read,
+                                    key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, val))
         return false;
@@ -343,8 +343,8 @@ namespace llarp
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
         path::Path_ptr path                    = std::move(self->path);
         const PathID_t from                    = self->frame.F;
-        self->logic->queue_func(
-            [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
+        LogicCall(self->logic,
+                  [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
         delete self;
       }
     };
@@ -364,13 +364,21 @@ namespace llarp
       return *this;
     }
 
+    struct AsyncDecrypt
+    {
+      ServiceInfo si;
+      SharedSecret shared;
+      ProtocolFrame frame;
+    };
+
     bool
     ProtocolFrame::AsyncDecryptAndVerify(
         std::shared_ptr< Logic > logic, path::Path_ptr recvPath,
         const std::shared_ptr< llarp::thread::ThreadPool >& worker,
         const Identity& localIdent, IDataHandler* handler) const
     {
-      auto msg = std::make_shared< ProtocolMessage >();
+      auto msg     = std::make_shared< ProtocolMessage >();
+      msg->handler = handler;
       if(T.IsZero())
       {
         LogInfo("Got protocol frame with new convo");
@@ -380,38 +388,44 @@ namespace llarp
         dh->path = recvPath;
         return worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
       }
-      SharedSecret shared;
-      if(!handler->GetCachedSessionKeyFor(T, shared))
+
+      auto v = new AsyncDecrypt();
+
+      if(!handler->GetCachedSessionKeyFor(T, v->shared))
       {
         LogError("No cached session for T=", T);
+        delete v;
         return false;
       }
-      ServiceInfo si;
-      if(!handler->GetSenderFor(T, si))
+
+      if(!handler->GetSenderFor(T, v->si))
       {
         LogError("No sender for T=", T);
+        delete v;
         return false;
       }
-      if(!Verify(si))
-      {
-        LogError("Signature failure from ", si.Addr());
-        return false;
-      }
-      if(!DecryptPayloadInto(shared, *msg))
-      {
-        LogError("failed to decrypt message");
-        return false;
-      }
-      if(T != msg->tag && !msg->tag.IsZero())
-      {
-        LogError("convotag missmatch: ", T, " != ", msg->tag);
-        return false;
-      }
-      msg->handler            = handler;
-      const PathID_t fromPath = F;
-      logic->queue_func(
-          [=]() { ProtocolMessage::ProcessAsync(recvPath, fromPath, msg); });
-      return true;
+      v->frame = *this;
+      return worker->addJob(
+          [v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
+            if(not v->frame.Verify(v->si))
+            {
+              LogError("Signature failure from ", v->si.Addr());
+              delete v;
+              return;
+            }
+            if(not v->frame.DecryptPayloadInto(v->shared, *msg))
+            {
+              LogError("failed to decrypt message");
+              delete v;
+              return;
+            }
+            RecvDataEvent ev;
+            ev.fromPath = std::move(recvPath);
+            ev.pathid   = v->frame.F;
+            ev.msg      = std::move(msg);
+            msg->handler->QueueRecvData(std::move(ev));
+            delete v;
+          });
     }
 
     bool

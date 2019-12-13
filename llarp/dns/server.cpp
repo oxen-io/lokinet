@@ -39,27 +39,47 @@ namespace llarp
       m_Resolvers = resolvers;
       const llarp::Addr any("0.0.0.0", 0);
       auto self = shared_from_this();
-      m_ClientLogic->queue_func([=]() {
+      LogicCall(m_ClientLogic, [=]() {
         llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any);
       });
-      m_ServerLogic->queue_func([=]() {
+      LogicCall(m_ServerLogic, [=]() {
         llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr);
       });
       return true;
+    }
+
+    static Proxy::Buffer_t
+    CopyBuffer(const llarp_buffer_t& buf)
+    {
+      std::vector< byte_t > msgbuf(buf.sz);
+      std::copy_n(buf.base, buf.sz, msgbuf.data());
+      return msgbuf;
     }
 
     void
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from,
                                 ManagedBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf.underlying);
+      const llarp::Addr addr(*from);
+      Buffer_t msgbuf = CopyBuffer(buf.underlying);
+      auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
+      // yes we use the server loop here because if the server loop is not the
+      // client loop we'll crash again
+      LogicCall(self->m_ServerLogic, [self, addr, msgbuf]() {
+        self->HandlePktServer(addr, msgbuf);
+      });
     }
 
     void
     Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from,
                                 ManagedBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf.underlying);
+      const llarp::Addr addr(*from);
+      Buffer_t msgbuf = CopyBuffer(buf.underlying);
+      auto self       = static_cast< Proxy* >(u->user)->shared_from_this();
+      LogicCall(self->m_ServerLogic, [self, addr, msgbuf]() {
+        self->HandlePktClient(addr, msgbuf);
+      });
     }
 
     llarp::Addr
@@ -82,7 +102,7 @@ namespace llarp
     Proxy::SendServerMessageTo(llarp::Addr to, Message msg)
     {
       auto self = shared_from_this();
-      m_ServerLogic->queue_func([to, msg, self]() {
+      LogicCall(m_ServerLogic, [to, msg, self]() {
         std::array< byte_t, 1500 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(msg.Encode(&buf))
@@ -100,7 +120,7 @@ namespace llarp
     Proxy::SendClientMessageTo(llarp::Addr to, Message msg)
     {
       auto self = shared_from_this();
-      m_ClientLogic->queue_func([to, msg, self]() {
+      LogicCall(m_ClientLogic, [to, msg, self]() {
         std::array< byte_t, 1500 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(msg.Encode(&buf))
@@ -115,13 +135,16 @@ namespace llarp
     }
 
     void
-    Proxy::HandlePktClient(llarp::Addr from, llarp_buffer_t* pkt)
+    Proxy::HandlePktClient(llarp::Addr from, Buffer_t buf)
     {
       MessageHeader hdr;
-      if(!hdr.Decode(pkt))
       {
-        llarp::LogWarn("failed to parse dns header from ", from);
-        return;
+        llarp_buffer_t pkt(buf);
+        if(!hdr.Decode(&pkt))
+        {
+          llarp::LogWarn("failed to parse dns header from ", from);
+          return;
+        }
       }
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
@@ -129,12 +152,10 @@ namespace llarp
         return;
 
       const Addr requester = itr->second;
-      std::vector< byte_t > tmp(pkt->sz);
-      std::copy_n(pkt->base, pkt->sz, tmp.begin());
-      auto self = shared_from_this();
-      m_ServerLogic->queue_func([=]() {
+      auto self            = shared_from_this();
+      LogicCall(m_ServerLogic, [=]() {
         // forward reply to requester via server
-        llarp_buffer_t tmpbuf(tmp);
+        const llarp_buffer_t tmpbuf(buf);
         llarp_ev_udp_sendto(&self->m_Server, requester, tmpbuf);
       });
       // remove pending
@@ -142,22 +163,43 @@ namespace llarp
     }
 
     void
-    Proxy::HandlePktServer(llarp::Addr from, llarp_buffer_t* pkt)
+    Proxy::HandlePktServer(llarp::Addr from, Buffer_t buf)
     {
       MessageHeader hdr;
-      if(!hdr.Decode(pkt))
+      llarp_buffer_t pkt(buf);
+      if(!hdr.Decode(&pkt))
       {
         llarp::LogWarn("failed to parse dns header from ", from);
         return;
       }
+
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
       Message msg(hdr);
-      if(!msg.Decode(pkt))
+      if(!msg.Decode(&pkt))
       {
         llarp::LogWarn("failed to parse dns message from ", from);
         return;
       }
+
+      // we don't provide a DoH resolver because it requires verified TLS
+      // TLS needs X509/ASN.1-DER and opting into the Root CA Cabal
+      // thankfully mozilla added a backdoor that allows ISPs to turn it off
+      // so we disable DoH for firefox using mozilla's ISP backdoor
+      // see: https://github.com/loki-project/loki-network/issues/832
+      for(const auto& q : msg.questions)
+      {
+        // is this firefox looking for their backdoor record?
+        if(q.IsName("use-application-dns.net"))
+        {
+          // yea it is, let's turn off DoH because god is dead.
+          msg.AddNXReply();
+          // press F to pay respects
+          SendServerMessageTo(from, std::move(msg));
+          return;
+        }
+      }
+
       auto self = shared_from_this();
       if(m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
       {
@@ -182,18 +224,21 @@ namespace llarp
         // new forwarded query
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
-        std::vector< byte_t > tmp(pkt->sz);
-        std::copy_n(pkt->base, pkt->sz, tmp.begin());
-
-        m_ClientLogic->queue_func([=] {
+        LogicCall(m_ClientLogic, [=] {
           // do query
-          llarp_buffer_t buf(tmp);
-          llarp_ev_udp_sendto(&self->m_Client, tx.from, buf);
+          const llarp_buffer_t tmpbuf(buf);
+          llarp_ev_udp_sendto(&self->m_Client, tx.from, tmpbuf);
         });
       }
       else
       {
-        // drop (?)
+        // send the query again because it's probably FEC from the requester
+        const auto resolver = itr->first.from;
+        LogicCall(m_ClientLogic, [=] {
+          // send it
+          const llarp_buffer_t tmpbuf(buf);
+          llarp_ev_udp_sendto(&self->m_Client, resolver, tmpbuf);
+        });
       }
     }
 

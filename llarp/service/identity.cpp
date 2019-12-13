@@ -78,13 +78,27 @@ namespace llarp
     }
 
     bool
-    Identity::EnsureKeys(const std::string& fname)
+    Identity::EnsureKeys(const std::string& fname, bool needBackup)
     {
       std::array< byte_t, 4096 > tmp;
       llarp_buffer_t buf(tmp);
       std::error_code ec;
+
+      bool exists = fs::exists(fname, ec);
+      if(ec)
+      {
+        LogError("Could not query file status for ", fname, ": ", ec.message());
+        return false;
+      }
+
+      if(exists and needBackup)
+      {
+        KeyManager::backupFileByMoving(fname);
+        exists = false;
+      }
+
       // check for file
-      if(!fs::exists(fname, ec))
+      if(!exists)
       {
         // regen and encode
         RegenerateKeys();

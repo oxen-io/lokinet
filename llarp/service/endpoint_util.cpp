@@ -168,7 +168,7 @@ namespace llarp
       {
         if(itr->second.remote.Addr() == info)
         {
-          if(tags.insert(itr->first).second)
+          if(tags.emplace(itr->first).second)
           {
             inserted = true;
           }

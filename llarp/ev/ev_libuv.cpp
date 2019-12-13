@@ -1,10 +1,15 @@
 #include <ev/ev_libuv.hpp>
 #include <net/net_addr.hpp>
+#include <util/thread/logic.hpp>
+#include <util/thread/queue.hpp>
 
 #include <cstring>
 
 namespace libuv
 {
+#define LoopCall(h, ...) \
+  LogicCall(static_cast< Loop* >((h)->loop->data)->m_Logic, __VA_ARGS__)
+
   struct glue
   {
     virtual ~glue() = default;
@@ -15,6 +20,33 @@ namespace libuv
   /// tcp connection glue between llarp and libuv
   struct conn_glue : public glue
   {
+    using WriteBuffer_t = std::vector< char >;
+
+    struct WriteEvent
+    {
+      WriteBuffer_t data;
+      uv_write_t request;
+
+      WriteEvent() = default;
+
+      explicit WriteEvent(WriteBuffer_t buf) : data(std::move(buf))
+      {
+        request.data = this;
+      }
+
+      uv_buf_t
+      Buffer()
+      {
+        return uv_buf_init(data.data(), data.size());
+      }
+
+      uv_write_t*
+      Request()
+      {
+        return &request;
+      }
+    };
+
     uv_tcp_t m_Handle;
     uv_connect_t m_Connect;
     uv_check_t m_Ticker;
@@ -22,11 +54,11 @@ namespace libuv
     llarp_tcp_acceptor* const m_Accept;
     llarp_tcp_conn m_Conn;
     llarp::Addr m_Addr;
-
-    std::deque< std::vector< char > > m_WriteQueue;
+    llarp::thread::Queue< WriteBuffer_t > m_WriteQueue;
+    uv_async_t m_WriteNotify;
 
     conn_glue(uv_loop_t* loop, llarp_tcp_connecter* tcp, const sockaddr* addr)
-        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr)
+        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr), m_WriteQueue(32)
     {
       m_Connect.data = this;
       m_Handle.data  = this;
@@ -34,24 +66,29 @@ namespace libuv
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Conn.close = &ExplicitClose;
-      m_Conn.write = &ExplicitWrite;
+      m_Conn.close       = &ExplicitClose;
+      m_Conn.write       = &ExplicitWrite;
+      m_WriteNotify.data = this;
+      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
     }
 
     conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const sockaddr* addr)
-        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr)
+        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr), m_WriteQueue(32)
     {
       m_Connect.data = nullptr;
       m_Handle.data  = this;
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Accept->close = &ExplicitCloseAccept;
-      m_Conn.write    = nullptr;
-      m_Conn.closed   = nullptr;
+      m_Accept->close    = &ExplicitCloseAccept;
+      m_Conn.write       = nullptr;
+      m_Conn.closed      = nullptr;
+      m_WriteNotify.data = this;
+      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
     }
 
-    conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
+    conn_glue(conn_glue* parent)
+        : m_TCP(nullptr), m_Accept(nullptr), m_WriteQueue(32)
     {
       m_Connect.data = nullptr;
       m_Conn.close   = &ExplicitClose;
@@ -60,13 +97,16 @@ namespace libuv
       uv_tcp_init(parent->m_Handle.loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(parent->m_Handle.loop, &m_Ticker);
+      m_WriteNotify.data = this;
+      uv_async_init(parent->m_Handle.loop, &m_WriteNotify, &OnShouldWrite);
     }
 
     static void
     OnOutboundConnect(uv_connect_t* c, int status)
     {
-      auto* self = static_cast< conn_glue* >(c->data);
-      self->HandleConnectResult(status);
+      conn_glue* self = static_cast< conn_glue* >(c->data);
+      LoopCall(self->Stream(),
+               std::bind(&conn_glue::HandleConnectResult, self, status));
       c->data = nullptr;
     }
 
@@ -98,9 +138,15 @@ namespace libuv
     OnRead(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
     {
       if(nread >= 0)
-        static_cast< conn_glue* >(stream->data)->Read(buf->base, nread);
+      {
+        auto* conn = static_cast< conn_glue* >(stream->data);
+        LoopCall(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
+        return;
+      }
       else if(nread < 0)
+      {
         static_cast< conn_glue* >(stream->data)->Close();
+      }
       delete[] buf->base;
     }
 
@@ -120,6 +166,7 @@ namespace libuv
         const llarp_buffer_t buf(ptr, sz);
         m_Conn.read(&m_Conn, buf);
       }
+      delete[] ptr;
     }
 
     void
@@ -160,37 +207,57 @@ namespace libuv
     static void
     OnWritten(uv_write_t* req, int status)
     {
-      if(status)
+      WriteEvent* ev = static_cast< WriteEvent* >(req->data);
+      if(status == 0)
       {
-        llarp::LogError("write failed on tcp: ", uv_strerror(status));
-        static_cast< conn_glue* >(req->data)->Close();
+        llarp::LogDebug("wrote ", ev->data.size());
       }
       else
-        static_cast< conn_glue* >(req->data)->DrainOne();
-      delete req;
-    }
-
-    void
-    DrainOne()
-    {
-      m_WriteQueue.pop_front();
+      {
+        llarp::LogDebug("write fail");
+      }
+      delete ev;
     }
 
     int
     WriteAsync(char* data, size_t sz)
     {
-      m_WriteQueue.emplace_back(sz);
-      std::copy_n(data, sz, m_WriteQueue.back().begin());
-      auto buf  = uv_buf_init(m_WriteQueue.back().data(), sz);
-      auto* req = new uv_write_t();
-      req->data = this;
-      return uv_write(req, Stream(), &buf, 1, &OnWritten) == 0 ? sz : 0;
+      if(uv_is_closing((const uv_handle_t*)&m_Handle))
+        return -1;
+      if(uv_is_closing((const uv_handle_t*)&m_WriteNotify))
+        return -1;
+      WriteBuffer_t buf(sz);
+      std::copy_n(data, sz, buf.begin());
+      if(m_WriteQueue.pushBack(std::move(buf))
+         == llarp::thread::QueueReturn::Success)
+      {
+        uv_async_send(&m_WriteNotify);
+        return sz;
+      }
+      return -1;
+    }
+
+    void
+    FlushWrite()
+    {
+      while(not m_WriteQueue.empty())
+      {
+        auto data      = m_WriteQueue.popFront();
+        WriteEvent* ev = new WriteEvent(std::move(data));
+        auto buf       = ev->Buffer();
+        if(uv_write(ev->Request(), Stream(), &buf, 1, &OnWritten) != 0)
+        {
+          Close();
+          return;
+        }
+      }
     }
 
     static void
     OnClosed(uv_handle_t* h)
     {
-      static_cast< conn_glue* >(h->data)->HandleClosed();
+      conn_glue* conn = static_cast< conn_glue* >(h->data);
+      LoopCall(h, std::bind(&conn_glue::HandleClosed, conn));
     }
 
     static void
@@ -230,15 +297,25 @@ namespace libuv
       delete shut;
     }
 
+    static void
+    OnWriteClosed(uv_handle_t* h)
+    {
+      conn_glue* conn = static_cast< conn_glue* >(h->data);
+      auto* shut      = new uv_shutdown_t();
+      shut->data      = conn;
+      uv_shutdown(shut, conn->Stream(), &OnShutdown);
+    }
+
     void
     Close() override
     {
+      if(uv_is_closing((uv_handle_t*)&m_WriteNotify))
+        return;
       llarp::LogDebug("close tcp connection");
+      m_WriteQueue.disable();
+      uv_close((uv_handle_t*)&m_WriteNotify, &OnWriteClosed);
       uv_check_stop(&m_Ticker);
       uv_read_stop(Stream());
-      auto* shut = new uv_shutdown_t();
-      shut->data = this;
-      uv_shutdown(shut, Stream(), &OnShutdown);
     }
 
     static void
@@ -246,7 +323,8 @@ namespace libuv
     {
       if(status == 0)
       {
-        static_cast< conn_glue* >(stream->data)->Accept();
+        conn_glue* conn = static_cast< conn_glue* >(stream->data);
+        LoopCall(stream, std::bind(&conn_glue::Accept, conn));
       }
       else
       {
@@ -255,9 +333,16 @@ namespace libuv
     }
 
     static void
+    OnShouldWrite(uv_async_t* h)
+    {
+      static_cast< conn_glue* >(h->data)->FlushWrite();
+    }
+
+    static void
     OnTick(uv_check_t* t)
     {
-      static_cast< conn_glue* >(t->data)->Tick();
+      conn_glue* conn = static_cast< conn_glue* >(t->data);
+      LoopCall(t, std::bind(&conn_glue::Tick, conn));
     }
 
     void
@@ -312,20 +397,57 @@ namespace libuv
     }
   };
 
+  struct ticker_glue : public glue
+  {
+    std::function< void(void) > func;
+
+    ticker_glue(uv_loop_t* loop, std::function< void(void) > tick) : func(tick)
+    {
+      m_Ticker.data = this;
+      uv_check_init(loop, &m_Ticker);
+    }
+
+    static void
+    OnTick(uv_check_t* t)
+    {
+      ticker_glue* ticker = static_cast< ticker_glue* >(t->data);
+      LoopCall(t, ticker->func);
+    }
+
+    bool
+    Start()
+    {
+      return uv_check_start(&m_Ticker, &OnTick) != -1;
+    }
+
+    void
+    Close() override
+    {
+      uv_check_stop(&m_Ticker);
+      uv_close((uv_handle_t*)&m_Ticker, [](auto h) {
+        ticker_glue* self = (ticker_glue*)h->data;
+        h->data           = nullptr;
+        delete self;
+      });
+    }
+
+    uv_check_t m_Ticker;
+  };
+
   struct udp_glue : public glue
   {
     uv_udp_t m_Handle;
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::Addr m_Addr;
-    bool gotpkts;
+    llarp_pkt_list m_LastPackets;
+    std::array< char, 1500 > m_Buffer;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src)
         : m_UDP(udp), m_Addr(*src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
-      gotpkts       = false;
       uv_udp_init(loop, &m_Handle);
       uv_check_init(loop, &m_Ticker);
     }
@@ -333,35 +455,55 @@ namespace libuv
     static void
     Alloc(uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
     {
-      buf->base = new char[suggested_size];
-      buf->len  = suggested_size;
+      const size_t sz = std::min(suggested_size, size_t{1500});
+      buf->base       = new char[sz];
+      buf->len        = sz;
     }
 
     static void
     OnRecv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
            const struct sockaddr* addr, unsigned)
     {
+      udp_glue* glue = static_cast< udp_glue* >(handle->data);
       if(addr)
-        static_cast< udp_glue* >(handle->data)->RecvFrom(nread, buf, addr);
-      delete[] buf->base;
+        glue->RecvFrom(nread, buf, addr);
+      if(nread <= 0 || glue->m_UDP == nullptr
+         || glue->m_UDP->recvfrom != nullptr)
+        delete[] buf->base;
+    }
+
+    bool
+    RecvMany(llarp_pkt_list* pkts)
+    {
+      *pkts         = std::move(m_LastPackets);
+      m_LastPackets = llarp_pkt_list();
+      return pkts->size() > 0;
     }
 
     void
     RecvFrom(ssize_t sz, const uv_buf_t* buf, const struct sockaddr* fromaddr)
     {
-      if(sz >= 0 && m_UDP && m_UDP->recvfrom)
+      if(sz > 0 && m_UDP)
       {
         const size_t pktsz = sz;
-        const llarp_buffer_t pkt{(const byte_t*)buf->base, pktsz};
-        m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
-        gotpkts = true;
+        if(m_UDP->recvfrom)
+        {
+          const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
+          m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
+        }
+        else
+        {
+          PacketBuffer pbuf(buf->base, pktsz);
+          m_LastPackets.emplace_back(PacketEvent{*fromaddr, std::move(pbuf)});
+        }
       }
     }
 
     static void
     OnTick(uv_check_t* t)
     {
-      static_cast< udp_glue* >(t->data)->Tick();
+      udp_glue* udp = static_cast< udp_glue* >(t->data);
+      udp->Tick();
     }
 
     void
@@ -369,7 +511,6 @@ namespace libuv
     {
       if(m_UDP && m_UDP->tick)
         m_UDP->tick(m_UDP);
-      gotpkts = false;
     }
 
     static int
@@ -401,9 +542,13 @@ namespace libuv
         llarp::LogError("failed to start ticker");
         return false;
       }
+#if defined(_WIN32) || defined(_WIN64)
+#else
       if(uv_fileno((const uv_handle_t*)&m_Handle, &m_UDP->fd))
         return false;
+#endif
       m_UDP->sendto = &SendTo;
+      m_UDP->impl   = this;
       return true;
     }
 
@@ -413,8 +558,7 @@ namespace libuv
       auto* glue = static_cast< udp_glue* >(h->data);
       if(glue)
       {
-        h->data           = nullptr;
-        glue->m_UDP->impl = nullptr;
+        h->data = nullptr;
         delete glue;
       }
     }
@@ -422,6 +566,7 @@ namespace libuv
     void
     Close() override
     {
+      m_UDP->impl = nullptr;
       uv_check_stop(&m_Ticker);
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
     }
@@ -442,7 +587,7 @@ namespace libuv
     void
     Tick()
     {
-      m_Pipe->tick();
+      LoopCall(&m_Handle, std::bind(&llarp_ev_pkt_pipe::tick, m_Pipe));
     }
 
     static void
@@ -481,7 +626,8 @@ namespace libuv
     static void
     OnTick(uv_check_t* h)
     {
-      static_cast< pipe_glue* >(h->data)->Tick();
+      pipe_glue* pipe = static_cast< pipe_glue* >(h->data);
+      LoopCall(h, std::bind(&pipe_glue::Tick, pipe));
     }
 
     bool
@@ -497,7 +643,8 @@ namespace libuv
     uv_poll_t m_Handle;
     uv_check_t m_Ticker;
   };
-
+#if defined(_WIN32) || defined(_WIN64)
+#else
   struct tun_glue : public glue
   {
     uv_poll_t m_Handle;
@@ -511,7 +658,7 @@ namespace libuv
     {
       m_Handle.data = this;
       m_Ticker.data = this;
-      readpkt       = false;
+      readpkt = false;
     }
 
     ~tun_glue() override
@@ -522,7 +669,8 @@ namespace libuv
     static void
     OnTick(uv_check_t* timer)
     {
-      static_cast< tun_glue* >(timer->data)->Tick();
+      tun_glue* tun = static_cast< tun_glue* >(timer->data);
+      tun->Tick();
     }
 
     static void
@@ -541,7 +689,7 @@ namespace libuv
       if(sz > 0)
       {
         llarp::LogDebug("tun read ", sz);
-        llarp_buffer_t pkt(m_Buffer, sz);
+        const llarp_buffer_t pkt(m_Buffer, sz);
         if(m_Tun && m_Tun->recvpkt)
           m_Tun->recvpkt(m_Tun, pkt);
       }
@@ -562,8 +710,7 @@ namespace libuv
       auto* self = static_cast< tun_glue* >(h->data);
       if(self)
       {
-        self->m_Tun->impl = nullptr;
-        h->data           = nullptr;
+        h->data = nullptr;
         delete self;
       }
     }
@@ -571,8 +718,14 @@ namespace libuv
     void
     Close() override
     {
+      if(m_Tun->impl == nullptr)
+        return;
+      m_Tun->impl = nullptr;
       uv_check_stop(&m_Ticker);
-      uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+      uv_close((uv_handle_t*)&m_Ticker, [](uv_handle_t* h) {
+        tun_glue* glue = static_cast< tun_glue* >(h->data);
+        uv_close((uv_handle_t*)&glue->m_Handle, &OnClosed);
+      });
     }
 
     bool
@@ -584,7 +737,8 @@ namespace libuv
     static bool
     WritePkt(llarp_tun_io* tun, const byte_t* pkt, size_t sz)
     {
-      return static_cast< tun_glue* >(tun->impl)->Write(pkt, sz);
+      tun_glue* glue = static_cast< tun_glue* >(tun->impl);
+      return glue && glue->Write(pkt, sz);
     }
 
     bool
@@ -613,6 +767,9 @@ namespace libuv
                         " has invalid fd: ", m_Device->tun_fd);
         return false;
       }
+
+      tuntap_set_nonblocking(m_Device, 1);
+
       if(uv_poll_init(loop, &m_Handle, m_Device->tun_fd) == -1)
       {
         llarp::LogError("failed to start polling on ", m_Tun->ifname);
@@ -631,26 +788,46 @@ namespace libuv
         return false;
       }
       m_Tun->writepkt = &WritePkt;
+      m_Tun->impl = this;
       return true;
     }
   };
-
+#endif
   bool
   Loop::init()
   {
-    m_Impl.reset(uv_loop_new());
-    if(uv_loop_init(m_Impl.get()) == -1)
+    if(uv_loop_init(&m_Impl) == -1)
       return false;
-    uv_loop_configure(m_Impl.get(), UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
-    m_TickTimer.data = this;
+
+#ifdef LOKINET_DEBUG
+    last_time      = 0;
+    loop_run_count = 0;
+#endif
+
+    m_Impl.data = this;
+#if defined(_WIN32) || defined(_WIN64)
+#else
+    uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
+#endif
+    m_TickTimer.data   = this;
+    m_LogicCaller.data = this;
+    uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
+      Loop* l = static_cast< Loop* >(h->data);
+      while(not l->m_LogicCalls.empty())
+      {
+        auto f = l->m_LogicCalls.popFront();
+        f();
+      }
+    });
     m_Run.store(true);
-    return uv_timer_init(m_Impl.get(), &m_TickTimer) != -1;
+    return uv_timer_init(&m_Impl, &m_TickTimer) != -1;
   }
 
   void
   Loop::update_time()
   {
-    uv_update_time(m_Impl.get());
+    llarp_ev_loop::update_time();
+    uv_update_time(&m_Impl);
   }
 
   bool
@@ -659,16 +836,10 @@ namespace libuv
     return m_Run.load();
   }
 
-  llarp_time_t
-  Loop::time_now() const
-  {
-    return llarp::time_now_ms();
-  }
-
   bool
   Loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
   {
-    auto* impl = new conn_glue(m_Impl.get(), tcp, addr);
+    auto* impl = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl  = impl;
     if(impl->ConnectAsync())
       return true;
@@ -686,18 +857,24 @@ namespace libuv
   int
   Loop::tick(int ms)
   {
-    uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
-    uv_run(m_Impl.get(), UV_RUN_ONCE);
+    if(m_Run)
+    {
+      uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
+      uv_run(&m_Impl, UV_RUN_ONCE);
+    }
     return 0;
   }
 
   void
   Loop::stop()
   {
-    uv_stop(m_Impl.get());
-    llarp::LogInfo("stopping event loop");
+    if(m_Run)
+    {
+      llarp::LogInfo("stopping event loop");
+      CloseAll();
+      // uv_stop(&m_Impl);
+    }
     m_Run.store(false);
-    CloseAll();
   }
 
   void
@@ -705,7 +882,7 @@ namespace libuv
   {
     llarp::LogInfo("Closing all handles");
     uv_walk(
-        m_Impl.get(),
+        &m_Impl,
         [](uv_handle_t* h, void*) {
           if(uv_is_closing(h))
             return;
@@ -715,6 +892,10 @@ namespace libuv
           }
         },
         nullptr);
+  }
+
+  Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024)
+  {
   }
 
   void
@@ -727,13 +908,25 @@ namespace libuv
   bool
   Loop::udp_listen(llarp_udp_io* udp, const sockaddr* src)
   {
-    auto* impl = new udp_glue(m_Impl.get(), udp, src);
+    auto* impl = new udp_glue(&m_Impl, udp, src);
     udp->impl  = impl;
     if(impl->Bind())
     {
       return true;
     }
     delete impl;
+    return false;
+  }
+
+  bool
+  Loop::add_ticker(std::function< void(void) > func)
+  {
+    auto* ticker = new ticker_glue(&m_Impl, func);
+    if(ticker->Start())
+    {
+      return true;
+    }
+    delete ticker;
     return false;
   }
 
@@ -752,20 +945,25 @@ namespace libuv
   bool
   Loop::tun_listen(llarp_tun_io* tun)
   {
+#if defined(_WIN32) || defined(_WIN64)
+    (void)tun;
+    return false;
+#else
     auto* glue = new tun_glue(tun);
-    tun->impl  = glue;
-    if(glue->Init(m_Impl.get()))
+    tun->impl = glue;
+    if(glue->Init(&m_Impl))
     {
       return true;
     }
     delete glue;
     return false;
+#endif
   }
 
   bool
   Loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
   {
-    auto* glue = new conn_glue(m_Impl.get(), tcp, addr);
+    auto* glue = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl  = glue;
     if(glue->Server())
       return true;
@@ -777,11 +975,24 @@ namespace libuv
   bool
   Loop::add_pipe(llarp_ev_pkt_pipe* p)
   {
-    auto* glue = new pipe_glue(m_Impl.get(), p);
+    auto* glue = new pipe_glue(&m_Impl, p);
     if(glue->Start())
       return true;
     delete glue;
     return false;
   }
 
+  void
+  Loop::call_soon(std::function< void(void) > f)
+  {
+    m_LogicCalls.tryPushBack(f);
+    uv_async_send(&m_LogicCaller);
+  }
+
 }  // namespace libuv
+
+bool
+llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
+{
+  return static_cast< libuv::udp_glue* >(u->impl)->RecvMany(pkts);
+}

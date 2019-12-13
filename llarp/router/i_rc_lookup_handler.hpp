@@ -56,6 +56,9 @@ namespace llarp
 
     virtual void
     ExploreNetwork() = 0;
+
+    virtual size_t
+    NumberOfStrictConnectRouters() const = 0;
   };
 
 }  // namespace llarp

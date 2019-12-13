@@ -18,7 +18,6 @@ list(APPEND TEST_SRC
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
     llarp_test.cpp
-    net/test_llarp_net_inaddr.cpp
     net/test_llarp_net.cpp
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp
@@ -68,7 +67,7 @@ if(NOT WIN32)
     target_link_libraries(${TEST_EXE} PUBLIC absl::variant)
 else()
     target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
-    target_link_libraries(${TEST_EXE} PUBLIC ${FS_LIB} ws2_32 iphlpapi shlwapi)
+    target_link_libraries(${TEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")

@@ -1,5 +1,7 @@
 #include <net/net.hpp>
 
+#include <net/net_if.hpp>
+
 #ifdef ANDROID
 #include <android/ifaddrs.h>
 #endif
@@ -9,7 +11,6 @@
 #ifndef ANDROID
 #include <ifaddrs.h>
 #endif
-#include <net/if.h>
 #endif
 
 #include <net/net_addr.hpp>
@@ -865,9 +866,16 @@ namespace llarp
         auto* mask = (sockaddr_in*)i->ifa_netmask;
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
-        currentRanges.emplace_back(
-            IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
-                    net::IPPacket::ExpandV4(xntohl(ifmask))});
+#ifdef _WIN32
+        // do not delete, otherwise GCC will do horrible things to this lambda
+        LogDebug("found ", ifaddr, " with mask ", ifmask);
+#endif
+        if(addr->sin_addr.s_addr)
+          // skip unconfig'd adapters (windows passes these through the unix-y
+          // wrapper)
+          currentRanges.emplace_back(
+              IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
+                      net::IPPacket::ExpandV4(xntohl(ifmask))});
       }
     });
     // try 10.x.0.0/16
@@ -1019,12 +1027,58 @@ namespace llarp
     return Contains(net::IPPacket::ExpandV4(ip));
   }
 
+  bool
+  IPRange::FromString(std::string str)
+  {
+    const auto colinpos = str.find(":");
+    const auto slashpos = str.find("/");
+    std::string bitsstr;
+    if(slashpos != std::string::npos)
+    {
+      bitsstr = str.substr(slashpos + 1);
+      str     = str.substr(0, slashpos);
+    }
+    if(colinpos == std::string::npos)
+    {
+      huint32_t ip;
+      if(!ip.FromString(str))
+        return false;
+      addr = net::IPPacket::ExpandV4(ip);
+      if(!bitsstr.empty())
+      {
+        auto bits = atoi(bitsstr.c_str());
+        if(bits < 0 || bits > 32)
+          return false;
+        netmask_bits = netmask_ipv6_bits(96 + bits);
+      }
+      else
+        netmask_bits = netmask_ipv6_bits(128);
+    }
+    else
+    {
+      if(!addr.FromString(str))
+        return false;
+      if(!bitsstr.empty())
+      {
+        auto bits = atoi(bitsstr.c_str());
+        if(bits < 0 || bits > 128)
+          return false;
+        netmask_bits = netmask_ipv6_bits(bits);
+      }
+      else
+      {
+        netmask_bits = netmask_ipv6_bits(128);
+      }
+    }
+    return true;
+  }
+
   std::string
   IPRange::ToString() const
   {
     char buf[INET6_ADDRSTRLEN + 1] = {0};
     std::string str;
-    in6_addr inaddr;
+    in6_addr inaddr    = {};
     size_t numset      = 0;
     absl::uint128 bits = netmask_bits.h;
     while(bits)

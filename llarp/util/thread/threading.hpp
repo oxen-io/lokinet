@@ -17,14 +17,34 @@ using pid_t = int;
 #include <unistd.h>
 #endif
 
+#ifdef TRACY_ENABLE
+#include "Tracy.hpp"
+#define DECLARE_LOCK(type, var, ...) TracyLockable(type, var)
+#define ACQUIRE_LOCK(lock, mtx) lock(mtx)
+#else
+#define DECLARE_LOCK(type, var, ...) type var __VA_ARGS__
+#define ACQUIRE_LOCK(lock, mtx) lock(&mtx)
+#endif
+
 namespace llarp
 {
   namespace util
   {
     /// a mutex that does nothing
+    ///
+    /// this exists to convert mutexes that were initially in use (but may no
+    /// longer be necessary) into no-op placeholders (except in debug mode
+    /// where they complain loudly when they are actually accessed across
+    /// different threads; see below).
+    ///
+    /// the idea is to "turn off" the mutexes and see where they are actually
+    /// needed.
     struct LOCKABLE NullMutex
     {
 #ifdef LOKINET_DEBUG
+      /// in debug mode, we implement lock() to enforce that any lock is only
+      /// used from a single thread. the point of this is to identify locks that
+      /// are actually needed by dying a painful death when used across threads
       mutable absl::optional< std::thread::id > m_id;
       void
       lock() const
@@ -35,9 +55,12 @@ namespace llarp
         }
         else if(m_id.value() != std::this_thread::get_id())
         {
-          std::cerr << "NullMutex " << this << " was locked by "
+          std::cerr << "NullMutex " << this
+                    << " was used across threads: locked by "
                     << std::this_thread::get_id()
                     << " and was previously locked by " << m_id.value() << "\n";
+          // if you're encountering this abort() call, you may have discovered a
+          // case where a NullMutex should be reverted to a "real mutex"
           std::abort();
         }
       }
@@ -52,8 +75,7 @@ namespace llarp
     /// a lock that does nothing
     struct SCOPED_LOCKABLE NullLock
     {
-      NullLock(ABSL_ATTRIBUTE_UNUSED const NullMutex* mtx)
-          EXCLUSIVE_LOCK_FUNCTION(mtx)
+      NullLock(const NullMutex* mtx) EXCLUSIVE_LOCK_FUNCTION(mtx)
       {
         mtx->lock();
       }
@@ -64,8 +86,9 @@ namespace llarp
       }
     };
 
-    using Mutex          = absl::Mutex;
-    using Lock           = absl::MutexLock;
+    using Mutex = absl::Mutex;
+    using Lock  = absl::MutexLock;
+
     using ReleasableLock = absl::ReleasableMutexLock;
     using Condition      = absl::CondVar;
 
@@ -132,6 +155,27 @@ namespace llarp
       return ::getpid();
 #endif
     }
+
+    // type for detecting contention on a resource
+    struct ContentionKiller
+    {
+      template < typename F >
+      void
+      TryAccess(F visit) const
+#if defined(LOKINET_DEBUG)
+          LOCKS_EXCLUDED(_access)
+#endif
+      {
+#if defined(LOKINET_DEBUG)
+        NullLock lock(&_access);
+#endif
+        visit();
+      }
+#if defined(LOKINET_DEBUG)
+     private:
+      mutable NullMutex _access;
+#endif
+    };
   }  // namespace util
 }  // namespace llarp
 

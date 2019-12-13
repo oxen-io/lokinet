@@ -76,8 +76,8 @@ namespace llarp
     }
     else if(key == "v")
     {
-      if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                  buf))
+      if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read,
+                                    key, buf))
       {
         return false;
       }
@@ -90,6 +90,7 @@ namespace llarp
   LR_StatusMessage::Clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
+    version = 0;
   }
 
   bool
@@ -110,7 +111,7 @@ namespace llarp
     if(!BEncodeWriteDictInt("s", status, buf))
       return false;
     // version
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     return bencode_end(buf);
@@ -221,7 +222,7 @@ namespace llarp
                                      std::shared_ptr< LR_StatusMessage > msg)
   {
     auto func = std::bind(&LR_StatusMessage::SendMessage, router, nextHop, msg);
-    router->pathContext().logic()->queue_func(func);
+    LogicCall(router->logic(), func);
   }
 
   void
@@ -247,7 +248,8 @@ namespace llarp
   LR_StatusRecord::BEncode(llarp_buffer_t* buf) const
   {
     return bencode_start_dict(buf) && BEncodeWriteDictInt("s", status, buf)
-        && bencode_write_version_entry(buf) && bencode_end(buf);
+        && bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION)
+        && bencode_end(buf);
   }
 
   bool
@@ -260,8 +262,8 @@ namespace llarp
 
     if(!BEncodeMaybeReadDictInt("s", status, read, *key, buffer))
       return false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
-                                buffer))
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+                                  buffer))
       return false;
 
     return read;

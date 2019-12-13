@@ -23,7 +23,7 @@ namespace llarp
     uint16_t rank;
     std::string dialect;
     llarp::PubKey pubkey;
-    struct in6_addr ip;
+    in6_addr ip = {};
     uint16_t port;
     uint64_t version = LLARP_PROTO_VERSION;
 

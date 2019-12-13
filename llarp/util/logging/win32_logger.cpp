@@ -8,7 +8,7 @@ static short old_attrs;
 namespace llarp
 {
   Win32LogStream::Win32LogStream(std::ostream& out)
-      : OStreamLogStream(out), m_Out(out)
+      : OStreamLogStream(true, out), m_Out(out)
   {
     // Attempt to use ANSI escapes directly
     // if the modern console is active.
@@ -34,6 +34,8 @@ namespace llarp
       {
         case eLogNone:
           break;
+        case eLogTrace:
+          ss << "[TRC] ";
         case eLogDebug:
           ss << "[DBG] ";
           break;

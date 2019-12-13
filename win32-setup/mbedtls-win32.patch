@@ -1,0 +1,205 @@
+diff -ruN include/mbedtls/aesni.h include/mbedtls/aesni.h
+--- include/mbedtls/aesni.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/aesni.h	2018-04-17 15:47:59.320514100 -0500
+@@ -26,17 +26,16 @@
+ 
+ #include "aes.h"
+ 
++/* 
++ * despair: This code appears to be 32-bit clean. Remove the CPP macros
++ * that restrict usage to AMD64 and EM64T processors.
++ * Obviously, you still need to have this insn set available in order to
++ * use it in either of protected or long mode anyway.
++ */
++
+ #define MBEDTLS_AESNI_AES      0x02000000u
+ #define MBEDTLS_AESNI_CLMUL    0x00000002u
+ 
+-#if defined(MBEDTLS_HAVE_ASM) && defined(__GNUC__) &&  \
+-    ( defined(__amd64__) || defined(__x86_64__) )   &&  \
+-    ! defined(MBEDTLS_HAVE_X86_64)
+-#define MBEDTLS_HAVE_X86_64
+-#endif
+-
+-#if defined(MBEDTLS_HAVE_X86_64)
+-
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -107,6 +106,4 @@
+ }
+ #endif
+ 
+-#endif /* MBEDTLS_HAVE_X86_64 */
+-
+ #endif /* MBEDTLS_AESNI_H */
+diff -ruN include/mbedtls/bn_mul.h include/mbedtls/bn_mul.h
+--- include/mbedtls/bn_mul.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/bn_mul.h	2018-04-17 15:42:09.045117300 -0500
+@@ -754,7 +754,9 @@
+ #if defined(MBEDTLS_HAVE_SSE2)
+ 
+ #define EMIT __asm _emit
+-
++/* Because the Visual C++ inline assembler STILL does
++   not support MMX insns! reeeeee (old -GM flag no longer exists)
++ */
+ #define MULADDC_HUIT                            \
+     EMIT 0x0F  EMIT 0x6E  EMIT 0xC9             \
+     EMIT 0x0F  EMIT 0x6E  EMIT 0xC3             \
+diff -ruN include/mbedtls/config.h include/mbedtls/config.h
+--- include/mbedtls/config.h	2018-03-16 11:25:12.000000000 -0500
++++ include/mbedtls/config.h	2018-04-17 17:27:18.350938700 -0500
+@@ -91,7 +91,7 @@
+  *
+  * Uncomment if the CPU supports SSE2 (IA-32 specific).
+  */
+-//#define MBEDTLS_HAVE_SSE2
++#define MBEDTLS_HAVE_SSE2
+ 
+ /**
+  * \def MBEDTLS_HAVE_TIME
+@@ -1571,7 +1571,7 @@
+  * Module:  library/aesni.c
+  * Caller:  library/aes.c
+  *
+- * Requires: MBEDTLS_HAVE_ASM
++ * Requires: None. Enable only for i386 or AMD64 targets only! -despair
+  *
+  * This modules adds support for the AES-NI instructions on x86-64
+  */
+@@ -1850,7 +1850,7 @@
+  * Requires: MBEDTLS_AES_C or MBEDTLS_DES_C
+  *
+  */
+-//#define MBEDTLS_CMAC_C
++#define MBEDTLS_CMAC_C
+ 
+ /**
+  * \def MBEDTLS_CTR_DRBG_C
+@@ -2055,7 +2055,7 @@
+  *
+  * Uncomment to enable the HAVEGE random generator.
+  */
+-//#define MBEDTLS_HAVEGE_C
++#define MBEDTLS_HAVEGE_C
+ 
+ /**
+  * \def MBEDTLS_HMAC_DRBG_C
+diff -ruN library/aes.c library/aes.c
+--- library/aes.c	2018-03-16 11:25:12.000000000 -0500
++++ library/aes.c	2018-04-17 16:51:37.098413400 -0500
+@@ -514,7 +514,7 @@
+ #endif
+     ctx->rk = RK = ctx->buf;
+ 
+-#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
++#if defined(MBEDTLS_AESNI_C)
+     if( mbedtls_aesni_has_support( MBEDTLS_AESNI_AES ) )
+         return( mbedtls_aesni_setkey_enc( (unsigned char *) ctx->rk, key, keybits ) );
+ #endif
+@@ -621,7 +621,7 @@
+ 
+     ctx->nr = cty.nr;
+ 
+-#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
++#if defined(MBEDTLS_AESNI_C)
+     if( mbedtls_aesni_has_support( MBEDTLS_AESNI_AES ) )
+     {
+         mbedtls_aesni_inverse_key( (unsigned char *) ctx->rk,
+@@ -1016,7 +1016,7 @@
+    AES_VALIDATE_RET( mode == MBEDTLS_AES_ENCRYPT ||
+                      mode == MBEDTLS_AES_DECRYPT );
+
+-#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
++#if defined(MBEDTLS_AESNI_C)
+     if( mbedtls_aesni_has_support( MBEDTLS_AESNI_AES ) )
+         return( mbedtls_aesni_crypt_ecb( ctx, mode, input, output ) );
+ #endif
+diff -ruN library/aesni.c library/aesni.c
+--- library/aesni.c	2018-03-16 11:25:12.000000000 -0500
++++ library/aesni.c	2018-04-17 16:09:26.050605000 -0500
+@@ -30,7 +30,16 @@
+ #include MBEDTLS_CONFIG_FILE
+ #endif
+ 
+-#if defined(MBEDTLS_AESNI_C)
++
++/* 
++ * despair: This code appears to be 32-bit clean. Remove the CPP macros
++ * that restrict usage to AMD64 and EM64T processors.
++ * Obviously, you still need to have this insn set available in order to
++ * use it in either of protected or long mode anyway.
++ * GCC or Clang only, no MSVC here, sorry. (Must pass -march=core2 or later
++ * if your compiler's default is anything older or generic.)
++ */
++#if defined(MBEDTLS_AESNI_C) && !defined(_MSC_VER)
+ 
+ #include "mbedtls/aesni.h"
+ 
+@@ -40,8 +49,6 @@
+ #define asm __asm
+ #endif
+ 
+-#if defined(MBEDTLS_HAVE_X86_64)
+-
+ /*
+  * AES-NI support detection routine
+  */
+@@ -459,6 +466,4 @@
+     return( 0 );
+ }
+ 
+-#endif /* MBEDTLS_HAVE_X86_64 */
+-
+ #endif /* MBEDTLS_AESNI_C */
+diff -ruN library/entropy_poll.c library/entropy_poll.c
+--- library/entropy_poll.c	2018-03-16 11:25:12.000000000 -0500
++++ library/entropy_poll.c	2018-04-17 15:52:13.013004200 -0500
+@@ -56,6 +56,12 @@
+ #include <windows.h>
+ #include <wincrypt.h>
+ 
++/* 
++ * WARNING(despair): The next release of PolarSSL will remove the existing codepaths
++ * to enable Windows RT and UWP app support. This also breaks NT 5.x and early Longhorn.
++ *
++ * TODO(despair): create CPP macro to switch between old and new CAPI codepaths
++ */
+ int mbedtls_platform_entropy_poll( void *data, unsigned char *output, size_t len,
+                            size_t *olen )
+ {
+diff -ruN library/gcm.c library/gcm.c
+--- library/gcm.c	2018-03-16 11:25:12.000000000 -0500
++++ library/gcm.c	2018-04-17 16:53:18.630262400 -0500
+@@ -126,7 +126,7 @@
+     ctx->HL[8] = vl;
+     ctx->HH[8] = vh;
+ 
+-#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
++#if defined(MBEDTLS_AESNI_C)
+     /* With CLMUL support, we need only h, not the rest of the table */
+     if( mbedtls_aesni_has_support( MBEDTLS_AESNI_CLMUL ) )
+         return( 0 );
+@@ -217,7 +217,7 @@
+     unsigned char lo, hi, rem;
+     uint64_t zh, zl;
+ 
+-#if defined(MBEDTLS_AESNI_C) && defined(MBEDTLS_HAVE_X86_64)
++#if defined(MBEDTLS_AESNI_C)
+     if( mbedtls_aesni_has_support( MBEDTLS_AESNI_CLMUL ) ) {
+         unsigned char h[16];
+ 
+diff -ruN library/net_sockets.c library/net_sockets.c
+--- library/net_sockets.c	2018-03-16 11:25:12.000000000 -0500
++++ library/net_sockets.c	2018-04-17 15:50:08.118440600 -0500
+@@ -51,7 +51,8 @@
+ /* Enables getaddrinfo() & Co */
+ #define _WIN32_WINNT 0x0501
+ #include <ws2tcpip.h>
+-
++/* despair: re-enable Windows 2000/XP */
++#include <wspiapi.h>
+ #include <winsock2.h>
+ #include <windows.h>
+ 

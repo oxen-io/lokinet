@@ -5,6 +5,7 @@
 #include <net/net.h>
 #include <net/net.hpp>
 #include <util/buffer.hpp>
+#include <util/thread/logic.hpp>
 
 #include <windows.h>
 #include <process.h>
@@ -36,12 +37,16 @@ namespace llarp
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
+    llarp_pkt_list m_RecvPackets;
 
     udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
     {
     }
+
+    bool
+    RecvMany(llarp_pkt_list*);
 
     bool
     tick();
@@ -73,7 +78,7 @@ struct win32_tun_io
 
   // first TUN device gets to set up the event port
   bool
-  add_ev();
+  add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
   void
@@ -99,6 +104,8 @@ struct win32_tun_io
 struct llarp_win32_loop : public llarp_ev_loop
 {
   upoll_t* upollfd;
+  std::shared_ptr< llarp::Logic > m_Logic;
+  std::vector< std::function< void(void) > > m_Tickers;
 
   llarp_win32_loop() : upollfd(nullptr)
   {
@@ -148,6 +155,22 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   void
   stop();
+
+  bool
+  add_ticker(std::function< void(void) > func) override
+  {
+    m_Tickers.emplace_back(func);
+    return true;
+  }
+
+  void
+  set_logic(std::shared_ptr< llarp::Logic > l) override
+  {
+    m_Logic = l;
+  }
+
+  void
+  tick_listeners() override;
 };
 
 #endif

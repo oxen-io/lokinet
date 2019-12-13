@@ -11,6 +11,7 @@
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/str.hpp>
+#include <util/lokinet_init.h>
 
 #include <absl/strings/strip.h>
 
@@ -51,6 +52,15 @@ namespace llarp
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
+    if(key == "job-queue-size")
+    {
+      auto sval = svtoi(val);
+      if(sval >= 1024)
+      {
+        m_JobQueueSize = sval;
+        LogInfo("Set job queue size to ", m_JobQueueSize);
+      }
+    }
     if(key == "default-protocol")
     {
       m_DefaultLinkProto = tostr(val);
@@ -227,9 +237,9 @@ namespace llarp
       idx = v.find_first_of(delimiter);
       if(idx != std::string::npos)
       {
-        std::string val = v.substr(0, idx);
-        absl::StripAsciiWhitespace(&val);
-        parsed_opts.emplace(std::move(val));
+        std::string data = v.substr(0, idx);
+        absl::StripAsciiWhitespace(&data);
+        parsed_opts.emplace(std::move(data));
         v = v.substr(idx + 1);
       }
       else
@@ -294,13 +304,17 @@ namespace llarp
   void
   MetricsConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "disable-metrics")
+    if(key == "enable-metrics")
     {
-      disableMetrics = true;
+      disableMetrics = IsFalseValue(val);
+    }
+    else if(key == "disable-metrics")
+    {
+      disableMetrics = IsTrueValue(val);
     }
     else if(key == "disable-metrics-log")
     {
-      disableMetricLogs = true;
+      disableMetricLogs = IsTrueValue(val);
     }
     else if(key == "json-metrics-path")
     {
@@ -459,6 +473,8 @@ namespace llarp
   bool
   Config::parse(const ConfigParser &parser)
   {
+    if(Lokinet_INIT())
+      return false;
     router    = find_section< RouterConfig >(parser, "router");
     network   = find_section< NetworkConfig >(parser, "network");
     connect   = find_section< ConnectConfig >(parser, "connect");
@@ -475,6 +491,23 @@ namespace llarp
     return true;
   }
 
+  fs::path
+  GetDefaultConfigDir()
+  {
+#ifdef _WIN32
+    const fs::path homedir = fs::path(getenv("APPDATA"));
+#else
+    const fs::path homedir = fs::path(getenv("HOME"));
+#endif
+    return homedir / fs::path(".lokinet");
+  }
+
+  fs::path
+  GetDefaultConfigPath()
+  {
+    return GetDefaultConfigDir() / "lokinet.ini";
+  }
+
 }  // namespace llarp
 
 /// fname should be a relative path (from CWD) or absolute path to the config
@@ -483,6 +516,8 @@ extern "C" bool
 llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
                     bool asRouter)
 {
+  if(Lokinet_INIT())
+    return false;
   std::error_code ec;
   if(fs::exists(fname, ec) && !overwrite)
   {

@@ -35,13 +35,13 @@
 #if !defined Linux
 #include <netinet/in.h>
 #endif
-#if defined Linux
-#include <linux/if.h>
-#else
+
 #include <net/if.h>
-#endif
+
 #if defined Linux
 #include <netinet/in.h>
+#elif defined(iOS)
+#include <net/ethernet.h>
 #else
 #include <netinet/if_ether.h>
 #endif

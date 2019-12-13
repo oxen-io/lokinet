@@ -12,6 +12,7 @@
 #include <util/types.hpp>
 
 #include <memory>
+#include <unordered_map>
 
 namespace llarp
 {
@@ -38,6 +39,12 @@ namespace llarp
       ExpirePaths(llarp_time_t now);
 
       void
+      PumpUpstream();
+
+      void
+      PumpDownstream();
+
+      void
       AllowTransit();
 
       void
@@ -61,7 +68,7 @@ namespace llarp
       bool
       TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
 
-      HopHandler_ptr
+      TransitHop_ptr
       GetPathForTransfer(const PathID_t& topath);
 
       HopHandler_ptr
@@ -98,35 +105,42 @@ namespace llarp
       void
       RemovePathSet(PathSet_ptr set);
 
-      using TransitHopsMap_t = std::multimap< PathID_t, TransitHop_ptr >;
+      using TransitHopsMap_t =
+          std::unordered_multimap< PathID_t, TransitHop_ptr, PathID_t::Hash >;
 
       struct SyncTransitMap_t
       {
-        util::Mutex first;  // protects second
+        using Mutex_t = util::NullMutex;
+        using Lock_t  = util::NullLock;
+
+        Mutex_t first;  // protects second
         TransitHopsMap_t second GUARDED_BY(first);
 
         void
         ForEach(std::function< void(const TransitHop_ptr&) > visit)
             LOCKS_EXCLUDED(first)
         {
-          util::Lock lock(&first);
+          Lock_t lock(&first);
           for(const auto& item : second)
             visit(item.second);
         }
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::map< PathID_t, PathSet_ptr >;
+      using OwnedPathsMap_t =
+          std::unordered_map< PathID_t, Path_ptr, PathID_t::Hash >;
 
       struct SyncOwnedPathsMap_t
       {
-        util::Mutex first;  // protects second
+        using Mutex_t = util::Mutex;
+        using Lock_t  = util::Lock;
+        Mutex_t first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 
         void
-        ForEach(std::function< void(const PathSet_ptr&) > visit)
+        ForEach(std::function< void(const Path_ptr&) > visit)
         {
-          util::Lock lock(&first);
+          Lock_t lock(&first);
           for(const auto& item : second)
             visit(item.second);
         }

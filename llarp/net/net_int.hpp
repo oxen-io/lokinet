@@ -41,6 +41,18 @@ namespace llarp
     }
 
     constexpr huint_t
+    operator-(huint_t x) const
+    {
+      return huint_t{UInt_t{h - x.h}};
+    }
+
+    constexpr huint_t
+    operator+(huint_t x) const
+    {
+      return huint_t{UInt_t{h + x.h}};
+    }
+
+    constexpr huint_t
     operator^(huint_t x) const
     {
       return huint_t{UInt_t{h ^ x.h}};

@@ -1,5 +1,5 @@
 #include <util/thread/timer.hpp>
-
+#include <util/logging/logger.hpp>
 #include <util/time.hpp>
 
 #include <atomic>
@@ -45,12 +45,6 @@ namespace llarp
     {
       static_cast< timer* >(user)->exec();
     }
-
-    bool
-    operator<(const timer& other) const
-    {
-      return (started + timeout) < (other.started + other.timeout);
-    }
   };
 }  // namespace llarp
 
@@ -59,12 +53,14 @@ struct llarp_timer_context
   llarp::util::Mutex timersMutex;  // protects timers
   std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers
       GUARDED_BY(timersMutex);
-  std::priority_queue< std::unique_ptr< llarp::timer > > calling;
   llarp::util::Mutex tickerMutex;
   std::unique_ptr< llarp::util::Condition > ticker;
   absl::Duration nextTickLen = absl::Milliseconds(100);
 
   llarp_time_t m_Now;
+  llarp_time_t m_NextRequiredTickAt =
+      std::numeric_limits< llarp_time_t >::max();
+  size_t m_NumPendingTimers;
 
   llarp_timer_context()
   {
@@ -118,46 +114,52 @@ struct llarp_timer_context
     const uint32_t id = ++currentId;
     timers.emplace(
         id, std::make_unique< llarp::timer >(m_Now, timeout_ms, user, func));
+    m_NextRequiredTickAt = std::min(m_NextRequiredTickAt, m_Now + timeout_ms);
+    m_NumPendingTimers   = timers.size();
     return id;
   }
 
   uint32_t
-  call_func_later(std::function< void(void) > func, llarp_time_t timeout)
+  call_func_later(std::function< void(void) > func, llarp_time_t timeout_ms)
   {
     llarp::util::Lock lock(&timersMutex);
 
     const uint32_t id = ++currentId;
     timers.emplace(
-        id, std::make_unique< llarp::timer >(m_Now, timeout, nullptr, nullptr));
+        id,
+        std::make_unique< llarp::timer >(m_Now, timeout_ms, nullptr, nullptr));
     timers[id]->deferredFunc = func;
+    m_NextRequiredTickAt = std::min(m_NextRequiredTickAt, m_Now + timeout_ms);
+    m_NumPendingTimers   = timers.size();
     return id;
   }
 
   void
   cancel_all() LOCKS_EXCLUDED(timersMutex)
   {
-    std::list< uint32_t > ids;
-
     {
       llarp::util::Lock lock(&timersMutex);
 
       for(auto& item : timers)
       {
-        ids.push_back(item.first);
+        item.second->func     = nullptr;
+        item.second->canceled = true;
       }
     }
+  }
 
-    for(auto id : ids)
-    {
-      cancel(id);
-    }
+  bool
+  ShouldTriggerTimers(llarp_time_t peekAhead) const
+  {
+    return m_NumPendingTimers > 0
+        and (m_Now + peekAhead) >= m_NextRequiredTickAt;
   }
 };
 
 struct llarp_timer_context*
 llarp_init_timer()
 {
-  return new llarp_timer_context;
+  return new llarp_timer_context();
 }
 
 uint32_t
@@ -175,11 +177,9 @@ llarp_timer_call_func_later(struct llarp_timer_context* t, llarp_time_t timeout,
 }
 
 void
-llarp_free_timer(struct llarp_timer_context** t)
+llarp_free_timer(struct llarp_timer_context* t)
 {
-  if(*t)
-    delete *t;
-  *t = nullptr;
+  delete t;
 }
 
 void
@@ -191,6 +191,7 @@ llarp_timer_remove_job(struct llarp_timer_context* t, uint32_t id)
 void
 llarp_timer_stop(struct llarp_timer_context* t)
 {
+  llarp::LogDebug("timers stopping");
   // destroy all timers
   // don't call callbacks on timers
   {
@@ -200,6 +201,7 @@ llarp_timer_stop(struct llarp_timer_context* t)
   }
   if(t->ticker)
     t->ticker->SignalAll();
+  llarp::LogDebug("timers stopped");
 }
 
 void
@@ -221,14 +223,15 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
 {
   if(!t->run())
     return;
-
+  const auto now = llarp::time_now_ms();
+  t->m_Now       = now;
   std::list< std::unique_ptr< llarp::timer > > hit;
   {
     llarp::util::Lock lock(&t->timersMutex);
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
     {
-      if(t->m_Now - itr->second->started >= itr->second->timeout
+      if(now - itr->second->started >= itr->second->timeout
          || itr->second->canceled)
       {
         // timer hit
@@ -236,31 +239,45 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
         itr = t->timers.erase(itr);
       }
       else
+      {
         ++itr;
+      }
     }
   }
-  for(const auto& h : hit)
+  while(not hit.empty())
   {
-    if(h->func)
+    const auto& h = hit.front();
+    h->called_at  = now;
+    h->exec();
+    hit.pop_front();
+  }
+  // reindex next tick info
+  {
+    llarp::util::Lock lock(&t->timersMutex);
+    t->m_Now                = now;
+    t->m_NextRequiredTickAt = std::numeric_limits< llarp_time_t >::max();
+    for(const auto& item : t->timers)
     {
-      h->called_at = t->m_Now;
-      h->exec();
+      t->m_NextRequiredTickAt =
+          std::min(t->m_NextRequiredTickAt, item.second->timeout + t->m_Now);
     }
+    t->m_NumPendingTimers = t->timers.size();
   }
 }
 
-static void
-llarp_timer_tick_all_job(void* user)
+bool
+llarp_timer_should_call(struct llarp_timer_context* t)
 {
-  llarp_timer_tick_all(static_cast< llarp_timer_context* >(user));
+  return t->ShouldTriggerTimers(0);
 }
 
 void
 llarp_timer_tick_all_async(struct llarp_timer_context* t,
                            struct llarp_threadpool* pool, llarp_time_t now)
 {
-  t->m_Now = now;
-  llarp_threadpool_queue_job(pool, {t, llarp_timer_tick_all_job});
+  llarp_timer_set_time(t, now);
+  if(t->ShouldTriggerTimers(0))
+    llarp_threadpool_queue_job(pool, std::bind(&llarp_timer_tick_all, t));
 }
 
 void
@@ -302,8 +319,9 @@ namespace llarp
       else
         call(user, timeout, diff);
     }
-    if(deferredFunc)
+    if(deferredFunc && not canceled)
       deferredFunc();
-    done = true;
+    deferredFunc = nullptr;
+    done         = true;
   }
 }  // namespace llarp

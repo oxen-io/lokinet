@@ -5,56 +5,50 @@
 #include <util/thread/queue.hpp>
 #include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
+#include <util/types.hpp>
 
 #include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
 
+struct llarp_threadpool;
+
+#ifdef __cplusplus
 struct llarp_threadpool
 {
   std::unique_ptr< llarp::thread::ThreadPool > impl;
-  std::unique_ptr< llarp::thread::Queue< std::function< void(void) > > > jobs;
-  const pid_t callingPID;
 
-  llarp_threadpool(int workers, llarp::string_view name)
-      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
-                                                           workers * 128, name))
-      , jobs(nullptr)
-      , callingPID(0)
+  llarp_threadpool(int workers, llarp::string_view name,
+                   size_t queueLength = size_t{1024 * 8})
+      : impl(std::make_unique< llarp::thread::ThreadPool >(
+          workers, std::max(queueLength, size_t{32}), name))
   {
-  }
-
-  llarp_threadpool()
-      : jobs(new llarp::thread::Queue< std::function< void() > >(128))
-      , callingPID(llarp::util::GetPid())
-  {
-    jobs->enable();
   }
 
   size_t
-  size() const
-  {
-    if(jobs)
-      return jobs->size();
-    return 0;
-  }
+  size() const;
 
+  size_t
+  pendingJobs() const;
+
+  size_t
+  numThreads() const;
+
+  /// try to guess how big our job latency is on this threadpool
+  llarp_time_t
+  GuessJobLatency(llarp_time_t granulairty = 1000) const;
+
+  /// see if this thread is full given lookahead amount
   bool
-  QueueFunc(std::function< void(void) > f)
+  LooksFull(size_t lookahead) const
   {
-    if(impl)
-      return impl->tryAddJob(f);
-
-    return jobs->tryPushBack(f) == llarp::thread::QueueReturn::Success;
+    return (pendingJobs() + lookahead) >= size();
   }
 };
+#endif
 
 struct llarp_threadpool *
-llarp_init_threadpool(int workers, const char *name);
-
-/// for single process mode
-struct llarp_threadpool *
-llarp_init_same_process_threadpool();
+llarp_init_threadpool(int workers, const char *name, size_t queueLength);
 
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);
@@ -64,44 +58,41 @@ using llarp_thread_work_func = void (*)(void *);
 /** job to be done in worker thread */
 struct llarp_thread_job
 {
+#ifdef __cplusplus
   /** user data to pass to work function */
   void *user{nullptr};
   /** called in threadpool worker thread */
   llarp_thread_work_func work{nullptr};
-#ifdef __cplusplus
+
   llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
   {
   }
 
   llarp_thread_job() = default;
+#else
+  void *user;
+  llarp_thread_work_func work;
 #endif
 };
 
-/// for single process mode
 void
 llarp_threadpool_tick(struct llarp_threadpool *tp);
 
-void
+bool
 llarp_threadpool_queue_job(struct llarp_threadpool *tp,
                            struct llarp_thread_job j);
 
 #ifdef __cplusplus
 
-void
+bool
 llarp_threadpool_queue_job(struct llarp_threadpool *tp,
-                           std::function< void() > func);
+                           std::function< void(void) > func);
 
 #endif
 
 void
 llarp_threadpool_start(struct llarp_threadpool *tp);
-
 void
 llarp_threadpool_stop(struct llarp_threadpool *tp);
-void
-llarp_threadpool_join(struct llarp_threadpool *tp);
-
-void
-llarp_threadpool_wait(struct llarp_threadpool *tp);
 
 #endif

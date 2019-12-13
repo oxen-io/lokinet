@@ -57,7 +57,7 @@ namespace llarp
 
       /// handle ip packet from outside
       void
-      OnInetPacket(const llarp_buffer_t& buf);
+      OnInetPacket(std::vector< byte_t > buf);
 
       AbstractRouter*
       GetRouter();

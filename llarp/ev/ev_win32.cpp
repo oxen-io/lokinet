@@ -16,13 +16,12 @@ static CRITICAL_SECTION HandlerMtx;
 std::list< win32_tun_io* > tun_listeners;
 
 void
-begin_tun_loop(int nThreads)
+begin_tun_loop(int nThreads, llarp_ev_loop* loop)
 {
   kThreadPool = new HANDLE[nThreads];
   for(int i = 0; i < nThreads; ++i)
   {
-    kThreadPool[i] =
-        CreateThread(nullptr, 0, &tun_ev_loop, nullptr, 0, nullptr);
+    kThreadPool[i] = CreateThread(nullptr, 0, &tun_ev_loop, loop, 0, nullptr);
   }
   llarp::LogInfo("created ", nThreads, " threads for TUN event queue");
   poolSize = nThreads;
@@ -74,7 +73,7 @@ win32_tun_io::setup()
 
 // first TUN device gets to set up the event port
 bool
-win32_tun_io::add_ev()
+win32_tun_io::add_ev(llarp_ev_loop* loop)
 {
   if(tun_event_queue == INVALID_HANDLE_VALUE)
   {
@@ -85,7 +84,7 @@ win32_tun_io::add_ev()
     // threads
     tun_event_queue = CreateIoCompletionPort(tunif->tun_fd, nullptr,
                                              (ULONG_PTR)this, numCPU * 2);
-    begin_tun_loop(numCPU * 2);
+    begin_tun_loop(numCPU * 2, loop);
   }
   else
     CreateIoCompletionPort(tunif->tun_fd, tun_event_queue, (ULONG_PTR)this, 0);
@@ -131,9 +130,9 @@ win32_tun_io::read(byte_t* buf, size_t sz)
 
 // and now the event loop itself
 extern "C" DWORD FAR PASCAL
-tun_ev_loop(void* unused)
+tun_ev_loop(void* u)
 {
-  UNREFERENCED_PARAMETER(unused);
+  llarp_ev_loop* logic = static_cast< llarp_ev_loop* >(u);
 
   DWORD size         = 0;
   OVERLAPPED* ovl    = nullptr;
@@ -143,8 +142,8 @@ tun_ev_loop(void* unused)
 
   while(true)
   {
-    alert =
-        GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, 100);
+    alert = GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl,
+                                      EV_TICK_INTERVAL);
 
     if(!alert)
     {
@@ -153,11 +152,11 @@ tun_ev_loop(void* unused)
       // of the tun logic
       for(const auto& tun : tun_listeners)
       {
-        EnterCriticalSection(&HandlerMtx);
-        if(tun->t->tick)
-          tun->t->tick(tun->t);
-        tun->flush_write();
-        LeaveCriticalSection(&HandlerMtx);
+        logic->call_soon([tun]() {
+          if(tun->t->tick)
+            tun->t->tick(tun->t);
+          tun->flush_write();
+        });
       }
       continue;  // let's go at it once more
     }
@@ -178,8 +177,11 @@ tun_ev_loop(void* unused)
         continue;
       }
       // EnterCriticalSection(&HandlerMtx);
-      if(ev->t->recvpkt)
-        ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
+      logic->call_soon([pkt, size, ev]() {
+        if(ev->t->recvpkt)
+          ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
+        delete pkt;
+      });
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
@@ -190,12 +192,11 @@ tun_ev_loop(void* unused)
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
-    EnterCriticalSection(&HandlerMtx);
-    if(ev->t->tick)
-      ev->t->tick(ev->t);
-    ev->flush_write();
-    LeaveCriticalSection(&HandlerMtx);
-    delete pkt;  // don't leak
+    logic->call_soon([ev]() {
+      if(ev->t->tick)
+        ev->t->tick(ev->t);
+      ev->flush_write();
+    });
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
   return 0;
@@ -232,6 +233,14 @@ exit_tun_loop()
     CloseHandle(tun_event_queue);
     DeleteCriticalSection(&HandlerMtx);
   }
+}
+
+// now zero-copy
+ssize_t
+TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
+{
+  llarp::ev_io* io = (llarp::ev_io*)conn->impl;
+  return uwrite(io->fd, (char*)ptr, sz);
 }
 
 llarp_win32_loop::~llarp_win32_loop()
@@ -331,6 +340,8 @@ namespace llarp
     }
     // build handler
     llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
+    connimpl->tcp.write       = &TCPWrite;
+    connimpl->tcp.loop        = loop;
     if(loop->add_ev(connimpl, true))
     {
       // call callback
@@ -366,8 +377,23 @@ namespace llarp
     if(static_cast< size_t >(ret) > sz)
       return -1;
     b.sz = ret;
-    udp->recvfrom(udp, addr, ManagedBuffer{b});
+    if(udp->recvfrom)
+      udp->recvfrom(udp, addr, ManagedBuffer{b});
+    else
+    {
+      m_RecvPackets.emplace_back(
+          PacketEvent{llarp::Addr(*addr), PacketBuffer(ret)});
+      std::copy_n(buf, ret, m_RecvPackets.back().pkt.data());
+    }
     return 0;
+  }
+
+  bool
+  udp_listener::RecvMany(llarp_pkt_list* pkts)
+  {
+    *pkts         = std::move(m_RecvPackets);
+    m_RecvPackets = llarp_pkt_list();
+    return pkts->size() > 0;
   }
 
   static int
@@ -415,6 +441,7 @@ llarp_win32_loop::tcp_connect(struct llarp_tcp_connecter* tcp,
   if(fd == -1)
     return false;
   llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+  conn->tcp.write       = &TCPWrite;
   add_ev(conn, true);
   conn->connect();
   return true;
@@ -694,6 +721,14 @@ llarp_win32_loop::stop()
     upoll_destroy(upollfd);
   upollfd = nullptr;
   llarp::LogDebug("destroy upoll");
+}
+
+void
+llarp_win32_loop::tick_listeners()
+{
+  llarp_ev_loop::tick_listeners();
+  for(auto& func : m_Tickers)
+    LogicCall(m_Logic, func);
 }
 
 #endif

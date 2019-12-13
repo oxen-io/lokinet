@@ -29,7 +29,7 @@ namespace llarp
       /// queue send a fully encrypted hidden service frame
       /// via a path
       bool
-      Send(const ProtocolFrame& f, path::Path_ptr path)
+      Send(std::shared_ptr< ProtocolFrame > f, path::Path_ptr path)
           LOCKS_EXCLUDED(m_SendQueueMutex);
 
       /// flush upstream traffic when in router thread

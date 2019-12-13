@@ -3,6 +3,7 @@
 
 #include <dns/server.hpp>
 #include <ev/ev.h>
+#include <ev/vpnio.hpp>
 #include <net/ip.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
@@ -20,7 +21,7 @@ namespace llarp
                          public std::enable_shared_from_this< TunEndpoint >
     {
       TunEndpoint(const std::string& nickname, AbstractRouter* r,
-                  llarp::service::Context* parent);
+                  llarp::service::Context* parent, bool lazyVPN = false);
       ~TunEndpoint() override;
 
       path::PathSet_ptr
@@ -54,6 +55,9 @@ namespace llarp
 
       void
       TickTun(llarp_time_t now);
+
+      static void
+      tunifTick(llarp_tun_io*);
 
       bool
       MapAddress(const service::Address& remote, huint128_t ip, bool SNode);
@@ -114,8 +118,17 @@ namespace llarp
       bool
       HasLocalIP(const huint128_t& ip) const;
 
-      llarp_tun_io tunif;
-      std::unique_ptr< llarp_fd_promise > Promise;
+      std::unique_ptr< llarp_tun_io > tunif;
+      llarp_vpn_io* vpnif = nullptr;
+
+      bool
+      InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info) override
+      {
+        if(tunif)
+          return false;
+        m_LazyVPNPromise.set_value(lazy_vpn{info, io});
+        return true;
+      }
 
       /// called before writing to tun interface
       static void
@@ -135,21 +148,23 @@ namespace llarp
       handleTickTun(void* u);
 
       /// get a key for ip address
-      template < typename Addr >
-      Addr
+      template < typename Addr_t >
+      Addr_t
       ObtainAddrForIP(huint128_t ip, bool isSNode)
       {
+        Addr_t addr;
         auto itr = m_IPToAddr.find(ip);
-        if(itr == m_IPToAddr.end() || m_SNodes[itr->second] != isSNode)
+        if(itr != m_IPToAddr.end() and m_SNodes[itr->second] == isSNode)
         {
-          // not found
-          Addr addr;
-          addr.Zero();
-          return addr;
+          addr = Addr_t(itr->second);
         }
         // found
-        return Addr{itr->second};
+        return addr;
       }
+
+      template < typename Addr_t >
+      bool
+      FindAddrForIP(Addr_t& addr, huint128_t ip);
 
       bool
       HasAddress(const AlignedBuffer< 32 >& addr) const
@@ -169,9 +184,16 @@ namespace llarp
       ResetInternalState() override;
 
      protected:
-      using PacketQueue_t = llarp::util::CoDelQueue<
+      bool
+      ShouldFlushNow(llarp_time_t now) const;
+
+      llarp_time_t m_LastFlushAt = 0;
+      using PacketQueue_t        = llarp::util::CoDelQueue<
           net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
           net::IPPacket::CompareOrder, net::IPPacket::GetNow >;
+
+      /// queue packet for send on net thread from user
+      std::vector< net::IPPacket > m_TunPkts;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network
@@ -206,6 +228,14 @@ namespace llarp
           m_SNodes;
 
      private:
+      llarp_vpn_io_impl*
+      GetVPNImpl()
+      {
+        if(vpnif && vpnif->impl)
+          return static_cast< llarp_vpn_io_impl* >(vpnif->impl);
+        return nullptr;
+      }
+
       bool
       QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
@@ -255,12 +285,6 @@ namespace llarp
         reply(*query);
         delete query;
       }
-
-#ifndef WIN32
-      /// handles fd injection force android
-      std::promise< std::pair< int, int > > m_VPNPromise;
-#endif
-
       /// our dns resolver
       std::shared_ptr< dns::Proxy > m_Resolver;
 
@@ -283,7 +307,20 @@ namespace llarp
       std::vector< llarp::Addr > m_StrictConnectAddrs;
       /// use v6?
       bool m_UseV6;
+      struct lazy_vpn
+      {
+        llarp_vpn_ifaddr_info info;
+        llarp_vpn_io* io;
+      };
+      std::promise< lazy_vpn > m_LazyVPNPromise;
+
+      /// send packets on endpoint to user using send function
+      /// send function returns true to indicate stop iteration and do codel
+      /// drop
+      void
+      FlushToUser(std::function< bool(net::IPPacket&) > sendfunc);
     };
+
   }  // namespace handlers
 }  // namespace llarp
 

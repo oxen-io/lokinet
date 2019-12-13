@@ -5,4 +5,5 @@ import android.net.VpnService;
 
 public class LokinetService extends VpnService
 {
+    
 }

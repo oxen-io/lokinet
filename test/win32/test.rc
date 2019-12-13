@@ -81,12 +81,12 @@ BEGIN
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET for Microsoft® Windows® NT™"
 #ifdef LLARP_RELEASE_MOTTO
-            VALUE "FileVersion", VERSION_STRING(0.5.0, RELEASE_MOTTO, GIT_REV)
+            VALUE "FileVersion", VERSION_STRING(0.5.2, RELEASE_MOTTO, GIT_REV)
 #else
 #ifdef __GNUC__
-            VALUE "FileVersion", VERSION_STRING(0.5.0-dev-, GIT_REV)
+            VALUE "FileVersion", VERSION_STRING(0.5.2-dev-, GIT_REV)
 #else
-            VALUE "FileVersion", "0.5.0-dev"
+            VALUE "FileVersion", "0.5.2-dev"
 #endif
 #endif
             VALUE "InternalName", "llarpd"
@@ -94,12 +94,12 @@ BEGIN
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
 #ifdef LLARP_RELEASE_MOTTO
-            VALUE "ProductVersion", VERSION_STRING(0.5.0, RELEASE_MOTTO, GIT_REV)
+            VALUE "ProductVersion", VERSION_STRING(0.5.2, RELEASE_MOTTO, GIT_REV)
 #else
 #ifdef __GNUC__
-            VALUE "ProductVersion", VERSION_STRING(0.5.0-dev-, GIT_REV)
+            VALUE "ProductVersion", VERSION_STRING(0.5.2-dev-, GIT_REV)
 #else
-            VALUE "ProductVersion", "0.5.0-dev"
+            VALUE "ProductVersion", "0.5.2-dev"
 #endif
 #endif
         END

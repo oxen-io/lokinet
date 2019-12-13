@@ -51,6 +51,9 @@ namespace llarp
       bool
       RemoveEndpoint(const std::string &name);
 
+      Endpoint_ptr
+      GetEndpointByName(const std::string &name);
+
       bool
       StartAll();
 

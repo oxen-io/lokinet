@@ -1,12 +1,15 @@
+include(Version)
+
 set(LIB_UTIL_SRC
   config/config.cpp
   config/ini.cpp
+  config/key_manager.cpp
   constants/defaults.cpp
   constants/limits.cpp
   constants/link_layer.cpp
   constants/path.cpp
   constants/proto.cpp
-  constants/version.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/aligned.cpp
   util/bencode.cpp
   util/bits.cpp
@@ -25,6 +28,7 @@ set(LIB_UTIL_SRC
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
+  util/lokinet_init.c
   util/mem.cpp
   util/meta/memfn_traits.cpp
   util/meta/memfn.cpp
@@ -56,12 +60,15 @@ set(LIB_UTIL_SRC
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+
+add_dependencies(${UTIL_LIB} genversion)
+
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 if(ANDROID)
   set(LOG_LIB log)
 endif()
 
-target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${FS_LIB} ${LOG_LIB})
+target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB})
 
 target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
 
@@ -78,10 +85,11 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
+  ev/vpnio.cpp
+  ev/ev_libuv.cpp
   net/ip.cpp
   net/net.cpp
   net/net_addr.cpp
-  net/net_inaddr.cpp
   net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
@@ -94,14 +102,11 @@ set(LIB_PLATFORM_SRC
 
 if (WIN32)
   set(LIB_PLATFORM_SRC
+    ev/ev_win32.cpp
     ${LIB_PLATFORM_SRC}
     win32/win32_inet.c
     win32/win32_intrnl.c
     win32/win32_upoll.c)
-else()
-  set(LIB_PLATFORM_SRC
-      ${LIB_PLATFORM_SRC}
-      ev/ev_libuv.cpp)
 endif(WIN32)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
@@ -132,12 +137,12 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
+  bootstrap.cpp
   context.cpp
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp
   crypto/crypto_noop.cpp
   crypto/crypto.cpp
-  crypto/ec.cpp
   crypto/encrypted_frame.cpp
   crypto/encrypted.cpp
   crypto/types.cpp
@@ -253,7 +258,8 @@ if(TESTNET)
 endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${FS_LIB})
+target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
@@ -265,7 +271,7 @@ if(WITH_SHARED)
   set(LIBS ${LIBS} Threads::Threads)
   target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ${FS_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
   else()
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()

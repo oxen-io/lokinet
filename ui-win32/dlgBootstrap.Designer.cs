@@ -67,7 +67,7 @@
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.button1_Click_1);
             // 
-            // bootstrap
+            // dlgBootstrap
             // 
             this.AcceptButton = this.btnDownload;
             resources.ApplyResources(this, "$this");
@@ -82,7 +82,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Name = "bootstrap";
+            this.Name = "dlgBootstrap";
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.ResumeLayout(false);

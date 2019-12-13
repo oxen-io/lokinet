@@ -98,7 +98,7 @@ namespace llarp
       {
         // farthest hop
         // TODO: encrypt junk frames because our public keys are not eligator
-        logic->queue_func(std::bind(result, shared_from_this()));
+        LogicCall(logic, std::bind(result, shared_from_this()));
       }
       else
       {
@@ -162,13 +162,13 @@ namespace llarp
       lastBuild          = 0;
     }
 
-    void
-    Builder::Tick(llarp_time_t now)
+    void Builder::Tick(llarp_time_t)
     {
-      ExpirePaths(now);
+      const auto now = llarp::time_now_ms();
+      ExpirePaths(now, m_router);
       if(ShouldBuildMore(now))
         BuildOne();
-      TickPaths(now, m_router);
+      TickPaths(m_router);
       if(m_BuildStats.attempts > 50)
       {
         if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
@@ -214,7 +214,12 @@ namespace llarp
               if(s && s->IsEstablished() && isOutbound && !got)
               {
                 const RouterContact rc = s->GetRemoteRC();
+#ifdef TESTNET
                 if(got || exclude.count(rc.pubkey))
+#else
+                if(got || exclude.count(rc.pubkey)
+                   || m_router->IsBootstrapNode(rc.pubkey))
+#endif
                   return;
                 cur = rc;
                 got = true;
@@ -276,7 +281,9 @@ namespace llarp
     {
       if(IsStopped())
         return false;
-      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
+      if(BuildCooldownHit(now))
+        return false;
+      return PathSet::ShouldBuildMore(now);
     }
 
     void
@@ -391,7 +398,7 @@ namespace llarp
       for(size_t idx = 0; idx < hops.size(); ++idx)
       {
         hops[idx].Clear();
-        size_t tries = 4;
+        size_t tries = 32;
         while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
         {
           --tries;
@@ -401,7 +408,7 @@ namespace llarp
           LogWarn(Name(), " failed to select hop ", idx);
           return false;
         }
-        exclude.insert(hops[idx].pubkey);
+        exclude.emplace(hops[idx].pubkey);
       }
       return true;
     }
@@ -421,11 +428,12 @@ namespace llarp
       // async generate keys
       auto ctx     = std::make_shared< AsyncPathKeyExchangeContext >();
       ctx->router  = m_router;
-      ctx->pathset = GetSelf();
-      auto path    = std::make_shared< path::Path >(hops, this, roles);
+      auto self    = GetSelf();
+      ctx->pathset = self;
+      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
       LogInfo(Name(), " build ", path->HopsString());
       path->SetBuildResultHook(
-          [this](Path_ptr p) { this->HandlePathBuilt(p); });
+          [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),
                              &PathBuilderKeysGenerated);
     }

@@ -15,6 +15,13 @@ namespace llarp
     }
   };
 
+  TEST_F(IdentityKeyTest, TestKeyGen)
+  {
+    SecretKey secret;
+    crypto.identity_keygen(secret);
+    ASSERT_FALSE(secret.IsZero());
+  }
+
   TEST_F(IdentityKeyTest, TestSignVerify)
   {
     SecretKey secret;
@@ -22,13 +29,14 @@ namespace llarp
     AlignedBuffer< 128 > random;
     random.Randomize();
     Signature sig;
+    const PubKey pk = secret.toPublic();
 
-    llarp_buffer_t buf(random);
+    const llarp_buffer_t buf(random.data(), random.size());
     ASSERT_TRUE(crypto.sign(sig, secret, buf));
-    ASSERT_TRUE(crypto.verify(secret.toPublic(), buf, sig));
+    ASSERT_TRUE(crypto.verify(pk, buf, sig));
     random.Randomize();
     // mangle body
-    ASSERT_FALSE(crypto.verify(secret.toPublic(), buf, sig));
+    ASSERT_FALSE(crypto.verify(pk, buf, sig));
   }
 
   struct PQCryptoTest : public ::testing::Test
