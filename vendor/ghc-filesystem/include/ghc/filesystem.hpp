@@ -48,6 +48,12 @@
 #ifndef GHC_FILESYSTEM_H
 #define GHC_FILESYSTEM_H
 
+// #define BSD manifest constant only in
+// sys/param.h
+#ifndef _WIN32
+#include <sys/param.h>
+#endif
+
 #ifndef GHC_OS_DETECTED
 #if defined(__APPLE__) && defined(__MACH__)
 #define GHC_OS_MACOS
@@ -62,6 +68,10 @@
 #elif defined(_WIN32)
 #define GHC_OS_WINDOWS
 #define GHC_OS_WIN32
+#elif defined(__svr4__)
+#define GHC_OS_SYS5R4
+#elif defined(BSD)
+#define GHC_OS_BSD
 #else
 #error "Operating system currently not supported!"
 #endif
@@ -114,6 +124,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 #ifdef GHC_OS_ANDROID
 #include <android/api-level.h>
 #endif
