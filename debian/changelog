@@ -1,3 +1,561 @@
+lokinet (0.6.0~rc2-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * tracy lock contention testing and other fun things
+  * dont nack replayed messages, tweak transmission parameters.
+
+  [ Michael ]
+  * Abort when a null mutex is locked from a different thread (in debug mode only)
+
+  [ Jeff Becker ]
+  * remove more locking and make it safe
+  * ensure no crash on quit
+  * make it compile
+  * change default url for bootstrap
+  * add multi-ack and change protocol handshake to pin identity key
+  * make it compile
+  * break it again just to be sure
+  * multithreaded iwp cryptography
+  * more async cryptography
+  * testnet
+  * more
+  * unstaged changed
+
+  [ jeff ]
+  * gut libutp and finish making things compile and pass tests
+  * try calling stuff in logic thread from event loop
+
+  [ Jeff Becker ]
+  * finish multithread cryptography first pass
+  * move it arround
+
+  [ jeff ]
+  * try fixing handover and add snapp traffic to multithreaded crypto workers
+
+  [ Ryan Tharp ]
+  * Change how webhooks are called
+
+  [ Michael ]
+  * Enable more sanitisers
+
+  [ Rick V ]
+  * Remove binaries, download them at runtime
+  * new http parser
+  * refactor lokinet-bootstrap
+  * we grab a prebuilt bootstrap at build time
+  * try set up environment for travis installer build
+  * try install .net manually
+  * ok let's see how we're locked up
+  * skip null adapters
+  * clang-format
+  * undo travis changes
+  * bump to 0.5.1
+  * bump to 0.5.2
+  * remove old bootstrap code
+  * build mbedtls from source JIT
+  * replace custom bootstrap with curl to match all other platforms
+  * specify host/target explicitly for cross-build
+  * add targets for release engineering
+  * fix static build
+  * fix command line parameters
+  * try running curl if we can't use native WebClient
+  * fix bootstrap command line
+  * fix license
+  * quote paths
+  * Revert "fix license", do the CRLF conversion at installer build time
+  * update URI shortcuts
+
+  [ Michael ]
+  * Add initial macOS app
+  * Try to fix windows build
+  * Fix static link with gcc
+  * Use a hardened build for macOS release
+  * Distinct ios build
+  * Use a hardened build for macOS release
+  * Improvements to app workflow
+
+  [ michael-loki ]
+  * Make Travis happy
+
+  [ jeff ]
+  * don't need that
+  * remove log level change
+  * fix windows port and make it compile
+  * use absl optional
+  * always use absl for string_view
+  * use static_cast
+  * revert to c++14 for non win32
+
+  [ Stephen Shelton ]
+  * Add a --version flag to lokinet CLI args
+
+  [ Michael ]
+  * Support version over jsonrcp
+
+  [ jeff ]
+  * flesh out vpn c api clean up cruft
+
+  [ Michael ]
+  * Introduce --background to only start JSON RPC
+
+  [ jeff ]
+  * update cmake
+
+  [ Michael ]
+  * Apply Jeff's comments
+  * Split cmake files for executables into src dirs
+
+  [ michael-loki ]
+  * Fixup
+
+  [ Michael ]
+  * Fix makefile location
+  * More CI fixes
+  * fixup ios
+
+  [ jeff ]
+  * initial jni wrapper stuff
+  * finish wiring up jni shizz
+  * try making it compile
+  * fix cmakelists.txt file paths
+  * typofix
+  * pass template arguments in, fix typo
+  * more fixups
+  * cast
+  * typofix
+  * typo fix
+  * more fixes, implemenmt missing functions
+  * close -> closeasync
+  * close async
+  * update comment
+
+  [ Jeff Becker ]
+  * remove unused file
+
+  [ Michael ]
+  * Convert RPC endpoint to be a lookup table
+  * Add rpc call to get current addresses for our node
+  * Use libcurl (optional dependency) to hit jsonrpc
+  * Review fixes
+  * Fix travis deps
+
+  [ Stephen Shelton ]
+  * Add comments to NullMutex implementation to express intent
+
+  [ jeff ]
+  * call read handler in logic thread
+
+  [ Stephen Shelton ]
+  * Add numNodesKnown to llarp.admin.dumpstate RPC endpoint
+  * Even more clarity to NullMutex comments
+
+  [ Jason Rhinelander ]
+  * Fix build on xenial
+
+  [ jeff ]
+  * revert to ed25519 for signing, this breaks everything (again).
+  * update cmakelists.txt to no longer build removed file
+  * use get_service_nodes rpc endpoint
+
+  [ Stephen Shelton ]
+  * Add missing #endif (presumably from 281fbff)
+
+  [ jeff ]
+  * fix #865 by not using logic if it is null in udp_tick
+  * make format
+  * disable DoH using mozilla's ISP backdoor record.
+  * use correct rpc call to lokid
+  * try making it work in the case that is broken on travis
+  * make it compile on windows
+  * add unit test for identity_keygen
+  * make it compile
+
+  [ Stephen Shelton ]
+  * Prevent in-source-builds with cmake macro
+
+  [ Ron ]
+  * Update readme.md
+
+  [ Jeff Becker ]
+  * fix event loop tcp connections so they are thread safe
+  * revert a few things
+  * make format
+  * make format
+  * fix compile error on freebsd
+  * fix crash
+  * make non copyable
+  * update _sz
+  * fix warnings and prevent bug that sends invalid traffic to user
+  * fix bounds check
+  * use data not begin
+  * make it compile
+
+  [ Ryan Tharp ]
+  * Fix whitespace formatting
+  * MacOS Installer: Generate default config
+
+  [ Jeff Becker ]
+  * devendor libsodium by default except for android
+  * finishing touches
+  * update travis
+  * use vendored libsodium if we dont have a good version
+  * set version in FindLibsodium.cmake
+  * use PACKAGE_FIND_VERFSION
+  * enable IOS on IOS
+  * fix typo
+  * disable abyss-main
+
+  [ Jason Rhinelander ]
+  * Fix cmake sodium version check
+
+  [ Jeff Becker ]
+  * try disabling extra calls for some reason sodium_memcmp destroys the stack and i have no idea why
+  * enable see2 when used
+  * if this works i'll be pissed at gcc
+
+  [ Rick V ]
+  * a. GCC LTO requires specifiying CXXFLAGS in LDFLAGS
+  * grab everything and the kitchen sink at build time instead
+  * we no longer need IDP (the runtime download plugin)
+  * ok release target now downloads the same known-good assets from public server
+  * lto not supported for cross compile targets
+  * ok implement libuv stubs for tcp connectors
+  * ok add the write handler here too
+  * emit libuv-like stub externally
+  * c-f everything
+  * make that a universal rule
+  * just write the data straight into the socket
+  * ok set write handler in event loop
+  * oops fix up some missing code
+  * manually merge #859
+  * restore crypto flags for binary builds
+  * fix windows
+  * add patchset for libsodium-upstream-stable so we can get rid of vendored lib
+  * add note
+  * undo change in preparation of removing this shit code
+  * remove vendored libsodium
+
+  [ Jeff Becker ]
+  * pull in libsodium if local version sucks
+
+  [ Jason Rhinelander ]
+  * Move sodium download into separate cmake include
+  * Fix download hash verification & version string
+
+  [ Rick V ]
+  * add patch for libsodium 1.0.17
+  * add cmake rule to patch libsodium on windows
+  * add patch for latest stable libzmq on windows with a configure note
+  * fix note
+
+  [ Jeff Becker ]
+  * fix issue #894
+  * add compile time override for libsodium tarball url using -DSODIUM_TARBALL_URL=https://whatever/tarball.tar.gz
+  * seek for version and set it before deserializing
+  * try fixing leak
+  * use <= not ==
+  * meh
+  * move calling of path build sccess hook to correct place
+  * flush link session encrypt queue immediately after handling plaintext packets
+  * Revert "move calling of path build sccess hook to correct place"
+  * changes from review
+  * try interchanging pump order
+  * call Router::PumpLL after every batch of packets from a link session
+  * make it compile
+
+  [ Jason Rhinelander ]
+  * Silence unused variable warnings in release build
+
+  [ Jeff Becker ]
+  * get rid of NON_PC_TARGET
+  * add forgotten file
+  * move it
+  * detect properly for mobile
+  * more
+  * exclude debian from setting CRYPTO_FLAGS
+  * move more stuff
+  * move it more
+  * disable gtest when no unit tests
+  * disable windows native in CI
+  * re-add windows to CI pipeline just allow fail
+  * fix patching command
+  * i hate windows
+  * make path builds work again
+  * remove printf
+  * make format
+  * make router give time directly
+
+  [ Thomas Winget ]
+  * Add per-path queues, prioritize control messages over traffic
+  * ban zero id for pathid; clarity and cleanup
+  * fix seg fault, fix uninitialized static member
+  * do...while; make format; remove erroneous GUARDED_BY
+  * remove our paths from outbound queues
+  * remove our paths from outbound queues
+  * fixes some logical errors in per-path queues
+
+  [ Jeff Becker ]
+  * prevent double free crap with shared_ptr
+  * iot seems that logic thread didn't work the way i remember it should make logic work the way it should
+  * make format
+  * make unit tests pass for iwp
+  * add warning when trying to queue onto full logic thread
+
+  [ Stephen Shelton ]
+  * Drop new inbound IWP sessions when the first packet can't be handled
+  * make format (and git commit --amend to re-trigger CI)
+  * Reduce log level of IWP session issues as they may be encountered frequently and normally
+
+  [ Jason Rhinelander ]
+  * Remove shell globbing of path
+  * clang-format fixes
+  * Don't pointlessly set conffname back to itself
+  * Fix runtime AVX2 detection
+
+  [ Stephen Shelton ]
+  * Stub out KeyManager class
+  * Replace bencode_write_version_entry with a more general-purpose function for writing bencoded dictionary entries
+
+  [ Jason Rhinelander ]
+  * Lower the ev tick interval to 10ms
+
+  [ Stephen Shelton ]
+  * Add "keyfile version" to RouterContact
+  * Rename bencode function for clarity
+
+  [ Jeff Becker ]
+  * contention killer
+  * make sure all calls of logic thread jobs are not having contention
+  * add trace log level for tracking logic thread jobs
+  * typo fix in release
+  * try fixing file log segfault
+  * make it compile
+  * make contention checker templated
+  * please the gods of valgrind
+  * remove use of void * in godawful old code from a time before happyness
+  * use lambda
+  * std::move
+  * initialize with zeros
+  * remove valgrind access errors
+  * work in progress
+  * flush quues of other paths
+  * make it compile
+
+  [ Stephen Shelton ]
+  * Implement code to move old key files out of the way
+
+  [ Jeff Becker ]
+  * fix "zero hop" bug
+  * make logic job queue 8 times bigger
+  * make job queue size configurable
+  * make master build release by default
+
+  [ Stephen Shelton ]
+  * Reorganize priv key file loading a bit and hook KeyManager into Router
+
+  [ Jeff Becker ]
+  * use curl to fetch from lokid rpc the identity key
+  * sleep
+  * move sleep
+  * update readme and disable curl on windows
+  * clear response between tries
+  * add check for identity key validity
+  * ping lokid rpc
+
+  [ Stephen Shelton ]
+  * Undo adding of crypto version to RouterContact, other fixes
+
+  [ Jeff Becker ]
+  * reduce number of jobs we put onto the logic thread
+  * add metrics tracking for logic jobs in debug mode
+  * prune members in timer context
+  * use timer guard for all jobs in debug mode
+  * prevent segfault
+
+  [ Thomas Winget ]
+  * Track and log UV event loop ticks in debug builds
+  * Show number of logic thread jobs in debug builds
+
+  [ Jason Rhinelander ]
+  * Don't flush here; we already have a tick flushing
+
+  [ Jeff Becker ]
+  * reduce calls in link pump
+  * process transit hops on flush
+  * dont process empty queues
+  * use lockless queues to gather results of transit traffic work
+  * only flush when no other jobs are executing
+  * flush in logic
+  * try async decrypt then verify
+  * batch and flush
+  * fix address mapping bug
+  * remove jenky call to logic thread in link server
+  * ammend previous commit
+  * call jobs in logic
+  * dont flood the logic queue
+  * style nitch
+
+  [ Jason Rhinelander ]
+  * Die if job queue full
+  * Set tun to non-blocking
+
+  [ Jeff Becker ]
+  * limit calls
+  * lower limit to 25ms
+  * limit calls to pumpll such that it gets called fast enough but not too much under load
+
+  [ Rick V ]
+  * crash on wine, we support linux, ucb_unix, svr4 natively ffs. i tested this patch on wine 4.4 on fuckin Solaris 11 snv_151
+  * fix error msg
+  * set default bootstrap-uri for legacy ui
+  * tick more often
+
+  [ Jeff Becker ]
+  * fix path resource leak
+  * limit connections
+  * break the world to make it faster
+  * make it compile
+  * dont use auto
+  * fix previous commit
+  * unconditionally bundle first fragment in xmit
+  * make format
+
+  [ Stephen Shelton ]
+  * Handle link transport key in KeyManager
+
+  [ Jeff Becker ]
+  * bump version and motto
+  * handle case with no git directory
+
+  [ Jeff ]
+  * fix readme for libcurl package name on linux
+
+  [ Stephen Shelton ]
+  * Fix bad merge
+  * Move lokid key API request to KeyManager
+
+  [ Jeff Becker ]
+  * make it compile
+
+  [ Jason Rhinelander ]
+  * Bump default netid to gamma for 0.6
+
+  [ Stephen Shelton ]
+  * Init key manager before InitOutboundLinks are configured
+
+  [ Jeff Becker ]
+  * remove unneeded log statement
+
+  [ Stephen Shelton ]
+  * Reinstate link test / update to use KeyManager
+
+  [ Jeff Becker ]
+  * close sessions to non essential nodes
+  * fix typo
+  * only close outbound links
+  * close links lazy
+  * more close changes
+  * reduce window
+
+  [ Stephen Shelton ]
+  * Make format
+  * Avoid trivial getters/setters in KeyManager
+
+  [ Jeff Becker ]
+  * add bootstrap list functionality and utility
+
+  [ Stephen Shelton ]
+  * Backup SNApp keys when migrating to new ed25519 crypto
+
+  [ Jeff Becker ]
+  * use ipv6 only with ipv6 packets
+
+  [ Jason Rhinelander ]
+  * Replace cppbackport with ghc-filesystem
+
+  [ Jeff Becker ]
+  * try fixing router lockup
+  * squash possible race condition
+  * add absl annotations
+  * add systemd watchdog if enabled on compile time
+  * disable absl decorator in release
+  * add deadlock checker and revert bencode change from long ago
+  * fix last commit
+  * use correct format string
+  * reduce log levels at runtime
+  * disable metrics by default
+
+  [ Jason Rhinelander ]
+  * Remove unused argument
+
+  [ Jeff Becker ]
+  * make format and make tests compile
+  * remove callsto Router::PumpLL and stuff gets faster (or stuff)
+  * use faster hashing
+  * fix unit tests
+  * fixes for travis
+  * more travis fixes
+  * another attempt at travis fix
+  * clang fixes
+  * allow windows to fail
+  * more travis config tweaks
+  * prevent crash on exit
+  * make logic and net thread one in the same
+  * call timers with queuer if set
+  * limit timer calls
+  * more cleanup
+  * use thread queue
+  * trypushback
+  * fixes for travis
+  * more travis fixes
+  * another attempt at travis fix
+  * clang fixes
+  * allow windows to fail
+  * more travis config tweaks
+  * prevent crash on exit
+  * make logic and net thread one in the same
+  * call timers with queuer if set
+  * limit timer calls
+  * more cleanup
+  * use thread queue
+  * trypushback
+
+  [ Stephen Shelton ]
+  * Optimize AlignedBuffer:::IsZero()
+
+  [ Jeff Becker ]
+  * make libuv on win32 work
+  * finish remaining changes
+  * more
+  * final change
+  * fug
+  * remove mutexes
+  * consolidate versions
+
+  [ Stephen Shelton ]
+  * Remove typo in version changes
+
+  [ Jason Rhinelander ]
+  * Add missing ev_libuv (now needed everywhere)
+  * Put version info into a compiled file
+  * Simplify AlignedBuffer alignment implementation
+  * Change alignment to std::max_align_t
+
+  [ Stephen Shelton ]
+  * Fix for travis-ci xenial build
+  * Another attempt to make travis-ci's xenial happy
+  * Comment-out ios build for now
+  * make format (or format-verify, at least)
+  * Include error code in log output in Identity::EnsureKeys()
+  * Make format (on recent version-related code)
+  * Use vendored fs::filesystem on all platforms
+  * Remove FS_LIB conditionals
+
+  [ Jason Rhinelander ]
+  * Offer ritual sacrifice to clang-format
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 13 Dec 2019 16:07:08 -0400
+
 lokinet (0.5.2-4) sid; urgency=medium
 
   * Rename split packages to lokinet{,-bin,-router}
