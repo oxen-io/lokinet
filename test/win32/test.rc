@@ -7,7 +7,7 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include <win32/resource.h>
-#include <constants/version.hpp>
+#include <constants/version.h>
 #ifdef __GNUC__
 #include <winresrc.h>
 #endif
@@ -81,9 +81,9 @@ BEGIN
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET for Microsoft® Windows® NT™"
 #ifdef LLARP_RELEASE_MOTTO
-            VALUE "FileVersion", VERSION_STRING(0.6.0, RELEASE_MOTTO, GIT_REV)
+            VALUE "FileVersion", VERSION_STRING(0.6.0, RELEASE_MOTTO, VERSIONTAG)
 #elif __GNUC__
-            VALUE "FileVersion", VERSION_STRING(0.6.0-dev-, GIT_REV)
+            VALUE "FileVersion", VERSION_STRING(0.6.0-dev-, VERSIONTAG)
 #else
             VALUE "FileVersion", "0.6.0-dev"
 #endif
@@ -92,9 +92,9 @@ BEGIN
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
 #ifdef LLARP_RELEASE_MOTTO
-            VALUE "ProductVersion", VERSION_STRING(0.6.0, RELEASE_MOTTO, GIT_REV)
+            VALUE "ProductVersion", VERSION_STRING(0.6.0, RELEASE_MOTTO, VERSIONTAG)
 #elif __GNUC__
-            VALUE "ProductVersion", VERSION_STRING(0.6.0-dev-, GIT_REV)
+            VALUE "ProductVersion", VERSION_STRING(0.6.0-dev-, VERSIONTAG)
 #else
             VALUE "ProductVersion", "0.6.0-dev"
 #endif
