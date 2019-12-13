@@ -1,0 +1,28 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Fri, 13 Dec 2019 17:23:41 -0400
+Subject: Pass debian version as GIT_VERSION
+
+---
+ cmake/Version.cmake | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/cmake/Version.cmake b/cmake/Version.cmake
+index 5cded3b..ee60154 100644
+--- a/cmake/Version.cmake
++++ b/cmake/Version.cmake
+@@ -1,4 +1,8 @@
+ 
++if(GIT_VERSION)
++  set(VERSIONTAG "${GIT_VERSION}")
++  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")
++else()
+ find_package(Git QUIET)
+ if(GIT_FOUND OR Git_FOUND)
+   message(STATUS "Found Git: ${GIT_EXECUTABLE}")
+@@ -17,5 +21,6 @@ else()
+   set(VERSIONTAG "nogit")
+   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")
+ endif()
++endif()
+ 
+ add_custom_target(genversion DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")

@@ -4,3 +4,4 @@
 0004-Make-root-bootstraps-to-system-path.patch
 0005-Move-default-user-group-into-deb-patch.patch
 0006-Add-no-resolvconf-hack-to-default-config.patch
+0007-Pass-debian-version-as-GIT_VERSION.patch
