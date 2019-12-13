@@ -10,12 +10,11 @@ log.
  1 file changed, 5 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 5ead30f..daf3409 100644
+index 054aa57..4b2f525 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1,11 +1,6 @@
- # Lowest version - android ndk 3.6.0
- cmake_minimum_required(VERSION 3.6.0)
+@@ -1,10 +1,5 @@
+ cmake_minimum_required(VERSION 3.5.1)  # xenial's cmake version
  
 -find_program(CCACHE_PROGRAM ccache)
 -if(CCACHE_PROGRAM)

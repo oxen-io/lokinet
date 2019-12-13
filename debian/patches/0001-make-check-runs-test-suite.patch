@@ -6,28 +6,30 @@ debhelper prefers a make test target, but that target is heavily
 restricted in cmake; this removes it and adds a check target that works
 instead to run the test suite in the build.
 ---
- CMakeLists.txt      | 2 +-
+ CMakeLists.txt      | 4 ----
  test/CMakeLists.txt | 3 +++
- 2 files changed, 4 insertions(+), 1 deletion(-)
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 9c411c8..a51f123 100644
+index 79d60e1..054aa57 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -314,7 +314,7 @@ else()
-   endif(ANDROID)
- endif(SHADOW)
+@@ -259,10 +259,6 @@ add_subdirectory(llarp)
+ add_subdirectory(libabyss)
+ add_subdirectory(daemon)
  
--enable_testing()
-+#enable_testing()
- 
+-if(WITH_TESTS)
+-  enable_testing()
+-endif()
+-
  if (NOT SHADOW)
-   add_subdirectory(test)
+   if(WITH_TESTS)
+     add_subdirectory(test)
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index c7b5e84..95ee0fe 100644
+index 22c7eff..57709c3 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
-@@ -74,3 +74,6 @@ endif(NOT WIN32)
+@@ -73,3 +73,6 @@ endif(NOT WIN32)
  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
    target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
  endif()

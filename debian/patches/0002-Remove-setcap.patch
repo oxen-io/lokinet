@@ -5,20 +5,19 @@ Subject: Remove setcap
 The debian setcap is applied in postinst instead (and the setcap here
 doesn't work with debian's temporary install location).
 ---
- CMakeLists.txt | 3 ---
- 1 file changed, 3 deletions(-)
+ daemon/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index a51f123..5ead30f 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -305,9 +305,6 @@ else()
-     install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
-   endif()
+diff --git a/daemon/CMakeLists.txt b/daemon/CMakeLists.txt
+index 685436f..a6bd0ff 100644
+--- a/daemon/CMakeLists.txt
++++ b/daemon/CMakeLists.txt
+@@ -36,7 +36,7 @@ else()
+         install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
+     endif()
  
--  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
--    install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
--  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-     target_link_directories(${EXE} PRIVATE /usr/local/lib)
-     target_link_directories(lokinet-rcutil PRIVATE /usr/local/lib)
+-    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
++    if(FALSE AND ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+         install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+     elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+         target_link_directories(${EXE} PRIVATE /usr/local/lib)
