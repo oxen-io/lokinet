@@ -29,9 +29,9 @@ namespace llarp
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
   template < size_t sz >
 #ifdef _WIN32
-  // Microsoft C only aligns to long double/i386 by default which is only eight
-  // bytes
-  struct alignas(16) AlignedBuffer
+  // We CANNOT align on a 128-bit boundary, malloc(3C) on win32
+  // only hands out 64-bit aligned pointers
+  struct alignas(uint64_t) AlignedBuffer
 #else
   struct alignas(std::max_align_t) AlignedBuffer
 #endif
