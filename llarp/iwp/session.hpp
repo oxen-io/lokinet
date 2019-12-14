@@ -30,7 +30,7 @@ namespace llarp
       /// How often to acks RX messages
       static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 2;
       /// How often to retransmit TX fragments
-      static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 2;
+      static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 4;
       /// How often we send a keepalive
       static constexpr llarp_time_t PingInterval = 5000;
       /// How long we wait for a session to die with no tx from them
