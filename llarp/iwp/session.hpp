@@ -22,13 +22,13 @@ namespace llarp
                      public std::enable_shared_from_this< Session >
     {
       /// Time how long we try delivery for
-      static constexpr llarp_time_t DeliveryTimeout = 1000;
+      static constexpr llarp_time_t DeliveryTimeout = 500;
       /// Time how long we wait to recieve a message
-      static constexpr llarp_time_t RecievalTimeout = (DeliveryTimeout * 8) / 5;
+      static constexpr llarp_time_t ReceivalTimeout = (DeliveryTimeout * 8) / 5;
       /// How long to keep a replay window for
-      static constexpr llarp_time_t ReplayWindow = (RecievalTimeout * 3) / 2;
+      static constexpr llarp_time_t ReplayWindow = (ReceivalTimeout * 3) / 2;
       /// How often to acks RX messages
-      static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 4;
+      static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 2;
       /// How often to retransmit TX fragments
       static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 2;
       /// How often we send a keepalive
