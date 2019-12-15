@@ -1,3 +1,15 @@
+lokinet (0.6.0~rc2-2) sid; urgency=medium
+
+  * Refreshed patches
+  * Add required libcurl dep
+  * added libsodium dep
+  * Pass debian version as GIT_VERSION
+  * Disable 1024 aligned buffer test
+  * lokinet-rcutil renamed to lokinetctl
+  * cherry-picked libabyss read fix
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Dec 2019 13:24:58 -0400
+
 lokinet (0.6.0~rc2-1) sid; urgency=medium
 
   [ Jeff Becker ]
