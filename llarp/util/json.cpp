@@ -23,6 +23,8 @@ namespace llarp
       bool
       FeedData(const char* buf, size_t sz) override
       {
+        if(sz == 0)
+          return true;
         if(m_Offset + sz > m_Buf.size() - 1)
           return false;
         std::copy(buf, buf + sz, m_Buf.begin());
