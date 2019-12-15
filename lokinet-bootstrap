@@ -60,7 +60,7 @@ tmp=/tmp/bootstrap.tmp
 
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
-if curl -L "$url" >"$tmp"; then
+if curl -fsSL "$url" >"$tmp"; then
   mv "$tmp" "$dest"
   echo -e "${GREEN}lokinet successfully bootstrapped${NC}"
 else
