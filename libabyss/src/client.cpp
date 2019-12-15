@@ -12,8 +12,6 @@ namespace abyss
     namespace json = llarp::json;
     struct ConnImpl : HeaderReader
     {
-      // big
-      static const size_t MAX_BODY_SIZE = (1024 * 1024);
       llarp_tcp_conn* m_Conn;
       JSONRPC* m_Parent;
       nlohmann::json m_RequestBody;
@@ -225,12 +223,7 @@ namespace abyss
           // no content-length header
           if(itr == Header.Headers.end())
             return false;
-
-          // check size
           contentSize = std::stoul(itr->second);
-          if(contentSize > MAX_BODY_SIZE)
-            return false;
-
           m_BodyParser.reset(json::MakeParser(contentSize));
         }
         if(m_BodyParser && m_BodyParser->FeedData(buf, sz))

@@ -98,7 +98,7 @@ TEST_F(TestDhtServiceAddressLookup, validate)
     EXPECT_CALL(context, Now()).WillOnce(Return(EXPIRY));
     EXPECT_CALL(m_crypto, verify(_, _, _)).WillOnce(Return(true));
 
-    ASSERT_TRUE(serviceAddressLookup->Validate(introset));
+    ASSERT_FALSE(serviceAddressLookup->Validate(introset));
   }
 }
 

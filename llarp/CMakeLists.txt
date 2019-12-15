@@ -128,7 +128,6 @@ set(DNSLIB_SRC
   dns/name.cpp
   dns/query.cpp
   dns/question.cpp
-  dns/rectypes.cpp
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
@@ -169,9 +168,6 @@ set(LIB_SRC
   dht/tx.cpp
   dht/txholder.cpp
   dht/txowner.cpp
-  dns.cpp
-  dnsc.cpp
-  dnsd.cpp
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
