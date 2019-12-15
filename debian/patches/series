@@ -6,3 +6,4 @@
 0006-Add-no-resolvconf-hack-to-default-config.patch
 0007-Pass-debian-version-as-GIT_VERSION.patch
 0008-Disable-failing-1024-test.patch
+0009-cherry-picked-libabyss-read-fix.patch

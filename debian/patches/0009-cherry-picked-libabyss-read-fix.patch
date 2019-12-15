@@ -1,0 +1,25 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sun, 15 Dec 2019 13:20:56 -0400
+Subject: cherry-picked libabyss read fix
+
+---
+ llarp/util/json.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/llarp/util/json.cpp b/llarp/util/json.cpp
+index 9c9358c..ef569c1 100644
+--- a/llarp/util/json.cpp
++++ b/llarp/util/json.cpp
+@@ -23,9 +23,11 @@ namespace llarp
+       bool
+       FeedData(const char* buf, size_t sz) override
+       {
++        if(sz == 0)
++          return true;
+         if(m_Offset + sz > m_Buf.size() - 1)
+           return false;
+-        std::copy(buf, buf + sz, m_Buf.begin());
++        std::copy_n(buf, sz, m_Buf.data() + m_Offset);
+         m_Offset += sz;
+         m_Buf[m_Offset] = 0;
+         return true;
