@@ -79,7 +79,11 @@ namespace llarp
     bool
     ServiceInfo::UpdateAddr()
     {
-      return CalculateAddress(m_CachedAddr.as_array());
+      if(m_CachedAddr.IsZero())
+      {
+        return CalculateAddress(m_CachedAddr.as_array());
+      }
+      return true;
     }
 
     std::ostream&
