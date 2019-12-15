@@ -32,9 +32,9 @@ namespace llarp
       /// How often to retransmit TX fragments
       static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 4;
       /// How often we send a keepalive
-      static constexpr llarp_time_t PingInterval = 5000;
+      static constexpr llarp_time_t PingInterval = 4000;
       /// How long we wait for a session to die with no tx from them
-      static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
+      static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 3;
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
