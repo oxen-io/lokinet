@@ -27,7 +27,7 @@ namespace llarp
           return true;
         if(m_Offset + sz > m_Buf.size() - 1)
           return false;
-        std::copy(buf, buf + sz, m_Buf.begin());
+        std::copy_n(buf, sz, m_Buf.data() + m_Offset);
         m_Offset += sz;
         m_Buf[m_Offset] = 0;
         return true;
