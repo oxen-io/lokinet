@@ -51,7 +51,7 @@
 #ifndef GHC_OS_DETECTED
 #if defined(__APPLE__) && defined(__MACH__)
 #define GHC_OS_MACOS
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__FreeBSD__)
 #define GHC_OS_LINUX
 #if defined(__ANDROID__)
 #define GHC_OS_ANDROID

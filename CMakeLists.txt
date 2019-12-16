@@ -254,6 +254,8 @@ if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
 endif()
 
+set(EXE_LIBS ${STATIC_LIB} ${LIBS})
+
 add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)

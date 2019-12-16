@@ -8,7 +8,6 @@ target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_link_directories(${ABYSS_EXE} PRIVATE /usr/local/lib)
   target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 

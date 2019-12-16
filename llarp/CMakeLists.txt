@@ -60,22 +60,20 @@ set(LIB_UTIL_SRC
 )
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
-
 add_dependencies(${UTIL_LIB} genversion)
 
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 if(ANDROID)
   set(LOG_LIB log)
 endif()
-
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB})
 
-target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
+set(ABSL_LIBS absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
+if(NOT WIN32)
+  set(ABS_LIBS ${ABSL_LIBS} absl::optional absl::variant absl::strings)
+endif()
 
-# cut back on fluff
-if (NOT WIN32)
-  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings)
-endif(NOT WIN32)
+target_link_libraries(${UTIL_LIB} PUBLIC ${ABSL_LIBS} nlohmann_json::nlohmann_json)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC linux/netns.cpp)
@@ -108,10 +106,8 @@ if (WIN32)
     win32/win32_intrnl.c
     win32/win32_upoll.c)
 endif(WIN32)
-
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} Threads::Threads ${LIBS})
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   if(NON_PC_TARGET)
     add_import_library(rt)
@@ -255,11 +251,13 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
+  target_link_libraries(${PLATFORM_LIB} PUBLIC ${UTIL_LIB} ${LIBS})
+  target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${PLATFORM_LIB} ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES} ${LIBS})
   target_include_directories(${STATIC_LIB} SYSTEM PUBLIC /usr/local/include)
+else()
+  target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES} ${LIBS})
 endif()
 
 if(WITH_SHARED)
@@ -280,6 +278,7 @@ if (WARNINGS_AS_ERRORS)
   target_compile_options(${PLATFORM_LIB} PUBLIC ${WARN_FLAGS})
   target_compile_options(${STATIC_LIB} PUBLIC ${WARN_FLAGS})
 endif()
+
 add_log_tag(${UTIL_LIB})
 add_log_tag(${PLATFORM_LIB})
 add_log_tag(${STATIC_LIB})
