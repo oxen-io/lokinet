@@ -51,7 +51,7 @@
 #ifndef GHC_OS_DETECTED
 #if defined(__APPLE__) && defined(__MACH__)
 #define GHC_OS_MACOS
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__FreeBSD__)
 #define GHC_OS_LINUX
 #if defined(__ANDROID__)
 #define GHC_OS_ANDROID
@@ -192,7 +192,7 @@ public:
     }
 };
 
-template<typename char_type>
+template <typename char_type>
 class path_helper_base
 {
 public:
@@ -204,11 +204,11 @@ public:
 #endif
 };
 
-#if  __cplusplus < 201703L
+#if __cplusplus < 201703L
 template <typename char_type>
 constexpr char_type path_helper_base<char_type>::preferred_separator;
 #endif
-    
+
 // 30.10.8 class path
 class GHC_FS_API_CLASS path
 #if defined(GHC_OS_WINDOWS) && defined(GHC_WIN_WSTRING_STRING_TYPE)
@@ -225,7 +225,7 @@ public:
 #endif
     using string_type = std::basic_string<value_type>;
     using path_helper_base<value_type>::preferred_separator;
-    
+
     // 30.10.10.1 enumeration format
     /// The path format in wich the constructor argument is given.
     enum format {
@@ -427,7 +427,7 @@ private:
 #else
     const impl_string_type& native_impl() const;
 #endif
-};
+};  // namespace filesystem
 
 // 30.10.8.6 path non-member functions
 GHC_FS_API void swap(path& lhs, path& rhs) noexcept;
@@ -1151,7 +1151,7 @@ GHC_INLINE std::error_code make_system_error(int err)
     return std::error_code(err ? err : errno, std::system_category());
 }
 #endif
-    
+
 #endif  // GHC_EXPAND_IMPL
 
 template <typename Enum>
@@ -1274,7 +1274,7 @@ GHC_INLINE unsigned consumeUtf8Fragment(const unsigned state, const uint8_t frag
     codepoint = (state ? (codepoint << 6) | (fragment & 0x3fu) : (0xffu >> category) & fragment);
     return state == S_RJCT ? static_cast<unsigned>(S_RJCT) : static_cast<unsigned>((utf8_state_info[category + 16] >> (state << 2)) & 0xf);
 }
-    
+
 GHC_INLINE bool validUtf8(const std::string& utf8String)
 {
     std::string::const_iterator iter = utf8String.begin();
@@ -1292,9 +1292,9 @@ GHC_INLINE bool validUtf8(const std::string& utf8String)
 }
 
 }  // namespace detail
-    
+
 #endif
-    
+
 namespace detail {
 
 template <class StringType, typename std::enable_if<(sizeof(typename StringType::value_type) == 1)>::type* = nullptr>
@@ -1398,7 +1398,7 @@ inline std::string toUtf8(const std::basic_string<charT, traits, Alloc>& unicode
                 throw filesystem_error("Illegal code point for unicode character.", result, std::make_error_code(std::errc::illegal_byte_sequence));
 #else
                 appendUTF8(result, 0xfffd);
-                if(iter == unicodeString.end()) {
+                if (iter == unicodeString.end()) {
                     break;
                 }
 #endif
@@ -1443,7 +1443,7 @@ GHC_INLINE bool startsWith(const std::string& what, const std::string& with)
 GHC_INLINE void path::postprocess_path_with_format(path::impl_string_type& p, path::format fmt)
 {
 #ifdef GHC_RAISE_UNICODE_ERRORS
-    if(!detail::validUtf8(p)) {
+    if (!detail::validUtf8(p)) {
         path t;
         t._path = p;
         throw filesystem_error("Illegal byte sequence for unicode character.", t, std::make_error_code(std::errc::illegal_byte_sequence));
@@ -1568,7 +1568,7 @@ GHC_INLINE const char* strerror_adapter(char* gnu, char*)
 
 GHC_INLINE const char* strerror_adapter(int posix, char* buffer)
 {
-    if(posix) {
+    if (posix) {
         return "Error in strerror_r!";
     }
     return buffer;
@@ -3408,7 +3408,8 @@ GHC_INLINE bool create_directories(const path& p, std::error_code& ec) noexcept
                     std::error_code tmp_ec;
                     if (is_directory(current, tmp_ec)) {
                         ec.clear();
-                    } else {
+                    }
+                    else {
                         return false;
                     }
                 }
@@ -4218,7 +4219,7 @@ GHC_INLINE void resize_file(const path& p, uintmax_t size, std::error_code& ec) 
 #ifdef GHC_OS_WINDOWS
     LARGE_INTEGER lisize;
     lisize.QuadPart = static_cast<LONGLONG>(size);
-    if(lisize.QuadPart < 0) {
+    if (lisize.QuadPart < 0) {
         ec = detail::make_system_error(ERROR_FILE_TOO_LARGE);
         return;
     }
@@ -4794,7 +4795,7 @@ public:
                     try {
                         _current.append_name(detail::toUtf8(_findData.cFileName).c_str());
                     }
-                    catch(filesystem_error& fe) {
+                    catch (filesystem_error& fe) {
                         ec = fe.code();
                         return;
                     }
@@ -4802,7 +4803,7 @@ public:
                 }
                 else {
                     auto err = ::GetLastError();
-                    if(err != ERROR_NO_MORE_FILES) {
+                    if (err != ERROR_NO_MORE_FILES) {
                         _ec = ec = detail::make_system_error(err);
                     }
                     FindClose(_dirHandle);

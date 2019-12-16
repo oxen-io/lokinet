@@ -171,7 +171,7 @@ install (root):
 
 build:
 
-    $ pkg install cmake git curl libuv libsodium
+    $ pkg install cmake git curl libuv libsodium pkgconf
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
