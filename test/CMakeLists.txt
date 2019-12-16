@@ -24,8 +24,6 @@ list(APPEND TEST_SRC
     service/test_llarp_service_address.cpp
     service/test_llarp_service_identity.cpp
     test_libabyss.cpp
-    test_llarp_dns.cpp
-    test_llarp_dnsd.cpp
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
     test_llarp_router.cpp

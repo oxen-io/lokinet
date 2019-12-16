@@ -9,7 +9,12 @@ NC='\033[0m' # No Color
 set -e
 
 helpme=
-default_url="https://seed.lokinet.org/bootstrap.signed"
+declare -A default_url
+default_url=(
+    [lokinet]="https://seed.lokinet.org/lokinet.signed"
+    [mainnet]="https://seed.lokinet.org/lokinet.signed"
+    [testnet]="https://seed.lokinet.org/testnet.signed"
+)
 default_dest="$HOME/.lokinet/bootstrap.signed"
 
 if [ "$#" -gt 2 ]; then
@@ -18,7 +23,9 @@ fi
 
 if [ -z "$1" ]
 then
-  url="$default_url"
+  url="${default_url[mainnet]}"
+elif [ -n "${default_url[$1]}" ]; then
+  url="${default_url[$1]}"
 elif [[ "$1" = -* ]]; then
   helpme=y
 else
@@ -34,7 +41,9 @@ else
 fi
 
 if [ -n "$helpme" ]; then
-  echo "Usage: $0 [URL [DEST]] -- download bootstrap file from URL (default: $default_url) and save to DEST (default: $default_dest)."
+  echo "Usage: $0 [URL [DEST]] -- download bootstrap file from URL (default: lokinet) and save to DEST (default: $default_dest)."
+  echo "URL can be a full URL, or else 'lokinet' or 'testnet' to use the default lokinet/testnet seed URL.  'mainnet' can be used"
+  echo "as an alias for 'lokinet'."
   exit 1
 fi
 
@@ -51,7 +60,7 @@ tmp=/tmp/bootstrap.tmp
 
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
-if curl -L "$url" >"$tmp"; then
+if curl -fsSL "$url" >"$tmp"; then
   mv "$tmp" "$dest"
   echo -e "${GREEN}lokinet successfully bootstrapped${NC}"
 else
