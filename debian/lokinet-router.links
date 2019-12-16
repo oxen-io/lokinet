@@ -1,1 +1,2 @@
 /etc/loki/lokinet-router.ini /var/lib/lokinet/router/lokinet.ini
+/etc/loki/lokinet-testnet-router.ini /var/lib/lokinet/testnet-router/lokinet.ini

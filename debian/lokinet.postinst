@@ -5,22 +5,38 @@ set -e
 if [ "$1" = configure ]; then
     mkdir -p /etc/loki
     datadir=/var/lib/lokinet
-    mkdir -p $datadir
+    tn_datadir=/var/lib/lokinet/testnet
+    mkdir -p $datadir $tn_datadir
     su -s /bin/sh _lokinet -c "test -O $datadir && test -G $datadir" || \
         chown _lokinet:_loki $datadir
+    su -s /bin/sh _lokinet -c "test -O $tn_datadir && test -G $tn_datadir" || \
+        chown _lokinet:_loki $tn_datadir
 
     if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
+        /usr/bin/lokinet-bootstrap lokinet /var/lib/lokinet/bootstrap.signed
         chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
+    fi
+
+    if ! [ -e /var/lib/lokinet/testnet/bootstrap.signed ]; then
+        /usr/bin/lokinet-bootstrap testnet /var/lib/lokinet/testnet/bootstrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/testnet/bootstrap.signed
     fi
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
     /usr/bin/lokinet -g $tmpdir/lokinet.ini
-    sed -i -e "s#$tmpdir#$datadir#; s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#" $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#$datadir#" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
     ucf $tmpdir/lokinet.ini /etc/loki/lokinet.ini
     ucfr lokinet /etc/loki/lokinet.ini
+
+    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
+    /usr/bin/lokinet -g $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#$tn_datadir#" $tmpdir/lokinet.ini
+    chmod 640 $tmpdir/lokinet.ini
+    chgrp _loki $tmpdir/lokinet.ini
+    ucf $tmpdir/lokinet.ini /etc/loki/lokinet-testnet.ini
+    ucfr lokinet /etc/loki/lokinet-testnet.ini
 
     if [ -x /bin/systemctl ] && /bin/systemctl --quiet is-active systemd-resolved.service; then
         /bin/systemctl restart systemd-resolved.service

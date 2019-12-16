@@ -1,0 +1,17 @@
+[Unit]
+Description=LokiNET: Anonymous Network layer thingydoo, router (testnet)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=_lokinet
+SyslogIdentifier=lokinet-router
+WorkingDirectory=/var/lib/lokinet/testnet-router
+AssertFileNotEmpty=/var/lib/lokinet/testnet/bootstrap.signed
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/testnet-router/lokinet.ini
+Environment=LOKINET_NETID=gamma
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

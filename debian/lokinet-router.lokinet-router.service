@@ -9,6 +9,7 @@ SyslogIdentifier=lokinet-router
 WorkingDirectory=/var/lib/lokinet/router
 AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/router/lokinet.ini
+Environment=LOKINET_NETID=lokinet
 Restart=always
 RestartSec=5s
 

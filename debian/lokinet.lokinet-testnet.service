@@ -11,7 +11,7 @@ AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
 ExecStartPost=+/usr/sbin/lokinet-resolvconf add /var/lib/lokinet/lokinet.ini
 ExecStopPost=+/usr/sbin/lokinet-resolvconf remove /var/lib/lokinet/lokinet.ini
-Environment=LOKINET_NETID=lokinet
+Environment=LOKINET_NETID=gamma
 Restart=always
 RestartSec=5s
 

@@ -5,13 +5,21 @@ set -e
 if [ "$1" = configure ]; then
     mkdir -p /etc/loki
     datadir=/var/lib/lokinet/router
-    mkdir -p $datadir
-    su -s /bin/sh _lokinet -c "test -O $datadir && test -G $datadir" || \
-        chown _lokinet:_loki $datadir
+    tn_datadir=/var/lib/lokinet/testnet-router
+    mkdir -p $datadir $tn_datadir /var/lib/lokinet/testnet
+    for d in $datadir $tn_datadir /var/lib/lokinet/testnet; do
+        su -s /bin/sh _lokinet -c "test -O $d && test -G $d" || \
+            chown _lokinet:_loki $d
+    done
 
     if ! [ -e /var/lib/lokinet/bootstrap.signed ]; then
-        /usr/bin/lokinet-bootstrap "" /var/lib/lokinet/bootstrap.signed
+        /usr/bin/lokinet-bootstrap lokinet /var/lib/lokinet/bootstrap.signed
         chown _lokinet:_loki /var/lib/lokinet/bootstrap.signed
+    fi
+
+    if ! [ -e /var/lib/lokinet/testnet/bootstrap.signed ]; then
+        /usr/bin/lokinet-bootstrap testnet /var/lib/lokinet/testnet/bootstrap.signed
+        chown _lokinet:_loki /var/lib/lokinet/testnet/bootstrap.signed
     fi
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
@@ -21,6 +29,14 @@ if [ "$1" = configure ]; then
     chgrp _loki $tmpdir/lokinet.ini
     ucf $tmpdir/lokinet.ini /etc/loki/lokinet-router.ini
     ucfr lokinet /etc/loki/lokinet-router.ini
+
+    tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
+    /usr/bin/lokinet -r $tmpdir/lokinet.ini
+    sed -i -e "s#$tmpdir#$tn_datadir#" $tmpdir/lokinet.ini
+    chmod 640 $tmpdir/lokinet.ini
+    chgrp _loki $tmpdir/lokinet.ini
+    ucf $tmpdir/lokinet.ini /etc/loki/lokinet-testnet-router.ini
+    ucfr lokinet /etc/loki/lokinet-testnet-router.ini
 fi
 
 #DEBHELPER#

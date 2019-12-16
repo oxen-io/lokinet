@@ -43,6 +43,8 @@ override_dh_auto_configure:
 override_dh_installsystemd:
 	dh_installsystemd --name=lokinet
 	dh_installsystemd --name=lokinet-router
+	dh_installsystemd --name=lokinet-testnet --no-enable --no-start
+	dh_installsystemd --name=lokinet-testnet-router --no-enable --no-start
 
 #override_dh_auto_test:
 #	make check
