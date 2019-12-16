@@ -5,3 +5,5 @@
 0005-Move-default-user-group-into-deb-patch.patch
 0006-Add-no-resolvconf-hack-to-default-config.patch
 0007-Pass-debian-version-as-GIT_VERSION.patch
+0008-dont-fail-on-0-sized-data-fed-to-json-parser.patch
+0009-allow-multiple-calls-to-FeedData.patch

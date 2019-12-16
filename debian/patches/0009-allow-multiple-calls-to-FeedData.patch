@@ -1,0 +1,21 @@
+From: Jeff Becker <jeff@i2p.rocks>
+Date: Sun, 15 Dec 2019 12:01:29 -0500
+Subject: allow multiple calls to FeedData
+
+---
+ llarp/util/json.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/llarp/util/json.cpp b/llarp/util/json.cpp
+index 1f0fd22..ef569c1 100644
+--- a/llarp/util/json.cpp
++++ b/llarp/util/json.cpp
+@@ -27,7 +27,7 @@ namespace llarp
+           return true;
+         if(m_Offset + sz > m_Buf.size() - 1)
+           return false;
+-        std::copy(buf, buf + sz, m_Buf.begin());
++        std::copy_n(buf, sz, m_Buf.data() + m_Offset);
+         m_Offset += sz;
+         m_Buf[m_Offset] = 0;
+         return true;
