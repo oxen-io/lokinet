@@ -48,7 +48,7 @@ add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 add_log_tag(${CRYPTOGRAPHY_LIB})
 
 if(NOT VENDOR_LIBSODIUM)
-  find_package(Sodium 1.0.17)
+  find_package(Sodium >=1.0.17 REQUIRED)
 endif()
 
 if(NOT sodium_FOUND)
