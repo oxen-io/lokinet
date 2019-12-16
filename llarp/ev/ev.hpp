@@ -1,6 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 
+#include <net/net_addr.hpp>
 #include <ev/ev.h>
 #include <util/buffer.hpp>
 #include <util/codel.hpp>
@@ -19,8 +20,6 @@
 #include <utility>
 
 #ifdef _WIN32
-#include <win32/win32_up.h>
-#include <win32/win32_upoll.h>
 // From the preview SDK, should take a look at that
 // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
@@ -183,7 +182,7 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      return uwrite(fd, (char*)data, sz);
+      return send(fd, (char*)data, sz, 0);
     }
 
     bool
@@ -271,7 +270,7 @@ namespace llarp
 
     virtual ~win32_ev_io()
     {
-      uclose(fd);
+      closesocket(fd);
     };
   };
 #else
@@ -711,7 +710,6 @@ struct llarp_fd_promise
 struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
-  llarp_time_t _now              = 0;
 
   virtual bool
   init() = 0;
@@ -725,13 +723,12 @@ struct llarp_ev_loop
   virtual void
   update_time()
   {
-    _now = llarp::time_now_ms();
   }
 
   virtual llarp_time_t
   time_now() const
   {
-    return _now;
+    return llarp::time_now_ms();
   }
 
   virtual void
@@ -743,6 +740,9 @@ struct llarp_ev_loop
 
   virtual int
   tick(int ms) = 0;
+
+  virtual bool
+  add_ticker(std::function< void(void) > ticker) = 0;
 
   virtual void
   stop() = 0;
@@ -780,6 +780,9 @@ struct llarp_ev_loop
     return false;
   }
 
+  /// give this event loop a logic thread for calling
+  virtual void set_logic(std::shared_ptr< llarp::Logic >) = 0;
+
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
@@ -795,7 +798,7 @@ struct llarp_ev_loop
 
   std::list< std::unique_ptr< llarp::ev_io > > handlers;
 
-  void
+  virtual void
   tick_listeners()
   {
     auto itr = handlers.begin();
@@ -810,6 +813,77 @@ struct llarp_ev_loop
       }
     }
   }
+
+  virtual void
+  call_soon(std::function< void(void) > f) = 0;
+};
+
+struct PacketBuffer
+{
+  PacketBuffer(PacketBuffer&& other)
+  {
+    _ptr       = other._ptr;
+    _sz        = other._sz;
+    other._ptr = nullptr;
+    other._sz  = 0;
+  }
+
+  PacketBuffer(const PacketBuffer&) = delete;
+
+  PacketBuffer&
+  operator=(const PacketBuffer&) = delete;
+
+  PacketBuffer() : PacketBuffer(nullptr, 0){};
+  explicit PacketBuffer(size_t sz) : _sz{sz}
+  {
+    _ptr = new char[sz];
+  }
+  PacketBuffer(char* buf, size_t sz)
+  {
+    _ptr = buf;
+    _sz  = sz;
+  }
+  ~PacketBuffer()
+  {
+    if(_ptr)
+      delete[] _ptr;
+  }
+  byte_t*
+  data()
+  {
+    return (byte_t*)_ptr;
+  }
+  size_t
+  size()
+  {
+    return _sz;
+  }
+  byte_t& operator[](size_t sz)
+  {
+    return data()[sz];
+  }
+  void
+  reserve(size_t sz)
+  {
+    if(_ptr)
+      delete[] _ptr;
+    _ptr = new char[sz];
+    _sz  = sz;
+  }
+
+ private:
+  char* _ptr = nullptr;
+  size_t _sz = 0;
+};
+
+struct PacketEvent
+{
+  llarp::Addr remote;
+  PacketBuffer pkt;
+};
+
+struct llarp_pkt_list : public std::vector< PacketEvent >
+{
 };
 
 #endif

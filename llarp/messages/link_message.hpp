@@ -4,6 +4,7 @@
 #include <link/session.hpp>
 #include <router_id.hpp>
 #include <util/bencode.hpp>
+#include <path/path_types.hpp>
 
 #include <vector>
 
@@ -19,6 +20,8 @@ namespace llarp
     ILinkSession* session = nullptr;
     uint64_t version      = LLARP_PROTO_VERSION;
 
+    PathID_t pathid;
+
     ILinkMessage() = default;
 
     virtual ~ILinkMessage() = default;
@@ -29,6 +32,14 @@ namespace llarp
     bool
     BDecode(llarp_buffer_t* buf)
     {
+      // default version if not specified is 0
+      uint64_t v = 0;
+      // seek for version and set it if we got it
+      if(BEncodeSeekDictVersion(v, buf, 'v'))
+      {
+        version = v;
+      }
+      // when we hit the code path version is set and we can tell how to decode
       return bencode_decode_dict(*this, buf);
     }
 

@@ -94,7 +94,7 @@ namespace llarp
 
       service::Introduction intro;
 
-      llarp_time_t buildStarted;
+      llarp_time_t buildStarted = 0;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
            PathRole startingRoles);
@@ -107,6 +107,34 @@ namespace llarp
       {
         return _role;
       }
+
+      struct Hash
+      {
+        size_t
+        operator()(const Path& p) const
+        {
+          const auto& tx = p.hops[0].txID;
+          const auto& rx = p.hops[0].rxID;
+          const auto& r  = p.hops[0].upstream;
+          const size_t rhash =
+              std::accumulate(r.begin(), r.end(), 0, std::bit_xor< size_t >());
+          return std::accumulate(rx.begin(), rx.begin(),
+                                 std::accumulate(tx.begin(), tx.end(), rhash,
+                                                 std::bit_xor< size_t >()),
+                                 std::bit_xor< size_t >());
+        }
+      };
+
+      struct Ptr_Hash
+      {
+        size_t
+        operator()(const std::shared_ptr< Path >& p) const
+        {
+          if(p == nullptr)
+            return 0;
+          return Hash{}(*p);
+        }
+      };
 
       bool
       operator<(const Path& other) const
@@ -286,16 +314,6 @@ namespace llarp
       bool
       HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r);
 
-      // handle data in upstream direction
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     AbstractRouter* r) override;
-
-      // handle data in downstream direction
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       AbstractRouter* r) override;
-
       bool
       IsReady() const;
 
@@ -333,6 +351,27 @@ namespace llarp
 
       bool
       SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r);
+
+      void
+      FlushUpstream(AbstractRouter* r) override;
+
+      void
+      FlushDownstream(AbstractRouter* r) override;
+
+     protected:
+      void
+      UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+
+      void
+      DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
+
+      void
+      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
+                        AbstractRouter* r) override;
+
+      void
+      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
+                          AbstractRouter* r) override;
 
      private:
       /// call obtained exit hooks

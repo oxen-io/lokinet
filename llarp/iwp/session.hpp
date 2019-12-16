@@ -4,39 +4,45 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
+#include <unordered_set>
+#include <deque>
 
 namespace llarp
 {
   namespace iwp
   {
-    void
-    AddRandomPadding(std::vector< byte_t >& pkt, size_t min = 16,
-                     size_t variance = 16);
+    /// packet crypto overhead size
+    static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
+    /// creates a packet with plaintext size + wire overhead + random pad
+    ILinkSession::Packet_t
+    CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
+                 size_t pad_variance = 16);
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
     {
       /// Time how long we try delivery for
-      static constexpr llarp_time_t DeliveryTimeout = 5000;
-      /// How long to keep a replay window for
-      static constexpr llarp_time_t ReplayWindow = (DeliveryTimeout * 3) / 2;
+      static constexpr llarp_time_t DeliveryTimeout = 500;
       /// Time how long we wait to recieve a message
-      static constexpr llarp_time_t RecievalTimeout = (DeliveryTimeout * 8) / 5;
+      static constexpr llarp_time_t ReceivalTimeout = (DeliveryTimeout * 8) / 5;
+      /// How long to keep a replay window for
+      static constexpr llarp_time_t ReplayWindow = (ReceivalTimeout * 3) / 2;
       /// How often to acks RX messages
-      static constexpr llarp_time_t ACKResendInterval = 500;
+      static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 2;
       /// How often to retransmit TX fragments
-      static constexpr llarp_time_t TXFlushInterval =
-          (ACKResendInterval * 3) / 2;
+      static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 4;
       /// How often we send a keepalive
-      static constexpr llarp_time_t PingInterval = 2000;
+      static constexpr llarp_time_t PingInterval = 5000;
       /// How long we wait for a session to die with no tx from them
-      static constexpr llarp_time_t SessionAliveTimeout =
-          (PingInterval * 13) / 3;
+      static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
+      /// maximum number of messages we can ack in a multiack
+      static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
       /// outbound session
-      Session(LinkLayer* parent, RouterContact rc, AddressInfo ai);
+      Session(LinkLayer* parent, const RouterContact& rc,
+              const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, Addr from);
+      Session(LinkLayer* parent, const Addr& from);
 
       ~Session() = default;
 
@@ -53,14 +59,13 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       bool
-      SendMessageBuffer(const llarp_buffer_t& buf,
+      SendMessageBuffer(ILinkSession::Message_t msg,
                         CompletionHandler resultHandler) override;
 
       void
-      Send_LL(const llarp_buffer_t& pkt);
+      Send_LL(const byte_t* buf, size_t sz);
 
-      void
-      EncryptAndSend(const llarp_buffer_t& data);
+      void EncryptAndSend(ILinkSession::Packet_t);
 
       void
       Start() override;
@@ -68,8 +73,7 @@ namespace llarp
       void
       Close() override;
 
-      void
-      Recv_LL(const llarp_buffer_t& pkt) override;
+      bool Recv_LL(ILinkSession::Packet_t) override;
 
       bool
       SendKeepAlive() override;
@@ -149,6 +153,7 @@ namespace llarp
       /// session token
       AlignedBuffer< 24 > token;
 
+      PubKey m_ExpectedIdent;
       PubKey m_RemoteOnionKey;
 
       llarp_time_t m_LastTX = 0;
@@ -161,24 +166,43 @@ namespace llarp
 
       /// maps rxid to time recieved
       std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
+      /// set of rx messages to send in next round of multiacks
+      std::unordered_set< uint64_t > m_SendMACKs;
+
+      using CryptoQueue_t   = std::vector< Packet_t >;
+      using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
+      CryptoQueue_ptr m_EncryptNext;
+      CryptoQueue_ptr m_DecryptNext;
 
       void
-      HandleGotIntro(const llarp_buffer_t& buf);
+      EncryptWorker(CryptoQueue_ptr msgs);
 
       void
-      HandleGotIntroAck(const llarp_buffer_t& buf);
+      DecryptWorker(CryptoQueue_ptr msgs);
 
       void
-      HandleCreateSessionRequest(const llarp_buffer_t& buf);
+      HandlePlaintext(CryptoQueue_ptr msgs);
 
       void
-      HandleAckSession(const llarp_buffer_t& buf);
+      HandleGotIntro(Packet_t pkt);
 
       void
-      HandleSessionData(const llarp_buffer_t& buf);
+      HandleGotIntroAck(Packet_t pkt);
+
+      void
+      HandleCreateSessionRequest(Packet_t pkt);
+
+      void
+      HandleAckSession(Packet_t pkt);
+
+      void
+      HandleSessionData(Packet_t pkt);
 
       bool
-      DecryptMessage(const llarp_buffer_t& buf, std::vector< byte_t >& result);
+      DecryptMessageInPlace(Packet_t& pkt);
+
+      void
+      SendMACK();
 
       void
       GenerateAndSendIntro();
@@ -196,22 +220,25 @@ namespace llarp
       SendOurLIM(ILinkSession::CompletionHandler h = nullptr);
 
       void
-      HandleXMIT(std::vector< byte_t > msg);
+      HandleXMIT(Packet_t msg);
 
       void
-      HandleDATA(std::vector< byte_t > msg);
+      HandleDATA(Packet_t msg);
 
       void
-      HandleACKS(std::vector< byte_t > msg);
+      HandleACKS(Packet_t msg);
 
       void
-      HandleNACK(std::vector< byte_t > msg);
+      HandleNACK(Packet_t msg);
 
       void
-      HandlePING(std::vector< byte_t > msg);
+      HandlePING(Packet_t msg);
 
       void
-      HandleCLOS(std::vector< byte_t > msg);
+      HandleCLOS(Packet_t msg);
+
+      void
+      HandleMACK(Packet_t msg);
     };
   }  // namespace iwp
 }  // namespace llarp

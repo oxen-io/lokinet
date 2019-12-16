@@ -5,6 +5,7 @@
 #include <net/net.h>
 #include <net/net.hpp>
 #include <util/buffer.hpp>
+#include <util/thread/logic.hpp>
 
 #include <windows.h>
 #include <process.h>
@@ -36,12 +37,16 @@ namespace llarp
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
+    llarp_pkt_list m_RecvPackets;
 
     udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
     {
     }
+
+    bool
+    RecvMany(llarp_pkt_list*);
 
     bool
     tick();
@@ -73,7 +78,7 @@ struct win32_tun_io
 
   // first TUN device gets to set up the event port
   bool
-  add_ev();
+  add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
   void
@@ -95,10 +100,24 @@ struct win32_tun_io
   }
 };
 
-// UDP event loop (we use select(3SOCKET) because linux)
-struct llarp_win32_loop : public llarp_ev_loop
+// UDP event loop (no longer used, we libuv for now)
+// PLEASE convert me to IOCPs so we don't have to use that
+// EXTREMELY CURSED libuv event loop and its llarp_vpn_io_pipe
+//
+// For you see, on Windows, we have enough local user permissions to set
+// up a VPN tunnel interface internally, and have lokinet consume this
+// file descriptor directly. See win32_tun_io for this impl. llarp_vpn_io
+// assumes that an external entity or process is required to inject packets
+// into the VPN interface provided by the OS.
+//
+// Not only that, the win32 IOCP facility handles timing on its own, you can
+// specify an interval to tick directly into the call to
+// GetQueuedCompletionStatus(2)
+/*struct llarp_win32_loop : public llarp_ev_loop
 {
   upoll_t* upollfd;
+  std::shared_ptr< llarp::Logic > m_Logic;
+  std::vector< std::function< void(void) > > m_Tickers;
 
   llarp_win32_loop() : upollfd(nullptr)
   {
@@ -148,7 +167,23 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   void
   stop();
-};
 
+  bool
+  add_ticker(std::function< void(void) > func) override
+  {
+    m_Tickers.emplace_back(func);
+    return true;
+  }
+
+  void
+  set_logic(std::shared_ptr< llarp::Logic > l) override
+  {
+    m_Logic = l;
+  }
+
+  void
+  tick_listeners() override;
+};
+*/
 #endif
 #endif

@@ -70,12 +70,14 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
+* libsodium (A patch that removes `undocumented system call` from the Win32 build is in `llarp/win32`.)
+* libcurl
 
 ### Linux
 
 build:
 
-    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev
+    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev libcurl4-openssl-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ make 
@@ -169,11 +171,13 @@ install (root):
 
 build:
 
-    $ pkg install cmake git curl libuv-1.27.0
+    $ pkg install cmake git curl libuv libsodium pkgconf
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ mkdir build
+    $ cmake -DCMAKE_BUILD_TYPE=Release ..
+    $ make
 
 install (root):
 
-    # gmake install
+    # make install

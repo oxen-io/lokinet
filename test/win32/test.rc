@@ -7,7 +7,7 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include <win32/resource.h>
-#include <constants/version.hpp>
+#include <constants/version.h>
 #ifdef __GNUC__
 #include <winresrc.h>
 #endif
@@ -80,28 +80,12 @@ BEGIN
             VALUE "Comments", "LokiNET test suite"
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET for Microsoft® Windows® NT™"
-#ifdef LLARP_RELEASE_MOTTO
-            VALUE "FileVersion", VERSION_STRING(0.5.0, RELEASE_MOTTO, GIT_REV)
-#else
-#ifdef __GNUC__
-            VALUE "FileVersion", VERSION_STRING(0.5.0-dev-, GIT_REV)
-#else
-            VALUE "FileVersion", "0.5.0-dev"
-#endif
-#endif
+            VALUE "FileVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)
             VALUE "InternalName", "llarpd"
             VALUE "LegalCopyright", "Copyright ©2018-2019 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
-#ifdef LLARP_RELEASE_MOTTO
-            VALUE "ProductVersion", VERSION_STRING(0.5.0, RELEASE_MOTTO, GIT_REV)
-#else
-#ifdef __GNUC__
-            VALUE "ProductVersion", VERSION_STRING(0.5.0-dev-, GIT_REV)
-#else
-            VALUE "ProductVersion", "0.5.0-dev"
-#endif
-#endif
+            VALUE "ProductVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)
         END
     END
     BLOCK "VarFileInfo"
@@ -116,7 +100,8 @@ END
 // RT_MANIFEST
 //
 
-4                       RT_MANIFEST             "app.xml"
+// Uncomment if your toolchain does not provide a default-manifest.o
+//4                       RT_MANIFEST             "app.xml"
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

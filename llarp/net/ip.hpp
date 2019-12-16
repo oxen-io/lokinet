@@ -116,10 +116,10 @@ namespace llarp
       size_t sz;
       byte_t buf[MaxSize];
 
-      llarp_buffer_t
+      ManagedBuffer
       Buffer();
 
-      llarp_buffer_t
+      ManagedBuffer
       ConstBuffer() const;
 
       bool

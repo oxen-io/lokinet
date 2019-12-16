@@ -44,28 +44,39 @@ matrix:
     os: osx
     osx_image: xcode10.2
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "make windows (macOS)"
-    os: osx
-    osx_image: xcode10.2
-    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "make windows-release (macOS)"
-    os: osx
-    osx_image: xcode10.2
-    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "make release (macOS beta/clang)"
-    os: osx
-    osx_image: xcode11
-    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "address sanitizer"
-    os: osx
-    osx_image: xcode10.2
-    env: BUILD_TYPE=Debug ASAN=ON PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
-  - name: "native windows debug"
-    os: windows
-    env: BUILD_TYPE=Debug
-  - name: "native windows release"
-    os: windows
-    env: BUILD_TYPE=Release
+#  - name: "make iOS"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: MAKE_TARGET=ios PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - name: "make windows (macOS)"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - name: "make windows-release (macOS)"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - name: "make release (macOS beta/clang)"
+#    os: osx
+#    osx_image: xcode11
+#    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - name: "address sanitizer"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: BUILD_TYPE=Debug XSAN=address PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+#  - name: "thread sanitizer"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: BUILD_TYPE=Debug XSAN=thread PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+#  - name: "undefined sanitizer"
+#    os: osx
+#    osx_image: xcode10.2
+#    env: BUILD_TYPE=Debug XSAN=undefined PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
+  - name: "memory sanitizer"
+    os: linux
+    dist: xenial
+    compiler: clang
+    env: BUILD_TYPE=Debug XSAN=memory
   - name: "router docker image"
     os: linux
     dist: xenial
@@ -81,21 +92,44 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
   allow_failures:
-  - os: linux
+  - name: "make windows docker image"
+    os: linux
     dist: xenial
     env: DOCKER_FILE=docker/alpine-windows.Dockerfile
     services: docker
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
+#  - name: "native windows debug"
+#    os: windows
+#    env: BUILD_TYPE=Debug
+#  - name: "native windows release"
+#    os: windows
+#    env: BUILD_TYPE=Release
+#  - os: linux
+#    dist: xenial
+#    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+#    services: docker
   - os: linux
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
-  - os: osx
-    osx_image: xcode10.2
-    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - os: osx
-    osx_image: xcode10.2
-    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - os: osx
+#    osx_image: xcode10.2
+#    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
+#  - os: osx
+#    osx_image: xcode10.2
+#    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
 
 env:
   global:
@@ -116,22 +150,26 @@ addons:
     - gcc-mingw-w64-base
     - git
     - libcap-dev
+    - libcurl4-openssl-dev
     - libuv1-dev
     - mingw-w64 mingw-w64-common
     - ninja-build
+    - libsodium-dev
   homebrew:
     packages:
     - ccache
     - cmake
+    - curl
     - libuv
     - llvm
     - make
     - mingw-w64
     - ninja
+    - libsodium
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      choco install make ninja;
+      choco install curl make ninja;
       choco upgrade cmake.install;
       export CC="/c/Program Files/LLVM/bin/clang-cl";
       export CXX="/c/Program Files/LLVM/bin/clang-cl";

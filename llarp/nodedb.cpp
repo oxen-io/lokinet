@@ -113,31 +113,18 @@ llarp_nodedb::getRCFilePath(const llarp::RouterID &pubkey) const
   return filepath.string();
 }
 
-static void
-handle_async_insert_rc(llarp_nodedb *nodedb, const llarp::RouterContact &rc,
-                       std::shared_ptr< llarp::Logic > logic,
-                       const std::function< void(void) > &completedHook)
-{
-  nodedb->Insert(rc);
-  if(logic && completedHook)
-  {
-    logic->queue_func(completedHook);
-  }
-}
-
 void
 llarp_nodedb::InsertAsync(llarp::RouterContact rc,
                           std::shared_ptr< llarp::Logic > logic,
                           std::function< void(void) > completionHandler)
 {
-  const auto job =
-      std::bind(&handle_async_insert_rc, this, rc, logic, completionHandler);
-  size_t tries = 10;
-  while((!disk->addJob(job)) && tries-- > 0)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  // on fail do synchronous write
-  if(tries == 0)
-    Insert(rc);
+  disk->addJob([this, rc, logic, completionHandler]() {
+    this->Insert(rc);
+    if(logic && completionHandler)
+    {
+      LogicCall(logic, completionHandler);
+    }
+  });
 }
 
 bool
@@ -197,8 +184,8 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
     if(itr != entries.end())
       entries.erase(itr);
     entries.emplace(rc.pubkey.as_array(), rc);
-    LogInfo("Added or updated RC for ", llarp::RouterID(rc.pubkey),
-            " to nodedb.  Current nodedb count is: ", entries.size());
+    LogDebug("Added or updated RC for ", llarp::RouterID(rc.pubkey),
+             " to nodedb.  Current nodedb count is: ", entries.size());
   }
   return true;
 }

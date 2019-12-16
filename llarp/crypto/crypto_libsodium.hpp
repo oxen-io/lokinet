@@ -52,6 +52,7 @@ namespace llarp
       bool
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
+
       /// seed to secretkey
       bool
       seed_to_secretkey(llarp::SecretKey &,
@@ -78,6 +79,9 @@ namespace llarp
       /// post quantum encrypt (buffer, sharedkey_dst,  pub)
       bool
       pqe_encrypt(PQCipherBlock &, SharedSecret &, const PQPubKey &) override;
+
+      bool
+      check_identity_privkey(const SecretKey &) override;
     };
   }  // namespace sodium
 

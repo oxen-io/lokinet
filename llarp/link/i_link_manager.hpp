@@ -42,7 +42,8 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) = 0;
 
     virtual bool
-    StartLinks(Logic_ptr logic) = 0;
+    StartLinks(Logic_ptr logic,
+               std::shared_ptr< thread::ThreadPool > worker) = 0;
 
     virtual void
     Stop() = 0;
@@ -65,6 +66,9 @@ namespace llarp
 
     virtual size_t
     NumberOfConnectedClients() const = 0;
+
+    virtual size_t
+    NumberOfPendingConnections() const = 0;
 
     virtual bool
     GetRandomConnectedRouter(RouterContact &router) const = 0;

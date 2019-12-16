@@ -3,6 +3,7 @@
 
 #include <crypto/types.hpp>
 #include <net/net.hpp>
+#include <ev/ev.hpp>
 #include <router_contact.hpp>
 #include <util/types.hpp>
 
@@ -44,9 +45,12 @@ namespace llarp
     /// message delivery result hook function
     using CompletionHandler = std::function< void(DeliveryStatus) >;
 
+    using Packet_t  = PacketBuffer;
+    using Message_t = std::vector< byte_t >;
+
     /// send a message buffer to the remote endpoint
     virtual bool
-    SendMessageBuffer(const llarp_buffer_t &, CompletionHandler handler) = 0;
+    SendMessageBuffer(Message_t, CompletionHandler handler) = 0;
 
     /// start the connection
     virtual void
@@ -57,9 +61,9 @@ namespace llarp
 
     /// recv packet on low layer
     /// not used by utp
-    virtual void
-    Recv_LL(const llarp_buffer_t &)
+    virtual bool Recv_LL(Packet_t)
     {
+      return true;
     }
 
     /// send a keepalive to the remote endpoint

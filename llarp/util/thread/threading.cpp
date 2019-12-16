@@ -1,6 +1,7 @@
 #include <util/thread/threading.hpp>
 
 #include <util/logging/logger.hpp>
+#include <cstring>
 
 #ifdef POSIX
 #include <pthread.h>
@@ -40,7 +41,7 @@ namespace llarp
       if(rc)
       {
         LogError("Failed to set thread name to ", name, " errno = ", rc,
-                 " errstr = ", strerror(rc));
+                 " errstr = ", ::strerror(rc));
       }
 #endif
 #elif _MSC_VER

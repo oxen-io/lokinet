@@ -13,8 +13,6 @@ extern "C"
   sodium_init(void);
 }
 
-#include "ec.hpp"
-
 namespace llarp
 {
   namespace sodium
@@ -156,91 +154,6 @@ namespace llarp
           != -1;
     }
 
-    using ec_scalar = AlignedBuffer< 32 >;
-
-    struct s_comm final
-        : public AlignedBuffer< LongHash::SIZE + (ec_scalar::SIZE * 2) >
-    {
-      byte_t *
-      H()
-      {
-        return data();
-      }
-
-      byte_t *
-      K()
-      {
-        return data() + LongHash::SIZE;
-      }
-
-      byte_t *
-      C()
-      {
-        return data() + LongHash::SIZE + ec_scalar::SIZE;
-      }
-    };
-
-    static inline bool
-    IsNonZero(const byte_t *s)
-    {
-      return (((int)(s[0] | s[1] | s[2] | s[3] | s[4] | s[5] | s[6] | s[7]
-                     | s[8] | s[9] | s[10] | s[11] | s[12] | s[13] | s[14]
-                     | s[15] | s[16] | s[17] | s[18] | s[19] | s[20] | s[21]
-                     | s[22] | s[23] | s[24] | s[25] | s[26] | s[27] | s[28]
-                     | s[29] | s[30] | s[31])
-               - 1)
-              >> 8)
-          + 1;
-    }
-
-    static inline bool
-    less32(const unsigned char *k0, const unsigned char *k1)
-    {
-      for(int n = 31; n >= 0; --n)
-      {
-        if(k0[n] < k1[n])
-          return true;
-        if(k0[n] > k1[n])
-          return false;
-      }
-      return false;
-    }
-
-    static void
-    rand32_unbais(byte_t *k)
-    {
-      // l = 2^252 + 27742317777372353535851937790883648493.
-      // it fits 15 in 32 bytes
-      static const unsigned char limit[32] = {
-          0xe3, 0x6a, 0x67, 0x72, 0x8b, 0xce, 0x13, 0x29, 0x8f, 0x30, 0x82,
-          0x8c, 0x0b, 0xa4, 0x10, 0x39, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0};
-      do
-      {
-        randombytes(k, 32);
-      } while(!IsNonZero(k) && !less32(k, limit));
-      sc25519_reduce32(k);
-    }
-
-    static bool
-    check_key(const byte_t *k)
-    {
-      ge25519_p3 p;
-      return ge25519_frombytes_vartime(&p, k) == 0;
-    }
-
-    template < typename T, size_t outsz = ec_scalar::SIZE >
-    static inline bool
-    hash_to_scalar(const T &in, byte_t *out)
-    {
-      if(crypto_generichash_blake2b(out, outsz, in.data(), in.size(), nullptr,
-                                    0)
-         == -1)
-        return false;
-      sc25519_reduce32(out);
-      return true;
-    }
-
     static bool
     hash(uint8_t *result, const llarp_buffer_t &buff)
     {
@@ -253,71 +166,28 @@ namespace llarp
     CryptoLibSodium::sign(Signature &sig, const SecretKey &secret,
                           const llarp_buffer_t &buf)
     {
-      s_comm tmp;
-      if(!hash(tmp.H(), buf))
-        return false;
-      ge25519_p3 tmp3;
-      ec_scalar K;
-      const PubKey pk = secret.toPublic();
-      std::copy_n(pk.begin(), pk.size(), tmp.K());
-      do
-      {
-        rand32_unbais(K.data());
-        if(((const uint32_t *)(K.data()))[7]
-           == 0)  // we don't want tiny numbers here
-          continue;
-        ge25519_scalarmult_base(&tmp3, K.data());
-        ge25519_p3_tobytes(tmp.C(), &tmp3);
-        hash_to_scalar(tmp, sig.C());
-        if(!IsNonZero(sig.C()))
-          continue;
-        sc25519_mulsub(sig.R(), sig.C(), secret.data(), K.data());
-        if(!IsNonZero(sig.R()))
-          continue;
-        return true;
-      } while(true);
+      return crypto_sign_detached(sig.data(), nullptr, buf.base, buf.sz,
+                                  secret.data())
+          != -1;
     }
 
     bool
     CryptoLibSodium::verify(const PubKey &pub, const llarp_buffer_t &buf,
                             const Signature &sig)
     {
-      s_comm tmp;
-      ge25519_p2 tmp2;
-      ge25519_p3 tmp3;
-      ec_scalar C;
-      std::copy_n(pub.begin(), pub.size(), tmp.K());
-      if(!hash(tmp.H(), buf))
-        return false;
-      if(ge25519_frombytes_vartime(&tmp3, pub.data()) != 0)
-        return false;
-      if(sc25519_check(sig.C()) != 0 || sc25519_check(sig.R()) != 0
-         || !IsNonZero(sig.C()))
-        return false;
-      ge25519_double_scalarmult_base_vartime(&tmp2, sig.C(), &tmp3, sig.R());
-      ge25519_tobytes(tmp.C(), &tmp2);
-      static const ec_scalar infinity{{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
-      if(memcmp(tmp.C(), &infinity, 32) == 0)
-        return false;
-      hash_to_scalar(tmp, C.data());
-      sc25519_sub(C.data(), C.data(), sig.C());
-      return !IsNonZero(C.data());
+      return crypto_sign_verify_detached(sig.data(), buf.base, buf.sz,
+                                         pub.data())
+          != -1;
     }
 
     bool
     CryptoLibSodium::seed_to_secretkey(llarp::SecretKey &secret,
                                        const llarp::IdentitySecret &seed)
     {
-      if(sc25519_check(seed.data()) != 0)
-        return false;
-      ge25519_p3 A;
-      std::copy_n(seed.begin(), 32, secret.begin());
-      ge25519_scalarmult_base(&A, seed.data());
-      byte_t *pub = secret.data() + 32;
-      ge25519_p3_tobytes(pub, &A);
-      return true;
+      PubKey pk;
+      return crypto_sign_ed25519_seed_keypair(pk.data(), secret.data(),
+                                              seed.data())
+          != -1;
     }
 
     void
@@ -335,16 +205,33 @@ namespace llarp
     void
     CryptoLibSodium::identity_keygen(llarp::SecretKey &keys)
     {
-      llarp::IdentitySecret seed;
-      rand32_unbais(seed.data());
-      seed_to_secretkey(keys, seed);
+      PubKey pk;
+      int result = crypto_sign_keypair(pk.data(), keys.data());
+      assert(result != -1);
+      const PubKey sk_pk = keys.toPublic();
+      assert(pk == sk_pk);
+      (void)result;
+      (void)sk_pk;
+    }
+
+    bool
+    CryptoLibSodium::check_identity_privkey(const llarp::SecretKey &keys)
+    {
+      AlignedBuffer< crypto_sign_SEEDBYTES > seed;
+      llarp::PubKey pk;
+      llarp::SecretKey sk;
+      if(crypto_sign_ed25519_sk_to_seed(seed.data(), keys.data()) == -1)
+        return false;
+      if(crypto_sign_seed_keypair(pk.data(), sk.data(), seed.data()) == -1)
+        return false;
+      return keys.toPublic() == pk && sk == keys;
     }
 
     void
     CryptoLibSodium::encryption_keygen(llarp::SecretKey &keys)
     {
       auto d = keys.data();
-      rand32_unbais(d);
+      randbytes(d, 32);
       crypto_scalarmult_curve25519_base(d + 32, d);
     }
 

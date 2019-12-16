@@ -3,6 +3,8 @@
 
 #include <router/abstractrouter.hpp>
 
+#include <bootstrap.hpp>
+#include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
 #include <ev/ev.h>
@@ -30,6 +32,7 @@
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/threadpool.h>
+#include <util/time.hpp>
 
 #include <functional>
 #include <list>
@@ -44,21 +47,11 @@ namespace llarp
   struct Config;
 }  // namespace llarp
 
-bool
-llarp_findOrCreateEncryption(const fs::path &fpath,
-                             llarp::SecretKey &encryption);
-
-bool
-llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey);
-
-bool
-llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
-                                 llarp::SecretKey &secretkey);
-
 namespace llarp
 {
   struct Router final : public AbstractRouter
   {
+    llarp_time_t _lastPump = 0;
     bool ready;
     // transient iwp encryption key
     fs::path transport_keyfile = "transport.key";
@@ -133,6 +126,12 @@ namespace llarp
     exitContext() override
     {
       return _exitContext;
+    }
+
+    std::shared_ptr< KeyManager >
+    keyManager() const override
+    {
+      return m_keyManager;
     }
 
     const SecretKey &
@@ -223,13 +222,22 @@ namespace llarp
       return _hiddenServiceContext;
     }
 
+    llarp_time_t _lastTick = 0;
+
+    bool
+    LooksAlive() const override
+    {
+      const llarp_time_t now = Now();
+      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+    }
+
     using NetConfig_t = std::unordered_multimap< std::string, std::string >;
 
     /// default network config for default network interface
     NetConfig_t netConfig;
 
     /// bootstrap RCs
-    std::set< RouterContact > bootstrapRCList;
+    BootstrapList bootstrapRCList;
 
     bool
     ExitEnabled() const
@@ -310,6 +318,9 @@ namespace llarp
     bool
     InitServiceNode();
 
+    bool
+    IsRunning() const override;
+
     /// return true if we are running in service node mode
     bool
     IsServiceNode() const;
@@ -327,7 +338,10 @@ namespace llarp
     Configure(Config *conf, llarp_nodedb *nodedb = nullptr) override;
 
     bool
-    Run(struct llarp_nodedb *nodedb) override;
+    StartJsonRpc() override;
+
+    bool
+    Run() override;
 
     /// stop running the router logic gracefully
     void
@@ -410,11 +424,10 @@ namespace llarp
     void
     Tick();
 
-    /// get time from event loop
     llarp_time_t
     Now() const override
     {
-      return llarp_ev_loop_time_now_ms(_netloop);
+      return llarp::time_now_ms();
     }
 
     /// schedule ticker to call i ms from now
@@ -463,6 +476,8 @@ namespace llarp
     bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0;
+
+    std::shared_ptr< llarp::KeyManager > m_keyManager;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

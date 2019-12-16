@@ -26,8 +26,8 @@ namespace llarp
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
+                                  buf))
       return false;
 
     return read;
@@ -37,6 +37,7 @@ namespace llarp
   LR_CommitMessage::Clear()
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
+    version = 0;
   }
 
   bool
@@ -51,7 +52,7 @@ namespace llarp
     if(!BEncodeWriteDictArray("c", frames, buf))
       return false;
     // version
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
 
     return bencode_end(buf);
@@ -100,7 +101,7 @@ namespace llarp
       if(!BEncodeWriteDictEntry("u", *nextRC, buf))
         return false;
     }
-    if(!bencode_write_version_entry(buf))
+    if(!bencode_write_uint64_entry(buf, "v", 1, LLARP_PROTO_VERSION))
       return false;
     if(work && !BEncodeWriteDictEntry("w", *work, buf))
       return false;
@@ -133,8 +134,8 @@ namespace llarp
       nextRC = std::make_unique< RouterContact >();
       return nextRC->BDecode(buffer);
     }
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, *key,
-                                buffer))
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, *key,
+                                  buffer))
       return false;
     if(*key == "w")
     {
@@ -238,6 +239,15 @@ namespace llarp
     static void
     SendLRCM(std::shared_ptr< LRCMFrameDecrypt > self)
     {
+      if(self->context->HasTransitHop(self->hop->info))
+      {
+        llarp::LogError("duplicate transit hop", self->hop->info);
+        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
+                            self->hop->info.downstream, self->hop->pathKey,
+                            SendStatus::Congestion);
+        self->hop = nullptr;
+        return;
+      }
       if(!self->context->Router()->ConnectionToRouterAllowed(
              self->hop->info.upstream))
       {
@@ -287,15 +297,21 @@ namespace llarp
     static void
     SendPathConfirm(std::shared_ptr< LRCMFrameDecrypt > self)
     {
-      // persist session to downstream until path expiration
-      self->context->Router()->PersistSessionUntil(
-          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
-      // put hop
-      self->context->PutTransitHop(self->hop);
-
       // send path confirmation
       // TODO: other status flags?
       uint64_t status = LR_StatusRecord::SUCCESS;
+      if(self->context->HasTransitHop(self->hop->info))
+      {
+        status = LR_StatusRecord::FAIL_DUPLICATE_HOP;
+      }
+      else
+      {
+        // persist session to downstream until path expiration
+        self->context->Router()->PersistSessionUntil(
+            self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+        // put hop
+        self->context->PutTransitHop(self->hop);
+      }
 
       if(!LR_StatusMessage::CreateAndSend(
              self->context->Router(), self->hop->info.rxID,
@@ -307,6 +323,9 @@ namespace llarp
       self->hop = nullptr;
     }
 
+    // TODO: If decryption has succeeded here but we otherwise don't
+    //       want to or can't accept the path build request, send
+    //       a status message saying as much.
     static void
     HandleDecrypted(llarp_buffer_t* buf,
                     std::shared_ptr< LRCMFrameDecrypt > self)
@@ -329,15 +348,18 @@ namespace llarp
         return;
       }
 
-      info.txID     = self->record.txid;
-      info.rxID     = self->record.rxid;
-      info.upstream = self->record.nextHop;
-      if(self->context->HasTransitHop(info))
+      info.txID = self->record.txid;
+      info.rxID = self->record.rxid;
+
+      if(info.txID.IsZero() || info.rxID.IsZero())
       {
-        llarp::LogError("duplicate transit hop ", info);
+        llarp::LogError("LRCM refusing zero pathid");
         self->decrypter = nullptr;
         return;
       }
+
+      info.upstream = self->record.nextHop;
+
       // generate path key as we are in a worker thread
       auto crypto = CryptoManager::instance();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
@@ -387,8 +409,8 @@ namespace llarp
       {
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
-        // send a LRAM down the path
-        self->context->logic()->queue_func([=]() {
+        // send a LRSM down the path
+        LogicCall(self->context->logic(), [=]() {
           SendPathConfirm(self);
           self->decrypter = nullptr;
         });
@@ -397,7 +419,7 @@ namespace llarp
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        self->context->logic()->queue_func([=]() {
+        LogicCall(self->context->logic(), [=]() {
           SendLRCM(self);
           self->decrypter = nullptr;
         });

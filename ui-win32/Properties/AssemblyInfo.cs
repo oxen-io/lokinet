@@ -10,11 +10,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LokiNET")]
-[assembly: AssemblyDescription("LokiNET end-user UI")]
+[assembly: AssemblyTitle("Lokinet for Windows")]
+[assembly: AssemblyDescription("Lokinet end-user UI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Loki Project")]
-[assembly: AssemblyProduct("LokiNET Launcher")]
+[assembly: AssemblyProduct("Lokinet Launcher")]
 [assembly: AssemblyCopyright("Copyright ©2018-2019 Loki Project. All rights reserved. See LICENSE for more details.")]
 [assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2019 Loki Foundation")]
 [assembly: AssemblyCulture("")]
@@ -37,10 +37,10 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.5.0")]
-[assembly: AssemblyFileVersion("0.5.0")]
+[assembly: AssemblyVersion("0.6.0")]
+[assembly: AssemblyFileVersion("0.6.0")]
 #if DEBUG
-[assembly: AssemblyInformationalVersion("0.5.0-dev-{chash:8}")]
+[assembly: AssemblyInformationalVersion("0.6.0-dev-{chash:8}")]
 #else
-[assembly: AssemblyInformationalVersion("0.5.0 (RELEASE_CODENAME)")]
+[assembly: AssemblyInformationalVersion("0.6.0 (RELEASE_CODENAME)")]
 #endif

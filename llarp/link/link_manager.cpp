@@ -89,12 +89,13 @@ namespace llarp
   }
 
   bool
-  LinkManager::StartLinks(Logic_ptr logic)
+  LinkManager::StartLinks(Logic_ptr logic,
+                          std::shared_ptr< thread::ThreadPool > worker)
   {
     LogInfo("starting ", outboundLinks.size(), " outbound links");
     for(const auto &link : outboundLinks)
     {
-      if(!link->Start(logic))
+      if(!link->Start(logic, worker))
       {
         LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
@@ -107,7 +108,7 @@ namespace llarp
       LogInfo("starting ", inboundLinks.size(), " inbound links");
       for(const auto &link : inboundLinks)
       {
-        if(!link->Start(logic))
+        if(!link->Start(logic, worker))
         {
           LogWarn("Link ", link->Name(), " failed to start");
           return false;
@@ -240,6 +241,23 @@ namespace llarp
     return connectedClients.size();
   }
 
+  size_t
+  LinkManager::NumberOfPendingConnections() const
+  {
+    size_t pending = 0;
+    for(const auto &link : inboundLinks)
+    {
+      pending += link->NumberOfPendingSessions();
+    }
+
+    for(const auto &link : outboundLinks)
+    {
+      pending += link->NumberOfPendingSessions();
+    }
+
+    return pending;
+  }
+
   bool
   LinkManager::GetRandomConnectedRouter(RouterContact &router) const
   {
@@ -284,9 +302,9 @@ namespace llarp
       auto itr = m_PersistingSessions.begin();
       while(itr != m_PersistingSessions.end())
       {
-        auto link = GetLinkWithSessionTo(itr->first);
         if(now < itr->second)
         {
+          auto link = GetLinkWithSessionTo(itr->first);
           if(link)
           {
             LogDebug("keepalive to ", itr->first);
@@ -303,6 +321,10 @@ namespace llarp
           const RouterID r(itr->first);
           LogInfo("commit to ", r, " expired");
           itr = m_PersistingSessions.erase(itr);
+          for(const auto &link : outboundLinks)
+          {
+            link->CloseSessionTo(r);
+          }
         }
       }
     }

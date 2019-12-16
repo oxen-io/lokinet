@@ -12,6 +12,7 @@ namespace llarp
     pathid.Zero();
     X.Clear();
     Y.Zero();
+    version = 0;
   }
 
   bool
@@ -40,8 +41,8 @@ namespace llarp
     bool read = false;
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
+                                  buf))
       return false;
     if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
@@ -67,6 +68,7 @@ namespace llarp
     pathid.Zero();
     X.Clear();
     Y.Zero();
+    version = 0;
   }
 
   bool
@@ -95,8 +97,8 @@ namespace llarp
     bool read = false;
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                buf))
+    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
+                                  buf))
       return false;
     if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
@@ -113,7 +115,7 @@ namespace llarp
     {
       return path->HandleDownstream(llarp_buffer_t(X), Y, r);
     }
-    llarp::LogWarn("unhandled downstream message");
+    llarp::LogWarn("unhandled downstream message id=", pathid);
     return false;
   }
 }  // namespace llarp

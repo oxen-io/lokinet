@@ -1,0 +1,11 @@
+mbedtls*.tgz*
+mbedtls-*/
+curl*.tar.xz*
+curl-*/
+include/
+lib/
+*.pem
+LICENSE
+7z.exe
+dbghelp*
+*.7z

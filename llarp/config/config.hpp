@@ -121,10 +121,13 @@ namespace llarp
     int m_workerThreads = 1;
     int m_numNetThreads = 1;
 
+    size_t m_JobQueueSize = size_t{1024 * 8};
+
     std::string m_DefaultLinkProto = "iwp";
 
    public:
     // clang-format off
+    size_t jobQueueSize() const                { return fromEnv(m_JobQueueSize, "JOB_QUEUE_SIZE"); }
     size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
     size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
     std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
@@ -132,7 +135,7 @@ namespace llarp
     std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
     std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
     std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); } 
+    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); }
     bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
     const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
     const AddressInfo& addrInfo() const        { return m_addrInfo; }
@@ -243,8 +246,8 @@ namespace llarp
 
   struct MetricsConfig
   {
-    bool disableMetrics    = false;
-    bool disableMetricLogs = false;
+    bool disableMetrics    = true;
+    bool disableMetricLogs = true;
     fs::path jsonMetricsPath;
     std::string metricTankHost;
     std::map< std::string, std::string > metricTags;
@@ -325,6 +328,12 @@ namespace llarp
     bool
     LoadFromStr(string_view str);
   };
+
+  fs::path
+  GetDefaultConfigDir();
+
+  fs::path
+  GetDefaultConfigPath();
 
 }  // namespace llarp
 

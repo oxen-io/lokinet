@@ -29,9 +29,9 @@ namespace llarp
       operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
 
      private:
+      uint64_t version = 0;
       bool firstKey{false};
       char ourKey{'\0'};
-
       struct MessageHolder;
 
       IMessage* msg{nullptr};

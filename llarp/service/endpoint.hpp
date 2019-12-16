@@ -1,9 +1,10 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
-
+#include <llarp.h>
 #include <dht/messages/gotrouter.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
+#include <net/ip_range_map.hpp>
 #include <net/net.hpp>
 #include <path/path.hpp>
 #include <path/pathbuilder.hpp>
@@ -77,6 +78,9 @@ namespace llarp
       bool
       IsReady() const;
 
+      void
+      QueueRecvData(RecvDataEvent ev) override;
+
       /// return true if our introset has expired intros
       bool
       IntrosetIsStale() const;
@@ -100,6 +104,14 @@ namespace llarp
       /// return true if we have a resolvable ip address
       virtual bool
       HasIfAddr() const
+      {
+        return false;
+      }
+
+      /// inject vpn io
+      /// return false if not supported
+      virtual bool
+      InjectVPN(llarp_vpn_io*, llarp_vpn_ifaddr_info)
       {
         return false;
       }
@@ -144,6 +156,10 @@ namespace llarp
 
       std::string
       Name() const override;
+
+      /// get a set of all the routers we use as exit node
+      std::set< RouterID >
+      GetExitRouters() const;
 
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
@@ -248,9 +264,6 @@ namespace llarp
 
       bool
       ShouldBundleRC() const override;
-
-      static void
-      HandlePathDead(void*);
 
       /// return true if we have a convotag as an exit session
       /// or as a hidden service session
@@ -367,7 +380,7 @@ namespace llarp
       SupportsV6() const = 0;
 
       void
-      RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
+      RegenAndPublishIntroSet(bool forceRebuild = false);
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
@@ -420,12 +433,15 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      std::shared_ptr< exit::BaseSession > m_Exit;
+      net::IPRangeMap< exit::BaseSession_ptr > m_ExitMap;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
 
      private:
+      void
+      FlushRecvData();
+
       friend struct EndpointUtil;
 
       // clang-format off
@@ -438,6 +454,7 @@ namespace llarp
       // clang-format on
 
       std::unique_ptr< EndpointState > m_state;
+      thread::Queue< RecvDataEvent > m_RecvQueue;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;

@@ -14,9 +14,10 @@ namespace llarp
     switch(lvl)
     {
       case eLogNone:
-        break;
-      case eLogDebug:
-        ss << "[DBG] ";
+        return;
+      case eLogTrace:
+        ss << "[TRC] ";
+        break case eLogDebug : ss << "[DBG] ";
         break;
       case eLogInfo:
         ss << "[NFO] ";
@@ -49,6 +50,9 @@ namespace llarp
     str += tag;
     switch(lvl)
     {
+      case eLogTrace:
+        __android_log_write(ANDROID_LOG_TRACE, str.c_str(), msg.c_str());
+        return;
       case eLogDebug:
         __android_log_write(ANDROID_LOG_DEBUG, str.c_str(), msg.c_str());
         return;

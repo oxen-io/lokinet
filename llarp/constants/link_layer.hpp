@@ -6,5 +6,5 @@
 
 constexpr size_t MAX_LINK_MSG_SIZE                = 8192;
 constexpr llarp_time_t DefaultLinkSessionLifetime = 60 * 1000;
-constexpr size_t MaxSendQueueSize                 = 128;
+constexpr size_t MaxSendQueueSize                 = 1024;
 #endif

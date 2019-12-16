@@ -1,0 +1,158 @@
+diff --git a/src/libsodium/randombytes/salsa20/randombytes_salsa20_random.c b/src/libsodium/randombytes/salsa20/randombytes_salsa20_random.c
+index 64c4cec5..42d02235 100644
+--- a/src/libsodium/randombytes/salsa20/randombytes_salsa20_random.c
++++ b/src/libsodium/randombytes/salsa20/randombytes_salsa20_random.c
+@@ -58,15 +58,13 @@
+ #ifdef _WIN32
+ # include <windows.h>
+ # include <sys/timeb.h>
+-# define RtlGenRandom SystemFunction036
+-# if defined(__cplusplus)
+-extern "C"
+-# endif
+-BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
+-# pragma comment(lib, "advapi32.lib")
++# include <wincrypt.h>
++# include <bcrypt.h>
++ typedef NTSTATUS(FAR PASCAL *CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR *, ULONG,
++                                          ULONG);
+ # ifdef __BORLANDC__
+-#  define _ftime ftime
+-#  define _timeb timeb
++# define _ftime ftime
++# define _timeb timeb
+ # endif
+ #endif
+ 
+@@ -373,11 +371,44 @@ randombytes_salsa20_random_stir(void)
+ # endif
+ 
+ #else /* _WIN32 */
+-    if (! RtlGenRandom((PVOID) stream.key, (ULONG) sizeof stream.key)) {
+-        sodium_misuse(); /* LCOV_EXCL_LINE */
++  HANDLE hCAPINg;
++  BOOL rtld;
++  CNGAPI_DRBG getrandom;
++  HCRYPTPROV hProv;
++  /* load bcrypt dynamically, see if we're already loaded */
++  rtld    = FALSE;
++  hCAPINg = GetModuleHandle("bcrypt.dll");
++  /* otherwise, load CNG manually */
++  if(!hCAPINg)
++  {
++    hCAPINg = LoadLibraryEx("bcrypt.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
++    rtld    = TRUE;
++  }
++  if(hCAPINg)
++  {
++    /* call BCryptGenRandom(2) */
++    getrandom = (CNGAPI_DRBG)GetProcAddress(hCAPINg, "BCryptGenRandom");
++   if(!BCRYPT_SUCCESS(
++           getrandom(NULL, stream.key, sizeof stream.key, BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
++    {
++      sodium_misuse();
+     }
++   /* don't leak lib refs */
++    if(rtld)
++      FreeLibrary(hCAPINg);
++  }
++  /* if that fails use the regular ARC4-SHA1 RNG (!!!) *cringes* */
++  else
++  {
++    CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
++                        CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
++    if(!CryptGenRandom(hProv, sizeof stream.key, stream.key))
++    {
++      sodium_misuse(); /* LCOV_EXCL_LINE */
++    }
++    CryptReleaseContext(hProv, 0);
++  }
+ #endif
+-
+     stream.initialized = 1;
+ }
+ 
+diff --git a/src/libsodium/randombytes/sysrandom/randombytes_sysrandom.c b/src/libsodium/randombytes/sysrandom/randombytes_sysrandom.c
+index 99018f35..e2cacfb9 100644
+--- a/src/libsodium/randombytes/sysrandom/randombytes_sysrandom.c
++++ b/src/libsodium/randombytes/sysrandom/randombytes_sysrandom.c
+@@ -48,28 +48,12 @@
+ #include "utils.h"
+ 
+ #ifdef _WIN32
+-/* `RtlGenRandom` is used over `CryptGenRandom` on Microsoft Windows based systems:
+- *  - `CryptGenRandom` requires pulling in `CryptoAPI` which causes unnecessary
+- *     memory overhead if this API is not being used for other purposes
+- *  - `RtlGenRandom` is thus called directly instead. A detailed explanation
+- *     can be found here: https://blogs.msdn.microsoft.com/michael_howard/2005/01/14/cryptographically-secure-random-number-on-windows-without-using-cryptoapi/
+- *
+- * In spite of the disclaimer on the `RtlGenRandom` documentation page that was
+- * written back in the Windows XP days, this function is here to stay. The CRT
+- * function `rand_s()` directly depends on it, so touching it would break many
+- * applications released since Windows XP.
+- *
+- * Also note that Rust, Firefox and BoringSSL (thus, Google Chrome and everything
+- * based on Chromium) also depend on it, and that libsodium allows the RNG to be
+- * replaced without patching nor recompiling the library.
+- */
+ # include <windows.h>
+-# define RtlGenRandom SystemFunction036
+-# if defined(__cplusplus)
+-extern "C"
+-# endif
+-BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
+-# pragma comment(lib, "advapi32.lib")
++# include <sys/timeb.h>
++# include <wincrypt.h>
++# include <bcrypt.h>
++ typedef NTSTATUS(FAR PASCAL *CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR *, ULONG,
++                                           ULONG);
+ #endif
+ 
+ #if defined(__OpenBSD__) || defined(__CloudABI__)
+@@ -359,9 +343,43 @@ randombytes_sysrandom_buf(void * const buf, const size_t size)
+     if (size > (size_t) 0xffffffffUL) {
+         sodium_misuse(); /* LCOV_EXCL_LINE */
+     }
+-    if (! RtlGenRandom((PVOID) buf, (ULONG) size)) {
+-        sodium_misuse(); /* LCOV_EXCL_LINE */
++  HANDLE hCAPINg;
++  BOOL rtld;
++  CNGAPI_DRBG getrandom;
++  HCRYPTPROV hProv;
++  /* load bcrypt dynamically, see if we're already loaded */
++  rtld    = FALSE;
++  hCAPINg = GetModuleHandle("bcrypt.dll");
++  /* otherwise, load CNG manually */
++  if(!hCAPINg)
++  {
++    hCAPINg = LoadLibraryEx("bcrypt.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
++    rtld    = TRUE;
++  }
++  if(hCAPINg)
++  {
++    /* call BCryptGenRandom(2) */
++    getrandom = (CNGAPI_DRBG)GetProcAddress(hCAPINg, "BCryptGenRandom");
++   if(!BCRYPT_SUCCESS(
++           getrandom(NULL, buf, size, BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
++    {
++      sodium_misuse();
++    }
++   /* don't leak lib refs */
++    if(rtld)
++      FreeLibrary(hCAPINg);
++  }
++  /* if that fails use the regular ARC4-SHA1 RNG (!!!) *cringes* */
++  else
++  {
++    CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
++                        CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
++    if(!CryptGenRandom(hProv, size, buf))
++    {
++      sodium_misuse(); /* LCOV_EXCL_LINE */
+     }
++    CryptReleaseContext(hProv, 0);
++  }
+ # endif /* _WIN32 */
+ }
+ 

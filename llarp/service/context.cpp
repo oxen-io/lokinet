@@ -20,23 +20,18 @@ namespace llarp
           {"tun",
            [](const std::string &nick, AbstractRouter *r,
               service::Context *c) -> service::Endpoint_ptr {
-             return std::make_shared< handlers::TunEndpoint >(nick, r, c);
+             return std::make_shared< handlers::TunEndpoint >(nick, r, c,
+                                                              false);
            }},
-          {"android-tun",
-           [](const std::string &, AbstractRouter *,
-              service::Context *) -> service::Endpoint_ptr {
-             return nullptr;
-             /// SOOOOOOON (tm)
-             // return std::make_shared<handlers::AndroidTunEndpoint>(nick,
-             // r, c);
+          {"android",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::TunEndpoint >(nick, r, c, true);
            }},
-          {"ios-tun",
-           [](const std::string &, AbstractRouter *,
-              service::Context *) -> service::Endpoint_ptr {
-             return nullptr;
-             /// SOOOOOOON (tm)
-             // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,
-             // c);
+          {"ios",
+           [](const std::string &nick, AbstractRouter *r,
+              service::Context *c) -> service::Endpoint_ptr {
+             return std::make_shared< handlers::TunEndpoint >(nick, r, c, true);
            }},
           {"null",
            [](const std::string &nick, AbstractRouter *r,
@@ -133,12 +128,26 @@ namespace llarp
       return m_Endpoints.size() ? true : false;
     }
 
+    static const char *
+    DefaultEndpointType()
+    {
+#ifdef ANDROID
+      return "android";
+#else
+#ifdef IOS
+      return "ios";
+#else
+      return "tun";
+#endif
+#endif
+    }
+
     bool
     Context::AddDefaultEndpoint(
         const std::unordered_multimap< std::string, std::string > &opts)
     {
       Config::section_values_t configOpts;
-      configOpts.push_back({"type", "tun"});
+      configOpts.push_back({"type", DefaultEndpointType()});
       {
         auto itr = opts.begin();
         while(itr != opts.end())
@@ -167,6 +176,15 @@ namespace llarp
       return true;
     }
 
+    Endpoint_ptr
+    Context::GetEndpointByName(const std::string &name)
+    {
+      auto itr = m_Endpoints.find(name);
+      if(itr != m_Endpoints.end())
+        return itr->second;
+      return nullptr;
+    }
+
     bool
     Context::AddEndpoint(const Config::section_t &conf, bool autostart)
     {
@@ -180,7 +198,7 @@ namespace llarp
         }
       }
       // extract type
-      std::string endpointType = "tun";
+      std::string endpointType = DefaultEndpointType();
       std::string keyfile;
       for(const auto &option : conf.second)
       {

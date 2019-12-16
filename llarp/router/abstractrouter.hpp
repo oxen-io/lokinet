@@ -1,6 +1,8 @@
 #ifndef LLARP_ABSTRACT_ROUTER_HPP
 #define LLARP_ABSTRACT_ROUTER_HPP
 
+#include <config/key_manager.hpp>
+#include <memory>
 #include <util/types.hpp>
 #include <util/status.hpp>
 #include <router/i_outbound_message_handler.hpp>
@@ -84,6 +86,9 @@ namespace llarp
     virtual exit::Context &
     exitContext() = 0;
 
+    virtual std::shared_ptr< KeyManager >
+    keyManager() const = 0;
+
     virtual const SecretKey &
     identity() const = 0;
 
@@ -127,7 +132,16 @@ namespace llarp
     Configure(Config *conf, llarp_nodedb *nodedb) = 0;
 
     virtual bool
-    Run(struct llarp_nodedb *nodedb) = 0;
+    StartJsonRpc() = 0;
+
+    virtual bool
+    Run() = 0;
+
+    virtual bool
+    IsRunning() const = 0;
+
+    virtual bool
+    LooksAlive() const = 0;
 
     /// stop running the router logic gracefully
     virtual void

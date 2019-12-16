@@ -3,6 +3,7 @@
 
 #include <constants/proto.hpp>
 #include <path/path_types.hpp>
+#include <util/bencode.hpp>
 #include <util/buffer.hpp>
 
 namespace llarp

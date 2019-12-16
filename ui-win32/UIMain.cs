@@ -31,7 +31,7 @@ namespace network.loki.lokinet.win32.ui
   .GetAssembly(typeof(main_frame))
   .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)[0])
   .InformationalVersion;
-            UIVersionLabel.Text = String.Format("LokiNET version {0}", build);
+            UIVersionLabel.Text = String.Format("Lokinet version {0}", build);
             lokinetd_fd1.Text = string.Empty;
             logText = string.Empty;
             lokiNetDaemon.OutputDataReceived += new DataReceivedEventHandler((s, ev) =>
@@ -71,10 +71,10 @@ namespace network.loki.lokinet.win32.ui
             TrayConnect.Enabled = false;
             StatusLabel.Text = "Connected";
             isConnected = true;
-            NotificationTrayIcon.Text = "LokiNET - connected";
+            NotificationTrayIcon.Text = "Lokinet - connected";
             btnDrop.Enabled = true;
             TrayDisconnect.Enabled = true;
-            NotificationTrayIcon.ShowBalloonTip(5, "LokiNET", "Connected to network.", ToolTipIcon.Info);
+            NotificationTrayIcon.ShowBalloonTip(5, "Lokinet", "Connected to network.", ToolTipIcon.Info);
         }
 
         private void btnDrop_Click(object sender, EventArgs e)
@@ -86,11 +86,11 @@ namespace network.loki.lokinet.win32.ui
             btnDrop.Enabled = false;
             TrayDisconnect.Enabled = false;
             StatusLabel.Text = "Disconnected";
-            NotificationTrayIcon.Text = "LokiNET - disconnected";
+            NotificationTrayIcon.Text = "Lokinet - disconnected";
             isConnected = false;
             logText = lokinetd_fd1.Text;
             lokinetd_fd1.Text = string.Empty;
-            NotificationTrayIcon.ShowBalloonTip(5, "LokiNET", "Disconnected from network.", ToolTipIcon.Info);
+            NotificationTrayIcon.ShowBalloonTip(5, "Lokinet", "Disconnected from network.", ToolTipIcon.Info);
 
         }
 
@@ -106,9 +106,9 @@ namespace network.loki.lokinet.win32.ui
         {
             Hide();
             if (isConnected)
-                NotificationTrayIcon.ShowBalloonTip(5, "LokiNET", "Currently connected.", ToolTipIcon.Info);
+                NotificationTrayIcon.ShowBalloonTip(5, "Lokinet", "Currently connected.", ToolTipIcon.Info);
             else
-                NotificationTrayIcon.ShowBalloonTip(5, "LokiNET", "Currently disconnected.", ToolTipIcon.Info);
+                NotificationTrayIcon.ShowBalloonTip(5, "Lokinet", "Currently disconnected.", ToolTipIcon.Info);
         }
 
         private void NotificationTrayIcon_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -143,7 +143,7 @@ namespace network.loki.lokinet.win32.ui
                     ld.setText(logText);
 
                 ld.CreateLog(config_path);
-                MessageBox.Show(string.Format("Wrote log to {0}, previous log rotated", ld.getLogPath()), "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(string.Format("Wrote log to {0}, previous log rotated", ld.getLogPath()), "Lokinet", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 logText = string.Empty;
             }
         }

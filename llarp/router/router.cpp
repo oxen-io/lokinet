@@ -1,3 +1,4 @@
+#include <memory>
 #include <router/router.hpp>
 
 #include <config/config.hpp>
@@ -28,55 +29,12 @@
 #include <iterator>
 #include <unordered_map>
 #include <utility>
-#if defined(RPI) || defined(ANDROID)
+#if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
-
-bool
-llarp_loadServiceNodeIdentityKey(const fs::path &fpath,
-                                 llarp::SecretKey &secret)
-{
-  std::string path = fpath.string();
-  llarp::IdentitySecret ident;
-
-  if(!ident.LoadFromFile(path.c_str()))
-    return false;
-
-  return llarp::CryptoManager::instance()->seed_to_secretkey(secret, ident);
-}
-
-bool
-llarp_findOrCreateIdentity(const fs::path &path, llarp::SecretKey &secretkey)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new identity key");
-    llarp::CryptoManager::instance()->identity_keygen(secretkey);
-    if(!secretkey.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return secretkey.LoadFromFile(fpath.c_str());
-}
-
-// C++ ...
-bool
-llarp_findOrCreateEncryption(const fs::path &path, llarp::SecretKey &encryption)
-{
-  std::string fpath = path.string();
-  llarp::LogDebug("find or create ", fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::LogInfo("generating new encryption key");
-    llarp::CryptoManager::instance()->encryption_keygen(encryption);
-    if(!encryption.SaveToFile(fpath.c_str()))
-      return false;
-  }
-  return encryption.LoadFromFile(fpath.c_str());
-}
+#if defined(WITH_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
 
 namespace llarp
 {
@@ -94,12 +52,15 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
   {
+    m_keyManager = std::make_shared< KeyManager >();
+
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
     this->ip4addr.sin_port   = htons(1090);
 
     _stopping.store(false);
     _running.store(false);
+    _lastTick = llarp::time_now_ms();
   }
 
   Router::~Router()
@@ -110,11 +71,20 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    return util::StatusObject{
-        {"dht", _dht->impl->ExtractStatus()},
-        {"services", _hiddenServiceContext.ExtractStatus()},
-        {"exit", _exitContext.ExtractStatus()},
-        {"links", _linkManager.ExtractStatus()}};
+    if(_running)
+    {
+      return util::StatusObject{
+          {"running", true},
+          {"numNodesKnown", _nodedb->num_loaded()},
+          {"dht", _dht->impl->ExtractStatus()},
+          {"services", _hiddenServiceContext.ExtractStatus()},
+          {"exit", _exitContext.ExtractStatus()},
+          {"links", _linkManager.ExtractStatus()}};
+    }
+    else
+    {
+      return util::StatusObject{{"running", false}};
+    }
   }
 
   bool
@@ -164,6 +134,22 @@ namespace llarp
   void
   Router::PumpLL()
   {
+    static constexpr size_t PumpJobThreshhold  = 50;
+    static constexpr llarp_time_t PumpInterval = 25;
+    const auto now                             = Now();
+    if(_stopping.load())
+      return;
+    if(_logic->numPendingJobs() >= PumpJobThreshhold
+       && _lastPump + PumpInterval >= now)
+    {
+      return;
+    }
+    _lastPump = now;
+    paths.PumpDownstream();
+    paths.PumpUpstream();
+
+    _outboundMessageHandler.Tick();
+
     _linkManager.PumpLinks();
   }
 
@@ -213,18 +199,28 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-    if(!EnsureEncryptionKey())
+    if(whitelistRouters)
+    {
+#if defined(ANDROID) || defined(IOS)
+      LogError("running a service node on mobile device is not possible.");
       return false;
-    if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(ident_keyfile, _identity);
+#else
+#if defined(_WIN32)
+      LogError("running a service node on windows is not possible.");
+      return false;
+#endif
+#endif
+    }
 
-    return llarp_findOrCreateIdentity(ident_keyfile, _identity);
-  }
+    _identity   = m_keyManager->identityKey;
+    _encryption = m_keyManager->encryptionKey;
 
-  bool
-  Router::EnsureEncryptionKey()
-  {
-    return llarp_findOrCreateEncryption(encryption_keyfile, _encryption);
+    if(_identity.IsZero())
+      return false;
+    if(_encryption.IsZero())
+      return false;
+
+    return true;
   }
 
   bool
@@ -238,11 +234,15 @@ namespace llarp
     }
     _nodedb = nodedb;
 
+    if(not m_keyManager->initialize(*conf, true))
+      return false;
+
     if(!FromConfig(conf))
       return false;
 
     if(!InitOutboundLinks())
       return false;
+
     return EnsureIdentity();
   }
 
@@ -357,11 +357,11 @@ namespace llarp
   {
     // Set netid before anything else
     if(!conf->router.netId().empty()
-       && strcmp(conf->router.netId().c_str(), Version::LLARP_NET_ID))
+       && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
     {
       const auto &netid = conf->router.netId();
       llarp::LogWarn("!!!! you have manually set netid to be '", netid,
-                     "' which does not equal '", Version::LLARP_NET_ID,
+                     "' which does not equal '", llarp::DEFAULT_NETID,
                      "' you will run as a different network, good luck "
                      "and don't forget: something something MUH traffic "
                      "shape correlation !!!!");
@@ -449,37 +449,50 @@ namespace llarp
     std::vector< std::string > configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());
+    BootstrapList b_list;
     for(const auto &router : configRouters)
     {
-      // llarp::LogDebug("connect section has ", key, "=", val);
-      RouterContact rc;
-      if(!rc.Read(router.c_str()))
+      bool isListFile = false;
       {
-        llarp::LogWarn("failed to decode bootstrap RC, file='", router,
-                       "' rc=", rc);
-        return false;
+        std::ifstream inf(router, std::ios::binary);
+        if(inf.is_open())
+        {
+          const char ch = inf.get();
+          isListFile    = ch == 'l';
+        }
       }
-      if(rc.Verify(Now()))
+      if(isListFile)
       {
-        const auto result = bootstrapRCList.insert(rc);
-        if(result.second)
-          llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
-        else
-          llarp::LogWarn("Duplicate bootstrap node ", RouterID(rc.pubkey));
+        if(not BDecodeReadFile(router.c_str(), b_list))
+        {
+          LogWarn("failed to read bootstrap list file '", router, "'");
+          return false;
+        }
       }
       else
       {
-        if(rc.IsExpired(Now()))
+        RouterContact rc;
+        if(not rc.Read(router.c_str()))
         {
-          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                         " is too old and needs to be refreshed");
+          llarp::LogWarn("failed to decode bootstrap RC, file='", router,
+                         "' rc=", rc);
+          return false;
         }
-        else
-        {
-          llarp::LogError("malformed rc file='", router, "' rc=", rc);
-        }
+        b_list.insert(rc);
       }
     }
+
+    for(auto &rc : b_list)
+    {
+      if(not rc.Verify(Now()))
+      {
+        LogWarn("ignoring invalid RC: ", RouterID(rc.pubkey));
+        continue;
+      }
+      bootstrapRCList.emplace(std::move(rc));
+    }
+
+    LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
@@ -518,7 +531,7 @@ namespace llarp
       }
 
       auto server = inboundLinkFactory(
-          encryption(), util::memFn(&AbstractRouter::rc, this),
+          m_keyManager, util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -526,13 +539,8 @@ namespace llarp
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                       &_outboundSessionMaker),
-          util::memFn(&AbstractRouter::SessionClosed, this));
-
-      if(!server->EnsureKeys(transport_keyfile.string().c_str()))
-      {
-        llarp::LogError("failed to ensure keyfile ", transport_keyfile);
-        return false;
-      }
+          util::memFn(&AbstractRouter::SessionClosed, this),
+          util::memFn(&AbstractRouter::PumpLL, this));
 
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
@@ -654,7 +662,11 @@ namespace llarp
     if(_stopping)
       return;
     // LogDebug("tick router");
-    auto now = Now();
+    const auto now = Now();
+
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "WATCHDOG=1");
+#endif
 
     routerProfiling().Tick();
 
@@ -684,13 +696,15 @@ namespace llarp
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
-    // expire paths
-    paths.ExpirePaths(now);
 
     _linkManager.CheckPersistingSessions(now);
 
-    const size_t connected = NumberOfConnectedRouters();
-    const size_t N         = nodedb()->num_loaded();
+    size_t connected = NumberOfConnectedRouters();
+    if(not isSvcNode)
+    {
+      connected += _linkManager.NumberOfPendingConnections();
+    }
+    const size_t N = nodedb()->num_loaded();
     if(N < llarp::path::default_len)
     {
       LogInfo("We need at least ", llarp::path::default_len,
@@ -698,19 +712,23 @@ namespace llarp
 
       _rcLookupHandler.ExploreNetwork();
     }
-    if(connected < _outboundSessionMaker.minConnectedRouters)
+    size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
+    const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
+    if(strictConnect > 0 && connectToNum > strictConnect)
     {
-      size_t dlt = _outboundSessionMaker.minConnectedRouters - connected;
+      connectToNum = strictConnect;
+    }
+
+    if(connected < connectToNum)
+    {
+      size_t dlt = connectToNum - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
-      _outboundSessionMaker.ConnectToRandomRouters(dlt, now);
+      _outboundSessionMaker.ConnectToRandomRouters(dlt);
     }
 
-    if(!isSvcNode)
-    {
-      _hiddenServiceContext.Tick(now);
-    }
-
+    _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
+
     if(rpcCaller)
       rpcCaller->Tick(now);
     // save profiles async
@@ -731,7 +749,11 @@ namespace llarp
     _dht->impl->Nodes()->RemoveIf([&peersWeHave](const dht::Key_t &k) -> bool {
       return peersWeHave.count(k) == 0;
     });
-  }  // namespace llarp
+    // expire paths
+    paths.ExpirePaths(now);
+    // update tick timestamp
+    _lastTick = llarp::time_now_ms();
+  }
 
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
@@ -825,11 +847,10 @@ namespace llarp
   }
 
   bool
-  Router::Run(struct llarp_nodedb *nodedb)
+  Router::StartJsonRpc()
   {
     if(_running || _stopping)
       return false;
-    this->_nodedb = nodedb;
 
     if(enableRPCServer)
     {
@@ -849,6 +870,16 @@ namespace llarp
       }
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
+
+    return true;
+  }
+
+  bool
+  Router::Run()
+  {
+    if(_running || _stopping)
+      return false;
+
     if(whitelistRouters)
     {
       rpcCaller = std::make_unique< rpc::Caller >(this);
@@ -928,7 +959,7 @@ namespace llarp
       return false;
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if(!_linkManager.StartLinks(_logic))
+    if(!_linkManager.StartLinks(_logic, cryptoworker))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1001,11 +1032,23 @@ namespace llarp
       _dht->impl->Nodes()->PutNode(rc);
     }
 
-    LogInfo("have ", nodedb->num_loaded(), " routers");
+    LogInfo("have ", _nodedb->num_loaded(), " routers");
+
+    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
 
     ScheduleTicker(1000);
     _running.store(true);
     _startedAt = Now();
+#if defined(WITH_SYSTEMD)
+    ::sd_notify(0, "READY=1");
+#endif
+    LogContext::Instance().DropToRuntimeLevel();
+    return _running;
+  }
+
+  bool
+  Router::IsRunning() const
+  {
     return _running;
   }
 
@@ -1049,11 +1092,13 @@ namespace llarp
       return;
 
     _stopping.store(true);
+    LogContext::Instance().RevertRuntimeLevel();
     LogInfo("stopping router");
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
+    paths.PumpUpstream();
     _linkManager.PumpLinks();
     _logic->call_later({200, this, &RouterAfterStopIssued});
   }
@@ -1065,9 +1110,17 @@ namespace llarp
   }
 
   void
-  Router::ConnectToRandomRouters(int want)
+  Router::ConnectToRandomRouters(int _want)
   {
-    _outboundSessionMaker.ConnectToRandomRouters(want, Now());
+    const size_t want = _want;
+    auto connected    = NumberOfConnectedRouters();
+    if(not IsServiceNode())
+    {
+      connected += _linkManager.NumberOfPendingConnections();
+    }
+    if(connected >= want)
+      return;
+    _outboundSessionMaker.ConnectToRandomRouters(want);
   }
 
   bool
@@ -1125,7 +1178,7 @@ namespace llarp
       return false;
     }
     auto link =
-        factory(encryption(), util::memFn(&AbstractRouter::rc, this),
+        factory(m_keyManager, util::memFn(&AbstractRouter::rc, this),
                 util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
                 util::memFn(&AbstractRouter::Sign, this),
                 util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
@@ -1133,15 +1186,11 @@ namespace llarp
                 util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
                 util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
                             &_outboundSessionMaker),
-                util::memFn(&AbstractRouter::SessionClosed, this));
+                util::memFn(&AbstractRouter::SessionClosed, this),
+                util::memFn(&AbstractRouter::PumpLL, this));
 
     if(!link)
       return false;
-    if(!link->EnsureKeys(transport_keyfile.string().c_str()))
-    {
-      LogError("failed to load ", transport_keyfile);
-      return false;
-    }
 
     const auto afs = {AF_INET, AF_INET6};
 

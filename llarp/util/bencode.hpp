@@ -99,11 +99,13 @@ namespace llarp
     return true;
   }
 
+  /// If the key matches, reads in the version and ensures that it equals the
+  /// expected version
   template < typename Item_t >
   bool
-  BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,
-                          bool& read, const llarp_buffer_t& key,
-                          llarp_buffer_t* buf)
+  BEncodeMaybeVerifyVersion(const char* k, Item_t& item, uint64_t expect,
+                            bool& read, const llarp_buffer_t& key,
+                            llarp_buffer_t* buf)
   {
     if(key == k)
     {
@@ -310,12 +312,7 @@ namespace llarp
       f.read((char*)ptr.data(), sz);
     }
     llarp_buffer_t buf(ptr);
-    auto result = t.BDecode(&buf);
-    if(!result)
-    {
-      DumpBuffer(buf);
-    }
-    return result;
+    return t.BDecode(&buf);
   }
 
   /// read entire file and decode its contents into t
@@ -368,6 +365,30 @@ namespace llarp
       f.write((char*)buf.base, buf.sz);
     }
     return true;
+  }
+
+  /// seek for an int in a dict with a key k used for version
+  /// set v to parsed value if found
+  /// this call rewinds the buffer unconditionally before return
+  /// returns false only if there was
+  template < typename Int_t >
+  bool
+  BEncodeSeekDictVersion(Int_t& v, llarp_buffer_t* buf, const byte_t k)
+  {
+    const auto ret = bencode_read_dict(
+        [&v, k](llarp_buffer_t* buffer, llarp_buffer_t* key) -> bool {
+          if(key == nullptr)
+            return true;
+          if(key->sz == 1 && *key->cur == k)
+          {
+            return bencode_read_integer(buffer, &v);
+          }
+          return bencode_discard(buffer);
+        },
+        buf);
+    // rewind
+    buf->cur = buf->base;
+    return ret;
   }
 
 }  // namespace llarp
