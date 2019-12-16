@@ -1,3 +1,28 @@
+lokinet (0.6.0~rc2-3) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * increase ack window
+
+  [ Jason Rhinelander ]
+  * Don't include net/if.h to help xenial
+
+  [ Jeff Becker ]
+  * fix typo, reduce delivery timeout
+  * fix slow start bug
+  * change interval such that FEC is less often done
+  * remove internal limit on response size
+  * prune unused files.
+  * remove undeeded test case
+  * fix include
+
+  [ Jason Rhinelander ]
+  * Add default mainnet/testnet URLs
+  * curl: less verbose and fail on HTTP error response
+  * deb: add separate mainnet/testnet systemd services
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Dec 2019 23:34:23 -0400
+
 lokinet (0.6.0~rc2-2) sid; urgency=medium
 
   * Refreshed patches
