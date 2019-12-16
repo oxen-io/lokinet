@@ -1,3 +1,9 @@
+lokinet (0.6.0~rc2+git20191215-1) sid; urgency=medium
+
+  * Updated git tag in version
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Dec 2019 23:36:23 -0400
+
 lokinet (0.6.0~rc2-3) sid; urgency=medium
 
   [ Jeff Becker ]
