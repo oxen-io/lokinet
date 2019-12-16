@@ -14,16 +14,19 @@ namespace network.loki.lokinet.win32.ui
         {
             InitializeComponent();
             if (Program.platform == PlatformID.Win32NT)
-                default_path = Environment.ExpandEnvironmentVariables("%APPDATA%\\.lokinet\\bootstrap.signed");
+                default_path = Environment.ExpandEnvironmentVariables("%APPDATA%\\.lokinet");
             else
-                default_path = Environment.ExpandEnvironmentVariables("%HOME%/.lokinet/bootstrap.signed");
-            label2.Text = String.Format("This file is automatically saved as {0}.", default_path);
+                default_path = Environment.ExpandEnvironmentVariables("%HOME%/.lokinet");
+            label2.Text = String.Format("This file is automatically saved as {0}{1}{2}.", default_path, Path.DirectorySeparatorChar, rcName);
         }
 
         private WebClient wc;
         private string default_path;
+        private const string rcName = "bootstrap.signed";
+
         private void button1_Click(object sender, EventArgs e)
         {
+            Directory.CreateDirectory(default_path);
             // add something more unique, this is the IE 5.0 default string
             try
             {
@@ -31,7 +34,7 @@ namespace network.loki.lokinet.win32.ui
                 ServicePointManager.SecurityProtocol = (SecurityProtocolType)48 | 0 | (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
                 wc = new WebClient();
                 wc.Headers.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0)");
-                wc.DownloadFile(uriBox.Text, default_path);
+                wc.DownloadFile(uriBox.Text, string.Format("{0}{1}{2}", default_path, Path.DirectorySeparatorChar, rcName));
                 MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
             }
@@ -49,7 +52,7 @@ namespace network.loki.lokinet.win32.ui
                 lokinet_bootstrap.StartInfo.CreateNoWindow = true;
                 lokinet_bootstrap.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
                 lokinet_bootstrap.StartInfo.FileName = lokinetExeString;
-                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} --output \"{1}\"", uriBox.Text, default_path);
+                lokinet_bootstrap.StartInfo.Arguments = string.Format("--cacert rootcerts.pem -L {0} --output \"{1}{2}{3}\"", uriBox.Text, default_path, Path.DirectorySeparatorChar, rcName);
                 lokinet_bootstrap.Start();
                 lokinet_bootstrap.WaitForExit();
                 if (lokinet_bootstrap.ExitCode == 0)

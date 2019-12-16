@@ -20,8 +20,6 @@
 #include <utility>
 
 #ifdef _WIN32
-#include <win32/win32_up.h>
-#include <win32/win32_upoll.h>
 // From the preview SDK, should take a look at that
 // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
@@ -184,7 +182,7 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      return uwrite(fd, (char*)data, sz);
+      return send(fd, (char*)data, sz, 0);
     }
 
     bool
@@ -272,7 +270,7 @@ namespace llarp
 
     virtual ~win32_ev_io()
     {
-      uclose(fd);
+      closesocket(fd);
     };
   };
 #else

@@ -234,7 +234,7 @@ exit_tun_loop()
     DeleteCriticalSection(&HandlerMtx);
   }
 }
-
+/*
 // now zero-copy
 ssize_t
 TCPWrite(llarp_tcp_conn* conn, const byte_t* ptr, size_t sz)
@@ -730,5 +730,5 @@ llarp_win32_loop::tick_listeners()
   for(auto& func : m_Tickers)
     LogicCall(m_Logic, func);
 }
-
+*/
 #endif
