@@ -26,10 +26,10 @@ index 79d60e1..054aa57 100644
    if(WITH_TESTS)
      add_subdirectory(test)
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 22c7eff..57709c3 100644
+index 3aea0d1..e84e3f8 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
-@@ -73,3 +73,6 @@ endif(NOT WIN32)
+@@ -71,3 +71,6 @@ endif(NOT WIN32)
  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
    target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
  endif()

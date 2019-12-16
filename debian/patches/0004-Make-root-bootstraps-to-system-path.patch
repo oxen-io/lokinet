@@ -3,15 +3,15 @@ Date: Wed, 4 Sep 2019 15:50:06 -0300
 Subject: Make root bootstraps to system path
 
 ---
- lokinet-bootstrap | 4 ++++
- 1 file changed, 4 insertions(+)
+ lokinet-bootstrap | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
 diff --git a/lokinet-bootstrap b/lokinet-bootstrap
-index 690eb9b..feed8cd 100755
+index b1cf445..4427716 100755
 --- a/lokinet-bootstrap
 +++ b/lokinet-bootstrap
-@@ -12,6 +12,10 @@ helpme=
- default_url="https://seed.lokinet.org/bootstrap.signed"
+@@ -17,6 +17,10 @@ default_url=(
+ )
  default_dest="$HOME/.lokinet/bootstrap.signed"
  
 +if [ "$UID" == 0 ]; then
@@ -21,3 +21,13 @@ index 690eb9b..feed8cd 100755
  if [ "$#" -gt 2 ]; then
    helpme=y
  fi
+@@ -26,6 +30,9 @@ then
+   url="${default_url[mainnet]}"
+ elif [ -n "${default_url[$1]}" ]; then
+   url="${default_url[$1]}"
++  if [ "$UID-$1" == "0-testnet" ]; then
++    default_dest=/var/lib/lokinet/testnet/bootstrap.signed
++  fi
+ elif [[ "$1" = -* ]]; then
+   helpme=y
+ else
