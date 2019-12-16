@@ -1,3 +1,9 @@
+lokinet (0.6.0~rc2+git20191215-2) sid; urgency=medium
+
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 16 Dec 2019 00:18:47 -0400
+
 lokinet (0.6.0~rc2+git20191215-1) sid; urgency=medium
 
   * Updated git tag in version
