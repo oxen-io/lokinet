@@ -171,11 +171,13 @@ install (root):
 
 build:
 
-    $ pkg install cmake git curl libuv-1.27.0 libsodium
+    $ pkg install cmake git curl libuv libsodium
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ mkdir build
+    $ cmake -DCMAKE_BUILD_TYPE=Release ..
+    $ make
 
 install (root):
 
-    # gmake install
+    # make install
