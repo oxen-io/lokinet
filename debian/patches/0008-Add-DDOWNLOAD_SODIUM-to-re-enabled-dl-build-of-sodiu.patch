@@ -1,0 +1,89 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Mon, 16 Dec 2019 20:50:02 -0400
+Subject: Add -DDOWNLOAD_SODIUM to re-enabled dl&build of sodium
+
+Also supported in the Makefile (e.g. `make DOWNLOAD_SODIUM=ON`)
+
+Also DRYs out the Makefile a little.
+---
+ Makefile              | 20 ++++++++++++--------
+ crypto/CMakeLists.txt | 20 +++++++++++---------
+ 2 files changed, 23 insertions(+), 17 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 11edf11..b8e6061 100644
+--- a/Makefile
++++ b/Makefile
+@@ -90,6 +90,8 @@ CROSS ?= OFF
+ SHARED_LIB ?= OFF
+ # enable generating coverage
+ COVERAGE ?= OFF
++# allow downloading libsodium if >= 1.0.17 not installed
++DOWNLOAD_SODIUM ?= OFF
+ 
+ COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"
+ 
+@@ -113,20 +115,22 @@ SCAN_BUILD ?= scan-build
+ 
+ UNAME = $(shell which uname)
+ 
++COMMON_CMAKE_OPTIONS = -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DDOWNLOAD_SODIUM=$(DOWNLOAD_SODIUM) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
++
+ ifeq ($(shell $(UNAME)),SunOS)
+-CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
+-CONFIG_CMD_WINDOWS = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
++CONFIG_CMD_WINDOWS = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ 
+-ANALYZE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++ANALYZE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ 
+-COVERAGE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++COVERAGE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DWITH_COVERAGE=yes $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ else
+-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DTRACY_ROOT=$(TRACY_ROOT) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
+-CONFIG_CMD_WINDOWS = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DTRACY_ROOT=$(TRACY_ROOT) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
++CONFIG_CMD_WINDOWS = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ 
+-ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DXSAN=$(XSAN) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DXSAN=$(XSAN) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ 
+-COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes -DXSAN=$(XSAN) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
++COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DWITH_COVERAGE=yes -DXSAN=$(XSAN) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+ endif
+ 
+ TARGETS = $(REPO)/lokinet
+diff --git a/crypto/CMakeLists.txt b/crypto/CMakeLists.txt
+index bbc6853..b2380c3 100644
+--- a/crypto/CMakeLists.txt
++++ b/crypto/CMakeLists.txt
+@@ -47,17 +47,19 @@ set(CRYPTOGRAPHY_SRC ${NTRU_SRC})
+ add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
+ add_log_tag(${CRYPTOGRAPHY_LIB})
+ 
+-if(NOT VENDOR_LIBSODIUM)
+-  find_package(Sodium 1.0.17 REQUIRED)
+-endif()
++option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
+ 
+-if(NOT sodium_FOUND)
+-  message("Could not find libsodium >= 1.0.17")
+-  #include(DownloadLibSodium)
+-  #target_link_libraries(${CRYPTOGRAPHY_LIB} sodium_vendor)
+-else()
++find_package(Sodium 1.0.17)
++
++if(sodium_FOUND)
+   target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC ${sodium_INCLUDE_DIR})
+-  target_link_libraries(${CRYPTOGRAPHY_LIB} sodium)
++  target_link_libraries(${CRYPTOGRAPHY_LIB} ${sodium_LIBRARY_RELEASE})
++elseif(DOWNLOAD_SODIUM)
++  message(STATUS "Sodium >= 1.0.17 not found, but DOWNLOAD_SODIUM specified, so downloading it")
++  include(DownloadLibSodium)
++  target_link_libraries(${CRYPTOGRAPHY_LIB} sodium_vendor)
++else()
++  message(FATAL_ERROR "Could not find libsodium >= 1.0.17; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
+ endif()
+ 
+ target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libntrup/include")
