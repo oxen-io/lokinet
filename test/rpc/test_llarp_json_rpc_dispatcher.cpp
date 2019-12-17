@@ -24,6 +24,7 @@ TEST_F(TestJsonRpcDispatcher, TestProperString)
   llarp::rpc::JsonRpcDispatcher dispatcher;
   dispatcher.setHandler("foobar", [](const nlohmann::json& params)
   {
+    (void)params; // unused
     return llarp::rpc::response_t{false, "IT IS DANGEROUS TO GO ALONE"};
   });
 
@@ -47,6 +48,7 @@ TEST_F(TestJsonRpcDispatcher, TestHandlerReturnError)
   llarp::rpc::JsonRpcDispatcher dispatcher;
   dispatcher.setHandler("foobar", [](const nlohmann::json& params)
   {
+    (void)params; // unused
     return llarp::rpc::response_t{true, "FAIL"};
   });
 
@@ -89,6 +91,7 @@ TEST_F(TestJsonRpcDispatcher, TestEmptyId)
   llarp::rpc::JsonRpcDispatcher dispatcher;
   dispatcher.setHandler("test", [](const nlohmann::json& params)
   {
+    (void)params; // unused
     return llarp::rpc::response_t{true, "OK"};
   });
 
@@ -108,6 +111,7 @@ TEST_F(TestJsonRpcDispatcher, TestMissingJsonRpcSpecification)
   llarp::rpc::JsonRpcDispatcher dispatcher;
   dispatcher.setHandler("test", [](const nlohmann::json& params)
   {
+    (void)params; // unused
     return llarp::rpc::response_t{true, "OK"};
   });
 

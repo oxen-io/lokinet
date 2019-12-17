@@ -729,7 +729,7 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if (rpcServer)
+    if(rpcServer)
       rpcServer->Tick(now);
 
     // save profiles async

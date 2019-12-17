@@ -11,7 +11,6 @@ namespace llarp
 {
   namespace rpc
   {
-
     /**
      * Response wrapper for handlers to reply with a payload and also indicate
      * whether or not it is an error.
@@ -22,7 +21,8 @@ namespace llarp
       nlohmann::json payload;
     };
 
-    using DispatchHandler = std::function<response_t(const nlohmann::json& params)>;
+    using DispatchHandler =
+        std::function< response_t(const nlohmann::json& params) >;
 
     /**
      * JsonRpcDispatcher is a class that maps JSON-RPC method names to callback
@@ -68,7 +68,8 @@ namespace llarp
        * Produce a JSON-RPC 2.0 error object
        */
       static nlohmann::json
-      createJsonRpcErrorObject(int code, std::string message, nlohmann::json data = nullptr);
+      createJsonRpcErrorObject(int code, std::string message,
+                               nlohmann::json data = nullptr);
 
       /**
        * Produce a JSON-RPC 2.0 response object.
@@ -76,14 +77,15 @@ namespace llarp
        * Per the spec, id must be present and should be exactly what was passed
        * in the request (or null if it wasn't provided).
        *
-       * Additionally, either *error* or *result* should be provided, but not both.
+       * Additionally, either *error* or *result* should be provided, but not
+       * both.
        */
       static nlohmann::json
-      createJsonRpcResponseObject(nlohmann::json id, nlohmann::json result, nlohmann::json error = nullptr);
+      createJsonRpcResponseObject(nlohmann::json id, nlohmann::json result,
+                                  nlohmann::json error = nullptr);
 
-    private:
-
-      std::unordered_map<std::string, DispatchHandler> m_handlers;
+     private:
+      std::unordered_map< std::string, DispatchHandler > m_handlers;
     };
   }  // namespace rpc
 }  // namespace llarp
