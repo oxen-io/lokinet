@@ -1,5 +1,10 @@
 lokinet (0.6.0-1) sid; urgency=medium
 
+  * Rediff patches
+  * Add -DDOWNLOAD_SODIUM to re-enabled dl&build of sodium
+  * Add ucf to depends for metapackages
+  * Enable lokid mode in auto-generated router configs
+
   [ Jeff Becker ]
   * stricter timeouts
   * Revert "stricter timeouts"
