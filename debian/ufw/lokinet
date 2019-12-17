@@ -1,0 +1,4 @@
+[lokinet-router]
+title=Lokinet network router
+description=Lokinet router component of a Loki Service Node that routes lokinet traffic
+ports=1090/udp
