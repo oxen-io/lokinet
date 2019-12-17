@@ -33,7 +33,7 @@ namespace network.loki.lokinet.win32.ui
                 ServicePointManager.ServerCertificateValidationCallback += cert_check;
                 ServicePointManager.SecurityProtocol = (SecurityProtocolType)48 | 0 | (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
                 wc = new WebClient();
-                wc.Headers.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0)");
+                wc.Headers.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0); lokinet-win32-managed-ui/0.6");
                 wc.DownloadFile(uriBox.Text, string.Format("{0}{1}{2}", default_path, Path.DirectorySeparatorChar, rcName));
                 MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
