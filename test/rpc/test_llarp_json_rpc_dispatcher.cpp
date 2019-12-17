@@ -106,6 +106,29 @@ TEST_F(TestJsonRpcDispatcher, TestEmptyId)
 	EXPECT_EQ(response["id"], nullptr);
 }
 
+TEST_F(TestJsonRpcDispatcher, TestInvalidId)
+{
+  llarp::rpc::JsonRpcDispatcher dispatcher;
+  dispatcher.setHandler("test", [](const nlohmann::json& params)
+  {
+    (void)params; // unused
+    return llarp::rpc::response_t{true, "OK"};
+  });
+
+  nlohmann::json request = {
+    {"id", {"val", "foo"}},
+    {"jsonrpc", "2.0"},
+    {"method", "test"}
+  };
+
+  nlohmann::json response = dispatcher.process(request);
+
+	EXPECT_EQ(response["jsonrpc"], "2.0");
+	EXPECT_EQ(response["id"], nullptr);
+	EXPECT_EQ(response["error"]["code"], -32600);
+	EXPECT_EQ(response["error"]["message"], "Invalid id type");
+}
+
 TEST_F(TestJsonRpcDispatcher, TestMissingJsonRpcSpecification)
 {
   llarp::rpc::JsonRpcDispatcher dispatcher;
@@ -126,4 +149,27 @@ TEST_F(TestJsonRpcDispatcher, TestMissingJsonRpcSpecification)
 	EXPECT_EQ(response["id"], 1);
 	EXPECT_EQ(response["error"]["code"], -32600);
 	EXPECT_EQ(response["error"]["message"], "Request missing 'jsonrpc'");
+}
+
+TEST_F(TestJsonRpcDispatcher, TestInvalidJsonRpcSpecification)
+{
+  llarp::rpc::JsonRpcDispatcher dispatcher;
+  dispatcher.setHandler("test", [](const nlohmann::json& params)
+  {
+    (void)params; // unused
+    return llarp::rpc::response_t{true, "OK"};
+  });
+
+  nlohmann::json request = {
+    {"id", 1},
+    {"method", "test"},
+    {"jsonrpc", "wrong"}
+  };
+
+  nlohmann::json response = dispatcher.process(request);
+
+	EXPECT_EQ(response["jsonrpc"], "2.0");
+	EXPECT_EQ(response["id"], 1);
+	EXPECT_EQ(response["error"]["code"], -32600);
+	EXPECT_EQ(response["error"]["message"], "Request must identify as \"jsonrpc\": \"2.0\"");
 }
