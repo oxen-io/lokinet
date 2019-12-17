@@ -9,7 +9,7 @@ doesn't work with debian's temporary install location).
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/daemon/CMakeLists.txt b/daemon/CMakeLists.txt
-index 685436f..a6bd0ff 100644
+index c57e2ac..0c5b464 100644
 --- a/daemon/CMakeLists.txt
 +++ b/daemon/CMakeLists.txt
 @@ -36,7 +36,7 @@ else()

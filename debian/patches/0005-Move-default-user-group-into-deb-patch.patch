@@ -8,7 +8,7 @@ Rather than cramming it into CXXFLAGS in debian/rules.
  1 file changed, 3 insertions(+)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 4b2f525..731b479 100644
+index d6e2c1d..c3857d5 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -39,6 +39,9 @@ endif()
