@@ -155,6 +155,7 @@ addons:
     - mingw-w64 mingw-w64-common
     - ninja-build
     - libsodium-dev
+    - libzmq3-dev
   homebrew:
     packages:
     - ccache
@@ -166,6 +167,7 @@ addons:
     - mingw-w64
     - ninja
     - libsodium
+    - zeromq
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
