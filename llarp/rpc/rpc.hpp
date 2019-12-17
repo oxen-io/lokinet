@@ -26,7 +26,7 @@ namespace llarp
       Start();
 
       /// stop and close
-      void
+      bool
       Stop();
 
       /// tick

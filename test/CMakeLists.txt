@@ -22,6 +22,7 @@ list(APPEND TEST_SRC
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp
     rpc/test_llarp_json_rpc_dispatcher.cpp
+    rpc/test_llarp_rpc_server.cpp
     service/test_llarp_service_address.cpp
     service/test_llarp_service_identity.cpp
     test_llarp_encrypted_frame.cpp
@@ -59,6 +60,8 @@ add_executable(${TEST_EXE}
 
 target_link_libraries(${TEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
 target_include_directories(${TEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+include_directories(../vendor/zmq)
 
 if(NOT WIN32)
     target_link_libraries(${TEST_EXE} PUBLIC absl::variant)

@@ -30,14 +30,14 @@ namespace llarp
       ServerImpl(AbstractRouter* r) : m_router(r), m_context()
       {
         /*
-        bool success = m_jsonRpcServer.bindAndAddMethod("test", [](const
-        Json::Value &parameter, Json::Value &result)
-        {
-          (void)parameter;
-          result = "hello, world";
-        });
+        bool success = m_jsonRpcServer.bindAndAddMethod(
+            "ping", [](const Json::Value& parameter, Json::Value& result) {
+              (void)parameter;
+              result = "pong";
+            });
 
-        if (! success) {
+        if(!success)
+        {
           LogWarn("Failed to inject 'test' method");
         }
         */
@@ -76,7 +76,7 @@ namespace llarp
         if(!m_socket)
           return false;
 
-        m_socket.release();
+        m_socket.reset(nullptr);
         return true;
       }
 
@@ -86,6 +86,8 @@ namespace llarp
       void
       tick(llarp_time_t now)
       {
+        (void)now;  // unused
+
         try
         {
           auto result = m_socket->recv(m_recvBuffer, zmq::recv_flags::dontwait);
@@ -117,10 +119,10 @@ namespace llarp
 
     Server::~Server() = default;
 
-    void
+    bool
     Server::Stop()
     {
-      m_Impl->stop();
+      return m_Impl->stop();
     }
 
     bool
