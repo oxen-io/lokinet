@@ -1,3 +1,37 @@
+lokinet (0.6.0-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * stricter timeouts
+  * Revert "stricter timeouts"
+  * dont fail on 0 sized data fed to json parser
+  * allow multiple calls to FeedData
+  * update readme for freebsd
+  * remove abyss-exe
+  * freebsd fix
+  * require version
+  * more
+  * require pkgconf package in freebsd build
+  * use linux codepath for freebsd in filesystem.hpp
+
+  [ Rick V ]
+  * get ready for v0.6
+  * include all platform dependencies transitively
+  * add note
+  * don't be aggressive
+  * fix test suite
+  * Explicitly align to 16 bytes on Win32 targets
+  * add definitions for System5 and generic non-Apple BSD
+  * fix versiontag
+  * clang-format everything
+  * microsoft libc a shit
+  * the internal windows toolchain _already_ provides a default manifest
+  * nit
+
+  [ Jeff Becker ]
+  * netid update
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 16 Dec 2019 21:12:12 -0400
+
 lokinet (0.6.0~rc2+git20191215-3) sid; urgency=medium
 
   * Disable NATIVE_BUILD
