@@ -105,8 +105,7 @@ if (WIN32)
     ev/ev_win32.cpp
     ${LIB_PLATFORM_SRC}
     win32/win32_inet.c
-    win32/win32_intrnl.c
-    win32/win32_upoll.c)
+    win32/win32_intrnl.c)
 endif(WIN32)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})

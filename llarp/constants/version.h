@@ -10,7 +10,7 @@
 #define LLARP_VERSION_MIN 6
 #define LLARP_VERSION_PATCH 0
 
-#define LLARP_DEFAULT_NETID "gamma"
+#define LLARP_DEFAULT_NETID "lokinet"
 
 #ifndef LLARP_RELEASE_MOTTO
 #define LLARP_RELEASE_MOTTO "(dev build)"

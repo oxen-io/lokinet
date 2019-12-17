@@ -33,19 +33,19 @@
             this.StatusLabel = new System.Windows.Forms.Label();
             this.lokinetd_fd1 = new System.Windows.Forms.TextBox();
             this.NotificationTrayIcon = new System.Windows.Forms.NotifyIcon(this.components);
+            this.TrayMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.showToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TrayConnect = new System.Windows.Forms.ToolStripMenuItem();
+            this.TrayDisconnect = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveLogToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.btnHide = new System.Windows.Forms.Button();
             this.UIVersionLabel = new System.Windows.Forms.Label();
             this.btnConnect = new System.Windows.Forms.Button();
             this.btnDrop = new System.Windows.Forms.Button();
             this.btnConfigProfile = new System.Windows.Forms.Button();
             this.btnAbout = new System.Windows.Forms.Button();
-            this.TrayMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.TrayConnect = new System.Windows.Forms.ToolStripMenuItem();
-            this.TrayDisconnect = new System.Windows.Forms.ToolStripMenuItem();
-            this.saveLogToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.showToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.TrayMenu.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -85,6 +85,60 @@
             this.NotificationTrayIcon.Text = "LokiNET - disconnected";
             this.NotificationTrayIcon.Visible = true;
             this.NotificationTrayIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.NotificationTrayIcon_MouseDoubleClick);
+            // 
+            // TrayMenu
+            // 
+            this.TrayMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.showToolStripMenuItem,
+            this.TrayConnect,
+            this.TrayDisconnect,
+            this.saveLogToFileToolStripMenuItem,
+            this.aboutToolStripMenuItem,
+            this.exitToolStripMenuItem});
+            this.TrayMenu.Name = "TrayMenu";
+            this.TrayMenu.Size = new System.Drawing.Size(166, 136);
+            // 
+            // showToolStripMenuItem
+            // 
+            this.showToolStripMenuItem.Name = "showToolStripMenuItem";
+            this.showToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.showToolStripMenuItem.Text = "Show";
+            this.showToolStripMenuItem.Click += new System.EventHandler(this.showToolStripMenuItem_Click);
+            // 
+            // TrayConnect
+            // 
+            this.TrayConnect.Name = "TrayConnect";
+            this.TrayConnect.Size = new System.Drawing.Size(165, 22);
+            this.TrayConnect.Text = "Connect";
+            this.TrayConnect.Click += new System.EventHandler(this.TrayConnect_Click);
+            // 
+            // TrayDisconnect
+            // 
+            this.TrayDisconnect.Name = "TrayDisconnect";
+            this.TrayDisconnect.Size = new System.Drawing.Size(165, 22);
+            this.TrayDisconnect.Text = "Disconnect";
+            this.TrayDisconnect.Click += new System.EventHandler(this.TrayDisconnect_Click);
+            // 
+            // saveLogToFileToolStripMenuItem
+            // 
+            this.saveLogToFileToolStripMenuItem.Name = "saveLogToFileToolStripMenuItem";
+            this.saveLogToFileToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.saveLogToFileToolStripMenuItem.Text = "Save Log to File...";
+            this.saveLogToFileToolStripMenuItem.Click += new System.EventHandler(this.saveLogToFileToolStripMenuItem_Click);
+            // 
+            // aboutToolStripMenuItem
+            // 
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.aboutToolStripMenuItem.Text = "About...";
+            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
+            // 
+            // exitToolStripMenuItem
+            // 
+            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(165, 22);
+            this.exitToolStripMenuItem.Text = "Exit";
+            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
             // btnHide
             // 
@@ -152,60 +206,6 @@
             this.btnAbout.UseVisualStyleBackColor = true;
             this.btnAbout.Click += new System.EventHandler(this.btnAbout_Click);
             // 
-            // TrayMenu
-            // 
-            this.TrayMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.showToolStripMenuItem,
-            this.TrayConnect,
-            this.TrayDisconnect,
-            this.saveLogToFileToolStripMenuItem,
-            this.aboutToolStripMenuItem,
-            this.exitToolStripMenuItem});
-            this.TrayMenu.Name = "TrayMenu";
-            this.TrayMenu.Size = new System.Drawing.Size(181, 158);
-            // 
-            // TrayConnect
-            // 
-            this.TrayConnect.Name = "TrayConnect";
-            this.TrayConnect.Size = new System.Drawing.Size(180, 22);
-            this.TrayConnect.Text = "Connect";
-            this.TrayConnect.Click += new System.EventHandler(this.TrayConnect_Click);
-            // 
-            // TrayDisconnect
-            // 
-            this.TrayDisconnect.Name = "TrayDisconnect";
-            this.TrayDisconnect.Size = new System.Drawing.Size(180, 22);
-            this.TrayDisconnect.Text = "Disconnect";
-            this.TrayDisconnect.Click += new System.EventHandler(this.TrayDisconnect_Click);
-            // 
-            // saveLogToFileToolStripMenuItem
-            // 
-            this.saveLogToFileToolStripMenuItem.Name = "saveLogToFileToolStripMenuItem";
-            this.saveLogToFileToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.saveLogToFileToolStripMenuItem.Text = "Save Log to File...";
-            this.saveLogToFileToolStripMenuItem.Click += new System.EventHandler(this.saveLogToFileToolStripMenuItem_Click);
-            // 
-            // aboutToolStripMenuItem
-            // 
-            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.aboutToolStripMenuItem.Text = "About...";
-            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
-            // 
-            // exitToolStripMenuItem
-            // 
-            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.exitToolStripMenuItem.Text = "Exit";
-            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
-            // 
-            // showToolStripMenuItem
-            // 
-            this.showToolStripMenuItem.Name = "showToolStripMenuItem";
-            this.showToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.showToolStripMenuItem.Text = "Show";
-            this.showToolStripMenuItem.Click += new System.EventHandler(this.showToolStripMenuItem_Click);
-            // 
             // main_frame
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -223,7 +223,7 @@
             this.Name = "main_frame";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "LokiNET Launcher";
+            this.Text = "Lokinet Launcher";
             this.TrayMenu.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();

@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Lokinet"
-#define MyAppVersion "0.5.2"
+#define MyAppVersion "0.6.0"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://lokinet.org"
 #define MyAppExeName "lokinetui.exe"
@@ -38,18 +38,18 @@ OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma2/ultra64
 SolidCompression=yes
-VersionInfoVersion=0.5.2
+VersionInfoVersion=0.6.0
 VersionInfoCompany=Loki Project
 VersionInfoDescription=Lokinet for Microsoft® Windows® NT™
 #ifndef RELEASE
-VersionInfoTextVersion=0.5.2-dev-{#VCSRev}
-VersionInfoProductTextVersion=0.5.2-dev-{#VCSRev}
+VersionInfoTextVersion=0.6.0-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.6.0-dev-{#VCSRev}
 #else
-VersionInfoTextVersion=0.5.2
-VersionInfoProductTextVersion=0.5.2 ({#Codename})
+VersionInfoTextVersion=0.6.0
+VersionInfoProductTextVersion=0.6.0 ({#Codename})
 #endif
 VersionInfoProductName=Lokinet
-VersionInfoProductVersion=0.5.2
+VersionInfoProductVersion=0.6.0
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
@@ -66,14 +66,15 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 ; only one of these is installed
 #ifdef SINGLE_ARCH
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
+; don't ship it, we don't have a public api yet!
+;Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dbghelp64.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion
 #else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
-Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
+;Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "dbghelp32.dll"; DestName: "dbghelp.dll"; DestDir: "{app}"; Flags: ignoreversion; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
-Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+;Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
 Source: "dbghelp64.dll"; DestDir: "{app}"; DestName: "dbghelp.dll"; Flags: ignoreversion; Check: IsWin64
 #endif
 ; UI has landed!
@@ -93,7 +94,6 @@ Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
 Source: "7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
-; if nonexistent, then inet6 was already installed
 Source: "inet6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1; Check: not IsTcp6Installed
 ; Copy the correct tuntap driver for the selected platform
 Source: "tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
@@ -143,7 +143,6 @@ Name: "{userappdata}\.lokinet"
 [Code]
 var
 TapInstalled: Boolean;
-TCP6Installed: Boolean;
 Version: TWindowsVersion;
 function reg_query_helper(): Integer;
 external 'reg_query_helper@files:regdbhelper.dll cdecl setuponly';
@@ -165,7 +164,7 @@ end;
 
 function IsTcp6Installed(): Boolean;
 begin
-  if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
+  if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) then
   begin
     Result := true;
   end

@@ -100,8 +100,20 @@ struct win32_tun_io
   }
 };
 
-// UDP event loop (we use select(3SOCKET) because linux)
-struct llarp_win32_loop : public llarp_ev_loop
+// UDP event loop (no longer used, we libuv for now)
+// PLEASE convert me to IOCPs so we don't have to use that
+// EXTREMELY CURSED libuv event loop and its llarp_vpn_io_pipe
+//
+// For you see, on Windows, we have enough local user permissions to set
+// up a VPN tunnel interface internally, and have lokinet consume this
+// file descriptor directly. See win32_tun_io for this impl. llarp_vpn_io
+// assumes that an external entity or process is required to inject packets
+// into the VPN interface provided by the OS.
+//
+// Not only that, the win32 IOCP facility handles timing on its own, you can
+// specify an interval to tick directly into the call to
+// GetQueuedCompletionStatus(2)
+/*struct llarp_win32_loop : public llarp_ev_loop
 {
   upoll_t* upollfd;
   std::shared_ptr< llarp::Logic > m_Logic;
@@ -172,6 +184,6 @@ struct llarp_win32_loop : public llarp_ev_loop
   void
   tick_listeners() override;
 };
-
+*/
 #endif
 #endif
