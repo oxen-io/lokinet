@@ -121,5 +121,5 @@ TEST_F(TestJsonRpcDispatcher, TestMissingJsonRpcSpecification)
 	EXPECT_EQ(response["jsonrpc"], "2.0");
 	EXPECT_EQ(response["id"], 1);
 	EXPECT_EQ(response["error"]["code"], -32600);
-	EXPECT_EQ(response["error"]["message"], "Request must identify as \"jsonrpc\": \"2.0\"");
+	EXPECT_EQ(response["error"]["message"], "Request missing 'jsonrpc'");
 }

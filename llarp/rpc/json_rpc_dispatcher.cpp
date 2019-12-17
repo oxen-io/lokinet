@@ -39,12 +39,36 @@ namespace llarp
         return createJsonRpcResponseObject(nullptr, nullptr, error);
       }
 
-      auto id = obj["id"];
-      // TODO: this causes an abort(), can't request a property that doesn't exist?
-      // TODO: validate: should be a {string, number, NULL}. defaulting to NULL if omitted is proper behavior.
+      // id is optional, must be {string, number, NULL} if present, and we treat
+      // as a null if if not present
+      auto itr = obj.find("id");
+      nlohmann::json id; // effectively a type of 'null' at this point
+      if (itr != obj.end())
+      {
+        id = itr.value();
+        switch (id.type())
+        {
+          case nlohmann::json::value_t::null:
+          case nlohmann::json::value_t::string:
+          case nlohmann::json::value_t::number_integer:
+          case nlohmann::json::value_t::number_unsigned:
+            // acceptable values
+            break;
+
+          default:
+            auto error = createJsonRpcErrorObject(ERROR_INVALID_REQUEST, "Invalid id type");
+            return createJsonRpcResponseObject(nullptr, nullptr, error);
+        }
+      }
 
       // JSON-RPC 2.0 request should identify itself as such
-      auto jsonrpc = obj["jsonrpc"];
+      itr = obj.find("jsonrpc");
+      if (itr == obj.end())
+      {
+        auto error = createJsonRpcErrorObject(ERROR_INVALID_REQUEST, "Request missing 'jsonrpc'");
+        return createJsonRpcResponseObject(id, nullptr, error);
+      }
+      nlohmann::json jsonrpc = itr.value();
       if (jsonrpc.type() != nlohmann::json::value_t::string || jsonrpc != "2.0")
       {
         auto error = createJsonRpcErrorObject(ERROR_INVALID_REQUEST, "Request must identify as \"jsonrpc\": \"2.0\"");
@@ -52,7 +76,13 @@ namespace llarp
       }
 
       // JSON-RPC 2.0 request should have a method parameter of type string
-      auto method = obj["method"];
+      itr = obj.find("method");
+      if (itr == obj.end())
+      {
+        auto error = createJsonRpcErrorObject(ERROR_INVALID_REQUEST, "Request missing 'method'");
+        return createJsonRpcResponseObject(id, nullptr, error);
+      }
+      auto method = itr.value();
       if (method.type() != nlohmann::json::value_t::string)
       {
         auto error = createJsonRpcErrorObject(ERROR_INVALID_REQUEST, "Request should contain method parameter");
@@ -64,14 +94,14 @@ namespace llarp
       std::string methodName = method;
       // TODO: validate: method must exist and should be a string
 
-      auto itr = m_handlers.find(methodName);
-      if (itr == m_handlers.end())
+      auto handlersItr = m_handlers.find(methodName);
+      if (handlersItr == m_handlers.end())
       {
         auto error = createJsonRpcErrorObject(ERROR_METHOD_NOT_FOUND, "Method not found", {{"method", methodName}});
         return createJsonRpcResponseObject(id, nullptr, error);
       }
 
-      auto handler = itr->second;
+      auto handler = handlersItr->second;
       response_t response  = handler(nullptr);
 
       if (response.isError)
