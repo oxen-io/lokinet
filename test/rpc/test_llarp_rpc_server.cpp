@@ -81,11 +81,16 @@ TEST_F(RpcServerTest, JsonRpcPing)
   EXPECT_TRUE(gotReply);
 
   std::string replyStr((const char*)reply.data(), reply.size());
+  nlohmann::json replyJson = nlohmann::json::parse(replyStr);
 
-  LogInfo("Received response: ", replyStr);
+  nlohmann::json expected = R"(
+    {
+      "id":1,
+      "jsonrpc":"2.0",
+      "result":"pong"
+    }
+  )"_json;
 
-  // placeholder to cause the test to fail:
-  // TODO: server needs to hook in the JsonRpcDispatcher to handle results
-  EXPECT_TRUE(replyStr.find("pong") != std::string::npos);
+  EXPECT_EQ(expected, replyJson);
 }
 

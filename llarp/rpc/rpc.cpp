@@ -8,6 +8,7 @@
 #include <util/logging/logger.hpp>
 #include <router_id.hpp>
 #include <exit/context.hpp>
+#include <rpc/json_rpc_dispatcher.hpp>
 
 #include <util/encode.hpp>
 #include <util/meta/memfn.hpp>
@@ -20,6 +21,8 @@ namespace llarp
     struct ServerImpl
     {
       AbstractRouter* m_router;
+      JsonRpcDispatcher m_rpcDispatcher;
+
       zmq::context_t m_context;
       std::unique_ptr< zmq::socket_t > m_socket;
       zmq::message_t m_recvBuffer;
@@ -29,18 +32,10 @@ namespace llarp
        */
       ServerImpl(AbstractRouter* r) : m_router(r), m_context()
       {
-        /*
-        bool success = m_jsonRpcServer.bindAndAddMethod(
-            "ping", [](const Json::Value& parameter, Json::Value& result) {
-              (void)parameter;
-              result = "pong";
-            });
-
-        if(!success)
-        {
-          LogWarn("Failed to inject 'test' method");
-        }
-        */
+        m_rpcDispatcher.setHandler("ping", [](const nlohmann::json& params) {
+          (void)params;
+          return response_t{false, "pong"};
+        });
       }
 
       /**
@@ -93,9 +88,14 @@ namespace llarp
           auto result = m_socket->recv(m_recvBuffer, zmq::recv_flags::dontwait);
           if(result)
           {
-            LogInfo("Received ZMQ message");
+            // TODO: avoid copy ?
+            std::string request((const char*)m_recvBuffer.data(),
+                                m_recvBuffer.size());
 
-            zmq::message_t response("ACK", 3);
+            nlohmann::json responseJson = m_rpcDispatcher.processRaw(request);
+            std::string responseStr     = responseJson.dump();
+
+            zmq::message_t response(responseStr.c_str(), responseStr.size());
             m_socket->send(std::move(response), zmq::send_flags::dontwait);
           }
         }
