@@ -8,6 +8,8 @@ mkdir -p osx-pkg/usr/local/bin
 mkdir osx-pkg/usr/local/lib
 rm osx-pkg/usr/local/bin/lokinet
 cp ../build/daemon/lokinet osx-pkg/usr/local/bin
+rm osx-pkg/usr/local/bin/lokinetctl
+cp ../build/daemon/lokinetctl osx-pkg/usr/local/bin
 echo "Copying /usr/local/lib/libuv.dylib into package"
 rm osx-pkg/usr/local/lib/libuv.dylib
 cp /usr/local/lib/libuv.dylib osx-pkg/usr/local/lib
@@ -20,6 +22,7 @@ sed "s/\$VERSION/$VERSION/" distribution_template.xml > distribution.xml
 
 echo "Signing package $VERSION"
 codesign --options=runtime -s "Rangeproof PTY LTD" -v osx-pkg/usr/local/bin/lokinet
+codesign --options=runtime -s "Rangeproof PTY LTD" -v osx-pkg/usr/local/bin/lokinetctl
 codesign --options=runtime -s "Rangeproof PTY LTD" -v osx-pkg/usr/local/bin/lokinet-bootstrap
 codesign --options=runtime -s "Rangeproof PTY LTD" -v osx-pkg/usr/local/lib/libuv.dylib
 
