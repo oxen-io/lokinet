@@ -227,8 +227,8 @@ namespace llarp
     bool
     LooksAlive() const override
     {
-      const llarp_time_t now = Now();
-      return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
+      const llarp_time_t now = llarp::time_now_ms();
+      return now < _lastTick || (now - _lastTick) <= llarp_time_t{30000};
     }
 
     using NetConfig_t = std::unordered_multimap< std::string, std::string >;

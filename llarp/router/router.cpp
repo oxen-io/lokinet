@@ -139,19 +139,12 @@ namespace llarp
       return _rcLookupHandler.GetRandomWhitelistRouter(router);
     }
 
-    auto pick_router = [&](auto &collection) -> bool {
-      const auto sz = collection.size();
-      auto itr      = collection.begin();
-      if(sz == 0)
-        return false;
-      if(sz > 1)
-        std::advance(itr, randint() % sz);
-      router = itr->first;
-      return true;
-    };
+    RouterContact rc;
+    if(not nodedb()->select_random_hop_excluding(rc, {}))
+      return false;
 
-    absl::ReaderMutexLock l(&nodedb()->access);
-    return pick_router(nodedb()->entries);
+    router = rc.pubkey;
+    return true;
   }
 
   void

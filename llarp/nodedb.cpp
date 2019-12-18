@@ -285,13 +285,20 @@ llarp_nodedb::loadfile(const fs::path &fpath)
 void
 llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 {
-  llarp::util::Lock lock(&access);
-  auto itr = entries.begin();
-  while(itr != entries.end())
+  std::vector< llarp::RouterContact > rcs;
   {
-    if(!visit(itr->second.rc))
+    llarp::util::Lock lock(&access);
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      rcs.emplace_back(itr->second.rc);
+      ++itr;
+    }
+  }
+  for(const auto &rc : rcs)
+  {
+    if(!visit(rc))
       return;
-    ++itr;
   }
 }
 
@@ -300,13 +307,22 @@ llarp_nodedb::VisitInsertedBefore(
     std::function< void(const llarp::RouterContact &) > visit,
     llarp_time_t insertedAfter)
 {
-  llarp::util::Lock lock(&access);
-  auto itr = entries.begin();
-  while(itr != entries.end())
+  std::vector< llarp::RouterContact > rcs;
   {
-    if(itr->second.inserted < insertedAfter)
-      visit(itr->second.rc);
-    ++itr;
+    llarp::util::Lock lock(&access);
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      if(itr->second.inserted < insertedAfter)
+      {
+        rcs.emplace_back(itr->second.rc);
+      }
+      ++itr;
+    }
+  }
+  for(const auto &rc : rcs)
+  {
+    visit(rc);
   }
 }
 
@@ -576,7 +592,7 @@ llarp_nodedb::select_random_hop_excluding(
   {
     return false;
   }
-  llarp_time_t now = llarp::time_now_ms();
+  const llarp_time_t now = llarp::time_now_ms();
 
   auto itr   = entries.begin();
   size_t pos = llarp::randint() % sz;
