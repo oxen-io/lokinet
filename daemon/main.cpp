@@ -283,9 +283,8 @@ main(int argc, char *argv[])
           }
           else if(triesLeft == 0)
           {
-            for(const auto &wtf : {"you have been visited by the mascott of "
-                                   "the "
-                                   "deadlocked router.",
+            // clang-format off
+            for(const auto &wtf : {"you have been visited by the mascott of the deadlocked router.",
                                    "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
                                    "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
                                    "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
@@ -302,13 +301,11 @@ main(int argc, char *argv[])
                                    "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
                                    "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
                                    "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-                                   "file a bug report now or be cursed with "
-                                   "this "
-                                   "annoying image in your syslog for all "
-                                   "time."})
+                                   "file a bug report now or be cursed with this annoying image in your syslog for all time"})
             {
               LogError(wtf);
             }
+            // clang-format on
             std::abort();
           }
           else
