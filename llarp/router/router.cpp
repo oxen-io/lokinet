@@ -302,12 +302,13 @@ namespace llarp
   void
   Router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
   {
-    if(left)
-      return;
-    auto *self          = static_cast< Router * >(user);
-    self->ticker_job_id = 0;
-    self->Tick();
-    self->ScheduleTicker(orig);
+    auto *self = static_cast< Router * >(user);
+    if(self->IsRunning())
+    {
+      self->ticker_job_id = 0;
+      self->Tick();
+      self->ScheduleTicker(orig);
+    }
   }
 
   bool
