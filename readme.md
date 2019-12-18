@@ -67,10 +67,10 @@ Build requirements:
 
 * GNU Make
 * CMake
-* C++ 17 capable C++ compiler
+* C++ 14 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
-* libsodium (A patch that removes `undocumented system call` from the Win32 build is in `llarp/win32`.)
+* libsodium >= 1.0.17 (A patch that removes `undocumented system call` from the Win32 build is in `llarp/win32`.)
 * libcurl
 
 ### Linux
