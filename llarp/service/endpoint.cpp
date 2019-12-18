@@ -75,37 +75,37 @@ namespace llarp
     }
 
     bool
-    Endpoint::HasNameLookupFor(const std::string name)
-    {
-      return m_PendingNameLookups.find(name) != m_PendingNameLookups.end();
-    }
-
-    bool
     Endpoint::DoNameLookup(const std::string name,
                            const std::vector< path::Path_ptr >& paths,
-                           naming::NameLoookupResultHandler h)
+                           naming::NameLookupResultHandler h)
     {
-      auto& job     = m_PendingNameLookups[name];
-      job.handler   = h;
-      job.Name      = name;
-      job.expiresAt = Now() + NameLookupBatchJob::Lifetime;
+      if(paths.size() <= 4)
+        return false;
+      auto job       = std::make_shared< NameLookupBatchJob >();
+      job->handler   = std::move(h);
+      job->Name      = name;
+      job->expiresAt = Now() + NameLookupBatchJob::Lifetime;
+      job->endpoint  = this;
+      job->consensusAlgo.DisagreementThreshold = 2;
       for(const auto& path : paths)
       {
-        job.MakeRequest(this, path, GenTXID());
+        job->MakeRequest(path, GenTXID());
       }
+      m_PendingNameLookupJobs.emplace(name, job);
       return true;
     }
 
     bool
     Endpoint::EnsurePathToName(const std::string name, PathEnsureHook hook)
     {
-      return m_NameCache.GetCachedOrLookupAsync(
-          name, *this, [self = this, hook](auto maybe) {
+      m_NameCache.GetCachedOrLookupAsync(
+          name, *this, [self = this, hook = std::move(hook)](auto maybe) {
             if(maybe.has_value())
               self->EnsurePathToService(maybe.value(), hook);
             else
               hook({}, nullptr);
           });
+      return true;
     }
 
     bool
@@ -231,6 +231,13 @@ namespace llarp
       return introSet().HasExpiredIntros(Now());
     }
 
+    bool
+    Endpoint::HasNameLookupFor(const std::string name) const
+    {
+      return m_PendingNameLookupJobs.find(name)
+          != m_PendingNameLookupJobs.end();
+    }
+
     util::StatusObject
     Endpoint::ExtractStatus() const
     {
@@ -248,11 +255,16 @@ namespace llarp
       m_NameCache.Decay(now);
 
       {
-        auto itr = m_PendingNameLookups.begin();
-        while(itr != m_PendingNameLookups.end())
+        auto itr = m_PendingNameLookupJobs.begin();
+        while(itr != m_PendingNameLookupJobs.end())
         {
-          if(itr->second.expiresAt <= now)
-            itr = m_PendingNameLookups.erase(itr);
+          if(itr->second == nullptr)
+          {
+            itr = m_PendingNameLookupJobs.erase(itr);
+            continue;
+          }
+          if(itr->second->expiresAt <= now)
+            itr = m_PendingNameLookupJobs.erase(itr);
           else
             ++itr;
         }

@@ -16,6 +16,7 @@
 #include <service/protocol.hpp>
 #include <service/sendcontext.hpp>
 #include <service/session.hpp>
+#include <service/name_lookup_batch_job.hpp>
 #include <service/tag_lookup_job.hpp>
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
@@ -84,6 +85,9 @@ namespace llarp
       /// return true if we are ready to recv packets from the void
       bool
       IsReady() const;
+
+      bool
+      HasNameLookupFor(const std::string name) const;
 
       void
       QueueRecvData(RecvDataEvent ev) override;
@@ -259,8 +263,6 @@ namespace llarp
       bool
       SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
-      ;
-
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
@@ -295,7 +297,8 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address remote, PathEnsureHook h,
-                          uint64_t timeoutMS, bool lookupOnRandomPath = false);
+                          uint64_t timeoutMS      = 5000,
+                          bool lookupOnRandomPath = false);
 
       /// same as ensure path to service but using LNS
       bool
@@ -474,7 +477,7 @@ namespace llarp
       std::unique_ptr< EndpointState > m_state;
       thread::Queue< RecvDataEvent > m_RecvQueue;
 
-      std::unordered_map< std::string, NameLookupBatchJob >
+      std::unordered_map< std::string, std::shared_ptr< NameLookupBatchJob > >
           m_PendingNameLookupJobs;
     };
 

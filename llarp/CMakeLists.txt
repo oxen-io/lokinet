@@ -133,10 +133,40 @@ set(DNSLIB_SRC
   dns/string.cpp
 )
 
-set(LIB_SRC
-  ${DNSLIB_SRC}
-  bootstrap.cpp
-  context.cpp
+set(NAMELIB_SRC
+  naming/consensus_algorithm.cpp
+  naming/i_name_lookup_handler.cpp
+  naming/lns_name_cache.cpp
+)
+
+set(SERVICELIB_SRC
+  service/address.cpp
+  service/async_key_exchange.cpp
+  service/config.cpp
+  service/context.cpp
+  service/endpoint_state.cpp
+  service/endpoint_util.cpp
+  service/endpoint.cpp
+  service/handler.cpp
+  service/hidden_service_address_lookup.cpp
+  service/name_lookup_batch_job.cpp
+  service/identity.cpp
+  service/info.cpp
+  service/intro_set.cpp
+  service/intro.cpp
+  service/lookup.cpp
+  service/outbound_context.cpp
+  service/pendingbuffer.cpp
+  service/protocol.cpp
+  service/router_lookup_job.cpp
+  service/sendcontext.cpp
+  service/session.cpp
+  service/tag_lookup_job.cpp
+  service/tag.cpp
+  service/vanity.cpp
+  )
+
+set(CRYPTOIMPLLIB_SRC
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp
   crypto/crypto_noop.cpp
@@ -144,6 +174,9 @@ set(LIB_SRC
   crypto/encrypted_frame.cpp
   crypto/encrypted.cpp
   crypto/types.cpp
+  )
+
+set(DHTLIB_SRC
   dht/bucket.cpp
   dht/context.cpp
   dht/dht.cpp
@@ -167,15 +200,23 @@ set(LIB_SRC
   dht/tx.cpp
   dht/txholder.cpp
   dht/txowner.cpp
+  )
+
+set(EXITLIB_SRC
   exit/context.cpp
   exit/endpoint.cpp
   exit/exit_messages.cpp
   exit/policy.cpp
   exit/session.cpp
+  )
+
+set(HANDLERSLIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
-  hook/shell.cpp
+  )
+
+set(LINKLAYERLIB_SRC
   iwp/iwp.cpp
   iwp/linklayer.cpp
   iwp/message_buffer.cpp
@@ -185,6 +226,9 @@ set(LIB_SRC
   link/link_manager.cpp
   link/server.cpp
   link/session.cpp
+  )
+
+set(LINKMESSAGELIB_SRC  
   messages/dht_immediate.cpp
   messages/discard.cpp
   messages/link_intro.cpp
@@ -193,11 +237,14 @@ set(LIB_SRC
   messages/relay.cpp
   messages/relay_commit.cpp
   messages/relay_status.cpp
-  naming/i_name_lookup_handler.cpp
-  naming/lns_name_cache.cpp
+  )
+
+set(NETLIB_SRC
   net/address_info.cpp
   net/exit_info.cpp
-  nodedb.cpp
+  )
+
+set(PATHLIB_SRC
   path/ihophandler.cpp
   path/path_context.cpp
   path/path_types.cpp
@@ -205,8 +252,9 @@ set(LIB_SRC
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
-  pow.cpp
-  profiling.cpp
+  )
+
+set(ROUTERLIB_SRC
   router/abstractrouter.cpp
   router/i_outbound_message_handler.cpp
   router/outbound_message_handler.cpp
@@ -215,8 +263,9 @@ set(LIB_SRC
   router/i_rc_lookup_handler.cpp
   router/rc_lookup_handler.cpp
   router/router.cpp
-  router_contact.cpp
-  router_id.cpp
+  )
+
+set(ONIONMSGLIB_SRC
   routing/dht_message.cpp
   routing/handler.cpp
   routing/message_parser.cpp
@@ -225,30 +274,40 @@ set(LIB_SRC
   routing/path_latency_message.cpp
   routing/path_transfer_message.cpp
   routing/transfer_traffic_message.cpp
+  )
+
+set(DATATYPELIB_SRC
+  bootstrap.cpp
+  router_contact.cpp
+  router_id.cpp
+  pow.cpp
+  )
+
+set(RPCLIB_SRC
   rpc/rpc.cpp
-  service/address.cpp
-  service/async_key_exchange.cpp
-  service/config.cpp
-  service/context.cpp
-  service/endpoint_state.cpp
-  service/endpoint_util.cpp
-  service/endpoint.cpp
-  service/handler.cpp
-  service/hidden_service_address_lookup.cpp
-  service/identity.cpp
-  service/info.cpp
-  service/intro_set.cpp
-  service/intro.cpp
-  service/lookup.cpp
-  service/outbound_context.cpp
-  service/pendingbuffer.cpp
-  service/protocol.cpp
-  service/router_lookup_job.cpp
-  service/sendcontext.cpp
-  service/session.cpp
-  service/tag_lookup_job.cpp
-  service/tag.cpp
-  service/vanity.cpp
+  )
+
+set(LIB_SRC
+  ${DATATYPELIB_SRC}
+  ${DNSLIB_SRC}
+  ${NAMELIB_SRC}
+  ${CRYPTOIMPLLIB_SRC}
+  ${DHTLIB_SRC}
+  ${EXITLIB_SRC}
+  ${HANDLERSLIB_SRC}
+  ${LINKLAYERLIB_SRC}
+  ${LINKMESSAGELIB_SRC}
+  ${NETLIB_SRC}
+  ${PATHLIB_SRC}
+  ${ROUTERLIB_SRC}
+  ${ONIONMSGLIB_SRC}
+  ${RPCLIB_SRC}
+  ${SERVICELIB_SRC}
+  context.cpp
+  nodedb.cpp
+  profiling.cpp
+  hook/shell.cpp
+ 
 )
 if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)

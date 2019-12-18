@@ -505,9 +505,11 @@ namespace llarp
         else if(msg.questions[0].HasTLD(".loki"))
         {
           auto *replyMsg = new dns::Message(std::move(msg));
-          EnsurePathToName(qname, [=](const Address &, OutboundContext *ctx) {
-            SendDNSReply(addr, ctx, replyMsg, reply, false, isV6 || !isV4);
-          });
+          EnsurePathToName(
+              qname,
+              [=](const service::Address &, service::OutboundContext *ctx) {
+                SendDNSReply(addr, ctx, replyMsg, reply, false, isV6 || !isV4);
+              });
           return true;
         }
         else
