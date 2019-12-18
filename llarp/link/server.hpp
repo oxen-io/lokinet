@@ -207,11 +207,6 @@ namespace llarp
     }
 
    private:
-    void
-    on_timer_tick()
-    {
-      OnTick();
-    }
 
     void
     OnTick();

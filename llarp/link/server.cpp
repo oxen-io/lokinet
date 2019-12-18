@@ -463,7 +463,7 @@ namespace llarp
   ILinkLayer::ScheduleTick(uint64_t interval)
   {
     tick_id = m_Logic->call_later(interval,
-                                  std::bind(&ILinkLayer::on_timer_tick, this));
+                                  std::bind(&ILinkLayer::OnTick, this));
   }
 
   void

@@ -822,7 +822,6 @@ namespace libuv
 #else
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
 #endif
-    m_TickTimer->data   = this;
     m_LogicCaller.data = this;
     uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
       Loop* l = static_cast< Loop* >(h->data);
