@@ -30,7 +30,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, 3, path::default_len)
+        : path::Builder(r, 6, path::default_len)
         , context(parent)
         , m_RecvQueue(128)
     {
@@ -39,6 +39,19 @@ namespace llarp
       m_state->m_Name   = name;
       m_state->m_Tag.Zero();
       m_RecvQueue.enable();
+    }
+
+    bool
+    Endpoint::HasPathsWithNUniqueEndpoints(size_t N) const
+    {
+      std::unordered_set< RouterID, RouterID::Hash > endpoints;
+      ForEachPath([&endpoints](auto& path) {
+        if(path->IsReady())
+        {
+          endpoints.emplace(path->Endpoint());
+        }
+      });
+      return endpoints.size() >= N;
     }
 
     bool
@@ -156,7 +169,8 @@ namespace llarp
       introSet().I.clear();
       for(auto& intro : I)
       {
-        introSet().I.emplace_back(std::move(intro));
+        if(introSet().I.size() < numPaths)
+          introSet().I.emplace_back(std::move(intro));
       }
       if(introSet().I.size() == 0)
       {
@@ -680,6 +694,8 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
+      if(m_state->m_Keyfile.empty())
+        return false;
       // make sure we have all paths that are established
       // in our introset
       size_t numNotInIntroset = 0;
@@ -1365,6 +1381,8 @@ namespace llarp
     {
       if(path::Builder::BuildCooldownHit(now))
         return false;
+      if(not HasPathsWithNUniqueEndpoints(5))
+        return true;
       const bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;

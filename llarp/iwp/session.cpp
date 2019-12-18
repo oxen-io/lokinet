@@ -634,7 +634,7 @@ namespace llarp
         if(itr != m_TXMsgs.end())
         {
           itr->second.Completed();
-          m_TXMsgs.erase(itr);
+          m_TXMsgs.erase(acked);
         }
         else
         {
@@ -643,6 +643,7 @@ namespace llarp
         ptr += sizeof(uint64_t);
         numAcks--;
       }
+      m_LastRX = m_Parent->Now();
     }
 
     void

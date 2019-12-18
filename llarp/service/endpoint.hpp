@@ -479,6 +479,9 @@ namespace llarp
 
       std::unordered_map< std::string, std::shared_ptr< NameLookupBatchJob > >
           m_PendingNameLookupJobs;
+
+      bool
+      HasPathsWithNUniqueEndpoints(size_t N) const;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;
