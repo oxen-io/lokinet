@@ -28,7 +28,7 @@ build:linux_release:
   before_script:
     - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
-    - BUILD_TYPE=Release STATIC_LINK=OFF NINJA=NINJA make
+    - DOWNLOAD_SODIUM=ON BUILD_TYPE=Release STATIC_LINK=OFF NINJA=NINJA make
   artifacts:
     paths:
       - "build/daemon/lokinet"
@@ -42,7 +42,7 @@ build:linux_debug:
   before_script:
     - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
-    - BUILD_TYPE=Debug IS_NOTIFICATION=1 STATIC_LINK=OFF NINJA=NINJA make
+    - DOWNLOAD_SODIUM=ON BUILD_TYPE=Debug IS_NOTIFICATION=1 STATIC_LINK=OFF NINJA=NINJA make
   artifacts:
     paths:
       - "lokinet"
