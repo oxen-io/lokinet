@@ -269,7 +269,9 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return *(reinterpret_cast< const size_t* >(buf.data()));
+        size_t hash;
+        std::memcpy(&hash, buf.data(), sizeof(hash));
+        return hash;
       }
     };
 
