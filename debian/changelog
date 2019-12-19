@@ -1,3 +1,34 @@
+lokinet (0.6.0+git20191219-1) sid; urgency=medium
+
+  [ Rick V ]
+  * update netid on windows side
+
+  [ Jason Rhinelander ]
+  * Add -DDOWNLOAD_SODIUM to re-enabled dl&build of sodium
+
+  [ Rick V ]
+  * do not hardcode version into user-agent string
+
+  [ Thomas Winget ]
+  * implement timers using libuv
+  * Change ILinkLayer::ScheduleTick to use new timer
+  * fix derp nested function call and derp merge error
+  * make dht context use new libuv timers
+  * remove obsolete timer-related code
+
+  [ Ryan Tharp ]
+  * Xenial compatibility
+  * try to fix gitlab CI (from 991)
+  * correct ninja binary case
+
+  [ Jeff Becker ]
+  * fix unit tests
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 19 Dec 2019 13:16:59 -0400
+
 lokinet (0.6.0-2) sid; urgency=medium
 
   * Added default port lokinet ufw rule
