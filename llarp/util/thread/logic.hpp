@@ -53,7 +53,7 @@ namespace llarp
    private:
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
-    llarp_ev_loop* m_Loop;
+    llarp_ev_loop* m_Loop = nullptr;
     absl::optional< ID_t > m_ID;
     util::ContentionKiller m_Killer;
     std::function< void(std::function< void(void) >) > m_Queue;
