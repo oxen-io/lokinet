@@ -36,6 +36,8 @@ namespace llarp
   struct alignas(std::max_align_t) AlignedBuffer
 #endif
   {
+    static_assert(sz >= 8, "AlignedBuffer cannot be used with buffers smaller than 8 bytes");
+
     static constexpr size_t SIZE = sz;
 
     using Data = std::array< byte_t, SIZE >;
