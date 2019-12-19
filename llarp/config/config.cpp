@@ -625,9 +625,9 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
 
   f << "\n\n";
 
-  f << "# admin api (disabled by default)\n";
+  f << "# admin api\n";
   f << "[api]\n";
-  f << "enabled=false\n";
+  f << "enabled=true\n";
   f << "#authkey=insertpubkey1here\n";
   f << "#authkey=insertpubkey2here\n";
   f << "#authkey=insertpubkey3here\n";
