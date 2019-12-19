@@ -160,7 +160,7 @@
     <value>1</value>
   </data>
   <data name="uriBox.Text" xml:space="preserve">
-    <value>https://seed.lokinet.org/bootstrap.signed</value>
+    <value>https://seed.lokinet.org/lokinet.signed</value>
   </data>
   <data name="&gt;&gt;uriBox.Name" xml:space="preserve">
     <value>uriBox</value>

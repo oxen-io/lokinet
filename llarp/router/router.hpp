@@ -466,8 +466,14 @@ namespace llarp
     bool
     HasSessionTo(const RouterID &remote) const override;
 
-    static void
-    handle_router_ticker(void *user, uint64_t orig, uint64_t left);
+    void
+    handle_router_ticker();
+
+    void
+    AfterStopLinks();
+
+    void
+    AfterStopIssued();
 
    private:
     std::atomic< bool > _stopping;

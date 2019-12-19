@@ -202,6 +202,7 @@ __        ___    ____  _   _ ___ _   _  ____
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     mainloop = llarp_make_ev_loop();
+    logic->set_event_loop(mainloop.get());
 
     mainloop->set_logic(logic);
 

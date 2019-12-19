@@ -32,9 +32,8 @@
 #if defined(ANDROID) || defined(IOS)
 #include <unistd.h>
 #endif
-#if defined(WITH_SYSTEMD)
-#include <systemd/sd-daemon.h>
-#endif
+
+constexpr uint64_t ROUTER_TICK_INTERVAL_MS = 1000;
 
 namespace llarp
 {
@@ -284,14 +283,11 @@ namespace llarp
   }
 
   void
-  Router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
+  Router::handle_router_ticker()
   {
-    if(left)
-      return;
-    auto *self          = static_cast< Router * >(user);
-    self->ticker_job_id = 0;
-    self->Tick();
-    self->ScheduleTicker(orig);
+    ticker_job_id = 0;
+    LogicCall(logic(), std::bind(&Router::Tick, this));
+    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
   }
 
   bool
@@ -765,7 +761,8 @@ namespace llarp
   void
   Router::ScheduleTicker(uint64_t ms)
   {
-    ticker_job_id = _logic->call_later({ms, this, &handle_router_ticker});
+    ticker_job_id =
+        _logic->call_later(ms, std::bind(&Router::handle_router_ticker, this));
   }
 
   void
@@ -1036,7 +1033,7 @@ namespace llarp
 
     _netloop->add_ticker(std::bind(&Router::PumpLL, this));
 
-    ScheduleTicker(1000);
+    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1061,20 +1058,18 @@ namespace llarp
     return 0;
   }
 
-  static void
-  RouterAfterStopLinks(void *u, uint64_t, uint64_t)
+  void
+  Router::AfterStopLinks()
   {
-    auto *self = static_cast< Router * >(u);
-    self->Close();
+    Close();
   }
 
-  static void
-  RouterAfterStopIssued(void *u, uint64_t, uint64_t)
+  void
+  Router::AfterStopIssued()
   {
-    auto *self = static_cast< Router * >(u);
-    self->StopLinks();
-    self->nodedb()->AsyncFlushToDisk();
-    self->_logic->call_later({200, self, &RouterAfterStopLinks});
+    StopLinks();
+    nodedb()->AsyncFlushToDisk();
+    _logic->call_later(200, std::bind(&Router::AfterStopLinks, this));
   }
 
   void
@@ -1100,7 +1095,7 @@ namespace llarp
       rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
-    _logic->call_later({200, this, &RouterAfterStopIssued});
+    _logic->call_later(200, std::bind(&Router::AfterStopIssued, this));
   }
 
   bool

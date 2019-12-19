@@ -97,7 +97,8 @@ namespace llarp
       }
 
       /// calculate our address
-      bool CalculateAddress(std::array< byte_t, 32 >& data) const;
+      bool
+      CalculateAddress(std::array< byte_t, 32 >& data) const;
 
       bool
       BDecode(llarp_buffer_t* buf)
