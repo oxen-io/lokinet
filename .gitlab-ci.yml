@@ -20,28 +20,44 @@ stages:
 #      - "lokinet"
 
 # we'll just try our travis set up for now
-build:linux:
-  image: ubuntu:latest
+build:linux_release:
+  image: ubuntu:xenial
   tags:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y build-essential cmake git libcap-dev bsdmainutils ninja-build curl git ca-certificates ccache libuv1-dev libsodium-dev
+    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
-    - make STATIC_LINK=OFF
+    - BUILD_TYPE=Release STATIC_LINK=OFF NINJA=NINJA make
   artifacts:
     paths:
-      - "lokinet"
+      - "build/daemon/lokinet"
+      - "build/daemon/lokinetctl"
 
-build:freebsd:
+build:linux_debug:
+  image: ubuntu:xenial
   tags:
-     - freebsd
+    - linux
   stage: build
+  before_script:
+    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
-    - gmake
+    - BUILD_TYPE=Debug IS_NOTIFICATION=1 STATIC_LINK=OFF NINJA=NINJA make
   artifacts:
     paths:
       - "lokinet"
+      - "lokinetctl"
+
+# needs libsodium (probably libuv and libcurl too)
+#build:freebsd:
+#  tags:
+#     - freebsd
+#  stage: build
+#  script:
+#    - gmake
+#  artifacts:
+#    paths:
+#      - "lokinet"
 
 #build:windows:
 #  tags:
