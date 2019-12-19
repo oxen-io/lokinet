@@ -4,7 +4,6 @@
 #include <ev/ev.hpp>
 #include <util/mem.h>
 #include <util/thread/threadpool.h>
-#include <util/thread/timer.hpp>
 #include <absl/types/optional.h>
 
 namespace llarp
@@ -16,10 +15,6 @@ namespace llarp
 
     ~Logic();
 
-    /// trigger times as needed
-    void
-    tick(llarp_time_t now);
-
     /// stop all operation and wait for that to die
     void
     stop();
@@ -30,9 +25,6 @@ namespace llarp
     bool
     _traceLogicCall(std::function< void(void) > func, const char* filename,
                     int lineo);
-
-    uint32_t
-    call_later(const llarp_timeout_job& job);
 
     uint32_t
     call_later(llarp_time_t later, std::function< void(void) > func);
@@ -62,7 +54,6 @@ namespace llarp
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
     llarp_ev_loop* m_Loop;
-    llarp_timer_context* const m_Timer;
     absl::optional< ID_t > m_ID;
     util::ContentionKiller m_Killer;
     std::function< void(std::function< void(void) >) > m_Queue;

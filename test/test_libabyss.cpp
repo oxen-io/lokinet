@@ -29,12 +29,10 @@ struct AbyssTestBase : public ::testing::Test
     ASSERT_EQ(meth, method);
   }
 
-  static void
-  CancelIt(void* u, ABSL_ATTRIBUTE_UNUSED uint64_t orig, uint64_t left)
+  void
+  CancelIt()
   {
-    if(left)
-      return;
-    static_cast< AbyssTestBase* >(u)->Stop();
+    Stop();
   }
 
   static void
@@ -59,7 +57,7 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
-        logic->call_later({1000, this, &CancelIt});
+        logic->call_later(1000, std::bind(&AbyssTestBase::CancelIt, this));
         return;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
