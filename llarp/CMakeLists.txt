@@ -53,7 +53,6 @@ set(LIB_UTIL_SRC
   util/thread/thread_pool.cpp
   util/thread/threading.cpp
   util/thread/threadpool.cpp
-  util/thread/timer.cpp
   util/thread/timerqueue.cpp
   util/time.cpp
   util/types.cpp

@@ -31,13 +31,9 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
   {
     ev->update_time();
     ev->tick(EV_TICK_INTERVAL);
-    if(ev->running())
-    {
-      ev->update_time();
-      logic->tick(ev->time_now());
-    }
     llarp::LogContext::Instance().logStream->Tick(ev->time_now());
   }
+  logic->clear_event_loop();
   ev->stopped();
 }
 
