@@ -7,13 +7,14 @@
 #include <type_traits>
 #include <unordered_map>
 
-using TestSizes = ::testing::Types< std::integral_constant< std::size_t, 2 >,
-                                    std::integral_constant< std::size_t, 3 >,
-                                    std::integral_constant< std::size_t, 4 >,
-                                    std::integral_constant< std::size_t, 8 >,
+using TestSizes = ::testing::Types< std::integral_constant< std::size_t, 8 >,
+                                    std::integral_constant< std::size_t, 12 >,
                                     std::integral_constant< std::size_t, 16 >,
                                     std::integral_constant< std::size_t, 32 >,
-                                    std::integral_constant< std::size_t, 64 > >;
+                                    std::integral_constant< std::size_t, 64 >,
+                                    std::integral_constant< std::size_t, 77 >,
+                                    std::integral_constant< std::size_t, 1024 >,
+                                    std::integral_constant< std::size_t, 3333 > >;
 
 template < typename T >
 struct AlignedBufferTest : public ::testing::Test
