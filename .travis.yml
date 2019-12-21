@@ -181,7 +181,7 @@ script:
     elif [[ ! -z $DOCKER_FILE ]]; then
       travis_wait docker build -f $DOCKER_FILE .;
     else
-      travis_wait make ${MAKE_TARGET:-test};
+      travis_wait make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
     fi
 
 after_script:
