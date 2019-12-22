@@ -802,7 +802,11 @@ namespace libuv
     loop->process_cancel_queue();
   }
 
-  Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024), m_timerQueue(20), m_timerCancelQueue(20)
+  Loop::Loop()
+      : llarp_ev_loop()
+      , m_LogicCalls(1024)
+      , m_timerQueue(20)
+      , m_timerCancelQueue(20)
   {
   }
 
