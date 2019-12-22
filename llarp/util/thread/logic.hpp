@@ -1,9 +1,9 @@
 #ifndef LLARP_LOGIC_HPP
 #define LLARP_LOGIC_HPP
 
+#include <ev/ev.hpp>
 #include <util/mem.h>
 #include <util/thread/threadpool.h>
-#include <util/thread/timer.hpp>
 #include <absl/types/optional.h>
 
 namespace llarp
@@ -14,10 +14,6 @@ namespace llarp
     Logic(size_t queueLength = size_t{1024 * 8});
 
     ~Logic();
-
-    /// trigger times as needed
-    void
-    tick(llarp_time_t now);
 
     /// stop all operation and wait for that to die
     void
@@ -31,9 +27,6 @@ namespace llarp
                     int lineo);
 
     uint32_t
-    call_later(const llarp_timeout_job& job);
-
-    void
     call_later(llarp_time_t later, std::function< void(void) > func);
 
     void
@@ -51,10 +44,16 @@ namespace llarp
     void
     SetQueuer(std::function< void(std::function< void(void) >) > q);
 
+    void
+    set_event_loop(llarp_ev_loop* loop);
+
+    void
+    clear_event_loop();
+
    private:
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
-    llarp_timer_context* const m_Timer;
+    llarp_ev_loop* m_Loop = nullptr;
     absl::optional< ID_t > m_ID;
     util::ContentionKiller m_Killer;
     std::function< void(std::function< void(void) >) > m_Queue;

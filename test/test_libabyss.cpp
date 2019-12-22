@@ -29,20 +29,6 @@ struct AbyssTestBase : public ::testing::Test
     ASSERT_EQ(meth, method);
   }
 
-  static void
-  CancelIt(void* u, ABSL_ATTRIBUTE_UNUSED uint64_t orig, uint64_t left)
-  {
-    if(left)
-      return;
-    static_cast< AbyssTestBase* >(u)->Stop();
-  }
-
-  static void
-  StopIt(void* u)
-  {
-    static_cast< AbyssTestBase* >(u)->Stop();
-  }
-
   void
   Start()
   {
@@ -59,7 +45,7 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
-        logic->call_later({1000, this, &CancelIt});
+        logic->call_later(1000, std::bind(&AbyssTestBase::Stop, this));
         return;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -76,7 +62,7 @@ struct AbyssTestBase : public ::testing::Test
   void
   AsyncStop()
   {
-    logic->queue_job({this, &StopIt});
+    LogicCall(logic, std::bind(&AbyssTestBase::Stop, this));
   }
 
   ~AbyssTestBase()
@@ -159,16 +145,10 @@ struct AbyssTest : public AbyssTestBase,
     return new ServerHandler(impl, this);
   }
 
-  static void
-  FlushIt(void* u)
-  {
-    static_cast< AbyssTest* >(u)->Flush();
-  }
-
   void
   AsyncFlush()
   {
-    logic->queue_job({this, &FlushIt});
+    LogicCall(logic, std::bind(&AbyssTest::Flush, this));
   }
 
   void

@@ -741,6 +741,13 @@ struct llarp_ev_loop
   virtual int
   tick(int ms) = 0;
 
+  virtual uint32_t
+  call_after_delay(llarp_time_t delay_ms,
+                   std::function< void(void) > callback) = 0;
+
+  virtual void
+  cancel_delayed_call(uint32_t call_id) = 0;
+
   virtual bool
   add_ticker(std::function< void(void) > ticker) = 0;
 
