@@ -3,15 +3,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#if defined(_WIN32)
-#ifdef _MSC_VER
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#else
-#define ssize_t long
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C"
 {

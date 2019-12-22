@@ -9,16 +9,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
-
-#if defined(_WIN32)
-#ifdef _MSC_VER
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#else
-#define ssize_t long
-#endif
-#endif
-
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
