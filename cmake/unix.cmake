@@ -5,6 +5,27 @@ endif()
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
 
+# can't have UNIX defined
+# can't have the include paths for libuv either?
+if(NOT IOS AND NOT ANDROID AND NOT WIN32)
+  if(LIBCURL_ROOT)
+    option(HTTP_ONLY "" ON)
+    option(SSL_ENABLED "" OFF)
+    option(BUILD_SHARED_LIBS "" OFF)
+    option(ENABLE_IPV6 "" OFF)
+    option(CMAKE_USE_OPENSSL "" OFF)
+    option(CURL_CA_PATH "" OFF)
+    set(CURL_CA_PATH none)
+    message(STATUS "using local curl: ${LIBCURL_ROOT}")
+    add_subdirectory(${LIBCURL_ROOT})
+    set(CURL_INCLUDE_DIRS ${LIBCURL_ROOT}/include)
+    set(CURL_LIBRARIES libcurl)
+    set(CURL_FOUND TRUE)
+  else()
+    find_package(CURL REQUIRED)
+  endif()
+endif()
+
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 list(APPEND LIBTUNTAP_SRC ${TT_ROOT}/tuntap-unix.c)
@@ -23,7 +44,8 @@ elseif(NOT LIBUV_IN_SOURCE)
   find_package(LibUV 1.28.0 REQUIRED)
 endif()
 
-include_directories(${LIBUV_INCLUDE_DIRS})
+# Doesn't seem to be needed
+#include_directories(${LIBUV_INCLUDE_DIRS})
 
 if(EMBEDDED_CFG OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   link_libatomic()
