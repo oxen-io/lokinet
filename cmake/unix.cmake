@@ -44,8 +44,7 @@ elseif(NOT LIBUV_IN_SOURCE)
   find_package(LibUV 1.28.0 REQUIRED)
 endif()
 
-# Doesn't seem to be needed
-#include_directories(${LIBUV_INCLUDE_DIRS})
+include_directories(${LIBUV_INCLUDE_DIRS})
 
 if(EMBEDDED_CFG OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   link_libatomic()
