@@ -793,6 +793,23 @@ namespace libuv
     }
   };
 #endif
+
+  static void
+  OnAsyncWake(uv_async_t* async_handle)
+  {
+    Loop* loop = static_cast< Loop* >(async_handle->data);
+    loop->process_timer_queue();
+    loop->process_cancel_queue();
+  }
+
+  Loop::Loop()
+      : llarp_ev_loop()
+      , m_LogicCalls(1024)
+      , m_timerQueue(20)
+      , m_timerCancelQueue(20)
+  {
+  }
+
   bool
   Loop::init()
   {
@@ -809,7 +826,6 @@ namespace libuv
 #else
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
 #endif
-    m_TickTimer.data   = this;
     m_LogicCaller.data = this;
     uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
       Loop* l = static_cast< Loop* >(h->data);
@@ -819,8 +835,14 @@ namespace libuv
         f();
       }
     });
+    m_TickTimer       = new uv_timer_t;
+    m_TickTimer->data = this;
     m_Run.store(true);
-    return uv_timer_init(&m_Impl, &m_TickTimer) != -1;
+    m_nextID.store(0);
+
+    m_WakeUp.data = this;
+    uv_async_init(&m_Impl, &m_WakeUp, &OnAsyncWake);
+    return uv_timer_init(&m_Impl, m_TickTimer) != -1;
   }
 
   void
@@ -859,10 +881,105 @@ namespace libuv
   {
     if(m_Run)
     {
-      uv_timer_start(&m_TickTimer, &OnTickTimeout, ms, 0);
+      uv_timer_start(m_TickTimer, &OnTickTimeout, ms, 0);
       uv_run(&m_Impl, UV_RUN_ONCE);
     }
     return 0;
+  }
+
+  struct TimerData
+  {
+    Loop* loop;
+    uint64_t job_id;
+  };
+
+  void
+  CloseUVTimer(uv_timer_t* timer)
+  {
+    // have to delete timer handle this way because libuv.
+    uv_timer_stop(timer);
+    uv_close((uv_handle_t*)timer,
+             [](uv_handle_t* handle) { delete(uv_timer_t*)handle; });
+  }
+
+  static void
+  OnUVTimer(uv_timer_t* timer)
+  {
+    TimerData* timer_data = static_cast< TimerData* >(timer->data);
+    Loop* loop            = timer_data->loop;
+    loop->do_timer_job(timer_data->job_id);
+
+    delete timer_data;
+    CloseUVTimer(timer);
+  }
+
+  uint32_t
+  Loop::call_after_delay(llarp_time_t delay_ms,
+                         std::function< void(void) > callback)
+  {
+    PendingTimer timer;
+    timer.delay_ms  = delay_ms;
+    timer.callback  = callback;
+    timer.job_id    = m_nextID++;
+    uint64_t job_id = timer.job_id;
+
+    m_timerQueue.pushBack(std::move(timer));
+    uv_async_send(&m_WakeUp);
+
+    return job_id;
+  }
+
+  void
+  Loop::cancel_delayed_call(uint32_t job_id)
+  {
+    m_timerCancelQueue.pushBack(job_id);
+    uv_async_send(&m_WakeUp);
+  }
+
+  void
+  Loop::process_timer_queue()
+  {
+    while(not m_timerQueue.empty())
+    {
+      PendingTimer job = m_timerQueue.popFront();
+      uint64_t job_id  = job.job_id;
+      m_pendingCalls.emplace(job_id, std::move(job.callback));
+
+      TimerData* timer_data = new TimerData;
+      timer_data->loop      = this;
+      timer_data->job_id    = job_id;
+
+      uv_timer_t* newTimer = new uv_timer_t;
+      newTimer->data       = (void*)timer_data;
+
+      uv_timer_init(&m_Impl, newTimer);
+      uv_timer_start(newTimer, &OnUVTimer, job.delay_ms, 0);
+    }
+  }
+
+  void
+  Loop::process_cancel_queue()
+  {
+    while(not m_timerCancelQueue.empty())
+    {
+      uint64_t job_id = m_timerCancelQueue.popFront();
+      auto itr        = m_pendingCalls.find(job_id);
+      if(itr != m_pendingCalls.end())
+      {
+        m_pendingCalls.erase(itr);
+      }
+    }
+  }
+
+  void
+  Loop::do_timer_job(uint64_t job_id)
+  {
+    auto itr = m_pendingCalls.find(job_id);
+    if(itr != m_pendingCalls.end())
+    {
+      LogicCall(m_Logic, itr->second);
+      m_pendingCalls.erase(itr);
+    }
   }
 
   void
@@ -886,16 +1003,16 @@ namespace libuv
         [](uv_handle_t* h, void*) {
           if(uv_is_closing(h))
             return;
-          if(h->data && uv_is_active(h))
+          if(h->data && uv_is_active(h) && h->type != UV_TIMER)
           {
             static_cast< glue* >(h->data)->Close();
           }
+          else if(h->type == UV_TIMER)
+          {
+            CloseUVTimer((uv_timer_t*)h);
+          }
         },
         nullptr);
-  }
-
-  Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024)
-  {
   }
 
   void

@@ -1,5 +1,4 @@
 #include <util/thread/logic.hpp>
-#include <util/thread/timer.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.h>
 #include <util/metrics/metrics.hpp>
@@ -8,22 +7,8 @@
 
 namespace llarp
 {
-  void
-  Logic::tick(llarp_time_t now)
-  {
-    if(m_Queue)
-    {
-      llarp_timer_set_time(m_Timer, now);
-      if(llarp_timer_should_call(m_Timer))
-        m_Queue(std::bind(&llarp_timer_tick_all, m_Timer));
-      return;
-    }
-    llarp_timer_tick_all_async(m_Timer, m_Thread, now);
-  }
-
   Logic::Logic(size_t sz)
       : m_Thread(llarp_init_threadpool(1, "llarp-logic", sz))
-      , m_Timer(llarp_init_timer())
   {
     llarp_threadpool_start(m_Thread);
     /// set thread id
@@ -41,7 +26,6 @@ namespace llarp
   Logic::~Logic()
   {
     delete m_Thread;
-    llarp_free_timer(m_Timer);
   }
 
   size_t
@@ -61,8 +45,6 @@ namespace llarp
   Logic::stop()
   {
     llarp::LogDebug("logic thread stop");
-    // stop all timers from happening in the future
-    LogicCall(this, std::bind(&llarp_timer_stop, m_Timer));
     // stop all operations on threadpool
     llarp_threadpool_stop(m_Thread);
   }
@@ -139,38 +121,53 @@ namespace llarp
     m_Queue([self = this]() { self->m_ID = std::this_thread::get_id(); });
   }
 
-  void
+  uint32_t
   Logic::call_later(llarp_time_t timeout, std::function< void(void) > func)
   {
-    llarp_timer_call_func_later(m_Timer, timeout, func);
-  }
-
-  uint32_t
-  Logic::call_later(const llarp_timeout_job& job)
-  {
-    llarp_timeout_job j;
-    j.user    = job.user;
-    j.timeout = job.timeout;
-    j.handler = job.handler;
-    return llarp_timer_call_later(m_Timer, j);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      return loop->call_after_delay(timeout, func);
+    }
+    return 0;
   }
 
   void
   Logic::cancel_call(uint32_t id)
   {
-    llarp_timer_cancel_job(m_Timer, id);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      loop->cancel_delayed_call(id);
+    }
   }
 
   void
   Logic::remove_call(uint32_t id)
   {
-    llarp_timer_remove_job(m_Timer, id);
+    auto loop = m_Loop;
+    if(loop != nullptr)
+    {
+      loop->cancel_delayed_call(id);
+    }
   }
 
   bool
   Logic::can_flush() const
   {
     return m_ID.value() == std::this_thread::get_id();
+  }
+
+  void
+  Logic::set_event_loop(llarp_ev_loop* loop)
+  {
+    m_Loop = loop;
+  }
+
+  void
+  Logic::clear_event_loop()
+  {
+    m_Loop = nullptr;
   }
 
 }  // namespace llarp

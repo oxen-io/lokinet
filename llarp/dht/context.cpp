@@ -153,11 +153,11 @@ namespace llarp
       GetIntroSetByServiceAddress(
           const llarp::service::Address& addr) const override;
 
-      static void
-      handle_cleaner_timer(void* user, uint64_t orig, uint64_t left);
+      void
+      handle_cleaner_timer(uint64_t interval);
 
-      static void
-      handle_explore_timer(void* user, uint64_t orig, uint64_t left);
+      void
+      handle_explore_timer(uint64_t interval);
 
       /// explore dht for new routers
       void
@@ -338,34 +338,28 @@ namespace llarp
     }
 
     void
-    Context::handle_explore_timer(void* u, uint64_t orig, uint64_t left)
+    Context::handle_explore_timer(uint64_t interval)
     {
-      if(left)
-        return;
-      auto* ctx = static_cast< Context* >(u);
-      const auto num =
-          std::min(ctx->router->NumberOfConnectedRouters(), size_t(4));
+      const auto num = std::min(router->NumberOfConnectedRouters(), size_t(4));
       if(num)
-        ctx->Explore(num);
-      ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
+        Explore(num);
+      router->logic()->call_later(
+          interval,
+          std::bind(&llarp::dht::Context::handle_explore_timer, this,
+                    interval));
     }
 
     void
-    Context::handle_cleaner_timer(void* u,
-                                  __attribute__((unused)) uint64_t orig,
-                                  uint64_t left)
+    Context::handle_cleaner_timer(__attribute__((unused)) uint64_t interval)
     {
-      if(left)
-        return;
-      auto* ctx = static_cast< Context* >(u);
       // clean up transactions
-      ctx->CleanupTX();
+      CleanupTX();
 
-      if(ctx->_services)
+      if(_services)
       {
         // expire intro sets
-        auto now    = ctx->Now();
-        auto& nodes = ctx->_services->nodes;
+        auto now    = Now();
+        auto& nodes = _services->nodes;
         auto itr    = nodes.begin();
         while(itr != nodes.end())
         {
@@ -378,7 +372,7 @@ namespace llarp
             ++itr;
         }
       }
-      ctx->ScheduleCleanupTimer();
+      ScheduleCleanupTimer();
     }
 
     std::set< service::IntroSet >
@@ -528,7 +522,9 @@ namespace llarp
       // start exploring
 
       r->logic()->call_later(
-          {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
+          exploreInterval,
+          std::bind(&llarp::dht::Context::handle_explore_timer, this,
+                    exploreInterval));
       // start cleanup timer
       ScheduleCleanupTimer();
     }
@@ -536,7 +532,9 @@ namespace llarp
     void
     Context::ScheduleCleanupTimer()
     {
-      router->logic()->call_later({1000, this, &handle_cleaner_timer});
+      router->logic()->call_later(
+          1000,
+          std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
     }
 
     void

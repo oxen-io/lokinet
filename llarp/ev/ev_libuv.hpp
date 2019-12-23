@@ -9,10 +9,21 @@
 #include <util/thread/queue.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <map>
+
 namespace libuv
 {
   struct Loop final : public llarp_ev_loop
   {
+    typedef std::function< void(void) > Callback;
+
+    struct PendingTimer
+    {
+      uint64_t job_id;
+      llarp_time_t delay_ms;
+      Callback callback;
+    };
+
     Loop();
 
     bool
@@ -36,6 +47,22 @@ namespace libuv
 
     int
     tick(int ms) override;
+
+    uint32_t
+    call_after_delay(llarp_time_t delay_ms,
+                     std::function< void(void) > callback) override;
+
+    void
+    cancel_delayed_call(uint32_t job_id) override;
+
+    void
+    process_timer_queue();
+
+    void
+    process_cancel_queue();
+
+    void
+    do_timer_job(uint64_t job_id);
 
     void
     stop() override;
@@ -104,7 +131,8 @@ namespace libuv
 
    private:
     uv_loop_t m_Impl;
-    uv_timer_t m_TickTimer;
+    uv_timer_t* m_TickTimer;
+    uv_async_t m_WakeUp;
     std::atomic< bool > m_Run;
     uv_async_t m_LogicCaller;
     using AtomicQueue_t = llarp::thread::Queue< std::function< void(void) > >;
@@ -114,6 +142,12 @@ namespace libuv
     uint64_t last_time;
     uint64_t loop_run_count;
 #endif
+    std::atomic< uint32_t > m_nextID;
+
+    std::map< uint32_t, Callback > m_pendingCalls;
+
+    llarp::thread::Queue< PendingTimer > m_timerQueue;
+    llarp::thread::Queue< uint32_t > m_timerCancelQueue;
   };
 
 }  // namespace libuv

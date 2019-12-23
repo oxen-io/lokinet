@@ -207,17 +207,8 @@ namespace llarp
     }
 
    private:
-    static void
-    on_timer_tick(void* user, uint64_t orig, uint64_t left)
-    {
-      // timer cancelled
-      if(left)
-        return;
-      static_cast< ILinkLayer* >(user)->OnTick(orig);
-    }
-
     void
-    OnTick(uint64_t interval);
+    OnTick();
 
     void
     ScheduleTick(uint64_t interval);

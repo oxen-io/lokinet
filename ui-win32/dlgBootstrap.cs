@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Security;
+using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.Windows.Forms;
 
@@ -27,13 +28,17 @@ namespace network.loki.lokinet.win32.ui
         private void button1_Click(object sender, EventArgs e)
         {
             Directory.CreateDirectory(default_path);
+            var build = ((AssemblyInformationalVersionAttribute)Assembly
+  .GetAssembly(typeof(main_frame))
+  .GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)[0])
+  .InformationalVersion;
             // add something more unique, this is the IE 5.0 default string
             try
             {
                 ServicePointManager.ServerCertificateValidationCallback += cert_check;
                 ServicePointManager.SecurityProtocol = (SecurityProtocolType)48 | 0 | (SecurityProtocolType)192 | (SecurityProtocolType)768 | (SecurityProtocolType)3072;
                 wc = new WebClient();
-                wc.Headers.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0)");
+                wc.Headers.Add("User-Agent", string.Format("Mozilla/4.0 (compatible; MSIE 5.0; Windows NT 5.0); lokinet-win32-managed-ui/{0}", build));
                 wc.DownloadFile(uriBox.Text, string.Format("{0}{1}{2}", default_path, Path.DirectorySeparatorChar, rcName));
                 MessageBox.Show("LokiNET node bootstrapped", "LokiNET", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;

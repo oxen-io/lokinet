@@ -7,6 +7,8 @@
 #include <utility>
 #include <unordered_set>
 
+constexpr uint64_t LINK_LAYER_TICK_INTERVAL = 100;
+
 namespace llarp
 {
   static constexpr size_t MaxSessionsPerKey = 16;
@@ -289,7 +291,7 @@ namespace llarp
   {
     m_Worker = worker;
     m_Logic  = l;
-    ScheduleTick(100);
+    ScheduleTick(LINK_LAYER_TICK_INTERVAL);
     return true;
   }
 
@@ -450,17 +452,18 @@ namespace llarp
   }
 
   void
-  ILinkLayer::OnTick(uint64_t interval)
+  ILinkLayer::OnTick()
   {
     auto now = Now();
     Tick(now);
-    ScheduleTick(interval);
+    ScheduleTick(LINK_LAYER_TICK_INTERVAL);
   }
 
   void
   ILinkLayer::ScheduleTick(uint64_t interval)
   {
-    tick_id = m_Logic->call_later({interval, this, &ILinkLayer::on_timer_tick});
+    tick_id =
+        m_Logic->call_later(interval, std::bind(&ILinkLayer::OnTick, this));
   }
 
   void
