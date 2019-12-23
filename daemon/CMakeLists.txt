@@ -45,8 +45,6 @@ else()
     target_link_libraries(${EXE} PUBLIC ${EXE_LIBS} ${LIBS})
     target_link_libraries(${CTL} PUBLIC ${EXE_LIBS} ${LIBS})
 
-    find_package(CURL)
-
     if(CURL_FOUND)
         target_include_directories(${CTL} PRIVATE ${CURL_INCLUDE_DIRS})
         target_link_libraries(${CTL} PRIVATE ${CURL_LIBRARIES})
