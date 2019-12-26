@@ -207,7 +207,6 @@ namespace llarp
     }
 
    private:
-
     void
     OnTick();
 

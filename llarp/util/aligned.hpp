@@ -36,6 +36,10 @@ namespace llarp
   struct alignas(std::max_align_t) AlignedBuffer
 #endif
   {
+    static_assert(sz >= 8,
+                  "AlignedBuffer cannot be used with buffers smaller than 8 "
+                  "bytes");
+
     static constexpr size_t SIZE = sz;
 
     using Data = std::array< byte_t, SIZE >;
@@ -269,7 +273,9 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return *(reinterpret_cast< const size_t* >(buf.data()));
+        size_t hash;
+        std::memcpy(&hash, buf.data(), sizeof(hash));
+        return hash;
       }
     };
 

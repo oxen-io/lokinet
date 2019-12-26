@@ -340,11 +340,13 @@ namespace llarp
     void
     Context::handle_explore_timer(uint64_t interval)
     {
-      const auto num =
-          std::min(router->NumberOfConnectedRouters(), size_t(4));
+      const auto num = std::min(router->NumberOfConnectedRouters(), size_t(4));
       if(num)
         Explore(num);
-      router->logic()->call_later(interval, std::bind(&llarp::dht::Context::handle_explore_timer, this, interval));
+      router->logic()->call_later(
+          interval,
+          std::bind(&llarp::dht::Context::handle_explore_timer, this,
+                    interval));
     }
 
     void
@@ -519,8 +521,10 @@ namespace llarp
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
-      r->logic()->call_later(exploreInterval,
-          std::bind(&llarp::dht::Context::handle_explore_timer, this, exploreInterval));
+      r->logic()->call_later(
+          exploreInterval,
+          std::bind(&llarp::dht::Context::handle_explore_timer, this,
+                    exploreInterval));
       // start cleanup timer
       ScheduleCleanupTimer();
     }
@@ -528,7 +532,9 @@ namespace llarp
     void
     Context::ScheduleCleanupTimer()
     {
-      router->logic()->call_later(1000, std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
+      router->logic()->call_later(
+          1000,
+          std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
     }
 
     void
