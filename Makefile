@@ -45,8 +45,10 @@ SHADOW_OPTS ?=
 LIBUV_VERSION ?= v1.30.1
 LIBUV_PREFIX = $(BUILD_ROOT)/libuv
 
-LIBCURL_VERSION ?= curl-7_67_0
 LIBCURL_PREFIX = $(BUILD_ROOT)/curl
+LIBCURL_VERSION = 7.67.0
+LIBCURL_URL = https://github.com/curl/curl/releases/download/curl-7_67_0/curl-7.67.0.tar.xz
+LIBCURL_SHA256 = f5d2e7320379338c3952dcc7566a140abb49edb575f9f99272455785c40e536c
 
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
@@ -223,8 +225,11 @@ static: static-configure
 	cp $(EXE) $(REPO)/lokinet-static
 
 $(LIBCURL_PREFIX):
-	mkdir -p $(BUILD_ROOT)
-	git clone -b "$(LIBCURL_VERSION)" https://github.com/curl/curl "$(LIBCURL_PREFIX)"
+	mkdir -p '$(BUILD_ROOT)'
+	wget '$(LIBCURL_URL)' -O '$(BUILD_ROOT)/curl.tar.xz'
+	bash -c 'sha256sum -c <<<"$(LIBCURL_SHA256) $(BUILD_ROOT)/curl.tar.xz"'
+	tar -xJf '$(BUILD_ROOT)/curl.tar.xz' -C '$(BUILD_ROOT)'
+	mv '$(BUILD_ROOT)/curl-$(LIBCURL_VERSION)' '$(LIBCURL_PREFIX)'
 
 $(LIBUV_PREFIX):
 	mkdir -p $(BUILD_ROOT)
