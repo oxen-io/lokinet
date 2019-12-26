@@ -45,6 +45,9 @@ SHADOW_OPTS ?=
 LIBUV_VERSION ?= v1.30.1
 LIBUV_PREFIX = $(BUILD_ROOT)/libuv
 
+LIBCURL_VERSION ?= curl-7_67_0
+LIBCURL_PREFIX = $(BUILD_ROOT)/curl
+
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
@@ -212,7 +215,16 @@ $(TEST_EXE): debug
 test: $(TEST_EXE)
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
+static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
+	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
 
+static: static-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp $(EXE) $(REPO)/lokinet-static
+
+$(LIBCURL_PREFIX):
+	mkdir -p $(BUILD_ROOT)
+	git clone -b "$(LIBCURL_VERSION)" https://github.com/curl/curl "$(LIBCURL_PREFIX)"
 
 $(LIBUV_PREFIX):
 	mkdir -p $(BUILD_ROOT)
