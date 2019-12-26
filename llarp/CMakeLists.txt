@@ -69,8 +69,7 @@ if(ANDROID)
 endif()
 
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB})
-
-target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
+target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json ${CURL_LIB})
 
 # cut back on fluff
 if (NOT WIN32)
