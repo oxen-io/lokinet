@@ -1,3 +1,28 @@
+lokinet (0.6.1-1) sid; urgency=medium
+
+  [ Ryan Tharp ]
+  * Update readme.md
+
+  [ Jason Rhinelander ]
+  * Use memcpy to extract hash value
+  * Disallow AlignedBuffer < 8 bytes; add oddball buffer sizes
+  * Enable DOWNLOAD_SODIUM for travis builds
+
+  [ Stephen Shelton ]
+  * Enable the JSON RPC API by default
+
+  [ Ryan Tharp ]
+  * remove win32 note per Jeff
+
+  [ Rick V ]
+  * why was this there
+
+  [ Jeff Becker ]
+  * make format
+  * version bump with intentional grammar troll motto for science related ventures.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 26 Dec 2019 13:57:42 -0400
+
 lokinet (0.6.0+git20191219-1) sid; urgency=medium
 
   [ Rick V ]
