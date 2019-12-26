@@ -98,7 +98,7 @@ this puts the built packages in `../`
 
 static native optimized:
 
-    $ make static STATIC_LINK=ON DOWNLOAD_SODIUM=ON 
+    $ make static STATIC_LINK=ON
 
 cross compile fully static armhf (rpi 2 and up)
 

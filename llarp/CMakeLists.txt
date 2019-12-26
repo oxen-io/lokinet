@@ -63,7 +63,7 @@ add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 
 add_dependencies(${UTIL_LIB} genversion)
 
-target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${CURL_INCLUDE_DIR})
+target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${CURL_INCLUDE_DIRS})
 if(ANDROID)
   set(LOG_LIB log)
 endif()
@@ -253,7 +253,7 @@ if(TESTNET)
 endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIR})
+target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
 target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${CURL_LIBRARIES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
