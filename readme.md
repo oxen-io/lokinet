@@ -102,7 +102,7 @@ static native optimized:
 
 cross compile fully static armhf (rpi 2 and up)
 
-    $ make static STATIC_LINK=ON TOOLCHAIN=contrib/cross/armhf.toolchain.cmake CROSS=ON DOWNLOAD_SODIUM=ON NATIVE_BUILD=OFF
+    $ make static STATIC_LINK=ON DOWNLOAD_SODIUM=ON TOOLCHAIN=contrib/cross/armhf.toolchain.cmake
 
 ### MacOS
 
