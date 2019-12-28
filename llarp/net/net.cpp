@@ -840,7 +840,7 @@ namespace llarp
         {
           llarp::Addr a(*i->ifa_addr);
 
-          if(!a.IsBogon())
+          if(not a.IsBogon())
           {
             ifname = i->ifa_name;
             found  = true;
@@ -866,6 +866,8 @@ namespace llarp
         auto* mask = (sockaddr_in*)i->ifa_netmask;
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
+        // for wonky ranges
+        ifaddr &= ifmask;
 #ifdef _WIN32
         // do not delete, otherwise GCC will do horrible things to this lambda
         LogDebug("found ", ifaddr, " with mask ", ifmask);
