@@ -27,7 +27,7 @@ if [ "$1" = configure ]; then
     perl -pi -e "
         s#$tmpdir#$datadir#;
         s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#;
-        if (/^\[lokid/ .. /^\[/) {
+        if (/^\[lokid/ ... /^\[/) {
             s#enabled=false#enabled=true#;
         }" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
@@ -40,7 +40,7 @@ if [ "$1" = configure ]; then
     perl -pi -e "
         s#$tmpdir#$tn_datadir#;
         s#$tn_datadir/bootstrap.signed#/var/lib/lokinet/testnet/bootstrap.signed#;
-        if (/^\[lokid/ .. /^\[/) {
+        if (/^\[lokid/ ... /^\[/) {
             s#enabled=false#enabled=true#;
             s#jsonrpc=127\.0\.0\.1:22023#jsonrpc=127.0.0.1:38157#;
         }" $tmpdir/lokinet.ini
