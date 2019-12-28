@@ -867,7 +867,7 @@ namespace llarp
         nuint32_t ifaddr{addr->sin_addr.s_addr};
         nuint32_t ifmask{mask->sin_addr.s_addr};
         // for wonky ranges
-        ifaddr &= ifmask;
+        ifaddr.n &= ifmask.n;
 #ifdef _WIN32
         // do not delete, otherwise GCC will do horrible things to this lambda
         LogDebug("found ", ifaddr, " with mask ", ifmask);
