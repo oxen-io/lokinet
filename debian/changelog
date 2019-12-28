@@ -1,3 +1,11 @@
+lokinet (0.6.1-2) sid; urgency=medium
+
+  * Fix default testnet router config
+  * Fix bootstrap file assertion in service files
+  * Fix lokinet-router not enabling by default
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 28 Dec 2019 13:32:46 -0400
+
 lokinet (0.6.1-1) sid; urgency=medium
 
   [ Ryan Tharp ]
