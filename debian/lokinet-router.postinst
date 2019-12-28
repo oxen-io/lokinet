@@ -38,13 +38,12 @@ if [ "$1" = configure ]; then
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
     /usr/bin/lokinet -r $tmpdir/lokinet.ini
     perl -pi -e "
-        s#$tmpdir#$datadir#;
-        s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#;
+        s#$tmpdir#$tn_datadir#;
+        s#$tn_datadir/bootstrap.signed#/var/lib/lokinet/testnet/bootstrap.signed#;
         if (/^\[lokid/ .. /^\[/) {
             s#enabled=false#enabled=true#;
-            s#jsonrpc=127.0.0.1:22023#jsonrpc=127.0.0.1:38157#
+            s#jsonrpc=127\.0\.0\.1:22023#jsonrpc=127.0.0.1:38157#;
         }" $tmpdir/lokinet.ini
-    sed -i -e "s#$tmpdir#$tn_datadir#; s#$tn_datadir/bootstrap.signed#/var/lib/lokinet/testnet/bootstrap.signed#" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
     ucf $tmpdir/lokinet.ini /etc/loki/lokinet-testnet-router.ini
