@@ -259,6 +259,9 @@ namespace llarp
         if(self->context->CheckPathLimitHitByIP(self->fromAddr))
         {
           llarp::LogError("client path build limited ", self->hop->info);
+          OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
+                              self->hop->info.downstream, self->hop->pathKey,
+                              SendStatus::Congestion);
           self->hop = nullptr;
           return;
         }
