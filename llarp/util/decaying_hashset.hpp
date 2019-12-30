@@ -16,7 +16,7 @@ namespace llarp
       {
       }
 
-      /// determine if we have v contained in our decayiny hashset
+      /// determine if we have v contained in our decaying hashset
       bool
       Contains(const Val_t& v) const
       {
