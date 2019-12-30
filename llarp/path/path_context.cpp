@@ -9,8 +9,12 @@ namespace llarp
 {
   namespace path
   {
+    static constexpr llarp_time_t DefaultPathBuildLimit = 500;
+
     PathContext::PathContext(AbstractRouter* router)
-        : m_Router(router), m_AllowTransit(false), m_PathLimits(500)
+        : m_Router(router)
+        , m_AllowTransit(false)
+        , m_PathLimits(DefaultPathBuildLimit)
     {
     }
 
