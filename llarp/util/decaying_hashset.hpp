@@ -45,7 +45,7 @@ namespace llarp
         auto itr = m_Values.begin();
         while(itr != m_Values.end())
         {
-          if(itr->second >= now)
+          if(itr->second <= now)
             itr = m_Values.erase(itr);
           else
             ++itr;
