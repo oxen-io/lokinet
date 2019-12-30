@@ -1019,10 +1019,17 @@ namespace llarp
       return false;
     }
 
-    void
+    bool
     Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
     {
+      static constexpr size_t MaxConcurrentSNodeSessions = 16;
       auto& nodeSessions = m_state->m_SNodeSessions;
+      if(nodeSessions.size() >= MaxConcurrentSNodeSessions)
+      {
+        // a quick client side work arround before we do proper limiting
+        LogError(Name(), " has too many snode sessions");
+        return false;
+      }
       using namespace std::placeholders;
       if(nodeSessions.count(snode) == 0)
       {
@@ -1054,6 +1061,7 @@ namespace llarp
         }
         ++itr;
       }
+      return true;
     }
 
     bool
