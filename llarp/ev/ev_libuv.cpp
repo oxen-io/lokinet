@@ -1007,10 +1007,6 @@ namespace libuv
           {
             static_cast< glue* >(h->data)->Close();
           }
-          else if(h->type == UV_TIMER)
-          {
-            CloseUVTimer((uv_timer_t*)h);
-          }
         },
         nullptr);
   }

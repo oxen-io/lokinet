@@ -294,7 +294,7 @@ namespace llarp
           std::function< void(const RouterID, exit::BaseSession_ptr) >;
 
       /// ensure a path to a service node by public key
-      void
+      bool
       EnsurePathToSNode(const RouterID remote, SNodeEnsureHook h);
 
       /// return true if this endpoint is trying to lookup this router right now

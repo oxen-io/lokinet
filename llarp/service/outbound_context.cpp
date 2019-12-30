@@ -96,20 +96,13 @@ namespace llarp
           return true;
         }
 
-        auto now = Now();
+        const llarp_time_t now = Now();
         if(i->IsExpired(now))
         {
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
         currentIntroSet = *i;
-        if(!ShiftIntroduction())
-        {
-          LogWarn("failed to pick new intro during introset update");
-        }
-        if(GetPathByRouter(m_NextIntro.router) == nullptr
-           && !BuildCooldownHit(Now()))
-          BuildOneAlignedTo(m_NextIntro.router);
       }
       else
       {
@@ -222,13 +215,20 @@ namespace llarp
     {
       if(updatingIntroSet || markedBad)
         return;
-      auto addr = currentIntroSet.A.Addr();
+      const auto addr = currentIntroSet.A.Addr();
 
       path::Path_ptr path = nullptr;
       if(randomizePath)
+      {
         path = m_Endpoint->PickRandomEstablishedPath();
+      }
       else
         path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
+
+      if(path == nullptr)
+      {
+        path = PickRandomEstablishedPath();
+      }
 
       if(path)
       {
