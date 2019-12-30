@@ -10,7 +10,7 @@ namespace llarp
   namespace path
   {
     PathContext::PathContext(AbstractRouter* router)
-        : m_Router(router), m_AllowTransit(false)
+        : m_Router(router), m_AllowTransit(false), m_PathLimits(500)
     {
     }
 
@@ -30,6 +30,14 @@ namespace llarp
     PathContext::Worker()
     {
       return m_Router->threadpool();
+    }
+
+    bool
+    PathContext::CheckPathLimitHitByIP(const llarp::Addr& ip)
+    {
+      llarp::Addr remote = ip;
+      remote.port(0);
+      return not m_PathLimits.Insert(remote);
     }
 
     std::shared_ptr< Logic >
@@ -277,6 +285,9 @@ namespace llarp
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
+      // devay limits
+      m_PathLimits.Decay(now);
+
       {
         SyncTransitMap_t::Lock_t lock(&m_TransitPaths.first);
         auto& map = m_TransitPaths.second;

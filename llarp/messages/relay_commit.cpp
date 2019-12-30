@@ -184,12 +184,17 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
+    const Addr fromAddr;
+    const RouterContact fromRC;
+
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
         , hop(std::make_shared< Hop >())
+        , fromAddr(commit->session->GetRemoteEndpoint())
+        , fromRC(commit->session->GetRemoteRC())
     {
       hop->info.downstream = commit->session->GetPubKey();
     }
@@ -248,6 +253,17 @@ namespace llarp
         self->hop = nullptr;
         return;
       }
+
+      if(not self->fromRC.IsPublicRouter())
+      {
+        if(self->context->CheckPathLimitHitByIP(self->fromAddr))
+        {
+          llarp::LogError("client path build limited ", self->hop->info);
+          self->hop = nullptr;
+          return;
+        }
+      }
+
       if(!self->context->Router()->ConnectionToRouterAllowed(
              self->hop->info.upstream))
       {
