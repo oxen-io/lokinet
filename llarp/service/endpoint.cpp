@@ -20,6 +20,7 @@
 #include <util/buffer.hpp>
 #include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
+#include <link/link_manager.hpp>
 
 #include <utility>
 
@@ -1099,7 +1100,6 @@ namespace llarp
       {
         epPump();
       }
-
       auto router = Router();
       // TODO: locking on this container
       for(const auto& item : m_state->m_RemoteSessions)
@@ -1117,7 +1117,8 @@ namespace llarp
         }
         m_state->m_SendQueue.clear();
       }
-      router->PumpLL();
+      UpstreamFlush(router);
+      router->linkManager().PumpLinks();
     }
 
     bool
