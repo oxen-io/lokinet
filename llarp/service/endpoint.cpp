@@ -20,6 +20,7 @@
 #include <util/buffer.hpp>
 #include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
+#include <link/link_manager.hpp>
 
 #include <utility>
 
@@ -1125,6 +1126,7 @@ namespace llarp
         m_state->m_SendQueue.clear();
       }
       UpstreamFlush(router);
+      router->linkManager().PumpLinks();
     }
 
     bool
