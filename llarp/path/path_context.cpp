@@ -288,7 +288,7 @@ namespace llarp
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
-      // devay limits
+      // decay limits
       m_PathLimits.Decay(now);
 
       {
