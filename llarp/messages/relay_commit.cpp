@@ -256,8 +256,10 @@ namespace llarp
 
       if(not self->fromRC.IsPublicRouter())
       {
+        // only do ip limiting from non service nodes
         if(self->context->CheckPathLimitHitByIP(self->fromAddr))
         {
+          // we hit a limit so tell it to slow tf down
           llarp::LogError("client path build limited ", self->hop->info);
           OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                               self->hop->info.downstream, self->hop->pathKey,
