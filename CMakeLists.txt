@@ -157,7 +157,7 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
-elseif(WIN32)
+elseif(NOT NON_PC_TARGET)
   if (USE_AVX2)
     set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
   else()
