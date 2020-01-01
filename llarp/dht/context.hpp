@@ -119,6 +119,9 @@ namespace llarp
       Init(const Key_t& us, AbstractRouter* router,
            llarp_time_t exploreInterval) = 0;
 
+      virtual void
+      Explore(size_t N) = 0;
+
       virtual const llarp::service::IntroSet*
       GetIntroSetByServiceAddress(
           const llarp::service::Address& addr) const = 0;

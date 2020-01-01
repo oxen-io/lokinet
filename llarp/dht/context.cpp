@@ -161,7 +161,7 @@ namespace llarp
 
       /// explore dht for new routers
       void
-      Explore(size_t N = 3);
+      Explore(size_t N) override;
 
       llarp::AbstractRouter* router{nullptr};
       // for router contacts
