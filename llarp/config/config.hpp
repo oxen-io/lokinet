@@ -175,7 +175,7 @@ namespace llarp
   class NetdbConfig
   {
    private:
-    std::string m_nodedbDir;
+    std::string m_nodedbDir = "netdb";
 
    public:
     // clang-format off

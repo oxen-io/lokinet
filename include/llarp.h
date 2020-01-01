@@ -168,6 +168,9 @@ extern "C"
     return m;
   }
 
+  struct llarp_main *
+  llarp_main_spider_init();
+
   /// initialize applicatin context with all defaults
   static struct llarp_main *
   llarp_main_default_init()

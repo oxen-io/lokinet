@@ -498,6 +498,15 @@ extern "C"
               std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
   }
 
+  llarp_main *
+  llarp_main_spider_init()
+  {
+    auto conf = new llarp_config();
+    conf->impl.network.fromSection("type", "null");
+    conf->impl.bootstrap.fromSection("add-node", "bootstrap.signed");
+    return llarp_main_init_from_config(conf);
+  }
+
   int
   llarp_main_setup(struct llarp_main *ptr)
   {

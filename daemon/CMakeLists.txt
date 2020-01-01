@@ -2,6 +2,9 @@ set(EXE lokinet)
 set(EXE_SRC main.cpp)
 set(CTL lokinetctl)
 set(CTL_SRC lokinetctl.cpp)
+set(DHT_SPIDER dht_spider)
+set(DHT_SPIDER_SRC dht_spider.cpp)
+
 
 if(TRACY_ROOT)
     list(APPEND EXE_SRC ${TRACY_ROOT}/TracyClient.cpp)
@@ -18,16 +21,16 @@ else()
         list(APPEND EXE_SRC ../llarp/win32/version.rc)
         list(APPEND CTL_SRC ../llarp/win32/version.rc)
     endif()
-
     add_executable(${EXE} ${EXE_SRC})
     add_executable(${CTL} ${CTL_SRC})
-
+    add_executable(${DHT_SPIDER} ${DHT_SPIDER_SRC})
     target_compile_definitions(${EXE} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
     target_compile_definitions(${CTL} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
-
+    target_compile_definitions(${DHT_SPIDER} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
     add_log_tag(${EXE})
     add_log_tag(${CTL})
-
+    add_log_tag(${DHT_SPIDER})
+    
     install(TARGETS ${EXE} RUNTIME DESTINATION bin)
     install(TARGETS ${CTL} RUNTIME DESTINATION bin)
     if(WIN32)
@@ -41,9 +44,12 @@ else()
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
         target_link_directories(${EXE} PRIVATE /usr/local/lib)
         target_link_directories(${CTL} PRIVATE /usr/local/lib)
+        target_link_directories(${DHT_SPIDER} PRIVATE /usr/local/lib)
+        
     endif()
     target_link_libraries(${EXE} PUBLIC ${EXE_LIBS} ${LIBS})
     target_link_libraries(${CTL} PUBLIC ${EXE_LIBS} ${LIBS})
+    target_link_libraries(${DHT_SPIDER} PUBLIC ${EXE_LIBS} ${LIBS})
 
     if(CURL_FOUND)
         target_include_directories(${CTL} PRIVATE ${CURL_INCLUDE_DIRS})
