@@ -14,11 +14,22 @@ static llarp_main* ctx = nullptr;
 int
 main(int argc, char* argv[])
 {
-  llarp::RouterID target;
-  if(argc != 2)
+  std::vector< llarp::RouterID > targets;
+  if(argc == 1)
     return 1;
-  if(not target.FromString(argv[1]))
-    return 1;
+  for(int idx = 1; idx < argc; idx++)
+  {
+    targets.emplace_back();
+    auto& target = targets.back();
+    if(not target.FromString(argv[idx]))
+    {
+      llarp::PubKey k;
+      if(not k.FromString(argv[idx]))
+        return 1;
+      target = k;
+    }
+    std::cout << "lookup " << target << std::endl;
+  }
 
   static auto sighandler = [](int sig) {
     if(ctx == nullptr)
@@ -37,40 +48,53 @@ main(int argc, char* argv[])
     return 1;
   if(llarp_main_setup(ctx))
     return 1;
-  std::thread lookup_thread([target]() {
-    std::promise< absl::optional< llarp::RouterContact > > found;
+  std::thread lookup_thread([targets]() {
     do
     {
       if(llarp_main_is_running(ctx))
       {
-        auto ctx_pp = llarp::Context::Get(ctx);
-        auto ftr    = found.get_future();
-        LogicCall(
-            ctx_pp->logic, [dht = ctx_pp->router->dht(), target, &found]() {
-              dht->impl->LookupRouter(
-                  target,
-                  [&found](const std::vector< llarp::RouterContact >& results) {
-                    if(results.size() == 0)
-                    {
-                      found.set_value(absl::optional< llarp::RouterContact >{});
-                    }
-                    else
-                    {
-                      found.set_value(results[0]);
-                    }
-                  });
-            });
-        auto result = ftr.get();
+        auto do_lookup = [](llarp::RouterID target) -> bool {
+          std::promise< absl::optional< llarp::RouterContact > > found;
+          auto ctx_pp = llarp::Context::Get(ctx);
+          auto ftr    = found.get_future();
+          LogicCall(
+              ctx_pp->logic, [dht = ctx_pp->router->dht(), target, &found]() {
+                dht->impl->LookupRouter(
+                    target,
+                    [&found](
+                        const std::vector< llarp::RouterContact >& results) {
+                      if(results.size() == 0)
+                      {
+                        found.set_value(
+                            absl::optional< llarp::RouterContact >{});
+                      }
+                      else
+                      {
+                        found.set_value(results[0]);
+                      }
+                    });
+              });
+          auto result = ftr.get();
+          if(result.has_value())
+          {
+            std::cout << "found " << target << " " << result.value()
+                      << std::endl;
+            return true;
+          }
+          else
+          {
+            return false;
+          }
+        };
+        for(const auto& target : targets)
+        {
+          if(not do_lookup(target))
+          {
+            std::cout << target << " not found" << std::endl;
+          }
+        }
         llarp_main_signal(ctx, SIGTERM);
-        if(result.has_value())
-        {
-          std::cout << "found " << target << " " << result.value() << std::endl;
-        }
-        else
-        {
-          std::cout << "not found" << std::endl;
-        }
-        break;
+        return;
       }
       else
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
