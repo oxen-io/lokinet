@@ -26,6 +26,7 @@ set(LIB_UTIL_SRC
   util/logging/json_logger.cpp
   util/logging/logger.cpp
   util/logging/loglevel.cpp
+  util/logging/null_logger.cpp
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
   util/logging/win32_logger.cpp
