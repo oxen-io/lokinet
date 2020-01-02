@@ -26,7 +26,7 @@ build:linux_release:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
+    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
     - DOWNLOAD_SODIUM=ON STATIC_LINK=OFF NINJA=ninja make clean release
   artifacts:
@@ -40,7 +40,7 @@ build:linux_debug:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates ccache cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
+    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
   script:
     - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=OFF NINJA=ninja make clean test
   artifacts:
