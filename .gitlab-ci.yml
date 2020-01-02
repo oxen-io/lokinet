@@ -20,19 +20,19 @@ stages:
 #      - "lokinet"
 
 # we'll just try our travis set up for now
-build:linux_release:
-  image: ubuntu:xenial
-  tags:
-    - linux
-  stage: build
-  before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
-  script:
-    - DOWNLOAD_SODIUM=ON STATIC_LINK=OFF make release
-  artifacts:
-    paths:
-      - "build/daemon/lokinet"
-      - "build/daemon/lokinetctl"
+#build:linux_release:
+#  image: ubuntu:xenial
+#  tags:
+#    - linux
+#  stage: build
+#  before_script:
+#    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
+#  script:
+#    - DOWNLOAD_SODIUM=ON STATIC_LINK=OFF make release
+#  artifacts:
+#    paths:
+#      - "build/daemon/lokinet"
+#      - "build/daemon/lokinetctl"
 
 build:linux_debug:
   image: ubuntu:xenial
