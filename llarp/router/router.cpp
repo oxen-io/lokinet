@@ -708,6 +708,10 @@ namespace llarp
 
       _rcLookupHandler.ExploreNetwork();
     }
+    else if(not isSvcNode)
+    {
+      _rcLookupHandler.ExploreNetwork();
+    }
     size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
     if(strictConnect > 0 && connectToNum > strictConnect)

@@ -503,6 +503,7 @@ extern "C"
   {
     auto conf = new llarp_config();
     conf->impl.network.fromSection("type", "null");
+    conf->impl.router.fromSection("max-peers", "30");
     conf->impl.bootstrap.fromSection("add-node", "bootstrap.signed");
     return llarp_main_init_from_config(conf);
   }
