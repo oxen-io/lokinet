@@ -160,7 +160,7 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
