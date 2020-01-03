@@ -551,7 +551,7 @@ namespace llarp
 
     // set network config
     netConfig = conf->network.netConfig();
-    if(not isSvcNode)
+    if(not IsServiceNode())
       routerProfiling().Enable();
     // Network config
     if(conf->network.enableProfiling().has_value())
