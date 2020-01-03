@@ -28,12 +28,9 @@ namespace llarp
       bool
       Insert(const Val_t& v, llarp_time_t now = 0)
       {
-        if(Contains(v))
-          return false;
         if(now == 0)
           now = llarp::time_now_ms();
-        m_Values.emplace(v, now + m_CacheInterval);
-        return true;
+        return m_Values.emplace(v, now + m_CacheInterval).second;
       }
 
       /// decay hashset entries

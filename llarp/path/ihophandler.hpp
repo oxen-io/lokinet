@@ -9,6 +9,8 @@
 
 #include <memory>
 
+#include <util/decaying_hashset.hpp>
+
 struct llarp_buffer_t;
 
 namespace llarp
@@ -41,11 +43,11 @@ namespace llarp
       SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) = 0;
 
       // handle data in upstream direction
-      bool
+      virtual bool
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                      AbstractRouter*);
       // handle data in downstream direction
-      bool
+      virtual bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        AbstractRouter*);
 
@@ -62,6 +64,7 @@ namespace llarp
       {
         return m_SequenceNum++;
       }
+
       virtual void
       FlushUpstream(AbstractRouter* r) = 0;
 

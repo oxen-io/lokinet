@@ -25,6 +25,7 @@ namespace llarp
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
                PathRole startingRoles)
         : m_PathSet(parent), _role(startingRoles)
+
     {
       hops.resize(h.size());
       size_t hsz = h.size();
@@ -50,6 +51,23 @@ namespace llarp
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
       EnterState(ePathBuilding, parent->Now());
+    }
+
+    bool
+    Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
+                         AbstractRouter* r)
+
+    {
+      return m_UpstreamBloomFilter.Insert(Y)
+          and IHopHandler::HandleUpstream(X, Y, r);
+    }
+
+    bool
+    Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
+                           AbstractRouter* r)
+    {
+      return m_DownstreamBloomFilter.Insert(Y)
+          and IHopHandler::HandleDownstream(X, Y, r);
     }
 
     void
@@ -324,6 +342,9 @@ namespace llarp
     {
       if(Expired(now))
         return;
+
+      m_UpstreamBloomFilter.Decay(now);
+      m_DownstreamBloomFilter.Decay(now);
 
       if(_status == ePathBuilding)
       {
