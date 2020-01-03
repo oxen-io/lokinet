@@ -427,6 +427,7 @@ namespace llarp
         return false;
       bool shifted                       = false;
       std::vector< Introduction > intros = currentIntroSet.I;
+      if(intros.size() > 1)
       {
         std::random_device rd;
         std::mt19937 g(rd());
