@@ -135,11 +135,13 @@ namespace llarp
       uint64_t currentStatus = status;
 
       size_t index = 0;
+      absl::optional< RouterID > failedAt;
       while(index < hops.size())
       {
         if(!frames[index].DoDecrypt(hops[index].shared))
         {
           currentStatus = LR_StatusRecord::FAIL_DECRYPT_ERROR;
+          failedAt      = hops[index].rc.pubkey;
           break;
         }
         llarp::LogDebug("decrypted LRSM frame from ", hops[index].rc.pubkey);
@@ -154,22 +156,31 @@ namespace llarp
           llarp::LogWarn("malformed frame inside LRCM from ",
                          hops[index].rc.pubkey);
           currentStatus = LR_StatusRecord::FAIL_MALFORMED_RECORD;
+          failedAt      = hops[index].rc.pubkey;
           break;
         }
         llarp::LogDebug("Decoded LR Status Record from ",
                         hops[index].rc.pubkey);
 
         currentStatus = record.status;
-
-        if((currentStatus & LR_StatusRecord::SUCCESS) == 0)
+        if((record.status & LR_StatusRecord::SUCCESS)
+           != LR_StatusRecord::SUCCESS)
         {
+          // failed at next hop
+          if(index + 1 < hops.size())
+          {
+            failedAt = hops[index + 1].rc.pubkey;
+          }
+          else
+          {
+            failedAt = hops[index].rc.pubkey;
+          }
           break;
         }
-
         ++index;
       }
 
-      if(currentStatus & LR_StatusRecord::SUCCESS)
+      if((currentStatus & LR_StatusRecord::SUCCESS) == LR_StatusRecord::SUCCESS)
       {
         llarp::LogDebug("LR_Status message processed, path build successful");
         auto self = shared_from_this();
@@ -177,8 +188,13 @@ namespace llarp
       }
       else
       {
-        r->routerProfiling().MarkPathFail(this);
-
+        if(failedAt.has_value())
+        {
+          LogWarn(Name(), " build failed at ", failedAt.value());
+          r->routerProfiling().MarkHopFail(failedAt.value());
+        }
+        else
+          r->routerProfiling().MarkPathFail(this);
         llarp::LogDebug("LR_Status message processed, path build failed");
 
         if(currentStatus & LR_StatusRecord::FAIL_TIMEOUT)
@@ -230,7 +246,7 @@ namespace llarp
 
       // TODO: meaningful return value?
       return true;
-    }
+    }  // namespace path
 
     void
     Path::EnterState(PathStatus st, llarp_time_t now)
