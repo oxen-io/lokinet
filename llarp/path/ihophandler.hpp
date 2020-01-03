@@ -9,8 +9,6 @@
 
 #include <memory>
 
-#include <util/decaying_hashset.hpp>
-
 struct llarp_buffer_t;
 
 namespace llarp

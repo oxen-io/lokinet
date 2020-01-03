@@ -25,6 +25,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <util/decaying_hashset.hpp>
+
 namespace llarp
 {
   class Logic;
