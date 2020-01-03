@@ -551,8 +551,8 @@ namespace llarp
 
     // set network config
     netConfig = conf->network.netConfig();
-
-    routerProfiling().Enable();
+    if(not isSvcNode)
+      routerProfiling().Enable();
     // Network config
     if(conf->network.enableProfiling().has_value())
     {
@@ -709,7 +709,7 @@ namespace llarp
 
       _rcLookupHandler.ExploreNetwork();
     }
-    else if(not isSvcNode)
+    else if(isSvcNode)
     {
       _rcLookupHandler.ExploreNetwork();
     }
