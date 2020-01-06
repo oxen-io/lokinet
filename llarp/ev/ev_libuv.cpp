@@ -225,13 +225,14 @@ namespace libuv
         return -1;
       WriteBuffer_t buf(sz);
       std::copy_n(data, sz, buf.begin());
-      if(m_WriteQueue.pushBack(std::move(buf))
+      int result = -1;
+      if(m_WriteQueue.tryPushBack(std::move(buf))
          == llarp::thread::QueueReturn::Success)
       {
-        uv_async_send(&m_WriteNotify);
-        return sz;
+        result = sz;
       }
-      return -1;
+      uv_async_send(&m_WriteNotify);
+      return sz;
     }
 
     void
