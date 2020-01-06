@@ -323,7 +323,7 @@ namespace llarp
 
     /// return true if we are running in service node mode
     bool
-    IsServiceNode() const;
+    IsServiceNode() const override;
 
     void
     Close();
