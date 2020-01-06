@@ -121,21 +121,28 @@ namespace llarp
   OutboundSessionMaker::ConnectToRandomRouters(int numDesired)
   {
     int remainingDesired = numDesired;
-
-    _nodedb->visit([&](const RouterContact &other) -> bool {
-      if(!_rcLookup->RemoteIsAllowed(other.pubkey))
+    std::set< RouterID > exclude;
+    int itersLeft = 100;
+    do
+    {
+      RouterContact other;
+      --itersLeft;
+      if(_nodedb->select_random_hop_excluding(other, exclude))
       {
-        return remainingDesired > 0;
+        exclude.insert(other.pubkey);
+        if(not _rcLookup->RemoteIsAllowed(other.pubkey))
+        {
+          continue;
+        }
+        if(randint() % 2 == 0
+           && !(_linkManager->HasSessionTo(other.pubkey)
+                || HavePendingSessionTo(other.pubkey)))
+        {
+          CreateSessionTo(other, nullptr);
+          --remainingDesired;
+        }
       }
-      if(randint() % 2 == 0
-         && !(_linkManager->HasSessionTo(other.pubkey)
-              || HavePendingSessionTo(other.pubkey)))
-      {
-        CreateSessionTo(other, nullptr);
-        --remainingDesired;
-      }
-      return remainingDesired > 0;
-    });
+    } while(remainingDesired > 0 && itersLeft > 0);
     LogDebug("connecting to ", numDesired - remainingDesired, " out of ",
              numDesired, " random routers");
   }
