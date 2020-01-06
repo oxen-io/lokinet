@@ -231,6 +231,10 @@ namespace libuv
       {
         result = sz;
       }
+      else
+      {
+        WriteFail();
+      }
       uv_async_send(&m_WriteNotify);
       return result;
     }
