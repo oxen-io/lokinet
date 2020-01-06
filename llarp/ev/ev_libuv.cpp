@@ -232,7 +232,7 @@ namespace libuv
         result = sz;
       }
       uv_async_send(&m_WriteNotify);
-      return sz;
+      return result;
     }
 
     void
