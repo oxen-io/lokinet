@@ -647,6 +647,13 @@ namespace llarp
         // exclude exit node as first hop in any paths
         exclude.insert(exits.begin(), exits.end());
       }
+      if(hop == numHops - 1)
+      {
+        // diversify endpoints
+        ForEachPath([&exclude](const path::Path_ptr& path) {
+          exclude.insert(path->Endpoint());
+        });
+      }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
