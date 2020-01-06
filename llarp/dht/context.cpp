@@ -19,6 +19,7 @@
 #include <routing/dht_message.hpp>
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
+#include <profiling.hpp>
 
 #include <vector>
 
@@ -671,7 +672,7 @@ namespace llarp
       }
       for(const auto& f : foundRouters)
       {
-        const RouterID r = f;
+        const RouterID r = f.as_array();
         // discard shit routers
         if(router->routerProfiling().IsBadForConnect(r))
           continue;

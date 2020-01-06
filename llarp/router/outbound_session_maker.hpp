@@ -8,6 +8,8 @@
 #include <util/thread/threading.hpp>
 #include <util/thread/thread_pool.hpp>
 
+#include <profiling.hpp>
+
 #include <unordered_map>
 #include <list>
 #include <memory>
