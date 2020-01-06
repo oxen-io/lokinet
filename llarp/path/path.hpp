@@ -403,8 +403,8 @@ namespace llarp
       uint64_t m_ExitObtainTX            = 0;
       PathStatus _status;
       PathRole _role;
-      util::DecayingHashSet< TunnelNonce > m_UpstreamBloomFilter;
-      util::DecayingHashSet< TunnelNonce > m_DownstreamBloomFilter;
+      util::DecayingHashSet< TunnelNonce > m_UpstreamReplayFilter;
+      util::DecayingHashSet< TunnelNonce > m_DownstreamReplayFilter;
     };
   }  // namespace path
 }  // namespace llarp

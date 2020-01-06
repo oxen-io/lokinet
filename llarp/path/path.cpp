@@ -58,7 +58,7 @@ namespace llarp
                          AbstractRouter* r)
 
     {
-      return m_UpstreamBloomFilter.Insert(Y)
+      return m_UpstreamReplayFilter.Insert(Y)
           and IHopHandler::HandleUpstream(X, Y, r);
     }
 
@@ -66,7 +66,7 @@ namespace llarp
     Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                            AbstractRouter* r)
     {
-      return m_DownstreamBloomFilter.Insert(Y)
+      return m_DownstreamReplayFilter.Insert(Y)
           and IHopHandler::HandleDownstream(X, Y, r);
     }
 
@@ -359,8 +359,8 @@ namespace llarp
       if(Expired(now))
         return;
 
-      m_UpstreamBloomFilter.Decay(now);
-      m_DownstreamBloomFilter.Decay(now);
+      m_UpstreamReplayFilter.Decay(now);
+      m_DownstreamReplayFilter.Decay(now);
 
       if(_status == ePathBuilding)
       {
