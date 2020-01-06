@@ -151,7 +151,7 @@ namespace llarp
   void
   OutboundSessionMaker::Init(
       ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
-      std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
+      Profiling *profiler, std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
       std::shared_ptr< llarp::thread::ThreadPool > threadpool)
   {
     _linkManager = linkManager;
@@ -159,6 +159,7 @@ namespace llarp
     _logic       = logic;
     _nodedb      = nodedb;
     _threadpool  = threadpool;
+    _profiler    = profiler;
   }
 
   void
@@ -307,7 +308,15 @@ namespace llarp
     {
       util::Lock l(&_mutex);
 
-      // TODO: Router profiling stuff
+      if(type == SessionResult::Establish)
+      {
+        _profiler->MarkConnectSuccess(router);
+      }
+      else
+      {
+        // TODO: add non timeout related fail case
+        _profiler->MarkConnectTimeout(router);
+      }
 
       auto itr = pendingCallbacks.find(router);
 

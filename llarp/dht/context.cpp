@@ -671,7 +671,11 @@ namespace llarp
       }
       for(const auto& f : foundRouters)
       {
-        closer.emplace_back(f.as_array());
+        const RouterID r = f;
+        // discard shit routers
+        if(router->routerProfiling().IsBadForConnect(r))
+          continue;
+        closer.emplace_back(r);
       }
       llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));

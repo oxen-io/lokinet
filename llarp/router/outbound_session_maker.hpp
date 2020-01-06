@@ -58,7 +58,8 @@ namespace llarp
 
     void
     Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
-         std::shared_ptr< Logic > logic, llarp_nodedb *nodedb,
+         Profiling *profiler, std::shared_ptr< Logic > logic,
+         llarp_nodedb *nodedb,
          std::shared_ptr< llarp::thread::ThreadPool > threadpool);
 
     void
@@ -109,10 +110,11 @@ namespace llarp
     std::unordered_map< RouterID, CallbacksQueue, RouterID::Hash >
         pendingCallbacks GUARDED_BY(_mutex);
 
-    ILinkManager *_linkManager;
-    I_RCLookupHandler *_rcLookup;
+    ILinkManager *_linkManager   = nullptr;
+    I_RCLookupHandler *_rcLookup = nullptr;
+    Profiling *_profiler         = nullptr;
+    llarp_nodedb *_nodedb        = nullptr;
     std::shared_ptr< Logic > _logic;
-    llarp_nodedb *_nodedb;
     std::shared_ptr< llarp::thread::ThreadPool > _threadpool;
     RouterID us;
   };

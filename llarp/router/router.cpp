@@ -492,8 +492,9 @@ namespace llarp
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
-    _outboundSessionMaker.Init(&_linkManager, &_rcLookupHandler, _logic,
-                               _nodedb, threadpool());
+    _outboundSessionMaker.Init(&_linkManager, &_rcLookupHandler,
+                               &_routerProfiling, _logic, _nodedb,
+                               threadpool());
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
                           &_hiddenServiceContext, strictConnectPubkeys,
@@ -551,20 +552,14 @@ namespace llarp
 
     // set network config
     netConfig = conf->network.netConfig();
-    if(not IsServiceNode())
-      routerProfiling().Enable();
+
     // Network config
     if(conf->network.enableProfiling().has_value())
     {
-      if(conf->network.enableProfiling().value())
-      {
-        routerProfiling().Enable();
-        LogInfo("router profiling explicitly enabled");
-      }
-      else
+      if(not conf->network.enableProfiling().value())
       {
         routerProfiling().Disable();
-        LogInfo("router profiling explicitly disabled");
+        LogWarn("router profiling explicitly disabled");
       }
     }
 
