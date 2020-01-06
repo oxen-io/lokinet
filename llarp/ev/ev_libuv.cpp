@@ -105,8 +105,7 @@ namespace libuv
     OnOutboundConnect(uv_connect_t* c, int status)
     {
       conn_glue* self = static_cast< conn_glue* >(c->data);
-      LoopCall(self->Stream(),
-               std::bind(&conn_glue::HandleConnectResult, self, status));
+      self->HandleConnectResult(status);
       c->data = nullptr;
     }
 
@@ -140,8 +139,7 @@ namespace libuv
       if(nread >= 0)
       {
         auto* conn = static_cast< conn_glue* >(stream->data);
-        LoopCall(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
-        return;
+        conn->Read(buf->base, nread);
       }
       else if(nread < 0)
       {
@@ -166,7 +164,6 @@ namespace libuv
         const llarp_buffer_t buf(ptr, sz);
         m_Conn.read(&m_Conn, buf);
       }
-      delete[] ptr;
     }
 
     void
