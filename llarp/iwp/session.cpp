@@ -64,6 +64,7 @@ namespace llarp
       const llarp_buffer_t pkt(buf, sz);
       m_Parent->SendTo_LL(m_RemoteAddr, pkt);
       m_LastTX = time_now_ms();
+      m_TXRate += sz;
     }
 
     bool
@@ -297,7 +298,14 @@ namespace llarp
     util::StatusObject
     Session::ExtractStatus() const
     {
-      return {{"remoteAddr", m_RemoteAddr.ToString()},
+      return {{"tx", m_CurrentTX},
+              {"rx", m_CurrentRX},
+              {"state", m_State},
+              {"inbound", m_Inbound},
+              {"replayFilter", m_ReplayFilter.size()},
+              {"txMsgs", m_TXMsgs.size()},
+              {"rxMsgs", m_RXMsgs.size()},
+              {"remoteAddr", m_RemoteAddr.ToString()},
               {"remoteRC", m_RemoteRC.ExtractStatus()}};
     }
 
@@ -311,9 +319,29 @@ namespace llarp
       return now - m_CreatedAt > SessionAliveTimeout;
     }
 
+    bool
+    Session::ShouldResetRates(llarp_time_t now) const
+    {
+      return now >= m_ResetRatesAt;
+    }
+
+    void
+    Session::ResetRates()
+    {
+      m_CurrentTX = m_TXRate;
+      m_CurrentRX = m_RXRate;
+      m_RXRate    = 0;
+      m_TXRate    = 0;
+    }
+
     void
     Session::Tick(llarp_time_t now)
     {
+      if(ShouldResetRates(now))
+      {
+        ResetRates();
+        m_ResetRatesAt = now + 1000;
+      }
       // remove pending outbound messsages that timed out
       // inform waiters
       {
@@ -851,6 +879,7 @@ namespace llarp
     bool
     Session::Recv_LL(ILinkSession::Packet_t data)
     {
+      m_RXRate += data.size();
       switch(m_State)
       {
         case State::Initial:
