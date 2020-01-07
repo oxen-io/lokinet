@@ -10,7 +10,7 @@
   <conclusion file="conclusion.html" mime-type="text/html" />
   <!-- List all component packages -->
   <pkg-ref id="network.loki.lokinet"
-           version="0.5"
+           version="$VERSION"
            auth="root">lokinet.pkg</pkg-ref>
   <!-- List them again here. They can now be organized
        as a hierarchy if you want. -->
