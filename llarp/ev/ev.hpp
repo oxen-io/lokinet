@@ -49,7 +49,7 @@ struct llarp_ev_pkt_pipe;
 #define EV_READ_BUF_SZ (4 * 1024UL)
 #endif
 #ifndef EV_WRITE_BUF_SZ
-#define EV_WRITE_BUF_SZ (2 * 1024UL)
+#define EV_WRITE_BUF_SZ (4 * 1024UL)
 #endif
 
 /// do io and reset errno after
