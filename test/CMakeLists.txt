@@ -38,6 +38,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
     util/test_llarp_util_bits.cpp
+    util/test_llarp_util_decaying_hashset.cpp
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_printer.cpp
     util/test_llarp_utils_str.cpp

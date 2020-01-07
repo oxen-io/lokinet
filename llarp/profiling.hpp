@@ -78,6 +78,9 @@ namespace llarp
     MarkPathSuccess(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
+    MarkHopFail(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+
+    void
     ClearProfile(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void

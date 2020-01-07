@@ -15,8 +15,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Loki Project")]
 [assembly: AssemblyProduct("Lokinet Launcher")]
-[assembly: AssemblyCopyright("Copyright ©2018-2019 Loki Project. All rights reserved. See LICENSE for more details.")]
-[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2019 Loki Foundation")]
+[assembly: AssemblyCopyright("Copyright ©2018-2020 Loki Project. All rights reserved. See LICENSE for more details.")]
+[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2020 Loki Foundation")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -37,10 +37,10 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.6.0")]
-[assembly: AssemblyFileVersion("0.6.0")]
+[assembly: AssemblyVersion("0.6.1")]
+[assembly: AssemblyFileVersion("0.6.1")]
 #if DEBUG
-[assembly: AssemblyInformationalVersion("0.6.0-dev-{chash:8}")]
+[assembly: AssemblyInformationalVersion("0.6.1-dev-{chash:8}")]
 #else
-[assembly: AssemblyInformationalVersion("0.6.0 (RELEASE_CODENAME)")]
+[assembly: AssemblyInformationalVersion("0.6.1 (RELEASE_CODENAME)")]
 #endif
