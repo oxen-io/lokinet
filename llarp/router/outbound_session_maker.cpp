@@ -122,27 +122,25 @@ namespace llarp
   {
     int remainingDesired = numDesired;
     std::set< RouterID > exclude;
-    int itersLeft = 100;
     do
     {
       RouterContact other;
-      --itersLeft;
-      if(_nodedb->select_random_hop_excluding(other, exclude))
+      if(not _nodedb->select_random_hop_excluding(other, exclude))
+        break;
+
+      exclude.insert(other.pubkey);
+      if(not _rcLookup->RemoteIsAllowed(other.pubkey))
       {
-        exclude.insert(other.pubkey);
-        if(not _rcLookup->RemoteIsAllowed(other.pubkey))
-        {
-          continue;
-        }
-        if(randint() % 2 == 0
-           && !(_linkManager->HasSessionTo(other.pubkey)
-                || HavePendingSessionTo(other.pubkey)))
-        {
-          CreateSessionTo(other, nullptr);
-          --remainingDesired;
-        }
+        continue;
       }
-    } while(remainingDesired > 0 && itersLeft > 0);
+      if(not(_linkManager->HasSessionTo(other.pubkey)
+             || HavePendingSessionTo(other.pubkey)))
+      {
+        CreateSessionTo(other, nullptr);
+        --remainingDesired;
+      }
+
+    } while(remainingDesired > 0);
     LogDebug("connecting to ", numDesired - remainingDesired, " out of ",
              numDesired, " random routers");
   }
