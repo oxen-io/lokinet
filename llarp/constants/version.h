@@ -8,7 +8,7 @@
 
 #define LLARP_VERSION_MAJ 0
 #define LLARP_VERSION_MIN 6
-#define LLARP_VERSION_PATCH 1
+#define LLARP_VERSION_PATCH 2
 
 #define LLARP_DEFAULT_NETID "lokinet"
 
