@@ -8,6 +8,9 @@
 #include <profiling.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <random>
+#include <algorithm>
+
 namespace llarp
 {
   namespace service
@@ -422,9 +425,17 @@ namespace llarp
       auto now     = Now();
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
-      bool shifted = false;
+      bool shifted                       = false;
+      std::vector< Introduction > intros = currentIntroSet.I;
+      if(intros.size() > 1)
+      {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(intros.begin(), intros.end(), g);
+      }
+
       // to find a intro on the same router as before that is newer
-      for(const auto& intro : currentIntroSet.I)
+      for(const auto& intro : intros)
       {
         if(intro.ExpiresSoon(now))
           continue;
@@ -444,7 +455,7 @@ namespace llarp
       if(!success)
       {
         /// pick newer intro not on same router
-        for(const auto& intro : currentIntroSet.I)
+        for(const auto& intro : intros)
         {
           if(m_Endpoint->SnodeBlacklist().count(intro.router))
             continue;

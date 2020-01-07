@@ -492,8 +492,9 @@ namespace llarp
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
-    _outboundSessionMaker.Init(&_linkManager, &_rcLookupHandler, _logic,
-                               _nodedb, threadpool());
+    _outboundSessionMaker.Init(&_linkManager, &_rcLookupHandler,
+                               &_routerProfiling, _logic, _nodedb,
+                               threadpool());
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
                           &_hiddenServiceContext, strictConnectPubkeys,
@@ -555,15 +556,10 @@ namespace llarp
     // Network config
     if(conf->network.enableProfiling().has_value())
     {
-      if(conf->network.enableProfiling().value())
-      {
-        routerProfiling().Enable();
-        LogInfo("router profiling explicitly enabled");
-      }
-      else
+      if(not conf->network.enableProfiling().value())
       {
         routerProfiling().Disable();
-        LogInfo("router profiling explicitly disabled");
+        LogWarn("router profiling explicitly disabled");
       }
     }
 
@@ -706,6 +702,10 @@ namespace llarp
       LogInfo("We need at least ", llarp::path::default_len,
               " service nodes to build paths but we have ", N, " in nodedb");
 
+      _rcLookupHandler.ExploreNetwork();
+    }
+    else if(isSvcNode)
+    {
       _rcLookupHandler.ExploreNetwork();
     }
     size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;

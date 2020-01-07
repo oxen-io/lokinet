@@ -132,6 +132,9 @@ namespace llarp
     Configure(Config *conf, llarp_nodedb *nodedb) = 0;
 
     virtual bool
+    IsServiceNode() const = 0;
+
+    virtual bool
     StartJsonRpc() = 0;
 
     virtual bool

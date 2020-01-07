@@ -288,7 +288,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address remote, PathEnsureHook h,
-                          uint64_t timeoutMS, bool lookupOnRandomPath = false);
+                          uint64_t timeoutMS, bool lookupOnRandomPath = true);
 
       using SNodeEnsureHook =
           std::function< void(const RouterID, exit::BaseSession_ptr) >;
