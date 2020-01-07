@@ -164,10 +164,10 @@ if(DEBIAN)
   add_definitions(-DDEBIAN)
 elseif(NOT NON_PC_TARGET)
   if (USE_AVX2)
-    set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
+    set(CRYPTO_FLAGS -march=haswell -mtune=haswell -mfpmath=sse)
   else()
     # Public binary releases
-    set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
+    set(CRYPTO_FLAGS -march=nocona -mtune=haswell -mfpmath=sse)
   endif()
 endif()
 
