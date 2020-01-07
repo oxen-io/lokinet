@@ -176,18 +176,17 @@ namespace llarp
       {
         if(not router->IsRunning())
           return;
+        if(not router->IsServiceNode())
+          return;
         if(now >= m_NextKeyUpdate)
         {
           AsyncUpdatePubkeyList();
           m_NextKeyUpdate = now + KeyUpdateInterval;
         }
-        if(router->IsServiceNode())
+        if(now >= m_NextPing)
         {
-          if(now >= m_NextPing)
-          {
-            AsyncLokiPing();
-            m_NextPing = now + PingInterval;
-          }
+          AsyncLokiPing();
+          m_NextPing = now + PingInterval;
         }
         Flush();
       }
