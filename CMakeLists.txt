@@ -11,7 +11,6 @@ project(${PROJECT_NAME} C CXX)
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
-option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
 if (NOT MSVC)
@@ -162,6 +161,8 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
+elseif(NATIVE_BUILD)
+  set(CRYPTO_FLAGS -march=native -mtune=native)
 elseif(NOT NON_PC_TARGET)
   if (USE_AVX2)
     set(CRYPTO_FLAGS -march=haswell -mtune=haswell -mfpmath=sse)
@@ -169,16 +170,6 @@ elseif(NOT NON_PC_TARGET)
     # Public binary releases
     set(CRYPTO_FLAGS -march=nocona -mtune=haswell -mfpmath=sse)
   endif()
-endif()
-
-# only needed if using AVX2
-if(AMD_RYZEN_HACK AND USE_AVX2)
-  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
-  message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
-endif(AMD_RYZEN_HACK AND USE_AVX2)
-
-if(NATIVE_BUILD AND NOT DEBIAN)
-  set(CRYPTO_FLAGS -march=native -mtune=native)
 endif()
 
 if(EMBEDDED_CFG)
