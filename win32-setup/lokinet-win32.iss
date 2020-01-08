@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Lokinet"
-#define MyAppVersion "0.6.1"
+#define MyAppVersion "0.6.2"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://lokinet.org"
 #define MyAppExeName "lokinetui.exe"
@@ -11,7 +11,7 @@
 #define DevPath "D:\dev\external\llarp\"
 #endif
 #include "version.txt"
-#define RELEASE
+
 ; see ../LICENSE
 
 [Setup]
@@ -38,18 +38,18 @@ OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma2/ultra64
 SolidCompression=yes
-VersionInfoVersion=0.6.1
+VersionInfoVersion=0.6.2
 VersionInfoCompany=Loki Project
 VersionInfoDescription=Lokinet for Microsoft® Windows® NT™
 #ifndef RELEASE
-VersionInfoTextVersion=0.6.1-dev-{#VCSRev}
-VersionInfoProductTextVersion=0.6.1-dev-{#VCSRev}
+VersionInfoTextVersion=0.6.2-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.6.2-dev-{#VCSRev}
 #else
-VersionInfoTextVersion=0.6.1
-VersionInfoProductTextVersion=0.6.1 ({#Codename})
+VersionInfoTextVersion=0.6.2
+VersionInfoProductTextVersion=0.6.2 ({#Codename})
 #endif
 VersionInfoProductName=Lokinet
-VersionInfoProductVersion=0.6.1
+VersionInfoProductVersion=0.6.2
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
@@ -60,7 +60,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
+Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked;
+Name: "migrateconfigs"; Description: "Migrate existing configuration to enable modern UI"; MinVersion: 6.0
 
 [Files]
 ; only one of these is installed
@@ -95,12 +96,15 @@ Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
 Source: "7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "inet6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1; Check: not IsTcp6Installed
+Source: "lokinet-qt5-ui.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; MinVersion: 0,6.0;
+Source: "lokinet.ico"; DestDir: "{app}"; Flags: ignoreversion;
 ; Copy the correct tuntap driver for the selected platform
 Source: "tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
 Source: "tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; MinVersion: 0,6.0; Check: not IsTapInstalled
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "regdbhelper.dll"; Flags: dontcopy
+Source: "config_migration.bat"; DestDir: "{userappdata}\.lokinet"; Flags: deleteafterinstall; MinVersion: 0,6.0
 
 ; build only if we have the 32-bit bins as well
 ; (i.e. *not* a Travis CI build, travis isn't expected to have these around)
@@ -131,6 +135,7 @@ Source: "C:\Windows\Fonts\iosevka-term-thinoblique.ttf"; DestDir: "{fonts}"; Fon
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\tap-windows*"
 Type: filesandordirs; Name: "{app}\inet6_driver"; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1
+Type: filesandordirs; Name: "{app}\lokinet-qt5-ui"; MinVersion: 0,6.0
 Type: filesandordirs; Name: "{userappdata}\.lokinet"
 
 [UninstallRun]
@@ -154,6 +159,8 @@ begin
   if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
      // I need a better message...
     MsgBox('Restart your computer, then set up IPv6 in Network Connections. [Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
+  if IsTaskSelected('migrateconfigs') then
+    MsgBox('Lokinet JSON-RPC API endpoint enabled. Any custom configuration was retained in %APPDATA%\.lokinet\lokinet.old.ini.', mbInformation, MB_OK);
   end;
 end;
 
@@ -188,19 +195,23 @@ else
 end;
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; OnlyBelowVersion: 0, 6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; MinVersion: 0, 6.0; IconFilename: "{app}\lokinet.ico"
 Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; OnlyBelowVersion: 0, 6.1
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; MinVersion: 0, 6.1
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; OnlyBelowVersion: 0,6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Tasks: desktopicon; MinVersion: 0,6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; OnlyBelowVersion: 0, 6.1; IconFilename: "{app}\lokinet.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Tasks: quicklaunchicon; MinVersion: 0, 6.1; IconFilename: "{app}\lokinet.ico"
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; OnlyBelowVersion: 0, 6.0
+Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; MinVersion: 0,6.0
 ; wait until either one or two of these terminates
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
+Filename: "{tmp}\7z.exe"; Parameters: "x lokinet-qt5-ui.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "installing modern Qt5 UI"; StatusMsg: "Installing modern Qt5 UI..."; MinVersion: 0, 6.0;
 Filename: "{app}\lokinet-bootstrap.exe"; Parameters:"-L https://seed.lokinet.org/lokinet.signed --cacert rootcerts.pem -o ""{userappdata}\.lokinet\bootstrap.signed"""; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
 ; then ask to install drivers
 Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
@@ -209,3 +220,4 @@ Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows
 ; if it doesn't exist, then the inet6 driver appears to be installed
 Filename: "{app}\inet6_driver\setup\hotfix.exe"; Parameters: "/m /z"; WorkingDir: "{app}\inet6_driver\setup\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install IPv6 driver"; StatusMsg: "Installing IPv6..."; OnlyBelowVersion: 0, 5.1;  Check: not FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys'))
 Filename: "{sys}\netsh.exe"; Parameters: "int ipv6 install"; Flags: runascurrentuser waituntilterminated; Description: "install ipv6 on whistler"; StatusMsg: "Installing IPv6..."; MinVersion: 0,5.1; OnlyBelowVersion: 0,6.0
+Filename: "{userappdata}\.lokinet\config_migration.bat"; WorkingDir: "{userappdata}\.lokinet"; Flags: runascurrentuser waituntilterminated; Description: "migrate existing config"; StatusMsg: "Migrating old configuration..."; MinVersion: 0,6.0; Tasks: migrateconfigs;
