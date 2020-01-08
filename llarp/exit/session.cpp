@@ -20,7 +20,7 @@ namespace llarp
         , m_ExitRouter(routerId)
         , m_WritePacket(std::move(writepkt))
         , m_Counter(0)
-        , m_LastUse(0)
+        , m_LastUse(r->Now())
         , m_BundleRC(bundleRC)
     {
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
