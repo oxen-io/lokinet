@@ -253,7 +253,7 @@ namespace llarp
     bool
     BaseSession::IsExpired(llarp_time_t now) const
     {
-      return m_LastUse && now > m_LastUse && now - m_LastUse > LifeSpan;
+      return now > m_LastUse && now - m_LastUse > LifeSpan;
     }
 
     bool
