@@ -127,7 +127,6 @@ namespace llarp
     bool
     BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
     {
-      m_LastUse = m_router->Now();
       if(b == 0)
       {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
@@ -202,11 +201,10 @@ namespace llarp
         llarp::net::IPPacket pkt;
         if(!pkt.Load(buf))
           return false;
-        m_Downstream.emplace(counter, pkt);
         m_LastUse = m_router->Now();
+        m_Downstream.emplace(counter, pkt);
         return true;
       }
-
       return false;
     }
 
@@ -282,8 +280,7 @@ namespace llarp
             if(path)
             {
               msg.S = path->NextSeqNo();
-              if(path->SendRoutingMessage(msg, m_router))
-                m_LastUse = now;
+              path->SendRoutingMessage(msg, m_router);
             }
             queue.pop_front();
 
