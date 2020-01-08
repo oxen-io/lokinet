@@ -135,6 +135,7 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
     if(amount <= 0)
     {
       llarp::LogError("write underrun");
+      llarp_tcp_conn_close(conn);
       return false;
     }
     buf.underlying.cur += amount;

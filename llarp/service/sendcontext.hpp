@@ -7,6 +7,7 @@
 #include <service/protocol.hpp>
 #include <util/buffer.hpp>
 #include <util/types.hpp>
+#include <util/thread/queue.hpp>
 
 #include <deque>
 
@@ -29,12 +30,11 @@ namespace llarp
       /// queue send a fully encrypted hidden service frame
       /// via a path
       bool
-      Send(std::shared_ptr< ProtocolFrame > f, path::Path_ptr path)
-          LOCKS_EXCLUDED(m_SendQueueMutex);
+      Send(std::shared_ptr< ProtocolFrame > f, path::Path_ptr path);
 
       /// flush upstream traffic when in router thread
       void
-      FlushUpstream() LOCKS_EXCLUDED(m_SendQueueMutex);
+      FlushUpstream();
 
       SharedSecret sharedKey;
       ServiceInfo remoteIdent;
@@ -51,8 +51,7 @@ namespace llarp
       bool markedBad              = false;
       using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
       using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
-      util::Mutex m_SendQueueMutex;
-      std::deque< SendEvent_t > m_SendQueue;
+      thread::Queue< SendEvent_t > m_SendQueue;
 
       virtual bool
       ShiftIntroduction(bool rebuild = true)

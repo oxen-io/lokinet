@@ -176,6 +176,8 @@ namespace llarp
       {
         if(not router->IsRunning())
           return;
+        if(not router->IsServiceNode())
+          return;
         if(now >= m_NextKeyUpdate)
         {
           AsyncUpdatePubkeyList();

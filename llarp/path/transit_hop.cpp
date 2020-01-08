@@ -224,7 +224,7 @@ namespace llarp
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
-      r->PumpLL();
+      r->linkManager().PumpLinks();
     }
 
     void
@@ -237,7 +237,7 @@ namespace llarp
                         info.upstream, " to ", info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
-      r->PumpLL();
+      r->linkManager().PumpLinks();
     }
 
     void

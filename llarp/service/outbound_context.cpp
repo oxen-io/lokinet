@@ -8,6 +8,9 @@
 #include <profiling.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <random>
+#include <algorithm>
+
 namespace llarp
 {
   namespace service
@@ -96,20 +99,13 @@ namespace llarp
           return true;
         }
 
-        auto now = Now();
+        const llarp_time_t now = Now();
         if(i->IsExpired(now))
         {
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
         currentIntroSet = *i;
-        if(!ShiftIntroduction())
-        {
-          LogWarn("failed to pick new intro during introset update");
-        }
-        if(GetPathByRouter(m_NextIntro.router) == nullptr
-           && !BuildCooldownHit(Now()))
-          BuildOneAlignedTo(m_NextIntro.router);
       }
       else
       {
@@ -222,13 +218,20 @@ namespace llarp
     {
       if(updatingIntroSet || markedBad)
         return;
-      auto addr = currentIntroSet.A.Addr();
+      const auto addr = currentIntroSet.A.Addr();
 
       path::Path_ptr path = nullptr;
       if(randomizePath)
+      {
         path = m_Endpoint->PickRandomEstablishedPath();
+      }
       else
         path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
+
+      if(path == nullptr)
+      {
+        path = PickRandomEstablishedPath();
+      }
 
       if(path)
       {
@@ -422,9 +425,17 @@ namespace llarp
       auto now     = Now();
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
-      bool shifted = false;
+      bool shifted                       = false;
+      std::vector< Introduction > intros = currentIntroSet.I;
+      if(intros.size() > 1)
+      {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(intros.begin(), intros.end(), g);
+      }
+
       // to find a intro on the same router as before that is newer
-      for(const auto& intro : currentIntroSet.I)
+      for(const auto& intro : intros)
       {
         if(intro.ExpiresSoon(now))
           continue;
@@ -444,7 +455,7 @@ namespace llarp
       if(!success)
       {
         /// pick newer intro not on same router
-        for(const auto& intro : currentIntroSet.I)
+        for(const auto& intro : intros)
         {
           if(m_Endpoint->SnodeBlacklist().count(intro.router))
             continue;

@@ -9,23 +9,18 @@ NC='\033[0m' # No Color
 set -e
 
 helpme=
-declare -A default_url
-default_url=(
-    [lokinet]="https://seed.lokinet.org/lokinet.signed"
-    [mainnet]="https://seed.lokinet.org/lokinet.signed"
-    [testnet]="https://seed.lokinet.org/testnet.signed"
-)
+default_mainnet=https://seed.lokinet.org/lokinet.signed
+default_testnet=https://seed.lokinet.org/testnet.signed
 default_dest="$HOME/.lokinet/bootstrap.signed"
 
 if [ "$#" -gt 2 ]; then
   helpme=y
 fi
 
-if [ -z "$1" ]
-then
-  url="${default_url[mainnet]}"
-elif [ -n "${default_url[$1]}" ]; then
-  url="${default_url[$1]}"
+if [ -z "$1" ] || [ "$1" == "mainnet" ] || [ "$1" == "lokinet" ]; then
+  url="${default_mainnet}"
+elif [ "$1" == "testnet" ]; then
+  url="${default_testnet}"
 elif [[ "$1" = -* ]]; then
   helpme=y
 else

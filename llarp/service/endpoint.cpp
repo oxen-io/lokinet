@@ -20,6 +20,7 @@
 #include <util/buffer.hpp>
 #include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
+#include <link/link_manager.hpp>
 
 #include <utility>
 
@@ -646,6 +647,13 @@ namespace llarp
         // exclude exit node as first hop in any paths
         exclude.insert(exits.begin(), exits.end());
       }
+      if(hop == numHops - 1)
+      {
+        // diversify endpoints
+        ForEachPath([&exclude](const path::Path_ptr& path) {
+          exclude.insert(path->Endpoint());
+        });
+      }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
     }
 
@@ -1019,10 +1027,17 @@ namespace llarp
       return false;
     }
 
-    void
+    bool
     Endpoint::EnsurePathToSNode(const RouterID snode, SNodeEnsureHook h)
     {
+      static constexpr size_t MaxConcurrentSNodeSessions = 16;
       auto& nodeSessions = m_state->m_SNodeSessions;
+      if(nodeSessions.size() >= MaxConcurrentSNodeSessions)
+      {
+        // a quick client side work arround before we do proper limiting
+        LogError(Name(), " has too many snode sessions");
+        return false;
+      }
       using namespace std::placeholders;
       if(nodeSessions.count(snode) == 0)
       {
@@ -1054,6 +1069,7 @@ namespace llarp
         }
         ++itr;
       }
+      return true;
     }
 
     bool
@@ -1099,7 +1115,6 @@ namespace llarp
       {
         epPump();
       }
-
       auto router = Router();
       // TODO: locking on this container
       for(const auto& item : m_state->m_RemoteSessions)
@@ -1117,7 +1132,8 @@ namespace llarp
         }
         m_state->m_SendQueue.clear();
       }
-      router->PumpLL();
+      UpstreamFlush(router);
+      router->linkManager().PumpLinks();
     }
 
     bool

@@ -42,6 +42,11 @@ if (STATIC_LINK AND STATIC_LINK_RUNTIME)
   message(FATAL "Cannot set both STATIC_LINK and STATIC_LINK_RUNTIME")
 endif()
 
+if (STATIC_LINK)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+  message(STATUS "setting static library suffix search")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # No in-source building
@@ -157,7 +162,7 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
-elseif(WIN32)
+elseif(NOT NON_PC_TARGET)
   if (USE_AVX2)
     set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
   else()
@@ -187,10 +192,6 @@ add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-
-if(NOT IOS AND NOT ANDROID AND NOT WIN32)
-  find_package(CURL REQUIRED)
-endif()
 
 include(cmake/static_link_runtime.cmake)
 include(cmake/static_link.cmake)

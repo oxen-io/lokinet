@@ -9,6 +9,7 @@
 #include <routing/handler.hpp>
 #include <router/i_outbound_message_handler.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/decaying_hashset.hpp>
 #include <util/types.hpp>
 
 #include <memory>
@@ -49,6 +50,9 @@ namespace llarp
 
       void
       RejectTransit();
+
+      bool
+      CheckPathLimitHitByIP(const llarp::Addr& ip);
 
       bool
       AllowingTransit() const;
@@ -166,6 +170,7 @@ namespace llarp
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
+      util::DecayingHashSet< llarp::Addr > m_PathLimits;
     };
   }  // namespace path
 }  // namespace llarp
