@@ -27,6 +27,9 @@ rm -fr osx-pkg/Applications/Lokinet.app
 # requires -R to keep all the symbolic links inside the App
 # https://blog.inventic.eu/2015/03/os-x-codesign-failed-bundle-format-is-ambiguous-could-be-app-or-framework/
 cp -R Lokinet.app osx-pkg/Applications
+if [ ! -f "lokinet-brand_icon-only.icns" ]; then
+  curl http://installer.lokinet.org/lokinet-brand_icon-only.icns > lokinet-brand_icon-only.icns
+fi
 cp lokinet-brand_icon-only.icns osx-pkg/Applications/Lokinet.app/Contents/Resources/lokinet.icns
 echo "Fixing CFBundleIdentifier and CFBundleIconFile"
 # MacOS has to be different, ugh...
