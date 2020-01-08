@@ -45,6 +45,11 @@ SHADOW_OPTS ?=
 LIBUV_VERSION ?= v1.30.1
 LIBUV_PREFIX = $(BUILD_ROOT)/libuv
 
+LIBCURL_PREFIX = $(BUILD_ROOT)/curl
+LIBCURL_VERSION = 7.67.0
+LIBCURL_URL = https://github.com/curl/curl/releases/download/curl-7_67_0/curl-7.67.0.tar.xz
+LIBCURL_SHA256 = f5d2e7320379338c3952dcc7566a140abb49edb575f9f99272455785c40e536c
+
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
@@ -212,7 +217,19 @@ $(TEST_EXE): debug
 test: $(TEST_EXE)
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
+static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
+	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
 
+static: static-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp $(EXE) $(REPO)/lokinet-static
+
+$(LIBCURL_PREFIX):
+	mkdir -p '$(BUILD_ROOT)'
+	wget '$(LIBCURL_URL)' -O '$(BUILD_ROOT)/curl.tar.xz'
+	bash -c 'sha256sum -c <<<"$(LIBCURL_SHA256) $(BUILD_ROOT)/curl.tar.xz"'
+	tar -xJf '$(BUILD_ROOT)/curl.tar.xz' -C '$(BUILD_ROOT)'
+	mv '$(BUILD_ROOT)/curl-$(LIBCURL_VERSION)' '$(LIBCURL_PREFIX)'
 
 $(LIBUV_PREFIX):
 	mkdir -p $(BUILD_ROOT)
