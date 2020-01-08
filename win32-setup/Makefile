@@ -8,7 +8,7 @@ CFLAGS=-Ofast -march=nocona -mfpmath=sse
 LIBS=-lws2_32
 LDFLAGS=-static
 
-all: regdbhelper.dll lokinet-bootstrap.exe 7z.exe dbghelp tcpv6 tap-win32
+all: regdbhelper.dll lokinet-bootstrap.exe 7z.exe dbghelp tcpv6 tap-win32 qt5-ui
 default: all
 
 ifndef RELEASE
@@ -76,6 +76,9 @@ libuv:
 	cd libuv; ./configure --host=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 CC=$(CC64) CXX=$(CXX64) CFLAGS="$(CFLAGS)" --disable-shared
 	make -C libuv -j4
 	cp libuv/.libs/libuv.a $(PWD)/lib64
+
+qt5-ui:
+	wget https://snowlight.net/loki/win32-dist/lokinet-qt5-ui.7z
 
 clean:
 	-rm -rf curl-7* include lib mbedtls-2* *.exe *.dll *.pem *.7z
