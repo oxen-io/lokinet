@@ -159,7 +159,21 @@ namespace llarp
       llarp_time_t m_LastTX = 0;
       llarp_time_t m_LastRX = 0;
 
+      uint64_t m_TXRate = 0;
+      uint64_t m_RXRate = 0;
+
+      uint64_t m_CurrentTX = 0;
+      uint64_t m_CurrentRX = 0;
+
+      llarp_time_t m_ResetRatesAt = 0;
+
       uint64_t m_TXID = 0;
+
+      bool
+      ShouldResetRates(llarp_time_t now) const;
+
+      void
+      ResetRates();
 
       std::unordered_map< uint64_t, InboundMessage > m_RXMsgs;
       std::unordered_map< uint64_t, OutboundMessage > m_TXMsgs;

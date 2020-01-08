@@ -29,9 +29,11 @@ namespace libuv
 
       WriteEvent() = default;
 
-      explicit WriteEvent(WriteBuffer_t buf) : data(std::move(buf))
+      explicit WriteEvent(size_t sz, char* ptr)
       {
         request.data = this;
+        data.resize(sz);
+        std::copy_n(ptr, sz, data.begin());
       }
 
       uv_buf_t
@@ -54,11 +56,9 @@ namespace libuv
     llarp_tcp_acceptor* const m_Accept;
     llarp_tcp_conn m_Conn;
     llarp::Addr m_Addr;
-    llarp::thread::Queue< WriteBuffer_t > m_WriteQueue;
-    uv_async_t m_WriteNotify;
 
     conn_glue(uv_loop_t* loop, llarp_tcp_connecter* tcp, const sockaddr* addr)
-        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr), m_WriteQueue(32)
+        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr)
     {
       m_Connect.data = this;
       m_Handle.data  = this;
@@ -66,29 +66,24 @@ namespace libuv
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Conn.close       = &ExplicitClose;
-      m_Conn.write       = &ExplicitWrite;
-      m_WriteNotify.data = this;
-      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
+      m_Conn.close = &ExplicitClose;
+      m_Conn.write = &ExplicitWrite;
     }
 
     conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const sockaddr* addr)
-        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr), m_WriteQueue(32)
+        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr)
     {
       m_Connect.data = nullptr;
       m_Handle.data  = this;
       uv_tcp_init(loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(loop, &m_Ticker);
-      m_Accept->close    = &ExplicitCloseAccept;
-      m_Conn.write       = nullptr;
-      m_Conn.closed      = nullptr;
-      m_WriteNotify.data = this;
-      uv_async_init(loop, &m_WriteNotify, &OnShouldWrite);
+      m_Accept->close = &ExplicitCloseAccept;
+      m_Conn.write    = nullptr;
+      m_Conn.closed   = nullptr;
     }
 
-    conn_glue(conn_glue* parent)
-        : m_TCP(nullptr), m_Accept(nullptr), m_WriteQueue(32)
+    conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
     {
       m_Connect.data = nullptr;
       m_Conn.close   = &ExplicitClose;
@@ -97,16 +92,13 @@ namespace libuv
       uv_tcp_init(parent->m_Handle.loop, &m_Handle);
       m_Ticker.data = this;
       uv_check_init(parent->m_Handle.loop, &m_Ticker);
-      m_WriteNotify.data = this;
-      uv_async_init(parent->m_Handle.loop, &m_WriteNotify, &OnShouldWrite);
     }
 
     static void
     OnOutboundConnect(uv_connect_t* c, int status)
     {
       conn_glue* self = static_cast< conn_glue* >(c->data);
-      LoopCall(self->Stream(),
-               std::bind(&conn_glue::HandleConnectResult, self, status));
+      self->HandleConnectResult(status);
       c->data = nullptr;
     }
 
@@ -140,8 +132,7 @@ namespace libuv
       if(nread >= 0)
       {
         auto* conn = static_cast< conn_glue* >(stream->data);
-        LoopCall(stream, std::bind(&conn_glue::Read, conn, buf->base, nread));
-        return;
+        conn->Read(buf->base, nread);
       }
       else if(nread < 0)
       {
@@ -166,7 +157,6 @@ namespace libuv
         const llarp_buffer_t buf(ptr, sz);
         m_Conn.read(&m_Conn, buf);
       }
-      delete[] ptr;
     }
 
     void
@@ -224,40 +214,19 @@ namespace libuv
     {
       if(uv_is_closing((const uv_handle_t*)&m_Handle))
         return -1;
-      if(uv_is_closing((const uv_handle_t*)&m_WriteNotify))
-        return -1;
-      WriteBuffer_t buf(sz);
-      std::copy_n(data, sz, buf.begin());
-      if(m_WriteQueue.pushBack(std::move(buf))
-         == llarp::thread::QueueReturn::Success)
-      {
-        uv_async_send(&m_WriteNotify);
+      WriteEvent* ev = new WriteEvent(sz, data);
+      auto buf       = ev->Buffer();
+      if(uv_write(ev->Request(), Stream(), &buf, 1, &OnWritten) == 0)
         return sz;
-      }
+      delete ev;
       return -1;
-    }
-
-    void
-    FlushWrite()
-    {
-      while(not m_WriteQueue.empty())
-      {
-        auto data      = m_WriteQueue.popFront();
-        WriteEvent* ev = new WriteEvent(std::move(data));
-        auto buf       = ev->Buffer();
-        if(uv_write(ev->Request(), Stream(), &buf, 1, &OnWritten) != 0)
-        {
-          Close();
-          return;
-        }
-      }
     }
 
     static void
     OnClosed(uv_handle_t* h)
     {
       conn_glue* conn = static_cast< conn_glue* >(h->data);
-      LoopCall(h, std::bind(&conn_glue::HandleClosed, conn));
+      conn->HandleClosed();
     }
 
     static void
@@ -297,25 +266,17 @@ namespace libuv
       delete shut;
     }
 
-    static void
-    OnWriteClosed(uv_handle_t* h)
-    {
-      conn_glue* conn = static_cast< conn_glue* >(h->data);
-      auto* shut      = new uv_shutdown_t();
-      shut->data      = conn;
-      uv_shutdown(shut, conn->Stream(), &OnShutdown);
-    }
-
     void
     Close() override
     {
-      if(uv_is_closing((uv_handle_t*)&m_WriteNotify))
+      if(uv_is_closing((uv_handle_t*)Stream()))
         return;
       llarp::LogDebug("close tcp connection");
-      m_WriteQueue.disable();
-      uv_close((uv_handle_t*)&m_WriteNotify, &OnWriteClosed);
       uv_check_stop(&m_Ticker);
       uv_read_stop(Stream());
+      auto* shut = new uv_shutdown_t();
+      shut->data = this;
+      uv_shutdown(shut, Stream(), &OnShutdown);
     }
 
     static void
@@ -324,7 +285,7 @@ namespace libuv
       if(status == 0)
       {
         conn_glue* conn = static_cast< conn_glue* >(stream->data);
-        LoopCall(stream, std::bind(&conn_glue::Accept, conn));
+        conn->Accept();
       }
       else
       {
@@ -333,16 +294,10 @@ namespace libuv
     }
 
     static void
-    OnShouldWrite(uv_async_t* h)
-    {
-      static_cast< conn_glue* >(h->data)->FlushWrite();
-    }
-
-    static void
     OnTick(uv_check_t* t)
     {
       conn_glue* conn = static_cast< conn_glue* >(t->data);
-      LoopCall(t, std::bind(&conn_glue::Tick, conn));
+      conn->Tick();
     }
 
     void
@@ -1006,10 +961,6 @@ namespace libuv
           if(h->data && uv_is_active(h) && h->type != UV_TIMER)
           {
             static_cast< glue* >(h->data)->Close();
-          }
-          else if(h->type == UV_TIMER)
-          {
-            CloseUVTimer((uv_timer_t*)h);
           }
         },
         nullptr);

@@ -19,6 +19,7 @@
 #include <routing/dht_message.hpp>
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
+#include <profiling.hpp>
 
 #include <vector>
 
@@ -671,7 +672,11 @@ namespace llarp
       }
       for(const auto& f : foundRouters)
       {
-        closer.emplace_back(f.as_array());
+        const RouterID r = f.as_array();
+        // discard shit routers
+        if(router->routerProfiling().IsBadForConnect(r))
+          continue;
+        closer.emplace_back(r);
       }
       llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));

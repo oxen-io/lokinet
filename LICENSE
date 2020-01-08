@@ -2,9 +2,9 @@ LokiNET is the reference implementation of LLARP (Low Latency Anonymous
 Routing Protocol) and is licensed under ZLIB license, however the protocol 
 specifications are placed into the public domian using the CC0 License.
 
-Copyright (c) 2018-2019 The Loki Project
-Copyright (c) 2018-2019 Jeff Becker
-Windows NT port and portions Copyright (c) 2018-2019 Rick V.
+Copyright (c) 2018-2020 The Loki Project
+Copyright (c) 2018-2020 Jeff Becker
+Windows NT port and portions Copyright (c) 2018-2020 Rick V.
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages

@@ -77,7 +77,7 @@ BEGIN
             VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
             VALUE "FileVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)
             VALUE "InternalName", "llarpd"
-            VALUE "LegalCopyright", "Copyright ©2018-2019 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
+            VALUE "LegalCopyright", "Copyright ©2018-2020 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
             VALUE "ProductVersion", VERSION_STRING(LLARP_VERSION_TRIPLET, LLARP_RELEASE_MOTTO, VERSIONTAG)

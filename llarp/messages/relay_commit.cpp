@@ -15,6 +15,7 @@
 #include <util/thread/logic.hpp>
 
 #include <functional>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -184,12 +185,17 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
+    const absl::optional< llarp::Addr > fromAddr;
+
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
         , frames(commit->frames)
         , context(ctx)
         , hop(std::make_shared< Hop >())
+        , fromAddr(commit->session->GetRemoteRC().IsPublicRouter()
+                       ? absl::optional< llarp::Addr >{}
+                       : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();
     }
@@ -241,13 +247,29 @@ namespace llarp
     {
       if(self->context->HasTransitHop(self->hop->info))
       {
-        llarp::LogError("duplicate transit hop", self->hop->info);
+        llarp::LogError("duplicate transit hop ", self->hop->info);
         OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                             self->hop->info.downstream, self->hop->pathKey,
                             SendStatus::Congestion);
         self->hop = nullptr;
         return;
       }
+
+      if(self->fromAddr.has_value())
+      {
+        // only do ip limiting from non service nodes
+        if(self->context->CheckPathLimitHitByIP(self->fromAddr.value()))
+        {
+          // we hit a limit so tell it to slow tf down
+          llarp::LogError("client path build hit limit ", self->hop->info);
+          OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
+                              self->hop->info.downstream, self->hop->pathKey,
+                              SendStatus::Congestion);
+          self->hop = nullptr;
+          return;
+        }
+      }
+
       if(!self->context->Router()->ConnectionToRouterAllowed(
              self->hop->info.upstream))
       {
