@@ -1,3 +1,96 @@
+lokinet (0.6.2-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * add bw stats to iwp sessions
+
+  [ Ryan Tharp ]
+  * when STATIC_LINK search for static versions of libraries, delay CURL detection until later
+  * bring in all updates from STATIC_RUNTIME
+  * support LIBCURL_ROOT, disable LIBUV includes
+  * macos release needs the include path
+  * daemon don't override the existing CURL
+
+  [ Jeff Becker ]
+  * dont close timers on closeall
+
+  [ Jason Rhinelander ]
+  * Fix for macos's decrepit old bash 3.x
+
+  [ Jeff Becker ]
+  * limit number of snode sessions client side
+
+  [ Jason Rhinelander ]
+  * Fix for macos's decrepit old bash 3.x
+
+  [ Jeff Becker ]
+  * client side perf improvement
+  * remove call to link manager
+  * Revert "remove call to link manager"
+  * limit client side path builds per ip
+  * add unit test for decaying hash set
+  * propagate error to client
+  * comments
+  * typofix
+  * use optional
+
+  [ Jason Rhinelander ]
+  * Fix for macos's decrepit old bash 3.x
+
+  [ Jeff Becker ]
+  * fix typo
+  * make static constant for decay interval
+
+  [ Rick V ]
+  * IX86 builds should only require SSE3, and this still allows debian release mgr to override the target selection flag
+
+  [ Jeff ]
+  * allow fail of docker build because docker is fail
+  * Update .gitlab-ci.yml
+  * Update .gitlab-ci.yml
+  * Update .gitlab-ci.yml
+  * disable failing gitlab ci
+
+  [ Jeff Becker ]
+  * dont static link for release
+  * enable profiling by default
+  * * clients expore dht faster * use random path when doing dht lookups for .loki
+  * randomize intro order on shift
+  * client side replay filter
+  * reduce cpu use
+  * * only profile as client * only explore churn as relay
+  * fix include file use
+  * typo fix
+  * more intellegent path failure profiling using LRSM
+  * shuffle intros when more than 1 exists
+
+  [ Rick V ]
+  * happy new year
+
+  [ Jeff Becker ]
+  * rename bloomfilter to replayfilter
+  * only ping lokid if a service node
+  * rpc clean up logic, dont fetch list as client AND dont ping lokid as client
+  * remove mutex
+  * relays do profiling and not hand out "shit" routers in explore
+  * make it compile
+  * actually connect to random routers
+  * diversify endpoints
+  * reduce logic calls
+  * don't queue on full write queue
+  * return result
+  * handle write failure
+  * fix up tcp connection logic
+  * if select_random_hop_excluding returns false we should probably break anyways so do that
+  * update readme to include pkg-config
+
+  [ Jeff ]
+  * version bump
+
+  [ Jason Rhinelander ]
+  * Lower compiler settings to -march=x86-64
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 08 Jan 2020 18:46:52 -0400
+
 lokinet (0.6.1-2) sid; urgency=medium
 
   * Fix default testnet router config
