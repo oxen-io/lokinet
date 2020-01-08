@@ -97,6 +97,7 @@ Source: "rootcerts.pem"; DestDir: "{app}"; Flags: ignoreversion
 Source: "7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "inet6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1; Check: not IsTcp6Installed
 Source: "lokinet-qt5-ui.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; MinVersion: 0,6.0;
+Source: "lokinet.ico"; DestDir: "{app}"; Flags: ignoreversion;
 ; Copy the correct tuntap driver for the selected platform
 Source: "tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
 Source: "tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion deleteafterinstall; MinVersion: 0,6.0; Check: not IsTapInstalled
@@ -194,18 +195,18 @@ else
 end;
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; OnlyBelowVersion: 0, 6.0
-Name: "{group}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokicp.exe"; MinVersion: 0, 6.0
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; OnlyBelowVersion: 0, 6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; MinVersion: 0, 6.0; IconFilename: "{app}\lokinet.ico"
 Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; OnlyBelowVersion: 0,6.0
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokicp.exe"; Tasks: desktopicon; MinVersion: 0,6.0
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; OnlyBelowVersion: 0, 6.1
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokicp.exe"; Tasks: quicklaunchicon; MinVersion: 0, 6.1
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; OnlyBelowVersion: 0,6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Tasks: desktopicon; MinVersion: 0,6.0; IconFilename: "{app}\lokinet.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon; OnlyBelowVersion: 0, 6.1; IconFilename: "{app}\lokinet.ico"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\{#MyAppName}"; Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Tasks: quicklaunchicon; MinVersion: 0, 6.1; IconFilename: "{app}\lokinet.ico"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; OnlyBelowVersion: 0, 6.0
-Filename: "{app}\lokinet-qt5-ui\lokicp.exe"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; MinVersion: 0,6.0
+Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; MinVersion: 0,6.0
 ; wait until either one or two of these terminates
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
