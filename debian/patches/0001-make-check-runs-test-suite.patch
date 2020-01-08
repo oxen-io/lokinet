@@ -11,10 +11,10 @@ instead to run the test suite in the build.
  2 files changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d5df651..252bd0c 100644
+index 8f91bef..af8f04d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -268,10 +268,6 @@ add_subdirectory(llarp)
+@@ -269,10 +269,6 @@ add_subdirectory(llarp)
  add_subdirectory(libabyss)
  add_subdirectory(daemon)
  
@@ -26,10 +26,10 @@ index d5df651..252bd0c 100644
    if(WITH_TESTS)
      add_subdirectory(test)
 diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 3aea0d1..e84e3f8 100644
+index 7dea76f..a8e155e 100644
 --- a/test/CMakeLists.txt
 +++ b/test/CMakeLists.txt
-@@ -71,3 +71,6 @@ endif(NOT WIN32)
+@@ -72,3 +72,6 @@ endif(NOT WIN32)
  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
    target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
  endif()

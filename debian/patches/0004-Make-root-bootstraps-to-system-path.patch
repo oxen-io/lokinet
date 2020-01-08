@@ -7,11 +7,11 @@ Subject: Make root bootstraps to system path
  1 file changed, 7 insertions(+)
 
 diff --git a/lokinet-bootstrap b/lokinet-bootstrap
-index b1cf445..4427716 100755
+index 683173b..1536007 100755
 --- a/lokinet-bootstrap
 +++ b/lokinet-bootstrap
-@@ -17,6 +17,10 @@ default_url=(
- )
+@@ -13,6 +13,10 @@ default_mainnet=https://seed.lokinet.org/lokinet.signed
+ default_testnet=https://seed.lokinet.org/testnet.signed
  default_dest="$HOME/.lokinet/bootstrap.signed"
  
 +if [ "$UID" == 0 ]; then
@@ -21,11 +21,11 @@ index b1cf445..4427716 100755
  if [ "$#" -gt 2 ]; then
    helpme=y
  fi
-@@ -26,6 +30,9 @@ then
-   url="${default_url[mainnet]}"
- elif [ -n "${default_url[$1]}" ]; then
-   url="${default_url[$1]}"
-+  if [ "$UID-$1" == "0-testnet" ]; then
+@@ -21,6 +25,9 @@ if [ -z "$1" ] || [ "$1" == "mainnet" ] || [ "$1" == "lokinet" ]; then
+   url="${default_mainnet}"
+ elif [ "$1" == "testnet" ]; then
+   url="${default_testnet}"
++  if [ "$UID" == "0" ]; then
 +    default_dest=/var/lib/lokinet/testnet/bootstrap.signed
 +  fi
  elif [[ "$1" = -* ]]; then
