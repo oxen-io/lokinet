@@ -1009,9 +1009,7 @@ namespace llarp
 
       if(lookups.count(remote) >= MaxConcurrentLookups)
       {
-        LogWarn(Name(), " has too many pending service lookups for ",
-                remote.ToString());
-        return false;
+        path = PickRandomEstablishedPath();
       }
 
       using namespace std::placeholders;
@@ -1263,7 +1261,7 @@ namespace llarp
             }
             m_state->m_PendingTraffic.erase(r);
           },
-          5000);
+          5000, false);
     }
 
     bool
