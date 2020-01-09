@@ -1,5 +1,31 @@
 lokinet (0.6.2-1) sid; urgency=medium
 
+  [ Jason Rhinelander ]
+  * Enable -avx2 -fma for ntru even when compiling without AVX2 support
+  * Modernize non-AVX2 tuning to haswell
+  * Simplify CRYPTO_FLAGS logic, remove RYZEN_HACK
+
+  [ Jeff Becker ]
+  * static link with docs
+  * fix up docs
+  * fixups for review
+  * add hashpinned curl tarball for static build
+  * make it build in normal mode too
+  * i hate curl
+  * use proper cmake call
+
+  [ Jason Rhinelander ]
+  * Fix ntru avx2 compilation when DOWNLOAD_SODIUM
+
+  [ Jeff Becker ]
+  * remove side effect from address detection assert
+  * dont update timestamp of last use using when we get exit only when we use it
+  * mark used on costructed so it doesn't go away
+  * m_LastUse shouldn't be 0 ever now
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
   [ Jeff Becker ]
   * add bw stats to iwp sessions
 
