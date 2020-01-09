@@ -11,10 +11,10 @@ instead to run the test suite in the build.
  2 files changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 8f91bef..af8f04d 100644
+index 2a8a950..3faea51 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -269,10 +269,6 @@ add_subdirectory(llarp)
+@@ -260,10 +260,6 @@ add_subdirectory(llarp)
  add_subdirectory(libabyss)
  add_subdirectory(daemon)
  
