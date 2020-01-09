@@ -1,3 +1,9 @@
+lokinet (0.6.2-2) sid; urgency=medium
+
+  * Enable cpu AVX2 detection on amd64
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 08 Jan 2020 22:18:52 -0400
+
 lokinet (0.6.2-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
