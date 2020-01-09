@@ -48,7 +48,7 @@ namespace llarp
         {
           SwapIntros();
         }
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
       }
       return true;
     }
@@ -300,7 +300,7 @@ namespace llarp
       }
       if(currentIntroSet.HasExpiredIntros(now))
       {
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
       }
       // send control message if we look too quiet
       if(lastGoodSend)
@@ -412,7 +412,7 @@ namespace llarp
       {
         // update introset
         LogInfo(Name(), " updating introset");
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
         return true;
       }
       return false;
@@ -487,7 +487,7 @@ namespace llarp
     OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
-      UpdateIntroSet(true);
+      UpdateIntroSet(false);
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)
