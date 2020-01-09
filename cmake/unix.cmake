@@ -22,7 +22,7 @@ if(NOT IOS AND NOT ANDROID AND NOT WIN32)
     set(CURL_LIBRARIES libcurl)
     set(CURL_FOUND TRUE)
   else()
-    find_package(CURL REQUIRED)
+    include(FindCURL)
   endif()
 endif()
 

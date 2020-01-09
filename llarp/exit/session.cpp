@@ -20,7 +20,7 @@ namespace llarp
         , m_ExitRouter(routerId)
         , m_WritePacket(std::move(writepkt))
         , m_Counter(0)
-        , m_LastUse(0)
+        , m_LastUse(r->Now())
         , m_BundleRC(bundleRC)
     {
       CryptoManager::instance()->identity_keygen(m_ExitIdentity);
@@ -127,7 +127,6 @@ namespace llarp
     bool
     BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
     {
-      m_LastUse = m_router->Now();
       if(b == 0)
       {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
@@ -202,11 +201,10 @@ namespace llarp
         llarp::net::IPPacket pkt;
         if(!pkt.Load(buf))
           return false;
-        m_Downstream.emplace(counter, pkt);
         m_LastUse = m_router->Now();
+        m_Downstream.emplace(counter, pkt);
         return true;
       }
-
       return false;
     }
 
@@ -255,7 +253,7 @@ namespace llarp
     bool
     BaseSession::IsExpired(llarp_time_t now) const
     {
-      return m_LastUse && now > m_LastUse && now - m_LastUse > LifeSpan;
+      return now > m_LastUse && now - m_LastUse > LifeSpan;
     }
 
     bool
@@ -282,8 +280,7 @@ namespace llarp
             if(path)
             {
               msg.S = path->NextSeqNo();
-              if(path->SendRoutingMessage(msg, m_router))
-                m_LastUse = now;
+              path->SendRoutingMessage(msg, m_router);
             }
             queue.pop_front();
 

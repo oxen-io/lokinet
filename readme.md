@@ -93,6 +93,17 @@ alternatively make a debian package with:
 
 this puts the built packages in `../`
 
+
+#### Static Linux
+
+static native optimized:
+
+    $ make static STATIC_LINK=ON
+
+cross compile fully static armhf (rpi 2 and up)
+
+    $ make static STATIC_LINK=ON DOWNLOAD_SODIUM=ON TOOLCHAIN=contrib/cross/armhf.toolchain.cmake
+
 ### MacOS
 
 build:
