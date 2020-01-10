@@ -196,8 +196,8 @@ namespace llarp
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
           currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
 
-      ex->hook =
-          std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
+      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(),
+                           std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
@@ -236,7 +236,8 @@ namespace llarp
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            m_Endpoint, util::memFn(&OutboundContext::OnIntroSetUpdate, this),
+            m_Endpoint,
+            util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
             addr, m_Endpoint->GenTXID());
 
         updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
