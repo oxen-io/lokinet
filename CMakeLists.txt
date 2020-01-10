@@ -8,6 +8,15 @@ endif()
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX)
 
+set(LLARP_VERSION_MAJOR 0)
+set(LLARP_VERSION_MINOR 6)
+set(LLARP_VERSION_PATCH 2)
+
+add_definitions(-DLLARP_VERSION_MAJOR=${LLARP_VERSION_MAJOR})
+add_definitions(-DLLARP_VERSION_MINOR=${LLARP_VERSION_MINOR})
+add_definitions(-DLLARP_VERSION_PATCH=${LLARP_VERSION_PATCH})
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -298,3 +307,5 @@ if (NOT SHADOW)
     add_subdirectory(jni)
   endif(ANDROID)
 endif()
+
+include(cmake/installer.cmake)
