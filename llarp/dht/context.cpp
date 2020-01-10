@@ -598,7 +598,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler));
+          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
     }
 
     void
@@ -611,7 +611,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, handler));
+          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
     }
 
     void
