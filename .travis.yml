@@ -127,6 +127,9 @@ matrix:
     os: linux
     env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
   allow_failures:
+  - name: "windows installer"
+    os: linux
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
   - name: "make windows docker image"
     os: linux
     dist: xenial
