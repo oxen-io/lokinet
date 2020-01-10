@@ -7,5 +7,9 @@ set(CPACK_PACKAGE_VERSION_PATCH "${LLARP_VERSION_PATCH}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "lokinet")
 
+if(WIN32)
+  include(cmake/win32_installer_deps.cmake)
+endif()
+
 # This must always be last!
 include(CPack)
