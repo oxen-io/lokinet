@@ -279,11 +279,11 @@ windows-debug: windows-debug-configure
 
 windows-release-configure: $(LIBUV_PREFIX)
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD_WINDOWS) -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT=$(LIBUV_PREFIX)
+	$(CONFIG_CMD_WINDOWS) -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake' -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT=$(LIBUV_PREFIX) -DWITH_TESTS=OFF
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp '$(BUILD_ROOT)/daemon/lokinet.exe' '$(REPO)/lokinet.exe'
+	cd '$(BUILD_ROOT)' && cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
 
 windows: windows-debug
 
