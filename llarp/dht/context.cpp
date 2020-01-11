@@ -598,7 +598,8 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
+          new ServiceAddressLookup(asker, addr, this, R, handler),
+          ((R + 1) * 2000));
     }
 
     void

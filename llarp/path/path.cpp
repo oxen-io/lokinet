@@ -191,7 +191,7 @@ namespace llarp
         if(failedAt.has_value())
         {
           LogWarn(Name(), " build failed at ", failedAt.value());
-          r->routerProfiling().MarkHopFail(failedAt.value());
+          r->routerProfiling().MarkHopFail(failedAt.value(), hops.size());
         }
         else
           r->routerProfiling().MarkPathFail(this);
