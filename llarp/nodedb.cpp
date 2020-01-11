@@ -14,6 +14,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include <service/address.hpp>
+#include <dht/kademlia.hpp>
+
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
@@ -311,6 +314,25 @@ llarp_nodedb::RemoveStaleRCs(const std::set< llarp::RouterID > &keep,
   RemoveIf([&removeStale](const llarp::RouterContact &rc) -> bool {
     return removeStale.count(rc.pubkey) > 0;
   });
+}
+
+llarp::RouterContact
+llarp_nodedb::FindClosestToAddress(const llarp::service::Address &addr)
+{
+  llarp::RouterContact rc;
+  const llarp::dht::XorMetric compare(llarp::dht::Key_t{addr.as_array()});
+  visit([&rc, compare](const auto &otherRC) -> bool {
+    if(rc.pubkey.IsZero())
+    {
+      rc = otherRC;
+      return true;
+    }
+    if(compare(llarp::dht::Key_t{otherRC.pubkey.as_array()},
+               llarp::dht::Key_t{rc.pubkey.as_array()}))
+      rc = otherRC;
+    return true;
+  });
+  return rc;
 }
 
 /*

@@ -181,10 +181,10 @@ namespace llarp
   }
 
   void
-  Profiling::MarkHopFail(const RouterID& r)
+  Profiling::MarkHopFail(const RouterID& r, size_t hoplen)
   {
     lock_t lock(&m_ProfilesMutex);
-    m_Profiles[r].pathFailCount += 1;
+    m_Profiles[r].pathFailCount += hoplen;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
 
