@@ -985,6 +985,16 @@ namespace llarp
         path = PickRandomEstablishedPath();
       else
         path = GetEstablishedPathClosestTo(remote.ToRouter());
+      const llarp_time_t now = m_router->Now();
+
+      // let's try building to the absolute closest we can next time around
+      if(not BuildCooldownHit(now))
+      {
+        const auto rc = m_router->nodedb()->FindClosestToAddress(remote);
+        if(GetPathByRouter(rc.pubkey) == nullptr)
+          BuildOneAlignedTo(rc.pubkey);
+      }
+
       if(!path)
       {
         LogWarn("No outbound path for lookup yet");

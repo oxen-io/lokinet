@@ -23,7 +23,10 @@ struct llarp_threadpool;
 namespace llarp
 {
   class Logic;
-
+  namespace service
+  {
+    struct Address;
+  }
   namespace thread
   {
     class ThreadPool;
@@ -153,6 +156,10 @@ struct llarp_nodedb
   bool
   select_random_hop_excluding(llarp::RouterContact &result,
                               const std::set< llarp::RouterID > &exclude)
+      LOCKS_EXCLUDED(access);
+
+  llarp::RouterContact
+  FindClosestToAddress(const llarp::service::Address &addr)
       LOCKS_EXCLUDED(access);
 
   static bool
