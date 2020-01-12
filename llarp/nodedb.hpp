@@ -87,9 +87,10 @@ struct llarp_nodedb
   std::string
   getRCFilePath(const llarp::RouterID &pubkey) const;
 
-  /// insert and write to disk
+  /// insert and optionally write to disk
   bool
-  Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
+  Insert(const llarp::RouterContact &rc, bool writeToDisk = false)
+      LOCKS_EXCLUDED(access);
 
   /// unconditional insert and write to disk in background
   /// updates the inserted time of the entry
