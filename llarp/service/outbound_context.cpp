@@ -180,7 +180,7 @@ namespace llarp
       if(path == nullptr)
       {
         // try parent as fallback
-        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
+        path = m_Endpoint->GetNewestPathByRouter(remoteIntro.router);
         if(path == nullptr)
         {
           if(!BuildCooldownHit(Now()))
@@ -447,9 +447,13 @@ namespace llarp
         {
           if(intro.expiresAt > m_NextIntro.expiresAt)
           {
-            success     = true;
-            m_NextIntro = intro;
-            return true;
+            if(m_NextIntro.expiresAt > 0
+               || m_Endpoint->GetPathByRouter(m_NextIntro.router) != nullptr)
+            {
+              success     = true;
+              m_NextIntro = intro;
+              return true;
+            }
           }
         }
       }
