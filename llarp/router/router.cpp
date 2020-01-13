@@ -690,6 +690,15 @@ namespace llarp
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
+    else
+    {
+      // remove shit routers
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(IsBootstrapNode(rc.pubkey))
+          return false;
+        return _routerProfiling.IsBadForPath(rc.pubkey);
+      });
+    }
 
     _linkManager.CheckPersistingSessions(now);
 
