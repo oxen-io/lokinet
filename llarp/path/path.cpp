@@ -167,14 +167,7 @@ namespace llarp
            != LR_StatusRecord::SUCCESS)
         {
           // failed at next hop
-          if(index + 1 < hops.size())
-          {
-            failedAt = hops[index + 1].rc.pubkey;
-          }
-          else
-          {
-            failedAt = hops[index].rc.pubkey;
-          }
+          failedAt = hops[index].upstream;
           break;
         }
         ++index;
@@ -190,7 +183,8 @@ namespace llarp
       {
         if(failedAt.has_value())
         {
-          LogWarn(Name(), " build failed at ", failedAt.value());
+          LogWarn(Name(), " build failed at ", failedAt.value(),
+                  " status=", currentStatus);
           r->routerProfiling().MarkHopFail(failedAt.value(), hops.size());
         }
         else

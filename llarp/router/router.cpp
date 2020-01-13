@@ -696,7 +696,7 @@ namespace llarp
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
         if(IsBootstrapNode(rc.pubkey))
           return false;
-        return _routerProfiling.IsBadForPath(rc.pubkey);
+        return _routerProfiling.IsBadForPath(rc.pubkey, 2);
       });
     }
 
