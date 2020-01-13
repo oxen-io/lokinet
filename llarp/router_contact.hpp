@@ -170,7 +170,7 @@ namespace llarp
     SetNick(string_view nick);
 
     bool
-    Verify(llarp_time_t now, bool allowExpired = true) const;
+    Verify(llarp_time_t now, bool allowExpired = false) const;
 
     bool
     Sign(const llarp::SecretKey &secret);
