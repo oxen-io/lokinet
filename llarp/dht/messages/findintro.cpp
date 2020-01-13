@@ -122,7 +122,7 @@ namespace llarp
         Key_t peer(rc.pubkey.data());
         if(peer == us)
         {
-          if(not dht->Nodes()->FindClosestExcluding(target, peer, excluding))
+          if(not dht.Nodes()->FindCloseExcluding(target, peer, exclude))
           {
             // we can not find second closest router
             if(relayed)
