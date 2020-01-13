@@ -2,6 +2,8 @@
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
 #include <routing/message.hpp>
+#include <router/abstractrouter.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -115,29 +117,36 @@ namespace llarp
         Key_t us     = dht.OurKey();
         Key_t target = S.ToKey();
         // we are recursive
-        if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
+        // use nodedb for closest router
+        const auto rc = dht.GetRouter()->nodedb()->FindClosestToAddress(S);
+        Key_t peer(rc.pubkey.data());
+        if(peer == us)
         {
-          if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, peer);
-          else
+          if(not dht->Nodes()->FindClosestExcluding(target, peer, excluding))
           {
-            if((us ^ target) < (peer ^ target))
-            {
-              // we are not closer than our peer to the target so don't
-              // recurse farther
-              replies.emplace_back(new GotIntroMessage({}, T));
-              return true;
-            }
-            if(R > 0)
-              dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
-            else
-              dht.LookupIntroSetIterative(S, From, T, peer);
+            // we can not find second closest router
+            if(relayed)
+              return false;
+            replies.emplace_back(new GotIntroMessage({}, T));
+            return true;
           }
-          return true;
         }
-
-        // no more closer peers
-        replies.emplace_back(new GotIntroMessage({}, T));
+        if(relayed)
+          dht.LookupIntroSetForPath(S, T, pathID, peer);
+        else
+        {
+          if((us ^ target) < (peer ^ target))
+          {
+            // we are not closer than our peer to the target so don't
+            // recurse farther
+            replies.emplace_back(new GotIntroMessage({}, T));
+            return true;
+          }
+          if(R > 0)
+            dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
+          else
+            dht.LookupIntroSetIterative(S, From, T, peer);
+        }
         return true;
       }
 
