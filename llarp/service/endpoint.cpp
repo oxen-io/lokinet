@@ -1007,10 +1007,12 @@ namespace llarp
       auto& sessions = m_state->m_RemoteSessions;
 
       {
-        auto itr = sessions.find(remote);
-        if(itr != sessions.end())
+        auto range = sessions.equal_range(remote);
+        auto itr   = range.first;
+        while(itr != range.second)
         {
           hook(itr->first, itr->second.get());
+          ++itr;
           return true;
         }
       }
