@@ -37,7 +37,6 @@ def main():
         exe = 'valgrind {}'.format(args.bin)
     else:
         exe = args.bin
-        
     basedir = os.path.abspath(args.dir)
 
     for nodeid in range(args.svc):
@@ -108,7 +107,7 @@ def main():
         fp = os.path.join(d, 'client.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            for n in range(args.connect):
+            for n in [0]:
                 otherID = (n + nodeid) % args.svc
                 f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
         with open(hiddenservice, 'w') as f:

@@ -42,6 +42,7 @@ namespace llarp
     void
     RecursiveRouterLookup::DoNextRequest(const Key_t &peer)
     {
+      peersAsked.emplace(peer);
       parent->LookupRouterRecursive(target, whoasked.node, whoasked.txid, peer,
                                     resultHandler);
     }
@@ -49,6 +50,7 @@ namespace llarp
     void
     RecursiveRouterLookup::Start(const TXOwner &peer)
     {
+      peersAsked.emplace(peer.node);
       parent->DHTSendTo(peer.node.as_array(),
                         new FindRouterMessage(peer.txid, target));
     }
