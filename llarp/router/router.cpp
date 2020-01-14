@@ -727,11 +727,16 @@ namespace llarp
 
     if(rpcCaller)
       rpcCaller->Tick(now);
-    // save profiles async
+    // save profiles
     if(routerProfiling().ShouldSave(now))
     {
       diskworker()->addJob(
           [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+    }
+    // save nodedb
+    if(nodedb()->ShouldSaveToDisk(now))
+    {
+      nodedb()->AsyncFlushToDisk();
     }
 
     // get connected peers

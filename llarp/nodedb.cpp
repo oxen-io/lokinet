@@ -214,6 +214,7 @@ llarp_nodedb::Load(const fs::path &path)
     if(l > 0)
       loaded += l;
   }
+  m_NextSaveToDisk = llarp::time_now_ms() + m_SaveInterval;
   return loaded;
 }
 
@@ -243,10 +244,19 @@ llarp_nodedb::SaveAll()
   }
 }
 
+bool
+llarp_nodedb::ShouldSaveToDisk(llarp_time_t now) const
+{
+  if(now == 0)
+    now = llarp::time_now_ms();
+  return m_NextSaveToDisk > 0 && m_NextSaveToDisk <= now;
+}
+
 void
 llarp_nodedb::AsyncFlushToDisk()
 {
   disk->addJob(std::bind(&llarp_nodedb::SaveAll, this));
+  m_NextSaveToDisk = llarp::time_now_ms() + m_SaveInterval;
 }
 
 ssize_t

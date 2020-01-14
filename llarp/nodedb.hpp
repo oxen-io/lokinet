@@ -52,6 +52,10 @@ struct llarp_nodedb
 
   std::shared_ptr< llarp::thread::ThreadPool > disk;
   mutable llarp::util::Mutex access;  // protects entries
+  /// time for next save to disk event, 0 if never happened
+  llarp_time_t m_NextSaveToDisk = 0;
+  /// how often to save to disk
+  const llarp_time_t m_SaveInterval = 60 * 5 * 1000;
 
   struct NetDBEntry
   {
@@ -66,6 +70,10 @@ struct llarp_nodedb
 
   NetDBMap_t entries GUARDED_BY(access);
   fs::path nodePath;
+
+  /// return true if we should save our nodedb to disk
+  bool
+  ShouldSaveToDisk(llarp_time_t now = 0) const;
 
   bool
   Remove(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
