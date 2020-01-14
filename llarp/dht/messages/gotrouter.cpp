@@ -116,8 +116,13 @@ namespace llarp
           dht.pendingRouterLookups().Found(owner, R[0].pubkey, R);
         return true;
       }
-      llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
-      return false;
+      // store if valid
+      for(const auto &rc : R)
+      {
+        if(not dht.GetRouter().rcLookupHandler().CheckRC(rc))
+          return false;
+      }
+      return true;
     }
   }  // namespace dht
 }  // namespace llarp
