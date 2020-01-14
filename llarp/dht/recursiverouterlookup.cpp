@@ -3,6 +3,10 @@
 #include <dht/context.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotrouter.hpp>
+
+#include <router/abstractrouter.hpp>
+#include <router/i_rc_lookup_handler.hpp>
+
 #include <utility>
 
 namespace llarp
@@ -63,7 +67,8 @@ namespace llarp
         RouterContact found;
         for(const auto &rc : valuesFound)
         {
-          if(found.OtherIsNewer(rc))
+          if(found.OtherIsNewer(rc)
+             && parent->GetRouter()->rcLookupHandler().CheckRC(rc))
             found = rc;
         }
         valuesFound.clear();
@@ -79,9 +84,6 @@ namespace llarp
             whoasked.node.as_array(),
             new GotRouterMessage({}, whoasked.txid, valuesFound, false), false);
       }
-      // store this in our nodedb for caching
-      if(valuesFound.size() > 0)
-        parent->StoreRC(valuesFound[0]);
     }
   }  // namespace dht
 }  // namespace llarp
