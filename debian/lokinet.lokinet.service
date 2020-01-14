@@ -1,13 +1,15 @@
 [Unit]
 Description=LokiNET: Anonymous Network layer thingydoo, client
+AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 Wants=network-online.target
 After=network-online.target
-AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 
 [Service]
 User=_lokinet
 SyslogIdentifier=lokinet
 WorkingDirectory=/var/lib/lokinet
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
 ExecStartPost=+/usr/sbin/lokinet-resolvconf add /var/lib/lokinet/lokinet.ini
 ExecStopPost=+/usr/sbin/lokinet-resolvconf remove /var/lib/lokinet/lokinet.ini

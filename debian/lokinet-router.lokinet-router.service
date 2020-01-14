@@ -1,5 +1,6 @@
 [Unit]
 Description=LokiNET: Anonymous Network layer thingydoo, router
+AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
 Wants=network-online.target
 After=network-online.target
 
@@ -7,7 +8,8 @@ After=network-online.target
 User=_lokinet
 SyslogIdentifier=lokinet-router
 WorkingDirectory=/var/lib/lokinet/router
-AssertFileNotEmpty=/var/lib/lokinet/bootstrap.signed
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 ExecStart=/usr/bin/lokinet /var/lib/lokinet/router/lokinet.ini
 Environment=LOKINET_NETID=lokinet
 Restart=always

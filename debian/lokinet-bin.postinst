@@ -18,15 +18,17 @@ if [ "$1" = configure ]; then
         adduser --force-badname --quiet _lokinet _loki
     fi
 
-    if ! dpkg-statoverride --list /usr/bin/lokinet >/dev/null 2>&1; then
-        dpkg-statoverride --update --add root _loki 750 /usr/bin/lokinet
+    # Before 0.6.2-3 the deb's setcap'ed the binary and used restrictive permissions and ownership
+    # to protect invocation; from 0.6.2-3 onwards we do the capabilities via the systemd service
+    # file, so if we are upgrading from an older version remove the stat override.  (Otherwise do
+    # nothing in case the local admin does a statoverride).
+    if dpkg --compare-versions "$2" lt '0.6.2-3~'; then
+        if dpkg-statoverride --list /usr/bin/lokinet >/dev/null 2>&1; then
+            dpkg-statoverride --remove /usr/bin/lokinet
+            chown root:root /usr/bin/lokinet
+            chmod 755 /usr/bin/lokinet
+        fi
     fi
-
-    if ! setcap cap_net_admin,cap_net_bind_service=+eip /usr/bin/lokinet; then
-        echo "failed to setcap lokinet" >&2
-        exit 1
-    fi
-
 fi
 
 #DEBHELPER#
