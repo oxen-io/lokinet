@@ -4,6 +4,7 @@
 #include <memory>
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <router/i_rc_lookup_handler.hpp>
 
 namespace llarp
 {
@@ -119,7 +120,7 @@ namespace llarp
       // store if valid
       for(const auto &rc : R)
       {
-        if(not dht.GetRouter().rcLookupHandler().CheckRC(rc))
+        if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;
       }
       return true;
