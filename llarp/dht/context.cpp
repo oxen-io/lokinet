@@ -20,7 +20,7 @@
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
-
+#include <router/i_rc_lookup_handler.hpp>
 #include <vector>
 
 namespace llarp
@@ -41,7 +41,7 @@ namespace llarp
       void
       StoreRC(const RouterContact rc) const override
       {
-        GetRouter()->nodedb()->InsertAsync(rc);
+        GetRouter()->rcLookupHandler().CheckRC(rc);
       }
 
       /// on behalf of whoasked request introset for target from dht router with
