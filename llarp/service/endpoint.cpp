@@ -733,11 +733,11 @@ namespace llarp
     {
       if(msg->R.size())
       {
-        auto* job         = new llarp_async_verify_rc;
-        job->nodedb       = Router()->nodedb();
-        job->cryptoworker = Router()->threadpool();
-        job->diskworker   = Router()->diskworker();
-        job->logic        = Router()->logic();
+        llarp_async_verify_rc* job = new llarp_async_verify_rc();
+        job->nodedb                = Router()->nodedb();
+        job->cryptoworker          = Router()->threadpool();
+        job->diskworker            = Router()->diskworker();
+        job->logic                 = Router()->logic();
         job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
                               std::placeholders::_1);
         job->rc   = msg->R[0];

@@ -43,7 +43,11 @@ namespace llarp
             found = rc;
         }
         valuesFound.clear();
-        valuesFound.emplace_back(found);
+        if(not found.pubkey.IsZero())
+        {
+          valuesFound.resize(1);
+          valuesFound[0] = found;
+        }
       }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,

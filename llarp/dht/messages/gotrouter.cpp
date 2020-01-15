@@ -113,6 +113,8 @@ namespace llarp
         LogDebug("got ", R.size(), " results in GRM for lookup");
         if(R.size() == 0)
           dht.pendingRouterLookups().NotFound(owner, K);
+        else if(R[0].pubkey.IsZero())
+          return false;
         else
           dht.pendingRouterLookups().Found(owner, R[0].pubkey, R);
         return true;
