@@ -679,7 +679,7 @@ namespace llarp
         LogError("Failed to update our RC");
     }
 
-    if(isSvcNode)
+    if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
     {
       // remove RCs for nodes that are no longer allowed by network policy
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
