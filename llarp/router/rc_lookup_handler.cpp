@@ -49,6 +49,13 @@ namespace llarp
             " routers");
   }
 
+  bool
+  RCLookupHandler::HaveReceivedWhitelist()
+  {
+    util::Lock l(&_mutex);
+    return whitelistRouters.empty();
+  }
+
   void
   RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback,
                          bool forceLookup)
