@@ -149,46 +149,17 @@ llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
   return false;
 }
 
-/// insert and write to disk
+/// insert
 bool
-llarp_nodedb::Insert(const llarp::RouterContact &rc, bool writeToDisk)
+llarp_nodedb::Insert(const llarp::RouterContact &rc)
 {
-  if(writeToDisk)
-  {
-    std::array< byte_t, MAX_RC_SIZE > tmp;
-    llarp_buffer_t buf(tmp);
-
-    if(!rc.BEncode(&buf))
-      return false;
-
-    buf.sz        = buf.cur - buf.base;
-    auto filepath = getRCFilePath(rc.pubkey);
-    llarp::LogDebug("saving RC.pubkey ", filepath);
-    auto optional_ofs = llarp::util::OpenFileStream< std::ofstream >(
-        filepath,
-        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-    if(!optional_ofs)
-      return false;
-    auto &ofs = optional_ofs.value();
-    ofs.write((char *)buf.base, buf.sz);
-    ofs.flush();
-    ofs.close();
-    if(!ofs)
-    {
-      llarp::LogError("Failed to write: ", filepath);
-      return false;
-    }
-    llarp::LogDebug("saved RC.pubkey: ", filepath);
-  }
-  {
-    llarp::util::Lock lock(&access);
-    auto itr = entries.find(rc.pubkey.as_array());
-    if(itr != entries.end())
-      entries.erase(itr);
-    entries.emplace(rc.pubkey.as_array(), rc);
-    LogDebug("Added or updated RC for ", llarp::RouterID(rc.pubkey),
-             " to nodedb.  Current nodedb count is: ", entries.size());
-  }
+  llarp::util::Lock lock(&access);
+  auto itr = entries.find(rc.pubkey.as_array());
+  if(itr != entries.end())
+    entries.erase(itr);
+  entries.emplace(rc.pubkey.as_array(), rc);
+  LogDebug("Added or updated RC for ", llarp::RouterID(rc.pubkey),
+           " to nodedb.  Current nodedb count is: ", entries.size());
   return true;
 }
 
