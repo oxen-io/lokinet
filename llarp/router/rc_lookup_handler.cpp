@@ -248,7 +248,7 @@ namespace llarp
 
     if(useWhitelist)
     {
-      static constexpr size_t LookupPerTick = 25;
+      static constexpr size_t LookupPerTick = 5;
 
       std::vector< RouterID > lookupRouters;
       lookupRouters.reserve(LookupPerTick);
