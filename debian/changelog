@@ -1,3 +1,43 @@
+lokinet (0.6.3-1) sid; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Enable cpu detection on amd64
+
+  [ Jeff Becker ]
+  * explore faster
+  * try doing lookup from close router, randomize when above lookup threshold
+  * always lookup introset from nearest router
+  * use shared_from_this
+  * dht timeout tweak
+  * variable lookup timeout on participants
+  * reduce disk io
+  * disable iterative lookup
+  * testnet patch
+  * periodic nodedb flush
+  * store RCs if valid
+  * make it compile
+  * check with rc handler before insert
+  * contrib/testnet: fix up testnet config generator to make super centralized topology llarp/context.cpp, llarp/nodedb.{h,c}pp: load netdb AFTER whitelist llarp/router/router.cpp: explore always llarp/router/{i,}rc_lookup_handler.{h,c}pp explore with whitelist, update routers with lookup before stale
+  * address feedback from tom
+  * use copy not move
+  * log invalid signatures
+  * check for zero'd rc
+
+  [ Stephen Shelton ]
+  * Randomize routers to explore in ExploreNetwork()
+  * Add warning when we found a null RC for a DHT lookup
+  * Don't respect whitelist when we haven't received it yet
+  * Make format (mutter mutter)
+
+  [ Jason Rhinelander ]
+  * Fix json api bind IP
+
+  [ Stephen Shelton ]
+  * Remove dead code in llarp_nodedb::Insert()
+  * Bump version (0.6.3)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 16 Jan 2020 01:25:31 -0400
+
 lokinet (0.6.2-3) sid; urgency=medium
 
   * Use systemd service capabilities instead of setcap
