@@ -1,6 +1,6 @@
 #include <libntrup/ntru.h>
 
-#if __AVX2__
+#ifdef __x86_64__
 #include <cpuid.h>
 #include <array>
 

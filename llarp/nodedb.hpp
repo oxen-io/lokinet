@@ -40,8 +40,10 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker)
-      : disk(std::move(diskworker))
+  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker,
+                        const std::string rootdir)
+      : disk(std::move(diskworker)), nodePath(rootdir)
+
   {
   }
 
@@ -52,6 +54,10 @@ struct llarp_nodedb
 
   std::shared_ptr< llarp::thread::ThreadPool > disk;
   mutable llarp::util::Mutex access;  // protects entries
+  /// time for next save to disk event, 0 if never happened
+  llarp_time_t m_NextSaveToDisk = 0;
+  /// how often to save to disk
+  const llarp_time_t m_SaveInterval = 60 * 5 * 1000;
 
   struct NetDBEntry
   {
@@ -66,6 +72,10 @@ struct llarp_nodedb
 
   NetDBMap_t entries GUARDED_BY(access);
   fs::path nodePath;
+
+  /// return true if we should save our nodedb to disk
+  bool
+  ShouldSaveToDisk(llarp_time_t now = 0) const;
 
   bool
   Remove(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
@@ -87,12 +97,12 @@ struct llarp_nodedb
   std::string
   getRCFilePath(const llarp::RouterID &pubkey) const;
 
-  /// insert and write to disk
+  /// insert without writing to disk
   bool
   Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
 
-  /// unconditional insert and write to disk in background
-  /// updates the inserted time of the entry
+  /// invokes Insert() asynchronously with an optional completion
+  /// callback
   void
   InsertAsync(llarp::RouterContact rc,
               std::shared_ptr< llarp::Logic > l             = nullptr,
@@ -127,7 +137,8 @@ struct llarp_nodedb
   set_dir(const char *dir);
 
   ssize_t
-  load_dir(const char *dir);
+  LoadAll();
+
   ssize_t
   store_dir(const char *dir);
 

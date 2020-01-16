@@ -18,8 +18,9 @@ namespace llarp
       {
       }
       GotRouterMessage(const Key_t& from, uint64_t id,
-                       std::vector< RouterContact > results, bool tunneled)
-          : IMessage(from), R(std::move(results)), txid(id), relayed(tunneled)
+                       const std::vector< RouterContact >& results,
+                       bool tunneled)
+          : IMessage(from), R(results), txid(id), relayed(tunneled)
       {
       }
 

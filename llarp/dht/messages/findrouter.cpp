@@ -167,7 +167,12 @@ namespace llarp
         return false;
       }
       RouterContact found;
-      const Key_t k{K};
+      if(K.IsZero())
+      {
+        llarp::LogError("invalid FRM from ", From, "K is zero");
+        return false;
+      }
+      const Key_t k(K);
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
       if(!dht.GetRouter()->ConnectionToRouterAllowed(K))

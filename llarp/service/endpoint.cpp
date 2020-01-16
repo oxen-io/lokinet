@@ -733,11 +733,11 @@ namespace llarp
     {
       if(msg->R.size())
       {
-        auto* job         = new llarp_async_verify_rc;
-        job->nodedb       = Router()->nodedb();
-        job->cryptoworker = Router()->threadpool();
-        job->diskworker   = Router()->diskworker();
-        job->logic        = Router()->logic();
+        llarp_async_verify_rc* job = new llarp_async_verify_rc();
+        job->nodedb                = Router()->nodedb();
+        job->cryptoworker          = Router()->threadpool();
+        job->diskworker            = Router()->diskworker();
+        job->logic                 = Router()->logic();
         job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
                               std::placeholders::_1);
         job->rc   = msg->R[0];
@@ -1009,9 +1009,7 @@ namespace llarp
 
       if(lookups.count(remote) >= MaxConcurrentLookups)
       {
-        LogWarn(Name(), " has too many pending service lookups for ",
-                remote.ToString());
-        return false;
+        path = PickRandomEstablishedPath();
       }
 
       using namespace std::placeholders;
@@ -1263,7 +1261,7 @@ namespace llarp
             }
             m_state->m_PendingTraffic.erase(r);
           },
-          5000);
+          5000, false);
     }
 
     bool

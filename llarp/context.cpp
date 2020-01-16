@@ -183,16 +183,6 @@ __        ___    ____  _   _ ___ _   _  ____
       llarp::LogError("nodedb_dir is incorrect");
       return 0;
     }
-    // llarp::LogInfo("nodedb_dir [", nodedb_dir, "] configured!");
-    ssize_t loaded = nodedb->load_dir(nodedb_dir.c_str());
-    llarp::LogInfo("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir,
-                   "]");
-    if(loaded < 0)
-    {
-      // shouldn't be possible
-      llarp::LogError("nodedb_dir directory doesn't exist");
-      return 0;
-    }
     return 1;
   }
 
@@ -211,7 +201,7 @@ __        ___    ____  _   _ ___ _   _  ____
 
     router = std::make_unique< Router >(worker, mainloop, logic);
 
-    nodedb = std::make_unique< llarp_nodedb >(router->diskworker());
+    nodedb = std::make_unique< llarp_nodedb >(router->diskworker(), nodedb_dir);
 
     if(!router->Configure(config.get(), nodedb.get()))
     {

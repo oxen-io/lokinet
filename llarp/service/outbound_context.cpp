@@ -48,7 +48,7 @@ namespace llarp
         {
           SwapIntros();
         }
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
       }
       return true;
     }
@@ -196,8 +196,8 @@ namespace llarp
           m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
           currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
 
-      ex->hook =
-          std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
+      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(),
+                           std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
@@ -236,7 +236,8 @@ namespace llarp
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            m_Endpoint, util::memFn(&OutboundContext::OnIntroSetUpdate, this),
+            m_Endpoint,
+            util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
             addr, m_Endpoint->GenTXID());
 
         updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
@@ -300,7 +301,7 @@ namespace llarp
       }
       if(currentIntroSet.HasExpiredIntros(now))
       {
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
       }
       // send control message if we look too quiet
       if(lastGoodSend)
@@ -412,7 +413,7 @@ namespace llarp
       {
         // update introset
         LogInfo(Name(), " updating introset");
-        UpdateIntroSet(true);
+        UpdateIntroSet(false);
         return true;
       }
       return false;
@@ -487,7 +488,7 @@ namespace llarp
     OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
-      UpdateIntroSet(true);
+      UpdateIntroSet(false);
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)
