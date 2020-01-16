@@ -14,6 +14,7 @@
 
 #include <iterator>
 #include <functional>
+#include <random>
 
 namespace llarp
 {
@@ -240,20 +241,29 @@ namespace llarp
 
     if(useWhitelist)
     {
-      std::set< RouterID > lookupRouters;
+      static constexpr size_t LookupPerTick = 25;
+
+      std::vector< RouterID > lookupRouters;
+      lookupRouters.reserve(LookupPerTick);
+
       {
-        static constexpr size_t LookupPerTick = 25;
         // if we are using a whitelist look up a few routers we don't have
         util::Lock l(&_mutex);
         for(const auto &r : whitelistRouters)
         {
           if(_nodedb->Has(r))
             continue;
-          lookupRouters.emplace(r);
-          if(lookupRouters.size() >= LookupPerTick)
-            break;
+          lookupRouters.emplace_back(r);
         }
       }
+
+      if (lookupRouters.size() > LookupPerTick)
+      {
+        static std::mt19937_64 rng{std::random_device{}()};
+        std::shuffle(lookupRouters.begin(), lookupRouters.end(), rng);
+        lookupRouters.resize(LookupPerTick);
+      }
+
       for(const auto &r : lookupRouters)
         GetRC(r, nullptr, true);
       return;
