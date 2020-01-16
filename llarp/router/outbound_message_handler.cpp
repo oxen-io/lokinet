@@ -226,6 +226,10 @@ namespace llarp
                                                Message &&msg,
                                                const PathID_t &pathid)
   {
+    if(outboundQueue.full())
+    {
+      LogicCall(_logic, [self = this]() { self->Tick(); });
+    }
     MessageQueueEntry entry;
     entry.message      = std::move(msg);
     auto callback_copy = entry.message.second;

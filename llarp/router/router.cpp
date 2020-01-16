@@ -706,7 +706,10 @@ namespace llarp
       connected += _linkManager.NumberOfPendingConnections();
     }
 
-    _rcLookupHandler.ExploreNetwork();
+    const int interval = isSvcNode ? 30 : 5;
+
+    if((Uptime() / 1000) % interval == 0)
+      _rcLookupHandler.ExploreNetwork();
 
     size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
