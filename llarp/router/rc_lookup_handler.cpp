@@ -10,6 +10,7 @@
 #include <util/thread/threading.hpp>
 #include <nodedb.hpp>
 #include <dht/context.hpp>
+#include <router/abstractrouter.hpp>
 
 #include <iterator>
 #include <functional>
@@ -48,20 +49,22 @@ namespace llarp
   }
 
   void
-  RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback)
+  RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback,
+                         bool forceLookup)
   {
     RouterContact remoteRC;
-
-    if(_nodedb->Get(router, remoteRC))
+    if(not forceLookup)
     {
-      if(callback)
+      if(_nodedb->Get(router, remoteRC))
       {
-        callback(router, &remoteRC, RCRequestResult::Success);
+        if(callback)
+        {
+          callback(router, &remoteRC, RCRequestResult::Success);
+        }
+        FinalizeRequest(router, &remoteRC, RCRequestResult::Success);
+        return;
       }
-      FinalizeRequest(router, &remoteRC, RCRequestResult::Success);
-      return;
     }
-
     bool shouldDoLookup = false;
 
     {
@@ -212,7 +215,7 @@ namespace llarp
 
     for(const auto &router : routersToLookUp)
     {
-      GetRC(router, nullptr);
+      GetRC(router, nullptr, true);
     }
 
     _nodedb->RemoveStaleRCs(_bootstrapRouterIDList,
@@ -235,6 +238,26 @@ namespace llarp
       LogError("we have no bootstrap nodes specified");
     }
 
+    if(useWhitelist)
+    {
+      std::set< RouterID > lookupRouters;
+      {
+        static constexpr size_t LookupPerTick = 25;
+        // if we are using a whitelist look up a few routers we don't have
+        util::Lock l(&_mutex);
+        for(const auto &r : whitelistRouters)
+        {
+          if(_nodedb->Has(r))
+            continue;
+          lookupRouters.emplace(r);
+          if(lookupRouters.size() >= LookupPerTick)
+            break;
+        }
+      }
+      for(const auto &r : lookupRouters)
+        GetRC(r, nullptr, true);
+      return;
+    }
     // TODO: only explore via random subset
     // explore via every connected peer
     _linkManager->ForEachPeer([&](ILinkSession *s) {

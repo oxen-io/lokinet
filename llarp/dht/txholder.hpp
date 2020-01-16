@@ -138,10 +138,7 @@ namespace llarp
       {
         return;
       }
-
-      // ask for next peer
-      if(!txitr->second->AskNextPeer(from.node, next))
-        Inform(from, txitr->second->target, {}, true, true);
+      Inform(from, txitr->second->target, {}, true, true);
     }
 
     template < typename K, typename V, typename K_Hash >

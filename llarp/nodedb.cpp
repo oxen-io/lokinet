@@ -459,22 +459,10 @@ llarp_nodedb::ensure_dir(const char *dir)
   return true;
 }
 
-void
-llarp_nodedb::set_dir(const char *dir)
-{
-  nodePath = dir;
-}
-
 ssize_t
-llarp_nodedb::load_dir(const char *dir)
+llarp_nodedb::LoadAll()
 {
-  std::error_code ec;
-  if(!fs::exists(dir, ec))
-  {
-    return -1;
-  }
-  set_dir(dir);
-  return Load(dir);
+  return Load(nodePath.c_str());
 }
 
 size_t

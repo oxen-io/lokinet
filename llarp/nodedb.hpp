@@ -40,8 +40,10 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker)
-      : disk(std::move(diskworker))
+  explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker,
+                        const std::string rootdir)
+      : disk(std::move(diskworker)), nodePath(rootdir)
+
   {
   }
 
@@ -136,7 +138,8 @@ struct llarp_nodedb
   set_dir(const char *dir);
 
   ssize_t
-  load_dir(const char *dir);
+  LoadAll();
+
   ssize_t
   store_dir(const char *dir);
 

@@ -4,6 +4,7 @@
 #include <memory>
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
+#include <router/i_rc_lookup_handler.hpp>
 
 namespace llarp
 {
@@ -112,12 +113,19 @@ namespace llarp
         LogDebug("got ", R.size(), " results in GRM for lookup");
         if(R.size() == 0)
           dht.pendingRouterLookups().NotFound(owner, K);
+        else if(R[0].pubkey.IsZero())
+          return false;
         else
           dht.pendingRouterLookups().Found(owner, R[0].pubkey, R);
         return true;
       }
-      llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
-      return false;
+      // store if valid
+      for(const auto &rc : R)
+      {
+        if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
+          return false;
+      }
+      return true;
     }
   }  // namespace dht
 }  // namespace llarp
