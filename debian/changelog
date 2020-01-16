@@ -1,6 +1,7 @@
 lokinet (0.6.3-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
+  * Rediff patches
   * Enable cpu detection on amd64
 
   [ Jeff Becker ]
