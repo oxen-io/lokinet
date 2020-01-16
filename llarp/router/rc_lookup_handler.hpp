@@ -40,9 +40,12 @@ namespace llarp
     SetRouterWhitelist(const std::vector< RouterID > &routers) override
         LOCKS_EXCLUDED(_mutex);
 
+    bool
+    HaveReceivedWhitelist();
+
     void
-    GetRC(const RouterID &router, RCRequestCallback callback) override
-        LOCKS_EXCLUDED(_mutex);
+    GetRC(const RouterID &router, RCRequestCallback callback,
+          bool forceLookup = false) override LOCKS_EXCLUDED(_mutex);
 
     bool
     RemoteIsAllowed(const RouterID &remote) const override

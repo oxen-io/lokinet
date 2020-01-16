@@ -334,7 +334,7 @@ namespace llarp
     }
     if(!VerifySignature())
     {
-      llarp::LogError("invalid signature");
+      llarp::LogError("invalid signature: ", *this);
       return false;
     }
     return true;

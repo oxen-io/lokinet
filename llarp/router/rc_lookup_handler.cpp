@@ -10,9 +10,11 @@
 #include <util/thread/threading.hpp>
 #include <nodedb.hpp>
 #include <dht/context.hpp>
+#include <router/abstractrouter.hpp>
 
 #include <iterator>
 #include <functional>
+#include <random>
 
 namespace llarp
 {
@@ -47,21 +49,30 @@ namespace llarp
             " routers");
   }
 
+  bool
+  RCLookupHandler::HaveReceivedWhitelist()
+  {
+    util::Lock l(&_mutex);
+    return whitelistRouters.empty();
+  }
+
   void
-  RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback)
+  RCLookupHandler::GetRC(const RouterID &router, RCRequestCallback callback,
+                         bool forceLookup)
   {
     RouterContact remoteRC;
-
-    if(_nodedb->Get(router, remoteRC))
+    if(not forceLookup)
     {
-      if(callback)
+      if(_nodedb->Get(router, remoteRC))
       {
-        callback(router, &remoteRC, RCRequestResult::Success);
+        if(callback)
+        {
+          callback(router, &remoteRC, RCRequestResult::Success);
+        }
+        FinalizeRequest(router, &remoteRC, RCRequestResult::Success);
+        return;
       }
-      FinalizeRequest(router, &remoteRC, RCRequestResult::Success);
-      return;
     }
-
     bool shouldDoLookup = false;
 
     {
@@ -212,7 +223,7 @@ namespace llarp
 
     for(const auto &router : routersToLookUp)
     {
-      GetRC(router, nullptr);
+      GetRC(router, nullptr, true);
     }
 
     _nodedb->RemoveStaleRCs(_bootstrapRouterIDList,
@@ -235,6 +246,35 @@ namespace llarp
       LogError("we have no bootstrap nodes specified");
     }
 
+    if(useWhitelist)
+    {
+      static constexpr size_t LookupPerTick = 25;
+
+      std::vector< RouterID > lookupRouters;
+      lookupRouters.reserve(LookupPerTick);
+
+      {
+        // if we are using a whitelist look up a few routers we don't have
+        util::Lock l(&_mutex);
+        for(const auto &r : whitelistRouters)
+        {
+          if(_nodedb->Has(r))
+            continue;
+          lookupRouters.emplace_back(r);
+        }
+      }
+
+      if(lookupRouters.size() > LookupPerTick)
+      {
+        static std::mt19937_64 rng{std::random_device{}()};
+        std::shuffle(lookupRouters.begin(), lookupRouters.end(), rng);
+        lookupRouters.resize(LookupPerTick);
+      }
+
+      for(const auto &r : lookupRouters)
+        GetRC(r, nullptr, true);
+      return;
+    }
     // TODO: only explore via random subset
     // explore via every connected peer
     _linkManager->ForEachPeer([&](ILinkSession *s) {

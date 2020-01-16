@@ -679,7 +679,7 @@ namespace llarp
         LogError("Failed to update our RC");
     }
 
-    if(isSvcNode)
+    if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
     {
       // remove RCs for nodes that are no longer allowed by network policy
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
@@ -696,18 +696,9 @@ namespace llarp
     {
       connected += _linkManager.NumberOfPendingConnections();
     }
-    const size_t N = nodedb()->num_loaded();
-    if(N < llarp::path::default_len)
-    {
-      LogInfo("We need at least ", llarp::path::default_len,
-              " service nodes to build paths but we have ", N, " in nodedb");
 
-      _rcLookupHandler.ExploreNetwork();
-    }
-    else if(isSvcNode)
-    {
-      _rcLookupHandler.ExploreNetwork();
-    }
+    _rcLookupHandler.ExploreNetwork();
+
     size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
     if(strictConnect > 0 && connectToNum > strictConnect)
@@ -727,11 +718,16 @@ namespace llarp
 
     if(rpcCaller)
       rpcCaller->Tick(now);
-    // save profiles async
+    // save profiles
     if(routerProfiling().ShouldSave(now))
     {
       diskworker()->addJob(
           [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+    }
+    // save nodedb
+    if(nodedb()->ShouldSaveToDisk(now))
+    {
+      nodedb()->AsyncFlushToDisk();
     }
 
     // get connected peers
@@ -1012,6 +1008,16 @@ namespace llarp
     {
       LogError("Failed to start hidden service context");
       return false;
+    }
+
+    {
+      ssize_t loaded = _nodedb->LoadAll();
+      llarp::LogInfo("loaded ", loaded, " RCs");
+      if(loaded < 0)
+      {
+        // shouldn't be possible
+        return false;
+      }
     }
 
     llarp_dht_context_start(dht(), pubkey());

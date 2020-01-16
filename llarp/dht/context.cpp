@@ -20,7 +20,7 @@
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
 #include <profiling.hpp>
-
+#include <router/i_rc_lookup_handler.hpp>
 #include <vector>
 
 namespace llarp
@@ -41,7 +41,7 @@ namespace llarp
       void
       StoreRC(const RouterContact rc) const override
       {
-        GetRouter()->nodedb()->InsertAsync(rc);
+        GetRouter()->rcLookupHandler().CheckRC(rc);
       }
 
       /// on behalf of whoasked request introset for target from dht router with
@@ -598,7 +598,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler));
+          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
     }
 
     void
@@ -611,7 +611,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, handler));
+          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
     }
 
     void
