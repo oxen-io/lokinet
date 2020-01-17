@@ -37,8 +37,7 @@ build:linux_release:
     - cp build/daemon/lokinet lokinet-linux-x64-v$LOKINET_VERSION
     - cp build/daemon/lokinetctl lokinet-linux-x64-v$LOKINET_VERSION
     - cp linux-setup/readme.txt lokinet-linux-x64-v$LOKINET_VERSION
-    - tar cf lokinet-linux-x64-v$LOKINET_VERSION.tar lokinet-linux-x64-v$LOKINET_VERSION
-    - xz lokinet-linux-x64-v$LOKINET_VERSION.tar
+    - tar cJf lokinet-linux-x64-v$LOKINET_VERSION.tar.xz lokinet-linux-x64-v$LOKINET_VERSION
     - echo "lokinet-linux-x64-v$LOKINET_VERSION.tar.xz should be ready"
   artifacts:
     paths:
