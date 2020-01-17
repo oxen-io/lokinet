@@ -9,6 +9,9 @@ namespace llarp
   Context_Init(py::module &mod);
 
   void
+  CryptoTypes_Init(py::module &mod);
+
+  void
   RouterContact_Init(py::module &mod);
 
   namespace simulate

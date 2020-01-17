@@ -3,7 +3,9 @@ set(PYTHON_EXECUTABLE "python3")
 find_package(pybind11 REQUIRED)
 set(LLARP_PYBIND_SRC
   module.cpp
+  llarp/context.cpp
   llarp/router_contact.cpp
+  llarp/crypto/types.cpp
   llarp/simulation/sim_context.cpp)
 
 pybind11_add_module(pyllarp MODULE ${LLARP_PYBIND_SRC})
