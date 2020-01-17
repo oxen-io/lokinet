@@ -49,9 +49,16 @@ namespace llarp
 
     struct MessageQueueEntry
     {
+      uint16_t priority;
       Message message;
       PathID_t pathid;
       RouterID router;
+
+      bool
+      operator<(const MessageQueueEntry &other) const
+      {
+        return other.priority < priority;
+      }
     };
 
     struct MessageQueueStats
@@ -65,7 +72,7 @@ namespace llarp
       uint32_t numTicks   = 0;
     };
 
-    using MessageQueue = std::queue< MessageQueueEntry >;
+    using MessageQueue = std::priority_queue< MessageQueueEntry >;
 
     void
     OnSessionEstablished(const RouterID &router);
@@ -102,7 +109,7 @@ namespace llarp
 
     bool
     QueueOutboundMessage(const RouterID &remote, Message &&msg,
-                         const PathID_t &pathid);
+                         const PathID_t &pathid, uint16_t priority = 0);
 
     void
     ProcessOutboundQueue();
