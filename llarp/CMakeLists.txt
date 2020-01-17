@@ -197,8 +197,8 @@ set(LIB_SRC
   service/sendcontext.cpp
   service/session.cpp
   service/tag_lookup_job.cpp
-  service/tag.cpp
-)
+  service/tag.cpp)
+  
 if(TRACY_ROOT)
   set(LIB_SRC ${LIB_SRC} ${TRACY_ROOT}/TracyClient.cpp)
 endif()

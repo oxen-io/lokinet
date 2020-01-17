@@ -21,6 +21,8 @@
 
 namespace llarp
 {
+<<<<<<< HEAD
+
   bool
   Context::CallSafe(std::function< void(void) > f)
   {
@@ -95,13 +97,21 @@ namespace llarp
   {
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    mainloop = llarp_make_ev_loop();
+    if(m_Simulation == nullptr)
+    {
+      mainloop = m_Simulation->m_NetLoop;
+    }
+    if(mainloop == nullptr)
+      mainloop = llarp_make_ev_loop();
     logic->set_event_loop(mainloop.get());
 
     mainloop->set_logic(logic);
 
-    crypto        = std::make_unique< sodium::CryptoLibSodium >();
-    cryptoManager = std::make_unique< CryptoManager >(crypto.get());
+    if(m_Simulation == nullptr)
+    {
+      crypto        = std::make_unique< sodium::CryptoLibSodium >();
+      cryptoManager = std::make_unique< CryptoManager >(crypto.get());
+    }
 
     router = std::make_unique< Router >(worker, mainloop, logic);
 
@@ -145,11 +155,18 @@ namespace llarp
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop, logic);
-    if(closeWaiter)
+    if(m_Simulation == nullptr)
     {
-      // inform promise if called by CloseAsync
-      closeWaiter->set_value();
+      llarp_ev_loop_run_single_process(mainloop, logic);
+      if(closeWaiter)
+      {
+        // inform promise if called by CloseAsync
+        closeWaiter->set_value();
+      }
+    }
+    else
+    {
+      m_Simulation->NodeUp(this);
     }
     return 0;
   }
