@@ -9,6 +9,6 @@ COPY . /src/
 
 RUN mkdir build && \
     cd build && \
-    cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON && \
+    cmake .. -G Ninja -DDOWNLOAD_SODIUM=ON -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON && \
     ninja -k0 && \
     ./test/testAll
