@@ -78,7 +78,8 @@ namespace llarp
           {"dht", _dht->impl->ExtractStatus()},
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
-          {"links", _linkManager.ExtractStatus()}};
+          {"links", _linkManager.ExtractStatus()},
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
     else
     {
