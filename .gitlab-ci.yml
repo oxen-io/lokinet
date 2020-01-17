@@ -26,7 +26,7 @@ build:linux_release:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils libuv1-dev libsodium-dev libcurl4-openssl-dev
+    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils
   script:
     - make static DOWNLOAD_SODIUM=ON
     # alternatively: git describe --tag
@@ -49,7 +49,7 @@ build:linux_debug:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
+    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libuv1-dev ninja-build
   script:
     - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=OFF make
   artifacts:
