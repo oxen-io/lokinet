@@ -1,6 +1,7 @@
 #ifndef LLARP_RC_LOOKUP_HANDLER_HPP
 #define LLARP_RC_LOOKUP_HANDLER_HPP
 
+#include <chrono>
 #include <router/i_rc_lookup_handler.hpp>
 
 #include <util/thread/threading.hpp>
@@ -115,6 +116,10 @@ namespace llarp
     bool isServiceNode = false;
 
     std::set< RouterID > whitelistRouters GUARDED_BY(_mutex);
+
+    using TimePoint = std::chrono::steady_clock::time_point;
+    std::unordered_map< RouterID, TimePoint, RouterID::Hash >
+        _routerLookupTimes;
   };
 
 }  // namespace llarp
