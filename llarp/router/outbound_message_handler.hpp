@@ -56,13 +56,13 @@ namespace llarp
 
     struct MessageQueueStats
     {
-      uint64_t queued = 0;
-      uint64_t dropped = 0;
-      uint64_t sent = 0;
+      uint64_t queued         = 0;
+      uint64_t dropped        = 0;
+      uint64_t sent           = 0;
       uint32_t queueWatermark = 0;
 
       uint32_t perTickMax = 0;
-      uint32_t numTicks = 0;
+      uint32_t numTicks   = 0;
     };
 
     using MessageQueue = std::queue< MessageQueueEntry >;

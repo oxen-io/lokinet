@@ -89,16 +89,13 @@ namespace llarp
   util::StatusObject
   OutboundMessageHandler::ExtractStatus() const
   {
-    util::StatusObject status{ 
-      "queueStats", {
-        { "queued", m_queueStats.queued },
-        { "dropped", m_queueStats.dropped },
-        { "sent", m_queueStats.sent },
-        { "queueWatermark", m_queueStats.queueWatermark },
-        { "perTickMax", m_queueStats.perTickMax },
-        { "numTicks", m_queueStats.numTicks }
-      }
-    };
+    util::StatusObject status{"queueStats",
+                              {{"queued", m_queueStats.queued},
+                               {"dropped", m_queueStats.dropped},
+                               {"sent", m_queueStats.sent},
+                               {"queueWatermark", m_queueStats.queueWatermark},
+                               {"perTickMax", m_queueStats.perTickMax},
+                               {"numTicks", m_queueStats.numTicks}}};
 
     return status;
   }
@@ -252,12 +249,10 @@ namespace llarp
     {
       m_queueStats.queued++;
 
-      // calculate queue high watermark
-      size_t queueSize = outboundQueue.size();
-      if (queueSize > m_queueStats.queueWatermark)
-        m_queueStats.queueWatermark = queueSize;
+      uint32_t queueSize = outboundQueue.size();
+      m_queueStats.queueWatermark =
+          std::max(queueSize, m_queueStats.queueWatermark);
     }
-
 
     return true;
   }
@@ -375,9 +370,8 @@ namespace llarp
       }
     }
 
-    if (sent_count > m_queueStats.perTickMax)
-      m_queueStats.perTickMax = sent_count;
-
+    m_queueStats.perTickMax =
+        std::max((uint32_t)sent_count, m_queueStats.perTickMax);
   }
 
   void
