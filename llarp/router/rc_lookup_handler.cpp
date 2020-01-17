@@ -53,7 +53,7 @@ namespace llarp
   RCLookupHandler::HaveReceivedWhitelist()
   {
     util::Lock l(&_mutex);
-    return whitelistRouters.empty();
+    return not whitelistRouters.empty();
   }
 
   void
