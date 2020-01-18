@@ -54,6 +54,17 @@ namespace llarp
       RouterID router;
     };
 
+    struct MessageQueueStats
+    {
+      uint64_t queued         = 0;
+      uint64_t dropped        = 0;
+      uint64_t sent           = 0;
+      uint32_t queueWatermark = 0;
+
+      uint32_t perTickMax = 0;
+      uint32_t numTicks   = 0;
+    };
+
     using MessageQueue = std::queue< MessageQueueEntry >;
 
     void
@@ -128,6 +139,8 @@ namespace llarp
     // paths cannot have pathid "0", so it can be used as the "pathid"
     // for non-traffic (control) messages, so they can be prioritized.
     static const PathID_t zeroID;
+
+    MessageQueueStats m_queueStats;
   };
 
 }  // namespace llarp
