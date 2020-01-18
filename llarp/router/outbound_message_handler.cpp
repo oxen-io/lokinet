@@ -285,6 +285,7 @@ namespace llarp
       }
       else
       {
+        DoCallback(entry.message.second, SendStatus::Congestion);
         m_queueStats.dropped++;
       }
     }
