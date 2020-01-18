@@ -32,10 +32,11 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
-  /// update RCs every hour
-  llarp_time_t RouterContact::UpdateInterval = 60 * 60 * 1000;
   /// an RC inserted long enough ago (4 hrs) is considered stale and is removed
   llarp_time_t RouterContact::StaleInsertionAge = 4 * 60 * 60 * 1000;
+  /// update RCs shortly before they are about to expire
+  llarp_time_t RouterContact::UpdateInterval =
+      RouterContact::StaleInsertionAge - (5 * 60 * 1000);
 
   NetID::NetID(const byte_t *val)
   {
