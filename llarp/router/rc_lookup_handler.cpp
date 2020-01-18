@@ -256,7 +256,7 @@ namespace llarp
     if(useWhitelist)
     {
       static constexpr auto RerequestInterval = 10min;
-      static constexpr size_t LookupPerTick = 5;
+      static constexpr size_t LookupPerTick   = 5;
 
       std::vector< RouterID > lookupRouters;
       lookupRouters.reserve(LookupPerTick);
