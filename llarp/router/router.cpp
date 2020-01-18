@@ -60,7 +60,7 @@ namespace llarp
     _stopping.store(false);
     _running.store(false);
     _lastTick       = llarp::time_now_ms();
-    m_nextExploreAt = Clock_t::now();
+    m_NextExploreAt = Clock_t::now();
   }
 
   Router::~Router()
