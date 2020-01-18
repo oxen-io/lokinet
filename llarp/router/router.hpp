@@ -274,6 +274,11 @@ namespace llarp
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
 
+    using Clock_t     = std::chrono::steady_clock;
+    using TimePoint_t = Clock_t::time_point;
+
+    TimePoint_t m_NextExploreAt;
+
     IOutboundMessageHandler &
     outboundMessageHandler() override
     {
