@@ -103,6 +103,11 @@ namespace llarp
     {
       return "RelayStatus";
     }
+    virtual uint16_t
+    Priority() const override
+    {
+      return 6;
+    }
   };
 }  // namespace llarp
 
