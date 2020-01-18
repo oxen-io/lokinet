@@ -278,14 +278,15 @@ namespace llarp
       }
 
       MessageQueue &path_queue = itr_pair.first->second;
-      /*
-      if(path_queue.size() >= MAX_PATH_QUEUE_SIZE)
+
+      if(path_queue.size() < MAX_PATH_QUEUE_SIZE)
+      {
+        path_queue.push(std::move(entry));
+      }
+      else
       {
         m_queueStats.dropped++;
-        path_queue.pop();  // head drop
       }
-      */
-      path_queue.push(std::move(entry));
     }
   }
 
