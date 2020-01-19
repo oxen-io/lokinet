@@ -237,10 +237,6 @@ namespace llarp
                                                const PathID_t &pathid,
                                                uint16_t priority)
   {
-    if(outboundQueue.full())
-    {
-      LogicCall(_logic, [self = this]() { self->Tick(); });
-    }
     MessageQueueEntry entry;
     entry.message      = std::move(msg);
     auto callback_copy = entry.message.second;
