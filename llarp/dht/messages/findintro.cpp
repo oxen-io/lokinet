@@ -118,7 +118,7 @@ namespace llarp
         Key_t target = S.ToKey();
         // we are recursive
         // use nodedb for closest router
-        const auto rc = dht.GetRouter()->nodedb()->FindClosestToAddress(S);
+        const auto rc = dht.GetRouter()->nodedb()->FindClosestToAddress(target);
         Key_t peer(rc.pubkey.data());
         if(peer == us)
         {

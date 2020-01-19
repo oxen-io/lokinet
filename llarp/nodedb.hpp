@@ -3,6 +3,7 @@
 
 #include <router_contact.hpp>
 #include <router_id.hpp>
+#include <dht/key.hpp>
 #include <util/common.hpp>
 #include <util/fs.hpp>
 #include <util/thread/threading.hpp>
@@ -170,7 +171,7 @@ struct llarp_nodedb
       LOCKS_EXCLUDED(access);
 
   llarp::RouterContact
-  FindClosestToAddress(const llarp::service::Address &addr)
+  FindClosestToAddress(const llarp::dht::Key_t &addr)
       LOCKS_EXCLUDED(access);
 
   static bool

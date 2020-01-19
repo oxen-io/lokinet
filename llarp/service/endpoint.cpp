@@ -990,7 +990,7 @@ namespace llarp
       // let's try building to the absolute closest we can next time around
       if(not BuildCooldownHit(now))
       {
-        const auto rc = m_router->nodedb()->FindClosestToAddress(remote);
+        const auto rc = m_router->nodedb()->FindClosestToAddress(dht::Key_t{remote});
         if(GetPathByRouter(rc.pubkey) == nullptr)
           BuildOneAlignedTo(rc.pubkey);
       }

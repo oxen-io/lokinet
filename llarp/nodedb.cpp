@@ -317,10 +317,10 @@ llarp_nodedb::RemoveStaleRCs(const std::set< llarp::RouterID > &keep,
 }
 
 llarp::RouterContact
-llarp_nodedb::FindClosestToAddress(const llarp::service::Address &addr)
+llarp_nodedb::FindClosestToAddress(const llarp::dht::Key_t &location)
 {
   llarp::RouterContact rc;
-  const llarp::dht::XorMetric compare(llarp::dht::Key_t{addr.as_array()});
+  const llarp::dht::XorMetric compare(location);
   visit([&rc, compare](const auto &otherRC) -> bool {
     if(rc.pubkey.IsZero())
     {
