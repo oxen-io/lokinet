@@ -1,3 +1,4 @@
+#include <chrono>
 #include <router/rc_lookup_handler.hpp>
 
 #include <link/i_link_manager.hpp>
@@ -15,6 +16,8 @@
 #include <iterator>
 #include <functional>
 #include <random>
+
+using namespace std::chrono_literals;
 
 namespace llarp
 {
@@ -53,7 +56,7 @@ namespace llarp
   RCLookupHandler::HaveReceivedWhitelist()
   {
     util::Lock l(&_mutex);
-    return whitelistRouters.empty();
+    return not whitelistRouters.empty();
   }
 
   void
@@ -112,6 +115,10 @@ namespace llarp
       if(!_dht->impl->LookupRouter(router, fn))
       {
         FinalizeRequest(router, nullptr, RCRequestResult::RouterNotFound);
+      }
+      else
+      {
+        _routerLookupTimes[router] = std::chrono::steady_clock::now();
       }
     }
   }
@@ -248,19 +255,24 @@ namespace llarp
 
     if(useWhitelist)
     {
-      static constexpr size_t LookupPerTick = 25;
+      static constexpr auto RerequestInterval = 10min;
+      static constexpr size_t LookupPerTick   = 5;
 
       std::vector< RouterID > lookupRouters;
       lookupRouters.reserve(LookupPerTick);
+
+      const auto now = std::chrono::steady_clock::now();
 
       {
         // if we are using a whitelist look up a few routers we don't have
         util::Lock l(&_mutex);
         for(const auto &r : whitelistRouters)
         {
-          if(_nodedb->Has(r))
-            continue;
-          lookupRouters.emplace_back(r);
+          if(now > _routerLookupTimes[r] + RerequestInterval
+             and not _nodedb->Has(r))
+          {
+            lookupRouters.emplace_back(r);
+          }
         }
       }
 
