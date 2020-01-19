@@ -79,6 +79,12 @@ namespace llarp
     {
       return "RelayCommit";
     }
+
+    virtual uint16_t
+    Priority() const override
+    {
+      return 5;
+    }
   };
 }  // namespace llarp
 

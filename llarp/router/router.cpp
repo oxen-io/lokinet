@@ -59,7 +59,8 @@ namespace llarp
 
     _stopping.store(false);
     _running.store(false);
-    _lastTick = llarp::time_now_ms();
+    _lastTick       = llarp::time_now_ms();
+    m_NextExploreAt = Clock_t::now();
   }
 
   Router::~Router()
@@ -78,7 +79,8 @@ namespace llarp
           {"dht", _dht->impl->ExtractStatus()},
           {"services", _hiddenServiceContext.ExtractStatus()},
           {"exit", _exitContext.ExtractStatus()},
-          {"links", _linkManager.ExtractStatus()}};
+          {"links", _linkManager.ExtractStatus()},
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
     else
     {
@@ -697,8 +699,13 @@ namespace llarp
       connected += _linkManager.NumberOfPendingConnections();
     }
 
-    _rcLookupHandler.ExploreNetwork();
-
+    const int interval       = isSvcNode ? 5 : 2;
+    const auto timepoint_now = Clock_t::now();
+    if(timepoint_now >= m_NextExploreAt)
+    {
+      _rcLookupHandler.ExploreNetwork();
+      m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
+    }
     size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
     if(strictConnect > 0 && connectToNum > strictConnect)
