@@ -171,8 +171,7 @@ struct llarp_nodedb
       LOCKS_EXCLUDED(access);
 
   llarp::RouterContact
-  FindClosestToAddress(const llarp::dht::Key_t &addr)
-      LOCKS_EXCLUDED(access);
+  FindClosestToAddress(const llarp::dht::Key_t &addr) LOCKS_EXCLUDED(access);
 
   static bool
   ensure_dir(const char *dir);

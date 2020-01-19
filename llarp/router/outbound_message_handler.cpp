@@ -179,6 +179,15 @@ namespace llarp
       auto f = std::bind(callback, status);
       LogicCall(_logic, [self = this, f]() { self->m_Killer.TryAccess(f); });
     }
+    // log stats for delivery
+    if(status == SendStatus::Success)
+    {
+      m_queueStats.sent++;
+    }
+    else
+    {
+      m_queueStats.dropped++;
+    }
   }
 
   void
@@ -210,7 +219,6 @@ namespace llarp
   {
     const llarp_buffer_t buf(msg.first);
     auto callback = msg.second;
-    m_queueStats.sent++;
     return _linkManager->SendTo(
         remote, buf, [=](ILinkSession::DeliveryStatus status) {
           if(status == ILinkSession::DeliveryStatus::eDeliverySuccess)
@@ -246,7 +254,6 @@ namespace llarp
     if(outboundQueue.tryPushBack(std::move(entry))
        != llarp::thread::QueueReturn::Success)
     {
-      m_queueStats.dropped++;
       DoCallback(callback_copy, SendStatus::Congestion);
     }
     else
@@ -286,7 +293,6 @@ namespace llarp
       else
       {
         DoCallback(entry.message.second, SendStatus::Congestion);
-        m_queueStats.dropped++;
       }
     }
   }
