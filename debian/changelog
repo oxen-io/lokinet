@@ -1,3 +1,31 @@
+lokinet (0.6.4-1) sid; urgency=medium
+
+  [ Stephen Shelton ]
+  * Fix HaveReceivedWhitelist() typo
+  * Include outbound message queue stats in dumpState API response
+  * Use std::max() and make format
+  * Lookup routers at maximum frequency of 10 minutes
+
+  [ Jeff Becker ]
+  * merge conflict fix
+
+  [ jeff ]
+  * use std::chrono
+  * fix typo
+
+  [ Stephen Shelton ]
+  * Bump RC expiration constants significantly
+  * Start stale router lookup 5 minutes before its expiration
+
+  [ Jeff Becker ]
+  * make format
+  * link layer message priority
+  * tail drop
+  * inform congestion on tail drop
+  * bump version for 0.6.4
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 19 Jan 2020 14:16:15 -0400
+
 lokinet (0.6.3-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
