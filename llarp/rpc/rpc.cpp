@@ -110,46 +110,7 @@ namespace llarp
       }
 
       bool
-      HandleJSONResult(const nlohmann::json& result) override
-      {
-        PubkeyList_t keys;
-        if(not result.is_object())
-        {
-          LogWarn("Invalid result: not an object");
-          handler({}, false);
-          return false;
-        }
-        const auto itr = result.find("service_node_states");
-        if(itr == result.end())
-        {
-          LogWarn("Invalid result: no service_node_states member");
-          handler({}, false);
-          return false;
-        }
-        if(not itr.value().is_array())
-        {
-          LogWarn("Invalid result: service_node_states is not an array");
-          handler({}, false);
-          return false;
-        }
-        for(const auto item : itr.value())
-        {
-          if(not item.is_object())
-            continue;
-          if(not item.value("active", false))
-            continue;
-          if(not item.value("funded", false))
-            continue;
-          const std::string pk = item.value("pubkey_ed25519", "");
-          if(pk.empty())
-            continue;
-          PubKey k;
-          if(k.FromString(pk))
-            keys.emplace_back(std::move(k));
-        }
-        handler(keys, not keys.empty());
-        return true;
-      }
+      HandleJSONResult(const nlohmann::json& result) override;
 
       void
       HandleError() override
@@ -252,6 +213,48 @@ namespace llarp
 
       ~CallerImpl() = default;
     };
+
+    bool
+    GetServiceNodeListHandler::HandleJSONResult(const nlohmann::json& result)
+    {
+      PubkeyList_t keys;
+      if(not result.is_object())
+      {
+        LogWarn("Invalid result: not an object");
+        handler({}, false);
+        return false;
+      }
+      const auto itr = result.find("service_node_states");
+      if(itr == result.end())
+      {
+        LogWarn("Invalid result: no service_node_states member");
+        handler({}, false);
+        return false;
+      }
+      if(not itr.value().is_array())
+      {
+        LogWarn("Invalid result: service_node_states is not an array");
+        handler({}, false);
+        return false;
+      }
+      for(const auto item : itr.value())
+      {
+        if(not item.is_object())
+          continue;
+        if(not item.value("active", false))
+          continue;
+        if(not item.value("funded", false))
+          continue;
+        const std::string pk = item.value("pubkey_ed25519", "");
+        if(pk.empty())
+          continue;
+        PubKey k;
+        if(k.FromString(pk))
+          keys.emplace_back(std::move(k));
+      }
+      handler(keys, not keys.empty());
+      return true;
+    }
 
     void
     CallerHandler::PopulateReqHeaders(abyss::http::Headers_t& hdr)
