@@ -51,12 +51,8 @@ namespace llarp
     std::transform(level.begin(), level.end(), level.begin(),
                    [](const char ch) -> char { return std::tolower(ch); });
     static const std::unordered_map< std::string, LogLevel > levels = {
-        {"spew", eLogTrace},  {"trc", eLogTrace},     {"trace", eLogTrace},
-        {"dbg", eLogDebug},   {"verbose", eLogDebug}, {"debug", eLogDebug},
-        {"info", eLogInfo},   {"nfo", eLogInfo},      {"true", eLogInfo},
-        {"wrn", eLogWarn},    {"warn", eLogWarn},     {"warning", eLogWarn},
-        {"err", eLogError},   {"error", eLogError},   {"quiet", eLogError},
-        {"silent", eLogNone}, {"off", eLogNone},      {"false", eLogNone}};
+        {"trace", eLogTrace}, {"debug", eLogDebug}, {"info", eLogInfo},
+        {"warn", eLogWarn},   {"error", eLogError}, {"none", eLogNone}};
 
     const auto itr = levels.find(level);
     if(itr == levels.end())
