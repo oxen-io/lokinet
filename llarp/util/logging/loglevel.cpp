@@ -48,8 +48,9 @@ namespace llarp
   absl::optional< LogLevel >
   LogLevelFromString(std::string level)
   {
-    std::transform(level.begin(), level.end(), level.begin(),
-                   [](const char ch) -> char { return std::tolower(ch); });
+    std::transform(
+        level.begin(), level.end(), level.begin(),
+        [](const unsigned char ch) -> char { return std::tolower(ch); });
     static const std::unordered_map< std::string, LogLevel > levels = {
         {"trace", eLogTrace}, {"debug", eLogDebug}, {"info", eLogInfo},
         {"warn", eLogWarn},   {"error", eLogError}, {"none", eLogNone}};
