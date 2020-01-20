@@ -39,7 +39,7 @@ namespace llarp
       case eLogError:
         return "Error";
       case eLogNone:
-        return "Off";
+        return "None";
       default:
         return "???";
     }
