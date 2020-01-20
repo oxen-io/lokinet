@@ -1,4 +1,5 @@
 #include <util/logging/loglevel.hpp>
+#include <unordered_map>
 
 namespace llarp
 {
@@ -20,5 +21,46 @@ namespace llarp
       default:
         return "???";
     }
+  }
+
+  std::string
+  LogLevelToName(LogLevel lvl)
+  {
+    switch(lvl)
+    {
+      case eLogTrace:
+        return "Trace";
+      case eLogDebug:
+        return "Debug";
+      case eLogInfo:
+        return "Info";
+      case eLogWarn:
+        return "Warn";
+      case eLogError:
+        return "Error";
+      case eLogNone:
+        return "Off";
+      default:
+        return "???";
+    }
+  }
+
+  absl::optional< LogLevel >
+  LogLevelFromString(std::string level)
+  {
+    std::transform(level.begin(), level.end(), level.begin(),
+                   [](const char ch) -> char { return std::tolower(ch); });
+    static const std::unordered_map< std::string, LogLevel > levels = {
+        {"spew", eLogTrace},  {"trc", eLogTrace},     {"trace", eLogTrace},
+        {"dbg", eLogDebug},   {"verbose", eLogDebug}, {"debug", eLogDebug},
+        {"info", eLogInfo},   {"nfo", eLogInfo},      {"true", eLogInfo},
+        {"wrn", eLogWarn},    {"warn", eLogWarn},     {"warning", eLogWarn},
+        {"err", eLogError},   {"error", eLogError},   {"quiet", eLogError},
+        {"silent", eLogNone}, {"off", eLogNone},      {"false", eLogNone}};
+
+    const auto itr = levels.find(level);
+    if(itr == levels.end())
+      return {};
+    return itr->second;
   }
 }  // namespace llarp
