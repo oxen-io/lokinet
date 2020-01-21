@@ -1,6 +1,7 @@
 #ifndef LLARP_UTIL_LOG_LEVEL_HPP
 #define LLARP_UTIL_LOG_LEVEL_HPP
 #include <string>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -17,6 +18,12 @@ namespace llarp
 
   std::string
   LogLevelToString(LogLevel level);
+
+  std::string
+  LogLevelToName(LogLevel lvl);
+
+  absl::optional< LogLevel >
+  LogLevelFromString(std::string level);
 
 }  // namespace llarp
 

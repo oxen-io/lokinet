@@ -42,6 +42,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_printer.cpp
     util/test_llarp_utils_str.cpp
+    util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp
     util/thread/test_llarp_util_thread_pool.cpp

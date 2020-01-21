@@ -396,6 +396,18 @@ namespace llarp
       LogContext::Instance().logStream = std::make_unique< SysLogStream >();
 #endif
     }
+    if(key == "level")
+    {
+      const auto maybe = LogLevelFromString(tostr(val));
+      if(not maybe.has_value())
+      {
+        LogError("bad log level: ", val);
+        return;
+      }
+      const LogLevel lvl                  = maybe.value();
+      LogContext::Instance().runtimeLevel = lvl;
+      LogInfo("Log level set to ", LogLevelToName(lvl));
+    }
     if(key == "type" && val == "json")
     {
       m_LogJSON = true;
