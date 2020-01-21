@@ -83,8 +83,13 @@ namespace llarp
   void
   OutboundMessageHandler::QueueRemoveEmptyPath(const PathID_t &pathid)
   {
-    m_Killer.TryAccess(
-        [self = this, pathid]() { self->removedPaths.pushBack(pathid); });
+    m_Killer.TryAccess([self = this, pathid]() {
+      if(self->removedPaths.full())
+      {
+        self->RemoveEmptyPathQueues();
+      }
+      self->removedPaths.pushBack(pathid);
+    });
   }
 
   // TODO: this
