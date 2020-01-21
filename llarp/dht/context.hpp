@@ -185,6 +185,10 @@ namespace llarp
 
       virtual void
       StoreRC(const RouterContact rc) const = 0;
+
+      /// flood rc to all peers later in a batch
+      virtual void
+      FloodRCLater(const dht::Key_t from, const RouterContact rc) = 0;
     };
 
     std::unique_ptr< AbstractContext >

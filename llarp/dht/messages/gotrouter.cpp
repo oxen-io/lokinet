@@ -124,6 +124,11 @@ namespace llarp
       {
         if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;
+        if(txid == 0 and R.size() == 1)
+        {
+          // flood as needed
+          dht.FloodRCLater(From, rc);
+        }
       }
       return true;
     }

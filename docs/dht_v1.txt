@@ -1,0 +1,94 @@
+llarp's dht is a recusrive kademlia dht with optional request proxying via paths for requester anonymization.
+
+dht is separated into 2 different networks, one for router contacts, one for introsets.
+
+
+
+
+format for consesus propagation messages:
+
+keys: A, H, K, N, O, T, U, V
+
+concensus request messages
+
+requester requests current table hash, H,N,O is set to zeros if not known
+
+C -> S
+
+{
+  A: "C",
+  H: "<32 byte last hash of consensus table>",
+  N: uint64_number_of_entries_to_request,
+  O: uint64_offset_in_table,
+  T: uint64_txid,
+  V: []
+}
+
+
+when H or N is set to zero from the requester, they are requesting the current consensus table's hash
+
+consensus response message is as follows for a zero H or N value
+
+S -> C 
+
+{
+  A: "C",
+  H: "<32 byte hash of current consensus table>",
+  N: uint64_number_of_entries_in_table,
+  T: uint64_txid,
+  U: uint64_ms_next_update_required,
+  V: [proto, major, minor, patch]
+}
+
+requester requests a part of the current table for hash H
+
+N must be less than or equal to 512
+
+C -> S
+
+{
+  A: "C",
+  H: "<32 bytes current consensus table hash>",
+  N: 256,
+  O: 512,
+  T: uint64_txid,
+  V: []
+}
+
+consensus response message for routers 512 to 512 + 256
+
+S -> C
+
+{
+  A: "C",
+  H: "<32 bytes current concensus table hash>",
+  K: [list, of, N, pubkeys, from, request, starting, at, position, O],
+  T: uint64_txid,
+  V: [proto, major, minor, patch]
+}
+
+consensus table is a concatination of all public keys in lexigraphical order.
+
+the hash function in use is 256 bit blake2
+
+
+
+gossip RC message
+
+broadcast style RC publish message. sent to all peers infrequently.
+
+it is really an unwarrented GRCM, propagate to all peers.
+
+{
+  A: "S",
+  R: [RC],
+  T: 0,
+  V: proto
+}
+
+replays are dropped using a decaying hashset or decaying bloom filter.
+
+
+
+the introset dht has 3 message: GetIntroSet Message (GIM), PutIntroSet Message (PIM), FoundIntroSet Message (FIM)
+

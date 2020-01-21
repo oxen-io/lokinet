@@ -132,7 +132,12 @@ set(DNSLIB_SRC
   dns/string.cpp
 )
 
+set(CONSENSUS_SRC
+  consensus/table.cpp
+)
+
 set(LIB_SRC
+  ${CONSENSUS_SRC}
   ${DNSLIB_SRC}
   bootstrap.cpp
   context.cpp

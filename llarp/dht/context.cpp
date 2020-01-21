@@ -21,6 +21,7 @@
 #include <nodedb.hpp>
 #include <profiling.hpp>
 #include <router/i_rc_lookup_handler.hpp>
+#include <util/decaying_hashset.hpp>
 #include <vector>
 
 namespace llarp
@@ -228,10 +229,23 @@ namespace llarp
         return router->nodedb()->Get(k.as_array(), rc);
       }
 
+      void
+      FloodRCLater(const dht::Key_t from, const RouterContact rc) override;
+
       PendingIntrosetLookups _pendingIntrosetLookups;
       PendingTagLookups _pendingTagLookups;
       PendingRouterLookups _pendingRouterLookups;
       PendingExploreLookups _pendingExploreLookups;
+
+      using RCGossipReplayFilter_t = util::DecayingHashSet< RouterContact >;
+
+      RCGossipReplayFilter_t m_GossipReplayFilter;
+
+      using RCGossipList_t = std::unordered_multimap< RouterContact, RouterID,
+                                                      RouterContact::Hash >;
+
+      /// list of RCs that we want to publish with who gave us the publish
+      RCGossipList_t m_GossipList;
 
       PendingIntrosetLookups&
       pendingIntrosetLookups() override
@@ -305,7 +319,9 @@ namespace llarp
       Key_t ourKey;
     };
 
-    Context::Context()
+    static constexpr auto GossipFilterDecayInterval = std::chrono::minutes(30);
+
+    Context::Context() : m_GossipReplayFilter(GossipFilterDecayInterval)
     {
       randombytes((byte_t*)&ids, sizeof(uint64_t));
     }
@@ -355,11 +371,45 @@ namespace llarp
     {
       // clean up transactions
       CleanupTX();
+      const llarp_time_t now = Now();
+      // flush pending floods
+      if(router->IsServiceNode())
+      {
+        std::unordered_set< RouterContact, RouterContact::Hash > keys;
+
+        for(const auto& item : m_GossipList)
+        {
+          // filter hit don't publish it at all
+          if(not m_GossipReplayFilter.Insert(item.first))
+            continue;
+          // skip if duplicate RC
+          if(not keys.emplace(item.first).second)
+            continue;
+          const auto& rc = item.first;
+          // build set of routers to not send to for this RC
+          std::set< RouterID > exclude = {rc.pubkey};
+          const auto range             = m_GossipList.equal_range(rc);
+          auto itr                     = range.first;
+          while(itr != range.second)
+          {
+            exclude.emplace(itr->second);
+            ++itr;
+          }
+          Nodes()->ForEachNode([self = this, rc, &exclude](const auto& node) {
+            const RouterID K(node.rc.pubkey);
+            if(exclude.find(K) == exclude.end())
+              self->DHTSendTo(K, new GotRouterMessage(rc));
+          });
+        }
+      }
+      // clear gossip list
+      m_GossipList.clear();
+      // decay gossip filter
+      m_GossipReplayFilter.Decay(now);
 
       if(_services)
       {
         // expire intro sets
-        auto now    = Now();
         auto& nodes = _services->nodes;
         auto itr    = nodes.begin();
         while(itr != nodes.end())
@@ -564,7 +614,7 @@ namespace llarp
       llarp::routing::DHTMessage reply;
       if(!msg.HandleMessage(router->dht(), reply.M))
         return false;
-      if(!reply.M.empty())
+      if(not reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
         return path && path->SendRoutingMessage(reply, router);
@@ -611,6 +661,16 @@ namespace llarp
           peer, asker, addr,
           new ServiceAddressLookup(asker, addr, this, R, handler),
           ((R + 1) * 2000));
+    }
+
+    void
+    Context::FloodRCLater(const dht::Key_t from, const RouterContact rc)
+    {
+      // check valid rc
+      if(not router->rcLookupHandler().CheckRC(rc))
+        return;
+      m_GossipList.emplace(rc, from.as_array());
+      // TODO: don't publish our rc in next interval (based of whitelist size)
     }
 
     void

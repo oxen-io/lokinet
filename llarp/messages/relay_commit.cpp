@@ -24,6 +24,8 @@ namespace llarp
   {
     if(key == "c")
     {
+      /// so we dont put it into the shitty queue
+      pathid.Fill('c');
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
@@ -248,9 +250,10 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         llarp::LogError("duplicate transit hop ", self->hop->info);
-        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
-                            self->hop->info.downstream, self->hop->pathKey,
-                            SendStatus::Congestion);
+        LR_StatusMessage::CreateAndSend(
+            self->context->Router(), self->hop->info.rxID,
+            self->hop->info.downstream, self->hop->pathKey,
+            LR_StatusRecord::FAIL_DUPLICATE_HOP);
         self->hop = nullptr;
         return;
       }
