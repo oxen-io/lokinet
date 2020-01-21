@@ -39,3 +39,25 @@ static const TestParseLog testParseLog[] = {
 
 INSTANTIATE_TEST_CASE_P(TestLogConfig, LogLevelTest,
                         ::testing::ValuesIn(testParseLog), );
+
+TEST_F(LogLevelTest, TestLogLevelToName)
+{
+  EXPECT_EQ("Trace", LogLevelToName(llarp::eLogTrace));
+  EXPECT_EQ("Debug", LogLevelToName(llarp::eLogDebug));
+  EXPECT_EQ("Info", LogLevelToName(llarp::eLogInfo));
+  EXPECT_EQ("Warn", LogLevelToName(llarp::eLogWarn));
+  EXPECT_EQ("Error", LogLevelToName(llarp::eLogError));
+  EXPECT_EQ("None", LogLevelToName(llarp::eLogNone));
+  EXPECT_EQ("???", LogLevelToName( (llarp::LogLevel)99999 ));
+}
+
+TEST_F(LogLevelTest, TestLogLevelToString)
+{
+  EXPECT_EQ("TRC", LogLevelToString(llarp::eLogTrace));
+  EXPECT_EQ("DBG", LogLevelToString(llarp::eLogDebug));
+  EXPECT_EQ("NFO", LogLevelToString(llarp::eLogInfo));
+  EXPECT_EQ("WRN", LogLevelToString(llarp::eLogWarn));
+  EXPECT_EQ("ERR", LogLevelToString(llarp::eLogError));
+  EXPECT_EQ("???", LogLevelToString(llarp::eLogNone));
+}
+
