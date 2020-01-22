@@ -105,8 +105,8 @@ namespace llarp
       /// local path
       void
       LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const llarp::PathID_t& path,
-                            const Key_t& askpeer) override;
+                            const llarp::PathID_t& path, const Key_t& askpeer,
+                            uint64_t R) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
@@ -565,13 +565,14 @@ namespace llarp
     void
     Context::LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer)
+                                   const Key_t& askpeer, uint64_t R)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
+          new LocalServiceAddressLookup(path, txid, addr, this, askpeer),
+          ((R + 1) * 2000));
     }
 
     void
@@ -598,7 +599,8 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
+          new ServiceAddressLookup(asker, addr, this, R, handler),
+          ((R + 1) * 2000));
     }
 
     void

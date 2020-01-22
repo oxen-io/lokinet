@@ -105,10 +105,7 @@ namespace llarp
           // find closer peer
           if(!dht.Nodes()->FindClosest(target, closer))
             return false;
-          if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, closer);
-          else
-            replies.emplace_back(new GotIntroMessage(From, closer, T));
+          replies.emplace_back(new GotIntroMessage(From, closer, T));
           return true;
         }
 
@@ -118,7 +115,7 @@ namespace llarp
         if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
         {
           if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, peer);
+            dht.LookupIntroSetForPath(S, T, pathID, peer, R - 1);
           else
           {
             if((us ^ target) < (peer ^ target))

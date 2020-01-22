@@ -35,14 +35,14 @@ namespace llarp
       }
 
       FindIntroMessage(uint64_t txid, const llarp::service::Address& addr,
-                       bool iterate = true)
+                       bool iterate = false)
           : IMessage({}), S(addr), T(txid)
       {
         N.Zero();
         if(iterate)
           R = 0;
         else
-          R = 1;
+          R = 3;
       }
 
       ~FindIntroMessage() override;

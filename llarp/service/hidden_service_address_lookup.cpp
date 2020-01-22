@@ -39,7 +39,7 @@ namespace llarp
     {
       auto msg = std::make_shared< routing::DHTMessage >();
       msg->M.emplace_back(
-          std::make_unique< dht::FindIntroMessage >(txid, remote, true));
+          std::make_unique< dht::FindIntroMessage >(txid, remote, false));
       return msg;
     }
 
