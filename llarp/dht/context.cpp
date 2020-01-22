@@ -435,9 +435,8 @@ namespace llarp
             new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
-      Key_t next;
-      std::set< Key_t > excluding = {requester, ourKey};
-      if(_nodes->FindCloseExcluding(target, next, excluding))
+      const auto rc = GetRouter()->nodedb()->FindClosestTo(target);
+      Key_t next(rc.pubkey);
       {
         if(next == target)
         {
@@ -466,11 +465,6 @@ namespace llarp
           replies.emplace_back(
               new GotRouterMessage(requester, next, txid, false));
         }
-      }
-      else
-      {
-        // we don't know it and have no closer peers to ask
-        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
       }
     }
 
