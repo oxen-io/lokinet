@@ -250,9 +250,6 @@ namespace llarp
 
     virtual util::StatusObject
     ExtractStatus() const = 0;
-
-    void
-    EnsureRouter(RouterID router, RouterLookupHandler handler);
   };
 }  // namespace llarp
 
