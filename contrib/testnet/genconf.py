@@ -47,6 +47,7 @@ def main():
             'nickname': svcNodeName(nodeid),
             'min-connections': "{}".format(args.connect)
         }
+        config['logging'] = {'level': 'info'}
         if args.netid:
             config['router']['netid'] = args.netid
             
@@ -85,6 +86,7 @@ def main():
             'worker-threads': '2',
             'nickname': clientNodeName(nodeid)
         }
+        config['logging'] = {'level': 'info'}
         if args.netid:
             config['router']['netid'] = args.netid
 
