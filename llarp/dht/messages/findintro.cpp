@@ -2,6 +2,8 @@
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
 #include <routing/message.hpp>
+#include <router/abstractrouter.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -112,8 +114,14 @@ namespace llarp
         Key_t us     = dht.OurKey();
         Key_t target = S.ToKey();
         // we are recursive
-        if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
+        const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(target);
         {
+          peer = Key_t(rc.pubkey);
+          if(peer == us)
+          {
+            replies.emplace_back(new GotIntroMessage({}, T));
+            return true;
+          }
           if(relayed)
             dht.LookupIntroSetForPath(S, T, pathID, peer, R - 1);
           else

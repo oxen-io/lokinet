@@ -6,6 +6,7 @@
 #include <util/common.hpp>
 #include <util/fs.hpp>
 #include <util/thread/threading.hpp>
+#include <dht/key.hpp>
 
 #include <absl/base/thread_annotations.h>
 
@@ -72,6 +73,9 @@ struct llarp_nodedb
 
   NetDBMap_t entries GUARDED_BY(access);
   fs::path nodePath;
+
+  llarp::RouterContact
+  FindClosestTo(const llarp::dht::Key_t &location);
 
   /// return true if we should save our nodedb to disk
   bool
