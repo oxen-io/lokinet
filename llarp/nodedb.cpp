@@ -9,6 +9,7 @@
 #include <util/mem.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/thread_pool.hpp>
+#include <dht/kademlia.hpp>
 
 #include <fstream>
 #include <unordered_map>
@@ -90,6 +91,25 @@ llarp_nodedb::Has(const llarp::RouterID &pk)
 {
   llarp::util::Lock lock(&access);
   return entries.find(pk) != entries.end();
+}
+
+llarp::RouterContact
+llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location)
+{
+  llarp::RouterContact rc;
+  const llarp::dht::XorMetric compare(location);
+  visit([&rc, compare](const auto &otherRC) -> bool {
+    if(rc.pubkey.IsZero())
+    {
+      rc = otherRC;
+      return true;
+    }
+    if(compare(llarp::dht::Key_t{otherRC.pubkey.as_array()},
+               llarp::dht::Key_t{rc.pubkey.as_array()}))
+      rc = otherRC;
+    return true;
+  });
+  return rc;
 }
 
 /// skiplist directory is hex encoded first nibble
