@@ -195,6 +195,8 @@ endif(USE_NETNS)
 
 if(TESTNET)
   add_definitions(-DTESTNET=1)
+  # 5 times slower than realtime
+  add_definitions(-DTESTNET_SPEED=5)
 endif(TESTNET)
 
 if(SHADOW)

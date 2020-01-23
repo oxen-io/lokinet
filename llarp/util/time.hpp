@@ -5,6 +5,7 @@
 
 namespace llarp
 {
+  /// get time right now as milliseconds, this is monotonic
   llarp_time_t
   time_now_ms();
 }  // namespace llarp
