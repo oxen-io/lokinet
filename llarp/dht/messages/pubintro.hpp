@@ -12,22 +12,23 @@ namespace llarp
   {
     struct PublishIntroMessage final : public IMessage
     {
-      llarp::service::IntroSet I;
-      std::vector< Key_t > E;
-      uint64_t R    = 0;
-      uint64_t S    = 0;
-      uint64_t txID = 0;
-      bool hasS     = false;
+      static const uint64_t MaxPropagationDepth;
+      llarp::service::IntroSet introset;
+      std::vector< Key_t > exclude;
+      uint64_t depth = 0;
+      uint64_t txID  = 0;
       PublishIntroMessage() : IMessage({})
       {
       }
 
       PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx,
-                          uint64_t s, std::vector< Key_t > exclude = {})
-          : IMessage({}), E(std::move(exclude)), txID(tx)
+                          uint64_t s, std::vector< Key_t > _exclude = {})
+          : IMessage({})
+          , introset(i)
+          , exclude(std::move(_exclude))
+          , depth(s)
+          , txID(tx)
       {
-        I = i;
-        S = s;
       }
 
       ~PublishIntroMessage() override;

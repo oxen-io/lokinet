@@ -435,13 +435,29 @@ namespace llarp
             new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
+      if(not GetRouter()->ConnectionToRouterAllowed(target.as_array()))
+      {
+        // explicitly not allowed
+        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
+        return;
+      }
       const auto rc = GetRouter()->nodedb()->FindClosestTo(target);
-      Key_t next(rc.pubkey);
+      const Key_t next(rc.pubkey);
       {
         if(next == target)
         {
-          // we know it, ask them directly for their own RC to keep it updated
-          LookupRouterRecursive(target.as_array(), requester, txid, next);
+          // we know the target
+          if(rc.ExpiresSoon(llarp::time_now_ms()))
+          {
+            // ask target for their rc to keep it updated
+            LookupRouterRecursive(target.as_array(), requester, txid, next);
+          }
+          else
+          {
+            // send reply with rc we know of
+            replies.emplace_back(
+                new GotRouterMessage(requester, txid, {rc}, false));
+          }
         }
         else if(recursive)  // are we doing a recursive lookup?
         {

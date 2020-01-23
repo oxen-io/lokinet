@@ -10,7 +10,8 @@ namespace llarp
 {
   namespace dht
   {
-    PublishIntroMessage::~PublishIntroMessage() = default;
+    const uint64_t PublishIntroMessage::MaxPropagationDepth = 5;
+    PublishIntroMessage::~PublishIntroMessage()             = default;
 
     bool
     PublishIntroMessage::DecodeKey(const llarp_buffer_t &key,
@@ -19,19 +20,12 @@ namespace llarp
       bool read = false;
       if(key == "E")
       {
-        return BEncodeReadList(E, val);
+        return BEncodeReadList(exclude, val);
       }
-      if(!BEncodeMaybeReadDictEntry("I", I, read, key, val))
+      if(!BEncodeMaybeReadDictEntry("I", introset, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
+      if(!BEncodeMaybeReadDictInt("S", depth, read, key, val))
         return false;
-      if(key == "S")
-      {
-        read = true;
-        hasS = true;
-        if(!bencode_read_integer(val, &S))
-          return false;
-      }
       if(!BEncodeMaybeReadDictInt("T", txID, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
@@ -45,21 +39,23 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto now = ctx->impl->Now();
-      if(S > 5)
+
+      if(depth > MaxPropagationDepth)
       {
-        llarp::LogWarn("invalid S value ", S, " > 5");
+        llarp::LogWarn("invalid propgagation depth value ", depth, " > ",
+                       MaxPropagationDepth);
         return false;
       }
       auto &dht = *ctx->impl;
-      if(!I.Verify(now))
+      if(!introset.Verify(now))
       {
-        llarp::LogWarn("invalid introset: ", I);
+        llarp::LogWarn("invalid introset: ", introset);
         // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
 
-      if(I.W && !I.W->IsValid(now))
+      if(introset.W && !introset.W->IsValid(now))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
         // don't propogate or store
@@ -67,7 +63,7 @@ namespace llarp
         return true;
       }
       llarp::dht::Key_t addr;
-      if(!I.A.CalculateAddress(addr.as_array()))
+      if(not introset.A.CalculateAddress(addr.as_array()))
       {
         llarp::LogWarn(
             "failed to calculate hidden service address for PubIntro message");
@@ -75,23 +71,25 @@ namespace llarp
       }
 
       now += llarp::service::MAX_INTROSET_TIME_DELTA;
-      if(I.IsExpired(now))
+      if(introset.IsExpired(now))
       {
         // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-      dht.services()->PutNode(I);
-      replies.emplace_back(new GotIntroMessage({I}, txID));
+      dht.services()->PutNode(introset);
+      replies.emplace_back(new GotIntroMessage({introset}, txID));
       Key_t peer;
-      std::set< Key_t > exclude;
-      for(const auto &e : E)
-        exclude.insert(e);
-      exclude.insert(From);
-      exclude.insert(dht.OurKey());
-      if(S && dht.Nodes()->FindCloseExcluding(addr, peer, exclude))
+      std::set< Key_t > exclude_propagate;
+      for(const auto &e : exclude)
+        exclude_propagate.insert(e);
+      exclude_propagate.insert(From);
+      exclude_propagate.insert(dht.OurKey());
+      if(depth > 0
+         && dht.Nodes()->FindCloseExcluding(addr, peer, exclude_propagate))
       {
-        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1, exclude);
+        dht.PropagateIntroSetTo(From, txID, introset, peer, depth - 1,
+                                exclude_propagate);
       }
       return true;
     }
@@ -103,13 +101,11 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "I"))
         return false;
-      if(!BEncodeWriteDictList("E", E, buf))
+      if(!BEncodeWriteDictList("E", exclude, buf))
         return false;
-      if(!BEncodeWriteDictEntry("I", I, buf))
+      if(!BEncodeWriteDictEntry("I", introset, buf))
         return false;
-      if(!BEncodeWriteDictInt("R", R, buf))
-        return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if(!BEncodeWriteDictInt("S", depth, buf))
         return false;
       if(!BEncodeWriteDictInt("T", txID, buf))
         return false;

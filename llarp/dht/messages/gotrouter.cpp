@@ -15,35 +15,35 @@ namespace llarp
     bool
     GotRouterMessage::BEncode(llarp_buffer_t *buf) const
     {
-      if(!bencode_start_dict(buf))
+      if(not bencode_start_dict(buf))
         return false;
 
       // message type
-      if(!BEncodeWriteDictMsgType(buf, "A", "S"))
+      if(not BEncodeWriteDictMsgType(buf, "A", "S"))
         return false;
 
-      if(K)
+      if(closerTarget)
       {
-        if(!BEncodeWriteDictEntry("K", *K.get(), buf))
+        if(not BEncodeWriteDictEntry("K", *closerTarget, buf))
           return false;
       }
 
       // near
-      if(N.size())
+      if(not nearKeys.empty())
       {
-        if(!BEncodeWriteDictList("N", N, buf))
+        if(not BEncodeWriteDictList("N", nearKeys, buf))
           return false;
       }
 
-      if(!BEncodeWriteDictList("R", R, buf))
+      if(not BEncodeWriteDictList("R", foundRCs, buf))
         return false;
 
       // txid
-      if(!BEncodeWriteDictInt("T", txid, buf))
+      if(not BEncodeWriteDictInt("T", txid, buf))
         return false;
 
       // version
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if(not BEncodeWriteDictInt("V", version, buf))
         return false;
 
       return bencode_end(buf);
@@ -54,18 +54,18 @@ namespace llarp
     {
       if(key == "K")
       {
-        if(K)  // duplicate key?
+        if(closerTarget)  // duplicate key?
           return false;
-        K = std::make_unique< dht::Key_t >();
-        return K->BDecode(val);
+        closerTarget = std::make_unique< dht::Key_t >();
+        return closerTarget->BDecode(val);
       }
       if(key == "N")
       {
-        return BEncodeReadList(N, val);
+        return BEncodeReadList(nearKeys, val);
       }
       if(key == "R")
       {
-        return BEncodeReadList(R, val);
+        return BEncodeReadList(foundRCs, val);
       }
       if(key == "T")
       {
@@ -98,29 +98,29 @@ namespace llarp
 
       if(dht.pendingExploreLookups().HasPendingLookupFrom(owner))
       {
-        LogDebug("got ", N.size(), " results in GRM for explore");
-        if(N.size() == 0)
-          dht.pendingExploreLookups().NotFound(owner, K);
+        LogDebug("got ", nearKeys.size(), " results in GRM for explore");
+        if(nearKeys.empty())
+          dht.pendingExploreLookups().NotFound(owner, closerTarget);
         else
         {
-          dht.pendingExploreLookups().Found(owner, From.as_array(), N);
+          dht.pendingExploreLookups().Found(owner, From.as_array(), nearKeys);
         }
         return true;
       }
       // not explore lookup
       if(dht.pendingRouterLookups().HasPendingLookupFrom(owner))
       {
-        LogDebug("got ", R.size(), " results in GRM for lookup");
-        if(R.size() == 0)
-          dht.pendingRouterLookups().NotFound(owner, K);
-        else if(R[0].pubkey.IsZero())
+        LogDebug("got ", foundRCs.size(), " results in GRM for lookup");
+        if(foundRCs.empty())
+          dht.pendingRouterLookups().NotFound(owner, closerTarget);
+        else if(foundRCs[0].pubkey.IsZero())
           return false;
         else
-          dht.pendingRouterLookups().Found(owner, R[0].pubkey, R);
+          dht.pendingRouterLookups().Found(owner, foundRCs[0].pubkey, foundRCs);
         return true;
       }
       // store if valid
-      for(const auto &rc : R)
+      for(const auto &rc : foundRCs)
       {
         if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;

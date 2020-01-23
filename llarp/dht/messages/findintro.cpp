@@ -16,16 +16,16 @@ namespace llarp
     {
       bool read = false;
 
-      if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
+      if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictInt("R", R, read, k, val))
+      if(!BEncodeMaybeReadDictInt("R", recursionDepth, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("S", S, read, k, val))
+      if(!BEncodeMaybeReadDictEntry("S", serviceAddress, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, val))
+      if(!BEncodeMaybeReadDictInt("T", txID, read, k, val))
         return false;
 
       if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, k,
@@ -44,25 +44,25 @@ namespace llarp
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
-      if(N.Empty())
+      if(tagName.Empty())
       {
         // recursion
-        if(!BEncodeWriteDictInt("R", R, buf))
+        if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
         // service address
-        if(!BEncodeWriteDictEntry("S", S, buf))
+        if(!BEncodeWriteDictEntry("S", serviceAddress, buf))
           return false;
       }
       else
       {
-        if(!BEncodeWriteDictEntry("N", N, buf))
+        if(!BEncodeWriteDictEntry("N", tagName, buf))
           return false;
         // recursion
-        if(!BEncodeWriteDictInt("R", R, buf))
+        if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
       }
       // txid
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if(!BEncodeWriteDictInt("T", txID, buf))
         return false;
       // protocol version
       if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
@@ -75,74 +75,73 @@ namespace llarp
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
-      if(R > 5)
+      static constexpr uint64_t MaxRecursionAllowed = 8;
+      if(recursionDepth > MaxRecursionAllowed)
       {
-        llarp::LogError("R value too big, ", R, "> 5");
+        llarp::LogError("recursion depth big, ", recursionDepth, "> ",
+                        MaxRecursionAllowed);
         return false;
       }
       auto& dht = *ctx->impl;
-      if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, T}))
+      if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, txID}))
       {
-        llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
+        llarp::LogWarn("duplicate FIM from ", From, " txid=", txID);
         return false;
       }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(N.Empty())
+      if(tagName.Empty())
       {
-        llarp::LogInfo("lookup ", S.ToString());
-        const auto introset = dht.GetIntroSetByServiceAddress(S);
+        if(serviceAddress.IsZero())
+        {
+          // we dont got it
+          replies.emplace_back(new GotIntroMessage({}, txID));
+        }
+        llarp::LogInfo("lookup ", serviceAddress.ToString());
+        const auto introset = dht.GetIntroSetByServiceAddress(serviceAddress);
         if(introset)
         {
-          service::IntroSet i = *introset;
-          replies.emplace_back(new GotIntroMessage({i}, T));
+          replies.emplace_back(new GotIntroMessage({*introset}, txID));
           return true;
         }
 
-        if(R == 0)
+        const Key_t target = serviceAddress.ToKey();
+        const Key_t us     = dht.OurKey();
+
+        if(recursionDepth == 0)
         {
           // we don't have it
-          Key_t target = S.ToKey();
+
           Key_t closer;
           // find closer peer
           if(!dht.Nodes()->FindClosest(target, closer))
             return false;
-          replies.emplace_back(new GotIntroMessage(From, closer, T));
+          replies.emplace_back(new GotIntroMessage(From, closer, txID));
           return true;
         }
 
-        Key_t us     = dht.OurKey();
-        Key_t target = S.ToKey();
         // we are recursive
         const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(target);
+
+        peer = Key_t(rc.pubkey);
+
+        if((us ^ target) < (peer ^ target) || peer == us)
         {
-          peer = Key_t(rc.pubkey);
-          if(peer == us)
-          {
-            replies.emplace_back(new GotIntroMessage({}, T));
-            return true;
-          }
-          if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, peer, R - 1);
-          else
-          {
-            if((us ^ target) < (peer ^ target))
-            {
-              // we are not closer than our peer to the target so don't
-              // recurse farther
-              replies.emplace_back(new GotIntroMessage({}, T));
-              return true;
-            }
-            if(R > 0)
-              dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
-            else
-              dht.LookupIntroSetIterative(S, From, T, peer);
-          }
+          // we are not closer than our peer to the target so don't
+          // recurse farther
+          replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
-
-        // no more closer peers
-        replies.emplace_back(new GotIntroMessage({}, T));
+        if(relayed)
+        {
+          dht.LookupIntroSetForPath(serviceAddress, txID, pathID, peer,
+                                    recursionDepth - 1);
+        }
+        else
+        {
+          dht.LookupIntroSetRecursive(serviceAddress, From, txID, peer,
+                                      recursionDepth - 1);
+        }
         return true;
       }
 
@@ -151,45 +150,47 @@ namespace llarp
         // tag lookup
         if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
         {
-          dht.LookupTagForPath(N, T, pathID, peer);
+          dht.LookupTagForPath(tagName, txID, pathID, peer);
         }
         else
         {
           // no more closer peers
-          replies.emplace_back(new GotIntroMessage({}, T));
+          replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
       }
       else
       {
-        if(R == 0)
+        if(recursionDepth == 0)
         {
           // base case
-          auto introsets = dht.FindRandomIntroSetsWithTagExcluding(N, 2, {});
+          auto introsets =
+              dht.FindRandomIntroSetsWithTagExcluding(tagName, 2, {});
           std::vector< service::IntroSet > reply;
           for(const auto& introset : introsets)
           {
-            reply.push_back(introset);
+            reply.emplace_back(introset);
           }
-          replies.emplace_back(new GotIntroMessage(reply, T));
+          replies.emplace_back(new GotIntroMessage(reply, txID));
           return true;
         }
-        if(R < 5)
+        if(recursionDepth < MaxRecursionAllowed)
         {
           // tag lookup
           if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
           {
-            dht.LookupTagRecursive(N, From, T, peer, R - 1);
+            dht.LookupTagRecursive(tagName, From, txID, peer,
+                                   recursionDepth - 1);
           }
           else
           {
-            replies.emplace_back(new GotIntroMessage({}, T));
+            replies.emplace_back(new GotIntroMessage({}, txID));
           }
         }
         else
         {
-          // too big R value
-          replies.emplace_back(new GotIntroMessage({}, T));
+          // too big recursion depth
+          replies.emplace_back(new GotIntroMessage({}, txID));
         }
       }
 
