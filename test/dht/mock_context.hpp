@@ -11,7 +11,6 @@ namespace llarp
   {
     struct MockContext final : public dht::AbstractContext
     {
-
       MOCK_CONST_METHOD1(StoreRC, void(const RouterContact));
 
       MOCK_METHOD2(LookupRouter, bool(const RouterID&, RouterLookupHandler));
@@ -48,9 +47,9 @@ namespace llarp
                    void(const RouterID& target, uint64_t txid,
                         const PathID_t& path, const dht::Key_t& askpeer));
 
-      MOCK_METHOD4(LookupIntroSetForPath,
+      MOCK_METHOD5(LookupIntroSetForPath,
                    void(const service::Address&, uint64_t, const PathID_t&,
-                        const dht::Key_t&));
+                        const dht::Key_t&, uint64_t));
 
       MOCK_METHOD3(DHTSendTo, void(const RouterID&, dht::IMessage*, bool));
 

@@ -105,8 +105,8 @@ namespace llarp
       /// local path
       void
       LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const llarp::PathID_t& path,
-                            const Key_t& askpeer) override;
+                            const llarp::PathID_t& path, const Key_t& askpeer,
+                            uint64_t R) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
@@ -435,14 +435,29 @@ namespace llarp
             new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
-      Key_t next;
-      std::set< Key_t > excluding = {requester, ourKey};
-      if(_nodes->FindCloseExcluding(target, next, excluding))
+      if(not GetRouter()->ConnectionToRouterAllowed(target.as_array()))
+      {
+        // explicitly not allowed
+        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
+        return;
+      }
+      const auto rc = GetRouter()->nodedb()->FindClosestTo(target);
+      const Key_t next(rc.pubkey);
       {
         if(next == target)
         {
-          // we know it, ask them directly for their own RC to keep it updated
-          LookupRouterRecursive(target.as_array(), requester, txid, next);
+          // we know the target
+          if(rc.ExpiresSoon(llarp::time_now_ms()))
+          {
+            // ask target for their rc to keep it updated
+            LookupRouterRecursive(target.as_array(), requester, txid, next);
+          }
+          else
+          {
+            // send reply with rc we know of
+            replies.emplace_back(
+                new GotRouterMessage(requester, txid, {rc}, false));
+          }
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -466,11 +481,6 @@ namespace llarp
           replies.emplace_back(
               new GotRouterMessage(requester, next, txid, false));
         }
-      }
-      else
-      {
-        // we don't know it and have no closer peers to ask
-        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
       }
     }
 
@@ -565,13 +575,14 @@ namespace llarp
     void
     Context::LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer)
+                                   const Key_t& askpeer, uint64_t R)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
+          new LocalServiceAddressLookup(path, txid, addr, this, askpeer),
+          ((R + 1) * 2000));
     }
 
     void
@@ -598,7 +609,8 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
+          new ServiceAddressLookup(asker, addr, this, R, handler),
+          ((R + 1) * 2000));
     }
 
     void

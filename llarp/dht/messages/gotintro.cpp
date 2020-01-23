@@ -13,7 +13,7 @@ namespace llarp
   {
     GotIntroMessage::GotIntroMessage(std::vector< service::IntroSet > results,
                                      uint64_t tx)
-        : IMessage({}), I(std::move(results)), T(tx)
+        : IMessage({}), found(std::move(results)), txid(tx)
     {
     }
 
@@ -25,7 +25,7 @@ namespace llarp
     {
       auto &dht = *ctx->impl;
 
-      for(const auto &introset : I)
+      for(const auto &introset : found)
       {
         if(!introset.Verify(dht.Now()))
         {
@@ -36,28 +36,29 @@ namespace llarp
           return false;
         }
       }
-      TXOwner owner(From, T);
+      TXOwner owner(From, txid);
       auto tagLookup = dht.pendingTagLookups().GetPendingLookupFrom(owner);
       if(tagLookup)
       {
-        dht.pendingTagLookups().Found(owner, tagLookup->target, I);
+        dht.pendingTagLookups().Found(owner, tagLookup->target, found);
         return true;
       }
       auto serviceLookup =
           dht.pendingIntrosetLookups().GetPendingLookupFrom(owner);
       if(serviceLookup)
       {
-        if(I.size())
+        if(not found.empty())
         {
-          dht.pendingIntrosetLookups().Found(owner, serviceLookup->target, I);
+          dht.pendingIntrosetLookups().Found(owner, serviceLookup->target,
+                                             found);
         }
         else
         {
-          dht.pendingIntrosetLookups().NotFound(owner, K);
+          dht.pendingIntrosetLookups().NotFound(owner, nullptr);
         }
         return true;
       }
-      LogError("no pending TX for GIM from ", From, " txid=", T);
+      LogError("no pending TX for GIM from ", From, " txid=", txid);
       return false;
     }
 
@@ -84,17 +85,20 @@ namespace llarp
     {
       if(key == "I")
       {
-        return BEncodeReadList(I, buf);
+        return BEncodeReadList(found, buf);
       }
       if(key == "K")
       {
-        if(K)  // duplicate key?
+        if(closer.has_value())  // duplicate key?
           return false;
-        K = std::make_unique< dht::Key_t >();
-        return K->BDecode(buf);
+        dht::Key_t K;
+        if(not K.BDecode(buf))
+          return false;
+        closer = K;
+        return true;
       }
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, key, buf))
+      if(!BEncodeMaybeReadDictInt("T", txid, read, key, buf))
         return false;
       if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
         return false;
@@ -108,14 +112,14 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "G"))
         return false;
-      if(!BEncodeWriteDictList("I", I, buf))
+      if(!BEncodeWriteDictList("I", found, buf))
         return false;
-      if(K)
+      if(closer.has_value())
       {
-        if(!BEncodeWriteDictEntry("K", *K.get(), buf))
+        if(!BEncodeWriteDictEntry("K", closer.value(), buf))
           return false;
       }
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if(!BEncodeWriteDictInt("T", txid, buf))
         return false;
       if(!BEncodeWriteDictInt("V", version, buf))
         return false;

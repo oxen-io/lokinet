@@ -88,7 +88,8 @@ namespace llarp
 
       virtual void
       LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const PathID_t& path, const Key_t& askpeer) = 0;
+                            const PathID_t& path, const Key_t& askpeer,
+                            uint64_t R) = 0;
 
       virtual void
       DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;

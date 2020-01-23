@@ -181,7 +181,7 @@ TEST_F(TestDhtServiceAddressLookup, send_reply)
         WhenDynamicCastTo<dht::GotIntroMessage *>(
           AllOf(
             NotNull(),
-            Field(&dht::GotIntroMessage::I, SizeIs(1))
+            Field(&dht::GotIntroMessage::found, SizeIs(1))
           )
         ),
         true
@@ -206,7 +206,7 @@ TEST_F(TestDhtServiceAddressLookup, send_reply)
         WhenDynamicCastTo<dht::GotIntroMessage *>(
           AllOf(
             NotNull(),
-            Field(&dht::GotIntroMessage::I, SizeIs(1))
+            Field(&dht::GotIntroMessage::found, SizeIs(1))
           )
         ),
         true

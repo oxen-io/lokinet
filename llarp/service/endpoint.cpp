@@ -296,15 +296,15 @@ namespace llarp
     {
       std::set< IntroSet > remote;
       auto currentPub = m_state->m_CurrentPublishTX;
-      for(const auto& introset : msg->I)
+      for(const auto& introset : msg->found)
       {
         if(!introset.Verify(Now()))
         {
-          if(m_Identity.pub == introset.A && currentPub == msg->T)
+          if(m_Identity.pub == introset.A && currentPub == msg->txid)
             IntroSetPublishFail();
           return true;
         }
-        if(m_Identity.pub == introset.A && currentPub == msg->T)
+        if(m_Identity.pub == introset.A && currentPub == msg->txid)
         {
           LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
@@ -316,11 +316,11 @@ namespace llarp
         remote.insert(introset);
       }
       auto& lookups = m_state->m_PendingLookups;
-      auto itr      = lookups.find(msg->T);
+      auto itr      = lookups.find(msg->txid);
       if(itr == lookups.end())
       {
         LogWarn("invalid lookup response for hidden service endpoint ", Name(),
-                " txid=", msg->T);
+                " txid=", msg->txid);
         return true;
       }
       std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
@@ -716,11 +716,11 @@ namespace llarp
                                     llarp_async_verify_rc* j)
     {
       auto& pendingRouters = m_state->m_PendingRouters;
-      auto itr             = pendingRouters.find(msg->R[0].pubkey);
+      auto itr             = pendingRouters.find(j->rc.pubkey);
       if(itr != pendingRouters.end())
       {
         if(j->valid)
-          itr->second.InformResult(msg->R);
+          itr->second.InformResult(msg->foundRCs);
         else
           itr->second.InformResult({});
         pendingRouters.erase(itr);
@@ -731,17 +731,20 @@ namespace llarp
     bool
     Endpoint::HandleGotRouterMessage(dht::GotRouterMessage_constptr msg)
     {
-      if(msg->R.size())
+      if(not msg->foundRCs.empty())
       {
-        llarp_async_verify_rc* job = new llarp_async_verify_rc();
-        job->nodedb                = Router()->nodedb();
-        job->cryptoworker          = Router()->threadpool();
-        job->diskworker            = Router()->diskworker();
-        job->logic                 = Router()->logic();
-        job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
-                              std::placeholders::_1);
-        job->rc   = msg->R[0];
-        llarp_nodedb_async_verify(job);
+        for(const auto& rc : msg->foundRCs)
+        {
+          llarp_async_verify_rc* job = new llarp_async_verify_rc();
+          job->nodedb                = Router()->nodedb();
+          job->cryptoworker          = Router()->threadpool();
+          job->diskworker            = Router()->diskworker();
+          job->logic                 = Router()->logic();
+          job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg,
+                                std::placeholders::_1);
+          job->rc   = rc;
+          llarp_nodedb_async_verify(job);
+        }
       }
       else
       {

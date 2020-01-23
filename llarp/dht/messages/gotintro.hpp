@@ -6,6 +6,7 @@
 #include <util/copy_or_nullptr.hpp>
 
 #include <vector>
+#include <absl/types/optional.h>
 
 namespace llarp
 {
@@ -15,11 +16,11 @@ namespace llarp
     struct GotIntroMessage : public IMessage
     {
       /// the found introsets
-      std::vector< service::IntroSet > I;
+      std::vector< service::IntroSet > found;
       /// txid
-      uint64_t T = 0;
+      uint64_t txid = 0;
       /// the key of a router closer in keyspace if iterative lookup
-      std::unique_ptr< Key_t > K;
+      absl::optional< Key_t > closer;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
       {
@@ -27,16 +28,16 @@ namespace llarp
 
       GotIntroMessage(const GotIntroMessage& other)
           : IMessage(other.From)
-          , I(other.I)
-          , T(other.T)
-          , K(copy_or_nullptr(other.K))
+          , found(other.found)
+          , txid(other.txid)
+          , closer(other.closer)
       {
         version = other.version;
       }
 
       /// for iterative reply
-      GotIntroMessage(const Key_t& from, const Key_t& closer, uint64_t txid)
-          : IMessage(from), T(txid), K(new Key_t(closer))
+      GotIntroMessage(const Key_t& from, const Key_t& _closer, uint64_t _txid)
+          : IMessage(from), txid(_txid), closer(_closer)
       {
       }
 
