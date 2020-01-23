@@ -9,7 +9,9 @@ namespace llarp
 {
   namespace dht
   {
-    FindIntroMessage::~FindIntroMessage() = default;
+    /// 2 ** 12 which is 4096 nodes, after which this starts to fail "more"
+    const uint64_t FindIntroMessage::MaxRecursionDepth = 12;
+    FindIntroMessage::~FindIntroMessage()              = default;
 
     bool
     FindIntroMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val)
@@ -75,11 +77,10 @@ namespace llarp
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
-      static constexpr uint64_t MaxRecursionAllowed = 8;
-      if(recursionDepth > MaxRecursionAllowed)
+      if(recursionDepth > MaxRecursionDepth)
       {
         llarp::LogError("recursion depth big, ", recursionDepth, "> ",
-                        MaxRecursionAllowed);
+                        MaxRecursionDepth);
         return false;
       }
       auto& dht = *ctx->impl;
@@ -174,7 +175,7 @@ namespace llarp
           replies.emplace_back(new GotIntroMessage(reply, txID));
           return true;
         }
-        if(recursionDepth < MaxRecursionAllowed)
+        if(recursionDepth < MaxRecursionDepth)
         {
           // tag lookup
           if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))

@@ -38,8 +38,8 @@ namespace llarp
     HiddenServiceAddressLookup::BuildRequestMessage()
     {
       auto msg = std::make_shared< routing::DHTMessage >();
-      msg->M.emplace_back(
-          std::make_unique< dht::FindIntroMessage >(txid, remote, false));
+      msg->M.emplace_back(std::make_unique< dht::FindIntroMessage >(
+          txid, remote, dht::FindIntroMessage::MaxRecursionDepth));
       return msg;
     }
 

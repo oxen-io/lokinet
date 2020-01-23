@@ -12,6 +12,7 @@ namespace llarp
   {
     struct FindIntroMessage final : public IMessage
     {
+      static const uint64_t MaxRecursionDepth;
       uint64_t recursionDepth = 0;
       llarp::service::Address serviceAddress;
       llarp::service::Tag tagName;
@@ -34,8 +35,9 @@ namespace llarp
           recursionDepth = 1;
       }
 
-      FindIntroMessage(uint64_t txid, const llarp::service::Address& addr,
-                       uint64_t maxRecursionDepth)
+      explicit FindIntroMessage(uint64_t txid,
+                                const llarp::service::Address& addr,
+                                uint64_t maxRecursionDepth)
           : IMessage({})
           , recursionDepth(maxRecursionDepth)
           , serviceAddress(addr)
