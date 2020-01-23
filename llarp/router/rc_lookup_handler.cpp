@@ -240,17 +240,18 @@ namespace llarp
   void
   RCLookupHandler::ExploreNetwork()
   {
-    if(_bootstrapRCList.size())
+    const size_t known = _nodedb->num_loaded();
+    if(_bootstrapRCList.empty() && known == 0)
+    {
+      LogError("we have no bootstrap nodes specified");
+    }
+    else if(known <= _bootstrapRCList.size())
     {
       for(const auto &rc : _bootstrapRCList)
       {
         LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
         _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
-    }
-    else
-    {
-      LogError("we have no bootstrap nodes specified");
     }
 
     if(useWhitelist)
