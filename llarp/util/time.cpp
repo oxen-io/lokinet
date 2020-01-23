@@ -14,29 +14,21 @@ namespace llarp
         .count();
   }
 
-  static llarp_time_t
-  time_started_at()
-  {
-    const static llarp_time_t started =
-        time_since_epoch< std::chrono::milliseconds, Clock_t >();
-    return started;
-  }
+  const static llarp_time_t started_at_system =
+      time_since_epoch< std::chrono::milliseconds, Clock_t >();
 
+  const static llarp_time_t started_at_steady =
+      time_since_epoch< std::chrono::milliseconds,
+                        std::chrono::steady_clock >();
+  /// get our uptime in ms
   static llarp_time_t
   time_since_started()
   {
-    const static llarp_time_t started =
-        time_since_epoch< std::chrono::milliseconds,
-                          std::chrono::steady_clock >();
     return time_since_epoch< std::chrono::milliseconds,
                              std::chrono::steady_clock >()
-        - started;
+        - started_at_steady;
   }
 
-  // use std::chrono because otherwise the network breaks with Daylight Savings
-  // this time, it doesn't get truncated -despair
-  // that concern is what drove me back to the POSIX C time functions
-  // in the first place
   llarp_time_t
   time_now_ms()
   {
@@ -45,7 +37,7 @@ namespace llarp
 #ifdef TESTNET_SPEED
     t /= TESTNET_SPEED;
 #endif
-    t += time_started_at();
+    t += started_at_system;
 
     if(t <= lastTime)
     {
