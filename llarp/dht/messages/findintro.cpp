@@ -97,6 +97,7 @@ namespace llarp
         {
           // we dont got it
           replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
         }
         llarp::LogInfo("lookup ", serviceAddress.ToString());
         const auto introset = dht.GetIntroSetByServiceAddress(serviceAddress);
