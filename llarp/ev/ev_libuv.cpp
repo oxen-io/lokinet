@@ -836,6 +836,9 @@ namespace libuv
   {
     if(m_Run)
     {
+#ifdef TESTNET_SPEED
+      ms *= TESTNET_SPEED;
+#endif
       uv_timer_start(m_TickTimer, &OnTickTimeout, ms, 0);
       uv_run(&m_Impl, UV_RUN_ONCE);
     }
@@ -872,6 +875,9 @@ namespace libuv
   Loop::call_after_delay(llarp_time_t delay_ms,
                          std::function< void(void) > callback)
   {
+#ifdef TESTNET_SPEED
+    delay_ms *= TESTNET_SPEED;
+#endif
     PendingTimer timer;
     timer.delay_ms  = delay_ms;
     timer.callback  = callback;

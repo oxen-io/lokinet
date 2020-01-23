@@ -6,13 +6,31 @@ namespace llarp
 {
   using Clock_t = std::chrono::system_clock;
 
-  template < typename Res >
+  template < typename Res, typename Clock >
   static llarp_time_t
   time_since_epoch()
   {
-    return std::chrono::duration_cast< Res >(
-               llarp::Clock_t::now().time_since_epoch())
+    return std::chrono::duration_cast< Res >(Clock::now().time_since_epoch())
         .count();
+  }
+
+  static llarp_time_t
+  time_started_at()
+  {
+    const static llarp_time_t started =
+        time_since_epoch< std::chrono::milliseconds, Clock_t >();
+    return started;
+  }
+
+  static llarp_time_t
+  time_since_started()
+  {
+    const static llarp_time_t started =
+        time_since_epoch< std::chrono::milliseconds,
+                          std::chrono::steady_clock >();
+    return time_since_epoch< std::chrono::milliseconds,
+                             std::chrono::steady_clock >()
+        - started;
   }
 
   // use std::chrono because otherwise the network breaks with Daylight Savings
@@ -23,7 +41,12 @@ namespace llarp
   time_now_ms()
   {
     static llarp_time_t lastTime = 0;
-    auto t = llarp::time_since_epoch< std::chrono::milliseconds >();
+    auto t                       = time_since_started();
+#ifdef TESTNET_SPEED
+    t /= TESTNET_SPEED;
+#endif
+    t += time_started_at();
+
     if(t <= lastTime)
     {
       return lastTime;
