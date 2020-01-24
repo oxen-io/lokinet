@@ -43,7 +43,8 @@ namespace llarp
       }
 
       /// gossip message
-      GotRouterMessage(const RouterContact rc) : IMessage({}), R({rc}), txid(0)
+      GotRouterMessage(const RouterContact rc)
+          : IMessage({}), foundRCs({rc}), txid(0)
       {
         version = LLARP_PROTO_VERSION;
       }
