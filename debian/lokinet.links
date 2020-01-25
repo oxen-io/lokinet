@@ -1,1 +1,2 @@
 /etc/loki/lokinet.ini /var/lib/lokinet/lokinet.ini
+/etc/loki/lokinet-testnet.ini /var/lib/lokinet/testnet/lokinet.ini

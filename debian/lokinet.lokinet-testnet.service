@@ -1,5 +1,5 @@
 [Unit]
-Description=LokiNET: Anonymous Network layer thingydoo, client
+Description=LokiNET: Anonymous Network layer thingydoo, client (testnet)
 AssertFileNotEmpty=/var/lib/lokinet/testnet/bootstrap.signed
 Wants=network-online.target
 After=network-online.target
@@ -7,12 +7,12 @@ After=network-online.target
 [Service]
 User=_lokinet
 SyslogIdentifier=lokinet
-WorkingDirectory=/var/lib/lokinet
+WorkingDirectory=/var/lib/lokinet/testnet
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/lokinet /var/lib/lokinet/lokinet.ini
-ExecStartPost=+/usr/sbin/lokinet-resolvconf add /var/lib/lokinet/lokinet.ini
-ExecStopPost=+/usr/sbin/lokinet-resolvconf remove /var/lib/lokinet/lokinet.ini
+ExecStart=/usr/bin/lokinet /var/lib/lokinet/testnet/lokinet.ini
+ExecStartPost=+/usr/sbin/lokinet-resolvconf add /var/lib/lokinet/testnet/lokinet.ini
+ExecStopPost=+/usr/sbin/lokinet-resolvconf remove /var/lib/lokinet/testnet/lokinet.ini
 Environment=LOKINET_NETID=gamma
 Restart=always
 RestartSec=5s
