@@ -47,6 +47,12 @@ namespace llarp
     }
 
     bool
+    operator!=(const RouterVersion* other) const
+    {
+      return !(*this == other);
+    }
+
+    bool
     operator==(const RouterVersion& other) const
     {
       return m_ProtoVersion == other.m_ProtoVersion
