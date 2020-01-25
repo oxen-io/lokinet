@@ -919,6 +919,11 @@ namespace llarp
 
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
+    // set router version if service node
+    if(IsServiceNode())
+    {
+      _rc.routerVersion = RouterVersion(llarp::ROUTER_VERSION);
+    }
 
     AddressInfo ai;
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {

@@ -214,6 +214,7 @@ set(LIB_SRC
   router/router.cpp
   router_contact.cpp
   router_id.cpp
+  router_version.cpp
   routing/dht_message.cpp
   routing/handler.cpp
   routing/message_parser.cpp
