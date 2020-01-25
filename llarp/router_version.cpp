@@ -49,8 +49,7 @@ namespace llarp
   bool
   RouterVersion::IsEmpty() const
   {
-    return std::equal(begin(), end(), emptyRouterVersion.begin(),
-                      emptyRouterVersion.end());
+    return *this == emptyRouterVersion;
   }
 
   bool
@@ -63,12 +62,17 @@ namespace llarp
            [self = this, &idx](llarp_buffer_t* buffer, bool has) {
              if(has)
              {
+               uint64_t i;
                if(idx == 0)
                {
                  if(not bencode_read_integer(buffer, &self->m_ProtoVersion))
                    return false;
                }
-               else if(not bencode_read_integer(buffer, &self->at(idx - 1)))
+               else if(bencode_read_integer(buffer, &i))
+               {
+                 self->m_Version[idx - 1] = i;
+               }
+               else
                  return false;
                ++idx;
              }

@@ -46,6 +46,13 @@ namespace llarp
           || m_Version < other.m_Version;
     }
 
+    bool
+    operator==(const RouterVersion& other) const
+    {
+      return m_ProtoVersion == other.m_ProtoVersion
+          && m_Version == other.m_Version;
+    }
+
    private:
     Version_t m_Version     = {0, 0, 0};
     uint64_t m_ProtoVersion = LLARP_PROTO_VERSION;
