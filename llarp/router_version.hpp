@@ -3,14 +3,19 @@
 
 #include <array>
 #include <util/bencode.hpp>
+#include <constants/version.hpp>
+#include <constants/proto.hpp>
 
 namespace llarp
 {
-  struct RouterVersion : public std::array< uint64_t, 4 >
+  struct RouterVersion
   {
+    using Version_t = std::array< uint16_t, 3 >;
+
     RouterVersion() = default;
 
-    explicit RouterVersion(const std::array< uint64_t, 4 >&);
+    explicit RouterVersion(const Version_t& routerVersion,
+                           uint64_t protoVersion);
 
     bool
     BEncode(llarp_buffer_t* buf) const;
@@ -28,6 +33,22 @@ namespace llarp
 
     std::string
     ToString() const;
+
+    /// return true if the other router version is compatible with ours
+    bool
+    IsCompatableWith(const RouterVersion& other) const;
+
+    /// compare router versions
+    bool
+    operator<(const RouterVersion& other) const
+    {
+      return m_ProtoVersion < other.m_ProtoVersion
+          || m_Version < other.m_Version;
+    }
+
+   private:
+    Version_t m_Version     = {0, 0, 0};
+    uint64_t m_ProtoVersion = LLARP_PROTO_VERSION;
   };
 
   inline std::ostream&

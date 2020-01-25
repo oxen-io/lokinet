@@ -922,7 +922,7 @@ namespace llarp
     // set router version if service node
     if(IsServiceNode())
     {
-      _rc.routerVersion = RouterVersion(llarp::ROUTER_VERSION);
+      _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
     }
 
     AddressInfo ai;
