@@ -47,7 +47,7 @@ namespace llarp
     }
 
    private:
-    Version_t m_Version     = {0, 0, 0};
+    Version_t m_Version     = {{0, 0, 0}};
     uint64_t m_ProtoVersion = LLARP_PROTO_VERSION;
   };
 
