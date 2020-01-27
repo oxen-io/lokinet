@@ -3,7 +3,6 @@
 
 #include <array>
 #include <util/bencode.hpp>
-<<<<<<< HEAD
 #include <constants/version.hpp>
 #include <constants/proto.hpp>
 
@@ -65,7 +64,8 @@ namespace llarp
     uint64_t m_ProtoVersion = LLARP_PROTO_VERSION;
   };
 
-  inline std::ostream& operator<<(std::ostream& out, const RouterVersion& rv)
+  inline std::ostream&
+  operator<<(std::ostream& out, const RouterVersion& rv)
   {
     return out << rv.ToString();
   }
