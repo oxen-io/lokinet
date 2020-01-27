@@ -8,7 +8,7 @@
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
-
+#if 0
 using namespace llarp;
 using namespace ::testing;
 
@@ -228,3 +228,5 @@ TEST_F(TestDhtTagLookup, send_reply)
     ASSERT_NO_THROW(tagLookup.SendReply());
   }
 }
+
+#endif

@@ -9,17 +9,8 @@ namespace llarp
   namespace service
   {
     bool
-    CachedTagResult::HandleResponse(const std::set< IntroSet >& introsets)
+    CachedTagResult::HandleResponse(const std::set< EncryptedIntroSet >&)
     {
-      auto now = m_parent->Now();
-
-      for(const auto& introset : introsets)
-        if(result.insert(introset).second)
-          lastModified = now;
-      LogInfo("Tag result for ", tag.ToString(), " got ", introsets.size(),
-              " results from lookup, have ", result.size(),
-              " cached last modified at ", lastModified, " is ",
-              now - lastModified, "ms old");
       return true;
     }
 
@@ -29,9 +20,8 @@ namespace llarp
       auto itr = result.begin();
       while(itr != result.end())
       {
-        if(itr->HasExpiredIntros(now))
+        if(itr->IsExpired(now))
         {
-          LogInfo("Removing expired tag Entry ", itr->A.Name());
           itr          = result.erase(itr);
           lastModified = now;
         }

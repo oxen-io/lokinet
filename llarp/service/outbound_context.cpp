@@ -56,6 +56,7 @@ namespace llarp
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
         : path::Builder(parent->Router(), 4, path::default_len)
         , SendContext(introset.A, {}, this, parent)
+        , location(introset.A.Addr().ToKey())
         , currentIntroSet(introset)
 
     {
@@ -83,15 +84,14 @@ namespace llarp
     }
 
     bool
-    OutboundContext::OnIntroSetUpdate(__attribute__((unused))
-                                      const Address& addr,
-                                      const IntroSet* i,
+    OutboundContext::OnIntroSetUpdate(const Address&,
+                                      absl::optional< const IntroSet > i,
                                       const RouterID& endpoint)
     {
       if(markedBad)
         return true;
       updatingIntroSet = false;
-      if(i)
+      if(i.has_value())
       {
         if(currentIntroSet.T >= i->T)
         {
@@ -105,7 +105,7 @@ namespace llarp
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
-        currentIntroSet = *i;
+        currentIntroSet = i.value();
       }
       else
       {
@@ -238,7 +238,7 @@ namespace llarp
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-            addr, m_Endpoint->GenTXID());
+            location, PubKey{addr.as_array()}, m_Endpoint->GenTXID());
 
         updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
       }

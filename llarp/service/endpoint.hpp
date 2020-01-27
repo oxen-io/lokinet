@@ -168,10 +168,11 @@ namespace llarp
       HandlePathDied(path::Path_ptr p) override;
 
       bool
-      PublishIntroSet(AbstractRouter* r) override;
+      PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
 
       bool
-      PublishIntroSetVia(AbstractRouter* r, path::Path_ptr p);
+      PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
+                         path::Path_ptr p);
 
       bool
       HandleGotIntroMessage(
@@ -410,7 +411,7 @@ namespace llarp
                             llarp_async_verify_rc* j);
 
       bool
-      OnLookup(const service::Address& addr, const IntroSet* i,
+      OnLookup(const service::Address& addr, absl::optional< const IntroSet > i,
                const RouterID& endpoint); /*  */
 
       bool

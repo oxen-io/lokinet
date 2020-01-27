@@ -11,8 +11,8 @@ namespace llarp
 {
   namespace dht
   {
-    GotIntroMessage::GotIntroMessage(std::vector< service::IntroSet > results,
-                                     uint64_t tx)
+    GotIntroMessage::GotIntroMessage(
+        std::vector< service::EncryptedIntroSet > results, uint64_t tx)
         : IMessage({}), found(std::move(results)), txid(tx)
     {
     }
@@ -37,12 +37,7 @@ namespace llarp
         }
       }
       TXOwner owner(From, txid);
-      auto tagLookup = dht.pendingTagLookups().GetPendingLookupFrom(owner);
-      if(tagLookup)
-      {
-        dht.pendingTagLookups().Found(owner, tagLookup->target, found);
-        return true;
-      }
+
       auto serviceLookup =
           dht.pendingIntrosetLookups().GetPendingLookupFrom(owner);
       if(serviceLookup)

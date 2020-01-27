@@ -39,7 +39,7 @@ namespace llarp
 
     struct ISNode
     {
-      service::IntroSet introset;
+      service::EncryptedIntroSet introset;
 
       Key_t ID;
 
@@ -48,9 +48,9 @@ namespace llarp
         ID.Zero();
       }
 
-      ISNode(service::IntroSet other) : introset(std::move(other))
+      ISNode(service::EncryptedIntroSet other) : introset(std::move(other))
       {
-        introset.A.CalculateAddress(ID.as_array());
+        ID = Key_t(introset.derivedSigningKey.as_array());
       }
 
       util::StatusObject
@@ -62,7 +62,7 @@ namespace llarp
       bool
       operator<(const ISNode& other) const
       {
-        return introset.T < other.introset.T;
+        return introset.signedAt < other.introset.signedAt;
       }
     };
   }  // namespace dht

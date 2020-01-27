@@ -86,6 +86,10 @@ namespace llarp
     {
     }
 
+    /// recalculate public component
+    bool
+    Recalculate();
+
     std::ostream &
     print(std::ostream &stream, int level, int spaces) const
     {
@@ -145,16 +149,16 @@ namespace llarp
   struct Signature final : public AlignedBuffer< SIGSIZE >
   {
     byte_t *
-    R();
+    Hi();
 
     const byte_t *
-    R() const;
+    Hi() const;
 
     byte_t *
-    C();
+    Lo();
 
     const byte_t *
-    C() const;
+    Lo() const;
   };
 
   using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;

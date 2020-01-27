@@ -39,9 +39,9 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
 
   EXPECT_CALL(m_crypto, sign(I.Z, _, _)).WillOnce(Return(true));
   EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
-
-  ASSERT_TRUE(ident.SignIntroSet(I, now));
-  ASSERT_TRUE(I.Verify(now));
+  const auto maybe = ident.EncryptAndSignIntroSet(I, now);
+  ASSERT_TRUE(maybe.has_value());
+  ASSERT_TRUE(maybe->Verify(now));
 }
 
 TEST_F(HiddenServiceTest, TestAddressToFromString)
@@ -73,8 +73,7 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
 
   test::FileGuard guard(p);
 
-  EXPECT_CALL(m_crypto, encryption_keygen(_))
-      .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x01)));
+  const SecretKey k;
 
   EXPECT_CALL(m_crypto, identity_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));

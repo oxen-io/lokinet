@@ -24,7 +24,7 @@ namespace llarp
       if(!BEncodeMaybeReadDictInt("R", recursionDepth, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("S", serviceAddress, read, k, val))
+      if(!BEncodeMaybeReadDictEntry("S", location, read, k, val))
         return false;
 
       if(!BEncodeMaybeReadDictInt("T", txID, read, k, val))
@@ -52,7 +52,7 @@ namespace llarp
         if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
         // service address
-        if(!BEncodeWriteDictEntry("S", serviceAddress, buf))
+        if(!BEncodeWriteDictEntry("S", location, buf))
           return false;
       }
       else
@@ -91,111 +91,58 @@ namespace llarp
       }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(tagName.Empty())
+      if(not tagName.Empty())
+        return false;
+
+      if(location.IsZero())
       {
-        if(serviceAddress.IsZero())
-        {
-          // we dont got it
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
-        }
-        llarp::LogInfo("lookup ", serviceAddress.ToString());
-        const auto introset = dht.GetIntroSetByServiceAddress(serviceAddress);
-        if(introset)
-        {
-          replies.emplace_back(new GotIntroMessage({*introset}, txID));
-          return true;
-        }
-
-        const Key_t target = serviceAddress.ToKey();
-        const Key_t us     = dht.OurKey();
-
-        if(recursionDepth == 0)
-        {
-          // we don't have it
-
-          Key_t closer;
-          // find closer peer
-          if(!dht.Nodes()->FindClosest(target, closer))
-            return false;
-          replies.emplace_back(new GotIntroMessage(From, closer, txID));
-          return true;
-        }
-
-        // we are recursive
-        const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(target);
-
-        peer = Key_t(rc.pubkey);
-
-        if((us ^ target) < (peer ^ target) || peer == us)
-        {
-          // we are not closer than our peer to the target so don't
-          // recurse farther
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
-        }
-        if(relayed)
-        {
-          dht.LookupIntroSetForPath(serviceAddress, txID, pathID, peer,
-                                    recursionDepth - 1);
-        }
-        else
-        {
-          dht.LookupIntroSetRecursive(serviceAddress, From, txID, peer,
-                                      recursionDepth - 1);
-        }
+        // we dont got it
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
+      }
+      const auto maybe = dht.GetIntroSetByLocation(location);
+      if(maybe.has_value())
+      {
+        replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
         return true;
       }
 
+      const Key_t us = dht.OurKey();
+
+      if(recursionDepth == 0)
+      {
+        // we don't have it
+
+        Key_t closer;
+        // find closer peer
+        if(!dht.Nodes()->FindClosest(location, closer))
+          return false;
+        replies.emplace_back(new GotIntroMessage(From, closer, txID));
+        return true;
+      }
+
+      // we are recursive
+      const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
+
+      peer = Key_t(rc.pubkey);
+
+      if((us ^ location) < (peer ^ location) || peer == us)
+      {
+        // we are not closer than our peer to the target so don't
+        // recurse farther
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
+      }
       if(relayed)
       {
-        // tag lookup
-        if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
-        {
-          dht.LookupTagForPath(tagName, txID, pathID, peer);
-        }
-        else
-        {
-          // no more closer peers
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
-        }
+        dht.LookupIntroSetForPath(location, txID, pathID, peer,
+                                  recursionDepth - 1);
       }
       else
       {
-        if(recursionDepth == 0)
-        {
-          // base case
-          auto introsets =
-              dht.FindRandomIntroSetsWithTagExcluding(tagName, 2, {});
-          std::vector< service::IntroSet > reply;
-          for(const auto& introset : introsets)
-          {
-            reply.emplace_back(introset);
-          }
-          replies.emplace_back(new GotIntroMessage(reply, txID));
-          return true;
-        }
-        if(recursionDepth < MaxRecursionDepth)
-        {
-          // tag lookup
-          if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
-          {
-            dht.LookupTagRecursive(tagName, From, txID, peer,
-                                   recursionDepth - 1);
-          }
-          else
-          {
-            replies.emplace_back(new GotIntroMessage({}, txID));
-          }
-        }
-        else
-        {
-          // too big recursion depth
-          replies.emplace_back(new GotIntroMessage({}, txID));
-        }
+        dht.LookupIntroSetRecursive(location, From, txID, peer,
+                                    recursionDepth - 1);
       }
-
       return true;
     }
   }  // namespace dht

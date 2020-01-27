@@ -7,6 +7,9 @@
 
 #include <iterator>
 
+#include <sodium/crypto_sign.h>
+#include <sodium/crypto_sign_ed25519.h>
+
 namespace llarp
 {
   bool
@@ -52,6 +55,15 @@ namespace llarp
   }
 
   bool
+  SecretKey::Recalculate()
+  {
+    AlignedBuffer< 32 > seed;
+    if(crypto_sign_ed25519_sk_to_seed(seed.data(), data()) == -1)
+      return false;
+    return crypto_sign_seed_keypair(data() + 32, data(), seed.data()) != -1;
+  }
+
+  bool
   SecretKey::SaveToFile(const char* fname) const
   {
     std::array< byte_t, 128 > tmp;
@@ -94,25 +106,25 @@ namespace llarp
   }
 
   byte_t*
-  Signature::R()
+  Signature::Lo()
   {
     return data();
   }
 
   const byte_t*
-  Signature::R() const
+  Signature::Lo() const
   {
     return data();
   }
 
   byte_t*
-  Signature::C()
+  Signature::Hi()
   {
     return data() + 32;
   }
 
   const byte_t*
-  Signature::C() const
+  Signature::Hi() const
   {
     return data() + 32;
   }

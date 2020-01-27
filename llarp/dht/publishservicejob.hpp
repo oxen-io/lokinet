@@ -12,18 +12,19 @@ namespace llarp
 {
   namespace dht
   {
-    struct PublishServiceJob : public TX< service::Address, service::IntroSet >
+    struct PublishServiceJob : public TX< Key_t, service::EncryptedIntroSet >
     {
       uint64_t S;
       std::set< Key_t > dontTell;
-      service::IntroSet I;
+      service::EncryptedIntroSet introset;
 
-      PublishServiceJob(const TXOwner &asker, const service::IntroSet &introset,
+      PublishServiceJob(const TXOwner &asker,
+                        const service::EncryptedIntroSet &introset,
                         AbstractContext *ctx, uint64_t s,
                         std::set< Key_t > exclude);
 
       bool
-      Validate(const service::IntroSet &introset) const override;
+      Validate(const service::EncryptedIntroSet &introset) const override;
 
       void
       Start(const TXOwner &peer) override;

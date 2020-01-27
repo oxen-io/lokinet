@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include <sodium/crypto_generichash.h>
+#include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp
 {
@@ -17,6 +18,19 @@ namespace llarp
                         const Signature& sig) const
     {
       return CryptoManager::instance()->verify(signkey, payload, sig);
+    }
+
+    bool
+    ServiceInfo::Update(const byte_t* pubkey, const OptNonce& nonce)
+    {
+      signkey = pubkey;
+      if(crypto_sign_ed25519_pk_to_curve25519(enckey.data(), pubkey) == -1)
+        return false;
+      if(nonce)
+      {
+        vanity = nonce.value();
+      }
+      return UpdateAddr();
     }
 
     bool
@@ -67,13 +81,8 @@ namespace llarp
 
     bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
     {
-      std::array< byte_t, 256 > tmp;
-      llarp_buffer_t buf(tmp);
-      if(!BEncode(&buf))
-        return false;
-      return crypto_generichash_blake2b(data.data(), data.size(), buf.base,
-                                        buf.cur - buf.base, nullptr, 0)
-          != -1;
+      data = signkey.as_array();
+      return true;
     }
 
     bool

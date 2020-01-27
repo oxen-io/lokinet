@@ -3,8 +3,9 @@
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_xchacha20.h>
+#include <sodium/crypto_core_ed25519.h>
 #include <util/mem.hpp>
-
+#include <util/endian.hpp>
 #include <cassert>
 
 extern "C"
@@ -178,6 +179,51 @@ namespace llarp
       return crypto_sign_verify_detached(sig.data(), buf.base, buf.sz,
                                          pub.data())
           != -1;
+    }
+
+    template < typename K >
+    static bool
+    make_scalar(byte_t *out, const K &k, uint64_t i)
+    {
+      // b = i || k
+      std::array< byte_t, K::SIZE + sizeof(uint64_t) > buf;
+      htole64buf(buf.data(), i);
+      std::copy_n(k.begin(), K::SIZE, buf.begin() + sizeof(i));
+      LongHash h;
+      // n = H(b)
+      if(not hash(h.data(), llarp_buffer_t(buf)))
+        return false;
+      // return make_point(n)
+      return crypto_core_ed25519_from_hash(out, h.data()) != -1;
+    }
+
+    bool
+    CryptoLibSodium::derive_subkey(PubKey &out_k, const PubKey &in_k,
+                                   uint64_t key_n)
+    {
+      // scalar p
+      AlignedBuffer< 32 > p;
+      // p = H( i || in_k )
+      if(not make_scalar(p.data(), in_k, key_n))
+        return false;
+      // out_k = in_k * p % N
+      crypto_core_ed25519_scalar_mul(out_k.data(), in_k.data(), p.data());
+      return true;
+    }
+
+    bool
+    CryptoLibSodium::derive_subkey_secret(SecretKey &out_k,
+                                          const SecretKey &in_k, uint64_t key_n)
+    {
+      // scalar p
+      AlignedBuffer< 32 > p;
+      // p = H( i || in_k.pub)
+      if(not make_scalar(p.data(), in_k.toPublic(), key_n))
+        return false;
+      // out_k = in_n * p % N
+      crypto_core_ed25519_scalar_mul(out_k.data(), in_k.data(), p.data());
+      // recalculate out_K public component
+      return out_k.Recalculate();
     }
 
     bool

@@ -53,6 +53,14 @@ namespace llarp
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
 
+      /// derive sub keys for public keys
+      bool
+      derive_subkey(PubKey &, const PubKey &, uint64_t) override;
+
+      /// derive sub keys for secret keys
+      bool
+      derive_subkey_secret(SecretKey &, const SecretKey &, uint64_t) override;
+
       /// seed to secretkey
       bool
       seed_to_secretkey(llarp::SecretKey &,

@@ -115,9 +115,10 @@ namespace llarp
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
       bool
-      OnIntroSetUpdate(const Address& addr, const IntroSet* i,
+      OnIntroSetUpdate(const Address& addr, absl::optional< const IntroSet > i,
                        const RouterID& endpoint);
 
+      const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;

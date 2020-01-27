@@ -54,7 +54,7 @@ namespace llarp
     /// blake2b 256 bit
     virtual bool
     shorthash(ShortHash &, const llarp_buffer_t &) = 0;
-    /// blake2s 256 bit hmac
+    /// blake2s 256 bit "hmac" (keyed hash)
     virtual bool
     hmac(byte_t *, const llarp_buffer_t &, const SharedSecret &) = 0;
     /// ed25519 sign
@@ -63,6 +63,15 @@ namespace llarp
     /// ed25519 verify
     virtual bool
     verify(const PubKey &, const llarp_buffer_t &, const Signature &) = 0;
+
+    /// derive sub keys for public keys
+    virtual bool
+    derive_subkey(PubKey &, const PubKey &, uint64_t) = 0;
+
+    /// derive sub keys for secret keys
+    virtual bool
+    derive_subkey_secret(SecretKey &, const SecretKey &, uint64_t) = 0;
+
     /// seed to secretkey
     virtual bool
     seed_to_secretkey(llarp::SecretKey &, const llarp::IdentitySecret &) = 0;
