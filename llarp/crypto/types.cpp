@@ -9,6 +9,7 @@
 
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_sign_ed25519.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
 
 namespace llarp
 {
@@ -57,10 +58,7 @@ namespace llarp
   bool
   SecretKey::Recalculate()
   {
-    AlignedBuffer< 32 > seed;
-    if(crypto_sign_ed25519_sk_to_seed(seed.data(), data()) == -1)
-      return false;
-    return crypto_sign_seed_keypair(data() + 32, data(), seed.data()) != -1;
+    return crypto_scalarmult_ed25519_base(data() + 32, data()) != -1;
   }
 
   bool

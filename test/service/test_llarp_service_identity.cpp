@@ -39,6 +39,7 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
 
   EXPECT_CALL(m_crypto, sign(I.Z, _, _)).WillOnce(Return(true));
   EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
+  EXPECT_CALL(m_crypto, xchacha20(_, _, _)).WillOnce(Return(true));
   const auto maybe = ident.EncryptAndSignIntroSet(I, now);
   ASSERT_TRUE(maybe.has_value());
   ASSERT_TRUE(maybe->Verify(now));
@@ -74,6 +75,9 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
   test::FileGuard guard(p);
 
   const SecretKey k;
+
+  EXPECT_CALL(m_crypto, derive_subkey_secret(_, _, _))
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(m_crypto, identity_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));
@@ -120,4 +124,62 @@ TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
 
   service::Identity identity;
   ASSERT_FALSE(identity.EnsureKeys(p.string(), false));
+}
+
+struct RealCryptographyTest : public ::testing::Test
+{
+  std::unique_ptr< CryptoManager > _manager;
+
+  void
+  SetUp()
+  {
+    _manager = std::make_unique< CryptoManager >(new sodium::CryptoLibSodium());
+  }
+
+  void
+  TearDown()
+  {
+    _manager.reset();
+  }
+};
+
+TEST_F(RealCryptographyTest, TestGenerateDeriveKey)
+{
+  SecretKey root_key;
+  SecretKey sub_key;
+  PubKey sub_pubkey;
+  auto crypto = CryptoManager::instance();
+  crypto->identity_keygen(root_key);
+  ASSERT_TRUE(crypto->derive_subkey_secret(sub_key, root_key, 1));
+  ASSERT_TRUE(crypto->derive_subkey(sub_pubkey, root_key.toPublic(), 1));
+  ASSERT_EQ(sub_key.toPublic(), sub_pubkey);
+}
+
+TEST_F(RealCryptographyTest, TestEncryptAndSignIntroSet)
+{
+  service::Identity ident;
+  ident.RegenerateKeys();
+  service::Address addr;
+  ASSERT_TRUE(ident.pub.CalculateAddress(addr.as_array()));
+  service::IntroSet I;
+  auto now = time_now_ms();
+  I.T      = now;
+  while(I.I.size() < 10)
+  {
+    service::Introduction intro;
+    intro.expiresAt = now + (path::default_lifetime / 2);
+    intro.router.Randomize();
+    intro.pathID.Randomize();
+    I.I.emplace_back(std::move(intro));
+  }
+
+  const auto maybe = ident.EncryptAndSignIntroSet(I, now);
+  ASSERT_TRUE(maybe.has_value());
+  llarp::LogInfo("introset=", maybe.value());
+  ASSERT_TRUE(maybe->Verify(now));
+  PubKey blind_key;
+  const PubKey root_key(addr.as_array());
+  auto crypto = CryptoManager::instance();
+  ASSERT_TRUE(crypto->derive_subkey(blind_key, root_key, 1));
+  ASSERT_EQ(blind_key, root_key);
 }

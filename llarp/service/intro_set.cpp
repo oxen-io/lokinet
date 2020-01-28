@@ -78,7 +78,8 @@ namespace llarp
       printer.printAttribute("d", derivedSigningKey);
       printer.printAttribute("n", nounce);
       printer.printAttribute("s", signedAt);
-      printer.printAttribute("x", introsetPayload);
+      printer.printAttribute(
+          "x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
       printer.printAttribute("z", sig);
       return out;
     }
@@ -114,14 +115,15 @@ namespace llarp
         return false;
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return CryptoManager::instance()->sign(sig, k, buf);
+      if(not CryptoManager::instance()->sign(sig, k, buf))
+        return false;
+      LogInfo("signed encrypted introset: ", *this);
+      return true;
     }
 
     bool
     EncryptedIntroSet::Verify(llarp_time_t now) const
     {
-      if(signedAt > now)
-        return false;
       if(IsExpired(now))
         return false;
       std::array< byte_t, MAX_INTROSET_SIZE + 128 > tmp;
@@ -130,6 +132,7 @@ namespace llarp
       copy.sig.Zero();
       if(not copy.BEncode(&buf))
         return false;
+      LogInfo("verify encrypted introset: ", copy, " sig = ", sig);
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       return CryptoManager::instance()->verify(derivedSigningKey, buf, sig);

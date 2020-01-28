@@ -62,7 +62,10 @@ namespace llarp
       crypto_sign_ed25519_sk_to_curve25519(enckey.data(), signkey.data());
       pub.Update(seckey_topublic(signkey));
       crypto->pqe_keygen(pq);
-      crypto->derive_subkey_secret(derivedSignKey, signkey, 1);
+      if(not crypto->derive_subkey_secret(derivedSignKey, signkey, 1))
+      {
+        LogError("failed to generate derived key");
+      }
     }
 
     bool
@@ -176,7 +179,7 @@ namespace llarp
       buf.cur = buf.base;
       const SharedSecret k(i.A.Addr());
       CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
-      encrypted.introsetPayload.reserve(buf.sz);
+      encrypted.introsetPayload.resize(buf.sz);
       std::copy_n(buf.base, buf.sz, encrypted.introsetPayload.data());
       if(not encrypted.Sign(derivedSignKey))
         return {};

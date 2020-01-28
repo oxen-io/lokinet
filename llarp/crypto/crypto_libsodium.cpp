@@ -2,8 +2,11 @@
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
+#include <sodium/crypto_scalarmult_ristretto255.h>
 #include <sodium/crypto_stream_xchacha20.h>
 #include <sodium/crypto_core_ed25519.h>
+#include <sodium/crypto_core_ristretto255.h>
 #include <util/mem.hpp>
 #include <util/endian.hpp>
 #include <cassert>
@@ -181,6 +184,33 @@ namespace llarp
           != -1;
     }
 
+    /// clamp a 32 byte ec point
+    static void
+    clamp_ed25519(byte_t *out)
+    {
+      out[0] &= 248;
+      out[31] &= 127;
+      out[31] |= 64;
+    }
+
+    template < typename K >
+    static K
+    clamp(const K &p)
+    {
+      K out = p;
+      clamp_ed25519(out);
+      return out;
+    }
+
+    template < typename K >
+    static bool
+    is_clamped(const K &key)
+    {
+      K other(key);
+      clamp_ed25519(other.data());
+      return other == key;
+    }
+
     template < typename K >
     static bool
     make_scalar(byte_t *out, const K &k, uint64_t i)
@@ -194,48 +224,58 @@ namespace llarp
       if(not hash(h.data(), llarp_buffer_t(buf)))
         return false;
       // return make_point(n)
-      return crypto_core_ed25519_from_hash(out, h.data()) != -1;
+      return crypto_core_ed25519_from_uniform(out, h.data()) != -1;
     }
 
+    static AlignedBuffer< 32 > zero;
+
     bool
-    CryptoLibSodium::derive_subkey(PubKey &out_k, const PubKey &in_k,
+    CryptoLibSodium::derive_subkey(PubKey &out_key, const PubKey &root_key,
                                    uint64_t key_n)
     {
       // scalar p
       AlignedBuffer< 32 > p;
       // p = H( i || in_k )
-      if(not make_scalar(p.data(), in_k, key_n))
+      if(not make_scalar(p.data(), root_key, key_n))
         return false;
-      // out_k = in_k * p % N
-      crypto_core_ed25519_scalar_mul(out_k.data(), in_k.data(), p.data());
+      crypto_core_ed25519_scalar_mul(out_key.data(), root_key.data(), p.data());
+      LogInfo("derive_subkey() scalar = ", p, " root_key = ", root_key,
+              " derived_key = ", out_key);
       return true;
     }
 
     bool
-    CryptoLibSodium::derive_subkey_secret(SecretKey &out_k,
-                                          const SecretKey &in_k, uint64_t key_n)
+    CryptoLibSodium::derive_subkey_secret(SecretKey &out_key,
+                                          const SecretKey &in_key,
+                                          uint64_t key_n)
     {
+      const PubKey root_key = in_key.toPublic();
       // scalar p
       AlignedBuffer< 32 > p;
-      // p = H( i || in_k.pub)
-      if(not make_scalar(p.data(), in_k.toPublic(), key_n))
+      // p = H( i || in_key.pub)
+      if(not make_scalar(p.data(), root_key, key_n))
+      {
+        LogError("cannot make scalar");
         return false;
-      // out_k = in_n * p % N
-      crypto_core_ed25519_scalar_mul(out_k.data(), in_k.data(), p.data());
-      // recalculate out_K public component
-      return out_k.Recalculate();
+      }
+      // a * p * basepoint
+      crypto_core_ed25519_scalar_mul(out_key.data(), in_key.data(), p.data());
+      if(not out_key.Recalculate())
+        return false;
+      LogInfo("derive_subkey_secret() scalar = ", p, " root_key = ", root_key,
+              " derived_key = ", out_key.toPublic(),
+              " full_derived_key = ", out_key.ToHex());
+      return true;
     }
 
     bool
     CryptoLibSodium::seed_to_secretkey(llarp::SecretKey &secret,
                                        const llarp::IdentitySecret &seed)
     {
-      PubKey pk;
-      return crypto_sign_ed25519_seed_keypair(pk.data(), secret.data(),
+      return crypto_sign_ed25519_seed_keypair(secret.data() + 32, secret.data(),
                                               seed.data())
           != -1;
     }
-
     void
     CryptoLibSodium::randomize(const llarp_buffer_t &buff)
     {
@@ -258,6 +298,8 @@ namespace llarp
       assert(pk == sk_pk);
       (void)result;
       (void)sk_pk;
+
+      // encryption_keygen(keys);
     }
 
     bool
