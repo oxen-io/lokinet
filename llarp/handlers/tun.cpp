@@ -218,6 +218,9 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+#ifdef _WIN32
+        tunif->bindaddr = m_LocalResolverAddr.ton();
+#endif
         llarp::LogInfo(Name(), " binding DNS server to ", m_LocalResolverAddr);
       }
       if(k == "upstream-dns")
