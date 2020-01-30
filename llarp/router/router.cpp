@@ -518,7 +518,6 @@ namespace llarp
     _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
                           &_hiddenServiceContext, strictConnectPubkeys,
                           bootstrapRCList, whitelistRouters, m_isServiceNode);
-    _rcGossiper.Init(&_linkManager);
 
     if(!usingSNSeed)
     {
