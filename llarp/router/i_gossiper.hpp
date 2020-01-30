@@ -14,7 +14,15 @@ namespace llarp
     GossipRC(const RouterContact &rc) = 0;
 
     virtual void
-    Decay(llarp_time_t now) = 0;
+    Decay(Time_t now) = 0;
+
+    /// return true if we should gossip our RC now
+    virtual bool
+    ShouldGossipOurRC(Time_t now) const = 0;
+
+    /// return true if that rc is owned by us
+    virtual bool
+    IsOurRC(const RouterContact &rc) const = 0;
   };
 }  // namespace llarp
 

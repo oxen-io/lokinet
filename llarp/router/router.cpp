@@ -518,7 +518,6 @@ namespace llarp
     _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
                           &_hiddenServiceContext, strictConnectPubkeys,
                           bootstrapRCList, whitelistRouters, m_isServiceNode);
-    _rcGossiper.Init(&_linkManager);
 
     if(!usingSNSeed)
     {
@@ -687,7 +686,7 @@ namespace llarp
       ReportStats();
     }
 
-    _rcGossiper.Decay(now);
+    _rcGossiper.Decay(time_now());
 
     _rcLookupHandler.PeriodicUpdate(now);
 
@@ -1012,9 +1011,10 @@ namespace llarp
         LogError("Failed to initialize service node");
         return false;
       }
-      RouterID us = pubkey();
+      const RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
-
+      // init gossiper here
+      _rcGossiper.Init(&_linkManager, us);
       // relays do not use profiling
       routerProfiling().Disable();
     }
