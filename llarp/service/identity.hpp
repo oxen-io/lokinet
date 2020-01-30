@@ -21,7 +21,7 @@ namespace llarp
     {
       SecretKey enckey;
       SecretKey signkey;
-      SecretKey derivedSignKey;
+      PrivateKey derivedSignKey;
       PQKeyPair pq;
       uint64_t version = LLARP_PROTO_VERSION;
       VanityNonce vanity;

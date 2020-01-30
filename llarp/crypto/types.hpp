@@ -16,9 +16,7 @@ namespace llarp
 
   struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
   {
-    PubKey() : AlignedBuffer< SIZE >()
-    {
-    }
+    PubKey() = default;
 
     explicit PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
     {
@@ -76,14 +74,29 @@ namespace llarp
     return lhs.as_array() == rhs.as_array();
   }
 
+  struct PrivateKey;
+
+  /// Stores a sodium "secret key" value, which is actually the seed concatenated with the public
+  /// key.  Note that the seed is *not* the private key value itself, but rather the seed from which
+  /// it can be calculated.
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
-    SecretKey() : AlignedBuffer< SECKEYSIZE >()
-    {
-    }
+    SecretKey() = default;
 
     explicit SecretKey(const byte_t *ptr) : AlignedBuffer< SECKEYSIZE >(ptr)
     {
+    }
+
+    // The full data
+    explicit SecretKey(const AlignedBuffer< SECKEYSIZE > &seed)
+      : AlignedBuffer< SECKEYSIZE >(seed)
+    {}
+
+    // Just the seed, we recalculate the pubkey
+    explicit SecretKey(const AlignedBuffer< 32 > &seed)
+    {
+      std::copy(seed.begin(), seed.end(), begin());
+      Recalculate();
     }
 
     /// recalculate public component
@@ -104,6 +117,10 @@ namespace llarp
       return PubKey(data() + 32);
     }
 
+    /// Computes the private key from the secret key (which is actually the seed)
+    bool
+    toPrivate(PrivateKey& key) const;
+
     bool
     LoadFromFile(const char *fname);
 
@@ -118,6 +135,42 @@ namespace llarp
     // make sure we never print out secret keys
     return out << "[secretkey]";
   }
+
+  /// PrivateKey is similar to SecretKey except that it only stores the private key value
+  /// itself unlike SecretKey which stores the seed from which the private key value is generated.
+  /// This is intended for use with derived keys, where we can derive the private key but not the
+  /// seed.
+  struct PrivateKey final : public AlignedBuffer< 32 >
+  {
+    PrivateKey() = default;
+
+    explicit PrivateKey(const byte_t *ptr) : AlignedBuffer< 32 >(ptr)
+    {
+    }
+
+    explicit PrivateKey(const AlignedBuffer< 32 > &seed) : AlignedBuffer< 32>(seed) {}
+
+    std::ostream &
+    print(std::ostream &stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printValue("privatekey");
+      return stream;
+    }
+
+    /// Computes the public key
+    bool
+    toPublic(PubKey& pubkey) const;
+  };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const PrivateKey &)
+  {
+    // return out << k.ToHex();
+    // make sure we never print out private keys
+    return out << "[privatekey]";
+  }
+
 
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer< 32 >

@@ -62,7 +62,7 @@ namespace llarp
       crypto_sign_ed25519_sk_to_curve25519(enckey.data(), signkey.data());
       pub.Update(seckey_topublic(signkey));
       crypto->pqe_keygen(pq);
-      if(not crypto->derive_subkey_secret(derivedSignKey, signkey, 1))
+      if(not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
       {
         LogError("failed to generate derived key");
       }
@@ -149,7 +149,7 @@ namespace llarp
       pub.Update(seckey_topublic(signkey), van);
       crypto_sign_ed25519_sk_to_curve25519(enckey.data(), signkey.data());
       auto crypto = CryptoManager::instance();
-      return crypto->derive_subkey_secret(derivedSignKey, signkey, 1);
+      return crypto->derive_subkey_private(derivedSignKey, signkey, 1);
     }
 
     absl::optional< EncryptedIntroSet >
@@ -181,8 +181,10 @@ namespace llarp
       CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
       encrypted.introsetPayload.resize(buf.sz);
       std::copy_n(buf.base, buf.sz, encrypted.introsetPayload.data());
+      /* FIXME
       if(not encrypted.Sign(derivedSignKey))
         return {};
+      */
       return encrypted;
     }
   }  // namespace service

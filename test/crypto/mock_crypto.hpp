@@ -43,10 +43,10 @@ namespace llarp
                    bool(byte_t *, const llarp_buffer_t &,
                         const SharedSecret &));
 
-      MOCK_METHOD3(derive_subkey, bool(PubKey &, const PubKey &, uint64_t));
+      MOCK_METHOD4(derive_subkey, bool(PubKey &, const PubKey &, uint64_t, const AlignedBuffer<32> *));
 
-      MOCK_METHOD3(derive_subkey_secret,
-                   bool(SecretKey &, const SecretKey &, uint64_t));
+      MOCK_METHOD4(derive_subkey_private,
+                   bool(PrivateKey &, const SecretKey &, uint64_t, const AlignedBuffer<32> *));
 
       MOCK_METHOD3(sign,
                    bool(Signature &, const SecretKey &,

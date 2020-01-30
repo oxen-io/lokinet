@@ -230,41 +230,71 @@ namespace llarp
     static AlignedBuffer< 32 > zero;
 
     bool
-    CryptoLibSodium::derive_subkey(PubKey &out_key, const PubKey &root_key,
-                                   uint64_t key_n)
+    CryptoLibSodium::derive_subkey(PubKey &out_pubkey, const PubKey &root_pubkey,
+                                   uint64_t key_n, const AlignedBuffer<32>* hash)
     {
-      // scalar p
-      AlignedBuffer< 32 > p;
-      // p = H( i || in_k )
-      if(not make_scalar(p.data(), root_key, key_n))
-        return false;
-      crypto_core_ed25519_scalar_mul(out_key.data(), root_key.data(), p.data());
-      LogInfo("derive_subkey() scalar = ", p, " root_key = ", root_key,
-              " derived_key = ", out_key);
-      return true;
-    }
-
-    bool
-    CryptoLibSodium::derive_subkey_secret(SecretKey &out_key,
-                                          const SecretKey &in_key,
-                                          uint64_t key_n)
-    {
-      const PubKey root_key = in_key.toPublic();
-      // scalar p
-      AlignedBuffer< 32 > p;
-      // p = H( i || in_key.pub)
-      if(not make_scalar(p.data(), root_key, key_n))
+      // scalar h = H( in_k || root_pubkey )
+      AlignedBuffer< 32 > h;
+      if (hash)
+        h = *hash;
+      else if(not make_scalar(h.data(), root_pubkey, key_n))
       {
         LogError("cannot make scalar");
         return false;
       }
-      // a * p * basepoint
-      crypto_core_ed25519_scalar_mul(out_key.data(), in_key.data(), p.data());
-      if(not out_key.Recalculate())
+
+      return 0 == crypto_scalarmult_ed25519(out_pubkey.data(), h.data(), root_pubkey.data());
+    }
+
+    bool
+    CryptoLibSodium::derive_subkey_private(PrivateKey &out_key,
+                                          const SecretKey &root_key,
+                                          uint64_t key_n,
+                                          const AlignedBuffer<32>* hash
+                                          )
+    {
+
+      // Derives a private subkey from a root key.
+      //
+      // The basic idea is:
+      //
+      // h - hash dependent on the `key_n` value.
+      // a - private key
+      // A = aB - public key
+      // a' = ah - derived private key
+      // A' = a'B = (ah)B - derived public key
+      //
+      // libsodium throws some wrenches in the mechanics which are a nuisance, the biggest of which
+      // is that sodium's secret key is *not* `a`; rather it is the seed.  If you want to get the
+      // private key (i.e. "a"), you need to SHA-512 hash it and then clamp that.
+      //
+      // This also makes signature verification harder: we can't just use sodium's verify function
+      // because it wants to be given the seed rather than the private key, and moreover we can't
+      // actually *get* the seed to make libsodium happy because we only have `ah` above.
+      //
+      const auto root_pubkey = root_key.toPublic();
+
+      // scalar h = H( in_k || root_pubkey )
+      AlignedBuffer< 32 > h;
+      if (hash)
+        h = *hash;
+      else if(not make_scalar(h.data(), root_pubkey, key_n))
+      {
+        LogError("cannot make scalar");
         return false;
-      LogInfo("derive_subkey_secret() scalar = ", p, " root_key = ", root_key,
-              " derived_key = ", out_key.toPublic(),
-              " full_derived_key = ", out_key.ToHex());
+      }
+
+      h[0] &= 248;
+      h[31] &= 63;
+      h[31] |= 64;
+
+      PrivateKey a;
+      if (!root_key.toPrivate(a))
+        return false;
+
+      // a' = ha
+      crypto_core_ed25519_scalar_mul(out_key.data(), h.data(), a.data());
+
       return true;
     }
 
