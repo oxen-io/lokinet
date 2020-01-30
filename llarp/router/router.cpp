@@ -50,6 +50,7 @@ namespace llarp
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
+      , _randomStartDelay(1000 * (llarp::randint() % 30) + 10)
   {
     m_keyManager = std::make_shared< KeyManager >();
 
@@ -107,6 +108,18 @@ namespace llarp
   Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);
+  }
+
+  void
+  Router::GossipRCIfNeeded(const RouterContact rc)
+  {
+    /// if we are not a service node forget about gossip
+    if(not IsServiceNode())
+      return;
+    /// wait for random uptime
+    if(Uptime() < _randomStartDelay)
+      return;
+    _rcGossiper.GossipRC(rc);
   }
 
   bool
@@ -505,6 +518,7 @@ namespace llarp
     _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
                           &_hiddenServiceContext, strictConnectPubkeys,
                           bootstrapRCList, whitelistRouters, m_isServiceNode);
+    _rcGossiper.Init(&_linkManager);
 
     if(!usingSNSeed)
     {
@@ -673,6 +687,8 @@ namespace llarp
       ReportStats();
     }
 
+    _rcGossiper.Decay(now);
+
     _rcLookupHandler.PeriodicUpdate(now);
 
     const bool isSvcNode = IsServiceNode();
@@ -683,6 +699,10 @@ namespace llarp
       LogInfo("regenerating RC");
       if(!UpdateOurRC(false))
         LogError("Failed to update our RC");
+    }
+    else
+    {
+      GossipRCIfNeeded(_rc);
     }
 
     if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())

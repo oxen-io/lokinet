@@ -20,6 +20,7 @@
 #include <router_contact.hpp>
 #include <router/outbound_message_handler.hpp>
 #include <router/outbound_session_maker.hpp>
+#include <router/rc_gossiper.hpp>
 #include <router/rc_lookup_handler.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
@@ -259,6 +260,7 @@ namespace llarp
     bool enableRPCServer                 = false;
     std::unique_ptr< rpc::Server > rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
+    const llarp_time_t _randomStartDelay;
 
     /// lokid caller
     std::unique_ptr< rpc::Caller > rpcCaller;
@@ -273,6 +275,7 @@ namespace llarp
     OutboundSessionMaker _outboundSessionMaker;
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
+    RCGossiper _rcGossiper;
 
     using Clock_t     = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;
@@ -302,6 +305,9 @@ namespace llarp
     {
       return _rcLookupHandler;
     }
+
+    void
+    GossipRCIfNeeded(const RouterContact rc) override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
