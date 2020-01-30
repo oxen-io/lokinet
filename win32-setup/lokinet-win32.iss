@@ -54,6 +54,7 @@ InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
 VersionInfoCopyright=Copyright ©2018-2020 Loki Project
+AppMutex=lokinet_win32_daemon,lokinet_qt5_ui,lokinet_dotnet_ui
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -1,4 +1,8 @@
 # Makefile for windows install pkg and helper library
+# debug/internal builds need not support xp
+# release builds *should*, but this does NOT remain a hard
+# requirement for cutting releases, it can be pulled at any
+# time really
 
 CC=i686-w64-mingw32-gcc
 CXX=i686-w64-mingw32-g++
@@ -37,39 +41,38 @@ lokinet-bootstrap.exe: mbedtls curl dbghelp
 	cp ../LICENSE .;unix2dos LICENSE LICENSE
 
 dbghelp:
-	wget https://snowlight.net/loki/win32-dist/dbghelp32.dll
-	wget https://snowlight.net/loki/win32-dist/dbghelp64.dll
+	wget http://installer.lokinet.org/win32/dbghelp32.dll
+	wget http://installer.lokinet.org/win32/dbghelp64.dll
 
 else
 regdbhelper.dll:
-	wget https://snowlight.net/loki/win32-dist/dbghelp32.dll
-	wget https://snowlight.net/loki/win32-dist/dbghelp64.dll
-	wget https://snowlight.net/loki/win32-dist/regdbhelper.dll
+	wget http://installer.lokinet.org/win32/regdbhelper.dll
 
 lokinet-bootstrap.exe:
-	wget https://snowlight.net/loki/win32-dist/lokinet-bootstrap.exe
+	wget http://installer.lokinet.org/win32/lokinet-bootstrap.exe
 	wget -O rootcerts.pem https://curl.haxx.se/ca/cacert.pem
 	cp ../LICENSE .;unix2dos LICENSE LICENSE
 
 dbghelp:
-	:
+	wget http://installer.lokinet.org/win32/dbghelp32.dll
+	wget http://installer.lokinet.org/win32/dbghelp64.dll
 endif
 
 # Common rules
 7z.exe:
-	wget https://snowlight.net/loki/win32-dist/7z.exe
+	wget http://installer.lokinet.org/win32/7z.exe
 
 tcpv6:
-	wget https://snowlight.net/loki/win32-dist/inet6.7z
+	wget http://installer.lokinet.org/win32/inet6.7z
 
 tap-win32:
-	wget https://snowlight.net/loki/win32-dist/tap-windows-9.21.2.7z
+	wget http://installer.lokinet.org/win32/tap-windows-9.21.2.7z
 	mv tap-windows-9.21.2.7z tuntapv9_n6.7z
-	wget https://snowlight.net/loki/win32-dist/tap-windows-9.9.2_3.7z
+	wget http://installer.lokinet.org/win32/tap-windows-9.9.2_3.7z
 	mv tap-windows-9.9.2_3.7z tuntapv9.7z
 
 libuv:
-	git clone https://github.com/libuv/libuv.git
+	git clone https://github.com/despair86/libuv.git
 	cd libuv; ./autogen.sh; ./configure --host=i686-w64-mingw32 --target=i686-w64-mingw32 CC=$(CC) CXX=$(CXX) CFLAGS="$(CFLAGS)" --disable-shared --prefix=$(PWD)
 	make -C libuv -j4 install
 	make -C libuv -j4 distclean
@@ -78,7 +81,7 @@ libuv:
 	cp libuv/.libs/libuv.a $(PWD)/lib64
 
 qt5-ui:
-	wget https://snowlight.net/loki/win32-dist/lokinet-qt5-ui.7z
+	wget http://installer.lokinet.org/win32/lokinet-qt5-ui.7z
 
 clean:
 	-rm -rf curl-7* include lib mbedtls-2* *.exe *.dll *.pem *.7z

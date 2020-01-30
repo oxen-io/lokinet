@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace network.loki.lokinet.win32.ui
@@ -15,6 +16,7 @@ namespace network.loki.lokinet.win32.ui
         static void Main()
         {
             // Scrub any old lokinet process left behind
+            Mutex m = new Mutex(true, "lokinet_dotnet_ui");
             Process[] old_pids = Process.GetProcessesByName("lokinet");
             foreach (Process pid in old_pids)
             {
@@ -33,6 +35,7 @@ namespace network.loki.lokinet.win32.ui
             }
             catch
             { }
+            m.ReleaseMutex();
         }
     }
 }

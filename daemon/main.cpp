@@ -44,6 +44,7 @@ startWinsock()
     perror("Failed to start Windows Sockets");
     return err;
   }
+  ::CreateMutex(nullptr, FALSE, "lokinet_win32_daemon");
   return 0;
 }
 
