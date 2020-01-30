@@ -58,7 +58,12 @@ namespace llarp
   bool
   SecretKey::Recalculate()
   {
-    return crypto_scalarmult_ed25519_base(data() + 32, data()) != -1;
+    PrivateKey key;
+    PubKey pubkey;
+    if (!toPrivate(key) || !key.toPublic(pubkey))
+      return false;
+    std::memcpy(data() + 32, pubkey.data(), 32);
+    return true;
   }
 
   bool
