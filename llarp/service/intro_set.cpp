@@ -107,7 +107,7 @@ namespace llarp
     EncryptedIntroSet::Sign(const PrivateKey& k)
     {
       signedAt = llarp::time_now_ms();
-      if (not k.toPublic(derivedSigningKey))
+      if(not k.toPublic(derivedSigningKey))
         return false;
       sig.Zero();
       std::array< byte_t, MAX_INTROSET_SIZE + 128 > tmp;

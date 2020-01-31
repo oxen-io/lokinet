@@ -76,9 +76,9 @@ namespace llarp
 
   struct PrivateKey;
 
-  /// Stores a sodium "secret key" value, which is actually the seed concatenated with the public
-  /// key.  Note that the seed is *not* the private key value itself, but rather the seed from which
-  /// it can be calculated.
+  /// Stores a sodium "secret key" value, which is actually the seed
+  /// concatenated with the public key.  Note that the seed is *not* the private
+  /// key value itself, but rather the seed from which it can be calculated.
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
     SecretKey() = default;
@@ -89,8 +89,9 @@ namespace llarp
 
     // The full data
     explicit SecretKey(const AlignedBuffer< SECKEYSIZE > &seed)
-      : AlignedBuffer< SECKEYSIZE >(seed)
-    {}
+        : AlignedBuffer< SECKEYSIZE >(seed)
+    {
+    }
 
     // Just the seed, we recalculate the pubkey
     explicit SecretKey(const AlignedBuffer< 32 > &seed)
@@ -117,9 +118,10 @@ namespace llarp
       return PubKey(data() + 32);
     }
 
-    /// Computes the private key from the secret key (which is actually the seed)
+    /// Computes the private key from the secret key (which is actually the
+    /// seed)
     bool
-    toPrivate(PrivateKey& key) const;
+    toPrivate(PrivateKey &key) const;
 
     bool
     LoadFromFile(const char *fname);
@@ -136,10 +138,11 @@ namespace llarp
     return out << "[secretkey]";
   }
 
-  /// PrivateKey is similar to SecretKey except that it only stores the private key value and a
-  /// hash, unlike SecretKey which stores the seed from which the private key and hash value are
-  /// generated.  This is primarily intended for use with derived keys, where we can derive the
-  /// private key but not the seed.
+  /// PrivateKey is similar to SecretKey except that it only stores the private
+  /// key value and a hash, unlike SecretKey which stores the seed from which
+  /// the private key and hash value are generated.  This is primarily intended
+  /// for use with derived keys, where we can derive the private key but not the
+  /// seed.
   struct PrivateKey final : public AlignedBuffer< 64 >
   {
     PrivateKey() = default;
@@ -148,7 +151,10 @@ namespace llarp
     {
     }
 
-    explicit PrivateKey(const AlignedBuffer< 64 > &key_and_hash) : AlignedBuffer< 64 >(key_and_hash) {}
+    explicit PrivateKey(const AlignedBuffer< 64 > &key_and_hash)
+        : AlignedBuffer< 64 >(key_and_hash)
+    {
+    }
 
     std::ostream &
     print(std::ostream &stream, int level, int spaces) const
@@ -160,7 +166,7 @@ namespace llarp
 
     /// Computes the public key
     bool
-    toPublic(PubKey& pubkey) const;
+    toPublic(PubKey &pubkey) const;
   };
 
   inline std::ostream &
@@ -170,7 +176,6 @@ namespace llarp
     // make sure we never print out private keys
     return out << "[privatekey]";
   }
-
 
   /// IdentitySecret is a secret key from a service node secret seed
   struct IdentitySecret final : public AlignedBuffer< 32 >

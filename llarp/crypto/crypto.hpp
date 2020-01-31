@@ -69,11 +69,13 @@ namespace llarp
 
     /// derive sub keys for public keys
     virtual bool
-    derive_subkey(PubKey &, const PubKey &, uint64_t, const AlignedBuffer<32> * = nullptr) = 0;
+    derive_subkey(PubKey &, const PubKey &, uint64_t,
+                  const AlignedBuffer< 32 > * = nullptr) = 0;
 
     /// derive sub keys for private keys
     virtual bool
-    derive_subkey_private(PrivateKey &, const SecretKey &, uint64_t, const AlignedBuffer<32> * = nullptr) = 0;
+    derive_subkey_private(PrivateKey &, const SecretKey &, uint64_t,
+                          const AlignedBuffer< 32 > * = nullptr) = 0;
 
     /// seed to secretkey
     virtual bool

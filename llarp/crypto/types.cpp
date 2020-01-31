@@ -60,7 +60,7 @@ namespace llarp
   {
     PrivateKey key;
     PubKey pubkey;
-    if (!toPrivate(key) || !key.toPublic(pubkey))
+    if(!toPrivate(key) || !key.toPublic(pubkey))
       return false;
     std::memcpy(data() + 32, pubkey.data(), 32);
     return true;
@@ -69,10 +69,11 @@ namespace llarp
   bool
   SecretKey::toPrivate(PrivateKey& key) const
   {
-    // Ed25519 calculates a 512-bit hash from the seed; the first half (clamped) is the private key;
-    // the second half is the hash that gets used in signing.
+    // Ed25519 calculates a 512-bit hash from the seed; the first half (clamped)
+    // is the private key; the second half is the hash that gets used in
+    // signing.
     unsigned char h[crypto_hash_sha512_BYTES];
-    if (crypto_hash_sha512(h, data(), 32) < 0)
+    if(crypto_hash_sha512(h, data(), 32) < 0)
       return false;
     h[0] &= 248;
     h[31] &= 63;

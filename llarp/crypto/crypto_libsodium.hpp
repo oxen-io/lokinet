@@ -56,15 +56,18 @@ namespace llarp
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
 
-      /// derive sub keys for public keys.  hash is really only intended for testing and overrides
-      /// key_n if given.
+      /// derive sub keys for public keys.  hash is really only intended for
+      /// testing and overrides key_n if given.
       bool
-      derive_subkey(PubKey& derived, const PubKey& root, uint64_t key_n, const AlignedBuffer<32>* hash = nullptr) override;
+      derive_subkey(PubKey &derived, const PubKey &root, uint64_t key_n,
+                    const AlignedBuffer< 32 > *hash = nullptr) override;
 
-      /// derive sub keys for private keys.  hash is really only intended for testing and overrides
-      /// key_n if given.
+      /// derive sub keys for private keys.  hash is really only intended for
+      /// testing and overrides key_n if given.
       bool
-      derive_subkey_private(PrivateKey& derived, const SecretKey &root, uint64_t key_n, const AlignedBuffer<32>* hash = nullptr) override;
+      derive_subkey_private(PrivateKey &derived, const SecretKey &root,
+                            uint64_t key_n,
+                            const AlignedBuffer< 32 > *hash = nullptr) override;
 
       /// seed to secretkey
       bool
@@ -95,7 +98,6 @@ namespace llarp
 
       bool
       check_identity_privkey(const SecretKey &) override;
-
     };
   }  // namespace sodium
 
