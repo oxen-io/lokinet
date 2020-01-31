@@ -61,7 +61,7 @@ namespace llarp
 
    private:
     Version_t m_Version     = {{0, 0, 0}};
-    uint64_t m_ProtoVersion = LLARP_PROTO_VERSION;
+    int64_t m_ProtoVersion = LLARP_PROTO_VERSION;
   };
 
   inline std::ostream&
@@ -69,6 +69,10 @@ namespace llarp
   {
     return out << rv.ToString();
   }
+
+  static constexpr int64_t INVALID_VERSION = -1;
+  static const RouterVersion emptyRouterVersion({0, 0, 0}, INVALID_VERSION);
+
 }  // namespace llarp
 
 #endif

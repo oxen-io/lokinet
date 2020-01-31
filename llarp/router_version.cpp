@@ -44,8 +44,6 @@ namespace llarp
     assert(IsEmpty());
   }
 
-  static const RouterVersion emptyRouterVersion({0, 0, 0}, LLARP_PROTO_VERSION);
-
   bool
   RouterVersion::IsEmpty() const
   {
