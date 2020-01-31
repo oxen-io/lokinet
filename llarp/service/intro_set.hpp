@@ -102,7 +102,7 @@ namespace llarp
       return i.print(out, -1, -1);
     }
 
-    /// public version of the intrset that is encrypted
+    /// public version of the introset that is encrypted
     struct EncryptedIntroSet
     {
       using Payload_t = std::vector< byte_t >;
@@ -115,7 +115,7 @@ namespace llarp
       Signature sig;
 
       bool
-      Sign(const SecretKey& k);
+      Sign(const PrivateKey& k);
 
       bool
       IsExpired(llarp_time_t now) const;

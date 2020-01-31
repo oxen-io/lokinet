@@ -316,11 +316,9 @@ TEST_F(RealCryptographyTest, TestEncryptAndSignIntroSet)
 
   const auto maybe = ident.EncryptAndSignIntroSet(I, now);
   ASSERT_TRUE(maybe.has_value());
-  llarp::LogInfo("introset=", maybe.value());
   ASSERT_TRUE(maybe->Verify(now));
   PubKey blind_key;
   const PubKey root_key(addr.as_array());
   auto crypto = CryptoManager::instance();
   ASSERT_TRUE(crypto->derive_subkey(blind_key, root_key, 1));
-  ASSERT_EQ(blind_key, root_key);
 }

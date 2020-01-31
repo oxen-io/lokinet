@@ -181,10 +181,8 @@ namespace llarp
       CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
       encrypted.introsetPayload.resize(buf.sz);
       std::copy_n(buf.base, buf.sz, encrypted.introsetPayload.data());
-      /* FIXME
       if(not encrypted.Sign(derivedSignKey))
         return {};
-      */
       return encrypted;
     }
   }  // namespace service
