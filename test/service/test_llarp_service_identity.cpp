@@ -243,8 +243,8 @@ TEST_F(RealCryptographyTest, TestSignUsingDerivedKey)
   PubKey Aprime; // A'
   crypto->derive_subkey(Aprime, A, 1);
 
-  std::string dummystr = "Jeff loves one-letter variable names.";
-  llarp_buffer_t buf(dummystr.data(), dummystr.size());
+  const std::string s = "Jeff loves one-letter variable names.";
+  llarp_buffer_t buf(s.data(), s.size());
 
   Signature sig;
   ASSERT_TRUE(crypto->sign(sig, aprime, buf));
