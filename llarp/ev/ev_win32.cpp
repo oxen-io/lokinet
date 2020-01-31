@@ -58,7 +58,7 @@ win32_tun_io::setup()
     llarp::LogWarn("failed to put interface up: ", ebuf);
     return false;
   }
-  tunif->bindaddr = t->bindaddr;
+  tunif->bindaddr = t->dnsaddr;
 
   if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
   {

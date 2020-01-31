@@ -207,9 +207,8 @@ struct llarp_tun_io
 {
   // TODO: more info?
   char ifaddr[128];
-#ifdef _WIN32
-  uint32_t bindaddr;
-#endif
+  // windows only
+  uint32_t dnsaddr;
   int netmask;
   char ifname[IFNAMSIZ + 1];
 
