@@ -202,10 +202,10 @@ namespace llarp
       crypto_core_ed25519_scalar_reduce(nonce, nonce);
 
       // copy pubkey into sig to make (for now) sig = (R || A)
-      memmove(sig.Lo(), pubkey.data(), 32);
+      memmove(sig.data() + 32, pubkey.data(), 32);
 
       // R = r * B
-      crypto_scalarmult_ed25519_base(sig.Hi(), nonce);
+      crypto_scalarmult_ed25519_base_noclamp(sig.data(), nonce);
 
       // hram = H(R || A || M)
       crypto_hash_sha512_init(&hs);
@@ -216,7 +216,7 @@ namespace llarp
       // S = r + H(R || A || M) * s, so sig = (R || S)
       crypto_core_ed25519_scalar_reduce(hram, hram);
       crypto_core_ed25519_scalar_mul(mulres, hram, secret.data());
-      crypto_core_ed25519_scalar_add(sig.Lo(), mulres, nonce);
+      crypto_core_ed25519_scalar_add(sig.data() + 32, mulres, nonce);
 
       sodium_memzero(r_hash_input, sizeof r_hash_input);
       sodium_memzero(nonce, sizeof nonce);
