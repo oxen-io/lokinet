@@ -131,7 +131,7 @@ namespace llarp
     template < typename K, typename V, typename K_Hash >
     void
     TXHolder< K, V, K_Hash >::NotFound(const TXOwner& from,
-                                       const std::unique_ptr< Key_t >& next)
+                                       const std::unique_ptr< Key_t >&)
     {
       auto txitr = tx.find(from);
       if(txitr == tx.end())
