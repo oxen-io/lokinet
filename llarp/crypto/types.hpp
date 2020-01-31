@@ -136,19 +136,19 @@ namespace llarp
     return out << "[secretkey]";
   }
 
-  /// PrivateKey is similar to SecretKey except that it only stores the private key value
-  /// itself unlike SecretKey which stores the seed from which the private key value is generated.
-  /// This is intended for use with derived keys, where we can derive the private key but not the
-  /// seed.
-  struct PrivateKey final : public AlignedBuffer< 32 >
+  /// PrivateKey is similar to SecretKey except that it only stores the private key value and a
+  /// hash, unlike SecretKey which stores the seed from which the private key and hash value are
+  /// generated.  This is primarily intended for use with derived keys, where we can derive the
+  /// private key but not the seed.
+  struct PrivateKey final : public AlignedBuffer< 64 >
   {
     PrivateKey() = default;
 
-    explicit PrivateKey(const byte_t *ptr) : AlignedBuffer< 32 >(ptr)
+    explicit PrivateKey(const byte_t *ptr) : AlignedBuffer< 64 >(ptr)
     {
     }
 
-    explicit PrivateKey(const AlignedBuffer< 32 > &seed) : AlignedBuffer< 32>(seed) {}
+    explicit PrivateKey(const AlignedBuffer< 64 > &key_and_hash) : AlignedBuffer< 64 >(key_and_hash) {}
 
     std::ostream &
     print(std::ostream &stream, int level, int spaces) const

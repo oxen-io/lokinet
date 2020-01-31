@@ -69,15 +69,15 @@ namespace llarp
   bool
   SecretKey::toPrivate(PrivateKey& key) const
   {
-    // libsodium and ref10 calculate a 512-bit hash, but then only use 256 bits (32 bytes) of it for
-    // the private key.  Because yeah.
+    // Ed25519 calculates a 512-bit hash from the seed; the first half (clamped) is the private key;
+    // the second half is the hash that gets used in signing.
     unsigned char h[crypto_hash_sha512_BYTES];
     if (crypto_hash_sha512(h, data(), 32) < 0)
       return false;
     h[0] &= 248;
     h[31] &= 63;
     h[31] |= 64;
-    std::memcpy(key.data(), h, 32);
+    std::memcpy(key.data(), h, 64);
     return true;
   }
 

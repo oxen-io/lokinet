@@ -179,24 +179,23 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::sign(Signature &sig, const PrivateKey &secret,
+    CryptoLibSodium::sign(Signature &sig, const PrivateKey& privkey,
                           const llarp_buffer_t &buf)
     {
       PubKey pubkey;
 
-      secret.toPublic(pubkey);
+      privkey.toPublic(pubkey);
 
       crypto_hash_sha512_state hs;
       unsigned char            nonce[64];
       unsigned char            hram[64];
       unsigned char            mulres[32];
-      unsigned char            r_hash_input[32];
 
-      randombytes_buf(r_hash_input, 32);
-
-      // r = H(H(k) || M) where here H(k) is random bytes
+      // r = H(s || M) where here s is pseudorandom bytes typically generated as part of hashing the
+      // seed (i.e. [a,s] = H(k)), but for derived PrivateKeys will come from a hash of the root
+      // key's s concatenated with the derivation hash.
       crypto_hash_sha512_init(&hs);
-      crypto_hash_sha512_update(&hs, r_hash_input, 32);
+      crypto_hash_sha512_update(&hs, privkey.data() + 32, 32);
       crypto_hash_sha512_update(&hs, buf.base, buf.sz);
       crypto_hash_sha512_final(&hs, nonce);
       crypto_core_ed25519_scalar_reduce(nonce, nonce);
@@ -215,10 +214,9 @@ namespace llarp
 
       // S = r + H(R || A || M) * s, so sig = (R || S)
       crypto_core_ed25519_scalar_reduce(hram, hram);
-      crypto_core_ed25519_scalar_mul(mulres, hram, secret.data());
+      crypto_core_ed25519_scalar_mul(mulres, hram, privkey.data());
       crypto_core_ed25519_scalar_add(sig.data() + 32, mulres, nonce);
 
-      sodium_memzero(r_hash_input, sizeof r_hash_input);
       sodium_memzero(nonce, sizeof nonce);
 
       return true;
@@ -260,20 +258,23 @@ namespace llarp
       return other == key;
     }
 
+    constexpr static char derived_key_hash_str[161] = "just imagine what would happen if we all decided to understand. you can't in the and by be or then before so just face it this text hurts to read? lokinet yolo!";
+
     template < typename K >
     static bool
-    make_scalar(byte_t *out, const K &k, uint64_t i)
+    make_scalar(AlignedBuffer<32>& out, const K &k, uint64_t i)
     {
-      // b = i || k
-      std::array< byte_t, K::SIZE + sizeof(uint64_t) > buf;
-      htole64buf(buf.data(), i);
-      std::copy_n(k.begin(), K::SIZE, buf.begin() + sizeof(i));
-      LongHash h;
+      // b = BLIND-STRING || k || i
+      std::array< byte_t, 160 + K::SIZE + sizeof(uint64_t) > buf;
+      std::copy(derived_key_hash_str, derived_key_hash_str + 160, buf.begin());
+      std::copy(k.begin(), k.end(), buf.begin() + 160);
+      htole64buf(buf.data() + 160 + K::SIZE, i);
       // n = H(b)
-      if(not hash(h.data(), llarp_buffer_t(buf)))
-        return false;
-      // return make_point(n)
-      return crypto_core_ed25519_from_uniform(out, h.data()) != -1;
+      // h = make_point(n)
+      ShortHash n;
+      return -1 != crypto_generichash_blake2b(n.data(), ShortHash::SIZE,
+            buf.data(), buf.size(), nullptr, 0)
+        && -1 != crypto_core_ed25519_from_uniform(out.data(), n.data());
     }
 
     static AlignedBuffer< 32 > zero;
@@ -282,11 +283,11 @@ namespace llarp
     CryptoLibSodium::derive_subkey(PubKey &out_pubkey, const PubKey &root_pubkey,
                                    uint64_t key_n, const AlignedBuffer<32>* hash)
     {
-      // scalar h = H( in_k || root_pubkey )
+      // scalar h = H( BLIND-STRING || root_pubkey || key_n )
       AlignedBuffer< 32 > h;
       if (hash)
         h = *hash;
-      else if(not make_scalar(h.data(), root_pubkey, key_n))
+      else if(not make_scalar(h, root_pubkey, key_n))
       {
         LogError("cannot make scalar");
         return false;
@@ -307,27 +308,34 @@ namespace llarp
       //
       // The basic idea is:
       //
-      // h - hash dependent on the `key_n` value.
+      // h = H( BLIND-STRING || A || key_n )
       // a - private key
       // A = aB - public key
+      // s - signing hash
       // a' = ah - derived private key
       // A' = a'B = (ah)B - derived public key
+      // s' = H(h || s) - derived signing hash
       //
       // libsodium throws some wrenches in the mechanics which are a nuisance, the biggest of which
       // is that sodium's secret key is *not* `a`; rather it is the seed.  If you want to get the
       // private key (i.e. "a"), you need to SHA-512 hash it and then clamp that.
       //
-      // This also makes signature verification harder: we can't just use sodium's verify function
+      // This also makes signature verification harder: we can't just use sodium's sign function
       // because it wants to be given the seed rather than the private key, and moreover we can't
-      // actually *get* the seed to make libsodium happy because we only have `ah` above.
+      // actually *get* the seed to make libsodium happy because we only have `ah` above; thus we
+      // reimplemented most of sodium's detached signing function but without the hash step.
+      //
+      // Lastly, for the signing hash s', we need some value that is both different from the root s
+      // but also unknowable from the public key (since otherwise `r` in the signing function would
+      // be known), so we generate it from a hash of `h` and the root key's (psuedorandom) signing
+      // hash, `s`.
       //
       const auto root_pubkey = root_key.toPublic();
 
-      // scalar h = H( in_k || root_pubkey )
       AlignedBuffer< 32 > h;
       if (hash)
         h = *hash;
-      else if(not make_scalar(h.data(), root_pubkey, key_n))
+      else if(not make_scalar(h, root_pubkey, key_n))
       {
         LogError("cannot make scalar");
         return false;
@@ -343,6 +351,13 @@ namespace llarp
 
       // a' = ha
       crypto_core_ed25519_scalar_mul(out_key.data(), h.data(), a.data());
+
+      // s' = H(h || s)
+      std::array<byte_t, 64> buf;
+      std::copy(h.begin(), h.end(), buf.begin());
+      std::copy(a.begin() + 32, a.end(), buf.begin() + 32);
+      return -1 != crypto_generichash_blake2b(out_key.data() + 32, 32,
+            buf.data(), buf.size(), nullptr, 0);
 
       return true;
     }
