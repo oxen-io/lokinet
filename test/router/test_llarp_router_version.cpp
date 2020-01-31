@@ -48,3 +48,44 @@ TEST_F(TestRouterVersion, TestClear)
   EXPECT_TRUE(version.IsEmpty());
 }
 
+TEST_F(TestRouterVersion, TestBEncode)
+{
+  llarp::RouterVersion v1235( {1, 2, 3}, 5);
+
+  std::array< byte_t, 128 > tmp;
+  llarp_buffer_t buf(tmp);
+
+  EXPECT_TRUE(v1235.BEncode(&buf));
+
+  std::string s((const char*)buf.begin(), (buf.end() - buf.begin()));
+  LogInfo("bencoded: ", buf.begin());
+
+  EXPECT_STREQ((const char*)buf.begin(), "li5ei1ei2ei3ee");
+
+}
+
+TEST_F(TestRouterVersion, TestBDecode)
+{
+  llarp::RouterVersion version;
+  version.Clear();
+
+  const std::string bString("li9ei3ei2ei1ee");
+  llarp_buffer_t buf(bString.data(), bString.size());
+  EXPECT_TRUE(version.BDecode(&buf));
+
+  llarp::RouterVersion expected( {3, 2, 1}, 9);
+
+  EXPECT_EQ(expected, version);
+
+}
+
+TEST_F(TestRouterVersion, TestDecodeLongVersionArray)
+{
+  llarp::RouterVersion version;
+  version.Clear();
+
+  const std::string bString("li9ei3ei2ei1ei2ei3ei4ei5ei6ei7ei8ei9ee");
+  llarp_buffer_t buf(bString.data(), bString.size());
+  EXPECT_FALSE(version.BDecode(&buf));
+
+}

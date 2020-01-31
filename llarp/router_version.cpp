@@ -63,11 +63,16 @@ namespace llarp
                uint64_t i;
                if(idx == 0)
                {
-                 if(not bencode_read_integer(buffer, &self->m_ProtoVersion))
+                 uint64_t val = -1;
+                 if(not bencode_read_integer(buffer, &val))
                    return false;
+                 self->m_ProtoVersion = val;
                }
                else if(bencode_read_integer(buffer, &i))
                {
+                 // prevent overflow (note that idx includes version too)
+                 if (idx > self->m_Version.max_size())
+                   return false;
                  self->m_Version[idx - 1] = i;
                }
                else
