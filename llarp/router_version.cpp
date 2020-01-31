@@ -71,7 +71,7 @@ namespace llarp
                else if(bencode_read_integer(buffer, &i))
                {
                  // prevent overflow (note that idx includes version too)
-                 if (idx > self->m_Version.max_size())
+                 if(idx > self->m_Version.max_size())
                    return false;
                  self->m_Version[idx - 1] = i;
                }
