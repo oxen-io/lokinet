@@ -60,6 +60,9 @@ namespace llarp
     /// ed25519 sign
     virtual bool
     sign(Signature &, const SecretKey &, const llarp_buffer_t &) = 0;
+    /// ed25519 sign (custom with derived keys)
+    virtual bool
+    sign(Signature &, const PrivateKey &, const llarp_buffer_t &) = 0;
     /// ed25519 verify
     virtual bool
     verify(const PubKey &, const llarp_buffer_t &, const Signature &) = 0;

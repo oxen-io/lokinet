@@ -7,9 +7,12 @@
 #include <sodium/crypto_stream_xchacha20.h>
 #include <sodium/crypto_core_ed25519.h>
 #include <sodium/crypto_core_ristretto255.h>
+#include <sodium/randombytes.h>
+#include <sodium/utils.h>
 #include <util/mem.hpp>
 #include <util/endian.hpp>
 #include <cassert>
+#include <cstring>
 
 extern "C"
 {
@@ -173,6 +176,52 @@ namespace llarp
       return crypto_sign_detached(sig.data(), nullptr, buf.base, buf.sz,
                                   secret.data())
           != -1;
+    }
+
+    bool
+    CryptoLibSodium::sign(Signature &sig, const PrivateKey &secret,
+                          const llarp_buffer_t &buf)
+    {
+      PubKey pubkey;
+
+      secret.toPublic(pubkey);
+
+      crypto_hash_sha512_state hs;
+      unsigned char            nonce[64];
+      unsigned char            hram[64];
+      unsigned char            mulres[32];
+      unsigned char            r_hash_input[32];
+
+      randombytes_buf(r_hash_input, 32);
+
+      // r = H(H(k) || M) where here H(k) is random bytes
+      crypto_hash_sha512_init(&hs);
+      crypto_hash_sha512_update(&hs, r_hash_input, 32);
+      crypto_hash_sha512_update(&hs, buf.base, buf.sz);
+      crypto_hash_sha512_final(&hs, nonce);
+      crypto_core_ed25519_scalar_reduce(nonce, nonce);
+
+      // copy pubkey into sig to make (for now) sig = (R || A)
+      memmove(sig.Lo(), pubkey.data(), 32);
+
+      // R = r * B
+      crypto_scalarmult_ed25519_base(sig.Hi(), nonce);
+
+      // hram = H(R || A || M)
+      crypto_hash_sha512_init(&hs);
+      crypto_hash_sha512_update(&hs, sig.data(), 64);
+      crypto_hash_sha512_update(&hs, buf.base, buf.sz);
+      crypto_hash_sha512_final(&hs, hram);
+
+      // S = r + H(R || A || M) * s, so sig = (R || S)
+      crypto_core_ed25519_scalar_reduce(hram, hram);
+      crypto_core_ed25519_scalar_mul(mulres, hram, secret.data());
+      crypto_core_ed25519_scalar_add(sig.Lo(), mulres, nonce);
+
+      sodium_memzero(r_hash_input, sizeof r_hash_input);
+      sodium_memzero(nonce, sizeof nonce);
+
+      return true;
     }
 
     bool

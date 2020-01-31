@@ -38,7 +38,8 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
     I.I.emplace_back(std::move(intro));
   }
 
-  EXPECT_CALL(m_crypto, sign(I.Z, _, _)).WillOnce(Return(true));
+  using ::testing::Matcher;
+  EXPECT_CALL(m_crypto, sign(I.Z, Matcher<const SecretKey &>(_), _)).WillOnce(Return(true));
   EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
   EXPECT_CALL(m_crypto, xchacha20(_, _, _)).WillOnce(Return(true));
   const auto maybe = ident.EncryptAndSignIntroSet(I, now);
@@ -220,6 +221,35 @@ TEST_F(RealCryptographyTest, TestGenerateDeriveKey)
   ASSERT_TRUE(aprime.toPublic(Aprime_alt));
 
   ASSERT_EQ(Aprime, Aprime_alt);
+}
+
+TEST_F(RealCryptographyTest, TestSignUsingDerivedKey)
+{
+  auto crypto = CryptoManager::instance();
+  SecretKey root_key;
+  crypto->identity_keygen(root_key);
+
+  PrivateKey root_privkey;
+  root_key.toPrivate(root_privkey);
+
+  PrivateKey a;
+  PubKey A;
+  root_key.toPrivate(a);
+  a.toPublic(A);
+
+  PrivateKey aprime; // a'
+  crypto->derive_subkey_private(aprime, root_key, 1);
+
+  PubKey Aprime; // A'
+  crypto->derive_subkey(Aprime, A, 1);
+
+  std::string dummystr = "Jeff loves one-letter variable names.";
+  llarp_buffer_t buf(dummystr.data(), dummystr.size());
+
+  Signature sig;
+  ASSERT_TRUE(crypto->sign(sig, aprime, buf));
+
+  ASSERT_TRUE(crypto->verify(Aprime, buf, sig));
 }
 
 TEST_F(RealCryptographyTest, TestEncryptAndSignIntroSet)

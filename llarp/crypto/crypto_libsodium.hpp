@@ -48,6 +48,9 @@ namespace llarp
       /// ed25519 sign
       bool
       sign(Signature &, const SecretKey &, const llarp_buffer_t &) override;
+      /// ed25519 sign (custom with derived keys)
+      bool
+      sign(Signature &, const PrivateKey &, const llarp_buffer_t &) override;
       /// ed25519 verify
       bool
       verify(const PubKey &, const llarp_buffer_t &,
@@ -92,6 +95,7 @@ namespace llarp
 
       bool
       check_identity_privkey(const SecretKey &) override;
+
     };
   }  // namespace sodium
 
