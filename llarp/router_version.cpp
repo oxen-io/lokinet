@@ -40,7 +40,7 @@ namespace llarp
   RouterVersion::Clear()
   {
     m_Version.fill(0);
-    m_ProtoVersion = LLARP_PROTO_VERSION;
+    m_ProtoVersion = INVALID_VERSION;
     assert(IsEmpty());
   }
 

@@ -30,4 +30,21 @@ TEST_F(TestRouterVersion, TestEmptyCompatibility)
   EXPECT_FALSE(v1.IsCompatableWith(llarp::emptyRouterVersion));
 }
 
+TEST_F(TestRouterVersion, TestIsEmpty)
+{
+  llarp::RouterVersion notEmpty( {0, 0, 1}, LLARP_PROTO_VERSION);
+  EXPECT_FALSE(notEmpty.IsEmpty());
+
+  EXPECT_TRUE(llarp::emptyRouterVersion.IsEmpty());
+}
+
+TEST_F(TestRouterVersion, TestClear)
+{
+  llarp::RouterVersion version( {0, 0, 1}, LLARP_PROTO_VERSION);
+  EXPECT_FALSE(version.IsEmpty());
+
+  version.Clear();
+
+  EXPECT_TRUE(version.IsEmpty());
+}
 
