@@ -271,7 +271,8 @@ namespace llarp
 
       template < typename Addr_t, typename Endpoint_t >
       void
-      SendDNSReply(Addr_t addr, Endpoint_t ctx, std::shared_ptr<dns::Message> query,
+      SendDNSReply(Addr_t addr, Endpoint_t ctx,
+                   std::shared_ptr< dns::Message > query,
                    std::function< void(dns::Message) > reply, bool snode,
                    bool sendIPv6)
       {
