@@ -3,10 +3,8 @@
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_scalarmult_ed25519.h>
-#include <sodium/crypto_scalarmult_ristretto255.h>
 #include <sodium/crypto_stream_xchacha20.h>
 #include <sodium/crypto_core_ed25519.h>
-#include <sodium/crypto_core_ristretto255.h>
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
 #include <util/mem.hpp>
