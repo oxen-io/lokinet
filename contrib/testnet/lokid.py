@@ -32,7 +32,7 @@ class SVCNode:
         """
         make the snode a json object for jsonrpc
         """
-        return {'pubkey_ed22519': self.pubkey(), 'active': True, 'funded': True}
+        return {'pubkey_ed25519': self.pubkey(), 'active': True, 'funded': True}
 
 class MockServer:
 
