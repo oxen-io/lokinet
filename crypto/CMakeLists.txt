@@ -66,19 +66,19 @@ target_link_libraries(${CRYPTOGRAPHY_LIB} PRIVATE cryptography_avx_lib)
 
 option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
 
-find_package(Sodium 1.0.17)
+find_package(Sodium 1.0.18)
 
 if(sodium_FOUND)
   target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC ${sodium_INCLUDE_DIR})
   target_include_directories(cryptography_avx_lib PUBLIC ${sodium_INCLUDE_DIR})
   target_link_libraries(${CRYPTOGRAPHY_LIB} PUBLIC ${sodium_LIBRARY_RELEASE})
 elseif(DOWNLOAD_SODIUM)
-  message(STATUS "Sodium >= 1.0.17 not found, but DOWNLOAD_SODIUM specified, so downloading it")
+  message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")
   include(DownloadLibSodium)
   target_link_libraries(${CRYPTOGRAPHY_LIB} PUBLIC sodium_vendor)
   target_link_libraries(cryptography_avx_lib PUBLIC sodium_vendor)
 else()
-  message(FATAL_ERROR "Could not find libsodium >= 1.0.17; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
+  message(FATAL_ERROR "Could not find libsodium >= 1.0.18; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
 endif()
 
 target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/libntrup/include")

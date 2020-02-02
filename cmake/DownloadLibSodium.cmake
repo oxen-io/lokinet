@@ -1,7 +1,7 @@
 set(LIBSODIUM_PREFIX ${CMAKE_BINARY_DIR}/libsodium)
-set(LIBSODIUM_SRC ${LIBSODIUM_PREFIX}/libsodium-1.0.17)
-set(LIBSODIUM_TARBALL ${LIBSODIUM_PREFIX}/libsodium-1.0.17.tar.gz)
-set(LIBSODIUM_URL https://github.com/jedisct1/libsodium/releases/download/1.0.17/libsodium-1.0.17.tar.gz)
+set(LIBSODIUM_SRC ${LIBSODIUM_PREFIX}/libsodium-1.0.18)
+set(LIBSODIUM_TARBALL ${LIBSODIUM_PREFIX}/libsodium-1.0.18.tar.gz)
+set(LIBSODIUM_URL https://github.com/jedisct1/libsodium/releases/download/1.0.18/libsodium-1.0.18.tar.gz)
 if(SODIUM_TARBALL_URL)
     # make a build time override of the tarball url so we can fetch it if the original link goes away
     set(LIBSODIUM_URL ${SODIUM_TARBALL_URL})
@@ -10,13 +10,13 @@ set(SODIUM_PRETEND_TO_BE_CONFIGURED ON)
 file(DOWNLOAD
     ${LIBSODIUM_URL}
     ${LIBSODIUM_TARBALL}
-    EXPECTED_HASH SHA512=7cc9e4f11e656008ce9dff735acea95acbcb91ae4936de4d26f7798093766a77c373e9bd4a7b45b60ef8a11de6c55bc8dcac13bebf8c23c671d0536430501da1
+    EXPECTED_HASH SHA512=17e8638e46d8f6f7d024fe5559eccf2b8baf23e143fadd472a7d29d228b186d86686a5e6920385fe2020729119a5f12f989c3a782afbd05a8db4819bb18666ef
     SHOW_PROGRESS)
 
 execute_process(COMMAND tar -xzf ${LIBSODIUM_TARBALL} -C ${LIBSODIUM_PREFIX})
 if(WIN32)
-  message("patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch")
-  execute_process(COMMAND "patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.17-win32.patch")
+  message("patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.18-win32.patch")
+  execute_process(COMMAND "patch -p0 -d ${LIBSODIUM_SRC} < ${CMAKE_SOURCE_DIR}/llarp/win32/libsodium-1.0.18-win32.patch")
 endif()
 add_library(sodium_vendor
     ${LIBSODIUM_SRC}/src/libsodium/crypto_aead/aes256gcm/aesni/aead_aes256gcm_aesni.c
@@ -284,9 +284,9 @@ target_compile_definitions(sodium_vendor
 
 # Variables that need to be exported to version.h.in
 set(VERSION_ORIG "${VERSION}") # an included module sets things in the calling scope :(
-set(VERSION 1.0.17)
+set(VERSION 1.0.18)
 set(SODIUM_LIBRARY_VERSION_MAJOR 10)
-set(SODIUM_LIBRARY_VERSION_MINOR 2)
+set(SODIUM_LIBRARY_VERSION_MINOR 3)
 
 configure_file(
   ${LIBSODIUM_SRC}/src/libsodium/include/sodium/version.h.in
