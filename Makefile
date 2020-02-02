@@ -208,7 +208,7 @@ testnet-build: testnet-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
 $(TESTNET_VENV):
-	$(PYTHON3) -m venv $(TESTNET_VENV)
+	$(PYTHON3) -m venv $(TESTNET_VENV) --system-site-packages
 	$(TESTNET_VENV)/bin/pip install -r $(REPO)/contrib/testnet/requirements.txt
 
 testnet: $(TESTNET_VENV)
