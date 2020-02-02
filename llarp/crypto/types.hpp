@@ -156,6 +156,22 @@ namespace llarp
     {
     }
 
+    /// Returns a pointer to the beginning of the 32-byte hash which is used for
+    /// pseudorandomness when signing with this private key.
+    const byte_t *
+    signingHash() const
+    {
+      return data() + 32;
+    }
+
+    /// Returns a pointer to the beginning of the 32-byte hash which is used for
+    /// pseudorandomness when signing with this private key.
+    byte_t *
+    signingHash()
+    {
+      return data() + 32;
+    }
+
     std::ostream &
     print(std::ostream &stream, int level, int spaces) const
     {

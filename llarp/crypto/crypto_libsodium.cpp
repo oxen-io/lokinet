@@ -194,7 +194,7 @@ namespace llarp
       // PrivateKeys will come from a hash of the root key's s concatenated with
       // the derivation hash.
       crypto_hash_sha512_init(&hs);
-      crypto_hash_sha512_update(&hs, privkey.data() + 32, 32);
+      crypto_hash_sha512_update(&hs, privkey.signingHash(), 32);
       crypto_hash_sha512_update(&hs, buf.base, buf.sz);
       crypto_hash_sha512_final(&hs, nonce);
       crypto_core_ed25519_scalar_reduce(nonce, nonce);
@@ -362,9 +362,9 @@ namespace llarp
       // s' = H(h || s)
       std::array< byte_t, 64 > buf;
       std::copy(h.begin(), h.end(), buf.begin());
-      std::copy(a.begin() + 32, a.end(), buf.begin() + 32);
+      std::copy(a.signingHash(), a.signingHash() + 32, buf.begin() + 32);
       return -1
-          != crypto_generichash_blake2b(out_key.data() + 32, 32, buf.data(),
+          != crypto_generichash_blake2b(out_key.signingHash(), 32, buf.data(),
                                         buf.size(), nullptr, 0);
 
       return true;
