@@ -473,7 +473,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -493,7 +493,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             return EnsurePathToSNode(
                 addr.as_array(),
                 [=](const RouterID &, exit::BaseSession_ptr s) {
