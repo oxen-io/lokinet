@@ -55,20 +55,7 @@ namespace llarp
         return true;
       }
 
-      if(introset.W && !introset.W->IsValid(now))
-      {
-        llarp::LogWarn("proof of work not good enough for IntroSet");
-        // don't propogate or store
-        replies.emplace_back(new GotIntroMessage({}, txID));
-        return true;
-      }
-      llarp::dht::Key_t addr;
-      if(not introset.A.CalculateAddress(addr.as_array()))
-      {
-        llarp::LogWarn(
-            "failed to calculate hidden service address for PubIntro message");
-        return false;
-      }
+      const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
       now += llarp::service::MAX_INTROSET_TIME_DELTA;
       if(introset.IsExpired(now))

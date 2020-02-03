@@ -16,7 +16,7 @@ namespace llarp
     struct GotIntroMessage : public IMessage
     {
       /// the found introsets
-      std::vector< service::IntroSet > found;
+      std::vector< service::EncryptedIntroSet > found;
       /// txid
       uint64_t txid = 0;
       /// the key of a router closer in keyspace if iterative lookup
@@ -42,7 +42,8 @@ namespace llarp
       }
 
       /// for recursive reply
-      GotIntroMessage(std::vector< service::IntroSet > results, uint64_t txid);
+      GotIntroMessage(std::vector< service::EncryptedIntroSet > results,
+                      uint64_t txid);
 
       ~GotIntroMessage() override = default;
 

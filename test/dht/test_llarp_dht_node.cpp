@@ -72,19 +72,18 @@ TEST_F(TestDhtISNode, construct)
   ASSERT_THAT(node.ID, Property(&dht::Key_t::IsZero, true));
 
   node.ID.Fill(0xCA);
-  node.introset.K.Fill(0xDB);
+  node.introset.derivedSigningKey.Fill(0xDB);
 
   dht::ISNode other{node};
   ASSERT_EQ(node.ID, other.ID);
   ASSERT_EQ(node.introset, other.introset);
 
-  service::IntroSet introSet;
-  introSet.K.Randomize();
-  introSet.A.UpdateAddr();
+  service::EncryptedIntroSet introSet;
+  introSet.derivedSigningKey.Randomize();
 
   dht::ISNode fromIntro{introSet};
 
-  ASSERT_EQ(fromIntro.ID.as_array(), introSet.A.Addr().as_array());
+  ASSERT_EQ(fromIntro.ID.as_array(), introSet.derivedSigningKey);
 }
 
 TEST_F(TestDhtISNode, lt)
@@ -94,10 +93,10 @@ TEST_F(TestDhtISNode, lt)
   dht::ISNode three;
   dht::ISNode eqThree;
 
-  one.introset.T     = 1;
-  two.introset.T     = 2;
-  three.introset.T   = 3;
-  eqThree.introset.T = 3;
+  one.introset.signedAt     = 1;
+  two.introset.signedAt     = 2;
+  three.introset.signedAt   = 3;
+  eqThree.introset.signedAt = 3;
 
   // LT cases
   ASSERT_THAT(one, Lt(two));

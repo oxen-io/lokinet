@@ -339,14 +339,18 @@ namespace llarp
     if(!nextRC.Verify(time_now_ms(), false))
       return false;
     _rc = std::move(nextRC);
-    // propagate RC by renegotiating sessions
-    ForEachPeer([](ILinkSession *s) {
-      if(s->RenegotiateSession())
-        LogInfo("renegotiated session");
-      else
-        LogWarn("failed to renegotiate session");
-    });
-
+    if(rotateKeys)
+    {
+      // propagate RC by renegotiating sessions
+      ForEachPeer([](ILinkSession *s) {
+        if(s->RenegotiateSession())
+          LogInfo("renegotiated session");
+        else
+          LogWarn("failed to renegotiate session");
+      });
+    }
+    /// flood our rc
+    _dht->impl->FloodRCLater(dht::Key_t(pubkey()), _rc);
     return SaveRC();
   }
 
@@ -919,6 +923,11 @@ namespace llarp
 
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
+    // set router version if service node
+    if(IsServiceNode())
+    {
+      _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
+    }
 
     AddressInfo ai;
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {

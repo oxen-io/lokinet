@@ -123,6 +123,12 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      bool
+      IsInbound() const override
+      {
+        return m_Inbound;
+      }
+
      private:
       enum class State
       {

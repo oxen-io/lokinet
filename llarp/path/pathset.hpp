@@ -247,7 +247,7 @@ namespace llarp
       GetCurrentIntroductions(std::set< service::Introduction >& intros) const;
 
       virtual bool
-      PublishIntroSet(__attribute__((unused)) AbstractRouter* r)
+      PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)
       {
         return false;
       }

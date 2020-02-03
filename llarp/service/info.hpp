@@ -45,17 +45,7 @@ namespace llarp
       }
 
       bool
-      Update(const byte_t* enc, const byte_t* sign,
-             const OptNonce& nonce = OptNonce())
-      {
-        enckey  = enc;
-        signkey = sign;
-        if(nonce)
-        {
-          vanity = nonce.value();
-        }
-        return UpdateAddr();
-      }
+      Update(const byte_t* pubkey, const OptNonce& nonce = OptNonce());
 
       bool
       operator==(const ServiceInfo& other) const

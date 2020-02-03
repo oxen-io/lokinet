@@ -99,12 +99,13 @@ namespace llarp
         return;
       }
       introSet().topic = m_state->m_Tag;
-      if(!m_Identity.SignIntroSet(introSet(), now))
+      auto maybe       = m_Identity.EncryptAndSignIntroSet(introSet(), now);
+      if(not maybe.has_value())
       {
-        LogWarn("failed to sign introset for endpoint ", Name());
+        LogWarn("failed to generate introset for endpoint ", Name());
         return;
       }
-      if(PublishIntroSet(Router()))
+      if(PublishIntroSet(maybe.value(), Router()))
       {
         LogInfo("(re)publishing introset for endpoint ", Name());
       }
@@ -204,48 +205,6 @@ namespace llarp
           }
         }
       }
-#ifdef TESTNET
-      // prefetch tags
-      for(const auto& tag : m_state->m_PrefetchTags)
-      {
-        auto itr = m_state->m_PrefetchedTags.find(tag);
-        if(itr == m_state->m_PrefetchedTags.end())
-        {
-          itr =
-              m_state->m_PrefetchedTags.emplace(tag, CachedTagResult(tag, this))
-                  .first;
-        }
-        for(const auto& introset : itr->second.result)
-        {
-          if(HasPendingPathToService(introset.A.Addr()))
-            continue;
-          std::array< byte_t, 128 > tmp = {0};
-          llarp_buffer_t buf(tmp);
-          if(SendToServiceOrQueue(introset.A.Addr(), buf, eProtocolControl))
-            LogInfo(Name(), " send message to ", introset.A.Addr(), " for tag ",
-                    tag.ToString());
-          else
-
-            LogWarn(Name(), " failed to send/queue data to ", introset.A.Addr(),
-                    " for tag ", tag.ToString());
-        }
-        itr->second.Expire(now);
-        if(itr->second.ShouldRefresh(now))
-        {
-          auto path = PickRandomEstablishedPath();
-          if(path)
-          {
-            auto job = new TagLookupJob(this, &itr->second);
-            if(!job->SendRequestViaPath(path, Router()))
-              LogError(Name(), " failed to send tag lookup");
-          }
-          else
-          {
-            LogError(Name(), " has no paths for tag lookup");
-          }
-        }
-      }
-#endif
 
       // deregister dead sessions
       EndpointUtil::DeregisterDeadSessions(now, m_state->m_DeadSessions);
@@ -294,17 +253,16 @@ namespace llarp
     bool
     Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
-      std::set< IntroSet > remote;
+      std::set< EncryptedIntroSet > remote;
       auto currentPub = m_state->m_CurrentPublishTX;
       for(const auto& introset : msg->found)
       {
-        if(!introset.Verify(Now()))
+        if(not introset.Verify(Now()))
         {
-          if(m_Identity.pub == introset.A && currentPub == msg->txid)
-            IntroSetPublishFail();
-          return true;
+          LogError(Name(), " got invalid introset");
+          return false;
         }
-        if(m_Identity.pub == introset.A && currentPub == msg->txid)
+        if(currentPub == msg->txid)
         {
           LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
@@ -312,7 +270,6 @@ namespace llarp
           IntroSetPublished();
           return true;
         }
-
         remote.insert(introset);
       }
       auto& lookups = m_state->m_PendingLookups;
@@ -501,19 +458,19 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(AbstractRouter* r)
+    Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
     {
       // publish via near router
-      RouterID location = m_Identity.pub.Addr().as_array();
-      auto path         = GetEstablishedPathClosestTo(location);
-      return path && PublishIntroSetVia(r, path);
+      const auto path = GetEstablishedPathClosestTo(i.derivedSigningKey);
+      return path && PublishIntroSetVia(i, r, path);
     }
 
     struct PublishIntroSetJob : public IServiceLookup
     {
-      IntroSet m_IntroSet;
+      EncryptedIntroSet m_IntroSet;
       Endpoint* m_Endpoint;
-      PublishIntroSetJob(Endpoint* parent, uint64_t id, IntroSet introset)
+      PublishIntroSetJob(Endpoint* parent, uint64_t id,
+                         EncryptedIntroSet introset)
           : IServiceLookup(parent, id, "PublishIntroSet")
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
@@ -530,9 +487,9 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set< IntroSet >& response) override
+      HandleResponse(const std::set< EncryptedIntroSet >& response) override
       {
-        if(response.size())
+        if(not response.empty())
           m_Endpoint->IntroSetPublished();
         else
           m_Endpoint->IntroSetPublishFail();
@@ -557,9 +514,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(AbstractRouter* r, path::Path_ptr path)
+    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
+                                 path::Path_ptr path)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), introSet());
+      auto job = new PublishIntroSetJob(this, GenTXID(), i);
       if(job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
@@ -952,13 +910,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::OnLookup(const Address& addr, const IntroSet* introset,
+    Endpoint::OnLookup(const Address& addr,
+                       absl::optional< const IntroSet > introset,
                        const RouterID& endpoint)
     {
       const auto now = Router()->Now();
       auto& fails    = m_state->m_ServiceLookupFails;
       auto& lookups  = m_state->m_PendingServiceLookups;
-      if(introset == nullptr || introset->IsExpired(now))
+      if(not introset.has_value() || introset->IsExpired(now))
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                  endpoint);
@@ -973,8 +932,7 @@ namespace llarp
         }
         return false;
       }
-
-      PutNewOutboundContext(*introset);
+      PutNewOutboundContext(introset.value());
       return true;
     }
 
@@ -983,11 +941,12 @@ namespace llarp
                                   ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
                                   bool randomPath)
     {
-      path::Path_ptr path = nullptr;
+      const dht::Key_t location = remote.ToKey();
+      path::Path_ptr path       = nullptr;
       if(randomPath)
         path = PickRandomEstablishedPath();
       else
-        path = GetEstablishedPathClosestTo(remote.ToRouter());
+        path = GetEstablishedPathClosestTo(location.as_array());
       if(!path)
       {
         LogWarn("No outbound path for lookup yet");
@@ -1017,7 +976,8 @@ namespace llarp
 
       using namespace std::placeholders;
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this, util::memFn(&Endpoint::OnLookup, this), remote, GenTXID());
+          this, util::memFn(&Endpoint::OnLookup, this), location,
+          PubKey{remote.as_array()}, GenTXID());
       LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {

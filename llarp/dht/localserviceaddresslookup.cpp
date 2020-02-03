@@ -12,7 +12,7 @@ namespace llarp
   namespace dht
   {
     LocalServiceAddressLookup::LocalServiceAddressLookup(
-        const PathID_t &pathid, uint64_t txid, const service::Address &addr,
+        const PathID_t &pathid, uint64_t txid, const Key_t &addr,
         AbstractContext *ctx, __attribute__((unused)) const Key_t &askpeer)
         : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 5,
                                nullptr)
@@ -36,7 +36,7 @@ namespace llarp
       // pick newest if we have more than 1 result
       if(valuesFound.size())
       {
-        service::IntroSet found;
+        service::EncryptedIntroSet found;
         for(const auto &introset : valuesFound)
         {
           if(found.OtherIsNewer(introset))

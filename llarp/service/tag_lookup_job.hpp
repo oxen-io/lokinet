@@ -20,7 +20,7 @@ namespace llarp
       const static llarp_time_t TTL = 10000;
       llarp_time_t lastRequest      = 0;
       llarp_time_t lastModified     = 0;
-      std::set< IntroSet > result;
+      std::set< EncryptedIntroSet > result;
       Tag tag;
       Endpoint* m_parent;
 
@@ -45,7 +45,7 @@ namespace llarp
       BuildRequestMessage(uint64_t txid);
 
       bool
-      HandleResponse(const std::set< IntroSet >& results);
+      HandleResponse(const std::set< EncryptedIntroSet >& results);
     };
 
     struct TagLookupJob : public IServiceLookup
@@ -61,7 +61,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set< IntroSet >& results) override
+      HandleResponse(const std::set< EncryptedIntroSet >& results) override
       {
         return m_result->HandleResponse(results);
       }

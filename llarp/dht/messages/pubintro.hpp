@@ -13,7 +13,7 @@ namespace llarp
     struct PublishIntroMessage final : public IMessage
     {
       static const uint64_t MaxPropagationDepth;
-      llarp::service::IntroSet introset;
+      llarp::service::EncryptedIntroSet introset;
       std::vector< Key_t > exclude;
       uint64_t depth = 0;
       uint64_t txID  = 0;
@@ -21,8 +21,9 @@ namespace llarp
       {
       }
 
-      PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx,
-                          uint64_t s, std::vector< Key_t > _exclude = {})
+      PublishIntroMessage(const llarp::service::EncryptedIntroSet& i,
+                          uint64_t tx, uint64_t s,
+                          std::vector< Key_t > _exclude = {})
           : IMessage({})
           , introset(i)
           , exclude(std::move(_exclude))

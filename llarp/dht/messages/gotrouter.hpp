@@ -1,6 +1,6 @@
 #ifndef LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
 #define LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
-
+#include <constants/proto.hpp>
 #include <dht/message.hpp>
 #include <router_contact.hpp>
 #include <util/copy_or_nullptr.hpp>
@@ -40,6 +40,13 @@ namespace llarp
           , txid(id)
           , relayed(tunneled)
       {
+      }
+
+      /// gossip message
+      GotRouterMessage(const RouterContact rc)
+          : IMessage({}), foundRCs({rc}), txid(0)
+      {
+        version = LLARP_PROTO_VERSION;
       }
 
       GotRouterMessage(const GotRouterMessage& other)

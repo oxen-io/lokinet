@@ -57,9 +57,8 @@ namespace llarp
   OutboundSessionMaker::OnConnectTimeout(ILinkSession *session)
   {
     // TODO: retry/num attempts
-
     LogWarn("Session establish attempt to ", RouterID(session->GetPubKey()),
-            " timed out.");
+            " timed out.", session->GetRemoteEndpoint());
     FinalizeRequest(session->GetPubKey(), SessionResult::Timeout);
   }
 

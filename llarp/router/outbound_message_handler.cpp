@@ -221,7 +221,10 @@ namespace llarp
           if(status == ILinkSession::DeliveryStatus::eDeliverySuccess)
             DoCallback(callback, SendStatus::Success);
           else
+          {
+            LogWarn("Send outbound message handler dropped message");
             DoCallback(callback, SendStatus::Congestion);
+          }
         });
   }
 
@@ -252,6 +255,10 @@ namespace llarp
        != llarp::thread::QueueReturn::Success)
     {
       m_queueStats.dropped++;
+      LogWarn(
+          "QueueOutboundMessage outbound message handler dropped message on "
+          "pathid=",
+          pathid);
       DoCallback(callback_copy, SendStatus::Congestion);
     }
     else
@@ -290,6 +297,10 @@ namespace llarp
       }
       else
       {
+        LogWarn(
+            "ProcessOutboundQueue outbound message handler dropped message on "
+            "pathid=",
+            entry.pathid);
         DoCallback(entry.message.second, SendStatus::Congestion);
         m_queueStats.dropped++;
       }

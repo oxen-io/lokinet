@@ -10,10 +10,10 @@ namespace llarp
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      llarp::dht::Key_t fromKey;
-      fromKey.Zero();
       if(key == "M")
       {
+        llarp::dht::Key_t fromKey;
+        fromKey.Zero();
         return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
       }
       if(key == "S")
@@ -49,7 +49,7 @@ namespace llarp
     DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       // set source as us
-      llarp::dht::Key_t us{r->pubkey()};
+      const llarp::dht::Key_t us(r->pubkey());
       for(const auto& msg : M)
       {
         msg->From   = us;

@@ -2,6 +2,7 @@
 #define LLARP_TIME_HPP
 
 #include <util/types.hpp>
+#include <chrono>
 
 namespace llarp
 {

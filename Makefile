@@ -95,7 +95,7 @@ CROSS ?= OFF
 SHARED_LIB ?= OFF
 # enable generating coverage
 COVERAGE ?= OFF
-# allow downloading libsodium if >= 1.0.17 not installed
+# allow downloading libsodium if >= 1.0.18 not installed
 DOWNLOAD_SODIUM ?= OFF
 
 COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"

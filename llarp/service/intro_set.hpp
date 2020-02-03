@@ -23,6 +23,7 @@ namespace llarp
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
     // 10 seconds clock skew permitted for introset expiration
     constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
+
     struct IntroSet
     {
       ServiceInfo A;
@@ -101,6 +102,80 @@ namespace llarp
       return i.print(out, -1, -1);
     }
 
+    /// public version of the introset that is encrypted
+    struct EncryptedIntroSet
+    {
+      using Payload_t = std::vector< byte_t >;
+
+      PubKey derivedSigningKey;
+      llarp_time_t signedAt = 0;
+      Payload_t introsetPayload;
+      TunnelNonce nounce;
+      absl::optional< Tag > topic;
+      Signature sig;
+
+      bool
+      Sign(const PrivateKey& k);
+
+      bool
+      IsExpired(llarp_time_t now) const;
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        return bencode_decode_dict(*this, buf);
+      }
+
+      bool
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
+
+      bool
+      OtherIsNewer(const EncryptedIntroSet& other) const;
+
+      /// verify signature and timestamp
+      bool
+      Verify(llarp_time_t now) const;
+
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
+
+      util::StatusObject
+      ExtractStatus() const;
+
+      absl::optional< IntroSet >
+      MaybeDecrypt(const PubKey& rootKey) const;
+    };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const EncryptedIntroSet& i)
+    {
+      return i.print(out, -1, -1);
+    }
+
+    inline bool
+    operator<(const EncryptedIntroSet& lhs, const EncryptedIntroSet& rhs)
+    {
+      return lhs.derivedSigningKey < rhs.derivedSigningKey;
+    }
+
+    inline bool
+    operator==(const EncryptedIntroSet& lhs, const EncryptedIntroSet& rhs)
+    {
+      return std::tie(lhs.signedAt, lhs.derivedSigningKey, lhs.nounce, lhs.sig)
+          == std::tie(rhs.signedAt, rhs.derivedSigningKey, rhs.nounce, rhs.sig);
+    }
+
+    inline bool
+    operator!=(const EncryptedIntroSet& lhs, const EncryptedIntroSet& rhs)
+    {
+      return !(lhs == rhs);
+    }
+
+    using EncryptedIntroSetLookupHandler =
+        std::function< void(const std::vector< EncryptedIntroSet >&) >;
     using IntroSetLookupHandler =
         std::function< void(const std::vector< IntroSet >&) >;
 

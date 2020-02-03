@@ -12,18 +12,20 @@ namespace llarp
     struct Endpoint;
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
-      Address remote;
-      using HandlerFunc = std::function< bool(const Address&, const IntroSet*,
-                                              const RouterID&) >;
+      const PubKey rootkey;
+      const dht::Key_t location;
+      using HandlerFunc = std::function< bool(
+          const Address&, absl::optional< const IntroSet >, const RouterID&) >;
       HandlerFunc handle;
 
       HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
-                                 const Address& addr, uint64_t tx);
+                                 const dht::Key_t& location,
+                                 const PubKey& rootkey, uint64_t tx);
 
       ~HiddenServiceAddressLookup() override = default;
 
       bool
-      HandleResponse(const std::set< IntroSet >& results) override;
+      HandleResponse(const std::set< EncryptedIntroSet >& results) override;
 
       std::shared_ptr< routing::IMessage >
       BuildRequestMessage() override;

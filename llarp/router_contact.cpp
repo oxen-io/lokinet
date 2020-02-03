@@ -126,7 +126,12 @@ namespace llarp
       return false;
     if(!enckey.BEncode(buf))
       return false;
-
+    // write router version if present
+    if(routerVersion.has_value())
+    {
+      if(not BEncodeWriteDictEntry("r", routerVersion.value(), buf))
+        return false;
+    }
     /* write last updated */
     if(!bencode_write_bytestring(buf, "u", 1))
       return false;
@@ -160,7 +165,8 @@ namespace llarp
     nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
-    last_updated = 0;
+    routerVersion = absl::optional< RouterVersion >{};
+    last_updated  = 0;
   }
 
   util::StatusObject
@@ -176,7 +182,10 @@ namespace llarp
     {
       obj["nickname"] = Nick();
     }
-
+    if(routerVersion.has_value())
+    {
+      obj["routerVersion"] = routerVersion->ToString();
+    }
     return obj;
   }
 
@@ -192,6 +201,15 @@ namespace llarp
 
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
+
+    if(key == "r")
+    {
+      RouterVersion r;
+      if(not r.BDecode(buf))
+        return false;
+      routerVersion = r;
+      return true;
+    }
 
     if(key == "n")
     {
