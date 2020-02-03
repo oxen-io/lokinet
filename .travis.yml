@@ -191,11 +191,11 @@ before_install:
 
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      travis_wait cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
+      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
     elif [[ ! -z $DOCKER_FILE ]]; then
-      travis_wait docker build -f $DOCKER_FILE .;
+      docker build -f $DOCKER_FILE .;
     else
-      travis_wait make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
+      make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
     fi
 
 after_script:
