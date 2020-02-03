@@ -20,18 +20,33 @@ matrix:
     os: linux
     compiler: gcc
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
+    addons: &core_apt_addons
+      apt:
+        packages:
+        - build-essential
+        - cmake
+        - curl
+        - git
+        - libcap-dev
+        - libcurl4-openssl-dev
+        - libuv1-dev
+        - ninja-build
+        - libsodium-dev
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
     env: BUILD_TYPE=Release
+    addons: *core_apt_addons
   - name: "make debug (linux/clang)"
     os: linux
     compiler: clang
     env: BUILD_TYPE=Debug
+    addons: *core_apt_addons
   - name: "make release (linux/clang)"
     os: linux
     compiler: clang
     env: BUILD_TYPE=Release
+    addons: *core_apt_addons
   - name: "make debug (macOS/clang)"
     os: osx
     osx_image: xcode10.2
@@ -40,6 +55,21 @@ matrix:
     os: osx
     osx_image: xcode10.2
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (linux/gcc/arm64)"
+    arch: arm64
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
+  - name: "make release (linux/gcc/s390x)"
+    arch: s390x
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
+  - name: "make release (linux/gcc/ppc64le)"
+    arch: ppc64le
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
 #  - name: "make iOS"
 #    os: osx
 #    osx_image: xcode10.2
@@ -73,6 +103,7 @@ matrix:
     dist: xenial
     compiler: clang
     env: BUILD_TYPE=Debug XSAN=memory
+    addons: *core_apt_addons
   - name: "router docker image"
     os: linux
     dist: xenial
@@ -138,24 +169,6 @@ env:
     - STATIC_LINK=OFF
 
 addons:
-  apt:
-    packages:
-    - binutils-gold
-    - build-essential
-    - clang-format
-    - cmake
-    - curl
-    - docker-ce
-    - g++-mingw-w64
-    - g++-mingw-w64-x86-64
-    - gcc-mingw-w64-base
-    - git
-    - libcap-dev
-    - libcurl4-openssl-dev
-    - libuv1-dev
-    - mingw-w64 mingw-w64-common
-    - ninja-build
-    - libsodium-dev
   homebrew:
     packages:
     - ccache
