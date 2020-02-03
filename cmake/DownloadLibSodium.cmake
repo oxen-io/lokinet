@@ -1,7 +1,7 @@
 set(LIBSODIUM_PREFIX ${CMAKE_BINARY_DIR}/libsodium)
 set(LIBSODIUM_SRC ${LIBSODIUM_PREFIX}/libsodium-1.0.18)
 set(LIBSODIUM_TARBALL ${LIBSODIUM_PREFIX}/libsodium-1.0.18.tar.gz)
-set(LIBSODIUM_URL https://github.com/jedisct1/libsodium/releases/download/1.0.18/libsodium-1.0.18.tar.gz)
+set(LIBSODIUM_URL https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz)
 if(SODIUM_TARBALL_URL)
     # make a build time override of the tarball url so we can fetch it if the original link goes away
     set(LIBSODIUM_URL ${SODIUM_TARBALL_URL})
