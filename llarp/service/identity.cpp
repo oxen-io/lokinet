@@ -59,8 +59,8 @@ namespace llarp
     {
       auto crypto = CryptoManager::instance();
       crypto->identity_keygen(signkey);
-      crypto_sign_ed25519_sk_to_curve25519(enckey.data(), signkey.data());
-      pub.Update(seckey_topublic(signkey));
+      crypto->encryption_keygen(enckey);
+      pub.Update(seckey_topublic(signkey), seckey_topublic(enckey));
       crypto->pqe_keygen(pq);
       if(not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
       {
@@ -146,8 +146,7 @@ namespace llarp
       if(!vanity.IsZero())
         van = vanity;
       // update pubkeys
-      pub.Update(seckey_topublic(signkey), van);
-      crypto_sign_ed25519_sk_to_curve25519(enckey.data(), signkey.data());
+      pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
       auto crypto = CryptoManager::instance();
       return crypto->derive_subkey_private(derivedSignKey, signkey, 1);
     }

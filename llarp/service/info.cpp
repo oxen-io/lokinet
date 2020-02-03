@@ -21,11 +21,11 @@ namespace llarp
     }
 
     bool
-    ServiceInfo::Update(const byte_t* pubkey, const OptNonce& nonce)
+    ServiceInfo::Update(const byte_t* sign, const byte_t* enc,
+                        const OptNonce& nonce)
     {
-      signkey = pubkey;
-      if(crypto_sign_ed25519_pk_to_curve25519(enckey.data(), pubkey) == -1)
-        return false;
+      signkey = sign;
+      enckey  = enc;
       if(nonce)
       {
         vanity = nonce.value();
