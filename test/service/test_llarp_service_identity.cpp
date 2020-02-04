@@ -22,31 +22,6 @@ struct HiddenServiceTest : public test::LlarpTest<>
   service::Identity ident;
 };
 
-TEST_F(HiddenServiceTest, TestGenerateIntroSet)
-{
-  service::Address addr;
-  ASSERT_TRUE(ident.pub.CalculateAddress(addr.as_array()));
-  service::IntroSet I;
-  auto now = time_now_ms();
-  I.T      = now;
-  while(I.I.size() < 10)
-  {
-    service::Introduction intro;
-    intro.expiresAt = now + (path::default_lifetime / 2);
-    intro.router.Randomize();
-    intro.pathID.Randomize();
-    I.I.emplace_back(std::move(intro));
-  }
-
-  using ::testing::Matcher;
-  EXPECT_CALL(m_crypto, sign(I.Z, Matcher<const SecretKey &>(_), _)).WillOnce(Return(true));
-  EXPECT_CALL(m_crypto, verify(_, _, I.Z)).WillOnce(Return(true));
-  EXPECT_CALL(m_crypto, xchacha20(_, _, _)).WillOnce(Return(true));
-  const auto maybe = ident.EncryptAndSignIntroSet(I, now);
-  ASSERT_TRUE(maybe.has_value());
-  ASSERT_TRUE(maybe->Verify(now));
-}
-
 TEST_F(HiddenServiceTest, TestAddressToFromString)
 {
   auto str = ident.pub.Addr().ToString();
@@ -80,6 +55,9 @@ TEST_F(ServiceIdentityTest, EnsureKeys)
 
   EXPECT_CALL(m_crypto, derive_subkey_private(_, _, _, _))
       .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(m_crypto, encryption_keygen(_))
+      .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x01)));
 
   EXPECT_CALL(m_crypto, identity_keygen(_))
       .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));
