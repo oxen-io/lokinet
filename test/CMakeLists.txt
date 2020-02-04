@@ -19,6 +19,7 @@ list(APPEND TEST_SRC
     link/test_llarp_link.cpp
     llarp_test.cpp
     net/test_llarp_net.cpp
+    router/test_llarp_router_version.cpp
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp
     service/test_llarp_service_address.cpp
