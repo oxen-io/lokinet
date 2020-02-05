@@ -50,7 +50,7 @@ namespace llarp
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
-      , _randomStartDelay(1000 * (llarp::randint() % 30) + 10)
+      , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
   {
     m_keyManager = std::make_shared< KeyManager >();
 
@@ -117,7 +117,7 @@ namespace llarp
     if(not IsServiceNode())
       return;
     /// wait for random uptime
-    if(Uptime() < _randomStartDelay)
+    if(Uptime() < _randomStartDelay.count())
       return;
     _rcGossiper.GossipRC(rc);
   }
