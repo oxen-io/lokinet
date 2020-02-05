@@ -2,12 +2,13 @@
 #include <messages/dht_immediate.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <util/time.hpp>
+#include <constants/link_layer.hpp>
 
 namespace llarp
 {
   // 30 minutes
   static constexpr auto RCGossipFilterDecayInterval = 30min;
-  // 60 - 5 minutes
+  // (30 minutes * 2) - 5 minutes
   static constexpr auto GossipOurRCInterval =
       (RCGossipFilterDecayInterval * 2) - (5min);
 
@@ -52,11 +53,11 @@ namespace llarp
       return false;
     if(m_LinkManager == nullptr)
       return false;
-    const RouterID k(rc.pubkey);
+    const RouterID pubkey(rc.pubkey);
     // filter check
-    if(m_Filter.Contains(k))
+    if(m_Filter.Contains(pubkey))
       return false;
-    m_Filter.Insert(k);
+    m_Filter.Insert(pubkey);
 
     const auto now = time_now();
     // is this our rc?
@@ -73,27 +74,28 @@ namespace llarp
     }
 
     // send unwarrented GRCM as gossip method
-    DHTImmediateMessage m;
-    m.msgs.emplace_back(
+    DHTImmediateMessage unwarrentedGRCM;
+    unwarrentedGRCM.msgs.emplace_back(
         new dht::GotRouterMessage(dht::Key_t{}, 0, {rc}, false));
+
     // send it to everyone
-    m_LinkManager->ForEachPeer([&](ILinkSession* s) {
+    m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
       // ensure connected session
-      if(not(s && s->IsEstablished()))
+      if(not(peerSession && peerSession->IsEstablished()))
         return;
       // check if public router
-      const auto other_rc = s->GetRemoteRC();
+      const auto other_rc = peerSession->GetRemoteRC();
       if(not other_rc.IsPublicRouter())
         return;
       // encode message
       ILinkSession::Message_t msg;
-      msg.reserve(1024);
+      msg.reserve(MAX_LINK_MSG_SIZE / 2);
       llarp_buffer_t buf(msg);
-      if(not m.BEncode(&buf))
+      if(not unwarrentedGRCM.BEncode(&buf))
         return;
       msg.resize(buf.cur - buf.base);
       // send message
-      s->SendMessageBuffer(std::move(msg), nullptr);
+      peerSession->SendMessageBuffer(std::move(msg), nullptr);
     });
     return true;
   }
