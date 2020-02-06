@@ -173,7 +173,7 @@ namespace llarp
       void
       AsyncUpdatePubkeyList()
       {
-        LogInfo("Updating service node list");
+        LogDebug("Updating service node list");
         nlohmann::json params = {{"fields",
                                   {
                                       {"pubkey_ed25519", true},
