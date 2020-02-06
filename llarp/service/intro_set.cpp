@@ -118,7 +118,7 @@ namespace llarp
       buf.cur = buf.base;
       if(not CryptoManager::instance()->sign(sig, k, buf))
         return false;
-      LogInfo("signed encrypted introset: ", *this);
+      LogDebug("signed encrypted introset: ", *this);
       return true;
     }
 
@@ -133,7 +133,7 @@ namespace llarp
       copy.sig.Zero();
       if(not copy.BEncode(&buf))
         return false;
-      LogInfo("verify encrypted introset: ", copy, " sig = ", sig);
+      LogDebug("verify encrypted introset: ", copy, " sig = ", sig);
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       return CryptoManager::instance()->verify(derivedSigningKey, buf, sig);
