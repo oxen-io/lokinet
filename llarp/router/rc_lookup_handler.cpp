@@ -297,7 +297,7 @@ namespace llarp
       if(rc.IsPublicRouter()
          && (_bootstrapRCList.find(rc) == _bootstrapRCList.end()))
       {
-        LogInfo("Doing explore via public node: ", RouterID(rc.pubkey));
+        LogDebug("Doing explore via public node: ", RouterID(rc.pubkey));
         _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     });
