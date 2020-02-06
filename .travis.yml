@@ -127,41 +127,12 @@ matrix:
     env: BUILD_TYPE=Release
   allow_failures:
   - name: "make windows docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
-    services: docker
   - name: "native windows debug"
-    os: windows
-    env: BUILD_TYPE=Debug
   - name: "native windows release"
-    os: windows
-    env: BUILD_TYPE=Release
-#  - name: "native windows debug"
-#    os: windows
-#    env: BUILD_TYPE=Debug
-#  - name: "native windows release"
-#    os: windows
-#    env: BUILD_TYPE=Release
-#  - os: linux
-#    dist: xenial
-#    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
-#    services: docker
   - name: "router docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/router.Dockerfile
-    services: docker
-  - os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
-    services: docker
-#  - os: osx
-#    osx_image: xcode10.2
-#    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
-#  - os: osx
-#    osx_image: xcode10.2
-#    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "gcc trunk"
+  - arch: s390x
+  - arch: ppc64le
 
 env:
   global:
