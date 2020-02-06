@@ -93,7 +93,7 @@ namespace llarp
       updatingIntroSet = false;
       if(i.has_value())
       {
-        if(currentIntroSet.T >= i->T)
+        if(currentIntroSet.T != 0 and currentIntroSet.T >= i->T)
         {
           LogInfo("introset is old, dropping");
           return true;
