@@ -134,16 +134,26 @@ namespace llarp
     {
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
-      if(ctx->router->SendToOrQueue(remote, msg))
+      auto sentHandler        = [ctx](auto status) {
+        if(status == SendStatus::Success)
+        {
+          ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+          ctx->pathset->PathBuildStarted(ctx->path);
+        }
+        else
+        {
+          LogError(ctx->pathset->Name(), " failed to send LRCM to ",
+                   ctx->path->Upstream());
+          ctx->pathset->HandlePathBuildFailed(ctx->path);
+        }
+      };
+      if(ctx->router->SendToOrQueue(remote, msg, sentHandler))
       {
         // persist session with router until this path is done
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-        // add own path
-        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-        ctx->pathset->PathBuildStarted(ctx->path);
       }
       else
-        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
+        LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
     }
   }
 
