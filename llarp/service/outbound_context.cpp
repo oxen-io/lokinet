@@ -84,28 +84,34 @@ namespace llarp
     }
 
     bool
-    OutboundContext::OnIntroSetUpdate(const Address&,
-                                      absl::optional< const IntroSet > i,
-                                      const RouterID& endpoint)
+    OutboundContext::OnIntroSetUpdate(
+        const Address&, absl::optional< const IntroSet > foundIntro,
+        const RouterID& endpoint)
     {
       if(markedBad)
         return true;
       updatingIntroSet = false;
-      if(i.has_value())
+      if(foundIntro.has_value())
       {
-        if(currentIntroSet.T != 0 and currentIntroSet.T >= i->T)
+        if(foundIntro->T == 0)
+        {
+          LogWarn(Name(),
+                  " got introset with zero timestamp: ", foundIntro.value());
+          return true;
+        }
+        if(currentIntroSet.T > foundIntro->T)
         {
           LogInfo("introset is old, dropping");
           return true;
         }
 
         const llarp_time_t now = Now();
-        if(i->IsExpired(now))
+        if(foundIntro->IsExpired(now))
         {
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
-        currentIntroSet = i.value();
+        currentIntroSet = foundIntro.value();
       }
       else
       {
