@@ -52,7 +52,7 @@ TEST_F(TestRouterVersion, TestBEncode)
 {
   llarp::RouterVersion v1235( {1, 2, 3}, 5);
 
-  std::array< byte_t, 128 > tmp;
+  std::array< byte_t, 128 > tmp{};
   llarp_buffer_t buf(tmp);
 
   EXPECT_TRUE(v1235.BEncode(&buf));
