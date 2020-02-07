@@ -104,11 +104,11 @@ matrix:
     compiler: clang
     env: BUILD_TYPE=Debug XSAN=memory
     addons: *core_apt_addons
-  - name: "router docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/router.Dockerfile
-    services: docker
+#  - name: "router docker image"
+#    os: linux
+#    dist: xenial
+#    env: DOCKER_FILE=docker/router.Dockerfile
+#    services: docker
   - name: "make windows docker image"
     os: linux
     dist: xenial
