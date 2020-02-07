@@ -94,6 +94,16 @@ be64toh(uint64_t big64);
 
 #endif
 
+#if !defined(__LITTLE_ENDIAN__) && defined(__BYTE_ORDER) \
+    && defined(__LITTLE_ENDIAN) && __BYTE_ORDER == __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN__
+#elif !defined(__BIG_ENDIAN__) && defined(__BYTE_ORDER) \
+    && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN
+#define __BIG_ENDIAN__
+#elif !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
+#error "Error: don't know which endian this is"
+#endif
+
 inline uint16_t
 buf16toh(const void *buf)
 {
@@ -193,7 +203,7 @@ htole64buf(void *buf, uint64_t big64)
 inline absl::uint128
 ntoh128(absl::uint128 i)
 {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#ifdef __BIG_ENDIAN__
   return i;
 #else
   const auto loSwapped = htobe64(absl::Uint128Low64(i));
