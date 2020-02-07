@@ -26,7 +26,7 @@ namespace llarp
       for(const auto &pk : valuesFound)
       {
         // lookup router
-        if(router->nodedb()->Has(pk))
+        if(router and router->nodedb()->Has(pk))
           continue;
         parent->LookupRouter(
             pk,
