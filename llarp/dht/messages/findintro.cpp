@@ -89,7 +89,7 @@ namespace llarp
         llarp::LogWarn("duplicate FIM from ", From, " txid=", txID);
         return false;
       }
-      Key_t peer;
+
       std::set< Key_t > exclude = {dht.OurKey(), From};
       if(not tagName.Empty())
         return false;
@@ -112,26 +112,24 @@ namespace llarp
       if(recursionDepth == 0)
       {
         // we don't have it
-
-        Key_t closer;
-        // find closer peer
-        if(!dht.Nodes()->FindClosest(location, closer))
-          return false;
-        replies.emplace_back(new GotIntroMessage(From, closer, txID));
+        replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
 
       // we are recursive
       const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
 
-      peer = Key_t(rc.pubkey);
+      Key_t peer = Key_t(rc.pubkey);
 
-      if((us ^ location) < (peer ^ location) || peer == us)
+      if((us ^ location) <= (peer ^ location))
       {
-        // we are not closer than our peer to the target so don't
-        // recurse farther
-        replies.emplace_back(new GotIntroMessage({}, txID));
-        return true;
+        // ask second closest as we are recursive
+        if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
+        {
+          // no second closeset
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
       }
       if(relayed)
       {
