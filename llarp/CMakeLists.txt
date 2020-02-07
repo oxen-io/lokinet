@@ -279,7 +279,7 @@ if(WITH_SHARED)
 endif()
 
 if (WARNINGS_AS_ERRORS)
-  set(WARN_FLAGS -Wall -Wextra -Wshadow -Werror)
+  set(WARN_FLAGS -Wall -Wextra -Werror)
   target_compile_options(${UTIL_LIB} PUBLIC ${WARN_FLAGS})
   target_compile_options(${PLATFORM_LIB} PUBLIC ${WARN_FLAGS})
   target_compile_options(${STATIC_LIB} PUBLIC ${WARN_FLAGS})

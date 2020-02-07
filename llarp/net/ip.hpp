@@ -14,10 +14,10 @@
 // anything not win32
 struct ip_header
 {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#ifdef __LITTLE_ENDIAN__
   unsigned int ihl : 4;
   unsigned int version : 4;
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif defined(__BIG_ENDIAN__)
   unsigned int version : 4;
   unsigned int ihl : 4;
 #else

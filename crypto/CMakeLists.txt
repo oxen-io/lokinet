@@ -66,7 +66,10 @@ target_link_libraries(${CRYPTOGRAPHY_LIB} PRIVATE cryptography_avx_lib)
 
 option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
 
-find_package(Sodium 1.0.18)
+# Allow -DDOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
+if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE")
+  find_package(Sodium 1.0.18)
+endif()
 
 if(sodium_FOUND)
   target_include_directories(${CRYPTOGRAPHY_LIB} PUBLIC ${sodium_INCLUDE_DIR})
