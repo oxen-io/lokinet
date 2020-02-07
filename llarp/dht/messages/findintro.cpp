@@ -89,7 +89,7 @@ namespace llarp
         llarp::LogWarn("duplicate FIM from ", From, " txid=", txID);
         return false;
       }
-      Key_t peer;
+
       std::set< Key_t > exclude = {dht.OurKey(), From};
       if(not tagName.Empty())
         return false;
@@ -119,7 +119,7 @@ namespace llarp
       // we are recursive
       const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
 
-      peer = Key_t(rc.pubkey);
+      Key_t peer = Key_t(rc.pubkey);
 
       if((us ^ location) < (peer ^ location) || peer == us)
       {
