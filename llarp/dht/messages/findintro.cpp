@@ -123,7 +123,7 @@ namespace llarp
 
       if((us ^ location) < (peer ^ location) || peer == us)
       {
-        // ask second closest as we are relayed
+        // ask second closest as we are recursive
         if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
         {
           // no second closeset
