@@ -31,14 +31,9 @@ namespace llarp
     IPPacket::In6ToHUInt(in6_addr addr)
     {
       uint32_t *ptr = in6_uint32_ptr(addr);
-#if __BYTE_ORDER == __BIG_ENDIAN
-      return huint128_t{ptr[0]} | (huint128_t{ptr[1]} << 32)
-          | (huint128_t{ptr[2]} << 64) | (huint128_t{ptr[3]} << 96);
-#else
       return huint128_t{ntohl(ptr[3])} | (huint128_t{ntohl(ptr[2])} << 32)
           | (huint128_t{ntohl(ptr[1])} << 64)
           | (huint128_t{ntohl(ptr[0])} << 96);
-#endif
     }
 
     in6_addr
