@@ -112,12 +112,7 @@ namespace llarp
       if(recursionDepth == 0)
       {
         // we don't have it
-
-        Key_t closer;
-        // find closer peer
-        if(!dht.Nodes()->FindClosest(location, closer))
-          return false;
-        replies.emplace_back(new GotIntroMessage(From, closer, txID));
+        replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
 
