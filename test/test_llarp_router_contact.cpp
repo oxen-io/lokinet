@@ -37,7 +37,7 @@ TEST_F(RCTest, TestSignVerify)
 
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
-  rc.exits.emplace_back(rc.pubkey, nuint32_t{50000});
+  rc.exits.emplace_back(rc.pubkey, nuint32_t{0x08080808});
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == NetID::DefaultValue());
 
