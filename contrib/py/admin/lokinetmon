@@ -94,12 +94,12 @@ class Monitor:
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
             y = self._render_path(y, path, "inbound")
-        for session in status["remoteSessions"]:
+        for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
                 y = self._render_path(
                     y, path, "[active] {}".format(session["currentConvoTag"])
                 )
-        for session in status["snodeSessions"]:
+        for session in (status["snodeSessions"] or []):
             for path in session["paths"]:
                 y = self._render_path(y, path, "[snode]")
         return y
@@ -201,8 +201,6 @@ class Monitor:
                     s["remoteAddr"], self.speedOf(s["tx"]), self.speedOf(s["rx"])
                 )
             )
-            if s["sendBacklog"] > 0:
-                self.win.addstr("[backlog {}]".format(s["sendBacklog"]))
         return y
 
     def display_dht(self, y, data):
