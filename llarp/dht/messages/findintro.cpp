@@ -121,7 +121,7 @@ namespace llarp
 
       Key_t peer = Key_t(rc.pubkey);
 
-      if((us ^ location) < (peer ^ location) || peer == us)
+      if((us ^ location) <= (peer ^ location))
       {
         // ask second closest as we are recursive
         if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
