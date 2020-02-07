@@ -6,4 +6,4 @@ RUN apk update && \
 WORKDIR /src/
 COPY . /src/
 
-RUN make windows-release NINJA=ninja STATIC_LINK=ON
+RUN make windows-release NINJA=ninja STATIC_LINK=ON DOWNLOAD_SODIUM=ON
