@@ -131,7 +131,6 @@ matrix:
   - name: "native windows release"
   - name: "router docker image"
   - name: "gcc trunk"
-  - arch: s390x
   - arch: ppc64le
 
 env:
