@@ -128,10 +128,23 @@ namespace llarp
 
       if((us ^ location) < (peer ^ location) || peer == us)
       {
-        // we are not closer than our peer to the target so don't
-        // recurse farther
-        replies.emplace_back(new GotIntroMessage({}, txID));
-        return true;
+        // think we are the closeset
+        if(relayed)
+        {
+          // ask second closest as we are relayed
+          if(not dht.Nodes()->FindClosest(location, peer))
+          {
+            // no second closeset
+            replies.emplace_back(new GotIntroMessage({}, txID));
+            return true;
+          }
+        }
+        else
+        {
+          // non relayed request tell them we don't have it
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
       }
       if(relayed)
       {
