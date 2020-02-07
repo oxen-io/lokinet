@@ -123,20 +123,10 @@ namespace llarp
 
       if((us ^ location) < (peer ^ location) || peer == us)
       {
-        // think we are the closeset
-        if(relayed)
+        // ask second closest as we are relayed
+        if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
         {
-          // ask second closest as we are relayed
-          if(not dht.Nodes()->FindClosest(location, peer))
-          {
-            // no second closeset
-            replies.emplace_back(new GotIntroMessage({}, txID));
-            return true;
-          }
-        }
-        else
-        {
-          // non relayed request tell them we don't have it
+          // no second closeset
           replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
