@@ -54,6 +54,9 @@ class Monitor:
         y += 1
         self.win.move(y, 1)
         y += 1
+        self.win.addstr("[tx:\t{}]\t[rx:\t{}]".format(self.speedOf(path['tx']), self.speedOf(path['rx'])))
+        self.win.move(y, 1)
+        y += 1
         self.win.addstr("me -> ")
         for hop in path["hops"]:
             self.win.addstr(" {} ->".format(hop["router"][:4]))
@@ -201,6 +204,10 @@ class Monitor:
                     s["remoteAddr"], self.speedOf(s["tx"]), self.speedOf(s["rx"])
                 )
             )
+            if (s['txMsgs'] or 0) > 1:
+                self.win.addstr(" [out window:\t{}]".format(s['txMsgs']))
+            if (s['rxMsgs'] or 0) > 1:
+                self.win.addstr(" [in window:\t{}]".format(s['rxMsgs']))
         return y
 
     def display_dht(self, y, data):
