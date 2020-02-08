@@ -103,6 +103,8 @@ namespace llarp
     bool
     Path::IsReady() const
     {
+      if(Expired(llarp::time_now_ms()))
+        return false;
       return intro.latency > 0 && _status == ePathEstablished;
     }
 
@@ -307,6 +309,8 @@ namespace llarp
                              {"expiresSoon", ExpiresSoon(now)},
                              {"expiresAt", ExpireTime()},
                              {"ready", IsReady()},
+                             {"tx", m_LastTXRate},
+                             {"rx", m_LastRXRate},
                              {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector< util::StatusObject > hopsObj;
@@ -358,6 +362,12 @@ namespace llarp
     {
       if(Expired(now))
         return;
+
+      m_LastRXRate = m_RXRate;
+      m_LastTXRate = m_TXRate;
+
+      m_RXRate = 0;
+      m_TXRate = 0;
 
       m_UpstreamReplayFilter.Decay(now);
       m_DownstreamReplayFilter.Decay(now);
@@ -420,7 +430,11 @@ namespace llarp
     {
       for(const auto& msg : msgs)
       {
-        if(!r->SendToOrQueue(Upstream(), &msg))
+        if(r->SendToOrQueue(Upstream(), &msg))
+        {
+          m_TXRate += msg.X.size();
+        }
+        else
         {
           LogDebug("failed to send upstream to ", Upstream());
         }
@@ -531,6 +545,7 @@ namespace llarp
       for(const auto& msg : msgs)
       {
         const llarp_buffer_t buf(msg.X);
+        m_RXRate += buf.sz;
         if(!HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");
