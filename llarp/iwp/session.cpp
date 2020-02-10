@@ -196,6 +196,7 @@ namespace llarp
       {
         msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
+      m_Stats.totalInFlightTX++;
       LogDebug("send message ", msgid);
       return true;
     }
@@ -298,15 +299,29 @@ namespace llarp
     util::StatusObject
     Session::ExtractStatus() const
     {
-      return {{"tx", m_CurrentTX},
-              {"rx", m_CurrentRX},
-              {"state", m_State},
+      const auto now = m_Parent->Now();
+
+      return {{"txRateCurrent", m_Stats.currentRateTX},
+              {"rxRateCurrent", m_Stats.currentRateRX},
+              {"rxPktsRcvd", m_Stats.totalPacketsRX},
+
+              // leave 'tx' and 'rx' as duplicates of 'xRateCurrent' for compat
+              {"tx", m_Stats.currentRateTX},
+              {"rx", m_Stats.currentRateRX},
+
+              {"txPktsAcked", m_Stats.totalAckedTX},
+              {"txPktsDropped", m_Stats.totalDroppedTX},
+              {"txPktsInFlight", m_Stats.totalInFlightTX},
+
+              {"state", StateToString(m_State)},
               {"inbound", m_Inbound},
               {"replayFilter", m_ReplayFilter.size()},
-              {"txMsgs", m_TXMsgs.size()},
-              {"rxMsgs", m_RXMsgs.size()},
+              {"txMsgQueueSize", m_TXMsgs.size()},
+              {"rxMsgQueueSize", m_RXMsgs.size()},
               {"remoteAddr", m_RemoteAddr.ToString()},
-              {"remoteRC", m_RemoteRC.ExtractStatus()}};
+              {"remoteRC", m_RemoteRC.ExtractStatus()},
+              {"created", m_CreatedAt},
+              {"uptime", (now - m_CreatedAt)}};
     }
 
     bool
@@ -328,10 +343,10 @@ namespace llarp
     void
     Session::ResetRates()
     {
-      m_CurrentTX = m_TXRate;
-      m_CurrentRX = m_RXRate;
-      m_RXRate    = 0;
-      m_TXRate    = 0;
+      m_Stats.currentRateTX = m_TXRate;
+      m_Stats.currentRateRX = m_RXRate;
+      m_RXRate              = 0;
+      m_TXRate              = 0;
     }
 
     void
@@ -350,6 +365,9 @@ namespace llarp
         {
           if(itr->second.IsTimedOut(now))
           {
+            m_Stats.totalDroppedTX++;
+            m_Stats.totalInFlightTX--;
+            LogWarn("Dropped unacked packet to ", m_RemoteAddr);
             itr->second.InformTimeout();
             itr = m_TXMsgs.erase(itr);
           }
@@ -661,6 +679,8 @@ namespace llarp
         auto itr = m_TXMsgs.find(acked);
         if(itr != m_TXMsgs.end())
         {
+          m_Stats.totalAckedTX++;
+          m_Stats.totalInFlightTX--;
           itr->second.Completed();
           m_TXMsgs.erase(itr);
         }
@@ -880,6 +900,9 @@ namespace llarp
     Session::Recv_LL(ILinkSession::Packet_t data)
     {
       m_RXRate += data.size();
+
+      // TODO: differentiate between good and bad RX packets here
+      m_Stats.totalPacketsRX++;
       switch(m_State)
       {
         case State::Initial:
@@ -922,6 +945,26 @@ namespace llarp
           break;
       }
       return true;
+    }
+
+    std::string
+    Session::StateToString(State state)
+    {
+      switch(state)
+      {
+        case State::Initial:
+          return "Initial";
+        case State::Introduction:
+          return "Introduction";
+        case State::LinkIntro:
+          return "LinkIntro";
+        case State::Ready:
+          return "Ready";
+        case State::Closed:
+          return "Close";
+        default:
+          return "Invalid";
+      }
     }
   }  // namespace iwp
 }  // namespace llarp
