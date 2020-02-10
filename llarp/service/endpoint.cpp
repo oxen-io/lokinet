@@ -457,36 +457,42 @@ namespace llarp
         m_OnReady->Stop();
     }
 
+    template < typename Endpoint_t >
+    static absl::optional< path::Path::UniqueEndpointSet_t >
+    GetManyPathsWithUniqueEndpoints(Endpoint_t* ep, size_t N, size_t tries = 10)
+    {
+      path::Path::UniqueEndpointSet_t paths;
+      do
+      {
+        --tries;
+        const auto path = ep->PickRandomEstablishedPath();
+        if(path)
+          paths.emplace(path);
+      } while(tries > 0 and paths.size() < N);
+      if(paths.size() == N)
+        return paths;
+      return {};
+    }
+
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
     {
       /// number of routers to publish to
       static constexpr size_t PublishRedundancy = 2;
-      // publish to set of paths with unique endpoints
-      path::Path::UniqueEndpointSet_t paths;
-      // try 10 times to pick random paths
-      size_t tries = 10;
-      do
-      {
-        --tries;
-        const auto path = PickRandomEstablishedPath();
-        if(path)
-          paths.emplace(path);
-      } while(tries > 0 and paths.size() < PublishRedundancy);
-
-      if(paths.size() != PublishRedundancy)
+      const auto maybe =
+          GetManyPathsWithUniqueEndpoints(this, PublishRedundancy);
+      if(not maybe.has_value())
         return false;
-
       // do publishing for each path selected
       size_t published = 0;
-      for(const auto& path : paths)
+      for(const auto& path : maybe.value())
       {
         if(PublishIntroSetVia(i, r, path))
         {
           published++;
         }
       }
-      return published == paths.size();
+      return published == PublishRedundancy;
     }
 
     struct PublishIntroSetJob : public IServiceLookup
@@ -965,19 +971,7 @@ namespace llarp
                                   ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
                                   bool randomPath)
     {
-      const dht::Key_t location = remote.ToKey();
-      path::Path_ptr path       = nullptr;
-      if(randomPath)
-        path = PickRandomEstablishedPath();
-      else
-        path = GetEstablishedPathClosestTo(location.as_array());
-      if(!path)
-      {
-        LogWarn("No outbound path for lookup yet");
-        BuildOne();
-        return false;
-      }
-
+      static constexpr size_t NumParalellLookups = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       auto& sessions = m_state->m_RemoteSessions;
@@ -993,23 +987,31 @@ namespace llarp
 
       auto& lookups = m_state->m_PendingServiceLookups;
 
-      if(lookups.count(remote) >= MaxConcurrentLookups)
+      const auto maybe =
+          GetManyPathsWithUniqueEndpoints(this, NumParalellLookups);
+      if(not maybe.has_value())
       {
-        path = PickRandomEstablishedPath();
+        return false;
       }
 
       using namespace std::placeholders;
-      HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this, util::memFn(&Endpoint::OnLookup, this), location,
-          PubKey{remote.as_array()}, GenTXID());
-      LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
-      if(job->SendRequestViaPath(path, Router()))
+      size_t lookedUp           = 0;
+      const dht::Key_t location = remote.ToKey();
+      for(const auto& path : maybe.value())
       {
-        lookups.emplace(remote, hook);
-        return true;
+        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+            this, util::memFn(&Endpoint::OnLookup, this), location,
+            PubKey{remote.as_array()}, GenTXID());
+        LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
+        if(job->SendRequestViaPath(path, Router()))
+        {
+          lookups.emplace(remote, hook);
+          lookedUp++;
+        }
+        else
+          LogError(Name(), " send via path failed for lookup");
       }
-      LogError("send via path failed");
-      return false;
+      return lookedUp == NumParalellLookups;
     }
 
     bool
