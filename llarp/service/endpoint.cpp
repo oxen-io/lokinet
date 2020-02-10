@@ -460,9 +460,33 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
     {
-      // publish via near router
-      const auto path = GetEstablishedPathClosestTo(i.derivedSigningKey);
-      return path && PublishIntroSetVia(i, r, path);
+      /// number of routers to publish to
+      static constexpr size_t PublishRedundancy = 2;
+      // publish to set of paths with unique endpoints
+      path::Path::UniqueEndpointSet_t paths;
+      // try 10 times to pick random paths
+      size_t tries = 10;
+      do
+      {
+        --tries;
+        const auto path = PickRandomEstablishedPath();
+        if(path)
+          paths.emplace(path);
+      } while(tries > 0 and paths.size() < PublishRedundancy);
+
+      if(paths.size() != PublishRedundancy)
+        return false;
+
+      // do publishing for each path selected
+      size_t published = 0;
+      for(const auto& path : paths)
+      {
+        if(PublishIntroSetVia(i, r, path))
+        {
+          published++;
+        }
+      }
+      return published == paths.size();
     }
 
     struct PublishIntroSetJob : public IServiceLookup
@@ -1258,7 +1282,7 @@ namespace llarp
         return should;
       // time from now that the newest intro expires at
       if(intro.ExpiresSoon(now))
-        return should;
+        return true;
 
       const auto dlt = now - (intro.expiresAt - path::default_lifetime);
 
