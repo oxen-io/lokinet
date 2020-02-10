@@ -305,6 +305,10 @@ namespace llarp
               {"rxRateCurrent", m_Stats.currentRateRX},
               {"rxPktsRcvd", m_Stats.totalPacketsRX},
 
+              // leave 'tx' and 'rx' as duplicates of 'xRateCurrent' for compat
+              {"tx", m_Stats.currentRateTX},
+              {"rx", m_Stats.currentRateRX},
+
               {"txPktsAcked", m_Stats.totalAckedTX},
               {"txPktsDropped", m_Stats.totalDroppedTX},
               {"txPktsInFlight", m_Stats.totalInFlightTX},
