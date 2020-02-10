@@ -313,7 +313,7 @@ namespace llarp
               {"txPktsDropped", m_Stats.totalDroppedTX},
               {"txPktsInFlight", m_Stats.totalInFlightTX},
 
-              {"state", toString(m_State)},
+              {"state", StateToString(m_State)},
               {"inbound", m_Inbound},
               {"replayFilter", m_ReplayFilter.size()},
               {"txMsgQueueSize", m_TXMsgs.size()},
@@ -948,7 +948,7 @@ namespace llarp
     }
 
     std::string
-    Session::toString(State state)
+    Session::StateToString(State state)
     {
       switch(state)
       {

@@ -143,7 +143,7 @@ namespace llarp
         /// we are closed now
         Closed
       };
-      static std::string toString(State state);
+      static std::string StateToString(State state);
       State m_State;
 
       struct Stats
