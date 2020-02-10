@@ -457,23 +457,6 @@ namespace llarp
         m_OnReady->Stop();
     }
 
-    template < typename Endpoint_t >
-    static absl::optional< path::Path::UniqueEndpointSet_t >
-    GetManyPathsWithUniqueEndpoints(Endpoint_t* ep, size_t N, size_t tries = 10)
-    {
-      path::Path::UniqueEndpointSet_t paths;
-      do
-      {
-        --tries;
-        const auto path = ep->PickRandomEstablishedPath();
-        if(path)
-          paths.emplace(path);
-      } while(tries > 0 and paths.size() < N);
-      if(paths.size() == N)
-        return paths;
-      return {};
-    }
-
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
     {

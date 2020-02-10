@@ -8,6 +8,8 @@
 #include <profiling.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <service/endpoint_util.hpp>
+
 #include <random>
 #include <algorithm>
 
@@ -226,32 +228,17 @@ namespace llarp
         return;
       const auto addr = currentIntroSet.A.Addr();
 
-      path::Path_ptr path = nullptr;
-      if(randomizePath)
-      {
-        path = m_Endpoint->PickRandomEstablishedPath();
-      }
-      else
-        path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
-
-      if(path == nullptr)
-      {
-        path = PickRandomEstablishedPath();
-      }
-
-      if(path)
+      const auto maybe = GetManyPathsWithUniqueEndpoints(this, 2);
+      if(not maybe.has_value())
+        return;
+      for(const auto& path : maybe.value())
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
             location, PubKey{addr.as_array()}, m_Endpoint->GenTXID());
-
-        updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
-      }
-      else
-      {
-        LogWarn("Cannot update introset no path for outbound session to ",
-                currentIntroSet.A.Addr().ToString());
+        if(job->SendRequestViaPath(path, m_Endpoint->Router()))
+          updatingIntroSet = true;
       }
     }
 

@@ -41,6 +41,23 @@ namespace llarp
       GetConvoTagsForService(const ConvoMap& sessions, const Address& addr,
                              std::set< ConvoTag >& tags);
     };
+
+    template < typename Endpoint_t >
+    static absl::optional< path::Path::UniqueEndpointSet_t >
+    GetManyPathsWithUniqueEndpoints(Endpoint_t* ep, size_t N, size_t tries = 10)
+    {
+      path::Path::UniqueEndpointSet_t paths;
+      do
+      {
+        --tries;
+        const auto path = ep->PickRandomEstablishedPath();
+        if(path)
+          paths.emplace(path);
+      } while(tries > 0 and paths.size() < N);
+      if(paths.size() == N)
+        return paths;
+      return {};
+    }
   }  // namespace service
 
 }  // namespace llarp
