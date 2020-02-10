@@ -50,7 +50,8 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      EnterState(ePathBuilding, parent->Now());
+      if(parent)
+        EnterState(ePathBuilding, parent->Now());
     }
 
     bool
