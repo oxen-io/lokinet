@@ -345,8 +345,8 @@ namespace llarp
     {
       m_Stats.currentRateTX = m_TXRate;
       m_Stats.currentRateRX = m_RXRate;
-      m_RXRate    = 0;
-      m_TXRate    = 0;
+      m_RXRate              = 0;
+      m_TXRate              = 0;
     }
 
     void

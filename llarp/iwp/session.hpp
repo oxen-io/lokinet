@@ -143,7 +143,8 @@ namespace llarp
         /// we are closed now
         Closed
       };
-      static std::string StateToString(State state);
+      static std::string
+      StateToString(State state);
       State m_State;
 
       struct Stats
@@ -154,8 +155,8 @@ namespace llarp
 
         uint64_t totalPacketsRX = 0;
 
-        uint64_t totalAckedTX = 0;
-        uint64_t totalDroppedTX = 0;
+        uint64_t totalAckedTX    = 0;
+        uint64_t totalDroppedTX  = 0;
         uint64_t totalInFlightTX = 0;
       };
       Stats m_Stats;
