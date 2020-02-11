@@ -1268,7 +1268,7 @@ namespace llarp
         return should;
       // time from now that the newest intro expires at
       if(intro.ExpiresSoon(now))
-        return true;
+        return should;
 
       const auto dlt = now - (intro.expiresAt - path::default_lifetime);
 
