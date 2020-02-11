@@ -771,8 +771,8 @@ namespace llarp
             auto msg = std::move(itr->second);
             const llarp_buffer_t buf(msg.m_Data);
             m_Parent->HandleMessage(this, buf);
-            m_ReplayFilter.emplace(rxid, m_Parent->Now());
-            m_SendMACKs.emplace(rxid);
+            if(m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
+              m_SendMACKs.emplace(rxid);
             m_RXMsgs.erase(rxid);
           }
         }
@@ -825,8 +825,8 @@ namespace llarp
           auto msg = std::move(itr->second);
           const llarp_buffer_t buf(msg.m_Data);
           m_Parent->HandleMessage(this, buf);
-          m_ReplayFilter.emplace(itr->first, m_Parent->Now());
-          m_SendMACKs.emplace(itr->first);
+          if(m_ReplayFilter.emplace(itr->first, m_Parent->Now()).second)
+            m_SendMACKs.emplace(itr->first);
         }
         else
         {
