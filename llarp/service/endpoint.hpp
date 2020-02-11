@@ -438,6 +438,7 @@ namespace llarp
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
+      bool m_PublishIntroSet = true;
 
      private:
       void
