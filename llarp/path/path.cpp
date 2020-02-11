@@ -309,8 +309,8 @@ namespace llarp
                              {"expiresSoon", ExpiresSoon(now)},
                              {"expiresAt", ExpireTime()},
                              {"ready", IsReady()},
-                             {"tx", m_LastTXRate},
-                             {"rx", m_LastRXRate},
+                             {"txRateCurrent", m_LastTXRate},
+                             {"rxRateCurrent", m_LastRXRate},
                              {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector< util::StatusObject > hopsObj;
