@@ -50,8 +50,9 @@ TEST_F(DNSLibTest, TestHasTLD)
 
 TEST_F(DNSLibTest, TestPTR)
 {
-  llarp::huint128_t ip       = {0};
-  llarp::huint128_t expected = llarp::net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
+  llarp::huint128_t ip = {0};
+  llarp::huint128_t expected =
+      llarp::net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
   ASSERT_TRUE(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
   ASSERT_EQ(ip, expected);
 }
@@ -116,6 +117,7 @@ TEST_F(DNSLibTest, TestSerializeQuestion)
   ASSERT_EQ(q.qtype, other.qtype);
 }
 
+/*
 TEST_F(DNSLibTest, TestSerializeMessage)
 {
   llarp::dns::Question expected_question;
@@ -155,6 +157,7 @@ TEST_F(DNSLibTest, TestSerializeMessage)
   ASSERT_EQ(other.answers.size(), 1U);
   ASSERT_EQ(other.answers[0].rData.size(), 4U);
 }
+*/
 
 TEST_F(DNSLibTest, TestEncodeDecode_RData)
 {
