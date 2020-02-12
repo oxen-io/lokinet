@@ -405,6 +405,10 @@ namespace llarp
       PathRole _role;
       util::DecayingHashSet< TunnelNonce > m_UpstreamReplayFilter;
       util::DecayingHashSet< TunnelNonce > m_DownstreamReplayFilter;
+      uint64_t m_LastRXRate = 0;
+      uint64_t m_RXRate     = 0;
+      uint64_t m_LastTXRate = 0;
+      uint64_t m_TXRate     = 0;
     };
   }  // namespace path
 }  // namespace llarp
