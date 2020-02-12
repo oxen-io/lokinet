@@ -149,7 +149,12 @@ namespace llarp
       Config::section_values_t configOpts;
       configOpts.push_back({"type", DefaultEndpointType()});
       // non reachable by default as this is the default endpoint
-      configOpts.push_back({"reachable", "false"});
+      // but only if no keyfile option provided
+      if(opts.count("keyfile") == 0)
+      {
+        configOpts.push_back({"reachable", "false"});
+      }
+
       {
         auto itr = opts.begin();
         while(itr != opts.end())
