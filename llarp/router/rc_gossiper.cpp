@@ -73,9 +73,9 @@ namespace llarp
       m_LastGossipedOurRC = now;
     }
 
-    // send unwarrented GRCM as gossip method
-    DHTImmediateMessage unwarrentedGRCM;
-    unwarrentedGRCM.msgs.emplace_back(
+    // send a GRCM as gossip method
+    DHTImmediateMessage gossip;
+    gossip.msgs.emplace_back(
         new dht::GotRouterMessage(dht::Key_t{}, 0, {rc}, false));
 
     // send it to everyone
@@ -91,7 +91,7 @@ namespace llarp
       ILinkSession::Message_t msg;
       msg.reserve(MAX_LINK_MSG_SIZE / 2);
       llarp_buffer_t buf(msg);
-      if(not unwarrentedGRCM.BEncode(&buf))
+      if(not gossip.BEncode(&buf))
         return;
       msg.resize(buf.cur - buf.base);
       // send message
