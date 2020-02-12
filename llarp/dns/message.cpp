@@ -42,7 +42,9 @@ namespace llarp
         return false;
       if(!buf->read_uint16(ns_count))
         return false;
-      return buf->read_uint16(ar_count);
+      if(!buf->read_uint16(ar_count))
+        return false;
+      return true;
     }
 
     Message::Message(Message&& other)
@@ -66,13 +68,12 @@ namespace llarp
     }
 
     Message::Message(const MessageHeader& hdr)
-        : hdr_id(hdr.id)
-        , hdr_fields(hdr.fields)
-        , questions(size_t(hdr.qd_count))
-        , answers(size_t(hdr.an_count))
-        , authorities(size_t(hdr.ns_count))
-        , additional(size_t(hdr.ar_count))
+        : hdr_id(hdr.id), hdr_fields(hdr.fields)
     {
+      questions.resize(size_t(hdr.qd_count));
+      answers.resize(size_t(hdr.an_count));
+      authorities.resize(size_t(hdr.ns_count));
+      additional.resize(size_t(hdr.ar_count));
     }
 
     bool
@@ -120,36 +121,32 @@ namespace llarp
         }
         llarp::LogDebug(qd);
       }
-
       for(auto& an : answers)
       {
-        if(!an.Decode(buf))
+        if(not an.Decode(buf))
         {
           llarp::LogError("failed to decode answer");
           return false;
         }
-        llarp::LogDebug(an);
       }
-
-      for(auto& ns : authorities)
+      /*
+      for(auto& auth : authorities)
       {
-        if(!ns.Decode(buf))
+        if(!auth.Decode(buf))
         {
-          llarp::LogError("failed to decode authority");
+          llarp::LogError("failed to decode auth");
           return false;
         }
-        llarp::LogDebug(ns);
       }
-
-      for(auto& ar : additional)
+      for(auto& rr : additional)
       {
-        if(!ar.Decode(buf))
+        if(!rr.Decode(buf))
         {
-          llarp::LogError("failed to decode additonal");
+          llarp::LogError("failed to decode additional");
           return false;
         }
-        llarp::LogDebug(ar);
       }
+      */
       return true;
     }
 
@@ -171,9 +168,8 @@ namespace llarp
       if(questions.size())
       {
         hdr_fields |= flags_QR | flags_AA | flags_RA;
-        const auto& question = questions[0];
         ResourceRecord rec;
-        rec.rr_name  = question.qname;
+        rec.rr_name  = questions[0].qname;
         rec.rr_class = qClassIN;
         rec.ttl      = ttl;
         if(isV6)

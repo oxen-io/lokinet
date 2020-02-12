@@ -397,12 +397,54 @@ namespace llarp
     {
       // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, "
       // of type", msg.questions[0].qtype);
+      std::string qname;
+      if(msg.answers.size() > 0)
+      {
+        const auto &answer = msg.answers[0];
+        if(answer.HasCNameForTLD(".loki"))
+        {
+          dns::Name_t qname;
+          llarp_buffer_t buf(answer.rData);
+          if(not dns::DecodeName(&buf, qname, true))
+            return false;
+          service::Address addr;
+          if(not addr.FromString(qname))
+          {
+            LogError("bad name ", qname);
+            return false;
+          }
+          msg.authorities.resize(0);
+          msg.additional.resize(0);
+          msg.answers.resize(0);
+          msg.hdr_fields &= ~dns::flags_RCODENameError;
+          if(HasAddress(addr))
+          {
+            huint128_t ip = ObtainIPForAddr(addr, false);
+            msg.AddINReply(ip, false);
+            reply(msg);
+            return true;
+          }
+          else
+          {
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
+            using service::Address;
+            using service::OutboundContext;
+            return EnsurePathToService(
+                addr,
+                [=](const Address &, OutboundContext *ctx) {
+                  SendDNSReply(addr, ctx, replyMsg, reply, false, false);
+                },
+                2000);
+          }
+        }
+      }
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      const std::string qname = msg.questions[0].Name();
+      qname = msg.questions[0].Name();
+
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
@@ -594,6 +636,13 @@ namespace llarp
             return false;
           return m_OurRange.Contains(ip);
         }
+      }
+      for(const auto &answer : msg.answers)
+      {
+        if(answer.HasCNameForTLD(".loki"))
+          return true;
+        if(answer.HasCNameForTLD(".snode"))
+          return true;
       }
       return false;
     }

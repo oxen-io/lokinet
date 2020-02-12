@@ -23,12 +23,6 @@ namespace llarp
         buf->cur++;
         if(l)
         {
-          if(l > 63)
-          {
-            llarp::LogError("decode name failed, field too big: ", l, " > 63");
-            llarp::DumpBuffer(*buf);
-            return false;
-          }
           if(buf->size_left() < l)
             return false;
 
