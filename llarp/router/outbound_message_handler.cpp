@@ -291,7 +291,7 @@ namespace llarp
 
       MessageQueue &path_queue = itr_pair.first->second;
 
-      if(path_queue.size() < MAX_PATH_QUEUE_SIZE)
+      if(path_queue.size() < MAX_PATH_QUEUE_SIZE || entry.pathid.IsZero())
       {
         path_queue.push(std::move(entry));
       }
