@@ -462,13 +462,11 @@ namespace llarp
     {
       /// number of routers to publish to
       static constexpr size_t PublishRedundancy = 2;
-      const auto maybe =
+      const auto paths =
           GetManyPathsWithUniqueEndpoints(this, PublishRedundancy);
-      if(not maybe.has_value())
-        return false;
       // do publishing for each path selected
       size_t published = 0;
-      for(const auto& path : maybe.value())
+      for(const auto& path : paths)
       {
         if(PublishIntroSetVia(i, r, path))
         {
@@ -970,17 +968,13 @@ namespace llarp
 
       auto& lookups = m_state->m_PendingServiceLookups;
 
-      const auto maybe =
+      const auto paths =
           GetManyPathsWithUniqueEndpoints(this, NumParalellLookups);
-      if(not maybe.has_value())
-      {
-        return false;
-      }
 
       using namespace std::placeholders;
       size_t lookedUp           = 0;
       const dht::Key_t location = remote.ToKey();
-      for(const auto& path : maybe.value())
+      for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             this, util::memFn(&Endpoint::OnLookup, this), location,

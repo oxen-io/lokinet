@@ -228,10 +228,8 @@ namespace llarp
         return;
       const auto addr = currentIntroSet.A.Addr();
 
-      const auto maybe = GetManyPathsWithUniqueEndpoints(this, 2);
-      if(not maybe.has_value())
-        return;
-      for(const auto& path : maybe.value())
+      const auto paths = GetManyPathsWithUniqueEndpoints(this, 2);
+      for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
