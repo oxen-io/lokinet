@@ -5,7 +5,6 @@
 #include <util/thread/logic.hpp>
 #include <util/types.hpp>
 
-#include <unordered_set>
 #include <functional>
 
 struct llarp_buffer_t;
