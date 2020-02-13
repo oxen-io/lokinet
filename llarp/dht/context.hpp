@@ -47,7 +47,7 @@ namespace llarp
       virtual void
       LookupIntroSetRecursive(
           const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t R,
+          const Key_t& askpeer, uint64_t recursionDepth,
           service::EncryptedIntroSetLookupHandler result =
               service::EncryptedIntroSetLookupHandler()) = 0;
 
@@ -69,7 +69,7 @@ namespace llarp
       virtual void
       LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                             const PathID_t& path, const Key_t& askpeer,
-                            uint64_t R) = 0;
+                            uint64_t recursionDepth) = 0;
 
       virtual void
       DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;

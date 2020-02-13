@@ -15,10 +15,10 @@ namespace llarp
     struct ServiceAddressLookup : public TX< Key_t, service::EncryptedIntroSet >
     {
       service::EncryptedIntroSetLookupHandler handleResult;
-      uint64_t R;
+      uint64_t recursionDepth;
 
       ServiceAddressLookup(const TXOwner &asker, const Key_t &addr,
-                           AbstractContext *ctx, uint64_t r,
+                           AbstractContext *ctx, uint64_t recursionDepth,
                            service::EncryptedIntroSetLookupHandler handler);
 
       bool
