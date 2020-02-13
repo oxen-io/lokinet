@@ -63,4 +63,4 @@ static const InputData inputData[] = {
 };
 // clang-format on
 
-INSTANTIATE_TEST_CASE_P(TestBits, TestBits, ::testing::ValuesIn(inputData), );
+INSTANTIATE_TEST_SUITE_P(TestBits, TestBits, ::testing::ValuesIn(inputData));

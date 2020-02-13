@@ -65,8 +65,8 @@ static const SingleType singleType[] = {
 };
 // clang-format on
 
-INSTANTIATE_TEST_CASE_P(Printer, SingleValueTest,
-                        ::testing::ValuesIn(singleType), );
+INSTANTIATE_TEST_SUITE_P(Printer, SingleValueTest,
+                         ::testing::ValuesIn(singleType));
 
 using SingleAttributeType =
     std::tuple< std::string, SingleVariant, Matcher< std::string > >;
@@ -108,8 +108,8 @@ static const SingleAttributeType singleAttributeType[] = {
 };
 // clang-format on
 
-INSTANTIATE_TEST_CASE_P(Printer, SingleAttributeTest,
-                        ::testing::ValuesIn(singleAttributeType), );
+INSTANTIATE_TEST_SUITE_P(Printer, SingleAttributeTest,
+                         ::testing::ValuesIn(singleAttributeType));
 
 using ManyAttributes =
     std::pair< std::vector< std::pair< std::string, SingleVariant > >,
@@ -141,5 +141,5 @@ static const ManyAttributes manyAttributes[] = {
 };
 // clang-format on
 
-INSTANTIATE_TEST_CASE_P(Printer, ManyAttributesTest,
-                        ::testing::ValuesIn(manyAttributes), );
+INSTANTIATE_TEST_SUITE_P(Printer, ManyAttributesTest,
+                         ::testing::ValuesIn(manyAttributes));

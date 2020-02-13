@@ -39,8 +39,8 @@ static const TestParseLog testParseLog[] = {
     {"error", llarp::eLogError},
     {"none", llarp::eLogNone}};
 
-INSTANTIATE_TEST_CASE_P(TestLogConfig, LogLevelTest,
-                        ::testing::ValuesIn(testParseLog), );
+INSTANTIATE_TEST_SUITE_P(TestLogConfig, LogLevelTest,
+                         ::testing::ValuesIn(testParseLog));
 
 TEST_F(LogLevelTest, TestLogLevelToName)
 {
