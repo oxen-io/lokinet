@@ -69,11 +69,14 @@ if(ANDROID)
 endif()
 
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_LIBRARIES})
-target_link_libraries_system(${UTIL_LIB} absl::synchronization absl::hash absl::container nlohmann_json::nlohmann_json)
+target_link_libraries(${UTIL_LIB} PUBLIC
+    absl::synchronization absl::flat_hash_map absl::container
+    nlohmann_json::nlohmann_json
+    )
 
 # cut back on fluff
 if (NOT WIN32)
-  target_link_libraries_system(${UTIL_LIB} absl::optional absl::variant absl::strings)
+  target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
