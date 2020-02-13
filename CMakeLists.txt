@@ -253,6 +253,7 @@ if(SUBMODULE_CHECK)
     message(STATUS "Checking submodules")
     check_submodule(external/abseil-cpp)
     check_submodule(external/nlohmann)
+    check_submodule(external/googletest)
   endif()
 endif()
 
@@ -263,7 +264,7 @@ if(VENDOR_FILESYSTEM)
 endif()
 
 if(WITH_TESTS)
-  add_subdirectory(vendor/gtest)
+  add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
 
 add_subdirectory(external/abseil-cpp EXCLUDE_FROM_ALL)
