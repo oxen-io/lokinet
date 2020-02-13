@@ -12,12 +12,19 @@ file(MAKE_DIRECTORY ${LIBSODIUM_PREFIX}/include)
 
 include(ExternalProject)
 include(ProcessorCount)
+
+set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
+if (LIBSODIUM_CROSS_TARGET)
+    set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${LIBSODIUM_CROSS_TARGET} --host=${LIBSODIUM_CROSS_TARGET})
+endif()
+
+
 ExternalProject_Add(libsodium_external
     BUILD_IN_SOURCE ON
     PREFIX ${LIBSODIUM_PREFIX}
     URL ${LIBSODIUM_URL}
     URL_HASH ${LIBSODIUM_HASH}
-    CONFIGURE_COMMAND ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
+    CONFIGURE_COMMAND ${SODIUM_CONFIGURE}
     BUILD_COMMAND make -j${PROCESSOR_COUNT}
     INSTALL_COMMAND ${MAKE}
     BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a ${LIBSODIUM_PREFIX}/include
