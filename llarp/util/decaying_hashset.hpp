@@ -11,11 +11,11 @@ namespace llarp
     template < typename Val_t, typename Hash_t = typename Val_t::Hash >
     struct DecayingHashSet
     {
-      DecayingHashSet(std::chrono::milliseconds cacheInterval)
+      DecayingHashSet(Time_t cacheInterval)
           : DecayingHashSet(cacheInterval.count())
       {
       }
-      DecayingHashSet(llarp_time_t cacheInterval = 5000)
+      explicit DecayingHashSet(llarp_time_t cacheInterval = 5000)
           : m_CacheInterval(cacheInterval)
       {
       }

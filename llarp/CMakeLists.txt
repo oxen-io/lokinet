@@ -216,6 +216,8 @@ set(LIB_SRC
   router/outbound_session_maker.cpp
   router/i_rc_lookup_handler.cpp
   router/rc_lookup_handler.cpp
+  router/i_gossiper.cpp
+  router/rc_gossiper.cpp
   router/router.cpp
   router_contact.cpp
   router_id.cpp

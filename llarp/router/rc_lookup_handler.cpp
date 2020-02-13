@@ -288,7 +288,10 @@ namespace llarp
         GetRC(r, nullptr, true);
       return;
     }
-    // TODO: only explore via random subset
+    // service nodes gossip, not explore
+    if(_dht->impl->GetRouter()->IsServiceNode())
+      return;
+
     // explore via every connected peer
     _linkManager->ForEachPeer([&](ILinkSession *s) {
       if(!s->IsEstablished())

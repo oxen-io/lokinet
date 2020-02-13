@@ -29,6 +29,12 @@ namespace llarp
         - started_at_steady;
   }
 
+  Time_t
+  time_now()
+  {
+    return Time_t(time_now_ms());
+  }
+
   llarp_time_t
   time_now_ms()
   {

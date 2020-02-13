@@ -50,6 +50,7 @@ namespace llarp
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
+      , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
   {
     m_keyManager = std::make_shared< KeyManager >();
 
@@ -107,6 +108,18 @@ namespace llarp
   Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);
+  }
+
+  void
+  Router::GossipRCIfNeeded(const RouterContact rc)
+  {
+    /// if we are not a service node forget about gossip
+    if(not IsServiceNode())
+      return;
+    /// wait for random uptime
+    if(Uptime() < _randomStartDelay.count())
+      return;
+    _rcGossiper.GossipRC(rc);
   }
 
   bool
@@ -673,6 +686,8 @@ namespace llarp
       ReportStats();
     }
 
+    _rcGossiper.Decay(time_now());
+
     _rcLookupHandler.PeriodicUpdate(now);
 
     const bool isSvcNode = IsServiceNode();
@@ -683,6 +698,10 @@ namespace llarp
       LogInfo("regenerating RC");
       if(!UpdateOurRC(false))
         LogError("Failed to update our RC");
+    }
+    else
+    {
+      GossipRCIfNeeded(_rc);
     }
 
     if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
@@ -992,9 +1011,10 @@ namespace llarp
         LogError("Failed to initialize service node");
         return false;
       }
-      RouterID us = pubkey();
+      const RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
-
+      // init gossiper here
+      _rcGossiper.Init(&_linkManager, us);
       // relays do not use profiling
       routerProfiling().Disable();
     }
