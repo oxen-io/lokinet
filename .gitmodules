@@ -10,3 +10,6 @@
 [submodule "external/cxxopts"]
 	path = external/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "external/ghc-filesystem"]
+	path = external/ghc-filesystem
+	url = https://github.com/gulrak/filesystem.git

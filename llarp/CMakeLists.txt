@@ -72,6 +72,7 @@ target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_L
 target_link_libraries(${UTIL_LIB} PUBLIC
     absl::synchronization absl::flat_hash_map absl::container
     nlohmann_json::nlohmann_json
+    ghc_filesystem
     )
 
 # cut back on fluff

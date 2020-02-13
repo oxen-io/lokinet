@@ -9,16 +9,8 @@
 #define PATH_SEP "/"
 #endif
 
-#if defined(LOKINET_USE_GHC_FILESYSTEM)
 #include <ghc/filesystem.hpp>
 namespace fs = ghc::filesystem;
-#elif __cplusplus >= 201703L && !defined(_MSC_VER)
-#include <filesystem>
-namespace fs = std::filesystem;
-#else
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#endif
 
 #ifndef _MSC_VER
 #include <dirent.h>
