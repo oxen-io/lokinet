@@ -391,9 +391,19 @@ namespace llarp
       return false;
     }
 
+    static dns::Message &
+    clear_dns_message(dns::Message &msg)
+    {
+      msg.authorities.resize(0);
+      msg.additional.resize(0);
+      msg.answers.resize(0);
+      msg.hdr_fields &= ~dns::flags_RCODENameError;
+      return msg;
+    }
+
     bool
     TunEndpoint::HandleHookedDNSMessage(
-        dns::Message &&msg, std::function< void(dns::Message) > reply)
+        dns::Message msg, std::function< void(dns::Message) > reply)
     {
       // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, "
       // of type", msg.questions[0].qtype);
@@ -401,7 +411,23 @@ namespace llarp
       if(msg.answers.size() > 0)
       {
         const auto &answer = msg.answers[0];
-        if(answer.HasCNameForTLD(".loki"))
+        if(answer.HasCNameForTLD(".snode"))
+        {
+          dns::Name_t qname;
+          llarp_buffer_t buf(answer.rData);
+          if(not dns::DecodeName(&buf, qname, true))
+            return false;
+          RouterID addr;
+          if(not addr.FromString(qname))
+            return false;
+          auto replyMsg =
+              std::make_shared< dns::Message >(clear_dns_message(msg));
+          return EnsurePathToSNode(
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
+                SendDNSReply(addr, s, replyMsg, reply, true, false);
+              });
+        }
+        else if(answer.HasCNameForTLD(".loki"))
         {
           dns::Name_t qname;
           llarp_buffer_t buf(answer.rData);
@@ -409,14 +435,8 @@ namespace llarp
             return false;
           service::Address addr;
           if(not addr.FromString(qname))
-          {
-            LogError("bad name ", qname);
             return false;
-          }
-          msg.authorities.resize(0);
-          msg.additional.resize(0);
-          msg.answers.resize(0);
-          msg.hdr_fields &= ~dns::flags_RCODENameError;
+          clear_dns_message(msg);
           if(HasAddress(addr))
           {
             huint128_t ip = ObtainIPForAddr(addr, false);
@@ -426,7 +446,7 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(msg);
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(

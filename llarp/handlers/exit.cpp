@@ -98,7 +98,7 @@ namespace llarp
 
     bool
     ExitEndpoint::HandleHookedDNSMessage(
-        dns::Message &&msg, std::function< void(dns::Message) > reply)
+        dns::Message msg, std::function< void(dns::Message) > reply)
     {
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
