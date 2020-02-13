@@ -25,9 +25,9 @@ namespace llarp
 
     struct FileGuard
     {
-      const fs::path &p;
+      const fs::path p;
 
-      explicit FileGuard(const fs::path &_p) : p(_p)
+      FileGuard(const fs::path &_p) : p(_p)
       {
       }
 

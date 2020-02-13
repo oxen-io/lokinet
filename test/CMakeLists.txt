@@ -5,6 +5,7 @@ list(APPEND TEST_SRC
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp
+    crypto/test_llarp_key_manager.cpp
     dht/test_llarp_dht_bucket.cpp
     dht/test_llarp_dht_explorenetworkjob.cpp
     dht/test_llarp_dht_kademlia.cpp
@@ -27,7 +28,6 @@ list(APPEND TEST_SRC
     test_libabyss.cpp
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
-    test_llarp_router.cpp
     test_md5.cpp
     util/meta/test_llarp_util_memfn.cpp
     util/meta/test_llarp_util_object.cpp
