@@ -47,8 +47,8 @@ MetricFormatSpecTestData metricFormatTestData[] = {
     MetricFormatSpecTestData{2.0, "%.0f", 3.0, "6"},
     MetricFormatSpecTestData{2.0, "%.1f", 1.1, "2.2"}};
 
-INSTANTIATE_TEST_CASE_P(MetricsTypes, MetricFormatSpecTest,
-                        ValuesIn(metricFormatTestData));
+INSTANTIATE_TEST_SUITE_P(MetricsTypes, MetricFormatSpecTest,
+                         ValuesIn(metricFormatTestData));
 
 TEST(MetricsTypes, Format)
 {
@@ -372,5 +372,5 @@ std::pair< absl::Time, std::string > sampleTestData[] = {
     {fromYYMMDD(2001, 9, 9), "R4E1R3E2R2E3R1E4"},
     {fromYYMMDD(2001, 9, 9), "R1E1R2E2R1E1R2E2R1E1R2E1R1E2"}};
 
-INSTANTIATE_TEST_CASE_P(MetricsTypes, SampleTest,
-                        ::testing::ValuesIn(sampleTestData));
+INSTANTIATE_TEST_SUITE_P(MetricsTypes, SampleTest,
+                         ::testing::ValuesIn(sampleTestData));

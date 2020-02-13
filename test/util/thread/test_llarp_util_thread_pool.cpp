@@ -164,8 +164,8 @@ TEST_P(Accessors, accessors)
 static const AccessorsData accessorsData[] = {
     {10, 50}, {1, 1}, {50, 100}, {2, 22}, {100, 200}};
 
-INSTANTIATE_TEST_CASE_P(TestThreadPool, Accessors,
-                        ::testing::ValuesIn(accessorsData), );
+INSTANTIATE_TEST_SUITE_P(TestThreadPool, Accessors,
+                         ::testing::ValuesIn(accessorsData));
 
 struct ClosingData
 {
@@ -343,8 +343,8 @@ TEST_P(Closing, shutdown)
 ClosingData closingData[] = {{1, 1},   {2, 2},   {10, 10},
                              {10, 50}, {50, 75}, {25, 80}};
 
-INSTANTIATE_TEST_CASE_P(TestThreadPool, Closing,
-                        ::testing::ValuesIn(closingData), );
+INSTANTIATE_TEST_SUITE_P(TestThreadPool, Closing,
+                         ::testing::ValuesIn(closingData));
 
 struct TryAddData
 {
