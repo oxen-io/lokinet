@@ -254,6 +254,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/abseil-cpp)
     check_submodule(external/nlohmann)
     check_submodule(external/googletest)
+    check_submodule(external/cxxopts)
   endif()
 endif()
 
@@ -270,8 +271,7 @@ endif()
 add_subdirectory(external/abseil-cpp EXCLUDE_FROM_ALL)
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
-
-add_subdirectory(vendor/cxxopts)
+add_subdirectory(external/cxxopts)
 
 if(ANDROID)
   list(APPEND LIBS log)
