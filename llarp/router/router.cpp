@@ -117,7 +117,7 @@ namespace llarp
     if(not IsServiceNode())
       return;
     /// wait for random uptime
-    if(Uptime() < _randomStartDelay.count())
+    if(std::chrono::milliseconds{Uptime()} < _randomStartDelay)
       return;
     _rcGossiper.GossipRC(rc);
   }
