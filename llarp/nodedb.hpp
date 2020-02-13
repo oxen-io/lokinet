@@ -77,6 +77,10 @@ struct llarp_nodedb
   llarp::RouterContact
   FindClosestTo(const llarp::dht::Key_t &location);
 
+  /// find the $numRouters closest routers to the given DHT key
+  std::vector< llarp::RouterContact >
+  FindClosestTo(const llarp::dht::Key_t &location, uint32_t numRouters);
+
   /// return true if we should save our nodedb to disk
   bool
   ShouldSaveToDisk(llarp_time_t now = 0) const;

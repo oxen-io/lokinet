@@ -1,6 +1,7 @@
 #include <nodedb.hpp>
 
 #include <crypto/crypto.hpp>
+#include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
@@ -11,6 +12,7 @@
 #include <util/thread/thread_pool.hpp>
 #include <dht/kademlia.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <unordered_map>
 #include <utility>
@@ -110,6 +112,89 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location)
     return true;
   });
   return rc;
+}
+
+std::vector< llarp::RouterContact >
+llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
+                            uint32_t numRouters)
+{
+  if(numRouters < num_loaded())
+  {
+    numRouters = num_loaded();
+  }
+  /*
+   * XXX: this attempts to use std::partial_sort_copy(), which has a few
+  requirements
+   * we can't quite meet:
+   *
+   * 1) the iterators must operate on same types (NetDBMap_t would give us
+  pairs)
+   * 2) the second set of iterators must be of types which:
+   *     - swap is defined
+   *     - are move-constructible
+   *     - are move-assignable
+   *    std::pair is none (or at least not all) of these things
+   * 3) the result iterators must specify a range; so their container must not
+  be empty
+   *
+
+  using NetDBPair_t = std::pair< llarp::RouterID, NetDBEntry >;
+
+  struct Compare
+  {
+    const llarp::dht::Key_t target;
+
+    Compare(const llarp::dht::Key_t& target_) : target(target_)
+    {
+    }
+
+    bool
+    operator()(const NetDBPair_t& left, const NetDBPair_t& right) const
+    {
+      return (left.second.rc.pubkey ^ target) < (right.second.rc.pubkey ^
+  target);
+    }
+  };
+
+  llarp::util::Lock lock(&access);
+
+  std::vector< NetDBPair_t > closestEntries;
+  closestEntries.resize(numRouters); // so that we have a valid iterator range
+
+  const Compare compare(location);
+
+  std::partial_sort_copy(
+      entries.begin(), entries.end(),
+      closestEntries.begin(), closestEntries.end(),
+      compare);
+
+  std::vector< llarp::RouterContact > closest;
+  closest.reserve(closestEntries.size());
+
+  for (const auto& entry : closestEntries) {
+    closest.push_back(entry.second.rc);
+  }
+
+  return closest;
+  */
+
+  // TODO: avoid this ugly copy
+  std::vector< llarp::RouterContact > all;
+  all.reserve(entries.size());
+  for(auto &entry : entries)
+  {
+    all.push_back(entry.second.rc);
+  }
+
+  std::vector< llarp::RouterContact > closest;
+  closest.resize(numRouters);
+
+  const llarp::dht::XorMetric compare(location);
+
+  std::partial_sort_copy(all.begin(), all.end(), closest.begin(), closest.end(),
+                         compare);
+
+  return closest;
 }
 
 /// skiplist directory is hex encoded first nibble

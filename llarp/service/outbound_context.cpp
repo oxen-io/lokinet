@@ -228,13 +228,16 @@ namespace llarp
         return;
       const auto addr = currentIntroSet.A.Addr();
 
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, 2);
+      const auto paths    = GetManyPathsWithUniqueEndpoints(this, 2);
+      uint32_t relayOrder = 0;
       for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-            location, PubKey{addr.as_array()}, m_Endpoint->GenTXID());
+            location, PubKey{addr.as_array()}, relayOrder,
+            m_Endpoint->GenTXID());
+        relayOrder++;
         if(job->SendRequestViaPath(path, m_Endpoint->Router()))
           updatingIntroSet = true;
       }

@@ -16,11 +16,12 @@ namespace llarp
     {
       const Key_t &From;
       IMessage::Ptr_t msg;
-      bool firstKey = true;
-      bool relayed  = false;
+      bool firstKey       = true;
+      bool relayed        = false;
+      uint32_t relayOrder = 0;
 
-      MessageDecoder(const Key_t &from, bool wasRelayed)
-          : From(from), relayed(wasRelayed)
+      MessageDecoder(const Key_t &from, bool wasRelayed, uint32_t order)
+          : From(from), relayed(wasRelayed), relayOrder(order)
       {
       }
 
@@ -47,7 +48,8 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'F':
-              msg = std::make_unique< FindIntroMessage >(From, relayed);
+              msg = std::make_unique< FindIntroMessage >(From, relayed,
+                                                         relayOrder);
               break;
             case 'R':
               if(relayed)
@@ -86,9 +88,10 @@ namespace llarp
     };
 
     IMessage::Ptr_t
-    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
+    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed,
+                   uint32_t relayOrder)
     {
-      MessageDecoder dec(from, relayed);
+      MessageDecoder dec(from, relayed, relayOrder);
       if(!bencode_read_dict(dec, buf))
         return nullptr;
 
@@ -97,13 +100,14 @@ namespace llarp
 
     struct ListDecoder
     {
-      ListDecoder(bool hasRelayed, const Key_t &from,
+      ListDecoder(bool hasRelayed, uint32_t order, const Key_t &from,
                   std::vector< IMessage::Ptr_t > &list)
-          : relayed(hasRelayed), From(from), l(list)
+          : relayed(hasRelayed), relayOrder(order), From(from), l(list)
       {
       }
 
       bool relayed;
+      uint32_t relayOrder;
       const Key_t &From;
       std::vector< IMessage::Ptr_t > &l;
 
@@ -112,7 +116,7 @@ namespace llarp
       {
         if(!has)
           return true;
-        auto msg = DecodeMesssage(From, buffer, relayed);
+        auto msg = DecodeMesssage(From, buffer, relayed, relayOrder);
         if(msg)
         {
           l.emplace_back(std::move(msg));
@@ -125,9 +129,10 @@ namespace llarp
 
     bool
     DecodeMesssageList(Key_t from, llarp_buffer_t *buf,
-                       std::vector< IMessage::Ptr_t > &list, bool relayed)
+                       std::vector< IMessage::Ptr_t > &list, bool relayed,
+                       uint32_t relayOrder)
     {
-      ListDecoder dec(relayed, from, list);
+      ListDecoder dec(relayed, relayOrder, from, list);
       return bencode_read_list(dec, buf);
     }
   }  // namespace dht

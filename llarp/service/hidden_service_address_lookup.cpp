@@ -8,13 +8,12 @@ namespace llarp
 {
   namespace service
   {
-    HiddenServiceAddressLookup::HiddenServiceAddressLookup(Endpoint* p,
-                                                           HandlerFunc h,
-                                                           const dht::Key_t& l,
-                                                           const PubKey& k,
-                                                           uint64_t tx)
+    HiddenServiceAddressLookup::HiddenServiceAddressLookup(
+        Endpoint* p, HandlerFunc h, const dht::Key_t& l, const PubKey& k,
+        uint32_t order, uint64_t tx)
         : IServiceLookup(p, tx, "HSLookup")
         , rootkey(k)
+        , relayOrder(order)
         , location(l)
         , handle(std::move(h))
     {
@@ -46,8 +45,8 @@ namespace llarp
     HiddenServiceAddressLookup::BuildRequestMessage()
     {
       auto msg = std::make_shared< routing::DHTMessage >();
-      msg->M.emplace_back(
-          std::make_unique< dht::FindIntroMessage >(txid, location, 2));
+      msg->M.emplace_back(std::make_unique< dht::FindIntroMessage >(
+          txid, location, 2, relayOrder));
       return msg;
     }
 

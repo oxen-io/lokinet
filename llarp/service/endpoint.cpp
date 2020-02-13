@@ -978,7 +978,7 @@ namespace llarp
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             this, util::memFn(&Endpoint::OnLookup, this), location,
-            PubKey{remote.as_array()}, GenTXID());
+            PubKey{remote.as_array()}, 0, GenTXID());
         LogInfo("doing lookup for ", remote, " via ", path->Endpoint(), " at ",
                 location);
         if(job->SendRequestViaPath(path, Router()))
