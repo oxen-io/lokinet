@@ -338,6 +338,7 @@ namespace llarp
     auto result = bencode_decode_dict(t, &buf);
     if(!result)
     {
+      LogError("BDecodeReadFromFile() failed for file ", fpath, " contents:");
       DumpBuffer(buf);
     }
     return result;
