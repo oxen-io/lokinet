@@ -489,10 +489,10 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t& us, AbstractRouter* router,
+    Context::Init(const Key_t& us, AbstractRouter* r,
                   llarp_time_t exploreInterval)
     {
-      router    = router;
+      router    = r;
       ourKey    = us;
       _nodes    = std::make_unique< Bucket< RCNode > >(ourKey, llarp::randint);
       _services = std::make_unique< Bucket< ISNode > >(ourKey, llarp::randint);
