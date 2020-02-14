@@ -18,6 +18,12 @@ namespace llarp
     {
       bool read = false;
 
+      uint64_t tmp;
+      if(!BEncodeMaybeReadDictInt("O", tmp, read, k, val))
+        return false;
+      if (read)
+        relayOrder = tmp;
+
       if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))
         return false;
 
@@ -41,6 +47,10 @@ namespace llarp
     FindIntroMessage::BEncode(llarp_buffer_t* buf) const
     {
       if(!bencode_start_dict(buf))
+        return false;
+
+      // relay order
+      if(!BEncodeWriteDictInt("O", relayOrder, buf))
         return false;
 
       // message id
