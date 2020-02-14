@@ -21,7 +21,7 @@ namespace llarp
       uint64_t tmp;
       if(!BEncodeMaybeReadDictInt("O", tmp, read, k, val))
         return false;
-      if (read)
+      if(read)
         relayOrder = tmp;
 
       if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))

@@ -16,8 +16,8 @@ namespace llarp
     {
       const Key_t &From;
       IMessage::Ptr_t msg;
-      bool firstKey       = true;
-      bool relayed        = false;
+      bool firstKey = true;
+      bool relayed  = false;
 
       MessageDecoder(const Key_t &from, bool wasRelayed)
           : From(from), relayed(wasRelayed)
