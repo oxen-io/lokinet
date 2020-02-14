@@ -86,18 +86,19 @@ namespace llarp
           ManualRebuild(1);
         return;
       }
-      introSet().I.clear();
+      std::vector< Introduction > intros;
       for(auto& intro : I)
       {
-        introSet().I.emplace_back(std::move(intro));
+        intros.emplace_back(std::move(intro));
       }
-      if(introSet().I.size() == 0)
+      if(intros.size() == 0)
       {
         LogWarn("not enough intros to publish introset for ", Name());
         if(ShouldBuildMore(now) || forceRebuild)
           ManualRebuild(1);
         return;
       }
+      introSet().I     = intros;
       introSet().topic = m_state->m_Tag;
       auto maybe       = m_Identity.EncryptAndSignIntroSet(introSet(), now);
       if(not maybe.has_value())
@@ -559,7 +560,7 @@ namespace llarp
       });
 
       const auto lastpub = m_state->m_LastPublishAttempt;
-      if(m_state->m_IntroSet.HasExpiredIntros(now) || numNotInIntroset > 1)
+      if(introSet().HasExpiredIntros(now) || numNotInIntroset > 1)
       {
         return now - lastpub >= INTROSET_PUBLISH_RETRY_INTERVAL;
       }
