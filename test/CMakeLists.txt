@@ -78,6 +78,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 endif()
 
 add_executable(${CHECK_EXE}
+  nodedb/test_nodedb.cpp
   path/test_path.cpp
   check_main.cpp)
 
