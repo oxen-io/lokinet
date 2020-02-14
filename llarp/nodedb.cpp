@@ -118,7 +118,7 @@ std::vector< llarp::RouterContact >
 llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
                             uint32_t numRouters)
 {
-  if(numRouters < num_loaded())
+  if(numRouters > num_loaded())
   {
     numRouters = num_loaded();
   }
