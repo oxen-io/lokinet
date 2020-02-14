@@ -1192,11 +1192,10 @@ namespace llarp
       }
 
       // outbound converstation
-      auto& sessions = m_state->m_RemoteSessions;
-      if(EndpointUtil::HasPathToService(remote, sessions))
       {
-        auto range = sessions.equal_range(remote);
-        auto itr   = range.first;
+        auto& sessions = m_state->m_RemoteSessions;
+        auto range     = sessions.equal_range(remote);
+        auto itr       = range.first;
         while(itr != range.second)
         {
           if(itr->second->ReadyToSend())
@@ -1206,25 +1205,30 @@ namespace llarp
           }
           ++itr;
         }
+        // if there is an outbound context
+        if(range.first != sessions.end())
+        {
+          // add pending traffic
+          auto& traffic = m_state->m_PendingTraffic;
+          traffic[remote].emplace_back(data, t);
+          return EnsurePathToService(
+              remote,
+              [self = this](Address addr, OutboundContext* ctx) {
+                if(ctx)
+                {
+                  ctx->UpdateIntroSet(true);
+                  for(auto& pending : self->m_state->m_PendingTraffic[addr])
+                  {
+                    ctx->AsyncEncryptAndSendTo(pending.Buffer(),
+                                               pending.protocol);
+                  }
+                }
+                self->m_state->m_PendingTraffic.erase(addr);
+              },
+              1500);
+        }
       }
-
-      auto& traffic = m_state->m_PendingTraffic;
-      traffic[remote].emplace_back(data, t);
-      // no converstation
-      return EnsurePathToService(
-          remote,
-          [&](Address r, OutboundContext* c) {
-            if(c)
-            {
-              c->UpdateIntroSet(true);
-              for(auto& pending : m_state->m_PendingTraffic[r])
-              {
-                c->AsyncEncryptAndSendTo(pending.Buffer(), pending.protocol);
-              }
-            }
-            m_state->m_PendingTraffic.erase(r);
-          },
-          5000, false);
+      return false;
     }
 
     bool
