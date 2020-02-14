@@ -949,8 +949,7 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
-                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
-                                  bool randomPath)
+                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS)
     {
       static constexpr size_t NumParalellLookups = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
