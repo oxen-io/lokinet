@@ -10,6 +10,7 @@
 #include <sys/endian.h>
 #elif defined(__sun)
 #include <sys/byteorder.h>
+#include <endian.h>
 #define htobe16(x) htons(x)
 #define htole16(x) (x)
 #define be16toh(x) ntohs(x)
