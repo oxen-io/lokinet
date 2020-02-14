@@ -12,7 +12,7 @@ namespace llarp
   namespace dht
   {
     LocalServiceAddressLookup::LocalServiceAddressLookup(
-        const PathID_t &pathid, uint64_t txid, uint32_t relayOrder,
+        const PathID_t &pathid, uint64_t txid, uint64_t relayOrder,
         const Key_t &addr, AbstractContext *ctx,
         __attribute__((unused)) const Key_t &askpeer)
         : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 2,

@@ -10,7 +10,7 @@ namespace llarp
   {
     HiddenServiceAddressLookup::HiddenServiceAddressLookup(
         Endpoint* p, HandlerFunc h, const dht::Key_t& l, const PubKey& k,
-        uint32_t order, uint64_t tx)
+        uint64_t order, uint64_t tx)
         : IServiceLookup(p, tx, "HSLookup")
         , rootkey(k)
         , relayOrder(order)

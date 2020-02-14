@@ -18,13 +18,10 @@ namespace llarp
     {
       bool read = false;
 
-      uint64_t tmp;
-      if(!BEncodeMaybeReadDictInt("O", tmp, read, k, val))
-        return false;
-      if(read)
-        relayOrder = tmp;
-
       if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))
+        return false;
+
+      if(!BEncodeMaybeReadDictInt("O", relayOrder, read, k, val))
         return false;
 
       if(!BEncodeMaybeReadDictInt("R", recursionDepth, read, k, val))
@@ -49,15 +46,15 @@ namespace llarp
       if(!bencode_start_dict(buf))
         return false;
 
-      // relay order
-      if(!BEncodeWriteDictInt("O", relayOrder, buf))
-        return false;
-
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
       if(tagName.Empty())
       {
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
+          return false;
+
         // recursion
         if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
@@ -69,6 +66,11 @@ namespace llarp
       {
         if(!BEncodeWriteDictEntry("N", tagName, buf))
           return false;
+
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
+          return false;
+
         // recursion
         if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;

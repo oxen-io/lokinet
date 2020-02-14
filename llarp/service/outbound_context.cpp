@@ -229,7 +229,7 @@ namespace llarp
       const auto addr = currentIntroSet.A.Addr();
 
       const auto paths    = GetManyPathsWithUniqueEndpoints(this, 2);
-      uint32_t relayOrder = 0;
+      uint64_t relayOrder = 0;
       for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(

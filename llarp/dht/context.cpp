@@ -50,7 +50,7 @@ namespace llarp
       void
       LookupIntroSetRecursive(
           const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t recursionDepth, uint32_t relayOrder,
+          const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
           service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
       void
@@ -95,7 +95,7 @@ namespace llarp
       LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                             const llarp::PathID_t& path, const Key_t& askpeer,
                             uint64_t recursionDepth,
-                            uint32_t relayOrder) override;
+                            uint64_t relayOrder) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
@@ -543,7 +543,7 @@ namespace llarp
     Context::LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
                                    const Key_t& askpeer,
-                                   uint64_t recursionDepth, uint32_t relayOrder)
+                                   uint64_t recursionDepth, uint64_t relayOrder)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
@@ -571,7 +571,7 @@ namespace llarp
     void
     Context::LookupIntroSetRecursive(
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
-        const Key_t& askpeer, uint64_t recursionDepth, uint32_t relayOrder,
+        const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
         service::EncryptedIntroSetLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);

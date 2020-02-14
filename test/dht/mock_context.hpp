@@ -21,7 +21,7 @@ namespace llarp
 
       MOCK_METHOD7(LookupIntroSetRecursive,
                    void(const dht::Key_t&, const dht::Key_t&, uint64_t,
-                        const dht::Key_t&, uint64_t, uint32_t,
+                        const dht::Key_t&, uint64_t, uint64_t,
                         service::EncryptedIntroSetLookupHandler));
 
       MOCK_METHOD5(LookupIntroSetIterative,
@@ -37,7 +37,7 @@ namespace llarp
 
       MOCK_METHOD6(LookupIntroSetForPath,
                    void(const dht::Key_t&, uint64_t, const PathID_t&,
-                        const dht::Key_t&, uint64_t, uint32_t));
+                        const dht::Key_t&, uint64_t, uint64_t));
 
       MOCK_METHOD3(DHTSendTo, void(const RouterID&, dht::IMessage*, bool));
 
