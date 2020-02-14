@@ -16,12 +16,15 @@ namespace llarp
       uint64_t recursionDepth = 0;
       Key_t location;
       llarp::service::Tag tagName;
-      uint64_t txID = 0;
-      bool relayed  = false;
+      uint64_t txID       = 0;
+      bool relayed        = false;
+      uint64_t relayOrder = 0;
 
-      FindIntroMessage(const Key_t& from, bool relay) : IMessage(from)
+      FindIntroMessage(const Key_t& from, bool relay, uint64_t order)
+          : IMessage(from)
       {
-        relayed = relay;
+        relayed    = relay;
+        relayOrder = order;
       }
 
       FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid,
@@ -35,11 +38,12 @@ namespace llarp
       }
 
       explicit FindIntroMessage(uint64_t txid, const Key_t& addr,
-                                uint64_t maxRecursionDepth)
+                                uint64_t maxRecursionDepth, uint64_t order)
           : IMessage({})
           , recursionDepth(maxRecursionDepth)
           , location(addr)
           , txID(txid)
+          , relayOrder(order)
       {
         tagName.Zero();
       }

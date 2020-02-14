@@ -8,6 +8,8 @@
 #include <profiling.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <service/endpoint_util.hpp>
+
 #include <random>
 #include <algorithm>
 
@@ -48,7 +50,7 @@ namespace llarp
         {
           SwapIntros();
         }
-        UpdateIntroSet(false);
+        UpdateIntroSet();
       }
       return true;
     }
@@ -220,38 +222,24 @@ namespace llarp
     }
 
     void
-    OutboundContext::UpdateIntroSet(bool randomizePath)
+    OutboundContext::UpdateIntroSet()
     {
       if(updatingIntroSet || markedBad)
         return;
       const auto addr = currentIntroSet.A.Addr();
 
-      path::Path_ptr path = nullptr;
-      if(randomizePath)
-      {
-        path = m_Endpoint->PickRandomEstablishedPath();
-      }
-      else
-        path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
-
-      if(path == nullptr)
-      {
-        path = PickRandomEstablishedPath();
-      }
-
-      if(path)
+      const auto paths    = GetManyPathsWithUniqueEndpoints(this, 2);
+      uint64_t relayOrder = 0;
+      for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-            location, PubKey{addr.as_array()}, m_Endpoint->GenTXID());
-
-        updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
-      }
-      else
-      {
-        LogWarn("Cannot update introset no path for outbound session to ",
-                currentIntroSet.A.Addr().ToString());
+            location, PubKey{addr.as_array()}, relayOrder,
+            m_Endpoint->GenTXID());
+        relayOrder++;
+        if(job->SendRequestViaPath(path, m_Endpoint->Router()))
+          updatingIntroSet = true;
       }
     }
 
@@ -307,7 +295,7 @@ namespace llarp
       }
       if(currentIntroSet.HasExpiredIntros(now))
       {
-        UpdateIntroSet(false);
+        UpdateIntroSet();
       }
       // send control message if we look too quiet
       if(lastGoodSend)
@@ -419,7 +407,7 @@ namespace llarp
       {
         // update introset
         LogInfo(Name(), " updating introset");
-        UpdateIntroSet(false);
+        UpdateIntroSet();
         return true;
       }
       return false;
@@ -494,7 +482,7 @@ namespace llarp
     OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
-      UpdateIntroSet(false);
+      UpdateIntroSet();
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)

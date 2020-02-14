@@ -11,11 +11,11 @@ namespace llarp
   {
     struct TagLookup : public TX< service::Tag, service::EncryptedIntroSet >
     {
-      uint64_t R;
+      uint64_t recursionDepth;
       TagLookup(const TXOwner &asker, const service::Tag &tag,
-                AbstractContext *ctx, uint64_t r)
+                AbstractContext *ctx, uint64_t recursion)
           : TX< service::Tag, service::EncryptedIntroSet >(asker, tag, ctx)
-          , R(r)
+          , recursionDepth(recursion)
       {
       }
 

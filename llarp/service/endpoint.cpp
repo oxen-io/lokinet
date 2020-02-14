@@ -460,9 +460,20 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
     {
-      // publish via near router
-      const auto path = GetEstablishedPathClosestTo(i.derivedSigningKey);
-      return path && PublishIntroSetVia(i, r, path);
+      /// number of routers to publish to
+      static constexpr size_t PublishRedundancy = 2;
+      const auto paths =
+          GetManyPathsWithUniqueEndpoints(this, PublishRedundancy);
+      // do publishing for each path selected
+      size_t published = 0;
+      for(const auto& path : paths)
+      {
+        if(PublishIntroSetVia(i, r, path))
+        {
+          published++;
+        }
+      }
+      return published == PublishRedundancy;
     }
 
     struct PublishIntroSetJob : public IServiceLookup
@@ -938,22 +949,9 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
-                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS,
-                                  bool randomPath)
+                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS)
     {
-      const dht::Key_t location = remote.ToKey();
-      path::Path_ptr path       = nullptr;
-      if(randomPath)
-        path = PickRandomEstablishedPath();
-      else
-        path = GetEstablishedPathClosestTo(location.as_array());
-      if(!path)
-      {
-        LogWarn("No outbound path for lookup yet");
-        BuildOne();
-        return false;
-      }
-
+      static constexpr size_t NumParalellLookups = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       auto& sessions = m_state->m_RemoteSessions;
@@ -969,23 +967,28 @@ namespace llarp
 
       auto& lookups = m_state->m_PendingServiceLookups;
 
-      if(lookups.count(remote) >= MaxConcurrentLookups)
-      {
-        path = PickRandomEstablishedPath();
-      }
+      const auto paths =
+          GetManyPathsWithUniqueEndpoints(this, NumParalellLookups);
 
       using namespace std::placeholders;
-      HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this, util::memFn(&Endpoint::OnLookup, this), location,
-          PubKey{remote.as_array()}, GenTXID());
-      LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
-      if(job->SendRequestViaPath(path, Router()))
+      size_t lookedUp           = 0;
+      const dht::Key_t location = remote.ToKey();
+      for(const auto& path : paths)
       {
-        lookups.emplace(remote, hook);
-        return true;
+        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+            this, util::memFn(&Endpoint::OnLookup, this), location,
+            PubKey{remote.as_array()}, 0, GenTXID());
+        LogInfo("doing lookup for ", remote, " via ", path->Endpoint(), " at ",
+                location);
+        if(job->SendRequestViaPath(path, Router()))
+        {
+          lookups.emplace(remote, hook);
+          lookedUp++;
+        }
+        else
+          LogError(Name(), " send via path failed for lookup");
       }
-      LogError("send via path failed");
-      return false;
+      return lookedUp == NumParalellLookups;
     }
 
     bool
@@ -1216,7 +1219,7 @@ namespace llarp
               [self = this](Address addr, OutboundContext* ctx) {
                 if(ctx)
                 {
-                  ctx->UpdateIntroSet(true);
+                  ctx->UpdateIntroSet();
                   for(auto& pending : self->m_state->m_PendingTraffic[addr])
                   {
                     ctx->AsyncEncryptAndSendTo(pending.Buffer(),

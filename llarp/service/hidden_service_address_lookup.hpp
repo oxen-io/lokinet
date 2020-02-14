@@ -13,6 +13,7 @@ namespace llarp
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
       const PubKey rootkey;
+      uint64_t relayOrder;
       const dht::Key_t location;
       using HandlerFunc = std::function< bool(
           const Address&, absl::optional< const IntroSet >, const RouterID&) >;
@@ -20,7 +21,8 @@ namespace llarp
 
       HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
                                  const dht::Key_t& location,
-                                 const PubKey& rootkey, uint64_t tx);
+                                 const PubKey& rootkey, uint64_t relayOrder,
+                                 uint64_t tx);
 
       ~HiddenServiceAddressLookup() override = default;
 

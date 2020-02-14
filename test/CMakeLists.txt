@@ -1,4 +1,6 @@
 set(TEST_EXE testAll)
+set(CHECK_EXE checkAll)
+
 
 list(APPEND TEST_SRC
     config/test_llarp_config_config.cpp
@@ -74,3 +76,13 @@ endif(NOT WIN32)
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
 endif()
+
+add_executable(${CHECK_EXE}
+  nodedb/test_nodedb.cpp
+  path/test_path.cpp
+  check_main.cpp)
+
+target_link_libraries(${CHECK_EXE} PUBLIC ${STATIC_LIB})
+target_include_directories(${CHECK_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_target(check COMMAND ${CHECK_EXE})

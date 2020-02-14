@@ -21,6 +21,9 @@ namespace llarp
       if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))
         return false;
 
+      if(!BEncodeMaybeReadDictInt("O", relayOrder, read, k, val))
+        return false;
+
       if(!BEncodeMaybeReadDictInt("R", recursionDepth, read, k, val))
         return false;
 
@@ -48,6 +51,10 @@ namespace llarp
         return false;
       if(tagName.Empty())
       {
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
+          return false;
+
         // recursion
         if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
@@ -59,6 +66,11 @@ namespace llarp
       {
         if(!BEncodeWriteDictEntry("N", tagName, buf))
           return false;
+
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
+          return false;
+
         // recursion
         if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
@@ -117,29 +129,58 @@ namespace llarp
       }
 
       // we are recursive
-      const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
-
-      Key_t peer = Key_t(rc.pubkey);
-
-      if((us ^ location) <= (peer ^ location))
-      {
-        // ask second closest as we are recursive
-        if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
-        {
-          // no second closeset
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
-        }
-      }
       if(relayed)
       {
-        dht.LookupIntroSetForPath(location, txID, pathID, peer,
-                                  recursionDepth - 1);
+        uint32_t numDesired = 0;
+        if(relayOrder == 0)
+          numDesired = 2;
+        else if(relayOrder == 1)
+          numDesired = 4;
+        else
+        {
+          // TODO: consider forward-compatibility here
+          LogError("Error: relayOrder must be 0 or 1");
+          return false;
+        }
+
+        auto closestRCs =
+            dht.GetRouter()->nodedb()->FindClosestTo(location, numDesired);
+
+        // if relayOrder == 1, we want the 3rd and 4th closest, so remove the
+        // 1st and 2nd closest
+        if(relayOrder == 1)
+        {
+          auto itr = closestRCs.begin();
+          std::advance(itr, 2);
+          closestRCs.erase(closestRCs.begin(), itr);
+        }
+
+        for(const auto& entry : closestRCs)
+        {
+          Key_t peer = Key_t(entry.pubkey);
+          dht.LookupIntroSetForPath(location, txID, pathID, peer,
+                                    recursionDepth - 1, 0);
+        }
       }
       else
       {
+        const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
+
+        Key_t peer = Key_t(rc.pubkey);
+
+        if((us ^ location) <= (peer ^ location))
+        {
+          // ask second closest as we are recursive
+          if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
+          {
+            // no second closeset
+            replies.emplace_back(new GotIntroMessage({}, txID));
+            return true;
+          }
+        }
+
         dht.LookupIntroSetRecursive(location, From, txID, peer,
-                                    recursionDepth - 1);
+                                    recursionDepth - 1, 0);
       }
       return true;
     }

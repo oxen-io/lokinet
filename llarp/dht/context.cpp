@@ -50,7 +50,7 @@ namespace llarp
       void
       LookupIntroSetRecursive(
           const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t R,
+          const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
           service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
       void
@@ -94,7 +94,8 @@ namespace llarp
       void
       LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                             const llarp::PathID_t& path, const Key_t& askpeer,
-                            uint64_t R) override;
+                            uint64_t recursionDepth,
+                            uint64_t relayOrder) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
@@ -498,7 +499,7 @@ namespace llarp
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
-      r->logic()->call_later(
+      router->logic()->call_later(
           exploreInterval,
           std::bind(&llarp::dht::Context::handle_explore_timer, this,
                     exploreInterval));
@@ -541,14 +542,16 @@ namespace llarp
     void
     Context::LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer, uint64_t R)
+                                   const Key_t& askpeer,
+                                   uint64_t recursionDepth, uint64_t relayOrder)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new LocalServiceAddressLookup(path, txid, addr, this, askpeer),
-          ((R + 1) * 2000));
+          new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
+                                        askpeer),
+          ((recursionDepth + 1) * 2000));
     }
 
     void
@@ -568,15 +571,16 @@ namespace llarp
     void
     Context::LookupIntroSetRecursive(
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
-        const Key_t& askpeer, uint64_t R,
+        const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
         service::EncryptedIntroSetLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler),
-          ((R + 1) * 2000));
+          new ServiceAddressLookup(asker, addr, this, recursionDepth,
+                                   relayOrder, handler),
+          ((recursionDepth + 1) * 2000));
     }
 
     void
@@ -598,7 +602,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
+          new ServiceAddressLookup(asker, addr, this, 0, 0, handler), 1000);
     }
 
     bool
@@ -636,11 +640,11 @@ namespace llarp
       }
       for(const auto& f : foundRouters)
       {
-        const RouterID r = f.as_array();
+        const RouterID id = f.as_array();
         // discard shit routers
-        if(router->routerProfiling().IsBadForConnect(r))
+        if(router->routerProfiling().IsBadForConnect(id))
           continue;
-        closer.emplace_back(r);
+        closer.emplace_back(id);
       }
       llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));

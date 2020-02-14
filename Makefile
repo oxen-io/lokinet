@@ -178,6 +178,8 @@ release-compile: release-configure
 $(TARGETS): release-compile
 
 release: $(TARGETS)
+	make -C '$(BUILD_ROOT)' test
+	make -C '$(BUILD_ROOT)' check
 
 shadow-configure: clean
 	mkdir -p $(BUILD_ROOT)
@@ -214,8 +216,11 @@ testnet:
 
 $(TEST_EXE): debug
 
-test: $(TEST_EXE)
+gtest: $(TEST_EXE)
 	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
+
+test: gtest
+	$(MAKE) -C $(BUILD_ROOT) check
 
 static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
 	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )

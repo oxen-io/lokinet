@@ -11,10 +11,12 @@ namespace llarp
   {
     ServiceAddressLookup::ServiceAddressLookup(
         const TXOwner &asker, const Key_t &addr, AbstractContext *ctx,
-        uint64_t r, service::EncryptedIntroSetLookupHandler handler)
+        uint64_t recursion, uint32_t order,
+        service::EncryptedIntroSetLookupHandler handler)
         : TX< Key_t, service::EncryptedIntroSet >(asker, addr, ctx)
         , handleResult(std::move(handler))
-        , R(r)
+        , recursionDepth(recursion)
+        , relayOrder(order)
     {
       peersAsked.insert(ctx->OurKey());
     }
@@ -52,17 +54,18 @@ namespace llarp
     void
     ServiceAddressLookup::Start(const TXOwner &peer)
     {
-      parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(peer.txid, target, R));
+      parent->DHTSendTo(
+          peer.node.as_array(),
+          new FindIntroMessage(peer.txid, target, recursionDepth, relayOrder));
     }
 
     void
     ServiceAddressLookup::DoNextRequest(const Key_t &ask)
     {
-      if(R)
+      if(recursionDepth)
       {
         parent->LookupIntroSetRecursive(target, whoasked.node, whoasked.txid,
-                                        ask, R - 1);
+                                        ask, recursionDepth - 1, relayOrder);
       }
       else
       {

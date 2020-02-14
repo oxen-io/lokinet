@@ -1,6 +1,7 @@
 #include <nodedb.hpp>
 
 #include <crypto/crypto.hpp>
+#include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
@@ -11,6 +12,7 @@
 #include <util/thread/thread_pool.hpp>
 #include <dht/kademlia.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <unordered_map>
 #include <utility>
@@ -110,6 +112,32 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location)
     return true;
   });
   return rc;
+}
+
+std::vector< llarp::RouterContact >
+llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
+                            uint32_t numRouters)
+{
+  llarp::util::Lock lock(&access);
+  std::vector< const llarp::RouterContact * > all;
+
+  all.reserve(entries.size());
+  for(auto &entry : entries)
+  {
+    all.push_back(&entry.second.rc);
+  }
+
+  auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
+  std::partial_sort(all.begin(), it_mid, all.end(),
+                    [compare = llarp::dht::XorMetric{location}](
+                        auto *a, auto *b) { return compare(*a, *b); });
+
+  std::vector< llarp::RouterContact > closest;
+  closest.reserve(numRouters);
+  for(auto it = all.begin(); it != it_mid; ++it)
+    closest.push_back(**it);
+
+  return closest;
 }
 
 /// skiplist directory is hex encoded first nibble
