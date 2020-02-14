@@ -41,13 +41,12 @@ namespace llarp
     };
 
     IMessage::Ptr_t
-    DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false,
-                  uint32_t relayOrder = 0);
+    DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false);
 
     bool
     DecodeMesssageList(Key_t from, llarp_buffer_t* buf,
                        std::vector< IMessage::Ptr_t >& dst,
-                       bool relayed = false, uint32_t relayOrder = 0);
+                       bool relayed = false);
   }  // namespace dht
 }  // namespace llarp
 
