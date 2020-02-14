@@ -118,81 +118,23 @@ std::vector< llarp::RouterContact >
 llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
                             uint32_t numRouters)
 {
-  if(numRouters > num_loaded())
-  {
-    numRouters = num_loaded();
-  }
-  /*
-   * XXX: this attempts to use std::partial_sort_copy(), which has a few
-  requirements
-   * we can't quite meet:
-   *
-   * 1) the iterators must operate on same types (NetDBMap_t would give us
-  pairs)
-   * 2) the second set of iterators must be of types which:
-   *     - swap is defined
-   *     - are move-constructible
-   *     - are move-assignable
-   *    std::pair is none (or at least not all) of these things
-   * 3) the result iterators must specify a range; so their container must not
-  be empty
-   *
-
-  using NetDBPair_t = std::pair< llarp::RouterID, NetDBEntry >;
-
-  struct Compare
-  {
-    const llarp::dht::Key_t target;
-
-    Compare(const llarp::dht::Key_t& target_) : target(target_)
-    {
-    }
-
-    bool
-    operator()(const NetDBPair_t& left, const NetDBPair_t& right) const
-    {
-      return (left.second.rc.pubkey ^ target) < (right.second.rc.pubkey ^
-  target);
-    }
-  };
-
   llarp::util::Lock lock(&access);
+  std::vector< const llarp::RouterContact* > all;
 
-  std::vector< NetDBPair_t > closestEntries;
-  closestEntries.resize(numRouters); // so that we have a valid iterator range
-
-  const Compare compare(location);
-
-  std::partial_sort_copy(
-      entries.begin(), entries.end(),
-      closestEntries.begin(), closestEntries.end(),
-      compare);
-
-  std::vector< llarp::RouterContact > closest;
-  closest.reserve(closestEntries.size());
-
-  for (const auto& entry : closestEntries) {
-    closest.push_back(entry.second.rc);
-  }
-
-  return closest;
-  */
-
-  // TODO: avoid this ugly copy
-  std::vector< llarp::RouterContact > all;
   all.reserve(entries.size());
   for(auto &entry : entries)
   {
-    all.push_back(entry.second.rc);
+    all.push_back(&entry.second.rc);
   }
 
+  auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
+  std::partial_sort(all.begin(), it_mid, all.end(),
+          [compare=llarp::dht::XorMetric{location}] (auto* a, auto* b) { return compare(*a, *b); });
+
   std::vector< llarp::RouterContact > closest;
-  closest.resize(numRouters);
-
-  const llarp::dht::XorMetric compare(location);
-
-  std::partial_sort_copy(all.begin(), all.end(), closest.begin(), closest.end(),
-                         compare);
+  closest.reserve(numRouters);
+  for (auto it = all.begin(); it != it_mid; ++it)
+      closest.push_back(**it);
 
   return closest;
 }
