@@ -88,7 +88,7 @@ namespace llarp
 
       /// issues a lookup to find the current intro set of the remote service
       void
-      UpdateIntroSet(bool randomizePath) override;
+      UpdateIntroSet() override;
 
       void
       HandlePathBuilt(path::Path_ptr path) override;

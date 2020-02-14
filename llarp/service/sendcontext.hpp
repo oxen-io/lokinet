@@ -61,7 +61,7 @@ namespace llarp
       }
 
       virtual void
-      UpdateIntroSet(bool randomizePath = false) = 0;
+      UpdateIntroSet() = 0;
 
       virtual bool
       MarkCurrentIntroBad(llarp_time_t now) = 0;

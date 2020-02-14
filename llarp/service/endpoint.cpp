@@ -1220,7 +1220,7 @@ namespace llarp
               [self = this](Address addr, OutboundContext* ctx) {
                 if(ctx)
                 {
-                  ctx->UpdateIntroSet(true);
+                  ctx->UpdateIntroSet();
                   for(auto& pending : self->m_state->m_PendingTraffic[addr])
                   {
                     ctx->AsyncEncryptAndSendTo(pending.Buffer(),
