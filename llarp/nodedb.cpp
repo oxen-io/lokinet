@@ -119,7 +119,7 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
                             uint32_t numRouters)
 {
   llarp::util::Lock lock(&access);
-  std::vector< const llarp::RouterContact* > all;
+  std::vector< const llarp::RouterContact * > all;
 
   all.reserve(entries.size());
   for(auto &entry : entries)
@@ -129,12 +129,13 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
 
   auto it_mid = numRouters < all.size() ? all.begin() + numRouters : all.end();
   std::partial_sort(all.begin(), it_mid, all.end(),
-          [compare=llarp::dht::XorMetric{location}] (auto* a, auto* b) { return compare(*a, *b); });
+                    [compare = llarp::dht::XorMetric{location}](
+                        auto *a, auto *b) { return compare(*a, *b); });
 
   std::vector< llarp::RouterContact > closest;
   closest.reserve(numRouters);
-  for (auto it = all.begin(); it != it_mid; ++it)
-      closest.push_back(**it);
+  for(auto it = all.begin(); it != it_mid; ++it)
+    closest.push_back(**it);
 
   return closest;
 }
