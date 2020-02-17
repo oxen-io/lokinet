@@ -1252,23 +1252,11 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
+      static constexpr auto buildSpread = path::default_lifetime / 4;
       if(path::Builder::BuildCooldownHit(now))
         return false;
-      const bool should = path::Builder::ShouldBuildMore(now);
-      // determine newest intro
-      Introduction intro;
-      if(!GetNewestIntro(intro))
-        return should;
-      // time from now that the newest intro expires at
-      if(intro.ExpiresSoon(now))
-        return should;
-
-      const auto dlt = now - (intro.expiresAt - path::default_lifetime);
-
-      return should
-          || (  // try spacing tunnel builds out evenly in time
-                 (dlt >= (path::default_lifetime / 4))
-                 && (NumInStatus(path::ePathBuilding) < numPaths));
+      return NumPathsExistingAt(now + buildSpread) < numPaths
+          and NumInStatus(path::ePathBuilding) == 0;
     }
 
     std::shared_ptr< Logic >
