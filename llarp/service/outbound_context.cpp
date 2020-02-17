@@ -358,18 +358,18 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if(markedBad)
+      if(markedBad || path::Builder::BuildCooldownHit(now))
         return false;
-      const bool should = path::Builder::BuildCooldownHit(now)
-          and NumInStatus(path::ePathBuilding) < numPaths;
+      const bool canBuild = NumInStatus(path::ePathBuilding) == 0
+          and path::Builder::ShouldBuildMore(now);
       llarp_time_t t = 0;
       ForEachPath([&t](path::Path_ptr path) {
         if(path->IsReady())
           t = std::max(path->ExpireTime(), t);
       });
       if(t <= now)
-        return should;
-      return should && t - now >= path::default_lifetime / 4;
+        return canBuild;
+      return canBuild && t - now >= path::default_lifetime / 4;
     }
 
     bool
