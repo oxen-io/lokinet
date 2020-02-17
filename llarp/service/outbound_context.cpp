@@ -369,9 +369,7 @@ namespace llarp
         if(path->IsReady())
           t = std::max(path->ExpireTime(), t);
       });
-      if(t <= now)
-        return canBuild;
-      return canBuild && t - now >= path::default_lifetime / 4;
+      return t >= now + path::default_lifetime / 4;
     }
 
     bool
