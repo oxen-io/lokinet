@@ -362,6 +362,8 @@ namespace llarp
         return false;
       const bool canBuild = NumInStatus(path::ePathBuilding) == 0
           and path::Builder::ShouldBuildMore(now);
+      if(not canBuild)
+        return false;
       llarp_time_t t = 0;
       ForEachPath([&t](path::Path_ptr path) {
         if(path->IsReady())
