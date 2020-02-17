@@ -900,6 +900,7 @@ namespace llarp
         if(!f.Sign(m_Identity))
           return false;
         {
+          LogWarn("invalidating convotag T=", frame.T);
           util::Lock lock(&m_state->m_SendQueueMutex);
           m_state->m_SendQueue.emplace_back(
               std::make_shared< const routing::PathTransferMessage >(f,
