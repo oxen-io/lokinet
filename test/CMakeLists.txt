@@ -77,12 +77,14 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
 endif()
 
+add_subdirectory(Catch2)
+
 add_executable(${CHECK_EXE}
   nodedb/test_nodedb.cpp
   path/test_path.cpp
   check_main.cpp)
 
-target_link_libraries(${CHECK_EXE} PUBLIC ${STATIC_LIB})
+target_link_libraries(${CHECK_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)
 target_include_directories(${CHECK_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_custom_target(check COMMAND ${CHECK_EXE})

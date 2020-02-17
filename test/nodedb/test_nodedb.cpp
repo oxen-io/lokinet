@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include <catch2/catch.hpp>
 #include "config/config.hpp"
 
 #include <router_contact.hpp>
@@ -6,11 +6,10 @@
 
 TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
 {
-
   llarp_nodedb nodeDB(nullptr, "");
 
   constexpr uint64_t numRCs = 3;
-  for (uint64_t i=0; i<numRCs; ++i)
+  for(uint64_t i = 0; i < numRCs; ++i)
   {
     llarp::RouterContact rc;
     rc.pubkey[0] = i;
@@ -29,7 +28,6 @@ TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
 
 TEST_CASE("FindClosestTo returns properly ordered set", "[nodedb][dht]")
 {
-
   llarp_nodedb nodeDB(nullptr, "");
 
   // insert some RCs: a < b < c
@@ -65,4 +63,3 @@ TEST_CASE("FindClosestTo returns properly ordered set", "[nodedb][dht]")
   REQUIRE(c.pubkey == results[0].pubkey);
   REQUIRE(b.pubkey == results[1].pubkey);
 }
-
