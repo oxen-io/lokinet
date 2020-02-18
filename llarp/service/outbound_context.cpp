@@ -228,7 +228,7 @@ namespace llarp
         return;
       const auto addr = currentIntroSet.A.Addr();
 
-      const auto paths    = GetManyPathsWithUniqueEndpoints(this, 2);
+      const auto paths    = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
       uint64_t relayOrder = 0;
       for(const auto& path : paths)
       {
