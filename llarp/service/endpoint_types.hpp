@@ -54,6 +54,9 @@ namespace llarp
 
     using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
+    /// set of outbound addresses to maintain to
+    using OutboundSessions_t = std::unordered_set< Address, Address::Hash >;
+
     using PathEnsureHook = std::function< void(Address, OutboundContext*) >;
 
   }  // namespace service

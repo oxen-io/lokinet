@@ -278,6 +278,7 @@ namespace llarp
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
       {
+        UpdateIntroSet();
         // shift intro if it expires "soon"
         if(ShiftIntroduction())
           SwapIntros();  // swap intros if we shifted
@@ -292,10 +293,6 @@ namespace llarp
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
-      }
-      if(currentIntroSet.HasExpiredIntros(now))
-      {
-        UpdateIntroSet();
       }
       // send control message if we look too quiet
       if(lastGoodSend)

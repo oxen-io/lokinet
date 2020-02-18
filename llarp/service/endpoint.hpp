@@ -197,11 +197,6 @@ namespace llarp
       bool
       HasPendingPathToService(const Address& remote) const;
 
-      /// return false if we don't have a path to the service
-      /// return true if we did and we removed it
-      bool
-      ForgetPathToService(const Address& remote);
-
       bool
       HandleDataMessage(path::Path_ptr path, const PathID_t from,
                         std::shared_ptr< ProtocolMessage > msg) override;
@@ -253,8 +248,6 @@ namespace llarp
       bool
       SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
-      ;
-
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
@@ -262,6 +255,12 @@ namespace llarp
       CheckPathIsDead(path::Path_ptr p, llarp_time_t latency);
 
       using PendingBufferQueue = std::deque< PendingBuffer >;
+
+      bool
+      WantsOutboundSession(const Address&) const override;
+
+      void
+      MarkAddressOutbound(const Address&) override;
 
       bool
       ShouldBundleRC() const override;
