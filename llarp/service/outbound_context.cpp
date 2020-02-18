@@ -227,7 +227,8 @@ namespace llarp
       if(updatingIntroSet || markedBad)
         return;
       const auto addr = currentIntroSet.A.Addr();
-
+      // we want to use the parent endpoint's paths because outbound context
+      // does not implement path::PathSet::HandleGotIntroMessage
       const auto paths    = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
       uint64_t relayOrder = 0;
       for(const auto& path : paths)
