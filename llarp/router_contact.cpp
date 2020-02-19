@@ -248,6 +248,8 @@ namespace llarp
   bool
   RouterContact::IsPublicRouter() const
   {
+    if(not routerVersion.has_value())
+      return false;
     return !addrs.empty();
   }
 
