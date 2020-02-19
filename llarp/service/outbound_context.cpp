@@ -114,6 +114,7 @@ namespace llarp
           return true;
         }
         currentIntroSet = foundIntro.value();
+        ShiftIntroduction(false);
       }
       else
       {
@@ -224,8 +225,13 @@ namespace llarp
     void
     OutboundContext::UpdateIntroSet()
     {
-      if(updatingIntroSet || markedBad)
+      static constexpr auto IntrosetUpdateIntervalLimit = 5s;
+      const Time_t now                                  = time_now();
+      if(updatingIntroSet || markedBad
+         || m_LastIntrosetUpdate + IntrosetUpdateIntervalLimit < now)
         return;
+      m_LastIntrosetUpdate = now;
+      LogInfo(Name(), " updating introset");
       const auto addr = currentIntroSet.A.Addr();
       // we want to use the parent endpoint's paths because outbound context
       // does not implement path::PathSet::HandleGotIntroMessage
@@ -281,8 +287,7 @@ namespace llarp
       {
         UpdateIntroSet();
         // shift intro if it expires "soon"
-        if(ShiftIntroduction())
-          SwapIntros();  // swap intros if we shifted
+        ShiftIntroduction(true);
       }
       // lookup router in intro if set and unknown
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
@@ -399,8 +404,6 @@ namespace llarp
          || currentIntroSet.HasExpiredIntros(now)
          || currentIntroSet.IsExpired(now))
       {
-        // update introset
-        LogInfo(Name(), " updating introset");
         UpdateIntroSet();
         return true;
       }

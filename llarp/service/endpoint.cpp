@@ -989,6 +989,12 @@ namespace llarp
       using namespace std::placeholders;
       size_t lookedUp           = 0;
       const dht::Key_t location = remote.ToKey();
+      if(location.IsZero())
+      {
+        LogWarn(Name(), " invalid address for lookup: ", remote);
+        hook(remote, nullptr);
+        return true;
+      }
       for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
@@ -1081,6 +1087,7 @@ namespace llarp
         while(not queue.empty())
         {
           const auto& msg = queue.top();
+          MarkConvoTagActive(msg->tag);
           const llarp_buffer_t buf(msg->payload);
           HandleInboundPacket(msg->tag, buf, msg->proto);
           queue.pop();
