@@ -107,12 +107,12 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  Response
-  HandleJSONRPC(Method_t method, const Params& /*params*/)
+  nlohmann::json
+  HandleJSONRPC(std::string method, const nlohmann::json& /*params*/)
   {
     test->AssertMethod(method);
     test->called = true;
-    return Response();
+    return {};
   }
 
   ~ServerHandler()

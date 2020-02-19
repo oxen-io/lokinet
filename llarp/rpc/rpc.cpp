@@ -285,48 +285,50 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
+      using json = nlohmann::json;
       AbstractRouter* router;
-      std::unordered_map< std::string, std::function< Response() > > m_dispatch;
+      std::unordered_map< std::string, std::function< json(json) > > m_dispatch;
       Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
           : ::abyss::httpd::IRPCHandler(conn)
           , router(r)
           , m_dispatch{
-                {"llarp.admin.wakeup", [=]() { return StartRouter(); }},
+                {"llarp.admin.wakeup", [=](auto&&) { return StartRouter(); }},
                 {"llarp.admin.link.neighbor",
-                 [=]() { return ListNeighbors(); }},
-                {"llarp.admin.exit.list", [=]() { return ListExitLevels(); }},
-                {"llarp.admin.dumpstate", [=]() { return DumpState(); }},
-                {"llarp.admin.status", [=]() { return DumpStatus(); }},
-                {"llarp.our.addresses", [=]() { return OurAddresses(); }},
-                {"llarp.version", [=]() { return DumpVersion(); }}}
+                 [=](auto&&) { return ListNeighbors(); }},
+                {"llarp.admin.exit.list",
+                 [=](auto&&) { return ListExitLevels(); }},
+                {"llarp.admin.dumpstate", [=](auto&&) { return DumpState(); }},
+                {"llarp.admin.status", [=](auto&&) { return DumpStatus(); }},
+                {"llarp.our.addresses", [=](auto&&) { return OurAddresses(); }},
+                {"llarp.version", [=](auto&&) { return DumpVersion(); }}}
       {
       }
 
       ~Handler() override = default;
 
-      Response
+      json
       StartRouter() const
       {
         const bool rc = router->Run();
-        return Response{{"status", rc}};
+        return {{"status", rc}};
       }
 
-      Response
+      json
       DumpState() const
       {
         return router->ExtractStatus();
       }
 
-      Response
+      json
       ListExitLevels() const
       {
         exit::Context::TrafficStats stats;
         router->exitContext().CalculateExitTraffic(stats);
-        Response resp;
+        json resp;
 
         for(const auto& stat : stats)
         {
-          resp.emplace_back(Response{
+          resp.push_back({
               {"ident", stat.first.ToHex()},
               {"tx", stat.second.first},
               {"rx", stat.second.second},
@@ -335,51 +337,50 @@ namespace llarp
         return resp;
       }
 
-      Response
+      json
       ListNeighbors() const
       {
-        Response resp = Response::array();
+        json resp = json::array();
         router->ForEachPeer(
             [&](const ILinkSession* session, bool outbound) {
-              resp.emplace_back(
-                  Response{{"ident", RouterID(session->GetPubKey()).ToString()},
-                           {"svcnode", session->GetRemoteRC().IsPublicRouter()},
-                           {"outbound", outbound}});
+              resp.push_back(
+                  {{"ident", RouterID(session->GetPubKey()).ToString()},
+                   {"svcnode", session->GetRemoteRC().IsPublicRouter()},
+                   {"outbound", outbound}});
             },
             false);
         return resp;
       }
 
-      Response
+      json
       DumpStatus() const
       {
         size_t numServices      = 0;
         size_t numServicesReady = 0;
-        Response services       = Response::array();
+        json services           = json::array();
         auto visitor =
             [&](const std::string& name,
                 const std::shared_ptr< service::Endpoint >& ptr) -> bool {
           numServices++;
           if(ptr->IsReady())
             numServicesReady++;
-          const Response status{{"ready", ptr->IsReady()},
-                                {"stopped", ptr->IsStopped()},
-                                {"stale", ptr->IntrosetIsStale()}};
-          services.emplace_back(Response{name, status});
+          services.push_back({name,
+                              json{{"ready", ptr->IsReady()},
+                                   {"stopped", ptr->IsStopped()},
+                                   {"stale", ptr->IntrosetIsStale()}}});
           return true;
         };
         router->hiddenServiceContext().ForEachService(visitor);
-        const Response resp{{"uptime", to_json(router->Uptime())},
-                            {"servicesTotal", numServices},
-                            {"servicesReady", numServicesReady},
-                            {"services", services}};
-        return resp;
+        return {{"uptime", to_json(router->Uptime())},
+                {"servicesTotal", numServices},
+                {"servicesReady", numServicesReady},
+                {"services", services}};
       }
 
-      Response
+      json
       OurAddresses() const
       {
-        Response services;
+        json services;
         router->hiddenServiceContext().ForEachService(
             [&](const std::string&,
                 const std::shared_ptr< service::Endpoint >& service) {
@@ -388,23 +389,22 @@ namespace llarp
               return true;
             });
 
-        return Response{{"services", services}};
+        return {{"services", services}};
       }
 
-      Response
+      json
       DumpVersion() const
       {
-        const Response resp{{"version", llarp::VERSION_FULL}};
-        return resp;
+        return {{"version", llarp::VERSION_FULL}};
       }
 
-      Response
-      HandleJSONRPC(Method_t method, const Params& /*params*/) override
+      json
+      HandleJSONRPC(std::string method, const json& params) override
       {
         auto it = m_dispatch.find(method);
         if(it != m_dispatch.end())
         {
-          return it->second();
+          return it->second(params);
         }
         return false;
       }

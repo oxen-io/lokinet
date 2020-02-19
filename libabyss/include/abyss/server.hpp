@@ -23,14 +23,10 @@ namespace abyss
 
     struct IRPCHandler
     {
-      using Method_t = std::string;
-      using Params   = nlohmann::json;
-      using Response = nlohmann::json;
-
       IRPCHandler(ConnImpl* impl);
 
-      virtual Response
-      HandleJSONRPC(Method_t method, const Params& params) = 0;
+      virtual nlohmann::json
+      HandleJSONRPC(std::string method, const nlohmann::json& params) = 0;
 
       virtual ~IRPCHandler();
 
