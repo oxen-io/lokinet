@@ -947,12 +947,26 @@ namespace llarp
       return true;
     }
 
+    void
+    Endpoint::MarkAddressOutbound(const Address& addr)
+    {
+      m_state->m_OutboundSessions.insert(addr);
+    }
+
+    bool
+    Endpoint::WantsOutboundSession(const Address& addr) const
+    {
+      return m_state->m_OutboundSessions.count(addr) > 0;
+    }
+
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
                                   ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS)
     {
       static constexpr size_t NumParalellLookups = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
+
+      MarkAddressOutbound(remote);
 
       auto& sessions = m_state->m_RemoteSessions;
 
@@ -1193,8 +1207,7 @@ namespace llarp
           }
         }
       }
-
-      // outbound converstation
+      else
       {
         auto& sessions = m_state->m_RemoteSessions;
         auto range     = sessions.equal_range(remote);
@@ -1208,8 +1221,8 @@ namespace llarp
           }
           ++itr;
         }
-        // if there is an outbound context
-        if(range.first != sessions.end())
+        // if we want to make an outbound session
+        if(WantsOutboundSession(remote))
         {
           // add pending traffic
           auto& traffic = m_state->m_PendingTraffic;

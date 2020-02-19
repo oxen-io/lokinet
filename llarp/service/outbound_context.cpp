@@ -227,8 +227,9 @@ namespace llarp
       if(updatingIntroSet || markedBad)
         return;
       const auto addr = currentIntroSet.A.Addr();
-
-      const auto paths    = GetManyPathsWithUniqueEndpoints(this, 2);
+      // we want to use the parent endpoint's paths because outbound context
+      // does not implement path::PathSet::HandleGotIntroMessage
+      const auto paths    = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
       uint64_t relayOrder = 0;
       for(const auto& path : paths)
       {
@@ -278,6 +279,7 @@ namespace llarp
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
       {
+        UpdateIntroSet();
         // shift intro if it expires "soon"
         if(ShiftIntroduction())
           SwapIntros();  // swap intros if we shifted
@@ -292,10 +294,6 @@ namespace llarp
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
-      }
-      if(currentIntroSet.HasExpiredIntros(now))
-      {
-        UpdateIntroSet();
       }
       // send control message if we look too quiet
       if(lastGoodSend)

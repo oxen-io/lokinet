@@ -95,6 +95,8 @@ namespace llarp
       /// conversations
       ConvoMap m_Sessions;
 
+      OutboundSessions_t m_OutboundSessions;
+
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
 
       bool
