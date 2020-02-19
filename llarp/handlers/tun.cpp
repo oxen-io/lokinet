@@ -111,6 +111,25 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "reachable")
+      {
+        if(IsFalseValue(v))
+        {
+          m_PublishIntroSet = false;
+          LogInfo(Name(), " setting to be not reachable by default");
+        }
+        else if(IsTrueValue(v))
+        {
+          m_PublishIntroSet = true;
+          LogInfo(Name(), " setting to be reachable by default");
+        }
+        else
+        {
+          LogError(Name(), " config option reachable = '", v,
+                   "' does not make sense");
+          return false;
+        }
+      }
       if(k == "isolate-network" && IsTrueValue(v.c_str()))
       {
 #if defined(__linux__)

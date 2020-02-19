@@ -555,6 +555,8 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
+      if(not m_PublishIntroSet)
+        return false;
       // make sure we have all paths that are established
       // in our introset
       size_t numNotInIntroset = 0;
