@@ -47,7 +47,7 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
-      absl::optional< EncryptedIntroSet >
+      nonstd::optional< EncryptedIntroSet >
       EncryptAndSignIntroSet(const IntroSet& i, llarp_time_t now) const;
 
       bool

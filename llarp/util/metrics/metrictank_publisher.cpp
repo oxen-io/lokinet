@@ -32,7 +32,7 @@ namespace llarp
   {
     namespace
     {
-      absl::optional< std::string >
+      nonstd::optional< std::string >
       makeStr(double d)
       {
         if(std::isnan(d) || std::isinf(d))
@@ -43,7 +43,7 @@ namespace llarp
         return std::to_string(d);
       }
 
-      absl::optional< std::string >
+      nonstd::optional< std::string >
       makeStr(int i)
       {
         if(i == std::numeric_limits< int >::min()
@@ -56,7 +56,7 @@ namespace llarp
       }
 
       template < typename Value >
-      absl::optional< std::string >
+      nonstd::optional< std::string >
       formatValue(const Record< Value > &record, double elapsedTime,
                   Publication::Type publicationType)
       {

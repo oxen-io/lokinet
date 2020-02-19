@@ -138,7 +138,7 @@ namespace llarp
       uint64_t currentStatus = status;
 
       size_t index = 0;
-      absl::optional< RouterID > failedAt;
+      nonstd::optional< RouterID > failedAt;
       while(index < hops.size())
       {
         if(!frames[index].DoDecrypt(hops[index].shared))

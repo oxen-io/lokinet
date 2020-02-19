@@ -107,7 +107,7 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  absl::optional< Response >
+  Response
   HandleJSONRPC(Method_t method, ABSL_ATTRIBUTE_UNUSED const Params& params)
   {
     test->AssertMethod(method);

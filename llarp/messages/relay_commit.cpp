@@ -15,7 +15,7 @@
 #include <util/thread/logic.hpp>
 
 #include <functional>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -187,7 +187,7 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
-    const absl::optional< llarp::Addr > fromAddr;
+    const nonstd::optional< llarp::Addr > fromAddr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
@@ -196,7 +196,7 @@ namespace llarp
         , context(ctx)
         , hop(std::make_shared< Hop >())
         , fromAddr(commit->session->GetRemoteRC().IsPublicRouter()
-                       ? absl::optional< llarp::Addr >{}
+                       ? nonstd::optional< llarp::Addr >{}
                        : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();

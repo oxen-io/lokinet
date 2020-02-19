@@ -411,7 +411,7 @@ namespace llarp
                             llarp_async_verify_rc* j);
 
       bool
-      OnLookup(const service::Address& addr, absl::optional< const IntroSet > i,
+      OnLookup(const service::Address& addr, nonstd::optional< IntroSet > i,
                const RouterID& endpoint); /*  */
 
       bool

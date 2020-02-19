@@ -6,7 +6,7 @@
 #include <service/vanity.hpp>
 #include <util/bencode.hpp>
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -23,7 +23,7 @@ namespace llarp
       VanityNonce vanity;
       uint64_t version = LLARP_PROTO_VERSION;
 
-      using OptNonce = absl::optional< VanityNonce >;
+      using OptNonce = nonstd::optional< VanityNonce >;
 
       void
       RandomizeVanity()

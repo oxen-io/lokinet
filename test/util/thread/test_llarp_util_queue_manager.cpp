@@ -1,6 +1,6 @@
 #include <util/thread/queue_manager.hpp>
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -75,7 +75,7 @@ class IntQueue
     }
   }
 
-  absl::optional< int >
+  nonstd::optional< int >
   tryPopFront()
   {
     uint32_t gen   = 0;

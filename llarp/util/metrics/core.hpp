@@ -1193,16 +1193,16 @@ namespace llarp
         return m_manager;
       }
 
-      absl::optional< absl::Duration >
+      nonstd::optional< absl::Duration >
       find(string_view categoryName) const
       {
         return find(m_manager->registry().get(categoryName));
       }
 
-      absl::optional< absl::Duration >
+      nonstd::optional< absl::Duration >
       find(const Category *category) const;
 
-      absl::optional< absl::Duration >
+      nonstd::optional< absl::Duration >
       getDefault() const;
 
       std::vector< std::pair< const Category *, absl::Duration > >

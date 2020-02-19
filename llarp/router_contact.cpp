@@ -165,7 +165,7 @@ namespace llarp
     nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
-    routerVersion = absl::optional< RouterVersion >{};
+    routerVersion = nonstd::optional< RouterVersion >{};
     last_updated  = 0;
   }
 

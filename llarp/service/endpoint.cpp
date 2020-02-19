@@ -922,7 +922,7 @@ namespace llarp
 
     bool
     Endpoint::OnLookup(const Address& addr,
-                       absl::optional< const IntroSet > introset,
+                       nonstd::optional< IntroSet > introset,
                        const RouterID& endpoint)
     {
       const auto now = Router()->Now();

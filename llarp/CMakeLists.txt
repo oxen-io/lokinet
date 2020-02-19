@@ -73,11 +73,12 @@ target_link_libraries(${UTIL_LIB} PUBLIC
     absl::synchronization absl::flat_hash_map absl::container
     nlohmann_json::nlohmann_json
     ghc_filesystem
+    optional-lite
     )
 
 # cut back on fluff
 if (NOT WIN32)
-  target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings)
+  target_link_libraries(${UTIL_LIB} PUBLIC absl::variant absl::strings)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

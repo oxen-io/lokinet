@@ -16,7 +16,7 @@ namespace fs = ghc::filesystem;
 #include <dirent.h>
 #endif
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -32,7 +32,7 @@ namespace llarp
     /// open a stream to a file and ensure it exists before open
     /// sets any permissions on creation
     template < typename T >
-    absl::optional< T >
+    nonstd::optional< T >
     OpenFileStream(fs::path pathname, std::ios::openmode mode)
     {
       if(EnsurePrivateFile(pathname))

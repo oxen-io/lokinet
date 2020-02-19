@@ -585,7 +585,7 @@ TEST(TestQueue, moveIt)
 
   ASSERT_EQ(5u, counter);
 
-  absl::optional< MoveTester > optPopped = queue.tryPopFront();
+  nonstd::optional< MoveTester > optPopped = queue.tryPopFront();
 
   ASSERT_TRUE(optPopped.has_value());
 

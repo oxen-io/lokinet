@@ -134,7 +134,7 @@ namespace llarp
            llarp_time_t exploreInterval) override;
 
       /// get localally stored introset by service address
-      absl::optional< llarp::service::EncryptedIntroSet >
+      nonstd::optional< llarp::service::EncryptedIntroSet >
       GetIntroSetByLocation(const Key_t& location) const override;
 
       void
@@ -455,7 +455,7 @@ namespace llarp
       }
     }
 
-    absl::optional< llarp::service::EncryptedIntroSet >
+    nonstd::optional< llarp::service::EncryptedIntroSet >
     Context::GetIntroSetByLocation(const Key_t& key) const
     {
       auto itr = _services->nodes.find(key);

@@ -45,7 +45,7 @@ namespace llarp
     }
   }
 
-  absl::optional< LogLevel >
+  nonstd::optional< LogLevel >
   LogLevelFromString(std::string level)
   {
     std::transform(
