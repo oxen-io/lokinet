@@ -23,7 +23,7 @@ namespace llarp
   namespace path
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
-               PathRole startingRoles, const std::string& shortName)
+               PathRole startingRoles, std::string&& shortName)
         : m_PathSet(parent), _role(startingRoles), m_shortName(shortName)
 
     {
@@ -122,7 +122,7 @@ namespace llarp
       return hops[0].rc.pubkey;
     }
 
-    std::string
+    const std::string&
     Path::ShortName() const
     {
       return m_shortName;

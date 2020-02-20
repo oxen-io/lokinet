@@ -443,7 +443,7 @@ namespace llarp
       std::string path_shortName = "[" + m_router->ShortName() + "-";
       path_shortName += m_router->PathBuildNumber() + "]";
       auto path = std::make_shared< path::Path >(hops, self.get(), roles,
-                                                 path_shortName);
+                                                 std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
