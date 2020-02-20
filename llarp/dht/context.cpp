@@ -45,16 +45,14 @@ namespace llarp
         GetRouter()->rcLookupHandler().CheckRC(rc);
       }
 
-      /// on behalf of whoasked request introset for target from dht router with
-      /// key askpeer
       void
-      LookupIntroSetRecursive(
+      LookupIntroSetRelayed(
           const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
+          const Key_t& askpeer, uint64_t relayOrder,
           service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
       void
-      LookupIntroSetIterative(
+      LookupIntroSetDirect(
           const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
           const Key_t& askpeer,
           service::EncryptedIntroSetLookupHandler result = nullptr) override;
@@ -94,7 +92,6 @@ namespace llarp
       void
       LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                             const llarp::PathID_t& path, const Key_t& askpeer,
-                            uint64_t recursionDepth,
                             uint64_t relayOrder) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
@@ -542,16 +539,14 @@ namespace llarp
     void
     Context::LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer,
-                                   uint64_t recursionDepth, uint64_t relayOrder)
+                                   const Key_t& askpeer, uint64_t relayOrder)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
           new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
-                                        askpeer),
-          ((recursionDepth + 1) * 2000));
+                                        askpeer));
     }
 
     void
@@ -569,18 +564,16 @@ namespace llarp
     }
 
     void
-    Context::LookupIntroSetRecursive(
+    Context::LookupIntroSetRelayed(
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
-        const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
+        const Key_t& askpeer, uint64_t relayOrder,
         service::EncryptedIntroSetLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, recursionDepth,
-                                   relayOrder, handler),
-          ((recursionDepth + 1) * 2000));
+          new ServiceAddressLookup(asker, addr, this, relayOrder, handler));
     }
 
     void
@@ -594,7 +587,7 @@ namespace llarp
     }
 
     void
-    Context::LookupIntroSetIterative(
+    Context::LookupIntroSetDirect(
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
         const Key_t& askpeer, service::EncryptedIntroSetLookupHandler handler)
     {
@@ -602,7 +595,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, 0, handler), 1000);
+          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
     }
 
     bool

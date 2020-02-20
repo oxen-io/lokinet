@@ -42,21 +42,20 @@ namespace llarp
                             uint64_t whoaskedTX, const Key_t& askpeer,
                             RouterLookupHandler result = nullptr) = 0;
 
-      /// on behalf of whoasked request introset for target from dht router with
-      /// key askpeer
+      /// Ask a Service Node to perform an Introset lookup for us
       virtual void
-      LookupIntroSetRecursive(
-          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t recursionDepth, uint64_t relayOrder,
-          service::EncryptedIntroSetLookupHandler result =
-              service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetRelayed(const Key_t& target, const Key_t& whoasked,
+                            uint64_t whoaskedTX, const Key_t& askpeer,
+                            uint64_t relayOrder,
+                            service::EncryptedIntroSetLookupHandler result =
+                                service::EncryptedIntroSetLookupHandler()) = 0;
 
+      /// Directly as a Service Node for an Introset
       virtual void
-      LookupIntroSetIterative(
-          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer,
-          service::EncryptedIntroSetLookupHandler result =
-              service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetDirect(const Key_t& target, const Key_t& whoasked,
+                           uint64_t whoaskedTX, const Key_t& askpeer,
+                           service::EncryptedIntroSetLookupHandler result =
+                               service::EncryptedIntroSetLookupHandler()) = 0;
 
       virtual bool
       HasRouterLookup(const RouterID& target) const = 0;
@@ -69,7 +68,7 @@ namespace llarp
       virtual void
       LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                             const PathID_t& path, const Key_t& askpeer,
-                            uint64_t recursionDepth, uint64_t relayOrder) = 0;
+                            uint64_t relayOrder) = 0;
 
       virtual void
       DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;
