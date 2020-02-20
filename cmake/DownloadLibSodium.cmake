@@ -13,7 +13,12 @@ file(MAKE_DIRECTORY ${LIBSODIUM_PREFIX}/include)
 include(ExternalProject)
 include(ProcessorCount)
 
-set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
+if (CMAKE_C_COMPILER_ARG1)
+  set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER} CPPFLAGS=${CMAKE_C_COMPILER_ARG1})
+else()
+  set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
+endif()
+
 if (LIBSODIUM_CROSS_TARGET)
     set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${LIBSODIUM_CROSS_TARGET} --host=${LIBSODIUM_CROSS_TARGET})
 endif()
