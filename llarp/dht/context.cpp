@@ -539,8 +539,7 @@ namespace llarp
     void
     Context::LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer,
-                                   uint64_t relayOrder)
+                                   const Key_t& askpeer, uint64_t relayOrder)
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);

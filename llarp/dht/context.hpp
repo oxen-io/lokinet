@@ -44,19 +44,18 @@ namespace llarp
 
       /// Ask a Service Node to perform an Introset lookup for us
       virtual void
-      LookupIntroSetRelayed(
-          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer, uint64_t relayOrder,
-          service::EncryptedIntroSetLookupHandler result =
-              service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetRelayed(const Key_t& target, const Key_t& whoasked,
+                            uint64_t whoaskedTX, const Key_t& askpeer,
+                            uint64_t relayOrder,
+                            service::EncryptedIntroSetLookupHandler result =
+                                service::EncryptedIntroSetLookupHandler()) = 0;
 
       /// Directly as a Service Node for an Introset
       virtual void
-      LookupIntroSetDirect(
-          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
-          const Key_t& askpeer,
-          service::EncryptedIntroSetLookupHandler result =
-              service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetDirect(const Key_t& target, const Key_t& whoasked,
+                           uint64_t whoaskedTX, const Key_t& askpeer,
+                           service::EncryptedIntroSetLookupHandler result =
+                               service::EncryptedIntroSetLookupHandler()) = 0;
 
       virtual bool
       HasRouterLookup(const RouterID& target) const = 0;

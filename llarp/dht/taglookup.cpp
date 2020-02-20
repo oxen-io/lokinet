@@ -28,9 +28,8 @@ namespace llarp
     void
     TagLookup::Start(const TXOwner &peer)
     {
-      parent->DHTSendTo(
-          peer.node.as_array(),
-          new FindIntroMessage(target, peer.txid));
+      parent->DHTSendTo(peer.node.as_array(),
+                        new FindIntroMessage(target, peer.txid));
     }
 
     void

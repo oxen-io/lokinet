@@ -52,9 +52,8 @@ namespace llarp
     void
     ServiceAddressLookup::Start(const TXOwner &peer)
     {
-      parent->DHTSendTo(
-          peer.node.as_array(),
-          new FindIntroMessage(peer.txid, target, relayOrder));
+      parent->DHTSendTo(peer.node.as_array(),
+                        new FindIntroMessage(peer.txid, target, relayOrder));
     }
 
     void

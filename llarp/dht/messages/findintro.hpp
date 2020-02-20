@@ -32,10 +32,7 @@ namespace llarp
 
       explicit FindIntroMessage(uint64_t txid, const Key_t& addr,
                                 uint64_t order)
-          : IMessage({})
-          , location(addr)
-          , txID(txid)
-          , relayOrder(order)
+          : IMessage({}), location(addr), txID(txid), relayOrder(order)
       {
         tagName.Zero();
       }

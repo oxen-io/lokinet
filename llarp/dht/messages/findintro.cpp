@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace dht
   {
-    FindIntroMessage::~FindIntroMessage()              = default;
+    FindIntroMessage::~FindIntroMessage() = default;
 
     bool
     FindIntroMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val)
