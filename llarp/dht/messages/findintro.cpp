@@ -102,35 +102,32 @@ namespace llarp
         return false;
       }
 
-      std::set< Key_t > exclude = {dht.OurKey(), From};
       if(not tagName.Empty())
         return false;
 
+      // bad request (request for zero-key)
       if(location.IsZero())
       {
         // we dont got it
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-      const auto maybe = dht.GetIntroSetByLocation(location);
-      if(maybe.has_value())
-      {
-        replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
-        return true;
-      }
 
-      const Key_t us = dht.OurKey();
-
-      if(recursionDepth == 0)
-      {
-        // we don't have it
-        replies.emplace_back(new GotIntroMessage({}, txID));
-        return true;
-      }
-
-      // we are recursive
+      // we are relaying this message for e.g. a client
       if(relayed)
       {
+
+        // sanity check -- shouldn't happen
+        if(recursionDepth == 0)
+        {
+          // TODO: we're effectively calling this an illegal state, if we
+          //       support (relayed == true && recursionDepth == 0) then we need
+          //       to actually look this up here
+          LogWarn("Got FIM with relayed == true and recursionDepth == 0");
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
+
         uint32_t numDesired = 0;
         if(relayOrder == 0)
           numDesired = 2;
@@ -164,23 +161,47 @@ namespace llarp
       }
       else
       {
-        const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
 
-        Key_t peer = Key_t(rc.pubkey);
-
-        if((us ^ location) <= (peer ^ location))
+        // we should have this value if introset was propagated properly
+        const auto maybe = dht.GetIntroSetByLocation(location);
+        if(maybe.has_value())
         {
-          // ask second closest as we are recursive
-          if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
-          {
-            // no second closeset
-            replies.emplace_back(new GotIntroMessage({}, txID));
-            return true;
-          }
+          replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
+          return true;
         }
 
-        dht.LookupIntroSetRecursive(location, From, txID, peer,
-                                    recursionDepth - 1, 0);
+        if (recursionDepth == 0)
+        {
+          LogWarn("Got FIM with relayed == false and recursionDepth == 0 but we don't have introset");
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
+        else
+        {
+          // TODO: this entire else-block should now be dead code...
+          LogWarn("Got FIM with relayed == false and recursionDepth > 0");
+
+          const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
+
+          Key_t peer = Key_t(rc.pubkey);
+          const Key_t& us = dht.OurKey();
+
+          if((us ^ location) <= (peer ^ location))
+          {
+            // ask next closest as we are recursive
+            // TODO: this code path should be dead code with our redundant DHT strategy
+            std::set< Key_t > exclude = {us, From};
+            if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
+            {
+              // no second closeset
+              replies.emplace_back(new GotIntroMessage({}, txID));
+              return true;
+            }
+          }
+
+          dht.LookupIntroSetRecursive(location, From, txID, peer,
+                                      recursionDepth - 1, 0);
+        }
       }
       return true;
     }
