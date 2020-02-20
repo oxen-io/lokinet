@@ -71,20 +71,32 @@ namespace llarp
           return true;
       }
 
+      const auto& us = dht.OurKey();
+
       // function to identify the closest 4 routers we know of for this introset
-      auto propagateToClosestFour = [&, this]() {
+      auto propagateToClosestFour = [&]() {
 
         // grab 1st & 2nd if we are relayOrder == 0, 3rd & 4th otherwise
-        auto rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
-        auto rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
+        const auto& rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
+        const auto& rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
 
-        Key_t peer0{rc0.pubkey};
-        Key_t peer1{rc1.pubkey};
+        const Key_t peer0{rc0.pubkey};
+        const Key_t peer1{rc1.pubkey};
 
-        // TODO: handle case where we are peer0 or peer1
+        bool arePeer0 = (peer0 == us);
+        bool arePeer1 = (peer1 == us);
 
-        dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
-        dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
+        if (arePeer0 or arePeer1)
+        {
+          dht.services()->PutNode(introset);
+          replies.emplace_back(new GotIntroMessage({introset}, txID));
+        }
+
+        if (not arePeer0)
+          dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
+
+        if (not arePeer1)
+          dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
       };
 
       if (relayed)
