@@ -10,7 +10,7 @@
 #include <util/time.hpp>
 #include <util/status.hpp>
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -31,7 +31,7 @@ namespace llarp
       PQPubKey K;
       Tag topic;
       llarp_time_t T = 0;
-      absl::optional< PoW > W;
+      nonstd::optional< PoW > W;
       Signature Z;
       uint64_t version = LLARP_PROTO_VERSION;
 
@@ -111,7 +111,7 @@ namespace llarp
       llarp_time_t signedAt = 0;
       Payload_t introsetPayload;
       TunnelNonce nounce;
-      absl::optional< Tag > topic;
+      nonstd::optional< Tag > topic;
       Signature sig;
 
       bool
@@ -145,7 +145,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
-      absl::optional< IntroSet >
+      nonstd::optional< IntroSet >
       MaybeDecrypt(const PubKey& rootKey) const;
     };
 

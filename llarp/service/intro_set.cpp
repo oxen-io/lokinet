@@ -84,7 +84,7 @@ namespace llarp
       return out;
     }
 
-    absl::optional< IntroSet >
+    nonstd::optional< IntroSet >
     EncryptedIntroSet::MaybeDecrypt(const PubKey& root) const
     {
       SharedSecret k(root);
@@ -176,7 +176,7 @@ namespace llarp
 
       if(key == "w")
       {
-        W = absl::make_optional< PoW >();
+        W.emplace();
         return bencode_decode_dict(*W, buf);
       }
 

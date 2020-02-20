@@ -101,7 +101,7 @@ namespace llarp
       Init(const Key_t& us, AbstractRouter* router,
            llarp_time_t exploreInterval) = 0;
 
-      virtual absl::optional< llarp::service::EncryptedIntroSet >
+      virtual nonstd::optional< llarp::service::EncryptedIntroSet >
       GetIntroSetByLocation(const Key_t& location) const = 0;
 
       virtual llarp_time_t

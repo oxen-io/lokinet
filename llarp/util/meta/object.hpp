@@ -3,7 +3,7 @@
 
 #include <util/thread/threading.hpp>
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <vector>
 
 namespace llarp
@@ -330,7 +330,7 @@ namespace llarp
         return true;
       }
 
-      absl::optional< Value >
+      nonstd::optional< Value >
       find(int32_t handle)
       {
         absl::ReaderMutexLock l(&m_mutex);

@@ -105,7 +105,7 @@ namespace llarp
 
     uint64_t last_updated = 0;
     uint64_t version      = LLARP_PROTO_VERSION;
-    absl::optional< RouterVersion > routerVersion;
+    nonstd::optional< RouterVersion > routerVersion;
 
     util::StatusObject
     ExtractStatus() const;

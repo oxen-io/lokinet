@@ -6,7 +6,7 @@
 
 #include <atomic>
 #include <absl/time/time.h>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <map>
 #include <utility>
 
@@ -273,7 +273,7 @@ namespace llarp
         return true;
       }
 
-      absl::optional< absl::Time >
+      nonstd::optional< absl::Time >
       nextTime() const
       {
         absl::ReaderMutexLock lock(&m_mutex);

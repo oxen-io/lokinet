@@ -10,7 +10,7 @@
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <absl/hash/hash.h>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <absl/types/span.h>
 #include <absl/types/variant.h>
 #include <cstring>
@@ -78,7 +78,7 @@ namespace llarp
 
     struct Format
     {
-      using Spec = absl::optional< FormatSpec >;
+      using Spec = nonstd::optional< FormatSpec >;
 
       std::array< Spec, Publication::MaxSize > m_specs;
 
@@ -92,10 +92,11 @@ namespace llarp
         m_specs[static_cast< size_t >(pub)].emplace(spec);
       }
 
-      constexpr void
+      void
       clear()
       {
-        m_specs = decltype(m_specs)();
+        for(auto &s : m_specs)
+          s.reset();
       }
 
       constexpr const FormatSpec *

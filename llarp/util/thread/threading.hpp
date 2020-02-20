@@ -3,7 +3,7 @@
 
 #include <absl/synchronization/barrier.h>
 #include <absl/synchronization/mutex.h>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <absl/time/time.h>
 
 #include <iostream>
@@ -45,7 +45,7 @@ namespace llarp
       /// in debug mode, we implement lock() to enforce that any lock is only
       /// used from a single thread. the point of this is to identify locks that
       /// are actually needed by dying a painful death when used across threads
-      mutable absl::optional< std::thread::id > m_id;
+      mutable nonstd::optional< std::thread::id > m_id;
       void
       lock() const
       {

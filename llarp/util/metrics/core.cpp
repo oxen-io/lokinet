@@ -711,7 +711,7 @@ namespace llarp
       m_categories.clear();
     }
 
-    absl::optional< absl::Duration >
+    nonstd::optional< absl::Duration >
     PublisherScheduler::find(const Category *category) const
     {
       util::Lock l(&m_mutex);
@@ -725,7 +725,7 @@ namespace llarp
       return it->second;
     }
 
-    absl::optional< absl::Duration >
+    nonstd::optional< absl::Duration >
     PublisherScheduler::getDefault() const
     {
       util::Lock l(&m_mutex);

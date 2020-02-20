@@ -1,5 +1,6 @@
 #include <util/logging/loglevel.hpp>
 #include <unordered_map>
+#include <algorithm>
 
 namespace llarp
 {
@@ -45,7 +46,7 @@ namespace llarp
     }
   }
 
-  absl::optional< LogLevel >
+  nonstd::optional< LogLevel >
   LogLevelFromString(std::string level)
   {
     std::transform(

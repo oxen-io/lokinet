@@ -151,7 +151,7 @@ namespace llarp
       return crypto->derive_subkey_private(derivedSignKey, signkey, 1);
     }
 
-    absl::optional< EncryptedIntroSet >
+    nonstd::optional< EncryptedIntroSet >
     Identity::EncryptAndSignIntroSet(const IntroSet& other_i,
                                      llarp_time_t now) const
     {

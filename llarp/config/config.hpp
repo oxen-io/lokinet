@@ -75,9 +75,9 @@ namespace llarp
   }
 
   template <>
-  inline absl::optional< bool >
-  fromEnv< absl::optional< bool > >(const absl::optional< bool >& val,
-                                    string_view envNameSuffix)
+  inline nonstd::optional< bool >
+  fromEnv< nonstd::optional< bool > >(const nonstd::optional< bool >& val,
+                                      string_view envNameSuffix)
   {
     std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
     const char* ptr     = std::getenv(envName.c_str());
@@ -112,7 +112,7 @@ namespace llarp
     // long term identity key
     std::string m_identKeyfile = "identity.key";
 
-    absl::optional< bool > m_blockBogons;
+    nonstd::optional< bool > m_blockBogons;
 
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
@@ -142,7 +142,7 @@ namespace llarp
     int workerThreads() const                  { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
     int numNetThreads() const                  { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
     std::string defaultLinkProto() const       { return fromEnv(m_DefaultLinkProto, "LINK_PROTO"); }
-    absl::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
+    nonstd::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
     // clang-format on
 
     void
@@ -155,14 +155,14 @@ namespace llarp
     using NetConfig = std::unordered_multimap< std::string, std::string >;
 
    private:
-    absl::optional< bool > m_enableProfiling;
+    nonstd::optional< bool > m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
     NetConfig m_netConfig;
 
    public:
     // clang-format off
-    absl::optional< bool > enableProfiling() const { return fromEnv(m_enableProfiling, "ENABLE_PROFILING"); }
+    nonstd::optional< bool > enableProfiling() const { return fromEnv(m_enableProfiling, "ENABLE_PROFILING"); }
     std::string routerProfilesFile() const         { return fromEnv(m_routerProfilesFile, "ROUTER_PROFILES_FILE"); }
     std::string strictConnect() const              { return fromEnv(m_strictConnect, "STRICT_CONNECT"); }
     const NetConfig& netConfig() const             { return m_netConfig; }

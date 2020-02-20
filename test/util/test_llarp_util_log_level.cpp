@@ -8,7 +8,7 @@ using TestString = std::string;
 struct TestParseLog
 {
   TestString input;
-  absl::optional< llarp::LogLevel > level;
+  nonstd::optional< llarp::LogLevel > level;
 };
 
 struct LogLevelTest : public ::testing::TestWithParam< TestParseLog >

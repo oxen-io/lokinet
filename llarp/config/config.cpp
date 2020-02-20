@@ -35,7 +35,7 @@ namespace llarp
     return std::atoi(str.c_str());
   }
 
-  absl::optional< bool >
+  nonstd::optional< bool >
   setOptBool(string_view val)
   {
     if(IsTrueValue(val))

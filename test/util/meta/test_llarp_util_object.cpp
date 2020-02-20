@@ -50,7 +50,7 @@ TEST(Catalog, smoke)
     ASSERT_EQ(handle1, handle2);
     ASSERT_TRUE(catalog.find(handle1));
 
-    absl::optional< double > result = catalog.find(handle1);
+    nonstd::optional< double > result = catalog.find(handle1);
     ASSERT_TRUE(result);
     ASSERT_EQ(value2, result);
     catalog.remove(handle2);
@@ -80,7 +80,7 @@ TEST(Catalog, Iterator)
           for(size_t j = 0; j < ITERATION_COUNT; ++j)
           {
             int32_t handle                = cat->add(id);
-            absl::optional< int32_t > res = cat->find(handle);
+            nonstd::optional< int32_t > res = cat->find(handle);
             ASSERT_TRUE(res);
             ASSERT_EQ(res.value(), id);
             ASSERT_TRUE(cat->replace(MAX - id, handle));

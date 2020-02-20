@@ -23,7 +23,7 @@ namespace llarp
     HiddenServiceAddressLookup::HandleResponse(
         const std::set< EncryptedIntroSet >& results)
     {
-      absl::optional< IntroSet > found;
+      nonstd::optional< IntroSet > found;
       const Address remote(rootkey);
       LogInfo("found ", results.size(), " for ", remote.ToString());
       if(results.size() > 0)

@@ -6,7 +6,7 @@
 #include <util/copy_or_nullptr.hpp>
 
 #include <vector>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -20,7 +20,7 @@ namespace llarp
       /// txid
       uint64_t txid = 0;
       /// the key of a router closer in keyspace if iterative lookup
-      absl::optional< Key_t > closer;
+      nonstd::optional< Key_t > closer;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
       {

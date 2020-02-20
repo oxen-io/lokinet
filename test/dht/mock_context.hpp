@@ -69,7 +69,7 @@ namespace llarp
                    void(const dht::Key_t&, AbstractRouter*, llarp_time_t));
 
       MOCK_CONST_METHOD1(GetIntroSetByLocation,
-                         absl::optional< llarp::service::EncryptedIntroSet >(
+                         nonstd::optional< llarp::service::EncryptedIntroSet >(
                              const llarp::dht::Key_t&));
 
       MOCK_CONST_METHOD0(ExtractStatus, util::StatusObject());

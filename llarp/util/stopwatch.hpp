@@ -1,7 +1,7 @@
 #ifndef LLARP_STOPWATCH_HPP
 #define LLARP_STOPWATCH_HPP
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <absl/time/clock.h>
 
 namespace llarp
@@ -10,8 +10,8 @@ namespace llarp
   {
     class Stopwatch
     {
-      absl::optional< absl::Time > m_start;
-      absl::optional< absl::Time > m_stop;
+      nonstd::optional< absl::Time > m_start;
+      nonstd::optional< absl::Time > m_stop;
 
      public:
       Stopwatch() = default;
