@@ -477,6 +477,12 @@ namespace llarp
     bool
     HasSessionTo(const RouterID &remote) const override;
 
+    std::string
+    ShortName() const;
+
+    uint32_t
+    PathBuildNumber();
+
     void
     handle_router_ticker();
 
@@ -495,6 +501,8 @@ namespace llarp
     llarp_time_t m_LastStatsReport = 0;
 
     std::shared_ptr< llarp::KeyManager > m_keyManager;
+
+    uint32_t path_build_count = 0;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

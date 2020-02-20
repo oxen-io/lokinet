@@ -100,7 +100,7 @@ namespace llarp
       llarp_time_t buildStarted = 0;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
-           PathRole startingRoles);
+           PathRole startingRoles, const std::string& shortName);
 
       util::StatusObject
       ExtractStatus() const;
@@ -204,6 +204,9 @@ namespace llarp
       {
         return _status;
       }
+
+      std::string
+      ShortName() const;
 
       std::string
       HopsString() const;
@@ -437,6 +440,8 @@ namespace llarp
       uint64_t m_RXRate     = 0;
       uint64_t m_LastTXRate = 0;
       uint64_t m_TXRate     = 0;
+
+      std::string m_shortName;
     };
   }  // namespace path
 }  // namespace llarp

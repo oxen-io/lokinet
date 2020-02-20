@@ -440,8 +440,11 @@ namespace llarp
       ctx->router  = m_router;
       auto self    = GetSelf();
       ctx->pathset = self;
-      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
-      LogInfo(Name(), " build ", path->HopsString());
+      std::string path_shortName = "[" + m_router->ShortName() + "-";
+      path_shortName += m_router->PathBuildNumber() + "]";
+      auto path = std::make_shared< path::Path >(hops, self.get(), roles,
+                                                 path_shortName);
+      LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),

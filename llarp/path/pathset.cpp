@@ -298,21 +298,21 @@ namespace llarp
     void
     PathSet::HandlePathBuildTimeout(Path_ptr p)
     {
-      LogWarn(Name(), " path build ", p->HopsString(), " timed out");
+      LogWarn(Name(), " path build ", p->ShortName(), " timed out");
       m_BuildStats.timeouts++;
     }
 
     void
     PathSet::HandlePathBuildFailed(Path_ptr p)
     {
-      LogWarn(Name(), " path build ", p->HopsString(), " failed");
+      LogWarn(Name(), " path build ", p->ShortName(), " failed");
       m_BuildStats.fails++;
     }
 
     void
     PathSet::PathBuildStarted(Path_ptr p)
     {
-      LogInfo(Name(), " path build ", p->HopsString(), " started");
+      LogInfo(Name(), " path build ", p->ShortName(), " started");
       m_BuildStats.attempts++;
     }
 

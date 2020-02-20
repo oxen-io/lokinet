@@ -20,7 +20,7 @@ MakePath(std::vector< char > hops)
   std::vector< RC_t > pathHops;
   for(const auto& hop : hops)
     pathHops.push_back(MakeHop(hop));
-  return std::make_shared< Path_t >(pathHops, nullptr, 0);
+  return std::make_shared< Path_t >(pathHops, nullptr, 0, "test");
 }
 
 TEST_CASE("UniqueEndpointSet_t has unique endpoints", "[path]")

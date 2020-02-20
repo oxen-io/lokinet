@@ -23,8 +23,8 @@ namespace llarp
   namespace path
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
-               PathRole startingRoles)
-        : m_PathSet(parent), _role(startingRoles)
+               PathRole startingRoles, const std::string& shortName)
+        : m_PathSet(parent), _role(startingRoles), m_shortName(shortName)
 
     {
       hops.resize(h.size());
@@ -120,6 +120,12 @@ namespace llarp
     Path::Upstream() const
     {
       return hops[0].rc.pubkey;
+    }
+
+    std::string
+    Path::ShortName() const
+    {
+      return m_shortName;
     }
 
     std::string
@@ -354,7 +360,7 @@ namespace llarp
       std::vector< RouterContact > newHops;
       for(const auto& hop : hops)
         newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", HopsString());
+      LogInfo(Name(), " rebuilding on ", ShortName());
       m_PathSet->Build(newHops);
     }
 
@@ -639,7 +645,7 @@ namespace llarp
     bool
     Path::HandlePathConfirmMessage(AbstractRouter* r)
     {
-      LogDebug("Path Build Confirm, path: ", HopsString());
+      LogDebug("Path Build Confirm, path: ", ShortName());
       const auto now = llarp::time_now_ms();
       if(_status == ePathBuilding)
       {
