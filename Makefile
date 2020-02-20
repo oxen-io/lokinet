@@ -209,12 +209,14 @@ testnet-configure: testnet-clean
 testnet-build: testnet-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
+$(TESTNET_EXE): testnet-build
+	cp $(EXE) $(TESTNET_EXE)
+
 $(TESTNET_VENV):
 	$(PYTHON3) -m venv $(TESTNET_VENV) --system-site-packages
 	$(TESTNET_VENV)/bin/pip install -r $(REPO)/contrib/testnet/requirements.txt
 
-testnet: $(TESTNET_VENV)
-	cp $(EXE) $(TESTNET_EXE)
+testnet: $(TESTNET_VENV) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
 	$(PYTHON3) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID) --lokid='$(TESTNET_VENV)/bin/python $(REPO)/contrib/testnet/lokid.py'
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
