@@ -123,10 +123,9 @@ namespace llarp
 
       /// send introset to peer from source with S counter and excluding peers
       void
-      PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
-                          const service::EncryptedIntroSet& introset,
-                          const Key_t& peer, uint64_t S,
-                          const std::set< Key_t >& exclude) override;
+      PropagateIntroSetTo(const Key_t& from, uint64_t txid,
+                            const service::EncryptedIntroSet& introset,
+                            const Key_t& tellpeer, bool relayed, uint64_t relayOrder);
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
@@ -556,16 +555,15 @@ namespace llarp
 
     void
     Context::PropagateIntroSetTo(const Key_t& from, uint64_t txid,
-                                 const service::EncryptedIntroSet& introset,
-                                 const Key_t& tellpeer, uint64_t S,
-                                 const std::set< Key_t >& exclude)
+                          const service::EncryptedIntroSet& introset,
+                          const Key_t& tellpeer, bool relayed, uint64_t relayOrder)
     {
       TXOwner asker(from, txid);
       TXOwner peer(tellpeer, ++ids);
       const Key_t addr(introset.derivedSigningKey);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new PublishServiceJob(asker, introset, this, S, exclude));
+          new PublishServiceJob(asker, introset, this, relayed, relayOrder));
     }
 
     void

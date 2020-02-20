@@ -14,20 +14,19 @@ namespace llarp
     {
       static const uint64_t MaxPropagationDepth;
       llarp::service::EncryptedIntroSet introset;
-      std::vector< Key_t > exclude;
-      uint64_t depth = 0;
+      bool relayed = false;
+      uint64_t relayOrder = 0;
       uint64_t txID  = 0;
       PublishIntroMessage() : IMessage({})
       {
       }
 
-      PublishIntroMessage(const llarp::service::EncryptedIntroSet& i,
-                          uint64_t tx, uint64_t s,
-                          std::vector< Key_t > _exclude = {})
+      PublishIntroMessage(const llarp::service::EncryptedIntroSet& introset_,
+                          uint64_t tx, bool relayed_, uint64_t relayOrder_)
           : IMessage({})
-          , introset(i)
-          , exclude(std::move(_exclude))
-          , depth(s)
+          , introset(introset_)
+          , relayed(relayed_)
+          , relayOrder(relayOrder_)
           , txID(tx)
       {
       }

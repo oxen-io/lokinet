@@ -468,7 +468,7 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        if(PublishIntroSetVia(i, r, path))
+        if(PublishIntroSetVia(i, r, path, published))
         {
           published++;
         }
@@ -480,11 +480,13 @@ namespace llarp
     {
       EncryptedIntroSet m_IntroSet;
       Endpoint* m_Endpoint;
+      uint64_t m_relayOrder;
       PublishIntroSetJob(Endpoint* parent, uint64_t id,
-                         EncryptedIntroSet introset)
+                         EncryptedIntroSet introset, uint64_t relayOrder)
           : IServiceLookup(parent, id, "PublishIntroSet")
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
+          , m_relayOrder(relayOrder)
       {
       }
 
@@ -493,7 +495,7 @@ namespace llarp
       {
         auto msg = std::make_shared< routing::DHTMessage >();
         msg->M.emplace_back(
-            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, 5));
+            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, true, m_relayOrder));
         return msg;
       }
 
@@ -526,9 +528,9 @@ namespace llarp
 
     bool
     Endpoint::PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
-                                 path::Path_ptr path)
+                                 path::Path_ptr path, uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), i);
+      auto job = new PublishIntroSetJob(this, GenTXID(), i, relayOrder);
       if(job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();

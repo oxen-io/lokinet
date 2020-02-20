@@ -172,7 +172,7 @@ namespace llarp
 
       bool
       PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
-                         path::Path_ptr p);
+                         path::Path_ptr p, uint64_t relayOrder);
 
       bool
       HandleGotIntroMessage(

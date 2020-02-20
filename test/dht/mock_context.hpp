@@ -62,8 +62,7 @@ namespace llarp
       MOCK_METHOD6(PropagateIntroSetTo,
                    void(const dht::Key_t& source, uint64_t sourceTX,
                         const service::EncryptedIntroSet& introset,
-                        const dht::Key_t& peer, uint64_t S,
-                        const std::set< dht::Key_t >& exclude));
+                        const dht::Key_t& peer, bool relayed, uint64_t relayOrder));
 
       MOCK_METHOD3(Init,
                    void(const dht::Key_t&, AbstractRouter*, llarp_time_t));

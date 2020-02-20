@@ -14,14 +14,13 @@ namespace llarp
   {
     struct PublishServiceJob : public TX< Key_t, service::EncryptedIntroSet >
     {
-      uint64_t S;
-      std::set< Key_t > dontTell;
+      bool relayed;
+      uint64_t relayOrder;
       service::EncryptedIntroSet introset;
 
       PublishServiceJob(const TXOwner &asker,
                         const service::EncryptedIntroSet &introset,
-                        AbstractContext *ctx, uint64_t s,
-                        std::set< Key_t > exclude);
+                        AbstractContext *ctx, bool relayed, uint64_t relayOrder);
 
       bool
       Validate(const service::EncryptedIntroSet &introset) const override;

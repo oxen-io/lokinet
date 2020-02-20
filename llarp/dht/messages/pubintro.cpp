@@ -5,6 +5,7 @@
 #include <messages/dht_immediate.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -18,13 +19,12 @@ namespace llarp
                                    llarp_buffer_t *val)
     {
       bool read = false;
-      if(key == "E")
-      {
-        return BEncodeReadList(exclude, val);
-      }
       if(!BEncodeMaybeReadDictEntry("I", introset, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", depth, read, key, val))
+      if(!BEncodeMaybeReadDictInt("O", relayOrder, read, key, val))
+        return false;
+      uint64_t relayedInt = (relayed ? 1 : 0);
+      if(!BEncodeMaybeReadDictInt("R", relayedInt, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictInt("T", txID, read, key, val))
         return false;
@@ -40,44 +40,90 @@ namespace llarp
     {
       auto now = ctx->impl->Now();
 
-      if(depth > MaxPropagationDepth)
-      {
-        llarp::LogWarn("invalid propgagation depth value ", depth, " > ",
-                       MaxPropagationDepth);
-        return false;
-      }
       auto &dht = *ctx->impl;
       if(!introset.Verify(now))
       {
-        llarp::LogWarn("invalid introset: ", introset);
+        llarp::LogWarn("Received PublishIntroMessage with invalid introset: ",
+            introset);
         // don't propogate or store
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
+      }
+
+      if(introset.IsExpired(now + llarp::service::MAX_INTROSET_TIME_DELTA))
+      {
+        // don't propogate or store
+        llarp::LogWarn("Received PublishIntroMessage with expired Introset: ",
+            introset);
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
 
       const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
-      now += llarp::service::MAX_INTROSET_TIME_DELTA;
-      if(introset.IsExpired(now))
+      // identify closest 4 routers
+      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(addr, 4);
+      if (closestRCs.size() != 4)
       {
-        // don't propogate or store
-        replies.emplace_back(new GotIntroMessage({}, txID));
-        return true;
+          llarp::LogWarn("Received PublishIntroMessage but only know ",
+              closestRCs.size(), " nodes");
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
       }
-      dht.services()->PutNode(introset);
-      replies.emplace_back(new GotIntroMessage({introset}, txID));
-      Key_t peer;
-      std::set< Key_t > exclude_propagate;
-      for(const auto &e : exclude)
-        exclude_propagate.insert(e);
-      exclude_propagate.insert(From);
-      exclude_propagate.insert(dht.OurKey());
-      if(depth > 0
-         && dht.Nodes()->FindCloseExcluding(addr, peer, exclude_propagate))
+
+      // function to identify the closest 4 routers we know of for this introset
+      auto propagateToClosestFour = [&, this]() {
+
+        // grab 1st & 2nd if we are relayOrder == 0, 3rd & 4th otherwise
+        auto rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
+        auto rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
+
+        Key_t peer0{rc0.pubkey};
+        Key_t peer1{rc1.pubkey};
+
+        // TODO: handle case where we are peer0 or peer1
+
+        dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
+        dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
+      };
+
+      if (relayed)
       {
-        dht.PropagateIntroSetTo(From, txID, introset, peer, depth - 1,
-                                exclude_propagate);
+        if (relayOrder > 1)
+        {
+          llarp::LogWarn("Received PublishIntroMessage with invalid relayOrder: ",
+              relayOrder);
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
+
+        propagateToClosestFour();
+
       }
+      else
+      {
+        bool found = false;
+        for (const auto& rc : closestRCs)
+        {
+          if (rc.pubkey == dht.OurKey())
+          {
+            found = true;
+            break;
+          }
+        }
+
+        if (found)
+        {
+          dht.services()->PutNode(introset);
+          replies.emplace_back(new GotIntroMessage({introset}, txID));
+        }
+        else
+        {
+          // TODO: ensure this can't create a loop (reintroduce depth?)
+          propagateToClosestFour();
+        }
+      }
+
       return true;
     }
 
@@ -88,11 +134,11 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "I"))
         return false;
-      if(!BEncodeWriteDictList("E", exclude, buf))
-        return false;
       if(!BEncodeWriteDictEntry("I", introset, buf))
         return false;
-      if(!BEncodeWriteDictInt("S", depth, buf))
+      if(!BEncodeWriteDictInt("O", relayOrder, buf))
+        return false;
+      if(!BEncodeWriteDictInt("R", relayed, buf))
         return false;
       if(!BEncodeWriteDictInt("T", txID, buf))
         return false;
