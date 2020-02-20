@@ -1153,7 +1153,7 @@ namespace llarp
   }
 
   uint32_t
-  Router::PathBuildNumber()
+  Router::NextPathBuildNumber()
   {
     return path_build_count++;
   }

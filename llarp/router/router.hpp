@@ -481,7 +481,7 @@ namespace llarp
     ShortName() const;
 
     uint32_t
-    PathBuildNumber();
+    NextPathBuildNumber();
 
     void
     handle_router_ticker();

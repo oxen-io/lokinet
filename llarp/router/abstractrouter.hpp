@@ -249,7 +249,7 @@ namespace llarp
     HasSessionTo(const RouterID &router) const = 0;
 
     virtual uint32_t
-    PathBuildNumber() = 0;
+    NextPathBuildNumber() = 0;
 
     virtual std::string
     ShortName() const = 0;
