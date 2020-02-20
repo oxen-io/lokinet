@@ -145,7 +145,6 @@ addons:
     - cmake
     - curl
     - libuv
-    - llvm
     - make
     - mingw-w64
     - ninja
