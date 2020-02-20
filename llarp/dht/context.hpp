@@ -94,7 +94,8 @@ namespace llarp
       virtual void
       PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
                           const service::EncryptedIntroSet& introset,
-                          const Key_t& peer, bool relayed, uint64_t relayOrder) = 0;
+                          const Key_t& peer, bool relayed,
+                          uint64_t relayOrder) = 0;
 
       virtual void
       Init(const Key_t& us, AbstractRouter* router,

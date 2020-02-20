@@ -124,8 +124,9 @@ namespace llarp
       /// send introset to peer from source with S counter and excluding peers
       void
       PropagateIntroSetTo(const Key_t& from, uint64_t txid,
-                            const service::EncryptedIntroSet& introset,
-                            const Key_t& tellpeer, bool relayed, uint64_t relayOrder);
+                          const service::EncryptedIntroSet& introset,
+                          const Key_t& tellpeer, bool relayed,
+                          uint64_t relayOrder);
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
@@ -555,8 +556,9 @@ namespace llarp
 
     void
     Context::PropagateIntroSetTo(const Key_t& from, uint64_t txid,
-                          const service::EncryptedIntroSet& introset,
-                          const Key_t& tellpeer, bool relayed, uint64_t relayOrder)
+                                 const service::EncryptedIntroSet& introset,
+                                 const Key_t& tellpeer, bool relayed,
+                                 uint64_t relayOrder)
     {
       TXOwner asker(from, txid);
       TXOwner peer(tellpeer, ++ids);

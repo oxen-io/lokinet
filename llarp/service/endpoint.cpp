@@ -494,8 +494,8 @@ namespace llarp
       BuildRequestMessage() override
       {
         auto msg = std::make_shared< routing::DHTMessage >();
-        msg->M.emplace_back(
-            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, true, m_relayOrder));
+        msg->M.emplace_back(std::make_unique< dht::PublishIntroMessage >(
+            m_IntroSet, txid, true, m_relayOrder));
         return msg;
       }
 

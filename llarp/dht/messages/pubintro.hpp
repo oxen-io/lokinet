@@ -14,9 +14,9 @@ namespace llarp
     {
       static const uint64_t MaxPropagationDepth;
       llarp::service::EncryptedIntroSet introset;
-      bool relayed = false;
+      bool relayed        = false;
       uint64_t relayOrder = 0;
-      uint64_t txID  = 0;
+      uint64_t txID       = 0;
       PublishIntroMessage() : IMessage({})
       {
       }

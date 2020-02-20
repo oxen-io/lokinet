@@ -44,7 +44,7 @@ namespace llarp
       if(!introset.Verify(now))
       {
         llarp::LogWarn("Received PublishIntroMessage with invalid introset: ",
-            introset);
+                       introset);
         // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
@@ -54,7 +54,7 @@ namespace llarp
       {
         // don't propogate or store
         llarp::LogWarn("Received PublishIntroMessage with expired Introset: ",
-            introset);
+                       introset);
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
@@ -63,22 +63,21 @@ namespace llarp
 
       // identify closest 4 routers
       auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(addr, 4);
-      if (closestRCs.size() != 4)
+      if(closestRCs.size() != 4)
       {
-          llarp::LogWarn("Received PublishIntroMessage but only know ",
-              closestRCs.size(), " nodes");
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
+        llarp::LogWarn("Received PublishIntroMessage but only know ",
+                       closestRCs.size(), " nodes");
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
       }
 
-      const auto& us = dht.OurKey();
+      const auto &us = dht.OurKey();
 
       // function to identify the closest 4 routers we know of for this introset
       auto propagateToClosestFour = [&]() {
-
         // grab 1st & 2nd if we are relayOrder == 0, 3rd & 4th otherwise
-        const auto& rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
-        const auto& rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
+        const auto &rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
+        const auto &rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
 
         const Key_t peer0{rc0.pubkey};
         const Key_t peer1{rc1.pubkey};
@@ -86,45 +85,45 @@ namespace llarp
         bool arePeer0 = (peer0 == us);
         bool arePeer1 = (peer1 == us);
 
-        if (arePeer0 or arePeer1)
+        if(arePeer0 or arePeer1)
         {
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));
         }
 
-        if (not arePeer0)
+        if(not arePeer0)
           dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
 
-        if (not arePeer1)
+        if(not arePeer1)
           dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
       };
 
-      if (relayed)
+      if(relayed)
       {
-        if (relayOrder > 1)
+        if(relayOrder > 1)
         {
-          llarp::LogWarn("Received PublishIntroMessage with invalid relayOrder: ",
+          llarp::LogWarn(
+              "Received PublishIntroMessage with invalid relayOrder: ",
               relayOrder);
           replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
 
         propagateToClosestFour();
-
       }
       else
       {
         bool found = false;
-        for (const auto& rc : closestRCs)
+        for(const auto &rc : closestRCs)
         {
-          if (rc.pubkey == dht.OurKey())
+          if(rc.pubkey == dht.OurKey())
           {
             found = true;
             break;
           }
         }
 
-        if (found)
+        if(found)
         {
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));

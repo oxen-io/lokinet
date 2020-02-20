@@ -8,9 +8,9 @@ namespace llarp
 {
   namespace dht
   {
-    PublishServiceJob::PublishServiceJob(const TXOwner &asker,
-                      const service::EncryptedIntroSet &introset_,
-                      AbstractContext *ctx, bool relayed_, uint64_t relayOrder_)
+    PublishServiceJob::PublishServiceJob(
+        const TXOwner &asker, const service::EncryptedIntroSet &introset_,
+        AbstractContext *ctx, bool relayed_, uint64_t relayOrder_)
         : TX< Key_t, service::EncryptedIntroSet >(
             asker, Key_t{introset_.derivedSigningKey}, ctx)
         , relayed(relayed_)

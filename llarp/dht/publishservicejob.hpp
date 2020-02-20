@@ -20,7 +20,8 @@ namespace llarp
 
       PublishServiceJob(const TXOwner &asker,
                         const service::EncryptedIntroSet &introset,
-                        AbstractContext *ctx, bool relayed, uint64_t relayOrder);
+                        AbstractContext *ctx, bool relayed,
+                        uint64_t relayOrder);
 
       bool
       Validate(const service::EncryptedIntroSet &introset) const override;
