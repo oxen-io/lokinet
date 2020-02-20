@@ -1,5 +1,6 @@
 #include <util/logging/loglevel.hpp>
 #include <unordered_map>
+#include <algorithm>
 
 namespace llarp
 {
