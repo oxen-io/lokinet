@@ -30,7 +30,7 @@ namespace llarp
     {
       parent->DHTSendTo(
           peer.node.as_array(),
-          new FindIntroMessage(target, peer.txid, recursionDepth));
+          new FindIntroMessage(target, peer.txid));
     }
 
     void

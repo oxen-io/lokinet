@@ -9,8 +9,6 @@ namespace llarp
 {
   namespace dht
   {
-    /// 2 ** 12 which is 4096 nodes, after which this starts to fail "more"
-    const uint64_t FindIntroMessage::MaxRecursionDepth = 12;
     FindIntroMessage::~FindIntroMessage()              = default;
 
     bool
@@ -22,9 +20,6 @@ namespace llarp
         return false;
 
       if(!BEncodeMaybeReadDictInt("O", relayOrder, read, k, val))
-        return false;
-
-      if(!BEncodeMaybeReadDictInt("R", recursionDepth, read, k, val))
         return false;
 
       if(!BEncodeMaybeReadDictEntry("S", location, read, k, val))
@@ -55,9 +50,6 @@ namespace llarp
         if(!BEncodeWriteDictInt("O", relayOrder, buf))
           return false;
 
-        // recursion
-        if(!BEncodeWriteDictInt("R", recursionDepth, buf))
-          return false;
         // service address
         if(!BEncodeWriteDictEntry("S", location, buf))
           return false;
@@ -69,10 +61,6 @@ namespace llarp
 
         // relay order
         if(!BEncodeWriteDictInt("O", relayOrder, buf))
-          return false;
-
-        // recursion
-        if(!BEncodeWriteDictInt("R", recursionDepth, buf))
           return false;
       }
       // txid
@@ -89,12 +77,6 @@ namespace llarp
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
-      if(recursionDepth > MaxRecursionDepth)
-      {
-        llarp::LogError("recursion depth big, ", recursionDepth, "> ",
-                        MaxRecursionDepth);
-        return false;
-      }
       auto& dht = *ctx->impl;
       if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, txID}))
       {
@@ -116,18 +98,6 @@ namespace llarp
       // we are relaying this message for e.g. a client
       if(relayed)
       {
-
-        // sanity check -- shouldn't happen
-        if(recursionDepth == 0)
-        {
-          // TODO: we're effectively calling this an illegal state, if we
-          //       support (relayed == true && recursionDepth == 0) then we need
-          //       to actually look this up here
-          LogWarn("Got FIM with relayed == true and recursionDepth == 0");
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
-        }
-
         uint32_t numDesired = 0;
         if(relayOrder == 0)
           numDesired = 2;
@@ -155,52 +125,21 @@ namespace llarp
         for(const auto& entry : closestRCs)
         {
           Key_t peer = Key_t(entry.pubkey);
-          dht.LookupIntroSetForPath(location, txID, pathID, peer,
-                                    recursionDepth - 1, 0);
+          dht.LookupIntroSetForPath(location, txID, pathID, peer, 0);
         }
       }
       else
       {
-
         // we should have this value if introset was propagated properly
         const auto maybe = dht.GetIntroSetByLocation(location);
         if(maybe.has_value())
         {
           replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
-          return true;
-        }
-
-        if (recursionDepth == 0)
-        {
-          LogWarn("Got FIM with relayed == false and recursionDepth == 0 but we don't have introset");
-          replies.emplace_back(new GotIntroMessage({}, txID));
-          return true;
         }
         else
         {
-          // TODO: this entire else-block should now be dead code...
-          LogWarn("Got FIM with relayed == false and recursionDepth > 0");
-
-          const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(location);
-
-          Key_t peer = Key_t(rc.pubkey);
-          const Key_t& us = dht.OurKey();
-
-          if((us ^ location) <= (peer ^ location))
-          {
-            // ask next closest as we are recursive
-            // TODO: this code path should be dead code with our redundant DHT strategy
-            std::set< Key_t > exclude = {us, From};
-            if(not dht.Nodes()->FindCloseExcluding(location, peer, exclude))
-            {
-              // no second closeset
-              replies.emplace_back(new GotIntroMessage({}, txID));
-              return true;
-            }
-          }
-
-          dht.LookupIntroSetRecursive(location, From, txID, peer,
-                                      recursionDepth - 1, 0);
+          LogWarn("Got FIM with relayed == false and we don't have entry");
+          replies.emplace_back(new GotIntroMessage({}, txID));
         }
       }
       return true;
