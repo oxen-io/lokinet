@@ -8,15 +8,14 @@ namespace llarp
 {
   namespace dht
   {
-    PublishServiceJob::PublishServiceJob(const TXOwner &asker,
-                                         const service::EncryptedIntroSet &I,
-                                         AbstractContext *ctx, uint64_t s,
-                                         std::set< Key_t > exclude)
+    PublishServiceJob::PublishServiceJob(
+        const TXOwner &asker, const service::EncryptedIntroSet &introset_,
+        AbstractContext *ctx, bool relayed_, uint64_t relayOrder_)
         : TX< Key_t, service::EncryptedIntroSet >(
-            asker, Key_t{I.derivedSigningKey}, ctx)
-        , S(s)
-        , dontTell(std::move(exclude))
-        , introset(I)
+            asker, Key_t{introset_.derivedSigningKey}, ctx)
+        , relayed(relayed_)
+        , relayOrder(relayOrder_)
+        , introset(introset_)
     {
     }
 
@@ -36,14 +35,9 @@ namespace llarp
     void
     PublishServiceJob::Start(const TXOwner &peer)
     {
-      std::vector< Key_t > exclude;
-      for(const auto &router : dontTell)
-      {
-        exclude.push_back(router);
-      }
       parent->DHTSendTo(
           peer.node.as_array(),
-          new PublishIntroMessage(introset, peer.txid, S, exclude));
+          new PublishIntroMessage(introset, peer.txid, relayed, relayOrder));
     }
   }  // namespace dht
 }  // namespace llarp
