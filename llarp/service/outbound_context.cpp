@@ -114,6 +114,7 @@ namespace llarp
           return true;
         }
         currentIntroSet = foundIntro.value();
+        ShiftIntroduction(false);
       }
       else
       {
