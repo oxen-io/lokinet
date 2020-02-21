@@ -272,12 +272,14 @@ namespace llarp
           for(const auto &key : whitelistRouters)
             copyWhiteListRouters.insert(key);
         }
-        // remove all the ones we know locally from the list of known
+        // remove all the ones we know locally from the list to look up
         _nodedb->visit(
             [&copyWhiteListRouters](const RouterContact &rc) -> bool {
               copyWhiteListRouters.erase(rc.pubkey);
               return true;
             });
+        // for each unknown entry check for cooldown and add them if we don't
+        // hit any cooldown
         for(const auto &r : copyWhiteListRouters)
         {
           if(now > _routerLookupTimes[r] + RerequestInterval)
