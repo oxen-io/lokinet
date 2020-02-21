@@ -270,7 +270,7 @@ namespace llarp
         for(const auto &r : whitelistRouters)
         {
           if(now > _routerLookupTimes[r] + RerequestInterval
-             and not _nodedb->Has(r))
+             and not _nodedb->Has(r, false))
           {
             lookupRouters.emplace_back(r);
           }

@@ -89,10 +89,15 @@ llarp_nodedb::RemoveIf(
 }
 
 bool
-llarp_nodedb::Has(const llarp::RouterID &pk)
+llarp_nodedb::Has(const llarp::RouterID &pk, bool lockme)
 {
-  llarp::util::Lock lock(&access);
-  return entries.find(pk) != entries.end();
+  if(lockme)
+  {
+    llarp::util::Lock lock(&access);
+    return entries.find(pk) != entries.end();
+  }
+  else
+    return entries.find(pk) != entries.end();
 }
 
 llarp::RouterContact
