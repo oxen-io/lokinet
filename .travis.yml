@@ -132,6 +132,7 @@ env:
 
 addons:
   homebrew:
+    update: true
     packages:
     - ccache
     - cmake
