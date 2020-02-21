@@ -139,7 +139,6 @@ addons:
     - curl
     - libuv
     - make
-    - mingw-w64
     - ninja
     - libsodium
 
