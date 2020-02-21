@@ -36,25 +36,16 @@ set(LIB_UTIL_SRC
   util/meta/object.cpp
   util/meta/traits.cpp
   util/meta/variant.cpp
-  util/metrics/core.cpp
-  util/metrics/json_publisher.cpp
-  util/metrics/metrics.cpp
-  util/metrics/metrictank_publisher.cpp
-  util/metrics/stream_publisher.cpp
-  util/metrics/types.cpp
   util/printer.cpp
   util/status.cpp
-  util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
   util/thread/logic.cpp
   util/thread/queue_manager.cpp
   util/thread/queue.cpp
-  util/thread/scheduler.cpp
   util/thread/thread_pool.cpp
   util/thread/threading.cpp
   util/thread/threadpool.cpp
-  util/thread/timerqueue.cpp
   util/time.cpp
   util/types.cpp
 )
@@ -70,7 +61,7 @@ endif()
 
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_LIBRARIES})
 target_link_libraries(${UTIL_LIB} PUBLIC
-    absl::synchronization absl::flat_hash_map absl::container
+    absl::time absl::hash
     nlohmann_json::nlohmann_json
     ghc_filesystem
     optional-lite
@@ -78,7 +69,7 @@ target_link_libraries(${UTIL_LIB} PUBLIC
 
 # cut back on fluff
 if (NOT WIN32)
-  target_link_libraries(${UTIL_LIB} PUBLIC absl::variant absl::strings)
+  target_link_libraries(${UTIL_LIB} PUBLIC absl::strings)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

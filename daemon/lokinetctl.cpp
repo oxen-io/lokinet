@@ -3,7 +3,6 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 
-#include <absl/synchronization/mutex.h>
 #include <cxxopts.hpp>
 #include <string>
 #include <vector>
@@ -110,10 +109,6 @@ namespace
 int
 main(int argc, char* argv[])
 {
-#ifdef LOKINET_DEBUG
-  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
-#endif
-
   // clang-format off
   cxxopts::Options options(
     "lokinetctl",

@@ -74,12 +74,11 @@ namespace llarp
 
     void
     ForEachSession(std::function< void(const ILinkSession*) > visit,
-                   bool randomize = false) const
-        LOCKS_EXCLUDED(m_AuthedLinksMutex);
+                   bool randomize = false) const EXCLUDES(m_AuthedLinksMutex);
 
     void
     ForEachSession(std::function< void(ILinkSession*) > visit)
-        LOCKS_EXCLUDED(m_AuthedLinksMutex);
+        EXCLUDES(m_AuthedLinksMutex);
 
     static void
     udp_tick(llarp_udp_io* udp);
@@ -120,7 +119,7 @@ namespace llarp
     Name() const = 0;
 
     util::StatusObject
-    ExtractStatus() const LOCKS_EXCLUDED(m_AuthedLinksMutex);
+    ExtractStatus() const EXCLUDES(m_AuthedLinksMutex);
 
     void
     CloseSessionTo(const RouterID& remote);
@@ -138,7 +137,7 @@ namespace llarp
     bool
     VisitSessionByPubkey(const RouterID& pk,
                          std::function< bool(ILinkSession*) > visit)
-        LOCKS_EXCLUDED(m_AuthedLinksMutex);
+        EXCLUDES(m_AuthedLinksMutex);
 
     virtual uint16_t
     Rank() const = 0;
@@ -196,13 +195,13 @@ namespace llarp
 
     /// called by link session to remove a pending session who is timed out
     // void
-    // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
+    // RemovePending(ILinkSession* s) EXCLUDES(m_PendingMutex);
 
     /// count the number of sessions that are yet to be fully connected
     size_t
     NumberOfPendingSessions() const
     {
-      ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
+      Lock_t lock(m_PendingMutex);
       return m_Pending.size();
     }
 

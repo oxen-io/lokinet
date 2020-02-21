@@ -2,6 +2,7 @@
 #define LLARP_OBJECT_HPP
 
 #include <util/thread/threading.hpp>
+#include <atomic>
 
 #include <nonstd/optional.hpp>
 #include <vector>
@@ -197,7 +198,7 @@ namespace llarp
       }
 
       Node*
-      findNode(int32_t handle) const SHARED_LOCKS_REQUIRED(m_mutex)
+      findNode(int32_t handle) const REQUIRES_SHARED(m_mutex)
       {
         int32_t index = handle & INDEX_MASK;
 
@@ -226,7 +227,7 @@ namespace llarp
       add(const Value& value)
       {
         int32_t handle;
-        absl::WriterMutexLock l(&m_mutex);
+        util::Lock l(m_mutex);
         CatalogCleaner< Value > guard(this);
         Node* node;
 
@@ -264,7 +265,7 @@ namespace llarp
       bool
       remove(int32_t handle, Value* value = nullptr)
       {
-        absl::WriterMutexLock l(&m_mutex);
+        util::Lock l(m_mutex);
         Node* node = findNode(handle);
 
         if(!node)
@@ -289,7 +290,7 @@ namespace llarp
       void
       removeAll(std::vector< Value >* output = nullptr)
       {
-        absl::WriterMutexLock l(&m_mutex);
+        util::Lock l(m_mutex);
 
         for(Node* node : m_nodes)
         {
@@ -314,7 +315,7 @@ namespace llarp
       bool
       replace(const Value& newValue, int32_t handle)
       {
-        absl::WriterMutexLock l(&m_mutex);
+        util::Lock l(m_mutex);
         Node* node = findNode(handle);
 
         if(!node)
@@ -333,7 +334,7 @@ namespace llarp
       nonstd::optional< Value >
       find(int32_t handle)
       {
-        absl::ReaderMutexLock l(&m_mutex);
+        auto l = util::shared_lock(m_mutex);
         Node* node = findNode(handle);
 
         if(!node)
@@ -356,10 +357,12 @@ namespace llarp
     };
 
     template < typename Value >
-    class SCOPED_LOCKABLE CatalogIterator
+    class SCOPED_CAPABILITY CatalogIterator
     {
       const Catalog< Value >* m_catalog;
       size_t m_index;
+
+      std::shared_lock<util::Mutex> lock;
 
       CatalogIterator(const CatalogIterator&) = delete;
       CatalogIterator&
@@ -367,16 +370,10 @@ namespace llarp
 
      public:
       explicit CatalogIterator(const Catalog< Value >* catalog)
-          SHARED_LOCK_FUNCTION(m_catalog->m_mutex)
-          : m_catalog(catalog), m_index(-1)
+          ACQUIRE_SHARED(catalog->m_mutex)
+          : m_catalog(catalog), m_index(-1), lock(m_catalog->m_mutex)
       {
-        m_catalog->m_mutex.ReaderLock();
         operator++();
-      }
-
-      ~CatalogIterator() UNLOCK_FUNCTION()
-      {
-        m_catalog->m_mutex.ReaderUnlock();
       }
 
       void
@@ -425,7 +422,7 @@ namespace llarp
     bool
     Catalog< Value >::verify() const
     {
-      absl::WriterMutexLock l(&m_mutex);
+      util::Lock l(m_mutex);
 
       if(m_nodes.size() < m_size)
       {

@@ -28,8 +28,9 @@ namespace llarp
 
     template < typename T, typename GetTime, typename PutTime, typename Compare,
                typename GetNow = GetNowSyscall, typename Mutex_t = util::Mutex,
-               typename Lock_t = util::Lock, llarp_time_t dropMs = 5,
-               llarp_time_t initialIntervalMs = 100, size_t MaxSize = 1024 >
+               typename Lock_t     = std::lock_guard< Mutex_t >,
+               llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100,
+               size_t MaxSize = 1024 >
     struct CoDelQueue
     {
       CoDelQueue(std::string name, PutTime put, GetNow now)
@@ -41,7 +42,7 @@ namespace llarp
       }
 
       size_t
-      Size() LOCKS_EXCLUDED(m_QueueMutex)
+      Size() EXCLUDES(m_QueueMutex)
       {
         Lock_t lock(m_QueueMutex);
         return m_QueueIdx;
@@ -50,9 +51,9 @@ namespace llarp
       template < typename... Args >
       bool
       EmplaceIf(std::function< bool(T&) > pred, Args&&... args)
-          LOCKS_EXCLUDED(m_QueueMutex)
+          EXCLUDES(m_QueueMutex)
       {
-        Lock_t lock(&m_QueueMutex);
+        Lock_t lock(m_QueueMutex);
         if(m_QueueIdx == MaxSize)
           return false;
         T* t = &m_Queue[m_QueueIdx];
@@ -73,9 +74,9 @@ namespace llarp
 
       template < typename... Args >
       void
-      Emplace(Args&&... args) LOCKS_EXCLUDED(m_QueueMutex)
+      Emplace(Args&&... args) EXCLUDES(m_QueueMutex)
       {
-        Lock_t lock(&m_QueueMutex);
+        Lock_t lock(m_QueueMutex);
         if(m_QueueIdx == MaxSize)
           return;
         T* t = &m_Queue[m_QueueIdx];
@@ -95,13 +96,13 @@ namespace llarp
 
       template < typename Visit, typename Filter >
       void
-      Process(Visit visitor, Filter f) LOCKS_EXCLUDED(m_QueueMutex)
+      Process(Visit visitor, Filter f) EXCLUDES(m_QueueMutex)
       {
         llarp_time_t lowest = std::numeric_limits< llarp_time_t >::max();
         if(_getNow() < nextTickAt)
           return;
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
-        Lock_t lock(&m_QueueMutex);
+        Lock_t lock(m_QueueMutex);
         auto start = firstPut;
 
         if(m_QueueIdx == 1)

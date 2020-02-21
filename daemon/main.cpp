@@ -102,10 +102,6 @@ main(int argc, char *argv[])
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
 
-#ifdef LOKINET_DEBUG
-  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
-#endif
-
   // clang-format off
   cxxopts::Options options(
 		"lokinet",

@@ -118,7 +118,7 @@ namespace llarp
   {
     if(m_DisableProfiling.load())
       return false;
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
       return false;
@@ -130,7 +130,7 @@ namespace llarp
   {
     if(m_DisableProfiling.load())
       return false;
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
       return false;
@@ -142,7 +142,7 @@ namespace llarp
   {
     if(m_DisableProfiling.load())
       return false;
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
       return false;
@@ -152,7 +152,7 @@ namespace llarp
   void
   Profiling::Tick()
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     std::for_each(m_Profiles.begin(), m_Profiles.end(),
                   [](auto& item) { item.second.Tick(); });
   }
@@ -160,7 +160,7 @@ namespace llarp
   void
   Profiling::MarkConnectTimeout(const RouterID& r)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     m_Profiles[r].connectTimeoutCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -168,7 +168,7 @@ namespace llarp
   void
   Profiling::MarkConnectSuccess(const RouterID& r)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -176,14 +176,14 @@ namespace llarp
   void
   Profiling::ClearProfile(const RouterID& r)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     m_Profiles.erase(r);
   }
 
   void
   Profiling::MarkHopFail(const RouterID& r)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     m_Profiles[r].pathFailCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -191,7 +191,7 @@ namespace llarp
   void
   Profiling::MarkPathFail(path::Path* p)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     size_t idx = 0;
     for(const auto& hop : p->hops)
     {
@@ -208,7 +208,7 @@ namespace llarp
   void
   Profiling::MarkPathSuccess(path::Path* p)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     const auto sz = p->hops.size();
     for(const auto& hop : p->hops)
     {
@@ -220,7 +220,7 @@ namespace llarp
   bool
   Profiling::Save(const char* fname)
   {
-    absl::ReaderMutexLock lock(&m_ProfilesMutex);
+    auto lock = util::shared_lock(m_ProfilesMutex);
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector< byte_t > tmp(sz, 0);
@@ -247,7 +247,7 @@ namespace llarp
   bool
   Profiling::BEncode(llarp_buffer_t* buf) const
   {
-    absl::ReaderMutexLock lock(&m_ProfilesMutex);
+    auto lock = util::shared_lock(m_ProfilesMutex);
     return BEncodeNoLock(buf);
   }
 
@@ -284,7 +284,7 @@ namespace llarp
   bool
   Profiling::Load(const char* fname)
   {
-    lock_t lock(&m_ProfilesMutex);
+    util::Lock lock(m_ProfilesMutex);
     m_Profiles.clear();
     if(!BDecodeReadFromFile(fname, *this))
     {

@@ -34,10 +34,6 @@ list(APPEND TEST_SRC
     util/meta/test_llarp_util_memfn.cpp
     util/meta/test_llarp_util_object.cpp
     util/meta/test_llarp_util_traits.cpp
-    util/metrics/test_llarp_metrics_metricktank.cpp
-    util/metrics/test_llarp_metrics_publisher.cpp
-    util/metrics/test_llarp_util_metrics_core.cpp
-    util/metrics/test_llarp_util_metrics_types.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
     util/test_llarp_util_bits.cpp
@@ -49,8 +45,6 @@ list(APPEND TEST_SRC
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp
     util/thread/test_llarp_util_thread_pool.cpp
-    util/thread/test_llarp_util_timerqueue.cpp
-    util/thread/test_llarp_utils_scheduler.cpp
 )
 
 add_executable(${TEST_EXE}

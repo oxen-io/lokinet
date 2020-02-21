@@ -853,7 +853,7 @@ namespace llarp
     {
       if(msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
-        util::Lock l(&m_state->m_InboundTrafficQueueMutex);
+        util::Lock l(m_state->m_InboundTrafficQueueMutex);
         m_state->m_InboundTrafficQueue.emplace(msg);
         return true;
       }
@@ -903,7 +903,7 @@ namespace llarp
           return false;
         {
           LogWarn("invalidating convotag T=", frame.T);
-          util::Lock lock(&m_state->m_SendQueueMutex);
+          util::Lock lock(m_state->m_SendQueueMutex);
           m_state->m_SendQueue.emplace_back(
               std::make_shared< const routing::PathTransferMessage >(f,
                                                                      frame.F),
@@ -1080,7 +1080,7 @@ namespace llarp
         for(const auto& item : sessions)
           item.second.first->FlushDownstream();
         // send downstream traffic to user for hidden service
-        util::Lock lock(&m_state->m_InboundTrafficQueueMutex);
+        util::Lock lock(m_state->m_InboundTrafficQueueMutex);
         while(not queue.empty())
         {
           const auto& msg = queue.top();
@@ -1106,7 +1106,7 @@ namespace llarp
       for(const auto& item : sessions)
         item.second.first->FlushUpstream();
       {
-        util::Lock lock(&m_state->m_SendQueueMutex);
+        util::Lock lock(m_state->m_SendQueueMutex);
         // send outbound traffic
         for(const auto& item : m_state->m_SendQueue)
         {
@@ -1206,7 +1206,7 @@ namespace llarp
                 return;
               }
 
-              util::Lock lock(&self->m_state->m_SendQueueMutex);
+              util::Lock lock(self->m_state->m_SendQueueMutex);
               self->m_state->m_SendQueue.emplace_back(transfer, p);
             });
           }

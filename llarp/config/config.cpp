@@ -9,7 +9,6 @@
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
-#include <util/meta/memfn.hpp>
 #include <util/str.hpp>
 #include <util/lokinet_init.h>
 

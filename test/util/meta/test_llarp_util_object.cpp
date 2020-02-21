@@ -1,4 +1,5 @@
 #include <util/meta/object.hpp>
+#include <util/thread/barrier.hpp>
 
 #include <array>
 #include <thread>

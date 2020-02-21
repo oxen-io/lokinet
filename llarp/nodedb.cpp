@@ -43,14 +43,14 @@ llarp_nodedb::Remove(const llarp::RouterID &pk)
 void
 llarp_nodedb::Clear()
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   entries.clear();
 }
 
 bool
 llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
 {
-  llarp::util::Lock l(&access);
+  llarp::util::Lock l(access);
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
@@ -71,7 +71,7 @@ llarp_nodedb::RemoveIf(
 {
   std::set< std::string > files;
   {
-    llarp::util::Lock l(&access);
+    llarp::util::Lock l(access);
     auto itr = entries.begin();
     while(itr != entries.end())
     {
@@ -91,7 +91,7 @@ llarp_nodedb::RemoveIf(
 bool
 llarp_nodedb::Has(const llarp::RouterID &pk)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   return entries.find(pk) != entries.end();
 }
 
@@ -118,7 +118,7 @@ std::vector< llarp::RouterContact >
 llarp_nodedb::FindClosestTo(const llarp::dht::Key_t &location,
                             uint32_t numRouters)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   std::vector< const llarp::RouterContact * > all;
 
   all.reserve(entries.size());
@@ -180,7 +180,7 @@ llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
                                  std::shared_ptr< llarp::Logic > logic,
                                  std::function< void(void) > completionHandler)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   auto itr = entries.find(rc.pubkey);
   if(itr == entries.end() || itr->second.rc.OtherIsNewer(rc))
   {
@@ -201,7 +201,7 @@ llarp_nodedb::UpdateAsyncIfNewer(llarp::RouterContact rc,
 bool
 llarp_nodedb::Insert(const llarp::RouterContact &rc)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   auto itr = entries.find(rc.pubkey.as_array());
   if(itr != entries.end())
     entries.erase(itr);
@@ -241,7 +241,7 @@ void
 llarp_nodedb::SaveAll()
 {
   std::array< byte_t, MAX_RC_SIZE > tmp;
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   for(const auto &item : entries)
   {
     llarp_buffer_t buf(tmp);
@@ -307,7 +307,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
     return false;
   }
   {
-    llarp::util::Lock lock(&access);
+    llarp::util::Lock lock(access);
     entries.emplace(rc.pubkey.as_array(), rc);
   }
   return true;
@@ -316,7 +316,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
 void
 llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
@@ -331,7 +331,7 @@ llarp_nodedb::VisitInsertedBefore(
     std::function< void(const llarp::RouterContact &) > visit,
     llarp_time_t insertedAfter)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
@@ -487,14 +487,14 @@ llarp_nodedb::LoadAll()
 size_t
 llarp_nodedb::num_loaded() const
 {
-  absl::ReaderMutexLock l(&access);
+  auto l = llarp::util::shared_lock(access);
   return entries.size();
 }
 
 bool
 llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   const auto sz = entries.size();
   auto itr      = entries.begin();
   if(sz < 3)
@@ -529,7 +529,7 @@ bool
 llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
                                 llarp::RouterContact &result, size_t N)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   size_t sz = entries.size();
@@ -575,7 +575,7 @@ bool
 llarp_nodedb::select_random_hop_excluding(
     llarp::RouterContact &result, const std::set< llarp::RouterID > &exclude)
 {
-  llarp::util::Lock lock(&access);
+  llarp::util::Lock lock(access);
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   const size_t sz = entries.size();

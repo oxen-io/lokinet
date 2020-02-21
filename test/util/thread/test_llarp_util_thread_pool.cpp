@@ -1,5 +1,6 @@
 #include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
+#include <util/thread/barrier.hpp>
 
 #include <condition_variable>
 #include <mutex>

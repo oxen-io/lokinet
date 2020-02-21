@@ -266,7 +266,7 @@ namespace llarp
       void
       ForEachPath(std::function< void(const Path_ptr&) > visit) const
       {
-        Lock_t lock(&m_PathsMutex);
+        Lock_t lock(m_PathsMutex);
         auto itr = m_Paths.begin();
         while(itr != m_Paths.end())
         {
