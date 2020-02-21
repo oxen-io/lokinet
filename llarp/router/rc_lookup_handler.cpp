@@ -266,11 +266,21 @@ namespace llarp
 
       {
         // if we are using a whitelist look up a few routers we don't have
-        util::Lock l(&_mutex);
-        for(const auto &r : whitelistRouters)
+        std::unordered_set< RouterID, RouterID::Hash > copyWhiteListRouters;
         {
-          if(now > _routerLookupTimes[r] + RerequestInterval
-             and not _nodedb->Has(r, false))
+          util::Lock l(&_mutex);
+          for(const auto &key : whitelistRouters)
+            copyWhiteListRouters.insert(key);
+        }
+        // remove all the ones we know locally from the list of known
+        _nodedb->visit(
+            [&copyWhiteListRouters](const RouterContact &rc) -> bool {
+              copyWhiteListRouters.erase(rc.pubkey);
+              return true;
+            });
+        for(const auto &r : copyWhiteListRouters)
+        {
+          if(now > _routerLookupTimes[r] + RerequestInterval)
           {
             lookupRouters.emplace_back(r);
           }

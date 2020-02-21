@@ -89,15 +89,10 @@ llarp_nodedb::RemoveIf(
 }
 
 bool
-llarp_nodedb::Has(const llarp::RouterID &pk, bool lockme)
+llarp_nodedb::Has(const llarp::RouterID &pk)
 {
-  if(lockme)
-  {
-    llarp::util::Lock lock(&access);
-    return entries.find(pk) != entries.end();
-  }
-  else
-    return entries.find(pk) != entries.end();
+  llarp::util::Lock lock(&access);
+  return entries.find(pk) != entries.end();
 }
 
 llarp::RouterContact
@@ -492,7 +487,7 @@ llarp_nodedb::LoadAll()
 size_t
 llarp_nodedb::num_loaded() const
 {
-  absl::ReaderMutexLock l(&access);
+  llarp::util::Lock l(&access);
   return entries.size();
 }
 

@@ -100,7 +100,7 @@ struct llarp_nodedb
       LOCKS_EXCLUDED(access);
 
   bool
-  Has(const llarp::RouterID &pk, bool lockme = true) LOCKS_EXCLUDED(access);
+  Has(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
 
   std::string
   getRCFilePath(const llarp::RouterID &pubkey) const;
