@@ -24,7 +24,9 @@ namespace llarp
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
                PathRole startingRoles, std::string shortName)
-        : m_PathSet(parent), _role(startingRoles), m_shortName(std::move(shortName))
+        : m_PathSet(parent)
+        , _role(startingRoles)
+        , m_shortName(std::move(shortName))
 
     {
       hops.resize(h.size());
