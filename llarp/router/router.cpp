@@ -1146,6 +1146,18 @@ namespace llarp
     return _linkManager.HasSessionTo(remote);
   }
 
+  std::string
+  Router::ShortName() const
+  {
+    return RouterID(pubkey()).ToString().substr(0, 8);
+  }
+
+  uint32_t
+  Router::NextPathBuildNumber()
+  {
+    return path_build_count++;
+  }
+
   void
   Router::ConnectToRandomRouters(int _want)
   {
