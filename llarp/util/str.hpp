@@ -11,7 +11,7 @@ namespace llarp
   bool
   IsFalseValue(string_view str);
 
-  struct CaselessCmp
+  struct CaselessLessThan
   {
     bool
     operator()(string_view lhs, string_view rhs) const;
