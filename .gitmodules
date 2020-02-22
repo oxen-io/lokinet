@@ -19,3 +19,6 @@
 [submodule "external/optional-lite"]
 	path = external/optional-lite
 	url = https://github.com/martinmoene/optional-lite.git
+[submodule "external/date"]
+	path = external/date
+	url = https://github.com/HowardHinnant/date.git
