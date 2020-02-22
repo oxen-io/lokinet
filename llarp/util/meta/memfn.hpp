@@ -18,7 +18,7 @@ namespace llarp
     auto
     memFn(Return (Class::*f)(Arg...), Derived* self)
     {
-      return [f, self](Arg... args) {
+      return [f, self](Arg... args) -> Return {
         return (self->*f)(std::forward< Arg >(args)...);
       };
     }
@@ -32,7 +32,7 @@ namespace llarp
     auto
     memFn(Return (Class::*f)(Arg...) const, const Derived* self)
     {
-      return [f, self](Arg... args) {
+      return [f, self](Arg... args) -> Return {
         return (self->*f)(std::forward< Arg >(args)...);
       };
     }
@@ -46,7 +46,7 @@ namespace llarp
     auto
     memFn(Return (Class::*f)(Arg...), std::shared_ptr< Derived > self)
     {
-      return [f, self = std::move(self)](Arg... args) {
+      return [f, self = std::move(self)](Arg... args) -> Return {
         return (self.get()->*f)(std::forward< Arg >(args)...);
       };
     }
@@ -60,7 +60,7 @@ namespace llarp
     auto
     memFn(Return (Class::*f)(Arg...) const, std::shared_ptr< Derived > self)
     {
-      return [f, self = std::move(self)](Arg... args) {
+      return [f, self = std::move(self)](Arg... args) -> Return {
         return (self.get()->*f)(std::forward< Arg >(args)...);
       };
     }
