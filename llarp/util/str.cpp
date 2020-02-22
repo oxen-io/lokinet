@@ -60,4 +60,24 @@ namespace llarp
 
     return false;
   }
+
+  constexpr static char whitespace[] = " \t\n\r\f\v";
+  void
+  TrimWhiteSpace(std::string& str)
+  {
+    size_t begin = str.find_first_not_of(whitespace);
+    if(begin == std::string::npos)
+    {
+      str.clear();
+      return;
+    }
+    size_t end = str.find_last_not_of(whitespace) + 1;
+    if(begin == 0)
+      str.resize(end);
+    else
+    {
+      std::copy(str.begin() + begin, str.begin() + end, str.begin());
+      str.resize(end - begin);
+    }
+  }
 }  // namespace llarp
