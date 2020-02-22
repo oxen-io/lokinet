@@ -179,7 +179,6 @@ release-compile: release-configure
 $(TARGETS): release-compile
 
 release: $(TARGETS)
-	make -C '$(BUILD_ROOT)' test
 	make -C '$(BUILD_ROOT)' check
 
 shadow-configure: clean
@@ -219,13 +218,16 @@ testnet: $(TESTNET_VENV)
 	$(PYTHON3) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID) --lokid='$(TESTNET_VENV)/bin/python $(REPO)/contrib/testnet/lokid.py'
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
-$(TEST_EXE): debug
+gtest: debug
+	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) rungtest || test x$(CROSS) = xON
 
-gtest: $(TEST_EXE)
-	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
+catch: debug
+	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) catch || test x$(CROSS) = xON
 
-test: gtest
-	$(MAKE) -C $(BUILD_ROOT) check
+check: debug
+	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) check || test x$(CROSS) = xON
+
+test: check
 
 static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
 	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
@@ -309,7 +311,7 @@ coverage-config: clean
 
 coverage: coverage-config
 	$(MAKE) -C $(BUILD_ROOT)
-	test x$(CROSS) = xOFF && $(TEST_EXE) || true # continue even if tests fail
+	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) check || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)
 	gcovr -r . --branches --html --html-details -o "$(COVERAGE_OUTDIR)/lokinet.html"
@@ -346,7 +348,7 @@ debian: debian-configure
 	cp $(EXE) lokinet
 
 debian-test:
-	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
+	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) check || test x$(CROSS) = xON
 
 install:
 	DESTDIR=$(DESTDIR) $(MAKE) -C '$(BUILD_ROOT)' install
