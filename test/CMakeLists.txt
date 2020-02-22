@@ -39,7 +39,6 @@ list(APPEND TEST_SRC
     util/test_llarp_util_decaying_hashset.cpp
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_printer.cpp
-    util/test_llarp_utils_str.cpp
     util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp
@@ -75,6 +74,7 @@ add_subdirectory(Catch2)
 add_executable(${CHECK_EXE}
   nodedb/test_nodedb.cpp
   path/test_path.cpp
+  util/test_llarp_util_str.cpp
   check_main.cpp)
 
 target_link_libraries(${CHECK_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)

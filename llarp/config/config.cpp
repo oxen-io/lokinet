@@ -12,8 +12,6 @@
 #include <util/str.hpp>
 #include <util/lokinet_init.h>
 
-#include <absl/strings/strip.h>
-
 #include <cstdlib>
 #include <fstream>
 #include <ios>
@@ -237,13 +235,13 @@ namespace llarp
       if(idx != std::string::npos)
       {
         std::string data = v.substr(0, idx);
-        absl::StripAsciiWhitespace(&data);
+        TrimWhiteSpace(data);
         parsed_opts.emplace(std::move(data));
         v = v.substr(idx + 1);
       }
       else
       {
-        absl::StripAsciiWhitespace(&v);
+        TrimWhiteSpace(v);
         parsed_opts.insert(std::move(v));
       }
     } while(idx != std::string::npos);

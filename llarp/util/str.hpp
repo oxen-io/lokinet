@@ -20,6 +20,11 @@ namespace llarp
   bool
   IsTrueValue(string_view str);
 
+  /// Trim leading and trailing (ascii) whitespace from the given string; the
+  /// string is modified in-place.
+  void
+  TrimWhiteSpace(std::string &str);
+
 }  // namespace llarp
 
 #endif
