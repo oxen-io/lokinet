@@ -1,8 +1,8 @@
-set(TEST_EXE testAll)
-set(CHECK_EXE checkAll)
+set(GTEST_EXE testAll)
+set(CATCH_EXE catchAll)
 
-
-list(APPEND TEST_SRC
+# Old gtest-based tests; new tests should use Catch2, instead.
+list(APPEND GTEST_SRC
     config/test_llarp_config_config.cpp
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
@@ -45,39 +45,44 @@ list(APPEND TEST_SRC
     util/thread/test_llarp_util_thread_pool.cpp
 )
 
-add_executable(${TEST_EXE}
+add_executable(${GTEST_EXE}
     # helpers
     main.cpp
     crypto/mock_crypto.cpp
     dht/mock_context.cpp
     test_util.cpp
     # actual test cases
-    ${TEST_SRC}
+    ${GTEST_SRC}
 )
 
-target_link_libraries(${TEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
-target_include_directories(${TEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${GTEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
+target_include_directories(${GTEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(NOT WIN32)
-    target_link_libraries(${TEST_EXE} PUBLIC absl::variant)
+    target_link_libraries(${GTEST_EXE} PUBLIC absl::variant)
 else()
-    target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
-    target_link_libraries(${TEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
+    target_sources(${GTEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
+    target_link_libraries(${GTEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_link_directories(${TEST_EXE} PRIVATE /usr/local/lib)
+  target_link_directories(${GTEST_EXE} PRIVATE /usr/local/lib)
 endif()
 
 add_subdirectory(Catch2)
 
-add_executable(${CHECK_EXE}
+add_executable(${CATCH_EXE}
   nodedb/test_nodedb.cpp
   path/test_path.cpp
   util/test_llarp_util_str.cpp
   check_main.cpp)
 
-target_link_libraries(${CHECK_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)
-target_include_directories(${CHECK_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)
+target_include_directories(${CATCH_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_custom_target(check COMMAND ${CHECK_EXE})
+# Custom targets to invoke the different test suites:
+add_custom_target(catch COMMAND ${CATCH_EXE})
+add_custom_target(rungtest COMMAND ${GTEST_EXE})
+
+# Add a custom "check" target that runs all the test suites:
+add_custom_target(check DEPENDS rungtest catch)
