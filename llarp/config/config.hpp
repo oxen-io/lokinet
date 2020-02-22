@@ -6,7 +6,6 @@
 #include <util/fs.hpp>
 #include <util/str.hpp>
 
-#include <absl/strings/str_cat.h>
 #include <cstdlib>
 #include <functional>
 #include <string>
@@ -18,76 +17,19 @@ namespace llarp
 {
   struct ConfigParser;
 
-  template < typename Type >
-  Type
-  fromEnv(const Type& val, string_view envNameSuffix)
-  {
-    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    char* ptr           = std::getenv(envName.c_str());
-    if(ptr)
-    {
-      return ptr;
-    }
+  inline const char*
+  lokinetEnv(string_view suffix);
 
-    return val;
-  }
-
-  template <>
-  inline int
-  fromEnv< int >(const int& val, string_view envNameSuffix)
-  {
-    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    const char* ptr     = std::getenv(envName.c_str());
-    if(ptr)
-    {
-      return std::atoi(ptr);
-    }
-
-    return val;
-  }
-
-  template <>
-  inline uint16_t
-  fromEnv< uint16_t >(const uint16_t& val, string_view envNameSuffix)
-  {
-    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    const char* ptr     = std::getenv(envName.c_str());
-    if(ptr)
-    {
-      return std::atoi(ptr);
-    }
-
-    return val;
-  }
-
-  template <>
-  inline size_t
-  fromEnv< size_t >(const size_t& val, string_view envNameSuffix)
-  {
-    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    const char* ptr     = std::getenv(envName.c_str());
-    if(ptr)
-    {
-      return std::atoll(ptr);
-    }
-
-    return val;
-  }
-
-  template <>
-  inline nonstd::optional< bool >
-  fromEnv< nonstd::optional< bool > >(const nonstd::optional< bool >& val,
-                                      string_view envNameSuffix)
-  {
-    std::string envName = absl::StrCat("LOKINET_", envNameSuffix);
-    const char* ptr     = std::getenv(envName.c_str());
-    if(ptr)
-    {
-      return IsTrueValue(ptr);
-    }
-
-    return val;
-  }
+  std::string
+  fromEnv(string_view val, string_view envNameSuffix);
+  int
+  fromEnv(const int& val, string_view envNameSuffix);
+  uint16_t
+  fromEnv(const uint16_t& val, string_view envNameSuffix);
+  size_t
+  fromEnv(const size_t& val, string_view envNameSuffix);
+  nonstd::optional< bool >
+  fromEnv(const nonstd::optional< bool >& val, string_view envNameSuffix);
 
   class RouterConfig
   {
