@@ -3,7 +3,6 @@
 
 #include <util/string_view.hpp>
 #include <util/meta/traits.hpp>
-#include <util/meta/variant.hpp>
 
 #include <functional>
 #include <iostream>

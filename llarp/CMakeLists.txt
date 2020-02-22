@@ -31,11 +31,7 @@ set(LIB_UTIL_SRC
   util/logging/win32_logger.cpp
   util/lokinet_init.c
   util/mem.cpp
-  util/meta/memfn_traits.cpp
-  util/meta/memfn.cpp
-  util/meta/object.cpp
   util/meta/traits.cpp
-  util/meta/variant.cpp
   util/printer.cpp
   util/status.cpp
   util/str.cpp

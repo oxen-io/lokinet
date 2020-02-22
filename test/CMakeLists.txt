@@ -32,7 +32,6 @@ list(APPEND TEST_SRC
     test_llarp_router_contact.cpp
     test_md5.cpp
     util/meta/test_llarp_util_memfn.cpp
-    util/meta/test_llarp_util_object.cpp
     util/meta/test_llarp_util_traits.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp

@@ -40,8 +40,8 @@ TEST(MemFn, call)
   ASSERT_EQ(11, util::memFn(&Foo::arg, &foo)(10));
   ASSERT_EQ(9, util::memFn(&Foo::constArg, &foo)(10));
 
-  ASSERT_TRUE(util::memFn(&Foo::constEmpty, foo)());
-  ASSERT_EQ(9, util::memFn(&Foo::constArg, foo)(10));
+  ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
+  ASSERT_EQ(9, util::memFn(&Foo::constArg, &foo)(10));
 }
 
 template < typename T >
@@ -54,7 +54,6 @@ TYPED_TEST_SUITE_P(MemFnType);
 TYPED_TEST_P(MemFnType, Smoke)
 {
   TypeParam foo{};
-  ASSERT_TRUE(util::memFn(&Foo::constEmpty, foo)());
   ASSERT_TRUE(util::memFn(&Foo::constEmpty, &foo)());
 }
 
