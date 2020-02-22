@@ -9,18 +9,10 @@
 namespace llarp
 {
   bool
-  CaselessCmp::operator()(string_view lhs, string_view rhs) const
+  CaselessLessThan::operator()(string_view lhs, string_view rhs) const
   {
-    if(lhs.size() < rhs.size())
-    {
-      return true;
-    }
-    if(lhs.size() > rhs.size())
-    {
-      return false;
-    }
-
-    for(size_t i = 0; i < lhs.size(); ++i)
+    const size_t s = std::min(lhs.size(), rhs.size());
+    for(size_t i = 0; i < s; ++i)
     {
       auto l = std::tolower(lhs[i]);
       auto r = std::tolower(rhs[i]);
@@ -34,14 +26,15 @@ namespace llarp
         return false;
       }
     }
-    return false;
+
+    return lhs.size() < rhs.size();
   }
 
   bool
   IsFalseValue(string_view str)
   {
-    static const std::set< string_view, CaselessCmp > vals{"no", "false", "0",
-                                                           "off"};
+    static const std::set< string_view, CaselessLessThan > vals{"no", "false",
+                                                                "0", "off"};
 
     return vals.count(str) > 0;
   }
@@ -49,8 +42,8 @@ namespace llarp
   bool
   IsTrueValue(string_view str)
   {
-    static const std::set< string_view, CaselessCmp > vals{"yes", "true", "1",
-                                                           "on"};
+    static const std::set< string_view, CaselessLessThan > vals{"yes", "true",
+                                                                "1", "on"};
 
     return vals.count(str) > 0;
   }
