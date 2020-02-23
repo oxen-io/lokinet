@@ -23,7 +23,7 @@ namespace llarp
   /// Trim leading and trailing (ascii) whitespace from the given string;
   /// returns a string_view of the trimmed part of the string.
 #ifdef __GNUG__
-    [[gnu::warn_unused_result]]
+  [[gnu::warn_unused_result]]
 #endif
   string_view
   TrimWhitespace(string_view str);
