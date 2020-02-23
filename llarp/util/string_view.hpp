@@ -54,10 +54,10 @@ public:
     constexpr size_t max_size() const noexcept { return std::numeric_limits<size_t>::max(); }
     constexpr bool empty() const noexcept { return size_ == 0; }
     operator std::string() const { return {data_, size_}; }
-    const char* begin() const noexcept { return data_; }
-    const char* cbegin() const noexcept { return data_; }
-    const char* end() const noexcept { return data_ + size_; }
-    const char* cend() const noexcept { return data_ + size_; }
+    constexpr const char* begin() const noexcept { return data_; }
+    constexpr const char* cbegin() const noexcept { return data_; }
+    constexpr const char* end() const noexcept { return data_ + size_; }
+    constexpr const char* cend() const noexcept { return data_ + size_; }
     reverse_iterator rbegin() const { return reverse_iterator{end()}; }
     reverse_iterator crbegin() const { return reverse_iterator{end()}; }
     reverse_iterator rend() const { return reverse_iterator{begin()}; }
@@ -91,7 +91,7 @@ public:
         return result;
     }
 
-    constexpr size_t find(simple_string_view v, size_t pos = 0) const noexcept {
+    size_t find(simple_string_view v, size_t pos = 0) const {
         if (pos > size_ || v.size_ > size_) return npos;
         for (const size_t max_pos = size_ - v.size_; pos <= max_pos; ++pos) {
             if (0 == traits_type::compare(v.data_, data_ + pos, v.size_))
@@ -99,11 +99,11 @@ public:
         }
         return npos;
     }
-    constexpr size_t find(char c, size_t pos = 0) const noexcept { return find({&c, 1}, pos); }
-    constexpr size_t find(const char* c, size_t pos, size_t count) const { return find({c, count}, pos); }
+    size_t find(char c, size_t pos = 0) const { return find({&c, 1}, pos); }
+    size_t find(const char* c, size_t pos, size_t count) const { return find({c, count}, pos); }
     size_t find(const char* c, size_t pos = 0) const { return find(simple_string_view(c), pos); }
 
-    constexpr size_t rfind(simple_string_view v, size_t pos = npos) const noexcept {
+    size_t rfind(simple_string_view v, size_t pos = npos) const {
         if (v.size_ > size_) return npos;
         const size_t max_pos = size_ - v.size_;
         for (pos = std::min(pos, max_pos); pos <= max_pos; --pos) {
@@ -112,8 +112,8 @@ public:
         }
         return npos;
     }
-    constexpr size_t rfind(char c, size_t pos = npos) const noexcept { return rfind({&c, 1}, pos); }
-    constexpr size_t rfind(const char* c, size_t pos, size_t count) const { return rfind({c, count}, pos); }
+    size_t rfind(char c, size_t pos = npos) const { return rfind({&c, 1}, pos); }
+    size_t rfind(const char* c, size_t pos, size_t count) const { return rfind({c, count}, pos); }
     size_t rfind(const char* c, size_t pos = npos) const { return rfind(simple_string_view(c), pos); }
 
     constexpr size_t find_first_of(simple_string_view v, size_t pos = 0) const noexcept {
