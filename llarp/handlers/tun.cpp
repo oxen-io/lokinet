@@ -191,7 +191,7 @@ namespace llarp
         {
           routerStr = v;
         }
-        routerStr = TrimWhiteSpace(routerStr);
+        routerStr = TrimWhitespace(routerStr);
         if(!(exitRouter.FromString(routerStr)
              || HexDecode(routerStr.c_str(), exitRouter.begin(),
                           exitRouter.size())))
