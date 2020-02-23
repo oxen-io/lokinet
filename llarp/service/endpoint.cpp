@@ -196,10 +196,7 @@ namespace llarp
         if(!EndpointUtil::HasPathToService(addr, m_state->m_RemoteSessions))
         {
           if(!EnsurePathToService(
-                 addr,
-                 [](ABSL_ATTRIBUTE_UNUSED Address _addr,
-                    ABSL_ATTRIBUTE_UNUSED OutboundContext* _ctx) {},
-                 10000))
+                 addr, [](Address, OutboundContext*) {}, 10000))
           {
             LogWarn("failed to ensure path to ", addr);
           }
@@ -966,7 +963,7 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
-                                  ABSL_ATTRIBUTE_UNUSED llarp_time_t timeoutMS)
+                                  llarp_time_t /*timeoutMS*/)
     {
       static constexpr size_t NumParalellLookups = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
@@ -1120,9 +1117,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::EnsureConvo(ABSL_ATTRIBUTE_UNUSED const AlignedBuffer< 32 > addr,
-                          bool snode,
-                          ABSL_ATTRIBUTE_UNUSED ConvoEventListener_ptr ev)
+    Endpoint::EnsureConvo(const AlignedBuffer< 32 > /*addr*/, bool snode,
+                          ConvoEventListener_ptr /*ev*/)
     {
       if(snode)
       {

@@ -191,8 +191,7 @@ namespace llarp
                              AbstractRouter* r) override;
 
       bool
-      HandleHiddenServiceFrame(
-          ABSL_ATTRIBUTE_UNUSED const service::ProtocolFrame& frame) override
+      HandleHiddenServiceFrame(const service::ProtocolFrame& /*frame*/) override
       {
         /// TODO: implement me
         LogWarn("Got hidden service data on transit hop");

@@ -330,8 +330,7 @@ namespace llarp
   }
 
   void
-  ConnectConfig::fromSection(ABSL_ATTRIBUTE_UNUSED string_view key,
-                             string_view val)
+  ConnectConfig::fromSection(string_view /*key*/, string_view val)
   {
     routers.emplace_back(val.begin(), val.end());
   }
