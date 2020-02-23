@@ -12,15 +12,14 @@ namespace llarp
       ConfigParser parser;
       if(!parser.LoadFile(fname))
         return false;
-      parser.IterAll([&](const ConfigParser::String_t& name,
-                         const ConfigParser::Section_t& section) {
-        Config::section_t values;
-        values.first.assign(name.begin(), name.end());
-        for(const auto& item : section)
-          values.second.emplace_back(string_view_string(item.first),
-                                     string_view_string(item.second));
-        services.emplace_back(values);
-      });
+      parser.IterAll(
+          [&](string_view name, const ConfigParser::Section_t& section) {
+            Config::section_t values;
+            values.first.assign(name.begin(), name.end());
+            for(const auto& item : section)
+              values.second.emplace_back(item.first, item.second);
+            services.emplace_back(values);
+          });
       return services.size() > 0;
     }
 

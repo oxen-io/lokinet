@@ -50,11 +50,6 @@ target_link_libraries(${UTIL_LIB} PUBLIC
     date::date
     )
 
-# cut back on fluff
-if (NOT WIN32)
-  target_link_libraries(${UTIL_LIB} PUBLIC absl::strings)
-endif(NOT WIN32)
-
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC linux/netns.cpp)
 endif()

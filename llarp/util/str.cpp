@@ -62,22 +62,22 @@ namespace llarp
   }
 
   constexpr static char whitespace[] = " \t\n\r\f\v";
-  void
-  TrimWhiteSpace(std::string& str)
+
+  string_view
+  TrimWhiteSpace(string_view str)
   {
     size_t begin = str.find_first_not_of(whitespace);
-    if(begin == std::string::npos)
+    if(begin == string_view::npos)
     {
-      str.clear();
-      return;
+      str.remove_prefix(str.size());
+      return str;
     }
-    size_t end = str.find_last_not_of(whitespace) + 1;
-    if(begin == 0)
-      str.resize(end);
-    else
-    {
-      std::copy(str.begin() + begin, str.begin() + end, str.begin());
-      str.resize(end - begin);
-    }
+    str.remove_prefix(begin);
+
+    size_t end = str.find_last_not_of(whitespace);
+    if(end != string_view::npos)
+      str.remove_suffix(str.size() - end - 1);
+
+    return str;
   }
 }  // namespace llarp
