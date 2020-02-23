@@ -279,12 +279,12 @@ namespace llarp
       idx = val.find_first_of(delimiter);
       if(idx != string_view::npos)
       {
-        parsed_opts.insert(TrimWhiteSpace(val.substr(0, idx)));
+        parsed_opts.insert(TrimWhitespace(val.substr(0, idx)));
         val.remove_prefix(idx + 1);
       }
       else
       {
-        parsed_opts.insert(TrimWhiteSpace(val));
+        parsed_opts.insert(TrimWhitespace(val));
       }
     } while(idx != string_view::npos);
     std::unordered_set< std::string > opts;

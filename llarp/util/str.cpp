@@ -64,7 +64,7 @@ namespace llarp
   constexpr static char whitespace[] = " \t\n\r\f\v";
 
   string_view
-  TrimWhiteSpace(string_view str)
+  TrimWhitespace(string_view str)
   {
     size_t begin = str.find_first_not_of(whitespace);
     if(begin == string_view::npos)

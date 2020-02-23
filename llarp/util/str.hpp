@@ -26,7 +26,7 @@ namespace llarp
     [[gnu::warn_unused_result]]
 #endif
   string_view
-  TrimWhiteSpace(string_view str);
+  TrimWhitespace(string_view str);
 
 }  // namespace llarp
 
