@@ -35,10 +35,8 @@ list(APPEND GTEST_SRC
     util/meta/test_llarp_util_traits.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
-    util/test_llarp_util_bits.cpp
     util/test_llarp_util_decaying_hashset.cpp
     util/test_llarp_util_encode.cpp
-    util/test_llarp_util_printer.cpp
     util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp
@@ -58,12 +56,10 @@ add_executable(${GTEST_EXE}
 target_link_libraries(${GTEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
 target_include_directories(${GTEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(NOT WIN32)
-    target_link_libraries(${GTEST_EXE} PUBLIC absl::variant)
-else()
+if(WIN32)
     target_sources(${GTEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(${GTEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
-endif(NOT WIN32)
+endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_link_directories(${GTEST_EXE} PRIVATE /usr/local/lib)
@@ -74,6 +70,8 @@ add_subdirectory(Catch2)
 add_executable(${CATCH_EXE}
   nodedb/test_nodedb.cpp
   path/test_path.cpp
+  util/test_llarp_util_bits.cpp
+  util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   check_main.cpp)
 

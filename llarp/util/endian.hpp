@@ -5,7 +5,7 @@
 
 #include <cinttypes>
 #include <cstring>
-#include <absl/numeric/int128.h>
+#include <net/uint128.h>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
@@ -200,15 +200,15 @@ htole64buf(void *buf, uint64_t big64)
   htobuf64(buf, htole64(big64));
 }
 
-inline absl::uint128
-ntoh128(absl::uint128 i)
+inline llarp::uint128_t
+ntoh128(llarp::uint128_t i)
 {
 #ifdef __BIG_ENDIAN__
   return i;
 #else
-  const auto loSwapped = htobe64(absl::Uint128Low64(i));
-  const auto hiSwapped = htobe64(absl::Uint128High64(i));
-  return absl::MakeUint128(loSwapped, hiSwapped);
+  const auto loSwapped = htobe64(i.lower);
+  const auto hiSwapped = htobe64(i.upper);
+  return {loSwapped, hiSwapped};
 #endif
 }
 

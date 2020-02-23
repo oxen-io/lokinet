@@ -6,7 +6,7 @@
 #include <numeric>
 #include <type_traits>
 #include <limits>
-#include <absl/numeric/int128.h>
+#include <net/uint128.h>
 
 namespace llarp
 {
@@ -24,10 +24,9 @@ namespace llarp
     }
 
     constexpr std::size_t
-    count_bits_128(const absl::uint128& i)
+    count_bits_128(const uint128_t& i)
     {
-      return count_bits(absl::Uint128High64(i))
-          + count_bits(absl::Uint128Low64(i));
+      return count_bits(i.upper) + count_bits(i.lower);
     }
 
     template < typename InputIt >

@@ -39,7 +39,7 @@ namespace llarp
   std::string
   huint128_t::ToString() const
   {
-    absl::uint128 addr         = ntoh128(h);
+    auto addr                  = ntoh128(h);
     char tmp[INET6_ADDRSTRLEN] = {0};
     if(!inet_ntop(AF_INET6, (void*)&addr, tmp, sizeof(tmp)))
       return "";
@@ -61,7 +61,7 @@ namespace llarp
   bool
   huint128_t::FromString(const std::string& str)
   {
-    absl::uint128 i;
+    llarp::uint128_t i;
     if(!inet_pton(AF_INET6, str.c_str(), &i))
       return false;
     h = ntoh128(i);

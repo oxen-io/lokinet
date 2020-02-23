@@ -1,9 +1,6 @@
 [submodule "external/nlohmann"]
 	path = external/nlohmann
 	url = https://github.com/nlohmann/json.git
-[submodule "external/abseil-cpp"]
-	path = external/abseil-cpp
-	url = https://github.com/abseil/abseil-cpp.git
 [submodule "external/googletest"]
 	path = external/googletest
 	url = https://github.com/google/googletest.git

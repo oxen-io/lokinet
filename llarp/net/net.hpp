@@ -1,7 +1,7 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
 
-#include <absl/numeric/int128.h>
+#include <net/uint128.h>
 #include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>

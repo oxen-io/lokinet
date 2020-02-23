@@ -19,8 +19,7 @@
 #include <util/endian.hpp>
 #include <vector>
 
-#include <absl/numeric/int128.h>
-#include <absl/hash/hash.h>
+#include "uint128.h"
 
 namespace llarp
 {
@@ -104,15 +103,6 @@ namespace llarp
       return h == x.h;
     }
 
-    using Hash = absl::Hash< huint_t< UInt_t > >;
-
-    template < typename H >
-    friend H
-    AbslHashValue(H hash, const huint_t< UInt_t >& i)
-    {
-      return H::combine(std::move(hash), i.h);
-    }
-
     using V6Container = std::vector< uint8_t >;
     void
     ToV6(V6Container& c);
@@ -132,7 +122,7 @@ namespace llarp
 
   using huint32_t  = huint_t< uint32_t >;
   using huint16_t  = huint_t< uint16_t >;
-  using huint128_t = huint_t< absl::uint128 >;
+  using huint128_t = huint_t< llarp::uint128_t >;
 
   template < typename UInt_t >
   struct nuint_t
@@ -187,15 +177,6 @@ namespace llarp
       return n == x.n;
     }
 
-    struct Hash
-    {
-      inline size_t
-      operator()(nuint_t x) const
-      {
-        return std::hash< UInt_t >{}(x.n);
-      }
-    };
-
     using V6Container = std::vector< uint8_t >;
     void
     ToV6(V6Container& c);
@@ -212,7 +193,7 @@ namespace llarp
 
   using nuint32_t  = nuint_t< uint32_t >;
   using nuint16_t  = nuint_t< uint16_t >;
-  using nuint128_t = nuint_t< absl::uint128 >;
+  using nuint128_t = nuint_t< llarp::uint128_t >;
 
   static inline nuint32_t
   xhtonl(huint32_t x)
@@ -238,5 +219,28 @@ namespace llarp
     return huint16_t{ntohs(x.n)};
   }
 }  // namespace llarp
+
+namespace std
+{
+  template < typename UInt_t >
+  struct hash< llarp::nuint_t< UInt_t > >
+  {
+    size_t
+    operator()(const llarp::nuint_t< UInt_t >& x) const
+    {
+      return std::hash< UInt_t >{}(x.n);
+    }
+  };
+
+  template < typename UInt_t >
+  struct hash< llarp::huint_t< UInt_t > >
+  {
+    size_t
+    operator()(const llarp::huint_t< UInt_t >& x) const
+    {
+      return std::hash< UInt_t >{}(x.h);
+    }
+  };
+}  // namespace std
 
 #endif
