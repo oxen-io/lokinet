@@ -70,7 +70,10 @@ public:
     constexpr void remove_suffix(size_t n) { size_ -= n; }
     void swap(simple_string_view &s) noexcept { std::swap(data_, s.data_); std::swap(size_, s.size_); }
 
-    constexpr const char& at(size_t pos) const {
+#if defined(__clang__) || !defined(__GNUG__) || __GNUC__ >= 6
+    constexpr // GCC 5.x is buggy wrt constexpr throwing
+#endif
+    const char& at(size_t pos) const {
         if (pos >= size())
             throw std::out_of_range{"invalid string_view index"};
         return data_[pos];
@@ -83,7 +86,10 @@ public:
         return rcount;
     }
 
-    constexpr simple_string_view substr(size_t pos = 0, size_t count = npos) const {
+#if defined(__clang__) || !defined(__GNUG__) || __GNUC__ >= 6
+    constexpr // GCC 5.x is buggy wrt constexpr throwing
+#endif
+    simple_string_view substr(size_t pos = 0, size_t count = npos) const {
         if (pos > size()) throw std::out_of_range{"invalid substr range"};
         simple_string_view result = *this;
         if (pos > 0) result.remove_prefix(pos);
