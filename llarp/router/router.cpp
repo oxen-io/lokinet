@@ -805,7 +805,7 @@ namespace llarp
   }
 
   void
-  Router::HandleDHTLookupForExplore(ABSL_ATTRIBUTE_UNUSED RouterID remote,
+  Router::HandleDHTLookupForExplore(RouterID /*remote*/,
                                     const std::vector< RouterContact > &results)
   {
     for(const auto &rc : results)
@@ -1180,7 +1180,7 @@ namespace llarp
   }
 
   bool
-  Router::ValidateConfig(ABSL_ATTRIBUTE_UNUSED Config *conf) const
+  Router::ValidateConfig(Config * /*conf*/) const
   {
     return true;
   }

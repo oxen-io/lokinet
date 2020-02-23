@@ -54,7 +54,7 @@ namespace llarp
     }
 
     bool
-    HandleMessage(ABSL_ATTRIBUTE_UNUSED AbstractRouter* router) const override
+    HandleMessage(AbstractRouter* /*router*/) const override
     {
       return true;
     }

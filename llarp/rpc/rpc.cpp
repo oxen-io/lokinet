@@ -401,8 +401,7 @@ namespace llarp
       }
 
       Response
-      HandleJSONRPC(Method_t method,
-                    ABSL_ATTRIBUTE_UNUSED const Params& params) override
+      HandleJSONRPC(Method_t method, const Params& /*params*/) override
       {
         auto it = m_dispatch.find(method);
         if(it != m_dispatch.end())
