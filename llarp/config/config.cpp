@@ -340,36 +340,6 @@ namespace llarp
   }
 
   void
-  MetricsConfig::fromSection(string_view key, string_view val)
-  {
-    if(key == "enable-metrics")
-    {
-      disableMetrics = IsFalseValue(val);
-    }
-    else if(key == "disable-metrics")
-    {
-      disableMetrics = IsTrueValue(val);
-    }
-    else if(key == "disable-metrics-log")
-    {
-      disableMetricLogs = IsTrueValue(val);
-    }
-    else if(key == "json-metrics-path")
-    {
-      jsonMetricsPath = val;
-    }
-    else if(key == "metric-tank-host")
-    {
-      metricTankHost = val;
-    }
-    else
-    {
-      // consume everything else as a metric tag
-      metricTags[key] = val;
-    }
-  }
-
-  void
   ApiConfig::fromSection(string_view key, string_view val)
   {
     if(key == "enabled")
@@ -533,7 +503,6 @@ namespace llarp
     links     = find_section< LinksConfig >(parser, "bind");
     services  = find_section< ServicesConfig >(parser, "services");
     system    = find_section< SystemConfig >(parser, "system");
-    metrics   = find_section< MetricsConfig >(parser, "metrics");
     api       = find_section< ApiConfig >(parser, "api");
     lokid     = find_section< LokidConfig >(parser, "lokid");
     bootstrap = find_section< BootstrapConfig >(parser, "bootstrap");
@@ -668,10 +637,6 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
   f << "#file=/path/to/logfile\n";
   f << "# uncomment for syslog logging\n";
   f << "#type=syslog\n";
-
-  // metrics
-  f << "[metrics]\n";
-  f << "json-metrics-path=" << basepath << "metrics.json\n";
 
   f << "\n\n";
 

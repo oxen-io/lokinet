@@ -186,18 +186,6 @@ namespace llarp
     fromSection(string_view key, string_view val);
   };
 
-  struct MetricsConfig
-  {
-    bool disableMetrics    = true;
-    bool disableMetricLogs = true;
-    fs::path jsonMetricsPath;
-    std::string metricTankHost;
-    std::map< std::string, std::string > metricTags;
-
-    void
-    fromSection(string_view key, string_view val);
-  };
-
   class ApiConfig
   {
    private:
@@ -258,7 +246,6 @@ namespace llarp
     LinksConfig links;
     ServicesConfig services;
     SystemConfig system;
-    MetricsConfig metrics;
     ApiConfig api;
     LokidConfig lokid;
     BootstrapConfig bootstrap;
