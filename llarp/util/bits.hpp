@@ -32,7 +32,7 @@ namespace llarp
 
     template < typename InputIt >
     constexpr std::size_t
-    __count_array_bits(InputIt begin, InputIt end)
+    count_array_bits_impl(InputIt begin, InputIt end)
     {
       return std::accumulate(begin, end, 0, [](auto acc, auto val) {
         return acc + count_bits(val);
@@ -43,7 +43,7 @@ namespace llarp
     constexpr std::size_t
     count_array_bits(const T& array)
     {
-      return __count_array_bits(std::begin(array), std::end(array));
+      return count_array_bits_impl(std::begin(array), std::end(array));
     }
   }  // namespace bits
 }  // namespace llarp
