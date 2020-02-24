@@ -459,7 +459,6 @@ namespace llarp
 
       std::unique_ptr< EndpointState > m_state;
       thread::Queue< RecvDataEvent > m_RecvQueue;
-      std::chrono::steady_clock::time_point m_lastBuildStarted;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;

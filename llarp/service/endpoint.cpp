@@ -633,7 +633,6 @@ namespace llarp
     void
     Endpoint::PathBuildStarted(path::Path_ptr path)
     {
-      m_lastBuildStarted = std::chrono::steady_clock::now();
       path::Builder::PathBuildStarted(path);
     }
 
@@ -1284,11 +1283,7 @@ namespace llarp
         return false;
 
       static constexpr auto buildSpread = path::default_lifetime / 4;
-      const auto sinceEpoch             = m_lastBuildStarted.time_since_epoch();
-      const auto sinceEpochMs =
-          std::chrono::duration_cast< std::chrono::milliseconds >(sinceEpoch);
-
-      return ((now - sinceEpochMs.count()) > buildSpread);
+      return ((now - lastBuild) > buildSpread);
     }
 
     std::shared_ptr< Logic >
