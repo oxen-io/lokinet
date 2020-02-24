@@ -3,9 +3,10 @@
 
 // Clang thread safety analysis macros.  Does nothing under non-clang compilers.
 
-// Enable thread safety attributes only with clang and libc++ (the latter because we are using stl
-// mutexes, which don't have the required annotations under stdlibc++).
-// The attributes can be safely erased when compiling with other compilers.
+// Enable thread safety attributes only with clang and libc++ (the latter
+// because we are using stl mutexes, which don't have the required annotations
+// under stdlibc++). The attributes can be safely erased when compiling with
+// other compilers.
 #if defined(__clang__) && defined(_LIBCPP_VERSION) && !defined(SWIG)
 #define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
 #else
