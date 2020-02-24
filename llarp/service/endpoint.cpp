@@ -456,7 +456,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
+    Endpoint::PublishIntroSet(const EncryptedIntroSet& introset,
+                              AbstractRouter* r)
     {
       /// number of routers to publish to
       static constexpr size_t PublishRedundancy = 2;
@@ -525,8 +526,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& introset, AbstractRouter* r,
-                                 path::Path_ptr path, uint64_t relayOrder)
+    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& introset,
+                                 AbstractRouter* r, path::Path_ptr path,
+                                 uint64_t relayOrder)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
       if(job->SendRequestViaPath(path, r))
