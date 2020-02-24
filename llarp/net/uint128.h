@@ -14,25 +14,6 @@ namespace llarp
   {
     uint64_t lower, upper;
 
-   private:
-    template < typename BinaryOperator,
-               typename = traits::void_t< decltype(BinaryOperator{}(0, 0)) > >
-    constexpr uint128_t(const uint128_t& a, const uint128_t& b,
-                        BinaryOperator op)
-    {
-      lower = op(a.lower, b.lower);
-      upper = op(a.upper, b.upper);
-    }
-
-    template < typename UnaryOperator,
-               typename = traits::void_t< decltype(UnaryOperator{}(0)) > >
-    constexpr uint128_t(const uint128_t& a, UnaryOperator op)
-    {
-      lower = op(a.lower);
-      upper = op(a.upper);
-    }
-
-   public:
     // Initializes with 0s
     constexpr uint128_t() : lower{0}, upper{0}
     {
@@ -56,43 +37,67 @@ namespace llarp
     constexpr uint128_t&
     operator=(uint128_t&&) = default;
 
+    // bitwise and
+    constexpr uint128_t&
+    operator&=(const uint128_t& o)
+    {
+      upper &= o.upper;
+      lower &= o.lower;
+      return *this;
+    }
     constexpr uint128_t operator&(const uint128_t& o) const
     {
-      return {*this, o, std::bit_and< uint64_t >{}};
+      uint128_t result = *this;
+      result &= o;
+      return result;
     }
 
-    /*
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value
-    && std::is_unsigned<T>::value && sizeof(T) <= sizeof(uint64_t)>> constexpr T
-    operator&(T o) const
+    // bitwise or
+    constexpr uint128_t&
+    operator|=(const uint128_t& o)
     {
-      return lower & o;
+      upper |= o.upper;
+      lower |= o.lower;
+      return *this;
     }
-    */
-
     constexpr uint128_t
     operator|(const uint128_t& o) const
     {
-      return {*this, o, std::bit_or< uint64_t >{}};
+      uint128_t result = *this;
+      result |= o;
+      return result;
     }
 
+    // bitwise xor
+    constexpr uint128_t&
+    operator^=(const uint128_t& o)
+    {
+      upper ^= o.upper;
+      lower ^= o.lower;
+      return *this;
+    }
     constexpr uint128_t
     operator^(const uint128_t& o) const
     {
-      return {*this, o, std::bit_xor< uint64_t >{}};
+      uint128_t result = *this;
+      result ^= o;
+      return result;
     }
 
+    // bitwise not
     constexpr uint128_t
     operator~() const
     {
-      return {*this, std::bit_not< uint64_t >{}};
+      return {~upper, ~lower};
     }
 
+    // bool: true if any bit set
     explicit constexpr operator bool() const
     {
       return static_cast< bool >(lower) || static_cast< bool >(upper);
     }
 
+    // Casting to basic unsigned int types: casts away upper bits
     explicit constexpr operator uint8_t() const
     {
       return static_cast< uint8_t >(lower);
@@ -162,89 +167,109 @@ namespace llarp
       return copy;
     }
 
-    constexpr uint128_t
-    operator+(const uint128_t& b) const
-    {
-      uint128_t sum{upper + b.upper, lower + b.lower};
-      if(sum.lower < lower)
-        ++sum.upper;
-      return sum;
-    }
-
-    constexpr uint128_t
-    operator-(const uint128_t& b) const
-    {
-      uint128_t diff{upper - b.upper, lower - b.lower};
-      if(diff.lower > lower)
-        --diff.upper;
-      return diff;
-    }
-
-    constexpr uint128_t
-    operator<<(uint64_t shift) const
-    {
-      if(shift == 0)
-        return *this;
-      else if(shift < 64)
-        return {upper << shift | lower >> (64 - shift), lower << shift};
-      else if(shift == 64)
-        return {lower, 0};
-      else if(shift < 128)
-        return {lower << (shift - 64), 0};
-      else
-        return {0, 0};
-    }
-
-    constexpr uint128_t
-    operator>>(uint64_t shift) const
-    {
-      if(shift == 0)
-        return *this;
-      else if(shift < 64)
-        return {upper >> shift, lower >> shift | upper << (64 - shift)};
-      else if(shift == 64)
-        return {0, upper};
-      else if(shift < 128)
-        return {0, upper >> (shift - 64)};
-      else
-        return {0, 0};
-    }
-
-    constexpr uint128_t&
-    operator&=(const uint128_t& o)
-    {
-      return *this = *this & o;
-    }
-    constexpr uint128_t&
-    operator|=(const uint128_t& o)
-    {
-      return *this = *this | o;
-    }
-    constexpr uint128_t&
-    operator^=(const uint128_t& o)
-    {
-      return *this = *this ^ o;
-    }
-    constexpr uint128_t&
-    operator<<=(uint64_t shift)
-    {
-      return *this = *this << shift;
-    }
-    constexpr uint128_t&
-    operator>>=(uint64_t shift)
-    {
-      return *this = *this >> shift;
-    }
     constexpr uint128_t&
     operator+=(const uint128_t& b)
     {
-      return *this = *this + b;
+      lower += b.lower;
+      if(lower < b.lower)
+        ++upper;
+      upper += b.upper;
+      return *this;
+    }
+    constexpr uint128_t
+    operator+(const uint128_t& b) const
+    {
+      uint128_t result = *this;
+      result += b;
+      return result;
     }
 
     constexpr uint128_t&
     operator-=(const uint128_t& b)
     {
-      return *this = *this - b;
+      if(b.lower > lower)
+        --upper;
+      lower -= b.lower;
+      upper -= b.upper;
+      return *this;
+    }
+    constexpr uint128_t
+    operator-(const uint128_t& b) const
+    {
+      uint128_t result = *this;
+      result -= b;
+      return result;
+    }
+
+    constexpr uint128_t&
+    operator<<=(uint64_t shift)
+    {
+      if(shift == 0)
+      {
+      }
+      else if(shift < 64)
+      {
+        upper = upper << shift | (lower >> (64 - shift));
+        lower <<= shift;
+      }
+      else if(shift == 64)
+      {
+        upper = lower;
+        lower = 0;
+      }
+      else if(shift < 128)
+      {
+        upper = lower << (shift - 64);
+        lower = 0;
+      }
+      else
+      {
+        upper = lower = 0;
+      }
+      return *this;
+    }
+    constexpr uint128_t
+    operator<<(uint64_t shift) const
+    {
+      uint128_t result = *this;
+      result <<= shift;
+      return result;
+    }
+
+    constexpr uint128_t&
+    operator>>=(uint64_t shift)
+    {
+      if(shift == 0)
+      {
+      }
+      else if(shift < 64)
+      {
+        lower = lower >> shift | upper << (64 - shift);
+        upper >>= shift;
+      }
+      else if(shift == 64)
+      {
+        lower = upper;
+        upper = 0;
+      }
+      else if(shift < 128)
+      {
+        lower = upper >> (shift - 64);
+        upper = 0;
+      }
+      else
+      {
+        upper = lower = 0;
+      }
+      return *this;
+    }
+
+    constexpr uint128_t
+    operator>>(uint64_t shift) const
+    {
+      uint128_t result = *this;
+      result >>= shift;
+      return result;
     }
   };
 

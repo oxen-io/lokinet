@@ -30,12 +30,12 @@ namespace llarp
     huint128_t
     IPPacket::In6ToHUInt(in6_addr addr)
     {
-      uint8_t *ptr = reinterpret_cast<uint8_t*>(addr.s6_addr);
+      uint8_t *ptr = reinterpret_cast< uint8_t * >(addr.s6_addr);
       uint128_t x{0};
-      for (int i = 0; i < 16; i++)
+      for(int i = 0; i < 16; i++)
       {
-          x <<= 8;
-          x |= ptr[i];
+        x <<= 8;
+        x |= ptr[i];
       }
       return huint128_t{x};
     }
