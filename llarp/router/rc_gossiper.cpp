@@ -41,8 +41,7 @@ namespace llarp
   void
   RCGossiper::Decay(Time_t now)
   {
-    LogDebug("decay filter at ", now.count());
-    m_Filter.Decay(now.count());
+    m_Filter.Decay(now);
   }
 
   bool

@@ -203,6 +203,10 @@ set(LIB_SRC
   service/tag_lookup_job.cpp
   service/tag.cpp
 )
+if(TRACY_ROOT)
+  set(LIB_SRC ${LIB_SRC} ${TRACY_ROOT}/TracyClient.cpp)
+endif()
+
 if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)
 endif()

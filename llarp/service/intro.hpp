@@ -32,9 +32,7 @@ namespace llarp
       bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 30000) const
       {
-        if(dlt)
-          return now >= (expiresAt - dlt);
-        return IsExpired(now);
+        return IsExpired(now + dlt);
       }
 
       std::ostream&

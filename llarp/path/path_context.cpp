@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace path
   {
-    static constexpr llarp_time_t DefaultPathBuildLimit = 500;
+    static constexpr auto DefaultPathBuildLimit = 500ms;
 
     PathContext::PathContext(AbstractRouter* router)
         : m_Router(router)
@@ -297,7 +297,7 @@ namespace llarp
     PathContext::ExpirePaths(llarp_time_t now)
     {
       // decay limits
-      m_PathLimits.Decay(now);
+      m_PathLimits.Decay(Time_t(now));
 
       {
         SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);

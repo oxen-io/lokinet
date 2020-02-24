@@ -378,8 +378,8 @@ namespace llarp
       m_RXRate = 0;
       m_TXRate = 0;
 
-      m_UpstreamReplayFilter.Decay(now);
-      m_DownstreamReplayFilter.Decay(now);
+      m_UpstreamReplayFilter.Decay(Time_t(now));
+      m_DownstreamReplayFilter.Decay(Time_t(now));
 
       if(_status == ePathBuilding)
       {

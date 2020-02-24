@@ -371,7 +371,7 @@ namespace llarp
       // clear gossip list
       m_GossipList.clear();
       // decay gossip filter
-      m_GossipReplayFilter.Decay(now);
+      m_GossipReplayFilter.Decay();
 
       if(_services)
       {
