@@ -456,7 +456,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
+    Endpoint::PublishIntroSet(const EncryptedIntroSet& introset, AbstractRouter* r)
     {
       /// number of routers to publish to
       static constexpr size_t PublishRedundancy = 2;
@@ -466,7 +466,7 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        if(PublishIntroSetVia(i, r, path, published))
+        if(PublishIntroSetVia(introset, r, path, published))
         {
           published++;
         }
@@ -525,10 +525,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
+    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& introset, AbstractRouter* r,
                                  path::Path_ptr path, uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), i, relayOrder);
+      auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
       if(job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
@@ -563,9 +563,9 @@ namespace llarp
       ForEachPath([&](const path::Path_ptr& p) {
         if(!p->IsReady())
           return;
-        for(const auto& i : introSet().I)
+        for(const auto& introset : introSet().I)
         {
-          if(i == p->intro)
+          if(introset == p->intro)
             return;
         }
         ++numNotInIntroset;
