@@ -1278,12 +1278,13 @@ namespace llarp
         return false;
 
       size_t numBuilding = NumInStatus(path::ePathBuilding);
-      if (numBuilding > 0)
+      if(numBuilding > 0)
         return false;
 
       static constexpr auto buildSpread = path::default_lifetime / 4;
-      const auto sinceEpoch = m_lastBuildStarted.time_since_epoch();
-      const auto sinceEpochMs = std::chrono::duration_cast< std::chrono::milliseconds >(sinceEpoch);
+      const auto sinceEpoch             = m_lastBuildStarted.time_since_epoch();
+      const auto sinceEpochMs =
+          std::chrono::duration_cast< std::chrono::milliseconds >(sinceEpoch);
 
       return ((now - sinceEpochMs.count()) > buildSpread);
     }
