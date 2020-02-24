@@ -22,7 +22,7 @@ namespace llarp
   {
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
     // 10 seconds clock skew permitted for introset expiration
-    constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
+    constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = 10s;
 
     struct IntroSet
     {
@@ -30,7 +30,7 @@ namespace llarp
       std::vector< Introduction > I;
       PQPubKey K;
       Tag topic;
-      llarp_time_t T = 0;
+      llarp_time_t T = 0s;
       nonstd::optional< PoW > W;
       Signature Z;
       uint64_t version = LLARP_PROTO_VERSION;
@@ -108,7 +108,7 @@ namespace llarp
       using Payload_t = std::vector< byte_t >;
 
       PubKey derivedSigningKey;
-      llarp_time_t signedAt = 0;
+      llarp_time_t signedAt = 0s;
       Payload_t introsetPayload;
       TunnelNonce nounce;
       nonstd::optional< Tag > topic;

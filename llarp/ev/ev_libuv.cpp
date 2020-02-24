@@ -914,7 +914,7 @@ namespace libuv
       newTimer->data       = (void*)timer_data;
 
       uv_timer_init(&m_Impl, newTimer);
-      uv_timer_start(newTimer, &OnUVTimer, job.delay_ms, 0);
+      uv_timer_start(newTimer, &OnUVTimer, job.delay_ms.count(), 0);
     }
   }
 

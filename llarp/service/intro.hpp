@@ -16,9 +16,9 @@ namespace llarp
     {
       PubKey router;
       PathID_t pathID;
-      uint64_t latency   = 0;
-      uint64_t expiresAt = 0;
-      uint64_t version   = LLARP_PROTO_VERSION;
+      llarp_time_t latency   = 0s;
+      llarp_time_t expiresAt = 0s;
+      uint64_t version       = LLARP_PROTO_VERSION;
 
       util::StatusObject
       ExtractStatus() const;
@@ -30,7 +30,7 @@ namespace llarp
       }
 
       bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 30000) const
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 30s) const
       {
         return IsExpired(now + dlt);
       }

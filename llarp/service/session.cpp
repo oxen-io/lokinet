@@ -7,7 +7,7 @@ namespace llarp
     util::StatusObject
     Session::ExtractStatus() const
     {
-      util::StatusObject obj{{"lastUsed", lastUsed},
+      util::StatusObject obj{{"lastUsed", lastUsed.count()},
                              {"replyIntro", replyIntro.ExtractStatus()},
                              {"remote", remote.Addr().ToString()},
                              {"seqno", seqno},

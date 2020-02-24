@@ -108,7 +108,7 @@ namespace llarp
     {
       if(Expired(llarp::time_now_ms()))
         return false;
-      return intro.latency > 0 && _status == ePathEstablished;
+      return intro.latency > 0s && _status == ePathEstablished;
     }
 
     bool
@@ -280,7 +280,8 @@ namespace llarp
       }
       else if(st == ePathEstablished && _status == ePathBuilding)
       {
-        LogInfo("path ", Name(), " is built, took ", now - buildStarted, " ms");
+        LogInfo("path ", Name(), " is built, took ",
+                Time_t(now - buildStarted).count(), " ms");
       }
       else if(st == ePathTimeout && _status == ePathEstablished)
       {
@@ -298,7 +299,7 @@ namespace llarp
     util::StatusObject
     PathHopConfig::ExtractStatus() const
     {
-      util::StatusObject obj{{"lifetime", lifetime},
+      util::StatusObject obj{{"lifetime", lifetime.count()},
                              {"router", rc.pubkey.ToHex()},
                              {"txid", txID.ToHex()},
                              {"rxid", rxID.ToHex()}};
@@ -311,12 +312,12 @@ namespace llarp
       auto now = llarp::time_now_ms();
 
       util::StatusObject obj{{"intro", intro.ExtractStatus()},
-                             {"lastRecvMsg", m_LastRecvMessage},
-                             {"lastLatencyTest", m_LastLatencyTestTime},
-                             {"buildStarted", buildStarted},
+                             {"lastRecvMsg", m_LastRecvMessage.count()},
+                             {"lastLatencyTest", m_LastLatencyTestTime.count()},
+                             {"buildStarted", buildStarted.count()},
                              {"expired", Expired(now)},
                              {"expiresSoon", ExpiresSoon(now)},
-                             {"expiresAt", ExpireTime()},
+                             {"expiresAt", ExpireTime().count()},
                              {"ready", IsReady()},
                              {"txRateCurrent", m_LastTXRate},
                              {"rxRateCurrent", m_LastRXRate},
@@ -383,14 +384,15 @@ namespace llarp
 
       if(_status == ePathBuilding)
       {
-        if(buildStarted == 0)
+        if(buildStarted == 0s)
           return;
         if(now >= buildStarted)
         {
           const auto dlt = now - buildStarted;
           if(dlt >= path::build_timeout)
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and no path was built");
+            LogWarn(Name(), " waited for ", dlt.count(),
+                    "ms and no path was built");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathExpired, now);
             return;
@@ -411,21 +413,23 @@ namespace llarp
           FlushUpstream(r);
           return;
         }
-        if(m_LastRecvMessage && now > m_LastRecvMessage)
+        if(m_LastRecvMessage > 0s && now > m_LastRecvMessage)
         {
           const auto delay = now - m_LastRecvMessage;
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and path is unresponsive");
+            LogWarn(Name(), " waited for ", dlt.count(),
+                    "ms and path is unresponsive");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
         }
-        else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0)
+        else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0s)
         {
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and path looks dead");
+            LogWarn(Name(), " waited for ", dlt.count(),
+                    "ms and path looks dead");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
@@ -701,7 +705,8 @@ namespace llarp
         if(m_BuiltHook)
           m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
-        LogDebug("path latency is now ", intro.latency, " for ", Name());
+        LogDebug("path latency is now ", intro.latency.count(), " for ",
+                 Name());
         return true;
       }
 
@@ -793,7 +798,7 @@ namespace llarp
         }
         LogInfo(Name(), " ", Endpoint(), " Rejected exit");
         MarkActive(r->Now());
-        return InformExitResult(msg.B);
+        return InformExitResult(Time_t(msg.B));
       }
       LogError(Name(), " got unwarranted RXM");
       return false;
@@ -814,7 +819,7 @@ namespace llarp
         _role |= ePathRoleExit;
         LogInfo(Name(), " ", Endpoint(), " Granted exit");
         MarkActive(r->Now());
-        return InformExitResult(0);
+        return InformExitResult(0s);
       }
       LogError(Name(), " got unwarranted GXM");
       return false;

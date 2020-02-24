@@ -19,12 +19,13 @@ namespace llarp
 
     using SessionReadyFunc = std::function< void(BaseSession_ptr) >;
 
+    static constexpr auto LifeSpan = path::default_lifetime;
+
     /// a persisting exit session with an exit router
     struct BaseSession : public llarp::path::Builder,
                          public std::enable_shared_from_this< BaseSession >
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
-      static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
 
       BaseSession(const llarp::RouterID& exitRouter,
                   std::function< bool(const llarp_buffer_t&) > writepkt,

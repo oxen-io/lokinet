@@ -17,9 +17,9 @@ namespace llarp
 
     struct CachedTagResult
     {
-      const static llarp_time_t TTL = 10000;
-      llarp_time_t lastRequest      = 0;
-      llarp_time_t lastModified     = 0;
+      static constexpr auto TTL = 10s;
+      llarp_time_t lastRequest  = 0s;
+      llarp_time_t lastModified = 0s;
       std::set< EncryptedIntroSet > result;
       Tag tag;
       Endpoint* m_parent;

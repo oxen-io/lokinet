@@ -187,7 +187,7 @@ namespace llarp
       bool
       ShouldFlushNow(llarp_time_t now) const;
 
-      llarp_time_t m_LastFlushAt = 0;
+      llarp_time_t m_LastFlushAt = 0s;
       using PacketQueue_t        = llarp::util::CoDelQueue<
           net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
           net::IPPacket::CompareOrder, net::IPPacket::GetNow >;

@@ -8,7 +8,7 @@ namespace llarp
                            const std::string& nodename, const std::string msg)
   {
     json::Object obj;
-    obj["time"]     = llarp::time_now_ms();
+    obj["time"]     = llarp::time_now_ms().count();
     obj["nickname"] = nodename;
     obj["file"]     = std::string(fname);
     obj["line"]     = lineno;

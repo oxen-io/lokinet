@@ -59,7 +59,7 @@ namespace llarp
       /// nonce for key exchange
       TunnelNonce nonce;
       // lifetime
-      llarp_time_t lifetime = default_lifetime;
+      Time_t lifetime = default_lifetime;
 
       util::StatusObject
       ExtractStatus() const;
@@ -97,7 +97,7 @@ namespace llarp
 
       service::Introduction intro;
 
-      llarp_time_t buildStarted = 0;
+      llarp_time_t buildStarted = 0s;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
            PathRole startingRoles, std::string shortName);
@@ -270,7 +270,7 @@ namespace llarp
       }
 
       bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const override
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5s) const override
       {
         return now >= (ExpireTime() - dlt);
       }
@@ -426,8 +426,8 @@ namespace llarp
       ExitClosedFunc m_ExitClosed;
       ExitTrafficHandlerFunc m_ExitTrafficHandler;
       std::vector< ObtainedExitHandler > m_ObtainedExitHooks;
-      llarp_time_t m_LastRecvMessage     = 0;
-      llarp_time_t m_LastLatencyTestTime = 0;
+      llarp_time_t m_LastRecvMessage     = 0s;
+      llarp_time_t m_LastLatencyTestTime = 0s;
       uint64_t m_LastLatencyTestID       = 0;
       uint64_t m_UpdateExitTX            = 0;
       uint64_t m_CloseExitTX             = 0;

@@ -44,10 +44,10 @@ namespace llarp
       IDataHandler* const m_DataHandler;
       Endpoint* const m_Endpoint;
       uint64_t sequenceNo       = 0;
-      llarp_time_t lastGoodSend = 0;
-      llarp_time_t createdAt;
-      llarp_time_t sendTimeout    = 40 * 1000;
-      llarp_time_t connectTimeout = 60 * 1000;
+      llarp_time_t lastGoodSend = 0s;
+      const llarp_time_t createdAt;
+      llarp_time_t sendTimeout    = 40s;
+      llarp_time_t connectTimeout = 60s;
       bool markedBad              = false;
       using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
       using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;

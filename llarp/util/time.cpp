@@ -10,8 +10,7 @@ namespace llarp
   static llarp_time_t
   time_since_epoch()
   {
-    return std::chrono::duration_cast< Res >(Clock::now().time_since_epoch())
-        .count();
+    return std::chrono::duration_cast< Res >(Clock::now().time_since_epoch());
   }
 
   const static llarp_time_t started_at_system =
@@ -32,16 +31,16 @@ namespace llarp
   Time_t
   time_now()
   {
-    return Time_t(time_now_ms());
+    return time_now_ms();
   }
 
   llarp_time_t
   time_now_ms()
   {
-    static llarp_time_t lastTime = 0;
+    static llarp_time_t lastTime = 0s;
     auto t                       = time_since_started();
 #ifdef TESTNET_SPEED
-    t /= TESTNET_SPEED;
+    t /= uint64_t(TESTNET_SPEED);
 #endif
     t += started_at_system;
 
@@ -49,16 +48,16 @@ namespace llarp
     {
       return lastTime;
     }
-    if(lastTime == 0)
+    if(lastTime == 0s)
     {
       lastTime = t;
     }
     const auto dlt = t - lastTime;
-    if(dlt > 5000)
+    if(dlt > 5s)
     {
       // big timeskip
       t        = lastTime;
-      lastTime = 0;
+      lastTime = 0s;
     }
     else
     {

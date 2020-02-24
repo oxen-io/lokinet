@@ -33,7 +33,7 @@ namespace llarp
     bool
     TunEndpoint::ShouldFlushNow(llarp_time_t now) const
     {
-      static constexpr llarp_time_t FlushInterval = 25;
+      static constexpr auto FlushInterval = 25ms;
       return now >= m_LastFlushAt + FlushInterval;
     }
 
@@ -88,7 +88,7 @@ namespace llarp
       util::StatusObject ips{};
       for(const auto &item : m_IPActivity)
       {
-        util::StatusObject ipObj{{"lastActive", item.second}};
+        util::StatusObject ipObj{{"lastActive", item.second.count()}};
         std::string remoteStr;
         AlignedBuffer< 32 > addr = m_IPToAddr.at(item.first);
         if(m_SNodes.at(addr))
@@ -499,7 +499,7 @@ namespace llarp
                   SendDNSReply(addr, ctx, replyMsg, reply, false,
                                isV6 || !isV4);
                 },
-                2000);
+                2s);
           }
         }
         else if(addr.FromString(qname, ".snode"))
@@ -975,7 +975,7 @@ namespace llarp
       // we are full
       // expire least active ip
       // TODO: prevent DoS
-      std::pair< huint128_t, llarp_time_t > oldest = {huint128_t{0}, 0};
+      std::pair< huint128_t, llarp_time_t > oldest = {huint128_t{0}, 0s};
 
       // find oldest entry
       auto itr = m_IPActivity.begin();
@@ -1019,7 +1019,7 @@ namespace llarp
     void
     TunEndpoint::MarkIPActiveForever(huint128_t ip)
     {
-      m_IPActivity[ip] = std::numeric_limits< uint64_t >::max();
+      m_IPActivity[ip] = std::numeric_limits< llarp_time_t >::max();
     }
 
     void

@@ -7,7 +7,7 @@
 #include <utility>
 #include <unordered_set>
 
-constexpr uint64_t LINK_LAYER_TICK_INTERVAL = 100;
+static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
@@ -360,8 +360,8 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
-    static constexpr llarp_time_t CloseGraceWindow = 500;
-    const auto now                                 = Now();
+    static constexpr auto CloseGraceWindow = 500ms;
+    const auto now                         = Now();
     Lock_t l(m_AuthedLinksMutex);
     RouterID r = remote;
     llarp::LogInfo("Closing all to ", r);
@@ -462,7 +462,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::ScheduleTick(uint64_t interval)
+  ILinkLayer::ScheduleTick(llarp_time_t interval)
   {
     tick_id =
         m_Logic->call_later(interval, std::bind(&ILinkLayer::OnTick, this));

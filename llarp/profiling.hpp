@@ -18,8 +18,8 @@ namespace llarp
     uint64_t connectGoodCount       = 0;
     uint64_t pathSuccessCount       = 0;
     uint64_t pathFailCount          = 0;
-    llarp_time_t lastUpdated        = 0;
-    llarp_time_t lastDecay          = 0;
+    llarp_time_t lastUpdated        = 0s;
+    llarp_time_t lastDecay          = 0s;
     uint64_t version                = LLARP_PROTO_VERSION;
 
     bool
@@ -113,7 +113,7 @@ namespace llarp
     BEncodeNoLock(llarp_buffer_t* buf) const REQUIRES_SHARED(m_ProfilesMutex);
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map< RouterID, RouterProfile > m_Profiles GUARDED_BY(m_ProfilesMutex);
-    llarp_time_t m_LastSave = 0;
+    llarp_time_t m_LastSave = 0s;
     std::atomic< bool > m_DisableProfiling;
   };
 

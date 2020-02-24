@@ -320,8 +320,8 @@ namespace llarp
               {"rxMsgQueueSize", m_RXMsgs.size()},
               {"remoteAddr", m_RemoteAddr.ToString()},
               {"remoteRC", m_RemoteRC.ExtractStatus()},
-              {"created", m_CreatedAt},
-              {"uptime", (now - m_CreatedAt)}};
+              {"created", m_CreatedAt.count()},
+              {"uptime", Time_t(now - m_CreatedAt).count()}};
     }
 
     bool
@@ -355,7 +355,7 @@ namespace llarp
       if(ShouldResetRates(now))
       {
         ResetRates();
-        m_ResetRatesAt = now + 1000;
+        m_ResetRatesAt = now + 1s;
       }
       // remove pending outbound messsages that timed out
       // inform waiters

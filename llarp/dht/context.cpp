@@ -327,7 +327,7 @@ namespace llarp
       if(num)
         Explore(num);
       router->logic()->call_later(
-          interval,
+          std::chrono::milliseconds(interval),
           std::bind(&llarp::dht::Context::handle_explore_timer, this,
                     interval));
     }
@@ -499,7 +499,7 @@ namespace llarp
       router->logic()->call_later(
           exploreInterval,
           std::bind(&llarp::dht::Context::handle_explore_timer, this,
-                    exploreInterval));
+                    exploreInterval.count()));
       // start cleanup timer
       ScheduleCleanupTimer();
     }
@@ -508,7 +508,7 @@ namespace llarp
     Context::ScheduleCleanupTimer()
     {
       router->logic()->call_later(
-          1000,
+          1s,
           std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
     }
 
@@ -519,7 +519,7 @@ namespace llarp
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
       auto now = Now();
-      router->PersistSessionUntil(peer, now + 60000);
+      router->PersistSessionUntil(peer, now + 1min);
     }
 
     bool
@@ -595,7 +595,7 @@ namespace llarp
       TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
+          new ServiceAddressLookup(asker, addr, this, 0, handler), 1s);
     }
 
     bool

@@ -32,7 +32,7 @@
 #include <unistd.h>
 #endif
 
-constexpr uint64_t ROUTER_TICK_INTERVAL_MS = 1000;
+static constexpr auto ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
@@ -147,9 +147,9 @@ namespace llarp
   void
   Router::PumpLL()
   {
-    static constexpr size_t PumpJobThreshhold  = 50;
-    static constexpr llarp_time_t PumpInterval = 25;
-    const auto now                             = Now();
+    static constexpr size_t PumpJobThreshhold = 50;
+    static constexpr auto PumpInterval        = 25ms;
+    const auto now                            = Now();
     if(_stopping.load())
       return;
     if(_logic->numPendingJobs() >= PumpJobThreshhold
@@ -300,8 +300,8 @@ namespace llarp
   Router::handle_router_ticker()
   {
     ticker_job_id = 0;
-    LogicCall(logic(), std::bind(&Router::Tick, this));
-    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
+    Tick();
+    ScheduleTicker(ROUTER_TICK_INTERVAL);
   }
 
   bool
@@ -613,12 +613,12 @@ namespace llarp
     if(conf->logging.m_LogJSON)
     {
       LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
-          diskworker(), logfile, 100, logfile != stdout);
+          diskworker(), logfile, 100ms, logfile != stdout);
     }
     else if(logfile != stdout)
     {
       LogContext::Instance().logStream =
-          std::make_unique< FileLogStream >(diskworker(), logfile, 100, true);
+          std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
     }
 
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
@@ -644,7 +644,7 @@ namespace llarp
   bool
   Router::ShouldReportStats(llarp_time_t now) const
   {
-    static constexpr llarp_time_t ReportStatsInterval = 60 * 60 * 1000;
+    static constexpr auto ReportStatsInterval = 1h;
     return now - m_LastStatsReport > ReportStatsInterval;
   }
 
@@ -658,11 +658,11 @@ namespace llarp
     if(IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(_rc.Age(now), " ms since we last updated our RC");
-      LogInfo(_rc.TimeUntilExpires(now), " ms until our RC expires");
+      LogInfo(_rc.Age(now).count(), " ms since we last updated our RC");
+      LogInfo(_rc.TimeUntilExpires(now).count(), " ms until our RC expires");
     }
-    LogInfo(now, " system time");
-    LogInfo(m_LastStatsReport, " last reported stats");
+    LogInfo(now.count(), " system time");
+    LogInfo(m_LastStatsReport.count(), " last reported stats");
     m_LastStatsReport = now;
   }
 
@@ -685,13 +685,13 @@ namespace llarp
       ReportStats();
     }
 
-    _rcGossiper.Decay(time_now());
+    _rcGossiper.Decay(now);
 
     _rcLookupHandler.PeriodicUpdate(now);
 
     const bool isSvcNode = IsServiceNode();
 
-    if(_rc.ExpiresSoon(now, randint() % 10000)
+    if(_rc.ExpiresSoon(now, Time_t(randint() % 10000))
        || (now - _rc.last_updated) > rcRegenInterval)
     {
       LogInfo("regenerating RC");
@@ -783,10 +783,10 @@ namespace llarp
   }
 
   void
-  Router::ScheduleTicker(uint64_t ms)
+  Router::ScheduleTicker(llarp_time_t interval)
   {
-    ticker_job_id =
-        _logic->call_later(ms, std::bind(&Router::handle_router_ticker, this));
+    ticker_job_id = _logic->call_later(
+        interval, std::bind(&Router::handle_router_ticker, this));
   }
 
   void
@@ -1073,7 +1073,7 @@ namespace llarp
 
     _netloop->add_ticker(std::bind(&Router::PumpLL, this));
 
-    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
+    ScheduleTicker(ROUTER_TICK_INTERVAL);
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1093,9 +1093,9 @@ namespace llarp
   Router::Uptime() const
   {
     const llarp_time_t _now = Now();
-    if(_startedAt && _now > _startedAt)
+    if(_startedAt > 0s && _now > _startedAt)
       return _now - _startedAt;
-    return 0;
+    return 0s;
   }
 
   void
@@ -1109,7 +1109,7 @@ namespace llarp
   {
     StopLinks();
     nodedb()->AsyncFlushToDisk();
-    _logic->call_later(200, std::bind(&Router::AfterStopLinks, this));
+    _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
   }
 
   void
@@ -1135,7 +1135,7 @@ namespace llarp
       rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
-    _logic->call_later(200, std::bind(&Router::AfterStopIssued, this));
+    _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));
   }
 
   bool

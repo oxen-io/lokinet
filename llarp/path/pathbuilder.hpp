@@ -12,12 +12,12 @@ namespace llarp
   namespace path
   {
     // milliseconds waiting between builds on a path
-    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 500;
+    static constexpr auto MIN_PATH_BUILD_INTERVAL = 500ms;
 
     struct Builder : public PathSet
     {
      private:
-      llarp_time_t m_LastWarn = 0;
+      llarp_time_t m_LastWarn = 0s;
 
      protected:
       /// flag for PathSet::Stop()
@@ -42,7 +42,7 @@ namespace llarp
       AbstractRouter* m_router;
       SecretKey enckey;
       size_t numHops;
-      llarp_time_t lastBuild          = 0;
+      llarp_time_t lastBuild          = 0s;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
       /// construct

@@ -88,9 +88,9 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
-    if(lifetime > 10 && lifetime < 600)
+    if(lifetime > 10s && lifetime < path::default_lifetime)
     {
-      if(!BEncodeWriteDictInt("i", lifetime, buf))
+      if(!BEncodeWriteDictInt("i", lifetime.count(), buf))
         return false;
     }
     if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))
@@ -288,9 +288,9 @@ namespace llarp
       // persist sessions to upstream and downstream routers until the commit
       // ends
       self->context->Router()->PersistSessionUntil(
-          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+          self->hop->info.downstream, self->hop->ExpireTime() + 10s);
       self->context->Router()->PersistSessionUntil(
-          self->hop->info.upstream, self->hop->ExpireTime() + 10000);
+          self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
       // if we have an rc for this hop...
@@ -333,7 +333,7 @@ namespace llarp
       {
         // persist session to downstream until path expiration
         self->context->Router()->PersistSessionUntil(
-            self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+            self->hop->info.downstream, self->hop->ExpireTime() + 10s);
         // put hop
         self->context->PutTransitHop(self->hop);
       }
@@ -401,15 +401,16 @@ namespace llarp
       if(self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
-                        self->record.work->extendedLifetime, " seconds for ",
+                        self->record.work->extendedLifetime.count(), " for ",
                         info);
-        self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
+        self->hop->lifetime += self->record.work->extendedLifetime;
       }
-      else if(self->record.lifetime < 600 && self->record.lifetime > 10)
+      else if(self->record.lifetime < path::default_lifetime
+              && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime,
-                        " seconds for ", info);
+        llarp::LogDebug("LRCM short lifespan set to ",
+                        self->hop->lifetime.count(), " ms for ", info);
       }
 
       // TODO: check if we really want to accept it

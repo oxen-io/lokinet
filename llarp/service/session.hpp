@@ -12,6 +12,8 @@ namespace llarp
 {
   namespace service
   {
+    static constexpr auto SessionLifetime = path::default_lifetime * 2;
+
     struct Session
     {
       /// the intro we have
@@ -22,16 +24,14 @@ namespace llarp
       Introduction intro;
       /// the intro remoet last sent on
       Introduction lastInboundIntro;
-      llarp_time_t lastUsed = 0;
+      llarp_time_t lastUsed = 0s;
       uint64_t seqno        = 0;
       bool inbound          = false;
 
       util::StatusObject
       ExtractStatus() const;
-
       bool
-      IsExpired(llarp_time_t now,
-                llarp_time_t lifetime = (path::default_lifetime * 2)) const;
+      IsExpired(llarp_time_t now, Time_t lifetime = SessionLifetime) const;
     };
 
   }  // namespace service

@@ -38,7 +38,7 @@ namespace llarp
     BaseSession::ExtractStatus() const
     {
       auto obj            = path::Builder::ExtractStatus();
-      obj["lastExitUse"]  = m_LastUse;
+      obj["lastExitUse"]  = m_LastUse.count();
       auto pub            = m_ExitIdentity.toPublic();
       obj["exitIdentity"] = pub.ToString();
       return obj;
@@ -55,7 +55,7 @@ namespace llarp
     {
       const size_t expect = (1 + (numPaths / 2));
       // check 30 seconds into the future and see if we need more paths
-      const llarp_time_t future = now + (30 * 1000) + buildIntervalLimit;
+      const llarp_time_t future = now + 30s + buildIntervalLimit;
       return NumPathsExistingAt(future) < expect && !BuildCooldownHit(now);
     }
 
@@ -91,7 +91,7 @@ namespace llarp
     bool
     BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
     {
-      return dlt >= 10000;
+      return dlt >= 10s;
     }
 
     void
@@ -127,7 +127,7 @@ namespace llarp
     bool
     BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
     {
-      if(b == 0)
+      if(b == 0s)
       {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
         CallPendingCallbacks(true);

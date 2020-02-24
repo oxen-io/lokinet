@@ -22,7 +22,7 @@
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
-#define MIN_SHIFT_INTERVAL (5 * 1000)
+#define MIN_SHIFT_INTERVAL 5s
 #endif
 
 struct llarp_async_verify_rc;
@@ -59,16 +59,16 @@ namespace llarp
     };
     using ConvoEventListener_ptr = std::shared_ptr< IConvoEventListener >;
 
+    /// minimum interval for publishing introsets
+    static constexpr auto INTROSET_PUBLISH_INTERVAL =
+        path::default_lifetime / 4;
+
+    static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
     {
-      /// minimum interval for publishing introsets
-      static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
-          path::default_lifetime / 4;
-
-      static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
-
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
@@ -288,7 +288,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address remote, PathEnsureHook h,
-                          uint64_t timeoutMS);
+                          llarp_time_t timeoutMS);
 
       using SNodeEnsureHook =
           std::function< void(const RouterID, exit::BaseSession_ptr) >;
