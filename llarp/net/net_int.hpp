@@ -19,7 +19,7 @@
 #include <util/endian.hpp>
 #include <vector>
 
-#include "uint128.h"
+#include "uint128.hpp"
 
 namespace llarp
 {

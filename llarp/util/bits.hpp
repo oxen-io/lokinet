@@ -6,7 +6,7 @@
 #include <numeric>
 #include <type_traits>
 #include <limits>
-#include <net/uint128.h>
+#include <net/uint128.hpp>
 
 namespace llarp
 {
