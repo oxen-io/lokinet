@@ -17,7 +17,7 @@ namespace llarp
     /// pad messages to the nearest this many bytes
     constexpr std::size_t pad_size = 128;
     /// default path lifetime in ms
-    static constexpr auto default_lifetime = 10min;
+    static constexpr auto default_lifetime = 20min;
     /// after this many ms a path build times out
     static constexpr auto build_timeout = 30s;
 

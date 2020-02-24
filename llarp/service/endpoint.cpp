@@ -75,10 +75,10 @@ namespace llarp
     Endpoint::RegenAndPublishIntroSet(bool forceRebuild)
     {
       const auto now = llarp::time_now_ms();
-      std::set< Introduction > I;
+      std::set< Introduction > introset;
       if(!GetCurrentIntroductionsWithFilter(
-             I, [now](const service::Introduction& intro) -> bool {
-               return not intro.ExpiresSoon(now, 2min);
+             introset, [now](const service::Introduction& intro) -> bool {
+               return not intro.ExpiresSoon(now, path::default_lifetime * 2);
              }))
       {
         LogWarn("could not publish descriptors for endpoint ", Name(),
@@ -88,7 +88,7 @@ namespace llarp
         return;
       }
       introSet().I.clear();
-      for(auto& intro : I)
+      for(auto& intro : introset)
       {
         introSet().I.emplace_back(std::move(intro));
       }
