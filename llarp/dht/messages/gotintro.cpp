@@ -20,8 +20,7 @@ namespace llarp
     bool
     GotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
-        ABSL_ATTRIBUTE_UNUSED std::vector< std::unique_ptr< IMessage > >
-            &replies) const
+        std::vector< std::unique_ptr< IMessage > > & /*replies*/) const
     {
       auto &dht = *ctx->impl;
 

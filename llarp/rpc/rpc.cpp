@@ -286,9 +286,7 @@ namespace llarp
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
       AbstractRouter* router;
-      std::unordered_map< absl::string_view, std::function< Response() >,
-                          absl::Hash< absl::string_view > >
-          m_dispatch;
+      std::unordered_map< std::string, std::function< Response() > > m_dispatch;
       Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
           : ::abyss::httpd::IRPCHandler(conn)
           , router(r)
@@ -401,8 +399,7 @@ namespace llarp
       }
 
       Response
-      HandleJSONRPC(Method_t method,
-                    ABSL_ATTRIBUTE_UNUSED const Params& params) override
+      HandleJSONRPC(Method_t method, const Params& /*params*/) override
       {
         auto it = m_dispatch.find(method);
         if(it != m_dispatch.end())

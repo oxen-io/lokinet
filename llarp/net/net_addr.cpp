@@ -64,16 +64,14 @@ namespace llarp
     this->from_char_array(str);
   }
 
-  Addr::Addr(string_view str, const uint16_t p_port) : Addr()
+  Addr::Addr(string_view str, const uint16_t p_port) : Addr(str)
   {
-    this->from_char_array(str);
     this->port(p_port);
   }
 
-  Addr::Addr(string_view addr_str, string_view port_str) : Addr()
+  Addr::Addr(string_view addr_str, string_view port_str)
+      : Addr(addr_str, std::strtoul(port_str.data(), nullptr, 10))
   {
-    this->from_char_array(string_view_string(addr_str).c_str());
-    this->port(std::strtoul(string_view_string(port_str).c_str(), nullptr, 10));
   }
 
   bool

@@ -1078,9 +1078,9 @@ namespace llarp
   {
     char buf[INET6_ADDRSTRLEN + 1] = {0};
     std::string str;
-    in6_addr inaddr    = {};
-    size_t numset      = 0;
-    absl::uint128 bits = netmask_bits.h;
+    in6_addr inaddr = {};
+    size_t numset   = 0;
+    uint128_t bits  = netmask_bits.h;
     while(bits)
     {
       if(bits & 1)

@@ -215,8 +215,7 @@ namespace llarp
       FlushSend();
 
       /// maps ip to key (host byte order)
-      std::unordered_map< huint128_t, AlignedBuffer< 32 >, huint128_t::Hash >
-          m_IPToAddr;
+      std::unordered_map< huint128_t, AlignedBuffer< 32 > > m_IPToAddr;
       /// maps key to ip (host byte order)
       std::unordered_map< AlignedBuffer< 32 >, huint128_t,
                           AlignedBuffer< 32 >::Hash >
@@ -289,8 +288,7 @@ namespace llarp
       std::shared_ptr< dns::Proxy > m_Resolver;
 
       /// maps ip address to timestamp last active
-      std::unordered_map< huint128_t, llarp_time_t, huint128_t::Hash >
-          m_IPActivity;
+      std::unordered_map< huint128_t, llarp_time_t > m_IPActivity;
       /// our ip address (host byte order)
       huint128_t m_OurIP;
       /// next ip address to allocate (host byte order)

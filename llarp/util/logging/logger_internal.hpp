@@ -3,28 +3,23 @@
 
 #include <util/time.hpp>
 
-#include <absl/time/clock.h>
-#include <absl/time/time.h>
 #include <ctime>
-#include <iomanip>
 #include <sstream>
 #include <util/thread/threading.hpp>
 
 namespace llarp
 {
-  /** internal */
-  template < typename TArg >
-  void
-  LogAppend(std::stringstream& ss, TArg&& arg) noexcept
+  /** internal, recursion terminator */
+  constexpr void
+  LogAppend(std::stringstream&) noexcept
   {
-    ss << std::forward< TArg >(arg);
   }
   /** internal */
   template < typename TArg, typename... TArgs >
   void
   LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args) noexcept
   {
-    LogAppend(ss, std::forward< TArg >(arg));
+    ss << std::forward< TArg >(arg);
     LogAppend(ss, std::forward< TArgs >(args)...);
   }
 
@@ -54,18 +49,8 @@ namespace llarp
     explicit log_timestamp(const char* fmt);
   };
 
-  inline std::ostream&
-  operator<<(std::ostream& out, const log_timestamp& ts)
-  {
-#if defined(ANDROID) || defined(RPI)
-    (void)ts;
-    return out << ts.now << " [+" << ts.delta << " ms]";
-#else
-    absl::TimeZone tz = absl::LocalTimeZone();
-    return out << absl::FormatTime(ts.format, absl::FromUnixMillis(ts.now), tz)
-               << " [+" << ts.delta << " ms]";
-#endif
-  }
+  std::ostream&
+  operator<<(std::ostream& out, const log_timestamp& ts);
 
 }  // namespace llarp
 

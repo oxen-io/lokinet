@@ -6,7 +6,6 @@
 
 #include <util/buffer.hpp>
 
-#include <absl/base/optimization.h>
 #include <functional>
 
 #include <cstdint>
@@ -140,15 +139,17 @@ namespace llarp
     }
 
     static Crypto *
-    instance() ABSL_ATTRIBUTE_RETURNS_NONNULL
+    instance()
     {
-      if(ABSL_PREDICT_TRUE(m_crypto))
-      {
+#ifdef NDEBUG
+      return m_crypto;
+#else
+      if(m_crypto)
         return m_crypto;
-      }
 
       assert(false && "Cryptomanager::instance() was undefined");
       abort();
+#endif
     }
   };
 

@@ -6,7 +6,7 @@
 #include <util/bencode.hpp>
 #include <util/thread/threading.hpp>
 
-#include <absl/base/thread_annotations.h>
+#include <util/thread/annotations.hpp>
 #include <map>
 
 namespace llarp
@@ -57,7 +57,7 @@ namespace llarp
     /// check if this router should have paths built over it
     bool
     IsBadForPath(const RouterID& r, uint64_t chances = 8)
-        LOCK_RETURNED(m_ProfilesMutex);
+        EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should be connected directly to
     bool

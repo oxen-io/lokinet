@@ -22,14 +22,13 @@ namespace abyss
       auto itr = header.begin();
       while(itr != header.end())
       {
-        lowerHeader += ::tolower(*itr);
+        lowerHeader += std::tolower(*itr);
         ++itr;
       }
-      if(ShouldProcessHeader(string_view(lowerHeader)))
+      if(ShouldProcessHeader(lowerHeader))
       {
         val = val.substr(val.find_first_not_of(' '));
-        Header.Headers.emplace(lowerHeader.c_str(),
-                               llarp::string_view_string(val));
+        Header.Headers.emplace(lowerHeader.c_str(), val);
       }
       return true;
     }

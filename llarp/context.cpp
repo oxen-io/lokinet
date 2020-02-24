@@ -12,7 +12,6 @@
 #include <service/context.hpp>
 #include <util/logging/logger.h>
 
-#include <absl/strings/str_split.h>
 #include <cxxopts.hpp>
 #include <csignal>
 

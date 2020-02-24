@@ -1,13 +1,9 @@
 #include <util/printer.hpp>
-
-#include <absl/types/variant.h>
-#include <unordered_map>
-
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch.hpp>
+#include <sstream>
+#include <map>
 
 using namespace llarp;
-using namespace ::testing;
 
 struct PrintableType
 {
@@ -19,127 +15,80 @@ struct PrintableType
   }
 };
 
-using SingleVariant =
-    absl::variant< char, bool, short, int, unsigned int, const void *,
-                   const char *, std::string, const int *,
-                   std::pair< int, std::string >,
-                   std::tuple< int, std::string, int >,
-                   std::map< std::string, char >, PrintableType >;
-
-using SingleType = std::pair< SingleVariant, Matcher< std::string > >;
-
-class SingleValueTest : public ::testing::TestWithParam< SingleType >
-{
-};
-
-TEST_P(SingleValueTest, value)
-{
-  SingleType d = GetParam();
-  std::ostringstream stream;
+template <typename T>
+std::string print(const T &x) {
+  std::ostringstream os;
   {
-    Printer printer(stream, -1, -1);
-    absl::visit([&](const auto &x) { printer.printValue(x); }, d.first);
+    Printer printer(os, -1, -1);
+    printer.printValue(x);
   }
-  ASSERT_THAT(stream.str(), d.second);
+  return os.str();
 }
 
-static const char PTR_TYPE[] = "abacus";
-static const int INT_VAL     = 100;
+TEST_CASE("printable types", "[printer]") {
+  REQUIRE( print(char('a')) == "[ 'a' ]" );
+  REQUIRE( print(bool(true)) == "[ true ]" );
+  REQUIRE( print(bool(false)) == "[ false ]" );
+  REQUIRE( print(short(123)) == "[ 123 ]" );
+  REQUIRE( print(int(std::numeric_limits<int>::max() - 1)) == "[ 2147483646 ]" );
+  REQUIRE( print(static_cast< unsigned int >(std::numeric_limits< int >::max()) + 1) == "[ 2147483648 ]" );
 
-// clang-format off
-static const SingleType singleType[] = {
-    {char('a'), StrEq("[ 'a' ]")},
-    {bool(true), StrEq("[ true ]")},
-    {bool(false), StrEq("[ false ]")},
-    {short(123), StrEq("[ 123 ]")},
-    {int(INT_MAX - 1), StrEq("[ 2147483646 ]")},
-    {static_cast< unsigned int >(std::numeric_limits< int >::max()) + 1, StrEq("[ 2147483648 ]")},
-    {static_cast< const void * >(PTR_TYPE), AllOf(StartsWith("[ 0x"), EndsWith(" ]"))},
-    {static_cast< const char * >(PTR_TYPE), StrEq("[ \"abacus\" ]")},
-    {std::string("abacus"), StrEq("[ \"abacus\" ]")},
-    {static_cast< const int * >(&INT_VAL), AllOf(StartsWith("[ 0x"), EndsWith(" ]"))},
-    {std::pair< int, std::string >(100, "abacus"), StrEq("[ [ 100 \"abacus\" ] ]")},
-    {std::tuple< int, std::string, int >(100, "abacus", 123), StrEq("[ [ 100 \"abacus\" 123 ] ]")},
-    {std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}}, StrEq("[ [ [ \"one\" \'a\' ] [ \"three\" \'c\' ] [ \"two\" 'b' ] ] ]")},
-    {PrintableType(), StrEq("[ PrintableType -2 -1 ]")},
-};
-// clang-format on
+  using Catch::Matchers::StartsWith;
+  using Catch::Matchers::EndsWith;
+  static const char PTR_TYPE[] = "abacus";
+  REQUIRE_THAT( print(static_cast< const void * >(PTR_TYPE)), StartsWith("[ 0x") && EndsWith(" ]") );
+  REQUIRE( print(static_cast< const char * >(PTR_TYPE)) == R"([ "abacus" ])" );
+  REQUIRE( print(std::string("abacus")) == R"([ "abacus" ])" );
 
-INSTANTIATE_TEST_SUITE_P(Printer, SingleValueTest,
-                         ::testing::ValuesIn(singleType));
-
-using SingleAttributeType =
-    std::tuple< std::string, SingleVariant, Matcher< std::string > >;
-
-class SingleAttributeTest
-    : public ::testing::TestWithParam< SingleAttributeType >
-{
+  static const int INT_VAL = 100;
+  REQUIRE_THAT( print(static_cast< const int * >(&INT_VAL)), StartsWith("[ 0x") && EndsWith(" ]") );
+  REQUIRE( print(std::pair< int, std::string >(100, "abacus")) == R"([ [ 100 "abacus" ] ])" );
+  REQUIRE( print(std::tuple< int, std::string, int >(100, "abacus", 123)) == R"([ [ 100 "abacus" 123 ] ])" );
+  REQUIRE( print(std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}})
+    == R"([ [ [ "one" 'a' ] [ "three" 'c' ] [ "two" 'b' ] ] ])" );
+  REQUIRE( print(PrintableType()) == "[ PrintableType -2 -1 ]" );
 };
 
-TEST_P(SingleAttributeTest, value)
-{
-  SingleAttributeType d = GetParam();
-  std::ostringstream stream;
+
+template <typename T>
+std::string printAttribute(const std::string& attr, const T &x) {
+  std::ostringstream os;
   {
-    Printer printer(stream, -1, -1);
-    absl::visit(
-        [&](const auto &x) { printer.printAttribute(std::get< 0 >(d), x); },
-        std::get< 1 >(d));
+    Printer printer(os, -1, -1);
+    printer.printAttribute(attr, x);
   }
-  ASSERT_THAT(stream.str(), std::get< 2 >(d));
+  return os.str();
 }
 
-// clang-format off
-static const SingleAttributeType singleAttributeType[] = {
-    SingleAttributeType("our_value", char('a'), StrEq("[ our_value = 'a' ]")),
-    SingleAttributeType("our_value", bool(true), StrEq("[ our_value = true ]")),
-    SingleAttributeType("our_value", bool(false), StrEq("[ our_value = false ]")),
-    SingleAttributeType("our_value", short(123), StrEq("[ our_value = 123 ]")),
-    SingleAttributeType("our_value", int(INT_MAX - 1), StrEq("[ our_value = 2147483646 ]")),
-    SingleAttributeType("our_value", static_cast< unsigned int >(std::numeric_limits< int >::max()) + 1, StrEq("[ our_value = 2147483648 ]")),
-    SingleAttributeType("our_value", static_cast< const void * >(PTR_TYPE), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))),
-    SingleAttributeType("our_value", static_cast< const char * >(PTR_TYPE), StrEq("[ our_value = \"abacus\" ]")),
-    SingleAttributeType("our_value", std::string("abacus"), StrEq("[ our_value = \"abacus\" ]")),
-    SingleAttributeType("our_value", static_cast< const int * >(&INT_VAL), AllOf(StartsWith("[ our_value = 0x"), EndsWith(" ]"))),
-    SingleAttributeType("our_value", std::pair< int, std::string >(100, "abacus"), StrEq("[ our_value = [ 100 \"abacus\" ] ]")),
-    SingleAttributeType("our_value", std::tuple< int, std::string, int >(100, "abacus", 123), StrEq("[ our_value = [ 100 \"abacus\" 123 ] ]")),
-    SingleAttributeType("our_value", std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}}, StrEq("[ our_value = [ [ \"one\" \'a\' ] [ \"three\" \'c\' ] [ \"two\" 'b' ] ] ]")),
-    SingleAttributeType("our_value", PrintableType(), StrEq("[ our_value = PrintableType -2 -1 ]")),
-};
-// clang-format on
-
-INSTANTIATE_TEST_SUITE_P(Printer, SingleAttributeTest,
-                         ::testing::ValuesIn(singleAttributeType));
-
-using ManyAttributes =
-    std::pair< std::vector< std::pair< std::string, SingleVariant > >,
-               Matcher< std::string > >;
-
-class ManyAttributesTest : public ::testing::TestWithParam< ManyAttributes >
-{
-};
-
-TEST_P(ManyAttributesTest, value)
-{
-  ManyAttributes d = GetParam();
-  std::ostringstream stream;
-  {
-    Printer printer(stream, -1, -1);
-    std::for_each(d.first.begin(), d.first.end(), [&](const auto &y) {
-      std::string n = y.first;
-      const auto &v = y.second;
-      absl::visit([&](const auto &x) { printer.printAttribute(n, x); }, v);
-    });
-  }
-  ASSERT_THAT(stream.str(), d.second);
+TEST_CASE("printable types, with attribute", "[printer]") {
+    REQUIRE( printAttribute("fee", char('a')) == "[ fee = 'a' ]" );
+    REQUIRE( printAttribute("fi", int(32)) == "[ fi = 32 ]" );
+    REQUIRE( printAttribute("fo", std::map< std::string, char >{{"one", 'a'}, {"two", 'b'}, {"three", 'c'}})
+        == R"([ fo = [ [ "one" 'a' ] [ "three" 'c' ] [ "two" 'b' ] ] ])" );
+    REQUIRE( printAttribute("fum", PrintableType()) == "[ fum = PrintableType -2 -1 ]");
 }
 
-// clang-format off
-static const ManyAttributes manyAttributes[] = {
-    {{{"val", 1}, {"v2", 2}, {"v3", 3}, {"str", std::string("xxx")}}, StrEq("[ val = 1 v2 = 2 v3 = 3 str = \"xxx\" ]")},
-    {{{"str", std::string("xxx")}}, StrEq("[ str = \"xxx\" ]")}
-};
-// clang-format on
+void printAnother(Printer &) {}
 
-INSTANTIATE_TEST_SUITE_P(Printer, ManyAttributesTest,
-                         ::testing::ValuesIn(manyAttributes));
+template <typename T, typename... Tmore>
+void printAnother(Printer &p, const std::string &attr, const T& x, const Tmore&... more) {
+  p.printAttribute(attr, x);
+  printAnother(p, more...);
+}
+
+template <typename... T>
+std::string printMany(const T&... x) {
+  std::ostringstream os;
+  {
+    Printer p(os, -1, -1);
+    printAnother(p, x...);
+  }
+  return os.str();
+}
+
+TEST_CASE("printable types, with multiple attributes", "[printer]") {
+  REQUIRE( printMany("val", 1, "v2", 2, "v3", 3, "str", std::string{"xxx"})
+      == "[ val = 1 v2 = 2 v3 = 3 str = \"xxx\" ]" );
+  REQUIRE( printMany("str", std::string{"xxx"}) == "[ str = \"xxx\" ]" );
+}
+

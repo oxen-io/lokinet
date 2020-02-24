@@ -625,9 +625,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathTransferMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathTransferMessage& msg,
-        ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+    Path::HandlePathTransferMessage(const routing::PathTransferMessage& /*msg*/,
+                                    AbstractRouter* /*r*/)
     {
       LogWarn("unwarranted path transfer message on tx=", TXID(),
               " rx=", RXID());
@@ -675,9 +674,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathConfirmMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
-        AbstractRouter* r)
+    Path::HandlePathConfirmMessage(const routing::PathConfirmMessage& /*msg*/,
+                                   AbstractRouter* r)
     {
       return HandlePathConfirmMessage(r);
     }
@@ -725,7 +723,7 @@ namespace llarp
 
     bool
     Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg,
-                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+                                 AbstractRouter* /*r*/)
     {
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))

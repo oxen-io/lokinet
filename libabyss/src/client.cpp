@@ -77,7 +77,7 @@ namespace abyss
       }
 
       static void
-      OnTick(ABSL_ATTRIBUTE_UNUSED llarp_tcp_conn* conn)
+      OnTick(llarp_tcp_conn* /*conn*/)
       {
       }
 

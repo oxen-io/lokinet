@@ -15,6 +15,7 @@ set(LIB_UTIL_SRC
   util/logging/file_logger.cpp
   util/logging/json_logger.cpp
   util/logging/logger.cpp
+  util/logging/logger_internal.cpp
   util/logging/loglevel.cpp
   util/logging/ostream_logger.cpp
   util/logging/syslog_logger.cpp
@@ -42,16 +43,11 @@ endif()
 
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_LIBRARIES})
 target_link_libraries(${UTIL_LIB} PUBLIC
-    absl::time absl::hash
     nlohmann_json::nlohmann_json
     ghc_filesystem
     optional-lite
+    date::date
     )
-
-# cut back on fluff
-if (NOT WIN32)
-  target_link_libraries(${UTIL_LIB} PUBLIC absl::strings)
-endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC linux/netns.cpp)

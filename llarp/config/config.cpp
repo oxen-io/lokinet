@@ -12,8 +12,6 @@
 #include <util/str.hpp>
 #include <util/lokinet_init.h>
 
-#include <absl/strings/strip.h>
-
 #include <cstdlib>
 #include <fstream>
 #include <ios>
@@ -21,17 +19,63 @@
 
 namespace llarp
 {
-  std::string
-  tostr(string_view val)
+  const char *
+  lokinetEnv(string_view suffix)
   {
+    std::string env;
+    env.reserve(8 + suffix.size());
+    env.append("LOKINET_"s);
+    env.append(suffix.begin(), suffix.end());
+    return std::getenv(env.c_str());
+  }
+
+  std::string
+  fromEnv(string_view val, string_view envNameSuffix)
+  {
+    if(const char *ptr = lokinetEnv(envNameSuffix))
+      return ptr;
     return {val.begin(), val.end()};
+  }
+
+  int
+  fromEnv(const int &val, string_view envNameSuffix)
+  {
+    if(const char *ptr = lokinetEnv(envNameSuffix))
+      return std::atoi(ptr);
+    return val;
+  }
+
+  uint16_t
+  fromEnv(const uint16_t &val, string_view envNameSuffix)
+  {
+    if(const char *ptr = lokinetEnv(envNameSuffix))
+      return std::atoi(ptr);
+
+    return val;
+  }
+
+  size_t
+  fromEnv(const size_t &val, string_view envNameSuffix)
+  {
+    if(const char *ptr = lokinetEnv(envNameSuffix))
+      return std::atoll(ptr);
+
+    return val;
+  }
+
+  nonstd::optional< bool >
+  fromEnv(const nonstd::optional< bool > &val, string_view envNameSuffix)
+  {
+    if(const char *ptr = lokinetEnv(envNameSuffix))
+      return IsTrueValue(ptr);
+
+    return val;
   }
 
   int
   svtoi(string_view val)
   {
-    auto str = tostr(val);
-    return std::atoi(str.c_str());
+    return std::atoi(val.data());
   }
 
   nonstd::optional< bool >
@@ -62,14 +106,14 @@ namespace llarp
     }
     if(key == "default-protocol")
     {
-      m_DefaultLinkProto = tostr(val);
+      m_DefaultLinkProto = val;
       LogInfo("overriding default link protocol to '", val, "'");
     }
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
       {
-        m_netId = tostr(val);
+        m_netId = val;
         LogInfo("setting netid to '", val, "'");
       }
       else
@@ -97,29 +141,29 @@ namespace llarp
     }
     if(key == "nickname")
     {
-      m_nickname = tostr(val);
+      m_nickname = val;
       // set logger name here
       LogContext::Instance().nodeName = nickname();
       LogInfo("nickname set");
     }
     if(key == "encryption-privkey")
     {
-      m_encryptionKeyfile = tostr(val);
+      m_encryptionKeyfile = val;
       LogDebug("encryption key set to ", m_encryptionKeyfile);
     }
     if(key == "contact-file")
     {
-      m_ourRcFile = tostr(val);
+      m_ourRcFile = val;
       LogDebug("rc file set to ", m_ourRcFile);
     }
     if(key == "transport-privkey")
     {
-      m_transportKeyfile = tostr(val);
+      m_transportKeyfile = val;
       LogDebug("transport key set to ", m_transportKeyfile);
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
-      m_identKeyfile = tostr(val);
+      m_identKeyfile = val;
       LogDebug("identity key set to ", m_identKeyfile);
     }
     if(key == "public-address" || key == "public-ip")
@@ -185,16 +229,16 @@ namespace llarp
     }
     else if(key == "profiles")
     {
-      m_routerProfilesFile = tostr(val);
+      m_routerProfilesFile = val;
       llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
     else if(key == "strict-connect")
     {
-      m_strictConnect = tostr(val);
+      m_strictConnect = val;
     }
     else
     {
-      m_netConfig.emplace(tostr(key), tostr(val));
+      m_netConfig.emplace(key, val);
     }
   }
 
@@ -203,7 +247,7 @@ namespace llarp
   {
     if(key == "dir")
     {
-      m_nodedbDir = tostr(val);
+      m_nodedbDir = val;
     }
   }
 
@@ -213,12 +257,12 @@ namespace llarp
     if(key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", tostr(val));
+      netConfig.emplace("upstream-dns", val);
     }
     if(key == "bind")
     {
       llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", tostr(val));
+      netConfig.emplace("local-dns", val);
     }
   }
 
@@ -228,25 +272,21 @@ namespace llarp
     uint16_t proto = 0;
 
     std::unordered_set< std::string > parsed_opts;
-    std::string v = tostr(val);
     std::string::size_type idx;
     static constexpr char delimiter = ',';
     do
     {
-      idx = v.find_first_of(delimiter);
-      if(idx != std::string::npos)
+      idx = val.find_first_of(delimiter);
+      if(idx != string_view::npos)
       {
-        std::string data = v.substr(0, idx);
-        absl::StripAsciiWhitespace(&data);
-        parsed_opts.emplace(std::move(data));
-        v = v.substr(idx + 1);
+        parsed_opts.insert(TrimWhitespace(val.substr(0, idx)));
+        val.remove_prefix(idx + 1);
       }
       else
       {
-        absl::StripAsciiWhitespace(&v);
-        parsed_opts.insert(std::move(v));
+        parsed_opts.insert(TrimWhitespace(val));
       }
-    } while(idx != std::string::npos);
+    } while(idx != string_view::npos);
     std::unordered_set< std::string > opts;
     /// for each option
     for(const auto &item : parsed_opts)
@@ -274,13 +314,12 @@ namespace llarp
     }
     else
     {
-      m_InboundLinks.emplace_back(tostr(key), AF_INET, proto, std::move(opts));
+      m_InboundLinks.emplace_back(key, AF_INET, proto, std::move(opts));
     }
   }
 
   void
-  ConnectConfig::fromSection(ABSL_ATTRIBUTE_UNUSED string_view key,
-                             string_view val)
+  ConnectConfig::fromSection(string_view /*key*/, string_view val)
   {
     routers.emplace_back(val.begin(), val.end());
   }
@@ -288,7 +327,7 @@ namespace llarp
   void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
-    services.emplace_back(tostr(key), tostr(val));
+    services.emplace_back(key, val);
   }
 
   void
@@ -296,37 +335,7 @@ namespace llarp
   {
     if(key == "pidfile")
     {
-      pidfile = tostr(val);
-    }
-  }
-
-  void
-  MetricsConfig::fromSection(string_view key, string_view val)
-  {
-    if(key == "enable-metrics")
-    {
-      disableMetrics = IsFalseValue(val);
-    }
-    else if(key == "disable-metrics")
-    {
-      disableMetrics = IsTrueValue(val);
-    }
-    else if(key == "disable-metrics-log")
-    {
-      disableMetricLogs = IsTrueValue(val);
-    }
-    else if(key == "json-metrics-path")
-    {
-      jsonMetricsPath = tostr(val);
-    }
-    else if(key == "metric-tank-host")
-    {
-      metricTankHost = tostr(val);
-    }
-    else
-    {
-      // consume everything else as a metric tag
-      metricTags[tostr(key)] = tostr(val);
+      pidfile = val;
     }
   }
 
@@ -339,7 +348,7 @@ namespace llarp
     }
     if(key == "bind")
     {
-      m_rpcBindAddr = tostr(val);
+      m_rpcBindAddr = val;
     }
     if(key == "authkey")
     {
@@ -353,7 +362,7 @@ namespace llarp
     if(key == "service-node-seed")
     {
       usingSNSeed   = true;
-      ident_keyfile = tostr(val);
+      ident_keyfile = std::string{val};
     }
     if(key == "enabled")
     {
@@ -361,15 +370,15 @@ namespace llarp
     }
     if(key == "jsonrpc" || key == "addr")
     {
-      lokidRPCAddr = tostr(val);
+      lokidRPCAddr = val;
     }
     if(key == "username")
     {
-      lokidRPCUser = tostr(val);
+      lokidRPCUser = val;
     }
     if(key == "password")
     {
-      lokidRPCPassword = tostr(val);
+      lokidRPCPassword = val;
     }
   }
 
@@ -397,7 +406,7 @@ namespace llarp
     }
     if(key == "level")
     {
-      const auto maybe = LogLevelFromString(tostr(val));
+      const auto maybe = LogLevelFromString(val);
       if(not maybe.has_value())
       {
         LogError("bad log level: ", val);
@@ -414,7 +423,7 @@ namespace llarp
     if(key == "file")
     {
       LogInfo("open log file: ", val);
-      std::string fname   = tostr(val);
+      std::string fname   = val;
       FILE *const logfile = ::fopen(fname.c_str(), "a");
       if(logfile)
       {
@@ -494,7 +503,6 @@ namespace llarp
     links     = find_section< LinksConfig >(parser, "bind");
     services  = find_section< ServicesConfig >(parser, "services");
     system    = find_section< SystemConfig >(parser, "system");
-    metrics   = find_section< MetricsConfig >(parser, "metrics");
     api       = find_section< ApiConfig >(parser, "api");
     lokid     = find_section< LokidConfig >(parser, "lokid");
     bootstrap = find_section< BootstrapConfig >(parser, "bootstrap");
@@ -629,10 +637,6 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
   f << "#file=/path/to/logfile\n";
   f << "# uncomment for syslog logging\n";
   f << "#type=syslog\n";
-
-  // metrics
-  f << "[metrics]\n";
-  f << "json-metrics-path=" << basepath << "metrics.json\n";
 
   f << "\n\n";
 

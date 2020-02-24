@@ -10,8 +10,7 @@ namespace llarp
   PoW::~PoW() = default;
 
   bool
-  PoW::DecodeKey(ABSL_ATTRIBUTE_UNUSED const llarp_buffer_t& k,
-                 ABSL_ATTRIBUTE_UNUSED llarp_buffer_t* val)
+  PoW::DecodeKey(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
   {
     // TODO: implement me
     return false;
