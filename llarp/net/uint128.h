@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "../util/meta/traits.hpp"
+#include "../util/endian.hpp"
 
 namespace llarp
 {
@@ -12,7 +13,14 @@ namespace llarp
   /// multiplication/division/modulus.
   struct uint128_t
   {
+    // Swap order on little/big endian so that the first byte of the struct is
+    // always most significant on big endian and least significant on little
+    // endian.
+#ifdef __BIG_ENDIAN__
+    uint64_t upper, lower;
+#else
     uint64_t lower, upper;
+#endif
 
     // Initializes with 0s
     constexpr uint128_t() : lower{0}, upper{0}
@@ -273,6 +281,9 @@ namespace llarp
     }
   };
 
+  static_assert(sizeof(uint128_t) == 16,
+                "uint128_t has unexpected size (padding?)");
+
 }  // namespace llarp
 
 namespace std
@@ -290,3 +301,15 @@ namespace std
     }
   };
 }  // namespace std
+
+inline llarp::uint128_t
+ntoh128(llarp::uint128_t i)
+{
+#ifdef __BIG_ENDIAN__
+  return i;
+#else
+  const auto loSwapped = htobe64(i.lower);
+  const auto hiSwapped = htobe64(i.upper);
+  return {loSwapped, hiSwapped};
+#endif
+}

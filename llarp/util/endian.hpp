@@ -5,7 +5,6 @@
 
 #include <cinttypes>
 #include <cstring>
-#include <net/uint128.h>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
@@ -198,18 +197,6 @@ inline void
 htole64buf(void *buf, uint64_t big64)
 {
   htobuf64(buf, htole64(big64));
-}
-
-inline llarp::uint128_t
-ntoh128(llarp::uint128_t i)
-{
-#ifdef __BIG_ENDIAN__
-  return i;
-#else
-  const auto loSwapped = htobe64(i.lower);
-  const auto hiSwapped = htobe64(i.upper);
-  return {loSwapped, hiSwapped};
-#endif
 }
 
 #endif
