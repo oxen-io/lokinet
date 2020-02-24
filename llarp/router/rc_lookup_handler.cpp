@@ -6,7 +6,6 @@
 #include <crypto/crypto.hpp>
 #include <service/context.hpp>
 #include <router_contact.hpp>
-#include <util/meta/memfn.hpp>
 #include <util/types.hpp>
 #include <util/thread/threading.hpp>
 #include <nodedb.hpp>
@@ -24,14 +23,14 @@ namespace llarp
   void
   RCLookupHandler::AddValidRouter(const RouterID &router)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     whitelistRouters.insert(router);
   }
 
   void
   RCLookupHandler::RemoveValidRouter(const RouterID &router)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     whitelistRouters.erase(router);
   }
 
@@ -40,7 +39,7 @@ namespace llarp
   {
     if(routers.empty())
       return;
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     whitelistRouters.clear();
     for(auto &router : routers)
@@ -55,7 +54,7 @@ namespace llarp
   bool
   RCLookupHandler::HaveReceivedWhitelist()
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     return not whitelistRouters.empty();
   }
 
@@ -79,7 +78,7 @@ namespace llarp
     bool shouldDoLookup = false;
 
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
 
@@ -132,7 +131,7 @@ namespace llarp
       return false;
     }
 
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     if(useWhitelist && whitelistRouters.find(remote) == whitelistRouters.end())
     {
@@ -178,7 +177,7 @@ namespace llarp
   bool
   RCLookupHandler::GetRandomWhitelistRouter(RouterID &router) const
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     const auto sz = whitelistRouters.size();
     auto itr      = whitelistRouters.begin();
@@ -266,7 +265,7 @@ namespace llarp
 
       {
         // if we are using a whitelist look up a few routers we don't have
-        util::Lock l(&_mutex);
+        util::Lock l(_mutex);
         for(const auto &r : whitelistRouters)
         {
           if(now > _routerLookupTimes[r] + RerequestInterval
@@ -359,7 +358,7 @@ namespace llarp
   bool
   RCLookupHandler::HavePendingLookup(RouterID remote) const
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     return pendingCallbacks.find(remote) != pendingCallbacks.end();
   }
 
@@ -383,7 +382,7 @@ namespace llarp
   {
     CallbacksQueue movedCallbacks;
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr = pendingCallbacks.find(router);
 

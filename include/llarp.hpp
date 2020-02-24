@@ -23,22 +23,10 @@ namespace llarp
   struct Config;
   struct Crypto;
   struct CryptoManager;
-  struct MetricsConfig;
   struct RouterContact;
   namespace thread
   {
     class ThreadPool;
-  }
-
-  namespace metrics
-  {
-    class DefaultManagerGuard;
-    class PublisherScheduler;
-  }  // namespace metrics
-
-  namespace thread
-  {
-    class Scheduler;
   }
 
   struct Context
@@ -47,14 +35,7 @@ namespace llarp
     static Context *
     Get(llarp_main *);
 
-    Context();
-    ~Context();
-
-    // These come first, in this order.
-    // This ensures we get metric collection on shutdown
-    std::unique_ptr< thread::Scheduler > m_scheduler;
-    std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
-    std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
+    Context() = default;
 
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< CryptoManager > cryptoManager;
@@ -122,9 +103,6 @@ namespace llarp
 
     bool
     ReloadConfig();
-
-    void
-    setupMetrics(const MetricsConfig &metricsConfig);
 
     std::string configfile;
     std::string pidfile;

@@ -10,7 +10,6 @@
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/logging/logger.hpp>
-#include <util/metrics/metrics.hpp>
 
 #include <memory>
 
@@ -69,12 +68,10 @@ namespace llarp
       }
       // create the message to parse based off message type
       llarp::LogDebug("inbound message ", *strbuf.cur);
-      bool isLIM = false;
       switch(*strbuf.cur)
       {
         case 'i':
-          msg   = &holder->i;
-          isLIM = true;
+          msg = &holder->i;
           break;
         case 'd':
           msg = &holder->d;
@@ -96,12 +93,6 @@ namespace llarp
           break;
         default:
           return false;
-      }
-
-      if(!isLIM)
-      {
-        metrics::integerTick(msg->Name(), "RX", 1, "id",
-                             RouterID(from->GetPubKey()).ToString());
       }
 
       msg->session = from;

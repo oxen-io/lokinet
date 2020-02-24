@@ -30,7 +30,7 @@ namespace llarp
 
     bool
     QueueMessage(const RouterID &remote, const ILinkMessage *msg,
-                 SendStatusHandler callback) override LOCKS_EXCLUDED(_mutex);
+                 SendStatusHandler callback) override EXCLUDES(_mutex);
 
     void
     Tick() override;
@@ -122,7 +122,7 @@ namespace llarp
 
     void
     FinalizeSessionRequest(const RouterID &router, SendStatus status)
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     llarp::thread::Queue< MessageQueueEntry > outboundQueue;
     llarp::thread::Queue< PathID_t > removedPaths;

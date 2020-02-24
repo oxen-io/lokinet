@@ -68,7 +68,7 @@ namespace llarp
   {
     if(on_result)
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
       itr_pair.first->second.push_back(on_result);
@@ -94,7 +94,7 @@ namespace llarp
   {
     if(on_result)
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(rc.pubkey, CallbacksQueue{});
       itr_pair.first->second.push_back(on_result);
@@ -112,7 +112,7 @@ namespace llarp
   bool
   OutboundSessionMaker::HavePendingSessionTo(const RouterID &router) const
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     return pendingSessions.find(router) != pendingSessions.end();
   }
 
@@ -169,7 +169,7 @@ namespace llarp
   void
   OutboundSessionMaker::DoEstablish(const RouterID &router)
   {
-    util::ReleasableLock l(&_mutex);
+    auto l = util::unique_lock(_mutex);
 
     auto itr = pendingSessions.find(router);
 
@@ -183,7 +183,7 @@ namespace llarp
     {
       // TODO: maybe different failure type?
 
-      l.Release();
+      l.unlock();
       FinalizeRequest(router, SessionResult::NoLink);
     }
   }
@@ -193,7 +193,7 @@ namespace llarp
                                          const RouterContact &rc)
   {
     {
-      util::ReleasableLock l(&_mutex);
+      auto l = util::unique_lock(_mutex);
 
       // in case other request found RC for this router after this request was
       // made
@@ -207,7 +207,7 @@ namespace llarp
 
       if(!link)
       {
-        l.Release();
+        l.unlock();
         FinalizeRequest(router, SessionResult::NoLink);
         return;
       }
@@ -230,7 +230,7 @@ namespace llarp
       return false;
     size_t numPending = 0;
     {
-      util::Lock lock(&_mutex);
+      util::Lock lock(_mutex);
       if(pendingSessions.find(router) == pendingSessions.end())
         numPending += pendingSessions.size();
     }
@@ -300,7 +300,7 @@ namespace llarp
   void
   OutboundSessionMaker::CreatePendingSession(const RouterID &router)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     pendingSessions.emplace(router, nullptr);
   }
 
@@ -310,7 +310,7 @@ namespace llarp
   {
     CallbacksQueue movedCallbacks;
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       if(type == SessionResult::Establish)
       {
@@ -338,7 +338,7 @@ namespace llarp
     }
 
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
       pendingSessions.erase(router);
     }
   }

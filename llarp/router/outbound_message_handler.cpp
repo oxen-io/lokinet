@@ -47,7 +47,7 @@ namespace llarp
 
     bool shouldCreateSession = false;
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       // create queue for <remote> if it doesn't exist, and get iterator
       auto itr_pair =
@@ -404,7 +404,7 @@ namespace llarp
   {
     MessageQueue movedMessages;
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
       auto itr = pendingSessionMessageQueues.find(router);
 
       if(itr == pendingSessionMessageQueues.end())

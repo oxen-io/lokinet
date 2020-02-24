@@ -11,12 +11,6 @@
 #include <router/router.hpp>
 #include <service/context.hpp>
 #include <util/logging/logger.h>
-#include <util/meta/memfn.hpp>
-#include <util/metrics/json_publisher.hpp>
-#include <util/metrics/metrics.hpp>
-#include <util/metrics/metrictank_publisher.hpp>
-#include <util/metrics/stream_publisher.hpp>
-#include <util/thread/scheduler.hpp>
 
 #include <absl/strings/str_split.h>
 #include <cxxopts.hpp>
@@ -28,14 +22,6 @@
 
 namespace llarp
 {
-  Context::Context() = default;
-
-  Context::~Context()
-  {
-    if(m_scheduler)
-      m_scheduler->stop();
-  }
-
   bool
   Context::CallSafe(std::function< void(void) > f)
   {
@@ -73,88 +59,7 @@ namespace llarp
 
     nodedb_dir = config->netdb.nodedbDir();
 
-    if(!config->metrics.disableMetrics)
-    {
-      auto &metricsConfig = config->metrics;
-      auto &tags          = metricsConfig.metricTags;
-      tags["netid"]       = config->router.netId();
-      tags["nickname"]    = config->router.nickname();
-      setupMetrics(metricsConfig);
-      if(!config->metrics.disableMetricLogs)
-      {
-        m_metricsManager->instance()->addGlobalPublisher(
-            std::make_shared< metrics::StreamPublisher >(std::cerr));
-      }
-    }
     return true;
-  }
-
-  void
-  Context::setupMetrics(const MetricsConfig &metricsConfig)
-  {
-    if(!m_scheduler)
-    {
-      m_scheduler = std::make_unique< thread::Scheduler >();
-    }
-    if(!m_metricsManager)
-    {
-      m_metricsManager = std::make_unique< metrics::DefaultManagerGuard >();
-    }
-    if(!m_metricsPublisher)
-    {
-      m_metricsPublisher = std::make_unique< metrics::PublisherScheduler >(
-          *m_scheduler, m_metricsManager->instance());
-    }
-
-    if(!metricsConfig.jsonMetricsPath.native().empty())
-    {
-      m_metricsManager->instance()->addGlobalPublisher(
-          std::make_shared< metrics::JsonPublisher >(
-              std::bind(&metrics::JsonPublisher::directoryPublisher,
-                        std::placeholders::_1, metricsConfig.jsonMetricsPath)));
-    }
-
-    if(!metricsConfig.metricTankHost.empty())
-    {
-      if(std::getenv("LOKINET_ENABLE_METRIC_TANK"))
-      {
-        static std::string WARNING = R"(
-__        ___    ____  _   _ ___ _   _  ____
-\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
- \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
-  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
-   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
-
-This Lokinet session is not private!!
-
-Sending connection metrics to metrictank!!
-__        ___    ____  _   _ ___ _   _  ____
-\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
- \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
-  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
-   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
-
-        )";
-
-        std::cerr << WARNING << '\n';
-
-        std::pair< std::string, std::string > split =
-            absl::StrSplit(metricsConfig.metricTankHost, ':');
-
-        m_metricsManager->instance()->addGlobalPublisher(
-            std::make_shared< metrics::MetricTankPublisher >(
-                metricsConfig.metricTags, split.first, stoi(split.second)));
-      }
-      else
-      {
-        std::cerr << "metrictank host specified, but "
-                     "LOKINET_ENABLE_METRIC_TANK not set, skipping\n";
-      }
-    }
-
-    m_metricsPublisher->setDefault(absl::Seconds(30));
-
-    m_scheduler->start();
   }
 
   void

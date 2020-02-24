@@ -20,7 +20,6 @@
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/metrics/metrics.hpp>
 #include <util/str.hpp>
 #include <ev/ev.hpp>
 
@@ -141,7 +140,7 @@ namespace llarp
       return true;
     };
 
-    absl::ReaderMutexLock l(&nodedb()->access);
+    auto l = util::shared_lock(nodedb()->access);
     return pick_router(nodedb()->entries);
   }
 
@@ -780,7 +779,6 @@ namespace llarp
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
-    metrics::TimerGuard t("Router", "Sign");
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 

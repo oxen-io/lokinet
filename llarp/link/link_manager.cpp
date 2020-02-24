@@ -76,7 +76,7 @@ namespace llarp
   void
   LinkManager::AddLink(LinkLayer_ptr link, bool inbound)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     if(inbound)
     {
@@ -128,7 +128,7 @@ namespace llarp
       return;
     }
 
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     LogInfo("stopping links");
     stopping = true;
@@ -145,7 +145,7 @@ namespace llarp
     if(stopping)
       return;
 
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     m_PersistingSessions[remote] =
         std::max(until, m_PersistingSessions[remote]);
@@ -297,7 +297,7 @@ namespace llarp
     std::vector< RouterID > sessionsNeeded;
 
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr = m_PersistingSessions.begin();
       while(itr != m_PersistingSessions.end())
