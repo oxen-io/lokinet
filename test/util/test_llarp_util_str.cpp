@@ -37,22 +37,25 @@ TEST_CASE("TrimWhitespace -- negative tests", "[str][trim]")
 TEST_CASE("caseless comparison tests - less than", "[str][lt]") {
   using namespace llarp;
   CaselessLessThan lt;
+  // Workaround for gcc 5's stdlib; we can drop this crap (and drop all the `T`'s below) once we
+  // stop supporting it.
+  using T =                   std::tuple<const char*, const char*>;
   auto expect_less_than = GENERATE(table<const char*, const char*>({
-        {"", "1"},
-        {"1", "11"},
-        {"abc", "abcd"},
-        {"ABC", "abcd"},
-        {"abc", "ABCD"},
-        {"abc", "Abcd"},
-        {"abc", "abcD"},
-        {"abc", "abCd"},
-        {"abc", "zz"},
-        {"abc", "zzzz"},
-        {"abc", "abd"},
-        {"abc", "aBd"},
-        {"abc", "abD"},
-        {"ABC", "abd"},
-        {"abC", "abd"},
+        T{"", "1"},
+        T{"1", "11"},
+        T{"abc", "abcd"},
+        T{"ABC", "abcd"},
+        T{"abc", "ABCD"},
+        T{"abc", "Abcd"},
+        T{"abc", "abcD"},
+        T{"abc", "abCd"},
+        T{"abc", "zz"},
+        T{"abc", "zzzz"},
+        T{"abc", "abd"},
+        T{"abc", "aBd"},
+        T{"abc", "abD"},
+        T{"ABC", "abd"},
+        T{"abC", "abd"},
   }));
   REQUIRE(  lt(std::get<0>(expect_less_than), std::get<1>(expect_less_than)) );
   REQUIRE( !lt(std::get<1>(expect_less_than), std::get<0>(expect_less_than)) );
@@ -61,15 +64,16 @@ TEST_CASE("caseless comparison tests - less than", "[str][lt]") {
 TEST_CASE("caseless comparison tests - equality", "[str][eq]") {
   using namespace llarp;
   CaselessLessThan lt;
-  auto expect_less_than = GENERATE(table<const char*, const char*>({
-        {"1", "1"},
-        {"a", "A"},
-        {"abc", "ABC"},
-        {"abc", "aBc"},
-        {"ABC", "abc"},
+  using T =               std::tuple<const char*, const char*>; // gcc 5 workaround
+  auto expect_equal = GENERATE(table<const char*, const char*>({
+        T{"1", "1"},
+        T{"a", "A"},
+        T{"abc", "ABC"},
+        T{"abc", "aBc"},
+        T{"ABC", "abc"},
   }));
-  REQUIRE( !lt(std::get<0>(expect_less_than), std::get<1>(expect_less_than)) );
-  REQUIRE( !lt(std::get<1>(expect_less_than), std::get<0>(expect_less_than)) );
+  REQUIRE( !lt(std::get<0>(expect_equal), std::get<1>(expect_equal)) );
+  REQUIRE( !lt(std::get<1>(expect_equal), std::get<0>(expect_equal)) );
 }
 
 TEST_CASE("truthy string values", "[str][truthy]") {
