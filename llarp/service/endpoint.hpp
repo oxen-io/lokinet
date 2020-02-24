@@ -356,6 +356,9 @@ namespace llarp
                 RouterContact& cur, size_t hop, path::PathRole roles) override;
 
       virtual void
+      PathBuildStarted(path::Path_ptr path) override;
+
+      virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
@@ -456,6 +459,7 @@ namespace llarp
 
       std::unique_ptr< EndpointState > m_state;
       thread::Queue< RecvDataEvent > m_RecvQueue;
+      std::chrono::steady_clock::time_point m_lastBuildStarted;
     };
 
     using Endpoint_ptr = std::shared_ptr< Endpoint >;

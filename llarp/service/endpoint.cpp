@@ -1,3 +1,4 @@
+#include <chrono>
 #include <service/endpoint.hpp>
 
 #include <dht/messages/findintro.hpp>
@@ -625,6 +626,13 @@ namespace llarp
         });
       }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    void
+    Endpoint::PathBuildStarted(path::Path_ptr path)
+    {
+      m_lastBuildStarted = std::chrono::steady_clock::now();
+      path::Builder::PathBuildStarted(path);
     }
 
     std::set< RouterID >
@@ -1266,11 +1274,18 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      static constexpr auto buildSpread = path::default_lifetime / 4;
       if(path::Builder::BuildCooldownHit(now))
         return false;
-      return NumPathsExistingAt(now + buildSpread) < numPaths
-          and NumInStatus(path::ePathBuilding) == 0;
+
+      size_t numBuilding = NumInStatus(path::ePathBuilding);
+      if (numBuilding > 0)
+        return false;
+
+      static constexpr auto buildSpread = path::default_lifetime / 4;
+      const auto sinceEpoch = m_lastBuildStarted.time_since_epoch();
+      const auto sinceEpochMs = std::chrono::duration_cast< std::chrono::milliseconds >(sinceEpoch);
+
+      return ((now - sinceEpochMs.count()) > buildSpread);
     }
 
     std::shared_ptr< Logic >
