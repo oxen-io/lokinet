@@ -98,7 +98,6 @@ matrix:
 #    env: BUILD_TYPE=Debug XSAN=undefined PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
   - name: "memory sanitizer"
     os: linux
-    dist: xenial
     compiler: clang
     env: BUILD_TYPE=Debug XSAN=memory
     addons: *core_apt_addons

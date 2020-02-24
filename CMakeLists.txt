@@ -105,6 +105,7 @@ endif()
 if(XSAN)
   set(DEBUG_FLAGS ${DEBUG_FLAGS} "-fsanitize=${XSAN}" -fno-omit-frame-pointer)
   set(OPTIMIZE_FLAGS "-O0")
+  message(STATUS "Doing a ${XSAN} sanitizer build")
 endif(XSAN)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
