@@ -38,6 +38,12 @@ matrix:
     compiler: gcc
     env: BUILD_TYPE=Release
     addons: *core_apt_addons
+  - name: "make release (old linux/gcc)"
+    os: linux
+    dist: xenial
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
   - name: "make debug (linux/clang)"
     os: linux
     compiler: clang
