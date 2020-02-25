@@ -238,7 +238,7 @@ namespace llarp
     }
     else
     {
-      m_netConfig.emplace(key, val);
+      m_netConfig.emplace(str(key), str(val));  // str()'s here for gcc 5 compat
     }
   }
 
@@ -257,12 +257,12 @@ namespace llarp
     if(key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", val);
+      netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
     }
     if(key == "bind")
     {
       llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", val);
+      netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
     }
   }
 
@@ -314,7 +314,8 @@ namespace llarp
     }
     else
     {
-      m_InboundLinks.emplace_back(key, AF_INET, proto, std::move(opts));
+      // str() here for gcc 5 compat
+      m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
     }
   }
 
@@ -327,7 +328,7 @@ namespace llarp
   void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
-    services.emplace_back(key, val);
+    services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
   }
 
   void

@@ -131,7 +131,7 @@ namespace llarp
         }
         Section_t& sect = m_Config[str(sectName)];
         LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
-        sect.emplace(k, v);
+        sect.emplace(str(k), str(v));  // str()'s here for gcc 5 compat
       }
       else  // malformed?
       {
