@@ -87,12 +87,12 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED abyss::http::Headers_t& hdr)
+  PopulateReqHeaders(abyss::http::Headers_t& /*hdr*/)
   {
   }
 
   bool
-  HandleResponse(ABSL_ATTRIBUTE_UNUSED abyss::http::RPC_Response response)
+  HandleResponse(abyss::http::RPC_Response /*response*/)
   {
     test->AsyncStop();
     return true;
@@ -107,8 +107,8 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  absl::optional< Response >
-  HandleJSONRPC(Method_t method, ABSL_ATTRIBUTE_UNUSED const Params& params)
+  Response
+  HandleJSONRPC(Method_t method, const Params& /*params*/)
   {
     test->AssertMethod(method);
     test->called = true;

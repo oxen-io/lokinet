@@ -1,6 +1,7 @@
 #ifndef LLARP_RC_LOOKUP_HANDLER_HPP
 #define LLARP_RC_LOOKUP_HANDLER_HPP
 
+#include <chrono>
 #include <router/i_rc_lookup_handler.hpp>
 
 #include <util/thread/threading.hpp>
@@ -31,32 +32,30 @@ namespace llarp
     ~RCLookupHandler() override = default;
 
     void
-    AddValidRouter(const RouterID &router) override LOCKS_EXCLUDED(_mutex);
+    AddValidRouter(const RouterID &router) override EXCLUDES(_mutex);
 
     void
-    RemoveValidRouter(const RouterID &router) override LOCKS_EXCLUDED(_mutex);
+    RemoveValidRouter(const RouterID &router) override EXCLUDES(_mutex);
 
     void
     SetRouterWhitelist(const std::vector< RouterID > &routers) override
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     bool
     HaveReceivedWhitelist();
 
     void
     GetRC(const RouterID &router, RCRequestCallback callback,
-          bool forceLookup = false) override LOCKS_EXCLUDED(_mutex);
+          bool forceLookup = false) override EXCLUDES(_mutex);
 
     bool
-    RemoteIsAllowed(const RouterID &remote) const override
-        LOCKS_EXCLUDED(_mutex);
+    RemoteIsAllowed(const RouterID &remote) const override EXCLUDES(_mutex);
 
     bool
     CheckRC(const RouterContact &rc) const override;
 
     bool
-    GetRandomWhitelistRouter(RouterID &router) const override
-        LOCKS_EXCLUDED(_mutex);
+    GetRandomWhitelistRouter(RouterID &router) const override EXCLUDES(_mutex);
 
     bool
     CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc) override;
@@ -84,14 +83,14 @@ namespace llarp
                           const std::vector< RouterContact > &results);
 
     bool
-    HavePendingLookup(RouterID remote) const LOCKS_EXCLUDED(_mutex);
+    HavePendingLookup(RouterID remote) const EXCLUDES(_mutex);
 
     bool
     RemoteInBootstrap(const RouterID &remote) const;
 
     void
     FinalizeRequest(const RouterID &router, const RouterContact *const rc,
-                    RCRequestResult result) LOCKS_EXCLUDED(_mutex);
+                    RCRequestResult result) EXCLUDES(_mutex);
 
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 
@@ -115,6 +114,10 @@ namespace llarp
     bool isServiceNode = false;
 
     std::set< RouterID > whitelistRouters GUARDED_BY(_mutex);
+
+    using TimePoint = std::chrono::steady_clock::time_point;
+    std::unordered_map< RouterID, TimePoint, RouterID::Hash >
+        _routerLookupTimes;
   };
 
 }  // namespace llarp

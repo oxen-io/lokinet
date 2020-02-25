@@ -91,6 +91,7 @@ namespace llarp
   {
     std::for_each(frames.begin(), frames.end(), [](auto& f) { f.Clear(); });
     version = 0;
+    status  = 0;
   }
 
   bool
@@ -134,7 +135,8 @@ namespace llarp
     if(!path)
     {
       llarp::LogWarn(
-          "unhandled LR_Status message: no associated IHopHandler found");
+          "unhandled LR_Status message: no associated path found pathid=",
+          pathid);
       return false;
     }
 
@@ -161,7 +163,7 @@ namespace llarp
   {
     auto message = std::make_shared< LR_StatusMessage >();
 
-    message->status = status & LR_StatusRecord::SUCCESS;
+    message->status = status;
     message->pathid = pathid;
 
     message->SetDummyFrames();
@@ -230,13 +232,6 @@ namespace llarp
                                 std::shared_ptr< LR_StatusMessage > msg)
   {
     llarp::LogDebug("Attempting to send LR_Status message to (", nextHop, ")");
-    if(not router->HasSessionTo(nextHop))
-    {
-      llarp::LogError(
-          "Sending LR_Status message, but no connection to previous hop (",
-          nextHop, ")");
-      return;
-    }
     if(not router->SendToOrQueue(nextHop, msg.get()))
     {
       llarp::LogError("Sending LR_Status message, SendToOrQueue to ", nextHop,

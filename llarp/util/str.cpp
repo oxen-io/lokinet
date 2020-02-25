@@ -9,18 +9,10 @@
 namespace llarp
 {
   bool
-  CaselessCmp::operator()(string_view lhs, string_view rhs) const
+  CaselessLessThan::operator()(string_view lhs, string_view rhs) const
   {
-    if(lhs.size() < rhs.size())
-    {
-      return true;
-    }
-    if(lhs.size() > rhs.size())
-    {
-      return false;
-    }
-
-    for(size_t i = 0; i < lhs.size(); ++i)
+    const size_t s = std::min(lhs.size(), rhs.size());
+    for(size_t i = 0; i < s; ++i)
     {
       auto l = std::tolower(lhs[i]);
       auto r = std::tolower(rhs[i]);
@@ -34,14 +26,15 @@ namespace llarp
         return false;
       }
     }
-    return false;
+
+    return lhs.size() < rhs.size();
   }
 
   bool
   IsFalseValue(string_view str)
   {
-    static const std::set< string_view, CaselessCmp > vals{"no", "false", "0",
-                                                           "off"};
+    static const std::set< string_view, CaselessLessThan > vals{"no", "false",
+                                                                "0", "off"};
 
     return vals.count(str) > 0;
   }
@@ -49,8 +42,8 @@ namespace llarp
   bool
   IsTrueValue(string_view str)
   {
-    static const std::set< string_view, CaselessCmp > vals{"yes", "true", "1",
-                                                           "on"};
+    static const std::set< string_view, CaselessLessThan > vals{"yes", "true",
+                                                                "1", "on"};
 
     return vals.count(str) > 0;
   }
@@ -66,5 +59,25 @@ namespace llarp
     }
 
     return false;
+  }
+
+  constexpr static char whitespace[] = " \t\n\r\f\v";
+
+  string_view
+  TrimWhitespace(string_view str)
+  {
+    size_t begin = str.find_first_not_of(whitespace);
+    if(begin == string_view::npos)
+    {
+      str.remove_prefix(str.size());
+      return str;
+    }
+    str.remove_prefix(begin);
+
+    size_t end = str.find_last_not_of(whitespace);
+    if(end != string_view::npos)
+      str.remove_suffix(str.size() - end - 1);
+
+    return str;
   }
 }  // namespace llarp

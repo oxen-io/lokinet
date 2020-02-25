@@ -1,0 +1,21 @@
+[submodule "external/nlohmann"]
+	path = external/nlohmann
+	url = https://github.com/nlohmann/json.git
+[submodule "external/googletest"]
+	path = external/googletest
+	url = https://github.com/google/googletest.git
+[submodule "external/cxxopts"]
+	path = external/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
+[submodule "external/ghc-filesystem"]
+	path = external/ghc-filesystem
+	url = https://github.com/gulrak/filesystem.git
+[submodule "test/Catch2"]
+	path = test/Catch2
+	url = https://github.com/catchorg/Catch2
+[submodule "external/optional-lite"]
+	path = external/optional-lite
+	url = https://github.com/martinmoene/optional-lite.git
+[submodule "external/date"]
+	path = external/date
+	url = https://github.com/HowardHinnant/date.git

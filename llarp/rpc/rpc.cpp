@@ -110,46 +110,7 @@ namespace llarp
       }
 
       bool
-      HandleJSONResult(const nlohmann::json& result) override
-      {
-        PubkeyList_t keys;
-        if(not result.is_object())
-        {
-          LogWarn("Invalid result: not an object");
-          handler({}, false);
-          return false;
-        }
-        const auto itr = result.find("service_node_states");
-        if(itr == result.end())
-        {
-          LogWarn("Invalid result: no service_node_states member");
-          handler({}, false);
-          return false;
-        }
-        if(not itr.value().is_array())
-        {
-          LogWarn("Invalid result: service_node_states is not an array");
-          handler({}, false);
-          return false;
-        }
-        for(const auto item : itr.value())
-        {
-          if(not item.is_object())
-            continue;
-          if(not item.value("active", false))
-            continue;
-          if(not item.value("funded", false))
-            continue;
-          const std::string pk = item.value("pubkey_ed25519", "");
-          if(pk.empty())
-            continue;
-          PubKey k;
-          if(k.FromString(pk))
-            keys.emplace_back(std::move(k));
-        }
-        handler(keys, not keys.empty());
-        return true;
-      }
+      HandleJSONResult(const nlohmann::json& result) override;
 
       void
       HandleError() override
@@ -161,7 +122,8 @@ namespace llarp
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
       AbstractRouter* router;
-      llarp_time_t m_NextKeyUpdate         = 0;
+      llarp_time_t m_NextKeyUpdate = 0;
+      std::string m_LastBlockHash;
       llarp_time_t m_NextPing              = 0;
       const llarp_time_t KeyUpdateInterval = 5000;
       const llarp_time_t PingInterval      = 60 * 5 * 1000;
@@ -211,10 +173,15 @@ namespace llarp
       void
       AsyncUpdatePubkeyList()
       {
-        LogInfo("Updating service node list");
-        nlohmann::json params = {
-            {"fields",
-             {{"pubkey_ed25519", true}, {"active", true}, {"funded", true}}}};
+        LogDebug("Updating service node list");
+        nlohmann::json params = {{"fields",
+                                  {
+                                      {"pubkey_ed25519", true},
+                                      {"active", true},
+                                      {"funded", true},
+                                      {"block_hash", true},
+                                  }},
+                                 {"poll_block_hash", m_LastBlockHash}};
         QueueRPC("get_n_service_nodes", std::move(params),
                  util::memFn(&CallerImpl::NewAsyncUpdatePubkeyListConn, this));
       }
@@ -253,6 +220,63 @@ namespace llarp
       ~CallerImpl() = default;
     };
 
+    bool
+    GetServiceNodeListHandler::HandleJSONResult(const nlohmann::json& result)
+    {
+      PubkeyList_t keys;
+      if(not result.is_object())
+      {
+        LogWarn("Invalid result: not an object");
+        handler({}, false);
+        return false;
+      }
+      // If lokid says tells us the block didn't change then nothing to do
+      const auto unchanged_it = result.find("unchanged");
+      if(unchanged_it != result.end() and unchanged_it->get< bool >())
+        return true;
+
+      const auto hash_it = result.find("block_hash");
+      if(hash_it == result.end())
+      {
+        LogWarn("Invalid result: no block_hash member");
+        handler({}, false);
+        return false;
+      }
+      else
+        m_Parent->m_LastBlockHash = hash_it->get< std::string >();
+
+      const auto itr = result.find("service_node_states");
+      if(itr == result.end())
+      {
+        LogWarn("Invalid result: no service_node_states member");
+        handler({}, false);
+        return false;
+      }
+      if(not itr.value().is_array())
+      {
+        LogWarn("Invalid result: service_node_states is not an array");
+        handler({}, false);
+        return false;
+      }
+      for(const auto item : itr.value())
+      {
+        if(not item.is_object())
+          continue;
+        if(not item.value("active", false))
+          continue;
+        if(not item.value("funded", false))
+          continue;
+        const std::string pk = item.value("pubkey_ed25519", "");
+        if(pk.empty())
+          continue;
+        PubKey k;
+        if(k.FromString(pk))
+          keys.emplace_back(std::move(k));
+      }
+      handler(keys, not keys.empty());
+      return true;
+    }
+
     void
     CallerHandler::PopulateReqHeaders(abyss::http::Headers_t& hdr)
     {
@@ -262,9 +286,7 @@ namespace llarp
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
       AbstractRouter* router;
-      std::unordered_map< absl::string_view, std::function< Response() >,
-                          absl::Hash< absl::string_view > >
-          m_dispatch;
+      std::unordered_map< std::string, std::function< Response() > > m_dispatch;
       Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
           : ::abyss::httpd::IRPCHandler(conn)
           , router(r)
@@ -376,9 +398,8 @@ namespace llarp
         return resp;
       }
 
-      absl::optional< Response >
-      HandleJSONRPC(Method_t method,
-                    ABSL_ATTRIBUTE_UNUSED const Params& params) override
+      Response
+      HandleJSONRPC(Method_t method, const Params& /*params*/) override
       {
         auto it = m_dispatch.find(method);
         if(it != m_dispatch.end())

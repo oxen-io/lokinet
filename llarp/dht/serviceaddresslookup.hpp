@@ -12,18 +12,17 @@ namespace llarp
   {
     struct TXOwner;
 
-    struct ServiceAddressLookup
-        : public TX< service::Address, service::IntroSet >
+    struct ServiceAddressLookup : public TX< Key_t, service::EncryptedIntroSet >
     {
-      service::IntroSetLookupHandler handleResult;
-      uint64_t R;
+      service::EncryptedIntroSetLookupHandler handleResult;
+      uint32_t relayOrder;
 
-      ServiceAddressLookup(const TXOwner &asker, const service::Address &addr,
-                           AbstractContext *ctx, uint64_t r,
-                           service::IntroSetLookupHandler handler);
+      ServiceAddressLookup(const TXOwner &asker, const Key_t &addr,
+                           AbstractContext *ctx, uint32_t relayOrder,
+                           service::EncryptedIntroSetLookupHandler handler);
 
       bool
-      Validate(const service::IntroSet &value) const override;
+      Validate(const service::EncryptedIntroSet &value) const override;
 
       bool
       GetNextPeer(Key_t &next, const std::set< Key_t > &exclude) override;

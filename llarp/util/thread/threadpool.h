@@ -5,9 +5,9 @@
 #include <util/thread/queue.hpp>
 #include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
+#include <util/thread/annotations.hpp>
 #include <util/types.hpp>
 
-#include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
 

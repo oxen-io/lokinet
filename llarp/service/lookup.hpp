@@ -28,8 +28,7 @@ namespace llarp
 
       /// handle lookup result
       virtual bool
-      HandleResponse(__attribute__((unused))
-                     const std::set< IntroSet >& results)
+      HandleResponse(const std::set< EncryptedIntroSet >&)
       {
         return false;
       }

@@ -6,7 +6,7 @@
 #include <util/bencode.hpp>
 #include <util/thread/threading.hpp>
 
-#include <absl/base/thread_annotations.h>
+#include <util/thread/annotations.hpp>
 #include <map>
 
 namespace llarp
@@ -52,42 +52,41 @@ namespace llarp
 
     /// generic variant
     bool
-    IsBad(const RouterID& r, uint64_t chances = 8)
-        LOCKS_EXCLUDED(m_ProfilesMutex);
+    IsBad(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should have paths built over it
     bool
     IsBadForPath(const RouterID& r, uint64_t chances = 8)
-        LOCK_RETURNED(m_ProfilesMutex);
+        EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should be connected directly to
     bool
     IsBadForConnect(const RouterID& r, uint64_t chances = 8)
-        LOCKS_EXCLUDED(m_ProfilesMutex);
+        EXCLUDES(m_ProfilesMutex);
 
     void
-    MarkConnectTimeout(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkConnectTimeout(const RouterID& r) EXCLUDES(m_ProfilesMutex);
 
     void
-    MarkConnectSuccess(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkConnectSuccess(const RouterID& r) EXCLUDES(m_ProfilesMutex);
 
     void
-    MarkPathFail(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkPathFail(path::Path* p) EXCLUDES(m_ProfilesMutex);
 
     void
-    MarkPathSuccess(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkPathSuccess(path::Path* p) EXCLUDES(m_ProfilesMutex);
 
     void
-    MarkHopFail(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkHopFail(const RouterID& r) EXCLUDES(m_ProfilesMutex);
 
     void
-    ClearProfile(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    ClearProfile(const RouterID& r) EXCLUDES(m_ProfilesMutex);
 
     void
-    Tick() LOCKS_EXCLUDED(m_ProfilesMutex);
+    Tick() EXCLUDES(m_ProfilesMutex);
 
     bool
-    BEncode(llarp_buffer_t* buf) const LOCKS_EXCLUDED(m_ProfilesMutex);
+    BEncode(llarp_buffer_t* buf) const EXCLUDES(m_ProfilesMutex);
 
     bool
     DecodeKey(const llarp_buffer_t& k,
@@ -95,10 +94,10 @@ namespace llarp
     // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
 
     bool
-    Load(const char* fname) LOCKS_EXCLUDED(m_ProfilesMutex);
+    Load(const char* fname) EXCLUDES(m_ProfilesMutex);
 
     bool
-    Save(const char* fname) LOCKS_EXCLUDED(m_ProfilesMutex);
+    Save(const char* fname) EXCLUDES(m_ProfilesMutex);
 
     bool
     ShouldSave(llarp_time_t now) const;
@@ -111,9 +110,7 @@ namespace llarp
 
    private:
     bool
-    BEncodeNoLock(llarp_buffer_t* buf) const
-        SHARED_LOCKS_REQUIRED(m_ProfilesMutex);
-    using lock_t = util::Lock;
+    BEncodeNoLock(llarp_buffer_t* buf) const REQUIRES_SHARED(m_ProfilesMutex);
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map< RouterID, RouterProfile > m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0;

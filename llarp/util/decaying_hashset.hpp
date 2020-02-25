@@ -11,7 +11,11 @@ namespace llarp
     template < typename Val_t, typename Hash_t = typename Val_t::Hash >
     struct DecayingHashSet
     {
-      DecayingHashSet(llarp_time_t cacheInterval = 5000)
+      DecayingHashSet(Time_t cacheInterval)
+          : DecayingHashSet(cacheInterval.count())
+      {
+      }
+      explicit DecayingHashSet(llarp_time_t cacheInterval = 5000)
           : m_CacheInterval(cacheInterval)
       {
       }
@@ -30,7 +34,7 @@ namespace llarp
       {
         if(now == 0)
           now = llarp::time_now_ms();
-        return m_Values.emplace(v, now + m_CacheInterval).second;
+        return m_Values.emplace(v, now).second;
       }
 
       /// decay hashset entries
@@ -42,7 +46,7 @@ namespace llarp
         auto itr = m_Values.begin();
         while(itr != m_Values.end())
         {
-          if(itr->second <= now)
+          if((m_CacheInterval + itr->second) <= now)
             itr = m_Values.erase(itr);
           else
             ++itr;
@@ -55,8 +59,14 @@ namespace llarp
         return m_CacheInterval;
       }
 
+      void
+      DecayInterval(llarp_time_t interval)
+      {
+        m_CacheInterval = interval;
+      }
+
      private:
-      const llarp_time_t m_CacheInterval;
+      llarp_time_t m_CacheInterval;
       std::unordered_map< Val_t, llarp_time_t, Hash_t > m_Values;
     };
   }  // namespace util

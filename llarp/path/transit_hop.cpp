@@ -71,11 +71,12 @@ namespace llarp
 
       LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
 
-      if((status & LR_StatusRecord::SUCCESS) == 0)
+      if((status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
       {
-        LogDebug(
+        LogWarn(
             "TransitHop received non-successful LR_StatusMessage, queueing "
-            "self-destruct");
+            "self-destruct status=",
+            status);
         QueueDestroySelf(r);
       }
 

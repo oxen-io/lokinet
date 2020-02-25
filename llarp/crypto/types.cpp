@@ -7,6 +7,10 @@
 
 #include <iterator>
 
+#include <sodium/crypto_sign.h>
+#include <sodium/crypto_sign_ed25519.h>
+#include <sodium/crypto_scalarmult_ed25519.h>
+
 namespace llarp
 {
   bool
@@ -52,6 +56,39 @@ namespace llarp
   }
 
   bool
+  SecretKey::Recalculate()
+  {
+    PrivateKey key;
+    PubKey pubkey;
+    if(!toPrivate(key) || !key.toPublic(pubkey))
+      return false;
+    std::memcpy(data() + 32, pubkey.data(), 32);
+    return true;
+  }
+
+  bool
+  SecretKey::toPrivate(PrivateKey& key) const
+  {
+    // Ed25519 calculates a 512-bit hash from the seed; the first half (clamped)
+    // is the private key; the second half is the hash that gets used in
+    // signing.
+    unsigned char h[crypto_hash_sha512_BYTES];
+    if(crypto_hash_sha512(h, data(), 32) < 0)
+      return false;
+    h[0] &= 248;
+    h[31] &= 63;
+    h[31] |= 64;
+    std::memcpy(key.data(), h, 64);
+    return true;
+  }
+
+  bool
+  PrivateKey::toPublic(PubKey& pubkey) const
+  {
+    return crypto_scalarmult_ed25519_base_noclamp(pubkey.data(), data()) != -1;
+  }
+
+  bool
   SecretKey::SaveToFile(const char* fname) const
   {
     std::array< byte_t, 128 > tmp;
@@ -94,25 +131,25 @@ namespace llarp
   }
 
   byte_t*
-  Signature::R()
+  Signature::Lo()
   {
     return data();
   }
 
   const byte_t*
-  Signature::R() const
+  Signature::Lo() const
   {
     return data();
   }
 
   byte_t*
-  Signature::C()
+  Signature::Hi()
   {
     return data() + 32;
   }
 
   const byte_t*
-  Signature::C() const
+  Signature::Hi() const
   {
     return data() + 32;
   }

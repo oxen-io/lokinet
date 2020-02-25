@@ -99,8 +99,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::HandleMessage(
-      ABSL_ATTRIBUTE_UNUSED AbstractRouter* router) const
+  LinkIntroMessage::HandleMessage(AbstractRouter* /*router*/) const
   {
     if(!Verify())
       return false;

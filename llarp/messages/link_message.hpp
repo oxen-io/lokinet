@@ -55,6 +55,13 @@ namespace llarp
     // the name of this kind of message
     virtual const char*
     Name() const = 0;
+
+    /// get message prority, higher value means more important
+    virtual uint16_t
+    Priority() const
+    {
+      return 1;
+    }
   };
 
 }  // namespace llarp

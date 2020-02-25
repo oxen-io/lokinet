@@ -15,7 +15,7 @@
 #include <util/thread/logic.hpp>
 
 #include <functional>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -24,6 +24,8 @@ namespace llarp
   {
     if(key == "c")
     {
+      /// so we dont put it into the shitty queue
+      pathid.Fill('c');
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
@@ -185,7 +187,7 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
-    const absl::optional< llarp::Addr > fromAddr;
+    const nonstd::optional< llarp::Addr > fromAddr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
@@ -194,7 +196,7 @@ namespace llarp
         , context(ctx)
         , hop(std::make_shared< Hop >())
         , fromAddr(commit->session->GetRemoteRC().IsPublicRouter()
-                       ? absl::optional< llarp::Addr >{}
+                       ? nonstd::optional< llarp::Addr >{}
                        : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();
@@ -248,9 +250,10 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         llarp::LogError("duplicate transit hop ", self->hop->info);
-        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
-                            self->hop->info.downstream, self->hop->pathKey,
-                            SendStatus::Congestion);
+        LR_StatusMessage::CreateAndSend(
+            self->context->Router(), self->hop->info.rxID,
+            self->hop->info.downstream, self->hop->pathKey,
+            LR_StatusRecord::FAIL_DUPLICATE_HOP);
         self->hop = nullptr;
         return;
       }

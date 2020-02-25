@@ -23,6 +23,7 @@
 #include <list>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <util/decaying_hashset.hpp>
@@ -99,7 +100,7 @@ namespace llarp
       llarp_time_t buildStarted = 0;
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
-           PathRole startingRoles);
+           PathRole startingRoles, std::string shortName);
 
       util::StatusObject
       ExtractStatus() const;
@@ -127,16 +128,43 @@ namespace llarp
         }
       };
 
+      /// hash for std::shared_ptr
       struct Ptr_Hash
       {
         size_t
-        operator()(const std::shared_ptr< Path >& p) const
+        operator()(const Path_ptr& p) const
         {
           if(p == nullptr)
             return 0;
           return Hash{}(*p);
         }
       };
+
+      /// hash for std::shared_ptr by path endpoint
+      struct Endpoint_Hash
+      {
+        size_t
+        operator()(const Path_ptr& p) const
+        {
+          if(p == nullptr)
+            return 0;
+          return RouterID::Hash{}(p->Endpoint());
+        }
+      };
+
+      /// comparision for equal endpoints
+      struct Endpoint_Equals
+      {
+        bool
+        operator()(const Path_ptr& left, const Path_ptr& right) const
+        {
+          return left && right && left->Endpoint() == left->Endpoint();
+        }
+      };
+
+      /// unordered set of paths with unique endpoints
+      using UniqueEndpointSet_t =
+          std::unordered_set< Path_ptr, Endpoint_Hash, Endpoint_Equals >;
 
       bool
       operator<(const Path& other) const
@@ -176,6 +204,9 @@ namespace llarp
       {
         return _status;
       }
+
+      const std::string&
+      ShortName() const;
 
       std::string
       HopsString() const;
@@ -405,6 +436,12 @@ namespace llarp
       PathRole _role;
       util::DecayingHashSet< TunnelNonce > m_UpstreamReplayFilter;
       util::DecayingHashSet< TunnelNonce > m_DownstreamReplayFilter;
+      uint64_t m_LastRXRate = 0;
+      uint64_t m_RXRate     = 0;
+      uint64_t m_LastTXRate = 0;
+      uint64_t m_TXRate     = 0;
+
+      const std::string m_shortName;
     };
   }  // namespace path
 }  // namespace llarp

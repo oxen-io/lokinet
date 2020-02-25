@@ -6,8 +6,8 @@
 #include <util/common.hpp>
 #include <util/fs.hpp>
 #include <util/thread/threading.hpp>
-
-#include <absl/base/thread_annotations.h>
+#include <util/thread/annotations.hpp>
+#include <dht/key.hpp>
 
 #include <set>
 #include <utility>
@@ -73,33 +73,39 @@ struct llarp_nodedb
   NetDBMap_t entries GUARDED_BY(access);
   fs::path nodePath;
 
+  llarp::RouterContact
+  FindClosestTo(const llarp::dht::Key_t &location);
+
+  /// find the $numRouters closest routers to the given DHT key
+  std::vector< llarp::RouterContact >
+  FindClosestTo(const llarp::dht::Key_t &location, uint32_t numRouters);
+
   /// return true if we should save our nodedb to disk
   bool
   ShouldSaveToDisk(llarp_time_t now = 0) const;
 
   bool
-  Remove(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
+  Remove(const llarp::RouterID &pk) EXCLUDES(access);
 
   void
   RemoveIf(std::function< bool(const llarp::RouterContact &) > filter)
-      LOCKS_EXCLUDED(access);
+      EXCLUDES(access);
 
   void
-  Clear() LOCKS_EXCLUDED(access);
+  Clear() EXCLUDES(access);
 
   bool
-  Get(const llarp::RouterID &pk, llarp::RouterContact &result)
-      LOCKS_EXCLUDED(access);
+  Get(const llarp::RouterID &pk, llarp::RouterContact &result) EXCLUDES(access);
 
   bool
-  Has(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
+  Has(const llarp::RouterID &pk) EXCLUDES(access);
 
   std::string
   getRCFilePath(const llarp::RouterID &pubkey) const;
 
   /// insert without writing to disk
   bool
-  Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
+  Insert(const llarp::RouterContact &rc) EXCLUDES(access);
 
   /// invokes Insert() asynchronously with an optional completion
   /// callback
@@ -115,7 +121,7 @@ struct llarp_nodedb
   UpdateAsyncIfNewer(llarp::RouterContact rc,
                      std::shared_ptr< llarp::Logic > l             = nullptr,
                      std::function< void(void) > completionHandler = nullptr)
-      LOCKS_EXCLUDED(access);
+      EXCLUDES(access);
 
   ssize_t
   Load(const fs::path &path);
@@ -127,11 +133,11 @@ struct llarp_nodedb
   AsyncFlushToDisk();
 
   bool
-  loadfile(const fs::path &fpath) LOCKS_EXCLUDED(access);
+  loadfile(const fs::path &fpath) EXCLUDES(access);
 
   void
   visit(std::function< bool(const llarp::RouterContact &) > visit)
-      LOCKS_EXCLUDED(access);
+      EXCLUDES(access);
 
   void
   set_dir(const char *dir);
@@ -145,32 +151,31 @@ struct llarp_nodedb
   /// visit all entries inserted into nodedb cache before a timestamp
   void
   VisitInsertedBefore(std::function< void(const llarp::RouterContact &) > visit,
-                      llarp_time_t insertedAfter) LOCKS_EXCLUDED(access);
+                      llarp_time_t insertedAfter) EXCLUDES(access);
 
   void
   RemoveStaleRCs(const std::set< llarp::RouterID > &keep, llarp_time_t cutoff);
 
   size_t
-  num_loaded() const LOCKS_EXCLUDED(access);
+  num_loaded() const EXCLUDES(access);
 
   bool
-  select_random_exit(llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
+  select_random_exit(llarp::RouterContact &rc) EXCLUDES(access);
 
   bool
   select_random_hop(const llarp::RouterContact &prev,
-                    llarp::RouterContact &result, size_t N)
-      LOCKS_EXCLUDED(access);
+                    llarp::RouterContact &result, size_t N) EXCLUDES(access);
 
   bool
   select_random_hop_excluding(llarp::RouterContact &result,
                               const std::set< llarp::RouterID > &exclude)
-      LOCKS_EXCLUDED(access);
+      EXCLUDES(access);
 
   static bool
   ensure_dir(const char *dir);
 
   void
-  SaveAll() LOCKS_EXCLUDED(access);
+  SaveAll() EXCLUDES(access);
 };
 
 /// struct for async rc verification

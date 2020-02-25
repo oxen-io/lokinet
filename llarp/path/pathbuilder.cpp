@@ -7,7 +7,6 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
-#include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 
 #include <functional>
@@ -134,16 +133,26 @@ namespace llarp
     {
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
-      if(ctx->router->SendToOrQueue(remote, msg))
+      auto sentHandler        = [ctx](auto status) {
+        if(status == SendStatus::Success)
+        {
+          ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+          ctx->pathset->PathBuildStarted(ctx->path);
+        }
+        else
+        {
+          LogError(ctx->pathset->Name(), " failed to send LRCM to ",
+                   ctx->path->Upstream());
+          ctx->pathset->HandlePathBuildFailed(ctx->path);
+        }
+      };
+      if(ctx->router->SendToOrQueue(remote, msg, sentHandler))
       {
         // persist session with router until this path is done
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-        // add own path
-        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-        ctx->pathset->PathBuildStarted(ctx->path);
       }
       else
-        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
+        LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
     }
   }
 
@@ -430,8 +439,12 @@ namespace llarp
       ctx->router  = m_router;
       auto self    = GetSelf();
       ctx->pathset = self;
-      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
-      LogInfo(Name(), " build ", path->HopsString());
+      std::string path_shortName = "[path " + m_router->ShortName() + "-";
+      path_shortName             = path_shortName
+          + std::to_string(m_router->NextPathBuildNumber()) + "]";
+      auto path = std::make_shared< path::Path >(hops, self.get(), roles,
+                                                 std::move(path_shortName));
+      LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),

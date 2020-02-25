@@ -1,5 +1,5 @@
 #include <service/address.hpp>
-
+#include <crypto/crypto.hpp>
 #include <algorithm>
 
 namespace llarp
@@ -60,5 +60,14 @@ namespace llarp
       // make sure it's lowercase
       return Base32Decode(lowercase(sub, true), *this);
     }
+
+    dht::Key_t
+    Address::ToKey() const
+    {
+      PubKey k;
+      CryptoManager::instance()->derive_subkey(k, PubKey(data()), 1);
+      return dht::Key_t{k.as_array()};
+    }
+
   }  // namespace service
 }  // namespace llarp

@@ -10,25 +10,25 @@ namespace llarp
   namespace dht
   {
     ServiceAddressLookup::ServiceAddressLookup(
-        const TXOwner &asker, const service::Address &addr,
-        AbstractContext *ctx, uint64_t r,
-        service::IntroSetLookupHandler handler)
-        : TX< service::Address, service::IntroSet >(asker, addr, ctx)
+        const TXOwner &asker, const Key_t &addr, AbstractContext *ctx,
+        uint32_t order, service::EncryptedIntroSetLookupHandler handler)
+        : TX< Key_t, service::EncryptedIntroSet >(asker, addr, ctx)
         , handleResult(std::move(handler))
-        , R(r)
+        , relayOrder(order)
     {
       peersAsked.insert(ctx->OurKey());
     }
 
     bool
-    ServiceAddressLookup::Validate(const service::IntroSet &value) const
+    ServiceAddressLookup::Validate(
+        const service::EncryptedIntroSet &value) const
     {
       if(!value.Verify(parent->Now()))
       {
         llarp::LogWarn("Got invalid introset from service lookup");
         return false;
       }
-      if(value.A.Addr() != target)
+      if(value.derivedSigningKey != target)
       {
         llarp::LogWarn("got introset with wrong target from service lookup");
         return false;
@@ -40,11 +40,10 @@ namespace llarp
     ServiceAddressLookup::GetNextPeer(Key_t &next,
                                       const std::set< Key_t > &exclude)
     {
-      Key_t k           = target.ToKey();
       const auto &nodes = parent->Nodes();
       if(nodes)
       {
-        return nodes->FindCloseExcluding(k, next, exclude);
+        return nodes->FindCloseExcluding(target, next, exclude);
       }
 
       return false;
@@ -54,22 +53,14 @@ namespace llarp
     ServiceAddressLookup::Start(const TXOwner &peer)
     {
       parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(peer.txid, target, R));
+                        new FindIntroMessage(peer.txid, target, relayOrder));
     }
 
     void
     ServiceAddressLookup::DoNextRequest(const Key_t &ask)
     {
-      if(R)
-      {
-        parent->LookupIntroSetRecursive(target, whoasked.node, whoasked.txid,
-                                        ask, R - 1);
-      }
-      else
-      {
-        parent->LookupIntroSetIterative(target, whoasked.node, whoasked.txid,
-                                        ask);
-      }
+      (void)ask;
+      // do nothing -- we handle propagating this explicitly
     }
 
     void
@@ -78,7 +69,7 @@ namespace llarp
       // get newest introset
       if(valuesFound.size())
       {
-        llarp::service::IntroSet found;
+        llarp::service::EncryptedIntroSet found;
         for(const auto &introset : valuesFound)
         {
           if(found.OtherIsNewer(introset))

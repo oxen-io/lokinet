@@ -1,4 +1,6 @@
 language: cpp
+dist: bionic
+osx_image: xcode11.3
 
 cache: ccache
 
@@ -7,81 +9,103 @@ matrix:
   include:
   - name: "lint check"
     os: linux
-    dist: xenial
     compiler: gcc
     env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
     addons:
       apt:
         sources:
-          - llvm-toolchain-xenial-8
+          - llvm-toolchain-bionic-8
         packages:
           - clang-format-8
   - name: "make debug (linux/gcc)"
     os: linux
-    dist: xenial
     compiler: gcc
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
+    addons: &core_apt_addons
+      apt:
+        packages:
+        - build-essential
+        - cmake
+        - curl
+        - git
+        - libcap-dev
+        - libcurl4-openssl-dev
+        - libuv1-dev
+        - ninja-build
+        - libsodium-dev
   - name: "make release (linux/gcc)"
+    os: linux
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
+  - name: "make release (old linux/gcc)"
     os: linux
     dist: xenial
     compiler: gcc
     env: BUILD_TYPE=Release
+    addons: *core_apt_addons
   - name: "make debug (linux/clang)"
     os: linux
-    dist: xenial
     compiler: clang
     env: BUILD_TYPE=Debug
+    addons: *core_apt_addons
   - name: "make release (linux/clang)"
     os: linux
-    dist: xenial
     compiler: clang
     env: BUILD_TYPE=Release
+    addons: *core_apt_addons
   - name: "make debug (macOS/clang)"
     os: osx
-    osx_image: xcode10.2
     env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
   - name: "make release (macOS/clang)"
     os: osx
-    osx_image: xcode10.2
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (linux/gcc/arm64)"
+    arch: arm64
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
+  - name: "make release (linux/gcc/s390x)"
+    arch: s390x
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
+  - name: "make release (linux/gcc/ppc64le)"
+    arch: ppc64le
+    compiler: gcc
+    env: BUILD_TYPE=Release
+    addons: *core_apt_addons
 #  - name: "make iOS"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: MAKE_TARGET=ios PATH="/usr/local/opt/ccache/libexec:$PATH"
 #  - name: "make windows (macOS)"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
 #  - name: "make windows-release (macOS)"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
 #  - name: "make release (macOS beta/clang)"
 #    os: osx
-#    osx_image: xcode11
 #    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
 #  - name: "address sanitizer"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: BUILD_TYPE=Debug XSAN=address PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
 #  - name: "thread sanitizer"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: BUILD_TYPE=Debug XSAN=thread PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
 #  - name: "undefined sanitizer"
 #    os: osx
-#    osx_image: xcode10.2
 #    env: BUILD_TYPE=Debug XSAN=undefined PATH="/usr/local/opt/ccache/libexec:$PATH" CC=/usr/local/opt/llvm/bin/clang CXX=/usr/local/opt/llvm/bin/clang++
-  - name: "memory sanitizer"
-    os: linux
-    dist: xenial
-    compiler: clang
-    env: BUILD_TYPE=Debug XSAN=memory
-  - name: "router docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/router.Dockerfile
-    services: docker
+#  - name: "memory sanitizer"
+#    os: linux
+#    compiler: clang
+#    env: BUILD_TYPE=Debug XSAN=memory
+#    addons: *core_apt_addons
+#  - name: "router docker image"
+#    os: linux
+#    dist: xenial
+#    env: DOCKER_FILE=docker/router.Dockerfile
+#    services: docker
   - name: "make windows docker image"
     os: linux
     dist: xenial
@@ -92,49 +116,19 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
-  - name: "native windows debug"
-    os: windows
-    env: BUILD_TYPE=Debug
-  - name: "native windows release"
-    os: windows
-    env: BUILD_TYPE=Release
-  allow_failures:
-  - name: "make windows docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
-    services: docker
-  - name: "native windows debug"
-    os: windows
-    env: BUILD_TYPE=Debug
-  - name: "native windows release"
-    os: windows
-    env: BUILD_TYPE=Release
 #  - name: "native windows debug"
 #    os: windows
 #    env: BUILD_TYPE=Debug
 #  - name: "native windows release"
 #    os: windows
 #    env: BUILD_TYPE=Release
-#  - os: linux
-#    dist: xenial
-#    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
-#    services: docker
+  allow_failures:
+  - name: "make windows docker image"
+  - name: "native windows debug"
+  - name: "native windows release"
   - name: "router docker image"
-    os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/router.Dockerfile
-    services: docker
-  - os: linux
-    dist: xenial
-    env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
-    services: docker
-#  - os: osx
-#    osx_image: xcode10.2
-#    env: MAKE_TARGET=windows PATH="/usr/local/opt/ccache/libexec:$PATH"
-#  - os: osx
-#    osx_image: xcode10.2
-#    env: MAKE_TARGET=windows-release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "gcc trunk"
+  - arch: ppc64le
 
 env:
   global:
@@ -142,33 +136,14 @@ env:
     - STATIC_LINK=OFF
 
 addons:
-  apt:
-    packages:
-    - binutils-gold
-    - build-essential
-    - clang-format
-    - cmake
-    - curl
-    - docker-ce
-    - g++-mingw-w64
-    - g++-mingw-w64-x86-64
-    - gcc-mingw-w64-base
-    - git
-    - libcap-dev
-    - libcurl4-openssl-dev
-    - libuv1-dev
-    - mingw-w64 mingw-w64-common
-    - ninja-build
-    - libsodium-dev
   homebrew:
+    update: true
     packages:
     - ccache
     - cmake
     - curl
     - libuv
-    - llvm
     - make
-    - mingw-w64
     - ninja
     - libsodium
 
@@ -182,11 +157,11 @@ before_install:
 
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      travis_wait cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
+      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
     elif [[ ! -z $DOCKER_FILE ]]; then
-      travis_wait docker build -f $DOCKER_FILE .;
+      docker build -f $DOCKER_FILE .;
     else
-      travis_wait make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
+      make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
     fi
 
 after_script:

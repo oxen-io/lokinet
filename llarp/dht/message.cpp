@@ -47,7 +47,7 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'F':
-              msg = std::make_unique< FindIntroMessage >(From, relayed);
+              msg = std::make_unique< FindIntroMessage >(From, relayed, 0);
               break;
             case 'R':
               if(relayed)

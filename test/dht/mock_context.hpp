@@ -11,7 +11,6 @@ namespace llarp
   {
     struct MockContext final : public dht::AbstractContext
     {
-
       MOCK_CONST_METHOD1(StoreRC, void(const RouterContact));
 
       MOCK_METHOD2(LookupRouter, bool(const RouterID&, RouterLookupHandler));
@@ -20,37 +19,25 @@ namespace llarp
                    void(const RouterID&, const dht::Key_t&, uint64_t,
                         const dht::Key_t&, RouterLookupHandler));
 
-      MOCK_METHOD6(LookupIntroSetRecursive,
-                   void(const service::Address&, const dht::Key_t&, uint64_t,
+      MOCK_METHOD6(LookupIntroSetRelayed,
+                   void(const dht::Key_t&, const dht::Key_t&, uint64_t,
                         const dht::Key_t&, uint64_t,
-                        service::IntroSetLookupHandler));
+                        service::EncryptedIntroSetLookupHandler));
 
-      MOCK_METHOD5(LookupIntroSetIterative,
-                   void(const service::Address&, const dht::Key_t&, uint64_t,
-                        const dht::Key_t&, service::IntroSetLookupHandler));
-
-      MOCK_METHOD3(
-          FindRandomIntroSetsWithTagExcluding,
-          std::set< service::IntroSet >(const service::Tag&, size_t,
-                                        const std::set< service::IntroSet >&));
+      MOCK_METHOD5(LookupIntroSetDirect,
+                   void(const dht::Key_t&, const dht::Key_t&, uint64_t,
+                        const dht::Key_t&,
+                        service::EncryptedIntroSetLookupHandler));
 
       MOCK_CONST_METHOD1(HasRouterLookup, bool(const RouterID& target));
-
-      MOCK_METHOD5(LookupTagRecursive,
-                   void(const service::Tag&, const dht::Key_t&, uint64_t,
-                        const dht::Key_t&, uint64_t));
-
-      MOCK_METHOD4(LookupTagForPath,
-                   void(const service::Tag&, uint64_t, const PathID_t&,
-                        const dht::Key_t&));
 
       MOCK_METHOD4(LookupRouterForPath,
                    void(const RouterID& target, uint64_t txid,
                         const PathID_t& path, const dht::Key_t& askpeer));
 
-      MOCK_METHOD4(LookupIntroSetForPath,
-                   void(const service::Address&, uint64_t, const PathID_t&,
-                        const dht::Key_t&));
+      MOCK_METHOD5(LookupIntroSetForPath,
+                   void(const dht::Key_t&, uint64_t, const PathID_t&,
+                        const dht::Key_t&, uint64_t));
 
       MOCK_METHOD3(DHTSendTo, void(const RouterID&, dht::IMessage*, bool));
 
@@ -74,16 +61,15 @@ namespace llarp
 
       MOCK_METHOD6(PropagateIntroSetTo,
                    void(const dht::Key_t& source, uint64_t sourceTX,
-                        const service::IntroSet& introset,
-                        const dht::Key_t& peer, uint64_t S,
-                        const std::set< dht::Key_t >& exclude));
+                        const service::EncryptedIntroSet& introset,
+                        const dht::Key_t& peer, bool relayed, uint64_t relayOrder));
 
       MOCK_METHOD3(Init,
                    void(const dht::Key_t&, AbstractRouter*, llarp_time_t));
 
-      MOCK_CONST_METHOD1(
-          GetIntroSetByServiceAddress,
-          const llarp::service::IntroSet*(const llarp::service::Address&));
+      MOCK_CONST_METHOD1(GetIntroSetByLocation,
+                         nonstd::optional< llarp::service::EncryptedIntroSet >(
+                             const llarp::dht::Key_t&));
 
       MOCK_CONST_METHOD0(ExtractStatus, util::StatusObject());
 
@@ -98,10 +84,6 @@ namespace llarp
       MOCK_CONST_METHOD0(pendingIntrosetLookups,
                          const PendingIntrosetLookups&());
       MOCK_METHOD0(pendingIntrosetLookups, PendingIntrosetLookups&());
-
-      MOCK_METHOD0(pendingTagLookups, PendingTagLookups&());
-
-      MOCK_CONST_METHOD0(pendingTagLookups, const PendingTagLookups&());
 
       MOCK_METHOD0(pendingRouterLookups, PendingRouterLookups&());
 
@@ -119,6 +101,8 @@ namespace llarp
       MOCK_CONST_METHOD0(Nodes, dht::Bucket< dht::RCNode >*());
       MOCK_METHOD1(PutRCNodeAsync, void(const dht::RCNode& val));
       MOCK_METHOD1(DelRCNodeAsync, void(const dht::Key_t& val));
+
+      MOCK_METHOD2(FloodRCLater, void(const dht::Key_t, const RouterContact));
     };
 
   }  // namespace test

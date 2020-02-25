@@ -32,10 +32,11 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
-  /// update RCs every 5 minutes
-  llarp_time_t RouterContact::UpdateInterval = 5 * 60 * 1000;
-  /// an RC inserted long enough ago (30 min) is considered stale and is removed
-  llarp_time_t RouterContact::StaleInsertionAge = 30 * 60 * 1000;
+  /// an RC inserted long enough ago (4 hrs) is considered stale and is removed
+  llarp_time_t RouterContact::StaleInsertionAge = 4 * 60 * 60 * 1000;
+  /// update RCs shortly before they are about to expire
+  llarp_time_t RouterContact::UpdateInterval =
+      RouterContact::StaleInsertionAge - (5 * 60 * 1000);
 
   NetID::NetID(const byte_t *val)
   {
@@ -125,7 +126,12 @@ namespace llarp
       return false;
     if(!enckey.BEncode(buf))
       return false;
-
+    // write router version if present
+    if(routerVersion.has_value())
+    {
+      if(not BEncodeWriteDictEntry("r", routerVersion.value(), buf))
+        return false;
+    }
     /* write last updated */
     if(!bencode_write_bytestring(buf, "u", 1))
       return false;
@@ -159,7 +165,8 @@ namespace llarp
     nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
-    last_updated = 0;
+    routerVersion = nonstd::optional< RouterVersion >{};
+    last_updated  = 0;
   }
 
   util::StatusObject
@@ -175,7 +182,10 @@ namespace llarp
     {
       obj["nickname"] = Nick();
     }
-
+    if(routerVersion.has_value())
+    {
+      obj["routerVersion"] = routerVersion->ToString();
+    }
     return obj;
   }
 
@@ -191,6 +201,15 @@ namespace llarp
 
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
+
+    if(key == "r")
+    {
+      RouterVersion r;
+      if(not r.BDecode(buf))
+        return false;
+      routerVersion = r;
+      return true;
+    }
 
     if(key == "n")
     {
@@ -229,6 +248,8 @@ namespace llarp
   bool
   RouterContact::IsPublicRouter() const
   {
+    if(not routerVersion.has_value())
+      return false;
     return !addrs.empty();
   }
 

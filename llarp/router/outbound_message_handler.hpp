@@ -30,7 +30,7 @@ namespace llarp
 
     bool
     QueueMessage(const RouterID &remote, const ILinkMessage *msg,
-                 SendStatusHandler callback) override LOCKS_EXCLUDED(_mutex);
+                 SendStatusHandler callback) override EXCLUDES(_mutex);
 
     void
     Tick() override;
@@ -49,12 +49,30 @@ namespace llarp
 
     struct MessageQueueEntry
     {
+      uint16_t priority;
       Message message;
       PathID_t pathid;
       RouterID router;
+
+      bool
+      operator<(const MessageQueueEntry &other) const
+      {
+        return other.priority < priority;
+      }
     };
 
-    using MessageQueue = std::queue< MessageQueueEntry >;
+    struct MessageQueueStats
+    {
+      uint64_t queued         = 0;
+      uint64_t dropped        = 0;
+      uint64_t sent           = 0;
+      uint32_t queueWatermark = 0;
+
+      uint32_t perTickMax = 0;
+      uint32_t numTicks   = 0;
+    };
+
+    using MessageQueue = std::priority_queue< MessageQueueEntry >;
 
     void
     OnSessionEstablished(const RouterID &router);
@@ -91,7 +109,7 @@ namespace llarp
 
     bool
     QueueOutboundMessage(const RouterID &remote, Message &&msg,
-                         const PathID_t &pathid);
+                         const PathID_t &pathid, uint16_t priority = 0);
 
     void
     ProcessOutboundQueue();
@@ -104,7 +122,7 @@ namespace llarp
 
     void
     FinalizeSessionRequest(const RouterID &router, SendStatus status)
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     llarp::thread::Queue< MessageQueueEntry > outboundQueue;
     llarp::thread::Queue< PathID_t > removedPaths;
@@ -128,6 +146,8 @@ namespace llarp
     // paths cannot have pathid "0", so it can be used as the "pathid"
     // for non-traffic (control) messages, so they can be prioritized.
     static const PathID_t zeroID;
+
+    MessageQueueStats m_queueStats;
   };
 
 }  // namespace llarp

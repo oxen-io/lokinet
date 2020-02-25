@@ -161,7 +161,7 @@ namespace llarp
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;
 
-      std::unordered_map< huint128_t, PubKey, huint128_t::Hash > m_IPToKey;
+      std::unordered_map< huint128_t, PubKey > m_IPToKey;
 
       huint128_t m_IfAddr;
       huint128_t m_HigestAddr;
@@ -169,8 +169,7 @@ namespace llarp
       huint128_t m_NextAddr;
       IPRange m_OurRange;
 
-      std::unordered_map< huint128_t, llarp_time_t, huint128_t::Hash >
-          m_IPActivity;
+      std::unordered_map< huint128_t, llarp_time_t > m_IPActivity;
 
       llarp_tun_io m_Tun;
 

@@ -18,8 +18,6 @@
 
 #include <util/str.hpp>
 
-#include <absl/strings/ascii.h>
-
 namespace llarp
 {
   namespace handlers
@@ -111,6 +109,25 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "reachable")
+      {
+        if(IsFalseValue(v))
+        {
+          m_PublishIntroSet = false;
+          LogInfo(Name(), " setting to be not reachable by default");
+        }
+        else if(IsTrueValue(v))
+        {
+          m_PublishIntroSet = true;
+          LogInfo(Name(), " setting to be reachable by default");
+        }
+        else
+        {
+          LogError(Name(), " config option reachable = '", v,
+                   "' does not make sense");
+          return false;
+        }
+      }
       if(k == "isolate-network" && IsTrueValue(v.c_str()))
       {
 #if defined(__linux__)
@@ -174,7 +191,7 @@ namespace llarp
         {
           routerStr = v;
         }
-        absl::StripAsciiWhitespace(&routerStr);
+        routerStr = TrimWhitespace(routerStr);
         if(!(exitRouter.FromString(routerStr)
              || HexDecode(routerStr.c_str(), exitRouter.begin(),
                           exitRouter.size())))
@@ -473,7 +490,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -493,7 +510,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             return EnsurePathToSNode(
                 addr.as_array(),
                 [=](const RouterID &, exit::BaseSession_ptr s) {

@@ -23,8 +23,10 @@ namespace llarp
   namespace path
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
-               PathRole startingRoles)
-        : m_PathSet(parent), _role(startingRoles)
+               PathRole startingRoles, std::string shortName)
+        : m_PathSet(parent)
+        , _role(startingRoles)
+        , m_shortName(std::move(shortName))
 
     {
       hops.resize(h.size());
@@ -50,7 +52,8 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      EnterState(ePathBuilding, parent->Now());
+      if(parent)
+        EnterState(ePathBuilding, parent->Now());
     }
 
     bool
@@ -103,6 +106,8 @@ namespace llarp
     bool
     Path::IsReady() const
     {
+      if(Expired(llarp::time_now_ms()))
+        return false;
       return intro.latency > 0 && _status == ePathEstablished;
     }
 
@@ -117,6 +122,12 @@ namespace llarp
     Path::Upstream() const
     {
       return hops[0].rc.pubkey;
+    }
+
+    const std::string&
+    Path::ShortName() const
+    {
+      return m_shortName;
     }
 
     std::string
@@ -135,7 +146,7 @@ namespace llarp
       uint64_t currentStatus = status;
 
       size_t index = 0;
-      absl::optional< RouterID > failedAt;
+      nonstd::optional< RouterID > failedAt;
       while(index < hops.size())
       {
         if(!frames[index].DoDecrypt(hops[index].shared))
@@ -307,6 +318,8 @@ namespace llarp
                              {"expiresSoon", ExpiresSoon(now)},
                              {"expiresAt", ExpireTime()},
                              {"ready", IsReady()},
+                             {"txRateCurrent", m_LastTXRate},
+                             {"rxRateCurrent", m_LastRXRate},
                              {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector< util::StatusObject > hopsObj;
@@ -349,7 +362,7 @@ namespace llarp
       std::vector< RouterContact > newHops;
       for(const auto& hop : hops)
         newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", HopsString());
+      LogInfo(Name(), " rebuilding on ", ShortName());
       m_PathSet->Build(newHops);
     }
 
@@ -358,6 +371,12 @@ namespace llarp
     {
       if(Expired(now))
         return;
+
+      m_LastRXRate = m_RXRate;
+      m_LastTXRate = m_TXRate;
+
+      m_RXRate = 0;
+      m_TXRate = 0;
 
       m_UpstreamReplayFilter.Decay(now);
       m_DownstreamReplayFilter.Decay(now);
@@ -420,7 +439,11 @@ namespace llarp
     {
       for(const auto& msg : msgs)
       {
-        if(!r->SendToOrQueue(Upstream(), &msg))
+        if(r->SendToOrQueue(Upstream(), &msg))
+        {
+          m_TXRate += msg.X.size();
+        }
+        else
         {
           LogDebug("failed to send upstream to ", Upstream());
         }
@@ -531,6 +554,7 @@ namespace llarp
       for(const auto& msg : msgs)
       {
         const llarp_buffer_t buf(msg.X);
+        m_RXRate += buf.sz;
         if(!HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");
@@ -601,9 +625,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathTransferMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathTransferMessage& msg,
-        ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+    Path::HandlePathTransferMessage(const routing::PathTransferMessage& /*msg*/,
+                                    AbstractRouter* /*r*/)
     {
       LogWarn("unwarranted path transfer message on tx=", TXID(),
               " rx=", RXID());
@@ -623,7 +646,7 @@ namespace llarp
     bool
     Path::HandlePathConfirmMessage(AbstractRouter* r)
     {
-      LogDebug("Path Build Confirm, path: ", HopsString());
+      LogDebug("Path Build Confirm, path: ", ShortName());
       const auto now = llarp::time_now_ms();
       if(_status == ePathBuilding)
       {
@@ -651,9 +674,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathConfirmMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
-        AbstractRouter* r)
+    Path::HandlePathConfirmMessage(const routing::PathConfirmMessage& /*msg*/,
+                                   AbstractRouter* r)
     {
       return HandlePathConfirmMessage(r);
     }
@@ -701,7 +723,7 @@ namespace llarp
 
     bool
     Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg,
-                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+                                 AbstractRouter* /*r*/)
     {
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))

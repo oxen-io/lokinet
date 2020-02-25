@@ -123,6 +123,12 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      bool
+      IsInbound() const override
+      {
+        return m_Inbound;
+      }
+
      private:
       enum class State
       {
@@ -137,7 +143,24 @@ namespace llarp
         /// we are closed now
         Closed
       };
+      static std::string
+      StateToString(State state);
       State m_State;
+
+      struct Stats
+      {
+        // rate
+        uint64_t currentRateRX = 0;
+        uint64_t currentRateTX = 0;
+
+        uint64_t totalPacketsRX = 0;
+
+        uint64_t totalAckedTX    = 0;
+        uint64_t totalDroppedTX  = 0;
+        uint64_t totalInFlightTX = 0;
+      };
+      Stats m_Stats;
+
       /// are we inbound session ?
       const bool m_Inbound;
       /// parent link layer
@@ -159,11 +182,9 @@ namespace llarp
       llarp_time_t m_LastTX = 0;
       llarp_time_t m_LastRX = 0;
 
+      // accumulate for periodic rate calculation
       uint64_t m_TXRate = 0;
       uint64_t m_RXRate = 0;
-
-      uint64_t m_CurrentTX = 0;
-      uint64_t m_CurrentRX = 0;
 
       llarp_time_t m_ResetRatesAt = 0;
 

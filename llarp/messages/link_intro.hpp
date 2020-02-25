@@ -45,6 +45,13 @@ namespace llarp
     {
       return "LinkIntro";
     }
+
+    // always first
+    uint16_t
+    Priority() const override
+    {
+      return std::numeric_limits< uint16_t >::max();
+    }
   };
 }  // namespace llarp
 

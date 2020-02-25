@@ -54,6 +54,9 @@ class Monitor:
         y += 1
         self.win.move(y, 1)
         y += 1
+        self.win.addstr("[tx:\t{}]\t[rx:\t{}]".format(self.speedOf(path['txRateCurrent']), self.speedOf(path['rxRateCurrent'])))
+        self.win.move(y, 1)
+        y += 1
         self.win.addstr("me -> ")
         for hop in path["hops"]:
             self.win.addstr(" {} ->".format(hop["router"][:4]))
@@ -94,12 +97,12 @@ class Monitor:
         self.win.addstr("paths: {}".format(len(paths)))
         for path in paths:
             y = self._render_path(y, path, "inbound")
-        for session in status["remoteSessions"]:
+        for session in (status["remoteSessions"] or []):
             for path in session["paths"]:
                 y = self._render_path(
                     y, path, "[active] {}".format(session["currentConvoTag"])
                 )
-        for session in status["snodeSessions"]:
+        for session in (status["snodeSessions"] or []):
             for path in session["paths"]:
                 y = self._render_path(y, path, "[snode]")
         return y
@@ -194,15 +197,17 @@ class Monitor:
         for s in sessions:
             y += 1
             self.win.move(y, 1)
-            self.txrate += s["tx"]
-            self.rxrate += s["rx"]
+            self.txrate += s["txRateCurrent"]
+            self.rxrate += s["rxRateCurrent"]
             self.win.addstr(
                 "{}\t[{}\ttx]\t[{}\trx]".format(
-                    s["remoteAddr"], self.speedOf(s["tx"]), self.speedOf(s["rx"])
+                    s["remoteAddr"], self.speedOf(s["txRateCurrent"]), self.speedOf(s["rxRateCurrent"])
                 )
             )
-            if s["sendBacklog"] > 0:
-                self.win.addstr("[backlog {}]".format(s["sendBacklog"]))
+            if (s['txMsgs'] or 0) > 1:
+                self.win.addstr(" [out window:\t{}]".format(s['txMsgQueueSize']))
+            if (s['rxMsgs'] or 0) > 1:
+                self.win.addstr(" [in window:\t{}]".format(s['rxMsgQueueSize']))
         return y
 
     def display_dht(self, y, data):

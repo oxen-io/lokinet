@@ -248,11 +248,18 @@ namespace llarp
     virtual bool
     HasSessionTo(const RouterID &router) const = 0;
 
+    virtual uint32_t
+    NextPathBuildNumber() = 0;
+
+    virtual std::string
+    ShortName() const = 0;
+
     virtual util::StatusObject
     ExtractStatus() const = 0;
 
-    void
-    EnsureRouter(RouterID router, RouterLookupHandler handler);
+    /// gossip an rc if required
+    virtual void
+    GossipRCIfNeeded(const RouterContact rc) = 0;
   };
 }  // namespace llarp
 

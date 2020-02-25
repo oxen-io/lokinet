@@ -1,8 +1,6 @@
 #ifndef LLARP_TRAITS_HPP
 #define LLARP_TRAITS_HPP
 
-#include <absl/meta/type_traits.h>
-
 #include <cstddef>
 #include <type_traits>
 #include <utility>
@@ -12,9 +10,18 @@ namespace llarp
 {
   namespace traits
   {
-    using absl::conjunction;
-    using absl::disjunction;
-    using absl::void_t;
+#ifdef __cpp_lib_void_t
+    using std::void_t;
+#else
+    /// C++17 void_t backport
+    template < typename... Ts >
+    struct void_t_impl
+    {
+      using type = void;
+    };
+    template < typename... Ts >
+    using void_t = typename void_t_impl< Ts... >::type;
+#endif
 
     /// Represents the empty type
     struct Bottom

@@ -8,6 +8,7 @@
 #include <util/aligned.hpp>
 #include <util/bencode.hpp>
 #include <util/status.hpp>
+#include <router_version.hpp>
 
 #include <functional>
 #include <nlohmann/json.hpp>
@@ -104,6 +105,7 @@ namespace llarp
 
     uint64_t last_updated = 0;
     uint64_t version      = LLARP_PROTO_VERSION;
+    nonstd::optional< RouterVersion > routerVersion;
 
     util::StatusObject
     ExtractStatus() const;
