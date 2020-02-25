@@ -14,26 +14,10 @@ namespace llarp
     delta -= m;
     auto s = std::chrono::duration_cast< std::chrono::seconds >(delta);
     delta -= s;
-    auto ms = delta;
+    llarp_time_t ms = delta;
     std::chrono::time_point< std::chrono::system_clock,
                              std::chrono::milliseconds >
         now{std::chrono::milliseconds{ts.now}};
-    date::operator<<(out, now) << " UTC [+";
-    auto old_fill = out.fill('0');
-    if(h > 0h)
-    {
-      out << h.count() << 'h';
-      out.width(2);  // 0-fill minutes if we have hours
-    }
-    if(h > 0h || m > 0min)
-    {
-      out << m.count() << 'm';
-      out.width(2);  // 0-fill seconds if we have minutes
-    }
-    out << s.count() << '.';
-    out.width(3);
-    out << ms.count();
-    out.fill(old_fill);
-    return out << "s]";
+    return date::operator<<(out, now) << " UTC [+" << ms << "]";
   }
 }  // namespace llarp
