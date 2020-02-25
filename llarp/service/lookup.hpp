@@ -47,7 +47,7 @@ namespace llarp
       BuildRequestMessage() = 0;
 
       /// build a new request message and send it via a path
-      bool
+      virtual bool
       SendRequestViaPath(path::Path_ptr p, AbstractRouter* r);
 
       ILookupHolder* m_parent;

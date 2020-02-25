@@ -279,7 +279,8 @@ namespace llarp
       }
       std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
       lookups.erase(itr);
-      lookup->HandleResponse(remote);
+      if(not lookup->HandleResponse(remote))
+        lookups.emplace(msg->txid, std::move(lookup));
       return true;
     }
 
