@@ -226,6 +226,7 @@ if(JEMALLOC)
 endif(JEMALLOC)
 
 
+if (Linux)
 pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
@@ -238,7 +239,7 @@ if(WITH_SYSTEMD)
   include_directories(${SD_INCLUDE_DIRS})
   set(SD_LIBS ${SD_LDFLAGS})
 endif()
-
+endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
 if(SUBMODULE_CHECK)

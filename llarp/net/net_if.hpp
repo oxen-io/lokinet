@@ -5,7 +5,11 @@
 #if defined(__linux__)
 #include <linux/if.h>
 extern "C" unsigned int
+#ifndef __GLIBC__
+if_nametoindex(const char* __ifname);
+#else
 if_nametoindex(const char* __ifname) __THROW;
+#endif
 #else
 #include <net/if.h>
 #endif
