@@ -61,7 +61,7 @@ namespace llarp
 
     /// minimum interval for publishing introsets
     static constexpr auto INTROSET_PUBLISH_INTERVAL =
-        path::default_lifetime / 4;
+        std::chrono::milliseconds(path::default_lifetime) / 4;
 
     static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
 
