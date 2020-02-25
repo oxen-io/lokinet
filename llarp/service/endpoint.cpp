@@ -78,7 +78,7 @@ namespace llarp
       std::set< Introduction > introset;
       if(!GetCurrentIntroductionsWithFilter(
              introset, [now](const service::Introduction& intro) -> bool {
-               return not intro.ExpiresSoon(now, path::default_lifetime * 2);
+               return not intro.ExpiresSoon(now, path::min_intro_lifetime);
              }))
       {
         LogWarn("could not publish descriptors for endpoint ", Name(),
@@ -1282,8 +1282,7 @@ namespace llarp
       if(numBuilding > 0)
         return false;
 
-      static constexpr auto buildSpread = path::default_lifetime / 4;
-      return ((now - lastBuild) > buildSpread);
+      return ((now - lastBuild) > path::intro_path_spread);
     }
 
     std::shared_ptr< Logic >
