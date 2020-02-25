@@ -129,7 +129,7 @@ namespace llarp
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
         }
-        Section_t& sect = m_Config[sectName];
+        Section_t& sect = m_Config[str(sectName)];
         LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
         sect.emplace(k, v);
       }
