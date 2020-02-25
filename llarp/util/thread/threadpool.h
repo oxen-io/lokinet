@@ -34,10 +34,6 @@ struct llarp_threadpool
   size_t
   numThreads() const;
 
-  /// try to guess how big our job latency is on this threadpool
-  llarp_time_t
-  GuessJobLatency(llarp_time_t granulairty = 1000) const;
-
   /// see if this thread is full given lookahead amount
   bool
   LooksFull(size_t lookahead) const

@@ -95,7 +95,7 @@ namespace llarp
       updatingIntroSet = false;
       if(foundIntro.has_value())
       {
-        if(foundIntro->T == 0)
+        if(foundIntro->T == 0s)
         {
           LogWarn(Name(),
                   " got introset with zero timestamp: ", foundIntro.value());
@@ -114,6 +114,7 @@ namespace llarp
           return true;
         }
         currentIntroSet = foundIntro.value();
+        ShiftIntroduction(false);
       }
       else
       {
@@ -250,11 +251,11 @@ namespace llarp
       auto obj                     = path::Builder::ExtractStatus();
       obj["currentConvoTag"]       = currentConvoTag.ToHex();
       obj["remoteIntro"]           = remoteIntro.ExtractStatus();
-      obj["sessionCreatedAt"]      = createdAt;
-      obj["lastGoodSend"]          = lastGoodSend;
+      obj["sessionCreatedAt"]      = to_json(createdAt);
+      obj["lastGoodSend"]          = to_json(lastGoodSend);
       obj["seqno"]                 = sequenceNo;
       obj["markedBad"]             = markedBad;
-      obj["lastShift"]             = lastShift;
+      obj["lastShift"]             = to_json(lastShift);
       obj["remoteIdentity"]        = remoteIdent.Addr().ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"]             = m_NextIntro.ExtractStatus();
@@ -262,9 +263,7 @@ namespace llarp
       std::transform(m_BadIntros.begin(), m_BadIntros.end(),
                      std::back_inserter(obj["badIntros"]),
                      [](const auto& item) -> util::StatusObject {
-                       return util::StatusObject{
-                           {"count", item.second},
-                           {"intro", item.first.ExtractStatus()}};
+                       return item.first.ExtractStatus();
                      });
       return obj;
     }
@@ -296,7 +295,7 @@ namespace llarp
           ++itr;
       }
       // send control message if we look too quiet
-      if(lastGoodSend)
+      if(lastGoodSend > 0s)
       {
         if(now - lastGoodSend > (sendTimeout / 2))
         {
@@ -315,7 +314,7 @@ namespace llarp
         }
       }
       // if we are dead return true so we are removed
-      return lastGoodSend
+      return lastGoodSend > 0s
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
           : (now >= createdAt && now - createdAt > connectTimeout);
     }
@@ -362,7 +361,7 @@ namespace llarp
           and path::Builder::ShouldBuildMore(now);
       if(not canBuild)
         return false;
-      llarp_time_t t = 0;
+      llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {
         if(path->IsReady())
           t = std::max(path->ExpireTime(), t);

@@ -266,9 +266,9 @@ llarp_nodedb::SaveAll()
 bool
 llarp_nodedb::ShouldSaveToDisk(llarp_time_t now) const
 {
-  if(now == 0)
+  if(now == 0s)
     now = llarp::time_now_ms();
-  return m_NextSaveToDisk > 0 && m_NextSaveToDisk <= now;
+  return m_NextSaveToDisk > 0s && m_NextSaveToDisk <= now;
 }
 
 void

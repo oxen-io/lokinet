@@ -30,14 +30,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-struct llarp_nodedb_iter
-{
-  void *user;
-  llarp::RouterContact *rc;
-  size_t index;
-  bool (*visit)(struct llarp_nodedb_iter *);
-};
-
 struct llarp_nodedb
 {
   explicit llarp_nodedb(std::shared_ptr< llarp::thread::ThreadPool > diskworker,
@@ -55,9 +47,9 @@ struct llarp_nodedb
   std::shared_ptr< llarp::thread::ThreadPool > disk;
   mutable llarp::util::Mutex access;  // protects entries
   /// time for next save to disk event, 0 if never happened
-  llarp_time_t m_NextSaveToDisk = 0;
+  llarp_time_t m_NextSaveToDisk = 0s;
   /// how often to save to disk
-  const llarp_time_t m_SaveInterval = 60 * 5 * 1000;
+  const llarp_time_t m_SaveInterval = 5min;
 
   struct NetDBEntry
   {
@@ -82,7 +74,7 @@ struct llarp_nodedb
 
   /// return true if we should save our nodedb to disk
   bool
-  ShouldSaveToDisk(llarp_time_t now = 0) const;
+  ShouldSaveToDisk(llarp_time_t now = 0s) const;
 
   bool
   Remove(const llarp::RouterID &pk) EXCLUDES(access);

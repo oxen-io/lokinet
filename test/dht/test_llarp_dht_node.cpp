@@ -20,7 +20,7 @@ TEST_F(TestDhtRCNode, construct)
   ASSERT_THAT(node.ID, Property(&dht::Key_t::IsZero, true));
 
   node.ID.Fill(0xCA);
-  node.rc.last_updated = 101;
+  node.rc.last_updated = 101s;
 
   dht::RCNode other{node};
   ASSERT_EQ(node.ID, other.ID);
@@ -40,10 +40,10 @@ TEST_F(TestDhtRCNode, lt)
   dht::RCNode three;
   dht::RCNode eqThree;
 
-  one.rc.last_updated     = 1;
-  two.rc.last_updated     = 2;
-  three.rc.last_updated   = 3;
-  eqThree.rc.last_updated = 3;
+  one.rc.last_updated     = 1s;
+  two.rc.last_updated     = 2s;
+  three.rc.last_updated   = 3s;
+  eqThree.rc.last_updated = 3s;
 
   // LT cases
   ASSERT_THAT(one, Lt(two));
@@ -93,10 +93,10 @@ TEST_F(TestDhtISNode, lt)
   dht::ISNode three;
   dht::ISNode eqThree;
 
-  one.introset.signedAt     = 1;
-  two.introset.signedAt     = 2;
-  three.introset.signedAt   = 3;
-  eqThree.introset.signedAt = 3;
+  one.introset.signedAt     = 1s;
+  two.introset.signedAt     = 2s;
+  three.introset.signedAt   = 3s;
+  eqThree.introset.signedAt = 3s;
 
   // LT cases
   ASSERT_THAT(one, Lt(two));

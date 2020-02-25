@@ -13,6 +13,8 @@ namespace llarp
     virtual bool
     GossipRC(const RouterContact &rc) = 0;
 
+    using Time_t = std::chrono::milliseconds;
+
     virtual void
     Decay(Time_t now) = 0;
 

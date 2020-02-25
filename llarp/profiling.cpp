@@ -19,7 +19,7 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
       return false;
-    if(!BEncodeWriteDictInt("u", lastUpdated, buf))
+    if(!BEncodeWriteDictInt("u", lastUpdated.count(), buf))
       return false;
     if(!BEncodeWriteDictInt("v", version, buf))
       return false;
@@ -60,8 +60,8 @@ namespace llarp
   RouterProfile::Tick()
   {
     // 15 seconds
-    static constexpr llarp_time_t updateInterval = 15 * 1000;
-    const auto now                               = llarp::time_now_ms();
+    static constexpr auto updateInterval = 15s;
+    const auto now                       = llarp::time_now_ms();
     if(lastDecay < now && now - lastDecay > updateInterval)
       Decay();
   }
@@ -299,6 +299,6 @@ namespace llarp
   Profiling::ShouldSave(llarp_time_t now) const
   {
     auto dlt = now - m_LastSave;
-    return dlt > 60000;
+    return dlt > 1min;
   }
 }  // namespace llarp

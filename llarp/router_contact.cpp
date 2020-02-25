@@ -27,16 +27,16 @@ namespace llarp
 
 #ifdef TESTNET
   // 1 minute for testnet
-  llarp_time_t RouterContact::Lifetime = 60 * 1000;
+  llarp_time_t RouterContact::Lifetime = 1min;
 #else
   /// 1 day for real network
-  llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
+  llarp_time_t RouterContact::Lifetime = 24h;
 #endif
   /// an RC inserted long enough ago (4 hrs) is considered stale and is removed
-  llarp_time_t RouterContact::StaleInsertionAge = 4 * 60 * 60 * 1000;
+  llarp_time_t RouterContact::StaleInsertionAge = 4h;
   /// update RCs shortly before they are about to expire
   llarp_time_t RouterContact::UpdateInterval =
-      RouterContact::StaleInsertionAge - (5 * 60 * 1000);
+      RouterContact::StaleInsertionAge - 5min;
 
   NetID::NetID(const byte_t *val)
   {
@@ -135,7 +135,7 @@ namespace llarp
     /* write last updated */
     if(!bencode_write_bytestring(buf, "u", 1))
       return false;
-    if(!bencode_write_uint64(buf, last_updated))
+    if(!bencode_write_uint64(buf, last_updated.count()))
       return false;
 
     /* write versions */
@@ -166,13 +166,13 @@ namespace llarp
     enckey.Zero();
     pubkey.Zero();
     routerVersion = nonstd::optional< RouterVersion >{};
-    last_updated  = 0;
+    last_updated  = 0s;
   }
 
   util::StatusObject
   RouterContact::ExtractStatus() const
   {
-    util::StatusObject obj{{"lastUpdated", last_updated},
+    util::StatusObject obj{{"lastUpdated", last_updated.count()},
                            {"exit", IsExit()},
                            {"publicRouter", IsPublicRouter()},
                            {"identity", pubkey.ToString()},
@@ -280,13 +280,13 @@ namespace llarp
   RouterContact::TimeUntilExpires(llarp_time_t now) const
   {
     const auto expiresAt = last_updated + Lifetime;
-    return now < expiresAt ? expiresAt - now : 0;
+    return now < expiresAt ? expiresAt - now : 0s;
   }
 
   llarp_time_t
   RouterContact::Age(llarp_time_t now) const
   {
-    return now > last_updated ? now - last_updated : 0;
+    return now > last_updated ? now - last_updated : 0s;
   }
 
   bool
@@ -434,7 +434,7 @@ namespace llarp
   {
     Printer printer(stream, level, spaces);
     printer.printAttribute("k", pubkey);
-    printer.printAttribute("updated", last_updated);
+    printer.printAttribute("updated", last_updated.count());
     printer.printAttribute("netid", netID);
     printer.printAttribute("v", version);
     printer.printAttribute("ai", addrs);

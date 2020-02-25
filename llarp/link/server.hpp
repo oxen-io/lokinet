@@ -210,7 +210,7 @@ namespace llarp
     OnTick();
 
     void
-    ScheduleTick(uint64_t interval);
+    ScheduleTick(llarp_time_t interval);
 
     uint32_t tick_id;
     const SecretKey& m_RouterEncSecret;

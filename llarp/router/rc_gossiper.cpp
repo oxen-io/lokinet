@@ -41,8 +41,7 @@ namespace llarp
   void
   RCGossiper::Decay(Time_t now)
   {
-    LogDebug("decay filter at ", now.count());
-    m_Filter.Decay(now.count());
+    m_Filter.Decay(now);
   }
 
   bool
@@ -59,7 +58,7 @@ namespace llarp
       return false;
     m_Filter.Insert(pubkey);
 
-    const auto now = time_now();
+    const auto now = time_now_ms();
     // is this our rc?
     if(IsOurRC(rc))
     {

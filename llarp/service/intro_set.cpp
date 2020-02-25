@@ -11,7 +11,7 @@ namespace llarp
     {
       const auto sz = introsetPayload.size();
       return {{"location", derivedSigningKey.ToString()},
-              {"signedAt", signedAt},
+              {"signedAt", to_json(signedAt)},
               {"size", sz}};
     }
 
@@ -24,7 +24,7 @@ namespace llarp
         return false;
       if(not BEncodeWriteDictEntry("n", nounce, buf))
         return false;
-      if(not BEncodeWriteDictInt("s", signedAt, buf))
+      if(not BEncodeWriteDictInt("s", signedAt.count(), buf))
         return false;
       if(not bencode_write_bytestring(buf, "x", 1))
         return false;
@@ -77,7 +77,7 @@ namespace llarp
       Printer printer(out, levels, spaces);
       printer.printAttribute("d", derivedSigningKey);
       printer.printAttribute("n", nounce);
-      printer.printAttribute("s", signedAt);
+      printer.printAttribute("s", signedAt.count());
       printer.printAttribute(
           "x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
       printer.printAttribute("z", sig);
@@ -142,7 +142,7 @@ namespace llarp
     util::StatusObject
     IntroSet::ExtractStatus() const
     {
-      util::StatusObject obj{{"published", T}};
+      util::StatusObject obj{{"published", to_json(T)}};
       std::vector< util::StatusObject > introsObjs;
       std::transform(I.begin(), I.end(), std::back_inserter(introsObjs),
                      [](const auto& intro) -> util::StatusObject {
@@ -214,7 +214,7 @@ namespace llarp
           return false;
       }
       // Timestamp published
-      if(!BEncodeWriteDictInt("t", T, buf))
+      if(!BEncodeWriteDictInt("t", T.count(), buf))
         return false;
 
       // write version
@@ -301,7 +301,7 @@ namespace llarp
     llarp_time_t
     IntroSet::GetNewestIntroExpiration() const
     {
-      llarp_time_t t = 0;
+      llarp_time_t t = 0s;
       for(const auto& intro : I)
         t = std::max(intro.expiresAt, t);
       return t;
@@ -326,7 +326,7 @@ namespace llarp
         printer.printAttribute("topic", topic);
       }
 
-      printer.printAttribute("T", T);
+      printer.printAttribute("T", T.count());
       if(W)
       {
         printer.printAttribute("W", W.value());

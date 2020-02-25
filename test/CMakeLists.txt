@@ -35,7 +35,6 @@ list(APPEND GTEST_SRC
     util/meta/test_llarp_util_traits.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
-    util/test_llarp_util_decaying_hashset.cpp
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
@@ -73,6 +72,7 @@ add_executable(${CATCH_EXE}
   util/test_llarp_util_bits.cpp
   util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
+  util/test_llarp_util_decaying_hashset.cpp
   check_main.cpp)
 
 target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)

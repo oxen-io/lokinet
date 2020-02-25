@@ -77,7 +77,7 @@ namespace llarp
       std::set< Introduction > I;
       if(!GetCurrentIntroductionsWithFilter(
              I, [now](const service::Introduction& intro) -> bool {
-               return not intro.ExpiresSoon(now, 2 * 60 * 1000);
+               return not intro.ExpiresSoon(now, 2min);
              }))
       {
         LogWarn("could not publish descriptors for endpoint ", Name(),
@@ -196,7 +196,7 @@ namespace llarp
         if(!EndpointUtil::HasPathToService(addr, m_state->m_RemoteSessions))
         {
           if(!EnsurePathToService(
-                 addr, [](Address, OutboundContext*) {}, 10000))
+                 addr, [](Address, OutboundContext*) {}, 10s))
           {
             LogWarn("failed to ensure path to ", addr);
           }
@@ -1242,7 +1242,7 @@ namespace llarp
                 }
                 self->m_state->m_PendingTraffic.erase(addr);
               },
-              1500);
+              1500ms);
         }
       }
       return false;

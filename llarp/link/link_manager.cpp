@@ -150,7 +150,7 @@ namespace llarp
     m_PersistingSessions[remote] =
         std::max(until, m_PersistingSessions[remote]);
     LogDebug("persist session to ", remote, " until ",
-             m_PersistingSessions[remote]);
+             m_PersistingSessions[remote].count());
   }
 
   void

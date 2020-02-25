@@ -76,9 +76,9 @@ namespace llarp
       PendingRouters m_PendingRouters;
 
       uint64_t m_CurrentPublishTX       = 0;
-      llarp_time_t m_LastPublish        = 0;
-      llarp_time_t m_LastPublishAttempt = 0;
-      llarp_time_t m_MinPathLatency     = (5 * 1000);
+      llarp_time_t m_LastPublish        = 0s;
+      llarp_time_t m_LastPublishAttempt = 0s;
+      llarp_time_t m_MinPathLatency     = 1s;
       /// our introset
       IntroSet m_IntroSet;
       /// pending remote service lookups by id

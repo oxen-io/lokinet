@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace routing
   {
-    PathConfirmMessage::PathConfirmMessage(uint64_t lifetime)
+    PathConfirmMessage::PathConfirmMessage(llarp_time_t lifetime)
         : pathLifetime(lifetime), pathCreated(time_now_ms())
     {
     }
@@ -36,11 +36,11 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "P"))
         return false;
-      if(!BEncodeWriteDictInt("L", pathLifetime, buf))
+      if(!BEncodeWriteDictInt("L", pathLifetime.count(), buf))
         return false;
       if(!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", pathCreated, buf))
+      if(!BEncodeWriteDictInt("T", pathCreated.count(), buf))
         return false;
       if(!BEncodeWriteDictInt("V", version, buf))
         return false;

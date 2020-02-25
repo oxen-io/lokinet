@@ -41,7 +41,7 @@ namespace llarp
                              {"ip", m_IP.ToString()},
                              {"txRate", m_TxRate},
                              {"rxRate", m_RxRate},
-                             {"createdAt", createdAt},
+                             {"createdAt", to_json(createdAt)},
                              {"exiting", !m_RewriteSource},
                              {"looksDead", LooksDead(now)},
                              {"expiresSoon", ExpiresSoon(now)},
@@ -96,11 +96,11 @@ namespace llarp
       if(!path)
         return true;
       auto lastPing = path->LastRemoteActivityAt();
-      if(lastPing == 0 || (now > lastPing && now - lastPing > timeout))
+      if(lastPing == 0s || (now > lastPing && now - lastPing > timeout))
         return now > m_LastActive && now - m_LastActive > timeout;
-      else if(lastPing)  // NOLINT
+      else if(lastPing > 0s)  // NOLINT
         return now > lastPing && now - lastPing > timeout;
-      return lastPing > 0;
+      return lastPing > 0s;
     }
 
     bool

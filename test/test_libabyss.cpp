@@ -45,10 +45,10 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
-        logic->call_later(1000, std::bind(&AbyssTestBase::Stop, this));
+        logic->call_later(1s, std::bind(&AbyssTestBase::Stop, this));
         return;
       }
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(1s);
     }
   }
 
@@ -127,7 +127,7 @@ struct AbyssTest : public AbyssTestBase,
   AbyssTest()
       : AbyssTestBase()
       , abyss::http::JSONRPC()
-      , abyss::httpd::BaseReqHandler(1000)
+      , abyss::httpd::BaseReqHandler(1s)
   {
     client = this;
     server = this;

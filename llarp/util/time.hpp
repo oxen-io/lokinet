@@ -2,9 +2,9 @@
 #define LLARP_TIME_HPP
 
 #include <util/types.hpp>
-#include <chrono>
+#include <nlohmann/json.hpp>
 
-#include <chrono>
+using namespace std::chrono_literals;
 
 namespace llarp
 {
@@ -12,11 +12,11 @@ namespace llarp
   llarp_time_t
   time_now_ms();
 
-  using Time_t = std::chrono::milliseconds;
+  std::ostream &
+  operator<<(std::ostream &out, const llarp_time_t &t);
 
-  /// get time right now as a Time_t, monotonic
-  Time_t
-  time_now();
+  nlohmann::json
+  to_json(const llarp_time_t &t);
 
 }  // namespace llarp
 

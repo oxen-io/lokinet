@@ -52,7 +52,7 @@ namespace llarp
 {
   struct Router final : public AbstractRouter
   {
-    llarp_time_t _lastPump = 0;
+    llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key
     fs::path transport_keyfile = "transport.key";
@@ -199,7 +199,7 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
-    llarp_time_t rcRegenInterval = 60 * 60 * 1000;
+    llarp_time_t rcRegenInterval = 1h;
 
     // should we be sending padded messages every interval?
     bool sendPadding = false;
@@ -223,7 +223,7 @@ namespace llarp
       return _hiddenServiceContext;
     }
 
-    llarp_time_t _lastTick = 0;
+    llarp_time_t _lastTick = 0s;
 
     bool
     LooksAlive() const override
@@ -260,7 +260,7 @@ namespace llarp
     bool enableRPCServer                 = false;
     std::unique_ptr< rpc::Server > rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
-    const Time_t _randomStartDelay;
+    const llarp_time_t _randomStartDelay;
 
     /// lokid caller
     std::unique_ptr< rpc::Caller > rpcCaller;
@@ -443,7 +443,7 @@ namespace llarp
 
     /// schedule ticker to call i ms from now
     void
-    ScheduleTicker(uint64_t i = 1000);
+    ScheduleTicker(llarp_time_t i = 1s);
 
     /// parse a routing message in a buffer and handle it with a handler if
     /// successful parsing return true on parse and handle success otherwise
@@ -498,7 +498,7 @@ namespace llarp
 
     bool m_isServiceNode = false;
 
-    llarp_time_t m_LastStatsReport = 0;
+    llarp_time_t m_LastStatsReport = 0s;
 
     std::shared_ptr< llarp::KeyManager > m_keyManager;
 

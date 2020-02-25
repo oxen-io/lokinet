@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace path
   {
-    static constexpr llarp_time_t DefaultPathBuildLimit = 500;
+    static constexpr auto DefaultPathBuildLimit = 500ms;
 
     PathContext::PathContext(AbstractRouter* router)
         : m_Router(router)

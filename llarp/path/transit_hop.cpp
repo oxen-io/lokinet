@@ -464,8 +464,8 @@ namespace llarp
     {
       Printer printer(stream, level, spaces);
       printer.printAttribute("TransitHop", info);
-      printer.printAttribute("started", started);
-      printer.printAttribute("lifetime", lifetime);
+      printer.printAttribute("started", started.count());
+      printer.printAttribute("lifetime", lifetime.count());
       return stream;
     }
 

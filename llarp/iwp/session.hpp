@@ -17,24 +17,26 @@ namespace llarp
     ILinkSession::Packet_t
     CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
                  size_t pad_variance = 16);
+    /// Time how long we try delivery for
+    static constexpr std::chrono::milliseconds DeliveryTimeout = 500ms;
+    /// Time how long we wait to recieve a message
+    static constexpr auto ReceivalTimeout = (DeliveryTimeout * 8) / 5;
+    /// How long to keep a replay window for
+    static constexpr auto ReplayWindow = (ReceivalTimeout * 3) / 2;
+    /// How often to acks RX messages
+    static constexpr auto ACKResendInterval = DeliveryTimeout / 2;
+    /// How often to retransmit TX fragments
+    static constexpr auto TXFlushInterval = (DeliveryTimeout / 5) * 4;
+    /// How often we send a keepalive
+    static constexpr std::chrono::milliseconds PingInterval = 5s;
+    /// How long we wait for a session to die with no tx from them
+    static constexpr auto SessionAliveTimeout = PingInterval * 5;
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
     {
-      /// Time how long we try delivery for
-      static constexpr llarp_time_t DeliveryTimeout = 500;
-      /// Time how long we wait to recieve a message
-      static constexpr llarp_time_t ReceivalTimeout = (DeliveryTimeout * 8) / 5;
-      /// How long to keep a replay window for
-      static constexpr llarp_time_t ReplayWindow = (ReceivalTimeout * 3) / 2;
-      /// How often to acks RX messages
-      static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 2;
-      /// How often to retransmit TX fragments
-      static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 4;
-      /// How often we send a keepalive
-      static constexpr llarp_time_t PingInterval = 5000;
-      /// How long we wait for a session to die with no tx from them
-      static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
+      using Time_t = std::chrono::milliseconds;
+
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
@@ -179,14 +181,14 @@ namespace llarp
       PubKey m_ExpectedIdent;
       PubKey m_RemoteOnionKey;
 
-      llarp_time_t m_LastTX = 0;
-      llarp_time_t m_LastRX = 0;
+      llarp_time_t m_LastTX = 0s;
+      llarp_time_t m_LastRX = 0s;
 
       // accumulate for periodic rate calculation
       uint64_t m_TXRate = 0;
       uint64_t m_RXRate = 0;
 
-      llarp_time_t m_ResetRatesAt = 0;
+      llarp_time_t m_ResetRatesAt = 0s;
 
       uint64_t m_TXID = 0;
 

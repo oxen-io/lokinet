@@ -20,9 +20,9 @@ namespace llarp
         , m_PathSet(send)
         , m_DataHandler(ep)
         , m_Endpoint(ep)
+        , createdAt(ep->Now())
         , m_SendQueue(SendContextQueueSize)
     {
-      createdAt = ep->Now();
     }
 
     bool
@@ -117,7 +117,7 @@ namespace llarp
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
                                        ProtocolType protocol)
     {
-      if(lastGoodSend != 0)
+      if(lastGoodSend != 0s)
       {
         EncryptAndSendTo(data, protocol);
       }

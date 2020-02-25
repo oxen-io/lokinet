@@ -8,8 +8,8 @@ namespace llarp
     Introduction::ExtractStatus() const
     {
       util::StatusObject obj{{"router", router.ToHex()},
-                             {"expiresAt", expiresAt},
-                             {"latency", latency},
+                             {"expiresAt", to_json(expiresAt)},
+                             {"latency", to_json(latency)},
                              {"version", uint64_t(version)}};
       return obj;
     }
@@ -39,16 +39,16 @@ namespace llarp
 
       if(!BEncodeWriteDictEntry("k", router, buf))
         return false;
-      if(latency)
+      if(latency > 0s)
       {
-        if(!BEncodeWriteDictInt("l", latency, buf))
+        if(!BEncodeWriteDictInt("l", latency.count(), buf))
           return false;
       }
       if(!BEncodeWriteDictEntry("p", pathID, buf))
         return false;
       if(!BEncodeWriteDictInt("v", version, buf))
         return false;
-      if(!BEncodeWriteDictInt("x", expiresAt, buf))
+      if(!BEncodeWriteDictInt("x", expiresAt.count(), buf))
         return false;
       return bencode_end(buf);
     }
@@ -58,8 +58,8 @@ namespace llarp
     {
       router.Zero();
       pathID.Zero();
-      latency   = 0;
-      expiresAt = 0;
+      latency   = 0s;
+      expiresAt = 0s;
     }
 
     std::ostream&
@@ -67,10 +67,10 @@ namespace llarp
     {
       Printer printer(stream, level, spaces);
       printer.printAttribute("k", RouterID(router));
-      printer.printAttribute("l", latency);
+      printer.printAttribute("l", latency.count());
       printer.printAttribute("p", pathID);
       printer.printAttribute("v", version);
-      printer.printAttribute("x", expiresAt);
+      printer.printAttribute("x", expiresAt.count());
 
       return stream;
     }

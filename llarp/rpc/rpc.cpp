@@ -122,11 +122,11 @@ namespace llarp
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
       AbstractRouter* router;
-      llarp_time_t m_NextKeyUpdate = 0;
+      llarp_time_t m_NextKeyUpdate = 0s;
       std::string m_LastBlockHash;
-      llarp_time_t m_NextPing              = 0;
-      const llarp_time_t KeyUpdateInterval = 5000;
-      const llarp_time_t PingInterval      = 60 * 5 * 1000;
+      llarp_time_t m_NextPing              = 0s;
+      const llarp_time_t KeyUpdateInterval = 5s;
+      const llarp_time_t PingInterval      = 5min;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
 
       CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
@@ -369,7 +369,7 @@ namespace llarp
           return true;
         };
         router->hiddenServiceContext().ForEachService(visitor);
-        const Response resp{{"uptime", router->Uptime()},
+        const Response resp{{"uptime", to_json(router->Uptime())},
                             {"servicesTotal", numServices},
                             {"servicesReady", numServicesReady},
                             {"services", services}};
@@ -429,7 +429,7 @@ namespace llarp
       AbstractRouter* router;
       ReqHandlerImpl _handler;
 
-      ServerImpl(AbstractRouter* r) : router(r), _handler(r, 2000)
+      ServerImpl(AbstractRouter* r) : router(r), _handler(r, 2s)
       {
       }
 

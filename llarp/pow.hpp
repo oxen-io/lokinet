@@ -10,8 +10,8 @@ namespace llarp
   struct PoW
   {
     static constexpr size_t MaxSize = 128;
-    uint64_t timestamp              = 0;
-    uint32_t extendedLifetime       = 0;
+    llarp_time_t timestamp          = 0s;
+    llarp_time_t extendedLifetime   = 0s;
     AlignedBuffer< 32 > nonce;
     uint64_t version = LLARP_PROTO_VERSION;
 

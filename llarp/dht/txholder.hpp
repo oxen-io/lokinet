@@ -42,7 +42,7 @@ namespace llarp
         std::transform(
             timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
             [](const auto& item) -> util::StatusObject {
-              return util::StatusObject{{"time", item.second},
+              return util::StatusObject{{"time", to_json(item.second)},
                                         {"target", item.first.ToString()}};
             });
         obj["timeouts"] = timeoutsObjs;
@@ -71,7 +71,7 @@ namespace llarp
 
       void
       NewTX(const TXOwner& askpeer, const TXOwner& whoasked, const K& k,
-            TX< K, V >* t, llarp_time_t requestTimeoutMS = 15000);
+            TX< K, V >* t, llarp_time_t requestTimeoutMS = 15s);
 
       /// mark tx as not fond
       void

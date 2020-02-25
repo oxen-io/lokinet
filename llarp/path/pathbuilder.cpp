@@ -168,7 +168,7 @@ namespace llarp
     Builder::ResetInternalState()
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-      lastBuild          = 0;
+      lastBuild          = 0s;
     }
 
     void Builder::Tick(llarp_time_t)
@@ -181,7 +181,7 @@ namespace llarp
       if(m_BuildStats.attempts > 50)
       {
         if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
-           && now - m_LastWarn > 5000)
+           && now - m_LastWarn > 5s)
         {
           LogWarn(Name(), " has a low path build success. ", m_BuildStats);
           m_LastWarn = now;
@@ -471,9 +471,9 @@ namespace llarp
     void
     Builder::DoPathBuildBackoff()
     {
+      static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
       // linear backoff
-      static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
-      buildIntervalLimit                             = std::min(
+      buildIntervalLimit = std::min(
           MIN_PATH_BUILD_INTERVAL + buildIntervalLimit, MaxBuildInterval);
       LogWarn(Name(), " build interval is now ", buildIntervalLimit);
     }

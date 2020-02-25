@@ -35,7 +35,7 @@ namespace llarp
 
       /// determine if this request has timed out
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20000) const
+      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const
       {
         if(now <= m_created)
           return false;
@@ -63,7 +63,7 @@ namespace llarp
                                {"endpoint", endpoint.ToHex()},
                                {"name", name},
                                {"timedOut", IsTimedOut(now)},
-                               {"createdAt", m_created}};
+                               {"createdAt", m_created.count()}};
         return obj;
       }
 
