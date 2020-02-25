@@ -38,7 +38,7 @@ namespace llarp
       {
         const auto val = atoi(v.c_str());
         if(val > 0)
-          m_MinPathLatency = Time_t(val);
+          m_MinPathLatency = std::chrono::milliseconds(val);
       }
       if(k == "paths")
       {
@@ -116,8 +116,8 @@ namespace llarp
     util::StatusObject
     EndpointState::ExtractStatus(util::StatusObject& obj) const
     {
-      obj["lastPublished"]      = m_LastPublish.count();
-      obj["lastPublishAttempt"] = m_LastPublishAttempt.count();
+      obj["lastPublished"]      = to_json(m_LastPublish);
+      obj["lastPublishAttempt"] = to_json(m_LastPublishAttempt);
       obj["introset"]           = m_IntroSet.ExtractStatus();
 
       if(!m_Tag.IsZero())

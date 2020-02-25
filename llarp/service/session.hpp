@@ -31,7 +31,8 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
       bool
-      IsExpired(llarp_time_t now, Time_t lifetime = SessionLifetime) const;
+      IsExpired(llarp_time_t now,
+                llarp_time_t lifetime = SessionLifetime) const;
     };
 
   }  // namespace service

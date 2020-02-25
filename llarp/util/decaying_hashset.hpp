@@ -11,6 +11,8 @@ namespace llarp
     template < typename Val_t, typename Hash_t = typename Val_t::Hash >
     struct DecayingHashSet
     {
+      using Time_t = std::chrono::milliseconds;
+
       DecayingHashSet(Time_t cacheInterval = 5s)
           : m_CacheInterval(cacheInterval)
       {
@@ -28,7 +30,7 @@ namespace llarp
       Insert(const Val_t& v, Time_t now = 0s)
       {
         if(now == 0s)
-          now = llarp::time_now();
+          now = llarp::time_now_ms();
         return m_Values.emplace(v, now).second;
       }
 
@@ -37,7 +39,7 @@ namespace llarp
       Decay(Time_t now = 0s)
       {
         if(now == 0s)
-          now = llarp::time_now();
+          now = llarp::time_now_ms();
 
         auto itr = m_Values.begin();
         while(itr != m_Values.end())

@@ -369,7 +369,7 @@ namespace llarp
           return true;
         };
         router->hiddenServiceContext().ForEachService(visitor);
-        const Response resp{{"uptime", router->Uptime().count()},
+        const Response resp{{"uptime", to_json(router->Uptime())},
                             {"servicesTotal", numServices},
                             {"servicesReady", numServicesReady},
                             {"services", services}};

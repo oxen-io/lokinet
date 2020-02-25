@@ -401,16 +401,15 @@ namespace llarp
       if(self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
-                        self->record.work->extendedLifetime.count(), " for ",
-                        info);
+                        self->record.work->extendedLifetime, " for ", info);
         self->hop->lifetime += self->record.work->extendedLifetime;
       }
       else if(self->record.lifetime < path::default_lifetime
               && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::LogDebug("LRCM short lifespan set to ",
-                        self->hop->lifetime.count(), " ms for ", info);
+        llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime,
+                        " for ", info);
       }
 
       // TODO: check if we really want to accept it

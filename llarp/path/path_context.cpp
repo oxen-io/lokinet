@@ -297,7 +297,7 @@ namespace llarp
     PathContext::ExpirePaths(llarp_time_t now)
     {
       // decay limits
-      m_PathLimits.Decay(Time_t(now));
+      m_PathLimits.Decay(now);
 
       {
         SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);

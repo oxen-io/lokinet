@@ -320,8 +320,8 @@ namespace llarp
               {"rxMsgQueueSize", m_RXMsgs.size()},
               {"remoteAddr", m_RemoteAddr.ToString()},
               {"remoteRC", m_RemoteRC.ExtractStatus()},
-              {"created", m_CreatedAt.count()},
-              {"uptime", Time_t(now - m_CreatedAt).count()}};
+              {"created", to_json(m_CreatedAt)},
+              {"uptime", to_json(now - m_CreatedAt)}};
     }
 
     bool

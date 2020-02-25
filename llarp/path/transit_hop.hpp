@@ -91,7 +91,7 @@ namespace llarp
       ShortHash nonceXOR;
       llarp_time_t started = 0s;
       // 10 minutes default
-      Time_t lifetime = default_lifetime;
+      llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0s;
 

@@ -58,7 +58,7 @@ namespace llarp
       return false;
     m_Filter.Insert(pubkey);
 
-    const auto now = time_now();
+    const auto now = time_now_ms();
     // is this our rc?
     if(IsOurRC(rc))
     {

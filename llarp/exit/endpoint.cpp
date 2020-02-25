@@ -41,7 +41,7 @@ namespace llarp
                              {"ip", m_IP.ToString()},
                              {"txRate", m_TxRate},
                              {"rxRate", m_RxRate},
-                             {"createdAt", createdAt.count()},
+                             {"createdAt", to_json(createdAt)},
                              {"exiting", !m_RewriteSource},
                              {"looksDead", LooksDead(now)},
                              {"expiresSoon", ExpiresSoon(now)},

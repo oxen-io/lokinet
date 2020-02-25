@@ -22,8 +22,8 @@ TEST_CASE("DecayingHashSet test decay static time", "[decaying-hashset]")
 
 TEST_CASE("DecayingHashSet tset decay dynamic time", "[decaying-hashset]")
 {
-  static constexpr auto timeout = 5s;
-  const llarp::Time_t now       = llarp::time_now();
+  static constexpr llarp_time_t timeout = 5s;
+  const llarp_time_t now                = llarp::time_now_ms();
   llarp::util::DecayingHashSet< llarp::RouterID > hashset(timeout);
   const llarp::RouterID zero;
   REQUIRE(zero.IsZero());

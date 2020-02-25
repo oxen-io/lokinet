@@ -38,7 +38,7 @@ namespace llarp
     BaseSession::ExtractStatus() const
     {
       auto obj            = path::Builder::ExtractStatus();
-      obj["lastExitUse"]  = m_LastUse.count();
+      obj["lastExitUse"]  = to_json(m_LastUse);
       auto pub            = m_ExitIdentity.toPublic();
       obj["exitIdentity"] = pub.ToString();
       return obj;

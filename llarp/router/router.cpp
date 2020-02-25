@@ -32,7 +32,7 @@
 #include <unistd.h>
 #endif
 
-static constexpr auto ROUTER_TICK_INTERVAL = 1s;
+static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
@@ -658,11 +658,10 @@ namespace llarp
     if(IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(_rc.Age(now).count(), " ms since we last updated our RC");
-      LogInfo(_rc.TimeUntilExpires(now).count(), " ms until our RC expires");
+      LogInfo(_rc.Age(now), " since we last updated our RC");
+      LogInfo(_rc.TimeUntilExpires(now), " until our RC expires");
     }
-    LogInfo(now.count(), " system time");
-    LogInfo(m_LastStatsReport.count(), " last reported stats");
+    LogInfo(m_LastStatsReport, " last reported stats");
     m_LastStatsReport = now;
   }
 
@@ -691,7 +690,7 @@ namespace llarp
 
     const bool isSvcNode = IsServiceNode();
 
-    if(_rc.ExpiresSoon(now, Time_t(randint() % 10000))
+    if(_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
        || (now - _rc.last_updated) > rcRegenInterval)
     {
       LogInfo("regenerating RC");

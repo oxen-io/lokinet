@@ -11,7 +11,7 @@ namespace llarp
     {
       const auto sz = introsetPayload.size();
       return {{"location", derivedSigningKey.ToString()},
-              {"signedAt", signedAt.count()},
+              {"signedAt", to_json(signedAt)},
               {"size", sz}};
     }
 
@@ -142,7 +142,7 @@ namespace llarp
     util::StatusObject
     IntroSet::ExtractStatus() const
     {
-      util::StatusObject obj{{"published", T.count()}};
+      util::StatusObject obj{{"published", to_json(T)}};
       std::vector< util::StatusObject > introsObjs;
       std::transform(I.begin(), I.end(), std::back_inserter(introsObjs),
                      [](const auto& intro) -> util::StatusObject {

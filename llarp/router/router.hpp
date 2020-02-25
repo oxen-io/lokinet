@@ -260,7 +260,7 @@ namespace llarp
     bool enableRPCServer                 = false;
     std::unique_ptr< rpc::Server > rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
-    const Time_t _randomStartDelay;
+    const llarp_time_t _randomStartDelay;
 
     /// lokid caller
     std::unique_ptr< rpc::Caller > rpcCaller;

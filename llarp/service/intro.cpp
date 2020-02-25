@@ -8,8 +8,8 @@ namespace llarp
     Introduction::ExtractStatus() const
     {
       util::StatusObject obj{{"router", router.ToHex()},
-                             {"expiresAt", expiresAt.count()},
-                             {"latency", latency.count()},
+                             {"expiresAt", to_json(expiresAt)},
+                             {"latency", to_json(latency)},
                              {"version", uint64_t(version)}};
       return obj;
     }

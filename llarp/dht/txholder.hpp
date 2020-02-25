@@ -42,7 +42,7 @@ namespace llarp
         std::transform(
             timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
             [](const auto& item) -> util::StatusObject {
-              return util::StatusObject{{"time", item.second.count()},
+              return util::StatusObject{{"time", to_json(item.second)},
                                         {"target", item.first.ToString()}};
             });
         obj["timeouts"] = timeoutsObjs;

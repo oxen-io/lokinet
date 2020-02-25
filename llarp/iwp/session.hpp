@@ -18,7 +18,7 @@ namespace llarp
     CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
                  size_t pad_variance = 16);
     /// Time how long we try delivery for
-    static constexpr std::chrono::millseconds DeliveryTimeout = 500ms;
+    static constexpr std::chrono::milliseconds DeliveryTimeout = 500ms;
     /// Time how long we wait to recieve a message
     static constexpr auto ReceivalTimeout = (DeliveryTimeout * 8) / 5;
     /// How long to keep a replay window for
@@ -28,13 +28,15 @@ namespace llarp
     /// How often to retransmit TX fragments
     static constexpr auto TXFlushInterval = (DeliveryTimeout / 5) * 4;
     /// How often we send a keepalive
-    static constexpr std::chrono::millseconds PingInterval = 5s;
+    static constexpr std::chrono::milliseconds PingInterval = 5s;
     /// How long we wait for a session to die with no tx from them
     static constexpr auto SessionAliveTimeout = PingInterval * 5;
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
     {
+      using Time_t = std::chrono::milliseconds;
+
       /// maximum number of messages we can ack in a multiack
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 

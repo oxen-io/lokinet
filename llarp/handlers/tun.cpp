@@ -88,7 +88,7 @@ namespace llarp
       util::StatusObject ips{};
       for(const auto &item : m_IPActivity)
       {
-        util::StatusObject ipObj{{"lastActive", item.second.count()}};
+        util::StatusObject ipObj{{"lastActive", to_json(item.second)}};
         std::string remoteStr;
         AlignedBuffer< 32 > addr = m_IPToAddr.at(item.first);
         if(m_SNodes.at(addr))

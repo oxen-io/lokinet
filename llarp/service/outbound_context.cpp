@@ -251,11 +251,11 @@ namespace llarp
       auto obj                     = path::Builder::ExtractStatus();
       obj["currentConvoTag"]       = currentConvoTag.ToHex();
       obj["remoteIntro"]           = remoteIntro.ExtractStatus();
-      obj["sessionCreatedAt"]      = createdAt.count();
-      obj["lastGoodSend"]          = lastGoodSend.count();
+      obj["sessionCreatedAt"]      = to_json(createdAt);
+      obj["lastGoodSend"]          = to_json(lastGoodSend);
       obj["seqno"]                 = sequenceNo;
       obj["markedBad"]             = markedBad;
-      obj["lastShift"]             = lastShift.count();
+      obj["lastShift"]             = to_json(lastShift);
       obj["remoteIdentity"]        = remoteIdent.Addr().ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"]             = m_NextIntro.ExtractStatus();

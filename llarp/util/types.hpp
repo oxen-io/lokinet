@@ -7,12 +7,7 @@
 using byte_t                = uint8_t;
 using llarp_proto_version_t = std::uint8_t;
 
-namespace llarp
-{
-  using Time_t = std::chrono::milliseconds;
-}
-
-using llarp_time_t = llarp::Time_t;
+using llarp_time_t = std::chrono::milliseconds;
 
 namespace llarp
 {
