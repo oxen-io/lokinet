@@ -163,12 +163,36 @@ namespace llarp
       const byte_t*
       OurRouterID() const;
 
+      /// current number of transit paths we have
+      uint64_t
+      CurrentTransitPaths() const
+      {
+        return m_TransitHopCount;
+      }
+
+      /// number of paths we rejected total
+      uint64_t
+      TransitPathsRejected() const
+      {
+        return m_HopsRejected;
+      }
+
+      /// number of paths we accepted total
+      uint64_t
+      TransitPathsAccepted() const
+      {
+        return m_HopsRejected;
+      }
+
      private:
       AbstractRouter* m_Router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
       util::DecayingHashSet< llarp::Addr > m_PathLimits;
+      uint64_t m_TransitHopCount = 0;
+      uint64_t m_HopsAccepted    = 0;
+      uint64_t m_HopsRejected    = 0;
     };
   }  // namespace path
 }  // namespace llarp
