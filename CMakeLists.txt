@@ -28,7 +28,7 @@ option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
-option(WITH_SYSTEMD "enable systemd integration for sd_notify" OFF)
+#option(WITH_SYSTEMD ...) defined below
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -226,8 +226,14 @@ if(JEMALLOC)
 endif(JEMALLOC)
 
 
+pkg_check_modules(SD libsystemd)
+# Default WITH_SYSTEMD to true if we found it
+option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+
 if(WITH_SYSTEMD)
-  pkg_check_modules(SD REQUIRED libsystemd)
+  if(NOT SD_FOUND)
+    message(FATAL_ERROR "libsystemd not found")
+  endif()
   add_definitions(-DWITH_SYSTEMD)
   include_directories(${SD_INCLUDE_DIRS})
   set(SD_LIBS ${SD_LDFLAGS})
