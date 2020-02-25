@@ -32,6 +32,10 @@
 #include <unistd.h>
 #endif
 
+#if defined(WITH_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
+
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
@@ -674,7 +678,28 @@ namespace llarp
     const auto now = Now();
 
 #if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "WATCHDOG=1");
+    {
+      std::stringstream ss;
+      ss << "WATCHDOG=1\nSTATUS=" << llarp::VERSION_FULL;
+      if(IsServiceNode())
+      {
+        ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
+           << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients()
+           << " | " << pathContext().CurrentTransitPaths() << " active paths";
+      }
+      else
+      {
+        ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
+           << NumberOfConnectedRouters() << " | path success: ";
+        hiddenServiceContext().ForEachService(
+            [&ss](const auto &name, const auto &ep) {
+              ss << " [" << name << " " << std::setprecision(4)
+                 << (100.0 * ep->CurrentBuildStats().SuccessRatio) << "%]";
+            });
+      }
+      const auto status = ss.str();
+      ::sd_notify(0, status.c_str());
+    }
 #endif
 
     routerProfiling().Tick();
@@ -1128,6 +1153,9 @@ namespace llarp
     _stopping.store(true);
     LogContext::Instance().RevertRuntimeLevel();
     LogInfo("stopping router");
+#if defined(WITH_SYSTEMD)
+    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
+#endif
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     if(rpcServer)

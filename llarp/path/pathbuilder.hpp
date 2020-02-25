@@ -78,6 +78,12 @@ namespace llarp
         return ePathRoleAny;
       }
 
+      BuildStats
+      CurrentBuildStats() const
+      {
+        return m_BuildStats;
+      }
+
       bool
       Stop() override;
 

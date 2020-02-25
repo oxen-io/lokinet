@@ -47,7 +47,12 @@ namespace llarp
       remote.port(0);
       // try inserting remote address by ip into decaying hash set
       // if it cannot insert it has hit a limit
-      return not m_PathLimits.Insert(remote);
+      if(m_PathLimits.Insert(remote))
+      {
+        m_HopsRejected++;
+        return false;
+      }
+      return true;
 #endif
     }
 
@@ -291,6 +296,8 @@ namespace llarp
     {
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.txID, hop);
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.rxID, hop);
+      m_TransitHopCount++;
+      m_HopsAccepted++;
     }
 
     void
@@ -309,6 +316,7 @@ namespace llarp
           {
             m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
             itr = map.erase(itr);
+            m_TransitHopCount--;
           }
           else
             ++itr;
