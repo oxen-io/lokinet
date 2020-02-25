@@ -1,3 +1,4 @@
+#include <chrono>
 #include <service/endpoint.hpp>
 
 #include <dht/messages/findintro.hpp>
@@ -74,10 +75,10 @@ namespace llarp
     Endpoint::RegenAndPublishIntroSet(bool forceRebuild)
     {
       const auto now = llarp::time_now_ms();
-      std::set< Introduction > I;
+      std::set< Introduction > introset;
       if(!GetCurrentIntroductionsWithFilter(
-             I, [now](const service::Introduction& intro) -> bool {
-               return not intro.ExpiresSoon(now, 2min);
+             introset, [now](const service::Introduction& intro) -> bool {
+               return not intro.ExpiresSoon(now, path::min_intro_lifetime);
              }))
       {
         LogWarn("could not publish descriptors for endpoint ", Name(),
@@ -87,7 +88,7 @@ namespace llarp
         return;
       }
       introSet().I.clear();
-      for(auto& intro : I)
+      for(auto& intro : introset)
       {
         introSet().I.emplace_back(std::move(intro));
       }
@@ -456,7 +457,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r)
+    Endpoint::PublishIntroSet(const EncryptedIntroSet& introset,
+                              AbstractRouter* r)
     {
       /// number of routers to publish to
       static constexpr size_t PublishRedundancy = 2;
@@ -466,7 +468,7 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        if(PublishIntroSetVia(i, r, path, published))
+        if(PublishIntroSetVia(introset, r, path, published))
         {
           published++;
         }
@@ -525,10 +527,11 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
-                                 path::Path_ptr path, uint64_t relayOrder)
+    Endpoint::PublishIntroSetVia(const EncryptedIntroSet& introset,
+                                 AbstractRouter* r, path::Path_ptr path,
+                                 uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), i, relayOrder);
+      auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
       if(job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
@@ -563,9 +566,9 @@ namespace llarp
       ForEachPath([&](const path::Path_ptr& p) {
         if(!p->IsReady())
           return;
-        for(const auto& i : introSet().I)
+        for(const auto& introset : introSet().I)
         {
-          if(i == p->intro)
+          if(introset == p->intro)
             return;
         }
         ++numNotInIntroset;
@@ -626,6 +629,12 @@ namespace llarp
         });
       }
       return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+    }
+
+    void
+    Endpoint::PathBuildStarted(path::Path_ptr path)
+    {
+      path::Builder::PathBuildStarted(path);
     }
 
     std::set< RouterID >
@@ -1267,11 +1276,14 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      static constexpr auto buildSpread = path::default_lifetime / 4;
       if(path::Builder::BuildCooldownHit(now))
         return false;
-      return NumPathsExistingAt(now + buildSpread) < numPaths
-          and NumInStatus(path::ePathBuilding) == 0;
+
+      size_t numBuilding = NumInStatus(path::ePathBuilding);
+      if(numBuilding > 0)
+        return false;
+
+      return ((now - lastBuild) > path::intro_path_spread);
     }
 
     std::shared_ptr< Logic >

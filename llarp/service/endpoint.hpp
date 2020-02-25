@@ -356,6 +356,9 @@ namespace llarp
                 RouterContact& cur, size_t hop, path::PathRole roles) override;
 
       virtual void
+      PathBuildStarted(path::Path_ptr path) override;
+
+      virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
