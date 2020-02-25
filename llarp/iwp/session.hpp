@@ -18,19 +18,19 @@ namespace llarp
     CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
                  size_t pad_variance = 16);
     /// Time how long we try delivery for
-    static constexpr auto DeliveryTimeout = 500ms;
+    static constexpr llarp_time_t DeliveryTimeout = 500ms;
     /// Time how long we wait to recieve a message
-    static constexpr auto ReceivalTimeout = (DeliveryTimeout * 8) / 5;
+    static constexpr llarp_time_t ReceivalTimeout = (DeliveryTimeout * 8) / 5;
     /// How long to keep a replay window for
-    static constexpr auto ReplayWindow = (ReceivalTimeout * 3) / 2;
+    static constexpr llarp_time_t ReplayWindow = (ReceivalTimeout * 3) / 2;
     /// How often to acks RX messages
-    static constexpr auto ACKResendInterval = DeliveryTimeout / 2;
+    static constexpr llarp_time_t ACKResendInterval = DeliveryTimeout / 2;
     /// How often to retransmit TX fragments
-    static constexpr auto TXFlushInterval = (DeliveryTimeout / 5) * 4;
+    static constexpr llarp_time_t TXFlushInterval = (DeliveryTimeout / 5) * 4;
     /// How often we send a keepalive
-    static constexpr auto PingInterval = 5s;
+    static constexpr llarp_time_t PingInterval = 5s;
     /// How long we wait for a session to die with no tx from them
-    static constexpr auto SessionAliveTimeout = PingInterval * 5;
+    static constexpr llarp_time_t SessionAliveTimeout = PingInterval * 5;
 
     struct Session : public ILinkSession,
                      public std::enable_shared_from_this< Session >
