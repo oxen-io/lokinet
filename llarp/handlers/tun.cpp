@@ -454,7 +454,7 @@ namespace llarp
                 [=](const Address &, OutboundContext *ctx) {
                   SendDNSReply(addr, ctx, replyMsg, reply, false, false);
                 },
-                2000);
+                2s);
           }
         }
       }
