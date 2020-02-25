@@ -106,14 +106,14 @@ namespace llarp
     }
     if(key == "default-protocol")
     {
-      m_DefaultLinkProto = val;
+      m_DefaultLinkProto = str(val);
       LogInfo("overriding default link protocol to '", val, "'");
     }
     if(key == "netid")
     {
       if(val.size() <= NetID::size())
       {
-        m_netId = val;
+        m_netId = str(val);
         LogInfo("setting netid to '", val, "'");
       }
       else
@@ -141,29 +141,29 @@ namespace llarp
     }
     if(key == "nickname")
     {
-      m_nickname = val;
+      m_nickname = str(val);
       // set logger name here
       LogContext::Instance().nodeName = nickname();
       LogInfo("nickname set");
     }
     if(key == "encryption-privkey")
     {
-      m_encryptionKeyfile = val;
+      m_encryptionKeyfile = str(val);
       LogDebug("encryption key set to ", m_encryptionKeyfile);
     }
     if(key == "contact-file")
     {
-      m_ourRcFile = val;
+      m_ourRcFile = str(val);
       LogDebug("rc file set to ", m_ourRcFile);
     }
     if(key == "transport-privkey")
     {
-      m_transportKeyfile = val;
+      m_transportKeyfile = str(val);
       LogDebug("transport key set to ", m_transportKeyfile);
     }
     if((key == "identity-privkey" || key == "ident-privkey"))
     {
-      m_identKeyfile = val;
+      m_identKeyfile = str(val);
       LogDebug("identity key set to ", m_identKeyfile);
     }
     if(key == "public-address" || key == "public-ip")
@@ -229,16 +229,16 @@ namespace llarp
     }
     else if(key == "profiles")
     {
-      m_routerProfilesFile = val;
+      m_routerProfilesFile = str(val);
       llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
     else if(key == "strict-connect")
     {
-      m_strictConnect = val;
+      m_strictConnect = str(val);
     }
     else
     {
-      m_netConfig.emplace(key, val);
+      m_netConfig.emplace(str(key), str(val));  // str()'s here for gcc 5 compat
     }
   }
 
@@ -247,7 +247,7 @@ namespace llarp
   {
     if(key == "dir")
     {
-      m_nodedbDir = val;
+      m_nodedbDir = str(val);
     }
   }
 
@@ -257,12 +257,12 @@ namespace llarp
     if(key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", val);
+      netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
     }
     if(key == "bind")
     {
       llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", val);
+      netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
     }
   }
 
@@ -279,12 +279,12 @@ namespace llarp
       idx = val.find_first_of(delimiter);
       if(idx != string_view::npos)
       {
-        parsed_opts.insert(TrimWhitespace(val.substr(0, idx)));
+        parsed_opts.emplace(TrimWhitespace(val.substr(0, idx)));
         val.remove_prefix(idx + 1);
       }
       else
       {
-        parsed_opts.insert(TrimWhitespace(val));
+        parsed_opts.emplace(TrimWhitespace(val));
       }
     } while(idx != string_view::npos);
     std::unordered_set< std::string > opts;
@@ -314,7 +314,8 @@ namespace llarp
     }
     else
     {
-      m_InboundLinks.emplace_back(key, AF_INET, proto, std::move(opts));
+      // str() here for gcc 5 compat
+      m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
     }
   }
 
@@ -327,7 +328,7 @@ namespace llarp
   void
   ServicesConfig::fromSection(string_view key, string_view val)
   {
-    services.emplace_back(key, val);
+    services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
   }
 
   void
@@ -335,7 +336,7 @@ namespace llarp
   {
     if(key == "pidfile")
     {
-      pidfile = val;
+      pidfile = str(val);
     }
   }
 
@@ -348,7 +349,7 @@ namespace llarp
     }
     if(key == "bind")
     {
-      m_rpcBindAddr = val;
+      m_rpcBindAddr = str(val);
     }
     if(key == "authkey")
     {
@@ -370,15 +371,15 @@ namespace llarp
     }
     if(key == "jsonrpc" || key == "addr")
     {
-      lokidRPCAddr = val;
+      lokidRPCAddr = str(val);
     }
     if(key == "username")
     {
-      lokidRPCUser = val;
+      lokidRPCUser = str(val);
     }
     if(key == "password")
     {
-      lokidRPCPassword = val;
+      lokidRPCPassword = str(val);
     }
   }
 
@@ -406,7 +407,7 @@ namespace llarp
     }
     if(key == "level")
     {
-      const auto maybe = LogLevelFromString(val);
+      const auto maybe = LogLevelFromString(str(val));
       if(not maybe.has_value())
       {
         LogError("bad log level: ", val);
@@ -423,7 +424,7 @@ namespace llarp
     if(key == "file")
     {
       LogInfo("open log file: ", val);
-      std::string fname   = val;
+      std::string fname{val};
       FILE *const logfile = ::fopen(fname.c_str(), "a");
       if(logfile)
       {
