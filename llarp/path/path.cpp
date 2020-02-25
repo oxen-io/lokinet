@@ -280,7 +280,7 @@ namespace llarp
       }
       else if(st == ePathEstablished && _status == ePathBuilding)
       {
-        LogInfo("path ", Name(), " is built, took ", now - buildStarted, " ms");
+        LogInfo("path ", Name(), " is built, took ", now - buildStarted);
       }
       else if(st == ePathTimeout && _status == ePathEstablished)
       {
