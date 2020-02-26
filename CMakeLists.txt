@@ -272,10 +272,10 @@ endif()
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
-add_subdirectory(external/cxxopts)
+add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(external/ghc-filesystem)
-add_subdirectory(external/optional-lite)
-add_subdirectory(external/date)
+add_subdirectory(external/optional-lite EXCLUDE_FROM_ALL)
+add_subdirectory(external/date EXCLUDE_FROM_ALL)
 
 if(ANDROID)
   list(APPEND LIBS log)
