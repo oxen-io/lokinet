@@ -226,19 +226,20 @@ if(JEMALLOC)
 endif(JEMALLOC)
 
 
-if (LINUX)
-pkg_check_modules(SD libsystemd)
-# Default WITH_SYSTEMD to true if we found it
-option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(SD libsystemd)
+    # Default WITH_SYSTEMD to true if we found it
+    option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-if(WITH_SYSTEMD)
-  if(NOT SD_FOUND)
-    message(FATAL_ERROR "libsystemd not found")
-  endif()
-  add_definitions(-DWITH_SYSTEMD)
-  include_directories(${SD_INCLUDE_DIRS})
-  set(SD_LIBS ${SD_LDFLAGS})
-endif()
+    if(WITH_SYSTEMD)
+      if(NOT SD_FOUND)
+        message(FATAL_ERROR "libsystemd not found")
+      endif()
+      add_definitions(-DWITH_SYSTEMD)
+      include_directories(${SD_INCLUDE_DIRS})
+      set(SD_LIBS ${SD_LDFLAGS})
+    endif()
 endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
