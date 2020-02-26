@@ -4,6 +4,8 @@
 #include <service/endpoint.hpp>
 #include <utility>
 
+static constexpr size_t NUM_LOOKUP_REQUESTS_PER_SEND = 2;
+
 namespace llarp
 {
   namespace service
@@ -11,17 +13,16 @@ namespace llarp
     HiddenServiceAddressLookup::HiddenServiceAddressLookup(
         Endpoint* p, HandlerFunc h, const dht::Key_t& l, const PubKey& k,
         uint64_t order, uint64_t tx)
-        : IServiceLookup(p, tx, "HSLookup")
+        : IServiceLookup(p, tx, "HSLookup", NUM_LOOKUP_REQUESTS_PER_SEND)
         , rootkey(k)
         , relayOrder(order)
         , location(l)
         , handle(std::move(h))
-        , requestsSent(0)
     {
     }
 
     bool
-    HiddenServiceAddressLookup::HandleResponse(
+    HiddenServiceAddressLookup::OnHandleResponse(
         const std::set< EncryptedIntroSet >& results)
     {
       nonstd::optional< IntroSet > found;
@@ -40,17 +41,6 @@ namespace llarp
           found = maybe.value();
       }
       handle(remote, found, endpoint);
-      requestsSent--;
-      return requestsSent == 0;
-    }
-
-    bool
-    HiddenServiceAddressLookup::SendRequestViaPath(path::Path_ptr p,
-                                                   AbstractRouter* r)
-    {
-      if(not IServiceLookup::SendRequestViaPath(p, r))
-        return false;
-      requestsSent += 2;
       return true;
     }
 

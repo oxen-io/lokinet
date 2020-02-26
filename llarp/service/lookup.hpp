@@ -23,14 +23,22 @@ namespace llarp
 
     struct IServiceLookup
     {
+      size_t requestsSent = 0;
+
       IServiceLookup()          = delete;
       virtual ~IServiceLookup() = default;
 
       /// handle lookup result
+      bool
+      HandleResponse(const std::set< EncryptedIntroSet >&);
+
+      /// subclasses may override to implement custom response logic.
+      /// called implicitly from HandleResponse()
+      /// should return whether or not response was handled properly.
       virtual bool
-      HandleResponse(const std::set< EncryptedIntroSet >&)
+      OnHandleResponse(const std::set< EncryptedIntroSet >&)
       {
-        return false;
+        return true;
       }
 
       /// determine if this request has timed out
@@ -68,9 +76,11 @@ namespace llarp
       }
 
      protected:
-      IServiceLookup(ILookupHolder* parent, uint64_t tx, std::string name);
+      IServiceLookup(ILookupHolder* parent, uint64_t tx, std::string name,
+                     size_t requestsPerSend = 1);
 
       llarp_time_t m_created;
+      size_t numRequestsPerSend = 1;
     };
 
     struct ILookupHolder

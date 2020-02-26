@@ -61,7 +61,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set< EncryptedIntroSet >& results) override
+      OnHandleResponse(const std::set< EncryptedIntroSet >& results) override
       {
         return m_result->HandleResponse(results);
       }

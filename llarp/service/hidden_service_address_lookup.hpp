@@ -18,7 +18,6 @@ namespace llarp
       using HandlerFunc = std::function< bool(
           const Address&, nonstd::optional< IntroSet >, const RouterID&) >;
       HandlerFunc handle;
-      size_t requestsSent;
 
       HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
                                  const dht::Key_t& location,
@@ -28,10 +27,7 @@ namespace llarp
       ~HiddenServiceAddressLookup() override = default;
 
       bool
-      SendRequestViaPath(path::Path_ptr p, AbstractRouter* r) override;
-
-      bool
-      HandleResponse(const std::set< EncryptedIntroSet >& results) override;
+      OnHandleResponse(const std::set< EncryptedIntroSet >& results) override;
 
       std::shared_ptr< routing::IMessage >
       BuildRequestMessage() override;

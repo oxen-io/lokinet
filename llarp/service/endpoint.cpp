@@ -476,6 +476,8 @@ namespace llarp
       return published == PublishRedundancy;
     }
 
+    static constexpr size_t NUM_PUBLISH_REQUESTS_PER_SEND = 2;
+
     struct PublishIntroSetJob : public IServiceLookup
     {
       EncryptedIntroSet m_IntroSet;
@@ -483,7 +485,8 @@ namespace llarp
       uint64_t m_relayOrder;
       PublishIntroSetJob(Endpoint* parent, uint64_t id,
                          EncryptedIntroSet introset, uint64_t relayOrder)
-          : IServiceLookup(parent, id, "PublishIntroSet")
+          : IServiceLookup(parent, id, "PublishIntroSet",
+                           NUM_PUBLISH_REQUESTS_PER_SEND)
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
@@ -500,7 +503,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set< EncryptedIntroSet >& response) override
+      OnHandleResponse(const std::set< EncryptedIntroSet >& response) override
       {
         if(not response.empty())
           m_Endpoint->IntroSetPublished();

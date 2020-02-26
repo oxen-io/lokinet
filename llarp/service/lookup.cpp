@@ -12,8 +12,12 @@ namespace llarp
 
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx, std::string n)
-        : m_parent(p), txid(tx), name(std::move(n))
+    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx, std::string n,
+                                   size_t requestsPerSend)
+        : m_parent(p)
+        , txid(tx)
+        , name(std::move(n))
+        , numRequestsPerSend(requestsPerSend)
     {
       m_created = time_now_ms();
       p->PutLookup(this, tx);
@@ -27,7 +31,22 @@ namespace llarp
         return false;
       endpoint = path->Endpoint();
       LogicCall(r->logic(), [=]() { path->SendRoutingMessage(*msg, r); });
+
+      // TODO: sub class should specify number of requests per call here
+      requestsSent += numRequestsPerSend;
       return true;
     }
+
+    bool
+    IServiceLookup::HandleResponse(
+        const std::set< EncryptedIntroSet > &introset)
+    {
+      bool handled = OnHandleResponse(introset);
+      if(handled)
+        requestsSent--;
+
+      return (requestsSent == 0);
+    }
+
   }  // namespace service
 }  // namespace llarp
