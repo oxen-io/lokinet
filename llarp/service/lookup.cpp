@@ -46,11 +46,11 @@ namespace llarp
       {
         responsesExpected--;
         LogInfo("Lookup ", txid, " has received ",
-            (numRequestsPerSend - responsesExpected), " of ",
-            numRequestsPerSend, " responses");
+                (numRequestsPerSend - responsesExpected), " of ",
+                numRequestsPerSend, " responses");
       }
 
-      if (responsesExpected == 0)
+      if(responsesExpected == 0)
       {
         OnAllResponsesReceived();
       }

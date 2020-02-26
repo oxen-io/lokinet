@@ -496,7 +496,7 @@ namespace llarp
       bool
       OnHandleResponse(const std::set< EncryptedIntroSet >& response) override
       {
-        if (response.empty())
+        if(response.empty())
         {
           m_Endpoint->IntroSetPublishFail();
           return false;

@@ -44,7 +44,9 @@ namespace llarp
       /// called when all responses have been received.
       /// called from HandleResponse if 'numRequestsPerSecond' reaches 0
       virtual void
-      OnAllResponsesReceived() {}
+      OnAllResponsesReceived()
+      {
+      }
 
       /// determine if this request has timed out
       bool

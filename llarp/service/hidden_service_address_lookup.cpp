@@ -48,7 +48,8 @@ namespace llarp
     HiddenServiceAddressLookup::OnAllResponsesReceived()
     {
       const Address remote(rootkey);
-      LogInfo("received all expected responses for lookup of ", remote.ToString());
+      LogInfo("received all expected responses for lookup of ",
+              remote.ToString());
     }
 
     std::shared_ptr< routing::IMessage >
