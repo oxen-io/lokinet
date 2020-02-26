@@ -33,7 +33,7 @@ namespace llarp
       LogicCall(r->logic(), [=]() { path->SendRoutingMessage(*msg, r); });
 
       // TODO: sub class should specify number of requests per call here
-      requestsSent += numRequestsPerSend;
+      responsesExpected += numRequestsPerSend;
       return true;
     }
 
@@ -43,14 +43,19 @@ namespace llarp
     {
       bool handled = OnHandleResponse(introset);
       if(handled)
-        requestsSent--;
+      {
+        responsesExpected--;
+        LogInfo("Lookup ", txid, " has received ",
+            (numRequestsPerSend - responsesExpected), " of ",
+            numRequestsPerSend, " responses");
+      }
 
-      if (requestsSent == 0)
+      if (responsesExpected == 0)
       {
         OnAllResponsesReceived();
       }
 
-      return (requestsSent == 0);
+      return (responsesExpected == 0);
     }
 
   }  // namespace service

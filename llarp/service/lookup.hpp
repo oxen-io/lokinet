@@ -23,7 +23,7 @@ namespace llarp
 
     struct IServiceLookup
     {
-      size_t requestsSent = 0;
+      size_t responsesExpected = 0;
 
       IServiceLookup()          = delete;
       virtual ~IServiceLookup() = default;
