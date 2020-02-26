@@ -2,7 +2,10 @@
 
 #include <tooling/router_event.hpp>
 
+#include <llarp.h>
 #include <util/thread/queue.hpp>
+
+struct llarp_config;
 
 namespace tooling
 {
@@ -12,6 +15,9 @@ namespace tooling
     constexpr size_t MAX_EVENT_QUEUE_SIZE = 200;
 
     RouterHive(size_t eventQueueSize = MAX_EVENT_QUEUE_SIZE);
+
+    void
+    AddRouter(llarp_config* conf);
 
     void
     InformEvent(RouterEvent event);
