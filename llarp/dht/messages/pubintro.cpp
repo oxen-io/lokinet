@@ -57,6 +57,7 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto now = ctx->impl->Now();
+      const auto keyStr = introset.derivedSigningKey.ToHex();
 
       auto &dht = *ctx->impl;
       if(!introset.Verify(now))
@@ -80,8 +81,9 @@ namespace llarp
       const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
       // identify closest 4 routers
-      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(addr, 4);
-      if(closestRCs.size() != 4)
+      static constexpr size_t StorageRedundancy = 4;
+      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(addr, StorageRedundancy);
+      if(closestRCs.size() != StorageRedundancy)
       {
         llarp::LogWarn("Received PublishIntroMessage but only know ",
                        closestRCs.size(), " nodes");
@@ -92,33 +94,31 @@ namespace llarp
       const auto &us = dht.OurKey();
 
       // function to identify the closest 4 routers we know of for this introset
-      auto propagateToClosestFour = [&]() {
-        // grab 1st & 2nd if we are relayOrder == 0, 3rd & 4th otherwise
-        const auto &rc0 = (relayOrder == 0 ? closestRCs[0] : closestRCs[2]);
-        const auto &rc1 = (relayOrder == 0 ? closestRCs[1] : closestRCs[3]);
+      auto propagateIfNotUs = [&](size_t index) {
+        assert(index < StorageRedundancy);
 
-        const Key_t peer0{rc0.pubkey};
-        const Key_t peer1{rc1.pubkey};
+        const auto &rc = closestRCs[index];
+        const Key_t peer{rc.pubkey};
 
-        bool arePeer0 = (peer0 == us);
-        bool arePeer1 = (peer1 == us);
-
-        if(arePeer0 or arePeer1)
+        if(peer == us)
         {
+          llarp::LogInfo("we are peer ", index,
+                         " so storing instead of propagating");
+
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));
         }
+        else
+        {
+          llarp::LogInfo("propagating to peer ", index);
 
-        if(not arePeer0)
-          dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
-
-        if(not arePeer1)
-          dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
+          dht.PropagateIntroSetTo(From, txID, introset, peer, false, 0);
+        }
       };
 
       if(relayed)
       {
-        if(relayOrder > 1)
+        if(relayOrder >= StorageRedundancy)
         {
           llarp::LogWarn(
               "Received PublishIntroMessage with invalid relayOrder: ",
@@ -127,7 +127,10 @@ namespace llarp
           return true;
         }
 
-        propagateToClosestFour();
+        llarp::LogInfo("Relaying PublishIntroMessage for ", keyStr,
+                       ", txid=", txID);
+
+        propagateIfNotUs(relayOrder);
       }
       else
       {
@@ -148,8 +151,14 @@ namespace llarp
         }
         else
         {
-          // TODO: ensure this can't create a loop (reintroduce depth?)
-          propagateToClosestFour();
+          LogWarn(
+              "!!! Received PubIntro with relayed==false but we aren't"
+              " candidate, intro derived key: ",
+              keyStr, ", txid=", txID, ", message from: ", From);
+          for(size_t i = 0; i < StorageRedundancy; ++i)
+          {
+            propagateIfNotUs(i);
+          }
         }
       }
 
