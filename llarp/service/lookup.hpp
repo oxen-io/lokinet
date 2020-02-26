@@ -41,6 +41,11 @@ namespace llarp
         return true;
       }
 
+      /// called when all responses have been received.
+      /// called from HandleResponse if 'numRequestsPerSecond' reaches 0
+      virtual void
+      OnAllResponsesReceived() {}
+
       /// determine if this request has timed out
       bool
       IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const

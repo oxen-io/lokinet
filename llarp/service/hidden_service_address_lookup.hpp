@@ -29,6 +29,9 @@ namespace llarp
       bool
       OnHandleResponse(const std::set< EncryptedIntroSet >& results) override;
 
+      void
+      OnAllResponsesReceived() override;
+
       std::shared_ptr< routing::IMessage >
       BuildRequestMessage() override;
     };

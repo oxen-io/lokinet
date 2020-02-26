@@ -45,6 +45,11 @@ namespace llarp
       if(handled)
         requestsSent--;
 
+      if (requestsSent == 0)
+      {
+        OnAllResponsesReceived();
+      }
+
       return (requestsSent == 0);
     }
 
