@@ -291,19 +291,20 @@ namespace llarp
       Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
           : ::abyss::httpd::IRPCHandler(conn)
           , router(r)
-          , m_dispatch{
-                {"llarp.admin.wakeup",
-                 [this](auto&&) { return StartRouter(); }},
-                {"llarp.admin.link.neighbor",
-                 [this](auto&&) { return ListNeighbors(); }},
-                {"llarp.admin.exit.list",
-                 [this](auto&&) { return ListExitLevels(); }},
-                {"llarp.admin.dumpstate",
-                 [this](auto&&) { return DumpState(); }},
-                {"llarp.admin.status", [this](auto&&) { return DumpStatus(); }},
-                {"llarp.our.addresses",
-                 [this](auto&&) { return OurAddresses(); }},
-                {"llarp.version", [this](auto&&) { return DumpVersion(); }}}
+          , m_dispatch{{"llarp.admin.wakeup",
+                        [this](const auto&) { return StartRouter(); }},
+                       {"llarp.admin.link.neighbor",
+                        [this](const auto&) { return ListNeighbors(); }},
+                       {"llarp.admin.exit.list",
+                        [this](const auto&) { return ListExitLevels(); }},
+                       {"llarp.admin.dumpstate",
+                        [this](const auto&) { return DumpState(); }},
+                       {"llarp.admin.status",
+                        [this](const auto&) { return DumpStatus(); }},
+                       {"llarp.our.addresses",
+                        [this](const auto&) { return OurAddresses(); }},
+                       {"llarp.version",
+                        [this](const auto&) { return DumpVersion(); }}}
       {
       }
 
