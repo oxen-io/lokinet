@@ -226,7 +226,7 @@ if(JEMALLOC)
 endif(JEMALLOC)
 
 
-if (Linux)
+if (LINUX)
 pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
