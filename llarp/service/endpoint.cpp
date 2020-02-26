@@ -563,22 +563,8 @@ namespace llarp
     {
       if(not m_PublishIntroSet)
         return false;
-      // make sure we have all paths that are established
-      // in our introset
-      size_t numNotInIntroset = 0;
-      ForEachPath([&](const path::Path_ptr& p) {
-        if(!p->IsReady())
-          return;
-        for(const auto& introset : introSet().I)
-        {
-          if(introset == p->intro)
-            return;
-        }
-        ++numNotInIntroset;
-      });
-
       const auto lastpub = m_state->m_LastPublishAttempt;
-      if(m_state->m_IntroSet.HasExpiredIntros(now) || numNotInIntroset > 1)
+      if(m_state->m_IntroSet.HasExpiredIntros(now))
       {
         return now - lastpub >= INTROSET_PUBLISH_RETRY_INTERVAL;
       }
