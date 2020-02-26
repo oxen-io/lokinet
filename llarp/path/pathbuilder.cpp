@@ -180,7 +180,7 @@ namespace llarp
       TickPaths(m_router);
       if(m_BuildStats.attempts > 50)
       {
-        if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
+        if(m_BuildStats.SuccessRatio() <= BuildStats::MinGoodRatio
            && now - m_LastWarn > 5s)
         {
           LogWarn(Name(), " has a low path build success. ", m_BuildStats);

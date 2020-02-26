@@ -53,7 +53,7 @@ namespace llarp
       ExtractStatus() const;
 
       double
-      SuccsessRatio() const;
+      SuccessRatio() const;
 
       std::string
       ToString() const;
