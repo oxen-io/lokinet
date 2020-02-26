@@ -291,7 +291,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	$(FORMAT) -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
+	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[h,c](pp)?$$')
 
 format-verify: format
 	(type $(FORMAT))

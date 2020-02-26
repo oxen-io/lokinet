@@ -1,6 +1,6 @@
 #include "common.hpp"
 #include <llarp.hpp>
-
+#include <router/router.cpp>
 namespace llarp
 {
   void
@@ -8,7 +8,6 @@ namespace llarp
   {
     using Context_ptr = std::shared_ptr< Context >;
     py::class_< Context, Context_ptr >(mod, "Context")
-        .def(py::init< simulate::Sim_ptr >())
         .def("Setup",
              [](Context_ptr self) -> bool { return self->Setup() == 0; })
         .def("Run",
