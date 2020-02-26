@@ -252,21 +252,12 @@ namespace llarp
     Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
       std::set< EncryptedIntroSet > remote;
-      auto currentPub = m_state->m_CurrentPublishTX;
       for(const auto& introset : msg->found)
       {
         if(not introset.Verify(Now()))
         {
           LogError(Name(), " got invalid introset");
           return false;
-        }
-        if(currentPub == msg->txid)
-        {
-          LogInfo(
-              "got introset publish confirmation for hidden service endpoint ",
-              Name());
-          IntroSetPublished();
-          return true;
         }
         remote.insert(introset);
       }
