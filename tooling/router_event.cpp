@@ -1,12 +1,22 @@
-#include "tooling/router_event.cpp"
-#include "llarp/router_id.hpp"
+#include <tooling/router_event.hpp>
+
+#include <tooling/router_hive.hpp>
+
+#include <llarp/router_id.hpp>
+#include <llarp/path/path.hpp>
 
 namespace tooling
 {
 
-  PathBuildAttemptEvent::PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::RouterID> hops)
+  PathBuildAttemptEvent::PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops)
     : routerID(routerID), hops(hops)
   {
+  }
+
+  void
+  PathBuildAttemptEvent::Process(RouterHive& hive) const
+  {
+    hive.ProcessPathBuildAttempt(*this);
   }
 
   std::string
@@ -21,7 +31,7 @@ namespace tooling
     {
       i++;
 
-      result += hop.ToString().substr(0, 8);
+      result += hop.rc.pubkey.ToString().substr(0, 8);
       result += "]";
 
       if (i != hops.size())
