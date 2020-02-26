@@ -680,7 +680,7 @@ namespace llarp
 #if defined(WITH_SYSTEMD)
     {
       std::stringstream ss;
-      ss << "WATCHDOG=1\nSTATUS=" << llarp::VERSION_FULL;
+      ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
       if(IsServiceNode())
       {
         ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
