@@ -33,6 +33,7 @@ matrix:
         - libuv1-dev
         - ninja-build
         - libsodium-dev
+        - libsystemd-dev
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc

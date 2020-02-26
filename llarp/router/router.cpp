@@ -694,7 +694,8 @@ namespace llarp
         hiddenServiceContext().ForEachService(
             [&ss](const auto &name, const auto &ep) {
               ss << " [" << name << " " << std::setprecision(4)
-                 << (100.0 * ep->CurrentBuildStats().SuccessRatio) << "%]";
+                 << (100.0 * ep->CurrentBuildStats().SuccessRatio()) << "%]";
+              return true;
             });
       }
       const auto status = ss.str();
