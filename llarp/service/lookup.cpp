@@ -12,11 +12,9 @@ namespace llarp
 
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx, std::string n)
-        : m_parent(p), txid(tx), name(std::move(n))
+    IServiceLookup::IServiceLookup(uint64_t tx, std::string n)
+        : txid(tx), name(std::move(n)), m_created(time_now_ms())
     {
-      m_created = time_now_ms();
-      p->PutLookup(this, tx);
     }
 
     bool
@@ -26,8 +24,7 @@ namespace llarp
       if(!msg)
         return false;
       endpoint = path->Endpoint();
-      LogicCall(r->logic(), [=]() { path->SendRoutingMessage(*msg, r); });
-      return true;
+      return path->SendRoutingMessage(*msg, r);
     }
   }  // namespace service
 }  // namespace llarp

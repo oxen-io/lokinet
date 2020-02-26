@@ -235,8 +235,8 @@ namespace llarp
         return m_Identity;
       }
 
-      void
-      PutLookup(IServiceLookup* lookup, uint64_t txid) override;
+      bool
+      DoLookup(ServiceLookup_ptr lookup, path::Path_ptr path) override;
 
       void
       HandlePathBuilt(path::Path_ptr path) override;

@@ -20,8 +20,7 @@ namespace llarp
       HandlerFunc handle;
       size_t requestsSent;
 
-      HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
-                                 const dht::Key_t& location,
+      HiddenServiceAddressLookup(HandlerFunc h, const dht::Key_t& location,
                                  const PubKey& rootkey, uint64_t relayOrder,
                                  uint64_t tx);
 

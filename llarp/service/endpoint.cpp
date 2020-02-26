@@ -241,11 +241,13 @@ namespace llarp
       return m_state->m_Name + ":" + m_Identity.pub.Name();
     }
 
-    void
-    Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
+    bool
+    Endpoint::DoLookup(ServiceLookup_ptr lookup, path::Path_ptr path)
     {
-      m_state->m_PendingLookups.emplace(
-          txid, std::unique_ptr< IServiceLookup >(lookup));
+      if(not lookup->SendRequestViaPath(path, m_router))
+        return false;
+      m_state->m_PendingLookups.emplace(lookup->txid, std::move(lookup));
+      return true;
     }
 
     bool
@@ -483,7 +485,7 @@ namespace llarp
       uint64_t m_relayOrder;
       PublishIntroSetJob(Endpoint* parent, uint64_t id,
                          EncryptedIntroSet introset, uint64_t relayOrder)
-          : IServiceLookup(parent, id, "PublishIntroSet")
+          : IServiceLookup(id, "PublishIntroSet")
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
@@ -528,11 +530,12 @@ namespace llarp
 
     bool
     Endpoint::PublishIntroSetVia(const EncryptedIntroSet& introset,
-                                 AbstractRouter* r, path::Path_ptr path,
+                                 AbstractRouter*, path::Path_ptr path,
                                  uint64_t relayOrder)
     {
-      auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
-      if(job->SendRequestViaPath(path, r))
+      auto job = std::make_unique< PublishIntroSetJob >(this, GenTXID(),
+                                                        introset, relayOrder);
+      if(DoLookup(std::move(job), path))
       {
         m_state->m_LastPublishAttempt = Now();
         return true;
@@ -999,14 +1002,23 @@ namespace llarp
       using namespace std::placeholders;
       size_t lookedUp           = 0;
       const dht::Key_t location = remote.ToKey();
+
+      // make sure we are requesting a valid location
+      if(location.IsZero())
+      {
+        // the location is zero, invalid service address
+        hook(remote, nullptr);
+        return false;
+      }
+
       for(const auto& path : paths)
       {
-        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            this, util::memFn(&Endpoint::OnLookup, this), location,
+        auto job = std::make_unique< HiddenServiceAddressLookup >(
+            util::memFn(&Endpoint::OnLookup, this), location,
             PubKey{remote.as_array()}, 0, GenTXID());
         LogInfo("doing lookup for ", remote, " via ", path->Endpoint(), " at ",
                 location);
-        if(job->SendRequestViaPath(path, Router()))
+        if(DoLookup(std::move(job), path))
         {
           lookups.emplace(remote, hook);
           lookedUp++;

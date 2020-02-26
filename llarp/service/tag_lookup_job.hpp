@@ -50,7 +50,7 @@ namespace llarp
 
     struct TagLookupJob : public IServiceLookup
     {
-      TagLookupJob(Endpoint* parent, CachedTagResult* result);
+      TagLookupJob(Endpoint* ep, CachedTagResult* result);
 
       ~TagLookupJob() override = default;
 

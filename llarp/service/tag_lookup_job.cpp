@@ -42,8 +42,7 @@ namespace llarp
     }
 
     TagLookupJob::TagLookupJob(Endpoint* parent, CachedTagResult* result)
-        : IServiceLookup(parent, parent->GenTXID(), "taglookup")
-        , m_result(result)
+        : IServiceLookup(parent->GenTXID(), "taglookup"), m_result(result)
     {
     }
   }  // namespace service
