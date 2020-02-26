@@ -532,7 +532,7 @@ namespace llarp
                                  const Key_t& tellpeer, bool relayed,
                                  uint64_t relayOrder)
     {
-      TXOwner asker(from, txid);
+      TXOwner asker(OurKey(), txid);
       TXOwner peer(tellpeer, ++ids);
       const Key_t addr(introset.derivedSigningKey);
       _pendingIntrosetLookups.NewTX(
