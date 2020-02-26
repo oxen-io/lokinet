@@ -109,21 +109,21 @@ namespace
 int
 main(int argc, char* argv[])
 {
-  // clang-format off
-  cxxopts::Options options(
-    "lokinetctl",
-    "LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
-  );
+  cxxopts::Options options("lokinetctl",
+                           "LokiNET is a free, open source, private, "
+                           "decentralized, \"market based sybil resistant\" "
+                           "and IP based onion routing network");
 
-  options.add_options()
-      ("v,verbose", "Verbose", cxxopts::value<bool>())
-      ("h,help", "help", cxxopts::value<bool>())
-      ("c,config", "config file", cxxopts::value<std::string>()->default_value(llarp::GetDefaultConfigPath().string()))
+  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
+      "h,help", "help", cxxopts::value< bool >())(
+      "c,config", "config file",
+      cxxopts::value< std::string >()->default_value(
+          llarp::GetDefaultConfigPath().string()))
 #ifdef WITH_CURL
-      ("j,jsonrpc", "hit json rpc endpoint", cxxopts::value<std::string>())
+      ("j,jsonrpc", "hit json rpc endpoint", cxxopts::value< std::string >())
 #endif
-      ("dump", "dump rc file", cxxopts::value<std::vector<std::string> >(), "FILE");
-  // clang-format on
+          ("dump", "dump rc file",
+           cxxopts::value< std::vector< std::string > >(), "FILE");
 
   try
   {
