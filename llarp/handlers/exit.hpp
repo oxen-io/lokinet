@@ -39,7 +39,7 @@ namespace llarp
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 
       bool
-      HandleHookedDNSMessage(dns::Message&& msg,
+      HandleHookedDNSMessage(dns::Message msg,
                              std::function< void(dns::Message) >) override;
 
       bool

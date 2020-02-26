@@ -1,5 +1,6 @@
 #include <dns/rr.hpp>
-
+#include <dns/dns.hpp>
+#include <util/mem.hpp>
 #include <util/logging/logger.hpp>
 #include <util/printer.hpp>
 
@@ -28,10 +29,8 @@ namespace llarp
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const
     {
-      if(!EncodeName(buf, rr_name))
-      {
+      if(not EncodeName(buf, rr_name))
         return false;
-      }
       if(!buf->put_uint16(rr_type))
       {
         return false;
@@ -54,11 +53,9 @@ namespace llarp
     bool
     ResourceRecord::Decode(llarp_buffer_t* buf)
     {
-      if(!DecodeName(buf, rr_name))
-      {
-        llarp::LogError("failed to decode rr name");
+      uint16_t discard;
+      if(!buf->read_uint16(discard))
         return false;
-      }
       if(!buf->read_uint16(rr_type))
       {
         llarp::LogError("failed to decode rr type");
@@ -76,7 +73,7 @@ namespace llarp
       }
       if(!DecodeRData(buf, rData))
       {
-        llarp::LogError("failed to decode rr rdata");
+        llarp::LogError("failed to decode rr rdata ", *this);
         return false;
       }
       return true;
@@ -86,7 +83,7 @@ namespace llarp
     ResourceRecord::print(std::ostream& stream, int level, int spaces) const
     {
       Printer printer(stream, level, spaces);
-      printer.printAttribute("RR name", rr_name);
+      printer.printAttribute("name", rr_name);
       printer.printAttribute("type", rr_type);
       printer.printAttribute("class", rr_class);
       printer.printAttribute("ttl", ttl);
@@ -94,5 +91,19 @@ namespace llarp
 
       return stream;
     }
+
+    bool
+    ResourceRecord::HasCNameForTLD(const std::string& tld) const
+    {
+      if(rr_type != qTypeCNAME)
+        return false;
+      Name_t name;
+      llarp_buffer_t buf(rData);
+      if(not DecodeName(&buf, name))
+        return false;
+      return name.find(tld) != std::string::npos
+          && name.rfind(tld) == (name.size() - tld.size()) - 1;
+    }
+
   }  // namespace dns
 }  // namespace llarp

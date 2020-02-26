@@ -50,7 +50,7 @@ namespace llarp
 
       bool
       HandleHookedDNSMessage(
-          dns::Message&& query,
+          dns::Message query,
           std::function< void(dns::Message) > sendreply) override;
 
       void

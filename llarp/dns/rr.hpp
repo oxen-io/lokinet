@@ -32,6 +32,9 @@ namespace llarp
       std::ostream&
       print(std::ostream& stream, int level, int spaces) const;
 
+      bool
+      HasCNameForTLD(const std::string& tld) const;
+
       Name_t rr_name;
       RRType_t rr_type;
       RRClass_t rr_class;
