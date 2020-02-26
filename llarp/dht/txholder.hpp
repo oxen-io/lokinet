@@ -20,9 +20,9 @@ namespace llarp
       // tx who are waiting for a reply for each key
       std::unordered_multimap< K, TXOwner, K_Hash > waiting;
       // tx timesouts by key
-      std::unordered_map< K, llarp_time_t, K_Hash > timeouts;
+      std::unordered_multimap< K, llarp_time_t, K_Hash > timeouts;
       // maps remote peer with tx to handle reply from them
-      std::unordered_map< TXOwner, TXPtr, TXOwner::Hash > tx;
+      std::unordered_multimap< TXOwner, TXPtr, TXOwner::Hash > tx;
 
       const TX< K, V >*
       GetPendingLookupFrom(const TXOwner& owner) const;
