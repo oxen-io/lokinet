@@ -54,6 +54,11 @@ namespace llarp
         if(path)
           paths.emplace(path);
       } while(tries > 0 and paths.size() < N);
+
+      if(paths.size() < N)
+        LogWarn("GetManyPathsWithUniqueEndpoints() could only get ",
+                paths.size(), " paths, wanted ", N);
+
       return paths;
     }
   }  // namespace service

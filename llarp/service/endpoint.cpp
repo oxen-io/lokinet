@@ -532,6 +532,7 @@ namespace llarp
                                  uint64_t relayOrder)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), introset, relayOrder);
+      LogInfo("Sending PublishIntroSet with txid=", job->txid);
       if(job->SendRequestViaPath(path, r))
       {
         m_state->m_LastPublishAttempt = Now();
