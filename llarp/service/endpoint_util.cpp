@@ -116,7 +116,8 @@ namespace llarp
       {
         if(itr->second.IsExpired(now))
         {
-          LogInfo("Expire session T=", itr->first);
+          LogInfo("Expire session T=", itr->first,
+                  " lastUsed=", itr->second.lastUsed);
           itr = sessions.erase(itr);
         }
         else
