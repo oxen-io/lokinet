@@ -292,15 +292,18 @@ namespace llarp
           : ::abyss::httpd::IRPCHandler(conn)
           , router(r)
           , m_dispatch{
-                {"llarp.admin.wakeup", [=](auto&&) { return StartRouter(); }},
+                {"llarp.admin.wakeup",
+                 [this](auto&&) { return StartRouter(); }},
                 {"llarp.admin.link.neighbor",
-                 [=](auto&&) { return ListNeighbors(); }},
+                 [this](auto&&) { return ListNeighbors(); }},
                 {"llarp.admin.exit.list",
-                 [=](auto&&) { return ListExitLevels(); }},
-                {"llarp.admin.dumpstate", [=](auto&&) { return DumpState(); }},
-                {"llarp.admin.status", [=](auto&&) { return DumpStatus(); }},
-                {"llarp.our.addresses", [=](auto&&) { return OurAddresses(); }},
-                {"llarp.version", [=](auto&&) { return DumpVersion(); }}}
+                 [this](auto&&) { return ListExitLevels(); }},
+                {"llarp.admin.dumpstate",
+                 [this](auto&&) { return DumpState(); }},
+                {"llarp.admin.status", [this](auto&&) { return DumpStatus(); }},
+                {"llarp.our.addresses",
+                 [this](auto&&) { return OurAddresses(); }},
+                {"llarp.version", [this](auto&&) { return DumpVersion(); }}}
       {
       }
 
