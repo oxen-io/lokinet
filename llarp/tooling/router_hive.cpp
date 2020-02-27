@@ -56,7 +56,7 @@ namespace tooling
     if(eventQueue.tryPushBack(std::move(event))
        != llarp::thread::QueueReturn::Success)
     {
-      LogError("RouterHive Event Queue appears to be full.  Either implement/change time dilation or increase the queue size.");
+      llarp::LogError("RouterHive Event Queue appears to be full.  Either implement/change time dilation or increase the queue size.");
     }
   }
 

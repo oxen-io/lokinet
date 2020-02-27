@@ -23,8 +23,8 @@
 #include <util/str.hpp>
 #include <ev/ev.hpp>
 
-#ifdef LOKINET_HIVE
 #include "tooling/router_event.hpp"
+#ifdef LOKINET_HIVE
 #include "tooling/router_hive.hpp"
 #endif
 
@@ -131,12 +131,12 @@ namespace llarp
   }
 
   void
-  Router::NotifyRouterEvent(tooling::RouterEvent event) const
+  Router::NotifyRouterEvent(const tooling::RouterEvent & event) const
   {
 #ifdef LOKINET_HIVE
     hive->NotifyEvent(event);
 #elif LOKINET_DEBUG
-    LogDebug(event.ToString);
+    LogDebug(event.ToString());
 #endif
   }
 

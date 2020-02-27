@@ -33,6 +33,7 @@ namespace tooling
     llarp::RouterID routerID;
   };
 
+
   struct PathBuildAttemptEvent : public RouterEvent
   {
     PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops);
@@ -42,6 +43,6 @@ namespace tooling
     std::string ToString() const override;
 
     std::vector<llarp::path::PathHopConfig> hops;
-  }
+  };
 
 } // namespace tooling

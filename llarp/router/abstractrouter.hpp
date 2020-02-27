@@ -10,6 +10,7 @@
 #include <ev/ev.h>
 #include <functional>
 #include <router_contact.hpp>
+#include <tooling/router_event.hpp>
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
@@ -19,7 +20,6 @@ struct llarp_threadpool;
 namespace tooling
 {
   struct RouterHive;
-  struct RouterEvent;
 } // namespace tooling
 
 namespace llarp
@@ -273,7 +273,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
     virtual void
-    NotifyRouterEvent(tooling::RouterEvent event) const = 0;
+    NotifyRouterEvent(const tooling::RouterEvent & event) const = 0;
   };
 }  // namespace llarp
 

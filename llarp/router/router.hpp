@@ -315,7 +315,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) override;
 
     void
-    NotifyRouterEvent(tooling::RouterEvent event) const override;
+    NotifyRouterEvent(const tooling::RouterEvent & event) const override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);

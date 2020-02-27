@@ -211,7 +211,6 @@ add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 
 if(WITH_HIVE)
   set(LIB_SRC ${LIB_SRC} tooling/router_hive.cpp tooling/router_event.cpp)
-  target_include_directories(${STATIC_LIB} PUBLIC ${CMAKE_SOURCE_DIR}/tooling)
 endif()
 
 target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
