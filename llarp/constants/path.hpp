@@ -18,10 +18,9 @@ namespace llarp
     /// pad messages to the nearest this many bytes
     constexpr std::size_t pad_size = 128;
     /// default path lifetime in ms
-    static constexpr std::chrono::milliseconds default_lifetime = 20min;
+    static constexpr std::chrono::milliseconds default_lifetime = 10min;
     /// minimum into lifetime we will advertise
-    static constexpr std::chrono::milliseconds min_intro_lifetime =
-        default_lifetime / 2;
+    static constexpr std::chrono::milliseconds min_intro_lifetime = 2min;
     /// spacing frequency at which we try to build paths for introductions
     static constexpr std::chrono::milliseconds intro_path_spread =
         default_lifetime / 4;
