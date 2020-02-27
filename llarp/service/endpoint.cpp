@@ -108,7 +108,9 @@ namespace llarp
       }
       if(PublishIntroSet(maybe.value(), Router()))
       {
-        LogInfo("(re)publishing introset for endpoint ", Name());
+        LogInfo(
+            "(re)publishing introset for endpoint ", Name(),
+            ", derivedSigningKey=", maybe.value().derivedSigningKey.ToString());
       }
       else
       {

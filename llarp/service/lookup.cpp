@@ -45,8 +45,7 @@ namespace llarp
       if(handled)
       {
         responsesReceived++;
-        LogInfo("Lookup ", txid, " has received ",
-                responsesReceived, " of ",
+        LogInfo("Lookup ", txid, " has received ", responsesReceived, " of ",
                 responsesExpected, " responses");
       }
 
