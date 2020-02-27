@@ -71,12 +71,13 @@ namespace llarp
         return true;
       }
 
+      const auto keyStr = introset.derivedSigningKey.ToString();
+
       // TODO: noisy debug, remove
-      LogDebug("Closest RCs for ", introset.derivedSigningKey.ToString(),
-               ", txid=", txID, ":");
+      LogInfo(keyStr, " Closest RCs txid=", txID, ":");
       for(size_t i = 0; i < closestRCs.size(); ++i)
       {
-        LogDebug("  [", i, "]: ", closestRCs[i].pubkey.ToString());
+        LogInfo(keyStr, "  [", i, "]: ", closestRCs[i].pubkey.ToString());
       }
 
       const auto &us = dht.OurKey();
@@ -95,11 +96,11 @@ namespace llarp
 
         if(arePeer0 or arePeer1)
         {
-          llarp::LogInfo(
-              "Received PublishIntroMessage for ",
-              introset.derivedSigningKey.ToString(), " with relayed==true",
-              " and txid=", txID, " and we happen to be candidate ",
-              (arePeer0 ? "peer0" : " "), (arePeer1 ? "peer1" : " "));
+          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
+                         " with relayed==true", " and txid=", txID,
+                         " and we happen to be candidate ",
+                         (arePeer0 ? "peer0" : " "),
+                         (arePeer1 ? "peer1" : " "));
 
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));
@@ -107,8 +108,7 @@ namespace llarp
 
         if(not arePeer0)
         {
-          llarp::LogInfo("Received PublishIntroMessage for ",
-                         introset.derivedSigningKey.ToString(),
+          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
                          " with relayed==true", " and txid=", txID,
                          " relaying to peer0=", rc0.pubkey.ToString());
           dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
@@ -116,8 +116,7 @@ namespace llarp
 
         if(not arePeer1)
         {
-          llarp::LogInfo("Received PublishIntroMessage for ",
-                         introset.derivedSigningKey.ToString(),
+          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
                          " with relayed==true", " and txid=", txID,
                          " relaying to peer1=", rc1.pubkey.ToString());
           dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
@@ -135,8 +134,8 @@ namespace llarp
           return true;
         }
 
-        llarp::LogInfo("Relaying PublishIntroMessage for ",
-                       introset.derivedSigningKey.ToString(), ", txid=", txID);
+        llarp::LogInfo("Relaying PublishIntroMessage for ", keyStr,
+                       ", txid=", txID);
 
         propagateToClosestFour();
       }
@@ -156,8 +155,7 @@ namespace llarp
 
         if(candidateNumber >= 0)
         {
-          LogInfo("Received PubIntro for ",
-                  introset.derivedSigningKey.ToString(), ", txid=", txID,
+          LogInfo("Received PubIntro for ", keyStr, ", txid=", txID,
                   " and we are candidate ", candidateNumber);
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));
@@ -167,7 +165,7 @@ namespace llarp
           LogWarn(
               "Received PubIntro with relayed==false but we aren't"
               " candidate, intro derived key: ",
-              introset.derivedSigningKey.ToString(), ", txid=", txID);
+              keyStr, ", txid=", txID);
           propagateToClosestFour();
         }
       }
