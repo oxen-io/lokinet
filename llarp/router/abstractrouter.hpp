@@ -16,6 +16,11 @@ struct llarp_dht_context;
 struct llarp_nodedb;
 struct llarp_threadpool;
 
+namespace tooling
+{
+  struct RouterEvent;
+} // namespace tooling
+
 namespace llarp
 {
   class Logic;
@@ -260,6 +265,9 @@ namespace llarp
     /// gossip an rc if required
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
+
+    virtual void
+    NotifyRouterEvent(RouterEvent event) const = 0;
   };
 }  // namespace llarp
 

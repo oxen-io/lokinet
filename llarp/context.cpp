@@ -298,6 +298,14 @@ namespace llarp
     configfile = fname;
     return Configure();
   }
+
+#ifdef LOKINET_HIVE
+  void
+  Context::InjectHive(tooling::RouterHive* hive)
+  {
+    router->hive = hive;
+  }
+#endif
 }  // namespace llarp
 
 struct llarp_main

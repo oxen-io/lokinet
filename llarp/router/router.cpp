@@ -125,6 +125,16 @@ namespace llarp
     _rcGossiper.GossipRC(rc);
   }
 
+  void
+  Router::NotifyRouterEvent(RouterEvent event) const
+  {
+#ifdef LOKINET_HIVE
+    hive->NotifyEvent(event);
+#elif LOKINET_DEBUG
+    LogDebug(event.ToString);
+#endif
+  }
+
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {

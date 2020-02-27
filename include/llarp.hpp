@@ -16,6 +16,13 @@ struct llarp_nodedb;
 struct llarp_nodedb_iter;
 struct llarp_main;
 
+#ifdef LOKINET_HIVE
+namespace tooling
+{
+  struct RouterHive;
+} // namespace tooling
+#endif
+
 namespace llarp
 {
   class Logic;
@@ -87,6 +94,11 @@ namespace llarp
     /// return false if not queued for calling
     bool
     CallSafe(std::function< void(void) > f);
+
+#ifdef LOKINET_HIVE
+    void
+    InjectHive(tooling::RouterHive* hive);
+#endif
 
    private:
     void

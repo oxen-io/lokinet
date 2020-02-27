@@ -1,5 +1,8 @@
 #include <tooling/router_hive.hpp>
 
+#include "include/llarp.h"
+#include "include/llarp.hpp"
+
 #include <chrono>
 
 namespace tooling
@@ -13,6 +16,7 @@ namespace tooling
   RouterHive::AddRouter(llarp_config* conf)
   {
     llarp_main* ctx = llarp_main_init_from_config(conf);
+    llarp::Context::Get(ctx)->InjectHive(this);
     routers.push_back(ctx);
   }
 
@@ -47,7 +51,7 @@ namespace tooling
   }
 
   void
-  RouterHive::InformEvent(RouterEvent event)
+  RouterHive::NotifyEvent(RouterEvent event)
   {
     if(eventQueue.tryPushBack(std::move(event))
        != llarp::thread::QueueReturn::Success)
@@ -67,10 +71,8 @@ namespace tooling
     }
   }
 
-
-
   void
-  ProcessPathBuildAttempt(PathBuildAttemptEvent event)
+  RouterHive::ProcessPathBuildAttempt(PathBuildAttemptEvent event)
   {
   }
 

@@ -5,7 +5,11 @@
 #include <llarp.h>
 #include <util/thread/queue.hpp>
 
+#include <vector>
+#include <thread>
+
 struct llarp_config;
+struct llarp_main;
 
 namespace tooling
 {
@@ -20,7 +24,13 @@ namespace tooling
     AddRouter(llarp_config* conf);
 
     void
-    InformEvent(RouterEvent event);
+    StartRouters();
+
+    void
+    StopRouters();
+
+    void
+    NotifyEvent(RouterEvent event);
 
     void
     ProcessEventQueue();
@@ -34,6 +44,9 @@ namespace tooling
     ProcessPathBuildAttempt(PathBuildAttemptEvent event);
 
 
+    std::vector<llarp_main *> routers;
+
+    std::vector<std::thread> routerMainThreads;
 
     llarp::thread::Queue<RouterEvent> eventQueue;
   };
