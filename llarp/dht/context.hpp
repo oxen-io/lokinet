@@ -97,8 +97,7 @@ namespace llarp
                           uint64_t relayOrder) = 0;
 
       virtual void
-      Init(const Key_t& us, AbstractRouter* router,
-           llarp_time_t exploreInterval) = 0;
+      Init(const Key_t& us, AbstractRouter* router) = 0;
 
       virtual nonstd::optional< llarp::service::EncryptedIntroSet >
       GetIntroSetByLocation(const Key_t& location) const = 0;

@@ -127,8 +127,7 @@ namespace llarp
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
-      Init(const Key_t& us, AbstractRouter* router,
-           llarp_time_t exploreInterval) override;
+      Init(const Key_t& us, AbstractRouter* router) override;
 
       /// get localally stored introset by service address
       nonstd::optional< llarp::service::EncryptedIntroSet >
@@ -471,8 +470,7 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t& us, AbstractRouter* r,
-                  llarp_time_t)
+    Context::Init(const Key_t& us, AbstractRouter* r)
     {
       router    = r;
       ourKey    = us;
