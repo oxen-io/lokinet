@@ -381,7 +381,7 @@ namespace llarp
       msg->handler = handler;
       if(T.IsZero())
       {
-        LogInfo("Got protocol frame with new convo");
+        LogInfo("Got protocol frame with new convo T=", T);
         // we need to dh
         auto dh  = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this,
                                         recvPath->intro);
