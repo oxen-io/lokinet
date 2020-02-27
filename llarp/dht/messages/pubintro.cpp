@@ -145,6 +145,11 @@ namespace llarp
         int index           = 0;
         for(const auto &rc : closestRCs)
         {
+          llarp::LogInfo(keyStr, "key ", index);
+          llarp::LogInfo(keyStr, " rc.pubkey: ", rc.pubkey.ToString());
+          llarp::LogInfo(keyStr, " dht.OurKey(): ", dht.OurKey().ToString());
+          llarp::LogInfo(keyStr, " equals? ",
+                         (rc.pubkey == dht.OurKey() ? "T" : "F"));
           if(rc.pubkey == dht.OurKey())
           {
             candidateNumber = index;
@@ -152,6 +157,7 @@ namespace llarp
           }
           ++index;
         }
+        llarp::LogInfo(keyStr, "matched index: ", index);
 
         if(candidateNumber >= 0)
         {
