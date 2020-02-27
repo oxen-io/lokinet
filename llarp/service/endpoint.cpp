@@ -208,7 +208,7 @@ namespace llarp
       EndpointUtil::DeregisterDeadSessions(now, m_state->m_DeadSessions);
       // tick remote sessions
       EndpointUtil::TickRemoteSessions(now, m_state->m_RemoteSessions,
-                                       m_state->m_DeadSessions);
+                                       m_state->m_DeadSessions, Sessions());
       // expire convotags
       EndpointUtil::ExpireConvoSessions(now, Sessions());
     }
