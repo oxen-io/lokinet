@@ -28,6 +28,7 @@ option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
+option(WITH_HIVE "build simulation stubs" OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -288,6 +289,10 @@ endif(ANDROID)
 set(LIBS ${MALLOC_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
+endif()
+
+if(WITH_HIVE)
+  add_definitions(-DLOKINET_HIVE=1)
 endif()
 
 add_subdirectory(crypto)
