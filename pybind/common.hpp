@@ -14,9 +14,10 @@ namespace llarp
   void
   RouterContact_Init(py::module &mod);
 
-  namespace simulate
-  {
-    void
-    SimContext_Init(py::module &mod);
-  }
 }  // namespace llarp
+
+namespace tooling
+{
+  void
+  RouterHive_Init(py::module & mod);
+}
