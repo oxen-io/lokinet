@@ -273,7 +273,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
     virtual void
-    NotifyRouterEvent(const tooling::RouterEvent & event) const = 0;
+    NotifyRouterEvent(tooling::RouterEventPtr event) const = 0;
   };
 }  // namespace llarp
 

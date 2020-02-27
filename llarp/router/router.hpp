@@ -45,7 +45,7 @@
 
 namespace tooling
 {
-  struct RouterEvent;
+  struct RouterHive;
 } // namespace tooling
 
 namespace llarp
@@ -315,7 +315,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) override;
 
     void
-    NotifyRouterEvent(const tooling::RouterEvent & event) const override;
+    NotifyRouterEvent(tooling::RouterEventPtr event) const override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);

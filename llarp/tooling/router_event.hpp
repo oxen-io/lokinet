@@ -1,12 +1,13 @@
 #pragma once
 
+#include <router_id.hpp>
+
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace llarp
 {
-
-  struct RouterID;
 
   namespace path
   {
@@ -24,6 +25,8 @@ namespace tooling
 
   struct RouterEvent
   {
+    RouterEvent(llarp::RouterID);
+
     virtual ~RouterEvent() = default;
 
     virtual void Process(RouterHive& hive) const = 0;
@@ -32,6 +35,8 @@ namespace tooling
 
     llarp::RouterID routerID;
   };
+
+  typedef std::unique_ptr<RouterEvent> RouterEventPtr;
 
 
   struct PathBuildAttemptEvent : public RouterEvent

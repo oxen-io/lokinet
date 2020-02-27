@@ -16,7 +16,7 @@ namespace tooling
 
   struct RouterHive
   {
-    constexpr size_t MAX_EVENT_QUEUE_SIZE = 200;
+    static const size_t MAX_EVENT_QUEUE_SIZE;
 
     RouterHive(size_t eventQueueSize = MAX_EVENT_QUEUE_SIZE);
 
@@ -30,7 +30,7 @@ namespace tooling
     StopRouters();
 
     void
-    NotifyEvent(RouterEvent event);
+    NotifyEvent(RouterEventPtr event);
 
     void
     ProcessEventQueue();
@@ -41,14 +41,14 @@ namespace tooling
      */
 
     void
-    ProcessPathBuildAttempt(PathBuildAttemptEvent event);
+    ProcessPathBuildAttempt(const PathBuildAttemptEvent& event);
 
 
     std::vector<llarp_main *> routers;
 
     std::vector<std::thread> routerMainThreads;
 
-    llarp::thread::Queue<RouterEvent> eventQueue;
+    llarp::thread::Queue<RouterEventPtr> eventQueue;
   };
 
 } // namespace tooling

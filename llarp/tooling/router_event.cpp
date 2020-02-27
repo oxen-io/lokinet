@@ -2,14 +2,18 @@
 
 #include <tooling/router_hive.hpp>
 
-#include <llarp/router_id.hpp>
-#include <llarp/path/path.hpp>
+#include <path/path.hpp>
 
 namespace tooling
 {
 
+  RouterEvent::RouterEvent(llarp::RouterID routerID)
+    : routerID(routerID)
+  {
+  }
+
   PathBuildAttemptEvent::PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops)
-    : routerID(routerID), hops(hops)
+    : RouterEvent(routerID), hops(hops)
   {
   }
 

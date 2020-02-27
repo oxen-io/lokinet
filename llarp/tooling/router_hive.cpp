@@ -1,12 +1,14 @@
 #include <tooling/router_hive.hpp>
 
-#include "include/llarp.h"
-#include "include/llarp.hpp"
+#include "llarp.h"
+#include "llarp.hpp"
 
 #include <chrono>
 
 namespace tooling
 {
+
+  const size_t RouterHive::MAX_EVENT_QUEUE_SIZE = 200;
 
   RouterHive::RouterHive(size_t eventQueueSize) : eventQueue(eventQueueSize)
   {
@@ -27,7 +29,8 @@ namespace tooling
 
     for (llarp_main* ctx : routers)
     {
-      routerMainThreads.emplace_back({std::bind(&llarp_main_run, ctx, opts)});
+      std::thread t{std::bind(&llarp_main_run, ctx, opts)};
+      routerMainThreads.emplace_back(std::move(t));
     }
   }
 
@@ -51,7 +54,7 @@ namespace tooling
   }
 
   void
-  RouterHive::NotifyEvent(RouterEvent event)
+  RouterHive::NotifyEvent(RouterEventPtr event)
   {
     if(eventQueue.tryPushBack(std::move(event))
        != llarp::thread::QueueReturn::Success)
@@ -65,14 +68,14 @@ namespace tooling
   {
     while(not eventQueue.empty())
     {
-      RouterEvent event = eventQueue.popFront();
+      RouterEventPtr event = eventQueue.popFront();
 
-      event.Process(*this);
+      event->Process(*this);
     }
   }
 
   void
-  RouterHive::ProcessPathBuildAttempt(PathBuildAttemptEvent event)
+  RouterHive::ProcessPathBuildAttempt(const PathBuildAttemptEvent& event)
   {
   }
 

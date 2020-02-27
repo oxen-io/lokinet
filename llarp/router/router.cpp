@@ -131,12 +131,12 @@ namespace llarp
   }
 
   void
-  Router::NotifyRouterEvent(const tooling::RouterEvent & event) const
+  Router::NotifyRouterEvent(tooling::RouterEventPtr event) const
   {
 #ifdef LOKINET_HIVE
-    hive->NotifyEvent(event);
+    hive->NotifyEvent(std::move(event));
 #elif LOKINET_DEBUG
-    LogDebug(event.ToString());
+    LogDebug(event->ToString());
 #endif
   }
 
