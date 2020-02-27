@@ -80,7 +80,7 @@ namespace llarp
         LogInfo(keyStr, "  [", i, "]: ", closestRCs[i].pubkey.ToString());
       }
 
-      const auto &us = dht.OurKey();
+      Key_t us{dht.OurKey().as_array()};
 
       // function to identify the closest 4 routers we know of for this introset
       auto propagateToClosestFour = [&]() {
@@ -147,10 +147,9 @@ namespace llarp
         {
           llarp::LogInfo(keyStr, "key ", index);
           llarp::LogInfo(keyStr, " rc.pubkey: ", rc.pubkey.ToString());
-          llarp::LogInfo(keyStr, " dht.OurKey(): ", dht.OurKey().ToString());
-          llarp::LogInfo(keyStr, " equals? ",
-                         (rc.pubkey == dht.OurKey() ? "T" : "F"));
-          if(rc.pubkey == dht.OurKey())
+          llarp::LogInfo(keyStr, " us: ", us.ToString());
+          llarp::LogInfo(keyStr, " equals? ", (rc.pubkey == us ? "T" : "F"));
+          if(rc.pubkey == us)
           {
             candidateNumber = index;
             break;
