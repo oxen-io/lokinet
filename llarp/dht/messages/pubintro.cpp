@@ -71,13 +71,13 @@ namespace llarp
         return true;
       }
 
-      const auto keyStr = introset.derivedSigningKey.ToString();
+      const auto keyStr = introset.derivedSigningKey.ToHex();
 
       // TODO: noisy debug, remove
       LogInfo(keyStr, " Closest RCs txid=", txID, ":");
       for(size_t i = 0; i < closestRCs.size(); ++i)
       {
-        LogInfo(keyStr, "  [", i, "]: ", closestRCs[i].pubkey.ToString());
+        LogInfo(keyStr, "  [", i, "]: ", closestRCs[i].pubkey.ToHex());
       }
 
       const auto &us = dht.OurKey();
@@ -110,7 +110,7 @@ namespace llarp
         {
           llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
                          " with relayed==true", " and txid=", txID,
-                         " relaying to peer0=", rc0.pubkey.ToString());
+                         " relaying to peer0=", rc0.pubkey.ToHex());
           dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
         }
 
@@ -118,7 +118,7 @@ namespace llarp
         {
           llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
                          " with relayed==true", " and txid=", txID,
-                         " relaying to peer1=", rc1.pubkey.ToString());
+                         " relaying to peer1=", rc1.pubkey.ToHex());
           dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
         }
       };
@@ -147,8 +147,8 @@ namespace llarp
         {
           Key_t rcDHTKey{rc.pubkey};
           llarp::LogInfo(keyStr, "key ", index);
-          llarp::LogInfo(keyStr, " rcDHTKey: ", rcDHTKey.ToString());
-          llarp::LogInfo(keyStr, " us: ", us.ToString());
+          llarp::LogInfo(keyStr, " rcDHTKey: ", rcDHTKey.ToHex());
+          llarp::LogInfo(keyStr, " us: ", us.ToHex());
           llarp::LogInfo(keyStr, " equals? ", (rcDHTKey == us ? "T" : "F"));
           if(rcDHTKey == us)
           {
