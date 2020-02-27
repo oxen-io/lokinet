@@ -6,6 +6,7 @@ set(LLARP_PYBIND_SRC
   llarp/context.cpp
   llarp/router_contact.cpp
   llarp/crypto/types.cpp
+  llarp/config.cpp
   llarp/tooling/router_hive.cpp
 )
 

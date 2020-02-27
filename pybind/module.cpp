@@ -7,4 +7,5 @@ PYBIND11_MODULE(pyllarp, m)
   llarp::RouterContact_Init(m);
   llarp::CryptoTypes_Init(m);
   llarp::Context_Init(m);
+  llarp::Config_Init(m);
 }

@@ -13,6 +13,8 @@
 #include <vector>
 #include <unordered_set>
 
+
+struct llarp_config;
 namespace llarp
 {
   struct ConfigParser;
@@ -256,6 +258,9 @@ namespace llarp
 
     bool
     LoadFromStr(string_view str);
+
+    llarp_config *
+    Copy() const;
   };
 
   fs::path

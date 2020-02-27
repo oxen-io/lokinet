@@ -14,6 +14,9 @@ namespace llarp
   void
   RouterContact_Init(py::module &mod);
 
+  void
+  Config_Init(py::module & mod);
+
 }  // namespace llarp
 
 namespace tooling

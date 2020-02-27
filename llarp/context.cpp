@@ -327,6 +327,17 @@ struct llarp_config
   }
 };
 
+namespace llarp
+{
+  llarp_config *
+  Config::Copy() const
+  {
+    llarp_config * ptr = new llarp_config();
+    ptr->impl = *this;
+    return ptr;
+  }
+}
+
 extern "C"
 {
   size_t

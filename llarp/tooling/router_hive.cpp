@@ -15,11 +15,14 @@ namespace tooling
   }
 
   void
-  RouterHive::AddRouter(llarp_config* conf)
+  RouterHive::AddRouter(const std::shared_ptr<llarp::Config> & config)
   {
-    llarp_main* ctx = llarp_main_init_from_config(conf);
-    llarp::Context::Get(ctx)->InjectHive(this);
-    routers.push_back(ctx);
+    llarp_main* ctx = llarp_main_init_from_config(config->Copy());
+    if(llarp_main_setup(ctx) == 0)
+    {
+      llarp::Context::Get(ctx)->InjectHive(this);
+      routers.push_back(ctx);
+    }
   }
 
   void

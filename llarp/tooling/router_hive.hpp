@@ -3,6 +3,7 @@
 #include <tooling/router_event.hpp>
 
 #include <llarp.h>
+#include <config/config.hpp>
 #include <util/thread/queue.hpp>
 
 #include <vector>
@@ -21,7 +22,7 @@ namespace tooling
     RouterHive(size_t eventQueueSize = MAX_EVENT_QUEUE_SIZE);
 
     void
-    AddRouter(llarp_config* conf);
+    AddRouter(const std::shared_ptr<llarp::Config> & conf);
 
     void
     StartRouters();
