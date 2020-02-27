@@ -64,8 +64,8 @@ namespace llarp
                         const service::EncryptedIntroSet& introset,
                         const dht::Key_t& peer, bool relayed, uint64_t relayOrder));
 
-      MOCK_METHOD3(Init,
-                   void(const dht::Key_t&, AbstractRouter*, llarp_time_t));
+      MOCK_METHOD2(Init,
+                   void(const dht::Key_t&, AbstractRouter*));
 
       MOCK_CONST_METHOD1(GetIntroSetByLocation,
                          nonstd::optional< llarp::service::EncryptedIntroSet >(

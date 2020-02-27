@@ -127,8 +127,7 @@ namespace llarp
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
-      Init(const Key_t& us, AbstractRouter* router,
-           llarp_time_t exploreInterval) override;
+      Init(const Key_t& us, AbstractRouter* router) override;
 
       /// get localally stored introset by service address
       nonstd::optional< llarp::service::EncryptedIntroSet >
@@ -136,9 +135,6 @@ namespace llarp
 
       void
       handle_cleaner_timer(uint64_t interval);
-
-      void
-      handle_explore_timer(uint64_t interval);
 
       /// explore dht for new routers
       void
@@ -321,18 +317,6 @@ namespace llarp
     }
 
     void
-    Context::handle_explore_timer(uint64_t interval)
-    {
-      const auto num = std::min(router->NumberOfConnectedRouters(), size_t(4));
-      if(num)
-        Explore(num);
-      router->logic()->call_later(
-          std::chrono::milliseconds(interval),
-          std::bind(&llarp::dht::Context::handle_explore_timer, this,
-                    interval));
-    }
-
-    void
     Context::handle_cleaner_timer(__attribute__((unused)) uint64_t interval)
     {
       // clean up transactions
@@ -486,20 +470,13 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t& us, AbstractRouter* r,
-                  llarp_time_t exploreInterval)
+    Context::Init(const Key_t& us, AbstractRouter* r)
     {
       router    = r;
       ourKey    = us;
       _nodes    = std::make_unique< Bucket< RCNode > >(ourKey, llarp::randint);
       _services = std::make_unique< Bucket< ISNode > >(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
-      // start exploring
-
-      router->logic()->call_later(
-          exploreInterval,
-          std::bind(&llarp::dht::Context::handle_explore_timer, this,
-                    exploreInterval.count()));
       // start cleanup timer
       ScheduleCleanupTimer();
     }
