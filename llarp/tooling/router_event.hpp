@@ -36,7 +36,7 @@ namespace tooling
     llarp::RouterID routerID;
   };
 
-  typedef std::unique_ptr<RouterEvent> RouterEventPtr;
+  using RouterEventPtr = std::unique_ptr<RouterEvent>;
 
 
   struct PathBuildAttemptEvent : public RouterEvent
