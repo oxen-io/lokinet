@@ -45,7 +45,6 @@
 
 namespace tooling
 {
-  struct RouterHive;
   struct RouterEvent;
 } // namespace tooling
 
@@ -288,10 +287,6 @@ namespace llarp
 
     TimePoint_t m_NextExploreAt;
 
-#ifdef LOKINET_HIVE
-    RouterHive* hive;
-#endif
-
     IOutboundMessageHandler &
     outboundMessageHandler() override
     {
@@ -320,7 +315,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) override;
 
     void
-    NotifyRouterEvent(RouterEvent event) const override;
+    NotifyRouterEvent(tooling::RouterEvent event) const override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);

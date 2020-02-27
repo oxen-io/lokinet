@@ -18,6 +18,7 @@ struct llarp_threadpool;
 
 namespace tooling
 {
+  struct RouterHive;
   struct RouterEvent;
 } // namespace tooling
 
@@ -64,6 +65,11 @@ namespace llarp
 
   struct AbstractRouter
   {
+
+#ifdef LOKINET_HIVE
+    tooling::RouterHive* hive;
+#endif
+
     virtual ~AbstractRouter() = default;
 
     virtual bool
@@ -267,7 +273,7 @@ namespace llarp
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
     virtual void
-    NotifyRouterEvent(RouterEvent event) const = 0;
+    NotifyRouterEvent(tooling::RouterEvent event) const = 0;
   };
 }  // namespace llarp
 

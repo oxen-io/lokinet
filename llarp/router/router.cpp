@@ -23,6 +23,11 @@
 #include <util/str.hpp>
 #include <ev/ev.hpp>
 
+#ifdef LOKINET_HIVE
+#include "tooling/router_event.hpp"
+#include "tooling/router_hive.hpp"
+#endif
+
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
@@ -126,7 +131,7 @@ namespace llarp
   }
 
   void
-  Router::NotifyRouterEvent(RouterEvent event) const
+  Router::NotifyRouterEvent(tooling::RouterEvent event) const
   {
 #ifdef LOKINET_HIVE
     hive->NotifyEvent(event);
