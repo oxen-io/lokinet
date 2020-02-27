@@ -24,6 +24,7 @@ namespace llarp
     struct IServiceLookup
     {
       size_t responsesExpected = 0;
+      size_t responsesReceived = 0;
 
       IServiceLookup()          = delete;
       virtual ~IServiceLookup() = default;
@@ -48,14 +49,10 @@ namespace llarp
       {
       }
 
-      /// determine if this request has timed out
+      /// determine if this request has timed out. if any responses were
+      /// received, it is not considered timed out.
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const
-      {
-        if(now <= m_created)
-          return false;
-        return now - m_created > timeout;
-      }
+      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const;
 
       /// build request message for service lookup
       virtual std::shared_ptr< routing::IMessage >

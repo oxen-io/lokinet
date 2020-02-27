@@ -44,18 +44,29 @@ namespace llarp
       bool handled = OnHandleResponse(introset);
       if(handled)
       {
-        responsesExpected--;
+        responsesReceived++;
         LogInfo("Lookup ", txid, " has received ",
-                (numRequestsPerSend - responsesExpected), " of ",
-                numRequestsPerSend, " responses");
+                responsesReceived, " of ",
+                responsesExpected, " responses");
       }
 
-      if(responsesExpected == 0)
+      if(responsesReceived == responsesExpected)
       {
         OnAllResponsesReceived();
+        return true;
       }
+      else
+      {
+        return false;
+      }
+    }
 
-      return (responsesExpected == 0);
+    bool
+    IServiceLookup::IsTimedOut(llarp_time_t now, llarp_time_t timeout) const
+    {
+      if(now <= m_created)
+        return false;
+      return (responsesReceived == 0) and (now - m_created > timeout);
     }
 
   }  // namespace service
