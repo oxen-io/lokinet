@@ -38,9 +38,20 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto now = ctx->impl->Now();
+      auto now          = ctx->impl->Now();
+      auto &dht         = *ctx->impl;
+      const auto keyStr = introset.derivedSigningKey.ToHex();
 
-      auto &dht = *ctx->impl;
+      llarp::LogInfo("PublishIntroMessage::HandleMessage():");
+      llarp::LogInfo("  relayOrder:           ", relayOrder);
+      llarp::LogInfo("  txID:                 ", txID);
+      llarp::LogInfo("  From:                 ", From);
+      llarp::LogInfo("  pathID:               ", pathID);
+      llarp::LogInfo("  version:              ", version);
+      llarp::LogInfo("  dht.OurKey():         ", dht.OurKey());
+      llarp::LogInfo("  dht.OurKey().ToHex(): ", dht.OurKey().ToHex());
+      llarp::LogInfo("  introset's key:       ", keyStr);
+
       if(!introset.Verify(now))
       {
         llarp::LogWarn("Received PublishIntroMessage with invalid introset: ",
@@ -71,8 +82,6 @@ namespace llarp
         return true;
       }
 
-      const auto keyStr = introset.derivedSigningKey.ToHex();
-
       // TODO: noisy debug, remove
       LogInfo(keyStr, " Closest RCs txid=", txID, ":");
       for(size_t i = 0; i < closestRCs.size(); ++i)
@@ -96,9 +105,7 @@ namespace llarp
 
         if(arePeer0 or arePeer1)
         {
-          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
-                         " with relayed==true", " and txid=", txID,
-                         " and we happen to be candidate ",
+          llarp::LogInfo("propagateToClosestFour() but we are ",
                          (arePeer0 ? "peer0" : " "),
                          (arePeer1 ? "peer1" : " "));
 
@@ -108,17 +115,15 @@ namespace llarp
 
         if(not arePeer0)
         {
-          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
-                         " with relayed==true", " and txid=", txID,
-                         " relaying to peer0=", rc0.pubkey.ToHex());
+          llarp::LogInfo("propagateToClosestFour() propagating to peer0: ",
+                         rc0.pubkey.ToHex());
           dht.PropagateIntroSetTo(From, txID, introset, peer0, false, 0);
         }
 
         if(not arePeer1)
         {
-          llarp::LogInfo("Received PublishIntroMessage for ", keyStr,
-                         " with relayed==true", " and txid=", txID,
-                         " relaying to peer1=", rc1.pubkey.ToHex());
+          llarp::LogInfo("propagateToClosestFour() propagating to peer1: ",
+                         rc1.pubkey.ToHex());
           dht.PropagateIntroSetTo(From, txID, introset, peer1, false, 0);
         }
       };
@@ -171,7 +176,7 @@ namespace llarp
           LogWarn(
               "Received PubIntro with relayed==false but we aren't"
               " candidate, intro derived key: ",
-              keyStr, ", txid=", txID);
+              keyStr, ", txid=", txID, ", message from: ", From);
           propagateToClosestFour();
         }
       }
