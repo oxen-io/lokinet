@@ -1,7 +1,16 @@
 #include "common.hpp"
 #include "config/config.hpp"
+
+#include <netinet/in.h>
+
 namespace llarp
 {
+  void
+  in_addr_set(in_addr *addr, const char *str)
+  {
+    inet_aton(str, addr);
+  }
+
   void
   Config_Init(py::module & mod)
   {
@@ -96,5 +105,12 @@ namespace llarp
     .def_readwrite("LogJSON", &LoggingConfig::m_LogJSON)
     .def_readwrite("LogFile", &LoggingConfig::m_LogFile);
 
+    py::class_<sockaddr_in>(mod, "sockaddr_in")
+    .def_readwrite("sin_family", &sockaddr_in::sin_family)
+    .def_readwrite("sin_port", &sockaddr_in::sin_port)
+    .def_readwrite("sin_addr", &sockaddr_in::sin_addr);
+
+    py::class_<in_addr>(mod, "in_addr")
+    .def("set", &in_addr_set);
   }
 }

@@ -35,6 +35,7 @@ namespace tooling
     for (llarp_main* ctx : routers)
     {
       routerMainThreads.emplace_back([=](){ llarp_main_run(ctx, opts); });
+      std::this_thread::sleep_for(20ms);
     }
   }
 

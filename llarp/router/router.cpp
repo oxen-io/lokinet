@@ -478,6 +478,7 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
+    llarp::LogWarn("Bootstrap routers list size: ", conf->bootstrap.routers.size());
     std::vector< std::string > configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());
@@ -578,6 +579,7 @@ namespace llarp
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
       uint16_t port   = std::get< LinksConfig::Port >(serverConfig);
+      llarp::LogWarn("tun: ", key, " -- af: ", af, " -- port: ", port);
       if(!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
