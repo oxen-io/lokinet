@@ -24,14 +24,8 @@ namespace llarp
       bool
       Validate(const service::EncryptedIntroSet &value) const override;
 
-      bool
-      GetNextPeer(Key_t &next, const std::set< Key_t > &exclude) override;
-
       void
       Start(const TXOwner &peer) override;
-
-      void
-      DoNextRequest(const Key_t &ask) override;
 
       void
       SendReply() override;
