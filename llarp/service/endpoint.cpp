@@ -197,14 +197,17 @@ namespace llarp
       // prefetch addrs
       for(const auto& addr : m_state->m_PrefetchAddrs)
       {
-        if(!EndpointUtil::HasPathToService(addr, m_state->m_RemoteSessions))
-        {
-          if(!EnsurePathToService(
-                 addr, [](Address, OutboundContext*) {}, 10s))
-          {
-            LogWarn("failed to ensure path to ", addr);
-          }
-        }
+          EnsurePathToService(
+                 addr, [](Address, OutboundContext* ctx) {
+                  #ifdef LOKINET_HIVE
+                   std::vector<byte_t> discard;
+                   discard.resize(128);
+                   ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard), eProtocolControl);
+                   #else
+                   (void)ctx;
+                   #endif
+                 }, 10s);
+        
       }
 
       // deregister dead sessions

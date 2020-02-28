@@ -17,6 +17,10 @@ namespace llarp
         .def("IsUp", &Context::IsUp)
         .def("LooksAlive", &Context::LooksAlive)
         .def("Configure", &Context::Configure)
+        .def("TrySendPacket", [](Context_ptr self, service::Address to, std::vector<byte_t> pkt) {
+          auto ep = self->router->hiddenServiceContext().GetDefault();
+          return ep->SendToServiceOrQueue(to, pkt, service::eProtocolControl);
+        })
         .def("CallSafe", &Context::CallSafe);
   }
 }  // namespace llarp

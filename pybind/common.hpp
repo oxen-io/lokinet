@@ -45,6 +45,18 @@ namespace llarp
   void
   Config_Init(py::module & mod);
 
+  namespace handlers
+  {
+    void
+    PyHandler_Init(py::module & mod);
+  }
+
+  namespace service 
+  {
+    void 
+    Address_Init(py::module &mod);
+  }
+
 }  // namespace llarp
 
 namespace tooling

@@ -14,7 +14,7 @@ llarp_vpn_io_impl::AsyncClose()
 void
 llarp_vpn_io_impl::CallSafe(std::function< void(void) > f)
 {
-  llarp::Context* ctx = llarp::Context::Get(ptr);
+  auto ctx = llarp::Context::Get(ptr);
   if(ctx && ctx->CallSafe(f))
     return;
   else if(ctx == nullptr || ctx->logic == nullptr)

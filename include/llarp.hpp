@@ -39,7 +39,7 @@ namespace llarp
   struct Context
   {
     /// get context from main pointer
-    static Context *
+    static std::shared_ptr<Context> 
     Get(llarp_main *);
 
     Context() = default;

@@ -11,13 +11,14 @@ namespace llarp
         : public llarp::service::Endpoint,
           public std::enable_shared_from_this< NullEndpoint >
     {
+
       NullEndpoint(const std::string &name, AbstractRouter *r,
                    llarp::service::Context *parent)
           : llarp::service::Endpoint(name, r, parent)
       {
       }
 
-      bool
+      virtual bool
       HandleInboundPacket(const service::ConvoTag, const llarp_buffer_t &,
                           service::ProtocolType) override
       {

@@ -6,8 +6,10 @@ set(LLARP_PYBIND_SRC
   llarp/router_contact.cpp
   llarp/crypto/types.cpp
   llarp/config.cpp
+  llarp/handlers/pyhandler.cpp
   llarp/tooling/router_hive.cpp
   llarp/tooling/router_event.cpp
+  llarp/service/address.cpp
 )
 
 pybind11_add_module(pyllarp MODULE ${LLARP_PYBIND_SRC})

@@ -12,6 +12,8 @@ namespace tooling
         .def("AddRouter", &RouterHive::AddRouter)
         .def("StartAll", &RouterHive::StartRouters)
         .def("StopAll", &RouterHive::StopRouters)
+        .def("ForEachRouter", &RouterHive::ForEachRouter)
+        .def("VisitRouter", &RouterHive::VisitRouter)
         .def("GetNextEvent", &RouterHive::GetNextEvent);
              
   }

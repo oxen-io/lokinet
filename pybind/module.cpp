@@ -8,4 +8,6 @@ PYBIND11_MODULE(pyllarp, m)
   llarp::CryptoTypes_Init(m);
   llarp::Context_Init(m);
   llarp::Config_Init(m);
+  llarp::handlers::PyHandler_Init(m);
+  llarp::service::Address_Init(m);
 }

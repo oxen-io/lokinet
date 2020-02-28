@@ -2,6 +2,7 @@
 
 #include "llarp.h"
 #include "llarp.hpp"
+#include "util/thread/logic.hpp"
 
 #include <chrono>
 
@@ -104,5 +105,20 @@ namespace tooling
   {
   }
 
+
+  void
+  RouterHive::VisitRouter(size_t index, std::function<void(Context_ptr)> visit)
+  {
+    if(index >= routers.size())
+    {
+      visit(nullptr);
+      return;
+    }
+    auto * r = routers[index];
+    auto ctx = llarp::Context::Get(r);
+    LogicCall(ctx->logic, [visit, ctx]() {
+      visit(ctx);
+    });
+  }
 
 } // namespace tooling

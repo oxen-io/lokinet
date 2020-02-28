@@ -314,7 +314,7 @@ struct llarp_main
 {
   llarp_main(llarp_config *conf);
   ~llarp_main() = default;
-  std::unique_ptr< llarp::Context > ctx;
+  std::shared_ptr< llarp::Context > ctx;
 };
 
 struct llarp_config
@@ -560,11 +560,12 @@ llarp_main::llarp_main(llarp_config *conf)
 
 namespace llarp
 {
-  Context *
+
+  std::shared_ptr<Context>
   Context::Get(llarp_main *m)
   {
     if(m == nullptr || m->ctx == nullptr)
       return nullptr;
-    return m->ctx.get();
+    return m->ctx;
   }
 }  // namespace llarp

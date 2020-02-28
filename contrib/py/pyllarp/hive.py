@@ -17,7 +17,12 @@ def RemoveTmpDir(dirname):
   else:
     print("not removing dir %s because it doesn't start with /tmp/" % dirname)
 
-def AddRouter(hive, index, netid="hive"):
+def MakeEndpoint(router, idx, after):
+  ep = pyllarp.Endpoint("pyllarp-{}".format(idx), router)
+  if after is not None:
+    router.SafeCall(lambda : after(ep))
+
+def AddRouter(hive, index, gotEndpoint=None, netid="hive"):
   dirname = "%s/routers/%d" % (tmpdir, index)
   makedirs("%s/netdb" % dirname, exist_ok=True)
 
@@ -56,6 +61,10 @@ def AddRouter(hive, index, netid="hive"):
     config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
 
   hive.AddRouter(config)
+  if index != 1:
+    hive.VisitRouter(index, lambda r : MakeEndpoint(r, index, gotEndpoint))
+
+
 
 def main():
 
@@ -82,8 +91,22 @@ def main():
 
   hive = pyllarp.RouterHive()
 
+  addrs = []
+
+  def onGotEndpoint(ep):
+    addr = ep.OurAddress()
+    print("got endpoint: {}".format(addr))
+    addrs.append(addr)
+
+  def sendToAddress(router, toaddr, pkt):
+    print("sending {} bytes to {}".format(len(pkt), toaddr))
+    router.TrySendPacket(toaddr, pkt)
+
+  def broadcastTo(addr, pkt):
+    hive.ForEach(lambda r : sendToAddress(r, addr, pkt))
+
   for i in range(1, 11):
-    AddRouter(hive, i)
+    AddRouter(hive, i, onGotEndpoint)
 
   hive.StartAll()
 
@@ -91,6 +114,8 @@ def main():
     event = hive.GetNextEvent()
     if event:
       print(event)
+    for addr in addrs:
+      broadcastTo(addr, "packet lol")
 
   hive.StopAll()
 

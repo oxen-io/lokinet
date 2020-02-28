@@ -12,6 +12,11 @@
 struct llarp_config;
 struct llarp_main;
 
+namespace llarp 
+{
+  struct Context;
+}
+
 namespace tooling
 {
 
@@ -39,6 +44,22 @@ namespace tooling
     RouterEventPtr
     GetNextEvent();
 
+
+    using Context_ptr = std::shared_ptr<llarp::Context>;
+
+    /// safely visit every router context
+    void 
+    ForEachRouter(std::function<void(Context_ptr)> visit)
+    {
+      for(size_t idx = 0; idx < routers.size(); ++idx)
+      {
+        VisitRouter(idx, visit);
+      }
+    }
+
+    /// safely visit router at index N
+    void
+    VisitRouter(size_t index, std::function<void(Context_ptr)> visit);
 
     /*
      * Event processing function declarations
