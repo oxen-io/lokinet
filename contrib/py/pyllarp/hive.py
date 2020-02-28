@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 import pyllarp
+from time import sleep
 
-def main(conf):
+def main():
+
   hive = pyllarp.RouterHive()
   config = pyllarp.Config()
-  print("loading config: {}".format(conf))
-  if not config.LoadFile(conf):
-    print("failed to load {}".format(conf))
-    return
+  config.router.netid = "gamma"
+  config.netdb.nodedbDir = "/home/tom/.lokinet/netdb"
   hive.AddRouter(config)
   hive.StartAll()
+  sleep(10)
   hive.StopAll()
 
 if __name__ == '__main__':
-  import sys
-  main(sys.argv[1])
+  main()

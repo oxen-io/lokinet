@@ -32,8 +32,7 @@ namespace tooling
 
     for (llarp_main* ctx : routers)
     {
-      std::thread t{std::bind(&llarp_main_run, ctx, opts)};
-      routerMainThreads.emplace_back(std::move(t));
+      routerMainThreads.emplace_back([=](){ llarp_main_run(ctx, opts); });
     }
   }
 
@@ -53,6 +52,16 @@ namespace tooling
       {
         std::this_thread::sleep_for(10ms);
       }
+    }
+
+    for (auto& thread : routerMainThreads)
+    {
+      while (not thread.joinable())
+      {
+        llarp::LogWarn("Waiting for router thread to be joinable");
+        std::this_thread::sleep_for(500ms);
+      }
+      thread.join();
     }
   }
 

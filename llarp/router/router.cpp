@@ -313,6 +313,7 @@ namespace llarp
     llarp_ev_loop_stop(_netloop);
     disk->stop();
     disk->shutdown();
+    _running.store(false);
   }
 
   void
