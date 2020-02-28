@@ -187,6 +187,7 @@ namespace llarp
       {
         if(now >= itr->second)
         {
+          LogWarn("Sending out timeout for ", itr->second);
           Inform(TXOwner{}, itr->first, {}, true, false);
           itr = timeouts.erase(itr);
         }
