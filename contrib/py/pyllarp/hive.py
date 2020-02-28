@@ -159,13 +159,10 @@ def main():
     event = hive.GetNextEvent()
     if event:
       print(event)
-    for addr in addrs:
-      broadcastTo(addr, b'packet lol')
 
   print('stopping')
-  hive.ForEachRouter(lambda r : r.Stop())
-  print('stopped')
   hive.StopAll()
+  print('stopped')
   del hive
 
 if __name__ == '__main__':
