@@ -18,8 +18,7 @@ namespace llarp
       uint64_t relayOrder = 0;
       uint64_t txID       = 0;
       PublishIntroMessage(const Key_t& from, bool relayed_)
-          : IMessage(from)
-          , relayed(relayed_)
+          : IMessage(from), relayed(relayed_)
       {
       }
 

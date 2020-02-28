@@ -35,21 +35,6 @@ namespace llarp
       return true;
     }
 
-    bool
-    RecursiveRouterLookup::GetNextPeer(Key_t &nextPeer,
-                                       const std::set< Key_t > &exclude)
-    {
-      const Key_t K(target.as_array());
-      return parent->Nodes()->FindCloseExcluding(K, nextPeer, exclude);
-    }
-
-    void
-    RecursiveRouterLookup::DoNextRequest(const Key_t &peer)
-    {
-      parent->LookupRouterRecursive(target, whoasked.node, whoasked.txid, peer,
-                                    resultHandler);
-    }
-
     void
     RecursiveRouterLookup::Start(const TXOwner &peer)
     {

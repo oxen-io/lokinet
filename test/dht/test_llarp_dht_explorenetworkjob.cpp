@@ -29,19 +29,6 @@ TEST_F(TestDhtExploreNetworkJob, validate)
   ASSERT_TRUE(exploreNetworkJob.Validate(other));
 }
 
-TEST_F(TestDhtExploreNetworkJob, get_next_peer)
-{
-  dht::Key_t key = makeBuf< dht::Key_t >(0x02);
-  std::set< dht::Key_t > exclude;
-  ASSERT_FALSE(exploreNetworkJob.GetNextPeer(key, exclude));
-}
-
-TEST_F(TestDhtExploreNetworkJob, do_next)
-{
-  const dht::Key_t key = makeBuf< dht::Key_t >(0x02);
-  ASSERT_NO_THROW(exploreNetworkJob.DoNextRequest(key));
-}
-
 TEST_F(TestDhtExploreNetworkJob, start)
 {
   // Verify input arguments are passed correctly.

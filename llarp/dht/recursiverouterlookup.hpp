@@ -19,12 +19,6 @@ namespace llarp
       bool
       Validate(const RouterContact &rc) const override;
 
-      bool
-      GetNextPeer(Key_t &nextPeer, const std::set< Key_t > &exclude) override;
-
-      void
-      DoNextRequest(const Key_t &peer) override;
-
       void
       Start(const TXOwner &peer) override;
 
