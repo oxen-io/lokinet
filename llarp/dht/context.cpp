@@ -494,13 +494,12 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, &m, [](SendStatus status)
-        {
-          if (status == SendStatus::Success)
-            LogInfo("DHTSendTo successful");
-          else
-            LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
-        });
+      router->SendToOrQueue(peer, &m, [](SendStatus status) {
+        if(status == SendStatus::Success)
+          LogInfo("DHTSendTo successful");
+        else
+          LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
+      });
       auto now = Now();
       router->PersistSessionUntil(peer, now + 1min);
     }
