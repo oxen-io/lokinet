@@ -262,6 +262,8 @@ namespace llarp
       m_DownstreamQueue = nullptr;
     }
 
+    /// this is where a DHT message is handled at the end of a path, that is,
+    /// where a SNode receives a DHT message from a client along a path.
     bool
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage& msg,
                                  AbstractRouter* r)

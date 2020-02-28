@@ -499,6 +499,10 @@ namespace llarp
       router->PersistSessionUntil(peer, now + 1min);
     }
 
+    // this function handles incoming DHT messages sent down a path by a client
+    // note that IMessage here is different than that found in the routing
+    // namespace. by the time this is called, we are inside
+    // llarp::routing::DHTMessage::HandleMessage()
     bool
     Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
