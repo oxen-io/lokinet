@@ -73,6 +73,11 @@ namespace llarp
       Type
       popFront();
 
+      // Remove an element from the queue. Block until an element is available
+      // or until <timeout> microseconds have elapsed
+      nonstd::optional< Type >
+      popFrontWithTimeout(std::chrono::microseconds timeout);
+
       nonstd::optional< Type >
       tryPopFront();
 
@@ -383,6 +388,40 @@ namespace llarp
 
       QueuePopGuard< Type > popGuard(*this, generation, index);
       return Type(std::move(m_data[index]));
+    }
+
+    template < typename Type >
+    nonstd::optional< Type >
+    Queue< Type >::popFrontWithTimeout(std::chrono::microseconds timeout)
+    {
+      uint32_t generation = 0;
+      uint32_t index      = 0;
+      bool secondTry = false;
+      bool success = false;
+      for(;;)
+      {
+        success = m_manager.reservePopIndex(generation, index) == QueueReturn::Success;
+
+        if (secondTry || success) break;
+
+        m_waitingPoppers.fetch_add(1, std::memory_order_relaxed);
+
+        if(empty())
+        {
+          m_popSemaphore.waitFor(timeout);
+          secondTry = true;
+        }
+
+        m_waitingPoppers.fetch_sub(1, std::memory_order_relaxed);
+      }
+
+      if (success)
+      {
+        QueuePopGuard< Type > popGuard(*this, generation, index);
+        return Type(std::move(m_data[index]));
+      }
+
+      return {};
     }
 
     template < typename Type >

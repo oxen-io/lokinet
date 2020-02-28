@@ -10,8 +10,9 @@ def main():
   def handle_sigint(sig, frame):
     nonlocal running
     running = False
+    print("SIGINT received, attempting to stop all routers")
 
-  signal(SIGINT, handle_signal)
+  signal(SIGINT, handle_sigint)
 
   hive = pyllarp.RouterHive()
   config = pyllarp.Config()
@@ -22,7 +23,8 @@ def main():
 
   while running:
     event = hive.GetNextEvent()
-    print(event.ToString())
+    if event:
+      print(event)
 
   hive.StopAll()
 

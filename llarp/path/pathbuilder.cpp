@@ -8,6 +8,7 @@
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
 #include <util/thread/logic.hpp>
+#include <tooling/router_event.hpp>
 
 #include <functional>
 
@@ -445,6 +446,10 @@ namespace llarp
       auto path = std::make_shared< path::Path >(hops, self.get(), roles,
                                                  std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
+
+      tooling::RouterEventPtr event = std::make_unique<tooling::PathBuildAttemptEvent>(m_router->pubkey(), path->hops);
+      m_router->NotifyRouterEvent(std::move(event));
+
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),

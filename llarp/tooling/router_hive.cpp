@@ -5,6 +5,8 @@
 
 #include <chrono>
 
+using namespace std::chrono_literals;
+
 namespace tooling
 {
 
@@ -39,7 +41,6 @@ namespace tooling
   void
   RouterHive::StopRouters()
   {
-    using namespace std::chrono_literals;
 
     for (llarp_main* ctx : routers)
     {
@@ -89,7 +90,12 @@ namespace tooling
   RouterEventPtr
   RouterHive::GetNextEvent()
   {
-    return eventQueue.popFront();
+    auto ptr = eventQueue.popFrontWithTimeout(50ms);
+    if (ptr)
+    {
+      return std::move(ptr.value());
+    }
+    return nullptr;
   }
 
   void

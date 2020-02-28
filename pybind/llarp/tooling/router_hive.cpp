@@ -11,7 +11,8 @@ namespace tooling
         .def(py::init<>())
         .def("AddRouter", &RouterHive::AddRouter)
         .def("StartAll", &RouterHive::StartRouters)
-        .def("StopAll", &RouterHive::StopRouters);
+        .def("StopAll", &RouterHive::StopRouters)
+        .def("GetNextEvent", &RouterHive::GetNextEvent);
              
   }
 }

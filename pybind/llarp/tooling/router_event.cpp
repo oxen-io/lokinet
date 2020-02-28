@@ -2,18 +2,19 @@
 
 #include "tooling/router_event.hpp"
 
+#include <path/path.hpp>
+
 namespace tooling
 {
   void
   RouterEvent_Init(py::module & mod)
   {
     py::class_<RouterEvent>(mod, "RouterEvent")
-    .def(py::init<>())
-    .def("ToString", &RouterEvent::ToString)
+    .def("__repr__", &RouterEvent::ToString)
+    .def("__str__", &RouterEvent::ToString)
     .def_readonly("routerID", &RouterEvent::routerID);
 
-    py::class_<PathBuildAttemptEvent>(mod, "PathBuildAttemptEvent")
-    .def(py::init<>());
+    py::class_<PathBuildAttemptEvent, RouterEvent>(mod, "PathBuildAttemptEvent");
     //.def_readonly("hops", &PathBuildAttemptEvent::hops);
   }
 
