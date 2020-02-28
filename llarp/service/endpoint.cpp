@@ -470,16 +470,16 @@ namespace llarp
         return false;
 
       // do publishing for each path selected
-      size_t published = 0;
+      size_t numToPublish = StorageRedundancy - 1;
       for(const auto& path : paths)
       {
-        for(size_t i = RequestsPerRelay - 1; i > 0; --i)
+        for(size_t i=0; i<StorageRedundancy; ++i)
         {
-          if(PublishIntroSetVia(introset, r, path, published))
-            published++;
+          if(PublishIntroSetVia(introset, r, path, numToPublish))
+            numToPublish--;
         }
       }
-      return published == StorageRedundancy;
+      return numToPublish == 0;
     }
 
     static constexpr size_t NUM_PUBLISH_REQUESTS_PER_SEND = 2;
