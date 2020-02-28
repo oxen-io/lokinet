@@ -21,16 +21,34 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("I", introset, read, key, val))
         return false;
+      if(read)
+        return true;
+
       if(!BEncodeMaybeReadDictInt("O", relayOrder, read, key, val))
         return false;
+      if(read)
+        return true;
+
       uint64_t relayedInt = (relayed ? 1 : 0);
       if(!BEncodeMaybeReadDictInt("R", relayedInt, read, key, val))
         return false;
+      if(read)
+      {
+        relayed = relayedInt;
+        return true;
+      }
+
       if(!BEncodeMaybeReadDictInt("T", txID, read, key, val))
         return false;
+      if(read)
+        return true;
+
       if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
-      return read;
+      if(read)
+        return true;
+
+      return false;
     }
 
     bool
