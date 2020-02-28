@@ -29,12 +29,12 @@ namespace tooling
   }
 
   void
-  RouterHive::StartRouters(std::function<void(llarp_main *)> runFunc)
+  RouterHive::StartRouters()
   {
     for (llarp_main* ctx : routers)
     {
-      routerMainThreads.emplace_back([runFunc, ctx](){ 
-        runFunc(ctx);
+      routerMainThreads.emplace_back([ctx](){
+            llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false});
       });
       std::this_thread::sleep_for(20ms);
     }
@@ -44,28 +44,40 @@ namespace tooling
   RouterHive::StopRouters()
   {
 
+llarp::LogWarn("Signalling all routers to stop");
     for (llarp_main* ctx : routers)
     {
       llarp_main_signal(ctx, 2 /* SIGINT */);
     }
 
+size_t i=0;
+llarp::LogWarn("Waiting on routers to be stopped");
     for (llarp_main* ctx : routers)
     {
       while(llarp_main_is_running(ctx))
       {
+llarp::LogWarn("Waiting on router ", i, " to stop");
         std::this_thread::sleep_for(10ms);
       }
+i++;
     }
 
+//llarp::LogWarn("Joining router threads");
+//i=0;
     for (auto& thread : routerMainThreads)
     {
+//llarp::LogWarn("Attempting to join router thread ", i);
       while (not thread.joinable())
       {
-        llarp::LogWarn("Waiting for router thread to be joinable");
+//llarp::LogWarn("Waiting on router thread ", i, " to be joinable");
         std::this_thread::sleep_for(500ms);
       }
       thread.join();
+//llarp::LogWarn("Joined router thread ", i);
+//i++;
     }
+
+llarp::LogWarn("RouterHive::StopRouters finished");
   }
 
   void
