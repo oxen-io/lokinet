@@ -10,7 +10,9 @@ namespace llarp
     {
       py::class_<Address>(mod, "ServiceAddress")
       .def(py::init<std::string>())
-      .def("__str__", &Address::ToString);
+      .def("__str__", [](const Address & addr) -> std::string {
+        return addr.ToString();
+      });
     }
   } 
 }
