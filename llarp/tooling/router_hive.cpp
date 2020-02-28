@@ -29,13 +29,13 @@ namespace tooling
   }
 
   void
-  RouterHive::StartRouters()
+  RouterHive::StartRouters(std::function<void(llarp_main *)> runFunc)
   {
-    llarp_main_runtime_opts opts{false,false,false};
-
     for (llarp_main* ctx : routers)
     {
-      routerMainThreads.emplace_back([=](){ llarp_main_run(ctx, opts); });
+      routerMainThreads.emplace_back([runFunc, ctx](){ 
+        runFunc(ctx);
+      });
       std::this_thread::sleep_for(20ms);
     }
   }

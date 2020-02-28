@@ -30,7 +30,7 @@ namespace tooling
     AddRouter(const std::shared_ptr<llarp::Config> & conf);
 
     void
-    StartRouters();
+    StartRouters(std::function<void(llarp_main*)> runit);
 
     void
     StopRouters();

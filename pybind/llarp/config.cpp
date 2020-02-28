@@ -44,7 +44,10 @@ namespace llarp
     .def_readwrite("blockBogons", &RouterConfig::m_blockBogons)
     .def_readwrite("publicOverride", &RouterConfig::m_publicOverride)
     .def_readwrite("ip4addr", &RouterConfig::m_ip4addr)
-    .def_readwrite("addrInfo", &RouterConfig::m_addrInfo)
+    .def("overrideAddress", [](RouterConfig & self, std::string ip, std::string port) {
+      self.fromSection("public-ip", ip);
+      self.fromSection("public-port", port);
+    })
     .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
     .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
     .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)

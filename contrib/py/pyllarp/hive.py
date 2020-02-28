@@ -6,6 +6,7 @@ from shutil import rmtree
 from os import makedirs
 from socket import AF_INET, htons, inet_aton
 from pprint import pprint
+import sys
 
 tmpdir = "/tmp/lokinet_hive"
 
@@ -17,12 +18,19 @@ def RemoveTmpDir(dirname):
   else:
     print("not removing dir %s because it doesn't start with /tmp/" % dirname)
 
-def MakeEndpoint(router, idx, after):
-  ep = pyllarp.Endpoint("pyllarp-{}".format(idx), router)
-  if after is not None:
-    router.SafeCall(lambda : after(ep))
+endpointName = "pyllarp"
 
-def AddRouter(hive, index, gotEndpoint=None, netid="hive"):
+def MakeEndpoint(router, after):
+  if router.IsRelay():
+    print("discarding make endpoint")
+    return
+  ep = pyllarp.Endpoint(endpointName, router)
+  router.AddEndpoint(ep)
+  print("made endpoint: {}".format(ep.OurAddress()))
+  if after is not None:
+    router.CallSafe(lambda : after(ep))
+
+def AddRouter(hive, index, netid="hive"):
   dirname = "%s/routers/%d" % (tmpdir, index)
   makedirs("%s/netdb" % dirname, exist_ok=True)
 
@@ -38,6 +46,7 @@ def AddRouter(hive, index, gotEndpoint=None, netid="hive"):
   config.router.netid = netid
   config.router.nickname = "Router%d" % index
   config.router.publicOverride = True
+  config.router.overrideAddress("127.0.0.1", '{}'.format(port))
   """
   config.router.ip4addr.sin_family = AF_INET
   config.router.ip4addr.sin_port = htons(port)
@@ -61,13 +70,40 @@ def AddRouter(hive, index, gotEndpoint=None, netid="hive"):
     config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
 
   hive.AddRouter(config)
-  if index != 1:
-    hive.VisitRouter(index, lambda r : MakeEndpoint(r, index, gotEndpoint))
 
 
+def AddClient(hive, index, netid="hive"):
+  dirname = "%s/clients/%d" % (tmpdir, index)
+  makedirs("%s/netdb" % dirname, exist_ok=True)
+
+  config = pyllarp.Config()
+
+  port = index + 40000
+  tunname = "lokihive%d" % index
+
+  config.router.encryptionKeyfile = "%s/encryption.key" % dirname
+  config.router.transportKeyfile = "%s/transport.key" % dirname
+  config.router.identKeyfile = "%s/identity.key" % dirname
+  config.router.ourRcFile = "%s/rc.signed" % dirname
+  config.router.netid = netid
+  config.router.blockBogons = False
+
+  config.network.enableProfiling = False
+  config.network.routerProfilesFile = "%s/profiles.dat" % dirname
+  config.network.netConfig = {"type": "null"}
+
+  config.netdb.nodedbDir = "%s/netdb" % dirname
+
+  config.system.pidfile = "%s/lokinet.pid" % dirname
+
+  config.dns.netConfig = {"local-dns": ("127.3.2.1:%d" % port)}
+
+  config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
+
+  hive.AddRouter(config)
 
 def main():
-
+  pyllarp.EnableDebug()
   running = True
   RemoveTmpDir(tmpdir)
 
@@ -83,6 +119,7 @@ def main():
   hive.StartAll()
   sleep(5)
 
+  print('stop')
   hive.StopAll()
 
   r = pyllarp.RouterContact()
@@ -96,28 +133,40 @@ def main():
   def onGotEndpoint(ep):
     addr = ep.OurAddress()
     print("got endpoint: {}".format(addr))
-    addrs.append(addr)
+    addrs.append(pyllarp.ServiceAddress(addr))
 
   def sendToAddress(router, toaddr, pkt):
-    print("sending {} bytes to {}".format(len(pkt), toaddr))
-    router.TrySendPacket(toaddr, pkt)
+    if router.IsRelay():
+      return
+    if router.TrySendPacket("default", toaddr, pkt):
+      print("sending {} bytes to {}".format(len(pkt), toaddr))
 
   def broadcastTo(addr, pkt):
-    hive.ForEach(lambda r : sendToAddress(r, addr, pkt))
+    hive.ForEachRouter(lambda r : sendToAddress(r, addr, pkt))
 
   for i in range(1, 11):
-    AddRouter(hive, i, onGotEndpoint)
+    AddRouter(hive, i)
+
+  for i in range(1, 11):
+    AddClient(hive, i)
 
   hive.StartAll()
+  sleep(1)
+  hive.ForEachRouter(lambda r: MakeEndpoint(r, onGotEndpoint))
+
 
   while running:
     event = hive.GetNextEvent()
     if event:
       print(event)
     for addr in addrs:
-      broadcastTo(addr, "packet lol")
+      broadcastTo(addr, b'packet lol')
 
+  print('stopping')
+  hive.ForEachRouter(lambda r : r.Stop())
+  print('stopped')
   hive.StopAll()
+  del hive
 
 if __name__ == '__main__':
   main()

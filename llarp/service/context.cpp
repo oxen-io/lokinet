@@ -196,6 +196,7 @@ namespace llarp
     void
     Context::InjectEndpoint(std::string name, std::shared_ptr<Endpoint> ep)
     {
+      ep->LoadKeyFile();
       if(ep->Start())
       {
         m_Endpoints.emplace(std::move(name), std::move(ep));

@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "util/logging/logger.hpp"
 
 PYBIND11_MODULE(pyllarp, m)
 {
@@ -10,4 +11,8 @@ PYBIND11_MODULE(pyllarp, m)
   llarp::Config_Init(m);
   llarp::handlers::PyHandler_Init(m);
   llarp::service::Address_Init(m);
+  m.def("EnableDebug", []() {
+    llarp::SetLogLevel(llarp::eLogDebug);
+  });
+  
 }

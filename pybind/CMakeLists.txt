@@ -1,5 +1,6 @@
 
 set(PYTHON_EXECUTABLE "python3")
+find_package(pybind11 REQUIRED)
 set(LLARP_PYBIND_SRC
   module.cpp
   llarp/context.cpp
