@@ -710,6 +710,8 @@ namespace llarp
       return false;
     }
 
+    /// this is the Client's side of handling a DHT message. it's handled
+    /// in-place.
     bool
     Path::HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r)
     {

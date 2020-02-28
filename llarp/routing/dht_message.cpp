@@ -45,6 +45,11 @@ namespace llarp
       return bencode_end(buf);
     }
 
+    /// 'h' here is either TransitHop or Path.
+    /// TransitHop chains to dht::Context::RelayRequestForPath and is where the
+    /// end of a path handles a client's DHT message Path handles the message
+    /// (e.g. dht::IMessage::HandleMessage()) in-place and is the case where a
+    /// client receives a DHT message
     bool
     DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
