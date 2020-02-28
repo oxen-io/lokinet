@@ -454,19 +454,32 @@ namespace llarp
                               AbstractRouter* r)
     {
       /// number of routers to publish to
-      static constexpr size_t PublishRedundancy = 2;
-      const auto paths =
-          GetManyPathsWithUniqueEndpoints(this, PublishRedundancy);
+      static constexpr size_t RelayRedundancy = 2;
+
+      /// number of dht locations handled per relay
+      static constexpr size_t RequestsPerRelay = 2;
+
+      /// total number of dht locations that should store this introset
+      static constexpr size_t StorageRedundancy =
+          (RelayRedundancy * RequestsPerRelay);
+      assert(StorageRedundancy == 4);
+
+      const auto paths = GetManyPathsWithUniqueEndpoints(this, RelayRedundancy);
+
+      if(paths.size() != RelayRedundancy)
+        return false;
+
       // do publishing for each path selected
       size_t published = 0;
       for(const auto& path : paths)
       {
-        if(PublishIntroSetVia(introset, r, path, published))
+        for(size_t i = 0; i < RequestsPerRelay; ++i)
         {
-          published++;
+          if(PublishIntroSetVia(introset, r, path, published))
+            published++;
         }
       }
-      return published == PublishRedundancy;
+      return published == StorageRedundancy;
     }
 
     static constexpr size_t NUM_PUBLISH_REQUESTS_PER_SEND = 2;
