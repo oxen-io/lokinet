@@ -473,7 +473,7 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        for(size_t i = RequestsPerRelay; i >=0; --i)
+        for(size_t i = RequestsPerRelay-1; i >=0; --i)
         {
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
