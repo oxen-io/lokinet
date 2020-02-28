@@ -36,6 +36,9 @@ namespace tooling
     void
     ProcessEventQueue();
 
+    RouterEventPtr
+    GetNextEvent();
+
 
     /*
      * Event processing function declarations

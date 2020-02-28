@@ -86,6 +86,12 @@ namespace tooling
     }
   }
 
+  RouterEventPtr
+  RouterHive::GetNextEvent()
+  {
+    return eventQueue.popFront();
+  }
+
   void
   RouterHive::ProcessPathBuildAttempt(const PathBuildAttemptEvent& event)
   {
