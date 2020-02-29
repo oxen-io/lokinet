@@ -365,8 +365,6 @@ namespace llarp
           LogWarn("failed to renegotiate session");
       });
     }
-    /// flood our rc
-    _dht->impl->FloodRCLater(dht::Key_t(pubkey()), _rc);
     return SaveRC();
   }
 
