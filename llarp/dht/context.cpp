@@ -495,7 +495,7 @@ namespace llarp
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m, [](SendStatus status) {
-        if (status != SendStatus::Success)
+        if(status != SendStatus::Success)
           LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
       });
       auto now = Now();
