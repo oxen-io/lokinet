@@ -13,8 +13,6 @@ list(APPEND GTEST_SRC
     dht/test_llarp_dht_kademlia.cpp
     dht/test_llarp_dht_key.cpp
     dht/test_llarp_dht_node.cpp
-    dht/test_llarp_dht_serviceaddresslookup.cpp
-    dht/test_llarp_dht_taglookup.cpp
     dht/test_llarp_dht_tx.cpp
     dht/test_llarp_dht_txowner.cpp
     dns/test_llarp_dns_dns.cpp
