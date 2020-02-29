@@ -7,20 +7,14 @@
 namespace tooling
 {
 
-  RouterEvent::RouterEvent(llarp::RouterID routerID)
-    : routerID(routerID)
+  RouterEvent::RouterEvent(llarp::RouterID routerID, bool triggered)
+    : routerID(routerID), triggered(triggered)
   {
   }
 
   PathBuildAttemptEvent::PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops)
-    : RouterEvent(routerID), hops(hops)
+    : RouterEvent(routerID, false), hops(hops)
   {
-  }
-
-  void
-  PathBuildAttemptEvent::Process(RouterHive& hive) const
-  {
-    hive.ProcessPathBuildAttempt(*this);
   }
 
   std::string

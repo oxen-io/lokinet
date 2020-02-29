@@ -4,10 +4,11 @@
 
 #include <llarp.h>
 #include <config/config.hpp>
-#include <util/thread/queue.hpp>
 
 #include <vector>
+#include <queue>
 #include <thread>
+#include <mutex>
 
 struct llarp_config;
 struct llarp_main;
@@ -22,9 +23,7 @@ namespace tooling
 
   struct RouterHive
   {
-    static const size_t MAX_EVENT_QUEUE_SIZE;
-
-    RouterHive(size_t eventQueueSize = MAX_EVENT_QUEUE_SIZE);
+    RouterHive() = default;
 
     void
     AddRouter(const std::shared_ptr<llarp::Config> & conf);
@@ -37,9 +36,6 @@ namespace tooling
 
     void
     NotifyEvent(RouterEventPtr event);
-
-    void
-    ProcessEventQueue();
 
     RouterEventPtr
     GetNextEvent();
@@ -61,19 +57,13 @@ namespace tooling
     void
     VisitRouter(size_t index, std::function<void(Context_ptr)> visit);
 
-    /*
-     * Event processing function declarations
-     */
-
-    void
-    ProcessPathBuildAttempt(const PathBuildAttemptEvent& event);
-
 
     std::vector<llarp_main *> routers;
 
     std::vector<std::thread> routerMainThreads;
 
-    llarp::thread::Queue<RouterEventPtr> eventQueue;
+    std::mutex eventQueueMutex;
+    std::queue<RouterEventPtr> eventQueue;
   };
 
 } // namespace tooling

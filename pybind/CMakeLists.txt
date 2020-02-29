@@ -4,9 +4,11 @@ find_package(pybind11 REQUIRED)
 set(LLARP_PYBIND_SRC
   module.cpp
   llarp/context.cpp
+  llarp/router_id.cpp
   llarp/router_contact.cpp
   llarp/crypto/types.cpp
   llarp/config.cpp
+  llarp/path/path_hop_config.cpp
   llarp/handlers/pyhandler.cpp
   llarp/tooling/router_hive.cpp
   llarp/tooling/router_event.cpp

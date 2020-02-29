@@ -25,15 +25,15 @@ namespace tooling
 
   struct RouterEvent
   {
-    RouterEvent(llarp::RouterID);
+    RouterEvent(llarp::RouterID, bool triggered);
 
     virtual ~RouterEvent() = default;
-
-    virtual void Process(RouterHive& hive) const = 0;
 
     virtual std::string ToString() const = 0;
 
     llarp::RouterID routerID;
+
+    bool triggered = false;
   };
 
   using RouterEventPtr = std::unique_ptr<RouterEvent>;
@@ -42,8 +42,6 @@ namespace tooling
   struct PathBuildAttemptEvent : public RouterEvent
   {
     PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops);
-
-    void Process(RouterHive& hive) const;
 
     std::string ToString() const override;
 

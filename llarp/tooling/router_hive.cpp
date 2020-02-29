@@ -11,12 +11,6 @@ using namespace std::chrono_literals;
 namespace tooling
 {
 
-  const size_t RouterHive::MAX_EVENT_QUEUE_SIZE = 200;
-
-  RouterHive::RouterHive(size_t eventQueueSize) : eventQueue(eventQueueSize)
-  {
-  }
-
   void
   RouterHive::AddRouter(const std::shared_ptr<llarp::Config> & config)
   {
@@ -44,79 +38,55 @@ namespace tooling
   RouterHive::StopRouters()
   {
 
-llarp::LogWarn("Signalling all routers to stop");
+    llarp::LogInfo("Signalling all routers to stop");
     for (llarp_main* ctx : routers)
     {
       llarp_main_signal(ctx, 2 /* SIGINT */);
     }
 
-size_t i=0;
-llarp::LogWarn("Waiting on routers to be stopped");
+    llarp::LogInfo("Waiting on routers to be stopped");
     for (llarp_main* ctx : routers)
     {
       while(llarp_main_is_running(ctx))
       {
-llarp::LogWarn("Waiting on router ", i, " to stop");
         std::this_thread::sleep_for(10ms);
       }
-i++;
     }
 
-//llarp::LogWarn("Joining router threads");
-//i=0;
+    llarp::LogInfo("Joining all router threads");
     for (auto& thread : routerMainThreads)
     {
-//llarp::LogWarn("Attempting to join router thread ", i);
       while (not thread.joinable())
       {
-//llarp::LogWarn("Waiting on router thread ", i, " to be joinable");
         std::this_thread::sleep_for(500ms);
       }
       thread.join();
-//llarp::LogWarn("Joined router thread ", i);
-//i++;
     }
 
-llarp::LogWarn("RouterHive::StopRouters finished");
+    llarp::LogInfo("RouterHive::StopRouters finished");
   }
 
   void
   RouterHive::NotifyEvent(RouterEventPtr event)
   {
-    if(eventQueue.tryPushBack(std::move(event))
-       != llarp::thread::QueueReturn::Success)
-    {
-      llarp::LogError("RouterHive Event Queue appears to be full.  Either implement/change time dilation or increase the queue size.");
-    }
-  }
+    std::lock_guard<std::mutex> guard{eventQueueMutex};
 
-  void
-  RouterHive::ProcessEventQueue()
-  {
-    while(not eventQueue.empty())
-    {
-      RouterEventPtr event = eventQueue.popFront();
-
-      event->Process(*this);
-    }
+    eventQueue.push(std::move(event));
   }
 
   RouterEventPtr
   RouterHive::GetNextEvent()
   {
-    auto ptr = eventQueue.popFrontWithTimeout(50ms);
-    if (ptr)
+    std::lock_guard<std::mutex> guard{eventQueueMutex};
+
+    if (not eventQueue.empty())
     {
-      return std::move(ptr.value());
+      auto ptr = std::move(eventQueue.front());
+      eventQueue.pop();
+      return ptr;
     }
     return nullptr;
   }
-
-  void
-  RouterHive::ProcessPathBuildAttempt(const PathBuildAttemptEvent& event)
-  {
-  }
-
 
   void
   RouterHive::VisitRouter(size_t index, std::function<void(Context_ptr)> visit)

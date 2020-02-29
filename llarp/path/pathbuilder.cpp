@@ -447,8 +447,6 @@ namespace llarp
                                                  std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
 
-      tooling::RouterEventPtr event = std::make_unique<tooling::PathBuildAttemptEvent>(m_router->pubkey(), path->hops);
-      m_router->NotifyRouterEvent(std::move(event));
 
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
@@ -461,7 +459,11 @@ namespace llarp
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       m_router->routerProfiling().MarkPathSuccess(p.get());
+
       LogInfo(p->Name(), " built latency=", p->intro.latency);
+      tooling::RouterEventPtr event = std::make_unique<tooling::PathBuildAttemptEvent>(m_router->pubkey(), p->hops);
+      m_router->NotifyRouterEvent(std::move(event));
+
       m_BuildStats.success++;
     }
 

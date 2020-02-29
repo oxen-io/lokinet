@@ -22,11 +22,9 @@ endpointName = "pyllarp"
 
 def MakeEndpoint(router, after):
   if router.IsRelay():
-    print("discarding make endpoint")
     return
   ep = pyllarp.Endpoint(endpointName, router)
   router.AddEndpoint(ep)
-  print("made endpoint: {}".format(ep.OurAddress()))
   if after is not None:
     router.CallSafe(lambda : after(ep))
 
@@ -102,7 +100,7 @@ def AddClient(hive, index, netid="hive"):
 
   hive.AddRouter(config)
 
-def main():
+def main(n_routers=10, n_clients=10):
   pyllarp.EnableDebug()
   running = True
   RemoveTmpDir(tmpdir)
@@ -117,14 +115,13 @@ def main():
   hive = pyllarp.RouterHive()
   AddRouter(hive, 1)
   hive.StartAll()
-  sleep(5)
+  print("sleeping 2 sec to give plenty of time to save bootstrap rc")
+  for i in range(2):
+    print(i+1)
+    sleep(1)
 
-  print('stop')
+  print("Resetting hive.  Creating %d routers and %d clients" % (n_routers, n_clients))
   hive.StopAll()
-
-  r = pyllarp.RouterContact()
-  r.ReadFile("/tmp/lokinet_hive/routers/1/rc.signed")
-  print(r.ToString())
 
   hive = pyllarp.RouterHive()
 
@@ -132,7 +129,6 @@ def main():
 
   def onGotEndpoint(ep):
     addr = ep.OurAddress()
-    print("got endpoint: {}".format(addr))
     addrs.append(pyllarp.ServiceAddress(addr))
 
   def sendToAddress(router, toaddr, pkt):
@@ -144,10 +140,10 @@ def main():
   def broadcastTo(addr, pkt):
     hive.ForEachRouter(lambda r : sendToAddress(r, addr, pkt))
 
-  for i in range(1, 11):
+  for i in range(1, n_routers + 1):
     AddRouter(hive, i)
 
-  for i in range(1, 11):
+  for i in range(1, n_clients + 1):
     AddClient(hive, i)
 
   hive.StartAll()
@@ -158,7 +154,12 @@ def main():
   while running:
     event = hive.GetNextEvent()
     if event:
+      print("Event: %s -- Triggered: %s" % (event.__class__.__name__, event.triggered))
       print(event)
+      hops = getattr(event, "hops", None)
+      if hops:
+        for hop in hops:
+          print(hop)
 
   print('stopping')
   hive.StopAll()

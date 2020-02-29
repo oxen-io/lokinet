@@ -41,10 +41,19 @@ namespace llarp
   CryptoTypes_Init(py::module &mod);
 
   void
+  RouterID_Init(py::module &mod);
+
+  void
   RouterContact_Init(py::module &mod);
 
   void
   Config_Init(py::module & mod);
+
+  namespace path
+  {
+    void
+    PathHopConfig_Init(py::module & mod);
+  }
 
   namespace handlers
   {
