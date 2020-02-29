@@ -2,6 +2,7 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/pubintro.hpp>
+#include <dht/messages/gotintro.hpp>
 #include <utility>
 
 namespace llarp
@@ -39,5 +40,13 @@ namespace llarp
           peer.node.as_array(),
           new PublishIntroMessage(introset, peer.txid, relayed, relayOrder));
     }
+
+    void
+    PublishServiceJob::SendReply() 
+    {
+      parent->DHTSendTo(whoasked.node.as_array(),
+                        new GotIntroMessage({introset}, whoasked.txid));
+    }
+
   }  // namespace dht
 }  // namespace llarp

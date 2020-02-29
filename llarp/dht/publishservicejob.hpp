@@ -30,10 +30,7 @@ namespace llarp
       Start(const TXOwner &peer) override;
 
       void
-      SendReply() override
-      {
-        // don't need this
-      }
+      SendReply() override;
     };
   }  // namespace dht
 }  // namespace llarp
