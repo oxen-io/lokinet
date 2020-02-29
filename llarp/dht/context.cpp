@@ -268,7 +268,7 @@ namespace llarp
       Key_t ourKey;
     };
 
-    Context::Context() 
+    Context::Context()
     {
       randombytes((byte_t*)&ids, sizeof(uint64_t));
     }
