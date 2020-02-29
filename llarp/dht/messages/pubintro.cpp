@@ -134,18 +134,22 @@ namespace llarp
       }
       else
       {
-        bool found = false;
+        int candidateNumber = -1;
+        int index = 0;
         for(const auto &rc : closestRCs)
         {
           if(rc.pubkey == dht.OurKey())
           {
-            found = true;
+            candidateNumber = index;
             break;
           }
+          ++index;
         }
 
-        if(found)
+        if(candidateNumber >= 0)
         {
+          LogInfo("Received PubIntro for ", keyStr, ", txid=", txID,
+                  " and we are candidate ", candidateNumber);
           dht.services()->PutNode(introset);
           replies.emplace_back(new GotIntroMessage({introset}, txID));
         }
