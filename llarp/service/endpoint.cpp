@@ -1294,7 +1294,8 @@ namespace llarp
       if(numBuilding > 0)
         return false;
 
-      return ((now - lastBuild) > path::intro_path_spread);
+      return ((now - lastBuild) > path::intro_path_spread)
+          || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }
 
     std::shared_ptr< Logic >

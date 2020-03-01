@@ -24,7 +24,11 @@ namespace llarp
         default_lifetime / 2;
     /// spacing frequency at which we try to build paths for introductions
     static constexpr std::chrono::milliseconds intro_path_spread =
-        default_lifetime / 4;
+        default_lifetime / 5;
+    /// Minimum paths to keep around for intros; mainly used at startup (the
+    /// spread, above, should be able to maintain more than this number of paths
+    /// normally once things are going).
+    constexpr std::size_t min_intro_paths = 4;
     /// after this many ms a path build times out
     static constexpr auto build_timeout = 30s;
 
