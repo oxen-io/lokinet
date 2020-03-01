@@ -6,22 +6,32 @@
 namespace tooling
 {
 
-  RouterEvent::RouterEvent(llarp::RouterID routerID, bool triggered)
-    : routerID(routerID), triggered(triggered)
+  RouterEvent::RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered)
+    : eventType(eventType), routerID(routerID), triggered(triggered)
   {
   }
 
+  std::string
+  RouterEvent::ToString() const
+  {
+    std::string result;
+    result += eventType;
+    result += " [";
+    result += routerID.ShortString();
+    result += "] ";
+    return result;
+  }
+
   PathAttemptEvent::PathAttemptEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::Path> path)
-    : RouterEvent(routerID, false), hops(path->hops)
+    : RouterEvent("PathAttemptEvent", routerID, false), hops(path->hops)
   {
   }
 
   std::string
   PathAttemptEvent::ToString() const
   {
-    std::string result = "PathAttemptEvent [";
-    result += routerID.ShortString();
-    result += "] ---- [";
+    std::string result = RouterEvent::ToString();
+    result += "---- [";
 
     size_t i = 0;
     for (const auto& hop : hops)
@@ -42,7 +52,7 @@ namespace tooling
 
 
   PathRequestReceivedEvent::PathRequestReceivedEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::TransitHop> hop)
-    : RouterEvent(routerID, true)
+    : RouterEvent("PathRequestReceivedEvent", routerID, true)
     , prevHop(hop->info.downstream)
     , nextHop(hop->info.upstream)
   {
@@ -56,9 +66,8 @@ namespace tooling
   std::string
   PathRequestReceivedEvent::ToString() const
   {
-    std::string result = "PathRequestReceivedEvent [";
-    result += routerID.ShortString();
-    result += "] ---- [";
+    std::string result = RouterEvent::ToString();
+    result += "---- [";
     result += prevHop.ShortString();
     result += "] -> [*";
     result += routerID.ShortString();

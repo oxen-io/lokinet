@@ -28,11 +28,13 @@ namespace tooling
 
   struct RouterEvent
   {
-    RouterEvent(llarp::RouterID, bool triggered);
+    RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered);
 
     virtual ~RouterEvent() = default;
 
-    virtual std::string ToString() const = 0;
+    virtual std::string ToString() const;
+
+    const std::string eventType;
 
     llarp::RouterID routerID;
 
