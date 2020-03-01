@@ -12,8 +12,10 @@ namespace llarp
   {
     struct TXOwner;
 
-    struct ServiceAddressLookup : public TX< Key_t, service::EncryptedIntroSet >
+    struct ServiceAddressLookup
+        : public TX< TXOwner, service::EncryptedIntroSet >
     {
+      Key_t location;
       service::EncryptedIntroSetLookupHandler handleResult;
       uint32_t relayOrder;
 

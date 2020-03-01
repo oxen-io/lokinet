@@ -12,7 +12,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct PublishServiceJob : public TX< Key_t, service::EncryptedIntroSet >
+    struct PublishServiceJob : public TX< TXOwner, service::EncryptedIntroSet >
     {
       bool relayed;
       uint64_t relayOrder;

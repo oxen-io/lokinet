@@ -26,7 +26,7 @@ namespace llarp
     struct AbstractContext
     {
       using PendingIntrosetLookups =
-          TXHolder< Key_t, service::EncryptedIntroSet, Key_t::Hash >;
+          TXHolder< TXOwner, service::EncryptedIntroSet, TXOwner::Hash >;
       using PendingRouterLookups =
           TXHolder< RouterID, RouterContact, RouterID::Hash >;
       using PendingExploreLookups =

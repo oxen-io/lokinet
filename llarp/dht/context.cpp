@@ -525,10 +525,10 @@ namespace llarp
                                    const llarp::PathID_t& path,
                                    const Key_t& askpeer, uint64_t relayOrder)
     {
-      TXOwner asker(OurKey(), txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
                                         askpeer));
     }
@@ -539,11 +539,10 @@ namespace llarp
                                  const Key_t& tellpeer, bool relayed,
                                  uint64_t relayOrder)
     {
-      TXOwner asker(from, txid);
-      TXOwner peer(tellpeer, ++ids);
-      const Key_t addr(introset.derivedSigningKey);
+      const TXOwner asker(from, txid);
+      const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new PublishServiceJob(asker, introset, this, relayed, relayOrder));
     }
 
@@ -553,10 +552,10 @@ namespace llarp
         const Key_t& askpeer, uint64_t relayOrder,
         service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new ServiceAddressLookup(asker, addr, this, relayOrder, handler));
     }
 
@@ -575,10 +574,10 @@ namespace llarp
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
         const Key_t& askpeer, service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new ServiceAddressLookup(asker, addr, this, 0, handler), 1s);
     }
 
@@ -637,7 +636,7 @@ namespace llarp
       const TXOwner peer(askpeer, ++ids);
       const TXOwner whoasked(OurKey(), txid);
       _pendingRouterLookups.NewTX(
-          peer, whoasked, target,
+          peer, whoasked, askpeer.as_array(),
           new LocalRouterLookup(path, txid, target, this));
     }
 

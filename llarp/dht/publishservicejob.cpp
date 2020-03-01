@@ -12,8 +12,7 @@ namespace llarp
     PublishServiceJob::PublishServiceJob(
         const TXOwner &asker, const service::EncryptedIntroSet &introset_,
         AbstractContext *ctx, bool relayed_, uint64_t relayOrder_)
-        : TX< Key_t, service::EncryptedIntroSet >(
-            asker, Key_t{introset_.derivedSigningKey}, ctx)
+        : TX< TXOwner, service::EncryptedIntroSet >(asker, asker, ctx)
         , relayed(relayed_)
         , relayOrder(relayOrder_)
         , introset(introset_)

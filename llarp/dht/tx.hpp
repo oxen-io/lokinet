@@ -38,7 +38,7 @@ namespace llarp
       ExtractStatus() const
       {
         util::StatusObject obj{{"whoasked", whoasked.ExtractStatus()},
-                               {"target", target.ToString()}};
+                               {"target", target.ExtractStatus()}};
         std::vector< util::StatusObject > foundObjs;
         std::transform(valuesFound.begin(), valuesFound.end(),
                        std::back_inserter(foundObjs),
