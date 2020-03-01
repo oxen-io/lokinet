@@ -259,6 +259,12 @@ namespace llarp
       return std::string(HexEncode(*this, strbuf));
     }
 
+    std::string
+    ShortHex() const
+    {
+      return ToHex().substr(0, 8);
+    }
+
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const
     {

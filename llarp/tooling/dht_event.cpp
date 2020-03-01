@@ -13,7 +13,7 @@ namespace tooling
 
   std::string PubIntroReceivedEvent::ToString() const
   {
-    return RouterEvent::ToString() + "from " + From.ToHex() + " location=" + IntrosetLocation.ToHex() + " order=" + std::to_string(RelayOrder) + " txid=" + std::to_string(TxID);
+    return RouterEvent::ToString() + "from " + From.ShortHex() + " location=" + IntrosetLocation.ShortHex() + " order=" + std::to_string(RelayOrder) + " txid=" + std::to_string(TxID);
   }
   
 }
