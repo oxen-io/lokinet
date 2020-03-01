@@ -73,7 +73,7 @@ namespace llarp
         return;
       }
       routing::DHTMessage msg;
-      msg.M.emplace_back(new GotIntroMessage({introset}, whoasked.txid));
+      msg.M.emplace_back(new GotIntroMessage({introset}, txid));
       if(!path->SendRoutingMessage(msg, parent->GetRouter()))
       {
         llarp::LogWarn(
