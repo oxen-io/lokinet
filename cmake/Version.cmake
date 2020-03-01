@@ -1,7 +1,7 @@
 
 find_package(Git QUIET)
 set(GIT_INDEX_FILE "${PROJECT_SOURCE_DIR}/.git/index")
-if(EXISTS ${GIT_INDEX_FILE} AND GIT_FOUND OR Git_FOUND)
+if(EXISTS ${GIT_INDEX_FILE} AND ( GIT_FOUND OR Git_FOUND) )
   message(STATUS "Found Git: ${GIT_EXECUTABLE}")
 
   add_custom_command(
