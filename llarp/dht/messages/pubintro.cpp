@@ -56,7 +56,7 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      const auto now          = ctx->impl->Now();
+      const auto now    = ctx->impl->Now();
       const auto keyStr = introset.derivedSigningKey.ToHex();
 
       auto &dht = *ctx->impl;
