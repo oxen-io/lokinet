@@ -583,8 +583,16 @@ namespace llarp
     void
     Endpoint::IntroSetPublished()
     {
-      m_state->m_LastPublish = Now();
-      LogInfo(Name(), " IntroSet publish confirmed");
+      const auto now = Now();
+      // We usually get 4 confirmations back (one for each DHT location), which
+      // is noisy: suppress this log message if we already had a confirmation in
+      // the last second.
+      if(m_state->m_LastPublish < now - 1s)
+        LogInfo(Name(), " IntroSet publish confirmed");
+      else
+        LogDebug(Name(), " Additional IntroSet publish confirmed");
+
+      m_state->m_LastPublish = now;
       if(m_OnReady)
         m_OnReady->NotifyAsync(NotifyParams());
       m_OnReady = nullptr;
