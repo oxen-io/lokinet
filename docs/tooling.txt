@@ -22,3 +22,17 @@ What if I need to refer to classes which aren't available already in pybind?
     pybind/common.hpp
     pybind/module.cpp
     pybind/CMakeLists.txt
+
+How do I use a RouterEvent?
+
+  From the cpp side, find the place in the code where it makes the most logical sense
+  that the conceptual event has taken place (and you have the relevant information to
+  create the "event" instance) and create it there as follows:
+
+    #include <llarp/tooling/relevant_event_header.hpp>
+
+    where the event takes place, do the following:
+      auto event = std::make_unique<event_type_here>(constructor_args...);
+      somehow_get_a_router->NotifyRouterEvent(std::move(event));
+
+  From the Python side...it's a python object!
