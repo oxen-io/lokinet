@@ -118,12 +118,17 @@ namespace llarp
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage& msg) override;
 
+      /// send introset to peer as R/S
+      void
+      PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                             const service::EncryptedIntroSet& introset,
+                             const Key_t& tellpeer, uint64_t relayOrder);
+
       /// send introset to peer from source with S counter and excluding peers
       void
       PropagateIntroSetTo(const Key_t& from, uint64_t txid,
                           const service::EncryptedIntroSet& introset,
-                          const Key_t& tellpeer, bool relayed,
-                          uint64_t relayOrder);
+                          const Key_t& tellpeer, uint64_t relayOrder);
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
@@ -536,14 +541,26 @@ namespace llarp
     void
     Context::PropagateIntroSetTo(const Key_t& from, uint64_t txid,
                                  const service::EncryptedIntroSet& introset,
-                                 const Key_t& tellpeer, bool relayed,
-                                 uint64_t relayOrder)
+                                 const Key_t& tellpeer, uint64_t relayOrder)
     {
       const TXOwner asker(from, txid);
       const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
           peer, asker, asker,
-          new PublishServiceJob(asker, introset, this, relayed, relayOrder));
+          new PublishServiceJob(asker, introset, this, relayOrder));
+    }
+
+    void
+    Context::PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                                    const service::EncryptedIntroSet& introset,
+                                    const Key_t& tellpeer, uint64_t relayOrder)
+    {
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(tellpeer, ++ids);
+      _pendingIntrosetLookups.NewTX(
+          peer, asker, peer,
+          new LocalPublishServiceJob(peer, from, txid, introset, this,
+                                     relayOrder));
     }
 
     void

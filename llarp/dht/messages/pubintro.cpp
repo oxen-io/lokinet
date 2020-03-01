@@ -112,8 +112,14 @@ namespace llarp
         else
         {
           llarp::LogInfo("propagating to peer ", index);
-
-          dht.PropagateIntroSetTo(From, txID, introset, peer, false, 0);
+          if(relayed)
+          {
+            dht.PropagateLocalIntroSet(pathID, txID, introset, peer, 0);
+          }
+          else
+          {
+            dht.PropagateIntroSetTo(From, txID, introset, peer, 0);
+          }
         }
       };
 
