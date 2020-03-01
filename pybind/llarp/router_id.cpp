@@ -14,6 +14,7 @@ namespace llarp
              })
         .def("__repr__", &RouterID::ToString)
         .def("__str__", &RouterID::ToString)
+        .def("ShortString", &RouterID::ShortString)
         .def("__eq__", &RouterID::operator==);
   }
 }

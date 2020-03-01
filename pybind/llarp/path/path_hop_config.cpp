@@ -9,10 +9,11 @@ namespace llarp
     PathHopConfig_Init(py::module& mod)
     {
       auto str_func = [](PathHopConfig *hop) {
-          std::string s = "Hop: routerID = ";
-          s += RouterID(hop->rc.pubkey).ToString();
-          s += ", next routerID = ";
-          s += hop->upstream.ToString();
+          std::string s = "Hop: [";
+          s += RouterID(hop->rc.pubkey).ShortString();
+          s += "] -> [";
+          s += hop->upstream.ShortString();
+          s += "]";
           return s;
           };
       py::class_< PathHopConfig >(mod, "PathHopConfig")
