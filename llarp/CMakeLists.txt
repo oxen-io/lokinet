@@ -198,7 +198,9 @@ set(LIB_SRC
   service/session.cpp
   service/tag_lookup_job.cpp
   service/tag.cpp
-  tooling/router_event.cpp)
+  tooling/dht_event.cpp
+  tooling/router_event.cpp
+)
   
 if(TRACY_ROOT)
   set(LIB_SRC ${LIB_SRC} ${TRACY_ROOT}/TracyClient.cpp)

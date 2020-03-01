@@ -1,6 +1,7 @@
 #include "common.hpp"
 
 #include "tooling/router_event.hpp"
+#include "tooling/dht_event.hpp"
 
 #include <path/path.hpp>
 
@@ -22,6 +23,11 @@ namespace tooling
     .def_readonly("prevHop", &PathRequestReceivedEvent::prevHop)
     .def_readonly("nextHop", &PathRequestReceivedEvent::nextHop)
     .def_readonly("isEndpoint", &PathRequestReceivedEvent::isEndpoint);
+    py::class_<PubIntroReceivedEvent, RouterEvent>(mod, "DhtPubIntroReceievedEvent")
+    .def_readonly("from", &PubIntroReceivedEvent::From)
+    .def_readonly("location", &PubIntroReceivedEvent::IntrosetLocation)
+      .def_readonly("relayOrder", &PubIntroReceivedEvent::RelayOrder)
+      .def_readonly("txid", &PubIntroReceivedEvent::TxID);
   }
 
 } // namespace tooling
