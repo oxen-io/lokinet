@@ -13,6 +13,7 @@
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
+#include <tooling/router_event.hpp>
 
 #include <functional>
 #include <nonstd/optional.hpp>
@@ -415,6 +416,10 @@ namespace llarp
 
       // TODO: check if we really want to accept it
       self->hop->started = now;
+
+      auto event = std::make_unique<tooling::PathRequestReceivedEvent>(
+          self->context->Router()->pubkey(), self->hop);
+      self->context->Router()->NotifyRouterEvent(std::move(event));
 
       size_t sz = self->frames[0].size();
       // shift

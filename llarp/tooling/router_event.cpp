@@ -1,8 +1,7 @@
 #include <tooling/router_event.hpp>
 
-#include <tooling/router_hive.hpp>
-
 #include <path/path.hpp>
+#include <path/transit_hop.hpp>
 
 namespace tooling
 {
@@ -12,16 +11,16 @@ namespace tooling
   {
   }
 
-  PathBuildAttemptEvent::PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops)
-    : RouterEvent(routerID, false), hops(hops)
+  PathAttemptEvent::PathAttemptEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::Path> path)
+    : RouterEvent(routerID, false), hops(path->hops)
   {
   }
 
   std::string
-  PathBuildAttemptEvent::ToString() const
+  PathAttemptEvent::ToString() const
   {
-    std::string result = "PathBuildAttemptEvent [";
-    result += routerID.ToString().substr(0, 8);
+    std::string result = "PathAttemptEvent [";
+    result += routerID.ShortString();
     result += "] ---- [";
 
     size_t i = 0;
@@ -29,13 +28,50 @@ namespace tooling
     {
       i++;
 
-      result += hop.rc.pubkey.ToString().substr(0, 8);
+      result += llarp::RouterID(hop.rc.pubkey).ShortString();
       result += "]";
 
       if (i != hops.size())
       {
         result += " -> [";
       }
+    }
+
+    return result;
+  }
+
+
+  PathRequestReceivedEvent::PathRequestReceivedEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::TransitHop> hop)
+    : RouterEvent(routerID, true)
+    , prevHop(hop->info.downstream)
+    , nextHop(hop->info.upstream)
+  {
+    isEndpoint = false;
+    if (routerID == nextHop)
+    {
+      isEndpoint = true;
+    }
+  }
+
+  std::string
+  PathRequestReceivedEvent::ToString() const
+  {
+    std::string result = "PathRequestReceivedEvent [";
+    result += routerID.ShortString();
+    result += "] ---- [";
+    result += prevHop.ShortString();
+    result += "] -> [*";
+    result += routerID.ShortString();
+    result += "] -> [";
+
+    if (isEndpoint)
+    {
+      result += "nowhere]";
+    }
+    else
+    {
+      result += nextHop.ShortString();
+      result += "]";
     }
 
     return result;

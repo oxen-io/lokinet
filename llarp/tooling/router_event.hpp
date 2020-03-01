@@ -11,7 +11,10 @@ namespace llarp
 
   namespace path
   {
+    struct Path;
     struct PathHopConfig;
+
+    struct TransitHop;
 
   } // namespace llarp::path
 
@@ -39,13 +42,25 @@ namespace tooling
   using RouterEventPtr = std::unique_ptr<RouterEvent>;
 
 
-  struct PathBuildAttemptEvent : public RouterEvent
+  struct PathAttemptEvent : public RouterEvent
   {
-    PathBuildAttemptEvent(const llarp::RouterID& routerID, std::vector<llarp::path::PathHopConfig> hops);
+    PathAttemptEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::Path> path);
 
     std::string ToString() const override;
 
     std::vector<llarp::path::PathHopConfig> hops;
+  };
+
+  struct PathRequestReceivedEvent : public RouterEvent
+  {
+    PathRequestReceivedEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::TransitHop> hop);
+
+    std::string ToString() const override;
+
+    llarp::RouterID prevHop;
+    llarp::RouterID nextHop;
+
+    bool isEndpoint = false;
   };
 
 } // namespace tooling

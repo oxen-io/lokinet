@@ -15,8 +15,13 @@ namespace tooling
     .def_readonly("routerID", &RouterEvent::routerID)
     .def_readonly("triggered", &RouterEvent::triggered);
 
-    py::class_<PathBuildAttemptEvent, RouterEvent>(mod, "PathBuildAttemptEvent")
-    .def_readonly("hops", &PathBuildAttemptEvent::hops);
+    py::class_<PathAttemptEvent, RouterEvent>(mod, "PathAttemptEvent")
+    .def_readonly("hops", &PathAttemptEvent::hops);
+
+    py::class_<PathRequestReceivedEvent, RouterEvent>(mod, "PathRequestReceivedEvent")
+    .def_readonly("prevHop", &PathRequestReceivedEvent::prevHop)
+    .def_readonly("nextHop", &PathRequestReceivedEvent::nextHop)
+    .def_readonly("isEndpoint", &PathRequestReceivedEvent::isEndpoint);
   }
 
 } // namespace tooling

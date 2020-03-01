@@ -132,6 +132,9 @@ namespace llarp
   {
     if(!ctx->pathset->IsStopped())
     {
+      tooling::RouterEventPtr event = std::make_unique<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
+      ctx->router->NotifyRouterEvent(std::move(event));
+
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
       auto sentHandler        = [ctx](auto status) {
@@ -461,9 +464,6 @@ namespace llarp
       m_router->routerProfiling().MarkPathSuccess(p.get());
 
       LogInfo(p->Name(), " built latency=", p->intro.latency);
-      tooling::RouterEventPtr event = std::make_unique<tooling::PathBuildAttemptEvent>(m_router->pubkey(), p->hops);
-      m_router->NotifyRouterEvent(std::move(event));
-
       m_BuildStats.success++;
     }
 
