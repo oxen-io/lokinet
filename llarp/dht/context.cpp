@@ -636,7 +636,7 @@ namespace llarp
       const TXOwner peer(askpeer, ++ids);
       const TXOwner whoasked(OurKey(), txid);
       _pendingRouterLookups.NewTX(
-          peer, whoasked, askpeer.as_array(),
+          peer, whoasked, target,
           new LocalRouterLookup(path, txid, target, this));
     }
 
