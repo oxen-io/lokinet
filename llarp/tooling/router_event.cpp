@@ -18,7 +18,7 @@ namespace tooling
     result += eventType;
     result += " [";
     result += routerID.ShortString();
-    result += "] ";
+    result += "] -- ";
     return result;
   }
 

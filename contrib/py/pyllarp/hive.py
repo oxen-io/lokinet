@@ -15,8 +15,11 @@ def RemoveTmpDir(dirname):
     print("calling rmdir -r %s" % dirname)
     if (input("Is this ok? (y/n): ").lower().strip()[:1] == "y"):
       rmtree(dirname, ignore_errors=True)
+      return True
   else:
     print("not removing dir %s because it doesn't start with /tmp/" % dirname)
+  
+  return False
 
 endpointName = "pyllarp"
 
@@ -103,7 +106,8 @@ def AddClient(hive, index, netid="hive"):
 def main(n_routers=10, n_clients=10):
   pyllarp.EnableDebug()
   running = True
-  RemoveTmpDir(tmpdir)
+  if not RemoveTmpDir(tmpdir):
+    return
 
   def handle_sigint(sig, frame):
     nonlocal running
