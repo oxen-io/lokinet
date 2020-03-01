@@ -6,7 +6,7 @@ What is a RouterEvent?
 
 How do I make a new RouterEvent?
 
-  Add your event following the structure in llarp/tooling/router_events.{hpp,cpp}
+  Add your event following the structure in llarp/tooling/router_event.{hpp,cpp}
 
   Add your event to pybind in pybind/llarp/tooling/router_event.cpp
 
