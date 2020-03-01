@@ -1007,11 +1007,10 @@ namespace llarp
     }
 
     huint128_t
-    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &addr, bool snode)
+    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &ident, bool snode)
     {
       llarp_time_t now  = Now();
       huint128_t nextIP = {0};
-      AlignedBuffer< 32 > ident(addr);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);
