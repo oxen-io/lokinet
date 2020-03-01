@@ -465,7 +465,11 @@ namespace llarp
       const auto paths = GetManyPathsWithUniqueEndpoints(this, RelayRedundancy);
 
       if(paths.size() != RelayRedundancy)
+      {
+        LogWarn("Cannot publish intro set because we only have ", paths.size(),
+                " paths, but need ", RelayRedundancy);
         return false;
+      }
 
       // do publishing for each path selected
       size_t published = 0;
@@ -477,6 +481,9 @@ namespace llarp
             published++;
         }
       }
+      if(published != StorageRedundancy)
+        LogWarn("Publish introset failed: could only publish ", published,
+                " copies but wanted ", StorageRedundancy);
       return published == StorageRedundancy;
     }
 

@@ -42,7 +42,7 @@ namespace llarp
     }
 
     void
-    PublishServiceJob::SendReply() 
+    PublishServiceJob::SendReply()
     {
       parent->DHTSendTo(whoasked.node.as_array(),
                         new GotIntroMessage({introset}, whoasked.txid));
