@@ -155,15 +155,27 @@ def main(n_routers=10, n_clients=10):
   hive.ForEachRouter(lambda r: MakeEndpoint(r, onGotEndpoint))
 
 
+  total_events = 0
+  event_counts = dict()
   while running:
     event = hive.GetNextEvent()
+    event_name = event.__class__.__name__
     if event:
-      print("Event: %s -- Triggered: %s" % (event.__class__.__name__, event.triggered))
+      print("Event: %s -- Triggered: %s" % (event_name, event.triggered))
       print(event)
       hops = getattr(event, "hops", None)
       if hops:
         for hop in hops:
           print(hop)
+
+      total_events = total_events + 1
+      if event_name in event_counts:
+        event_counts[event_name] = event_counts[event_name] + 1
+      else:
+        event_counts[event_name] = 1
+
+      if total_events % 10 == 0:
+        pprint(event_counts)
 
   print('stopping')
   hive.StopAll()
