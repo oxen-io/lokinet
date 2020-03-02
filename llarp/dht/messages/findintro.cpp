@@ -98,25 +98,26 @@ namespace llarp
       // we are relaying this message for e.g. a client
       if(relayed)
       {
-        if (relayOrder >= IntroSetStorageRedundancy)
+        if(relayOrder >= IntroSetStorageRedundancy)
         {
           llarp::LogWarn("Invalid relayOrder received: ", relayOrder);
           replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
 
-        auto closestRCs =
-            dht.GetRouter()->nodedb()->FindClosestTo(location, IntroSetStorageRedundancy);
+        auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
+            location, IntroSetStorageRedundancy);
 
-        if (closestRCs.size() <= relayOrder)
+        if(closestRCs.size() <= relayOrder)
         {
-          llarp::LogWarn("Can't fulfill FindIntro for relayOrder: ", relayOrder);
+          llarp::LogWarn("Can't fulfill FindIntro for relayOrder: ",
+                         relayOrder);
           replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
 
         const auto& entry = closestRCs[relayOrder];
-        Key_t peer = Key_t(entry.pubkey);
+        Key_t peer        = Key_t(entry.pubkey);
         dht.LookupIntroSetForPath(location, txID, pathID, peer, 0);
       }
       else

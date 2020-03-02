@@ -88,7 +88,7 @@ namespace llarp
 
     void
     EndpointUtil::TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
-                                     Sessions& deadSessions, ConvoMap & sessions)
+                                     Sessions& deadSessions, ConvoMap& sessions)
     {
       auto itr = remoteSessions.begin();
       while(itr != remoteSessions.end())

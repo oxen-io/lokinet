@@ -81,8 +81,8 @@ namespace llarp
       const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
       // identify closest 4 routers
-      auto closestRCs =
-          dht.GetRouter()->nodedb()->FindClosestTo(addr, IntroSetStorageRedundancy);
+      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
+          addr, IntroSetStorageRedundancy);
       if(closestRCs.size() != IntroSetStorageRedundancy)
       {
         llarp::LogWarn("Received PublishIntroMessage but only know ",

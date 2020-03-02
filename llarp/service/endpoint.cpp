@@ -452,8 +452,8 @@ namespace llarp
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset,
                               AbstractRouter* r)
     {
-
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, llarp::dht::IntroSetRelayRedundancy);
+      const auto paths = GetManyPathsWithUniqueEndpoints(
+          this, llarp::dht::IntroSetRelayRedundancy);
 
       if(paths.size() != llarp::dht::IntroSetRelayRedundancy)
       {
