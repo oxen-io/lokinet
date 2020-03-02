@@ -7,6 +7,7 @@ from os import makedirs
 from socket import AF_INET, htons, inet_aton
 from pprint import pprint
 import sys
+from argparse import ArgumentParser as ap
 
 tmpdir = "/tmp/lokinet_hive"
 
@@ -103,7 +104,7 @@ def AddClient(hive, index, netid="hive"):
 
   hive.AddClient(config)
 
-def main(n_relays=10, n_clients=10):
+def main(n_relays=10, n_clients=10, print_each_event=True):
   pyllarp.EnableDebug()
   running = True
   if not RemoveTmpDir(tmpdir):
@@ -172,12 +173,13 @@ def main(n_relays=10, n_clients=10):
     event = hive.GetNextEvent()
     event_name = event.__class__.__name__
     if event:
-      print("Event: %s -- Triggered: %s" % (event_name, event.triggered))
-      print(event)
-      hops = getattr(event, "hops", None)
-      if hops:
-        for hop in hops:
-          print(hop)
+      if print_each_event:
+        print("Event: %s -- Triggered: %s" % (event_name, event.triggered))
+        print(event)
+        hops = getattr(event, "hops", None)
+        if hops:
+          for hop in hops:
+            print(hop)
 
       total_events = total_events + 1
       if event_name in event_counts:
@@ -194,4 +196,8 @@ def main(n_relays=10, n_clients=10):
   del hive
 
 if __name__ == '__main__':
-  main()
+  parser = ap()
+  print_events = False
+  parser.add_argument('--print-events', dest="print_events", action='store_true')
+  args = parser.parse_args()
+  main(print_each_event = args.print_events)
