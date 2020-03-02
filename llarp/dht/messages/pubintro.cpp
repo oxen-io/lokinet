@@ -165,10 +165,6 @@ namespace llarp
               "!!! Received PubIntro with relayed==false but we aren't"
               " candidate, intro derived key: ",
               keyStr, ", txid=", txID, ", message from: ", From);
-          for(size_t i = 0; i < IntroSetStorageRedundancy; ++i)
-          {
-            propagateIfNotUs(i);
-          }
         }
       }
 
