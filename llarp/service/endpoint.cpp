@@ -184,6 +184,8 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
+      m_state->m_RemoteLookupFilter.Decay(now);
+
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -418,6 +420,7 @@ namespace llarp
     bool
     Endpoint::Start()
     {
+      m_state->m_RemoteLookupFilter.DecayInterval(500ms);
       // how can I tell if a m_Identity isn't loaded?
       if(!m_DataHandler)
       {
@@ -986,8 +989,10 @@ namespace llarp
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
                                   llarp_time_t /*timeoutMS*/)
     {
+      /// how many routers to use for lookups
       static constexpr size_t NumParallelLookups = 2;
-      static constexpr size_t RequestsPerLookup  = 2;
+      /// how many requests per router
+      static constexpr size_t RequestsPerLookup = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       MarkAddressOutbound(remote);
@@ -1002,6 +1007,10 @@ namespace llarp
           return true;
         }
       }
+
+      // filter check for address
+      if(m_state->m_RemoteLookupFilter.Insert(remote))
+        return false;
 
       auto& lookups = m_state->m_PendingServiceLookups;
 
