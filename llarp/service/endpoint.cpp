@@ -981,7 +981,7 @@ namespace llarp
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
                                   llarp_time_t /*timeoutMS*/)
     {
-      static constexpr size_t NumParalellLookups = 2;
+      static constexpr size_t NumParallelLookups = 2;
       static constexpr size_t RequestsPerLookup  = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
@@ -1001,7 +1001,7 @@ namespace llarp
       auto& lookups = m_state->m_PendingServiceLookups;
 
       const auto paths =
-          GetManyPathsWithUniqueEndpoints(this, NumParalellLookups);
+          GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
       using namespace std::placeholders;
       size_t lookedUp           = 0;
