@@ -484,7 +484,7 @@ namespace llarp
       const TXOwner asker(OurKey(), txid);
       const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, asker,
+          peer, asker, peer,
           new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
                                         askpeer));
     }

@@ -982,6 +982,7 @@ namespace llarp
                                   llarp_time_t /*timeoutMS*/)
     {
       static constexpr size_t NumParalellLookups = 2;
+      static constexpr size_t RequestsPerLookup  = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       MarkAddressOutbound(remote);
@@ -1005,22 +1006,27 @@ namespace llarp
       using namespace std::placeholders;
       size_t lookedUp           = 0;
       const dht::Key_t location = remote.ToKey();
+      uint64_t order            = 0;
       for(const auto& path : paths)
       {
-        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            this, util::memFn(&Endpoint::OnLookup, this), location,
-            PubKey{remote.as_array()}, 0, GenTXID());
-        LogInfo("doing lookup for ", remote, " via ", path->Endpoint(), " at ",
-                location);
-        if(job->SendRequestViaPath(path, Router()))
+        for(size_t count = 0; count < RequestsPerLookup; ++count)
         {
-          lookups.emplace(remote, hook);
-          lookedUp++;
+          HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+              this, util::memFn(&Endpoint::OnLookup, this), location,
+              PubKey{remote.as_array()}, order, GenTXID());
+          LogInfo("doing lookup for ", remote, " via ", path->Endpoint(),
+                  " at ", location, " order=", order);
+          order++;
+          if(job->SendRequestViaPath(path, Router()))
+          {
+            lookups.emplace(remote, hook);
+            lookedUp++;
+          }
+          else
+            LogError(Name(), " send via path failed for lookup");
         }
-        else
-          LogError(Name(), " send via path failed for lookup");
       }
-      return lookedUp == NumParalellLookups;
+      return lookedUp == (NumParalellLookups * RequestsPerLookup);
     }
 
     bool
