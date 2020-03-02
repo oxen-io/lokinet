@@ -264,7 +264,8 @@ namespace llarp
         if(self->context->CheckPathLimitHitByIP(self->fromAddr.value()))
         {
           // we hit a limit so tell it to slow tf down
-          llarp::LogError("client path build hit limit ", self->hop->info);
+          llarp::LogError("client path build hit limit ",
+                          self->fromAddr.value());
           OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                               self->hop->info.downstream, self->hop->pathKey,
                               SendStatus::Congestion);
