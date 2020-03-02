@@ -98,35 +98,27 @@ namespace llarp
       // we are relaying this message for e.g. a client
       if(relayed)
       {
-        uint32_t numDesired = 0;
-        if(relayOrder == 0)
-          numDesired = 2;
-        else if(relayOrder == 1)
-          numDesired = 4;
-        else
+        if(relayOrder >= IntroSetStorageRedundancy)
         {
-          // TODO: consider forward-compatibility here
-          LogError("Error: relayOrder must be 0 or 1");
-          return false;
+          llarp::LogWarn("Invalid relayOrder received: ", relayOrder);
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
         }
 
-        auto closestRCs =
-            dht.GetRouter()->nodedb()->FindClosestTo(location, numDesired);
+        auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
+            location, IntroSetStorageRedundancy);
 
-        // if relayOrder == 1, we want the 3rd and 4th closest, so remove the
-        // 1st and 2nd closest
-        if(relayOrder == 1)
+        if(closestRCs.size() <= relayOrder)
         {
-          auto itr = closestRCs.begin();
-          std::advance(itr, 2);
-          closestRCs.erase(closestRCs.begin(), itr);
+          llarp::LogWarn("Can't fulfill FindIntro for relayOrder: ",
+                         relayOrder);
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
         }
 
-        for(const auto& entry : closestRCs)
-        {
-          Key_t peer = Key_t(entry.pubkey);
-          dht.LookupIntroSetForPath(location, txID, pathID, peer, 0);
-        }
+        const auto& entry = closestRCs[relayOrder];
+        Key_t peer        = Key_t(entry.pubkey);
+        dht.LookupIntroSetForPath(location, txID, pathID, peer, 0);
       }
       else
       {

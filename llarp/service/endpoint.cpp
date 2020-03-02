@@ -1,6 +1,7 @@
 #include <chrono>
 #include <service/endpoint.hpp>
 
+#include <dht/context.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
@@ -183,6 +184,8 @@ namespace llarp
       {
         RegenAndPublishIntroSet();
       }
+
+      m_state->m_RemoteLookupFilter.Decay(now);
 
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
@@ -418,6 +421,7 @@ namespace llarp
     bool
     Endpoint::Start()
     {
+      m_state->m_RemoteLookupFilter.DecayInterval(500ms);
       // how can I tell if a m_Identity isn't loaded?
       if(!m_DataHandler)
       {
@@ -451,23 +455,13 @@ namespace llarp
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset,
                               AbstractRouter* r)
     {
-      /// number of routers to publish to
-      static constexpr size_t RelayRedundancy = 2;
+      const auto paths = GetManyPathsWithUniqueEndpoints(
+          this, llarp::dht::IntroSetRelayRedundancy);
 
-      /// number of dht locations handled per relay
-      static constexpr size_t RequestsPerRelay = 2;
-
-      /// total number of dht locations that should store this introset
-      static constexpr size_t StorageRedundancy =
-          (RelayRedundancy * RequestsPerRelay);
-      assert(StorageRedundancy == 4);
-
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, RelayRedundancy);
-
-      if(paths.size() != RelayRedundancy)
+      if(paths.size() != llarp::dht::IntroSetRelayRedundancy)
       {
         LogWarn("Cannot publish intro set because we only have ", paths.size(),
-                " paths, but need ", RelayRedundancy);
+                " paths, but need ", llarp::dht::IntroSetRelayRedundancy);
         return false;
       }
 
@@ -475,16 +469,16 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        for(size_t i = 0; i < RequestsPerRelay; ++i)
+        for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
         }
       }
-      if(published != StorageRedundancy)
+      if(published != llarp::dht::IntroSetStorageRedundancy)
         LogWarn("Publish introset failed: could only publish ", published,
-                " copies but wanted ", StorageRedundancy);
-      return published == StorageRedundancy;
+                " copies but wanted ", llarp::dht::IntroSetStorageRedundancy);
+      return published == llarp::dht::IntroSetStorageRedundancy;
     }
 
     struct PublishIntroSetJob : public IServiceLookup
@@ -961,6 +955,11 @@ namespace llarp
         }
         return false;
       }
+      // check for established outbound context
+
+      if(m_state->m_RemoteSessions.count(addr) > 0)
+        return true;
+
       PutNewOutboundContext(introset.value());
       return true;
     }
@@ -981,7 +980,10 @@ namespace llarp
     Endpoint::EnsurePathToService(const Address remote, PathEnsureHook hook,
                                   llarp_time_t /*timeoutMS*/)
     {
-      static constexpr size_t NumParalellLookups = 2;
+      /// how many routers to use for lookups
+      static constexpr size_t NumParallelLookups = 2;
+      /// how many requests per router
+      static constexpr size_t RequestsPerLookup = 2;
       LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       MarkAddressOutbound(remote);
@@ -997,30 +999,39 @@ namespace llarp
         }
       }
 
+      // filter check for address
+      if(m_state->m_RemoteLookupFilter.Insert(remote))
+        return false;
+
       auto& lookups = m_state->m_PendingServiceLookups;
 
       const auto paths =
-          GetManyPathsWithUniqueEndpoints(this, NumParalellLookups);
+          GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
       using namespace std::placeholders;
       size_t lookedUp           = 0;
       const dht::Key_t location = remote.ToKey();
+      uint64_t order            = 0;
       for(const auto& path : paths)
       {
-        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-            this, util::memFn(&Endpoint::OnLookup, this), location,
-            PubKey{remote.as_array()}, 0, GenTXID());
-        LogInfo("doing lookup for ", remote, " via ", path->Endpoint(), " at ",
-                location);
-        if(job->SendRequestViaPath(path, Router()))
+        for(size_t count = 0; count < RequestsPerLookup; ++count)
         {
-          lookups.emplace(remote, hook);
-          lookedUp++;
+          HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+              this, util::memFn(&Endpoint::OnLookup, this), location,
+              PubKey{remote.as_array()}, order, GenTXID());
+          LogInfo("doing lookup for ", remote, " via ", path->Endpoint(),
+                  " at ", location, " order=", order);
+          order++;
+          if(job->SendRequestViaPath(path, Router()))
+          {
+            lookups.emplace(remote, hook);
+            lookedUp++;
+          }
+          else
+            LogError(Name(), " send via path failed for lookup");
         }
-        else
-          LogError(Name(), " send via path failed for lookup");
       }
-      return lookedUp == NumParalellLookups;
+      return lookedUp == (NumParallelLookups * RequestsPerLookup);
     }
 
     bool

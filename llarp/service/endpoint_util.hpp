@@ -23,7 +23,7 @@ namespace llarp
 
       static void
       TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
-                         Sessions& deadSessions, ConvoMap & sessions);
+                         Sessions& deadSessions, ConvoMap& sessions);
 
       static void
       ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions);

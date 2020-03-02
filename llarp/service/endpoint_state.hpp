@@ -98,6 +98,8 @@ namespace llarp
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
 
+      util::DecayingHashSet< Address > m_RemoteLookupFilter;
+
       bool
       SetOption(const std::string& k, const std::string& v, Endpoint& ep);
 

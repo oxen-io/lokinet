@@ -16,7 +16,6 @@ namespace llarp
         , relayOrder(order)
         , location(l)
         , handle(std::move(h))
-        , requestsSent(0)
     {
     }
 
@@ -39,19 +38,7 @@ namespace llarp
         if(maybe.has_value())
           found = maybe.value();
       }
-      handle(remote, found, endpoint);
-      requestsSent--;
-      return requestsSent == 0;
-    }
-
-    bool
-    HiddenServiceAddressLookup::SendRequestViaPath(path::Path_ptr p,
-                                                   AbstractRouter* r)
-    {
-      if(not IServiceLookup::SendRequestViaPath(p, r))
-        return false;
-      requestsSent += 2;
-      return true;
+      return handle(remote, found, endpoint);
     }
 
     std::shared_ptr< routing::IMessage >
