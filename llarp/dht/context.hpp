@@ -26,7 +26,7 @@ namespace llarp
     struct AbstractContext
     {
       using PendingIntrosetLookups =
-          TXHolder< Key_t, service::EncryptedIntroSet, Key_t::Hash >;
+          TXHolder< TXOwner, service::EncryptedIntroSet, TXOwner::Hash >;
       using PendingRouterLookups =
           TXHolder< RouterID, RouterContact, RouterID::Hash >;
       using PendingExploreLookups =
@@ -91,10 +91,15 @@ namespace llarp
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void
+      PropagateLocalIntroSet(const PathID_t& path, uint64_t sourceTX,
+                             const service::EncryptedIntroSet& introset,
+                             const Key_t& peer, uint64_t relayOrder) = 0;
+
+      /// send introset to peer from source with S counter and excluding peers
+      virtual void
       PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
                           const service::EncryptedIntroSet& introset,
-                          const Key_t& peer, bool relayed,
-                          uint64_t relayOrder) = 0;
+                          const Key_t& peer, uint64_t relayOrder) = 0;
 
       virtual void
       Init(const Key_t& us, AbstractRouter* router) = 0;

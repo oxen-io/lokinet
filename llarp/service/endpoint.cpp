@@ -252,21 +252,12 @@ namespace llarp
     Endpoint::HandleGotIntroMessage(dht::GotIntroMessage_constptr msg)
     {
       std::set< EncryptedIntroSet > remote;
-      auto currentPub = m_state->m_CurrentPublishTX;
       for(const auto& introset : msg->found)
       {
         if(not introset.Verify(Now()))
         {
           LogError(Name(), " got invalid introset");
           return false;
-        }
-        if(currentPub == msg->txid)
-        {
-          LogInfo(
-              "got introset publish confirmation for hidden service endpoint ",
-              Name());
-          IntroSetPublished();
-          return true;
         }
         remote.insert(introset);
       }
@@ -461,19 +452,39 @@ namespace llarp
                               AbstractRouter* r)
     {
       /// number of routers to publish to
-      static constexpr size_t PublishRedundancy = 2;
-      const auto paths =
-          GetManyPathsWithUniqueEndpoints(this, PublishRedundancy);
+      static constexpr size_t RelayRedundancy = 2;
+
+      /// number of dht locations handled per relay
+      static constexpr size_t RequestsPerRelay = 2;
+
+      /// total number of dht locations that should store this introset
+      static constexpr size_t StorageRedundancy =
+          (RelayRedundancy * RequestsPerRelay);
+      assert(StorageRedundancy == 4);
+
+      const auto paths = GetManyPathsWithUniqueEndpoints(this, RelayRedundancy);
+
+      if(paths.size() != RelayRedundancy)
+      {
+        LogWarn("Cannot publish intro set because we only have ", paths.size(),
+                " paths, but need ", RelayRedundancy);
+        return false;
+      }
+
       // do publishing for each path selected
       size_t published = 0;
       for(const auto& path : paths)
       {
-        if(PublishIntroSetVia(introset, r, path, published))
+        for(size_t i = 0; i < RequestsPerRelay; ++i)
         {
-          published++;
+          if(PublishIntroSetVia(introset, r, path, published))
+            published++;
         }
       }
-      return published == PublishRedundancy;
+      if(published != StorageRedundancy)
+        LogWarn("Publish introset failed: could only publish ", published,
+                " copies but wanted ", StorageRedundancy);
+      return published == StorageRedundancy;
     }
 
     struct PublishIntroSetJob : public IServiceLookup
@@ -560,33 +571,28 @@ namespace llarp
     {
       if(not m_PublishIntroSet)
         return false;
-      // make sure we have all paths that are established
-      // in our introset
-      size_t numNotInIntroset = 0;
-      ForEachPath([&](const path::Path_ptr& p) {
-        if(!p->IsReady())
-          return;
-        for(const auto& introset : introSet().I)
-        {
-          if(introset == p->intro)
-            return;
-        }
-        ++numNotInIntroset;
-      });
 
-      const auto lastpub = m_state->m_LastPublishAttempt;
-      if(m_state->m_IntroSet.HasExpiredIntros(now) || numNotInIntroset > 1)
-      {
-        return now - lastpub >= INTROSET_PUBLISH_RETRY_INTERVAL;
-      }
-      return now - lastpub >= INTROSET_PUBLISH_INTERVAL;
+      auto next_pub = m_state->m_LastPublishAttempt
+          + (m_state->m_IntroSet.HasExpiredIntros(now)
+                 ? INTROSET_PUBLISH_RETRY_INTERVAL
+                 : INTROSET_PUBLISH_INTERVAL);
+
+      return now >= next_pub;
     }
 
     void
     Endpoint::IntroSetPublished()
     {
-      m_state->m_LastPublish = Now();
-      LogInfo(Name(), " IntroSet publish confirmed");
+      const auto now = Now();
+      // We usually get 4 confirmations back (one for each DHT location), which
+      // is noisy: suppress this log message if we already had a confirmation in
+      // the last second.
+      if(m_state->m_LastPublish < now - 1s)
+        LogInfo(Name(), " IntroSet publish confirmed");
+      else
+        LogDebug(Name(), " Additional IntroSet publish confirmed");
+
+      m_state->m_LastPublish = now;
       if(m_OnReady)
         m_OnReady->NotifyAsync(NotifyParams());
       m_OnReady = nullptr;
@@ -1283,7 +1289,8 @@ namespace llarp
       if(numBuilding > 0)
         return false;
 
-      return ((now - lastBuild) > path::intro_path_spread);
+      return ((now - lastBuild) > path::intro_path_spread)
+          || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }
 
     std::shared_ptr< Logic >

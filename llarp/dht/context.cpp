@@ -118,12 +118,17 @@ namespace llarp
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage& msg) override;
 
+      /// send introset to peer as R/S
+      void
+      PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                             const service::EncryptedIntroSet& introset,
+                             const Key_t& tellpeer, uint64_t relayOrder);
+
       /// send introset to peer from source with S counter and excluding peers
       void
       PropagateIntroSetTo(const Key_t& from, uint64_t txid,
                           const service::EncryptedIntroSet& introset,
-                          const Key_t& tellpeer, bool relayed,
-                          uint64_t relayOrder);
+                          const Key_t& tellpeer, uint64_t relayOrder);
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
@@ -445,11 +450,18 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, &m);
+      router->SendToOrQueue(peer, &m, [](SendStatus status) {
+        if(status != SendStatus::Success)
+          LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
+      });
       auto now = Now();
       router->PersistSessionUntil(peer, now + 1min);
     }
 
+    // this function handles incoming DHT messages sent down a path by a client
+    // note that IMessage here is different than that found in the routing
+    // namespace. by the time this is called, we are inside
+    // llarp::routing::DHTMessage::HandleMessage()
     bool
     Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
@@ -469,10 +481,10 @@ namespace llarp
                                    const llarp::PathID_t& path,
                                    const Key_t& askpeer, uint64_t relayOrder)
     {
-      TXOwner asker(OurKey(), txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
                                         askpeer));
     }
@@ -480,15 +492,26 @@ namespace llarp
     void
     Context::PropagateIntroSetTo(const Key_t& from, uint64_t txid,
                                  const service::EncryptedIntroSet& introset,
-                                 const Key_t& tellpeer, bool relayed,
-                                 uint64_t relayOrder)
+                                 const Key_t& tellpeer, uint64_t relayOrder)
     {
-      TXOwner asker(from, txid);
-      TXOwner peer(tellpeer, ++ids);
-      const Key_t addr(introset.derivedSigningKey);
+      const TXOwner asker(from, txid);
+      const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
-          new PublishServiceJob(asker, introset, this, relayed, relayOrder));
+          peer, asker, asker,
+          new PublishServiceJob(asker, introset, this, relayOrder));
+    }
+
+    void
+    Context::PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                                    const service::EncryptedIntroSet& introset,
+                                    const Key_t& tellpeer, uint64_t relayOrder)
+    {
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(tellpeer, ++ids);
+      _pendingIntrosetLookups.NewTX(
+          peer, asker, peer,
+          new LocalPublishServiceJob(peer, from, txid, introset, this,
+                                     relayOrder));
     }
 
     void
@@ -497,10 +520,10 @@ namespace llarp
         const Key_t& askpeer, uint64_t relayOrder,
         service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new ServiceAddressLookup(asker, addr, this, relayOrder, handler));
     }
 
@@ -509,10 +532,10 @@ namespace llarp
         const Key_t& addr, const Key_t& whoasked, uint64_t txid,
         const Key_t& askpeer, service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
+          peer, asker, asker,
           new ServiceAddressLookup(asker, addr, this, 0, handler), 1s);
     }
 

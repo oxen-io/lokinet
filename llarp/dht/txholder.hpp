@@ -43,14 +43,14 @@ namespace llarp
             timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
             [](const auto& item) -> util::StatusObject {
               return util::StatusObject{{"time", to_json(item.second)},
-                                        {"target", item.first.ToString()}};
+                                        {"target", item.first.ExtractStatus()}};
             });
         obj["timeouts"] = timeoutsObjs;
         std::transform(waiting.begin(), waiting.end(),
                        std::back_inserter(waitingObjs),
                        [](const auto& item) -> util::StatusObject {
                          return util::StatusObject{
-                             {"target", item.first.ToString()},
+                             {"target", item.first.ExtractStatus()},
                              {"whoasked", item.second.ExtractStatus()}};
                        });
         obj["waiting"] = waitingObjs;

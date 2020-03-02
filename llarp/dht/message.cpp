@@ -59,7 +59,7 @@ namespace llarp
               msg = std::make_unique< GotRouterMessage >(From, relayed);
               break;
             case 'I':
-              msg = std::make_unique< PublishIntroMessage >();
+              msg = std::make_unique< PublishIntroMessage >(From, relayed);
               break;
             case 'G':
               if(relayed)

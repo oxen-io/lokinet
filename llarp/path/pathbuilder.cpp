@@ -282,7 +282,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(llarp_time_t now) const
     {
-      return now < lastBuild || now - lastBuild < buildIntervalLimit;
+      return now < lastBuild + buildIntervalLimit;
     }
 
     bool
