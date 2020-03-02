@@ -10,11 +10,14 @@ namespace tooling
     using RouterHive_ptr = std::shared_ptr< RouterHive >;
     py::class_< RouterHive, RouterHive_ptr >(mod, "RouterHive")
         .def(py::init<>())
-        .def("AddRouter", &RouterHive::AddRouter)
-        .def("StartAll", &RouterHive::StartRouters)
+        .def("AddRelay", &RouterHive::AddRelay)
+        .def("AddClient", &RouterHive::AddClient)
+        .def("StartRelays", &RouterHive::StartRelays)
+        .def("StartClients", &RouterHive::StartClients)
         .def("StopAll", &RouterHive::StopRouters)
+        .def("ForEachRelay", &RouterHive::ForEachRelay)
+        .def("ForEachClient", &RouterHive::ForEachClient)
         .def("ForEachRouter", &RouterHive::ForEachRouter)
-        .def("VisitRouter", &RouterHive::VisitRouter)
         .def("GetNextEvent", &RouterHive::GetNextEvent);
              
   }

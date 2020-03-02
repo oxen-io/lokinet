@@ -23,12 +23,12 @@ namespace tooling
     .def_readonly("prevHop", &PathRequestReceivedEvent::prevHop)
     .def_readonly("nextHop", &PathRequestReceivedEvent::nextHop)
     .def_readonly("isEndpoint", &PathRequestReceivedEvent::isEndpoint);
-    py::class_<PubIntroReceivedEvent, RouterEvent>(mod, "DhtPubIntroReceievedEvent")
+    py::class_<PubIntroReceivedEvent, RouterEvent>(mod, "DhtPubIntroReceivedEvent")
     .def_readonly("from", &PubIntroReceivedEvent::From)
     .def_readonly("location", &PubIntroReceivedEvent::IntrosetLocation)
       .def_readonly("relayOrder", &PubIntroReceivedEvent::RelayOrder)
       .def_readonly("txid", &PubIntroReceivedEvent::TxID);
-    py::class_<GotIntroReceivedEvent, RouterEvent>(mod, "DhtGotIntroReceievedEvent")
+    py::class_<GotIntroReceivedEvent, RouterEvent>(mod, "DhtGotIntroReceivedEvent")
     .def_readonly("from", &GotIntroReceivedEvent::From)
     .def_readonly("location", &GotIntroReceivedEvent::Introset)
       .def_readonly("relayOrder", &GotIntroReceivedEvent::RelayOrder)

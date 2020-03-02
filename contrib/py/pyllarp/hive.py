@@ -31,7 +31,7 @@ def MakeEndpoint(router, after):
   if after is not None:
     router.CallSafe(lambda : after(ep))
 
-def AddRouter(hive, index, netid="hive"):
+def AddRelay(hive, index, netid="hive"):
   dirname = "%s/routers/%d" % (tmpdir, index)
   makedirs("%s/netdb" % dirname, exist_ok=True)
 
@@ -70,7 +70,7 @@ def AddRouter(hive, index, netid="hive"):
   if index != 1:
     config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
 
-  hive.AddRouter(config)
+  hive.AddRelay(config)
 
 
 def AddClient(hive, index, netid="hive"):
@@ -101,9 +101,9 @@ def AddClient(hive, index, netid="hive"):
 
   config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
 
-  hive.AddRouter(config)
+  hive.AddClient(config)
 
-def main(n_routers=10, n_clients=10):
+def main(n_relays=10, n_clients=10):
   pyllarp.EnableDebug()
   running = True
   if not RemoveTmpDir(tmpdir):
@@ -117,14 +117,14 @@ def main(n_routers=10, n_clients=10):
   signal(SIGINT, handle_sigint)
 
   hive = pyllarp.RouterHive()
-  AddRouter(hive, 1)
-  hive.StartAll()
+  AddRelay(hive, 1)
+  hive.StartRelays()
   print("sleeping 2 sec to give plenty of time to save bootstrap rc")
   for i in range(2):
     print(i+1)
     sleep(1)
 
-  print("Resetting hive.  Creating %d routers and %d clients" % (n_routers, n_clients))
+  print("Resetting hive.  Creating %d relays and %d clients" % (n_relays, n_clients))
   hive.StopAll()
 
   hive = pyllarp.RouterHive()
@@ -144,15 +144,26 @@ def main(n_routers=10, n_clients=10):
   def broadcastTo(addr, pkt):
     hive.ForEachRouter(lambda r : sendToAddress(r, addr, pkt))
 
-  for i in range(1, n_routers + 1):
-    AddRouter(hive, i)
+  for i in range(1, n_relays + 1):
+    AddRelay(hive, i)
 
   for i in range(1, n_clients + 1):
     AddClient(hive, i)
 
-  hive.StartAll()
+  print("Starting relays")
+  hive.StartRelays()
+
   sleep(1)
-  hive.ForEachRouter(lambda r: MakeEndpoint(r, onGotEndpoint))
+  hive.ForEachRelay(lambda r: MakeEndpoint(r, onGotEndpoint))
+
+  print("Sleeping 5 seconds before starting clients")
+  sleep(5)
+
+  hive.StartClients()
+
+  sleep(1)
+  hive.ForEachClient(lambda r: MakeEndpoint(r, onGotEndpoint))
+
 
 
   total_events = 0
