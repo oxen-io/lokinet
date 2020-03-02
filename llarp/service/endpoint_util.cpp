@@ -88,7 +88,7 @@ namespace llarp
 
     void
     EndpointUtil::TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
-                                     Sessions& deadSessions)
+                                     Sessions& deadSessions, ConvoMap & sessions)
     {
       auto itr = remoteSessions.begin();
       while(itr != remoteSessions.end())
@@ -98,6 +98,7 @@ namespace llarp
         {
           LogInfo("marking session as dead T=", itr->first);
           itr->second->Stop();
+          sessions.erase(itr->second->currentConvoTag);
           deadSessions.emplace(std::move(*itr));
           itr = remoteSessions.erase(itr);
         }
