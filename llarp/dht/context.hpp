@@ -23,6 +23,15 @@ namespace llarp
 
   namespace dht
   {
+    /// number of routers to publish to
+    static constexpr size_t IntroSetRelayRedundancy = 2;
+
+    /// number of dht locations handled per relay
+    static constexpr size_t IntroSetRequestsPerRelay = 2;
+
+    static constexpr size_t IntroSetStorageRedundancy =
+        (IntroSetRelayRedundancy * IntroSetRequestsPerRelay);
+
     struct AbstractContext
     {
       using PendingIntrosetLookups =

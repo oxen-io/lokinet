@@ -1,6 +1,7 @@
 #include <chrono>
 #include <service/endpoint.hpp>
 
+#include <dht/context.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
@@ -454,23 +455,13 @@ namespace llarp
     Endpoint::PublishIntroSet(const EncryptedIntroSet& introset,
                               AbstractRouter* r)
     {
-      /// number of routers to publish to
-      static constexpr size_t RelayRedundancy = 2;
+      const auto paths = GetManyPathsWithUniqueEndpoints(
+          this, llarp::dht::IntroSetRelayRedundancy);
 
-      /// number of dht locations handled per relay
-      static constexpr size_t RequestsPerRelay = 2;
-
-      /// total number of dht locations that should store this introset
-      static constexpr size_t StorageRedundancy =
-          (RelayRedundancy * RequestsPerRelay);
-      assert(StorageRedundancy == 4);
-
-      const auto paths = GetManyPathsWithUniqueEndpoints(this, RelayRedundancy);
-
-      if(paths.size() != RelayRedundancy)
+      if(paths.size() != llarp::dht::IntroSetRelayRedundancy)
       {
         LogWarn("Cannot publish intro set because we only have ", paths.size(),
-                " paths, but need ", RelayRedundancy);
+                " paths, but need ", llarp::dht::IntroSetRelayRedundancy);
         return false;
       }
 
@@ -478,16 +469,16 @@ namespace llarp
       size_t published = 0;
       for(const auto& path : paths)
       {
-        for(size_t i = 0; i < RequestsPerRelay; ++i)
+        for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
         }
       }
-      if(published != StorageRedundancy)
+      if(published != llarp::dht::IntroSetStorageRedundancy)
         LogWarn("Publish introset failed: could only publish ", published,
-                " copies but wanted ", StorageRedundancy);
-      return published == StorageRedundancy;
+                " copies but wanted ", llarp::dht::IntroSetStorageRedundancy);
+      return published == llarp::dht::IntroSetStorageRedundancy;
     }
 
     struct PublishIntroSetJob : public IServiceLookup

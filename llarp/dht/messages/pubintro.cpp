@@ -81,10 +81,9 @@ namespace llarp
       const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
       // identify closest 4 routers
-      static constexpr size_t StorageRedundancy = 4;
-      auto closestRCs =
-          dht.GetRouter()->nodedb()->FindClosestTo(addr, StorageRedundancy);
-      if(closestRCs.size() != StorageRedundancy)
+      auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
+          addr, IntroSetStorageRedundancy);
+      if(closestRCs.size() != IntroSetStorageRedundancy)
       {
         llarp::LogWarn("Received PublishIntroMessage but only know ",
                        closestRCs.size(), " nodes");
@@ -96,7 +95,7 @@ namespace llarp
 
       // function to identify the closest 4 routers we know of for this introset
       auto propagateIfNotUs = [&](size_t index) {
-        assert(index < StorageRedundancy);
+        assert(index < IntroSetStorageRedundancy);
 
         const auto &rc = closestRCs[index];
         const Key_t peer{rc.pubkey};
@@ -125,7 +124,7 @@ namespace llarp
 
       if(relayed)
       {
-        if(relayOrder >= StorageRedundancy)
+        if(relayOrder >= IntroSetStorageRedundancy)
         {
           llarp::LogWarn(
               "Received PublishIntroMessage with invalid relayOrder: ",
@@ -166,7 +165,7 @@ namespace llarp
               "!!! Received PubIntro with relayed==false but we aren't"
               " candidate, intro derived key: ",
               keyStr, ", txid=", txID, ", message from: ", From);
-          for(size_t i = 0; i < StorageRedundancy; ++i)
+          for(size_t i = 0; i < IntroSetStorageRedundancy; ++i)
           {
             propagateIfNotUs(i);
           }
