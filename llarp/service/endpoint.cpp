@@ -1026,7 +1026,7 @@ namespace llarp
             LogError(Name(), " send via path failed for lookup");
         }
       }
-      return lookedUp == (NumParalellLookups * RequestsPerLookup);
+      return lookedUp == (NumParallelLookups * RequestsPerLookup);
     }
 
     bool
