@@ -98,10 +98,7 @@ namespace llarp
       // we are relaying this message for e.g. a client
       if(relayed)
       {
-        // TODO: this is now defined in 3 places; consolidate
-        static constexpr size_t StorageRedundancy = 4;
-
-        if (relayOrder >= StorageRedundancy)
+        if (relayOrder >= IntroSetStorageRedundancy)
         {
           llarp::LogWarn("Invalid relayOrder received: ", relayOrder);
           replies.emplace_back(new GotIntroMessage({}, txID));
@@ -109,7 +106,7 @@ namespace llarp
         }
 
         auto closestRCs =
-            dht.GetRouter()->nodedb()->FindClosestTo(location, StorageRedundancy);
+            dht.GetRouter()->nodedb()->FindClosestTo(location, IntroSetStorageRedundancy);
 
         if (closestRCs.size() <= relayOrder)
         {
