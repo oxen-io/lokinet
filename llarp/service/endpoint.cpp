@@ -961,6 +961,11 @@ namespace llarp
         }
         return false;
       }
+      // check for established outbound context
+
+      if(m_state->m_RemoteSessions.count(addr) > 0)
+        return true;
+
       PutNewOutboundContext(introset.value());
       return true;
     }
