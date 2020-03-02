@@ -91,6 +91,7 @@ Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags:
 #endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\catchAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\lokinetctl.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "lokinet-bootstrap.exe"; DestDir: "{app}"; Flags: ignoreversion
