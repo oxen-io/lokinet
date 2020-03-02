@@ -32,7 +32,7 @@ def MakeEndpoint(router, after):
     router.CallSafe(lambda : after(ep))
 
 def AddRelay(hive, index, netid="hive"):
-  dirname = "%s/routers/%d" % (tmpdir, index)
+  dirname = "%s/relays/%d" % (tmpdir, index)
   makedirs("%s/netdb" % dirname, exist_ok=True)
 
   config = pyllarp.Config()
@@ -68,7 +68,7 @@ def AddRelay(hive, index, netid="hive"):
   config.dns.netConfig = {"local-dns": ("127.3.2.1:%d" % port)}
 
   if index != 1:
-    config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
+    config.bootstrap.routers = ["%s/relays/1/rc.signed" % tmpdir]
 
   hive.AddRelay(config)
 
@@ -99,7 +99,7 @@ def AddClient(hive, index, netid="hive"):
 
   config.dns.netConfig = {"local-dns": ("127.3.2.1:%d" % port)}
 
-  config.bootstrap.routers = ["%s/routers/1/rc.signed" % tmpdir]
+  config.bootstrap.routers = ["%s/relays/1/rc.signed" % tmpdir]
 
   hive.AddClient(config)
 
