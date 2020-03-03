@@ -8,10 +8,10 @@ Rather than cramming it into CXXFLAGS in debian/rules.
  1 file changed, 3 insertions(+)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index db091b5..952ad01 100644
+index 532d77a..349d198 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -43,6 +43,9 @@ endif()
+@@ -41,6 +41,9 @@ endif()
  
  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
  

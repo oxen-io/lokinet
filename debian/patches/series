@@ -1,4 +1,3 @@
-0001-make-check-runs-test-suite.patch
 0002-Remove-setcap.patch
 0003-Remove-ccache.patch
 0004-Make-root-bootstraps-to-system-path.patch

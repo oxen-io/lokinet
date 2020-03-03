@@ -7,10 +7,10 @@ Subject: Add no-resolvconf hack to default config
  1 file changed, 5 insertions(+)
 
 diff --git a/llarp/config/config.cpp b/llarp/config/config.cpp
-index be5634f..4384650 100644
+index 32aa359..de8c646 100644
 --- a/llarp/config/config.cpp
 +++ b/llarp/config/config.cpp
-@@ -654,6 +654,11 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
+@@ -670,6 +670,11 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
    f << "bind=127.0.0.1:1153\n";
  #else
    f << "bind=127.3.2.1:53\n";
