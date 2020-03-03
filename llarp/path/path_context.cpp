@@ -286,12 +286,28 @@ namespace llarp
       m_OurPaths.ForEach([&](auto& ptr) { ptr->FlushDownstream(m_Router); });
     }
 
+    uint64_t
+    PathContext::CurrentTransitPaths()
+    {
+      std::unordered_set< TransitHopInfo, TransitHopInfo::Hash > paths;
+      {
+        SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
+        auto& map = m_TransitPaths.second;
+        auto itr  = map.begin();
+        while(itr != map.end())
+        {
+          paths.insert(itr->second->info);
+          ++itr;
+        }
+      }
+      return paths.size();
+    }
+
     void
     PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.txID, hop);
       MapPut< SyncTransitMap_t::Lock_t >(m_TransitPaths, hop->info.rxID, hop);
-      m_TransitHopCount++;
     }
 
     void
@@ -310,7 +326,6 @@ namespace llarp
           {
             m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
             itr = map.erase(itr);
-            m_TransitHopCount--;
           }
           else
             ++itr;
