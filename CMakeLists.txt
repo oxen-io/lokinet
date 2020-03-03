@@ -272,6 +272,8 @@ if(SUBMODULE_CHECK)
   endif()
 endif()
 
+add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
@@ -282,7 +284,6 @@ add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(external/ghc-filesystem)
 add_subdirectory(external/optional-lite EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
-add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
 
 if(ANDROID)
   list(APPEND LIBS log)
