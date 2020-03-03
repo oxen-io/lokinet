@@ -13,9 +13,9 @@ namespace llarp
         })
         .def("ReadFile", &RouterContact::Read)
         .def("WriteFile", &RouterContact::Write)
-        .def("ToString", [](const RouterContact* const rc) -> std::string {
-          return rc->ToJson().dump();
-        })
+        .def("ToString", &RouterContact::ToString)
+        .def("__str__", &RouterContact::ToString)
+        .def("__repr__", &RouterContact::ToString)
         .def("Verify", [](const RouterContact* const rc) -> bool {
           const llarp_time_t now = llarp::time_now_ms();
           return rc->Verify(now);

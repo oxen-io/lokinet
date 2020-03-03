@@ -29,7 +29,9 @@ namespace llarp
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
-    return now >= (m_LastGossipedOurRC + GossipOurRCInterval);
+    bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
+    LogWarn("ShouldGossipOurRC: ", should);
+    return should;
   }
 
   bool

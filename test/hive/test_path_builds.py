@@ -1,11 +1,11 @@
 from time import time
 
-def test_path_builds(HiveTenTen):
-  h = HiveTenTen
+def test_path_builds(HiveArbitrary):
+  h = HiveArbitrary(n_relays=30, n_clients=10)
 
   start_time = time()
   cur_time = start_time
-  test_duration = 10 #seconds
+  test_duration = 5 #seconds
 
   log_attempts = True
 

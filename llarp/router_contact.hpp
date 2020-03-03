@@ -116,6 +116,12 @@ namespace llarp
       return ExtractStatus();
     }
 
+    std::string
+    ToString() const
+    {
+      return ToJson().dump();
+    }
+
     bool
     BEncode(llarp_buffer_t *buf) const;
 

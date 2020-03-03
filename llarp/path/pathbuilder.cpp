@@ -8,7 +8,7 @@
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
 #include <util/thread/logic.hpp>
-#include <tooling/router_event.hpp>
+#include <tooling/path_event.hpp>
 
 #include <functional>
 

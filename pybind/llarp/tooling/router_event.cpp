@@ -3,6 +3,8 @@
 
 #include "tooling/router_event.hpp"
 #include "tooling/dht_event.hpp"
+#include "tooling/path_event.hpp"
+#include "tooling/rc_event.hpp"
 
 #include <messages/relay_status.hpp>
 #include <path/path.hpp>
@@ -46,6 +48,10 @@ namespace tooling
     .def_readonly("location", &GotIntroReceivedEvent::Introset)
       .def_readonly("relayOrder", &GotIntroReceivedEvent::RelayOrder)
       .def_readonly("txid", &GotIntroReceivedEvent::TxID);
+
+    py::class_<RCGossipReceivedEvent, RouterEvent>(mod, "RCGossipReceivedEvent")
+    .def_readonly("rc", &RCGossipReceivedEvent::rc)
+    .def("LongString", &RCGossipReceivedEvent::LongString);
   }
 
 } // namespace tooling

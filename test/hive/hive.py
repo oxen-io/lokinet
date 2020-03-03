@@ -161,15 +161,15 @@ class RouterHive(object):
     print("Starting relays")
     self.hive.StartRelays()
 
-    sleep(1)
+    sleep(0.2)
     self.hive.ForEachRelay(lambda r: self.MakeEndpoint(r, self.onGotEndpoint))
 
-    print("Sleeping 5 seconds before starting clients")
-    sleep(5)
+    print("Sleeping 1 seconds before starting clients")
+    sleep(1)
 
     self.hive.StartClients()
 
-    sleep(1)
+    sleep(0.2)
     self.hive.ForEachClient(lambda r: self.MakeEndpoint(r, self.onGotEndpoint))
 
   def Stop(self):
@@ -241,4 +241,4 @@ if __name__ == '__main__':
   print_events = False
   parser.add_argument('--print-events', dest="print_events", action='store_true')
   args = parser.parse_args()
-  main(print_each_event = args.print_events)
+  main(n_relays=30, print_each_event = args.print_events)
