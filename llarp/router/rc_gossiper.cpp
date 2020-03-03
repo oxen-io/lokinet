@@ -88,7 +88,7 @@ namespace llarp
         return;
       // encode message
       ILinkSession::Message_t msg;
-      msg.reserve(MAX_LINK_MSG_SIZE / 2);
+      msg.resize(MAX_LINK_MSG_SIZE / 2);
       llarp_buffer_t buf(msg);
       if(not gossip.BEncode(&buf))
         return;
