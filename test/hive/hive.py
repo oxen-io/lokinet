@@ -34,9 +34,8 @@ class RouterHive(object):
   def RemoveTmpDir(self):
     if self.tmpdir.startswith("/tmp/") and len(self.tmpdir) > 5:
       print("calling rmdir -r %s" % self.tmpdir)
-      if (input("Is this ok? (y/n): ").lower().strip()[:1] == "y"):
-        rmtree(self.tmpdir, ignore_errors=True)
-        return True
+      rmtree(self.tmpdir, ignore_errors=True)
+      return True
     else:
       print("not removing dir %s because it doesn't start with /tmp/" % self.tmpdir)
 

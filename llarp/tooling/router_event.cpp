@@ -55,6 +55,8 @@ namespace tooling
     : RouterEvent("PathRequestReceivedEvent", routerID, true)
     , prevHop(hop->info.downstream)
     , nextHop(hop->info.upstream)
+    , txid(hop->info.txID)
+    , rxid(hop->info.rxID)
   {
     isEndpoint = false;
     if (routerID == nextHop)

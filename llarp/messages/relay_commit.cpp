@@ -262,6 +262,7 @@ namespace llarp
       if(self->fromAddr.has_value())
       {
         // only do ip limiting from non service nodes
+#ifndef LOKINET_HIVE
         if(self->context->CheckPathLimitHitByIP(self->fromAddr.value()))
         {
           // we hit a limit so tell it to slow tf down
@@ -273,6 +274,7 @@ namespace llarp
           self->hop = nullptr;
           return;
         }
+#endif
       }
 
       if(!self->context->Router()->ConnectionToRouterAllowed(

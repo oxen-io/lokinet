@@ -49,6 +49,9 @@ namespace llarp
   void
   Config_Init(py::module & mod);
 
+  void
+  PathTypes_Init(py::module & mod);
+
   namespace path
   {
     void

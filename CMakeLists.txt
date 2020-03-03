@@ -30,6 +30,10 @@ option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
 option(WITH_HIVE "build simulation stubs" OFF)
 
+if(WITH_HIVE)
+  set(WITH_SHARED ON)
+endif()
+
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
@@ -304,7 +308,7 @@ add_subdirectory(pybind)
 
 
 if (NOT SHADOW)
-  if(WITH_TESTS)
+  if(WITH_TESTS OR WITH_HIVE)
     add_subdirectory(test)
   endif()
   if(ANDROID)

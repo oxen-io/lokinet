@@ -1,6 +1,7 @@
 #pragma once
 
 #include <router_id.hpp>
+#include <path/path_types.hpp>
 
 #include <string>
 #include <vector>
@@ -8,6 +9,8 @@
 
 namespace llarp
 {
+
+  struct PathID_t;
 
   namespace path
   {
@@ -61,6 +64,9 @@ namespace tooling
 
     llarp::RouterID prevHop;
     llarp::RouterID nextHop;
+
+    llarp::PathID_t txid;
+    llarp::PathID_t rxid;
 
     bool isEndpoint = false;
   };

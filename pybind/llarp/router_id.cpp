@@ -15,6 +15,8 @@ namespace llarp
         .def("__repr__", &RouterID::ToString)
         .def("__str__", &RouterID::ToString)
         .def("ShortString", &RouterID::ShortString)
-        .def("__eq__", &RouterID::operator==);
+        .def("__eq__", [](const RouterID* const lhs, const RouterID* const rhs) {
+            return *lhs == *rhs;
+        });
   }
 }

@@ -1,3 +1,12 @@
+if (WITH_HIVE)
+  add_custom_target(hive ${CMAKE_COMMAND} -E
+      env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pyllarp"
+      ${PYTHON_EXECUTABLE} -m pytest
+      ${CMAKE_CURRENT_SOURCE_DIR}/hive
+      DEPENDS
+      ${STATIC_LIB} pyllarp)
+endif()
+
 set(GTEST_EXE testAll)
 set(CATCH_EXE catchAll)
 
