@@ -1,7 +1,6 @@
 #include <util/thread/logic.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.h>
-#include <util/metrics/metrics.hpp>
 
 #include <future>
 
@@ -53,28 +52,10 @@ namespace llarp
   Logic::_traceLogicCall(std::function< void(void) > func, const char* tag,
                          int line)
   {
-#define TAG (tag ? tag : LOG_TAG)
-#define LINE (line ? line : __LINE__)
     // wrap the function so that we ensure that it's always calling stuff one at
     // a time
 
-#if defined(LOKINET_DEBUG)
-#define METRIC(action)                                         \
-  metrics::integerTick("logic", action, 1, "tag", TAG, "line", \
-                       std::to_string(LINE))
-#else
-#define METRIC(action) \
-  do                   \
-  {                    \
-  } while(false)
-#endif
-
-    METRIC("queue");
-    auto f = [self = this, func, tag, line]() {
-#if defined(LOKINET_DEBUG)
-      metrics::TimerGuard g("logic",
-                            std::string(TAG) + ":" + std::to_string(LINE));
-#endif
+    auto f = [self = this, func]() {
       if(self->m_Queue)
       {
         func();
@@ -86,7 +67,6 @@ namespace llarp
     };
     if(can_flush())
     {
-      METRIC("fired");
       f();
       return true;
     }
@@ -97,21 +77,16 @@ namespace llarp
     }
     if(m_Thread->LooksFull(5))
     {
-      LogErrorExplicit(TAG, LINE,
+      LogErrorExplicit(tag ? tag : LOG_TAG, line ? line : __LINE__,
                        "holy crap, we are trying to queue a job "
                        "onto the logic thread but it looks full");
-      METRIC("full");
       std::abort();
     }
     auto ret = llarp_threadpool_queue_job(m_Thread, f);
     if(not ret)
     {
-      METRIC("dropped");
     }
     return ret;
-#undef TAG
-#undef LINE
-#undef METRIC
   }
 
   void

@@ -42,15 +42,15 @@ namespace llarp
         std::transform(
             timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
             [](const auto& item) -> util::StatusObject {
-              return util::StatusObject{{"time", item.second},
-                                        {"target", item.first.ToString()}};
+              return util::StatusObject{{"time", to_json(item.second)},
+                                        {"target", item.first.ExtractStatus()}};
             });
         obj["timeouts"] = timeoutsObjs;
         std::transform(waiting.begin(), waiting.end(),
                        std::back_inserter(waitingObjs),
                        [](const auto& item) -> util::StatusObject {
                          return util::StatusObject{
-                             {"target", item.first.ToString()},
+                             {"target", item.first.ExtractStatus()},
                              {"whoasked", item.second.ExtractStatus()}};
                        });
         obj["waiting"] = waitingObjs;
@@ -71,7 +71,7 @@ namespace llarp
 
       void
       NewTX(const TXOwner& askpeer, const TXOwner& whoasked, const K& k,
-            TX< K, V >* t, llarp_time_t requestTimeoutMS = 15000);
+            TX< K, V >* t, llarp_time_t requestTimeoutMS = 15s);
 
       /// mark tx as not fond
       void
@@ -131,7 +131,7 @@ namespace llarp
     template < typename K, typename V, typename K_Hash >
     void
     TXHolder< K, V, K_Hash >::NotFound(const TXOwner& from,
-                                       const std::unique_ptr< Key_t >& next)
+                                       const std::unique_ptr< Key_t >&)
     {
       auto txitr = tx.find(from);
       if(txitr == tx.end())

@@ -45,10 +45,10 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
-        logic->call_later(1000, std::bind(&AbyssTestBase::Stop, this));
+        logic->call_later(1s, std::bind(&AbyssTestBase::Stop, this));
         return;
       }
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(1s);
     }
   }
 
@@ -87,12 +87,12 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED abyss::http::Headers_t& hdr)
+  PopulateReqHeaders(abyss::http::Headers_t& /*hdr*/)
   {
   }
 
   bool
-  HandleResponse(ABSL_ATTRIBUTE_UNUSED abyss::http::RPC_Response response)
+  HandleResponse(abyss::http::RPC_Response /*response*/)
   {
     test->AsyncStop();
     return true;
@@ -107,8 +107,8 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  absl::optional< Response >
-  HandleJSONRPC(Method_t method, ABSL_ATTRIBUTE_UNUSED const Params& params)
+  Response
+  HandleJSONRPC(Method_t method, const Params& /*params*/)
   {
     test->AssertMethod(method);
     test->called = true;
@@ -127,7 +127,7 @@ struct AbyssTest : public AbyssTestBase,
   AbyssTest()
       : AbyssTestBase()
       , abyss::http::JSONRPC()
-      , abyss::httpd::BaseReqHandler(1000)
+      , abyss::httpd::BaseReqHandler(1s)
   {
     client = this;
     server = this;

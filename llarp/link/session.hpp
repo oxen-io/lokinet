@@ -82,6 +82,10 @@ namespace llarp
     virtual PubKey
     GetPubKey() const = 0;
 
+    /// is an inbound session or not
+    virtual bool
+    IsInbound() const = 0;
+
     /// get remote address
     virtual Addr
     GetRemoteEndpoint() const = 0;

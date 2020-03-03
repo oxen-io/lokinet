@@ -18,6 +18,7 @@ def clientNodeName(id): return 'client-node-%03d' % id
 
 def main():
     ap = AP()
+    ap.add_argument('--lokid', type=str, required=True)
     ap.add_argument('--valgrind', type=bool, default=False)
     ap.add_argument('--dir', type=str, default='testnet_tmp')
     ap.add_argument('--svc', type=int, default=20,
@@ -36,7 +37,7 @@ def main():
     if args.valgrind:
         exe = 'valgrind {}'.format(args.bin)
     else:
-        exe = args.bin
+        exe = '{} -v'.format(args.bin)
     basedir = os.path.abspath(args.dir)
 
     for nodeid in range(args.svc):
@@ -65,6 +66,12 @@ def main():
         }
         config['api'] = {
             'enabled': 'false'
+        }
+        config['lokid'] = {
+            'enabled': 'true',
+            'username': 'svc-%03d' % nodeid,
+            'password': 'lokinet',
+            'jsonrpc': '127.0.0.1:5000'
         }
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):
@@ -118,6 +125,13 @@ type=null
 ''')
 
     with open(args.out, 'w') as f:
+        f.write('''[program:mock-lokid]
+command = {} {}
+autorestart = true
+redirect_stderr=true
+stdout_logfile={}/lokid.txt
+stdout_logfile_maxbytes=0
+'''.format(args.lokid, args.svc, args.dir))
         f.write('''[program:svc-node]
 directory = {}
 command = {} daemon.ini

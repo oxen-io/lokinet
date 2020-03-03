@@ -9,11 +9,11 @@ namespace llarp
   {
     struct PathConfirmMessage final : public IMessage
     {
-      uint64_t pathLifetime = 0;
-      uint64_t pathCreated  = 0;
+      llarp_time_t pathLifetime = 0s;
+      llarp_time_t pathCreated  = 0s;
 
       PathConfirmMessage() = default;
-      PathConfirmMessage(uint64_t lifetime);
+      PathConfirmMessage(llarp_time_t lifetime);
       ~PathConfirmMessage() override = default;
 
       bool
@@ -28,8 +28,8 @@ namespace llarp
       void
       Clear() override
       {
-        pathLifetime = 0;
-        pathCreated  = 0;
+        pathLifetime = 0s;
+        pathCreated  = 0s;
         version      = 0;
       }
     };

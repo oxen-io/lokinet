@@ -2,6 +2,7 @@
 
 #include <crypto/crypto.hpp>
 #include <util/fs.hpp>
+#include <sodium/crypto_sign_ed25519.h>
 
 namespace llarp
 {
@@ -57,10 +58,14 @@ namespace llarp
     Identity::RegenerateKeys()
     {
       auto crypto = CryptoManager::instance();
-      crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
-      pub.Update(seckey_topublic(enckey), seckey_topublic(signkey));
+      crypto->encryption_keygen(enckey);
+      pub.Update(seckey_topublic(signkey), seckey_topublic(enckey));
       crypto->pqe_keygen(pq);
+      if(not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
+      {
+        LogError("failed to generate derived key");
+      }
     }
 
     bool
@@ -141,32 +146,43 @@ namespace llarp
       if(!vanity.IsZero())
         van = vanity;
       // update pubkeys
-      pub.Update(seckey_topublic(enckey), seckey_topublic(signkey), van);
-      return true;
+      pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
+      auto crypto = CryptoManager::instance();
+      return crypto->derive_subkey_private(derivedSignKey, signkey, 1);
     }
 
-    bool
-    Identity::SignIntroSet(IntroSet& i, llarp_time_t now) const
+    nonstd::optional< EncryptedIntroSet >
+    Identity::EncryptAndSignIntroSet(const IntroSet& other_i,
+                                     llarp_time_t now) const
     {
-      if(i.I.size() == 0)
-        return false;
+      EncryptedIntroSet encrypted;
+
+      if(other_i.I.size() == 0)
+        return {};
+      IntroSet i(other_i);
+      encrypted.nounce.Randomize();
       // set timestamp
       // TODO: round to nearest 1000 ms
-      i.T = now;
+      i.T                = now;
+      encrypted.signedAt = now;
       // set service info
       i.A = pub;
       // set public encryption key
       i.K = pq_keypair_to_public(pq);
-      // zero out signature for signing process
-      i.Z.Zero();
       std::array< byte_t, MAX_INTROSET_SIZE > tmp;
       llarp_buffer_t buf(tmp);
-      if(!i.BEncode(&buf))
-        return false;
+      if(not i.BEncode(&buf))
+        return {};
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return Sign(i.Z, buf);
+      const SharedSecret k(i.A.Addr());
+      CryptoManager::instance()->xchacha20(buf, k, encrypted.nounce);
+      encrypted.introsetPayload.resize(buf.sz);
+      std::copy_n(buf.base, buf.sz, encrypted.introsetPayload.data());
+      if(not encrypted.Sign(derivedSignKey))
+        return {};
+      return encrypted;
     }
   }  // namespace service
 }  // namespace llarp

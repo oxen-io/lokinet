@@ -28,15 +28,14 @@ namespace llarp
 
       /// handle lookup result
       virtual bool
-      HandleResponse(__attribute__((unused))
-                     const std::set< IntroSet >& results)
+      HandleResponse(const std::set< EncryptedIntroSet >&)
       {
         return false;
       }
 
       /// determine if this request has timed out
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20000) const
+      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const
       {
         if(now <= m_created)
           return false;
@@ -48,7 +47,7 @@ namespace llarp
       BuildRequestMessage() = 0;
 
       /// build a new request message and send it via a path
-      bool
+      virtual bool
       SendRequestViaPath(path::Path_ptr p, AbstractRouter* r);
 
       ILookupHolder* m_parent;
@@ -64,7 +63,7 @@ namespace llarp
                                {"endpoint", endpoint.ToHex()},
                                {"name", name},
                                {"timedOut", IsTimedOut(now)},
-                               {"createdAt", m_created}};
+                               {"createdAt", m_created.count()}};
         return obj;
       }
 

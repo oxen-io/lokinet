@@ -18,11 +18,12 @@ namespace llarp
     {
       auto &dht = *ctx->impl;
       /// lookup for us, send an immeidate reply
-      Key_t us = dht.OurKey();
-      Key_t k{K};
-      if(K == us)
+      const Key_t us = dht.OurKey();
+      const Key_t k{targetKey};
+      if(k == us)
       {
-        auto path = dht.GetRouter()->pathContext().GetByUpstream(K, pathID);
+        auto path =
+            dht.GetRouter()->pathContext().GetByUpstream(targetKey, pathID);
         if(path)
         {
           replies.emplace_back(
@@ -34,26 +35,22 @@ namespace llarp
 
       Key_t peer;
       // check if we know this in our nodedb first
-      RouterContact found;
-      if(!dht.GetRouter()->ConnectionToRouterAllowed(K))
+      if(not dht.GetRouter()->ConnectionToRouterAllowed(targetKey))
       {
         // explicitly disallowed by network
         replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
         return true;
       }
-      if(dht.GetRouter()->nodedb()->Get(K, found))
+      // check netdb
+      const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(k);
+      if(rc.pubkey == targetKey)
       {
-        replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
+        replies.emplace_back(new GotRouterMessage(k, txid, {rc}, false));
         return true;
       }
-      if((!dht.Nodes()->FindClosest(k, peer)) || peer == us)
-      {
-        // can't find any peers closer
-        replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
-        return true;
-      }
+      peer = Key_t(rc.pubkey);
       // lookup if we don't have it in our nodedb
-      dht.LookupRouterForPath(K, txid, pathID, peer);
+      dht.LookupRouterForPath(targetKey, txid, pathID, peer);
       return true;
     }
 
@@ -86,7 +83,7 @@ namespace llarp
       // key
       if(!bencode_write_bytestring(buf, "K", 1))
         return false;
-      if(!bencode_write_bytestring(buf, K.data(), K.size()))
+      if(!bencode_write_bytestring(buf, targetKey.data(), targetKey.size()))
         return false;
 
       // txid
@@ -132,10 +129,10 @@ namespace llarp
       {
         if(!bencode_read_string(val, &strbuf))
           return false;
-        if(strbuf.sz != K.size())
+        if(strbuf.sz != targetKey.size())
           return false;
 
-        std::copy(strbuf.base, strbuf.base + K.SIZE, K.begin());
+        std::copy(strbuf.base, strbuf.base + targetKey.SIZE, targetKey.begin());
         return true;
       }
       if(key == "T")
@@ -167,26 +164,15 @@ namespace llarp
         return false;
       }
       RouterContact found;
-      if(K.IsZero())
+      if(targetKey.IsZero())
       {
-        llarp::LogError("invalid FRM from ", From, "K is zero");
+        llarp::LogError("invalid FRM from ", From, " key is zero");
         return false;
       }
-      const Key_t k(K);
+      const Key_t k(targetKey);
       if(exploritory)
-        return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      if(!dht.GetRouter()->ConnectionToRouterAllowed(K))
-      {
-        // explicitly disallowed by network
-        replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
-        return true;
-      }
-      if(dht.GetRCFromNodeDB(k, found))
-      {
-        replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
-        return true;
-      }
-
+        return dht.HandleExploritoryRouterLookup(From, txid, targetKey,
+                                                 replies);
       dht.LookupRouterRelayed(From, txid, k, !iterative, replies);
       return true;
     }

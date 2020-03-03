@@ -19,17 +19,18 @@ namespace abyss
       string_view val    = line.substr(1 + idx);
       // to lowercase
       std::string lowerHeader;
+      lowerHeader.reserve(header.size());
       auto itr = header.begin();
       while(itr != header.end())
       {
-        lowerHeader += ::tolower(*itr);
+        lowerHeader += std::tolower(*itr);
         ++itr;
       }
-      if(ShouldProcessHeader(string_view(lowerHeader)))
+      if(ShouldProcessHeader(lowerHeader))
       {
         val = val.substr(val.find_first_not_of(' '));
-        Header.Headers.emplace(lowerHeader.c_str(),
-                               llarp::string_view_string(val));
+        // llarp::str() here for gcc 5 compat
+        Header.Headers.emplace(std::move(lowerHeader), llarp::str(val));
       }
       return true;
     }

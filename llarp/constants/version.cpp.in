@@ -1,6 +1,8 @@
 #include <constants/version.hpp>
 #include <constants/version.h>
+#include <constants/proto.hpp>
 
+// clang-format off
 #define LLARP_STRINGIFY2(val) #val
 #define LLARP_STRINGIFY(val) LLARP_STRINGIFY2(val)
 
@@ -10,6 +12,7 @@
 namespace llarp
 {
   const std::array<uint16_t, 3> VERSION{{LLARP_VERSION_MAJ, LLARP_VERSION_MIN, LLARP_VERSION_PATCH}};
+  const std::array<uint64_t, 4> ROUTER_VERSION{{LLARP_PROTO_VERSION, LLARP_VERSION_MAJ, LLARP_VERSION_MIN, LLARP_VERSION_PATCH}};
   const char* const VERSION_STR   = LLARP_VERSION_STR;
   const char* const VERSION_TAG   = "@VERSIONTAG@";
   const char* const VERSION_FULL  = LLARP_NAME "-" LLARP_VERSION_STR "-@VERSIONTAG@";

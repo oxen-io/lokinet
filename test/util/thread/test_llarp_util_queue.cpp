@@ -1,5 +1,6 @@
 #include <util/thread/queue.hpp>
 #include <util/thread/threading.hpp>
+#include <util/thread/barrier.hpp>
 
 #include <array>
 #include <condition_variable>
@@ -11,7 +12,9 @@
 using namespace llarp;
 using namespace llarp::thread;
 
-using LockGuard = absl::MutexLock;
+using namespace std::literals;
+
+using LockGuard = std::unique_lock<std::mutex>;
 
 class Element
 {
@@ -50,7 +53,8 @@ class Args
  public:
   std::condition_variable startCond;
   std::condition_variable runCond;
-  absl::Mutex mutex;
+  std::mutex mutex;
+  std::condition_variable cv;
 
   ObjQueue queue;
 
@@ -80,21 +84,13 @@ class Args
   }
 };
 
-using CondArgs = std::pair< Args*, size_t >;
-bool
-waitFunc(CondArgs* a)
-{
-  return a->first->count != a->second;
-}
-
 void
 popFrontTester(Args& args)
 {
   {
-    LockGuard guard(&args.mutex);
+    LockGuard lock(args.mutex);
     args.count++;
-
-    args.mutex.Await(absl::Condition(&args, &Args::signal));
+    args.cv.wait(lock, [&] { return args.signal(); });
   }
 
   for(;;)
@@ -111,10 +107,9 @@ void
 pushBackTester(Args& args)
 {
   {
-    LockGuard guard(&args.mutex);
+    LockGuard lock(args.mutex);
     args.count++;
-
-    args.mutex.Await(absl::Condition(&args, &Args::signal));
+    args.cv.wait(lock, [&] { return args.signal(); });
   }
 
   for(size_t i = 0; i < args.iterations; ++i)
@@ -176,11 +171,9 @@ struct ExceptionTester
 std::atomic< std::thread::id > ExceptionTester::throwFrom = {std::thread::id()};
 
 void
-sleepNWait(size_t microseconds, util::Barrier& barrier)
+sleepNWait(std::chrono::microseconds microseconds, util::Barrier& barrier)
 {
-  std::this_thread::sleep_for(
-      std::chrono::duration< double, std::micro >(microseconds));
-
+  std::this_thread::sleep_for(microseconds);
   barrier.Block();
 }
 
@@ -285,14 +278,12 @@ TEST(TestQueue, singleProducerManyConsumer)
   Args args{iterations};
 
   {
-    LockGuard lock(&args.mutex);
+    LockGuard lock(args.mutex);
 
     for(size_t i = 0; i < threads.size(); ++i)
     {
       threads[i] = std::thread(std::bind(&popFrontTester, std::ref(args)));
-
-      CondArgs cArgs(&args, i + 1);
-      args.mutex.Await(absl::Condition(&waitFunc, &cArgs));
+      args.cv.wait(lock, [&] { return args.count != i+1; });
     }
 
     args.runSignal++;
@@ -328,23 +319,19 @@ TEST(TestQueue, manyProducerManyConsumer)
   Args args{iterations};
 
   {
-    LockGuard lock(&args.mutex);
+    LockGuard lock(args.mutex);
 
     for(size_t i = 0; i < numThreads; ++i)
     {
       threads[i] = std::thread(std::bind(&popFrontTester, std::ref(args)));
-
-      CondArgs cArgs(&args, i + 1);
-      args.mutex.Await(absl::Condition(+waitFunc, &cArgs));
+      args.cv.wait(lock, [&] { return args.count != i+1; });
     }
 
     for(size_t i = 0; i < numThreads; ++i)
     {
       threads[i + numThreads] =
           std::thread(std::bind(&pushBackTester, std::ref(args)));
-
-      CondArgs cArgs(&args, numThreads + i + 1);
-      args.mutex.Await(absl::Condition(+waitFunc, &cArgs));
+      args.cv.wait(lock, [&] { return args.count != numThreads+i+1; });
     }
 
     args.runSignal++;
@@ -386,12 +373,13 @@ TEST(TestQueue, ABAEmpty)
       nextValue[j] = block + (numValues * j);
       lastValue[j] = block + (numValues * (j + 1)) - 1;
 
-      threads[j] = std::thread(std::bind(&abaThread, nextValue[j], lastValue[j],
-                                         std::ref(queue), std::ref(barrier)));
+      threads[j] = std::thread([&, n=nextValue[j], l=lastValue[j]] { abaThread(n, l, queue, barrier); });
     }
 
-    threads[numThreads] =
-        std::thread(std::bind(&sleepNWait, 100, std::ref(barrier)));
+    threads[numThreads] = std::thread([&] {
+        std::this_thread::sleep_for(100us);
+        barrier.Block();
+    });
 
     for(size_t j = 0; j < numEntries; ++j)
     {
@@ -448,12 +436,13 @@ TEST(TestQueue, generationCount)
     nextValue[j] = block + (numValues * j);
     lastValue[j] = block + (numValues * (j + 1)) - 1;
 
-    threads[j] = std::thread(std::bind(&abaThread, nextValue[j], lastValue[j],
-                                       std::ref(queue), std::ref(barrier)));
+    threads[j] = std::thread([&, n=nextValue[j], l=lastValue[j]] { abaThread(n, l, queue, barrier); });
   }
 
-  threads[numThreads] =
-      std::thread(std::bind(&sleepNWait, 100, std::ref(barrier)));
+  threads[numThreads] = std::thread([&] {
+      std::this_thread::sleep_for(100ms);
+      barrier.Block();
+  });
 
   for(size_t j = 0; j < numEntries; ++j)
   {
@@ -516,15 +505,16 @@ TEST(TestQueue, exceptionSafety)
 
   ASSERT_THROW({ (void)queue.popFront(); }, Exception);
 
+  using namespace std::literals;
   // Now the queue is not full, and the producer thread can start adding items.
-  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
+  ASSERT_TRUE(semaphore.waitFor(1s));
 
   ASSERT_EQ(queueSize, queue.size());
 
   ASSERT_THROW({ (void)queue.popFront(); }, Exception);
 
   // Now the queue is not full, and the producer thread can start adding items.
-  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
+  ASSERT_TRUE(semaphore.waitFor(1s));
 
   ASSERT_EQ(queueSize, queue.size());
 
@@ -534,7 +524,7 @@ TEST(TestQueue, exceptionSafety)
   // pop an item to unblock the pusher
   (void)queue.popFront();
 
-  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
+  ASSERT_TRUE(semaphore.waitFor(1s));
 
   ASSERT_EQ(1u, caught);
 
@@ -585,7 +575,7 @@ TEST(TestQueue, moveIt)
 
   ASSERT_EQ(5u, counter);
 
-  absl::optional< MoveTester > optPopped = queue.tryPopFront();
+  nonstd::optional< MoveTester > optPopped = queue.tryPopFront();
 
   ASSERT_TRUE(optPopped.has_value());
 

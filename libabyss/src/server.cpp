@@ -184,15 +184,15 @@ namespace abyss
             {
               nlohmann::json response;
               response["jsonrpc"] = "2.0";
-              response["id"]      = m_Request["id"];
+              response["id"]      = m_Request["id"].get< std::string >();
               auto value          = handler->HandleJSONRPC(
                   m_Request["method"].get< std::string >(),
                   m_Request["params"]);
-              if(value)
-              {
-                response["result"] = value.value();
-                return WriteResponseJSON(response);
-              }
+
+              if(!value.is_null())
+                response["result"] = std::move(value);
+
+              return WriteResponseJSON(response);
             }
             return WriteResponseSimple(500, "internal error", "text/plain",
                                        "nope");

@@ -54,7 +54,7 @@ namespace llarp
     std::shared_ptr< thread::ThreadPool > m_Disk;
     FILE* const m_File;
     const llarp_time_t m_FlushInterval;
-    llarp_time_t m_LastFlush = 0;
+    llarp_time_t m_LastFlush = 0s;
     const bool m_Close;
   };
 }  // namespace llarp

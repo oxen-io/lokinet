@@ -24,7 +24,7 @@ namespace llarp
 
       /// handle a hooked message
       virtual bool
-      HandleHookedDNSMessage(dns::Message&& query,
+      HandleHookedDNSMessage(Message query,
                              std::function< void(Message) > sendReply) = 0;
     };
 

@@ -10,10 +10,10 @@ namespace llarp
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      llarp::dht::Key_t fromKey;
-      fromKey.Zero();
       if(key == "M")
       {
+        llarp::dht::Key_t fromKey;
+        fromKey.Zero();
         return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
       }
       if(key == "S")
@@ -45,11 +45,16 @@ namespace llarp
       return bencode_end(buf);
     }
 
+    /// 'h' here is either TransitHop or Path.
+    /// TransitHop chains to dht::Context::RelayRequestForPath and is where the
+    /// end of a path handles a client's DHT message Path handles the message
+    /// (e.g. dht::IMessage::HandleMessage()) in-place and is the case where a
+    /// client receives a DHT message
     bool
     DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       // set source as us
-      llarp::dht::Key_t us{r->pubkey()};
+      const llarp::dht::Key_t us(r->pubkey());
       for(const auto& msg : M)
       {
         msg->From   = us;

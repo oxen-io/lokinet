@@ -8,7 +8,6 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <absl/types/variant.h>
 
 namespace llarp
 {

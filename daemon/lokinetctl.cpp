@@ -3,7 +3,6 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 
-#include <absl/synchronization/mutex.h>
 #include <cxxopts.hpp>
 #include <string>
 #include <vector>
@@ -110,25 +109,21 @@ namespace
 int
 main(int argc, char* argv[])
 {
-#ifdef LOKINET_DEBUG
-  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
-#endif
+  cxxopts::Options options("lokinetctl",
+                           "LokiNET is a free, open source, private, "
+                           "decentralized, \"market based sybil resistant\" "
+                           "and IP based onion routing network");
 
-  // clang-format off
-  cxxopts::Options options(
-    "lokinetctl",
-    "LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
-  );
-
-  options.add_options()
-      ("v,verbose", "Verbose", cxxopts::value<bool>())
-      ("h,help", "help", cxxopts::value<bool>())
-      ("c,config", "config file", cxxopts::value<std::string>()->default_value(llarp::GetDefaultConfigPath().string()))
+  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
+      "h,help", "help", cxxopts::value< bool >())(
+      "c,config", "config file",
+      cxxopts::value< std::string >()->default_value(
+          llarp::GetDefaultConfigPath().string()))
 #ifdef WITH_CURL
-      ("j,jsonrpc", "hit json rpc endpoint", cxxopts::value<std::string>())
+      ("j,jsonrpc", "hit json rpc endpoint", cxxopts::value< std::string >())
 #endif
-      ("dump", "dump rc file", cxxopts::value<std::vector<std::string> >(), "FILE");
-  // clang-format on
+          ("dump", "dump rc file",
+           cxxopts::value< std::vector< std::string > >(), "FILE");
 
   try
   {

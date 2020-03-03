@@ -29,8 +29,8 @@ namespace llarp
 
     std::unique_ptr< RouterContact > nextRC;
     std::unique_ptr< PoW > work;
-    uint64_t version  = 0;
-    uint64_t lifetime = 0;
+    uint64_t version      = 0;
+    llarp_time_t lifetime = 0s;
 
     bool
     BDecode(llarp_buffer_t *buf);

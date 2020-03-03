@@ -35,7 +35,7 @@ llarp_dht_allow_transit(llarp_dht_context *ctx)
 void
 llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
-  ctx->impl->Init(llarp::dht::Key_t(key), ctx->parent, 2000);
+  ctx->impl->Init(llarp::dht::Key_t(key), ctx->parent);
 }
 
 void

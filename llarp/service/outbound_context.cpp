@@ -8,6 +8,8 @@
 #include <profiling.hpp>
 #include <util/meta/memfn.hpp>
 
+#include <service/endpoint_util.hpp>
+
 #include <random>
 #include <algorithm>
 
@@ -48,7 +50,7 @@ namespace llarp
         {
           SwapIntros();
         }
-        UpdateIntroSet(false);
+        UpdateIntroSet();
       }
       return true;
     }
@@ -56,6 +58,7 @@ namespace llarp
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
         : path::Builder(parent->Router(), 4, path::default_len)
         , SendContext(introset.A, {}, this, parent)
+        , location(introset.A.Addr().ToKey())
         , currentIntroSet(introset)
 
     {
@@ -83,29 +86,35 @@ namespace llarp
     }
 
     bool
-    OutboundContext::OnIntroSetUpdate(__attribute__((unused))
-                                      const Address& addr,
-                                      const IntroSet* i,
+    OutboundContext::OnIntroSetUpdate(const Address&,
+                                      nonstd::optional< IntroSet > foundIntro,
                                       const RouterID& endpoint)
     {
       if(markedBad)
         return true;
       updatingIntroSet = false;
-      if(i)
+      if(foundIntro.has_value())
       {
-        if(currentIntroSet.T >= i->T)
+        if(foundIntro->T == 0s)
+        {
+          LogWarn(Name(),
+                  " got introset with zero timestamp: ", foundIntro.value());
+          return true;
+        }
+        if(currentIntroSet.T > foundIntro->T)
         {
           LogInfo("introset is old, dropping");
           return true;
         }
 
         const llarp_time_t now = Now();
-        if(i->IsExpired(now))
+        if(foundIntro->IsExpired(now))
         {
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
-        currentIntroSet = *i;
+        currentIntroSet = foundIntro.value();
+        ShiftIntroduction(false);
       }
       else
       {
@@ -214,38 +223,25 @@ namespace llarp
     }
 
     void
-    OutboundContext::UpdateIntroSet(bool randomizePath)
+    OutboundContext::UpdateIntroSet()
     {
       if(updatingIntroSet || markedBad)
         return;
       const auto addr = currentIntroSet.A.Addr();
-
-      path::Path_ptr path = nullptr;
-      if(randomizePath)
-      {
-        path = m_Endpoint->PickRandomEstablishedPath();
-      }
-      else
-        path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
-
-      if(path == nullptr)
-      {
-        path = PickRandomEstablishedPath();
-      }
-
-      if(path)
+      // we want to use the parent endpoint's paths because outbound context
+      // does not implement path::PathSet::HandleGotIntroMessage
+      const auto paths    = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
+      uint64_t relayOrder = 0;
+      for(const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-            addr, m_Endpoint->GenTXID());
-
-        updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());
-      }
-      else
-      {
-        LogWarn("Cannot update introset no path for outbound session to ",
-                currentIntroSet.A.Addr().ToString());
+            location, PubKey{addr.as_array()}, relayOrder,
+            m_Endpoint->GenTXID());
+        relayOrder++;
+        if(job->SendRequestViaPath(path, m_Endpoint->Router()))
+          updatingIntroSet = true;
       }
     }
 
@@ -255,11 +251,11 @@ namespace llarp
       auto obj                     = path::Builder::ExtractStatus();
       obj["currentConvoTag"]       = currentConvoTag.ToHex();
       obj["remoteIntro"]           = remoteIntro.ExtractStatus();
-      obj["sessionCreatedAt"]      = createdAt;
-      obj["lastGoodSend"]          = lastGoodSend;
+      obj["sessionCreatedAt"]      = to_json(createdAt);
+      obj["lastGoodSend"]          = to_json(lastGoodSend);
       obj["seqno"]                 = sequenceNo;
       obj["markedBad"]             = markedBad;
-      obj["lastShift"]             = lastShift;
+      obj["lastShift"]             = to_json(lastShift);
       obj["remoteIdentity"]        = remoteIdent.Addr().ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
       obj["nextIntro"]             = m_NextIntro.ExtractStatus();
@@ -267,9 +263,7 @@ namespace llarp
       std::transform(m_BadIntros.begin(), m_BadIntros.end(),
                      std::back_inserter(obj["badIntros"]),
                      [](const auto& item) -> util::StatusObject {
-                       return util::StatusObject{
-                           {"count", item.second},
-                           {"intro", item.first.ExtractStatus()}};
+                       return item.first.ExtractStatus();
                      });
       return obj;
     }
@@ -284,6 +278,7 @@ namespace llarp
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
       {
+        UpdateIntroSet();
         // shift intro if it expires "soon"
         if(ShiftIntroduction())
           SwapIntros();  // swap intros if we shifted
@@ -299,12 +294,8 @@ namespace llarp
         else
           ++itr;
       }
-      if(currentIntroSet.HasExpiredIntros(now))
-      {
-        UpdateIntroSet(false);
-      }
       // send control message if we look too quiet
-      if(lastGoodSend)
+      if(lastGoodSend > 0s)
       {
         if(now - lastGoodSend > (sendTimeout / 2))
         {
@@ -323,7 +314,7 @@ namespace llarp
         }
       }
       // if we are dead return true so we are removed
-      return lastGoodSend
+      return lastGoodSend > 0s
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
           : (now >= createdAt && now - createdAt > connectTimeout);
     }
@@ -364,22 +355,18 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if(markedBad)
+      if(markedBad || path::Builder::BuildCooldownHit(now))
         return false;
-      const bool should = path::Builder::BuildCooldownHit(now);
-
-      if(!ReadyToSend())
-      {
-        return should;
-      }
-      llarp_time_t t = 0;
+      const bool canBuild = NumInStatus(path::ePathBuilding) == 0
+          and path::Builder::ShouldBuildMore(now);
+      if(not canBuild)
+        return false;
+      llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {
         if(path->IsReady())
           t = std::max(path->ExpireTime(), t);
       });
-      if(t <= now)
-        return should;
-      return should && t - now >= path::default_lifetime / 2;
+      return t >= now + path::default_lifetime / 4;
     }
 
     bool
@@ -413,7 +400,7 @@ namespace llarp
       {
         // update introset
         LogInfo(Name(), " updating introset");
-        UpdateIntroSet(false);
+        UpdateIntroSet();
         return true;
       }
       return false;
@@ -488,7 +475,7 @@ namespace llarp
     OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
-      UpdateIntroSet(false);
+      UpdateIntroSet();
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)

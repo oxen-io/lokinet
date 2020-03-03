@@ -1,10 +1,12 @@
 #ifndef LLARP_THREADING_HPP
 #define LLARP_THREADING_HPP
 
-#include <absl/synchronization/barrier.h>
-#include <absl/synchronization/mutex.h>
-#include <absl/types/optional.h>
-#include <absl/time/time.h>
+#include <thread>
+#include <shared_mutex>
+#include <mutex>
+#include <nonstd/optional.hpp>
+
+#include "annotations.hpp"
 
 #include <iostream>
 #include <thread>
@@ -20,10 +22,8 @@ using pid_t = int;
 #ifdef TRACY_ENABLE
 #include "Tracy.hpp"
 #define DECLARE_LOCK(type, var, ...) TracyLockable(type, var)
-#define ACQUIRE_LOCK(lock, mtx) lock(mtx)
 #else
 #define DECLARE_LOCK(type, var, ...) type var __VA_ARGS__
-#define ACQUIRE_LOCK(lock, mtx) lock(&mtx)
 #endif
 
 namespace llarp
@@ -39,13 +39,13 @@ namespace llarp
     ///
     /// the idea is to "turn off" the mutexes and see where they are actually
     /// needed.
-    struct LOCKABLE NullMutex
+    struct CAPABILITY("mutex") NullMutex
     {
 #ifdef LOKINET_DEBUG
       /// in debug mode, we implement lock() to enforce that any lock is only
       /// used from a single thread. the point of this is to identify locks that
       /// are actually needed by dying a painful death when used across threads
-      mutable absl::optional< std::thread::id > m_id;
+      mutable nonstd::optional< std::thread::id > m_id;
       void
       lock() const
       {
@@ -70,39 +70,81 @@ namespace llarp
       {
       }
 #endif
+      // Does nothing; once locked the mutex belongs to that thread forever
+      void
+      unlock() const
+      {
+      }
     };
 
     /// a lock that does nothing
-    struct SCOPED_LOCKABLE NullLock
+    struct SCOPED_CAPABILITY NullLock
     {
-      NullLock(const NullMutex* mtx) EXCLUSIVE_LOCK_FUNCTION(mtx)
+      NullLock(NullMutex& mtx) ACQUIRE(mtx)
       {
-        mtx->lock();
+        mtx.lock();
       }
 
-      ~NullLock() UNLOCK_FUNCTION()
+      ~NullLock() RELEASE()
       {
         (void)this;  // trick clang-tidy
       }
     };
 
-    using Mutex = absl::Mutex;
-    using Lock  = absl::MutexLock;
+    /// Default mutex type, supporting shared and exclusive locks.
+    using Mutex = std::shared_timed_mutex;
 
-    using ReleasableLock = absl::ReleasableMutexLock;
-    using Condition      = absl::CondVar;
+    /// Basic RAII lock type for the default mutex type.
+    using Lock = std::lock_guard< Mutex >;
+
+    /// Returns a unique lock around the given lockable (typically a mutex)
+    /// which gives exclusive control and is unlockable/relockable.  Any extra
+    /// argument (e.g. std::defer_lock) is forwarded to the unique_lock
+    /// constructor.
+    template < typename Mutex, typename... Args >
+#ifdef __GNUG__
+    [[gnu::warn_unused_result]]
+#endif
+    std::unique_lock< Mutex >
+    unique_lock(Mutex& lockable, Args&&... args)
+    {
+      return std::unique_lock< Mutex >(lockable, std::forward< Args >(args)...);
+    }
+
+    /// Returns a shared lock around the given lockable (typically a mutex)
+    /// which gives "reader" access (i.e. which can be shared with other reader
+    /// locks but not unique locks).  Any extra argument (e.g. std::defer_lock)
+    /// is forwarded to the std::shared_lock constructor.
+    template < typename Mutex, typename... Args >
+#ifdef __GNUG__
+    [[gnu::warn_unused_result]]
+#endif
+    std::shared_lock< Mutex >
+    shared_lock(Mutex& lockable, Args&&... args)
+    {
+      return std::shared_lock< Mutex >(lockable, std::forward< Args >(args)...);
+    }
+
+    /// Obtains multiple unique locks simultaneously and atomically.  Returns a
+    /// tuple of all the held locks.
+    template < typename... Mutex >
+#ifdef __GNUG__
+    [[gnu::warn_unused_result]]
+#endif
+    std::tuple< std::unique_lock< Mutex >... >
+    unique_locks(Mutex&... lockables)
+    {
+      std::lock(lockables...);
+      return std::make_tuple(
+          std::unique_lock< Mutex >(lockables, std::adopt_lock)...);
+    }
 
     class Semaphore
     {
      private:
-      Mutex m_mutex;  // protects m_count
+      std::mutex m_mutex;  // protects m_count
       size_t m_count GUARDED_BY(m_mutex);
-
-      bool
-      ready() const SHARED_LOCKS_REQUIRED(m_mutex)
-      {
-        return m_count > 0;
-      }
+      std::condition_variable m_cv;
 
      public:
       Semaphore(size_t count) : m_count(count)
@@ -110,38 +152,34 @@ namespace llarp
       }
 
       void
-      notify() LOCKS_EXCLUDED(m_mutex)
+      notify() EXCLUDES(m_mutex)
       {
-        Lock lock(&m_mutex);
-        m_count++;
+        {
+          std::lock_guard< std::mutex > lock(m_mutex);
+          m_count++;
+        }
+        m_cv.notify_one();
       }
 
       void
-      wait() LOCKS_EXCLUDED(m_mutex)
+      wait() EXCLUDES(m_mutex)
       {
-        Lock lock(&m_mutex);
-        m_mutex.Await(absl::Condition(this, &Semaphore::ready));
-
+        auto lock = unique_lock(m_mutex);
+        m_cv.wait(lock, [this] { return m_count > 0; });
         m_count--;
       }
 
       bool
-      waitFor(absl::Duration timeout) LOCKS_EXCLUDED(m_mutex)
+      waitFor(std::chrono::microseconds timeout) EXCLUDES(m_mutex)
       {
-        Lock lock(&m_mutex);
-
-        if(!m_mutex.AwaitWithTimeout(absl::Condition(this, &Semaphore::ready),
-                                     timeout))
-        {
+        auto lock = unique_lock(m_mutex);
+        if(!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
           return false;
-        }
 
         m_count--;
         return true;
       }
     };
-
-    using Barrier = absl::Barrier;
 
     void
     SetThreadName(const std::string& name);
@@ -163,11 +201,11 @@ namespace llarp
       void
       TryAccess(F visit) const
 #if defined(LOKINET_DEBUG)
-          LOCKS_EXCLUDED(_access)
+          EXCLUDES(_access)
 #endif
       {
 #if defined(LOKINET_DEBUG)
-        NullLock lock(&_access);
+        NullLock lock(_access);
 #endif
         visit();
       }

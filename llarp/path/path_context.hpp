@@ -122,9 +122,9 @@ namespace llarp
 
         void
         ForEach(std::function< void(const TransitHop_ptr&) > visit)
-            LOCKS_EXCLUDED(first)
+            EXCLUDES(first)
         {
-          Lock_t lock(&first);
+          Lock_t lock(first);
           for(const auto& item : second)
             visit(item.second);
         }
@@ -136,15 +136,13 @@ namespace llarp
 
       struct SyncOwnedPathsMap_t
       {
-        using Mutex_t = util::Mutex;
-        using Lock_t  = util::Lock;
-        Mutex_t first;  // protects second
+        util::Mutex first;  // protects second
         OwnedPathsMap_t second GUARDED_BY(first);
 
         void
         ForEach(std::function< void(const Path_ptr&) > visit)
         {
-          Lock_t lock(&first);
+          util::Lock lock(first);
           for(const auto& item : second)
             visit(item.second);
         }
@@ -165,12 +163,20 @@ namespace llarp
       const byte_t*
       OurRouterID() const;
 
+      /// current number of transit paths we have
+      uint64_t
+      CurrentTransitPaths() const
+      {
+        return m_TransitHopCount;
+      }
+
      private:
       AbstractRouter* m_Router;
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
       util::DecayingHashSet< llarp::Addr > m_PathLimits;
+      uint64_t m_TransitHopCount = 0;
     };
   }  // namespace path
 }  // namespace llarp

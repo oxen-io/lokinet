@@ -2,6 +2,8 @@
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
 #include <routing/message.hpp>
+#include <router/abstractrouter.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -14,16 +16,16 @@ namespace llarp
     {
       bool read = false;
 
-      if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
+      if(!BEncodeMaybeReadDictEntry("N", tagName, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictInt("R", R, read, k, val))
+      if(!BEncodeMaybeReadDictInt("O", relayOrder, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("S", S, read, k, val))
+      if(!BEncodeMaybeReadDictEntry("S", location, read, k, val))
         return false;
 
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, val))
+      if(!BEncodeMaybeReadDictInt("T", txID, read, k, val))
         return false;
 
       if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, k,
@@ -42,25 +44,27 @@ namespace llarp
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
-      if(N.Empty())
+      if(tagName.Empty())
       {
-        // recursion
-        if(!BEncodeWriteDictInt("R", R, buf))
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
           return false;
+
         // service address
-        if(!BEncodeWriteDictEntry("S", S, buf))
+        if(!BEncodeWriteDictEntry("S", location, buf))
           return false;
       }
       else
       {
-        if(!BEncodeWriteDictEntry("N", N, buf))
+        if(!BEncodeWriteDictEntry("N", tagName, buf))
           return false;
-        // recursion
-        if(!BEncodeWriteDictInt("R", R, buf))
+
+        // relay order
+        if(!BEncodeWriteDictInt("O", relayOrder, buf))
           return false;
       }
       // txid
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if(!BEncodeWriteDictInt("T", txID, buf))
         return false;
       // protocol version
       if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
@@ -73,121 +77,63 @@ namespace llarp
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx, std::vector< IMessage::Ptr_t >& replies) const
     {
-      if(R > 5)
-      {
-        llarp::LogError("R value too big, ", R, "> 5");
-        return false;
-      }
       auto& dht = *ctx->impl;
-      if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, T}))
+      if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, txID}))
       {
-        llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
+        llarp::LogWarn("duplicate FIM from ", From, " txid=", txID);
         return false;
       }
-      Key_t peer;
-      std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(N.Empty())
+
+      if(not tagName.Empty())
+        return false;
+
+      // bad request (request for zero-key)
+      if(location.IsZero())
       {
-        llarp::LogInfo("lookup ", S.ToString());
-        const auto introset = dht.GetIntroSetByServiceAddress(S);
-        if(introset)
-        {
-          service::IntroSet i = *introset;
-          replies.emplace_back(new GotIntroMessage({i}, T));
-          return true;
-        }
-
-        if(R == 0)
-        {
-          // we don't have it
-          Key_t target = S.ToKey();
-          Key_t closer;
-          // find closer peer
-          if(!dht.Nodes()->FindClosest(target, closer))
-            return false;
-          if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, closer);
-          else
-            replies.emplace_back(new GotIntroMessage(From, closer, T));
-          return true;
-        }
-
-        Key_t us     = dht.OurKey();
-        Key_t target = S.ToKey();
-        // we are recursive
-        if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
-        {
-          if(relayed)
-            dht.LookupIntroSetForPath(S, T, pathID, peer);
-          else
-          {
-            if((us ^ target) < (peer ^ target))
-            {
-              // we are not closer than our peer to the target so don't
-              // recurse farther
-              replies.emplace_back(new GotIntroMessage({}, T));
-              return true;
-            }
-            if(R > 0)
-              dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
-            else
-              dht.LookupIntroSetIterative(S, From, T, peer);
-          }
-          return true;
-        }
-
-        // no more closer peers
-        replies.emplace_back(new GotIntroMessage({}, T));
+        // we dont got it
+        replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
 
+      // we are relaying this message for e.g. a client
       if(relayed)
       {
-        // tag lookup
-        if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
+        if(relayOrder >= IntroSetStorageRedundancy)
         {
-          dht.LookupTagForPath(N, T, pathID, peer);
-        }
-        else
-        {
-          // no more closer peers
-          replies.emplace_back(new GotIntroMessage({}, T));
+          llarp::LogWarn("Invalid relayOrder received: ", relayOrder);
+          replies.emplace_back(new GotIntroMessage({}, txID));
           return true;
         }
+
+        auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
+            location, IntroSetStorageRedundancy);
+
+        if(closestRCs.size() <= relayOrder)
+        {
+          llarp::LogWarn("Can't fulfill FindIntro for relayOrder: ",
+                         relayOrder);
+          replies.emplace_back(new GotIntroMessage({}, txID));
+          return true;
+        }
+
+        const auto& entry = closestRCs[relayOrder];
+        Key_t peer        = Key_t(entry.pubkey);
+        dht.LookupIntroSetForPath(location, txID, pathID, peer, 0);
       }
       else
       {
-        if(R == 0)
+        // we should have this value if introset was propagated properly
+        const auto maybe = dht.GetIntroSetByLocation(location);
+        if(maybe.has_value())
         {
-          // base case
-          auto introsets = dht.FindRandomIntroSetsWithTagExcluding(N, 2, {});
-          std::vector< service::IntroSet > reply;
-          for(const auto& introset : introsets)
-          {
-            reply.push_back(introset);
-          }
-          replies.emplace_back(new GotIntroMessage(reply, T));
-          return true;
-        }
-        if(R < 5)
-        {
-          // tag lookup
-          if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
-          {
-            dht.LookupTagRecursive(N, From, T, peer, R - 1);
-          }
-          else
-          {
-            replies.emplace_back(new GotIntroMessage({}, T));
-          }
+          replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
         }
         else
         {
-          // too big R value
-          replies.emplace_back(new GotIntroMessage({}, T));
+          LogWarn("Got FIM with relayed == false and we don't have entry");
+          replies.emplace_back(new GotIntroMessage({}, txID));
         }
       }
-
       return true;
     }
   }  // namespace dht

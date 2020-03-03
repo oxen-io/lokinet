@@ -72,7 +72,7 @@ namespace llarp
   {
     struct WriteBuffer
     {
-      llarp_time_t timestamp = 0;
+      llarp_time_t timestamp = 0s;
       size_t bufsz;
       byte_t buf[EV_WRITE_BUF_SZ] = {0};
 
@@ -278,7 +278,7 @@ namespace llarp
   {
     struct WriteBuffer
     {
-      llarp_time_t timestamp = 0;
+      llarp_time_t timestamp = 0s;
       size_t bufsz;
       byte_t buf[EV_WRITE_BUF_SZ];
 
@@ -345,7 +345,7 @@ namespace llarp
         llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
                                  WriteBuffer::PutTime, WriteBuffer::Compare,
                                  WriteBuffer::GetNow, llarp::util::NullMutex,
-                                 llarp::util::NullLock, 5, 100, 1024 >;
+                                 llarp::util::NullLock >;
 
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 

@@ -23,13 +23,19 @@ namespace llarp
 
   namespace dht
   {
+    /// number of routers to publish to
+    static constexpr size_t IntroSetRelayRedundancy = 2;
+
+    /// number of dht locations handled per relay
+    static constexpr size_t IntroSetRequestsPerRelay = 2;
+
+    static constexpr size_t IntroSetStorageRedundancy =
+        (IntroSetRelayRedundancy * IntroSetRequestsPerRelay);
+
     struct AbstractContext
     {
       using PendingIntrosetLookups =
-          TXHolder< service::Address, service::IntroSet,
-                    service::Address::Hash >;
-      using PendingTagLookups =
-          TXHolder< service::Tag, service::IntroSet, service::Tag::Hash >;
+          TXHolder< TXOwner, service::EncryptedIntroSet, TXOwner::Hash >;
       using PendingRouterLookups =
           TXHolder< RouterID, RouterContact, RouterID::Hash >;
       using PendingExploreLookups =
@@ -45,41 +51,23 @@ namespace llarp
                             uint64_t whoaskedTX, const Key_t& askpeer,
                             RouterLookupHandler result = nullptr) = 0;
 
-      /// on behalf of whoasked request introset for target from dht router with
-      /// key askpeer
+      /// Ask a Service Node to perform an Introset lookup for us
       virtual void
-      LookupIntroSetRecursive(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer, uint64_t R,
-                              service::IntroSetLookupHandler result =
-                                  service::IntroSetLookupHandler()) = 0;
+      LookupIntroSetRelayed(const Key_t& target, const Key_t& whoasked,
+                            uint64_t whoaskedTX, const Key_t& askpeer,
+                            uint64_t relayOrder,
+                            service::EncryptedIntroSetLookupHandler result =
+                                service::EncryptedIntroSetLookupHandler()) = 0;
 
+      /// Directly as a Service Node for an Introset
       virtual void
-      LookupIntroSetIterative(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer,
-                              service::IntroSetLookupHandler result =
-                                  service::IntroSetLookupHandler()) = 0;
-
-      virtual std::set< service::IntroSet >
-      FindRandomIntroSetsWithTagExcluding(
-          const service::Tag& tag, size_t max = 2,
-          const std::set< service::IntroSet >& excludes = {}) = 0;
+      LookupIntroSetDirect(const Key_t& target, const Key_t& whoasked,
+                           uint64_t whoaskedTX, const Key_t& askpeer,
+                           service::EncryptedIntroSetLookupHandler result =
+                               service::EncryptedIntroSetLookupHandler()) = 0;
 
       virtual bool
       HasRouterLookup(const RouterID& target) const = 0;
-
-      /// on behalf of whoasked request introsets with tag from dht router with
-      /// key askpeer with Recursion depth R
-      virtual void
-      LookupTagRecursive(const service::Tag& tag, const Key_t& whoasked,
-                         uint64_t whoaskedTX, const Key_t& askpeer,
-                         uint64_t R) = 0;
-
-      /// issue dht lookup for tag via askpeer and send reply to local path
-      virtual void
-      LookupTagForPath(const service::Tag& tag, uint64_t txid,
-                       const PathID_t& path, const Key_t& askpeer) = 0;
 
       /// issue dht lookup for router via askpeer and send reply to local path
       virtual void
@@ -87,8 +75,9 @@ namespace llarp
                           const PathID_t& path, const Key_t& askpeer) = 0;
 
       virtual void
-      LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const PathID_t& path, const Key_t& askpeer) = 0;
+      LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
+                            const PathID_t& path, const Key_t& askpeer,
+                            uint64_t relayOrder) = 0;
 
       virtual void
       DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;
@@ -111,17 +100,21 @@ namespace llarp
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void
+      PropagateLocalIntroSet(const PathID_t& path, uint64_t sourceTX,
+                             const service::EncryptedIntroSet& introset,
+                             const Key_t& peer, uint64_t relayOrder) = 0;
+
+      /// send introset to peer from source with S counter and excluding peers
+      virtual void
       PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
-                          const service::IntroSet& introset, const Key_t& peer,
-                          uint64_t S, const std::set< Key_t >& exclude) = 0;
+                          const service::EncryptedIntroSet& introset,
+                          const Key_t& peer, uint64_t relayOrder) = 0;
 
       virtual void
-      Init(const Key_t& us, AbstractRouter* router,
-           llarp_time_t exploreInterval) = 0;
+      Init(const Key_t& us, AbstractRouter* router) = 0;
 
-      virtual const llarp::service::IntroSet*
-      GetIntroSetByServiceAddress(
-          const llarp::service::Address& addr) const = 0;
+      virtual nonstd::optional< llarp::service::EncryptedIntroSet >
+      GetIntroSetByLocation(const Key_t& location) const = 0;
 
       virtual llarp_time_t
       Now() const = 0;
@@ -143,12 +136,6 @@ namespace llarp
 
       virtual const PendingIntrosetLookups&
       pendingIntrosetLookups() const = 0;
-
-      virtual PendingTagLookups&
-      pendingTagLookups() = 0;
-
-      virtual const PendingTagLookups&
-      pendingTagLookups() const = 0;
 
       virtual PendingRouterLookups&
       pendingRouterLookups() = 0;

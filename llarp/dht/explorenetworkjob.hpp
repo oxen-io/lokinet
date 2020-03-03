@@ -25,17 +25,6 @@ namespace llarp
       void
       Start(const TXOwner &peer) override;
 
-      bool
-      GetNextPeer(Key_t &, const std::set< Key_t > &) override
-      {
-        return false;
-      }
-
-      void
-      DoNextRequest(const Key_t &) override
-      {
-      }
-
       void
       SendReply() override;
     };

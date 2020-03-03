@@ -14,7 +14,7 @@ namespace llarp
 {
   namespace service
   {
-    /// Snapp/Snode Address
+    /// Snapp Address
     struct Address : public AlignedBuffer< 32 >
     {
       /// if parsed using FromString this contains the subdomain
@@ -35,21 +35,21 @@ namespace llarp
       bool
       FromString(const std::string& str, const char* tld = ".loki");
 
-      Address() : AlignedBuffer< SIZE >()
+      Address() : AlignedBuffer< 32 >()
       {
       }
 
-      explicit Address(const Data& buf) : AlignedBuffer< SIZE >(buf)
+      explicit Address(const Data& buf) : AlignedBuffer< 32 >(buf)
       {
       }
 
       Address(const Address& other)
-          : AlignedBuffer< SIZE >(other.as_array()), subdomain(other.subdomain)
+          : AlignedBuffer< 32 >(other.as_array()), subdomain(other.subdomain)
       {
       }
 
-      explicit Address(const AlignedBuffer< SIZE >& other)
-          : AlignedBuffer< SIZE >(other)
+      explicit Address(const AlignedBuffer< 32 >& other)
+          : AlignedBuffer< 32 >(other)
       {
       }
 
@@ -81,10 +81,7 @@ namespace llarp
       operator=(const Address& other) = default;
 
       dht::Key_t
-      ToKey() const
-      {
-        return dht::Key_t(as_array());
-      }
+      ToKey() const;
 
       RouterID
       ToRouter() const

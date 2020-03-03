@@ -45,9 +45,9 @@ namespace llarp
       uint64_t m_MsgID = 0;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
       ILinkSession::CompletionHandler m_Completed;
-      llarp_time_t m_LastFlush = 0;
+      llarp_time_t m_LastFlush = 0s;
       ShortHash m_Digest;
-      llarp_time_t m_StartedAt = 0;
+      llarp_time_t m_StartedAt = 0s;
 
       ILinkSession::Packet_t
       XMIT() const;
@@ -84,8 +84,8 @@ namespace llarp
       ILinkSession::Message_t m_Data;
       ShortHash m_Digset;
       uint64_t m_MsgID            = 0;
-      llarp_time_t m_LastACKSent  = 0;
-      llarp_time_t m_LastActiveAt = 0;
+      llarp_time_t m_LastACKSent  = 0s;
+      llarp_time_t m_LastActiveAt = 0s;
       std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
 
       void

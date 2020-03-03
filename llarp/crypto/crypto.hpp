@@ -6,7 +6,6 @@
 
 #include <util/buffer.hpp>
 
-#include <absl/base/optimization.h>
 #include <functional>
 
 #include <cstdint>
@@ -54,15 +53,29 @@ namespace llarp
     /// blake2b 256 bit
     virtual bool
     shorthash(ShortHash &, const llarp_buffer_t &) = 0;
-    /// blake2s 256 bit hmac
+    /// blake2s 256 bit "hmac" (keyed hash)
     virtual bool
     hmac(byte_t *, const llarp_buffer_t &, const SharedSecret &) = 0;
     /// ed25519 sign
     virtual bool
     sign(Signature &, const SecretKey &, const llarp_buffer_t &) = 0;
+    /// ed25519 sign (custom with derived keys)
+    virtual bool
+    sign(Signature &, const PrivateKey &, const llarp_buffer_t &) = 0;
     /// ed25519 verify
     virtual bool
     verify(const PubKey &, const llarp_buffer_t &, const Signature &) = 0;
+
+    /// derive sub keys for public keys
+    virtual bool
+    derive_subkey(PubKey &, const PubKey &, uint64_t,
+                  const AlignedBuffer< 32 > * = nullptr) = 0;
+
+    /// derive sub keys for private keys
+    virtual bool
+    derive_subkey_private(PrivateKey &, const SecretKey &, uint64_t,
+                          const AlignedBuffer< 32 > * = nullptr) = 0;
+
     /// seed to secretkey
     virtual bool
     seed_to_secretkey(llarp::SecretKey &, const llarp::IdentitySecret &) = 0;
@@ -126,15 +139,17 @@ namespace llarp
     }
 
     static Crypto *
-    instance() ABSL_ATTRIBUTE_RETURNS_NONNULL
+    instance()
     {
-      if(ABSL_PREDICT_TRUE(m_crypto))
-      {
+#ifdef NDEBUG
+      return m_crypto;
+#else
+      if(m_crypto)
         return m_crypto;
-      }
 
       assert(false && "Cryptomanager::instance() was undefined");
       abort();
+#endif
     }
   };
 

@@ -8,6 +8,7 @@
 #include <util/aligned.hpp>
 #include <util/bencode.hpp>
 #include <util/status.hpp>
+#include <router_version.hpp>
 
 #include <functional>
 #include <nlohmann/json.hpp>
@@ -102,8 +103,9 @@ namespace llarp
     /// node nickname, yw kee
     llarp::AlignedBuffer< NICKLEN > nickname;
 
-    uint64_t last_updated = 0;
-    uint64_t version      = LLARP_PROTO_VERSION;
+    llarp_time_t last_updated = 0s;
+    uint64_t version          = LLARP_PROTO_VERSION;
+    nonstd::optional< RouterVersion > routerVersion;
 
     util::StatusObject
     ExtractStatus() const;
@@ -177,7 +179,7 @@ namespace llarp
 
     /// does this RC expire soon? default delta is 1 minute
     bool
-    ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 60000) const;
+    ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 1min) const;
 
     /// returns true if this RC is expired and should be removed
     bool

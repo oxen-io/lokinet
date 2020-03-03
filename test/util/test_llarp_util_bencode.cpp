@@ -80,8 +80,8 @@ static const TestReadInt testReadInt[] = {
     {{z}, false, 0},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, ReadInt,
-                        ::testing::ValuesIn(testReadInt), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, ReadInt,
+                         ::testing::ValuesIn(testReadInt));
 
 struct ReadStr : public ::testing::TestWithParam< TestReadString >
 {
@@ -118,8 +118,8 @@ static const TestReadString testReadStr[] = {
     {{colon, colon}, false, ""},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, ReadStr,
-                        ::testing::ValuesIn(testReadStr), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, ReadStr,
+                         ::testing::ValuesIn(testReadStr));
 
 template < typename Input >
 struct TestWriteData
@@ -165,8 +165,8 @@ static const TestWriteByteString testWriteByteString[] = {
     {"a", 1, false, ""},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, WriteByteStr,
-                        ::testing::ValuesIn(testWriteByteString), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, WriteByteStr,
+                         ::testing::ValuesIn(testWriteByteString));
 
 struct WriteInt : public ::testing::TestWithParam< TestWriteInt >
 {
@@ -194,8 +194,8 @@ static const TestWriteInt testWriteInt[] = {
     {1234567, 3, false, ""},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, WriteInt,
-                        ::testing::ValuesIn(testWriteInt), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, WriteInt,
+                        ::testing::ValuesIn(testWriteInt));
 
 struct WriteIntValues : public ::testing::TestWithParam< uint64_t >
 {
@@ -224,12 +224,12 @@ TEST_P(WriteIntValues, anyvalue)
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TestBencode, WriteIntValues,
     ::testing::Values(std::numeric_limits< uint64_t >::min(),
                       std::numeric_limits< uint64_t >::max(),
                       std::numeric_limits< uint64_t >::max() / 2,
-                      std::numeric_limits< uint64_t >::max() / 3), );
+                      std::numeric_limits< uint64_t >::max() / 3));
 
 TEST(TestBencode, good_uint64_entry)
 {
@@ -306,8 +306,8 @@ ListTestData listTestData[] = {
      "li123e3:abc3:abce"},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, ListTest,
-                        ::testing::ValuesIn(listTestData), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, ListTest,
+                         ::testing::ValuesIn(listTestData));
 
 struct DictTestData
 {
@@ -363,8 +363,8 @@ DictTestData dictTestData[] = {
      "d1:ai123e1:b3:abc1:c3:abce"},
 };
 
-INSTANTIATE_TEST_CASE_P(TestBencode, DictTest,
-                        ::testing::ValuesIn(dictTestData), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, DictTest,
+                         ::testing::ValuesIn(dictTestData));
 
 struct ReadData
 {
@@ -404,8 +404,8 @@ ReadData dictReadData[] = {{"de", {}},
                            {"d1:be", {"b"}},
                            {"d1:b2:23e", {"b", "23"}}};
 
-INSTANTIATE_TEST_CASE_P(TestBencode, DictReadTest,
-                        ::testing::ValuesIn(dictReadData), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, DictReadTest,
+                         ::testing::ValuesIn(dictReadData));
 
 struct ListReadTest : public ::testing::TestWithParam< ReadData >
 {
@@ -439,8 +439,8 @@ TEST_P(ListReadTest, readtest)
 ReadData listReadData[] = {
     {"le", {}}, {"l1:ae", {"a"}}, {"l1:be", {"b"}}, {"l1:b2:23e", {"b", "23"}}};
 
-INSTANTIATE_TEST_CASE_P(TestBencode, ListReadTest,
-                        ::testing::ValuesIn(listReadData), );
+INSTANTIATE_TEST_SUITE_P(TestBencode, ListReadTest,
+                         ::testing::ValuesIn(listReadData));
 
 TEST(TestBencode, ReadDictEmptyBuffer)
 {

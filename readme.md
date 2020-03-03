@@ -70,7 +70,7 @@ Build requirements:
 * C++ 14 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
-* libsodium >= 1.0.17
+* libsodium >= 1.0.18
 * libcurl
 
 ### Linux

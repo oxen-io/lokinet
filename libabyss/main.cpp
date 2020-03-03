@@ -13,12 +13,11 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  absl::optional< Response >
-  HandleJSONRPC(Method_t method,
-                ABSL_ATTRIBUTE_UNUSED const Params& params) override
+  nonstd::optional< Response >
+  HandleJSONRPC(Method_t method, const Params& /*params*/) override
   {
     llarp::LogInfo("method: ", method);
-    return Response::object();
+    return nonstd::make_optional(Response::object());
   }
 };
 

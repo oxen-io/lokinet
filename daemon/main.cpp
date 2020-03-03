@@ -102,28 +102,24 @@ main(int argc, char *argv[])
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
 
-#ifdef LOKINET_DEBUG
-  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
-#endif
-
-  // clang-format off
-  cxxopts::Options options(
-		"lokinet",
-		"LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
-    );
-  options.add_options()
-		("v,verbose", "Verbose", cxxopts::value<bool>())
-		("h,help", "help", cxxopts::value<bool>())
-		("version", "version", cxxopts::value<bool>())
-		("g,generate", "generate client config", cxxopts::value<bool>())
-		("r,router", "generate router config", cxxopts::value<bool>())
-		("f,force", "overwrite", cxxopts::value<bool>())
-		("c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))
-		("b,background", "background mode (start, but do not connect to the network)", cxxopts::value<bool>())
-    ("config","path to configuration file", cxxopts::value<std::string>());
+  cxxopts::Options options("lokinet",
+                           "LokiNET is a free, open source, private, "
+                           "decentralized, \"market based sybil resistant\" "
+                           "and IP based onion routing network");
+  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
+      "h,help", "help", cxxopts::value< bool >())("version", "version",
+                                                  cxxopts::value< bool >())(
+      "g,generate", "generate client config", cxxopts::value< bool >())(
+      "r,router", "generate router config", cxxopts::value< bool >())(
+      "f,force", "overwrite", cxxopts::value< bool >())(
+      "c,colour", "colour output",
+      cxxopts::value< bool >()->default_value("true"))(
+      "b,background",
+      "background mode (start, but do not connect to the network)",
+      cxxopts::value< bool >())("config", "path to configuration file",
+                                cxxopts::value< std::string >());
 
   options.parse_positional("config");
-  // clang-format on
 
   bool genconfigOnly = false;
   bool asRouter      = false;

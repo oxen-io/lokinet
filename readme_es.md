@@ -70,7 +70,8 @@ Requerimientos de compilación:
 * Compilador C++ que pueda usar C++ 17 
 * gcovr (para generar la covertura de prueba en gcc)
 * libuv >= 1.27.0
-* libsodium
+* libsodium >= 1.0.18
+* libcurl
 
 ### Linux
 

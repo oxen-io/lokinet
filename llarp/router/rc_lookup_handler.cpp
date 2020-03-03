@@ -6,7 +6,6 @@
 #include <crypto/crypto.hpp>
 #include <service/context.hpp>
 #include <router_contact.hpp>
-#include <util/meta/memfn.hpp>
 #include <util/types.hpp>
 #include <util/thread/threading.hpp>
 #include <nodedb.hpp>
@@ -17,21 +16,19 @@
 #include <functional>
 #include <random>
 
-using namespace std::chrono_literals;
-
 namespace llarp
 {
   void
   RCLookupHandler::AddValidRouter(const RouterID &router)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     whitelistRouters.insert(router);
   }
 
   void
   RCLookupHandler::RemoveValidRouter(const RouterID &router)
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     whitelistRouters.erase(router);
   }
 
@@ -40,7 +37,7 @@ namespace llarp
   {
     if(routers.empty())
       return;
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     whitelistRouters.clear();
     for(auto &router : routers)
@@ -55,7 +52,7 @@ namespace llarp
   bool
   RCLookupHandler::HaveReceivedWhitelist()
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     return not whitelistRouters.empty();
   }
 
@@ -79,7 +76,7 @@ namespace llarp
     bool shouldDoLookup = false;
 
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr_pair = pendingCallbacks.emplace(router, CallbacksQueue{});
 
@@ -132,7 +129,7 @@ namespace llarp
       return false;
     }
 
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     if(useWhitelist && whitelistRouters.find(remote) == whitelistRouters.end())
     {
@@ -178,7 +175,7 @@ namespace llarp
   bool
   RCLookupHandler::GetRandomWhitelistRouter(RouterID &router) const
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
 
     const auto sz = whitelistRouters.size();
     auto itr      = whitelistRouters.begin();
@@ -240,17 +237,18 @@ namespace llarp
   void
   RCLookupHandler::ExploreNetwork()
   {
-    if(_bootstrapRCList.size())
+    const size_t known = _nodedb->num_loaded();
+    if(_bootstrapRCList.empty() && known == 0)
+    {
+      LogError("we have no bootstrap nodes specified");
+    }
+    else if(known <= _bootstrapRCList.size())
     {
       for(const auto &rc : _bootstrapRCList)
       {
         LogInfo("Doing explore via bootstrap node: ", RouterID(rc.pubkey));
         _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
-    }
-    else
-    {
-      LogError("we have no bootstrap nodes specified");
     }
 
     if(useWhitelist)
@@ -265,7 +263,7 @@ namespace llarp
 
       {
         // if we are using a whitelist look up a few routers we don't have
-        util::Lock l(&_mutex);
+        util::Lock l(_mutex);
         for(const auto &r : whitelistRouters)
         {
           if(now > _routerLookupTimes[r] + RerequestInterval
@@ -287,7 +285,10 @@ namespace llarp
         GetRC(r, nullptr, true);
       return;
     }
-    // TODO: only explore via random subset
+    // service nodes gossip, not explore
+    if(_dht->impl->GetRouter()->IsServiceNode())
+      return;
+
     // explore via every connected peer
     _linkManager->ForEachPeer([&](ILinkSession *s) {
       if(!s->IsEstablished())
@@ -296,7 +297,7 @@ namespace llarp
       if(rc.IsPublicRouter()
          && (_bootstrapRCList.find(rc) == _bootstrapRCList.end()))
       {
-        LogInfo("Doing explore via public node: ", RouterID(rc.pubkey));
+        LogDebug("Doing explore via public node: ", RouterID(rc.pubkey));
         _dht->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
       }
     });
@@ -355,7 +356,7 @@ namespace llarp
   bool
   RCLookupHandler::HavePendingLookup(RouterID remote) const
   {
-    util::Lock l(&_mutex);
+    util::Lock l(_mutex);
     return pendingCallbacks.find(remote) != pendingCallbacks.end();
   }
 
@@ -379,7 +380,7 @@ namespace llarp
   {
     CallbacksQueue movedCallbacks;
     {
-      util::Lock l(&_mutex);
+      util::Lock l(_mutex);
 
       auto itr = pendingCallbacks.find(router);
 

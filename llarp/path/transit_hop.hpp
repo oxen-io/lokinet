@@ -89,11 +89,11 @@ namespace llarp
       TransitHopInfo info;
       SharedSecret pathKey;
       ShortHash nonceXOR;
-      llarp_time_t started = 0;
+      llarp_time_t started = 0s;
       // 10 minutes default
       llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
-      llarp_time_t m_LastActivity = 0;
+      llarp_time_t m_LastActivity = 0s;
 
       void
       Stop();
@@ -191,8 +191,7 @@ namespace llarp
                              AbstractRouter* r) override;
 
       bool
-      HandleHiddenServiceFrame(
-          ABSL_ATTRIBUTE_UNUSED const service::ProtocolFrame& frame) override
+      HandleHiddenServiceFrame(const service::ProtocolFrame& /*frame*/) override
       {
         /// TODO: implement me
         LogWarn("Got hidden service data on transit hop");

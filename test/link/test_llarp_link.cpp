@@ -152,7 +152,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       llarp::SetLogLevel(eLogTrace);
     oldRCLifetime              = RouterContact::Lifetime;
     RouterContact::BlockBogons = false;
-    RouterContact::Lifetime    = 500;
+    RouterContact::Lifetime    = 500ms;
     netLoop                    = llarp_make_ev_loop();
     m_logic.reset(new Logic());
     Alice.Setup();
@@ -174,7 +174,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   void
   RunMainloop()
   {
-    m_logic->call_later(5000, std::bind(&LinkLayerTest::Stop, this));
+    m_logic->call_later(5s, std::bind(&LinkLayerTest::Stop, this));
     llarp_ev_loop_run_single_process(netLoop, m_logic);
   }
 

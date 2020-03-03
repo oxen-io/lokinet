@@ -88,7 +88,7 @@ namespace llarp
 
       /// issues a lookup to find the current intro set of the remote service
       void
-      UpdateIntroSet(bool randomizePath) override;
+      UpdateIntroSet() override;
 
       void
       HandlePathBuilt(path::Path_ptr path) override;
@@ -115,15 +115,16 @@ namespace llarp
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
       bool
-      OnIntroSetUpdate(const Address& addr, const IntroSet* i,
+      OnIntroSetUpdate(const Address& addr, nonstd::optional< IntroSet > i,
                        const RouterID& endpoint);
 
+      const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
       std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
           m_BadIntros;
-      llarp_time_t lastShift = 0;
+      llarp_time_t lastShift = 0s;
       uint16_t m_LookupFails = 0;
       uint16_t m_BuildFails  = 0;
     };

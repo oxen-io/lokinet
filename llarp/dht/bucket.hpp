@@ -208,6 +208,16 @@ namespace llarp
         }
       }
 
+      template < typename Visit_t >
+      void
+      ForEachNode(Visit_t visit)
+      {
+        for(const auto& item : nodes)
+        {
+          visit(item.second);
+        }
+      }
+
       void
       Clear()
       {

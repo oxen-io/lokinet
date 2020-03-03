@@ -7,7 +7,6 @@
 #include <profiling.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
-#include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 
 #include <functional>
@@ -134,16 +133,26 @@ namespace llarp
     {
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
-      if(ctx->router->SendToOrQueue(remote, msg))
+      auto sentHandler        = [ctx](auto status) {
+        if(status == SendStatus::Success)
+        {
+          ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
+          ctx->pathset->PathBuildStarted(ctx->path);
+        }
+        else
+        {
+          LogError(ctx->pathset->Name(), " failed to send LRCM to ",
+                   ctx->path->Upstream());
+          ctx->pathset->HandlePathBuildFailed(ctx->path);
+        }
+      };
+      if(ctx->router->SendToOrQueue(remote, msg, sentHandler))
       {
         // persist session with router until this path is done
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-        // add own path
-        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-        ctx->pathset->PathBuildStarted(ctx->path);
       }
       else
-        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
+        LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
     }
   }
 
@@ -159,7 +168,7 @@ namespace llarp
     Builder::ResetInternalState()
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-      lastBuild          = 0;
+      lastBuild          = 0s;
     }
 
     void Builder::Tick(llarp_time_t)
@@ -171,8 +180,8 @@ namespace llarp
       TickPaths(m_router);
       if(m_BuildStats.attempts > 50)
       {
-        if(m_BuildStats.SuccsessRatio() <= BuildStats::MinGoodRatio
-           && now - m_LastWarn > 5000)
+        if(m_BuildStats.SuccessRatio() <= BuildStats::MinGoodRatio
+           && now - m_LastWarn > 5s)
         {
           LogWarn(Name(), " has a low path build success. ", m_BuildStats);
           m_LastWarn = now;
@@ -273,7 +282,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(llarp_time_t now) const
     {
-      return now < lastBuild || now - lastBuild < buildIntervalLimit;
+      return now < lastBuild + buildIntervalLimit;
     }
 
     bool
@@ -430,8 +439,12 @@ namespace llarp
       ctx->router  = m_router;
       auto self    = GetSelf();
       ctx->pathset = self;
-      auto path    = std::make_shared< path::Path >(hops, self.get(), roles);
-      LogInfo(Name(), " build ", path->HopsString());
+      std::string path_shortName = "[path " + m_router->ShortName() + "-";
+      path_shortName             = path_shortName
+          + std::to_string(m_router->NextPathBuildNumber()) + "]";
+      auto path = std::make_shared< path::Path >(hops, self.get(), roles,
+                                                 std::move(path_shortName));
+      LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),
@@ -458,9 +471,9 @@ namespace llarp
     void
     Builder::DoPathBuildBackoff()
     {
+      static constexpr std::chrono::milliseconds MaxBuildInterval = 30s;
       // linear backoff
-      static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
-      buildIntervalLimit                             = std::min(
+      buildIntervalLimit = std::min(
           MIN_PATH_BUILD_INTERVAL + buildIntervalLimit, MaxBuildInterval);
       LogWarn(Name(), " build interval is now ", buildIntervalLimit);
     }

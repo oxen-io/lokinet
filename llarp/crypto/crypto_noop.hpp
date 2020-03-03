@@ -106,10 +106,16 @@ namespace llarp
     }
 
     bool
-    sign(Signature &sig, const SecretKey &key, const llarp_buffer_t &) override
+    sign(Signature &sig, const SecretKey &, const llarp_buffer_t &) override
     {
-      static_assert(Signature::SIZE == SecretKey::SIZE, "");
-      std::copy(key.begin(), key.end(), sig.begin());
+      std::fill(sig.begin(), sig.end(), 0);
+      return true;
+    }
+
+    bool
+    sign(Signature &sig, const PrivateKey &, const llarp_buffer_t &) override
+    {
+      std::fill(sig.begin(), sig.end(), 0);
       return true;
     }
 

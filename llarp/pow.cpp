@@ -10,8 +10,7 @@ namespace llarp
   PoW::~PoW() = default;
 
   bool
-  PoW::DecodeKey(ABSL_ATTRIBUTE_UNUSED const llarp_buffer_t& k,
-                 ABSL_ATTRIBUTE_UNUSED llarp_buffer_t* val)
+  PoW::DecodeKey(const llarp_buffer_t& /*k*/, llarp_buffer_t* /*val*/)
   {
     // TODO: implement me
     return false;
@@ -29,7 +28,7 @@ namespace llarp
   bool
   PoW::IsValid(llarp_time_t now) const
   {
-    if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
+    if(now - timestamp > extendedLifetime)
       return false;
 
     ShortHash digest;
@@ -45,7 +44,7 @@ namespace llarp
     if(!CryptoManager::instance()->shorthash(digest, buf))
       return false;
     // check bytes required
-    uint32_t required = std::floor(std::log(extendedLifetime));
+    uint32_t required = std::floor(std::log(extendedLifetime.count()));
     for(uint32_t idx = 0; idx < required; ++idx)
     {
       if(digest[idx])
@@ -59,8 +58,8 @@ namespace llarp
   {
     Printer printer(stream, level, spaces);
 
-    printer.printAttribute("pow timestamp", timestamp);
-    printer.printAttribute("lifetime", extendedLifetime);
+    printer.printAttribute("pow timestamp", timestamp.count());
+    printer.printAttribute("lifetime", extendedLifetime.count());
     printer.printAttribute("nonce", nonce);
 
     return stream;

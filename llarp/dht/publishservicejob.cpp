@@ -2,46 +2,85 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/pubintro.hpp>
-#include <utility>
+#include <dht/messages/gotintro.hpp>
+#include <path/path_context.hpp>
+#include <routing/dht_message.hpp>
+#include <router/abstractrouter.hpp>
 
+#include <utility>
 namespace llarp
 {
   namespace dht
   {
-    PublishServiceJob::PublishServiceJob(const TXOwner &asker,
-                                         const service::IntroSet &introset,
-                                         AbstractContext *ctx, uint64_t s,
-                                         std::set< Key_t > exclude)
-        : TX< service::Address, service::IntroSet >(asker, introset.A.Addr(),
-                                                    ctx)
-        , S(s)
-        , dontTell(std::move(exclude))
-        , I(introset)
+    PublishServiceJob::PublishServiceJob(
+        const TXOwner &asker, const service::EncryptedIntroSet &introset_,
+        AbstractContext *ctx, uint64_t relayOrder_)
+        : TX< TXOwner, service::EncryptedIntroSet >(asker, asker, ctx)
+        , relayOrder(relayOrder_)
+        , introset(introset_)
     {
     }
 
     bool
-    PublishServiceJob::Validate(const service::IntroSet &introset) const
+    PublishServiceJob::Validate(const service::EncryptedIntroSet &value) const
     {
-      if(I.A != introset.A)
+      if(value.derivedSigningKey != introset.derivedSigningKey)
       {
         llarp::LogWarn(
             "publish introset acknowledgement acked a different service");
         return false;
       }
-      return true;
+      const llarp_time_t now = llarp::time_now_ms();
+      return value.Verify(now);
     }
 
     void
     PublishServiceJob::Start(const TXOwner &peer)
     {
-      std::vector< Key_t > exclude;
-      for(const auto &router : dontTell)
+      parent->DHTSendTo(
+          peer.node.as_array(),
+          new PublishIntroMessage(introset, peer.txid, false, relayOrder));
+    }
+
+    void
+    PublishServiceJob::SendReply()
+    {
+      parent->DHTSendTo(whoasked.node.as_array(),
+                        new GotIntroMessage({introset}, whoasked.txid));
+    }
+
+    LocalPublishServiceJob::LocalPublishServiceJob(
+        const TXOwner &peer, const PathID_t &fromID, uint64_t _txid,
+        const service::EncryptedIntroSet &introset, AbstractContext *ctx,
+        uint64_t relayOrder)
+        : PublishServiceJob(peer, introset, ctx, relayOrder)
+        , localPath(fromID)
+        , txid(_txid)
+    {
+    }
+
+    void
+    LocalPublishServiceJob::SendReply()
+    {
+      auto path = parent->GetRouter()->pathContext().GetByUpstream(
+          parent->OurKey().as_array(), localPath);
+      if(!path)
       {
-        exclude.push_back(router);
+        llarp::LogWarn(
+            "did not send reply for relayed dht request, no such local path "
+            "for pathid=",
+            localPath);
+        return;
       }
-      parent->DHTSendTo(peer.node.as_array(),
-                        new PublishIntroMessage(I, peer.txid, S, exclude));
+      routing::DHTMessage msg;
+      msg.M.emplace_back(new GotIntroMessage({introset}, txid));
+      if(!path->SendRoutingMessage(msg, parent->GetRouter()))
+      {
+        llarp::LogWarn(
+            "failed to send routing message when informing result of dht "
+            "request, pathid=",
+            localPath);
+      }
     }
   }  // namespace dht
 }  // namespace llarp

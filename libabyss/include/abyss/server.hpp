@@ -7,7 +7,9 @@
 #include <util/thread/logic.hpp>
 #include <util/time.hpp>
 
-#include <absl/types/optional.h>
+#include <nlohmann/json.hpp>
+#include <nonstd/optional.hpp>
+
 #include <list>
 #include <memory>
 #include <string>
@@ -27,7 +29,7 @@ namespace abyss
 
       IRPCHandler(ConnImpl* impl);
 
-      virtual absl::optional< Response >
+      virtual Response
       HandleJSONRPC(Method_t method, const Params& params) = 0;
 
       virtual ~IRPCHandler();

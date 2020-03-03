@@ -38,15 +38,15 @@ namespace llarp
 
     void
     CreateSessionTo(const RouterID &router, RouterCallback on_result) override
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     void
     CreateSessionTo(const RouterContact &rc, RouterCallback on_result) override
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     bool
     HavePendingSessionTo(const RouterID &router) const override
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     void
     ConnectToRandomRouters(int numDesired) override;
@@ -55,8 +55,7 @@ namespace llarp
     ExtractStatus() const override;
 
     bool
-    ShouldConnectTo(const RouterID &router) const override
-        LOCKS_EXCLUDED(_mutex);
+    ShouldConnectTo(const RouterID &router) const override EXCLUDES(_mutex);
 
     void
     Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
@@ -77,11 +76,11 @@ namespace llarp
 
    private:
     void
-    DoEstablish(const RouterID &router) LOCKS_EXCLUDED(_mutex);
+    DoEstablish(const RouterID &router) EXCLUDES(_mutex);
 
     void
     GotRouterContact(const RouterID &router, const RouterContact &rc)
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     void
     InvalidRouter(const RouterID &router);
@@ -97,11 +96,11 @@ namespace llarp
     VerifyRC(const RouterContact rc);
 
     void
-    CreatePendingSession(const RouterID &router) LOCKS_EXCLUDED(_mutex);
+    CreatePendingSession(const RouterID &router) EXCLUDES(_mutex);
 
     void
     FinalizeRequest(const RouterID &router, const SessionResult type)
-        LOCKS_EXCLUDED(_mutex);
+        EXCLUDES(_mutex);
 
     mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
 

@@ -48,10 +48,26 @@ namespace llarp
       /// ed25519 sign
       bool
       sign(Signature &, const SecretKey &, const llarp_buffer_t &) override;
+      /// ed25519 sign (custom with derived keys)
+      bool
+      sign(Signature &, const PrivateKey &, const llarp_buffer_t &) override;
       /// ed25519 verify
       bool
       verify(const PubKey &, const llarp_buffer_t &,
              const Signature &) override;
+
+      /// derive sub keys for public keys.  hash is really only intended for
+      /// testing and overrides key_n if given.
+      bool
+      derive_subkey(PubKey &derived, const PubKey &root, uint64_t key_n,
+                    const AlignedBuffer< 32 > *hash = nullptr) override;
+
+      /// derive sub keys for private keys.  hash is really only intended for
+      /// testing and overrides key_n if given.
+      bool
+      derive_subkey_private(PrivateKey &derived, const SecretKey &root,
+                            uint64_t key_n,
+                            const AlignedBuffer< 32 > *hash = nullptr) override;
 
       /// seed to secretkey
       bool
