@@ -4,6 +4,7 @@
 #include "tooling/router_event.hpp"
 #include "tooling/dht_event.hpp"
 
+#include <messages/relay_status.hpp>
 #include <path/path.hpp>
 
 namespace tooling
@@ -26,6 +27,13 @@ namespace tooling
     .def_readonly("txid", &PathRequestReceivedEvent::txid)
     .def_readonly("rxid", &PathRequestReceivedEvent::rxid)
     .def_readonly("isEndpoint", &PathRequestReceivedEvent::isEndpoint);
+
+    py::class_<PathStatusReceivedEvent, RouterEvent>(mod, "PathStatusReceivedEvent")
+    .def_readonly("rxid", &PathStatusReceivedEvent::rxid)
+    .def_readonly("status", &PathStatusReceivedEvent::rxid)
+    .def_property_readonly("Successful", [](const PathStatusReceivedEvent* const ev) {
+        return ev->status == llarp::LR_StatusRecord::SUCCESS;
+    });
 
     py::class_<PubIntroReceivedEvent, RouterEvent>(mod, "DhtPubIntroReceivedEvent")
     .def_readonly("from", &PubIntroReceivedEvent::From)

@@ -26,6 +26,8 @@ def test_path_builds(HiveTenTen):
         for i in range(1, len(event.hops)):
           path["prev"][i] = event.hops[i-1].rc.routerID
         path["prev"][0] = event.routerID
+        path["rxid"] = event.hops[0].rxid
+        path["status"] = None
         paths.append(path)
 
       elif event_name == "PathRequestReceivedEvent":
@@ -41,6 +43,11 @@ def test_path_builds(HiveTenTen):
                 path["hops"][i].rxid == event.rxid):
               path["received"][i] = True
 
+      elif event_name == "PathStatusReceivedEvent":
+        for path in paths:
+          if event.rxid == path["rxid"]:
+            path["status"] = event
+
     h.events = []
     cur_time = time()
 
@@ -50,22 +57,28 @@ def test_path_builds(HiveTenTen):
 
   assert len(paths) > 0
 
-  fail_count = 0
+  fail_status_count = 0
+  missing_status_count = 0
+  missing_rcv_count = 0
   expected_count = 0
 
-  paths_ok = []
   for path in paths:
-    path_ok = True
+    if path["status"]:
+      if not path["status"].Successful:
+        print(path["status"])
+        fail_status_count = fail_status_count + 1
+    else:
+      missing_status_count = missing_status_count + 1
+
     for rcv in path["received"]:
       expected_count = expected_count + 1
       if not rcv:
-        path_ok = False
-        fail_count = fail_count + 1
+        missing_rcv_count = missing_rcv_count + 1
 
-    paths_ok.append(path_ok)
 
-  print("Path count: {}, Expected rcv: {}, Failed rcv: {}".format(len(paths), expected_count, fail_count))
+  print("Path count: {}, Expected rcv: {}, missing rcv: {}, fail_status_count: {}, missing_status_count: {}".format(len(paths), expected_count, missing_rcv_count, fail_status_count, missing_status_count))
 
-  for path_ok in paths_ok:
-    assert path_ok
+  assert fail_status_count == 0
+  assert missing_rcv_count == 0
+  assert missing_status_count == 0
 

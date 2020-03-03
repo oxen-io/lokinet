@@ -54,6 +54,8 @@ namespace tooling
     std::string ToString() const override;
 
     std::vector<llarp::path::PathHopConfig> hops;
+
+    llarp::PathID_t pathid;
   };
 
   struct PathRequestReceivedEvent : public RouterEvent
@@ -69,6 +71,17 @@ namespace tooling
     llarp::PathID_t rxid;
 
     bool isEndpoint = false;
+  };
+
+  struct PathStatusReceivedEvent : public RouterEvent
+  {
+    PathStatusReceivedEvent(const llarp::RouterID& routerID, const llarp::PathID_t rxid, uint64_t status);
+
+    std::string ToString() const override;
+
+    llarp::PathID_t rxid;
+
+    uint64_t status;
   };
 
 } // namespace tooling
