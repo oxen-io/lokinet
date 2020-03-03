@@ -1,3 +1,462 @@
+lokinet (0.7.0~rc1-1) sid; urgency=medium
+
+  [ Stephen Shelton ]
+  * Implement KeyManager tests
+  * Fix build
+  * Prefer ASSERT_EQ over ASSERT_TRUE when appropriate
+
+  [ Jason Rhinelander ]
+  * Separate json SN parsing definition/declaration
+  * Add support for lokid's "unchanged" response
+
+  [ Jeff Becker ]
+  * configurable log level
+  * reduce number of values for LogLevelFromString
+  * off -> none
+  * unsigned char
+  * don't deadlock when we want to remove lots of paths, flush queue instead when full
+  * unit tests for logging levels
+  * improve test cases
+
+  [ Stephen Shelton ]
+  * Add unit tests for LogLevelToName and LogLevelToString
+  * Add test to ensure config loading impacts runtime log level
+  * Remove dead code (AbstractRouter::EnsureRouter())
+
+  [ Jeff Becker ]
+  * dht fixes, disable iterative lookups on clients, revert "fixes" from 0.6.3, pass in recursion depth from introset lookup
+  * connect to closer nodes for introset lookups
+  * connect to closest for RC lookups too
+  * refactor single char variables in DHT (mostly)
+  * fix recursion depth on introset lookup
+  * return true
+  * monotonic time and run testnet at 20% realtime
+  * use static initialization for started times
+  * don't always use bootstrap when exploring
+
+  [ jeff ]
+  * router version
+  * router version
+  * dont inherit std::array
+
+  [ Jeff Becker ]
+  * make it compile
+  * operator !=
+  * don't use a pointer
+
+  [ jeff ]
+  * use double braces
+
+  [ Jeff Becker ]
+  * initial wack at 0.7.0 dht fixes
+  * make router version member optional on serialization
+  * make it compile
+  * initial dht key blinding
+  * does not work
+
+  [ Jason Rhinelander ]
+  * Derived key fixes
+  * Fix Recalculate()
+
+  [ Thomas Winget ]
+  * initial implementation of blinded sign -- not working yet
+  * NO CLAMPS YOU IDIOT!!!
+
+  [ Stephen Shelton ]
+  * Fix IsCompatableWith() logic WRT emptyRouterVersion, add unit tests
+  * Fix RouterVersion::IsEmpty() and RouterVersion::Clear()
+
+  [ Jeff Becker ]
+  * const correctness
+
+  [ Jason Rhinelander ]
+  * Silence unused parameter warning
+  * Use hash instead of random for signing hash data
+  * Fixed EncryptedIntroSet signing to use PrivateKey
+  * make format 😠 🤮
+
+  [ Stephen Shelton ]
+  * Fix buffer overflow when version encodes too many integers
+  * Make format
+
+  [ Jeff Becker ]
+  * use std::shared_ptr not a bare pointer to prevent memleak
+  * make format
+
+  [ Jason Rhinelander ]
+  * Remove unused ristretto includes
+
+  [ jeff ]
+  * mock lokid for loopback testnet
+  * use system packages in venv so system packages override
+
+  [ Jeff Becker ]
+  * correct key
+
+  [ Jason Rhinelander ]
+  * Abstract signing hash data location
+  * Bump libsodium required version to 1.0.18
+  * Fix libsodium 1.0.18 URL
+  * Use glob to find sodium source files
+
+  [ Jeff Becker ]
+  * don't drop messages with pathid zero which belong to snode to snode dht and path build requests.
+  * don't derive x25519 key from ed25519 key
+  * test/service/test_llarp_service_identity.cpp:
+  * notify delivery of path builds
+
+  [ Jason Rhinelander ]
+  * Switch primary builds from xenial to bionic
+  * Add arm64/s390x/ppc64le builds, reduce apt deps
+  * Remove travis_wait
+  * Zero-initialize test array
+
+  [ Stephen Shelton ]
+  * s/LogInfo/LogDebug/ @ explore message
+  * s/LogInfo/LogDebug/ @ 'updating SN list'
+  * s/LogInfo/LogDebug @ 'signed/verify encrypted introset'
+
+  [ Jeff Becker ]
+  * check for current introset being zero (initial state)
+  * * rename i to foundIntro * check for zero timestamp * use > not >=
+
+  [ Jason Rhinelander ]
+  * Use ExternalProject to build downloaded libsodium
+  * DOWNLOAD_SODIUM=FORCE to always download libsodium
+  * Older cmake workaround
+  * Move ppc64le/s390x to allow_failures and simplify it
+  * Disable stupid native windows builds
+  * Turn on -DDOWNLOAD_SODIUM for gcc trunk build
+  * Remove -Wshadow; it is far too aggressive under gcc
+  * DOWNLOAD_SODIUM in docker travis builds
+  * Disable router docker image
+  * Use -mcpu=native on ppc64le
+  * Big endian fixes
+  * Endian defines fix for macOS
+  * Another big-endian fix
+  * Remove s390x from allowed_failures
+
+  [ Jeff Becker ]
+  * update lokinet monitor to work with iwp
+  * dont flood dht with requests, if we know of a router don't look it up
+
+  [ Stephen Shelton ]
+  * Add IWP session stats to JSON API
+
+  [ Jeff Becker ]
+  * fix unit test
+  * if relayed try closer router if we don't have an intro
+  * handle end case by telling requester that it's not there
+  * move declaration of peer
+  * default recursion depth to 2 not 12
+  * always recurse to second closest if we don't have it
+  * fix comment
+  * logic simplification
+  * update lokinetmon
+  * add path speed metrics for lokinetmon
+
+  [ Stephen Shelton ]
+  * Leave IWP session JSON stats 'tx' and 'rx' for compat
+  * Use name 'StateToString()' instead of ambiguous 'toString()'
+  * Make format
+
+  [ Jeff Becker ]
+  * reduce number of multiack packets sent
+  * update lokinetmon
+  * make publishing introsets optional using reachable=false to disable
+  * make default endpoint non reachable by default
+  * only make default endpoint non-reachable if no keyfile option presented
+  * rc gossiping
+  * * get rid of dht explore for service nodes * add Time_t using std::chrono for future uses * make decaying hashset constructor with llarp_time_t explicit * add decaying hashset implicit constructor using Time_t * add timeouts for gossiper replay * allow regossip of our RC
+  * rc gossiping
+  * * get rid of dht explore for service nodes * add Time_t using std::chrono for future uses * make decaying hashset constructor with llarp_time_t explicit * add decaying hashset implicit constructor using Time_t * add timeouts for gossiper replay * allow regossip of our RC
+  * rename variables
+  * use Time_t
+  * remove include
+  * rename variable
+
+  [ Jason Rhinelander ]
+  * Fix signed/unsigned comparison warning and make more std::chrono-y
+
+  [ Stephen Shelton ]
+  * Print an error when BDecodeReadFromFile() fails before calling DumpBuffer()
+
+  [ Jason Rhinelander ]
+  * Switch abseil & nlohmann to submodules and update to latest stable
+  * Devendor gtest to a submodule
+  * Update deprecated gtest macros
+  * Devendor cxxopts to submodule
+  * ghc::filesystem devendor to submodule
+
+  [ Jeff Becker ]
+  * remove connect back logic for dead inbound sessions
+  * * add path::Path::UniqueEndpointSet_t * start using check2 for new unit tests * unit test for path::Path::UniqueEndpointSet_t
+  * redundant publish for service endpoint
+  * paralell publish and lookups
+  * log location
+  * refactor GetManyPathsWithUniqueEndpoints to go into service/endpoint_util.hpp
+  * revert change
+  * dont use optional
+
+  [ Stephen Shelton ]
+  * Big R, little r, what begins with R?
+  * Refactor DHT introset lookups to use redundant lookup strategy
+  * Serialize / deserialize relayOrder @ FindIntroMessage
+  * Remove relayOrder from MessageDecoder
+  * Make format
+  * Bencode/decode relayOrder in lexigraphical order, make it uint64_t
+
+  [ Jeff Becker ]
+  * dont collide variable names
+  * comparison fix
+
+  [ Jason Rhinelander ]
+  * Remove unused parameter
+  * Rework partial sorting code: use pointers, add lock
+  * Remove another unused randomize parameter
+  * clang format
+
+  [ Stephen Shelton ]
+  * Add NodeDB tests around FindClosestTo()
+
+  [ Jason Rhinelander ]
+  * Update ghc-filesystem to include rick's upstreamed patches
+
+  [ Jeff Becker ]
+  * make catch2 a submodule
+
+  [ Jason Rhinelander ]
+  * Reduce introset publishing interal to 2.5min instead of 1.25min
+
+  [ Jeff Becker ]
+  * spread out path builds
+  * ammend outbound context logic
+  * short circuit
+  * simplify
+
+  [ Jason Rhinelander ]
+  * Fix typo in option to disable submodule checks
+
+  [ Jeff Becker ]
+  * use endpoint path for lookup because outboundcontext does not implement pathset::HandleGotIntroMessage
+  * handover fixes
+  * add comment
+  * require router version in public routers
+
+  [ Jason Rhinelander ]
+  * Replace absl::optional with optional-lite
+
+  [ Jeff Becker ]
+  * add log statement
+
+  [ Stephen Shelton ]
+  * Propagate Introset publishing redundantly
+  * Minor improvements to DHT inroset propagation
+  * Make format
+
+  [ Jason Rhinelander ]
+  * Add missing header
+
+  [ Stephen Shelton ]
+  * Rework FindIntro logic per redundant strategy
+
+  [ Jason Rhinelander ]
+  * Remove llvm from travis-ci homebrew packages
+
+  [ Stephen Shelton ]
+  * Refactor: remove recursionDepth from DHT lookups
+
+  [ Jeff Becker ]
+  * handle multiple responses per hidden service lookup
+
+  [ Stephen Shelton ]
+  * Make format
+
+  [ Thomas Winget ]
+  * path builder prints hops, rest print short name
+  * const-y-ness and move-y-ness
+  * std move better
+  * PathBuildNumber -> NextPathBuildNumber because increment side-effect
+  * should probably build before committing...
+  * make path short name look nicer
+
+  [ Jason Rhinelander ]
+  * Update osx image to latest on travis
+  * Do a homebrew update
+  * Remove unneeded mingw homebrew dep
+
+  [ Stephen Shelton ]
+  * Make format
+
+  [ Jason Rhinelander ]
+  * De-abseil, part 2: mutex, locks, (most) time
+  * Vastly simplified llarp::util::memFn
+  * Removed empty cpp files
+  * Add return types to lambda
+  * Add an old xenial gcc build
+  * Fix and rename CaselessCmp -> CaselessLessThan
+  * De-abseil: Add our own llarp::TrimWhiteSpace
+  * Add cmake "check" target to run all tests
+  * Make C++ literals available everywhere in `llarp`
+  * Deabseil: remove absl::StrCat, de-templatize fromEnv
+  * Remove absl optimization
+  * Miscellaneous small absl removals
+  * Replace abseil date code with Hinnart's date.h
+  * Prettify uptime duration in log lines
+  * Remove all ABSL_ATTRIBUTE_UNUSED uses
+  * Replace absl string_view with string_view from lokimq
+  * Remove metric config parsing
+  * TrimWhiteSpace -> TrimWhitespace
+  * constexpr string_view fixes
+  * Fix format
+  * Remove old vendored ghc-filesystem
+  * Don't use double-underscores
+  * Final abseil purge
+  * gcc 5.x string_view workaround
+  * Rewrite generate expressions to make clang-7 happy
+  * Rewrite In6ToHUInt to be endian agnostic
+  * Avoid copies in mutators
+  * Make uint128_t use big/little endian layout internally
+  * Avoid wrong-order initialization on big endian
+  * Renamed uint128.h -> uint128.hpp
+  * Add gcc5 workaround for catch2 GENERATE(table
+  * Bump XSAN build to bionic and add status message
+  * Always pass XSAN to cmake
+  * Disable thread annotation when not under libc++
+  * Disable memory sanitizer build
+  * make format 🤦
+
+  [ Jeff Becker ]
+  * shift intro on introset update
+  * make decaying hashset use llarp::Time_t and move unit tests to use catch2
+  * llarp_time_t is now using std::chrono
+  * cast interval to std::chrono::milliseconds before dividing by 4
+
+  [ Jason Rhinelander ]
+  * Fix string_view C++17 compatibility
+
+  [ Jeff Becker ]
+  * use llarp_time_t instead of auto
+  * explictly use std::chrono::milliseconds
+  * remove Time_t, add operator overload for printing llarp_time_t and add to_json function for serializing llarp_time_t to json
+  * remove trailing "ms"
+  * reduce code use
+  * fix last commit
+
+  [ Jason Rhinelander ]
+  * gcc 5 compatibility workaround
+  * Another gcc 5 compat fix (plus small optimization)
+
+  [ Stephen Shelton ]
+  * Build endpoint paths at even[ish] intervals
+  * Make format
+  * Big I, little i, what begins with I?
+  * Make format
+  * Use existing 'lastBuild' var for spacing path builds
+  * Increase default path timeout from 10min to 20min
+  * Use constants for path build timing
+
+  [ Jason Rhinelander ]
+  * Default libsystemd support to enabled if found
+
+  [ Rick V ]
+  * systemd is linux only
+
+  [ Linux User ]
+  * 32-bit linux patches
+
+  [ despair ]
+  * we need XPG7 on netbsd
+
+  [ Jeff Becker ]
+  * systemd status
+  * remove uneeded members
+  * monkey patch upstream dns to rewrite .loki cname answers
+  * disable flawed unit test
+  * handle snode and clean up codepath for hooked dns
+  * use std::chrono
+
+  [ Jason Rhinelander ]
+  * Add EXCLUDE_FROM_ALL to subprojects
+  * Fix cmake LINUX variable around systemd enabling
+  * if(LINUX) doesn't work; just try to find libsystemd gently instead
+  * fix speeling mistack
+  * Fix systemd compilation & enable systemd on travis
+  * Shorten version and prefix with v
+
+  [ Stephen Shelton ]
+  * Remove 'clang-format off' and make format
+
+  [ Jeff Becker ]
+  * remove dht explore timer
+  * change function signature for dht context to exclude time parameter
+  * remove convotags on dead outbound context
+
+  [ Stephen Shelton ]
+  * Judicious removal of dead code
+  * Add some notes/comments about DHT message handling
+  * Require 'From' and 'relayed' in PublishIntroMessage ctor
+  * Properly deserialize PubIntroMessages' relayed var
+  * Remove dead code
+  * Handle PubIntro relayOrder logic on client-side
+  * Log when DHTSendTo fails @ Router::SendToOrQueue
+  * Calculate 'candidateNumber' when we should store Introset
+  * Remove dead unit tests
+  * Make format
+  * Implement PublishServiceJob::SendReply()
+
+  [ jeff ]
+  * remove uneeded code
+  * make format
+
+  [ Jason Rhinelander ]
+  * Add warns for introset publish failures
+  * Logic simplification
+
+  [ Jeff Becker ]
+  * dedup via txid not keyspace location
+  * make format
+  * revert
+
+  [ Jason Rhinelander ]
+  * Add min intro set paths, slightly increase spread speed
+  * De-static constants
+
+  [ Jeff Becker ]
+  * add local publish intro message to send reply down path
+  * wrong txid
+
+  [ Jason Rhinelander ]
+  * Avoid unnecessary copy
+  * Don't republish when we have extra paths
+  * Make IntroSet publish confirmed less verbose
+
+  [ Jeff Becker ]
+  * fix up introset lookups
+  * spelling is hard
+  * rename variable
+
+  [ Stephen Shelton ]
+  * Remove redundant lookup logic from relays
+
+  [ Jeff Becker ]
+  * revert relay side dedup parameter
+  * dont put multiple outbound contexts
+
+  [ Stephen Shelton ]
+  * Consolidate introset publishing constants
+  * Make format
+
+  [ Jeff Becker ]
+  * remote lookup limiting of 500ms per address
+  * change log
+
+  [ Stephen Shelton ]
+  * Set release motto for v0.7.0
+  * Remove re-propagation of introsets when we are wrong candidate
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 03 Mar 2020 12:02:23 -0400
+
 lokinet (0.6.4-2) sid; urgency=medium
 
   * Fix broken testnet client service
