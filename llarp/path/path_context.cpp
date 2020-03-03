@@ -289,18 +289,9 @@ namespace llarp
     uint64_t
     PathContext::CurrentTransitPaths()
     {
-      std::unordered_set< TransitHopInfo, TransitHopInfo::Hash > paths;
-      {
-        SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
-        auto& map = m_TransitPaths.second;
-        auto itr  = map.begin();
-        while(itr != map.end())
-        {
-          paths.insert(itr->second->info);
-          ++itr;
-        }
-      }
-      return paths.size();
+      SyncTransitMap_t::Lock_t lock(m_TransitPaths.first);
+      auto& map = m_TransitPaths.second;
+      return map.size() / 2;
     }
 
     void
