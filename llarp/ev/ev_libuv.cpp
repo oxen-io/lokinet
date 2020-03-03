@@ -782,14 +782,20 @@ namespace libuv
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
 #endif
     m_LogicCaller.data = this;
-    uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
+    int err;
+    if ((err = uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
       Loop* l = static_cast< Loop* >(h->data);
       while(not l->m_LogicCalls.empty())
       {
         auto f = l->m_LogicCalls.popFront();
         f();
       }
-    });
+    })) != 0)
+    {
+      llarp::LogError("Libuv uv_async_init returned error: ", uv_strerror(err));
+      return false;
+    }
+
     m_TickTimer       = new uv_timer_t;
     m_TickTimer->data = this;
     m_Run.store(true);

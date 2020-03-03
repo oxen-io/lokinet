@@ -30,7 +30,7 @@ namespace llarp
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
     bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
-    LogWarn("ShouldGossipOurRC: ", should);
+LogWarn("ShouldGossipOurRC: ", should);
     return should;
   }
 
@@ -74,6 +74,7 @@ namespace llarp
       m_LastGossipedOurRC = now;
     }
 
+LogWarn("Creating RC Gossip Message");
     // send a GRCM as gossip method
     DHTImmediateMessage gossip;
     gossip.msgs.emplace_back(
@@ -81,13 +82,16 @@ namespace llarp
 
     // send it to everyone
     m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
+LogWarn("Considering Peer to send RC Gossip Message");
       // ensure connected session
       if(not(peerSession && peerSession->IsEstablished()))
         return;
+LogWarn("Peer has session established to send RC Gossip Message");
       // check if public router
       const auto other_rc = peerSession->GetRemoteRC();
       if(not other_rc.IsPublicRouter())
         return;
+LogWarn("Peer is public router to send RC Gossip Message");
       // encode message
       ILinkSession::Message_t msg;
       msg.resize(MAX_LINK_MSG_SIZE / 2);
@@ -96,6 +100,7 @@ namespace llarp
         return;
       msg.resize(buf.cur - buf.base);
       // send message
+LogWarn("Sending RC Gossip Message to ", RouterID(other_rc.pubkey).ShortString());
       peerSession->SendMessageBuffer(std::move(msg), nullptr);
     });
     return true;

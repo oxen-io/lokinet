@@ -209,27 +209,29 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
   total_events = 0
   event_counts = dict()
   while running:
-    event = hive.PopEvent()
-    event_name = event.__class__.__name__
-    if event:
-      if print_each_event:
-        print("Event: %s -- Triggered: %s" % (event_name, event.triggered))
-        print(event)
-        hops = getattr(event, "hops", None)
-        if hops:
-          for hop in hops:
-            print(hop)
+    hive.CollectAllEvents()
+    for event in hive.events:
+      event_name = event.__class__.__name__
+      if event:
+        if print_each_event:
+          print("Event: %s -- Triggered: %s" % (event_name, event.triggered))
+          print(event)
+          hops = getattr(event, "hops", None)
+          if hops:
+            for hop in hops:
+              print(hop)
 
-      total_events = total_events + 1
-      if event_name in event_counts:
-        event_counts[event_name] = event_counts[event_name] + 1
-      else:
-        event_counts[event_name] = 1
+        total_events = total_events + 1
+        if event_name in event_counts:
+          event_counts[event_name] = event_counts[event_name] + 1
+        else:
+          event_counts[event_name] = 1
 
-      if total_events % 10 == 0:
-        pprint(event_counts)
+        if total_events % 10 == 0:
+          pprint(event_counts)
 
-    sleep(.01)
+    hive.events = []
+    sleep(.1)
 
   print('stopping')
   hive.Stop()
@@ -241,4 +243,4 @@ if __name__ == '__main__':
   print_events = False
   parser.add_argument('--print-events', dest="print_events", action='store_true')
   args = parser.parse_args()
-  main(n_relays=30, print_each_event = args.print_events)
+  main(n_relays=1000, print_each_event = args.print_events)
