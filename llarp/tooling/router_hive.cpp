@@ -105,7 +105,7 @@ namespace tooling
   {
     std::lock_guard<std::mutex> guard{eventQueueMutex};
 
-    eventQueue.push(std::move(event));
+    eventQueue.push_back(std::move(event));
   }
 
   RouterEventPtr
@@ -116,10 +116,23 @@ namespace tooling
     if (not eventQueue.empty())
     {
       auto ptr = std::move(eventQueue.front());
-      eventQueue.pop();
+      eventQueue.pop_front();
       return ptr;
     }
     return nullptr;
+  }
+
+  std::deque<RouterEventPtr>
+  RouterHive::GetAllEvents()
+  {
+    std::lock_guard<std::mutex> guard{eventQueueMutex};
+
+    std::deque<RouterEventPtr> events;
+    if (not eventQueue.empty())
+    {
+      eventQueue.swap(events);
+    }
+    return events;
   }
 
   void

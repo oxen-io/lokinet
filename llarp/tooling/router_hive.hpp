@@ -6,7 +6,7 @@
 #include <config/config.hpp>
 
 #include <vector>
-#include <queue>
+#include <deque>
 #include <thread>
 #include <mutex>
 
@@ -69,6 +69,9 @@ namespace tooling
     RouterEventPtr
     GetNextEvent();
 
+    std::deque<RouterEventPtr>
+    GetAllEvents();
+
     void
     ForEachRelay(std::function<void(Context_ptr)> visit)
     {
@@ -95,16 +98,13 @@ namespace tooling
       ForEachClient(visit);
     }
 
-
-
-
     std::vector<llarp_main *> relays;
     std::vector<llarp_main *> clients;
 
     std::vector<std::thread> routerMainThreads;
 
     std::mutex eventQueueMutex;
-    std::queue<RouterEventPtr> eventQueue;
+    std::deque<RouterEventPtr> eventQueue;
   };
 
 } // namespace tooling

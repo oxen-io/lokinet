@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "pybind11/stl.h"
 
 #include "tooling/router_event.hpp"
 #include "tooling/dht_event.hpp"

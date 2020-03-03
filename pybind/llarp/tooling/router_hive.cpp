@@ -1,7 +1,9 @@
 #include "common.hpp"
+#include "pybind11/stl.h"
+#include "pybind11/iostream.h"
+
 #include <tooling/router_hive.hpp>
 #include "llarp.hpp"
-#include "pybind11/iostream.h"
 namespace tooling
 {
   void
@@ -18,7 +20,8 @@ namespace tooling
         .def("ForEachRelay", &RouterHive::ForEachRelay)
         .def("ForEachClient", &RouterHive::ForEachClient)
         .def("ForEachRouter", &RouterHive::ForEachRouter)
-        .def("GetNextEvent", &RouterHive::GetNextEvent);
+        .def("GetNextEvent", &RouterHive::GetNextEvent)
+        .def("GetAllEvents", &RouterHive::GetAllEvents);
              
   }
 }
