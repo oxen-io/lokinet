@@ -294,10 +294,6 @@ add_subdirectory(llarp)
 add_subdirectory(libabyss)
 add_subdirectory(daemon)
 
-if(WITH_TESTS)
-  enable_testing()
-endif()
-
 if (NOT SHADOW)
   if(WITH_TESTS)
     add_subdirectory(test)
