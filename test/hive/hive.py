@@ -210,6 +210,7 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
   event_counts = dict()
   while running:
     hive.CollectAllEvents()
+    print("Hive collected {} events this second.".format(len(hive.events)))
     for event in hive.events:
       event_name = event.__class__.__name__
       if event:
@@ -231,7 +232,7 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
           pprint(event_counts)
 
     hive.events = []
-    sleep(.1)
+    sleep(1)
 
   print('stopping')
   hive.Stop()
@@ -241,6 +242,10 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
 if __name__ == '__main__':
   parser = ap()
   print_events = False
+  relay_count = 10
+  client_count = 10
   parser.add_argument('--print-events', dest="print_events", action='store_true')
+  parser.add_argument('--relay-count', dest="relay_count", type=int, default=10)
+  parser.add_argument('--client-count', dest="client_count", type=int, default=10)
   args = parser.parse_args()
-  main(n_relays=1000, print_each_event = args.print_events)
+  main(n_relays=args.relay_count, n_clients=args.client_count, print_each_event = args.print_events)
