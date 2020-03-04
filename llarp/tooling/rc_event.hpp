@@ -17,5 +17,18 @@ namespace tooling
     llarp::RouterContact rc;
   };
 
+  struct RCGossipSentEvent : public RouterEvent
+  {
+    RCGossipSentEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc);
+
+    std::string
+    ToString() const override;
+
+    std::string
+    LongString() const;
+
+    llarp::RouterContact rc;
+  };
+
 } // namespace tooling
 

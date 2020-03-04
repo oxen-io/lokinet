@@ -20,5 +20,24 @@ namespace tooling
     return RouterEvent::ToString() + " ---- RC: " + rc.ToString();
   }
 
+
+  RCGossipSentEvent::RCGossipSentEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc)
+    : RouterEvent("RCGossipSentEvent", routerID, true)
+    , rc(rc)
+  {
+  }
+
+  std::string
+  RCGossipSentEvent::ToString() const
+  {
+    return RouterEvent::ToString() +  " ---- sending RC for RouterID: " + llarp::RouterID(rc.pubkey).ShortString();
+  }
+
+  std::string
+  RCGossipSentEvent::LongString() const
+  {
+    return RouterEvent::ToString() + " ---- RC: " + rc.ToString();
+  }
+
 } // namespace tooling
 

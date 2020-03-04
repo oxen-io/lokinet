@@ -52,6 +52,10 @@ namespace tooling
     py::class_<RCGossipReceivedEvent, RouterEvent>(mod, "RCGossipReceivedEvent")
     .def_readonly("rc", &RCGossipReceivedEvent::rc)
     .def("LongString", &RCGossipReceivedEvent::LongString);
+
+    py::class_<RCGossipSentEvent, RouterEvent>(mod, "RCGossipSentEvent")
+    .def_readonly("rc", &RCGossipSentEvent::rc)
+    .def("LongString", &RCGossipSentEvent::LongString);
   }
 
 } // namespace tooling

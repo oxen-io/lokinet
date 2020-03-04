@@ -3,6 +3,7 @@
 #include <dht/messages/gotrouter.hpp>
 #include <util/time.hpp>
 #include <constants/link_layer.hpp>
+#include <tooling/rc_event.hpp>
 
 namespace llarp
 {
@@ -20,10 +21,11 @@ namespace llarp
   }
 
   void
-  RCGossiper::Init(ILinkManager* l, const RouterID& ourID)
+  RCGossiper::Init(ILinkManager* l, const RouterID& ourID, AbstractRouter* router)
   {
     m_OurRouterID = ourID;
     m_LinkManager = l;
+    m_router = router;
   }
 
   bool
@@ -74,7 +76,6 @@ LogWarn("ShouldGossipOurRC: ", should);
       m_LastGossipedOurRC = now;
     }
 
-LogWarn("Creating RC Gossip Message");
     // send a GRCM as gossip method
     DHTImmediateMessage gossip;
     gossip.msgs.emplace_back(
@@ -82,16 +83,13 @@ LogWarn("Creating RC Gossip Message");
 
     // send it to everyone
     m_LinkManager->ForEachPeer([&](ILinkSession* peerSession) {
-LogWarn("Considering Peer to send RC Gossip Message");
       // ensure connected session
       if(not(peerSession && peerSession->IsEstablished()))
         return;
-LogWarn("Peer has session established to send RC Gossip Message");
       // check if public router
       const auto other_rc = peerSession->GetRemoteRC();
       if(not other_rc.IsPublicRouter())
         return;
-LogWarn("Peer is public router to send RC Gossip Message");
       // encode message
       ILinkSession::Message_t msg;
       msg.resize(MAX_LINK_MSG_SIZE / 2);
@@ -99,8 +97,11 @@ LogWarn("Peer is public router to send RC Gossip Message");
       if(not gossip.BEncode(&buf))
         return;
       msg.resize(buf.cur - buf.base);
+
+      tooling::RouterEventPtr event = std::make_unique<tooling::RCGossipSentEvent>(m_router->pubkey(), rc);
+      m_router->NotifyRouterEvent(std::move(event));
+
       // send message
-LogWarn("Sending RC Gossip Message to ", RouterID(other_rc.pubkey).ShortString());
       peerSession->SendMessageBuffer(std::move(msg), nullptr);
     });
     return true;

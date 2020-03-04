@@ -1057,7 +1057,7 @@ namespace llarp
       const RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
       // init gossiper here
-      _rcGossiper.Init(&_linkManager, us);
+      _rcGossiper.Init(&_linkManager, us, this);
       // relays do not use profiling
       routerProfiling().Disable();
     }
