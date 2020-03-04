@@ -732,6 +732,8 @@ namespace llarp
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
         if(IsBootstrapNode(rc.pubkey))
           return false;
+        if(not rc.IsPublicRouter())
+          return true;
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
