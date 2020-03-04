@@ -1,3 +1,19 @@
+lokinet (0.7.0~rc1-2) sid; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Checkout submodules
+  * Remove enable_testing() because ctest sucks (and thus we don't use it)
+  * Bump required sodium version
+
+  [ Jeff Becker ]
+  * std::vector reserve does not resize
+
+  [ Jason Rhinelander ]
+  * Switch systemd service files to notify
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 04 Mar 2020 00:00:15 -0400
+
 lokinet (0.7.0~rc1-1) sid; urgency=medium
 
   [ Stephen Shelton ]
