@@ -7,6 +7,19 @@
 namespace tooling
 {
 
+  struct PubIntroSentEvent : public RouterEvent
+  {
+    PubIntroSentEvent(const llarp::RouterID & ourRouter, const llarp::dht::Key_t & introsetPubkey, const llarp::RouterID& relay, uint64_t relayIndex);
+
+    llarp::dht::Key_t introsetPubkey;
+
+    llarp::RouterID relay;
+
+    uint64_t relayIndex;
+
+    std::string ToString() const override;
+  };
+
   struct PubIntroReceivedEvent : public RouterEvent
   {
     PubIntroReceivedEvent(const llarp::RouterID & ourRouter, const llarp::dht::Key_t & from, const llarp::dht::Key_t & location, uint64_t txid, uint64_t relayOrder);

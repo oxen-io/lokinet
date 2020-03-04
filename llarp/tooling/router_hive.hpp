@@ -98,6 +98,12 @@ namespace tooling
       ForEachClient(visit);
     }
 
+    std::vector<size_t>
+    RelayConnectedRelays();
+
+    std::vector<llarp::RouterContact>
+    GetRelayRCs();
+
     std::vector<llarp_main *> relays;
     std::vector<llarp_main *> clients;
 

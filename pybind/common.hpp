@@ -52,6 +52,12 @@ namespace llarp
   void
   PathTypes_Init(py::module & mod);
 
+  namespace dht
+  {
+    void
+    DHTTypes_Init(py::module& mod);
+  }
+
   namespace path
   {
     void

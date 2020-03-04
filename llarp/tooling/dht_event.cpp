@@ -5,12 +5,26 @@
 namespace tooling
 {
   PubIntroReceivedEvent::PubIntroReceivedEvent(const llarp::RouterID & ourRouter, const llarp::dht::Key_t & from, const llarp::dht::Key_t & location, uint64_t txid, uint64_t relayOrder) :
-  RouterEvent("DHT: PubIntroReceivedEvent", ourRouter, false),
+  RouterEvent("DHT: PubIntroReceivedEvent", ourRouter, true),
   From(from),
   IntrosetLocation(location),
   RelayOrder(relayOrder),
   TxID(txid)
   {}
+
+  PubIntroSentEvent::PubIntroSentEvent(const llarp::RouterID & ourRouter, const llarp::dht::Key_t & introsetPubkey, const llarp::RouterID& relay, uint64_t relayIndex)
+  : RouterEvent("DHT: PubIntroSentEvent", ourRouter, false)
+  , introsetPubkey(introsetPubkey)
+  , relay(relay)
+  , relayIndex(relayIndex)
+  {
+  }
+
+  std::string
+  PubIntroSentEvent::ToString() const
+  {
+    return RouterEvent::ToString() + " ---- introset pubkey: " + introsetPubkey.ShortHex() + ", relay: " + relay.ShortString() + ", relayIndex: " + std::to_string(relayIndex);
+  }
 
   std::string PubIntroReceivedEvent::ToString() const
   {

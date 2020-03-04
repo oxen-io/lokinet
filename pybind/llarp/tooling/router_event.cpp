@@ -37,6 +37,11 @@ namespace tooling
         return ev->status == llarp::LR_StatusRecord::SUCCESS;
     });
 
+    py::class_<PubIntroSentEvent, RouterEvent>(mod, "DhtPubIntroSentEvent")
+    .def_readonly("introsetPubkey", &PubIntroSentEvent::introsetPubkey)
+    .def_readonly("relay", &PubIntroSentEvent::relay)
+    .def_readonly("relayIndex", &PubIntroSentEvent::relayIndex);
+
     py::class_<PubIntroReceivedEvent, RouterEvent>(mod, "DhtPubIntroReceivedEvent")
     .def_readonly("from", &PubIntroReceivedEvent::From)
     .def_readonly("location", &PubIntroReceivedEvent::IntrosetLocation)

@@ -2,6 +2,7 @@
 #include <service/endpoint.hpp>
 
 #include <dht/context.hpp>
+#include <dht/key.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
@@ -23,6 +24,7 @@
 #include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
 #include <link/link_manager.hpp>
+#include <tooling/dht_event.hpp>
 
 #include <utility>
 
@@ -470,10 +472,13 @@ namespace llarp
 
       // do publishing for each path selected
       size_t published = 0;
+
       for(const auto& path : paths)
       {
         for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
+          auto ev = std::make_unique<tooling::PubIntroSentEvent>(r->pubkey(), llarp::dht::Key_t{introset.derivedSigningKey.as_array()}, RouterID(path->hops[path->hops.size()-1].rc.pubkey), published);
+          r->NotifyRouterEvent(std::move(ev));
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
         }

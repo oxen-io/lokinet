@@ -1,4 +1,5 @@
 #include <router_contact.hpp>
+#include <dht/key.hpp>
 #include "common.hpp"
 
 namespace llarp
@@ -10,6 +11,9 @@ namespace llarp
         .def(py::init<>())
         .def_property_readonly("routerID", [](const RouterContact* const rc) -> llarp::RouterID {
             return llarp::RouterID(rc->pubkey);
+        })
+        .def_property_readonly("AsDHTKey", [](const RouterContact* const rc) -> llarp::dht::Key_t {
+            return llarp::dht::Key_t{rc->pubkey.as_array()};
         })
         .def("ReadFile", &RouterContact::Read)
         .def("WriteFile", &RouterContact::Write)

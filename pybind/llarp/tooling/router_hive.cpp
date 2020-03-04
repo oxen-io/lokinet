@@ -21,7 +21,9 @@ namespace tooling
         .def("ForEachClient", &RouterHive::ForEachClient)
         .def("ForEachRouter", &RouterHive::ForEachRouter)
         .def("GetNextEvent", &RouterHive::GetNextEvent)
-        .def("GetAllEvents", &RouterHive::GetAllEvents);
+        .def("GetAllEvents", &RouterHive::GetAllEvents)
+        .def("RelayConnectedRelays", &RouterHive::RelayConnectedRelays)
+        .def("GetRelayRCs", &RouterHive::GetRelayRCs);
              
   }
 }

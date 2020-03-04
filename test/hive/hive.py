@@ -26,6 +26,7 @@ class RouterHive(object):
     self.events = deque()
 
     self.hive = None
+    self.RCs = []
 
     pyllarp.EnableDebug()
     if not self.RemoveTmpDir():
@@ -164,8 +165,10 @@ class RouterHive(object):
     sleep(0.2)
     self.hive.ForEachRelay(lambda r: self.MakeEndpoint(r, self.onGotEndpoint))
 
-    print("Sleeping 1 seconds before starting clients")
-    sleep(1)
+    print("Sleeping 2 seconds before starting clients")
+    sleep(2)
+
+    self.RCs = self.hive.GetRelayRCs()
 
     self.hive.StartClients()
 
@@ -187,6 +190,17 @@ class RouterHive(object):
       return self.events.popleft()
     return None
 
+  def DistanceSortedRCs(self, dht_key):
+    rcs = []
+    distances = []
+    for rc in self.RCs:
+      distances.append(rc.AsDHTKey ^ dht_key)
+      rcs.append(rc)
+
+    distances, rcs = (list(t) for t in zip(*sorted(zip(distances, rcs))))
+    return rcs
+
+
 def main(n_relays=10, n_clients=10, print_each_event=True):
 
   running = True
@@ -206,6 +220,9 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
     print(err)
     return 1
 
+  first_dht_pub = False
+  dht_pub_sorted = None
+  dht_pub_location = None
   total_events = 0
   event_counts = dict()
   while running:
@@ -230,6 +247,21 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
 
         if total_events % 10 == 0:
           pprint(event_counts)
+
+        if event_name == "DhtPubIntroReceivedEvent":
+          if not first_dht_pub:
+            dht_pub_sorted = hive.DistanceSortedRCs(event.location)
+            dht_pub_location = event.location
+            print("location: {} landed at: {}, sorted distance list:".format(dht_pub_location.ShortString(), event.routerID.ShortString()))
+            print([x.routerID.ShortString() for x in dht_pub_sorted[:4]])
+            first_dht_pub = True
+          else:
+            if event.location == dht_pub_location:
+              print("location: {}, landed at: {}".format(dht_pub_location.ShortString(), event.routerID.ShortString()))
+
+    # won't have printed event count above in this case.
+    if len(hive.events) == 0:
+      pprint(event_counts)
 
     hive.events = []
     sleep(1)
