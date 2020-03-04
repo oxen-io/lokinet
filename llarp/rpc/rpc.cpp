@@ -285,12 +285,16 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
+      std::string expectedHostname;
       AbstractRouter* router;
       std::unordered_map< std::string, std::function< Response() > > m_dispatch;
-      Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
+      Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r,
+              std::string hostname)
           : ::abyss::httpd::IRPCHandler(conn)
+          , expectedHostname(std::move(hostname))
           , router(r)
           , m_dispatch{
+                {"llarp.admin.die", [=]() { return KillRouter(); }},
                 {"llarp.admin.wakeup", [=]() { return StartRouter(); }},
                 {"llarp.admin.link.neighbor",
                  [=]() { return ListNeighbors(); }},
@@ -304,6 +308,12 @@ namespace llarp
 
       ~Handler() override = default;
 
+      bool
+      ValidateHost(const std::string& host) const override
+      {
+        return host == "localhost" || host == expectedHostname;
+      }
+
       Response
       StartRouter() const
       {
@@ -315,6 +325,15 @@ namespace llarp
       DumpState() const
       {
         return router->ExtractStatus();
+      }
+
+      Response
+      KillRouter() const
+      {
+        if(not router->IsRunning())
+          return {{"error", "already stopping"}};
+        router->Stop();
+        return {{"status", "OK"}};
       }
 
       Response
@@ -416,11 +435,15 @@ namespace llarp
           : ::abyss::httpd::BaseReqHandler(reqtimeout), router(r)
       {
       }
+
+      std::string expectedHostname;
+
       AbstractRouter* router;
+
       ::abyss::httpd::IRPCHandler*
       CreateHandler(::abyss::httpd::ConnImpl* conn) override
       {
-        return new Handler(conn, router);
+        return new Handler(conn, router, expectedHostname);
       }
     };
 
@@ -447,14 +470,19 @@ namespace llarp
         sockaddr_in saddr;
         saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         saddr.sin_family      = AF_INET;
-        saddr.sin_port        = 0;
+        saddr.sin_port        = 1190;
 
         auto idx = addr.find_first_of(':');
         if(idx != std::string::npos)
         {
+          _handler.expectedHostname = addr.substr(0, idx);
           Addr netaddr{addr.substr(0, idx), addr.substr(1 + idx)};
           saddr.sin_addr.s_addr = netaddr.ton();
           saddr.sin_port        = htons(netaddr.port());
+        }
+        else
+        {
+          _handler.expectedHostname = addr;
         }
         return _handler.ServeAsync(router->netloop(), router->logic(),
                                    (const sockaddr*)&saddr);
