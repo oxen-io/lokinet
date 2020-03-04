@@ -48,6 +48,9 @@
 #define le64toh(x) OSSwapLittleToHostInt64(x)
 #elif defined(_WIN32)
 #include <winsock2.h>
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif
 #define htobe16(x) htons(x)
 #define htole16(x) (x)
 #define be16toh(x) ntohs(x)
