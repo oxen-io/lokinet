@@ -41,7 +41,7 @@ namespace tooling
       routerMainThreads.emplace_back([ctx](){
             llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false});
       });
-      std::this_thread::sleep_for(20ms);
+      std::this_thread::sleep_for(2ms);
     }
   }
 
