@@ -107,6 +107,12 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
+  bool
+  ValidateHost(const std::string & /*hostname */) const override
+  {
+    return true;
+  }
+  
   Response
   HandleJSONRPC(Method_t method, const Params& /*params*/)
   {
