@@ -417,9 +417,11 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
    * inline */
   dns.dhcp_opt = 6;
   dns.length   = 4;
-  dns.value[0] =
-      htonl(0x7F000001); /* apparently this doesn't show in network properties,
+  if (dev->bindaddr)
+    dns.value[0] = dev->bindaddr; /* apparently this doesn't show in network properties,
                             but it works */
+  else
+    dns.value[0] = htonl(0x7f000001);
   dns.value[1] = 0;
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
