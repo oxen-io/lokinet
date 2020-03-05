@@ -27,6 +27,9 @@ build:linux_release:
     - linux
   stage: build
   before_script:
+    - apt-get update && apt-get install -y apt-transport-https curl
+    - curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
+    - echo 'deb https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware.list
     - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils
   script:
     - make static DOWNLOAD_SODIUM=ON
@@ -50,6 +53,9 @@ build:linux_debug:
     - linux
   stage: build
   before_script:
+    - apt-get update && apt-get install -y apt-transport-https curl
+    - curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
+    - echo 'deb https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware.list
     - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libuv1-dev ninja-build
   script:
     - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=OFF make
