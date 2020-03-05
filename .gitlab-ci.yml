@@ -5,34 +5,43 @@ stages:
   - build
   - test
 
-# disabled because cannot find -luv -lcap when building
+# disabled because gcc9 can't build net_if.hpp
 #build:linux:
 #  image: alpine:latest
 #  tags:
 #    - linux
 #  stage: build
 #  before_script:
-#    - apk add --update g++ make cmake linux-headers libcap-dev libuv-dev
+#    - apk add --update g++ make cmake linux-headers libcap-dev libuv-dev curl-dev git
 #  script:
-#    - make STATIC_LINK=ON
+#    - make STATIC_LINK=ON DOWNLOAD_SODIUM=ON
 #  artifacts:
 #    paths:
 #      - "lokinet"
 
 # we'll just try our travis set up for now
-#build:linux_release:
-#  image: ubuntu:xenial
-#  tags:
-#    - linux
-#  stage: build
-#  before_script:
-#    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
-#  script:
-#    - DOWNLOAD_SODIUM=ON STATIC_LINK=OFF make release
-#  artifacts:
-#    paths:
-#      - "build/daemon/lokinet"
-#      - "build/daemon/lokinetctl"
+build:linux_release:
+  image: ubuntu:xenial
+  tags:
+    - linux
+  stage: build
+  before_script:
+    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils
+  script:
+    - make static DOWNLOAD_SODIUM=ON
+    # alternatively: git describe --tag
+    - LOKINET_VERSION=$(./lokinet-static --version|sed s/lokinet-//)
+    - echo lokinet-linux-x64-v$LOKINET_VERSION
+    - mkdir lokinet-linux-x64-v$LOKINET_VERSION
+    - cp lokinet-bootstrap lokinet-linux-x64-v$LOKINET_VERSION
+    - cp build/daemon/lokinet lokinet-linux-x64-v$LOKINET_VERSION
+    - cp build/daemon/lokinetctl lokinet-linux-x64-v$LOKINET_VERSION
+    - cp docs/linux-setcap-readme.txt lokinet-linux-x64-v$LOKINET_VERSION
+    - tar cJf lokinet-linux-x64-v$LOKINET_VERSION.tar.xz lokinet-linux-x64-v$LOKINET_VERSION
+    - echo "lokinet-linux-x64-v$LOKINET_VERSION.tar.xz should be ready"
+  artifacts:
+    paths:
+      - lokinet-linux-x64-v*.tar.xz
 
 build:linux_debug:
   image: ubuntu:xenial
@@ -40,31 +49,35 @@ build:linux_debug:
     - linux
   stage: build
   before_script:
-    - apt-get update && apt-get install -y binutils-gold build-essential bsdmainutils ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libsodium-dev libuv1-dev ninja-build
+    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libuv1-dev ninja-build
   script:
     - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=OFF make
   artifacts:
     paths:
-      - "lokinet"
-      - "lokinetctl"
+      - build/daemon/lokinet
+      - build/daemon/lokinetctl
 
-# needs libsodium (probably libuv and libcurl too)
+# needs libuv and libcurl
 #build:freebsd:
 #  tags:
 #     - freebsd
 #  stage: build
 #  script:
-#    - gmake
+#    - gmake DOWNLOAD_SODIUM=ON
 #  artifacts:
 #    paths:
 #      - "lokinet"
 
+# need windows runner on lokiproject
 #build:windows:
 #  tags:
 #    - windows
 #  stage: build
 #  script:
-#    - make STATIC_LINK=ON AVX2=OFF JSONRPC=OFF CC=gcc CXX=g++
+    #- make static CC=gcc CXX=g++
+    # can't use STATIC because LTO doesn't work on cross-compiled targets
+    # -DSTATIC_LINK_RUNTIME=ON -DLIBUV_ROOT=libuv
+#    - cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake  -DDOWNLOAD_SODIUM=ON
 #  artifacts:
 #    paths:
 #      - "lokinet.exe"
