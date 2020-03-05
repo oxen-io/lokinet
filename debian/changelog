@@ -49,6 +49,7 @@ lokinet (0.7.0~rc2-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
   * gitlab-ci: Upgrade xenial cmake (via kitware repo)
+  * Rediff patches
 
  -- Jason Rhinelander <jason@imaginary.ca>  Thu, 05 Mar 2020 18:07:58 -0400
 
