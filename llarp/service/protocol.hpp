@@ -44,7 +44,7 @@ namespace llarp
       ProtocolMessage();
       ~ProtocolMessage();
       ProtocolType proto  = eProtocolTrafficV4;
-      llarp_time_t queued = 0;
+      llarp_time_t queued = 0s;
       std::vector< byte_t > payload;
       Introduction introReply;
       ServiceInfo sender;

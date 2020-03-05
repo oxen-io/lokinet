@@ -7,7 +7,7 @@ RUN apk update && \
 WORKDIR /src/
 COPY . /src/
 
-RUN make NINJA=ninja STATIC_LINK=ON BUILD_TYPE=Release
+RUN make NINJA=ninja STATIC_LINK=ON BUILD_TYPE=Release DOWNLOAD_SODIUM=ON
 RUN ./lokinet-bootstrap ${bootstrap}
 
 FROM alpine:latest

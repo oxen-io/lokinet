@@ -71,11 +71,12 @@ namespace llarp
 
       LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
 
-      if((status & LR_StatusRecord::SUCCESS) == 0)
+      if((status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
       {
-        LogDebug(
+        LogWarn(
             "TransitHop received non-successful LR_StatusMessage, queueing "
-            "self-destruct");
+            "self-destruct status=",
+            status);
         QueueDestroySelf(r);
       }
 
@@ -261,6 +262,8 @@ namespace llarp
       m_DownstreamQueue = nullptr;
     }
 
+    /// this is where a DHT message is handled at the end of a path, that is,
+    /// where a SNode receives a DHT message from a client along a path.
     bool
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage& msg,
                                  AbstractRouter* r)
@@ -463,8 +466,8 @@ namespace llarp
     {
       Printer printer(stream, level, spaces);
       printer.printAttribute("TransitHop", info);
-      printer.printAttribute("started", started);
-      printer.printAttribute("lifetime", lifetime);
+      printer.printAttribute("started", started.count());
+      printer.printAttribute("lifetime", lifetime.count());
       return stream;
     }
 

@@ -43,9 +43,14 @@ namespace llarp
                    bool(byte_t *, const llarp_buffer_t &,
                         const SharedSecret &));
 
-      MOCK_METHOD3(sign,
-                   bool(Signature &, const SecretKey &,
-                        const llarp_buffer_t &));
+      MOCK_METHOD4(derive_subkey, bool(PubKey &, const PubKey &, uint64_t, const AlignedBuffer<32> *));
+
+      MOCK_METHOD4(derive_subkey_private,
+                   bool(PrivateKey &, const SecretKey &, uint64_t, const AlignedBuffer<32> *));
+
+      MOCK_METHOD(bool, sign, (Signature &, const SecretKey &, const llarp_buffer_t &));
+
+      MOCK_METHOD(bool, sign, (Signature &, const PrivateKey &, const llarp_buffer_t &));
 
       MOCK_METHOD3(verify,
                    bool(const PubKey &, const llarp_buffer_t &,
@@ -70,7 +75,7 @@ namespace llarp
       MOCK_METHOD3(pqe_encrypt,
                    bool(PQCipherBlock &, SharedSecret &, const PQPubKey &));
 
-      MOCK_METHOD1(check_identity_privkey, bool(const SecretKey&));
+      MOCK_METHOD1(check_identity_privkey, bool(const SecretKey &));
     };
   }  // namespace test
 }  // namespace llarp

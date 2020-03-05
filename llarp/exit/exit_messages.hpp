@@ -18,7 +18,7 @@ namespace llarp
       llarp::PubKey I;
       uint64_t T{0};
       std::vector< llarp::exit::Policy > W;
-      llarp_time_t X{0};
+      uint64_t X{0};
       llarp::Signature Z;
 
       ObtainExitMessage() : IMessage()

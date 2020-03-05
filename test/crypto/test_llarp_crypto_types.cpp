@@ -52,8 +52,8 @@ ToStringData toStringData[] = {
 };
 // clang-format on
 
-INSTANTIATE_TEST_CASE_P(TestCryptoTypes, PubKeyString,
-                        ::testing::ValuesIn(toStringData), );
+INSTANTIATE_TEST_SUITE_P(TestCryptoTypes, PubKeyString,
+                         ::testing::ValuesIn(toStringData));
 
 // Concerns
 // - file missing

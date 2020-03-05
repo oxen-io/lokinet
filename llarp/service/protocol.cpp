@@ -460,7 +460,7 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(routing::IMessageHandler* h,
-                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r) const
+                                 AbstractRouter* /*r*/) const
     {
       return h->HandleHiddenServiceFrame(*this);
     }

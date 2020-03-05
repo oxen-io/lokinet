@@ -20,7 +20,6 @@
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
-#include <util/metrics/metrics.hpp>
 #include <util/str.hpp>
 #include <ev/ev.hpp>
 
@@ -33,7 +32,11 @@
 #include <unistd.h>
 #endif
 
-constexpr uint64_t ROUTER_TICK_INTERVAL_MS = 1000;
+#if defined(WITH_SYSTEMD)
+#include <systemd/sd-daemon.h>
+#endif
+
+static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
@@ -50,6 +53,7 @@ namespace llarp
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
+      , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
   {
     m_keyManager = std::make_shared< KeyManager >();
 
@@ -109,6 +113,18 @@ namespace llarp
     _linkManager.PersistSessionUntil(remote, until);
   }
 
+  void
+  Router::GossipRCIfNeeded(const RouterContact rc)
+  {
+    /// if we are not a service node forget about gossip
+    if(not IsServiceNode())
+      return;
+    /// wait for random uptime
+    if(std::chrono::milliseconds{Uptime()} < _randomStartDelay)
+      return;
+    _rcGossiper.GossipRC(rc);
+  }
+
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
@@ -128,16 +144,16 @@ namespace llarp
       return true;
     };
 
-    absl::ReaderMutexLock l(&nodedb()->access);
+    auto l = util::shared_lock(nodedb()->access);
     return pick_router(nodedb()->entries);
   }
 
   void
   Router::PumpLL()
   {
-    static constexpr size_t PumpJobThreshhold  = 50;
-    static constexpr llarp_time_t PumpInterval = 25;
-    const auto now                             = Now();
+    static constexpr size_t PumpJobThreshhold = 50;
+    static constexpr auto PumpInterval        = 25ms;
+    const auto now                            = Now();
     if(_stopping.load())
       return;
     if(_logic->numPendingJobs() >= PumpJobThreshhold
@@ -288,8 +304,8 @@ namespace llarp
   Router::handle_router_ticker()
   {
     ticker_job_id = 0;
-    LogicCall(logic(), std::bind(&Router::Tick, this));
-    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
+    Tick();
+    ScheduleTicker(ROUTER_TICK_INTERVAL);
   }
 
   bool
@@ -339,14 +355,16 @@ namespace llarp
     if(!nextRC.Verify(time_now_ms(), false))
       return false;
     _rc = std::move(nextRC);
-    // propagate RC by renegotiating sessions
-    ForEachPeer([](ILinkSession *s) {
-      if(s->RenegotiateSession())
-        LogInfo("renegotiated session");
-      else
-        LogWarn("failed to renegotiate session");
-    });
-
+    if(rotateKeys)
+    {
+      // propagate RC by renegotiating sessions
+      ForEachPeer([](ILinkSession *s) {
+        if(s->RenegotiateSession())
+          LogInfo("renegotiated session");
+        else
+          LogWarn("failed to renegotiate session");
+      });
+    }
     return SaveRC();
   }
 
@@ -597,12 +615,12 @@ namespace llarp
     if(conf->logging.m_LogJSON)
     {
       LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
-          diskworker(), logfile, 100, logfile != stdout);
+          diskworker(), logfile, 100ms, logfile != stdout);
     }
     else if(logfile != stdout)
     {
       LogContext::Instance().logStream =
-          std::make_unique< FileLogStream >(diskworker(), logfile, 100, true);
+          std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
     }
 
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
@@ -628,7 +646,7 @@ namespace llarp
   bool
   Router::ShouldReportStats(llarp_time_t now) const
   {
-    static constexpr llarp_time_t ReportStatsInterval = 60 * 60 * 1000;
+    static constexpr auto ReportStatsInterval = 1h;
     return now - m_LastStatsReport > ReportStatsInterval;
   }
 
@@ -642,10 +660,9 @@ namespace llarp
     if(IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
-      LogInfo(_rc.Age(now), " ms since we last updated our RC");
-      LogInfo(_rc.TimeUntilExpires(now), " ms until our RC expires");
+      LogInfo(_rc.Age(now), " since we last updated our RC");
+      LogInfo(_rc.TimeUntilExpires(now), " until our RC expires");
     }
-    LogInfo(now, " system time");
     LogInfo(m_LastStatsReport, " last reported stats");
     m_LastStatsReport = now;
   }
@@ -659,7 +676,29 @@ namespace llarp
     const auto now = Now();
 
 #if defined(WITH_SYSTEMD)
-    ::sd_notify(0, "WATCHDOG=1");
+    {
+      std::stringstream ss;
+      ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
+      if(IsServiceNode())
+      {
+        ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
+           << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients()
+           << " | " << pathContext().CurrentTransitPaths() << " active paths";
+      }
+      else
+      {
+        ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
+           << NumberOfConnectedRouters() << " | path success: ";
+        hiddenServiceContext().ForEachService(
+            [&ss](const auto &name, const auto &ep) {
+              ss << " [" << name << " " << std::setprecision(4)
+                 << (100.0 * ep->CurrentBuildStats().SuccessRatio()) << "%]";
+              return true;
+            });
+      }
+      const auto status = ss.str();
+      ::sd_notify(0, status.c_str());
+    }
 #endif
 
     routerProfiling().Tick();
@@ -669,16 +708,22 @@ namespace llarp
       ReportStats();
     }
 
+    _rcGossiper.Decay(now);
+
     _rcLookupHandler.PeriodicUpdate(now);
 
     const bool isSvcNode = IsServiceNode();
 
-    if(_rc.ExpiresSoon(now, randint() % 10000)
+    if(_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
        || (now - _rc.last_updated) > rcRegenInterval)
     {
       LogInfo("regenerating RC");
       if(!UpdateOurRC(false))
         LogError("Failed to update our RC");
+    }
+    else
+    {
+      GossipRCIfNeeded(_rc);
     }
 
     if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
@@ -687,6 +732,8 @@ namespace llarp
       nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
         if(IsBootstrapNode(rc.pubkey))
           return false;
+        if(not rc.IsPublicRouter())
+          return true;
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
@@ -757,15 +804,14 @@ namespace llarp
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
-    metrics::TimerGuard t("Router", "Sign");
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
 
   void
-  Router::ScheduleTicker(uint64_t ms)
+  Router::ScheduleTicker(llarp_time_t interval)
   {
-    ticker_job_id =
-        _logic->call_later(ms, std::bind(&Router::handle_router_ticker, this));
+    ticker_job_id = _logic->call_later(
+        interval, std::bind(&Router::handle_router_ticker, this));
   }
 
   void
@@ -784,7 +830,7 @@ namespace llarp
   }
 
   void
-  Router::HandleDHTLookupForExplore(ABSL_ATTRIBUTE_UNUSED RouterID remote,
+  Router::HandleDHTLookupForExplore(RouterID /*remote*/,
                                     const std::vector< RouterContact > &results)
   {
     for(const auto &rc : results)
@@ -919,6 +965,11 @@ namespace llarp
 
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
+    // set router version if service node
+    if(IsServiceNode())
+    {
+      _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
+    }
 
     AddressInfo ai;
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
@@ -983,9 +1034,10 @@ namespace llarp
         LogError("Failed to initialize service node");
         return false;
       }
-      RouterID us = pubkey();
+      const RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
-
+      // init gossiper here
+      _rcGossiper.Init(&_linkManager, us);
       // relays do not use profiling
       routerProfiling().Disable();
     }
@@ -1046,7 +1098,7 @@ namespace llarp
 
     _netloop->add_ticker(std::bind(&Router::PumpLL, this));
 
-    ScheduleTicker(ROUTER_TICK_INTERVAL_MS);
+    ScheduleTicker(ROUTER_TICK_INTERVAL);
     _running.store(true);
     _startedAt = Now();
 #if defined(WITH_SYSTEMD)
@@ -1066,9 +1118,9 @@ namespace llarp
   Router::Uptime() const
   {
     const llarp_time_t _now = Now();
-    if(_startedAt && _now > _startedAt)
+    if(_startedAt > 0s && _now > _startedAt)
       return _now - _startedAt;
-    return 0;
+    return 0s;
   }
 
   void
@@ -1082,7 +1134,7 @@ namespace llarp
   {
     StopLinks();
     nodedb()->AsyncFlushToDisk();
-    _logic->call_later(200, std::bind(&Router::AfterStopLinks, this));
+    _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
   }
 
   void
@@ -1102,19 +1154,34 @@ namespace llarp
     _stopping.store(true);
     LogContext::Instance().RevertRuntimeLevel();
     LogInfo("stopping router");
+#if defined(WITH_SYSTEMD)
+    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down");
+#endif
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
-    _logic->call_later(200, std::bind(&Router::AfterStopIssued, this));
+    _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));
   }
 
   bool
   Router::HasSessionTo(const RouterID &remote) const
   {
     return _linkManager.HasSessionTo(remote);
+  }
+
+  std::string
+  Router::ShortName() const
+  {
+    return RouterID(pubkey()).ToString().substr(0, 8);
+  }
+
+  uint32_t
+  Router::NextPathBuildNumber()
+  {
+    return path_build_count++;
   }
 
   void
@@ -1141,7 +1208,7 @@ namespace llarp
   }
 
   bool
-  Router::ValidateConfig(ABSL_ATTRIBUTE_UNUSED Config *conf) const
+  Router::ValidateConfig(Config * /*conf*/) const
   {
     return true;
   }

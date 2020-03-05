@@ -22,7 +22,7 @@ namespace llarp
       {
         if(now < started)
           return false;
-        return now - started > 30000;
+        return now - started > 30s;
       }
 
       void

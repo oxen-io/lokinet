@@ -25,10 +25,6 @@ struct TestTx final : public dht::TX< dht::Key_t, Val_t >
 
   MOCK_METHOD1(Start, void(const dht::TXOwner&));
 
-  MOCK_METHOD2(GetNextPeer, bool(dht::Key_t&, const std::set< dht::Key_t >&));
-
-  MOCK_METHOD1(DoNextRequest, void(const dht::Key_t&));
-
   MOCK_METHOD0(SendReply, void());
 };
 
@@ -107,65 +103,3 @@ TEST_F(TestDhtTx, on_found)
   }
 }
 
-TEST_F(TestDhtTx, ask_next_peer)
-{
-  // Concerns:
-  // - GetNextPeer fails
-  // - Next Peer is not closer
-  // - next ptr is null
-  // - next ptr is not null
-
-  const auto key0 = makeBuf< dht::Key_t >(0x00);
-  const auto key1 = makeBuf< dht::Key_t >(0x01);
-  const auto key2 = makeBuf< dht::Key_t >(0x02);
-  {
-    // GetNextPeer fails
-    EXPECT_CALL(tx, GetNextPeer(_, _)).WillOnce(Return(false));
-
-    EXPECT_CALL(tx, DoNextRequest(key1)).Times(0);
-
-    ASSERT_FALSE(tx.AskNextPeer(key0, {}));
-    ASSERT_THAT(tx.peersAsked, Contains(key0));
-
-    tx.peersAsked.clear();
-  }
-
-  {
-    // Next Peer is not closer
-    EXPECT_CALL(tx, GetNextPeer(_, _))
-        .WillOnce(DoAll(SetArgReferee< 0 >(key1), Return(true)));
-
-    EXPECT_CALL(tx, DoNextRequest(key1)).Times(0);
-
-    ASSERT_FALSE(tx.AskNextPeer(key0, {}));
-    ASSERT_THAT(tx.peersAsked, Contains(key0));
-
-    tx.peersAsked.clear();
-  }
-
-  {
-    // next ptr is null
-    EXPECT_CALL(tx, GetNextPeer(_, _))
-        .WillOnce(DoAll(SetArgReferee< 0 >(key1), Return(true)));
-
-    EXPECT_CALL(tx, DoNextRequest(key1)).Times(1);
-
-    ASSERT_TRUE(tx.AskNextPeer(key2, {}));
-    ASSERT_THAT(tx.peersAsked, Contains(key2));
-
-    tx.peersAsked.clear();
-  }
-
-  {
-    // next ptr is not null
-    EXPECT_CALL(tx, GetNextPeer(_, _)).Times(0);
-
-    EXPECT_CALL(tx, DoNextRequest(key1)).Times(1);
-
-    auto ptr = std::make_unique< dht::Key_t >(key1);
-    ASSERT_TRUE(tx.AskNextPeer(key2, ptr));
-    ASSERT_THAT(tx.peersAsked, Contains(key2));
-
-    tx.peersAsked.clear();
-  }
-}

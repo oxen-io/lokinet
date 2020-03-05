@@ -11,11 +11,12 @@ namespace llarp
     template < typename Val_t, typename Hash_t = typename Val_t::Hash >
     struct DecayingHashSet
     {
-      DecayingHashSet(llarp_time_t cacheInterval = 5000)
+      using Time_t = std::chrono::milliseconds;
+
+      DecayingHashSet(Time_t cacheInterval = 5s)
           : m_CacheInterval(cacheInterval)
       {
       }
-
       /// determine if we have v contained in our decaying hashset
       bool
       Contains(const Val_t& v) const
@@ -26,38 +27,45 @@ namespace llarp
       /// return true if inserted
       /// return false if not inserted
       bool
-      Insert(const Val_t& v, llarp_time_t now = 0)
+      Insert(const Val_t& v, Time_t now = 0s)
       {
-        if(now == 0)
+        if(now == 0s)
           now = llarp::time_now_ms();
-        return m_Values.emplace(v, now + m_CacheInterval).second;
+        return m_Values.emplace(v, now).second;
       }
 
       /// decay hashset entries
       void
-      Decay(llarp_time_t now = 0)
+      Decay(Time_t now = 0s)
       {
-        if(now == 0)
+        if(now == 0s)
           now = llarp::time_now_ms();
+
         auto itr = m_Values.begin();
         while(itr != m_Values.end())
         {
-          if(itr->second <= now)
+          if((m_CacheInterval + itr->second) <= now)
             itr = m_Values.erase(itr);
           else
             ++itr;
         }
       }
 
-      llarp_time_t
+      Time_t
       DecayInterval() const
       {
         return m_CacheInterval;
       }
 
+      void
+      DecayInterval(Time_t interval)
+      {
+        m_CacheInterval = interval;
+      }
+
      private:
-      const llarp_time_t m_CacheInterval;
-      std::unordered_map< Val_t, llarp_time_t, Hash_t > m_Values;
+      Time_t m_CacheInterval;
+      std::unordered_map< Val_t, Time_t, Hash_t > m_Values;
     };
   }  // namespace util
 }  // namespace llarp

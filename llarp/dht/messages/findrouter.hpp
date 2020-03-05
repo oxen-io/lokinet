@@ -15,14 +15,14 @@ namespace llarp
 
       // find by routerid
       FindRouterMessage(uint64_t id, const RouterID& target)
-          : IMessage({}), K(target), txid(id)
+          : IMessage({}), targetKey(target), txid(id)
       {
       }
 
       // exploritory
       FindRouterMessage(uint64_t id) : IMessage({}), exploritory(true), txid(id)
       {
-        K.Randomize();
+        targetKey.Randomize();
       }
 
       ~FindRouterMessage() override;
@@ -38,7 +38,7 @@ namespace llarp
           llarp_dht_context* ctx,
           std::vector< std::unique_ptr< IMessage > >& replies) const override;
 
-      RouterID K;
+      RouterID targetKey;
       bool iterative   = false;
       bool exploritory = false;
       uint64_t txid    = 0;

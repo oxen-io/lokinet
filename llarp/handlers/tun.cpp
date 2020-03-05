@@ -18,8 +18,6 @@
 
 #include <util/str.hpp>
 
-#include <absl/strings/ascii.h>
-
 namespace llarp
 {
   namespace handlers
@@ -35,7 +33,7 @@ namespace llarp
     bool
     TunEndpoint::ShouldFlushNow(llarp_time_t now) const
     {
-      static constexpr llarp_time_t FlushInterval = 25;
+      static constexpr auto FlushInterval = 25ms;
       return now >= m_LastFlushAt + FlushInterval;
     }
 
@@ -90,7 +88,7 @@ namespace llarp
       util::StatusObject ips{};
       for(const auto &item : m_IPActivity)
       {
-        util::StatusObject ipObj{{"lastActive", item.second}};
+        util::StatusObject ipObj{{"lastActive", to_json(item.second)}};
         std::string remoteStr;
         AlignedBuffer< 32 > addr = m_IPToAddr.at(item.first);
         if(m_SNodes.at(addr))
@@ -111,6 +109,25 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "reachable")
+      {
+        if(IsFalseValue(v))
+        {
+          m_PublishIntroSet = false;
+          LogInfo(Name(), " setting to be not reachable by default");
+        }
+        else if(IsTrueValue(v))
+        {
+          m_PublishIntroSet = true;
+          LogInfo(Name(), " setting to be reachable by default");
+        }
+        else
+        {
+          LogError(Name(), " config option reachable = '", v,
+                   "' does not make sense");
+          return false;
+        }
+      }
       if(k == "isolate-network" && IsTrueValue(v.c_str()))
       {
 #if defined(__linux__)
@@ -174,7 +191,7 @@ namespace llarp
         {
           routerStr = v;
         }
-        absl::StripAsciiWhitespace(&routerStr);
+        routerStr = str(TrimWhitespace(routerStr));
         if(!(exitRouter.FromString(routerStr)
              || HexDecode(routerStr.c_str(), exitRouter.begin(),
                           exitRouter.size())))
@@ -201,6 +218,8 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+        // this field is ignored on all other platforms
+        tunif->dnsaddr = m_LocalResolverAddr.ton();
         llarp::LogInfo(Name(), " binding DNS server to ", m_LocalResolverAddr);
       }
       if(k == "upstream-dns")
@@ -374,18 +393,80 @@ namespace llarp
       return false;
     }
 
+    static dns::Message &
+    clear_dns_message(dns::Message &msg)
+    {
+      msg.authorities.resize(0);
+      msg.additional.resize(0);
+      msg.answers.resize(0);
+      msg.hdr_fields &= ~dns::flags_RCODENameError;
+      return msg;
+    }
+
     bool
     TunEndpoint::HandleHookedDNSMessage(
-        dns::Message &&msg, std::function< void(dns::Message) > reply)
+        dns::Message msg, std::function< void(dns::Message) > reply)
     {
       // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, "
       // of type", msg.questions[0].qtype);
+      std::string qname;
+      if(msg.answers.size() > 0)
+      {
+        const auto &answer = msg.answers[0];
+        if(answer.HasCNameForTLD(".snode"))
+        {
+          dns::Name_t qname;
+          llarp_buffer_t buf(answer.rData);
+          if(not dns::DecodeName(&buf, qname, true))
+            return false;
+          RouterID addr;
+          if(not addr.FromString(qname))
+            return false;
+          auto replyMsg =
+              std::make_shared< dns::Message >(clear_dns_message(msg));
+          return EnsurePathToSNode(
+              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
+                SendDNSReply(addr, s, replyMsg, reply, true, false);
+              });
+        }
+        else if(answer.HasCNameForTLD(".loki"))
+        {
+          dns::Name_t qname;
+          llarp_buffer_t buf(answer.rData);
+          if(not dns::DecodeName(&buf, qname, true))
+            return false;
+          service::Address addr;
+          if(not addr.FromString(qname))
+            return false;
+          clear_dns_message(msg);
+          if(HasAddress(addr))
+          {
+            huint128_t ip = ObtainIPForAddr(addr, false);
+            msg.AddINReply(ip, false);
+            reply(msg);
+            return true;
+          }
+          else
+          {
+            auto replyMsg = std::make_shared< dns::Message >(msg);
+            using service::Address;
+            using service::OutboundContext;
+            return EnsurePathToService(
+                addr,
+                [=](const Address &, OutboundContext *ctx) {
+                  SendDNSReply(addr, ctx, replyMsg, reply, false, false);
+                },
+                2s);
+          }
+        }
+      }
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      const std::string qname = msg.questions[0].Name();
+      qname = msg.questions[0].Name();
+
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
@@ -473,7 +554,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -482,7 +563,7 @@ namespace llarp
                   SendDNSReply(addr, ctx, replyMsg, reply, false,
                                isV6 || !isV4);
                 },
-                2000);
+                2s);
           }
         }
         else if(addr.FromString(qname, ".snode"))
@@ -493,7 +574,7 @@ namespace llarp
           }
           else
           {
-            auto *replyMsg = new dns::Message(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             return EnsurePathToSNode(
                 addr.as_array(),
                 [=](const RouterID &, exit::BaseSession_ptr s) {
@@ -577,6 +658,13 @@ namespace llarp
             return false;
           return m_OurRange.Contains(ip);
         }
+      }
+      for(const auto &answer : msg.answers)
+      {
+        if(answer.HasCNameForTLD(".loki"))
+          return true;
+        if(answer.HasCNameForTLD(".snode"))
+          return true;
       }
       return false;
     }
@@ -921,11 +1009,10 @@ namespace llarp
     }
 
     huint128_t
-    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &addr, bool snode)
+    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &ident, bool snode)
     {
       llarp_time_t now  = Now();
       huint128_t nextIP = {0};
-      AlignedBuffer< 32 > ident(addr);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);
@@ -958,7 +1045,7 @@ namespace llarp
       // we are full
       // expire least active ip
       // TODO: prevent DoS
-      std::pair< huint128_t, llarp_time_t > oldest = {huint128_t{0}, 0};
+      std::pair< huint128_t, llarp_time_t > oldest = {huint128_t{0}, 0s};
 
       // find oldest entry
       auto itr = m_IPActivity.begin();
@@ -1002,7 +1089,7 @@ namespace llarp
     void
     TunEndpoint::MarkIPActiveForever(huint128_t ip)
     {
-      m_IPActivity[ip] = std::numeric_limits< uint64_t >::max();
+      m_IPActivity[ip] = std::numeric_limits< llarp_time_t >::max();
     }
 
     void

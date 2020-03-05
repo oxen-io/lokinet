@@ -96,7 +96,8 @@ namespace abyss
       {
         // TODO: header whitelist
         return name == string_view("content-type")
-            || name == string_view("content-length");
+            || name == string_view("content-length")
+            || name == string_view("host");
       }
 
       bool
@@ -162,6 +163,17 @@ namespace abyss
           {
             m_BodyParser.reset(json::MakeParser(contentLength));
           }
+          itr = Header.Headers.find("host");
+          if(itr == Header.Headers.end())
+          {
+            return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                       "no host header provided");
+          }
+          if(not handler->ValidateHost(itr->second))
+          {
+            return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                       "invalid host header");
+          }
         }
         if(!m_BodyParser->FeedData(buf, sz))
         {
@@ -184,15 +196,15 @@ namespace abyss
             {
               nlohmann::json response;
               response["jsonrpc"] = "2.0";
-              response["id"]      = m_Request["id"];
+              response["id"]      = m_Request["id"].get< std::string >();
               auto value          = handler->HandleJSONRPC(
                   m_Request["method"].get< std::string >(),
                   m_Request["params"]);
-              if(value)
-              {
-                response["result"] = value.value();
-                return WriteResponseJSON(response);
-              }
+
+              if(!value.is_null())
+                response["result"] = std::move(value);
+
+              return WriteResponseJSON(response);
             }
             return WriteResponseSimple(500, "internal error", "text/plain",
                                        "nope");

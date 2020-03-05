@@ -7,7 +7,7 @@
 #include <utility>
 #include <unordered_set>
 
-constexpr uint64_t LINK_LAYER_TICK_INTERVAL = 100;
+static constexpr auto LINK_LAYER_TICK_INTERVAL = 100ms;
 
 namespace llarp
 {
@@ -38,7 +38,7 @@ namespace llarp
   bool
   ILinkLayer::HasSessionTo(const RouterID& id)
   {
-    ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+    Lock_t l(m_AuthedLinksMutex);
     return m_AuthedLinks.find(id) != m_AuthedLinks.end();
   }
 
@@ -48,7 +48,7 @@ namespace llarp
   {
     std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       if(m_AuthedLinks.size() == 0)
         return;
       const size_t sz = randint() % m_AuthedLinks.size();
@@ -84,7 +84,7 @@ namespace llarp
   {
     std::shared_ptr< ILinkSession > session;
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.find(pk);
       if(itr == m_AuthedLinks.end())
         return false;
@@ -98,7 +98,7 @@ namespace llarp
   {
     std::vector< std::shared_ptr< ILinkSession > > sessions;
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -136,7 +136,7 @@ namespace llarp
     std::vector< std::shared_ptr< ILinkSession > > closedPending;
     auto _now = Now();
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -156,7 +156,7 @@ namespace llarp
       }
     }
     {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
+      Lock_t l(m_PendingMutex);
 
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
@@ -176,7 +176,7 @@ namespace llarp
       }
     }
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       for(const auto& r : closedSessions)
       {
         if(m_AuthedLinks.count(r) == 0)
@@ -187,6 +187,8 @@ namespace llarp
     }
     for(const auto& pending : closedPending)
     {
+      if(pending->IsInbound())
+        continue;
       HandleTimeout(pending.get());
     }
   }
@@ -194,8 +196,8 @@ namespace llarp
   bool
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
-    ACQUIRE_LOCK(Lock_t l_authed, m_AuthedLinksMutex);
-    ACQUIRE_LOCK(Lock_t l_pending, m_PendingMutex);
+    Lock_t l_authed(m_AuthedLinksMutex);
+    Lock_t l_pending(m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
@@ -235,7 +237,7 @@ namespace llarp
     std::vector< util::StatusObject > pending, established;
 
     {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
+      Lock_t l(m_PendingMutex);
       std::transform(m_Pending.cbegin(), m_Pending.cend(),
                      std::back_inserter(pending),
                      [](const auto& item) -> util::StatusObject {
@@ -243,7 +245,7 @@ namespace llarp
                      });
     }
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       std::transform(m_AuthedLinks.cbegin(), m_AuthedLinks.cend(),
                      std::back_inserter(established),
                      [](const auto& item) -> util::StatusObject {
@@ -263,7 +265,7 @@ namespace llarp
   ILinkLayer::TryEstablishTo(RouterContact rc)
   {
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       if(m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
         return false;
     }
@@ -272,7 +274,7 @@ namespace llarp
       return false;
     const llarp::Addr addr(to);
     {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
+      Lock_t l(m_PendingMutex);
       if(m_Pending.count(addr) >= MaxSessionsPerKey)
         return false;
     }
@@ -299,7 +301,7 @@ namespace llarp
   ILinkLayer::Tick(llarp_time_t now)
   {
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -309,7 +311,7 @@ namespace llarp
     }
 
     {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
+      Lock_t l(m_PendingMutex);
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
@@ -336,7 +338,7 @@ namespace llarp
     if(m_Logic && tick_id)
       m_Logic->remove_call(tick_id);
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -345,7 +347,7 @@ namespace llarp
       }
     }
     {
-      ACQUIRE_LOCK(Lock_t l, m_PendingMutex);
+      Lock_t l(m_PendingMutex);
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
@@ -358,9 +360,9 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
-    static constexpr llarp_time_t CloseGraceWindow = 500;
-    const auto now                                 = Now();
-    ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+    static constexpr auto CloseGraceWindow = 500ms;
+    const auto now                         = Now();
+    Lock_t l(m_AuthedLinksMutex);
     RouterID r = remote;
     llarp::LogInfo("Closing all to ", r);
     auto range = m_AuthedLinks.equal_range(r);
@@ -377,7 +379,7 @@ namespace llarp
   void
   ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
-    ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+    Lock_t l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     while(itr != range.second)
@@ -394,7 +396,7 @@ namespace llarp
   {
     std::shared_ptr< ILinkSession > s;
     {
-      ACQUIRE_LOCK(Lock_t l, m_AuthedLinksMutex);
+      Lock_t l(m_AuthedLinksMutex);
       auto range = m_AuthedLinks.equal_range(remote);
       auto itr   = range.first;
       // pick lowest backlog session
@@ -443,7 +445,7 @@ namespace llarp
   ILinkLayer::PutSession(const std::shared_ptr< ILinkSession >& s)
   {
     static constexpr size_t MaxSessionsPerEndpoint = 5;
-    ACQUIRE_LOCK(Lock_t lock, m_PendingMutex);
+    Lock_t lock(m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     if(m_Pending.count(addr) >= MaxSessionsPerEndpoint)
       return false;
@@ -460,7 +462,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::ScheduleTick(uint64_t interval)
+  ILinkLayer::ScheduleTick(llarp_time_t interval)
   {
     tick_id =
         m_Logic->call_later(interval, std::bind(&ILinkLayer::OnTick, this));

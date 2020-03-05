@@ -1,5 +1,5 @@
 #include <dns/server.hpp>
-
+#include <dns/dns.hpp>
 #include <crypto/crypto.hpp>
 #include <util/thread/logic.hpp>
 #include <array>
@@ -137,22 +137,35 @@ namespace llarp
     void
     Proxy::HandlePktClient(llarp::Addr from, Buffer_t buf)
     {
+      llarp_buffer_t pkt(buf);
       MessageHeader hdr;
+      if(!hdr.Decode(&pkt))
       {
-        llarp_buffer_t pkt(buf);
-        if(!hdr.Decode(&pkt))
-        {
-          llarp::LogWarn("failed to parse dns header from ", from);
-          return;
-        }
+        llarp::LogWarn("failed to parse dns header from ", from);
+        return;
       }
       TX tx    = {hdr.id, from};
       auto itr = m_Forwarded.find(tx);
       if(itr == m_Forwarded.end())
         return;
-
       const Addr requester = itr->second;
       auto self            = shared_from_this();
+      Message msg(hdr);
+      if(msg.Decode(&pkt))
+      {
+        if(m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
+        {
+          msg.hdr_id = itr->first.txid;
+          if(!m_QueryHandler->HandleHookedDNSMessage(
+                 std::move(msg),
+                 std::bind(&Proxy::SendServerMessageTo, self, requester,
+                           std::placeholders::_1)))
+          {
+            llarp::LogWarn("failed to handle hooked dns");
+          }
+          return;
+        }
+      }
       LogicCall(m_ServerLogic, [=]() {
         // forward reply to requester via server
         const llarp_buffer_t tmpbuf(buf);

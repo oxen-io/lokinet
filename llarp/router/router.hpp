@@ -20,6 +20,7 @@
 #include <router_contact.hpp>
 #include <router/outbound_message_handler.hpp>
 #include <router/outbound_session_maker.hpp>
+#include <router/rc_gossiper.hpp>
 #include <router/rc_lookup_handler.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
@@ -51,7 +52,7 @@ namespace llarp
 {
   struct Router final : public AbstractRouter
   {
-    llarp_time_t _lastPump = 0;
+    llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key
     fs::path transport_keyfile = "transport.key";
@@ -198,7 +199,7 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
     /// how often do we resign our RC? milliseconds.
     // TODO: make configurable
-    llarp_time_t rcRegenInterval = 60 * 60 * 1000;
+    llarp_time_t rcRegenInterval = 1h;
 
     // should we be sending padded messages every interval?
     bool sendPadding = false;
@@ -222,7 +223,7 @@ namespace llarp
       return _hiddenServiceContext;
     }
 
-    llarp_time_t _lastTick = 0;
+    llarp_time_t _lastTick = 0s;
 
     bool
     LooksAlive() const override
@@ -259,6 +260,7 @@ namespace llarp
     bool enableRPCServer                 = false;
     std::unique_ptr< rpc::Server > rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
+    const llarp_time_t _randomStartDelay;
 
     /// lokid caller
     std::unique_ptr< rpc::Caller > rpcCaller;
@@ -273,6 +275,7 @@ namespace llarp
     OutboundSessionMaker _outboundSessionMaker;
     LinkManager _linkManager;
     RCLookupHandler _rcLookupHandler;
+    RCGossiper _rcGossiper;
 
     using Clock_t     = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;
@@ -302,6 +305,9 @@ namespace llarp
     {
       return _rcLookupHandler;
     }
+
+    void
+    GossipRCIfNeeded(const RouterContact rc) override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
@@ -437,7 +443,7 @@ namespace llarp
 
     /// schedule ticker to call i ms from now
     void
-    ScheduleTicker(uint64_t i = 1000);
+    ScheduleTicker(llarp_time_t i = 1s);
 
     /// parse a routing message in a buffer and handle it with a handler if
     /// successful parsing return true on parse and handle success otherwise
@@ -471,6 +477,12 @@ namespace llarp
     bool
     HasSessionTo(const RouterID &remote) const override;
 
+    std::string
+    ShortName() const;
+
+    uint32_t
+    NextPathBuildNumber();
+
     void
     handle_router_ticker();
 
@@ -486,9 +498,11 @@ namespace llarp
 
     bool m_isServiceNode = false;
 
-    llarp_time_t m_LastStatsReport = 0;
+    llarp_time_t m_LastStatsReport = 0s;
 
     std::shared_ptr< llarp::KeyManager > m_keyManager;
+
+    uint32_t path_build_count = 0;
 
     bool
     ShouldReportStats(llarp_time_t now) const;

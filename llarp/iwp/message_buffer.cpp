@@ -46,7 +46,7 @@ namespace llarp
     bool
     OutboundMessage::ShouldFlush(llarp_time_t now) const
     {
-      return now - m_LastFlush >= Session::TXFlushInterval;
+      return now - m_LastFlush >= TXFlushInterval;
     }
 
     void
@@ -97,7 +97,7 @@ namespace llarp
     OutboundMessage::IsTimedOut(const llarp_time_t now) const
     {
       // TODO: make configurable by outbound message deliverer
-      return now > m_StartedAt && now - m_StartedAt > Session::DeliveryTimeout;
+      return now > m_StartedAt && now - m_StartedAt > DeliveryTimeout;
     }
 
     void
@@ -165,14 +165,13 @@ namespace llarp
     bool
     InboundMessage::ShouldSendACKS(llarp_time_t now) const
     {
-      return now > m_LastACKSent + Session::ACKResendInterval;
+      return now > m_LastACKSent + ACKResendInterval;
     }
 
     bool
     InboundMessage::IsTimedOut(const llarp_time_t now) const
     {
-      return now > m_LastActiveAt
-          && now - m_LastActiveAt > Session::DeliveryTimeout;
+      return now > m_LastActiveAt && now - m_LastActiveAt > DeliveryTimeout;
     }
 
     void

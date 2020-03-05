@@ -5,12 +5,12 @@
 
 #include <cinttypes>
 #include <cstring>
-#include <absl/numeric/int128.h>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
 #elif defined(__sun)
 #include <sys/byteorder.h>
+#include <endian.h>
 #define htobe16(x) htons(x)
 #define htole16(x) (x)
 #define be16toh(x) ntohs(x)
@@ -49,6 +49,9 @@
 #define le64toh(x) OSSwapLittleToHostInt64(x)
 #elif defined(_WIN32)
 #include <winsock2.h>
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif
 #define htobe16(x) htons(x)
 #define htole16(x) (x)
 #define be16toh(x) ntohs(x)
@@ -92,6 +95,16 @@ be64toh(uint64_t big64);
 #define le32toh
 #define le64toh
 
+#endif
+
+#if !defined(__LITTLE_ENDIAN__) && defined(__BYTE_ORDER) \
+    && defined(__LITTLE_ENDIAN) && __BYTE_ORDER == __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN__
+#elif !defined(__BIG_ENDIAN__) && defined(__BYTE_ORDER) \
+    && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN
+#define __BIG_ENDIAN__
+#elif !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
+#error "Error: don't know which endian this is"
 #endif
 
 inline uint16_t
@@ -188,18 +201,6 @@ inline void
 htole64buf(void *buf, uint64_t big64)
 {
   htobuf64(buf, htole64(big64));
-}
-
-inline absl::uint128
-ntoh128(absl::uint128 i)
-{
-#if __BYTE_ORDER == __BIG_ENDIAN
-  return i;
-#else
-  const auto loSwapped = htobe64(absl::Uint128Low64(i));
-  const auto hiSwapped = htobe64(absl::Uint128High64(i));
-  return absl::MakeUint128(loSwapped, hiSwapped);
-#endif
 }
 
 #endif

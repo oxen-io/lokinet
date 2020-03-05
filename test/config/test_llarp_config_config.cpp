@@ -38,8 +38,6 @@ level=info
 #file=/path/to/logfile
 # uncomment for syslog logging
 #type=syslog
-[metrics]
-json-metrics-path=/home/lokinet/1/metrics.json
 
 # admin api (disabled by default)
 [api]
@@ -84,8 +82,6 @@ eth0=5501
 ifname=cluster-1
 ifaddr=10.101.0.1/16
 
-[metrics]
-metric-tank-host=52.80.56.123:2003
 )";
 
   Config config;
@@ -98,8 +94,6 @@ metric-tank-host=52.80.56.123:2003
                 UnorderedElementsAre(kv("ifname", "cluster-1"),
                                      kv("ifaddr", "10.101.0.1/16")));
   }
-  ASSERT_TRUE(config.metrics.disableMetricLogs);
-  ASSERT_TRUE(config.metrics.disableMetrics);
 
   {
     using kv = LinksConfig::Links::value_type;

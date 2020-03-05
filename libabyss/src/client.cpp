@@ -77,7 +77,7 @@ namespace abyss
       }
 
       static void
-      OnTick(ABSL_ATTRIBUTE_UNUSED llarp_tcp_conn* conn)
+      OnTick(llarp_tcp_conn* /*conn*/)
       {
       }
 
@@ -192,6 +192,7 @@ namespace abyss
           authgen << ", " << opt.first << "=" << opt.second;
         }
         m_SendHeaders.clear();
+        m_SendHeaders.emplace("Host", "localhost");
         m_SendHeaders.emplace("Authorization", authgen.str());
         SendRequest();
         return true;
@@ -320,6 +321,7 @@ namespace abyss
         std::string body;
         std::stringstream ss;
         body = m_RequestBody.dump();
+        m_SendHeaders.emplace("Host", "localhost");
         m_SendHeaders.emplace("Content-Type", "application/json");
         m_SendHeaders.emplace("Content-Length", std::to_string(body.size()));
         m_SendHeaders.emplace("Accept", "application/json");

@@ -1,1 +1,0 @@
-#include <service/vanity.hpp>

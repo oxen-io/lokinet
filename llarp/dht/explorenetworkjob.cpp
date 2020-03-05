@@ -4,6 +4,8 @@
 #include <dht/messages/findrouter.hpp>
 #include <router/abstractrouter.hpp>
 
+#include <nodedb.hpp>
+
 namespace llarp
 {
   namespace dht
@@ -24,6 +26,8 @@ namespace llarp
       for(const auto &pk : valuesFound)
       {
         // lookup router
+        if(router and router->nodedb()->Has(pk))
+          continue;
         parent->LookupRouter(
             pk,
             std::bind(&AbstractRouter::HandleDHTLookupForExplore, router, pk,

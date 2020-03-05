@@ -23,7 +23,7 @@ namespace llarp
 
       static void
       TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
-                         Sessions& deadSessions);
+                         Sessions& deadSessions, ConvoMap& sessions);
 
       static void
       ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions);
@@ -41,6 +41,21 @@ namespace llarp
       GetConvoTagsForService(const ConvoMap& sessions, const Address& addr,
                              std::set< ConvoTag >& tags);
     };
+
+    template < typename Endpoint_t >
+    static path::Path::UniqueEndpointSet_t
+    GetManyPathsWithUniqueEndpoints(Endpoint_t* ep, size_t N, size_t tries = 10)
+    {
+      path::Path::UniqueEndpointSet_t paths;
+      do
+      {
+        --tries;
+        const auto path = ep->PickRandomEstablishedPath();
+        if(path)
+          paths.emplace(path);
+      } while(tries > 0 and paths.size() < N);
+      return paths;
+    }
   }  // namespace service
 
 }  // namespace llarp

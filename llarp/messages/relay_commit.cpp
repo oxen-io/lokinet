@@ -15,7 +15,7 @@
 #include <util/thread/logic.hpp>
 
 #include <functional>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -24,6 +24,8 @@ namespace llarp
   {
     if(key == "c")
     {
+      /// so we dont put it into the shitty queue
+      pathid.Fill('c');
       return BEncodeReadArray(frames, buf);
     }
     bool read = false;
@@ -86,9 +88,9 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
-    if(lifetime > 10 && lifetime < 600)
+    if(lifetime > 10s && lifetime < path::default_lifetime)
     {
-      if(!BEncodeWriteDictInt("i", lifetime, buf))
+      if(!BEncodeWriteDictInt("i", lifetime.count(), buf))
         return false;
     }
     if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))
@@ -185,7 +187,7 @@ namespace llarp
     // the actual hop
     std::shared_ptr< Hop > hop;
 
-    const absl::optional< llarp::Addr > fromAddr;
+    const nonstd::optional< llarp::Addr > fromAddr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec,
                      const LR_CommitMessage* commit)
@@ -194,7 +196,7 @@ namespace llarp
         , context(ctx)
         , hop(std::make_shared< Hop >())
         , fromAddr(commit->session->GetRemoteRC().IsPublicRouter()
-                       ? absl::optional< llarp::Addr >{}
+                       ? nonstd::optional< llarp::Addr >{}
                        : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();
@@ -248,9 +250,10 @@ namespace llarp
       if(self->context->HasTransitHop(self->hop->info))
       {
         llarp::LogError("duplicate transit hop ", self->hop->info);
-        OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
-                            self->hop->info.downstream, self->hop->pathKey,
-                            SendStatus::Congestion);
+        LR_StatusMessage::CreateAndSend(
+            self->context->Router(), self->hop->info.rxID,
+            self->hop->info.downstream, self->hop->pathKey,
+            LR_StatusRecord::FAIL_DUPLICATE_HOP);
         self->hop = nullptr;
         return;
       }
@@ -261,7 +264,8 @@ namespace llarp
         if(self->context->CheckPathLimitHitByIP(self->fromAddr.value()))
         {
           // we hit a limit so tell it to slow tf down
-          llarp::LogError("client path build hit limit ", self->hop->info);
+          llarp::LogError("client path build hit limit ",
+                          self->fromAddr.value());
           OnForwardLRCMResult(self->context->Router(), self->hop->info.rxID,
                               self->hop->info.downstream, self->hop->pathKey,
                               SendStatus::Congestion);
@@ -285,9 +289,9 @@ namespace llarp
       // persist sessions to upstream and downstream routers until the commit
       // ends
       self->context->Router()->PersistSessionUntil(
-          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+          self->hop->info.downstream, self->hop->ExpireTime() + 10s);
       self->context->Router()->PersistSessionUntil(
-          self->hop->info.upstream, self->hop->ExpireTime() + 10000);
+          self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
       // if we have an rc for this hop...
@@ -330,7 +334,7 @@ namespace llarp
       {
         // persist session to downstream until path expiration
         self->context->Router()->PersistSessionUntil(
-            self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+            self->hop->info.downstream, self->hop->ExpireTime() + 10s);
         // put hop
         self->context->PutTransitHop(self->hop);
       }
@@ -398,15 +402,15 @@ namespace llarp
       if(self->record.work && self->record.work->IsValid(now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
-                        self->record.work->extendedLifetime, " seconds for ",
-                        info);
-        self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
+                        self->record.work->extendedLifetime, " for ", info);
+        self->hop->lifetime += self->record.work->extendedLifetime;
       }
-      else if(self->record.lifetime < 600 && self->record.lifetime > 10)
+      else if(self->record.lifetime < path::default_lifetime
+              && self->record.lifetime > 10s)
       {
         self->hop->lifetime = self->record.lifetime;
         llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime,
-                        " seconds for ", info);
+                        " for ", info);
       }
 
       // TODO: check if we really want to accept it

@@ -84,5 +84,5 @@ makeData()
   return result;
 }
 
-INSTANTIATE_TEST_CASE_P(TestDhtXorMetric, XorMetric,
-                        ::testing::ValuesIn(makeData()), );
+INSTANTIATE_TEST_SUITE_P(TestDhtXorMetric, XorMetric,
+                         ::testing::ValuesIn(makeData()));

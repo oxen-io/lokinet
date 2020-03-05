@@ -4,7 +4,7 @@
 #include <ev/ev.hpp>
 #include <util/mem.h>
 #include <util/thread/threadpool.h>
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 
 namespace llarp
 {
@@ -54,7 +54,7 @@ namespace llarp
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
     llarp_ev_loop* m_Loop = nullptr;
-    absl::optional< ID_t > m_ID;
+    nonstd::optional< ID_t > m_ID;
     util::ContentionKiller m_Killer;
     std::function< void(std::function< void(void) >) > m_Queue;
   };

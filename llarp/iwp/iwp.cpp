@@ -2,7 +2,6 @@
 #include <iwp/linklayer.hpp>
 #include <memory>
 #include <router/abstractrouter.hpp>
-#include <util/meta/memfn.hpp>
 
 namespace llarp
 {

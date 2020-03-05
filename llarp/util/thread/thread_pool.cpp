@@ -64,22 +64,25 @@ namespace llarp
     void
     ThreadPool::waitThreads()
     {
-      util::Lock lock(&m_gateMutex);
-      m_gateMutex.Await(absl::Condition(this, &ThreadPool::allThreadsReady));
+      std::unique_lock< std::mutex > lock(m_gateMutex);
+      m_numThreadsCV.wait(lock, [this] { return allThreadsReady(); });
     }
 
     void
     ThreadPool::releaseThreads()
     {
-      util::Lock lock(&m_gateMutex);
-      m_numThreadsReady = 0;
-      ++m_gateCount;
+      {
+        std::lock_guard< std::mutex > lock(m_gateMutex);
+        m_numThreadsReady = 0;
+        ++m_gateCount;
+      }
+      m_gateCV.notify_all();
     }
 
     void
     ThreadPool::interrupt()
     {
-      util::Lock lock(&m_gateMutex);
+      std::lock_guard< std::mutex > lock(m_gateMutex);
 
       size_t count = m_idleThreads;
 
@@ -93,23 +96,19 @@ namespace llarp
     ThreadPool::worker()
     {
       // Lock will be valid until the end of the statement
-      size_t gateCount = (absl::ReaderMutexLock(&m_gateMutex), m_gateCount);
+      size_t gateCount =
+          (std::lock_guard< std::mutex >(m_gateMutex), m_gateCount);
 
       util::SetThreadName(m_name);
 
       for(;;)
       {
         {
-          util::Lock lock(&m_gateMutex);
+          std::unique_lock< std::mutex > lock(m_gateMutex);
           ++m_numThreadsReady;
+          m_numThreadsCV.notify_one();
 
-          using CondArg = std::pair< size_t, ThreadPool* >;
-          CondArg args(gateCount, this);
-          m_gateMutex.Await(absl::Condition(
-              +[](CondArg* x) SHARED_LOCKS_REQUIRED(x->second->m_gateMutex) {
-                return x->first != x->second->m_gateCount;
-              },
-              &args));
+          m_gateCV.wait(lock, [&] { return gateCount != m_gateCount; });
 
           gateCount = m_gateCount;
         }
@@ -236,7 +235,7 @@ namespace llarp
     void
     ThreadPool::drain()
     {
-      util::Lock lock(&m_mutex);
+      util::Lock lock(m_mutex);
 
       if(m_status.load(std::memory_order_relaxed) == Status::Run)
       {
@@ -254,7 +253,7 @@ namespace llarp
     void
     ThreadPool::shutdown()
     {
-      util::Lock lock(&m_mutex);
+      util::Lock lock(m_mutex);
 
       if(m_status.load(std::memory_order_relaxed) == Status::Run)
       {
@@ -271,7 +270,7 @@ namespace llarp
     bool
     ThreadPool::start()
     {
-      util::Lock lock(&m_mutex);
+      util::Lock lock(m_mutex);
 
       if(m_status.load(std::memory_order_relaxed) != Status::Stop)
       {
@@ -307,7 +306,7 @@ namespace llarp
     void
     ThreadPool::stop()
     {
-      util::Lock lock(&m_mutex);
+      util::Lock lock(m_mutex);
 
       if(m_status.load(std::memory_order_relaxed) == Status::Run)
       {

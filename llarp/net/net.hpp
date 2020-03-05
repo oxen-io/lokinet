@@ -1,7 +1,7 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
 
-#include <absl/numeric/int128.h>
+#include <net/uint128.hpp>
 #include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
@@ -138,11 +138,7 @@ namespace llarp
   constexpr huint32_t
   ipaddr_ipv4_bits(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
   {
-#if __BYTE_ORDER == __ORDER_BIG_ENDIAN__
-    return huint32_t{(a) | (b << 8) | (c << 16) | (d << 24)};
-#else
     return huint32_t{(d) | (c << 8) | (b << 16) | (a << 24)};
-#endif
   }
 
   IPRange

@@ -23,8 +23,10 @@ namespace llarp
   namespace path
   {
     Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
-               PathRole startingRoles)
-        : m_PathSet(parent), _role(startingRoles)
+               PathRole startingRoles, std::string shortName)
+        : m_PathSet(parent)
+        , _role(startingRoles)
+        , m_shortName(std::move(shortName))
 
     {
       hops.resize(h.size());
@@ -50,7 +52,8 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      EnterState(ePathBuilding, parent->Now());
+      if(parent)
+        EnterState(ePathBuilding, parent->Now());
     }
 
     bool
@@ -103,7 +106,9 @@ namespace llarp
     bool
     Path::IsReady() const
     {
-      return intro.latency > 0 && _status == ePathEstablished;
+      if(Expired(llarp::time_now_ms()))
+        return false;
+      return intro.latency > 0s && _status == ePathEstablished;
     }
 
     bool
@@ -117,6 +122,12 @@ namespace llarp
     Path::Upstream() const
     {
       return hops[0].rc.pubkey;
+    }
+
+    const std::string&
+    Path::ShortName() const
+    {
+      return m_shortName;
     }
 
     std::string
@@ -135,7 +146,7 @@ namespace llarp
       uint64_t currentStatus = status;
 
       size_t index = 0;
-      absl::optional< RouterID > failedAt;
+      nonstd::optional< RouterID > failedAt;
       while(index < hops.size())
       {
         if(!frames[index].DoDecrypt(hops[index].shared))
@@ -269,7 +280,7 @@ namespace llarp
       }
       else if(st == ePathEstablished && _status == ePathBuilding)
       {
-        LogInfo("path ", Name(), " is built, took ", now - buildStarted, " ms");
+        LogInfo("path ", Name(), " is built, took ", now - buildStarted);
       }
       else if(st == ePathTimeout && _status == ePathEstablished)
       {
@@ -287,7 +298,7 @@ namespace llarp
     util::StatusObject
     PathHopConfig::ExtractStatus() const
     {
-      util::StatusObject obj{{"lifetime", lifetime},
+      util::StatusObject obj{{"lifetime", to_json(lifetime)},
                              {"router", rc.pubkey.ToHex()},
                              {"txid", txID.ToHex()},
                              {"rxid", rxID.ToHex()}};
@@ -299,15 +310,18 @@ namespace llarp
     {
       auto now = llarp::time_now_ms();
 
-      util::StatusObject obj{{"intro", intro.ExtractStatus()},
-                             {"lastRecvMsg", m_LastRecvMessage},
-                             {"lastLatencyTest", m_LastLatencyTestTime},
-                             {"buildStarted", buildStarted},
-                             {"expired", Expired(now)},
-                             {"expiresSoon", ExpiresSoon(now)},
-                             {"expiresAt", ExpireTime()},
-                             {"ready", IsReady()},
-                             {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
+      util::StatusObject obj{
+          {"intro", intro.ExtractStatus()},
+          {"lastRecvMsg", to_json(m_LastRecvMessage)},
+          {"lastLatencyTest", to_json(m_LastLatencyTestTime)},
+          {"buildStarted", to_json(buildStarted)},
+          {"expired", Expired(now)},
+          {"expiresSoon", ExpiresSoon(now)},
+          {"expiresAt", to_json(ExpireTime())},
+          {"ready", IsReady()},
+          {"txRateCurrent", m_LastTXRate},
+          {"rxRateCurrent", m_LastRXRate},
+          {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
 
       std::vector< util::StatusObject > hopsObj;
       std::transform(hops.begin(), hops.end(), std::back_inserter(hopsObj),
@@ -349,7 +363,7 @@ namespace llarp
       std::vector< RouterContact > newHops;
       for(const auto& hop : hops)
         newHops.emplace_back(hop.rc);
-      LogInfo(Name(), " rebuilding on ", HopsString());
+      LogInfo(Name(), " rebuilding on ", ShortName());
       m_PathSet->Build(newHops);
     }
 
@@ -359,19 +373,25 @@ namespace llarp
       if(Expired(now))
         return;
 
+      m_LastRXRate = m_RXRate;
+      m_LastTXRate = m_TXRate;
+
+      m_RXRate = 0;
+      m_TXRate = 0;
+
       m_UpstreamReplayFilter.Decay(now);
       m_DownstreamReplayFilter.Decay(now);
 
       if(_status == ePathBuilding)
       {
-        if(buildStarted == 0)
+        if(buildStarted == 0s)
           return;
         if(now >= buildStarted)
         {
           const auto dlt = now - buildStarted;
           if(dlt >= path::build_timeout)
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and no path was built");
+            LogWarn(Name(), " waited for ", dlt, " and no path was built");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathExpired, now);
             return;
@@ -392,21 +412,21 @@ namespace llarp
           FlushUpstream(r);
           return;
         }
-        if(m_LastRecvMessage && now > m_LastRecvMessage)
+        if(m_LastRecvMessage > 0s && now > m_LastRecvMessage)
         {
           const auto delay = now - m_LastRecvMessage;
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and path is unresponsive");
+            LogWarn(Name(), " waited for ", dlt, " and path is unresponsive");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
         }
-        else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0)
+        else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0s)
         {
           if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
           {
-            LogWarn(Name(), " waited for ", dlt, "ms and path looks dead");
+            LogWarn(Name(), " waited for ", dlt, " and path looks dead");
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
           }
@@ -420,7 +440,11 @@ namespace llarp
     {
       for(const auto& msg : msgs)
       {
-        if(!r->SendToOrQueue(Upstream(), &msg))
+        if(r->SendToOrQueue(Upstream(), &msg))
+        {
+          m_TXRate += msg.X.size();
+        }
+        else
         {
           LogDebug("failed to send upstream to ", Upstream());
         }
@@ -531,6 +555,7 @@ namespace llarp
       for(const auto& msg : msgs)
       {
         const llarp_buffer_t buf(msg.X);
+        m_RXRate += buf.sz;
         if(!HandleRoutingMessage(buf, r))
         {
           LogWarn("failed to handle downstream message");
@@ -601,9 +626,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathTransferMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathTransferMessage& msg,
-        ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+    Path::HandlePathTransferMessage(const routing::PathTransferMessage& /*msg*/,
+                                    AbstractRouter* /*r*/)
     {
       LogWarn("unwarranted path transfer message on tx=", TXID(),
               " rx=", RXID());
@@ -623,7 +647,7 @@ namespace llarp
     bool
     Path::HandlePathConfirmMessage(AbstractRouter* r)
     {
-      LogDebug("Path Build Confirm, path: ", HopsString());
+      LogDebug("Path Build Confirm, path: ", ShortName());
       const auto now = llarp::time_now_ms();
       if(_status == ePathBuilding)
       {
@@ -651,9 +675,8 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathConfirmMessage(
-        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
-        AbstractRouter* r)
+    Path::HandlePathConfirmMessage(const routing::PathConfirmMessage& /*msg*/,
+                                   AbstractRouter* r)
     {
       return HandlePathConfirmMessage(r);
     }
@@ -687,6 +710,8 @@ namespace llarp
       return false;
     }
 
+    /// this is the Client's side of handling a DHT message. it's handled
+    /// in-place.
     bool
     Path::HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r)
     {
@@ -701,7 +726,7 @@ namespace llarp
 
     bool
     Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg,
-                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
+                                 AbstractRouter* /*r*/)
     {
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
@@ -771,7 +796,7 @@ namespace llarp
         }
         LogInfo(Name(), " ", Endpoint(), " Rejected exit");
         MarkActive(r->Now());
-        return InformExitResult(msg.B);
+        return InformExitResult(llarp_time_t(msg.B));
       }
       LogError(Name(), " got unwarranted RXM");
       return false;
@@ -792,7 +817,7 @@ namespace llarp
         _role |= ePathRoleExit;
         LogInfo(Name(), " ", Endpoint(), " Granted exit");
         MarkActive(r->Now());
-        return InformExitResult(0);
+        return InformExitResult(0s);
       }
       LogError(Name(), " got unwarranted GXM");
       return false;

@@ -12,38 +12,36 @@ namespace llarp
 {
   namespace dht
   {
-    struct PublishServiceJob : public TX< service::Address, service::IntroSet >
+    struct PublishServiceJob : public TX< TXOwner, service::EncryptedIntroSet >
     {
-      uint64_t S;
-      std::set< Key_t > dontTell;
-      service::IntroSet I;
+      uint64_t relayOrder;
+      service::EncryptedIntroSet introset;
 
-      PublishServiceJob(const TXOwner &asker, const service::IntroSet &introset,
-                        AbstractContext *ctx, uint64_t s,
-                        std::set< Key_t > exclude);
+      PublishServiceJob(const TXOwner &asker,
+                        const service::EncryptedIntroSet &introset,
+                        AbstractContext *ctx, uint64_t relayOrder);
 
       bool
-      Validate(const service::IntroSet &introset) const override;
+      Validate(const service::EncryptedIntroSet &introset) const override;
 
       void
       Start(const TXOwner &peer) override;
 
-      bool
-      GetNextPeer(Key_t &, const std::set< Key_t > &) override
-      {
-        return false;
-      }
+      virtual void
+      SendReply() override;
+    };
+
+    struct LocalPublishServiceJob : public PublishServiceJob
+    {
+      PathID_t localPath;
+      uint64_t txid;
+      LocalPublishServiceJob(const TXOwner &peer, const PathID_t &fromID,
+                             uint64_t txid,
+                             const service::EncryptedIntroSet &introset,
+                             AbstractContext *ctx, uint64_t relayOrder);
 
       void
-      DoNextRequest(const Key_t &) override
-      {
-      }
-
-      void
-      SendReply() override
-      {
-        // don't need this
-      }
+      SendReply() override;
     };
   }  // namespace dht
 }  // namespace llarp

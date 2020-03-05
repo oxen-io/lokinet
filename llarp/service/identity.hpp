@@ -21,6 +21,7 @@ namespace llarp
     {
       SecretKey enckey;
       SecretKey signkey;
+      PrivateKey derivedSignKey;
       PQKeyPair pq;
       uint64_t version = LLARP_PROTO_VERSION;
       VanityNonce vanity;
@@ -46,8 +47,8 @@ namespace llarp
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
-      bool
-      SignIntroSet(IntroSet& i, llarp_time_t now) const;
+      nonstd::optional< EncryptedIntroSet >
+      EncryptAndSignIntroSet(const IntroSet& i, llarp_time_t now) const;
 
       bool
       Sign(Signature& sig, const llarp_buffer_t& buf) const;

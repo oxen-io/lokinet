@@ -47,7 +47,7 @@ static constexpr Array seqArray{
 
 static const Array data[] = {emptyArray, fullArray, seqArray};
 
-INSTANTIATE_TEST_CASE_P(TestDhtKey, DHT, ::testing::ValuesIn(data), );
+INSTANTIATE_TEST_SUITE_P(TestDhtKey, DHT, ::testing::ValuesIn(data));
 
 TEST(TestDhtKey, eq)
 {

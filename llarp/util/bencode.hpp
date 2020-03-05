@@ -88,12 +88,15 @@ namespace llarp
   {
     if(key == k)
     {
-      if(!bencode_read_integer(buf, &i))
+      uint64_t read_i;
+      if(!bencode_read_integer(buf, &read_i))
       {
         llarp::LogWarnTag("llarp/BEncode.hpp", "failed to decode key ", k,
                           " for integer in dict");
         return false;
       }
+
+      i    = Int_t(read_i);
       read = true;
     }
     return true;
@@ -338,6 +341,7 @@ namespace llarp
     auto result = bencode_decode_dict(t, &buf);
     if(!result)
     {
+      LogError("BDecodeReadFromFile() failed for file ", fpath, " contents:");
       DumpBuffer(buf);
     }
     return result;

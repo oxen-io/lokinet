@@ -2,6 +2,7 @@
 #define LLARP_DHT_KADEMLIA_HPP
 
 #include <dht/key.hpp>
+#include <router_contact.hpp>
 
 namespace llarp
 {
@@ -19,6 +20,12 @@ namespace llarp
       operator()(const Key_t& left, const Key_t& right) const
       {
         return (us ^ left) < (us ^ right);
+      }
+
+      bool
+      operator()(const RouterContact& left, const RouterContact& right) const
+      {
+        return (left.pubkey ^ us) < (right.pubkey ^ us);
       }
     };
   }  // namespace dht

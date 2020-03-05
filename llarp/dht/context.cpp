@@ -21,6 +21,7 @@
 #include <nodedb.hpp>
 #include <profiling.hpp>
 #include <router/i_rc_lookup_handler.hpp>
+#include <util/decaying_hashset.hpp>
 #include <vector>
 
 namespace llarp
@@ -44,19 +45,17 @@ namespace llarp
         GetRouter()->rcLookupHandler().CheckRC(rc);
       }
 
-      /// on behalf of whoasked request introset for target from dht router with
-      /// key askpeer
       void
-      LookupIntroSetRecursive(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
-          service::IntroSetLookupHandler result = nullptr) override;
+      LookupIntroSetRelayed(
+          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
+          const Key_t& askpeer, uint64_t relayOrder,
+          service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
       void
-      LookupIntroSetIterative(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer,
-          service::IntroSetLookupHandler result = nullptr) override;
+      LookupIntroSetDirect(
+          const Key_t& target, const Key_t& whoasked, uint64_t whoaskedTX,
+          const Key_t& askpeer,
+          service::EncryptedIntroSetLookupHandler result = nullptr) override;
 
       /// on behalf of whoasked request router with public key target from dht
       /// router with key askpeer
@@ -83,19 +82,6 @@ namespace llarp
         return pendingRouterLookups().HasLookupFor(target);
       }
 
-      /// on behalf of whoasked request introsets with tag from dht router with
-      /// key askpeer with Recursion depth R
-      void
-      LookupTagRecursive(const service::Tag& tag, const Key_t& whoasked,
-                         uint64_t whoaskedTX, const Key_t& askpeer,
-                         uint64_t R) override;
-
-      /// issue dht lookup for tag via askpeer and send reply to local path
-      void
-      LookupTagForPath(const service::Tag& tag, uint64_t txid,
-                       const llarp::PathID_t& path,
-                       const Key_t& askpeer) override;
-
       /// issue dht lookup for router via askpeer and send reply to local path
       void
       LookupRouterForPath(const RouterID& target, uint64_t txid,
@@ -104,9 +90,9 @@ namespace llarp
       /// issue dht lookup for introset for addr via askpeer and send reply to
       /// local path
       void
-      LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const llarp::PathID_t& path,
-                            const Key_t& askpeer) override;
+      LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
+                            const llarp::PathID_t& path, const Key_t& askpeer,
+                            uint64_t relayOrder) override;
 
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
@@ -120,11 +106,6 @@ namespace llarp
           const Key_t& requester, uint64_t txid, const RouterID& target,
           std::vector< std::unique_ptr< IMessage > >& reply) override;
 
-      std::set< service::IntroSet >
-      FindRandomIntroSetsWithTagExcluding(
-          const service::Tag& tag, size_t max = 2,
-          const std::set< service::IntroSet >& excludes = {}) override;
-
       /// handle rc lookup from requester for target
       void
       LookupRouterRelayed(
@@ -137,28 +118,28 @@ namespace llarp
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage& msg) override;
 
+      /// send introset to peer as R/S
+      void
+      PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                             const service::EncryptedIntroSet& introset,
+                             const Key_t& tellpeer, uint64_t relayOrder);
+
       /// send introset to peer from source with S counter and excluding peers
       void
-      PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
-                          const service::IntroSet& introset, const Key_t& peer,
-                          uint64_t S,
-                          const std::set< Key_t >& exclude) override;
+      PropagateIntroSetTo(const Key_t& from, uint64_t txid,
+                          const service::EncryptedIntroSet& introset,
+                          const Key_t& tellpeer, uint64_t relayOrder);
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
-      Init(const Key_t& us, AbstractRouter* router,
-           llarp_time_t exploreInterval) override;
+      Init(const Key_t& us, AbstractRouter* router) override;
 
       /// get localally stored introset by service address
-      const llarp::service::IntroSet*
-      GetIntroSetByServiceAddress(
-          const llarp::service::Address& addr) const override;
+      nonstd::optional< llarp::service::EncryptedIntroSet >
+      GetIntroSetByLocation(const Key_t& location) const override;
 
       void
       handle_cleaner_timer(uint64_t interval);
-
-      void
-      handle_explore_timer(uint64_t interval);
 
       /// explore dht for new routers
       void
@@ -229,7 +210,6 @@ namespace llarp
       }
 
       PendingIntrosetLookups _pendingIntrosetLookups;
-      PendingTagLookups _pendingTagLookups;
       PendingRouterLookups _pendingRouterLookups;
       PendingExploreLookups _pendingExploreLookups;
 
@@ -243,18 +223,6 @@ namespace llarp
       pendingIntrosetLookups() const override
       {
         return _pendingIntrosetLookups;
-      }
-
-      PendingTagLookups&
-      pendingTagLookups() override
-      {
-        return _pendingTagLookups;
-      }
-
-      const PendingTagLookups&
-      pendingTagLookups() const override
-      {
-        return _pendingTagLookups;
       }
 
       PendingRouterLookups&
@@ -339,34 +307,21 @@ namespace llarp
     }
 
     void
-    Context::handle_explore_timer(uint64_t interval)
-    {
-      const auto num = std::min(router->NumberOfConnectedRouters(), size_t(4));
-      if(num)
-        Explore(num);
-      router->logic()->call_later(
-          interval,
-          std::bind(&llarp::dht::Context::handle_explore_timer, this,
-                    interval));
-    }
-
-    void
     Context::handle_cleaner_timer(__attribute__((unused)) uint64_t interval)
     {
       // clean up transactions
       CleanupTX();
+      const llarp_time_t now = Now();
 
       if(_services)
       {
         // expire intro sets
-        auto now    = Now();
         auto& nodes = _services->nodes;
         auto itr    = nodes.begin();
         while(itr != nodes.end())
         {
           if(itr->second.introset.IsExpired(now))
           {
-            llarp::LogDebug("introset expired ", itr->second.introset.A.Addr());
             itr = nodes.erase(itr);
           }
           else
@@ -374,53 +329,6 @@ namespace llarp
         }
       }
       ScheduleCleanupTimer();
-    }
-
-    std::set< service::IntroSet >
-    Context::FindRandomIntroSetsWithTagExcluding(
-        const service::Tag& tag, size_t max,
-        const std::set< service::IntroSet >& exclude)
-    {
-      std::set< service::IntroSet > found;
-      auto& nodes = _services->nodes;
-      if(nodes.size() == 0)
-      {
-        return found;
-      }
-      auto itr = nodes.begin();
-      // start at random middle point
-      auto start = llarp::randint() % nodes.size();
-      std::advance(itr, start);
-      auto end            = itr;
-      std::string tagname = tag.ToString();
-      while(itr != nodes.end())
-      {
-        if(itr->second.introset.topic.ToString() == tagname)
-        {
-          if(exclude.count(itr->second.introset) == 0)
-          {
-            found.insert(itr->second.introset);
-            if(found.size() == max)
-              return found;
-          }
-        }
-        ++itr;
-      }
-      itr = nodes.begin();
-      while(itr != end)
-      {
-        if(itr->second.introset.topic.ToString() == tagname)
-        {
-          if(exclude.count(itr->second.introset) == 0)
-          {
-            found.insert(itr->second.introset);
-            if(found.size() == max)
-              return found;
-          }
-        }
-        ++itr;
-      }
-      return found;
     }
 
     void
@@ -435,14 +343,29 @@ namespace llarp
             new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
-      Key_t next;
-      std::set< Key_t > excluding = {requester, ourKey};
-      if(_nodes->FindCloseExcluding(target, next, excluding))
+      if(not GetRouter()->ConnectionToRouterAllowed(target.as_array()))
+      {
+        // explicitly not allowed
+        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
+        return;
+      }
+      const auto rc = GetRouter()->nodedb()->FindClosestTo(target);
+      const Key_t next(rc.pubkey);
       {
         if(next == target)
         {
-          // we know it, ask them directly for their own RC to keep it updated
-          LookupRouterRecursive(target.as_array(), requester, txid, next);
+          // we know the target
+          if(rc.ExpiresSoon(llarp::time_now_ms()))
+          {
+            // ask target for their rc to keep it updated
+            LookupRouterRecursive(target.as_array(), requester, txid, next);
+          }
+          else
+          {
+            // send reply with rc we know of
+            replies.emplace_back(
+                new GotRouterMessage(requester, txid, {rc}, false));
+          }
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -467,22 +390,15 @@ namespace llarp
               new GotRouterMessage(requester, next, txid, false));
         }
       }
-      else
-      {
-        // we don't know it and have no closer peers to ask
-        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
-      }
     }
 
-    const llarp::service::IntroSet*
-    Context::GetIntroSetByServiceAddress(
-        const llarp::service::Address& addr) const
+    nonstd::optional< llarp::service::EncryptedIntroSet >
+    Context::GetIntroSetByLocation(const Key_t& key) const
     {
-      auto key = addr.ToKey();
       auto itr = _services->nodes.find(key);
       if(itr == _services->nodes.end())
-        return nullptr;
-      return &itr->second.introset;
+        return {};
+      return itr->second.introset;
     }
 
     void
@@ -493,7 +409,6 @@ namespace llarp
 
       pendingRouterLookups().Expire(now);
       _pendingIntrosetLookups.Expire(now);
-      pendingTagLookups().Expire(now);
       pendingExploreLookups().Expire(now);
     }
 
@@ -503,7 +418,6 @@ namespace llarp
       util::StatusObject obj{
           {"pendingRouterLookups", pendingRouterLookups().ExtractStatus()},
           {"pendingIntrosetLookups", _pendingIntrosetLookups.ExtractStatus()},
-          {"pendingTagLookups", pendingTagLookups().ExtractStatus()},
           {"pendingExploreLookups", pendingExploreLookups().ExtractStatus()},
           {"nodes", _nodes->ExtractStatus()},
           {"services", _services->ExtractStatus()},
@@ -512,20 +426,13 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t& us, AbstractRouter* r,
-                  llarp_time_t exploreInterval)
+    Context::Init(const Key_t& us, AbstractRouter* r)
     {
       router    = r;
       ourKey    = us;
       _nodes    = std::make_unique< Bucket< RCNode > >(ourKey, llarp::randint);
       _services = std::make_unique< Bucket< ISNode > >(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
-      // start exploring
-
-      r->logic()->call_later(
-          exploreInterval,
-          std::bind(&llarp::dht::Context::handle_explore_timer, this,
-                    exploreInterval));
       // start cleanup timer
       ScheduleCleanupTimer();
     }
@@ -534,7 +441,7 @@ namespace llarp
     Context::ScheduleCleanupTimer()
     {
       router->logic()->call_later(
-          1000,
+          1s,
           std::bind(&llarp::dht::Context::handle_cleaner_timer, this, 1000));
     }
 
@@ -543,18 +450,25 @@ namespace llarp
     {
       llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
-      router->SendToOrQueue(peer, &m);
+      router->SendToOrQueue(peer, &m, [](SendStatus status) {
+        if(status != SendStatus::Success)
+          LogInfo("DHTSendTo unsuccessful, status: ", (int)status);
+      });
       auto now = Now();
-      router->PersistSessionUntil(peer, now + 60000);
+      router->PersistSessionUntil(peer, now + 1min);
     }
 
+    // this function handles incoming DHT messages sent down a path by a client
+    // note that IMessage here is different than that found in the routing
+    // namespace. by the time this is called, we are inside
+    // llarp::routing::DHTMessage::HandleMessage()
     bool
     Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
       llarp::routing::DHTMessage reply;
       if(!msg.HandleMessage(router->dht(), reply.M))
         return false;
-      if(!reply.M.empty())
+      if(not reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
         return path && path->SendRoutingMessage(reply, router);
@@ -563,78 +477,66 @@ namespace llarp
     }
 
     void
-    Context::LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
+    Context::LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
                                    const llarp::PathID_t& path,
-                                   const Key_t& askpeer)
+                                   const Key_t& askpeer, uint64_t relayOrder)
     {
-      TXOwner asker(OurKey(), txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
-          new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
+          peer, asker, asker,
+          new LocalServiceAddressLookup(path, txid, relayOrder, addr, this,
+                                        askpeer));
     }
 
     void
     Context::PropagateIntroSetTo(const Key_t& from, uint64_t txid,
-                                 const service::IntroSet& introset,
-                                 const Key_t& tellpeer, uint64_t S,
-                                 const std::set< Key_t >& exclude)
+                                 const service::EncryptedIntroSet& introset,
+                                 const Key_t& tellpeer, uint64_t relayOrder)
     {
-      TXOwner asker(from, txid);
-      TXOwner peer(tellpeer, ++ids);
-      service::Address addr = introset.A.Addr();
+      const TXOwner asker(from, txid);
+      const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
-          new PublishServiceJob(asker, introset, this, S, exclude));
+          peer, asker, asker,
+          new PublishServiceJob(asker, introset, this, relayOrder));
     }
 
     void
-    Context::LookupIntroSetRecursive(const service::Address& addr,
-                                     const Key_t& whoasked, uint64_t txid,
-                                     const Key_t& askpeer, uint64_t R,
-                                     service::IntroSetLookupHandler handler)
+    Context::PropagateLocalIntroSet(const PathID_t& from, uint64_t txid,
+                                    const service::EncryptedIntroSet& introset,
+                                    const Key_t& tellpeer, uint64_t relayOrder)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(OurKey(), txid);
+      const TXOwner peer(tellpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, R, handler), (R * 2000));
+          peer, asker, peer,
+          new LocalPublishServiceJob(peer, from, txid, introset, this,
+                                     relayOrder));
     }
 
     void
-    Context::LookupIntroSetIterative(const service::Address& addr,
-                                     const Key_t& whoasked, uint64_t txid,
-                                     const Key_t& askpeer,
-                                     service::IntroSetLookupHandler handler)
+    Context::LookupIntroSetRelayed(
+        const Key_t& addr, const Key_t& whoasked, uint64_t txid,
+        const Key_t& askpeer, uint64_t relayOrder,
+        service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
       _pendingIntrosetLookups.NewTX(
-          peer, asker, addr,
-          new ServiceAddressLookup(asker, addr, this, 0, handler), 1000);
+          peer, asker, asker,
+          new ServiceAddressLookup(asker, addr, this, relayOrder, handler));
     }
 
     void
-    Context::LookupTagRecursive(const service::Tag& tag, const Key_t& whoasked,
-                                uint64_t whoaskedTX, const Key_t& askpeer,
-                                uint64_t R)
+    Context::LookupIntroSetDirect(
+        const Key_t& addr, const Key_t& whoasked, uint64_t txid,
+        const Key_t& askpeer, service::EncryptedIntroSetLookupHandler handler)
     {
-      TXOwner asker(whoasked, whoaskedTX);
-      TXOwner peer(askpeer, ++ids);
-      _pendingTagLookups.NewTX(peer, asker, tag,
-                               new TagLookup(asker, tag, this, R));
-      llarp::LogDebug("ask ", askpeer.SNode(), " for ", tag, " on behalf of ",
-                      whoasked.SNode(), " R=", R);
-    }
-
-    void
-    Context::LookupTagForPath(const service::Tag& tag, uint64_t txid,
-                              const llarp::PathID_t& path, const Key_t& askpeer)
-    {
-      TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), txid);
-      _pendingTagLookups.NewTX(peer, whoasked, tag,
-                               new LocalTagLookup(path, txid, tag, this));
+      const TXOwner asker(whoasked, txid);
+      const TXOwner peer(askpeer, ++ids);
+      _pendingIntrosetLookups.NewTX(
+          peer, asker, asker,
+          new ServiceAddressLookup(asker, addr, this, 0, handler), 1s);
     }
 
     bool
@@ -672,11 +574,11 @@ namespace llarp
       }
       for(const auto& f : foundRouters)
       {
-        const RouterID r = f.as_array();
+        const RouterID id = f.as_array();
         // discard shit routers
-        if(router->routerProfiling().IsBadForConnect(r))
+        if(router->routerProfiling().IsBadForConnect(id))
           continue;
-        closer.emplace_back(r);
+        closer.emplace_back(id);
       }
       llarp::LogDebug("Gave ", closer.size(), " routers for exploration");
       reply.emplace_back(new GotRouterMessage(txid, closer, false));

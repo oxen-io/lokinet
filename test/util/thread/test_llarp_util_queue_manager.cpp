@@ -1,6 +1,6 @@
 #include <util/thread/queue_manager.hpp>
 
-#include <absl/types/optional.h>
+#include <nonstd/optional.hpp>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -75,7 +75,7 @@ class IntQueue
     }
   }
 
-  absl::optional< int >
+  nonstd::optional< int >
   tryPopFront()
   {
     uint32_t gen   = 0;
@@ -376,8 +376,8 @@ TEST_P(BasicFunctionality, pushIndex)
   }
 }
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerBasic, BasicFunctionality,
-                        ::testing::Range(1u, 100u), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerBasic, BasicFunctionality,
+                         ::testing::Range(1u, 100u));
 
 // Potential issues:
 // - That pushing an element at the max combined index will push the next
@@ -556,8 +556,8 @@ CombinedIndexData PopAtMaxData[] =
         {7, 13, 7},
         {7, 14, 7}};
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, PopAtMax,
-                        ::testing::ValuesIn(PopAtMaxData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, PopAtMax,
+                         ::testing::ValuesIn(PopAtMaxData));
 
 class ReservePop : public ::testing::TestWithParam< CombinedIndexData >
 {
@@ -631,8 +631,8 @@ CombinedIndexData ReservePopIndexForClearData[] = {
     {7, 13, 7},
 };
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, ReservePop,
-                        ::testing::ValuesIn(ReservePopIndexForClearData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, ReservePop,
+                         ::testing::ValuesIn(ReservePopIndexForClearData));
 
 struct CircularDifferenceData
 {
@@ -715,8 +715,8 @@ CircularDifferenceData circularDifferenceData[] = {
     {0, 180, 360, -180},
 };
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, CircularDifference,
-                        ::testing::ValuesIn(circularDifferenceData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, CircularDifference,
+                         ::testing::ValuesIn(circularDifferenceData));
 
 class NumGenerations : public ::testing::TestWithParam< uint32_t >
 {
@@ -749,8 +749,8 @@ uint32_t GenerationData[] = {1,
                              QueueManager::MAX_CAPACITY - 1,
                              QueueManager::MAX_CAPACITY};
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, NumGenerations,
-                        ::testing::ValuesIn(GenerationData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, NumGenerations,
+                         ::testing::ValuesIn(GenerationData));
 
 TEST(TestQueueManager, abortPushIndexReservation)
 {
@@ -879,8 +879,8 @@ AbortData abortData[] = {
     {7, 24, 18, 6},
 };
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, AbortPush,
-                        ::testing::ValuesIn(abortData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerMaxCombinedIndex, AbortPush,
+                         ::testing::ValuesIn(abortData));
 
 // Testing reservePopForClear
 // - Failure is returned when the head of the queue is the same as the given end
@@ -1055,8 +1055,8 @@ ReserveData reserveData[] = {
     {7, 24, 18, 6},
 };
 
-INSTANTIATE_TEST_CASE_P(TestQueueManagerReserve, Reserve,
-                        ::testing::ValuesIn(reserveData), );
+INSTANTIATE_TEST_SUITE_P(TestQueueManagerReserve, Reserve,
+                         ::testing::ValuesIn(reserveData));
 
 TEST(TestQueueManager, Enabled)
 {

@@ -5,9 +5,9 @@
 #include <util/thread/queue.hpp>
 #include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
+#include <util/thread/annotations.hpp>
 #include <util/types.hpp>
 
-#include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
 
@@ -33,10 +33,6 @@ struct llarp_threadpool
 
   size_t
   numThreads() const;
-
-  /// try to guess how big our job latency is on this threadpool
-  llarp_time_t
-  GuessJobLatency(llarp_time_t granulairty = 1000) const;
 
   /// see if this thread is full given lookahead amount
   bool

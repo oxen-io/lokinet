@@ -42,11 +42,11 @@ namespace llarp
       IsExpired(llarp_time_t now) const;
 
       bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const;
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5s) const;
 
       /// return true if this endpoint looks dead right now
       bool
-      LooksDead(llarp_time_t now, llarp_time_t timeout = 10000) const;
+      LooksDead(llarp_time_t now, llarp_time_t timeout = 10s) const;
 
       /// tick ourself, reset tx/rx rates
       void

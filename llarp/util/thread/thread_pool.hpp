@@ -46,7 +46,9 @@ namespace llarp
       size_t m_numThreadsReady
           GUARDED_BY(m_gateMutex);  // Threads ready to go through the gate.
 
-      util::Mutex m_gateMutex;
+      std::mutex m_gateMutex;
+      std::condition_variable m_gateCV;
+      std::condition_variable m_numThreadsCV;
 
       std::string m_name;
       std::vector< std::thread > m_threads;
@@ -77,7 +79,7 @@ namespace llarp
       spawn();
 
       bool
-      allThreadsReady() const SHARED_LOCKS_REQUIRED(m_gateMutex)
+      allThreadsReady() const REQUIRES_SHARED(m_gateMutex)
       {
         return m_numThreadsReady == m_threads.size();
       }

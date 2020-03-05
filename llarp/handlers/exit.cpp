@@ -37,8 +37,8 @@ namespace llarp
         , m_Resolver(std::make_shared< dns::Proxy >(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
         , m_Name(name)
-        , m_Tun{{0},     0,       {0},     nullptr, nullptr, nullptr,
-                nullptr, nullptr, nullptr, nullptr, nullptr}
+        , m_Tun{{0},     0,       0,       {0},     nullptr, nullptr,
+                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr}
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
 
@@ -98,7 +98,7 @@ namespace llarp
 
     bool
     ExitEndpoint::HandleHookedDNSMessage(
-        dns::Message &&msg, std::function< void(dns::Message) > reply)
+        dns::Message msg, std::function< void(dns::Message) > reply)
     {
       if(msg.questions[0].qtype == dns::qTypePTR)
       {

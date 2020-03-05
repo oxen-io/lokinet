@@ -22,7 +22,7 @@
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
-#define MIN_SHIFT_INTERVAL (5 * 1000)
+#define MIN_SHIFT_INTERVAL 5s
 #endif
 
 struct llarp_async_verify_rc;
@@ -59,16 +59,16 @@ namespace llarp
     };
     using ConvoEventListener_ptr = std::shared_ptr< IConvoEventListener >;
 
+    /// minimum interval for publishing introsets
+    static constexpr auto INTROSET_PUBLISH_INTERVAL =
+        std::chrono::milliseconds(path::default_lifetime) / 4;
+
+    static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
     {
-      /// minimum interval for publishing introsets
-      static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
-          path::default_lifetime / 8;
-
-      static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
-
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
@@ -168,10 +168,11 @@ namespace llarp
       HandlePathDied(path::Path_ptr p) override;
 
       bool
-      PublishIntroSet(AbstractRouter* r) override;
+      PublishIntroSet(const EncryptedIntroSet& i, AbstractRouter* r) override;
 
       bool
-      PublishIntroSetVia(AbstractRouter* r, path::Path_ptr p);
+      PublishIntroSetVia(const EncryptedIntroSet& i, AbstractRouter* r,
+                         path::Path_ptr p, uint64_t relayOrder);
 
       bool
       HandleGotIntroMessage(
@@ -195,11 +196,6 @@ namespace llarp
       /// it's not done yet
       bool
       HasPendingPathToService(const Address& remote) const;
-
-      /// return false if we don't have a path to the service
-      /// return true if we did and we removed it
-      bool
-      ForgetPathToService(const Address& remote);
 
       bool
       HandleDataMessage(path::Path_ptr path, const PathID_t from,
@@ -252,8 +248,6 @@ namespace llarp
       bool
       SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
-      ;
-
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
@@ -261,6 +255,12 @@ namespace llarp
       CheckPathIsDead(path::Path_ptr p, llarp_time_t latency);
 
       using PendingBufferQueue = std::deque< PendingBuffer >;
+
+      bool
+      WantsOutboundSession(const Address&) const override;
+
+      void
+      MarkAddressOutbound(const Address&) override;
 
       bool
       ShouldBundleRC() const override;
@@ -288,7 +288,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address remote, PathEnsureHook h,
-                          uint64_t timeoutMS, bool lookupOnRandomPath = true);
+                          llarp_time_t timeoutMS);
 
       using SNodeEnsureHook =
           std::function< void(const RouterID, exit::BaseSession_ptr) >;
@@ -356,6 +356,9 @@ namespace llarp
                 RouterContact& cur, size_t hop, path::PathRole roles) override;
 
       virtual void
+      PathBuildStarted(path::Path_ptr path) override;
+
+      virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
@@ -410,7 +413,7 @@ namespace llarp
                             llarp_async_verify_rc* j);
 
       bool
-      OnLookup(const service::Address& addr, const IntroSet* i,
+      OnLookup(const service::Address& addr, nonstd::optional< IntroSet > i,
                const RouterID& endpoint); /*  */
 
       bool
@@ -437,6 +440,7 @@ namespace llarp
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
+      bool m_PublishIntroSet = true;
 
      private:
       void

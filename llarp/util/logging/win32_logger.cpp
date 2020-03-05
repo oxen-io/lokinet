@@ -36,6 +36,7 @@ namespace llarp
           break;
         case eLogTrace:
           ss << "[TRC] ";
+          break;
         case eLogDebug:
           ss << "[DBG] ";
           break;
@@ -77,6 +78,7 @@ namespace llarp
       {
         case eLogNone:
           break;
+        case eLogTrace:
         case eLogDebug:
           SetConsoleTextAttribute(fd1,
                                   FOREGROUND_RED | FOREGROUND_GREEN
