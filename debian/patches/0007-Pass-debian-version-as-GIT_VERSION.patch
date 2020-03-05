@@ -7,7 +7,7 @@ Subject: Pass debian version as GIT_VERSION
  1 file changed, 5 insertions(+)
 
 diff --git a/cmake/Version.cmake b/cmake/Version.cmake
-index 5cded3b..ee60154 100644
+index 45037a0..d9fdaef 100644
 --- a/cmake/Version.cmake
 +++ b/cmake/Version.cmake
 @@ -1,4 +1,8 @@
@@ -17,9 +17,9 @@ index 5cded3b..ee60154 100644
 +  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")
 +else()
  find_package(Git QUIET)
- if(GIT_FOUND OR Git_FOUND)
-   message(STATUS "Found Git: ${GIT_EXECUTABLE}")
-@@ -17,5 +21,6 @@ else()
+ set(GIT_INDEX_FILE "${PROJECT_SOURCE_DIR}/.git/index")
+ if(EXISTS ${GIT_INDEX_FILE} AND ( GIT_FOUND OR Git_FOUND) )
+@@ -18,5 +22,6 @@ else()
    set(VERSIONTAG "nogit")
    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/constants/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp")
  endif()
