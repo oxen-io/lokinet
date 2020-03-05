@@ -1,5 +1,6 @@
 variables:
   GIT_STRATEGY: fetch
+  GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
   - build
