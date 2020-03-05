@@ -276,7 +276,7 @@ namespace llarp
 
       if(lookupRouters.size() > LookupPerTick)
       {
-        static std::mt19937_64 rng{std::random_device{}()};
+        static std::mt19937_64 rng{llarp::randint()};
         std::shuffle(lookupRouters.begin(), lookupRouters.end(), rng);
         lookupRouters.resize(LookupPerTick);
       }

@@ -165,10 +165,7 @@ namespace llarp
 
       /// current number of transit paths we have
       uint64_t
-      CurrentTransitPaths() const
-      {
-        return m_TransitHopCount;
-      }
+      CurrentTransitPaths();
 
      private:
       AbstractRouter* m_Router;
@@ -176,7 +173,6 @@ namespace llarp
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
       util::DecayingHashSet< llarp::Addr > m_PathLimits;
-      uint64_t m_TransitHopCount = 0;
     };
   }  // namespace path
 }  // namespace llarp

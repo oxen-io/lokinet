@@ -218,6 +218,8 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+        // this field is ignored on all other platforms
+        tunif->dnsaddr = m_LocalResolverAddr.ton();
         llarp::LogInfo(Name(), " binding DNS server to ", m_LocalResolverAddr);
       }
       if(k == "upstream-dns")

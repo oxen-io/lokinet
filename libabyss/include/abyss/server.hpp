@@ -37,6 +37,10 @@ namespace abyss
       bool
       ShouldClose(llarp_time_t now) const;
 
+      /// return true if the host header is correct
+      virtual bool
+      ValidateHost(const std::string& host) const = 0;
+
      private:
       ConnImpl* m_Impl;
     };

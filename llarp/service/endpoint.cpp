@@ -1000,7 +1000,7 @@ namespace llarp
       }
 
       // filter check for address
-      if(m_state->m_RemoteLookupFilter.Insert(remote))
+      if(not m_state->m_RemoteLookupFilter.Insert(remote))
         return false;
 
       auto& lookups = m_state->m_PendingServiceLookups;
