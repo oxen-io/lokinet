@@ -1,3 +1,57 @@
+lokinet (0.7.0~rc2-1) sid; urgency=medium
+
+  [ Ryan Tharp ]
+  * bring gitlab ci up to date, mhas it make a static linux release tarball
+  * Combine tar and xz into one command
+  * update libsodium requirements
+  * remove unneeded packages
+  * include Jason's copy
+  * move linux-setup/readme to docs/
+
+  [ Jeff Becker ]
+  * allow building from source tarballs
+  * add gitattributes for git-archive-all
+  * operator presidence
+
+  [ Rick V ]
+  * fix libsodium cross compile
+  * finally fix cross-LTO on windows builds
+  * finally remove C++17 requirement on windows (only needed it for filesystem)
+  * some win32 cmake cleanup
+  * remove unused rule
+  * missing branch on option
+
+  [ Jeff Becker ]
+  * fix status line
+  * use size / 2 as the number of transit paths
+  * remove non public routers from nodedb
+
+  [ Jason Rhinelander ]
+  * Add systemd dev to build-deps
+  * Fix lookup filter to filter second, not first, lookup
+
+  [ Jeff Becker ]
+  * fix dns rebinding vuln in jsonrpc
+  * make gitlab-ci use recursive git
+
+  [ Rick V ]
+  * integrate lokinet qt5 UI and make its installation conditional on underlying platform support (Windows Vista or later)
+  * bump version
+  * try extracting dns bind addr from INI on windows
+  * use backport fork for release installer only
+  * bindaddr a common field on the machine-independent side
+  * bump for next release
+  * move these out of the way
+  * So as of GCC 9.2, std::random_device on Windows is RtlGenRandom()
+  * add new test suite
+  * fix logging
+  * remove unit tests
+
+  [ Jason Rhinelander ]
+  * gitlab-ci: Upgrade xenial cmake (via kitware repo)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 05 Mar 2020 18:07:58 -0400
+
 lokinet (0.7.0~rc1-2) sid; urgency=medium
 
   [ Jason Rhinelander ]
