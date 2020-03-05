@@ -13,7 +13,7 @@ namespace abyss
         return true;
       }
       auto idx = line.find_first_of(':');
-      if(idx == string_view::npos)
+      if(idx == string_view::npos || (line.size() - 1) <= (1 + idx))
         return false;
       string_view header = line.substr(0, idx);
       string_view val    = line.substr(1 + idx);
