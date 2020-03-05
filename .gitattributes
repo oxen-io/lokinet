@@ -2,6 +2,3 @@ external/date/test export-ignore
 external/nlohmann/doc export-ignore
 external/nlohmann/test export-ignore
 external/nlohmann/benchmarks/data export-ignore
-*.exe export-ignore
-*.png export-ignore
-*.gif export-ignore
