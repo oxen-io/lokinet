@@ -13,7 +13,7 @@ namespace abyss
         return true;
       }
       auto idx = line.find_first_of(':');
-      if(idx == string_view::npos || (line.size() - 1) <= (1 + idx))
+      if(idx == string_view::npos)
         return false;
       string_view header = line.substr(0, idx);
       string_view val    = line.substr(1 + idx);
@@ -28,7 +28,10 @@ namespace abyss
       }
       if(ShouldProcessHeader(lowerHeader))
       {
-        val = val.substr(val.find_first_not_of(' '));
+        const auto next_idx = val.find_first_not_of(' ');
+        if(next_idx == string_view::npos)
+          return false;
+        val = val.substr(next_idx);
         // llarp::str() here for gcc 5 compat
         Header.Headers.emplace(std::move(lowerHeader), llarp::str(val));
       }
