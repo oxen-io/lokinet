@@ -282,6 +282,7 @@ namespace abyss
         llarp::LogDebug("connection closed");
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         self->_conn    = nullptr;
+        self->m_State  = eCloseMe;
       }
 
       static void
