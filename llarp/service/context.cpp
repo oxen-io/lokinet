@@ -192,9 +192,8 @@ namespace llarp
       return nullptr;
     }
 
-
     void
-    Context::InjectEndpoint(std::string name, std::shared_ptr<Endpoint> ep)
+    Context::InjectEndpoint(std::string name, std::shared_ptr< Endpoint > ep)
     {
       ep->LoadKeyFile();
       if(ep->Start())

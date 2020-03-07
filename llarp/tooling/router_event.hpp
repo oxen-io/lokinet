@@ -8,7 +8,6 @@
 
 namespace llarp
 {
-
   struct PathID_t;
 
   namespace path
@@ -18,23 +17,23 @@ namespace llarp
 
     struct TransitHop;
 
-  } // namespace llarp::path
+  }  // namespace path
 
-} // namespace llarp
-
+}  // namespace llarp
 
 namespace tooling
 {
-
   struct RouterHive;
 
   struct RouterEvent
   {
-    RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered);
+    RouterEvent(std::string eventType, llarp::RouterID routerID,
+                bool triggered);
 
     virtual ~RouterEvent() = default;
 
-    virtual std::string ToString() const;
+    virtual std::string
+    ToString() const;
 
     const std::string eventType;
 
@@ -43,6 +42,6 @@ namespace tooling
     bool triggered = false;
   };
 
-  using RouterEventPtr = std::unique_ptr<RouterEvent>;
+  using RouterEventPtr = std::unique_ptr< RouterEvent >;
 
-} // namespace tooling
+}  // namespace tooling

@@ -39,7 +39,7 @@ namespace llarp
       {
       }
 
-      explicit Address(const std::string & str) : AlignedBuffer<32>()
+      explicit Address(const std::string& str) : AlignedBuffer< 32 >()
       {
         if(not FromString(str))
           throw std::runtime_error("invalid address");

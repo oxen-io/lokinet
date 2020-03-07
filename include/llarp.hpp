@@ -20,7 +20,7 @@ struct llarp_main;
 namespace tooling
 {
   struct RouterHive;
-} // namespace tooling
+}  // namespace tooling
 #endif
 
 namespace llarp
@@ -39,7 +39,7 @@ namespace llarp
   struct Context
   {
     /// get context from main pointer
-    static std::shared_ptr<Context> 
+    static std::shared_ptr< Context >
     Get(llarp_main *);
 
     Context() = default;
@@ -97,7 +97,7 @@ namespace llarp
 
 #ifdef LOKINET_HIVE
     void
-    InjectHive(tooling::RouterHive* hive);
+    InjectHive(tooling::RouterHive *hive);
 #endif
 
    private:

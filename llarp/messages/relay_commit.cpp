@@ -419,7 +419,7 @@ namespace llarp
       // TODO: check if we really want to accept it
       self->hop->started = now;
 
-      auto event = std::make_unique<tooling::PathRequestReceivedEvent>(
+      auto event = std::make_unique< tooling::PathRequestReceivedEvent >(
           self->context->Router()->pubkey(), self->hop);
       self->context->Router()->NotifyRouterEvent(std::move(event));
 

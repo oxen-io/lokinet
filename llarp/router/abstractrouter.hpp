@@ -20,7 +20,7 @@ struct llarp_threadpool;
 namespace tooling
 {
   struct RouterHive;
-} // namespace tooling
+}  // namespace tooling
 
 namespace llarp
 {
@@ -65,9 +65,8 @@ namespace llarp
 
   struct AbstractRouter
   {
-
 #ifdef LOKINET_HIVE
-    tooling::RouterHive* hive;
+    tooling::RouterHive *hive;
 #endif
 
     virtual ~AbstractRouter() = default;

@@ -125,11 +125,13 @@ namespace llarp
       {
         if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;
-        if(txid == 0) // txid == 0 on gossip
+        if(txid == 0)  // txid == 0 on gossip
         {
-LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
+          LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
           auto *router = dht.GetRouter();
-          tooling::RouterEventPtr event = std::make_unique<tooling::RCGossipReceivedEvent>(router->pubkey(), rc);
+          tooling::RouterEventPtr event =
+              std::make_unique< tooling::RCGossipReceivedEvent >(
+                  router->pubkey(), rc);
           router->NotifyRouterEvent(std::move(event));
           router->GossipRCIfNeeded(rc);
         }

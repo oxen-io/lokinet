@@ -5,11 +5,12 @@
 
 namespace tooling
 {
-
-  PathAttemptEvent::PathAttemptEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::Path> path)
-    : RouterEvent("PathAttemptEvent", routerID, false)
-    , hops(path->hops)
-    , pathid(path->hops[0].rxID)
+  PathAttemptEvent::PathAttemptEvent(
+      const llarp::RouterID& routerID,
+      std::shared_ptr< const llarp::path::Path > path)
+      : RouterEvent("PathAttemptEvent", routerID, false)
+      , hops(path->hops)
+      , pathid(path->hops[0].rxID)
   {
   }
 
@@ -20,14 +21,14 @@ namespace tooling
     result += "---- [";
 
     size_t i = 0;
-    for (const auto& hop : hops)
+    for(const auto& hop : hops)
     {
       i++;
 
       result += llarp::RouterID(hop.rc.pubkey).ShortString();
       result += "]";
 
-      if (i != hops.size())
+      if(i != hops.size())
       {
         result += " -> [";
       }
@@ -36,16 +37,17 @@ namespace tooling
     return result;
   }
 
-
-  PathRequestReceivedEvent::PathRequestReceivedEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::TransitHop> hop)
-    : RouterEvent("PathRequestReceivedEvent", routerID, true)
-    , prevHop(hop->info.downstream)
-    , nextHop(hop->info.upstream)
-    , txid(hop->info.txID)
-    , rxid(hop->info.rxID)
+  PathRequestReceivedEvent::PathRequestReceivedEvent(
+      const llarp::RouterID& routerID,
+      std::shared_ptr< const llarp::path::TransitHop > hop)
+      : RouterEvent("PathRequestReceivedEvent", routerID, true)
+      , prevHop(hop->info.downstream)
+      , nextHop(hop->info.upstream)
+      , txid(hop->info.txID)
+      , rxid(hop->info.rxID)
   {
     isEndpoint = false;
-    if (routerID == nextHop)
+    if(routerID == nextHop)
     {
       isEndpoint = true;
     }
@@ -61,7 +63,7 @@ namespace tooling
     result += routerID.ShortString();
     result += "] -> [";
 
-    if (isEndpoint)
+    if(isEndpoint)
     {
       result += "nowhere]";
     }
@@ -74,10 +76,12 @@ namespace tooling
     return result;
   }
 
-  PathStatusReceivedEvent::PathStatusReceivedEvent(const llarp::RouterID& routerID, const llarp::PathID_t rxid, uint64_t status)
-    : RouterEvent("PathStatusReceivedEvent", routerID, true)
-    , rxid(rxid)
-    , status(status)
+  PathStatusReceivedEvent::PathStatusReceivedEvent(
+      const llarp::RouterID& routerID, const llarp::PathID_t rxid,
+      uint64_t status)
+      : RouterEvent("PathStatusReceivedEvent", routerID, true)
+      , rxid(rxid)
+      , status(status)
   {
   }
 
@@ -91,4 +95,4 @@ namespace tooling
     return result;
   }
 
-} // namespace tooling
+}  // namespace tooling

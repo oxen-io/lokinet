@@ -783,14 +783,16 @@ namespace libuv
 #endif
     m_LogicCaller.data = this;
     int err;
-    if ((err = uv_async_init(&m_Impl, &m_LogicCaller, [](uv_async_t* h) {
-      Loop* l = static_cast< Loop* >(h->data);
-      while(not l->m_LogicCalls.empty())
-      {
-        auto f = l->m_LogicCalls.popFront();
-        f();
-      }
-    })) != 0)
+    if((err = uv_async_init(&m_Impl, &m_LogicCaller,
+                            [](uv_async_t* h) {
+                              Loop* l = static_cast< Loop* >(h->data);
+                              while(not l->m_LogicCalls.empty())
+                              {
+                                auto f = l->m_LogicCalls.popFront();
+                                f();
+                              }
+                            }))
+       != 0)
     {
       llarp::LogError("Libuv uv_async_init returned error: ", uv_strerror(err));
       return false;

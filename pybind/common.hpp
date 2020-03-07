@@ -11,26 +11,31 @@ namespace py = pybind11;
 
 namespace pybind11
 {
-namespace detail
-{
+  namespace detail
+  {
+    template < typename Key, typename Value, typename Hash, typename Equal,
+               typename Alloc >
+    struct type_caster<
+        std::unordered_multimap< Key, Value, Hash, Equal, Alloc > >
+        : map_caster< std::unordered_multimap< Key, Value, Hash, Equal, Alloc >,
+                      Key, Value >
+    {
+    };
 
-template <typename Key, typename Value, typename Hash, typename Equal, typename Alloc> struct type_caster<std::unordered_multimap<Key, Value, Hash, Equal, Alloc>>
-  : map_caster<std::unordered_multimap<Key, Value, Hash, Equal, Alloc>, Key, Value> { };
+    template < typename T >
+    struct type_caster< nonstd::optional< T > >
+        : public optional_caster< nonstd::optional< T > >
+    {
+    };
 
+    /*
+    template <typename CharT, class Traits>
+    struct type_caster<simple_string_view>
+    : string_caster<simple_string_view, true> {};
+    */
 
-template<typename T>
-struct type_caster<nonstd::optional<T>> 
-: public optional_caster<nonstd::optional<T>> {};
-
-/*
-template <typename CharT, class Traits>
-struct type_caster<simple_string_view>
-: string_caster<simple_string_view, true> {};
-*/
-
-} // namespace pybind11::detail
-} // namespace pybind11
-
+  }  // namespace detail
+}  // namespace pybind11
 
 namespace llarp
 {
@@ -47,32 +52,32 @@ namespace llarp
   RouterContact_Init(py::module &mod);
 
   void
-  Config_Init(py::module & mod);
+  Config_Init(py::module &mod);
 
   void
-  PathTypes_Init(py::module & mod);
+  PathTypes_Init(py::module &mod);
 
   namespace dht
   {
     void
-    DHTTypes_Init(py::module& mod);
+    DHTTypes_Init(py::module &mod);
   }
 
   namespace path
   {
     void
-    PathHopConfig_Init(py::module & mod);
+    PathHopConfig_Init(py::module &mod);
   }
 
   namespace handlers
   {
     void
-    PyHandler_Init(py::module & mod);
+    PyHandler_Init(py::module &mod);
   }
 
-  namespace service 
+  namespace service
   {
-    void 
+    void
     Address_Init(py::module &mod);
   }
 
@@ -81,8 +86,8 @@ namespace llarp
 namespace tooling
 {
   void
-  RouterHive_Init(py::module & mod);
+  RouterHive_Init(py::module &mod);
 
   void
-  RouterEvent_Init(py::module & mod);
-}
+  RouterEvent_Init(py::module &mod);
+}  // namespace tooling

@@ -48,7 +48,7 @@ namespace llarp
 
       /// inject endpoint instance
       void
-      InjectEndpoint(std::string name, std::shared_ptr<Endpoint> ep);
+      InjectEndpoint(std::string name, std::shared_ptr< Endpoint > ep);
 
       /// stop and remove an endpoint by name
       /// return false if we don't have the hidden service with that name
@@ -58,7 +58,7 @@ namespace llarp
       Endpoint_ptr
       GetEndpointByName(const std::string &name);
 
-      Endpoint_ptr 
+      Endpoint_ptr
       GetDefault()
       {
         return GetEndpointByName("default");

@@ -58,12 +58,14 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      const auto now    = ctx->impl->Now();
+      const auto now = ctx->impl->Now();
       const llarp::dht::Key_t addr(introset.derivedSigningKey);
       const auto keyStr = addr.ToHex();
 
       auto router = ctx->impl->GetRouter();
-      auto ev = std::make_unique<tooling::PubIntroReceivedEvent>(router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()), addr, txID, relayOrder);
+      auto ev     = std::make_unique< tooling::PubIntroReceivedEvent >(
+          router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()),
+          addr, txID, relayOrder);
       router->NotifyRouterEvent(std::move(ev));
 
       auto &dht = *ctx->impl;

@@ -396,13 +396,15 @@ namespace llarp
     {
       uint32_t generation = 0;
       uint32_t index      = 0;
-      bool secondTry = false;
-      bool success = false;
+      bool secondTry      = false;
+      bool success        = false;
       for(;;)
       {
-        success = m_manager.reservePopIndex(generation, index) == QueueReturn::Success;
+        success = m_manager.reservePopIndex(generation, index)
+            == QueueReturn::Success;
 
-        if (secondTry || success) break;
+        if(secondTry || success)
+          break;
 
         m_waitingPoppers.fetch_add(1, std::memory_order_relaxed);
 
@@ -415,7 +417,7 @@ namespace llarp
         m_waitingPoppers.fetch_sub(1, std::memory_order_relaxed);
       }
 
-      if (success)
+      if(success)
       {
         QueuePopGuard< Type > popGuard(*this, generation, index);
         return Type(std::move(m_data[index]));

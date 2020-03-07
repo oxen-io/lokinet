@@ -20,39 +20,38 @@ namespace llarp
 
 namespace tooling
 {
-
   struct RouterHive
   {
-    using Context_ptr = std::shared_ptr<llarp::Context>;
+    using Context_ptr = std::shared_ptr< llarp::Context >;
 
-  private:
+   private:
+    void
+    StartRouters(std::vector< llarp_main * > *routers);
 
     void
-    StartRouters(std::vector<llarp_main *> *routers);
-
-    void
-    AddRouter(const std::shared_ptr<llarp::Config> & config, std::vector<llarp_main *> *routers);
+    AddRouter(const std::shared_ptr< llarp::Config > &config,
+              std::vector< llarp_main * > *routers);
 
     /// safely visit router
     void
-    VisitRouter(llarp_main *router, std::function<void(Context_ptr)> visit);
+    VisitRouter(llarp_main *router, std::function< void(Context_ptr) > visit);
 
     /// safely visit relay at index N
     void
-    VisitRelay(size_t index, std::function<void(Context_ptr)> visit);
+    VisitRelay(size_t index, std::function< void(Context_ptr) > visit);
 
     /// safely visit client at index N
     void
-    VisitClient(size_t index, std::function<void(Context_ptr)> visit);
+    VisitClient(size_t index, std::function< void(Context_ptr) > visit);
 
-  public:
+   public:
     RouterHive() = default;
 
     void
-    AddRelay(const std::shared_ptr<llarp::Config> & conf);
+    AddRelay(const std::shared_ptr< llarp::Config > &conf);
 
     void
-    AddClient(const std::shared_ptr<llarp::Config> & conf);
+    AddClient(const std::shared_ptr< llarp::Config > &conf);
 
     void
     StartRelays();
@@ -69,11 +68,11 @@ namespace tooling
     RouterEventPtr
     GetNextEvent();
 
-    std::deque<RouterEventPtr>
+    std::deque< RouterEventPtr >
     GetAllEvents();
 
     void
-    ForEachRelay(std::function<void(Context_ptr)> visit)
+    ForEachRelay(std::function< void(Context_ptr) > visit)
     {
       for(size_t idx = 0; idx < relays.size(); ++idx)
       {
@@ -82,7 +81,7 @@ namespace tooling
     }
 
     void
-    ForEachClient(std::function<void(Context_ptr)> visit)
+    ForEachClient(std::function< void(Context_ptr) > visit)
     {
       for(size_t idx = 0; idx < clients.size(); ++idx)
       {
@@ -92,25 +91,25 @@ namespace tooling
 
     /// safely visit every router context
     void
-    ForEachRouter(std::function<void(Context_ptr)> visit)
+    ForEachRouter(std::function< void(Context_ptr) > visit)
     {
       ForEachRelay(visit);
       ForEachClient(visit);
     }
 
-    std::vector<size_t>
+    std::vector< size_t >
     RelayConnectedRelays();
 
-    std::vector<llarp::RouterContact>
+    std::vector< llarp::RouterContact >
     GetRelayRCs();
 
-    std::vector<llarp_main *> relays;
-    std::vector<llarp_main *> clients;
+    std::vector< llarp_main * > relays;
+    std::vector< llarp_main * > clients;
 
-    std::vector<std::thread> routerMainThreads;
+    std::vector< std::thread > routerMainThreads;
 
     std::mutex eventQueueMutex;
-    std::deque<RouterEventPtr> eventQueue;
+    std::deque< RouterEventPtr > eventQueue;
   };
 
-} // namespace tooling
+}  // namespace tooling

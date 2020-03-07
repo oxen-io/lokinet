@@ -132,7 +132,9 @@ namespace llarp
   {
     if(!ctx->pathset->IsStopped())
     {
-      tooling::RouterEventPtr event = std::make_unique<tooling::PathAttemptEvent>(ctx->router->pubkey(), ctx->path);
+      tooling::RouterEventPtr event =
+          std::make_unique< tooling::PathAttemptEvent >(ctx->router->pubkey(),
+                                                        ctx->path);
       ctx->router->NotifyRouterEvent(std::move(event));
 
       const RouterID remote   = ctx->path->Upstream();
@@ -449,7 +451,6 @@ namespace llarp
       auto path = std::make_shared< path::Path >(hops, self.get(), roles,
                                                  std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
-
 
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });

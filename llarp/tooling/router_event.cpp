@@ -2,9 +2,9 @@
 
 namespace tooling
 {
-
-  RouterEvent::RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered)
-    : eventType(eventType), routerID(routerID), triggered(triggered)
+  RouterEvent::RouterEvent(std::string eventType, llarp::RouterID routerID,
+                           bool triggered)
+      : eventType(eventType), routerID(routerID), triggered(triggered)
   {
   }
 
@@ -19,4 +19,4 @@ namespace tooling
     return result;
   }
 
-} // namespace tooling
+}  // namespace tooling

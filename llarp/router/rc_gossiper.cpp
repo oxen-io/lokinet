@@ -21,18 +21,19 @@ namespace llarp
   }
 
   void
-  RCGossiper::Init(ILinkManager* l, const RouterID& ourID, AbstractRouter* router)
+  RCGossiper::Init(ILinkManager* l, const RouterID& ourID,
+                   AbstractRouter* router)
   {
     m_OurRouterID = ourID;
     m_LinkManager = l;
-    m_router = router;
+    m_router      = router;
   }
 
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
     bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
-LogWarn("ShouldGossipOurRC: ", should);
+    LogWarn("ShouldGossipOurRC: ", should);
     return should;
   }
 
@@ -98,7 +99,9 @@ LogWarn("ShouldGossipOurRC: ", should);
         return;
       msg.resize(buf.cur - buf.base);
 
-      tooling::RouterEventPtr event = std::make_unique<tooling::RCGossipSentEvent>(m_router->pubkey(), rc);
+      tooling::RouterEventPtr event =
+          std::make_unique< tooling::RCGossipSentEvent >(m_router->pubkey(),
+                                                         rc);
       m_router->NotifyRouterEvent(std::move(event));
 
       // send message

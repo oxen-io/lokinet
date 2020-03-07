@@ -59,7 +59,8 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
 #ifdef LOKINET_HIVE
-      , _randomStartDelay(std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
+      , _randomStartDelay(
+            std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
@@ -482,7 +483,8 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
-    llarp::LogWarn("Bootstrap routers list size: ", conf->bootstrap.routers.size());
+    llarp::LogWarn("Bootstrap routers list size: ",
+                   conf->bootstrap.routers.size());
     std::vector< std::string > configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());

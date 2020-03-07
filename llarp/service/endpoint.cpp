@@ -199,17 +199,19 @@ namespace llarp
       // prefetch addrs
       for(const auto& addr : m_state->m_PrefetchAddrs)
       {
-          EnsurePathToService(
-                 addr, [](Address, OutboundContext* ctx) {
-                  #ifdef LOKINET_HIVE
-                   std::vector<byte_t> discard;
-                   discard.resize(128);
-                   ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard), eProtocolControl);
-                   #else
-                   (void)ctx;
-                   #endif
-                 }, 10s);
-        
+        EnsurePathToService(
+            addr,
+            [](Address, OutboundContext* ctx) {
+#ifdef LOKINET_HIVE
+              std::vector< byte_t > discard;
+              discard.resize(128);
+              ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard),
+                                         eProtocolControl);
+#else
+              (void)ctx;
+#endif
+            },
+            10s);
       }
 
       // deregister dead sessions
@@ -477,7 +479,10 @@ namespace llarp
       {
         for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
-          auto ev = std::make_unique<tooling::PubIntroSentEvent>(r->pubkey(), llarp::dht::Key_t{introset.derivedSigningKey.as_array()}, RouterID(path->hops[path->hops.size()-1].rc.pubkey), published);
+          auto ev = std::make_unique< tooling::PubIntroSentEvent >(
+              r->pubkey(),
+              llarp::dht::Key_t{introset.derivedSigningKey.as_array()},
+              RouterID(path->hops[path->hops.size() - 1].rc.pubkey), published);
           r->NotifyRouterEvent(std::move(ev));
           if(PublishIntroSetVia(introset, r, path, published))
             published++;

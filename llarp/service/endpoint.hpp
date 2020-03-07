@@ -369,14 +369,13 @@ namespace llarp
       const std::set< RouterID >&
       SnodeBlacklist() const;
 
-     
       bool
       SendToServiceOrQueue(const service::Address& addr,
                            const llarp_buffer_t& payload, ProtocolType t);
       bool
       SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
-      
-    protected:
+
+     protected:
       /// parent context that owns this endpoint
       Context* const context;
 

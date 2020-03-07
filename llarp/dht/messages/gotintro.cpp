@@ -24,12 +24,11 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > & /*replies*/) const
     {
-      auto &dht = *ctx->impl;
+      auto &dht    = *ctx->impl;
       auto *router = dht.GetRouter();
 
-      auto ev = std::make_unique<tooling::GotIntroReceivedEvent>(
-          router->pubkey(),
-          Key_t(From.data()),
+      auto ev = std::make_unique< tooling::GotIntroReceivedEvent >(
+          router->pubkey(), Key_t(From.data()),
           (found.size() > 0 ? found[0] : llarp::service::EncryptedIntroSet{}),
           txid);
       router->NotifyRouterEvent(std::move(ev));

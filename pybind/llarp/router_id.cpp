@@ -5,9 +5,9 @@
 namespace llarp
 {
   void
-  RouterID_Init(py::module & mod)
+  RouterID_Init(py::module& mod)
   {
-    py::class_<RouterID>(mod, "RouterID")
+    py::class_< RouterID >(mod, "RouterID")
         .def("FromHex",
              [](RouterID* r, const std::string& hex) -> bool {
                return HexDecode(hex.c_str(), r->data(), r->size());
@@ -15,8 +15,9 @@ namespace llarp
         .def("__repr__", &RouterID::ToString)
         .def("__str__", &RouterID::ToString)
         .def("ShortString", &RouterID::ShortString)
-        .def("__eq__", [](const RouterID* const lhs, const RouterID* const rhs) {
-            return *lhs == *rhs;
-        });
+        .def("__eq__",
+             [](const RouterID* const lhs, const RouterID* const rhs) {
+               return *lhs == *rhs;
+             });
   }
-}
+}  // namespace llarp

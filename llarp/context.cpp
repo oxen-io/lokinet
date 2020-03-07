@@ -303,7 +303,7 @@ namespace llarp
 
 #ifdef LOKINET_HIVE
   void
-  Context::InjectHive(tooling::RouterHive* hive)
+  Context::InjectHive(tooling::RouterHive *hive)
   {
     router->hive = hive;
   }
@@ -332,11 +332,11 @@ namespace llarp
   llarp_config *
   Config::Copy() const
   {
-    llarp_config * ptr = new llarp_config();
-    ptr->impl = *this;
+    llarp_config *ptr = new llarp_config();
+    ptr->impl         = *this;
     return ptr;
   }
-}
+}  // namespace llarp
 
 extern "C"
 {
@@ -560,8 +560,7 @@ llarp_main::llarp_main(llarp_config *conf)
 
 namespace llarp
 {
-
-  std::shared_ptr<Context>
+  std::shared_ptr< Context >
   Context::Get(llarp_main *m)
   {
     if(m == nullptr || m->ctx == nullptr)

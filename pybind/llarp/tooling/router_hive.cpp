@@ -24,6 +24,5 @@ namespace tooling
         .def("GetAllEvents", &RouterHive::GetAllEvents)
         .def("RelayConnectedRelays", &RouterHive::RelayConnectedRelays)
         .def("GetRelayRCs", &RouterHive::GetRelayRCs);
-             
   }
-}
+}  // namespace tooling

@@ -13,7 +13,6 @@
 #include <vector>
 #include <unordered_set>
 
-
 struct llarp_config;
 namespace llarp
 {
@@ -259,7 +258,7 @@ namespace llarp
     bool
     LoadFromStr(string_view str);
 
-    llarp_config *
+    llarp_config*
     Copy() const;
   };
 

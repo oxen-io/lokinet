@@ -28,7 +28,7 @@ namespace llarp
     IsOurRC(const RouterContact &rc) const override;
 
     void
-    Init(ILinkManager *, const RouterID &, AbstractRouter*);
+    Init(ILinkManager *, const RouterID &, AbstractRouter *);
 
    private:
     RouterID m_OurRouterID;

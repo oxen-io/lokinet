@@ -29,7 +29,8 @@ namespace llarp
     PathID_t pathid;
 
     LRSM_AsyncHandler(std::array< EncryptedFrame, 8 > _frames, uint64_t _status,
-                      HopHandler_ptr _path, AbstractRouter* _router, const PathID_t& pathid)
+                      HopHandler_ptr _path, AbstractRouter* _router,
+                      const PathID_t& pathid)
         : frames(std::move(_frames))
         , status(_status)
         , path(std::move(_path))
@@ -43,7 +44,8 @@ namespace llarp
     void
     handle()
     {
-      auto ev = std::make_unique<tooling::PathStatusReceivedEvent>(router->pubkey(), pathid, status);
+      auto ev = std::make_unique< tooling::PathStatusReceivedEvent >(
+          router->pubkey(), pathid, status);
       router->NotifyRouterEvent(std::move(ev));
 
       path->HandleLRSM(status, frames, router);
@@ -146,8 +148,8 @@ namespace llarp
       return false;
     }
 
-    auto handler =
-        std::make_shared< LRSM_AsyncHandler >(frames, status, path, router, pathid);
+    auto handler = std::make_shared< LRSM_AsyncHandler >(frames, status, path,
+                                                         router, pathid);
 
     handler->queue_handle();
 

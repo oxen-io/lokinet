@@ -46,7 +46,7 @@
 namespace tooling
 {
   struct RouterHive;
-} // namespace tooling
+}  // namespace tooling
 
 namespace llarp
 {
@@ -227,7 +227,6 @@ namespace llarp
     {
       return _hiddenServiceContext;
     }
-
 
     llarp_time_t _lastTick = 0s;
 
