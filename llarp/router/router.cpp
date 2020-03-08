@@ -726,25 +726,16 @@ namespace llarp
       GossipRCIfNeeded(_rc);
     }
 
-    if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
-    {
-      // remove RCs for nodes that are no longer allowed by network policy
-      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-        if(IsBootstrapNode(rc.pubkey))
-          return false;
-        if(not rc.IsPublicRouter())
-          return true;
-        return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
-      });
-    }
-    else
-    {
-      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-        if(IsBootstrapNode(rc.pubkey))
-          return false;
-        return not rc.IsPublicRouter();
-      });
-    }
+    // remove RCs for nodes that are no longer allowed by network policy
+    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+      if(IsBootstrapNode(rc.pubkey))
+        return false;
+      if(not rc.IsPublicRouter())
+        return true;
+      if(not isSvcNode)
+        return false;
+      return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
+    });
 
     _linkManager.CheckPersistingSessions(now);
 
