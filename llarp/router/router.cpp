@@ -737,6 +737,14 @@ namespace llarp
         return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
       });
     }
+    else
+    {
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(IsBootstrapNode(rc.pubkey))
+          return false;
+        return not rc.IsPublicRouter();
+      });
+    }
 
     _linkManager.CheckPersistingSessions(now);
 
