@@ -732,6 +732,9 @@ namespace llarp
         return false;
       if(not rc.IsPublicRouter())
         return true;
+      // clients have a notion of a whilelist
+      // we short circuit logic here so we dont remove
+      // routers that are not whitelisted for first hops
       if(not isSvcNode)
         return false;
       return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
