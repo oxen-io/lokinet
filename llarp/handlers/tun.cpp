@@ -448,7 +448,7 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(msg);
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -554,7 +554,7 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(msg);
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
