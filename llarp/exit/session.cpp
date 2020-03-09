@@ -53,10 +53,12 @@ namespace llarp
     bool
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
+      if(BuildCooldownHit(now))
+        return false;
       const size_t expect = (1 + (numPaths / 2));
       // check 30 seconds into the future and see if we need more paths
       const llarp_time_t future = now + 30s + buildIntervalLimit;
-      return NumPathsExistingAt(future) < expect && !BuildCooldownHit(now);
+      return NumPathsExistingAt(future) < expect;
     }
 
     void
@@ -259,6 +261,8 @@ namespace llarp
     bool
     BaseSession::UrgentBuild(llarp_time_t now) const
     {
+      if(BuildCooldownHit(now))
+        return false;
       if(!IsReady())
         return NumInStatus(path::ePathBuilding) < numPaths;
       return path::Builder::UrgentBuild(now);
