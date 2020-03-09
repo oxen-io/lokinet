@@ -513,7 +513,8 @@ namespace llarp
         const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         llarp::service::Address addr;
         if(isV6 && !SupportsV6())
-        { // empty reply but not a NXDOMAIN so that client can retry IPv4
+        {  // empty reply but not a NXDOMAIN so that client can retry IPv4
+          msg.AddNSReply("localhost.loki.");
         }
         // on MacOS this is a typeA query
         else if(is_random_snode(msg))

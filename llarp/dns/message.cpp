@@ -194,6 +194,31 @@ namespace llarp
     }
 
     void
+    Message::AddNSReply(std::string name, RR_TTL_t ttl)
+    {
+      if(not questions.empty())
+      {
+        hdr_fields = reply_flags(hdr_fields);
+
+        const auto& question = questions[0];
+        answers.emplace_back();
+        auto& rec                     = answers.back();
+        rec.rr_name                   = question.qname;
+        rec.rr_type                   = qTypeNS;
+        rec.rr_class                  = qClassIN;
+        rec.ttl                       = ttl;
+        std::array< byte_t, 512 > tmp = {{0}};
+        llarp_buffer_t buf(tmp);
+        if(EncodeName(&buf, name))
+        {
+          buf.sz = buf.cur - buf.base;
+          rec.rData.resize(buf.sz);
+          memcpy(rec.rData.data(), buf.base, buf.sz);
+        }
+      }
+    }
+
+    void
     Message::AddCNAMEReply(std::string name, RR_TTL_t ttl)
     {
       if(questions.size())
