@@ -728,7 +728,7 @@ namespace llarp
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     // remove RCs for nodes that are no longer allowed by network policy
     nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      // don't pruge bootstrap nodes from nodedb
+      // don't purge bootstrap nodes from nodedb
       if(IsBootstrapNode(rc.pubkey))
         return false;
       // if for some reason we stored an RC that isn't a valid router
