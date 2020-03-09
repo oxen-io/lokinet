@@ -121,24 +121,6 @@ namespace llarp
           return false;
         }
       }
-      /*
-      for(auto& auth : authorities)
-      {
-        if(!auth.Decode(buf))
-        {
-          llarp::LogError("failed to decode auth");
-          return false;
-        }
-      }
-      for(auto& rr : additional)
-      {
-        if(!rr.Decode(buf))
-        {
-          llarp::LogError("failed to decode additional");
-          return false;
-        }
-      }
-      */
       return true;
     }
 
