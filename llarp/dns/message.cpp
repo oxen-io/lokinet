@@ -125,7 +125,7 @@ namespace llarp
       {
         if(not an.Decode(buf))
         {
-          llarp::LogError("failed to decode answer");
+          llarp::LogDebug("failed to decode answer");
           return false;
         }
       }
