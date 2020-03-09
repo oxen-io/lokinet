@@ -747,7 +747,7 @@ namespace llarp
       // if we have no whitelist enabled or we have
       // the whitelist enabled and we got the whitelist
       // check against the whitelist and remove if it's not
-      // in the whitelist OR if there is no whitelist don't remoev
+      // in the whitelist OR if there is no whitelist don't remove
       return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
     });
 
