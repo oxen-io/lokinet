@@ -79,7 +79,6 @@ namespace llarp
     bool
     Message::Encode(llarp_buffer_t* buf) const
     {
-      LogInfo("Encode ", *this);
       MessageHeader hdr;
       hdr.id       = hdr_id;
       hdr.fields   = hdr_fields;
