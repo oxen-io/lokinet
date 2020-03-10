@@ -725,18 +725,31 @@ namespace llarp
     {
       GossipRCIfNeeded(_rc);
     }
-
-    if(isSvcNode && _rcLookupHandler.HaveReceivedWhitelist())
-    {
-      // remove RCs for nodes that are no longer allowed by network policy
-      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-        if(IsBootstrapNode(rc.pubkey))
-          return false;
-        if(not rc.IsPublicRouter())
-          return true;
-        return !_rcLookupHandler.RemoteIsAllowed(rc.pubkey);
-      });
-    }
+    const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
+    // remove RCs for nodes that are no longer allowed by network policy
+    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+      // don't purge bootstrap nodes from nodedb
+      if(IsBootstrapNode(rc.pubkey))
+        return false;
+      // if for some reason we stored an RC that isn't a valid router
+      // purge this entry
+      if(not rc.IsPublicRouter())
+        return true;
+      // clients have a notion of a whilelist
+      // we short circuit logic here so we dont remove
+      // routers that are not whitelisted for first hops
+      if(not isSvcNode)
+        return false;
+      // if we have a whitelist enabled and we don't
+      // have the whitelist yet don't remove the entry
+      if(whitelistRouters and not gotWhitelist)
+        return false;
+      // if we have no whitelist enabled or we have
+      // the whitelist enabled and we got the whitelist
+      // check against the whitelist and remove if it's not
+      // in the whitelist OR if there is no whitelist don't remove
+      return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
+    });
 
     _linkManager.CheckPersistingSessions(now);
 
