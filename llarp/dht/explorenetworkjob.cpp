@@ -6,6 +6,8 @@
 
 #include <nodedb.hpp>
 
+#include <tooling/dht_event.hpp>
+
 namespace llarp
 {
   namespace dht
@@ -13,7 +15,14 @@ namespace llarp
     void
     ExploreNetworkJob::Start(const TXOwner &peer)
     {
-      parent->DHTSendTo(peer.node.as_array(), new FindRouterMessage(peer.txid));
+
+      auto msg = new FindRouterMessage(peer.txid);
+      auto router = parent->GetRouter();
+      auto ev = std::make_unique< tooling::FindRouterSentEvent >(router->pubkey());
+      ev->targetKey = msg->targetKey;
+      router->NotifyRouterEvent(std::move(ev));
+
+      parent->DHTSendTo(peer.node.as_array(), msg);
     }
 
     void

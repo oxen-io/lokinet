@@ -782,6 +782,12 @@ namespace llarp
 
         if(path && path->SendRoutingMessage(msg, Router()))
         {
+
+          auto ev = std::make_unique< tooling::FindRouterSentEvent >(m_router->pubkey());
+          ev->txid = txid;
+          ev->targetKey = router;
+          m_router->NotifyRouterEvent(std::move(ev));
+
           routers.emplace(router, RouterLookupJob(this, handler));
           return true;
         }

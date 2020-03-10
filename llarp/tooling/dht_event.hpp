@@ -54,4 +54,59 @@ namespace tooling
     std::string
     ToString() const override;
   };
+
+  struct FindRouterSentEvent : public RouterEvent
+  {
+    llarp::dht::Key_t from;
+    llarp::RouterID targetKey;
+    bool iterative = false;
+    bool exploritory = false;
+    uint64_t txid = 0;
+    uint64_t version = 0;
+
+    FindRouterSentEvent(const llarp::RouterID& ourRouter)
+      : RouterEvent("DHT: FindRouterSentEvent", ourRouter, true)
+    {
+    }
+
+    std::string
+    ToString() const override
+    {
+      return RouterEvent::ToString()
+        +" from "+ from.ShortHex()
+        +", targetKey: "+ targetKey.ToString()
+        +", iterative: "+ std::to_string(iterative)
+        +", exploritory "+ std::to_string(exploritory)
+        +", txid "+ std::to_string(txid)
+        +", version "+ std::to_string(version);
+    }
+  };
+
+  struct FindRouterReceivedEvent : public RouterEvent
+  {
+    llarp::dht::Key_t from;
+    llarp::RouterID targetKey;
+    bool iterative = false;
+    bool exploritory = false;
+    uint64_t txid = 0;
+    uint64_t version = 0;
+
+    FindRouterReceivedEvent(const llarp::RouterID& ourRouter)
+      : RouterEvent("DHT: FindRouterReceivedEvent", ourRouter, false)
+    {
+    }
+
+    std::string
+    ToString() const override
+    {
+      return RouterEvent::ToString()
+        +" from "+ from.ShortHex()
+        +", targetKey: "+ targetKey.ToString()
+        +", iterative: "+ std::to_string(iterative)
+        +", exploritory "+ std::to_string(exploritory)
+        +", txid "+ std::to_string(txid)
+        +", version "+ std::to_string(version);
+    }
+  };
+
 }  // namespace tooling

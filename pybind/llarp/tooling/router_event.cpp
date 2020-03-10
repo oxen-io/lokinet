@@ -67,6 +67,20 @@ namespace tooling
     py::class_< RCGossipSentEvent, RouterEvent >(mod, "RCGossipSentEvent")
         .def_readonly("rc", &RCGossipSentEvent::rc)
         .def("LongString", &RCGossipSentEvent::LongString);
+
+    py::class_< FindRouterSentEvent, RouterEvent >(mod, "FindRouterSentEvent")
+        .def_readonly("from", &FindRouterSentEvent::from)
+        .def_readonly("iterative", &FindRouterSentEvent::iterative)
+        .def_readonly("exploritory", &FindRouterSentEvent::exploritory)
+        .def_readonly("txid", &FindRouterSentEvent::txid)
+        .def_readonly("version", &FindRouterSentEvent::version);
+
+    py::class_< FindRouterReceivedEvent, RouterEvent >(mod, "FindRouterReceivedEvent")
+        .def_readonly("from", &FindRouterReceivedEvent::from)
+        .def_readonly("iterative", &FindRouterReceivedEvent::iterative)
+        .def_readonly("exploritory", &FindRouterReceivedEvent::exploritory)
+        .def_readonly("txid", &FindRouterReceivedEvent::txid)
+        .def_readonly("version", &FindRouterReceivedEvent::version);
   }
 
 }  // namespace tooling
