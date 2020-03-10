@@ -537,17 +537,16 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     return false;
   if(!N)
     return false;
-  llarp_time_t now = llarp::time_now_ms();
 
-  auto itr   = entries.begin();
-  size_t pos = llarp::randint() % sz;
+  auto itr         = entries.begin();
+  const size_t pos = llarp::randint() % sz;
   std::advance(itr, pos);
-  auto start = itr;
+  const auto start = itr;
   while(itr == entries.end())
   {
     if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
+      if(itr->second.rc.IsPublicRouter())
       {
         result = itr->second.rc;
         return true;
@@ -560,7 +559,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   {
     if(prev.pubkey != itr->second.rc.pubkey)
     {
-      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
+      if(itr->second.rc.IsPublicRouter())
       {
         result = itr->second.rc;
         return true;
@@ -583,17 +582,16 @@ llarp_nodedb::select_random_hop_excluding(
   {
     return false;
   }
-  llarp_time_t now = llarp::time_now_ms();
 
-  auto itr   = entries.begin();
-  size_t pos = llarp::randint() % sz;
+  auto itr         = entries.begin();
+  const size_t pos = llarp::randint() % sz;
   std::advance(itr, pos);
-  auto start = itr;
+  const auto start = itr;
   while(itr == entries.end())
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
+      if(itr->second.rc.IsPublicRouter())
       {
         result = itr->second.rc;
         return true;
@@ -606,7 +604,7 @@ llarp_nodedb::select_random_hop_excluding(
   {
     if(exclude.count(itr->first) == 0)
     {
-      if(itr->second.rc.addrs.size() && !itr->second.rc.IsExpired(now))
+      if(itr->second.rc.IsPublicRouter())
       {
         result = itr->second.rc;
         return true;
