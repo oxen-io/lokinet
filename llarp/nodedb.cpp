@@ -529,45 +529,8 @@ bool
 llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
                                 llarp::RouterContact &result, size_t N)
 {
-  llarp::util::Lock lock(access);
-  /// checking for "guard" status for N = 0 is done by caller inside of
-  /// pathbuilder's scope
-  size_t sz = entries.size();
-  if(sz < 3)
-    return false;
-  if(!N)
-    return false;
-
-  auto itr         = entries.begin();
-  const size_t pos = llarp::randint() % sz;
-  std::advance(itr, pos);
-  const auto start = itr;
-  while(itr == entries.end())
-  {
-    if(prev.pubkey != itr->second.rc.pubkey)
-    {
-      if(itr->second.rc.IsPublicRouter())
-      {
-        result = itr->second.rc;
-        return true;
-      }
-    }
-    itr++;
-  }
-  itr = entries.begin();
-  while(itr != start)
-  {
-    if(prev.pubkey != itr->second.rc.pubkey)
-    {
-      if(itr->second.rc.IsPublicRouter())
-      {
-        result = itr->second.rc;
-        return true;
-      }
-    }
-    ++itr;
-  }
-  return false;
+  (void)N;
+  return select_random_hop_excluding(result, {prev.pubkey});
 }
 
 bool
