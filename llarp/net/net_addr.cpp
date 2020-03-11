@@ -379,11 +379,13 @@ namespace llarp
   bool
   Addr::operator==(const Addr& other) const
   {
-    if(af() == AF_INET && other.af() == AF_INET)
-      return port() == other.port() && addr4()->s_addr == other.addr4()->s_addr;
+    if(af() != other.af() || port() != other.port())
+      return false;
 
-    return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
-        && port() == other.port();
+    if(af() == AF_INET)
+      return addr4()->s_addr == other.addr4()->s_addr;
+
+    return memcmp(addr6(), other.addr6(), 16) == 0;
   }
 
   Addr&
