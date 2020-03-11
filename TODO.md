@@ -21,7 +21,7 @@ etc.).
 
 ## Make `make format` less annoying
 
-New `make format' rules.  Relax some things, decide on other sane rules that are helpful without
+New `make format` rules.  Relax some things, decide on other sane rules that are helpful without
 being annoyingly rigid.  Currently make format rules are far too rigid to the point of being
 annoying.
 
