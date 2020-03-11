@@ -525,13 +525,6 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
   return false;
 }
 
-bool
-llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
-                                llarp::RouterContact &result, size_t N)
-{
-  (void)N;
-  return select_random_hop_excluding(result, {prev.pubkey});
-}
 
 bool
 llarp_nodedb::select_random_hop_excluding(
