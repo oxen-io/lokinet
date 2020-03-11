@@ -1,6 +1,6 @@
 # TODO plan for 0.8
 
-These may not all be implemented, but are a tentatively roadmap for things to work for in 0.8.  0.8
+These may not all be implemented, but are a tentative roadmap for things to work for in 0.8.  0.8
 is really meant to be a refinement release rather than institute major underlying changes, with the
 investment paying off by cleaning up the code to allow fast and more reliable future features.
 
