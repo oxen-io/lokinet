@@ -547,5 +547,13 @@ llarp_nodedb::select_random_hop_excluding(
       return true;
     }
   }
+  for(auto itr = entries.begin(); itr != entries.end(); ++itr)
+  {
+    if(exclude.count(itr->first) == 0 and itr->second.rc.IsPublicRouter())
+    {
+      result = itr->second.rc;
+      return true;
+    }
+  }
   return false;
 }
