@@ -539,7 +539,16 @@ llarp_nodedb::select_random_hop_excluding(
   }
 
   const size_t pos = llarp::randint() % sz;
-  for(auto itr = std::next(entries.begin(), pos); itr != entries.end(); ++itr)
+  const auto start = std::next(entries.begin(), pos);
+  for(auto itr = start; itr != entries.end(); ++itr)
+  {
+    if(exclude.count(itr->first) == 0 and itr->second.rc.IsPublicRouter())
+    {
+      result = itr->second.rc;
+      return true;
+    }
+  }
+  for(auto itr = entries.begin(); itr != start; ++itr)
   {
     if(exclude.count(itr->first) == 0 and itr->second.rc.IsPublicRouter())
     {
