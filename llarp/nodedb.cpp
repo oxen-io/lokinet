@@ -542,7 +542,7 @@ llarp_nodedb::select_random_hop_excluding(
   const size_t pos = llarp::randint() % sz;
   std::advance(itr, pos);
   const auto start = itr;
-  while(itr == entries.end())
+  while(itr != entries.end())
   {
     if(exclude.count(itr->first) == 0)
     {
