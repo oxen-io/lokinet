@@ -525,7 +525,6 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
   return false;
 }
 
-
 bool
 llarp_nodedb::select_random_hop_excluding(
     llarp::RouterContact &result, const std::set< llarp::RouterID > &exclude)

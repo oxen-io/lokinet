@@ -240,68 +240,61 @@ namespace llarp
       curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &curl_RecvIdentKey);
-      do
-      {
-        resp.clear();
-        LogInfo("Getting Identity Keys from lokid...");
-        if(curl_easy_perform(curl) == CURLE_OK)
-        {
-          try
-          {
-            auto j = nlohmann::json::parse(resp);
-            if(not j.is_object())
-              continue;
 
-            const auto itr = j.find("result");
-            if(itr == j.end())
-              continue;
-            if(not itr->is_object())
-              continue;
-            const auto k =
-                (*itr)["service_node_ed25519_privkey"].get< std::string >();
-            if(k.size() != (identityKey.size() * 2))
+      resp.clear();
+      LogInfo("Getting Identity Keys from lokid...");
+      if(curl_easy_perform(curl) == CURLE_OK)
+      {
+        try
+        {
+          auto j = nlohmann::json::parse(resp);
+          if(not j.is_object())
+            return false;
+
+          const auto itr = j.find("result");
+          if(itr == j.end())
+            return false;
+          if(not itr->is_object())
+            return false;
+          const auto k =
+              (*itr)["service_node_ed25519_privkey"].get< std::string >();
+          if(k.size() != (identityKey.size() * 2))
+          {
+            if(k.empty())
             {
-              if(k.empty())
-              {
-                LogError("lokid gave no identity key");
-              }
-              else
-              {
-                LogError("lokid gave invalid identity key");
-              }
-              return false;
-            }
-            if(not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
-              continue;
-            if(CryptoManager::instance()->check_identity_privkey(identityKey))
-            {
-              ret = true;
+              LogError("lokid gave no identity key");
             }
             else
             {
-              LogError("lokid gave bogus identity key");
+              LogError("lokid gave invalid identity key");
             }
+            return false;
           }
-          catch(nlohmann::json::exception& ex)
+          if(not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
+            return false;
+          if(CryptoManager::instance()->check_identity_privkey(identityKey))
           {
-            LogError("Bad response from lokid: ", ex.what());
+            ret = true;
+          }
+          else
+          {
+            LogError("lokid gave bogus identity key");
           }
         }
-        else
+        catch(nlohmann::json::exception& ex)
         {
-          LogError("failed to get identity keys");
+          LogError("Bad response from lokid: ", ex.what());
         }
-        if(ret)
-        {
-          LogInfo("Got Identity Keys from lokid: ",
-                  RouterID(seckey_topublic(identityKey)));
-          break;
-        }
-        else
-        {
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-      } while(true);
+      }
+      else
+      {
+        LogError("failed to get identity keys");
+      }
+      if(ret)
+      {
+        LogInfo("Got Identity Keys from lokid: ",
+                RouterID(seckey_topublic(identityKey)));
+      }
       curl_easy_cleanup(curl);
       curl_slist_free_all(list);
       return ret;
