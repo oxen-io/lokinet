@@ -95,4 +95,24 @@ namespace tooling
     return result;
   }
 
+  PathBuildRejectedEvent::PathBuildRejectedEvent(
+      const llarp::RouterID& routerID,
+      const llarp::PathID_t rxid_,
+      const llarp::RouterID& rejectedBy_)
+      : RouterEvent("PathBuildRejectedEvent", routerID, false)
+      , rxid(rxid_)
+      , rejectedBy(rejectedBy_)
+  {
+  }
+
+  std::string
+  PathBuildRejectedEvent::ToString() const
+  {
+    std::string result = RouterEvent::ToString();
+    result += "---- path rxid: " + rxid.ShortHex();
+    result += ", rejectedBy: " + rejectedBy.ShortString();
+
+    return result;
+  }
+
 }  // namespace tooling
