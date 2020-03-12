@@ -1,3 +1,50 @@
+lokinet (0.7.0~rc3-1) sid; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Don't ignore .exe, .png, .gif
+
+  [ Jeff Becker ]
+  * bounds check in http headers
+  * bounds check on header value
+  * try fixing leak in libabyss
+
+  [ Stephen Shelton ]
+  * Reduce log verbosity when DNS RR decode fails
+
+  [ Jeff ]
+  * strip rr from dns reply for .snode and .loki (#1172)
+
+  [ Jason Rhinelander ]
+  * Fix IPv6 lookups to return empty response
+
+  [ Jeff Becker ]
+  * return NS record for localhost.loki to squash errors in host lookups
+  * prune nodedb as client and service node with no whitelist
+  * simplify logic
+  * add comment
+  * add additional case check and documentation comments for pruning logic
+  * typo fix
+  * typo fix
+  * limit path builds on snode sessions
+  * fully randomize hop selection
+  * code dedup
+  * remove dead code
+
+  [ Jeff ]
+  * only try fetching identity key once so we can interrupt lokinet (#1178)
+
+  [ Jeff Becker ]
+  * typo fix
+  * use for loop
+
+  [ Jeff ]
+  * add additional case  (#1180)
+
+  [ Jeff Becker ]
+  * squash commits
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 11 Mar 2020 21:22:58 -0300
+
 lokinet (0.7.0~rc2-1) sid; urgency=medium
 
   [ Ryan Tharp ]
