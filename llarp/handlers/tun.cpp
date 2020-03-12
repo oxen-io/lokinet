@@ -407,8 +407,26 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message msg, std::function< void(dns::Message) > reply)
     {
-      // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, "
-      // of type", msg.questions[0].qtype);
+      auto ReplyToSNodeDNSWhenReady = [self = this, reply = reply](
+                                          RouterID snode, auto msg,
+                                          bool isV6) -> bool {
+        return self->EnsurePathToSNode(
+            snode, [=](const RouterID &, exit::BaseSession_ptr s) {
+              self->SendDNSReply(snode, s, msg, reply, true, isV6);
+            });
+      };
+      auto ReplyToLokiDNSWhenReady = [self = this, reply = reply](
+                                         service::Address addr, auto msg,
+                                         bool isV6) -> bool {
+        using service::Address;
+        using service::OutboundContext;
+        return self->EnsurePathToService(
+            addr,
+            [=](const Address &, OutboundContext *ctx) {
+              self->SendDNSReply(addr, ctx, msg, reply, false, isV6);
+            },
+            2s);
+      };
       std::string qname;
       if(msg.answers.size() > 0)
       {
@@ -424,10 +442,7 @@ namespace llarp
             return false;
           auto replyMsg =
               std::make_shared< dns::Message >(clear_dns_message(msg));
-          return EnsurePathToSNode(
-              addr.as_array(), [=](const RouterID &, exit::BaseSession_ptr s) {
-                SendDNSReply(addr, s, replyMsg, reply, true, false);
-              });
+          return ReplyToSNodeDNSWhenReady(addr, std::move(replyMsg), false);
         }
         else if(answer.HasCNameForTLD(".loki"))
         {
@@ -438,26 +453,9 @@ namespace llarp
           service::Address addr;
           if(not addr.FromString(qname))
             return false;
-          clear_dns_message(msg);
-          if(HasAddress(addr))
-          {
-            huint128_t ip = ObtainIPForAddr(addr, false);
-            msg.AddINReply(ip, false);
-            reply(msg);
-            return true;
-          }
-          else
-          {
-            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
-            using service::Address;
-            using service::OutboundContext;
-            return EnsurePathToService(
-                addr,
-                [=](const Address &, OutboundContext *ctx) {
-                  SendDNSReply(addr, ctx, replyMsg, reply, false, false);
-                },
-                2s);
-          }
+          auto replyMsg =
+              std::make_shared< dns::Message >(clear_dns_message(msg));
+          return ReplyToLokiDNSWhenReady(addr, replyMsg, false);
         }
       }
       if(msg.questions.size() != 1)
@@ -484,7 +482,9 @@ namespace llarp
         {
           RouterID random;
           if(Router()->GetRandomGoodRouter(random))
+          {
             msg.AddCNAMEReply(random.ToString(), 1);
+          }
           else
             msg.AddNXReply();
         }
@@ -521,7 +521,11 @@ namespace llarp
         {
           RouterID random;
           if(Router()->GetRandomGoodRouter(random))
+          {
             msg.AddCNAMEReply(random.ToString(), 1);
+            return ReplyToSNodeDNSWhenReady(
+                random, std::make_shared< dns::Message >(msg), isV6);
+          }
           else
             msg.AddNXReply();
         }
@@ -550,23 +554,10 @@ namespace llarp
           {
             msg.hdr_fields |= dns::flags_QR | dns::flags_AA | dns::flags_RA;
           }
-          else if(HasAddress(addr))
-          {
-            huint128_t ip = ObtainIPForAddr(addr, false);
-            msg.AddINReply(ip, isV6);
-          }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(msg);
-            using service::Address;
-            using service::OutboundContext;
-            return EnsurePathToService(
-                addr,
-                [=](const Address &, OutboundContext *ctx) {
-                  SendDNSReply(addr, ctx, replyMsg, reply, false,
-                               isV6 || !isV4);
-                },
-                2s);
+            return ReplyToLokiDNSWhenReady(
+                addr, std::make_shared< dns::Message >(msg), isV6);
           }
         }
         else if(addr.FromString(qname, ".snode"))
@@ -577,12 +568,8 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
-            return EnsurePathToSNode(
-                addr.as_array(),
-                [=](const RouterID &, exit::BaseSession_ptr s) {
-                  SendDNSReply(addr, s, replyMsg, reply, true, isV6);
-                });
+            return ReplyToSNodeDNSWhenReady(
+                addr.as_array(), std::make_shared< dns::Message >(msg), isV6);
           }
         }
         else
