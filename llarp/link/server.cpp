@@ -267,7 +267,11 @@ namespace llarp
     {
       Lock_t l(m_AuthedLinksMutex);
       if(m_AuthedLinks.count(rc.pubkey) >= MaxSessionsPerKey)
+      {
+        LogDebug("Too many links to ", RouterID{rc.pubkey},
+                 ", not establishing another one");
         return false;
+      }
     }
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
@@ -276,7 +280,12 @@ namespace llarp
     {
       Lock_t l(m_PendingMutex);
       if(m_Pending.count(addr) >= MaxSessionsPerKey)
+      {
+        LogDebug("Too many pending connections to ", addr,
+                 " while establishing to ", RouterID{rc.pubkey},
+                 ", not establishing another");
         return false;
+      }
     }
     std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
@@ -385,7 +394,10 @@ namespace llarp
     while(itr != range.second)
     {
       if(itr->second->ShouldPing())
+      {
+        LogDebug("keepalive to ", remote);
         itr->second->SendKeepAlive();
+      }
       ++itr;
     }
   }

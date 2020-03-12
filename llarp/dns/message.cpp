@@ -84,8 +84,8 @@ namespace llarp
       hdr.fields   = hdr_fields;
       hdr.qd_count = questions.size();
       hdr.an_count = answers.size();
-      hdr.ns_count = authorities.size();
-      hdr.ar_count = additional.size();
+      hdr.ns_count = 0;
+      hdr.ar_count = 0;
 
       if(!hdr.Encode(buf))
         return false;
@@ -96,14 +96,6 @@ namespace llarp
 
       for(const auto& answer : answers)
         if(!answer.Encode(buf))
-          return false;
-
-      for(const auto& auth : authorities)
-        if(!auth.Encode(buf))
-          return false;
-
-      for(const auto& rr : additional)
-        if(!rr.Encode(buf))
           return false;
 
       return true;
@@ -125,28 +117,10 @@ namespace llarp
       {
         if(not an.Decode(buf))
         {
-          llarp::LogError("failed to decode answer");
+          llarp::LogDebug("failed to decode answer");
           return false;
         }
       }
-      /*
-      for(auto& auth : authorities)
-      {
-        if(!auth.Decode(buf))
-        {
-          llarp::LogError("failed to decode auth");
-          return false;
-        }
-      }
-      for(auto& rr : additional)
-      {
-        if(!rr.Decode(buf))
-        {
-          llarp::LogError("failed to decode additional");
-          return false;
-        }
-      }
-      */
       return true;
     }
 
@@ -162,12 +136,18 @@ namespace llarp
       }
     }
 
+    static constexpr uint16_t
+    reply_flags(uint16_t setbits)
+    {
+      return setbits | flags_QR | flags_AA | flags_RA;
+    }
+
     void
     Message::AddINReply(llarp::huint128_t ip, bool isV6, RR_TTL_t ttl)
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        hdr_fields = reply_flags(hdr_fields);
         ResourceRecord rec;
         rec.rr_name  = questions[0].qname;
         rec.rr_class = qClassIN;
@@ -193,7 +173,8 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        hdr_fields = reply_flags(hdr_fields);
+
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -213,11 +194,37 @@ namespace llarp
     }
 
     void
+    Message::AddNSReply(std::string name, RR_TTL_t ttl)
+    {
+      if(not questions.empty())
+      {
+        hdr_fields = reply_flags(hdr_fields);
+
+        const auto& question = questions[0];
+        answers.emplace_back();
+        auto& rec                     = answers.back();
+        rec.rr_name                   = question.qname;
+        rec.rr_type                   = qTypeNS;
+        rec.rr_class                  = qClassIN;
+        rec.ttl                       = ttl;
+        std::array< byte_t, 512 > tmp = {{0}};
+        llarp_buffer_t buf(tmp);
+        if(EncodeName(&buf, name))
+        {
+          buf.sz = buf.cur - buf.base;
+          rec.rData.resize(buf.sz);
+          memcpy(rec.rData.data(), buf.base, buf.sz);
+        }
+      }
+    }
+
+    void
     Message::AddCNAMEReply(std::string name, RR_TTL_t ttl)
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        hdr_fields = reply_flags(hdr_fields);
+
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -241,7 +248,8 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA;
+        hdr_fields = reply_flags(hdr_fields);
+
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -266,7 +274,7 @@ namespace llarp
       if(questions.size())
       {
         // authorative response with recursion available
-        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        hdr_fields = reply_flags(hdr_fields);
         // don't allow recursion on this request
         hdr_fields &= ~flags_RD;
         hdr_fields |= flags_RCODENameError;

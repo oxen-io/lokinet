@@ -146,11 +146,10 @@ namespace llarp
       return;
 
     util::Lock l(_mutex);
-
-    m_PersistingSessions[remote] =
-        std::max(until, m_PersistingSessions[remote]);
-    LogDebug("persist session to ", remote, " until ",
-             m_PersistingSessions[remote].count());
+    auto &curr = m_PersistingSessions[remote];
+    if(until > curr)
+      curr = until;
+    LogDebug("persist session to ", remote, " until ", curr - time_now_ms());
   }
 
   void
@@ -307,7 +306,6 @@ namespace llarp
           auto link = GetLinkWithSessionTo(itr->first);
           if(link)
           {
-            LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
           }
           else

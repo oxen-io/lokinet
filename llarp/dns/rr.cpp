@@ -58,22 +58,22 @@ namespace llarp
         return false;
       if(!buf->read_uint16(rr_type))
       {
-        llarp::LogError("failed to decode rr type");
+        llarp::LogDebug("failed to decode rr type");
         return false;
       }
       if(!buf->read_uint16(rr_class))
       {
-        llarp::LogError("failed to decode rr class");
+        llarp::LogDebug("failed to decode rr class");
         return false;
       }
       if(!buf->read_uint32(ttl))
       {
-        llarp::LogError("failed to decode ttl");
+        llarp::LogDebug("failed to decode ttl");
         return false;
       }
       if(!DecodeRData(buf, rData))
       {
-        llarp::LogError("failed to decode rr rdata ", *this);
+        llarp::LogDebug("failed to decode rr rdata ", *this);
         return false;
       }
       return true;

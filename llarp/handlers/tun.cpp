@@ -448,7 +448,7 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(msg);
+            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
@@ -509,12 +509,15 @@ namespace llarp
       else if(msg.questions[0].qtype == dns::qTypeA
               || msg.questions[0].qtype == dns::qTypeAAAA)
       {
-        const bool isV6 =
-            msg.questions[0].qtype == dns::qTypeAAAA && SupportsV6();
+        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
         const bool isV4 = msg.questions[0].qtype == dns::qTypeA;
         llarp::service::Address addr;
+        if(isV6 && !SupportsV6())
+        {  // empty reply but not a NXDOMAIN so that client can retry IPv4
+          msg.AddNSReply("localhost.loki.");
+        }
         // on MacOS this is a typeA query
-        if(is_random_snode(msg))
+        else if(is_random_snode(msg))
         {
           RouterID random;
           if(Router()->GetRandomGoodRouter(random))
@@ -554,7 +557,7 @@ namespace llarp
           }
           else
           {
-            auto replyMsg = std::make_shared< dns::Message >(std::move(msg));
+            auto replyMsg = std::make_shared< dns::Message >(msg);
             using service::Address;
             using service::OutboundContext;
             return EnsurePathToService(
