@@ -47,10 +47,10 @@ namespace tooling
 
     py::class_< PubIntroReceivedEvent, RouterEvent >(mod,
                                                      "DhtPubIntroReceivedEvent")
-        .def_readonly("from", &PubIntroReceivedEvent::From)
-        .def_readonly("location", &PubIntroReceivedEvent::IntrosetLocation)
-        .def_readonly("relayOrder", &PubIntroReceivedEvent::RelayOrder)
-        .def_readonly("txid", &PubIntroReceivedEvent::TxID);
+        .def_readonly("from", &PubIntroReceivedEvent::from)
+        .def_readonly("location", &PubIntroReceivedEvent::location)
+        .def_readonly("relayOrder", &PubIntroReceivedEvent::relayOrder)
+        .def_readonly("txid", &PubIntroReceivedEvent::txid);
 
     py::class_< GotIntroReceivedEvent, RouterEvent >(mod,
                                                      "DhtGotIntroReceivedEvent")
