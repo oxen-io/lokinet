@@ -48,4 +48,18 @@ namespace tooling
     uint64_t status;
   };
 
+  struct PathBuildRejectedEvent : public RouterEvent
+  {
+    PathBuildRejectedEvent(const llarp::RouterID& routerID,
+                           const llarp::PathID_t rxid,
+                           const llarp::RouterID& rejectedBy);
+
+
+    std::string
+    ToString() const override;
+
+    llarp::PathID_t rxid;
+    llarp::RouterID rejectedBy;
+  };
+
 }  // namespace tooling

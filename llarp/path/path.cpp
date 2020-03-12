@@ -15,6 +15,7 @@
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 #include <util/thread/logic.hpp>
+#include <tooling/path_event.hpp>
 
 #include <deque>
 
@@ -201,6 +202,11 @@ namespace llarp
       {
         if(failedAt.has_value())
         {
+          auto ev = std::make_unique< tooling::PathBuildRejectedEvent >(
+              Endpoint(),
+              RXID(),
+              failedAt.value());
+          r->NotifyRouterEvent(std::move(ev));
           LogWarn(Name(), " build failed at ", failedAt.value());
           r->routerProfiling().MarkHopFail(failedAt.value());
         }
