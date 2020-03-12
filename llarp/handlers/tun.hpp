@@ -278,6 +278,7 @@ namespace llarp
         if(ctx)
         {
           huint128_t ip = ObtainIPForAddr(addr, snode);
+          query->answers.clear();
           query->AddINReply(ip, sendIPv6);
         }
         else

@@ -69,9 +69,6 @@ namespace llarp
     bool
     HasSessionTo(const RouterID& pk);
 
-    bool
-    HasSessionVia(const Addr& addr);
-
     void
     ForEachSession(std::function< void(const ILinkSession*) > visit,
                    bool randomize = false) const EXCLUDES(m_AuthedLinksMutex);

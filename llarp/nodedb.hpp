@@ -155,10 +155,6 @@ struct llarp_nodedb
   select_random_exit(llarp::RouterContact &rc) EXCLUDES(access);
 
   bool
-  select_random_hop(const llarp::RouterContact &prev,
-                    llarp::RouterContact &result, size_t N) EXCLUDES(access);
-
-  bool
   select_random_hop_excluding(llarp::RouterContact &result,
                               const std::set< llarp::RouterID > &exclude)
       EXCLUDES(access);

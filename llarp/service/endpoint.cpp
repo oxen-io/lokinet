@@ -667,7 +667,7 @@ namespace llarp
 
         auto range = serviceLookups.equal_range(addr);
         auto i     = range.first;
-        if(i != range.second)
+        while(i != range.second)
         {
           i->second(addr, itr->second.get());
           ++i;
@@ -945,7 +945,7 @@ namespace llarp
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                  endpoint);
         fails[endpoint] = fails[endpoint] + 1;
-        // inform all
+        // inform one
         auto range = lookups.equal_range(addr);
         auto itr   = range.first;
         if(itr != range.second)
