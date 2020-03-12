@@ -129,10 +129,8 @@ namespace llarp
         {
           LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
           auto *router = dht.GetRouter();
-          tooling::RouterEventPtr event =
-              std::make_unique< tooling::RCGossipReceivedEvent >(
+          router->NotifyRouterEvent< tooling::RCGossipReceivedEvent >(
                   router->pubkey(), rc);
-          router->NotifyRouterEvent(std::move(event));
           router->GossipRCIfNeeded(rc);
         }
       }

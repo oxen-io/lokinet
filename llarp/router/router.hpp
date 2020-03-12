@@ -43,11 +43,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tooling
-{
-  struct RouterHive;
-}  // namespace tooling
-
 namespace llarp
 {
   struct Config;
@@ -313,9 +308,6 @@ namespace llarp
 
     void
     GossipRCIfNeeded(const RouterContact rc) override;
-
-    void
-    NotifyRouterEvent(tooling::RouterEventPtr event) const override;
 
     Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
            llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);

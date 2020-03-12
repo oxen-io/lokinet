@@ -44,9 +44,8 @@ namespace llarp
     void
     handle()
     {
-      auto ev = std::make_unique< tooling::PathStatusReceivedEvent >(
+      router->NotifyRouterEvent< tooling::PathStatusReceivedEvent >(
           router->pubkey(), pathid, status);
-      router->NotifyRouterEvent(std::move(ev));
 
       path->HandleLRSM(status, frames, router);
     }

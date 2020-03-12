@@ -68,19 +68,20 @@ namespace tooling
         .def_readonly("rc", &RCGossipSentEvent::rc)
         .def("LongString", &RCGossipSentEvent::LongString);
 
-    py::class_< FindRouterSentEvent, RouterEvent >(mod, "FindRouterSentEvent")
-        .def_readonly("from", &FindRouterSentEvent::from)
-        .def_readonly("iterative", &FindRouterSentEvent::iterative)
-        .def_readonly("exploritory", &FindRouterSentEvent::exploritory)
-        .def_readonly("txid", &FindRouterSentEvent::txid)
-        .def_readonly("version", &FindRouterSentEvent::version);
+    py::class_< FindRouterEvent, RouterEvent >(mod, "FindRouterEvent")
+        .def_readonly("from", &FindRouterEvent::from)
+        .def_readonly("iterative", &FindRouterEvent::iterative)
+        .def_readonly("exploritory", &FindRouterEvent::exploritory)
+        .def_readonly("txid", &FindRouterEvent::txid)
+        .def_readonly("version", &FindRouterEvent::version);
 
-    py::class_< FindRouterReceivedEvent, RouterEvent >(mod, "FindRouterReceivedEvent")
-        .def_readonly("from", &FindRouterReceivedEvent::from)
-        .def_readonly("iterative", &FindRouterReceivedEvent::iterative)
-        .def_readonly("exploritory", &FindRouterReceivedEvent::exploritory)
-        .def_readonly("txid", &FindRouterReceivedEvent::txid)
-        .def_readonly("version", &FindRouterReceivedEvent::version);
+    py::class_< FindRouterReceivedEvent,
+                FindRouterEvent,
+                RouterEvent >(mod, "FindRouterReceivedEvent");
+
+    py::class_< FindRouterSentEvent,
+                FindRouterEvent,
+                RouterEvent >(mod, "FindRouterSentEvent");
   }
 
 }  // namespace tooling

@@ -156,13 +156,9 @@ namespace llarp
       auto &dht = *ctx->impl;
 
       auto router = dht.GetRouter();
-      auto ev = std::make_unique< tooling::FindRouterReceivedEvent >(router->pubkey());
-      ev->targetKey = targetKey;
-      ev->iterative = iterative;
-      ev->exploritory = exploritory;
-      ev->txid = txid;
-      ev->version = version;
-      router->NotifyRouterEvent(std::move(ev));
+      router->NotifyRouterEvent< tooling::FindRouterReceivedEvent >(
+          router->pubkey(),
+          this);
 
       if(!dht.AllowTransit())
       {

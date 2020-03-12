@@ -99,10 +99,9 @@ namespace llarp
         return;
       msg.resize(buf.cur - buf.base);
 
-      tooling::RouterEventPtr event =
-          std::make_unique< tooling::RCGossipSentEvent >(m_router->pubkey(),
-                                                         rc);
-      m_router->NotifyRouterEvent(std::move(event));
+      m_router->NotifyRouterEvent< tooling::RCGossipSentEvent >(
+          m_router->pubkey(),
+          rc);
 
       // send message
       peerSession->SendMessageBuffer(std::move(msg), nullptr);

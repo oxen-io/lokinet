@@ -24,9 +24,6 @@
 #include <ev/ev.hpp>
 
 #include "tooling/router_event.hpp"
-#ifdef LOKINET_HIVE
-#include "tooling/router_hive.hpp"
-#endif
 
 #include <fstream>
 #include <cstdlib>
@@ -133,16 +130,6 @@ namespace llarp
     if(std::chrono::milliseconds{Uptime()} < _randomStartDelay)
       return;
     _rcGossiper.GossipRC(rc);
-  }
-
-  void
-  Router::NotifyRouterEvent(tooling::RouterEventPtr event) const
-  {
-#ifdef LOKINET_HIVE
-    hive->NotifyEvent(std::move(event));
-#elif LOKINET_DEBUG
-    LogDebug(event->ToString());
-#endif
   }
 
   bool

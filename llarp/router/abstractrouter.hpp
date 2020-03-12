@@ -12,15 +12,14 @@
 #include <router_contact.hpp>
 #include <tooling/router_event.hpp>
 
+#ifdef LOKINET_HIVE
+#include "tooling/router_hive.hpp"
+#endif
+
 struct llarp_buffer_t;
 struct llarp_dht_context;
 struct llarp_nodedb;
 struct llarp_threadpool;
-
-namespace tooling
-{
-  struct RouterHive;
-}  // namespace tooling
 
 namespace llarp
 {
@@ -271,8 +270,18 @@ namespace llarp
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
-    virtual void
-    NotifyRouterEvent(tooling::RouterEventPtr event) const = 0;
+    template<class EventType, class... Params>
+    void
+    NotifyRouterEvent(Params&&... args) const
+    {
+      // TODO: no-op when appropriate
+      auto event = std::make_unique< EventType >(args...);
+#ifdef LOKINET_HIVE
+      hive->NotifyEvent(std::move(event));
+#elif LOKINET_DEBUG
+      LogDebug(event->ToString());
+#endif
+    }
   };
 }  // namespace llarp
 

@@ -3,6 +3,7 @@
 #include "router_event.hpp"
 #include "dht/key.hpp"
 #include "service/intro_set.hpp"
+#include "dht/messages/findrouter.hpp"
 
 namespace tooling
 {
@@ -55,17 +56,25 @@ namespace tooling
     ToString() const override;
   };
 
-  struct FindRouterSentEvent : public RouterEvent
+  struct FindRouterEvent : public RouterEvent
   {
     llarp::dht::Key_t from;
     llarp::RouterID targetKey;
-    bool iterative = false;
-    bool exploritory = false;
-    uint64_t txid = 0;
-    uint64_t version = 0;
+    bool iterative;
+    bool exploritory;
+    uint64_t txid;
+    uint64_t version;
 
-    FindRouterSentEvent(const llarp::RouterID& ourRouter)
-      : RouterEvent("DHT: FindRouterSentEvent", ourRouter, true)
+    FindRouterEvent(
+      const llarp::RouterID& ourRouter,
+      const llarp::dht::FindRouterMessage& msg)
+      : RouterEvent("DHT: FindRouterEvent", ourRouter, true)
+      , from(msg.From)
+      , targetKey(msg.targetKey)
+      , iterative(msg.iterative)
+      , exploritory(msg.exploritory)
+      , txid(msg.txid)
+      , version(msg.version)
     {
     }
 
@@ -82,31 +91,14 @@ namespace tooling
     }
   };
 
-  struct FindRouterReceivedEvent : public RouterEvent
+  struct FindRouterReceivedEvent : public FindRouterEvent
   {
-    llarp::dht::Key_t from;
-    llarp::RouterID targetKey;
-    bool iterative = false;
-    bool exploritory = false;
-    uint64_t txid = 0;
-    uint64_t version = 0;
+    using FindRouterEvent::FindRouterEvent;
+  };
 
-    FindRouterReceivedEvent(const llarp::RouterID& ourRouter)
-      : RouterEvent("DHT: FindRouterReceivedEvent", ourRouter, false)
-    {
-    }
-
-    std::string
-    ToString() const override
-    {
-      return RouterEvent::ToString()
-        +" from "+ from.ShortHex()
-        +", targetKey: "+ targetKey.ToString()
-        +", iterative: "+ std::to_string(iterative)
-        +", exploritory "+ std::to_string(exploritory)
-        +", txid "+ std::to_string(txid)
-        +", version "+ std::to_string(version);
-    }
+  struct FindRouterSentEvent : public FindRouterEvent
+  {
+    using FindRouterEvent::FindRouterEvent;
   };
 
 }  // namespace tooling

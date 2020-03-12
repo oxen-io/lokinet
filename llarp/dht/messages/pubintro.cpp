@@ -63,10 +63,9 @@ namespace llarp
       const auto keyStr = addr.ToHex();
 
       auto router = ctx->impl->GetRouter();
-      auto ev     = std::make_unique< tooling::PubIntroReceivedEvent >(
+      router->NotifyRouterEvent< tooling::PubIntroReceivedEvent >(
           router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()),
           addr, txID, relayOrder);
-      router->NotifyRouterEvent(std::move(ev));
 
       auto &dht = *ctx->impl;
       if(!introset.Verify(now))

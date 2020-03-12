@@ -1,4 +1,5 @@
 #include <chrono>
+#include <memory>
 #include <service/endpoint.hpp>
 
 #include <dht/context.hpp>
@@ -479,11 +480,10 @@ namespace llarp
       {
         for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
-          auto ev = std::make_unique< tooling::PubIntroSentEvent >(
+          r->NotifyRouterEvent< tooling::PubIntroSentEvent >(
               r->pubkey(),
               llarp::dht::Key_t{introset.derivedSigningKey.as_array()},
               RouterID(path->hops[path->hops.size() - 1].rc.pubkey), published);
-          r->NotifyRouterEvent(std::move(ev));
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
         }
@@ -771,6 +771,8 @@ namespace llarp
     bool
     Endpoint::LookupRouterAnon(RouterID router, RouterLookupHandler handler)
     {
+      using llarp::dht::FindRouterMessage;
+
       auto& routers = m_state->m_PendingRouters;
       if(routers.find(router) == routers.end())
       {
@@ -778,15 +780,19 @@ namespace llarp
         routing::DHTMessage msg;
         auto txid = GenTXID();
         msg.M.emplace_back(
-            std::make_unique< dht::FindRouterMessage >(txid, router));
+            std::make_unique< FindRouterMessage >(txid, router));
 
         if(path && path->SendRoutingMessage(msg, Router()))
         {
 
-          auto ev = std::make_unique< tooling::FindRouterSentEvent >(m_router->pubkey());
-          ev->txid = txid;
-          ev->targetKey = router;
-          m_router->NotifyRouterEvent(std::move(ev));
+          RouterLookupJob job(this, handler);
+
+          assert(msg.M.size() == 1);
+          auto dhtMsg = dynamic_cast< FindRouterMessage* >(msg.M[0].get());
+
+          m_router->NotifyRouterEvent< tooling::FindRouterSentEvent >(
+              m_router->pubkey(),
+              dhtMsg);
 
           routers.emplace(router, RouterLookupJob(this, handler));
           return true;

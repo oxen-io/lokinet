@@ -132,10 +132,9 @@ namespace llarp
   {
     if(!ctx->pathset->IsStopped())
     {
-      tooling::RouterEventPtr event =
-          std::make_unique< tooling::PathAttemptEvent >(ctx->router->pubkey(),
-                                                        ctx->path);
-      ctx->router->NotifyRouterEvent(std::move(event));
+      ctx->router->NotifyRouterEvent< tooling::PathAttemptEvent >(
+          ctx->router->pubkey(),
+          ctx->path);
 
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;

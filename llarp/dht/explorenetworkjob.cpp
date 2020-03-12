@@ -18,9 +18,9 @@ namespace llarp
 
       auto msg = new FindRouterMessage(peer.txid);
       auto router = parent->GetRouter();
-      auto ev = std::make_unique< tooling::FindRouterSentEvent >(router->pubkey());
-      ev->targetKey = msg->targetKey;
-      router->NotifyRouterEvent(std::move(ev));
+      router->NotifyRouterEvent< tooling::FindRouterSentEvent >(
+          router->pubkey(),
+          msg);
 
       parent->DHTSendTo(peer.node.as_array(), msg);
     }

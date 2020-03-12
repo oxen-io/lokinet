@@ -27,11 +27,10 @@ namespace llarp
       auto &dht    = *ctx->impl;
       auto *router = dht.GetRouter();
 
-      auto ev = std::make_unique< tooling::GotIntroReceivedEvent >(
+      router->NotifyRouterEvent< tooling::GotIntroReceivedEvent >(
           router->pubkey(), Key_t(From.data()),
           (found.size() > 0 ? found[0] : llarp::service::EncryptedIntroSet{}),
           txid);
-      router->NotifyRouterEvent(std::move(ev));
 
       for(const auto &introset : found)
       {
