@@ -5,6 +5,7 @@
 #include <router_contact.hpp>
 #include <util/fs.hpp>
 #include <util/str.hpp>
+#include <config/ini.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -16,7 +17,8 @@
 struct llarp_config;
 namespace llarp
 {
-  struct ConfigParser;
+  using SectionValues_t = llarp::ConfigParser::SectionValues_t;
+  using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
   inline const char*
   lokinetEnv(string_view suffix);
@@ -88,8 +90,8 @@ namespace llarp
     nonstd::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
     // clang-format on
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   class NetworkConfig
@@ -111,8 +113,8 @@ namespace llarp
     const NetConfig& netConfig() const             { return m_netConfig; }
     // clang-format on
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   class NetdbConfig
@@ -125,16 +127,16 @@ namespace llarp
     std::string nodedbDir() const { return fromEnv(m_nodedbDir, "NODEDB_DIR"); }
     // clang-format on
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct DnsConfig
   {
     std::unordered_multimap<std::string, std::string> netConfig;
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   class LinksConfig
@@ -160,31 +162,31 @@ namespace llarp
     const Links& inboundLinks() const { return m_InboundLinks; }
     // clang-format on
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct ConnectConfig
   {
     std::vector<std::string> routers;
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct ServicesConfig
   {
-    std::vector<std::pair<std::string, std::string>> services;
-    void
-    fromSection(string_view key, string_view val);
+    std::vector< std::pair< std::string, std::string > > services;
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct SystemConfig
   {
     std::string pidfile;
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   class ApiConfig
@@ -199,8 +201,8 @@ namespace llarp
     std::string rpcBindAddr() const { return fromEnv(m_rpcBindAddr, "RPC_BIND_ADDR"); }
     // clang-format on
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct LokidConfig
@@ -212,15 +214,15 @@ namespace llarp
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct BootstrapConfig
   {
-    std::vector<std::string> routers;
-    void
-    fromSection(string_view key, string_view val);
+    std::vector< std::string > routers;
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct LoggingConfig
@@ -228,8 +230,8 @@ namespace llarp
     bool m_LogJSON = false;
     FILE* m_LogFile = stdout;
 
-    void
-    fromSection(string_view key, string_view val);
+    bool
+    parseSectionValues(const ConfigParser& parser, const SectionValues_t& values);
   };
 
   struct Config

@@ -5,6 +5,7 @@
 #include <constants/limits.hpp>
 #include <net/net.hpp>
 #include <router_contact.hpp>
+#include <stdexcept>
 #include <util/fs.hpp>
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
@@ -92,138 +93,171 @@ namespace llarp
     return {};
   }
 
-  void
-  RouterConfig::fromSection(string_view key, string_view val)
+  bool
+  RouterConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "job-queue-size")
+    // [router]:job-queue-size
+    auto parsedValue = parser.getSingleSectionValue(values, "router", "job-queue-size", false);
+    if (not parsedValue.empty()) 
     {
-      auto sval = svtoi(val);
-      if (sval >= 1024)
-      {
-        m_JobQueueSize = sval;
-        LogInfo("Set job queue size to ", m_JobQueueSize);
-      }
-    }
-    if (key == "default-protocol")
-    {
-      m_DefaultLinkProto = str(val);
-      LogInfo("overriding default link protocol to '", val, "'");
-    }
-    if (key == "netid")
-    {
-      if (val.size() <= NetID::size())
-      {
-        m_netId = str(val);
-        LogInfo("setting netid to '", val, "'");
-      }
+      int val = svtoi(parsedValue);
+      if (val < 1024)
+        throw std::invalid_argument("invalid value for [router]:job-queue-size, must be 1024 or greater");
       else
-      {
-        llarp::LogError("invalid netid '", val, "', is too long");
-      }
+        m_JobQueueSize = val;
     }
-    if (key == "max-connections")
+
+    // [router]:default-protocol
+    parsedValue = parser.getSingleSectionValue(values, "router", "default-protocol", false);
+    if (not parsedValue.empty())
+      m_DefaultLinkProto = parsedValue;
+
+    // [router]:netid
+    parsedValue = parser.getSingleSectionValue(values, "router", "netid", true);
+    assert(not parsedValue.empty()); // gauranteed by getSingleSectionValue() with required == true
+    if(parsedValue.size() > NetID::size())
+      throw std::invalid_argument("value for [router]:netid is too long");
+    m_netId = str(parsedValue);
+
+    // [router]:max-connections
+    parsedValue = parser.getSingleSectionValue(values, "router", "max-connections", false);
+    if (not parsedValue.empty())
     {
-      auto ival = svtoi(val);
-      if (ival > 0)
-      {
-        m_maxConnectedRouters = ival;
-        LogInfo("max connections set to ", m_maxConnectedRouters);
-      }
+      int val = svtoi(parsedValue);
+      if (val < 1)
+        throw std::invalid_argument("invalid value for [router]:max-connections");
+      else
+        m_maxConnectedRouters = val;
     }
-    if (key == "min-connections")
+
+    // [router]:min-connections
+    parsedValue = parser.getSingleSectionValue(values, "router", "min-connections", false);
+    if (not parsedValue.empty())
     {
-      auto ival = svtoi(val);
-      if (ival > 0)
-      {
-        m_minConnectedRouters = ival;
-        LogInfo("min connections set to ", m_minConnectedRouters);
-      }
+      int val = svtoi(parsedValue);
+      if (val < 1)
+        throw std::invalid_argument("invalid value for [router]:min-connections");
+      else
+        m_minConnectedRouters = val;
     }
-    if (key == "nickname")
+
+    // additional check that min <= max
+    if (m_minConnectedRouters > m_maxConnectedRouters)
+      throw std::invalid_argument("[router]:min-connections must be less than [router]:max-connections");
+
+    // [router]:nickname
+    parsedValue = parser.getSingleSectionValue(values, "router", "nickname", false);
+    if (not parsedValue.empty())
     {
-      m_nickname = str(val);
-      // set logger name here
+      m_nickname = str(parsedValue);
+      // TODO: side effect here, no side effects in config parsing!!
       LogContext::Instance().nodeName = nickname();
-      LogInfo("nickname set");
     }
-    if (key == "encryption-privkey")
+
+    // [router]:encryption-privkey
+    parsedValue = parser.getSingleSectionValue(values, "router", "encryption-privkey", false);
+    if (not parsedValue.empty())
+      m_encryptionKeyfile = str(parsedValue);
+
+    // [router]:contact-file
+    parsedValue = parser.getSingleSectionValue(values, "router", "contact-file", false);
+    if (not parsedValue.empty())
+      m_ourRcFile = str(parsedValue);
+
+    // [router]:transport-privkey
+    parsedValue = parser.getSingleSectionValue(values, "router", "transport-privkey", false);
+    if (not parsedValue.empty())
+      m_transportKeyfile = str(parsedValue);
+
+    // [router]:identity-privkey OR
+    // [router]:ident-privkey
+    // apparently loki-launcher made its own config files at one point and typoed this,
+    // so we support both
+    parsedValue = parser.getSingleSectionValue(values, "router", "identity-privkey", false);
+    if (parsedValue.empty()) 
+      parsedValue = parser.getSingleSectionValue(values, "router", "ident-privkey", false);
+    if (not parsedValue.empty())
+      m_identKeyfile = str(parsedValue);
+
+    // [router]:public-address OR
+    // [router]:public-ip
+    // apparently loki-launcher made its own config files at one point and typoed this,
+    // so we support both
+    parsedValue = parser.getSingleSectionValue(values, "router", "public-address", false);
+    if (parsedValue.empty()) 
+      parsedValue = parser.getSingleSectionValue(values, "router", "public-ip", false);
+    if (not parsedValue.empty())
     {
-      m_encryptionKeyfile = str(val);
-      LogDebug("encryption key set to ", m_encryptionKeyfile);
-    }
-    if (key == "contact-file")
-    {
-      m_ourRcFile = str(val);
-      LogDebug("rc file set to ", m_ourRcFile);
-    }
-    if (key == "transport-privkey")
-    {
-      m_transportKeyfile = str(val);
-      LogDebug("transport key set to ", m_transportKeyfile);
-    }
-    if ((key == "identity-privkey" || key == "ident-privkey"))
-    {
-      m_identKeyfile = str(val);
-      LogDebug("identity key set to ", m_identKeyfile);
-    }
-    if (key == "public-address" || key == "public-ip")
-    {
-      llarp::LogInfo("public ip ", val, " size ", val.size());
-      if (val.size() < 17)
+      llarp::LogInfo("public ip ", parsedValue, " size ", parsedValue.size());
+      if(parsedValue.size() < 17)
       {
         // assume IPv4
-        llarp::Addr a(val);
+        llarp::Addr a(parsedValue);
         llarp::LogInfo("setting public ipv4 ", a);
         m_addrInfo.ip = *a.addr6();
         m_publicOverride = true;
       }
     }
-    if (key == "public-port")
+
+    // [router]:public-port
+    parsedValue = parser.getSingleSectionValue(values, "router", "public-port", false);
+    if (not parsedValue.empty()) 
     {
-      llarp::LogInfo("Setting public port ", val);
-      int p = svtoi(val);
+      llarp::LogInfo("Setting public port ", parsedValue);
+      int p = svtoi(parsedValue);
       // Not needed to flip upside-down - this is done in llarp::Addr(const
       // AddressInfo&)
       m_ip4addr.sin_port = p;
       m_addrInfo.port = p;
       m_publicOverride = true;
     }
-    if (key == "worker-threads" || key == "threads")
+
+    // [router]:worker-threads OR
+    // [router]:threads
+    // apparently loki-launcher made its own config files at one point and typoed this,
+    // so we support both
+    parsedValue = parser.getSingleSectionValue(values, "router", "worker-threads", false);
+    if (parsedValue.empty()) 
+      parsedValue = parser.getSingleSectionValue(values, "router", "threads", false);
+    if (not parsedValue.empty())
     {
-      m_workerThreads = svtoi(val);
-      if (m_workerThreads <= 0)
-      {
-        LogWarn("worker threads invalid value: '", val, "' defaulting to 1");
-        m_workerThreads = 1;
-      }
+      int val = svtoi(parsedValue);
+      if(val <= 0)
+        throw std::invalid_argument("invalid value for [router]:worker-threads");
       else
-      {
-        LogDebug("set to use ", m_workerThreads, " worker threads");
-      }
+        m_workerThreads = val;
     }
-    if (key == "net-threads")
+
+    // [router]:public-port
+    parsedValue = parser.getSingleSectionValue(values, "router", "public-port", false);
+    if (not parsedValue.empty())
     {
-      m_numNetThreads = svtoi(val);
-      if (m_numNetThreads <= 0)
-      {
-        LogWarn("net threads invalid value: '", val, "' defaulting to 1");
-        m_numNetThreads = 1;
-      }
+      int val = svtoi(parsedValue);
+      if (val <= 0)
+        throw std::invalid_argument("invalid value for [router]:public-port");
       else
-      {
-        LogDebug("set to use ", m_numNetThreads, " net threads");
-      }
+        m_numNetThreads = val;
     }
-    if (key == "block-bogons")
+
+    // [router]:block-bogons
+    parsedValue = parser.getSingleSectionValue(values, "router", "block-bogons", false);
+    if (not parsedValue.empty())
     {
-      m_blockBogons = setOptBool(val);
+      auto val = setOptBool(parsedValue);
+      if (not val.has_value())
+        throw std::invalid_argument("invalid value for [router]:block-bogons");
+      else
+        m_blockBogons = val;
     }
+
+    return true;
   }
 
-  void
-  NetworkConfig::fromSection(string_view key, string_view val)
+  bool
+  NetworkConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "profiling")
+    /*
+    if(key == "profiling")
     {
       m_enableProfiling = setOptBool(val);
     }
@@ -240,21 +274,28 @@ namespace llarp
     {
       m_netConfig.emplace(str(key), str(val));  // str()'s here for gcc 5 compat
     }
+    */
+
+    return true;
   }
 
-  void
-  NetdbConfig::fromSection(string_view key, string_view val)
+  bool
+  NetdbConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "dir")
+    /*
+    if(key == "dir")
     {
       m_nodedbDir = str(val);
     }
+    */
+    return true;
   }
 
-  void
-  DnsConfig::fromSection(string_view key, string_view val)
+  bool
+  DnsConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "upstream")
+    /*
+    if(key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
       netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
@@ -264,11 +305,14 @@ namespace llarp
       llarp::LogInfo("set local dns to ", val);
       netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
     }
+    */
+    return true;
   }
 
-  void
-  LinksConfig::fromSection(string_view key, string_view val)
+  bool
+  LinksConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
+    /*
     uint16_t proto = 0;
 
     std::unordered_set<std::string> parsed_opts;
@@ -317,33 +361,41 @@ namespace llarp
       // str() here for gcc 5 compat
       m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
     }
+    */
+    return true;
   }
 
-  void
-  ConnectConfig::fromSection(string_view /*key*/, string_view val)
+  bool
+  ConnectConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    routers.emplace_back(val.begin(), val.end());
+    // routers.emplace_back(val.begin(), val.end());
+    return true;
   }
 
-  void
-  ServicesConfig::fromSection(string_view key, string_view val)
+  bool
+  ServicesConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
+    // services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
+    return true;
   }
 
-  void
-  SystemConfig::fromSection(string_view key, string_view val)
+  bool
+  SystemConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "pidfile")
+    /*
+    if(key == "pidfile")
     {
       pidfile = str(val);
     }
+    */
+    return true;
   }
 
-  void
-  ApiConfig::fromSection(string_view key, string_view val)
+  bool
+  ApiConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "enabled")
+    /*
+    if(key == "enabled")
     {
       m_enableRPCServer = IsTrueValue(val);
     }
@@ -355,12 +407,15 @@ namespace llarp
     {
       // TODO: add pubkey to whitelist
     }
+    */
+    return true;
   }
 
-  void
-  LokidConfig::fromSection(string_view key, string_view val)
+  bool
+  LokidConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "service-node-seed")
+    /*
+    if(key == "service-node-seed")
     {
       usingSNSeed = true;
       ident_keyfile = std::string{val};
@@ -381,21 +436,27 @@ namespace llarp
     {
       lokidRPCPassword = str(val);
     }
+    */
+    return true;
   }
 
-  void
-  BootstrapConfig::fromSection(string_view key, string_view val)
+  bool
+  BootstrapConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "add-node")
+    /*
+    if(key == "add-node")
     {
       routers.emplace_back(val.begin(), val.end());
     }
+    */
+    return true;
   }
 
-  void
-  LoggingConfig::fromSection(string_view key, string_view val)
+  bool
+  LoggingConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
   {
-    if (key == "type" && val == "syslog")
+    /*
+    if(key == "type" && val == "syslog")
     {
       // TODO(despair): write event log syslog class
 #if defined(_WIN32)
@@ -443,25 +504,26 @@ namespace llarp
         ::abort();
       }
     }
+    */
+    return true;
   }
 
   template < typename Section >
   Section
   find_section(const ConfigParser &parser, const std::string &name)
   {
-    Section ret;
+    Section section;
 
-    auto visitor = [&ret](const ConfigParser::Section_t& section) -> bool {
-      for (const auto& sec : section)
-      {
-        ret.fromSection(sec.first, sec.second);
-      }
-      return true;
+    auto visitor = [&](const ConfigParser::SectionValues_t& sectionValues) {
+      return section.parseSectionValues(parser, sectionValues);
     };
 
+    // TODO: exceptions, please. fuck.
+    //       parser.VisitSection just passes-through the return value of our
+    //       lambda from above
     if(parser.VisitSection(name.c_str(), visitor))
     {
-      return ret;
+      return section;
     }
 
     return {};
