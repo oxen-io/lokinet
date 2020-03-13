@@ -2,6 +2,7 @@
 #define LLARP_STR_HPP
 
 #include <util/string_view.hpp>
+#include <sstream>
 
 namespace llarp
 {
@@ -27,6 +28,18 @@ namespace llarp
 #endif
   string_view
   TrimWhitespace(string_view str);
+
+  template<typename... T>
+  std::string stringify(T&&... stuff)
+  {
+    std::ostringstream o;
+#ifdef __cpp_fold_expressions 
+    (o << ... << std::forward<T>(stuff));
+#else
+    (void) std::initializer_list<int>{(o << std::forward<T>(stuff), 0)...};
+#endif
+    return o.str();
+  }
 
 }  // namespace llarp
 
