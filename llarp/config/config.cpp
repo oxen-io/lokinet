@@ -445,9 +445,9 @@ namespace llarp
     }
   }
 
-  template <typename Section, typename Config>
+  template < typename Section >
   Section
-  find_section(Config& c, const std::string& name)
+  find_section(const ConfigParser &parser, const std::string &name)
   {
     Section ret;
 
@@ -459,7 +459,7 @@ namespace llarp
       return true;
     };
 
-    if (c.VisitSection(name.c_str(), visitor))
+    if(parser.VisitSection(name.c_str(), visitor))
     {
       return ret;
     }
