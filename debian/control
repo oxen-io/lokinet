@@ -2,7 +2,7 @@ Source: lokinet
 Section: net
 Priority: optional
 Maintainer: Jeff Becker (probably not evil) <jeff@i2p.rocks>
-Build-Depends: debhelper (>= 11), g++, cmake (>= 3.0), libcap-dev (>= 2.25), pkg-config, libuv1-dev, git, libcurl4-openssl-dev, libsodium-dev (>= 1.0.18), libsystemd-dev
+Build-Depends: debhelper (>= 11), g++, cmake (>= 3.0), pkg-config, libuv1-dev, git, libcurl4-openssl-dev, libsodium-dev (>= 1.0.18), libsystemd-dev
 Standards-Version: 3.9.6
 Homepage: https://loki.network/
 Vcs-Git: git://github.com/loki-project/lokinet-builder.git
@@ -12,7 +12,7 @@ Package: lokinet-bin
 Architecture: any
 Replaces: lokinet (<< 0.5.2-4~)
 Breaks: lokinet (<< 0.5.2-4~)
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, libcap2-bin, curl
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, curl
 Description: Lokinet anonymous, decentralized overlay network -- binaries
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
  for the internet.
