@@ -1,3 +1,9 @@
+lokinet (0.7.0~rc3-2) sid; urgency=medium
+
+  * Remove obsolete setcap deps
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 14 Mar 2020 01:37:23 -0300
+
 lokinet (0.7.0~rc3-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
