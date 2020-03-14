@@ -186,7 +186,10 @@ namespace llarp
       if(!BEncodeMaybeReadDictEntry("z", Z, read, key, buf))
         return false;
 
-      return read;
+      if(read)
+        return true;
+
+      return bencode_discard(buf);
     }
 
     bool
