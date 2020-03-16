@@ -1,3 +1,17 @@
+lokinet (0.7.0-1) sid; urgency=medium
+
+  [ Jeff Becker ]
+  * add an A Record for random.snode so that it works
+
+  [ jeff ]
+  * discard unknown fields in introset for future use
+
+  [ Jeff Becker ]
+  * fix memleak in jsonrpc
+  * cleanup
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 16 Mar 2020 14:07:07 -0300
+
 lokinet (0.7.0~rc3-2) sid; urgency=medium
 
   * Remove obsolete setcap deps
