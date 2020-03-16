@@ -81,6 +81,7 @@ namespace libuv
       m_Accept->close = &ExplicitCloseAccept;
       m_Conn.write    = nullptr;
       m_Conn.closed   = nullptr;
+      m_Conn.tick     = nullptr;
     }
 
     conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
@@ -304,9 +305,13 @@ namespace libuv
     Tick()
     {
       if(m_Accept && m_Accept->tick)
+      {
         m_Accept->tick(m_Accept);
+      }
       if(m_Conn.tick)
+      {
         m_Conn.tick(&m_Conn);
+      }
     }
 
     void
@@ -346,6 +351,7 @@ namespace libuv
     bool
     Server()
     {
+      uv_check_start(&m_Ticker, &OnTick);
       m_Accept->close = &ExplicitCloseAccept;
       return uv_tcp_bind(&m_Handle, m_Addr, 0) == 0
           && uv_listen(Stream(), 5, &OnAccept) == 0;
