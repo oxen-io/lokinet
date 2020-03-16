@@ -81,6 +81,7 @@ add_executable(${CATCH_EXE}
   util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   util/test_llarp_util_decaying_hashset.cpp
+  config/test_llarp_config_definition.cpp
   check_main.cpp)
 
 target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)

@@ -2,6 +2,7 @@ include(Version)
 
 set(LIB_UTIL_SRC
   config/config.cpp
+  config/definition.cpp
   config/ini.cpp
   config/key_manager.cpp
   constants/limits.cpp
