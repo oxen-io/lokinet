@@ -304,9 +304,14 @@ namespace libuv
     Tick()
     {
       if(m_Accept && m_Accept->tick)
+      {
         m_Accept->tick(m_Accept);
+        return;
+      }
       if(m_Conn.tick)
+      {
         m_Conn.tick(&m_Conn);
+      }
     }
 
     void
@@ -346,6 +351,7 @@ namespace libuv
     bool
     Server()
     {
+      uv_check_start(&m_Ticker, &OnTick);
       m_Accept->close = &ExplicitCloseAccept;
       return uv_tcp_bind(&m_Handle, m_Addr, 0) == 0
           && uv_listen(Stream(), 5, &OnAccept) == 0;
