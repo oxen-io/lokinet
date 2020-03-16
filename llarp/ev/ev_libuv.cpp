@@ -81,6 +81,7 @@ namespace libuv
       m_Accept->close = &ExplicitCloseAccept;
       m_Conn.write    = nullptr;
       m_Conn.closed   = nullptr;
+      m_Conn.tick     = nullptr;
     }
 
     conn_glue(conn_glue* parent) : m_TCP(nullptr), m_Accept(nullptr)
@@ -306,7 +307,6 @@ namespace libuv
       if(m_Accept && m_Accept->tick)
       {
         m_Accept->tick(m_Accept);
-        return;
       }
       if(m_Conn.tick)
       {
