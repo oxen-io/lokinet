@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <vector>
 
 namespace llarp
 {
@@ -173,6 +174,16 @@ namespace llarp
 
     ConfigDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name);
     const ConfigDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name) const;
+
+    using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
+    void visitSections(SectionVisitor visitor) const;
+
+    using DefVisitor = std::function<void(const std::string&, const ConfigDefinition_ptr&)>;
+    void visitDefinitions(const std::string& section, DefVisitor visitor) const;
+
+    // track insertion order
+    std::vector<std::string> m_sectionOrdering;
+    std::unordered_map<std::string, std::vector<std::string>> m_definitionOrdering;
   };
 
 } // namespace llarp

@@ -1,28 +1,10 @@
 #include <config/definition.hpp>
 
+#include <sstream>
 #include <stdexcept>
 
 namespace llarp
 {
-
-/// utility functions for visiting each section/definition
-///
-using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
-void visitSections(const SectionMap& sections, SectionVisitor visitor)
-{
-  for (const auto& pair : sections)
-  {
-    visitor(pair.first, pair.second);
-  }
-};
-using DefVisitor = std::function<void(const std::string&, const ConfigDefinition_ptr&)>;
-void visitDefinitions(const DefinitionMap& defs, DefVisitor visitor)
-{
-  for (const auto& pair : defs)
-  {
-    visitor(pair.first, pair.second);
-  }
-};
 
 ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
                                            std::string name_,
@@ -38,11 +20,16 @@ ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
 Configuration&
 Configuration::addDefinition(ConfigDefinition_ptr def)
 {
+  auto sectionItr = m_definitions.find(def->section);
+  if (sectionItr == m_definitions.end())
+    m_sectionOrdering.push_back(def->section);
+
   auto& sectionDefinitions = m_definitions[def->section];
   if (sectionDefinitions.find(def->name) != sectionDefinitions.end())
     throw std::invalid_argument(stringify("definition for [",
           def->section, "]:", def->name, " already exists"));
 
+  m_definitionOrdering[def->section].push_back(def->name);
   sectionDefinitions[def->name] = std::move(def);
 
   return *this;
@@ -55,6 +42,52 @@ Configuration::addConfigValue(string_view section, string_view name, string_view
   definition->parseValue(std::string(value));
 
   return *this;
+}
+
+void
+Configuration::validate()
+{
+  visitSections([&](const std::string& section, const DefinitionMap&) {
+    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def) {
+      if (def->required and def->numFound < 1)
+      {
+        throw std::invalid_argument(stringify(
+              "[", section, "]:", def->name, " is required but missing"));
+      }
+
+      // should be handled earlier in ConfigDefinition::parseValue()
+      assert(def->numFound == 1 or def->multiValued);
+    });
+  });
+}
+
+std::string
+Configuration::generateDefaultConfig()
+{
+  std::ostringstream oss;
+
+  int sectionsVisited = 0;
+
+  visitSections([&](const std::string& section, const DefinitionMap&) {
+    if (sectionsVisited > 0)
+      oss << "\n";
+
+    oss << "[" << section << "]\n";
+
+    visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
+      oss << name << "=" << def->defaultValueAsString() << "\n";
+    });
+
+    sectionsVisited++;
+  });
+
+  return oss.str();
+}
+
+std::string
+Configuration::generateOverridenConfig()
+{
+  return "Implement me!";
 }
 
 const ConfigDefinition_ptr&
@@ -79,34 +112,26 @@ Configuration::lookupDefinitionOrThrow(string_view section, string_view name)
       const_cast<const Configuration*>(this)->lookupDefinitionOrThrow(section, name));
 }
 
-void
-Configuration::validate()
+void Configuration::visitSections(SectionVisitor visitor) const
 {
-  visitSections(m_definitions, [&](const std::string& section, const DefinitionMap& defs) {
-    visitDefinitions(defs, [&](const std::string&, const ConfigDefinition_ptr& def) {
-      if (def->required and def->numFound < 1)
-      {
-        throw std::invalid_argument(stringify(
-              "[", section, "]:", def->name, " is required but missing"));
-      }
-
-      // should be handled earlier in ConfigDefinition::parseValue()
-      assert(def->numFound == 1 or def->multiValued);
-    });
-  });
-}
-
-std::string
-Configuration::generateDefaultConfig()
+  for (const std::string& section : m_sectionOrdering)
+  {
+    const auto itr = m_definitions.find(section);
+    assert(itr != m_definitions.end());
+    visitor(section, itr->second);
+  }
+};
+void Configuration::visitDefinitions(const std::string& section, DefVisitor visitor) const
 {
-  return "Implement me!";
-}
-
-std::string
-Configuration::generateOverridenConfig()
-{
-  return "Implement me!";
-}
+  const auto& defs = m_definitions.at(section);
+  const auto& defOrdering = m_definitionOrdering.at(section);
+  for (const std::string& name : defOrdering)
+  {
+    const auto itr = defs.find(name);
+    assert(itr != defs.end());
+    visitor(name, itr->second);
+  }
+};
 
 } // namespace llarp
 
