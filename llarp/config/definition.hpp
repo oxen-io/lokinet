@@ -69,10 +69,11 @@ namespace llarp
     std::string
     defaultValueAsString()
     {
-      if (defaultValue)
-        return std::to_string(defaultValue.value());
-      else
-        return "";
+      std::ostringstream oss;
+      if (defaultValue.has_value())
+        oss << defaultValue.value();
+
+      return oss.str();
     }
 
     void
@@ -89,7 +90,7 @@ namespace llarp
       iss >> t;
       if (iss.fail())
       {
-        throw std::invalid_argument(stringify(input, " is not a valid" , typeid(T).name()));
+        throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
       }
       else
       {
@@ -102,12 +103,13 @@ namespace llarp
     std::string
     writeValue(bool useDefault)
     {
-      if (parsedValue)
-        return std::to_string(parsedValue.value());
+      std::ostringstream oss;
+      if (parsedValue.has_value())
+        oss << parsedValue.value();
       else if (useDefault and defaultValue.has_value())
-        return std::to_string(defaultValue.value());
-      else
-        return {};
+        oss << defaultValue.value();
+
+      return oss.str();
     }
 
     nonstd::optional<T> defaultValue;

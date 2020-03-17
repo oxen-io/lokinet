@@ -2,7 +2,7 @@
 
 #include <catch2/catch.hpp>
 
-TEST_CASE("ConfigDefinition parse test", "[config]")
+TEST_CASE("ConfigDefinition int parse test", "[config]")
 {
   llarp::ConfigDefinition<int> def("foo", "bar", false, false, 42);
 
@@ -16,6 +16,18 @@ TEST_CASE("ConfigDefinition parse test", "[config]")
   CHECK(def.numFound == 1);
 
   CHECK(def.defaultValueAsString() == "42");
+}
+
+TEST_CASE("ConfigDefinition string parse test", "[config]")
+{
+  llarp::ConfigDefinition<std::string> def("foo", "bar", false, false, "test");
+
+  CHECK(def.getValue() == "test");
+  CHECK(def.defaultValueAsString() == "test");
+
+  CHECK_NOTHROW(def.parseValue("foo"));
+  CHECK(def.getValue() == "foo");
+  CHECK(def.numFound == 1);
 }
 
 TEST_CASE("ConfigDefinition multiple parses test", "[config]")
@@ -67,6 +79,22 @@ TEST_CASE("Configuration basic add/get test", "[config]")
   CHECK(config.getConfigValue<int>("router", "threads") == 5);
 }
 
+TEST_CASE("Configuration missing def test", "[config]")
+{
+  llarp::Configuration config;
+  CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
+  CHECK_THROWS(config.getConfigValue<int>("foo", "bar") == 5);
+
+  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+            "quux",
+            "bar",
+            false,
+            false,
+            4));
+
+  CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
+}
+
 TEST_CASE("Configuration required test", "[config]")
 {
   llarp::Configuration config;
@@ -82,4 +110,32 @@ TEST_CASE("Configuration required test", "[config]")
   config.addConfigValue("router", "threads", "12");
 
   CHECK_NOTHROW(config.validate());
+}
+
+TEST_CASE("Configuration section test", "[config]")
+{
+  llarp::Configuration config;
+  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+            "foo",
+            "bar",
+            true,
+            false,
+            1));
+  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+            "goo",
+            "bar",
+            true,
+            false,
+            1));
+
+  CHECK_THROWS(config.validate());
+
+  config.addConfigValue("foo", "bar", "5");
+  CHECK_THROWS(config.validate());
+
+  CHECK_NOTHROW(config.addConfigValue("goo", "bar", "6"));
+  CHECK_NOTHROW(config.validate());
+
+  CHECK(config.getConfigValue<int>("foo", "bar") == 5);
+  CHECK(config.getConfigValue<int>("goo", "bar") == 6);
 }
