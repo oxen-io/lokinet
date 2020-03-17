@@ -62,7 +62,7 @@ TEST_CASE("ConfigDefinition multiple parses test", "[config]")
 TEST_CASE("Configuration basic add/get test", "[config]")
 {
   llarp::Configuration config;
-  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "router",
             "threads",
             false,
@@ -85,7 +85,7 @@ TEST_CASE("Configuration missing def test", "[config]")
   CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
   CHECK_THROWS(config.getConfigValue<int>("foo", "bar") == 5);
 
-  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "quux",
             "bar",
             false,
@@ -98,7 +98,7 @@ TEST_CASE("Configuration missing def test", "[config]")
 TEST_CASE("Configuration required test", "[config]")
 {
   llarp::Configuration config;
-  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "router",
             "threads",
             true,
@@ -115,13 +115,13 @@ TEST_CASE("Configuration required test", "[config]")
 TEST_CASE("Configuration section test", "[config]")
 {
   llarp::Configuration config;
-  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "foo",
             "bar",
             true,
             false,
             1));
-  config.addDefinition(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "goo",
             "bar",
             true,

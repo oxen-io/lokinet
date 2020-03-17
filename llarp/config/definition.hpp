@@ -133,13 +133,24 @@ namespace llarp
     SectionMap m_definitions;
 
     Configuration&
-    addDefinition(ConfigDefinition_ptr def);
+    addConfigOption(ConfigDefinition_ptr def);
 
     Configuration&
     addConfigValue(string_view section,
-                                  string_view name,
-                                  string_view value);
+                   string_view name,
+                   string_view value);
 
+    /// Get a config value. If the value hasn't been provided but a default has, the default will
+    /// be returned. If no value and no default is provided, an empty optional will be returned.
+    ///
+    /// The type T should exactly match that provided by the definition; it is not sufficient for
+    /// one type to be a valid substitution for the other.
+    ///
+    /// @param section is the section this value resides in
+    /// @param name is the name of the value
+    /// @return an optional providing the configured value, the default, or empty
+    /// @throws std::invalid_argument if there is no such config option or the wrong type T was
+    //          provided
     template<typename T>
     nonstd::optional<T> getConfigValue(string_view section, string_view name)
     {
