@@ -119,12 +119,17 @@ namespace llarp
 
   using ConfigDefinition_ptr = std::unique_ptr<ConfigDefinitionBase>;
 
+  // map of k:v pairs
+  using DefinitionMap = std::unordered_map<std::string, ConfigDefinition_ptr>;
+
+  // map of section-name to map-of-definitions
+  using SectionMap = std::unordered_map<std::string, DefinitionMap>;
+
   /// A configuration holds an ordered set of ConfigDefinitions defining the allowable values and
   /// their constraints and an optional set defining overrides of those values (e.g. the results
   /// of a parsed config file).
   struct Configuration {
-    // the first std::string template parameter is the section
-    std::unordered_map<std::string, std::unordered_map<std::string, ConfigDefinition_ptr>> m_definitions;
+    SectionMap m_definitions;
 
     Configuration&
     addDefinition(ConfigDefinition_ptr def);

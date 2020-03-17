@@ -5,6 +5,25 @@
 namespace llarp
 {
 
+/// utility functions for visiting each section/definition
+///
+using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
+void visitSections(const SectionMap& sections, SectionVisitor visitor)
+{
+  for (const auto& pair : sections)
+  {
+    visitor(pair.first, pair.second);
+  }
+};
+using DefVisitor = std::function<void(const std::string&, const ConfigDefinition_ptr&)>;
+void visitDefinitions(const DefinitionMap& defs, DefVisitor visitor)
+{
+  for (const auto& pair : defs)
+  {
+    visitor(pair.first, pair.second);
+  }
+};
+
 ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
                                            std::string name_,
                                            bool required_,
@@ -63,14 +82,8 @@ Configuration::lookupDefinitionOrThrow(string_view section, string_view name)
 void
 Configuration::validate()
 {
-  for (const auto& pair : m_definitions)
-  {
-    const std::string& section = pair.first;
-
-    const auto& sectionDefinitions = pair.second;
-    for (const auto& defPair : sectionDefinitions)
-    {
-      const auto& def = defPair.second;
+  visitSections(m_definitions, [&](const std::string& section, const DefinitionMap& defs) {
+    visitDefinitions(defs, [&](const std::string&, const ConfigDefinition_ptr& def) {
       if (def->required and def->numFound < 1)
       {
         throw std::invalid_argument(stringify(
@@ -79,8 +92,8 @@ Configuration::validate()
 
       // should be handled earlier in ConfigDefinition::parseValue()
       assert(def->numFound == 1 or def->multiValued);
-    }
-  }
+    });
+  });
 }
 
 std::string
