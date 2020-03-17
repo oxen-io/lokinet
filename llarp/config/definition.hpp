@@ -164,11 +164,19 @@ namespace llarp
     void
     validate();
 
+    /// Generate a config string from the current config definition, optionally using overridden
+    /// values. The generated config will preserve insertion order of both sections and their
+    /// definitions.
+    ///
+    /// Definitions which are required or have an overriden value (and useValues == true) will be
+    /// written normally. Otherwise, they will be written commented-out in order to provide a
+    /// complete documentation of the configuration file.
+    ///
+    /// @param useValues specifies whether we use specified values (e.g. those from calls to
+    ///        addConfigValue()) or only definitions
+    /// @return a string containing the config in INI format
     std::string
-    generateDefaultConfig();
-
-    std::string
-    generateOverridenConfig();
+    generateINIConfig(bool useValues = false);
 
    private:
 

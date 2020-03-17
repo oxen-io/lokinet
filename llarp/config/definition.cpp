@@ -62,7 +62,7 @@ Configuration::validate()
 }
 
 std::string
-Configuration::generateDefaultConfig()
+Configuration::generateINIConfig(bool useValues)
 {
   std::ostringstream oss;
 
@@ -75,19 +75,22 @@ Configuration::generateDefaultConfig()
     oss << "[" << section << "]\n";
 
     visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
-      oss << name << "=" << def->defaultValueAsString() << "\n";
+      if (useValues and def->numFound > 0)
+      {
+        oss << name << "=" << def->writeValue(false) << "\n";
+      }
+      else
+      {
+        if (not def->required)
+          oss << "# ";
+        oss << name << "=" << def->defaultValueAsString() << "\n";
+      }
     });
 
     sectionsVisited++;
   });
 
   return oss.str();
-}
-
-std::string
-Configuration::generateOverridenConfig()
-{
-  return "Implement me!";
 }
 
 const ConfigDefinition_ptr&
