@@ -78,7 +78,7 @@ namespace llarp
     void
     parseValue(const std::string& input)
     {
-      if (not multiValued and parsedValue)
+      if (not multiValued and parsedValue.has_value())
       {
         throw std::invalid_argument(stringify("duplicate value for ", name,
               ", previous value: ", parsedValue.value()));
@@ -88,9 +88,15 @@ namespace llarp
       T t;
       iss >> t;
       if (iss.fail())
+      {
         throw std::invalid_argument(stringify(input, " is not a valid" , typeid(T).name()));
+      }
       else
+      {
         parsedValue = t;
+        numFound++;
+      }
+
     }
 
     std::string
@@ -121,8 +127,8 @@ namespace llarp
     Configuration&
     addDefinition(ConfigDefinition_ptr def);
 
-    configuration&
-    addconfigvalue(string_view section,
+    Configuration&
+    addConfigValue(string_view section,
                                   string_view name,
                                   string_view value);
 

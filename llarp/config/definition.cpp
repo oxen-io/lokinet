@@ -29,11 +29,11 @@ Configuration::addDefinition(ConfigDefinition_ptr def)
   return *this;
 }
 
-configuration&
-Configuration::addconfigvalue(string_view section, string_view name, string_view value)
+Configuration&
+Configuration::addConfigValue(string_view section, string_view name, string_view value)
 {
-  configdefinition_ptr& definition = lookupdefinitionorthrow(section, name);
-  definition->parsevalue(std::string(value));
+  ConfigDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
+  definition->parseValue(std::string(value));
 
   return *this;
 }
@@ -58,6 +58,29 @@ Configuration::lookupDefinitionOrThrow(string_view section, string_view name)
 {
   return const_cast<ConfigDefinition_ptr&>(
       const_cast<const Configuration*>(this)->lookupDefinitionOrThrow(section, name));
+}
+
+void
+Configuration::validate()
+{
+  for (const auto& pair : m_definitions)
+  {
+    const std::string& section = pair.first;
+
+    const auto& sectionDefinitions = pair.second;
+    for (const auto& defPair : sectionDefinitions)
+    {
+      const auto& def = defPair.second;
+      if (def->required and def->numFound < 1)
+      {
+        throw std::invalid_argument(stringify(
+              "[", section, "]:", def->name, " is required but missing"));
+      }
+
+      // should be handled earlier in ConfigDefinition::parseValue()
+      assert(def->numFound == 1 or def->multiValued);
+    }
+  }
 }
 
 std::string
