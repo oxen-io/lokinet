@@ -77,7 +77,7 @@ Configuration::generateINIConfig(bool useValues)
     visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
       if (useValues and def->numFound > 0)
       {
-        oss << name << "=" << def->writeValue(false) << "\n";
+        oss << name << "=" << def->valueAsString(false) << "\n";
       }
       else
       {

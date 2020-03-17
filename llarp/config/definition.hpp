@@ -13,7 +13,10 @@
 namespace llarp
 {
 
-  /// non-templated base class for all config definition types.
+  /// A base class for specifying config options and their constraints. The basic to/from string
+  /// type functions are provided pure-virtual. The type-aware implementations which implement these
+  /// functions are templated classes. One reason for providing a non-templated base class is so
+  /// that they can all be mixed into the same containers (albiet as pointers).
   struct ConfigDefinitionBase 
   {
     ConfigDefinitionBase(std::string section_,
@@ -24,17 +27,25 @@ namespace llarp
     virtual
     ~ConfigDefinitionBase() {}
 
-    /// subclasses should provide their default value as a string
+    /// Subclasses should provide their default value as a string
+    ///
+    /// @return the option's default value represented as a string
     virtual std::string
     defaultValueAsString() = 0;
 
-    /// subclasses should parse and store the provided input
+    /// Subclasses should parse and store the provided input
+    ///
+    /// @param input is the string input to interpret
     virtual void
     parseValue(const std::string& input) = 0;
 
-    /// subclasess should write their parsed value (not default value) as a string
+    /// Subclasess should write their parsed value as a string, optionally falling back to any
+    /// specified default if `useDefault` is true.
+    ///
+    /// @param useDefault should specify whether to fallback to default when possible
+    /// @return the option's value as a string
     virtual std::string
-    writeValue(bool useDefault) = 0;
+    valueAsString(bool useDefault) = 0;
 
     std::string section;
     std::string name;
@@ -43,9 +54,21 @@ namespace llarp
     size_t numFound = 0;
   };
 
+  /// The primary type-aware implementation of ConfigDefinitionBase, this templated class allows
+  /// for implementations which can use the std::ostringstream and std::istringstream for to/from
+  /// string functionality.
+  /// 
+  /// Note that types (T) used as template parameters here must be used verbatim when calling 
+  /// Configuration::getConfigValue(). Similar types such as uint32_t and int32_t cannot be mixed.
   template<typename T>
   struct ConfigDefinition : public ConfigDefinitionBase
   {
+    /// Constructor. Arguments are passed directly to ConfigDefinitionBase. Also accepts a default
+    /// value, which is used in the following situations:
+    ///
+    /// 1) as the return value for getValue() if there is no parsed value and required==false
+    /// 2) as the output in defaultValueAsString(), used to generate config files
+    /// 3) as the output in valueAsString(), used to generate config files
     ConfigDefinition(std::string section_,
                            std::string name_,
                            bool required_,
@@ -56,6 +79,10 @@ namespace llarp
     {
     }
 
+    /// Returns the parsed value, if available. Otherwise, provides the default value if the option
+    /// is not required. Otherwise, returns an empty optional.
+    ///
+    /// @return an optional with the parsed value, the default value, or no value.
     nonstd::optional<T>
     getValue() const
     {
@@ -68,7 +95,7 @@ namespace llarp
     }
 
     std::string
-    defaultValueAsString()
+    defaultValueAsString() override
     {
       std::ostringstream oss;
       if (defaultValue.has_value())
@@ -78,7 +105,7 @@ namespace llarp
     }
 
     void
-    parseValue(const std::string& input)
+    parseValue(const std::string& input) override
     {
       if (not multiValued and parsedValue.has_value())
       {
@@ -102,7 +129,7 @@ namespace llarp
     }
 
     std::string
-    writeValue(bool useDefault)
+    valueAsString(bool useDefault) override
     {
       std::ostringstream oss;
       if (parsedValue.has_value())
@@ -126,15 +153,46 @@ namespace llarp
   // map of section-name to map-of-definitions
   using SectionMap = std::unordered_map<std::string, DefinitionMap>;
 
-  /// A configuration holds an ordered set of ConfigDefinitions defining the allowable values and
-  /// their constraints and an optional set defining overrides of those values (e.g. the results
-  /// of a parsed config file).
+  /// A Configuration holds an ordered set of ConfigDefinitions defining the allowable values and
+  /// their constraints (specified through calls to addConfigOption()).
+  ///
+  /// The layout and grouping of the config options are modelled after the INI file format; each
+  /// option has a name and is grouped under a section. Duplicate option names are allowed only if
+  /// they exist in a different section. The configuration can be serialized in the INI file format
+  /// using the generateINIConfig() function.
+  ///
+  /// Configured values (e.g. those encountered when parsing a file) can be provided through calls
+  /// to addConfigValue(). These take a std::string as a value, which is automatically parsed.
+  /// 
+  /// The Configuration can be used to print out a full config string (or file), including fields
+  /// with defaults and optionally fields which have a specified value (values provided through
+  /// calls to addConfigValue()).
   struct Configuration {
     SectionMap m_definitions;
 
+    /// Spefify the parameters and type of a configuration option. The parameters are members of
+    /// ConfigDefinitionBase; the type is inferred from ConfigDefinition's template parameter T.
+    ///
+    /// This function should be called for every option that this Configuration supports, and should
+    /// be done before any other interractions involving that option.
+    ///
+    /// @param def should be a unique_ptr to a valid subclass of ConfigDefinitionBase
+    /// @return `*this` for chaining calls
+    /// @throws std::invalid_argument if the option already exists
     Configuration&
     addConfigOption(ConfigDefinition_ptr def);
 
+    /// Specify a config value for the given section and name. The value should be a valid string
+    /// representing the type used by the option (e.g. the type provided when addConfigOption() was
+    /// called).
+    ///
+    /// If the specified option doesn't exist, an exception will be thrown. Otherwise, the option's
+    /// parsedValue() will be invoked, and should throw an exception if the string can't be parsed.
+    ///
+    /// @param section is the section this value resides in
+    /// @param name is the name of the value
+    /// @return `*this` for chaining calls
+    /// @throws if the option doesn't exist or the provided string isn't parseable
     Configuration&
     addConfigValue(string_view section,
                    string_view name,
