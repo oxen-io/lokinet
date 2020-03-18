@@ -93,224 +93,174 @@ namespace llarp
     return {};
   }
 
-  bool
-  RouterConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  RouterConfig::defineConfigOptions(Configuration& conf)
   {
-    // [router]:job-queue-size
-    auto parsedValue = parser.getSingleSectionValue(values, "router", "job-queue-size", false);
-    if (not parsedValue.empty()) 
-    {
-      int val = svtoi(parsedValue);
-      if (val < 1024)
-        throw std::invalid_argument("invalid value for [router]:job-queue-size, must be 1024 or greater");
-      else
-        m_JobQueueSize = val;
-    }
+    conf.defineOption<int>("router", "job-queue-size", false, m_JobQueueSize,
+      [this](int arg) {
+        if (arg < 1024)
+          throw std::invalid_argument("job-queue-size must be 1024 or greater");
 
-    // [router]:default-protocol
-    parsedValue = parser.getSingleSectionValue(values, "router", "default-protocol", false);
-    if (not parsedValue.empty())
-      m_DefaultLinkProto = parsedValue;
+        m_JobQueueSize = arg;
+      });
 
-    // [router]:netid
-    parsedValue = parser.getSingleSectionValue(values, "router", "netid", true);
-    assert(not parsedValue.empty()); // gauranteed by getSingleSectionValue() with required == true
-    if(parsedValue.size() > NetID::size())
-      throw std::invalid_argument("value for [router]:netid is too long");
-    m_netId = str(parsedValue);
+    conf.defineOption<std::string>("router", "default-protocol", false, m_DefaultLinkProto,
+    [this](std::string arg) {
+        m_DefaultLinkProto = arg;
+      });
 
-    // [router]:max-connections
-    parsedValue = parser.getSingleSectionValue(values, "router", "max-connections", false);
-    if (not parsedValue.empty())
-    {
-      int val = svtoi(parsedValue);
-      if (val < 1)
-        throw std::invalid_argument("invalid value for [router]:max-connections");
-      else
-        m_maxConnectedRouters = val;
-    }
+    conf.defineOption<std::string>("router", "netid", true, m_netId,
+      [this](std::string arg) {
+        if(arg.size() > NetID::size())
+          throw std::invalid_argument(stringify(
+                "netid is too long, max length is ", NetID::size()));
 
-    // [router]:min-connections
-    parsedValue = parser.getSingleSectionValue(values, "router", "min-connections", false);
-    if (not parsedValue.empty())
-    {
-      int val = svtoi(parsedValue);
-      if (val < 1)
-        throw std::invalid_argument("invalid value for [router]:min-connections");
-      else
-        m_minConnectedRouters = val;
-    }
+        m_netId = std::move(arg);
+      });
+
+    conf.defineOption<int>("router", "max-connections", false, m_maxConnectedRouters,
+      [this](int arg) {
+        if (arg < 1)
+          throw std::invalid_argument("max-connections must be >= 1");
+
+        m_maxConnectedRouters = arg;
+      });
+
+    conf.defineOption<int>("router", "min-connections", false, m_minConnectedRouters,
+      [this](int arg) {
+        if (arg < 1)
+          throw std::invalid_argument("min-connections must be >= 1");
+
+        m_minConnectedRouters = arg;
+      });
 
     // additional check that min <= max
-    if (m_minConnectedRouters > m_maxConnectedRouters)
-      throw std::invalid_argument("[router]:min-connections must be less than [router]:max-connections");
+    // TODO: where can we perform this check now?
+    // if (m_minConnectedRouters > m_maxConnectedRouters)
+      // throw std::invalid_argument("[router]:min-connections must be less than [router]:max-connections");
 
-    // [router]:nickname
-    parsedValue = parser.getSingleSectionValue(values, "router", "nickname", false);
-    if (not parsedValue.empty())
-    {
-      m_nickname = str(parsedValue);
-      // TODO: side effect here, no side effects in config parsing!!
-      LogContext::Instance().nodeName = nickname();
-    }
+    conf.defineOption<std::string>("router", "nickname", false, m_nickname,
+      [this](std::string arg) {
+        m_nickname = std::move(arg);
+        // TODO: side effect here, no side effects in config parsing!!
+        LogContext::Instance().nodeName = nickname();
+      });
 
-    // [router]:encryption-privkey
-    parsedValue = parser.getSingleSectionValue(values, "router", "encryption-privkey", false);
-    if (not parsedValue.empty())
-      m_encryptionKeyfile = str(parsedValue);
+    conf.defineOption<std::string>("router", "encryption-privkey", false, m_encryptionKeyfile,
+      [this](std::string arg) {
+        m_encryptionKeyfile = std::move(arg);
+      });
 
-    // [router]:contact-file
-    parsedValue = parser.getSingleSectionValue(values, "router", "contact-file", false);
-    if (not parsedValue.empty())
-      m_ourRcFile = str(parsedValue);
+    conf.defineOption<std::string>("router", "contact-file", false, m_ourRcFile,
+      [this](std::string arg) {
+        m_ourRcFile = std::move(arg);
+      });
 
-    // [router]:transport-privkey
-    parsedValue = parser.getSingleSectionValue(values, "router", "transport-privkey", false);
-    if (not parsedValue.empty())
-      m_transportKeyfile = str(parsedValue);
+    conf.defineOption<std::string>("router", "transport-privkey", false, m_transportKeyfile,
+      [this](std::string arg) {
+        m_transportKeyfile = std::move(arg);
+      });
 
-    // [router]:identity-privkey OR
-    // [router]:ident-privkey
-    // apparently loki-launcher made its own config files at one point and typoed this,
-    // so we support both
-    parsedValue = parser.getSingleSectionValue(values, "router", "identity-privkey", false);
-    if (parsedValue.empty()) 
-      parsedValue = parser.getSingleSectionValue(values, "router", "ident-privkey", false);
-    if (not parsedValue.empty())
-      m_identKeyfile = str(parsedValue);
+    conf.defineOption<std::string>("router", "identity-privkey", false, m_identKeyfile,
+      [this](std::string arg) {
+        m_identKeyfile = std::move(arg);
+      });
 
-    // [router]:public-address OR
-    // [router]:public-ip
-    // apparently loki-launcher made its own config files at one point and typoed this,
-    // so we support both
-    parsedValue = parser.getSingleSectionValue(values, "router", "public-address", false);
-    if (parsedValue.empty()) 
-      parsedValue = parser.getSingleSectionValue(values, "router", "public-ip", false);
-    if (not parsedValue.empty())
-    {
-      llarp::LogInfo("public ip ", parsedValue, " size ", parsedValue.size());
-      if(parsedValue.size() < 17)
-      {
-        // assume IPv4
-        llarp::Addr a(parsedValue);
-        llarp::LogInfo("setting public ipv4 ", a);
-        m_addrInfo.ip = *a.addr6();
-        m_publicOverride = true;
-      }
-    }
+    conf.defineOption<std::string>("router", "public-address", false, "",
+      [this](std::string arg) {
+        llarp::LogInfo("public ip ", arg, " size ", arg.size());
+        if(arg.size() < 17)
+        {
+          // assume IPv4
+          llarp::Addr a(arg);
+          llarp::LogInfo("setting public ipv4 ", a);
+          m_addrInfo.ip    = *a.addr6();
+          m_publicOverride = true;
+        }
+      });
 
-    // [router]:public-port
-    parsedValue = parser.getSingleSectionValue(values, "router", "public-port", false);
-    if (not parsedValue.empty()) 
-    {
-      llarp::LogInfo("Setting public port ", parsedValue);
-      int p = svtoi(parsedValue);
-      // Not needed to flip upside-down - this is done in llarp::Addr(const
-      // AddressInfo&)
-      m_ip4addr.sin_port = p;
-      m_addrInfo.port = p;
-      m_publicOverride = true;
-    }
+    conf.defineOption<int>("router", "public-port", false, 1090,
+      [this](int arg) {
+        if (arg <= 0)
+          throw std::invalid_argument("public-port must be > 0");
 
-    // [router]:worker-threads OR
-    // [router]:threads
-    // apparently loki-launcher made its own config files at one point and typoed this,
-    // so we support both
-    parsedValue = parser.getSingleSectionValue(values, "router", "worker-threads", false);
-    if (parsedValue.empty()) 
-      parsedValue = parser.getSingleSectionValue(values, "router", "threads", false);
-    if (not parsedValue.empty())
-    {
-      int val = svtoi(parsedValue);
-      if(val <= 0)
-        throw std::invalid_argument("invalid value for [router]:worker-threads");
-      else
-        m_workerThreads = val;
-    }
+        // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
+        m_ip4addr.sin_port = arg;
+        m_addrInfo.port    = arg;
+        m_publicOverride   = true;
+      });
 
-    // [router]:public-port
-    parsedValue = parser.getSingleSectionValue(values, "router", "public-port", false);
-    if (not parsedValue.empty())
-    {
-      int val = svtoi(parsedValue);
-      if (val <= 0)
-        throw std::invalid_argument("invalid value for [router]:public-port");
-      else
-        m_numNetThreads = val;
-    }
+    conf.defineOption<int>("router", "worker-threads", false, m_workerThreads,
+      [this](int arg) {
+        if (arg <= 0)
+          throw std::invalid_argument("worker-threads must be > 0");
 
-    // [router]:block-bogons
-    parsedValue = parser.getSingleSectionValue(values, "router", "block-bogons", false);
-    if (not parsedValue.empty())
-    {
-      auto val = setOptBool(parsedValue);
-      if (not val.has_value())
-        throw std::invalid_argument("invalid value for [router]:block-bogons");
-      else
-        m_blockBogons = val;
-    }
+        m_workerThreads = arg;
+      });
 
-    return true;
+    conf.defineOption<int>("router", "worker-threads", false, m_numNetThreads, 
+      [this](int arg) {
+        if (arg <= 0)
+          throw std::invalid_argument("worker-threads must be > 0");
+
+        m_numNetThreads = arg;
+      });
+
+    conf.defineOption<bool>("router", "block-bogons", false, m_blockBogons,
+      [this](bool arg) {
+        m_blockBogons = arg;
+      });
   }
 
-  bool
-  NetworkConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  NetworkConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "profiling")
-    {
-      m_enableProfiling = setOptBool(val);
-    }
-    else if (key == "profiles")
-    {
-      m_routerProfilesFile = str(val);
-      llarp::LogInfo("setting profiles to ", routerProfilesFile());
-    }
-    else if (key == "strict-connect")
-    {
-      m_strictConnect = str(val);
-    }
-    else
-    {
-      m_netConfig.emplace(str(key), str(val));  // str()'s here for gcc 5 compat
-    }
-    */
+    // TODO: review default value
+    conf.defineOption<bool>("network", "profiling", false, m_enableProfiling,
+      [this](bool arg) {
+        m_enableProfiling = arg;
+      });
 
-    return true;
+    conf.defineOption<std::string>("network", "profiles", false, m_routerProfilesFile,
+      [this](std::string arg) {
+        m_routerProfilesFile = std::move(arg);
+      });
+
+    conf.defineOption<std::string>("network", "strict-connect", false, m_strictConnect,
+      [this](std::string arg) {
+        m_strictConnect = std::move(arg);
+      });
+
+    // TODO: NetConfig was collecting all other k:v pairs here
   }
 
-  bool
-  NetdbConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  NetdbConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "dir")
-    {
-      m_nodedbDir = str(val);
-    }
-    */
-    return true;
+    conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
+      [this](std::string arg) {
+        m_nodedbDir = str(arg);
+      });
   }
 
-  bool
-  DnsConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  DnsConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "upstream")
-    {
-      llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
-    }
-    if (key == "bind")
-    {
-      llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
-    }
-    */
-    return true;
+    // TODO: this was previously a multi-value option
+    conf.defineOption<std::string>("dns", "upstream", false, "",
+      [this](std::string arg) {
+        netConfig.emplace("upstream-dns", std::move(arg));
+      });
+
+    // TODO: this was previously a multi-value option
+    conf.defineOption<std::string>("dns", "bind", false, "",
+      [this](std::string arg) {
+        netConfig.emplace("local-dns", std::move(arg));
+      });
   }
 
-  bool
-  LinksConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  LinksConfig::defineConfigOptions(Configuration& conf)
   {
     /*
     uint16_t proto = 0;
@@ -362,99 +312,109 @@ namespace llarp
       m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
     }
     */
-    return true;
+    (void)conf;
+    throw std::runtime_error("FIXME");
   }
 
-  bool
-  ConnectConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  ConnectConfig::defineConfigOptions(Configuration& conf)
   {
     // routers.emplace_back(val.begin(), val.end());
-    return true;
+    (void)conf;
+    throw std::runtime_error("FIXME");
   }
 
-  bool
-  ServicesConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  ServicesConfig::defineConfigOptions(Configuration& conf)
   {
     // services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
-    return true;
+    (void)conf;
+    throw std::runtime_error("FIXME");
   }
 
-  bool
-  SystemConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  SystemConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "pidfile")
-    {
-      pidfile = str(val);
-    }
-    */
-    return true;
+    conf.defineOption<std::string>("system", "pidfile", false, pidfile,
+      [this](std::string arg) {
+        pidfile = std::move(arg);
+      });
   }
 
-  bool
-  ApiConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  ApiConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "enabled")
-    {
-      m_enableRPCServer = IsTrueValue(val);
-    }
-    if (key == "bind")
-    {
-      m_rpcBindAddr = str(val);
-    }
-    if (key == "authkey")
-    {
+    conf.defineOption<bool>("api", "enabled", false, m_enableRPCServer,
+      [this](bool arg) {
+        m_enableRPCServer = arg;
+      });
+
+    conf.defineOption<std::string>("api", "bind", false, m_rpcBindAddr,
+      [this](std::string arg) {
+        m_rpcBindAddr = std::move(arg);
+      });
+    // TODO: this was from pre-refactor:
       // TODO: add pubkey to whitelist
-    }
-    */
-    return true;
   }
 
-  bool
-  LokidConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  LokidConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    if(key == "service-node-seed")
-    {
-      usingSNSeed = true;
-      ident_keyfile = std::string{val};
-    }
-    if (key == "enabled")
-    {
-      whitelistRouters = IsTrueValue(val);
-    }
-    if (key == "jsonrpc" || key == "addr")
-    {
-      lokidRPCAddr = str(val);
-    }
-    if (key == "username")
-    {
-      lokidRPCUser = str(val);
-    }
-    if (key == "password")
-    {
-      lokidRPCPassword = str(val);
-    }
-    */
-    return true;
+    conf.defineOption<std::string>("lokid", "service-node-seed", false, "",
+      [this](std::string arg) {
+       if (not arg.empty())
+       {
+        usingSNSeed = true;
+        ident_keyfile = std::move(arg);
+       }
+      });
+
+    conf.defineOption<bool>("lokid", "enabled", false, whitelistRouters,
+      [this](bool arg) {
+        whitelistRouters = arg;
+      });
+
+    // TODO: was also aliased as "addr" -- presumably because loki-launcher
+    conf.defineOption<std::string>("lokid", "jsonrpc", false, lokidRPCAddr,
+      [this](std::string arg) {
+        lokidRPCAddr = arg;
+      });
+
+    conf.defineOption<std::string>("lokid", "username", false, lokidRPCUser,
+      [this](std::string arg) {
+        lokidRPCUser = arg;
+      });
+
+    conf.defineOption<std::string>("lokid", "password", false, lokidRPCPassword,
+      [this](std::string arg) {
+        lokidRPCPassword = arg;
+      });
   }
 
-  bool
-  BootstrapConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  BootstrapConfig::defineConfigOptions(Configuration& conf)
   {
+    // TODO: multi-value
     /*
     if(key == "add-node")
     {
       routers.emplace_back(val.begin(), val.end());
     }
     */
-    return true;
+    (void)conf;
+    throw std::runtime_error("FIXME");
   }
 
-  bool
-  LoggingConfig::parseSectionValues(const ConfigParser& parser, const SectionValues_t& values)
+  void
+  LoggingConfig::defineConfigOptions(Configuration& conf)
   {
+
+    conf.defineOption<std::string>("logging", "type", false, "",
+      [this](std::string arg) {
+        (void)arg;
+        // TODO: this whole thing needs a rewrite, eww eww eww
+      });
+
     /*
     if(key == "type" && val == "syslog")
     {
@@ -505,13 +465,14 @@ namespace llarp
       }
     }
     */
-    return true;
   }
 
   template < typename Section >
   Section
-  find_section(const ConfigParser &parser, const std::string &name)
+  find_section(const ConfigParser &, const std::string &)
   {
+    throw std::runtime_error("FIXME");
+    /*
     Section section;
 
     auto visitor = [&](const ConfigParser::SectionValues_t& sectionValues) {
@@ -527,6 +488,7 @@ namespace llarp
     }
 
     return {};
+    */
   }
 
   bool
