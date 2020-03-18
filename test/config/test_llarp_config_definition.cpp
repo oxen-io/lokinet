@@ -105,11 +105,11 @@ TEST_CASE("Configuration required test", "[config]")
             false,
             1));
 
-  CHECK_THROWS(config.validate());
+  CHECK_THROWS(config.validateRequiredFields());
 
   config.addConfigValue("router", "threads", "12");
 
-  CHECK_NOTHROW(config.validate());
+  CHECK_NOTHROW(config.validateRequiredFields());
 }
 
 TEST_CASE("Configuration section test", "[config]")
@@ -128,13 +128,13 @@ TEST_CASE("Configuration section test", "[config]")
             false,
             1));
 
-  CHECK_THROWS(config.validate());
+  CHECK_THROWS(config.validateRequiredFields());
 
   config.addConfigValue("foo", "bar", "5");
-  CHECK_THROWS(config.validate());
+  CHECK_THROWS(config.validateRequiredFields());
 
   CHECK_NOTHROW(config.addConfigValue("goo", "bar", "6"));
-  CHECK_NOTHROW(config.validate());
+  CHECK_NOTHROW(config.validateRequiredFields());
 
   CHECK(config.getConfigValue<int>("foo", "bar") == 5);
   CHECK(config.getConfigValue<int>("goo", "bar") == 6);

@@ -222,16 +222,11 @@ namespace llarp
       return derived->getValue();
     }
 
-    /// Validate the config, presumably called after parsing. This will throw an exception if the
-    /// parsed values do not meet the provided definition. 
-    ///
-    /// Note that this will only handle a subset of errors that may occur. Specifically, this will
-    /// handle errors about missing required fields, whereas errors about incorrect type,
-    /// duplicates, etc. are handled during parsing.
+    /// Validate that all required fields are present.
     ///
     /// @throws std::invalid_argument if configuration constraints are not met
     void
-    validate();
+    validateRequiredFields();
 
     /// Generate a config string from the current config definition, optionally using overridden
     /// values. The generated config will preserve insertion order of both sections and their

@@ -45,7 +45,7 @@ Configuration::addConfigValue(string_view section, string_view name, string_view
 }
 
 void
-Configuration::validate()
+Configuration::validateRequiredFields()
 {
   visitSections([&](const std::string& section, const DefinitionMap&) {
     visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def) {
