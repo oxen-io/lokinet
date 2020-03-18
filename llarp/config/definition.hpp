@@ -189,7 +189,7 @@ namespace llarp
   using SectionMap = std::unordered_map<std::string, DefinitionMap>;
 
   /// A Configuration holds an ordered set of ConfigDefinitions defining the allowable values and
-  /// their constraints (specified through calls to addConfigOption()).
+  /// their constraints (specified through calls to defineOption()).
   ///
   /// The layout and grouping of the config options are modelled after the INI file format; each
   /// option has a name and is grouped under a section. Duplicate option names are allowed only if
@@ -215,10 +215,19 @@ namespace llarp
     /// @return `*this` for chaining calls
     /// @throws std::invalid_argument if the option already exists
     Configuration&
-    addConfigOption(ConfigDefinition_ptr def);
+    defineOption(ConfigDefinition_ptr def);
+
+    /// Convenience function which calls defineOption with a ConfigDefinition of the specified type
+    /// and with parameters passed through to ConfigDefinition's constructor.
+    template<typename T, typename... Params>
+    Configuration&
+    defineOption(Params&&... args)
+    {
+      return defineOption(std::make_unique<ConfigDefinition<T>>(args...));
+    }
 
     /// Specify a config value for the given section and name. The value should be a valid string
-    /// representing the type used by the option (e.g. the type provided when addConfigOption() was
+    /// representing the type used by the option (e.g. the type provided when defineOption() was
     /// called).
     ///
     /// If the specified option doesn't exist, an exception will be thrown. Otherwise, the option's

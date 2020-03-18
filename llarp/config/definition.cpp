@@ -18,7 +18,7 @@ ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
 }
 
 Configuration&
-Configuration::addConfigOption(ConfigDefinition_ptr def)
+Configuration::defineOption(ConfigDefinition_ptr def)
 {
   auto sectionItr = m_definitions.find(def->section);
   if (sectionItr == m_definitions.end())

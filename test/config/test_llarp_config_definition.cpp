@@ -99,7 +99,7 @@ TEST_CASE("ConfigDefinition tryAccept missing option test", "[config]")
 TEST_CASE("Configuration basic add/get test", "[config]")
 {
   llarp::Configuration config;
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "router",
             "threads",
             false,
@@ -122,7 +122,7 @@ TEST_CASE("Configuration missing def test", "[config]")
   CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
   CHECK_THROWS(config.getConfigValue<int>("foo", "bar") == 5);
 
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "quux",
             "bar",
             false,
@@ -135,7 +135,7 @@ TEST_CASE("Configuration missing def test", "[config]")
 TEST_CASE("Configuration required test", "[config]")
 {
   llarp::Configuration config;
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "router",
             "threads",
             true,
@@ -152,13 +152,13 @@ TEST_CASE("Configuration required test", "[config]")
 TEST_CASE("Configuration section test", "[config]")
 {
   llarp::Configuration config;
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "foo",
             "bar",
             true,
             false,
             1));
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "goo",
             "bar",
             true,
@@ -183,11 +183,11 @@ TEST_CASE("Configuration acceptAllOptions test", "[config]")
   std::string fooBaz = "";
 
   llarp::Configuration config;
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
       "foo", "bar", false, false, 1, [&](int arg) {
         fooBar = arg;
       }));
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<std::string>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<std::string>>(
       "foo", "baz", false, false, "no", [&](std::string arg) {
         fooBaz = arg;
       }));
@@ -203,11 +203,18 @@ TEST_CASE("Configuration acceptAllOptions test", "[config]")
 TEST_CASE("Configuration acceptAllOptions exception propagation test", "[config]")
 {
   llarp::Configuration config;
-  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+  config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
       "foo", "bar", false, false, 1, [&](int arg) {
         (void)arg;
         throw std::runtime_error("FAIL");
       }));
 
   REQUIRE_THROWS_WITH(config.acceptAllOptions(), "FAIL");
+}
+
+TEST_CASE("Configuration defineOptions passthrough test", "[config]")
+{
+  llarp::Configuration config;
+  config.defineOption<int>("foo", "bar", false, false, 1);
+  CHECK(config.getConfigValue<int>("foo", "bar") == 1);
 }
