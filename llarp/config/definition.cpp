@@ -8,12 +8,10 @@ namespace llarp
 
 ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
                                            std::string name_,
-                                           bool required_,
-                                           bool multiValued_)
+                                           bool required_)
   : section(section_)
   , name(name_)
   , required(required_)
-  , multiValued(multiValued_)
 {
 }
 

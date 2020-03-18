@@ -21,8 +21,7 @@ namespace llarp
   {
     ConfigDefinitionBase(std::string section_,
                          std::string name_,
-                         bool required_,
-                         bool multiValued_);
+                         bool required_);
 
     virtual
     ~ConfigDefinitionBase() {}
@@ -81,10 +80,9 @@ namespace llarp
     ConfigDefinition(std::string section_,
                            std::string name_,
                            bool required_,
-                           bool multiValued_,
                            nonstd::optional<T> defaultValue_,
                            std::function<void(T)> acceptor_ = nullptr)
-      : ConfigDefinitionBase(section_, name_, required_, multiValued_)
+      : ConfigDefinitionBase(section_, name_, required_)
       , defaultValue(defaultValue_)
       , acceptor(acceptor_)
     {
