@@ -59,6 +59,43 @@ TEST_CASE("ConfigDefinition multiple parses test", "[config]")
 
 }
 
+TEST_CASE("ConfigDefinition acceptor test", "[config]")
+{
+  int test = -1;
+  llarp::ConfigDefinition<int> def("foo", "bar", false, false, 42, [&](int arg) {
+    test = arg;
+  });
+
+  CHECK_NOTHROW(def.tryAccept());
+  CHECK(test == 42);
+
+  def.parseValue("43");
+  CHECK_NOTHROW(def.tryAccept());
+  CHECK(test == 43);
+}
+
+TEST_CASE("ConfigDefinition acceptor throws test", "[config]")
+{
+  llarp::ConfigDefinition<int> def("foo", "bar", false, false, 42, [&](int arg) {
+    (void)arg;
+    throw std::runtime_error("FAIL");
+  });
+
+  REQUIRE_THROWS_WITH(def.tryAccept(), "FAIL");
+}
+
+TEST_CASE("ConfigDefinition tryAccept missing option test", "[config]")
+{
+  int unset = -1;
+  llarp::ConfigDefinition<int> def("foo", "bar", true, false, 1, [&](int arg) {
+    (void)arg;
+    unset = 0; // should never be called
+  });
+
+  REQUIRE_THROWS_WITH(def.tryAccept(),
+      "cannot call tryAccept() on [foo]:bar when required but no value available");
+}
+
 TEST_CASE("Configuration basic add/get test", "[config]")
 {
   llarp::Configuration config;
@@ -138,4 +175,39 @@ TEST_CASE("Configuration section test", "[config]")
 
   CHECK(config.getConfigValue<int>("foo", "bar") == 5);
   CHECK(config.getConfigValue<int>("goo", "bar") == 6);
+}
+
+TEST_CASE("Configuration acceptAllOptions test", "[config]")
+{
+  int fooBar = -1;
+  std::string fooBaz = "";
+
+  llarp::Configuration config;
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+      "foo", "bar", false, false, 1, [&](int arg) {
+        fooBar = arg;
+      }));
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<std::string>>(
+      "foo", "baz", false, false, "no", [&](std::string arg) {
+        fooBaz = arg;
+      }));
+
+  config.addConfigValue("foo", "baz", "yes");
+
+  REQUIRE_NOTHROW(config.validateRequiredFields());
+  REQUIRE_NOTHROW(config.acceptAllOptions());
+  CHECK(fooBar == 1);
+  CHECK(fooBaz == "yes");
+}
+
+TEST_CASE("Configuration acceptAllOptions exception propagation test", "[config]")
+{
+  llarp::Configuration config;
+  config.addConfigOption(std::make_unique<llarp::ConfigDefinition<int>>(
+      "foo", "bar", false, false, 1, [&](int arg) {
+        (void)arg;
+        throw std::runtime_error("FAIL");
+      }));
+
+  REQUIRE_THROWS_WITH(config.acceptAllOptions(), "FAIL");
 }

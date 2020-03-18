@@ -47,8 +47,10 @@ Configuration::addConfigValue(string_view section, string_view name, string_view
 void
 Configuration::validateRequiredFields()
 {
-  visitSections([&](const std::string& section, const DefinitionMap&) {
-    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def) {
+  visitSections([&](const std::string& section, const DefinitionMap&)
+  {
+    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def)
+    {
       if (def->required and def->numFound < 1)
       {
         throw std::invalid_argument(stringify(
@@ -56,7 +58,19 @@ Configuration::validateRequiredFields()
       }
 
       // should be handled earlier in ConfigDefinition::parseValue()
-      assert(def->numFound == 1 or def->multiValued);
+      assert(def->numFound <= 1 or def->multiValued);
+    });
+  });
+}
+
+void
+Configuration::acceptAllOptions()
+{
+  visitSections([&](const std::string& section, const DefinitionMap&)
+  {
+    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def)
+    {
+      def->tryAccept();
     });
   });
 }

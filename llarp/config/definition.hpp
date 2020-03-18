@@ -47,6 +47,11 @@ namespace llarp
     virtual std::string
     valueAsString(bool useDefault) = 0;
 
+    /// Subclassess should call their acceptor, if present. See ConfigDefinition for more details.
+    ///
+    /// @throws if the acceptor throws or the option is required but missing
+    virtual void tryAccept() const = 0;
+
     std::string section;
     std::string name;
     bool required = false;
@@ -63,19 +68,25 @@ namespace llarp
   template<typename T>
   struct ConfigDefinition : public ConfigDefinitionBase
   {
-    /// Constructor. Arguments are passed directly to ConfigDefinitionBase. Also accepts a default
-    /// value, which is used in the following situations:
+    /// Constructor. Arguments are passed directly to ConfigDefinitionBase.
     ///
+    /// @param defaultValue_ is used in the following situations:
     /// 1) as the return value for getValue() if there is no parsed value and required==false
     /// 2) as the output in defaultValueAsString(), used to generate config files
     /// 3) as the output in valueAsString(), used to generate config files
+    ///
+    /// @param acceptor_ is an optional function whose purpose is to both validate the parsed
+    ///        input and internalize it (e.g. copy it for runtime use). The acceptor should throw
+    ///        an exception with a useful message if it is not acceptable.
     ConfigDefinition(std::string section_,
                            std::string name_,
                            bool required_,
                            bool multiValued_,
-                           nonstd::optional<T> defaultValue_)
+                           nonstd::optional<T> defaultValue_,
+                           std::function<void(T)> acceptor_ = nullptr)
       : ConfigDefinitionBase(section_, name_, required_, multiValued_)
       , defaultValue(defaultValue_)
+      , acceptor(acceptor_)
     {
     }
 
@@ -140,8 +151,32 @@ namespace llarp
       return oss.str();
     }
 
+    /// Attempts to call the acceptor function, if present. This function may throw if the value is
+    /// not acceptable. Additionally, tryAccept should not be called if the option is required and
+    /// no value has been provided.
+    ///
+    /// @throws if required and no value present or if the acceptor throws
+    void
+    tryAccept() const override
+    {
+      if (required and not parsedValue.has_value())
+      {
+        throw std::runtime_error(stringify("cannot call tryAccept() on [",
+              section, "]:", name, " when required but no value available"));
+      }
+
+      if (acceptor)
+      {
+        auto maybe = getValue();
+        assert(maybe.has_value()); // should be guaranteed by our earlier check
+        // TODO: avoid copies here if possible
+        acceptor(maybe.value());
+      }
+    }
+
     nonstd::optional<T> defaultValue;
     nonstd::optional<T> parsedValue; // needs to be set when parseValue() called
+    std::function<void(T)> acceptor;
   };
 
 
@@ -227,6 +262,14 @@ namespace llarp
     /// @throws std::invalid_argument if configuration constraints are not met
     void
     validateRequiredFields();
+
+    /// Accept all options. This will call the acceptor (if present) on each option. Note that this
+    /// should only be called if all required fields are present (that is, validateRequiredFields()
+    /// has been or could be called without throwing).
+    ///
+    /// @throws if any option's acceptor throws
+    void
+    acceptAllOptions();
 
     /// Generate a config string from the current config definition, optionally using overridden
     /// values. The generated config will preserve insertion order of both sections and their
