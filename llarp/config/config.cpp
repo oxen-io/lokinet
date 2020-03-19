@@ -73,26 +73,6 @@ namespace llarp
     return val;
   }
 
-  int
-  svtoi(string_view val)
-  {
-    return std::atoi(val.data());
-  }
-
-  nonstd::optional<bool>
-  setOptBool(string_view val)
-  {
-    if (IsTrueValue(val))
-    {
-      return true;
-    }
-    else if (IsFalseValue(val))
-    {
-      return false;
-    }
-    return {};
-  }
-
   void
   RouterConfig::defineConfigOptions(Configuration& conf)
   {

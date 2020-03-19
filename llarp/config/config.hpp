@@ -15,24 +15,6 @@
 #include <vector>
 #include <unordered_set>
 
-/*
- * section names
- * XXX: remove me
- *
-  router    = find_section< RouterConfig >(parser, "router");
-  network   = find_section< NetworkConfig >(parser, "network");
-  connect   = find_section< ConnectConfig >(parser, "connect");
-  netdb     = find_section< NetdbConfig >(parser, "netdb");
-  dns       = find_section< DnsConfig >(parser, "dns");
-  links     = find_section< LinksConfig >(parser, "bind");
-  services  = find_section< ServicesConfig >(parser, "services");
-  system    = find_section< SystemConfig >(parser, "system");
-  api       = find_section< ApiConfig >(parser, "api");
-  lokid     = find_section< LokidConfig >(parser, "lokid");
-  bootstrap = find_section< BootstrapConfig >(parser, "bootstrap");
-  logging   = find_section< LoggingConfig >(parser, "logging");
-*/
-
 namespace llarp
 {
   using SectionValues_t = llarp::ConfigParser::SectionValues_t;

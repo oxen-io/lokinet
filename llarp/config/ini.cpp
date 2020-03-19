@@ -152,40 +152,6 @@ namespace llarp
       visit(item.first, item.second);
   }
 
-  const std::string emptyStr = "";
-
-  const std::string&
-  ConfigParser::getSingleSectionValue(
-      const SectionValues_t& values,
-      const std::string& section,
-      const std::string& key,
-      bool required,
-      bool tolerateMultiples) const
-  {
-    // section is provided for clarity / sanity check
-    assert(m_Config.find(section) != m_Config.end());
-    assert( & m_Config.find(section)->second ==  &values);
-
-    const auto sectionItr = m_Config.find(section);
-    if (sectionItr == m_Config.end())
-      throw std::invalid_argument(stringify("could not find section ", section));
-
-    const SectionValues_t& sectionValues = sectionItr->second;
-
-    if (not tolerateMultiples and sectionValues.count(key) > 1)
-      throw std::invalid_argument(stringify("config [", section, "]:", key, " cannot have multiple values for ", key));
-
-    const auto itr = sectionValues.find(key);
-    if (itr == sectionValues.end()) {
-      if (required)
-        throw std::invalid_argument(stringify("config [", section, "]:", key, " is missing"));
-      else
-        return emptyStr;
-    }
-
-    return itr->second;
-  }
-
   bool
   ConfigParser::VisitSection(
       const char* name,
