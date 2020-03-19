@@ -397,7 +397,7 @@ namespace llarp
     }
 
     // IWP config
-    m_OutboundPort = std::get<LinksConfig::Port>(conf->links.outboundLink());
+    m_OutboundPort = conf->links.outboundLink().port;
     // Router config
     _rc.SetNick(conf->router.nickname());
     _outboundSessionMaker.maxConnectedRouters = conf->router.maxConnectedRouters();
@@ -531,12 +531,12 @@ namespace llarp
     }
 
     // create inbound links, if we are a service node
-    for (const auto& serverConfig : conf->links.inboundLinks())
+    for(const LinksConfig::LinkInfo &serverConfig : conf->links.inboundLinks())
     {
       // get default factory
       auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
       // for each option if provided ...
-      for (const auto& opt : std::get<LinksConfig::Options>(serverConfig))
+      for(const auto &opt : serverConfig.serverOptions)
       {
         // try interpreting it as a link type
         const auto linktype = LinkFactory::TypeFromName(opt);
@@ -563,11 +563,10 @@ namespace llarp
           util::memFn(&AbstractRouter::SessionClosed, this),
           util::memFn(&AbstractRouter::PumpLL, this));
 
-      const auto& key = std::get<LinksConfig::Interface>(serverConfig);
-      int af = std::get<LinksConfig::AddressFamily>(serverConfig);
-      uint16_t port = std::get<LinksConfig::Port>(serverConfig);
-      llarp::LogWarn("tun: ", key, " -- af: ", af, " -- port: ", port);
-      if (!server->Configure(netloop(), key, af, port))
+      const std::string& key = serverConfig.interface;
+      int af = serverConfig.addressFamily;
+      uint16_t port = serverConfig.port;
+      if(!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
         return false;

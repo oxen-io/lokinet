@@ -142,24 +142,23 @@ namespace llarp
   class LinksConfig
   {
    public:
-    static constexpr int Interface = 0;
-    static constexpr int AddressFamily = 1;
-    static constexpr int Port = 2;
-    static constexpr int Options = 3;
-
-    using ServerOptions = std::unordered_set<std::string>;
-    using LinkInfo = std::tuple<std::string, int, uint16_t, ServerOptions>;
-    using Links = std::vector<LinkInfo>;
+    struct LinkInfo
+    {
+      std::string interface;
+      int addressFamily;
+      uint16_t port;
+      std::unordered_set<std::string> serverOptions;
+    };
 
    public:
     LinkInfo m_OutboundLink;
-    Links m_InboundLinks;
+    std::vector<LinkInfo> m_InboundLinks;
 
    public:
     // clang-format off
     const LinkInfo& outboundLink() const  { return m_OutboundLink; }
 
-    const Links& inboundLinks() const { return m_InboundLinks; }
+    const std::vector<LinkInfo>& inboundLinks() const { return m_InboundLinks; }
     // clang-format on
 
     void
