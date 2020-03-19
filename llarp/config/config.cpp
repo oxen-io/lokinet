@@ -293,7 +293,7 @@ namespace llarp
     }
     */
     (void)conf;
-    throw std::runtime_error("FIXME");
+    // throw std::runtime_error("FIXME");
   }
 
   void
@@ -301,7 +301,7 @@ namespace llarp
   {
     // routers.emplace_back(val.begin(), val.end());
     (void)conf;
-    throw std::runtime_error("FIXME");
+    // throw std::runtime_error("FIXME");
   }
 
   void
@@ -309,7 +309,7 @@ namespace llarp
   {
     // services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
     (void)conf;
-    throw std::runtime_error("FIXME");
+    // throw std::runtime_error("FIXME");
   }
 
   void
@@ -382,7 +382,7 @@ namespace llarp
     }
     */
     (void)conf;
-    throw std::runtime_error("FIXME");
+    // throw std::runtime_error("FIXME");
   }
 
   void
@@ -447,72 +447,83 @@ namespace llarp
     */
   }
 
-  template < typename Section >
-  Section
-  find_section(const ConfigParser &, const std::string &)
-  {
-    throw std::runtime_error("FIXME");
-    /*
-    Section section;
-
-    auto visitor = [&](const ConfigParser::SectionValues_t& sectionValues) {
-      return section.parseSectionValues(parser, sectionValues);
-    };
-
-    // TODO: exceptions, please. fuck.
-    //       parser.VisitSection just passes-through the return value of our
-    //       lambda from above
-    if(parser.VisitSection(name.c_str(), visitor))
-    {
-      return section;
-    }
-
-    return {};
-    */
-  }
-
   bool
-  Config::Load(const char* fname)
+  Config::Load(const char *fname)
   {
-    ConfigParser parser;
-    if (!parser.LoadFile(fname))
+    // TODO: DRY
+    try
     {
+      Configuration conf;
+      initializeConfig(conf);
+
+      ConfigParser parser;
+      if(!parser.LoadFile(fname))
+      {
+        return false;
+      }
+
+      parser.IterAll([&](string_view section, const SectionValues_t& values) {
+        for (const auto& pair : values)
+        {
+          conf.addConfigValue(section, pair.first, pair.second);
+        }
+      });
+
+      // TODO: hand parsed data to conf, pull out values
+      return true;
+    }
+    catch(const std::exception& e)
+    {
+      LogError("Error trying to init and parse config from file: ", e.what());
       return false;
     }
-
-    return parse(parser);
   }
 
   bool
   Config::LoadFromStr(string_view str)
   {
-    ConfigParser parser;
-    if (!parser.LoadFromStr(str))
+    // TODO: DRY
+    try
     {
+      Configuration conf;
+      initializeConfig(conf);
+
+      ConfigParser parser;
+      if(!parser.LoadFromStr(str))
+      {
+        return false;
+      }
+
+      // TODO: hand parsed data to conf, pull out values
+      return true;
+    }
+    catch(const std::exception& e)
+    {
+      LogError("Error trying to init and parse config from string: ", e.what());
       return false;
     }
-
-    return parse(parser);
   }
 
-  bool
-  Config::parse(const ConfigParser& parser)
+  void
+  Config::initializeConfig(Configuration& conf)
   {
-    if (Lokinet_INIT())
-      return false;
-    router = find_section<RouterConfig>(parser, "router");
-    network = find_section<NetworkConfig>(parser, "network");
-    connect = find_section<ConnectConfig>(parser, "connect");
-    netdb = find_section<NetdbConfig>(parser, "netdb");
-    dns = find_section<DnsConfig>(parser, "dns");
-    links = find_section<LinksConfig>(parser, "bind");
-    services = find_section<ServicesConfig>(parser, "services");
-    system = find_section<SystemConfig>(parser, "system");
-    api = find_section<ApiConfig>(parser, "api");
-    lokid = find_section<LokidConfig>(parser, "lokid");
-    bootstrap = find_section<BootstrapConfig>(parser, "bootstrap");
-    logging = find_section<LoggingConfig>(parser, "logging");
-    return true;
+    // TODO: this seems like a random place to put this, should this be closer
+    //       to main() ?
+    if(Lokinet_INIT())
+      throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
+
+    router.defineConfigOptions(conf);
+    network.defineConfigOptions(conf);
+    connect.defineConfigOptions(conf);
+    netdb.defineConfigOptions(conf);
+    dns.defineConfigOptions(conf);
+    links.defineConfigOptions(conf);
+    services.defineConfigOptions(conf);
+    system.defineConfigOptions(conf);
+    api.defineConfigOptions(conf);
+    lokid.defineConfigOptions(conf);
+    bootstrap.defineConfigOptions(conf);
+    logging.defineConfigOptions(conf);
   }
 
   fs::path

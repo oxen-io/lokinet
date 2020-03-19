@@ -236,9 +236,9 @@ namespace llarp
 
   struct Config
   {
-   public:
-    bool
-    parse(const ConfigParser& parser);
+   private:
+    void
+    initializeConfig(Configuration& conf);
 
    public:
     RouterConfig router;
