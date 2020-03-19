@@ -191,9 +191,9 @@ tun_ev_loop(void* u)
       // LeaveCriticalSection(&HandlerMtx);
     }
     logic->call_soon([ev]() {
-      if (ev->t->tick)
+      ev->flush_write();      
+      if(ev->t->tick)
         ev->t->tick(ev->t);
-      ev->flush_write();
     });
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
