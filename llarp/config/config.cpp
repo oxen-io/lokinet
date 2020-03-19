@@ -178,10 +178,10 @@ namespace llarp
         m_workerThreads = arg;
       });
 
-    conf.defineOption<int>("router", "worker-threads", false, m_numNetThreads, 
+    conf.defineOption<int>("router", "net-threads", false, m_numNetThreads, 
       [this](int arg) {
         if (arg <= 0)
-          throw std::invalid_argument("worker-threads must be > 0");
+          throw std::invalid_argument("net-threads must be > 0");
 
         m_numNetThreads = arg;
       });
