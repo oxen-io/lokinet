@@ -227,8 +227,18 @@ namespace llarp
 
   struct LoggingConfig
   {
-    bool m_LogJSON = false;
-    FILE* m_LogFile = stdout;
+    enum class LogType
+    {
+      Unknown = 0,
+      File,
+      Json,
+      Syslog,
+    };
+    static LogType LogTypeFromString(const std::string&);
+
+    LogType m_logType;
+    LogLevel m_logLevel;
+    std::string m_logFile;
 
     void
     defineConfigOptions(Configuration& conf);

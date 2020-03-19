@@ -614,17 +614,51 @@ namespace llarp
 
     // Logging config
 
-    auto logfile = conf->logging.m_LogFile;
-
-    if (conf->logging.m_LogJSON)
+    FILE* logfile = nullptr;
+    if (conf->logging.m_logFile == "stdout")
     {
-      LogContext::Instance().logStream =
-          std::make_unique<JSONLogStream>(diskworker(), logfile, 100ms, logfile != stdout);
+      logfile = stdout;
     }
-    else if (logfile != stdout)
+    else
     {
-      LogContext::Instance().logStream =
-          std::make_unique<FileLogStream>(diskworker(), logfile, 100ms, true);
+      logfile = ::fopen(conf->logging.m_logFile.c_str(), "a");
+      if (not logfile)
+      {
+        LogError("could not open logfile ", conf->logging.m_logFile, ", errno: ", strerror(errno));
+        return false;
+      }
+    }
+
+    switch (conf->logging.m_logType)
+    {
+      case LoggingConfig::LogType::Unknown:
+        // Config shouldn't allow this to happen, so we die swiftly if we get here
+        assert(conf->logging.m_logType != LoggingConfig::LogType::Unknown);
+        break;
+      case LoggingConfig::LogType::File:
+        LogContext::Instance().logStream =
+            std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
+        break;
+      case LoggingConfig::LogType::Json:
+        LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
+            diskworker(), logfile, 100ms, logfile != stdout);
+        break;
+      case LoggingConfig::LogType::Syslog:
+        if (logfile)
+        {
+          // TODO: this logic should be handled in Config
+          LogError("Cannot mix log type=syslog and file=*");
+          ::fclose(logfile);
+          return false;
+        }
+#if defined(_WIN32)
+        LogError("syslog not supported on win32");
+        return false;
+#else
+        LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+#endif
+        break;
+
     }
 
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());

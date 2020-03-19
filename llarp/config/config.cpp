@@ -73,6 +73,16 @@ namespace llarp
     return val;
   }
 
+  LoggingConfig::LogType LoggingConfig::LogTypeFromString(const std::string& str)
+  {
+    if (str == "unknown") return LogType::Unknown;
+    else if (str == "file") return LogType::File;
+    else if (str == "json") return LogType::Json;
+    else if (str == "syslog") return LogType::Syslog;
+
+    return LogType::Unknown;
+  }
+
   void
   RouterConfig::defineConfigOptions(Configuration& conf)
   {
@@ -388,63 +398,28 @@ namespace llarp
   void
   LoggingConfig::defineConfigOptions(Configuration& conf)
   {
-
-    conf.defineOption<std::string>("logging", "type", false, "",
+    conf.defineOption<std::string>("logging", "type", false, "file",
       [this](std::string arg) {
-        (void)arg;
-        // TODO: this whole thing needs a rewrite, eww eww eww
+      LoggingConfig::LogType type = LogTypeFromString(arg);
+        if (type == LogType::Unknown)
+          throw std::invalid_argument(stringify("invalid log type: ", arg));
+
+        m_logType = type;
       });
 
-    /*
-    if(key == "type" && val == "syslog")
-    {
-      // TODO(despair): write event log syslog class
-#if defined(_WIN32)
-      LogError("syslog not supported on win32");
-#else
-      LogInfo("Switching to syslog");
-      LogContext::Instance().logStream = std::make_unique<SysLogStream>();
-#endif
-    }
-    if (key == "level")
-    {
-      const auto maybe = LogLevelFromString(str(val));
-      if (not maybe.has_value())
-      {
-        LogError("bad log level: ", val);
-        return;
-      }
-      const LogLevel lvl = maybe.value();
-      LogContext::Instance().runtimeLevel = lvl;
-      LogInfo("Log level set to ", LogLevelToName(lvl));
-    }
-    if (key == "type" && val == "json")
-    {
-      m_LogJSON = true;
-    }
-    if (key == "file")
-    {
-      LogInfo("open log file: ", val);
-      std::string fname{val};
-      FILE* const logfile = ::fopen(fname.c_str(), "a");
-      if (logfile)
-      {
-        m_LogFile = logfile;
-        LogInfo("will log to file ", val);
-      }
-      else if (errno)
-      {
-        LogError("could not open log file at '", val, "': ", strerror(errno));
-        errno = 0;
-      }
-      else
-      {
-        LogError(
-            "failed to open log file at '", val, "' for an unknown reason, bailing tf out kbai");
-        ::abort();
-      }
-    }
-    */
+    conf.defineOption<std::string>("logging", "level", false, "info",
+      [this](std::string arg) {
+        nonstd::optional<LogLevel> level = LogLevelFromString(arg);
+        if (not level.has_value())
+          throw std::invalid_argument(stringify( "invalid log level value: ", arg));
+
+        m_logLevel = level.value();
+      });
+
+    conf.defineOption<std::string>("logging", "file", false, "stdout",
+      [this](std::string arg) {
+        m_logFile = arg;
+      });
   }
 
   bool
