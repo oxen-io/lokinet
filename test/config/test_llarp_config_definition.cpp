@@ -1,6 +1,9 @@
 #include <config/definition.hpp>
+#include <util/string_view.hpp>
 
 #include <catch2/catch.hpp>
+
+using llarp::string_view;
 
 TEST_CASE("ConfigDefinition int parse test", "[config]")
 {
@@ -214,3 +217,99 @@ TEST_CASE("Configuration defineOptions passthrough test", "[config]")
   config.defineOption<int>("foo", "bar", false, 1);
   CHECK(config.getConfigValue<int>("foo", "bar") == 1);
 }
+
+TEST_CASE("Configuration undeclared definition basic test", "[config]")
+{
+  llarp::Configuration config;
+
+  bool invoked = false;
+
+  config.addUndeclaredHandler("foo", [&](string_view section, string_view name, string_view value) {
+    CHECK(section == "foo");
+    CHECK(name == "bar");
+    CHECK(value == "val");
+
+    invoked = true;
+  });
+
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "bar", "val"));
+
+  CHECK(invoked);
+}
+
+TEST_CASE("Configuration undeclared add more than once test", "[config]")
+{
+  llarp::Configuration config;
+
+  std::string calledBy = "";
+
+  config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+      calledBy = "a";
+  });
+  REQUIRE_THROWS_WITH(
+    config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+        calledBy = "b";
+    }),
+    "section foo already has a handler");
+
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "bar", "val"));
+
+  CHECK(calledBy == "a");
+}
+
+TEST_CASE("Configuration undeclared add/remove test", "[config]")
+{
+  llarp::Configuration config;
+
+  std::string calledBy = "";
+
+  // add...
+  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+    calledBy = "a";
+  }));
+
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "bar", "val"));
+
+  CHECK(calledBy == "a");
+
+  calledBy = "";
+
+  // ...then remove...
+  REQUIRE_NOTHROW(config.removeUndeclaredHandler("foo"));
+
+  CHECK_THROWS_WITH(
+      config.addConfigValue("foo", "bar", "val"),
+      "no declared section [foo]");
+
+  // ...then add again
+  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+    calledBy = "b";
+  }));
+
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "bar", "val"));
+
+  CHECK(calledBy == "b");
+}
+
+TEST_CASE("Configuration undeclared handler exception propagation test", "[config]")
+{
+  llarp::Configuration config;
+
+  config.addUndeclaredHandler("foo", [](string_view, string_view, string_view) {
+      throw std::runtime_error("FAIL");
+  });
+
+  REQUIRE_THROWS_WITH(config.addConfigValue("foo", "bar", "val"), "FAIL");
+}
+
+TEST_CASE("Configuration undeclared handler wrong section", "[config]")
+{
+  llarp::Configuration config;
+
+  config.addUndeclaredHandler("foo", [](string_view, string_view, string_view) {
+      throw std::runtime_error("FAIL");
+  });
+
+  REQUIRE_THROWS_WITH(config.addConfigValue("argle", "bar", "val"), "no declared section [argle]");
+}
+

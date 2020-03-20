@@ -177,6 +177,9 @@ namespace llarp
     std::function<void(T)> acceptor;
   };
 
+  using UndeclaredValueHandler 
+      = std::function<void(string_view section, string_view name, string_view value)>;
+
 
   using ConfigDefinition_ptr = std::unique_ptr<ConfigDefinitionBase>;
 
@@ -201,7 +204,6 @@ namespace llarp
   /// with defaults and optionally fields which have a specified value (values provided through
   /// calls to addConfigValue()).
   struct Configuration {
-    SectionMap m_definitions;
 
     /// Spefify the parameters and type of a configuration option. The parameters are members of
     /// ConfigDefinitionBase; the type is inferred from ConfigDefinition's template parameter T.
@@ -264,6 +266,25 @@ namespace llarp
       return derived->getValue();
     }
 
+    /// Add an "undeclared" handler for the given section. This is a handler that will be called
+    /// whenever a k:v pair is found that doesn't match a provided definition.
+    ///
+    /// Any exception thrown by the handler will progagate back through the call to
+    /// addConfigValue().
+    ///
+    /// @param section is the section for which any undeclared values will invoke the provided
+    ///        handler
+    /// @param handler 
+    /// @throws if there is already a handler for this section
+    void
+    addUndeclaredHandler(const std::string& section, UndeclaredValueHandler handler);
+
+    /// Removes an "undeclared" handler for the given section.
+    ///
+    /// @param section is the section which we want to remove the handler for
+    void
+    removeUndeclaredHandler(const std::string& section);
+
     /// Validate that all required fields are present.
     ///
     /// @throws std::invalid_argument if configuration constraints are not met
@@ -302,6 +323,10 @@ namespace llarp
 
     using DefVisitor = std::function<void(const std::string&, const ConfigDefinition_ptr&)>;
     void visitDefinitions(const std::string& section, DefVisitor visitor) const;
+
+    SectionMap m_definitions;
+
+    std::unordered_map<std::string, UndeclaredValueHandler> m_undeclaredHandlers;
 
     // track insertion order
     std::vector<std::string> m_sectionOrdering;

@@ -36,10 +36,49 @@ Configuration::defineOption(ConfigDefinition_ptr def)
 Configuration&
 Configuration::addConfigValue(string_view section, string_view name, string_view value)
 {
-  ConfigDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
+  auto secItr = m_definitions.find(std::string(section));
+  if (secItr == m_definitions.end())
+  {
+    // fallback to undeclared handler if available
+    auto undItr = m_undeclaredHandlers.find(std::string(section));
+    if (undItr == m_undeclaredHandlers.end())
+      throw std::invalid_argument(stringify("no declared section [", section, "]"));
+    else
+    {
+      auto& handler = undItr->second;
+      handler(section, name, value);
+      return *this;
+    }
+  }
+
+  // section was valid, get definition by name
+  auto& sectionDefinitions = secItr->second;
+  auto defItr = sectionDefinitions.find(std::string(name));
+  if (defItr == sectionDefinitions.end())
+    throw std::invalid_argument(stringify("no declared option [", section, "]:", name));
+
+  ConfigDefinition_ptr& definition = defItr->second;
   definition->parseValue(std::string(value));
 
   return *this;
+}
+
+void
+Configuration::addUndeclaredHandler(const std::string& section, UndeclaredValueHandler handler)
+{
+  auto itr = m_undeclaredHandlers.find(section);
+  if (itr != m_undeclaredHandlers.end())
+    throw std::logic_error(stringify("section ", section, " already has a handler"));
+
+  m_undeclaredHandlers[section] = std::move(handler);
+}
+
+void
+Configuration::removeUndeclaredHandler(const std::string& section)
+{
+  auto itr = m_undeclaredHandlers.find(section);
+  if (itr != m_undeclaredHandlers.end())
+    m_undeclaredHandlers.erase(itr);
 }
 
 void
@@ -110,7 +149,7 @@ Configuration::lookupDefinitionOrThrow(string_view section, string_view name) co
 {
   const auto sectionItr = m_definitions.find(std::string(section));
   if (sectionItr == m_definitions.end())
-    throw std::invalid_argument(stringify("No config section ", section));
+    throw std::invalid_argument(stringify("No config section [", section, "]"));
 
   auto& sectionDefinitions = sectionItr->second;
   const auto definitionItr = sectionDefinitions.find(std::string(name));
