@@ -147,7 +147,6 @@ namespace llarp
       std::string interface;
       int addressFamily;
       uint16_t port;
-      std::unordered_set<std::string> serverOptions;
     };
 
    public:

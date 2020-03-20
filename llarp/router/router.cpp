@@ -534,23 +534,9 @@ namespace llarp
     for(const LinksConfig::LinkInfo &serverConfig : conf->links.inboundLinks())
     {
       // get default factory
+      // TODO: this is dead code, as is everything related to _defaultLinkType,
+      //       also review LinkFactory for dead code
       auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
-      // for each option if provided ...
-      for(const auto &opt : serverConfig.serverOptions)
-      {
-        // try interpreting it as a link type
-        const auto linktype = LinkFactory::TypeFromName(opt);
-        if (linktype != LinkFactory::LinkType::eLinkUnknown)
-        {
-          // override link factory if it's a valid link type
-          auto factory = LinkFactory::Obtain(linktype, true);
-          if (factory)
-          {
-            inboundLinkFactory = std::move(factory);
-            break;
-          }
-        }
-      }
 
       auto server = inboundLinkFactory(
           m_keyManager,

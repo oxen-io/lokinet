@@ -101,7 +101,6 @@ ifaddr=10.101.0.1/16
     ASSERT_EQ(links[0].interface, "eth0");
     ASSERT_EQ(links[0].addressFamily, AF_INET);
     ASSERT_EQ(links[0].port, 5501);
-    ASSERT_TRUE(links[0].serverOptions.empty());
   }
 
   ASSERT_THAT(config.bootstrap.routers,
