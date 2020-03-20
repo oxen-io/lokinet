@@ -3,6 +3,7 @@
 
 #include <util/string_view.hpp>
 #include <sstream>
+#include <vector>
 
 namespace llarp
 {
@@ -40,6 +41,14 @@ namespace llarp
 #endif
     return o.str();
   }
+
+  /// Split a string on a given delimiter
+  //
+  /// @param str is the string to split
+  /// @param delimiter is the character to split on
+  /// @return a vector of string_views with the split words, excluding the delimeter
+  std::vector<string_view>
+  split(string_view str, char delimiter);
 
 }  // namespace llarp
 

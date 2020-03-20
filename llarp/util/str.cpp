@@ -78,4 +78,35 @@ namespace llarp
 
     return str;
   }
+
+  std::vector<string_view>
+  split(string_view str, char delimiter)
+  {
+    std::vector<string_view> splits;
+
+    size_t last = 0;
+    size_t next = 0;
+    while (last < str.size() and next < string_view::npos)
+    {
+      next = str.find_first_of(delimiter, last);
+      if (next > last)
+      {
+        splits.push_back(str.substr(last, next-last));
+
+        last = next;
+
+        // advance to next non-delimiter
+        while (str[last] == delimiter)
+          last++;
+      }
+      else
+      {
+        break;
+      }
+
+    }
+
+    return splits;
+  }
+
 }  // namespace llarp
