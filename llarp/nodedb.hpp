@@ -155,9 +155,15 @@ struct llarp_nodedb
   bool
   select_random_exit(llarp::RouterContact &rc) EXCLUDES(access);
 
+  /***
+      given a filter function accept we start at a random
+      location in the netdb, check each entry until accept returns true
+      @returns an optional containing the RC of the router we selected if we
+     selected one
+   */
   template < typename Filter_t >
   nonstd::optional< llarp::RouterContact >
-  MaybeSelectRandomHopWhere(Filter_t accept)
+  MaybeSelectRandomWhere(Filter_t accept)
   {
     llarp::util::Lock lock(access);
     const size_t sz = entries.size();

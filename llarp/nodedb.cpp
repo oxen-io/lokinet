@@ -496,7 +496,7 @@ bool
 llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
   const auto maybe_result =
-      MaybeSelectRandomHopWhere([](const llarp::RouterContact &rc) -> bool {
+      MaybeSelectRandomWhere([](const llarp::RouterContact &rc) -> bool {
         return rc.IsExit() and rc.IsPublicRouter();
       });
   if(maybe_result.has_value())
@@ -511,8 +511,8 @@ bool
 llarp_nodedb::select_random_hop_excluding(
     llarp::RouterContact &result, const std::set< llarp::RouterID > &exclude)
 {
-  const auto maybe_result = MaybeSelectRandomHopWhere(
-      [exclude](const llarp::RouterContact &rc) -> bool {
+  const auto maybe_result =
+      MaybeSelectRandomWhere([exclude](const llarp::RouterContact &rc) -> bool {
         return exclude.count(rc.pubkey) == 0;
       });
   if(maybe_result.has_value())
@@ -527,8 +527,8 @@ bool
 llarp_nodedb::select_random_hop_excluding_ranges(
     llarp::RouterContact &result, const std::vector< llarp::IPRange > &exclude)
 {
-  const auto maybe_result = MaybeSelectRandomHopWhere(
-      [exclude](const llarp::RouterContact &rc) -> bool {
+  const auto maybe_result =
+      MaybeSelectRandomWhere([exclude](const llarp::RouterContact &rc) -> bool {
         if(not rc.IsPublicRouter())
           return false;
         for(const auto &range : exclude)
