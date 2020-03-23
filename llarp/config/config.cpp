@@ -386,15 +386,17 @@ namespace llarp
   void
   BootstrapConfig::defineConfigOptions(Configuration& conf)
   {
-    // TODO: multi-value
-    /*
-    if(key == "add-node")
-    {
-      routers.emplace_back(val.begin(), val.end());
-    }
-    */
-    (void)conf;
-    // throw std::runtime_error("FIXME");
+    conf.addUndeclaredHandler("bootstrap", [&](string_view, string_view name, string_view value) {
+      if (name != "add-node")
+      {
+        return false;
+      }
+      else
+      {
+        routers.emplace_back(str(value));
+        return true;
+      }
+    });
   }
 
   void

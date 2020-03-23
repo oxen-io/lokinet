@@ -313,3 +313,20 @@ TEST_CASE("Configuration undeclared handler wrong section", "[config]")
   REQUIRE_THROWS_WITH(config.addConfigValue("argle", "bar", "val"), "no declared section [argle]");
 }
 
+TEST_CASE("Configuration undeclared handler duplicate names", "[config]")
+{
+  llarp::Configuration config;
+
+  int count = 0;
+
+  config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+      count++;
+  });
+
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "k", "v"));
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "k", "v"));
+  REQUIRE_NOTHROW(config.addConfigValue("foo", "k", "v"));
+
+  REQUIRE(count == 3);
+}
+
