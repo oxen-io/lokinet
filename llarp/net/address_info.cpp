@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #endif
 #include <net/net.hpp>
+#include <net/ip.hpp>
 #include <util/bencode.h>
 #include <util/mem.h>
 #include <util/printer.hpp>
