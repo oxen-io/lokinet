@@ -186,13 +186,14 @@ namespace llarp
         return false;
       const auto now   = m_Parent->Now();
       const auto msgid = m_TXID++;
+      const auto bufsz = buf.size();
       auto& msg =
           m_TXMsgs
               .emplace(msgid,
                        OutboundMessage{msgid, std::move(buf), now, completed})
               .first->second;
       EncryptAndSend(msg.XMIT());
-      if(buf.size() > FragmentSize)
+      if(bufsz > FragmentSize)
       {
         msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
