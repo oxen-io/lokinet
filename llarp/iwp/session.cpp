@@ -750,10 +750,6 @@ namespace llarp
                         InboundMessage{rxid, sz, std::move(h), m_Parent->Now()})
                     .first;
 
-          auto _sizeDelta = data.size()
-              - (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
-                 + PacketOverhead + 32);
-          if(_sizeDelta == 0)
           {
             sz = std::min(sz, uint16_t{FragmentSize});
             {
