@@ -13,6 +13,7 @@ namespace llarp
         : m_Data{std::move(msg)}
         , m_MsgID{msgid}
         , m_Completed{handler}
+        , m_LastFlush{now}
         , m_StartedAt{now}
     {
       const llarp_buffer_t buf(m_Data);
