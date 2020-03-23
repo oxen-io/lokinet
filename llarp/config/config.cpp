@@ -249,77 +249,79 @@ namespace llarp
       });
   }
 
+  LinksConfig::LinkInfo
+  LinksConfig::LinkInfoFromINIValues(string_view name, string_view value)
+  {
+    // we treat the INI k:v pair as:
+    // k: interface name, * indicating outbound
+    // v: a comma-separated list of values, an int indicating port (everything else ignored)
+    //    this is somewhat of a backwards- and forwards-compatibility thing
+
+    LinkInfo info;
+    info.addressFamily = AF_INET;
+    info.interface = str(name);
+
+    std::vector<string_view> splits = split(value, ',');
+    for (string_view str : splits)
+    {
+      int asNum = std::atoi(str.data());
+      if (asNum > 0)
+        info.port = asNum;
+
+      // otherwise, ignore ("future-proofing")
+    }
+
+    return info;
+  }
+
   void
   LinksConfig::defineConfigOptions(Configuration& conf)
   {
-    /*
-    uint16_t proto = 0;
+    conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
+      LinkInfo info = LinkInfoFromINIValues(name, value);
 
-    std::unordered_set<std::string> parsed_opts;
-    std::string::size_type idx;
-    static constexpr char delimiter = ',';
-    do
-    {
-      idx = val.find_first_of(delimiter);
-      if (idx != string_view::npos)
+      if (info.port <= 0)
+        throw std::invalid_argument(stringify("Invalid [bind] port specified on interface", name));
+
+      if(name == "*")
       {
-        parsed_opts.emplace(TrimWhitespace(val.substr(0, idx)));
-        val.remove_prefix(idx + 1);
+        info.port = fromEnv(info.port, "OUTBOUND_PORT");
+        m_OutboundLink = std::move(info);
       }
       else
       {
-        parsed_opts.emplace(TrimWhitespace(val));
+        m_InboundLinks.emplace_back(std::move(info));
       }
-    } while (idx != string_view::npos);
-    std::unordered_set<std::string> opts;
-    /// for each option
-    for (const auto& item : parsed_opts)
-    {
-      /// see if it's a number
-      auto port = std::atoi(item.c_str());
-      if (port > 0)
-      {
-        /// set port
-        if (proto == 0)
-        {
-          proto = port;
-        }
-      }
-      else
-      {
-        opts.insert(item);
-      }
-    }
 
-    if (key == "*")
-    {
-      m_OutboundLink =
-          std::make_tuple("*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
-    }
-    else
-    {
-      // str() here for gcc 5 compat
-      m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
-    }
-    */
-    (void)conf;
-    // throw std::runtime_error("FIXME");
+      return true;
+    });
+
   }
 
   void
   ConnectConfig::defineConfigOptions(Configuration& conf)
   {
-    // routers.emplace_back(val.begin(), val.end());
-    (void)conf;
-    // throw std::runtime_error("FIXME");
+
+    conf.addUndeclaredHandler("connect", [this](string_view section,
+                                                string_view name,
+                                                string_view value) {
+      (void)section;
+      (void)name;
+      routers.emplace_back(value);
+      return true;
+    });
   }
 
   void
   ServicesConfig::defineConfigOptions(Configuration& conf)
   {
-    // services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
-    (void)conf;
-    // throw std::runtime_error("FIXME");
+    conf.addUndeclaredHandler("services", [this](string_view section,
+                                                 string_view name,
+                                                 string_view value) {
+      (void)section;
+      services.emplace_back(name, value);
+      return true;
+    });
   }
 
   void

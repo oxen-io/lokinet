@@ -146,8 +146,12 @@ namespace llarp
     {
       std::string interface;
       int addressFamily;
-      uint16_t port;
+      uint16_t port = -1;
     };
+    /// Create a LinkInfo from the given string.
+    /// @throws if str does not represent a LinkInfo.
+    LinkInfo
+    LinkInfoFromINIValues(string_view name, string_view value);
 
    public:
     LinkInfo m_OutboundLink;
