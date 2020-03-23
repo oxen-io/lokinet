@@ -17,6 +17,7 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
+#include "ghc/filesystem.hpp"
 
 namespace llarp
 {
@@ -513,87 +514,89 @@ namespace llarp
 #else
     const fs::path homedir = fs::path(getenv("HOME"));
 #endif
-    return homedir / fs::path(".lokinet");
+    return homedir / fs::path(".lokinet/");
+  }
+
+  fs::path
+  GetDefaultConfigFilename()
+  {
+    return fs::path("lokinet.ini");
   }
 
   fs::path
   GetDefaultConfigPath()
   {
-    return GetDefaultConfigDir() / "lokinet.ini";
+    return GetDefaultConfigDir() / GetDefaultConfigFilename();
+  }
+
+  void
+  ensureConfig(const fs::path& dir, const fs::path& filename, bool overwrite, bool asRouter)
+  {
+    fs::path fullPath = dir / filename;
+
+    std::error_code ec;
+
+    // fail to overwrite if not instructed to do so
+    if(fs::exists(fullPath, ec) && !overwrite)
+      throw std::invalid_argument(stringify("Config file ", fullPath, " already exists"));
+
+    if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
+
+    // create parent dir if it doesn't exist
+    if (not fs::exists(dir, ec))
+    {
+      if (not fs::create_directory(dir))
+        throw std::runtime_error(stringify("Failed to create parent directory ", dir));
+    }
+    if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
+
+    llarp::LogInfo("Attempting to create config file ", fullPath);
+
+    llarp::Config config;
+    std::string confStr;
+    if (asRouter)
+      confStr = config.generateBaseClientConfig();
+    else
+      confStr = config.generateBaseRouterConfig();
+
+    // open a filestream
+    auto stream = llarp::util::OpenFileStream<std::ofstream>(fullPath.c_str(), std::ios::binary);
+    if (not stream.has_value() or not stream.value().is_open())
+      throw std::runtime_error(stringify("Failed to open file ", fullPath, " for writing"));
+
+    stream.value() << confStr;
+    stream.value().flush();
+
+    llarp::LogInfo("Generated new config ", fullPath);
+  }
+
+  std::string
+  Config::generateBaseClientConfig()
+  {
+    throw std::runtime_error("fixme");
+  }
+
+  std::string
+  Config::generateBaseRouterConfig()
+  {
+    throw std::runtime_error("fixme");
   }
 
 }  // namespace llarp
 
-/// fname should be a relative path (from CWD) or absolute path to the config
-/// file
-extern "C" bool
-llarp_ensure_config(const char* fname, const char* basedir, bool overwrite, bool asRouter)
-{
-  if (Lokinet_INIT())
-    return false;
-  std::error_code ec;
-  if (fs::exists(fname, ec) && !overwrite)
-  {
-    return true;
-  }
-  if (ec)
-  {
-    llarp::LogError(ec);
-    return false;
-  }
-
-  std::string basepath;
-  if (basedir)
-  {
-    basepath = basedir;
-#ifndef _WIN32
-    basepath += "/";
-#else
-    basepath += "\\";
-#endif
-  }
-
-  llarp::LogInfo("Attempting to create config file ", fname);
-
-  // abort if config already exists
-  if (!asRouter)
-  {
-    if (fs::exists(fname, ec) && !overwrite)
-    {
-      llarp::LogError(fname, " currently exists, please use -f to overwrite");
-      return true;
-    }
-    if (ec)
-    {
-      llarp::LogError(ec);
-      return false;
-    }
-  }
-
-  // write fname ini
-  auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-  if (!optional_f || !optional_f.value().is_open())
-  {
-    llarp::LogError("failed to open ", fname, " for writing");
-    return false;
-  }
-  auto& f = optional_f.value();
-  llarp_generic_ensure_config(f, basepath, asRouter);
-  if (asRouter)
-  {
-    llarp_ensure_router_config(f, basepath);
-  }
-  else
-  {
-    llarp_ensure_client_config(f, basepath);
-  }
-  llarp::LogInfo("Generated new config ", fname);
-  return true;
-}
-
 void
 llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter)
 {
+  llarp::Configuration def;
+  llarp::Config conf;
+  conf.initializeConfig(def);
+
+  std::string confStr = def.generateINIConfig();
+  f << confStr;
+  f.flush();
+
+
+  /*
   f << "# this configuration was auto generated with 'sane' defaults\n";
   f << "# change these values as desired\n";
   f << "\n\n";
@@ -682,11 +685,21 @@ llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRoute
   // f << "# add another bootstrap node\n";
   // f << "#add-node=/path/to/alternative/self.signed\n";
   f << "\n\n";
+  */
 }
 
 void
 llarp_ensure_router_config(std::ofstream& f, std::string basepath)
 {
+  llarp::Configuration def;
+  llarp::Config conf;
+  conf.initializeConfig(def);
+
+  std::string confStr = def.generateINIConfig();
+
+  /*
+  f << confStr;
+  f.flush();
   f << "# lokid settings (disabled by default)\n";
   f << "[lokid]\n";
   f << "enabled=false\n";
@@ -721,11 +734,23 @@ llarp_ensure_router_config(std::ofstream& f, std::string basepath)
   }
 
   f << std::endl;
+  */
 }
 
 bool
 llarp_ensure_client_config(std::ofstream& f, std::string basepath)
 {
+  llarp::Configuration def;
+  llarp::Config conf;
+  conf.initializeConfig(def);
+
+  std::string confStr = def.generateINIConfig();
+  f << confStr;
+  f.flush();
+
+  return true;
+
+  /*
   // write snapp-example.ini
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
@@ -740,15 +765,14 @@ llarp_ensure_client_config(std::ofstream& f, std::string basepath)
       // pick ip
       // don't revert me
       const static std::string ip = "10.33.0.1/16";
-      /*
-      std::string ip = llarp::findFreePrivateRange();
-      if(ip == "")
-      {
-        llarp::LogError(
-            "Couldn't easily detect a private range to map lokinet onto");
-        return false;
-      }
-     */
+
+      // std::string ip = llarp::findFreePrivateRange();
+      // if(ip == "")
+      // {
+      //   llarp::LogError(
+      //       "Couldn't easily detect a private range to map lokinet onto");
+      //   return false;
+      // }
       example_f << "# this is an example configuration for a snapp\n";
       example_f << "[example-snapp]\n";
       example_f << "# keyfile is the path to the private key of the snapp, "
@@ -793,4 +817,5 @@ llarp_ensure_client_config(std::ofstream& f, std::string basepath)
   // probably auto in case they want to set up a hidden service
   f << "enabled=true\n";
   return true;
+  */
 }

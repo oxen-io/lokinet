@@ -5,6 +5,7 @@
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
+#include <util/str.hpp>
 
 #include <csignal>
 
@@ -123,7 +124,7 @@ main(int argc, char* argv[])
 
   bool genconfigOnly = false;
   bool asRouter = false;
-  bool overWrite = false;
+  bool overwrite = false;
   std::string conffname;
   try
   {
@@ -165,7 +166,7 @@ main(int argc, char* argv[])
 
     if (result.count("force") > 0)
     {
-      overWrite = true;
+      overwrite = true;
     }
 
     if (result.count("router") > 0)
@@ -213,8 +214,10 @@ main(int argc, char* argv[])
 
     if (genconfigOnly)
     {
-      if (!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(), overWrite, asRouter))
-        return 1;
+      llarp::ensureConfig(llarp::GetDefaultConfigDir(),
+                          llarp::GetDefaultConfigFilename(),
+                          overwrite,
+                          asRouter);
     }
     else
     {
@@ -224,6 +227,9 @@ main(int argc, char* argv[])
         llarp::LogError("Config file not found ", conffname);
         return 1;
       }
+
+      if (ec)
+        throw std::runtime_error(llarp::stringify("filesystem error: ", ec));
     }
   }
   else
@@ -243,13 +249,11 @@ main(int argc, char* argv[])
       }
     }
 
-    auto fpath = llarp::GetDefaultConfigPath();
-
-    // if using default INI file, we're create it even if you don't ask us too
-    if (!llarp_ensure_config(
-            fpath.string().c_str(), basepath.string().c_str(), overWrite, asRouter))
-      return 1;
-    conffname = fpath.string();
+    llarp::ensureConfig(llarp::GetDefaultConfigDir(),
+                        llarp::GetDefaultConfigFilename(),
+                        overwrite,
+                        asRouter);
+    conffname = llarp::GetDefaultConfigPath().c_str();
   }
 
   if (genconfigOnly)

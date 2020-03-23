@@ -248,11 +248,6 @@ namespace llarp
 
   struct Config
   {
-   private:
-    void
-    initializeConfig(Configuration& conf);
-
-   public:
     RouterConfig router;
     NetworkConfig network;
     ConnectConfig connect;
@@ -266,26 +261,38 @@ namespace llarp
     BootstrapConfig bootstrap;
     LoggingConfig logging;
 
+    // Initialize config definition
+    void
+    initializeConfig(Configuration& conf);
+
+    // Load a config from the given file
     bool
     Load(const char* fname);
 
+    // Load a config from the given string
     bool
     LoadFromStr(string_view str);
 
-    llarp_config*
-    Copy() const;
+    std::string
+    generateBaseClientConfig();
+
+    std::string
+    generateBaseRouterConfig();
   };
 
   fs::path
   GetDefaultConfigDir();
 
   fs::path
+  GetDefaultConfigFilename();
+
+  fs::path
   GetDefaultConfigPath();
 
-}  // namespace llarp
+  void
+  ensureConfig(const fs::path& dir, const fs::path& filename, bool overwrite, bool asRouter);
 
-void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter);
+}  // namespace llarp
 
 void
 llarp_ensure_router_config(std::ofstream& f, std::string basepath);
