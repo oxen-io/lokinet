@@ -504,11 +504,12 @@ namespace llarp
     bool
     Path::Expired(llarp_time_t now) const
     {
+      if(_status == ePathExpired)
+        return true;
       if(_status == ePathFailed)
         return true;
-      if(_status == ePathBuilding)
-        return false;
-      if(_status == ePathEstablished || _status == ePathTimeout)
+      if(_status == ePathBuilding || _status == ePathEstablished
+         || _status == ePathTimeout)
       {
         return now >= ExpireTime();
       }

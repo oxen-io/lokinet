@@ -11,6 +11,7 @@
 #include <util/thread/logic.hpp>
 #include <util/thread/thread_pool.hpp>
 #include <dht/kademlia.hpp>
+#include <net/ip.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -494,33 +495,14 @@ llarp_nodedb::num_loaded() const
 bool
 llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
-  llarp::util::Lock lock(access);
-  const auto sz = entries.size();
-  auto itr      = entries.begin();
-  if(sz < 3)
-    return false;
-  auto idx = llarp::randint() % sz;
-  if(idx)
-    std::advance(itr, idx - 1);
-  while(itr != entries.end())
+  const auto maybe_result =
+      MaybeSelectRandomHopWhere([](const llarp::RouterContact &rc) -> bool {
+        return rc.IsExit() and rc.IsPublicRouter();
+      });
+  if(maybe_result.has_value())
   {
-    if(itr->second.rc.IsExit())
-    {
-      result = itr->second.rc;
-      return true;
-    }
-    ++itr;
-  }
-  // wrap around
-  itr = entries.begin();
-  while(idx--)
-  {
-    if(itr->second.rc.IsExit())
-    {
-      result = itr->second.rc;
-      return true;
-    }
-    ++itr;
+    result = maybe_result.value();
+    return true;
   }
   return false;
 }
@@ -529,32 +511,42 @@ bool
 llarp_nodedb::select_random_hop_excluding(
     llarp::RouterContact &result, const std::set< llarp::RouterID > &exclude)
 {
-  llarp::util::Lock lock(access);
-  /// checking for "guard" status for N = 0 is done by caller inside of
-  /// pathbuilder's scope
-  const size_t sz = entries.size();
-  if(sz < 3)
+  const auto maybe_result = MaybeSelectRandomHopWhere(
+      [exclude](const llarp::RouterContact &rc) -> bool {
+        return exclude.count(rc.pubkey) == 0;
+      });
+  if(maybe_result.has_value())
   {
-    return false;
+    result = maybe_result.value();
+    return true;
   }
+  return false;
+}
 
-  const size_t pos = llarp::randint() % sz;
-  const auto start = std::next(entries.begin(), pos);
-  for(auto itr = start; itr != entries.end(); ++itr)
+bool
+llarp_nodedb::select_random_hop_excluding_ranges(
+    llarp::RouterContact &result, const std::vector< llarp::IPRange > &exclude)
+{
+  const auto maybe_result = MaybeSelectRandomHopWhere(
+      [exclude](const llarp::RouterContact &rc) -> bool {
+        if(not rc.IsPublicRouter())
+          return false;
+        for(const auto &range : exclude)
+        {
+          for(const auto &addrInfo : rc.addrs)
+          {
+            if(range.Contains(addrInfo.ip))
+            {
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+  if(maybe_result.has_value())
   {
-    if(exclude.count(itr->first) == 0 and itr->second.rc.IsPublicRouter())
-    {
-      result = itr->second.rc;
-      return true;
-    }
-  }
-  for(auto itr = entries.begin(); itr != start; ++itr)
-  {
-    if(exclude.count(itr->first) == 0 and itr->second.rc.IsPublicRouter())
-    {
-      result = itr->second.rc;
-      return true;
-    }
+    result = maybe_result.value();
+    return true;
   }
   return false;
 }

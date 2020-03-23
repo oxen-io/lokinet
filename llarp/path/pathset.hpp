@@ -8,6 +8,7 @@
 #include <util/status.hpp>
 #include <util/thread/threading.hpp>
 #include <util/time.hpp>
+#include <net/net.hpp>
 
 #include <functional>
 #include <list>
@@ -258,7 +259,8 @@ namespace llarp
 
       virtual bool
       SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop, PathRole roles) = 0;
+                const std::vector< IPRange >& excludeRanges, RouterContact& cur,
+                size_t hop, PathRole roles) = 0;
 
       virtual bool
       BuildOneAlignedTo(const RouterID endpoint) = 0;

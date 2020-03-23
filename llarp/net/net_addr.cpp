@@ -1,6 +1,7 @@
 #include <net/net.hpp>
 #include <net/net_addr.hpp>
 #include <util/string_view.hpp>
+#include <net/address_info.hpp>
 
 // for addrinfo
 #ifndef _WIN32

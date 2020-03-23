@@ -2,7 +2,6 @@
 #define LLARP_NET_HPP
 
 #include <net/uint128.hpp>
-#include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
 #include <util/mem.hpp>
@@ -69,6 +68,9 @@ namespace llarp
     {
       return (addr & netmask_bits) == (ip & netmask_bits);
     }
+
+    bool
+    Contains(const in6_addr& ip) const;
 
     bool
     ContainsV4(const huint32_t& ip) const;
@@ -143,6 +145,9 @@ namespace llarp
 
   IPRange
   iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask);
+
+  IPRange
+  iprange_ipv4_from_ip(huint32_t ip, byte_t mask);
 
   bool
   IsIPv4Bogon(const huint32_t& addr);

@@ -3,6 +3,7 @@
 
 #include <router_contact.hpp>
 #include <router_id.hpp>
+#include <crypto/crypto.hpp>
 #include <util/common.hpp>
 #include <util/fs.hpp>
 #include <util/thread/threading.hpp>
@@ -154,10 +155,40 @@ struct llarp_nodedb
   bool
   select_random_exit(llarp::RouterContact &rc) EXCLUDES(access);
 
+  template < typename Filter_t >
+  nonstd::optional< llarp::RouterContact >
+  MaybeSelectRandomHopWhere(Filter_t accept)
+  {
+    llarp::util::Lock lock(access);
+    const size_t sz = entries.size();
+    if(sz < 3)
+    {
+      return {};
+    }
+    const size_t pos = llarp::randint() % sz;
+    const auto start = std::next(entries.begin(), pos);
+    for(auto itr = start; itr != entries.end(); ++itr)
+    {
+      if(accept(itr->second.rc))
+        return itr->second.rc;
+    }
+    for(auto itr = entries.begin(); itr != start; ++itr)
+    {
+      if(accept(itr->second.rc))
+        return itr->second.rc;
+    }
+    return {};
+  }
+
   bool
   select_random_hop_excluding(llarp::RouterContact &result,
                               const std::set< llarp::RouterID > &exclude)
       EXCLUDES(access);
+
+  bool
+  select_random_hop_excluding_ranges(
+      llarp::RouterContact &result,
+      const std::vector< llarp::IPRange > &excludeRanges) EXCLUDES(access);
 
   static bool
   ensure_dir(const char *dir);

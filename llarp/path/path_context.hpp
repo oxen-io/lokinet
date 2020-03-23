@@ -167,6 +167,10 @@ namespace llarp
       uint64_t
       CurrentTransitPaths();
 
+      /// current number of paths we own
+      uint64_t
+      CurrentOurPaths();
+
      private:
       AbstractRouter* m_Router;
       SyncTransitMap_t m_TransitPaths;

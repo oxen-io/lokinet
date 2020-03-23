@@ -688,7 +688,9 @@ namespace llarp
       else
       {
         ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
-           << NumberOfConnectedRouters() << " | path success: ";
+           << NumberOfConnectedRouters() << " | "
+           << pathContext().CurrentOurPaths() << " active paths";
+        ss << " | path success: ";
         hiddenServiceContext().ForEachService(
             [&ss](const auto &name, const auto &ep) {
               ss << " [" << name << " " << std::setprecision(4)

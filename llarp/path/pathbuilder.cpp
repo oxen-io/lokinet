@@ -205,6 +205,7 @@ namespace llarp
 
     bool
     Builder::SelectHop(llarp_nodedb* db, const std::set< RouterID >& exclude,
+                       const std::vector< IPRange >& prevRanges,
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
@@ -242,10 +243,8 @@ namespace llarp
       {
         cur.Clear();
         --tries;
-        std::set< RouterID > excluding = exclude;
-        if(db->select_random_hop_excluding(cur, excluding))
+        if(db->select_random_hop_excluding_ranges(cur, prevRanges))
         {
-          excluding.insert(cur.pubkey);
           if(!m_router->routerProfiling().IsBadForPath(cur.pubkey))
             return true;
         }
@@ -345,7 +344,7 @@ namespace llarp
     {
       std::set< RouterID > routers{remote};
       hops.resize(numHops);
-
+      std::vector< IPRange > ranges;
       auto nodedb = m_router->nodedb();
       for(size_t idx = 0; idx < hops.size(); idx++)
       {
@@ -361,7 +360,8 @@ namespace llarp
         }
         else
         {
-          if(!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
+          if(!SelectHop(nodedb, routers, ranges, hops[idx], idx,
+                        path::ePathRoleAny))
           {
             return false;
           }
@@ -369,6 +369,8 @@ namespace llarp
         if(hops[idx].pubkey.IsZero())
           return false;
         routers.insert(hops[idx].pubkey);
+        for(const auto& addrInfo : hops[idx].addrs)
+          ranges.push_back(addrInfo.IPRangeV4(16));
       }
 
       return true;
@@ -404,11 +406,13 @@ namespace llarp
                         std::vector< RouterContact >& hops, PathRole roles)
     {
       std::set< RouterID > exclude;
+      std::vector< IPRange > ranges;
       for(size_t idx = 0; idx < hops.size(); ++idx)
       {
         hops[idx].Clear();
         size_t tries = 32;
-        while(tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
+        while(tries > 0
+              && !SelectHop(nodedb, exclude, ranges, hops[idx], idx, roles))
         {
           --tries;
         }
@@ -418,6 +422,11 @@ namespace llarp
           return false;
         }
         exclude.emplace(hops[idx].pubkey);
+        for(const auto& addrInfo : hops[idx].addrs)
+        {
+          const auto range = addrInfo.IPRangeV4(16);
+          ranges.push_back(range);
+        }
       }
       return true;
     }

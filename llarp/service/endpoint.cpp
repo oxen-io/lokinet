@@ -609,6 +609,7 @@ namespace llarp
 
     bool
     Endpoint::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                        const std::vector< IPRange >& prevRanges,
                         RouterContact& cur, size_t hop, path::PathRole roles)
 
     {
@@ -628,7 +629,7 @@ namespace llarp
           exclude.insert(path->Endpoint());
         });
       }
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, prevRanges, cur, hop, roles);
     }
 
     void

@@ -69,6 +69,7 @@ namespace llarp
 
     bool
     BaseSession::SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
+                           const std::vector< IPRange >& prevRanges,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
     {
@@ -86,8 +87,7 @@ namespace llarp
         m_router->LookupRouter(m_ExitRouter, nullptr);
         return false;
       }
-
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, prevRanges, cur, hop, roles);
     }
 
     bool

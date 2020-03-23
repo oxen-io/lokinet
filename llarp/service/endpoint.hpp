@@ -353,7 +353,8 @@ namespace llarp
 
       bool
       SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop, path::PathRole roles) override;
+                const std::vector< IPRange >& prevRanges, RouterContact& cur,
+                size_t hop, path::PathRole roles) override;
 
       virtual void
       PathBuildStarted(path::Path_ptr path) override;

@@ -1078,7 +1078,7 @@ namespace llarp
   {
     char buf[INET6_ADDRSTRLEN + 1] = {0};
     std::string str;
-    in6_addr inaddr = {};
+    in6_addr inaddr = net::IPPacket::HUIntToIn6(addr);
     size_t numset   = 0;
     uint128_t bits  = netmask_bits.h;
     while(bits)
@@ -1096,6 +1096,12 @@ namespace llarp
   {
     return IPRange{net::IPPacket::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)),
                    netmask_ipv6_bits(mask + 96)};
+  }
+
+  IPRange
+  iprange_ipv4_from_ip(huint32_t ip, byte_t mask)
+  {
+    return IPRange{net::IPPacket::ExpandV4(ip), netmask_ipv6_bits(mask + 96)};
   }
 
   bool
@@ -1123,4 +1129,11 @@ namespace llarp
     }
     return false;
   }
+
+  bool
+  IPRange::Contains(const in6_addr& ip) const
+  {
+    return Contains(net::IPPacket::In6ToHUInt(ip));
+  }
+
 }  // namespace llarp

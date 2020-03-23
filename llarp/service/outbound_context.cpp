@@ -322,6 +322,7 @@ namespace llarp
     bool
     OutboundContext::SelectHop(llarp_nodedb* db,
                                const std::set< RouterID >& prev,
+                               const std::vector< IPRange >& prevRanges,
                                RouterContact& cur, size_t hop,
                                path::PathRole roles)
     {
@@ -349,7 +350,7 @@ namespace llarp
         ++m_BuildFails;
         return false;
       }
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+      return path::Builder::SelectHop(db, exclude, prevRanges, cur, hop, roles);
     }
 
     bool

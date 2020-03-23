@@ -294,6 +294,14 @@ namespace llarp
       return map.size() / 2;
     }
 
+    uint64_t
+    PathContext::CurrentOurPaths()
+    {
+      util::Lock lock(m_OurPaths.first);
+      auto& map = m_OurPaths.second;
+      return map.size() / 2;
+    }
+
     void
     PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {

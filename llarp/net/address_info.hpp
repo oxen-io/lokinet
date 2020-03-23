@@ -2,7 +2,7 @@
 #define LLARP_AI_HPP
 
 #include <crypto/types.hpp>
-#include <net/net.h>
+#include <net/net.hpp>
 #include <util/bencode.hpp>
 #include <util/mem.h>
 
@@ -32,6 +32,10 @@ namespace llarp
     {
       return bencode_decode_dict(*this, buf);
     }
+
+    /// make a netrange that excludes N bits of excluding netmask
+    IPRange
+    IPRangeV4(byte_t excludeNetmaskBits) const;
 
     bool
     BEncode(llarp_buffer_t* buf) const;

@@ -65,8 +65,8 @@ namespace llarp
 
       bool
       SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop,
-                llarp::path::PathRole roles) override;
+                const std::vector< IPRange >& prevRanges, RouterContact& cur,
+                size_t hop, llarp::path::PathRole roles) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;

@@ -26,6 +26,13 @@ namespace llarp
     return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }
 
+  IPRange
+  AddressInfo::IPRangeV4(byte_t mask) const
+  {
+    const auto h_ip = net::IPPacket::In6ToHUInt(ip);
+    return IPRange{h_ip, netmask_ipv6_bits(mask + 96)};
+  }
+
   bool
   AddressInfo::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
