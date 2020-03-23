@@ -749,9 +749,9 @@ namespace llarp
                         rxid,
                         InboundMessage{rxid, sz, std::move(h), m_Parent->Now()})
                     .first;
-
+          sz = std::min(sz, uint16_t{FragmentSize});
+          if(data.size() > sz)
           {
-            sz = std::min(sz, uint16_t{FragmentSize});
             {
               const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
               itr->second.HandleData(0, buf, now);
