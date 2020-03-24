@@ -1,0 +1,34 @@
+From: Jeff Becker <jeff@i2p.rocks>
+Date: Tue, 24 Mar 2020 11:12:41 -0400
+Subject: [PATCH] update lokinetmon to work again with dns rebinding
+ protection
+
+---
+ contrib/py/admin/lokinetmon | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/contrib/py/admin/lokinetmon b/contrib/py/admin/lokinetmon
+index 79159d2..3a4af2d 100755
+--- a/contrib/py/admin/lokinetmon
++++ b/contrib/py/admin/lokinetmon
+@@ -29,7 +29,7 @@ class Monitor:
+     def jsonrpc(self, meth, params):
+         r = requests.post(
+             self._url,
+-            headers={"Content-Type": "application/json"},
++            headers={"Content-Type": "application/json", "Host": "localhost"},
+             json={
+                 "jsonrpc": "2.0",
+                 "id": "0",
+@@ -204,9 +204,9 @@ class Monitor:
+                     s["remoteAddr"], self.speedOf(s["txRateCurrent"]), self.speedOf(s["rxRateCurrent"])
+                 )
+             )
+-            if (s['txMsgs'] or 0) > 1:
++            if (s['txMsgQueueSize'] or 0) > 1:
+                 self.win.addstr(" [out window:\t{}]".format(s['txMsgQueueSize']))
+-            if (s['rxMsgs'] or 0) > 1:
++            if (s['rxMsgQueueSize'] or 0) > 1:
+                 self.win.addstr(" [in window:\t{}]".format(s['rxMsgQueueSize']))
+         return y
+ 
