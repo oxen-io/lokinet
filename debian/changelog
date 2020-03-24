@@ -1,3 +1,9 @@
+lokinet (0.7.0-2) sid; urgency=medium
+
+  * Add lokinetmon package
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 24 Mar 2020 12:34:53 -0300
+
 lokinet (0.7.0-1) sid; urgency=medium
 
   [ Jeff Becker ]
