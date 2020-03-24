@@ -29,7 +29,7 @@ class Monitor:
     def jsonrpc(self, meth, params):
         r = requests.post(
             self._url,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Host": "localhost"},
             json={
                 "jsonrpc": "2.0",
                 "id": "0",
@@ -204,9 +204,9 @@ class Monitor:
                     s["remoteAddr"], self.speedOf(s["txRateCurrent"]), self.speedOf(s["rxRateCurrent"])
                 )
             )
-            if (s['txMsgs'] or 0) > 1:
+            if (s['txMsgQueueSize'] or 0) > 1:
                 self.win.addstr(" [out window:\t{}]".format(s['txMsgQueueSize']))
-            if (s['rxMsgs'] or 0) > 1:
+            if (s['rxMsgQueueSize'] or 0) > 1:
                 self.win.addstr(" [in window:\t{}]".format(s['rxMsgQueueSize']))
         return y
 
