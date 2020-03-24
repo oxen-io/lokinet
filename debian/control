@@ -45,3 +45,11 @@ Description: Lokinet anonymous, decentralized overlay network - client service
  router as a system service.
  .
  Users just looking to access lokinet want the 'lokinet' package instead.
+
+Package: lokinetmon
+Architecture: all
+Depends: python3, python3-requests
+Recommends: lokinet | lokinet-router
+Description: Console-based Lokinet monitor
+ This package provides lokinetmon, a Python-based tool for monitoring a running
+ Lokinet process.
