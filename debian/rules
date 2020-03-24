@@ -36,7 +36,7 @@ endif
 
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" \
-		-DGIT_VERSION="$(DEB_VERSION)" \
+		-DGIT_VERSION="deb$(DEB_VERSION)" \
 		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DNATIVE_BUILD=OFF -DUSE_AVX2=OFF
 
