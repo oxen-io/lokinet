@@ -136,7 +136,7 @@ Configuration::generateINIConfig(bool useValues)
 
   visitSections([&](const std::string& section, const DefinitionMap&) {
     if (sectionsVisited > 0)
-      oss << "\n";
+      oss << "\n\n";
 
     // TODO: this will create empty objects as a side effect of map's operator[]
     // TODO: this also won't handle sections which have no definition
@@ -148,6 +148,7 @@ Configuration::generateINIConfig(bool useValues)
     oss << "[" << section << "]\n";
 
     visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
+      oss << "\n";
 
       // TODO: as above, this will create empty objects
       // TODO: as above (but more important): this won't handle definitions with no entries
@@ -164,9 +165,10 @@ Configuration::generateINIConfig(bool useValues)
       else
       {
         if (not def->required)
-          oss << "# ";
+          oss << "#";
         oss << name << "=" << def->defaultValueAsString() << "\n";
       }
+
     });
 
     sectionsVisited++;

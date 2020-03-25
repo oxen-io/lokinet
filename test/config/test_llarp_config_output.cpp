@@ -23,13 +23,20 @@ TEST_CASE("Configuration simple generate test", "[config]")
   std::string output = config.generateINIConfig();
 
   CHECK(output == R"raw([foo]
+
 bar=1
-# baz=2
+
+#baz=2
+
 quux=hello
 
+
 [argle]
+
 bar=3
-# baz=4
+
+#baz=4
+
 quux=the quick brown fox
 )raw");
 }
@@ -41,14 +48,14 @@ TEST_CASE("Configuration useValue test", "[config]")
   config.defineOption(std::make_unique<llarp::ConfigDefinition<int>>(
             "foo", "bar", true, 1));
 
-  constexpr auto expected = "[foo]\nbar=1\n";
+  constexpr auto expected = "[foo]\n\nbar=1\n";
 
   CHECK(config.generateINIConfig(false) == expected);
   CHECK(config.generateINIConfig(true) == expected);
 
   config.addConfigValue("foo", "bar", "2");
 
-  constexpr auto expectedWhenValueProvided = "[foo]\nbar=2\n";
+  constexpr auto expectedWhenValueProvided = "[foo]\n\nbar=2\n";
 
   CHECK(config.generateINIConfig(false) == expected);
   CHECK(config.generateINIConfig(true) == expectedWhenValueProvided);
@@ -68,6 +75,7 @@ TEST_CASE("Configuration section comments test")
   CHECK(output == R"raw(# test comment
 # test comment 2
 [foo]
+
 bar=1
 )raw");
 }
@@ -84,6 +92,7 @@ TEST_CASE("Configuration option comments test")
   std::string output = config.generateINIConfig();
 
   CHECK(output == R"raw([foo]
+
 # test comment 1
 # test comment 2
 bar=1
@@ -107,6 +116,7 @@ TEST_CASE("Configuration empty comments test")
   CHECK(output == R"raw(# section comment
 # 
 [foo]
+
 # option comment
 # 
 bar=1
@@ -131,8 +141,10 @@ TEST_CASE("Configuration multi option comments")
 
   CHECK(output == R"raw(# foo section comment
 [foo]
+
 # foo bar option comment
 bar=1
+
 # foo baz option comment
 baz=1
 )raw");
@@ -150,6 +162,7 @@ TEST_CASE("Configuration should print comments for missing keys")
 
   CHECK(output == R"raw(# foo section comment
 [foo]
+
 # foo bar option comment
 bar=
 )raw");
