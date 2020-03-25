@@ -299,6 +299,24 @@ namespace llarp
     void
     acceptAllOptions();
 
+    /// Add comments for a given section. Comments are replayed in-order during config file
+    /// generation. A proper comment prefix will automatically be applied, and the entire comment
+    /// will otherwise be used verbatim (no automatic line separation, etc.).
+    ///
+    /// @param section
+    /// @param comment
+    void
+    addSectionComment(const std::string& section, std::string comment);
+
+    /// Add comments for a given option. Similar to addSectionComment, but applies to a specific
+    /// [section]:name pair.
+    ///
+    /// @param section
+    /// @param name
+    /// @param comment
+    void
+    addOptionComment(const std::string& section, const std::string& name, std::string comment);
+
     /// Generate a config string from the current config definition, optionally using overridden
     /// values. The generated config will preserve insertion order of both sections and their
     /// definitions.
@@ -331,6 +349,12 @@ namespace llarp
     // track insertion order
     std::vector<std::string> m_sectionOrdering;
     std::unordered_map<std::string, std::vector<std::string>> m_definitionOrdering;
+
+    // comments for config file generation
+    using CommentList = std::vector<std::string>;
+    using CommentsMap = std::unordered_map<std::string, CommentList>;
+    CommentsMap m_sectionComments;
+    std::unordered_map<std::string, CommentsMap> m_definitionComments;
   };
 
 } // namespace llarp

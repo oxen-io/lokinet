@@ -112,6 +112,21 @@ Configuration::acceptAllOptions()
   });
 }
 
+void
+Configuration::addSectionComment(const std::string& section,
+                                 std::string comment)
+{
+  m_sectionComments[section].push_back(std::move(comment));
+}
+
+void
+Configuration::addOptionComment(const std::string& section,
+                                const std::string& name,
+                                std::string comment)
+{
+  m_definitionComments[section][name].push_back(std::move(comment));
+}
+
 std::string
 Configuration::generateINIConfig(bool useValues)
 {
@@ -123,9 +138,25 @@ Configuration::generateINIConfig(bool useValues)
     if (sectionsVisited > 0)
       oss << "\n";
 
+    // TODO: this will create empty objects as a side effect of map's operator[]
+    // TODO: this also won't handle sections which have no definition
+    for (const std::string& comment : m_sectionComments[section])
+    {
+      oss << "# " << comment << "\n";
+    }
+
     oss << "[" << section << "]\n";
 
     visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
+
+      // TODO: as above, this will create empty objects
+      // TODO: as above (but more important): this won't handle definitions with no entries
+      //       (i.e. those handled by UndeclaredValueHandler's)
+      for (const std::string& comment : m_definitionComments[section][name])
+      {
+        oss << "# " << comment << "\n";
+      }
+
       if (useValues and def->numFound > 0)
       {
         oss << name << "=" << def->valueAsString(false) << "\n";
