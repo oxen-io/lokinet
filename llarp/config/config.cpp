@@ -95,6 +95,7 @@ namespace llarp
         m_JobQueueSize = arg;
       });
 
+    // TODO: we don't support other protocols now; remove
     conf.defineOption<std::string>("router", "default-protocol", false, m_DefaultLinkProto,
     [this](std::string arg) {
         m_DefaultLinkProto = arg;
@@ -109,20 +110,20 @@ namespace llarp
         m_netId = std::move(arg);
       });
 
-    conf.defineOption<int>("router", "max-connections", false, m_maxConnectedRouters,
-      [this](int arg) {
-        if (arg < 1)
-          throw std::invalid_argument("max-connections must be >= 1");
-
-        m_maxConnectedRouters = arg;
-      });
-
     conf.defineOption<int>("router", "min-connections", false, m_minConnectedRouters,
       [this](int arg) {
         if (arg < 1)
           throw std::invalid_argument("min-connections must be >= 1");
 
         m_minConnectedRouters = arg;
+      });
+
+    conf.defineOption<int>("router", "max-connections", false, m_maxConnectedRouters,
+      [this](int arg) {
+        if (arg < 1)
+          throw std::invalid_argument("max-connections must be >= 1");
+
+        m_maxConnectedRouters = arg;
       });
 
     // additional check that min <= max
@@ -550,19 +551,22 @@ namespace llarp
     }
     if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
 
-    llarp::LogInfo("Attempting to create config file ", fullPath);
+    llarp::LogInfo("Attempting to create config file, asRouter: ", asRouter,
+                   " path: ", fullPath);
 
     llarp::Config config;
     std::string confStr;
     if (asRouter)
-      confStr = config.generateBaseClientConfig();
-    else
       confStr = config.generateBaseRouterConfig();
+    else
+      confStr = config.generateBaseClientConfig();
 
     // open a filestream
     auto stream = llarp::util::OpenFileStream<std::ofstream>(fullPath.c_str(), std::ios::binary);
     if (not stream.has_value() or not stream.value().is_open())
       throw std::runtime_error(stringify("Failed to open file ", fullPath, " for writing"));
+
+    llarp::LogInfo("confStr: ", confStr);
 
     stream.value() << confStr;
     stream.value().flush();
@@ -573,119 +577,122 @@ namespace llarp
   std::string
   Config::generateBaseClientConfig()
   {
-    throw std::runtime_error("fixme");
+    llarp::Configuration def;
+    initializeConfig(def);
+
+    // TODO: pass these in
+    const std::string basepath = "";
+    bool isRouter = false;
+
+    // router
+    def.addSectionComment("router", "Configuration for routing activity.");
+
+    def.addOptionComment("router", "threads",
+        "The number of threads available for performing cryptographic functions.");
+    def.addOptionComment("router", "threads",
+        "The minimum is one thread, but network performance may increase with more.");
+    def.addOptionComment("router", "threads",
+        "threads. Should not exceed the number of logical CPU cores.");
+
+    def.addOptionComment("router", "contact-file", "Path to store signed RC.");
+    def.addConfigValue("router", "contact-file", stringify(basepath, "self.signed"));
+
+    def.addOptionComment("router", "transport-privkey", "Path to store transport private key.");
+    def.addConfigValue("router", "transport-privkey", stringify(basepath, "transport.private"));
+
+    def.addOptionComment("router", "identity-privkey", "Path to store identity signing key.");
+    def.addConfigValue("router", "identity-privkey", stringify(basepath, "identity.private"));
+
+    def.addOptionComment("router", "encryption-privkey", "Encryption key for onion routing.");
+    def.addConfigValue("router", "encryption-privkey", stringify(basepath, "encryption.private"));
+
+    // TODO: why did Kee want this, and/or what does it really do? Something about logs?
+    def.addOptionComment("router", "nickname", "Router nickname. Kee wanted it.");
+
+    const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
+
+    def.addOptionComment("router", "min-connections",
+        "Minimum number of routers lokinet will attempt to maintain connections to.");
+    def.addConfigValue("router", "min-connections", stringify(limits.DefaultMinRouters));
+
+    def.addOptionComment("router", "max-connections",
+        "Maximum number (hard limit) of routers lokinet will be connected to at any time.");
+    def.addConfigValue("router", "max-connections", stringify(limits.DefaultMaxRouters));
+
+    // logging
+    def.addSectionComment("logging", "logging settings");
+
+    def.addOptionComment("logging", "level",
+        "Minimum log level to print. Logging below this level will be ignored.");
+    def.addOptionComment("logging", "level", "Valid log levels, in ascending order, are:");
+    def.addOptionComment("logging", "level", "  trace");
+    def.addOptionComment("logging", "level", "  debug");
+    def.addOptionComment("logging", "level", "  info");
+    def.addOptionComment("logging", "level", "  warn");
+    def.addOptionComment("logging", "level", "  error");
+    def.addConfigValue("logging", "level", "info");
+
+    def.addOptionComment("logging", "type", "Log type (format). Valid options are:");
+    def.addOptionComment("logging", "type", "  file - plaintext formatting");
+    def.addOptionComment("logging", "type", "  json - json-formatted log statements");
+    def.addOptionComment("logging", "type", "  syslog - logs directed to syslog");
+
+    // api
+    def.addSectionComment("api", "JSON API settings");
+
+    def.addOptionComment("api", "enabled", "Determines whether or not the JSON API is enabled.");
+
+    def.addOptionComment("api", "bind", "IP address and port to bind to.");
+    def.addOptionComment("api", "bind", "Recommend localhost-only for security purposes.");
+
+    // system
+    def.addSectionComment("system", "System setings for running lokinet.");
+
+    def.addOptionComment("system", "user", "The user which lokinet should run as.");
+
+    def.addOptionComment("system", "group", "The group which lokinet should run as.");
+
+    def.addOptionComment("system", "pidfile", "Location of the pidfile for lokinet.");
+
+    // dns
+    def.addSectionComment("dns", "DNS configuration");
+
+    def.addOptionComment("dns", "upstream",
+        "Upstream resolver to use as fallback for non-loki addresses.");
+    def.addOptionComment("dns", "upstream", "Multiple values accepted.");
+
+    def.addOptionComment("dns", "bind", "Address to bind to for handling DNS requests.");
+    def.addOptionComment("dns", "bind", "Multiple values accepted.");
+
+    // netdb
+    def.addSectionComment("netdb", "Configuration for lokinet's database of service nodes");
+
+    def.addOptionComment("netdb", "dir", "Root directory of netdb.");
+
+    // bootstrap
+    def.addSectionComment("bootstrap", "Configure nodes that will bootstrap us onto the network");
+
+    def.addOptionComment("bootstrap", "add-node",
+        "Specify a bootstrap file containing a signed RouterContact of a service node");
+    def.addOptionComment("bootstrap", "add-node",
+        "which can act as a bootstrap. Accepts multiple values.");
+
+    return def.generateINIConfig(true);
   }
 
   std::string
   Config::generateBaseRouterConfig()
   {
-    throw std::runtime_error("fixme");
+    // throw std::runtime_error("fixme");
+    return "";
   }
 
 }  // namespace llarp
 
 void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter)
+llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
+                            bool isRouter)
 {
-  llarp::Configuration def;
-  llarp::Config conf;
-  conf.initializeConfig(def);
-
-  std::string confStr = def.generateINIConfig();
-  f << confStr;
-  f.flush();
-
-
-  /*
-  f << "# this configuration was auto generated with 'sane' defaults\n";
-  f << "# change these values as desired\n";
-  f << "\n\n";
-  f << "[router]\n";
-  f << "# number of crypto worker threads \n";
-  f << "threads=4\n";
-  f << "# path to store signed RC\n";
-  f << "contact-file=" << basepath << "self.signed\n";
-  f << "# path to store transport private key\n";
-  f << "transport-privkey=" << basepath << "transport.private\n";
-  f << "# path to store identity signing key\n";
-  f << "ident-privkey=" << basepath << "identity.private\n";
-  f << "# encryption key for onion routing\n";
-  f << "encryption-privkey=" << basepath << "encryption.private\n";
-  f << std::endl;
-  f << "# uncomment following line to set router nickname to 'lokinet'" << std::endl;
-  f << "#nickname=lokinet\n";
-  const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
-
-  f << "# maintain min connections to other routers\n";
-  f << "min-routers=" << std::to_string(limits.DefaultMinRouters) << std::endl;
-  f << "# hard limit of routers globally we are connected to at any given "
-       "time\n";
-  f << "max-routers=" << std::to_string(limits.DefaultMaxRouters) << std::endl;
-  f << "\n\n";
-
-  // logging
-  f << "[logging]\n";
-  f << "level=info\n";
-  f << "# uncomment for logging to file\n";
-  f << "#type=file\n";
-  f << "#file=/path/to/logfile\n";
-  f << "# uncomment for syslog logging\n";
-  f << "#type=syslog\n";
-
-  f << "\n\n";
-
-  f << "# admin api\n";
-  f << "[api]\n";
-  f << "enabled=true\n";
-  f << "#authkey=insertpubkey1here\n";
-  f << "#authkey=insertpubkey2here\n";
-  f << "#authkey=insertpubkey3here\n";
-  f << "bind=127.0.0.1:1190\n";
-  f << "\n\n";
-
-  f << "# system settings for privileges and such\n";
-  f << "[system]\n";
-  f << "user=" << DEFAULT_LOKINET_USER << std::endl;
-  f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
-  f << "pidfile=" << basepath << "lokinet.pid\n";
-  f << "\n\n";
-
-  f << "# dns provider configuration section\n";
-  f << "[dns]\n";
-  f << "# resolver\n";
-  f << "upstream=" << DEFAULT_RESOLVER_US << std::endl;
-
-// Make auto-config smarter
-// will this break reproducibility rules?
-// (probably)
-#ifdef __linux__
-#ifdef ANDROID
-  f << "bind=127.0.0.1:1153\n";
-#else
-  f << "bind=127.3.2.1:53\n";
-#endif
-#else
-  f << "bind=127.0.0.1:53\n";
-#endif
-  f << "\n\n";
-
-  f << "# network database settings block \n";
-  f << "[netdb]\n";
-  f << "# directory for network database skiplist storage\n";
-  f << "dir=" << basepath << "netdb\n";
-  f << "\n\n";
-
-  f << "# bootstrap settings\n";
-  f << "[bootstrap]\n";
-  f << "# add a bootstrap node's signed identity to the list of nodes we want "
-       "to bootstrap from\n";
-  f << "# if we don't have any peers we connect to this router\n";
-  f << "add-node=" << basepath << "bootstrap.signed\n";
-  // we only process one of these...
-  // f << "# add another bootstrap node\n";
-  // f << "#add-node=/path/to/alternative/self.signed\n";
-  f << "\n\n";
-  */
 }
 
 void
