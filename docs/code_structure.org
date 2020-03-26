@@ -7,6 +7,7 @@
 **** self signed router descriptor
 *** Crypto key types
 
+
 ** network / threading / sync utilities
 *** threadpool
 *** logic (single thread threadpool)
@@ -14,7 +15,6 @@
 ** configuration
 *** ini parser
 *** llarp::Configuration
-
 
 ** cryptography
 *** llarp::Crypto interface
@@ -45,11 +45,13 @@
 **** distinctly identified by the union of interface and direction
 **** Holds many ILinkSessions bound on the distinctly idenitfied direction/interface
 
+
 ** link layer messages
 *** link layer message parser
 **** parses buffers as bencoded dicts
 *** link layer message handler
 **** handles each type of link layer message
+
 
 ** IHopHandler
 *** llarp::PathHopConfig
@@ -62,10 +64,10 @@
 **** has txid, rxid, shared secret, hash of shared secret
 
 
-
 ** pathset
 *** path::Builder
 **** builds and maintains a set of paths for a common use
+
 
 ** routing layer message router
 *** routing::IMessageHandler
@@ -73,12 +75,16 @@
 **** transit hops implement this if they are an endpoint 
 **** path::Path implement this always
 
+
 ** dht "layer" / rc gossiper
+*** TODO rewrite/refactor
+
 ** hidden service data structures
 *** IntroSet
 **** decrypted plaintext hidden service descriptor
 *** EncryptedIntroSet
 **** public encrpyted / signed version of IntroSet 
+
 
 ** service endpoint / outbound context connectivitybackend
 *** service::Endpoint
@@ -89,14 +95,23 @@
 *** service::OutboundContext
 **** implements SendContext extends path::Builder and path::PathSet
 **** for maintaining a pathset that aligns on an introset's intros
+~
 
-** snode / exit session management
-*** exit::Session
-  
 ** snode / exit connectivity backend
+*** exit::BaseSession
+**** extends path::Builder
+**** obtains an exit/snode session from the router they are aligning to
+*** exit::Endpoint
+**** snode/exit side of an exit::Session
 
 ** snapp / exit / mobile / null frontend handlers
+*** handlers::TunEndpoint
+**** extends service::Endpoint
+**** provides tun interface frontend for hidden service backend
+*** handlers::ExitEndpoint
+**** provides tun interface frontend for exit/snode backend
+
 
 ** outbound message dispatcher
-
+*** TODO tom please document these
   
