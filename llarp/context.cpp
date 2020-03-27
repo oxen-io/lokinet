@@ -49,16 +49,17 @@ namespace llarp
     {
       SetPIDFile(config->system.pidfile);
     }
-    auto threads = config->router.workerThreads();
-    if (threads <= 0)
+    auto threads = config->router.m_workerThreads;
+    if(threads <= 0)
       threads = 1;
-    worker = std::make_shared<llarp::thread::ThreadPool>(threads, 1024, "llarp-worker");
-    auto jobQueueSize = config->router.jobQueueSize();
-    if (jobQueueSize < 1024)
+    worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024,
+                                                           "llarp-worker");
+    auto jobQueueSize = config->router.m_JobQueueSize;
+    if(jobQueueSize < 1024)
       jobQueueSize = 1024;
     logic = std::make_shared<Logic>(jobQueueSize);
 
-    nodedb_dir = config->netdb.nodedbDir();
+    nodedb_dir = config->netdb.m_nodedbDir;
 
     return true;
   }

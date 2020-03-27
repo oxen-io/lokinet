@@ -93,8 +93,6 @@ namespace llarp
     conf.defineOption<std::string>("router", "nickname", false, m_nickname,
       [this](std::string arg) {
         m_nickname = std::move(arg);
-        // TODO: side effect here, no side effects in config parsing!!
-        LogContext::Instance().nodeName = nickname();
       });
 
     conf.defineOption<std::string>("router", "data-dir", false, GetDefaultDataDir(),

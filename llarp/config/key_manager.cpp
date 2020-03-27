@@ -31,10 +31,10 @@ namespace llarp
     if (m_initialized)
       return false;
 
-    m_rcPath = config.router.ourRcFile();
-    m_idKeyPath = config.router.identKeyfile();
-    m_encKeyPath = config.router.encryptionKeyfile();
-    m_transportKeyPath = config.router.transportKeyfile();
+    m_rcPath           = config.router.m_dataDir + "/rc.signed";
+    m_idKeyPath        = config.router.m_dataDir + "/identity.key";
+    m_encKeyPath       = config.router.m_dataDir + "/encryption.key";
+    m_transportKeyPath = config.router.m_dataDir + "/transport.key";
 
     m_usingLokid = config.lokid.whitelistRouters;
     m_lokidRPCAddr = config.lokid.lokidRPCAddr;

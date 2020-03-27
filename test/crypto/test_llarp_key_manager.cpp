@@ -115,18 +115,6 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
 
 };
 
-TEST_F(KeyManagerTest, EnsureDefaultConfNames)
-{
-  llarp::Config conf;
-
-  // the default config filenames will suffice, this exists as sanity check to
-  // protect against the assumptions made below
-  ASSERT_EQ(conf.router.ourRcFile(), rcFile);
-  ASSERT_EQ(conf.router.encryptionKeyfile(), encFile);
-  ASSERT_EQ(conf.router.transportKeyfile(), transportFile);
-  ASSERT_EQ(conf.router.identKeyfile(), identFile);
-}
-
 TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
 {
   llarp::Config conf;

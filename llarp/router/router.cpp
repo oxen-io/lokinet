@@ -372,46 +372,45 @@ namespace llarp
   Router::FromConfig(Config* conf)
   {
     // Set netid before anything else
-    if (!conf->router.netId().empty() && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
+    if(!conf->router.m_netId.empty()
+       && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
-      const auto& netid = conf->router.netId();
-      llarp::LogWarn(
-          "!!!! you have manually set netid to be '",
-          netid,
-          "' which does not equal '",
-          llarp::DEFAULT_NETID,
-          "' you will run as a different network, good luck "
-          "and don't forget: something something MUH traffic "
-          "shape correlation !!!!");
-      NetID::DefaultValue() = NetID(reinterpret_cast<const byte_t*>(netid.c_str()));
+      const auto &netid = conf->router.m_netId;
+      llarp::LogWarn("!!!! you have manually set netid to be '", netid,
+                     "' which does not equal '", llarp::DEFAULT_NETID,
+                     "' you will run as a different network, good luck "
+                     "and don't forget: something something MUH traffic "
+                     "shape correlation !!!!");
+      NetID::DefaultValue() =
+          NetID(reinterpret_cast< const byte_t * >(netid.c_str()));
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
-    const auto linktypename = conf->router.defaultLinkProto();
-    _defaultLinkType = LinkFactory::TypeFromName(linktypename);
-    if (_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
+    // TODO: dead code, rip this out. we only support IWP now.
+    const auto linktypename = conf->router.m_DefaultLinkProto;
+    _defaultLinkType        = LinkFactory::TypeFromName(linktypename);
+    if(_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
     {
       LogError("failed to set link type to '", linktypename, "' as that is invalid");
       return false;
     }
 
     // IWP config
-    m_OutboundPort = conf->links.outboundLink().port;
+    m_OutboundPort = conf->links.m_OutboundLink.port;
     // Router config
-    _rc.SetNick(conf->router.nickname());
-    _outboundSessionMaker.maxConnectedRouters = conf->router.maxConnectedRouters();
-    _outboundSessionMaker.minConnectedRouters = conf->router.minConnectedRouters();
-    encryption_keyfile = conf->router.encryptionKeyfile();
-    our_rc_file = conf->router.ourRcFile();
-    transport_keyfile = conf->router.transportKeyfile();
-    addrInfo = conf->router.addrInfo();
-    publicOverride = conf->router.publicOverride();
-    ip4addr = conf->router.ip4addr();
+    _rc.SetNick(conf->router.m_nickname);
+    _outboundSessionMaker.maxConnectedRouters =
+        conf->router.m_maxConnectedRouters;
+    _outboundSessionMaker.minConnectedRouters =
+        conf->router.m_minConnectedRouters;
+    encryption_keyfile = conf->router.m_dataDir + "/encryption.key";
+    our_rc_file        = conf->router.m_dataDir + "/rc.signed";
+    transport_keyfile  = conf->router.m_dataDir + "/transport.key";
+    addrInfo           = conf->router.m_addrInfo;
+    publicOverride     = conf->router.m_publicOverride;
+    ip4addr            = conf->router.m_ip4addr;
 
-    if (!conf->router.blockBogons().value_or(true))
-    {
-      RouterContact::BlockBogons = false;
-    }
+    RouterContact::BlockBogons = conf->router.m_blockBogons.value_or(true);
 
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
@@ -422,17 +421,17 @@ namespace llarp
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     // TODO: add config flag for "is service node"
-    if (conf->links.inboundLinks().size())
+    if(conf->links.m_InboundLinks.size())
     {
       m_isServiceNode = true;
     }
 
     std::set<RouterID> strictConnectPubkeys;
 
-    if (!conf->network.strictConnect().empty())
+    if(!conf->network.m_strictConnect.empty())
     {
-      const auto& val = conf->network.strictConnect();
-      if (IsServiceNode())
+      const auto &val = conf->network.m_strictConnect;
+      if(IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
         return false;
@@ -526,11 +525,11 @@ namespace llarp
 
     if (!usingSNSeed)
     {
-      ident_keyfile = conf->router.identKeyfile();
+      ident_keyfile = conf->router.m_dataDir + "/identity.key";
     }
 
     // create inbound links, if we are a service node
-    for(const LinksConfig::LinkInfo &serverConfig : conf->links.inboundLinks())
+    for(const LinksConfig::LinkInfo &serverConfig : conf->links.m_InboundLinks)
     {
       // get default factory
       // TODO: this is dead code, as is everything related to _defaultLinkType,
@@ -560,28 +559,28 @@ namespace llarp
     }
 
     // set network config
-    netConfig = conf->network.netConfig();
+    netConfig = conf->network.m_netConfig;
 
     // Network config
-    if (conf->network.enableProfiling().has_value())
+    if(conf->network.m_enableProfiling.has_value())
     {
-      if (not conf->network.enableProfiling().value())
+      if(not conf->network.m_enableProfiling.value())
       {
         routerProfiling().Disable();
         LogWarn("router profiling explicitly disabled");
       }
     }
 
-    if (!conf->network.routerProfilesFile().empty())
+    if(!conf->network.m_routerProfilesFile.empty())
     {
-      routerProfilesFile = conf->network.routerProfilesFile();
+      routerProfilesFile = conf->network.m_routerProfilesFile;
       routerProfiling().Load(routerProfilesFile.c_str());
       llarp::LogInfo("setting profiles to ", routerProfilesFile);
     }
 
     // API config
-    enableRPCServer = conf->api.enableRPCServer();
-    rpcBindAddr = conf->api.rpcBindAddr();
+    enableRPCServer = conf->api.m_enableRPCServer;
+    rpcBindAddr     = conf->api.m_rpcBindAddr;
 
     // Services config
     for (const auto& service : conf->services.services)
@@ -597,6 +596,7 @@ namespace llarp
     }
 
     // Logging config
+    LogContext::Instance().nodeName = conf->router.m_nickname;
 
     FILE* logfile = nullptr;
     if (conf->logging.m_logFile == "stdout")
