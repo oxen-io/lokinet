@@ -13,7 +13,6 @@ set(CATCH_EXE catchAll)
 
 # Old gtest-based tests; new tests should use Catch2, instead.
 list(APPEND GTEST_SRC
-    config/test_llarp_config_config.cpp
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp

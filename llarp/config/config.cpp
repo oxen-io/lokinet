@@ -471,31 +471,6 @@ namespace llarp
     }
   }
 
-  bool
-  Config::LoadFromStr(string_view str)
-  {
-    // TODO: DRY
-    try
-    {
-      Configuration conf;
-      initializeConfig(conf);
-
-      ConfigParser parser;
-      if(!parser.LoadFromStr(str))
-      {
-        return false;
-      }
-
-      // TODO: hand parsed data to conf, pull out values
-      return true;
-    }
-    catch(const std::exception& e)
-    {
-      LogError("Error trying to init and parse config from string: ", e.what());
-      return false;
-    }
-  }
-
   void
   Config::initializeConfig(Configuration& conf)
   {

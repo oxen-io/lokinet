@@ -269,10 +269,6 @@ namespace llarp
     bool
     Load(const char* fname);
 
-    // Load a config from the given string
-    bool
-    LoadFromStr(string_view str);
-
     std::string
     generateBaseClientConfig();
 
