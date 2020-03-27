@@ -210,43 +210,8 @@ namespace llarp
     {
       SigINT();
     }
-    // TODO(despair): implement hot-reloading config on NT
-#ifndef _WIN32
-    if (sig == SIGHUP)
-    {
-      llarp::LogInfo("SIGHUP");
-      if (router)
-      {
-        router->hiddenServiceContext().ForEachService(
-            [](const std::string& name, const llarp::service::Endpoint_ptr& ep) -> bool {
-              ep->ResetInternalState();
-              llarp::LogInfo("Reset internal state for ", name);
-              return true;
-            });
-        router->PumpLL();
-        Config newconfig;
-        if (!newconfig.Load(configfile.c_str()))
-        {
-          llarp::LogError("failed to load config file ", configfile);
-          return;
-        }
-        // validate config
-        if (!router->ValidateConfig(&newconfig))
-        {
-          llarp::LogWarn("new configuration is invalid");
-          return;
-        }
-        // reconfigure
-        if (!router->Reconfigure(&newconfig))
-        {
-          llarp::LogError("Failed to reconfigure so we will stop.");
-          router->Stop();
-          return;
-        }
-        llarp::LogInfo("router reconfigured");
-      }
-    }
-#endif
+    // TODO: Hot reloading would be kewl
+    //       (it used to exist here, but wasn't maintained)
   }
 
   void
