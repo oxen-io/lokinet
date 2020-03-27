@@ -47,7 +47,6 @@ else()
     if(CURL_FOUND)
         target_include_directories(${CTL} PRIVATE ${CURL_INCLUDE_DIRS})
         target_link_libraries(${CTL} PRIVATE ${CURL_LIBRARIES})
-        target_compile_definitions(${CTL} PRIVATE -DWITH_CURL=1)
     endif(CURL_FOUND)
 
 endif(SHADOW)
