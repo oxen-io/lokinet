@@ -28,59 +28,6 @@ namespace llarp
   constexpr int DefaultMinConnectionsForClient = 4;
   constexpr int DefaultMaxConnectionsForClient = 6;
 
-  const char*
-  lokinetEnv(string_view suffix)
-  {
-    std::string env;
-    env.reserve(8 + suffix.size());
-    env.append("LOKINET_"s);
-    env.append(suffix.begin(), suffix.end());
-    return std::getenv(env.c_str());
-  }
-
-  std::string
-  fromEnv(string_view val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return ptr;
-    return {val.begin(), val.end()};
-  }
-
-  int
-  fromEnv(const int& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoi(ptr);
-    return val;
-  }
-
-  uint16_t
-  fromEnv(const uint16_t& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoi(ptr);
-
-    return val;
-  }
-
-  size_t
-  fromEnv(const size_t& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoll(ptr);
-
-    return val;
-  }
-
-  nonstd::optional<bool>
-  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return IsTrueValue(ptr);
-
-    return val;
-  }
-
   LoggingConfig::LogType
   LoggingConfig::LogTypeFromString(const std::string& str)
   {
@@ -306,14 +253,9 @@ namespace llarp
         throw std::invalid_argument(stringify("Invalid [bind] port specified on interface", name));
 
       if(name == "*")
-      {
-        info.port = fromEnv(info.port, "OUTBOUND_PORT");
         m_OutboundLink = std::move(info);
-      }
       else
-      {
         m_InboundLinks.emplace_back(std::move(info));
-      }
 
       return true;
     });

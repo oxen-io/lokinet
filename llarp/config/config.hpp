@@ -20,20 +20,6 @@ namespace llarp
   using SectionValues_t = llarp::ConfigParser::SectionValues_t;
   using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
-  inline const char*
-  lokinetEnv(string_view suffix);
-
-  std::string
-  fromEnv(string_view val, string_view envNameSuffix);
-  int
-  fromEnv(const int& val, string_view envNameSuffix);
-  uint16_t
-  fromEnv(const uint16_t& val, string_view envNameSuffix);
-  size_t
-  fromEnv(const size_t& val, string_view envNameSuffix);
-  nonstd::optional<bool>
-  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix);
-
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
   struct ConfigGenParameters
@@ -42,9 +28,8 @@ namespace llarp
     fs::path defaultDataDir;
   };
 
-  class RouterConfig
+  struct RouterConfig
   {
-   public:
     /// always maintain this many connections to other routers
     size_t m_minConnectedRouters = 2;
 
@@ -78,62 +63,26 @@ namespace llarp
 
     std::string m_DefaultLinkProto = "iwp";
 
-   public:
-    // clang-format off
-    size_t jobQueueSize() const                { return fromEnv(m_JobQueueSize, "JOB_QUEUE_SIZE"); }
-    size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
-    size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
-    std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
-    std::string ourRcFile() const              { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
-    std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
-    std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
-    std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); }
-    bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
-    const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
-    const AddressInfo& addrInfo() const        { return m_addrInfo; }
-    int workerThreads() const                  { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
-    int numNetThreads() const                  { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
-    std::string defaultLinkProto() const       { return fromEnv(m_DefaultLinkProto, "LINK_PROTO"); }
-    nonstd::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
-    // clang-format on
-
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
-  class NetworkConfig
+  struct NetworkConfig
   {
-   public:
-    using NetConfig = std::unordered_multimap<std::string, std::string>;
+    using NetConfig = std::unordered_multimap< std::string, std::string >;
 
-   public:
-    nonstd::optional<bool> m_enableProfiling;
+    nonstd::optional< bool > m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
     NetConfig m_netConfig;
 
-   public:
-    // clang-format off
-    nonstd::optional< bool > enableProfiling() const { return fromEnv(m_enableProfiling, "ENABLE_PROFILING"); }
-    std::string routerProfilesFile() const         { return fromEnv(m_routerProfilesFile, "ROUTER_PROFILES_FILE"); }
-    std::string strictConnect() const              { return fromEnv(m_strictConnect, "STRICT_CONNECT"); }
-    const NetConfig& netConfig() const             { return m_netConfig; }
-    // clang-format on
-
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
-  class NetdbConfig
+  struct NetdbConfig
   {
-   public:
     std::string m_nodedbDir;
-
-   public:
-    // clang-format off
-    std::string nodedbDir() const { return fromEnv(m_nodedbDir, "NODEDB_DIR"); }
-    // clang-format on
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
@@ -147,9 +96,8 @@ namespace llarp
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
-  class LinksConfig
+  struct LinksConfig
   {
-   public:
     struct LinkInfo
     {
       std::string interface;
@@ -161,16 +109,8 @@ namespace llarp
     LinkInfo
     LinkInfoFromINIValues(string_view name, string_view value);
 
-   public:
     LinkInfo m_OutboundLink;
     std::vector<LinkInfo> m_InboundLinks;
-
-   public:
-    // clang-format off
-    const LinkInfo& outboundLink() const  { return m_OutboundLink; }
-
-    const std::vector<LinkInfo>& inboundLinks() const { return m_InboundLinks; }
-    // clang-format on
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
@@ -199,17 +139,10 @@ namespace llarp
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
-  class ApiConfig
+  struct ApiConfig
   {
-   public:
     bool m_enableRPCServer = false;
     std::string m_rpcBindAddr = "127.0.0.1:1190";
-
-   public:
-    // clang-format off
-    bool enableRPCServer() const    { return fromEnv(m_enableRPCServer, "ENABLE_RPC_SERVER"); }
-    std::string rpcBindAddr() const { return fromEnv(m_rpcBindAddr, "RPC_BIND_ADDR"); }
-    // clang-format on
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
