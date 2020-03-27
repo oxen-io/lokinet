@@ -2,7 +2,6 @@
 #include <router/router.hpp>
 
 #include <config/config.hpp>
-#include <constants/limits.hpp>
 #include <constants/proto.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <crypto/crypto.hpp>
@@ -1045,13 +1044,6 @@ namespace llarp
     }
 
     EnsureNetConfigDefaultsSane(netConfig);
-
-    const auto limits = IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
-
-    _outboundSessionMaker.minConnectedRouters =
-        std::max(_outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
-    _outboundSessionMaker.maxConnectedRouters =
-        std::max(_outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
 
     if (IsServiceNode())
     {

@@ -2,7 +2,6 @@
 
 #include <config/ini.hpp>
 #include <constants/defaults.hpp>
-#include <constants/limits.hpp>
 #include <net/net.hpp>
 #include <router_contact.hpp>
 #include <stdexcept>
@@ -21,6 +20,14 @@
 
 namespace llarp
 {
+
+  // constants for config file default values
+  constexpr int DefaultMinConnectionsForRouter = 6;
+  constexpr int DefaultMaxConnectionsForRouter = 60;
+
+  constexpr int DefaultMinConnectionsForClient = 4;
+  constexpr int DefaultMaxConnectionsForClient = 6;
+
   const char*
   lokinetEnv(string_view suffix)
   {
@@ -110,18 +117,24 @@ namespace llarp
         m_netId = std::move(arg);
       });
 
-    conf.defineOption<int>("router", "min-connections", false, m_minConnectedRouters,
-      [this](int arg) {
-        if (arg < 1)
-          throw std::invalid_argument("min-connections must be >= 1");
+    // TODO: refactor to pass isRelay in
+    bool isRelay = false;
+    int minConnections = (isRelay ? DefaultMinConnectionsForRouter
+                                   : DefaultMinConnectionsForClient);
+    conf.defineOption<int>("router", "min-connections", false, minConnections,
+      [=](int arg) {
+        if (arg < minConnections)
+          throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
 
         m_minConnectedRouters = arg;
       });
 
-    conf.defineOption<int>("router", "max-connections", false, m_maxConnectedRouters,
-      [this](int arg) {
-        if (arg < 1)
-          throw std::invalid_argument("max-connections must be >= 1");
+    int maxConnections = (isRelay ? DefaultMaxConnectionsForRouter
+                                   : DefaultMaxConnectionsForClient);
+    conf.defineOption<int>("router", "max-connections", false, maxConnections,
+      [=](int arg) {
+        if (arg < maxConnections)
+          throw std::invalid_argument(stringify("max-connections must be >= ", maxConnections));
 
         m_maxConnectedRouters = arg;
       });
@@ -582,7 +595,6 @@ namespace llarp
 
     // TODO: pass these in
     const std::string basepath = "";
-    bool isRouter = false;
 
     // router
     def.addSectionComment("router", "Configuration for routing activity.");
@@ -609,15 +621,11 @@ namespace llarp
     // TODO: why did Kee want this, and/or what does it really do? Something about logs?
     def.addOptionComment("router", "nickname", "Router nickname. Kee wanted it.");
 
-    const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
-
     def.addOptionComment("router", "min-connections",
         "Minimum number of routers lokinet will attempt to maintain connections to.");
-    def.addConfigValue("router", "min-connections", stringify(limits.DefaultMinRouters));
 
     def.addOptionComment("router", "max-connections",
         "Maximum number (hard limit) of routers lokinet will be connected to at any time.");
-    def.addConfigValue("router", "max-connections", stringify(limits.DefaultMaxRouters));
 
     // logging
     def.addSectionComment("logging", "logging settings");

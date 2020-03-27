@@ -5,7 +5,7 @@ set(LIB_UTIL_SRC
   config/definition.cpp
   config/ini.cpp
   config/key_manager.cpp
-  constants/limits.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
   util/encode.cpp
