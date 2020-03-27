@@ -1,21 +1,8 @@
 
-Welcome to Lokinet's documentation!
-===================================
+Welcome to Lokinet Internals
+============================
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-
-API
-===
-
-.. doxygenindex::
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   api/lokinet
