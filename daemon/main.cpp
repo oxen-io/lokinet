@@ -65,7 +65,7 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
   // this is important, can downgrade from Info though
   llarp::LogDebug("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
-  ctx = llarp_main_init(conffname.c_str());
+  ctx      = llarp_main_init(conffname.c_str(), opts.isRelay);
   int code = 1;
   if (ctx)
   {
@@ -164,12 +164,18 @@ main(int argc, char* argv[])
       opts.background = true;
     }
 
-    if (result.count("force") > 0)
+    if(result.count("relay") > 0)
+    {
+      opts.isRelay = true;
+    }
+
+    if(result.count("force") > 0)
     {
       overwrite = true;
     }
 
-    if (result.count("router") > 0)
+    // TODO: remove this
+    if(result.count("router") > 0)
     {
       asRouter = true;
       // we should generate and exit (docker needs this, so we don't write a

@@ -57,7 +57,7 @@ namespace
     curl_global_init(CURL_GLOBAL_ALL);
 
     llarp::Config config;
-    if (!config.Load(configFile.c_str()))
+    if(!config.Load(configFile.c_str(), false))
     {
       llarp::LogError("Failed to load from config file: ", configFile);
       return false;

@@ -26,6 +26,7 @@ extern "C"
     bool background = false;
     bool debug = false;
     bool singleThreaded = false;
+    bool isRelay       = false;
   };
 
   /// llarp_application config
@@ -138,44 +139,44 @@ extern "C"
   /// allocates new config and puts it into c
   /// return false on failure
   bool
-  llarp_config_load_file(const char* fname, struct llarp_config** c);
+  llarp_config_load_file(const char *fname, struct llarp_config **c, bool isRelay);
 
   /// loads config from file by name
   /// uses already allocated config
   /// return false on failure
   bool
-  llarp_config_read_file(struct llarp_config* c, const char* f);
+  llarp_config_read_file(struct llarp_config *c, const char *f, bool isRelay);
 
   /// make a main context from configuration
   /// copies config contents
-  struct llarp_main*
-  llarp_main_init_from_config(struct llarp_config* conf);
+  struct llarp_main *
+  llarp_main_init_from_config(struct llarp_config *conf, bool isRelay);
 
   /// initialize application context and load config
-  static struct llarp_main*
-  llarp_main_init(const char* fname)
+  static struct llarp_main *
+  llarp_main_init(const char *fname, bool isRelay)
   {
-    struct llarp_main* m = 0;
-    struct llarp_config* conf = 0;
-    if (!llarp_config_load_file(fname, &conf))
+    struct llarp_main *m      = 0;
+    struct llarp_config *conf = 0;
+    if(!llarp_config_load_file(fname, &conf, isRelay))
       return 0;
     if (conf == NULL)
       return 0;
-    m = llarp_main_init_from_config(conf);
+    m = llarp_main_init_from_config(conf, isRelay);
     llarp_config_free(conf);
     return m;
   }
 
   /// initialize applicatin context with all defaults
-  static struct llarp_main*
-  llarp_main_default_init()
+  static struct llarp_main *
+  llarp_main_default_init(bool isRelay)
   {
     struct llarp_main* m;
     struct llarp_config* conf;
     conf = llarp_default_config();
     if (conf == 0)
       return 0;
-    m = llarp_main_init_from_config(conf);
+    m = llarp_main_init_from_config(conf, isRelay);
     llarp_config_free(conf);
     return m;
   }
@@ -183,7 +184,7 @@ extern "C"
   /// (re)configure main context
   /// return true if (re)configuration was successful
   bool
-  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf);
+  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf, bool isRelay);
 
   /// return true if this main context is running
   /// return false otherwise

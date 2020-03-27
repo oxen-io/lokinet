@@ -55,7 +55,7 @@ namespace llarp
     std::string nodedb_dir;
 
     bool
-    LoadConfig(const std::string& fname);
+    LoadConfig(const std::string &fname, bool isRelay);
 
     void
     Close();
@@ -73,7 +73,7 @@ namespace llarp
     HandleSignal(int sig);
 
     bool
-    Configure();
+    Configure(bool isRelay);
 
     bool
     IsUp() const;
@@ -112,9 +112,6 @@ namespace llarp
 
     void
     SigINT();
-
-    bool
-    ReloadConfig();
 
     std::string configfile;
     std::string pidfile;

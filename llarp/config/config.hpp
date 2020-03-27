@@ -91,7 +91,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   class NetworkConfig
@@ -114,7 +114,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   class NetdbConfig
@@ -128,7 +128,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct DnsConfig
@@ -136,7 +136,7 @@ namespace llarp
     std::unordered_multimap<std::string, std::string> netConfig;
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   class LinksConfig
@@ -165,7 +165,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct ConnectConfig
@@ -173,14 +173,14 @@ namespace llarp
     std::vector<std::string> routers;
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct ServicesConfig
   {
     std::vector< std::pair< std::string, std::string > > services;
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct SystemConfig
@@ -188,7 +188,7 @@ namespace llarp
     std::string pidfile;
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   class ApiConfig
@@ -204,7 +204,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct LokidConfig
@@ -217,14 +217,14 @@ namespace llarp
     std::string lokidRPCPassword;
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct BootstrapConfig
   {
     std::vector< std::string > routers;
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct LoggingConfig
@@ -243,7 +243,7 @@ namespace llarp
     std::string m_logFile;
 
     void
-    defineConfigOptions(Configuration& conf);
+    defineConfigOptions(Configuration& conf, bool isRelay);
   };
 
   struct Config
@@ -263,11 +263,11 @@ namespace llarp
 
     // Initialize config definition
     void
-    initializeConfig(Configuration& conf);
+    initializeConfig(Configuration& conf, bool isRelay);
 
     // Load a config from the given file
     bool
-    Load(const char* fname);
+    Load(const char* fname, bool isRelay);
 
     std::string
     generateBaseClientConfig();
@@ -289,11 +289,5 @@ namespace llarp
   ensureConfig(const fs::path& dir, const fs::path& filename, bool overwrite, bool asRouter);
 
 }  // namespace llarp
-
-void
-llarp_ensure_router_config(std::ofstream& f, std::string basepath);
-
-bool
-llarp_ensure_client_config(std::ofstream& f, std::string basepath);
 
 #endif

@@ -28,12 +28,12 @@ namespace llarp
   }
 
   bool
-  Context::Configure()
+  Context::Configure(bool isRelay)
   {
     // llarp::LogInfo("loading config at ", configfile);
     if (configfile.size())
     {
-      if (!config->Load(configfile.c_str()))
+      if(!config->Load(configfile.c_str(), isRelay))
       {
         config.release();
         llarp::LogError("failed to load config file ", configfile);
@@ -257,11 +257,11 @@ namespace llarp
   }
 
   bool
-  Context::LoadConfig(const std::string& fname)
+  Context::LoadConfig(const std::string &fname, bool isRelay)
   {
     config = std::make_unique<Config>();
     configfile = fname;
-    return Configure();
+    return Configure(isRelay);
   }
 
 #ifdef LOKINET_HIVE
@@ -335,31 +335,31 @@ extern "C"
       delete conf;
   }
 
-  struct llarp_main*
-  llarp_main_init_from_config(struct llarp_config* conf)
+  struct llarp_main *
+  llarp_main_init_from_config(struct llarp_config *conf, bool isRelay)
   {
     if (conf == nullptr)
       return nullptr;
-    llarp_main* m = new llarp_main(conf);
-    if (m->ctx->Configure())
+    llarp_main *m = new llarp_main(conf);
+    if(m->ctx->Configure(isRelay))
       return m;
     delete m;
     return nullptr;
   }
 
   bool
-  llarp_config_read_file(struct llarp_config* conf, const char* fname)
+  llarp_config_read_file(struct llarp_config *conf, const char *fname, bool isRelay)
   {
     if (conf == nullptr)
       return false;
-    return conf->impl.Load(fname);
+    return conf->impl.Load(fname, isRelay);
   }
 
   bool
-  llarp_config_load_file(const char* fname, struct llarp_config** conf)
+  llarp_config_load_file(const char *fname, struct llarp_config **conf, bool isRelay)
   {
-    llarp_config* c = new llarp_config();
-    if (c->impl.Load(fname))
+    llarp_config *c = new llarp_config();
+    if(c->impl.Load(fname, isRelay))
     {
       *conf = c;
       return true;
@@ -496,13 +496,13 @@ extern "C"
   }
 
   bool
-  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf)
+  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf, bool isRelay)
   {
     if (ptr == nullptr || conf == nullptr)
       return false;
     // give new config
     ptr->ctx->config.reset(new llarp::Config(conf->impl));
-    return ptr->ctx->Configure();
+    return ptr->ctx->Configure(isRelay);
   }
 
   bool

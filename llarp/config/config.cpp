@@ -92,7 +92,7 @@ namespace llarp
   }
 
   void
-  RouterConfig::defineConfigOptions(Configuration& conf)
+  RouterConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
     conf.defineOption<int>("router", "job-queue-size", false, m_JobQueueSize,
       [this](int arg) {
@@ -216,8 +216,10 @@ namespace llarp
   }
 
   void
-  NetworkConfig::defineConfigOptions(Configuration& conf)
+  NetworkConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     // TODO: review default value
     conf.defineOption<bool>("network", "profiling", false, m_enableProfiling,
       [this](bool arg) {
@@ -238,8 +240,10 @@ namespace llarp
   }
 
   void
-  NetdbConfig::defineConfigOptions(Configuration& conf)
+  NetdbConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
       [this](std::string arg) {
         m_nodedbDir = str(arg);
@@ -247,8 +251,10 @@ namespace llarp
   }
 
   void
-  DnsConfig::defineConfigOptions(Configuration& conf)
+  DnsConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     // TODO: this was previously a multi-value option
     conf.defineOption<std::string>("dns", "upstream", false, "",
       [this](std::string arg) {
@@ -288,8 +294,10 @@ namespace llarp
   }
 
   void
-  LinksConfig::defineConfigOptions(Configuration& conf)
+  LinksConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
       LinkInfo info = LinkInfoFromINIValues(name, value);
 
@@ -312,8 +320,10 @@ namespace llarp
   }
 
   void
-  ConnectConfig::defineConfigOptions(Configuration& conf)
+  ConnectConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
 
     conf.addUndeclaredHandler("connect", [this](string_view section,
                                                 string_view name,
@@ -326,8 +336,10 @@ namespace llarp
   }
 
   void
-  ServicesConfig::defineConfigOptions(Configuration& conf)
+  ServicesConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.addUndeclaredHandler("services", [this](string_view section,
                                                  string_view name,
                                                  string_view value) {
@@ -338,8 +350,10 @@ namespace llarp
   }
 
   void
-  SystemConfig::defineConfigOptions(Configuration& conf)
+  SystemConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.defineOption<std::string>("system", "pidfile", false, pidfile,
       [this](std::string arg) {
         pidfile = std::move(arg);
@@ -347,8 +361,10 @@ namespace llarp
   }
 
   void
-  ApiConfig::defineConfigOptions(Configuration& conf)
+  ApiConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.defineOption<bool>("api", "enabled", false, m_enableRPCServer,
       [this](bool arg) {
         m_enableRPCServer = arg;
@@ -363,8 +379,10 @@ namespace llarp
   }
 
   void
-  LokidConfig::defineConfigOptions(Configuration& conf)
+  LokidConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.defineOption<std::string>("lokid", "service-node-seed", false, "",
       [this](std::string arg) {
        if (not arg.empty())
@@ -397,8 +415,10 @@ namespace llarp
   }
 
   void
-  BootstrapConfig::defineConfigOptions(Configuration& conf)
+  BootstrapConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.addUndeclaredHandler("bootstrap", [&](string_view, string_view name, string_view value) {
       if (name != "add-node")
       {
@@ -413,8 +433,10 @@ namespace llarp
   }
 
   void
-  LoggingConfig::defineConfigOptions(Configuration& conf)
+  LoggingConfig::defineConfigOptions(Configuration& conf, bool isRelay)
   {
+    (void)isRelay;
+
     conf.defineOption<std::string>("logging", "type", false, "file",
       [this](std::string arg) {
       LoggingConfig::LogType type = LogTypeFromString(arg);
@@ -440,13 +462,13 @@ namespace llarp
   }
 
   bool
-  Config::Load(const char *fname)
+  Config::Load(const char *fname, bool isRelay)
   {
     // TODO: DRY
     try
     {
       Configuration conf;
-      initializeConfig(conf);
+      initializeConfig(conf, isRelay);
 
       ConfigParser parser;
       if(!parser.LoadFile(fname))
@@ -472,25 +494,25 @@ namespace llarp
   }
 
   void
-  Config::initializeConfig(Configuration& conf)
+  Config::initializeConfig(Configuration& conf, bool isRelay)
   {
     // TODO: this seems like a random place to put this, should this be closer
     //       to main() ?
     if(Lokinet_INIT())
       throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
 
-    router.defineConfigOptions(conf);
-    network.defineConfigOptions(conf);
-    connect.defineConfigOptions(conf);
-    netdb.defineConfigOptions(conf);
-    dns.defineConfigOptions(conf);
-    links.defineConfigOptions(conf);
-    services.defineConfigOptions(conf);
-    system.defineConfigOptions(conf);
-    api.defineConfigOptions(conf);
-    lokid.defineConfigOptions(conf);
-    bootstrap.defineConfigOptions(conf);
-    logging.defineConfigOptions(conf);
+    router.defineConfigOptions(conf, isRelay);
+    network.defineConfigOptions(conf, isRelay);
+    connect.defineConfigOptions(conf, isRelay);
+    netdb.defineConfigOptions(conf, isRelay);
+    dns.defineConfigOptions(conf, isRelay);
+    links.defineConfigOptions(conf, isRelay);
+    services.defineConfigOptions(conf, isRelay);
+    system.defineConfigOptions(conf, isRelay);
+    api.defineConfigOptions(conf, isRelay);
+    lokid.defineConfigOptions(conf, isRelay);
+    bootstrap.defineConfigOptions(conf, isRelay);
+    logging.defineConfigOptions(conf, isRelay);
   }
 
   fs::path
@@ -564,7 +586,7 @@ namespace llarp
   Config::generateBaseClientConfig()
   {
     llarp::Configuration def;
-    initializeConfig(def);
+    initializeConfig(def, false);
 
     // TODO: pass these in
     const std::string basepath = "";
@@ -683,7 +705,7 @@ namespace llarp
   Config::generateBaseRouterConfig()
   {
     llarp::Configuration def;
-    initializeConfig(def);
+    initializeConfig(def, true);
 
     // lokid
     def.addSectionComment("lokid", "Lokid configuration (settings for talking to lokid");
