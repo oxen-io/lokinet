@@ -39,16 +39,7 @@ namespace llarp
     std::string m_netId = "lokinet";
     std::string m_nickname;
 
-    std::string m_encryptionKeyfile = "encryption.key";
-
-    // path to write our self signed rc to
-    std::string m_ourRcFile = "rc.signed";
-
-    // transient iwp encryption key
-    std::string m_transportKeyfile = "transport.key";
-
-    // long term identity key
-    std::string m_identKeyfile = "identity.key";
+    std::string m_dataDir;
 
     nonstd::optional<bool> m_blockBogons;
 

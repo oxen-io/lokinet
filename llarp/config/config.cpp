@@ -97,24 +97,9 @@ namespace llarp
         LogContext::Instance().nodeName = nickname();
       });
 
-    conf.defineOption<std::string>("router", "encryption-privkey", false, m_encryptionKeyfile,
+    conf.defineOption<std::string>("router", "data-dir", false, GetDefaultDataDir(),
       [this](std::string arg) {
-        m_encryptionKeyfile = std::move(arg);
-      });
-
-    conf.defineOption<std::string>("router", "contact-file", false, m_ourRcFile,
-      [this](std::string arg) {
-        m_ourRcFile = std::move(arg);
-      });
-
-    conf.defineOption<std::string>("router", "transport-privkey", false, m_transportKeyfile,
-      [this](std::string arg) {
-        m_transportKeyfile = std::move(arg);
-      });
-
-    conf.defineOption<std::string>("router", "identity-privkey", false, m_identKeyfile,
-      [this](std::string arg) {
-        m_identKeyfile = std::move(arg);
+        m_dataDir = std::move(arg);
       });
 
     conf.defineOption<std::string>("router", "public-address", false, "",
@@ -549,13 +534,10 @@ namespace llarp
     def.addOptionComment("router", "threads",
         "threads. Should not exceed the number of logical CPU cores.");
 
-    def.addOptionComment("router", "contact-file", "Path to store signed RC.");
-
-    def.addOptionComment("router", "transport-privkey", "Path to store transport private key.");
-
-    def.addOptionComment("router", "identity-privkey", "Path to store identity signing key.");
-
-    def.addOptionComment("router", "encryption-privkey", "Encryption key for onion routing.");
+    def.addOptionComment("router", "data-dir",
+        "Optional directory for containing lokinet runtime data. This includes generated");
+    def.addOptionComment("router", "data-dir",
+        "private keys.");
 
     // TODO: why did Kee want this, and/or what does it really do? Something about logs?
     def.addOptionComment("router", "nickname", "Router nickname. Kee wanted it.");
