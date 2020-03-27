@@ -8,7 +8,7 @@ set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
 set(ABYSS libabyss)
 set(ABYSS_LIB abyss)
-set(ABYSS_EXE ${ABYSS_LIB}-main)
+set(DOCS_SRC "")
 get_filename_component(TT_ROOT "${CMAKE_CURRENT_LIST_DIR}/../vendor/libtuntap-master" ABSOLUTE)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 

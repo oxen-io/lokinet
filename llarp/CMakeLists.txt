@@ -5,7 +5,6 @@ set(LIB_UTIL_SRC
   config/ini.cpp
   config/key_manager.cpp
   constants/limits.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
   util/encode.cpp
@@ -32,7 +31,7 @@ set(LIB_UTIL_SRC
   util/time.cpp
 )
 
-add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC} ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp)
 
 add_dependencies(${UTIL_LIB} genversion)
 
@@ -243,3 +242,7 @@ endif()
 add_log_tag(${UTIL_LIB})
 add_log_tag(${PLATFORM_LIB})
 add_log_tag(${STATIC_LIB})
+
+file(GLOB_RECURSE docs_SRC */*.hpp)
+  
+set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)
