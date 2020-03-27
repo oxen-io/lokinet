@@ -117,8 +117,6 @@ namespace llarp
         m_netId = std::move(arg);
       });
 
-    // TODO: refactor to pass isRelay in
-    bool isRelay = false;
     int minConnections = (isRelay ? DefaultMinConnectionsForRouter
                                    : DefaultMinConnectionsForClient);
     conf.defineOption<int>("router", "min-connections", false, minConnections,
@@ -685,87 +683,77 @@ namespace llarp
     def.addOptionComment("bootstrap", "add-node",
         "which can act as a bootstrap. Accepts multiple values.");
 
+    // network
+    def.addSectionComment("network", "Network settings");
+
+    def.addOptionComment("network", "profiles", "File to contain router profiles.");
+
+    def.addOptionComment("network", "strict-connect",
+        "Public key of a router which will act as sole first-hop. This may be used to");
+    def.addOptionComment("network", "strict-connect",
+        "provide a trusted router (consider that you are not fully anonymous with your");
+    def.addOptionComment("network", "strict-connect",
+        "first hop).");
+
+    def.addOptionComment("network", "exit-node", "Public key of an exit-node.");
+
+    def.addOptionComment("network", "ifname", "Interface name for lokinet traffic.");
+
+    def.addOptionComment("network", "ifaddr", "Local IP address for lokinet traffic.");
+
     return def.generateINIConfig(true);
   }
 
   std::string
   Config::generateBaseRouterConfig()
   {
-    // throw std::runtime_error("fixme");
-    return "";
+    llarp::Configuration def;
+    initializeConfig(def);
+
+    // lokid
+    def.addSectionComment("lokid", "Lokid configuration (settings for talking to lokid");
+
+    def.addOptionComment("lokid", "enabled",
+        "Whether or not we should talk to lokid. Must be enabled for staked routers.");
+
+    def.addOptionComment("lokid", "jsonrpc",
+        "Host and port of running lokid that we should talk to.");
+
+    // TODO: doesn't appear to be used in the codebase
+    def.addOptionComment("lokid", "service-node-seed", "File containing service node's seed.");
+
+    // extra [network] options
+    // TODO: probably better to create an [exit] section and only allow it for routers
+    def.addOptionComment("network", "exit",
+        "Whether or not we should act as an exit node. Beware that this increases demand");
+    def.addOptionComment("network", "exit",
+        "on the server and may pose liability concerns. Enable at your own risk.");
+
+    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
+    //       additionally, what's default? What if I don't whitelist anything?
+    def.addOptionComment("network", "exit-whitelist",
+        "List of destination protocol:port pairs to whitelist, example: udp:*");
+    def.addOptionComment("network", "exit-whitelist",
+        "or tcp:80. Multiple values supported.");
+
+    def.addOptionComment("network", "exit-blacklist",
+        "Blacklist of destinations (same format as whitelist).");
+
+    return def.generateINIConfig(true);
   }
 
 }  // namespace llarp
 
-void
-llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
-                            bool isRouter)
-{
-}
-
-void
-llarp_ensure_router_config(std::ofstream& f, std::string basepath)
-{
-  llarp::Configuration def;
-  llarp::Config conf;
-  conf.initializeConfig(def);
-
-  std::string confStr = def.generateINIConfig();
-
-  /*
-  f << confStr;
-  f.flush();
-  f << "# lokid settings (disabled by default)\n";
-  f << "[lokid]\n";
-  f << "enabled=false\n";
-  f << "jsonrpc=127.0.0.1:22023\n";
-  f << "#service-node-seed=/path/to/servicenode/seed\n";
-  f << std::endl;
-  f << "# network settings \n";
-  f << "[network]\n";
-  f << "profiles=" << basepath << "profiles.dat\n";
-  // better to let the routers auto-configure
-  // f << "ifaddr=auto\n";
-  // f << "ifname=auto\n";
-  f << "enabled=true\n";
-  f << "exit=false\n";
-  f << "#exit-blacklist=tcp:25\n";
-  f << "#exit-whitelist=tcp:*\n";
-  f << "#exit-whitelist=udp:*\n";
-  f << std::endl;
-  f << "# ROUTERS ONLY: publish network interfaces for handling inbound "
-       "traffic\n";
-  f << "[bind]\n";
-  // get ifname
-  std::string ifname;
-  if (llarp::GetBestNetIF(ifname, AF_INET))
-  {
-    f << ifname << "=1090\n";
-  }
-  else
-  {
-    f << "# could not autodetect network interface\n"
-      << "#eth0=1090\n";
-  }
-
-  f << std::endl;
-  */
-}
-
 bool
 llarp_ensure_client_config(std::ofstream& f, std::string basepath)
 {
-  llarp::Configuration def;
-  llarp::Config conf;
-  conf.initializeConfig(def);
-
-  std::string confStr = def.generateINIConfig();
-  f << confStr;
-  f.flush();
 
   return true;
 
   /*
+   * TODO: remove this function. comments left as evidence of what a snapp config does
+   *
+   *
   // write snapp-example.ini
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
@@ -813,24 +801,6 @@ llarp_ensure_client_config(std::ofstream& f, std::string basepath)
   f << "# uncomment next line to enable a snapp\n";
   f << "#example-snapp=" << snappExample_fpath << std::endl;
   f << "\n\n";
-
-  f << "# network settings \n";
-  f << "[network]\n";
-  f << "profiles=" << basepath << "profiles.dat\n";
-  f << "# uncomment next line to add router with pubkey to list of routers we "
-       "connect directly to\n";
-  f << "#strict-connect=pubkey\n";
-  f << "# uncomment next line to use router with pubkey as an exit node\n";
-  f << "#exit-node=pubkey\n";
-
-  // better to set them to auto then to hard code them now
-  // operating environment may change over time and this will help adapt
-  // f << "ifname=auto\n";
-  // f << "ifaddr=auto\n";
-
-  // should this also be auto? or not declared?
-  // probably auto in case they want to set up a hidden service
-  f << "enabled=true\n";
   return true;
   */
 }
