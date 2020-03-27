@@ -34,6 +34,14 @@ namespace llarp
   nonstd::optional<bool>
   fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix);
 
+  /// Small struct to gather all parameters needed for config generation to reduce the number of
+  /// parameters that need to be passed around.
+  struct ConfigGenParameters
+  {
+    bool isRelay = false;
+    fs::path defaultDataDir;
+  };
+
   class RouterConfig
   {
    public:
@@ -91,7 +99,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   class NetworkConfig
@@ -114,7 +122,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   class NetdbConfig
@@ -128,7 +136,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct DnsConfig
@@ -136,7 +144,7 @@ namespace llarp
     std::unordered_multimap<std::string, std::string> netConfig;
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   class LinksConfig
@@ -165,7 +173,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct ConnectConfig
@@ -173,14 +181,14 @@ namespace llarp
     std::vector<std::string> routers;
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct ServicesConfig
   {
     std::vector< std::pair< std::string, std::string > > services;
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct SystemConfig
@@ -188,7 +196,7 @@ namespace llarp
     std::string pidfile;
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   class ApiConfig
@@ -204,7 +212,7 @@ namespace llarp
     // clang-format on
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct LokidConfig
@@ -217,14 +225,14 @@ namespace llarp
     std::string lokidRPCPassword;
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct BootstrapConfig
   {
     std::vector< std::string > routers;
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct LoggingConfig
@@ -243,7 +251,7 @@ namespace llarp
     std::string m_logFile;
 
     void
-    defineConfigOptions(Configuration& conf, bool isRelay);
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
   struct Config
@@ -263,21 +271,21 @@ namespace llarp
 
     // Initialize config definition
     void
-    initializeConfig(Configuration& conf, bool isRelay);
+    initializeConfig(Configuration& conf, const ConfigGenParameters& params);
 
     // Load a config from the given file
     bool
-    Load(const char* fname, bool isRelay);
+    Load(const char* fname, bool isRelay, fs::path defaultDataDir);
 
     std::string
-    generateBaseClientConfig();
+    generateBaseClientConfig(fs::path defaultDataDir);
 
     std::string
-    generateBaseRouterConfig();
+    generateBaseRouterConfig(fs::path defaultDataDir);
   };
 
   fs::path
-  GetDefaultConfigDir();
+  GetDefaultDataDir();
 
   fs::path
   GetDefaultConfigFilename();
@@ -286,7 +294,10 @@ namespace llarp
   GetDefaultConfigPath();
 
   void
-  ensureConfig(const fs::path& dir, const fs::path& filename, bool overwrite, bool asRouter);
+  ensureConfig(const fs::path& defaultDataDir,
+               const fs::path& confFile,
+               bool overwrite,
+               bool asRouter);
 
 }  // namespace llarp
 

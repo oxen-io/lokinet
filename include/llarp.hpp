@@ -73,7 +73,7 @@ namespace llarp
     HandleSignal(int sig);
 
     bool
-    Configure(bool isRelay);
+    Configure(bool isRelay, nonstd::optional<fs::path> dataDir);
 
     bool
     IsUp() const;

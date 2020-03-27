@@ -220,7 +220,7 @@ main(int argc, char* argv[])
 
     if (genconfigOnly)
     {
-      llarp::ensureConfig(llarp::GetDefaultConfigDir(),
+      llarp::ensureConfig(llarp::GetDefaultDataDir(),
                           llarp::GetDefaultConfigFilename(),
                           overwrite,
                           asRouter);
@@ -240,7 +240,7 @@ main(int argc, char* argv[])
   }
   else
   {
-    auto basepath = llarp::GetDefaultConfigDir();
+    auto basepath = llarp::GetDefaultDataDir();
 
     llarp::LogDebug("Find or create ", basepath.string());
     std::error_code ec;
@@ -255,7 +255,7 @@ main(int argc, char* argv[])
       }
     }
 
-    llarp::ensureConfig(llarp::GetDefaultConfigDir(),
+    llarp::ensureConfig(llarp::GetDefaultDataDir(),
                         llarp::GetDefaultConfigFilename(),
                         overwrite,
                         asRouter);

@@ -81,7 +81,8 @@ namespace llarp
     return val;
   }
 
-  LoggingConfig::LogType LoggingConfig::LogTypeFromString(const std::string& str)
+  LoggingConfig::LogType
+  LoggingConfig::LogTypeFromString(const std::string& str)
   {
     if (str == "unknown") return LogType::Unknown;
     else if (str == "file") return LogType::File;
@@ -92,7 +93,7 @@ namespace llarp
   }
 
   void
-  RouterConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  RouterConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
     conf.defineOption<int>("router", "job-queue-size", false, m_JobQueueSize,
       [this](int arg) {
@@ -117,7 +118,7 @@ namespace llarp
         m_netId = std::move(arg);
       });
 
-    int minConnections = (isRelay ? DefaultMinConnectionsForRouter
+    int minConnections = (params.isRelay ? DefaultMinConnectionsForRouter
                                    : DefaultMinConnectionsForClient);
     conf.defineOption<int>("router", "min-connections", false, minConnections,
       [=](int arg) {
@@ -127,7 +128,7 @@ namespace llarp
         m_minConnectedRouters = arg;
       });
 
-    int maxConnections = (isRelay ? DefaultMaxConnectionsForRouter
+    int maxConnections = (params.isRelay ? DefaultMaxConnectionsForRouter
                                    : DefaultMaxConnectionsForClient);
     conf.defineOption<int>("router", "max-connections", false, maxConnections,
       [=](int arg) {
@@ -216,9 +217,9 @@ namespace llarp
   }
 
   void
-  NetworkConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  NetworkConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     // TODO: review default value
     conf.defineOption<bool>("network", "profiling", false, m_enableProfiling,
@@ -240,9 +241,9 @@ namespace llarp
   }
 
   void
-  NetdbConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  NetdbConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
       [this](std::string arg) {
@@ -251,9 +252,9 @@ namespace llarp
   }
 
   void
-  DnsConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  DnsConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     // TODO: this was previously a multi-value option
     conf.defineOption<std::string>("dns", "upstream", false, "",
@@ -294,9 +295,9 @@ namespace llarp
   }
 
   void
-  LinksConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  LinksConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
       LinkInfo info = LinkInfoFromINIValues(name, value);
@@ -320,9 +321,9 @@ namespace llarp
   }
 
   void
-  ConnectConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  ConnectConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
 
     conf.addUndeclaredHandler("connect", [this](string_view section,
@@ -336,9 +337,9 @@ namespace llarp
   }
 
   void
-  ServicesConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  ServicesConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.addUndeclaredHandler("services", [this](string_view section,
                                                  string_view name,
@@ -350,9 +351,9 @@ namespace llarp
   }
 
   void
-  SystemConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  SystemConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.defineOption<std::string>("system", "pidfile", false, pidfile,
       [this](std::string arg) {
@@ -361,9 +362,9 @@ namespace llarp
   }
 
   void
-  ApiConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  ApiConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.defineOption<bool>("api", "enabled", false, m_enableRPCServer,
       [this](bool arg) {
@@ -379,9 +380,9 @@ namespace llarp
   }
 
   void
-  LokidConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  LokidConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.defineOption<std::string>("lokid", "service-node-seed", false, "",
       [this](std::string arg) {
@@ -415,9 +416,9 @@ namespace llarp
   }
 
   void
-  BootstrapConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  BootstrapConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.addUndeclaredHandler("bootstrap", [&](string_view, string_view name, string_view value) {
       if (name != "add-node")
@@ -433,9 +434,9 @@ namespace llarp
   }
 
   void
-  LoggingConfig::defineConfigOptions(Configuration& conf, bool isRelay)
+  LoggingConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    (void)isRelay;
+    (void)params;
 
     conf.defineOption<std::string>("logging", "type", false, "file",
       [this](std::string arg) {
@@ -462,13 +463,16 @@ namespace llarp
   }
 
   bool
-  Config::Load(const char *fname, bool isRelay)
+  Config::Load(const char *fname, bool isRelay, fs::path defaultDataDir)
   {
-    // TODO: DRY
     try
     {
+      ConfigGenParameters params;
+      params.isRelay = isRelay;
+      params.defaultDataDir = std::move(defaultDataDir);
+
       Configuration conf;
-      initializeConfig(conf, isRelay);
+      initializeConfig(conf, params);
 
       ConfigParser parser;
       if(!parser.LoadFile(fname))
@@ -494,29 +498,29 @@ namespace llarp
   }
 
   void
-  Config::initializeConfig(Configuration& conf, bool isRelay)
+  Config::initializeConfig(Configuration& conf, const ConfigGenParameters& params)
   {
     // TODO: this seems like a random place to put this, should this be closer
     //       to main() ?
     if(Lokinet_INIT())
       throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
 
-    router.defineConfigOptions(conf, isRelay);
-    network.defineConfigOptions(conf, isRelay);
-    connect.defineConfigOptions(conf, isRelay);
-    netdb.defineConfigOptions(conf, isRelay);
-    dns.defineConfigOptions(conf, isRelay);
-    links.defineConfigOptions(conf, isRelay);
-    services.defineConfigOptions(conf, isRelay);
-    system.defineConfigOptions(conf, isRelay);
-    api.defineConfigOptions(conf, isRelay);
-    lokid.defineConfigOptions(conf, isRelay);
-    bootstrap.defineConfigOptions(conf, isRelay);
-    logging.defineConfigOptions(conf, isRelay);
+    router.defineConfigOptions(conf, params);
+    network.defineConfigOptions(conf, params);
+    connect.defineConfigOptions(conf, params);
+    netdb.defineConfigOptions(conf, params);
+    dns.defineConfigOptions(conf, params);
+    links.defineConfigOptions(conf, params);
+    services.defineConfigOptions(conf, params);
+    system.defineConfigOptions(conf, params);
+    api.defineConfigOptions(conf, params);
+    lokid.defineConfigOptions(conf, params);
+    bootstrap.defineConfigOptions(conf, params);
+    logging.defineConfigOptions(conf, params);
   }
 
   fs::path
-  GetDefaultConfigDir()
+  GetDefaultDataDir()
   {
 #ifdef _WIN32
     const fs::path homedir = fs::path(getenv("APPDATA"));
@@ -535,61 +539,63 @@ namespace llarp
   fs::path
   GetDefaultConfigPath()
   {
-    return GetDefaultConfigDir() / GetDefaultConfigFilename();
+    return GetDefaultDataDir() / GetDefaultConfigFilename();
   }
 
   void
-  ensureConfig(const fs::path& dir, const fs::path& filename, bool overwrite, bool asRouter)
+  ensureConfig(const fs::path& defaultDataDir,
+               const fs::path& confFile,
+               bool overwrite,
+               bool asRouter)
   {
-    fs::path fullPath = dir / filename;
-
     std::error_code ec;
 
     // fail to overwrite if not instructed to do so
-    if(fs::exists(fullPath, ec) && !overwrite)
-      throw std::invalid_argument(stringify("Config file ", fullPath, " already exists"));
+    if(fs::exists(confFile, ec) && !overwrite)
+      throw std::invalid_argument(stringify("Config file ", confFile, " already exists"));
 
     if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
 
     // create parent dir if it doesn't exist
-    if (not fs::exists(dir, ec))
+    if (not fs::exists(confFile.parent_path(), ec))
     {
-      if (not fs::create_directory(dir))
-        throw std::runtime_error(stringify("Failed to create parent directory ", dir));
+      if (not fs::create_directory(confFile.parent_path()))
+        throw std::runtime_error(stringify("Failed to create parent directory for ", confFile));
     }
     if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
 
     llarp::LogInfo("Attempting to create config file, asRouter: ", asRouter,
-                   " path: ", fullPath);
+                   " path: ", confFile);
 
     llarp::Config config;
     std::string confStr;
     if (asRouter)
-      confStr = config.generateBaseRouterConfig();
+      confStr = config.generateBaseRouterConfig(std::move(defaultDataDir));
     else
-      confStr = config.generateBaseClientConfig();
+      confStr = config.generateBaseClientConfig(std::move(defaultDataDir));
 
     // open a filestream
-    auto stream = llarp::util::OpenFileStream<std::ofstream>(fullPath.c_str(), std::ios::binary);
+    auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
     if (not stream.has_value() or not stream.value().is_open())
-      throw std::runtime_error(stringify("Failed to open file ", fullPath, " for writing"));
+      throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
 
     llarp::LogInfo("confStr: ", confStr);
 
     stream.value() << confStr;
     stream.value().flush();
 
-    llarp::LogInfo("Generated new config ", fullPath);
+    llarp::LogInfo("Generated new config ", confFile);
   }
 
   std::string
-  Config::generateBaseClientConfig()
+  Config::generateBaseClientConfig(fs::path defaultDataDir)
   {
-    llarp::Configuration def;
-    initializeConfig(def, false);
+    ConfigGenParameters params;
+    params.isRelay = false;
+    params.defaultDataDir = std::move(defaultDataDir);
 
-    // TODO: pass these in
-    const std::string basepath = "";
+    llarp::Configuration def;
+    initializeConfig(def, params);
 
     // router
     def.addSectionComment("router", "Configuration for routing activity.");
@@ -602,16 +608,12 @@ namespace llarp
         "threads. Should not exceed the number of logical CPU cores.");
 
     def.addOptionComment("router", "contact-file", "Path to store signed RC.");
-    def.addConfigValue("router", "contact-file", stringify(basepath, "self.signed"));
 
     def.addOptionComment("router", "transport-privkey", "Path to store transport private key.");
-    def.addConfigValue("router", "transport-privkey", stringify(basepath, "transport.private"));
 
     def.addOptionComment("router", "identity-privkey", "Path to store identity signing key.");
-    def.addConfigValue("router", "identity-privkey", stringify(basepath, "identity.private"));
 
     def.addOptionComment("router", "encryption-privkey", "Encryption key for onion routing.");
-    def.addConfigValue("router", "encryption-privkey", stringify(basepath, "encryption.private"));
 
     // TODO: why did Kee want this, and/or what does it really do? Something about logs?
     def.addOptionComment("router", "nickname", "Router nickname. Kee wanted it.");
@@ -633,7 +635,6 @@ namespace llarp
     def.addOptionComment("logging", "level", "  info");
     def.addOptionComment("logging", "level", "  warn");
     def.addOptionComment("logging", "level", "  error");
-    def.addConfigValue("logging", "level", "info");
 
     def.addOptionComment("logging", "type", "Log type (format). Valid options are:");
     def.addOptionComment("logging", "type", "  file - plaintext formatting");
@@ -702,10 +703,14 @@ namespace llarp
   }
 
   std::string
-  Config::generateBaseRouterConfig()
+  Config::generateBaseRouterConfig(fs::path defaultDataDir)
   {
+    ConfigGenParameters params;
+    params.isRelay = true;
+    params.defaultDataDir = std::move(defaultDataDir);
+
     llarp::Configuration def;
-    initializeConfig(def, true);
+    initializeConfig(def, params);
 
     // lokid
     def.addSectionComment("lokid", "Lokid configuration (settings for talking to lokid");

@@ -28,12 +28,15 @@ namespace llarp
   }
 
   bool
-  Context::Configure(bool isRelay)
+  Context::Configure(bool isRelay, nonstd::optional<fs::path> dataDir)
   {
-    // llarp::LogInfo("loading config at ", configfile);
-    if (configfile.size())
+    fs::path defaultDataDir = dataDir.has_value()
+        ? dataDir.value()
+        : GetDefaultDataDir();
+
+    if(configfile.size())
     {
-      if(!config->Load(configfile.c_str(), isRelay))
+      if(!config->Load(configfile.c_str(), isRelay, defaultDataDir))
       {
         config.release();
         llarp::LogError("failed to load config file ", configfile);
@@ -261,7 +264,7 @@ namespace llarp
   {
     config = std::make_unique<Config>();
     configfile = fname;
-    return Configure(isRelay);
+    return Configure(isRelay, {});
   }
 
 #ifdef LOKINET_HIVE
@@ -341,25 +344,17 @@ extern "C"
     if (conf == nullptr)
       return nullptr;
     llarp_main *m = new llarp_main(conf);
-    if(m->ctx->Configure(isRelay))
+    if(m->ctx->Configure(isRelay, {}))
       return m;
     delete m;
     return nullptr;
   }
 
   bool
-  llarp_config_read_file(struct llarp_config *conf, const char *fname, bool isRelay)
-  {
-    if (conf == nullptr)
-      return false;
-    return conf->impl.Load(fname, isRelay);
-  }
-
-  bool
   llarp_config_load_file(const char *fname, struct llarp_config **conf, bool isRelay)
   {
     llarp_config *c = new llarp_config();
-    if(c->impl.Load(fname, isRelay))
+    if(c->impl.Load(fname, isRelay, {}))
     {
       *conf = c;
       return true;
@@ -502,7 +497,7 @@ extern "C"
       return false;
     // give new config
     ptr->ctx->config.reset(new llarp::Config(conf->impl));
-    return ptr->ctx->Configure(isRelay);
+    return ptr->ctx->Configure(isRelay, {});
   }
 
   bool

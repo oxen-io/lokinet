@@ -141,12 +141,6 @@ extern "C"
   bool
   llarp_config_load_file(const char *fname, struct llarp_config **c, bool isRelay);
 
-  /// loads config from file by name
-  /// uses already allocated config
-  /// return false on failure
-  bool
-  llarp_config_read_file(struct llarp_config *c, const char *f, bool isRelay);
-
   /// make a main context from configuration
   /// copies config contents
   struct llarp_main *
