@@ -27,12 +27,13 @@ add_custom_command(
         -Dversion=${LLARP_VERSION} -Drelease=${LOKIMQ_VERSION}
         -Aversion=${LLARP_VERSION} -Aversions=${LLARP_VERSION_MAJOR},${LLARP_VERSION_MINOR},${LLARP_VERSION_PATCH}
         -b html
-        ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/html
+        ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/html
     DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/index.rst
-        ${CMAKE_CURRENT_SOURCE_DIR}/conf.py
+        ${CMAKE_CURRENT_BINARY_DIR}/index.rst
+        ${CMAKE_CURRENT_BINARY_DIR}/conf.py
         ${CMAKE_CURRENT_BINARY_DIR}/doxyxml/index.xml
 )
 add_custom_target(doc DEPENDS html/index.html)
+configure_file(conf.py.in conf.py @ONLY)
 configure_file(Doxyfile.in Doxyfile @ONLY)
-
+configure_file(index.rst index.rst COPYONLY)
