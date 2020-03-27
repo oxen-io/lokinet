@@ -298,3 +298,5 @@ if (NOT SHADOW)
     add_subdirectory(jni)
   endif(ANDROID)
 endif()
+
+add_subdirectory(docs)
