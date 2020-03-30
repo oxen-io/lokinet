@@ -354,6 +354,7 @@ install:
 	DESTDIR=$(DESTDIR) $(MAKE) -C '$(BUILD_ROOT)' install
 
 doc: debug-configure
+	$(MAKE) -C $(BUILD_ROOT) clean
 	$(MAKE) -C $(BUILD_ROOT) doc
 
 .PHONY: debian-install
