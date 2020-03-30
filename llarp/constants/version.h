@@ -6,10 +6,6 @@
 
 #define LLARP_NAME "lokinet"
 
-#define LLARP_VERSION_MAJ 0
-#define LLARP_VERSION_MIN 7
-#define LLARP_VERSION_PATCH 0
-
 #define LLARP_DEFAULT_NETID "lokinet"
 
 #ifndef LLARP_RELEASE_MOTTO
