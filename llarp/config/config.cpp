@@ -387,6 +387,74 @@ namespace llarp
       });
   }
 
+  void
+  SnappConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    static constexpr bool ReachableDefault = true;
+    static constexpr int HopsDefault = 4;
+    static constexpr int PathsDefault = 6;
+
+    conf.defineOption<std::string>("snapp", "keyfile", false, "",
+      [this](std::string arg) {
+        // TODO: validate as valid .loki / .snode address
+        m_keyfile = arg;
+      });
+
+    conf.defineOption<bool>("snapp", "keyfile", false, ReachableDefault,
+      [this](bool arg) {
+        m_reachable = arg;
+      });
+
+    conf.defineOption<int>("snapp", "hops", false, HopsDefault,
+      [this](int arg) {
+        if (arg < 1 or arg > 8)
+          throw std::invalid_argument("[snapp]:hops must be >= 1 and <= 8");
+      });
+
+    conf.defineOption<int>("snapp", "paths", false, PathsDefault,
+      [this](int arg) {
+        if (arg < 1 or arg > 8)
+          throw std::invalid_argument("[snapp]:paths must be >= 1 and <= 8");
+      });
+
+    conf.defineOption<std::string>("snapp", "exit-node", false, "",
+      [this](std::string arg) {
+        // TODO: validate as valid .loki / .snode address
+        m_exitNode = arg;
+      });
+
+    conf.defineOption<std::string>("snapp", "local-dns", false, "",
+      [this](std::string arg) {
+        // TODO: validate as IP address
+        m_localDNS = arg;
+      });
+
+    conf.defineOption<std::string>("snapp", "upstream-dns", false, "",
+      [this](std::string arg) {
+        // TODO: validate as IP address
+        m_upstreamDNS = arg;
+      });
+
+    conf.defineOption<std::string>("snapp", "mapaddr", false, "",
+      [this](std::string arg) {
+        // TODO: parse / validate as loki_addr : IP addr pair
+        m_mapAddr = arg;
+      });
+
+    conf.addUndeclaredHandler("snapp", [&](string_view, string_view name, string_view value) {
+      if (name == "blacklist-snode")
+      {
+        m_snodeBlacklist.push_back(str(value));
+        return true;
+      }
+
+      return false;
+    });
+
+  }
+
   bool
   Config::Load(const char *fname, bool isRelay, fs::path defaultDataDir)
   {
@@ -621,6 +689,44 @@ namespace llarp
 
     def.addOptionComment("network", "ifaddr", "Local IP address for lokinet traffic.");
 
+    // snapp
+    def.addSectionComment("snapp", "Snapp settings");
+
+    def.addOptionComment("snapp", "keyfile",
+        "The private key to persist address with. If not specified the address will be");
+    def.addOptionComment("snapp", "keyfile",
+        "ephemeral.");
+
+    // TODO: is this redundant with / should be merged with basic client config?
+    def.addOptionComment("snapp", "reachable",
+        "Determines whether we will publish our snapp's introset to the DHT.");
+
+    // TODO: merge with client conf?
+    def.addOptionComment("snapp", "hops", "Number of hops in a path. Min 1, max 8.");
+
+    // TODO: is this actually different than client's paths min/max config?
+    def.addOptionComment("snapp", "paths", "Number of paths to maintain at any given time.");
+
+    def.addOptionComment("snapp", "blacklist-snode", "Adds a `.snode` address to the blacklist.");
+
+    def.addOptionComment("snapp", "exit-node",
+        "Specify a `.snode` or `.loki` address to use as an exit broker.");
+
+    // TODO: merge with client conf?
+    def.addOptionComment("snapp", "local-dns",
+        "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port");
+
+    def.addOptionComment("snapp", "upstream-dns",
+        "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply");
+    def.addOptionComment("snapp", "upstream-dns",
+        "with `srvfail`.");
+
+    def.addOptionComment("snapp", "mapaddr",
+        "Permanently map a `.loki` address to an IP owned by the snapp. Example:");
+    def.addOptionComment("snapp", "mapaddr",
+        "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.");
+
+
     return def.generateINIConfig(true);
   }
 
@@ -668,63 +774,3 @@ namespace llarp
 
 }  // namespace llarp
 
-bool
-llarp_ensure_client_config(std::ofstream& f, std::string basepath)
-{
-
-  return true;
-
-  /*
-   * TODO: remove this function. comments left as evidence of what a snapp config does
-   *
-   *
-  // write snapp-example.ini
-  const std::string snappExample_fpath = basepath + "snapp-example.ini";
-  {
-    auto stream = llarp::util::OpenFileStream<std::ofstream>(snappExample_fpath, std::ios::binary);
-    if (!stream)
-    {
-      return false;
-    }
-    auto& example_f = stream.value();
-    if (example_f.is_open())
-    {
-      // pick ip
-      // don't revert me
-      const static std::string ip = "10.33.0.1/16";
-
-      // std::string ip = llarp::findFreePrivateRange();
-      // if(ip == "")
-      // {
-      //   llarp::LogError(
-      //       "Couldn't easily detect a private range to map lokinet onto");
-      //   return false;
-      // }
-      example_f << "# this is an example configuration for a snapp\n";
-      example_f << "[example-snapp]\n";
-      example_f << "# keyfile is the path to the private key of the snapp, "
-                   "your .loki is tied to this key, DON'T LOSE IT\n";
-      example_f << "keyfile=" << basepath << "example-snap-keyfile.private\n";
-      example_f << "# ifaddr is the ip range to allocate to this snapp\n";
-      example_f << "ifaddr=" << ip << std::endl;
-      // probably fine to leave this (and not-auto-detect it) I'm not worried
-      // about any collisions
-      example_f << "# ifname is the name to try and give to the network "
-                   "interface this snap owns\n";
-      example_f << "ifname=snapp-tun0\n";
-    }
-    else
-    {
-      llarp::LogError("failed to write ", snappExample_fpath);
-    }
-  }
-  // now do up fname
-  f << "\n\n";
-  f << "# snapps configuration section\n";
-  f << "[services]\n";
-  f << "# uncomment next line to enable a snapp\n";
-  f << "#example-snapp=" << snappExample_fpath << std::endl;
-  f << "\n\n";
-  return true;
-  */
-}

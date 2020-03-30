@@ -178,6 +178,22 @@ namespace llarp
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
+  struct SnappConfig
+  {
+    std::string m_keyfile;
+    bool m_reachable;
+    int m_hops;
+    int m_paths;
+    std::vector<std::string> m_snodeBlacklist;
+    std::string m_exitNode;
+    std::string m_localDNS;
+    std::string m_upstreamDNS;
+    std::string m_mapAddr;
+
+    void
+    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+  };
+
   struct Config
   {
     RouterConfig router;
