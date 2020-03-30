@@ -237,6 +237,6 @@ add_log_tag(${UTIL_LIB})
 add_log_tag(${PLATFORM_LIB})
 add_log_tag(${STATIC_LIB})
 
-file(GLOB_RECURSE docs_SRC */*.hpp)
+file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
   
 set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)
