@@ -103,18 +103,18 @@ main(int argc, char* argv[])
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
-
-  cxxopts::Options options(
-      "lokinet",
-      "LokiNET is a free, open source, private, "
-      "decentralized, \"market based sybil resistant\" "
-      "and IP based onion routing network");
-  options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
-      "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
-      "g,generate", "generate client config", cxxopts::value<bool>())(
-      "r,router", "generate router config", cxxopts::value<bool>())(
-      "f,force", "overwrite", cxxopts::value<bool>())(
-      "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
+  cxxopts::Options options("lokinet",
+                           "LokiNET is a free, open source, private, "
+                           "decentralized, \"market based sybil resistant\" "
+                           "and IP based onion routing network");
+  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
+      "h,help", "help", cxxopts::value< bool >())("version", "version",
+                                                  cxxopts::value< bool >())(
+      "g,generate", "generate client config", cxxopts::value< bool >())(
+      "r,relay", "run as relay instead of client", cxxopts::value< bool >())(
+      "f,force", "overwrite", cxxopts::value< bool >())(
+      "c,colour", "colour output",
+      cxxopts::value< bool >()->default_value("true"))(
       "b,background",
       "background mode (start, but do not connect to the network)",
       cxxopts::value<bool>())(
@@ -123,8 +123,7 @@ main(int argc, char* argv[])
   options.parse_positional("config");
 
   bool genconfigOnly = false;
-  bool asRouter = false;
-  bool overwrite = false;
+  bool overwrite     = false;
   std::string conffname;
   try
   {
@@ -174,16 +173,7 @@ main(int argc, char* argv[])
       overwrite = true;
     }
 
-    // TODO: remove this
-    if(result.count("router") > 0)
-    {
-      asRouter = true;
-      // we should generate and exit (docker needs this, so we don't write a
-      // config each time on startup)
-      genconfigOnly = true;
-    }
-
-    if (result.count("config") > 0)
+    if(result.count("config") > 0)
     {
       auto arg = result["config"].as<std::string>();
       if (!arg.empty())
@@ -223,7 +213,7 @@ main(int argc, char* argv[])
       llarp::ensureConfig(llarp::GetDefaultDataDir(),
                           llarp::GetDefaultConfigFilename(),
                           overwrite,
-                          asRouter);
+                          opts.isRelay);
     }
     else
     {
@@ -258,7 +248,7 @@ main(int argc, char* argv[])
     llarp::ensureConfig(llarp::GetDefaultDataDir(),
                         llarp::GetDefaultConfigFilename(),
                         overwrite,
-                        asRouter);
+                        opts.isRelay);
     conffname = llarp::GetDefaultConfigPath().c_str();
   }
 
