@@ -330,3 +330,15 @@ TEST_CASE("Configuration undeclared handler duplicate names", "[config]")
   REQUIRE(count == 3);
 }
 
+TEST_CASE("Configuration AssignmentAcceptor", "[config]")
+{
+  llarp::Configuration config;
+
+  int val = -1;
+  config.defineOption<int>("foo", "bar", false, 2, llarp::AssignmentAcceptor(val));
+
+  config.addConfigValue("foo", "bar", "3");
+  CHECK_NOTHROW(config.acceptAllOptions());
+
+  REQUIRE(val == 3);
+}

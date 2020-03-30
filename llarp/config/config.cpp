@@ -52,9 +52,7 @@ namespace llarp
 
     // TODO: we don't support other protocols now; remove
     conf.defineOption<std::string>("router", "default-protocol", false, m_DefaultLinkProto,
-    [this](std::string arg) {
-        m_DefaultLinkProto = arg;
-      });
+                                   AssignmentAcceptor(m_DefaultLinkProto));
 
     conf.defineOption<std::string>("router", "netid", true, m_netId,
       [this](std::string arg) {
@@ -91,14 +89,10 @@ namespace llarp
       // throw std::invalid_argument("[router]:min-connections must be less than [router]:max-connections");
 
     conf.defineOption<std::string>("router", "nickname", false, m_nickname,
-      [this](std::string arg) {
-        m_nickname = std::move(arg);
-      });
+                                   AssignmentAcceptor(m_nickname));
 
     conf.defineOption<std::string>("router", "data-dir", false, GetDefaultDataDir(),
-      [this](std::string arg) {
-        m_dataDir = std::move(arg);
-      });
+                                   AssignmentAcceptor(m_dataDir));
 
     conf.defineOption<std::string>("router", "public-address", false, "",
       [this](std::string arg) {
@@ -141,9 +135,7 @@ namespace llarp
       });
 
     conf.defineOption<bool>("router", "block-bogons", false, m_blockBogons,
-      [this](bool arg) {
-        m_blockBogons = arg;
-      });
+                            AssignmentAcceptor(m_blockBogons));
   }
 
   void
@@ -153,19 +145,13 @@ namespace llarp
 
     // TODO: review default value
     conf.defineOption<bool>("network", "profiling", false, m_enableProfiling,
-      [this](bool arg) {
-        m_enableProfiling = arg;
-      });
+                            AssignmentAcceptor(m_enableProfiling));
 
     conf.defineOption<std::string>("network", "profiles", false, m_routerProfilesFile,
-      [this](std::string arg) {
-        m_routerProfilesFile = std::move(arg);
-      });
+                                   AssignmentAcceptor(m_routerProfilesFile));
 
     conf.defineOption<std::string>("network", "strict-connect", false, m_strictConnect,
-      [this](std::string arg) {
-        m_strictConnect = std::move(arg);
-      });
+                                   AssignmentAcceptor(m_strictConnect));
 
     // TODO: NetConfig was collecting all other k:v pairs here
   }
@@ -176,9 +162,7 @@ namespace llarp
     (void)params;
 
     conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
-      [this](std::string arg) {
-        m_nodedbDir = str(arg);
-      });
+                                   AssignmentAcceptor(m_nodedbDir));
   }
 
   void
@@ -281,9 +265,7 @@ namespace llarp
     (void)params;
 
     conf.defineOption<std::string>("system", "pidfile", false, pidfile,
-      [this](std::string arg) {
-        pidfile = std::move(arg);
-      });
+                                   AssignmentAcceptor(pidfile));
   }
 
   void
@@ -292,14 +274,11 @@ namespace llarp
     (void)params;
 
     conf.defineOption<bool>("api", "enabled", false, m_enableRPCServer,
-      [this](bool arg) {
-        m_enableRPCServer = arg;
-      });
+                            AssignmentAcceptor(m_enableRPCServer));
 
     conf.defineOption<std::string>("api", "bind", false, m_rpcBindAddr,
-      [this](std::string arg) {
-        m_rpcBindAddr = std::move(arg);
-      });
+                                   AssignmentAcceptor(m_rpcBindAddr));
+
     // TODO: this was from pre-refactor:
       // TODO: add pubkey to whitelist
   }
@@ -319,25 +298,17 @@ namespace llarp
       });
 
     conf.defineOption<bool>("lokid", "enabled", false, whitelistRouters,
-      [this](bool arg) {
-        whitelistRouters = arg;
-      });
+                            AssignmentAcceptor(whitelistRouters));
 
     // TODO: was also aliased as "addr" -- presumably because loki-launcher
     conf.defineOption<std::string>("lokid", "jsonrpc", false, lokidRPCAddr,
-      [this](std::string arg) {
-        lokidRPCAddr = arg;
-      });
+                                   AssignmentAcceptor(lokidRPCAddr));
 
     conf.defineOption<std::string>("lokid", "username", false, lokidRPCUser,
-      [this](std::string arg) {
-        lokidRPCUser = arg;
-      });
+                                   AssignmentAcceptor(lokidRPCUser));
 
     conf.defineOption<std::string>("lokid", "password", false, lokidRPCPassword,
-      [this](std::string arg) {
-        lokidRPCPassword = arg;
-      });
+                                   AssignmentAcceptor(lokidRPCPassword));
   }
 
   void
@@ -382,9 +353,7 @@ namespace llarp
       });
 
     conf.defineOption<std::string>("logging", "file", false, "stdout",
-      [this](std::string arg) {
-        m_logFile = arg;
-      });
+                                   AssignmentAcceptor(m_logFile));
   }
 
   void
@@ -403,9 +372,7 @@ namespace llarp
       });
 
     conf.defineOption<bool>("snapp", "keyfile", false, ReachableDefault,
-      [this](bool arg) {
-        m_reachable = arg;
-      });
+                            AssignmentAcceptor(m_reachable));
 
     conf.defineOption<int>("snapp", "hops", false, HopsDefault,
       [this](int arg) {

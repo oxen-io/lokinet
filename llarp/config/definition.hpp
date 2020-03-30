@@ -357,5 +357,17 @@ namespace llarp
     std::unordered_map<std::string, CommentsMap> m_definitionComments;
   };
 
+  /// A convenience acceptor which takes a reference and later assigns it in its acceptor call.
+  ///
+  /// Note that this holds on to a reference; it must only be used when this is safe to do. In
+  /// particular, a reference to a local variable may be problematic.
+  template<typename T>
+  std::function<void(T)>
+  AssignmentAcceptor(T& ref) {
+    return [&](T arg) mutable {
+      ref = std::move(arg);
+    };
+  }
+
 } // namespace llarp
 
