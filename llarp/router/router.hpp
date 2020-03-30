@@ -10,7 +10,6 @@
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
-#include <link/factory.hpp>
 #include <link/link_manager.hpp>
 #include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
@@ -175,8 +174,6 @@ namespace llarp
     bool publicOverride = false;
     struct sockaddr_in ip4addr;
     AddressInfo addrInfo;
-
-    LinkFactory::LinkType _defaultLinkType;
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;

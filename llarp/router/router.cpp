@@ -386,14 +386,6 @@ namespace llarp
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
-    // TODO: dead code, rip this out. we only support IWP now.
-    const auto linktypename = conf->router.m_DefaultLinkProto;
-    _defaultLinkType        = LinkFactory::TypeFromName(linktypename);
-    if(_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
-    {
-      LogError("failed to set link type to '", linktypename, "' as that is invalid");
-      return false;
-    }
 
     // IWP config
     m_OutboundPort = conf->links.m_OutboundLink.port;
@@ -531,14 +523,8 @@ namespace llarp
     // create inbound links, if we are a service node
     for(const LinksConfig::LinkInfo &serverConfig : conf->links.m_InboundLinks)
     {
-      // get default factory
-      // TODO: this is dead code, as is everything related to _defaultLinkType,
-      //       also review LinkFactory for dead code
-      auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
-
-      auto server = inboundLinkFactory(
-          m_keyManager,
-          util::memFn(&AbstractRouter::rc, this),
+      auto server = iwp::NewInboundLink(
+          m_keyManager, util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
@@ -1262,29 +1248,20 @@ namespace llarp
   bool
   Router::InitOutboundLinks()
   {
-    const auto linkTypeName = LinkFactory::NameFromType(_defaultLinkType);
-    LogInfo("initialize outbound link: ", linkTypeName);
-    auto factory = LinkFactory::Obtain(_defaultLinkType, false);
-    if (factory == nullptr)
-    {
-      LogError(
-          "cannot initialize outbound link of type '",
-          linkTypeName,
-          "' as it has no implementation");
-      return false;
-    }
-    auto link = factory(
+    auto link = iwp::NewOutboundLink(
         m_keyManager,
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
-        util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
+        util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
+                    &_outboundSessionMaker),
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-        util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
+        util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
+                    &_outboundSessionMaker),
         util::memFn(&AbstractRouter::SessionClosed, this),
         util::memFn(&AbstractRouter::PumpLL, this));
 
-    if (!link)
+    if(!link)
       return false;
 
     const auto afs = {AF_INET, AF_INET6};

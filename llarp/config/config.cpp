@@ -50,10 +50,6 @@ namespace llarp
         m_JobQueueSize = arg;
       });
 
-    // TODO: we don't support other protocols now; remove
-    conf.defineOption<std::string>("router", "default-protocol", false, m_DefaultLinkProto,
-                                   AssignmentAcceptor(m_DefaultLinkProto));
-
     conf.defineOption<std::string>("router", "netid", true, m_netId,
       [this](std::string arg) {
         if(arg.size() > NetID::size())

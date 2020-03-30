@@ -143,7 +143,6 @@ set(LIB_SRC
   iwp/linklayer.cpp
   iwp/message_buffer.cpp
   iwp/session.cpp
-  link/factory.cpp
   link/link_manager.cpp
   link/server.cpp
   messages/dht_immediate.cpp

@@ -52,8 +52,6 @@ namespace llarp
 
     size_t m_JobQueueSize = size_t{1024 * 8};
 
-    std::string m_DefaultLinkProto = "iwp";
-
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
