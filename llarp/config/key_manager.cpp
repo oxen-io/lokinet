@@ -31,6 +31,7 @@ namespace llarp
     if (m_initialized)
       return false;
 
+    // TODO: use fs::path, or at least support windows-style separators
     m_rcPath           = config.router.m_dataDir + "/rc.signed";
     m_idKeyPath        = config.router.m_dataDir + "/identity.key";
     m_encKeyPath       = config.router.m_dataDir + "/encryption.key";
