@@ -716,8 +716,10 @@ namespace llarp
     void
     Session::HandleXMIT(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + PacketOverhead + sizeof(uint16_t)
-                        + sizeof(uint64_t) + ShortHash::SIZE))
+      static constexpr size_t XMITOverhead =
+          (CommandOverhead + PacketOverhead + sizeof(uint16_t)
+           + sizeof(uint64_t) + ShortHash::SIZE);
+      if(data.size() < XMITOverhead)
       {
         LogError("short XMIT from ", m_RemoteAddr);
         return;
@@ -750,7 +752,7 @@ namespace llarp
                         InboundMessage{rxid, sz, std::move(h), m_Parent->Now()})
                     .first;
           sz = std::min(sz, uint16_t{FragmentSize});
-          if(data.size() > sz)
+          if((data.size() - XMITOverhead) == sz)
           {
             {
               const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
