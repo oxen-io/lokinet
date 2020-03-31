@@ -512,7 +512,10 @@ namespace llarp
 
     // fail to overwrite if not instructed to do so
     if(fs::exists(confFile, ec) && !overwrite)
-      throw std::invalid_argument(stringify("Config file ", confFile, " already exists"));
+    {
+      LogDebug("Not creating config file; it already exists.");
+      return;
+    }
 
     if (ec) throw std::runtime_error(stringify("filesystem error: ", ec));
 
