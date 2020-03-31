@@ -254,20 +254,17 @@ namespace llarp
           }
         }
       }
-      auto self = shared_from_this();
       if(m_EncryptNext && !m_EncryptNext->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] {
-          self->EncryptWorker(data);
-        });
+        m_Parent->QueueWork(std::bind(&Session::EncryptWorker,
+                                      shared_from_this(), m_EncryptNext));
         m_EncryptNext = nullptr;
       }
 
       if(m_DecryptNext && !m_DecryptNext->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] {
-          self->DecryptWorker(data);
-        });
+        m_Parent->QueueWork(std::bind(&Session::DecryptWorker,
+                                      shared_from_this(), m_DecryptNext));
         m_DecryptNext = nullptr;
       }
     }

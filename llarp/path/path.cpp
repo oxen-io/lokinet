@@ -472,9 +472,9 @@ namespace llarp
         msg.pathid = TXID();
         ++idx;
       }
-      LogicCall(r->logic(),
-                std::bind(&Path::HandleAllUpstream, shared_from_this(),
-                          std::move(sendmsgs), r));
+      LogicCall(
+          r->logic(),
+          std::bind(&Path::HandleAllUpstream, shared_from_this(), sendmsgs, r));
     }
 
     void
@@ -482,9 +482,8 @@ namespace llarp
     {
       if(m_UpstreamQueue && !m_UpstreamQueue->empty())
       {
-        r->threadpool()->addJob(std::bind(&Path::UpstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_UpstreamQueue), r));
+        r->threadpool()->addJob(std::bind(
+            &Path::UpstreamWork, shared_from_this(), m_UpstreamQueue, r));
       }
       m_UpstreamQueue = nullptr;
     }
@@ -494,9 +493,8 @@ namespace llarp
     {
       if(m_DownstreamQueue && !m_DownstreamQueue->empty())
       {
-        r->threadpool()->addJob(std::bind(&Path::DownstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_DownstreamQueue), r));
+        r->threadpool()->addJob(std::bind(
+            &Path::DownstreamWork, shared_from_this(), m_DownstreamQueue, r));
       }
       m_DownstreamQueue = nullptr;
     }
@@ -545,7 +543,7 @@ namespace llarp
       }
       LogicCall(r->logic(),
                 std::bind(&Path::HandleAllDownstream, shared_from_this(),
-                          std::move(sendMsgs), r));
+                          sendMsgs, r));
     }
 
     void
