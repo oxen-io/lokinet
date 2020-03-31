@@ -79,11 +79,6 @@ namespace llarp
         m_maxConnectedRouters = arg;
       });
 
-    // additional check that min <= max
-    // TODO: where can we perform this check now?
-    // if (m_minConnectedRouters > m_maxConnectedRouters)
-      // throw std::invalid_argument("[router]:min-connections must be less than [router]:max-connections");
-
     conf.defineOption<std::string>("router", "nickname", false, m_nickname,
                                    AssignmentAcceptor(m_nickname));
 
@@ -443,7 +438,12 @@ namespace llarp
         }
       });
 
-      // TODO: hand parsed data to conf, pull out values
+      conf.acceptAllOptions();
+
+      // TODO: better way to support inter-option constraints
+      if (router.m_maxConnectedRouters < router.m_minConnectedRouters)
+        throw std::invalid_argument("[router]:min-connections must be <= [router]:max-connections");
+
       return true;
     }
     catch(const std::exception& e)
