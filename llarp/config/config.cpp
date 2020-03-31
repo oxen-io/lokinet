@@ -547,15 +547,9 @@ namespace llarp
     llarp::LogInfo("Generated new config ", confFile);
   }
 
-  std::string
-  Config::generateBaseClientConfig(fs::path defaultDataDir)
+  void
+  generateCommonConfigComments(ConfigDefinition& def)
   {
-    ConfigGenParameters params;
-    params.isRelay = false;
-    params.defaultDataDir = std::move(defaultDataDir);
-
-    llarp::ConfigDefinition def;
-    initializeConfig(def, params);
 
     // router
     def.addSectionComments("router", {
@@ -682,6 +676,18 @@ namespace llarp
     def.addOptionComments("network", "ifaddr", {
         "Local IP address for lokinet traffic.",
       });
+  }
+
+  std::string
+  Config::generateBaseClientConfig(fs::path defaultDataDir)
+  {
+    ConfigGenParameters params;
+    params.isRelay = false;
+    params.defaultDataDir = std::move(defaultDataDir);
+
+    llarp::ConfigDefinition def;
+    initializeConfig(def, params);
+    generateCommonConfigComments(def);
 
     // snapp
     def.addSectionComments("snapp", {
@@ -743,6 +749,7 @@ namespace llarp
 
     llarp::ConfigDefinition def;
     initializeConfig(def, params);
+    generateCommonConfigComments(def);
 
     // lokid
     def.addSectionComments("lokid", {

@@ -211,7 +211,7 @@ main(int argc, char* argv[])
     if (genconfigOnly)
     {
       llarp::ensureConfig(llarp::GetDefaultDataDir(),
-                          llarp::GetDefaultConfigFilename(),
+                          llarp::GetDefaultConfigPath(),
                           overwrite,
                           opts.isRelay);
     }
@@ -246,7 +246,7 @@ main(int argc, char* argv[])
     }
 
     llarp::ensureConfig(llarp::GetDefaultDataDir(),
-                        llarp::GetDefaultConfigFilename(),
+                        llarp::GetDefaultConfigPath(),
                         overwrite,
                         opts.isRelay);
     conffname = llarp::GetDefaultConfigPath().c_str();
