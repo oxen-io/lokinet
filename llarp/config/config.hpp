@@ -41,7 +41,7 @@ namespace llarp
 
     std::string m_dataDir;
 
-    nonstd::optional<bool> m_blockBogons;
+    bool m_blockBogons;
 
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;

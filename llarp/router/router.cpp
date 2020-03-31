@@ -402,7 +402,7 @@ namespace llarp
     publicOverride     = conf->router.m_publicOverride;
     ip4addr            = conf->router.m_ip4addr;
 
-    RouterContact::BlockBogons = conf->router.m_blockBogons.value_or(true);
+    RouterContact::BlockBogons = conf->router.m_blockBogons;
 
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;

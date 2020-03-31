@@ -47,6 +47,7 @@ namespace llarp
     constexpr int DefaultPublicPort = 1090;
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
+    constexpr bool DefaultBlockBogons = true;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize,
       [this](int arg) {
@@ -131,9 +132,7 @@ namespace llarp
         m_numNetThreads = arg;
       });
 
-    // TODO: remove optional from m_blockBogons, we don't need to know whether or not it was
-    //       specified
-    conf.defineOption<bool>("router", "block-bogons", false, m_blockBogons,
+    conf.defineOption<bool>("router", "block-bogons", false, DefaultBlockBogons,
                             AssignmentAcceptor(m_blockBogons));
   }
 
