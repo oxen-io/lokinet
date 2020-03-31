@@ -544,9 +544,6 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
-    // set network config
-    netConfig = conf->network.m_netConfig;
-
     // Network config
     if(conf->network.m_enableProfiling.has_value())
     {
@@ -631,7 +628,9 @@ namespace llarp
 
     }
 
-    netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
+    // TODO: clean this up. it appears that we're dumping the [dns] "options" into the
+    //       [network] "options"
+    conf->network.m_options.insert(conf->dns.m_options.begin(), conf->dns.m_options.end());
 
     return true;
   }

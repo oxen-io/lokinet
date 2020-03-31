@@ -144,7 +144,10 @@ namespace llarp
     conf.defineOption<std::string>("network", "strict-connect", false, m_strictConnect,
                                    AssignmentAcceptor(m_strictConnect));
 
-    // TODO: NetConfig was collecting all other k:v pairs here
+    conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
+      m_options.emplace(name, value);
+      return true;
+    });
   }
 
   void
@@ -161,17 +164,21 @@ namespace llarp
   {
     (void)params;
 
-    // TODO: this was previously a multi-value option
-    conf.defineOption<std::string>("dns", "upstream", false, "",
-      [this](std::string arg) {
-        netConfig.emplace("upstream-dns", std::move(arg));
-      });
+    conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
 
-    // TODO: this was previously a multi-value option
-    conf.defineOption<std::string>("dns", "bind", false, "",
-      [this](std::string arg) {
-        netConfig.emplace("local-dns", std::move(arg));
-      });
+      if (name == "upstream-dns")
+      {
+        m_options.emplace("upstream-dns", value);
+        return true;
+      }
+      else if (name == "local-dns")
+      {
+        m_options.emplace("local-dns", value);
+        return true;
+      }
+
+      return false;
+    });
   }
 
   LinksConfig::LinkInfo

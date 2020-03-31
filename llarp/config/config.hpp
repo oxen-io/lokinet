@@ -20,6 +20,9 @@ namespace llarp
   using SectionValues_t = llarp::ConfigParser::SectionValues_t;
   using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
+  // TODO: don't use these maps. they're sloppy and difficult to follow
+  using FreehandOptions = std::unordered_multimap< std::string, std::string >;
+
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
   struct ConfigGenParameters
@@ -58,12 +61,10 @@ namespace llarp
 
   struct NetworkConfig
   {
-    using NetConfig = std::unordered_multimap< std::string, std::string >;
-
     nonstd::optional< bool > m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
-    NetConfig m_netConfig;
+    FreehandOptions m_options;
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
@@ -79,7 +80,7 @@ namespace llarp
 
   struct DnsConfig
   {
-    std::unordered_multimap<std::string, std::string> netConfig;
+    FreehandOptions m_options;
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
