@@ -17,14 +17,14 @@ namespace llarp
   /// type functions are provided pure-virtual. The type-aware implementations which implement these
   /// functions are templated classes. One reason for providing a non-templated base class is so
   /// that they can all be mixed into the same containers (albiet as pointers).
-  struct ConfigDefinitionBase 
+  struct OptionDefinitionBase 
   {
-    ConfigDefinitionBase(std::string section_,
+    OptionDefinitionBase(std::string section_,
                          std::string name_,
                          bool required_);
 
     virtual
-    ~ConfigDefinitionBase() {}
+    ~OptionDefinitionBase() {}
 
     /// Subclasses should provide their default value as a string
     ///
@@ -46,7 +46,7 @@ namespace llarp
     virtual std::string
     valueAsString(bool useDefault) = 0;
 
-    /// Subclassess should call their acceptor, if present. See ConfigDefinition for more details.
+    /// Subclassess should call their acceptor, if present. See OptionDefinition for more details.
     ///
     /// @throws if the acceptor throws or the option is required but missing
     virtual void tryAccept() const = 0;
@@ -58,16 +58,16 @@ namespace llarp
     size_t numFound = 0;
   };
 
-  /// The primary type-aware implementation of ConfigDefinitionBase, this templated class allows
+  /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
   /// for implementations which can use the std::ostringstream and std::istringstream for to/from
   /// string functionality.
   /// 
   /// Note that types (T) used as template parameters here must be used verbatim when calling 
-  /// Configuration::getConfigValue(). Similar types such as uint32_t and int32_t cannot be mixed.
+  /// ConfigDefinition::getConfigValue(). Similar types such as uint32_t and int32_t cannot be mixed.
   template<typename T>
-  struct ConfigDefinition : public ConfigDefinitionBase
+  struct OptionDefinition : public OptionDefinitionBase
   {
-    /// Constructor. Arguments are passed directly to ConfigDefinitionBase.
+    /// Constructor. Arguments are passed directly to OptionDefinitionBase.
     ///
     /// @param defaultValue_ is used in the following situations:
     /// 1) as the return value for getValue() if there is no parsed value and required==false
@@ -77,12 +77,12 @@ namespace llarp
     /// @param acceptor_ is an optional function whose purpose is to both validate the parsed
     ///        input and internalize it (e.g. copy it for runtime use). The acceptor should throw
     ///        an exception with a useful message if it is not acceptable.
-    ConfigDefinition(std::string section_,
+    OptionDefinition(std::string section_,
                            std::string name_,
                            bool required_,
                            nonstd::optional<T> defaultValue_,
                            std::function<void(T)> acceptor_ = nullptr)
-      : ConfigDefinitionBase(section_, name_, required_)
+      : OptionDefinitionBase(section_, name_, required_)
       , defaultValue(defaultValue_)
       , acceptor(acceptor_)
     {
@@ -181,49 +181,49 @@ namespace llarp
       = std::function<void(string_view section, string_view name, string_view value)>;
 
 
-  using ConfigDefinition_ptr = std::unique_ptr<ConfigDefinitionBase>;
+  using OptionDefinition_ptr = std::unique_ptr<OptionDefinitionBase>;
 
   // map of k:v pairs
-  using DefinitionMap = std::unordered_map<std::string, ConfigDefinition_ptr>;
+  using DefinitionMap = std::unordered_map<std::string, OptionDefinition_ptr>;
 
   // map of section-name to map-of-definitions
   using SectionMap = std::unordered_map<std::string, DefinitionMap>;
 
-  /// A Configuration holds an ordered set of ConfigDefinitions defining the allowable values and
+  /// A ConfigDefinition holds an ordered set of OptionDefinitions defining the allowable values and
   /// their constraints (specified through calls to defineOption()).
   ///
   /// The layout and grouping of the config options are modelled after the INI file format; each
   /// option has a name and is grouped under a section. Duplicate option names are allowed only if
-  /// they exist in a different section. The configuration can be serialized in the INI file format
+  /// they exist in a different section. The ConfigDefinition can be serialized in the INI file format
   /// using the generateINIConfig() function.
   ///
   /// Configured values (e.g. those encountered when parsing a file) can be provided through calls
   /// to addConfigValue(). These take a std::string as a value, which is automatically parsed.
   /// 
-  /// The Configuration can be used to print out a full config string (or file), including fields
+  /// The ConfigDefinition can be used to print out a full config string (or file), including fields
   /// with defaults and optionally fields which have a specified value (values provided through
   /// calls to addConfigValue()).
-  struct Configuration {
+  struct ConfigDefinition {
 
     /// Spefify the parameters and type of a configuration option. The parameters are members of
-    /// ConfigDefinitionBase; the type is inferred from ConfigDefinition's template parameter T.
+    /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.
     ///
     /// This function should be called for every option that this Configuration supports, and should
     /// be done before any other interractions involving that option.
     ///
-    /// @param def should be a unique_ptr to a valid subclass of ConfigDefinitionBase
+    /// @param def should be a unique_ptr to a valid subclass of OptionDefinitionBase
     /// @return `*this` for chaining calls
     /// @throws std::invalid_argument if the option already exists
-    Configuration&
-    defineOption(ConfigDefinition_ptr def);
+    ConfigDefinition&
+    defineOption(OptionDefinition_ptr def);
 
-    /// Convenience function which calls defineOption with a ConfigDefinition of the specified type
-    /// and with parameters passed through to ConfigDefinition's constructor.
+    /// Convenience function which calls defineOption with a OptionDefinition of the specified type
+    /// and with parameters passed through to OptionDefinition's constructor.
     template<typename T, typename... Params>
-    Configuration&
+    ConfigDefinition&
     defineOption(Params&&... args)
     {
-      return defineOption(std::make_unique<ConfigDefinition<T>>(args...));
+      return defineOption(std::make_unique<OptionDefinition<T>>(args...));
     }
 
     /// Specify a config value for the given section and name. The value should be a valid string
@@ -237,7 +237,7 @@ namespace llarp
     /// @param name is the name of the value
     /// @return `*this` for chaining calls
     /// @throws if the option doesn't exist or the provided string isn't parseable
-    Configuration&
+    ConfigDefinition&
     addConfigValue(string_view section,
                    string_view name,
                    string_view value);
@@ -256,9 +256,9 @@ namespace llarp
     template<typename T>
     nonstd::optional<T> getConfigValue(string_view section, string_view name)
     {
-      ConfigDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
+      OptionDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
 
-      auto derived = dynamic_cast<const ConfigDefinition<T>*>(definition.get());
+      auto derived = dynamic_cast<const OptionDefinition<T>*>(definition.get());
       if (not derived)
         throw std::invalid_argument(stringify("", typeid(T).name(),
             " is the incorrect type for [", section, "]:", name));
@@ -333,13 +333,13 @@ namespace llarp
 
    private:
 
-    ConfigDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name);
-    const ConfigDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name) const;
+    OptionDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name);
+    const OptionDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name) const;
 
     using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
     void visitSections(SectionVisitor visitor) const;
 
-    using DefVisitor = std::function<void(const std::string&, const ConfigDefinition_ptr&)>;
+    using DefVisitor = std::function<void(const std::string&, const OptionDefinition_ptr&)>;
     void visitDefinitions(const std::string& section, DefVisitor visitor) const;
 
     SectionMap m_definitions;

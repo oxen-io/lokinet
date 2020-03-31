@@ -40,7 +40,7 @@ namespace llarp
   }
 
   void
-  RouterConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  RouterConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     constexpr int DefaultJobQueueSize = 1024 * 8;
     constexpr auto DefaultNetId = "lokinet";
@@ -137,7 +137,7 @@ namespace llarp
   }
 
   void
-  NetworkConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  NetworkConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -160,7 +160,7 @@ namespace llarp
   }
 
   void
-  NetdbConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  NetdbConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -170,7 +170,7 @@ namespace llarp
   }
 
   void
-  DnsConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -217,7 +217,7 @@ namespace llarp
   }
 
   void
-  LinksConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  LinksConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -238,7 +238,7 @@ namespace llarp
   }
 
   void
-  ConnectConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  ConnectConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -254,7 +254,7 @@ namespace llarp
   }
 
   void
-  ServicesConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  ServicesConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -268,7 +268,7 @@ namespace llarp
   }
 
   void
-  ApiConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -286,7 +286,7 @@ namespace llarp
   }
 
   void
-  LokidConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  LokidConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -316,7 +316,7 @@ namespace llarp
   }
 
   void
-  BootstrapConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  BootstrapConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -334,7 +334,7 @@ namespace llarp
   }
 
   void
-  LoggingConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  LoggingConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -361,7 +361,7 @@ namespace llarp
   }
 
   void
-  SnappConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
+  SnappConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -435,7 +435,7 @@ namespace llarp
       params.isRelay = isRelay;
       params.defaultDataDir = std::move(defaultDataDir);
 
-      Configuration conf;
+      ConfigDefinition conf;
       initializeConfig(conf, params);
 
       ConfigParser parser;
@@ -467,7 +467,7 @@ namespace llarp
   }
 
   void
-  Config::initializeConfig(Configuration& conf, const ConfigGenParameters& params)
+  Config::initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     // TODO: this seems like a random place to put this, should this be closer
     //       to main() ?
@@ -562,7 +562,7 @@ namespace llarp
     params.isRelay = false;
     params.defaultDataDir = std::move(defaultDataDir);
 
-    llarp::Configuration def;
+    llarp::ConfigDefinition def;
     initializeConfig(def, params);
 
     // router
@@ -703,7 +703,7 @@ namespace llarp
     params.isRelay = true;
     params.defaultDataDir = std::move(defaultDataDir);
 
-    llarp::Configuration def;
+    llarp::ConfigDefinition def;
     initializeConfig(def, params);
 
     // lokid

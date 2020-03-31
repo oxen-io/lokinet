@@ -53,7 +53,7 @@ namespace llarp
     size_t m_JobQueueSize;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct NetworkConfig
@@ -64,7 +64,7 @@ namespace llarp
     FreehandOptions m_options;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct NetdbConfig
@@ -72,7 +72,7 @@ namespace llarp
     std::string m_nodedbDir;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct DnsConfig
@@ -80,7 +80,7 @@ namespace llarp
     FreehandOptions m_options;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LinksConfig
@@ -100,7 +100,7 @@ namespace llarp
     std::vector<LinkInfo> m_InboundLinks;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ConnectConfig
@@ -108,14 +108,14 @@ namespace llarp
     std::vector<std::string> routers;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ServicesConfig
   {
     std::vector< std::pair< std::string, std::string > > services;
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ApiConfig
@@ -124,7 +124,7 @@ namespace llarp
     std::string m_rpcBindAddr;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LokidConfig
@@ -137,14 +137,14 @@ namespace llarp
     std::string lokidRPCPassword;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct BootstrapConfig
   {
     std::vector< std::string > routers;
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LoggingConfig
@@ -163,7 +163,7 @@ namespace llarp
     std::string m_logFile;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct SnappConfig
@@ -179,7 +179,7 @@ namespace llarp
     std::string m_mapAddr;
 
     void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct Config
@@ -198,7 +198,7 @@ namespace llarp
 
     // Initialize config definition
     void
-    initializeConfig(Configuration& conf, const ConfigGenParameters& params);
+    initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params);
 
     // Load a config from the given file
     bool

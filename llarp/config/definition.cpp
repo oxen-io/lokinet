@@ -6,7 +6,7 @@
 namespace llarp
 {
 
-ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
+OptionDefinitionBase::OptionDefinitionBase(std::string section_,
                                            std::string name_,
                                            bool required_)
   : section(section_)
@@ -15,8 +15,8 @@ ConfigDefinitionBase::ConfigDefinitionBase(std::string section_,
 {
 }
 
-Configuration&
-Configuration::defineOption(ConfigDefinition_ptr def)
+ConfigDefinition&
+ConfigDefinition::defineOption(OptionDefinition_ptr def)
 {
   auto sectionItr = m_definitions.find(def->section);
   if (sectionItr == m_definitions.end())
@@ -33,8 +33,8 @@ Configuration::defineOption(ConfigDefinition_ptr def)
   return *this;
 }
 
-Configuration&
-Configuration::addConfigValue(string_view section, string_view name, string_view value)
+ConfigDefinition&
+ConfigDefinition::addConfigValue(string_view section, string_view name, string_view value)
 {
   auto secItr = m_definitions.find(std::string(section));
   if (secItr == m_definitions.end())
@@ -57,14 +57,14 @@ Configuration::addConfigValue(string_view section, string_view name, string_view
   if (defItr == sectionDefinitions.end())
     throw std::invalid_argument(stringify("no declared option [", section, "]:", name));
 
-  ConfigDefinition_ptr& definition = defItr->second;
+  OptionDefinition_ptr& definition = defItr->second;
   definition->parseValue(std::string(value));
 
   return *this;
 }
 
 void
-Configuration::addUndeclaredHandler(const std::string& section, UndeclaredValueHandler handler)
+ConfigDefinition::addUndeclaredHandler(const std::string& section, UndeclaredValueHandler handler)
 {
   auto itr = m_undeclaredHandlers.find(section);
   if (itr != m_undeclaredHandlers.end())
@@ -74,7 +74,7 @@ Configuration::addUndeclaredHandler(const std::string& section, UndeclaredValueH
 }
 
 void
-Configuration::removeUndeclaredHandler(const std::string& section)
+ConfigDefinition::removeUndeclaredHandler(const std::string& section)
 {
   auto itr = m_undeclaredHandlers.find(section);
   if (itr != m_undeclaredHandlers.end())
@@ -82,11 +82,11 @@ Configuration::removeUndeclaredHandler(const std::string& section)
 }
 
 void
-Configuration::validateRequiredFields()
+ConfigDefinition::validateRequiredFields()
 {
   visitSections([&](const std::string& section, const DefinitionMap&)
   {
-    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def)
+    visitDefinitions(section, [&](const std::string&, const OptionDefinition_ptr& def)
     {
       if (def->required and def->numFound < 1)
       {
@@ -94,18 +94,18 @@ Configuration::validateRequiredFields()
               "[", section, "]:", def->name, " is required but missing"));
       }
 
-      // should be handled earlier in ConfigDefinition::parseValue()
+      // should be handled earlier in OptionDefinition::parseValue()
       assert(def->numFound <= 1 or def->multiValued);
     });
   });
 }
 
 void
-Configuration::acceptAllOptions()
+ConfigDefinition::acceptAllOptions()
 {
   visitSections([&](const std::string& section, const DefinitionMap&)
   {
-    visitDefinitions(section, [&](const std::string&, const ConfigDefinition_ptr& def)
+    visitDefinitions(section, [&](const std::string&, const OptionDefinition_ptr& def)
     {
       def->tryAccept();
     });
@@ -113,14 +113,14 @@ Configuration::acceptAllOptions()
 }
 
 void
-Configuration::addSectionComment(const std::string& section,
+ConfigDefinition::addSectionComment(const std::string& section,
                                  std::string comment)
 {
   m_sectionComments[section].push_back(std::move(comment));
 }
 
 void
-Configuration::addOptionComment(const std::string& section,
+ConfigDefinition::addOptionComment(const std::string& section,
                                 const std::string& name,
                                 std::string comment)
 {
@@ -128,7 +128,7 @@ Configuration::addOptionComment(const std::string& section,
 }
 
 std::string
-Configuration::generateINIConfig(bool useValues)
+ConfigDefinition::generateINIConfig(bool useValues)
 {
   std::ostringstream oss;
 
@@ -147,7 +147,7 @@ Configuration::generateINIConfig(bool useValues)
 
     oss << "[" << section << "]\n";
 
-    visitDefinitions(section, [&](const std::string& name, const ConfigDefinition_ptr& def) {
+    visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
       oss << "\n";
 
       // TODO: as above, this will create empty objects
@@ -177,8 +177,8 @@ Configuration::generateINIConfig(bool useValues)
   return oss.str();
 }
 
-const ConfigDefinition_ptr&
-Configuration::lookupDefinitionOrThrow(string_view section, string_view name) const
+const OptionDefinition_ptr&
+ConfigDefinition::lookupDefinitionOrThrow(string_view section, string_view name) const
 {
   const auto sectionItr = m_definitions.find(std::string(section));
   if (sectionItr == m_definitions.end())
@@ -192,14 +192,14 @@ Configuration::lookupDefinitionOrThrow(string_view section, string_view name) co
   return definitionItr->second;
 }
 
-ConfigDefinition_ptr&
-Configuration::lookupDefinitionOrThrow(string_view section, string_view name)
+OptionDefinition_ptr&
+ConfigDefinition::lookupDefinitionOrThrow(string_view section, string_view name)
 {
-  return const_cast<ConfigDefinition_ptr&>(
-      const_cast<const Configuration*>(this)->lookupDefinitionOrThrow(section, name));
+  return const_cast<OptionDefinition_ptr&>(
+      const_cast<const ConfigDefinition*>(this)->lookupDefinitionOrThrow(section, name));
 }
 
-void Configuration::visitSections(SectionVisitor visitor) const
+void ConfigDefinition::visitSections(SectionVisitor visitor) const
 {
   for (const std::string& section : m_sectionOrdering)
   {
@@ -208,7 +208,7 @@ void Configuration::visitSections(SectionVisitor visitor) const
     visitor(section, itr->second);
   }
 };
-void Configuration::visitDefinitions(const std::string& section, DefVisitor visitor) const
+void ConfigDefinition::visitDefinitions(const std::string& section, DefVisitor visitor) const
 {
   const auto& defs = m_definitions.at(section);
   const auto& defOrdering = m_definitionOrdering.at(section);
