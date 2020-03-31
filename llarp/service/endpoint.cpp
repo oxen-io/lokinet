@@ -828,8 +828,11 @@ namespace llarp
     Endpoint::HandleDataMessage(path::Path_ptr path, const PathID_t from,
                                 std::shared_ptr< ProtocolMessage > msg)
     {
-      msg->sender.UpdateAddr();
-      PutSenderFor(msg->tag, msg->sender, true);
+      if(msg->sender.has_value())
+      {
+        msg->sender->UpdateAddr();
+        PutSenderFor(msg->tag, msg->sender.value(), true);
+      }
       PutReplyIntroFor(msg->tag, path->intro);
       Introduction intro;
       intro.pathID    = from;
@@ -1208,7 +1211,7 @@ namespace llarp
           if(p)
           {
             // TODO: check expiration of our end
-            auto m = std::make_shared< ProtocolMessage >(f.T);
+            auto m = std::make_shared< ProtocolMessage >();
             m->PutBuffer(data);
             f.N.Randomize();
             f.C.Zero();

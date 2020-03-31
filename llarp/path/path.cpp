@@ -613,14 +613,7 @@ namespace llarp
       // make nonce
       TunnelNonce N;
       N.Randomize();
-      buf.sz = buf.cur - buf.base;
-      // pad smaller messages
-      if(buf.sz < pad_size)
-      {
-        // randomize padding
-        CryptoManager::instance()->randbytes(buf.cur, pad_size - buf.sz);
-        buf.sz = pad_size;
-      }
+      buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       return HandleUpstream(buf, N, r);
     }

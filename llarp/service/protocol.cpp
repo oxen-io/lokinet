@@ -12,17 +12,6 @@ namespace llarp
 {
   namespace service
   {
-    ProtocolMessage::ProtocolMessage()
-    {
-      tag.Zero();
-    }
-
-    ProtocolMessage::ProtocolMessage(const ConvoTag& t) : tag(t)
-    {
-    }
-
-    ProtocolMessage::~ProtocolMessage() = default;
-
     void
     ProtocolMessage::PutBuffer(const llarp_buffer_t& buf)
     {
@@ -52,17 +41,27 @@ namespace llarp
         PutBuffer(strbuf);
         return true;
       }
-      if(!BEncodeMaybeReadDictEntry("i", introReply, read, k, buf))
-        return false;
       if(!BEncodeMaybeReadDictInt("n", seqno, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("s", sender, read, k, buf))
-        return false;
+      if(k == "s")
+      {
+        ServiceInfo fromSender;
+        if(not fromSender.BDecode(buf))
+        {
+          LogError("inner protocol message bad sender info");
+          return false;
+        }
+        sender = fromSender;
+        return true;
+      }
       if(!BEncodeMaybeReadDictEntry("t", tag, read, k, buf))
         return false;
+
       if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
         return false;
-      return read;
+      if(read)
+        return true;
+      return bencode_discard(buf);
     }
 
     bool
@@ -76,12 +75,13 @@ namespace llarp
         return false;
       if(!bencode_write_bytestring(buf, payload.data(), payload.size()))
         return false;
-      if(!BEncodeWriteDictEntry("i", introReply, buf))
-        return false;
       if(!BEncodeWriteDictInt("n", seqno, buf))
         return false;
-      if(!BEncodeWriteDictEntry("s", sender, buf))
-        return false;
+      if(sender.has_value())
+      {
+        if(!BEncodeWriteDictEntry("s", sender.value(), buf))
+          return false;
+      }
       if(!tag.IsZero())
       {
         if(!BEncodeWriteDictEntry("t", tag, buf))
@@ -173,12 +173,21 @@ namespace llarp
 
     bool
     ProtocolFrame::DecryptPayloadInto(const SharedSecret& sharedkey,
+                                      const Introduction& intro,
                                       ProtocolMessage& msg) const
     {
       Encrypted_t tmp = D;
       auto buf        = tmp.Buffer();
       CryptoManager::instance()->xchacha20(*buf, sharedkey, N);
-      return bencode_decode_dict(msg, buf);
+      if(not bencode_decode_dict(msg, buf))
+      {
+        DumpBuffer(*buf);
+        return false;
+      }
+      msg.tag               = T;
+      msg.introReply        = intro;
+      msg.introReply.pathID = F;
+      return true;
     }
 
     bool
@@ -265,9 +274,8 @@ namespace llarp
       }
 
       static void
-      Work(void* user)
+      Work(AsyncFrameDecrypt* self)
       {
-        auto* self  = static_cast< AsyncFrameDecrypt* >(user);
         auto crypto = CryptoManager::instance();
         SharedSecret K;
         SharedSecret sharedKey;
@@ -293,10 +301,18 @@ namespace llarp
           return;
         }
         // verify signature of outer message after we parsed the inner message
-        if(!self->frame.Verify(self->msg->sender))
+        if(not self->msg->sender.has_value())
+        {
+          LogError("no sender provided in inner protocol message");
+          self->msg.reset();
+          delete self;
+          return;
+        }
+        const ServiceInfo sender = self->msg->sender.value();
+        if(!self->frame.Verify(sender))
         {
           LogError("intro frame has invalid signature Z=", self->frame.Z,
-                   " from ", self->msg->sender.Addr());
+                   " from ", sender.Addr());
           Dump< MAX_PROTOCOL_MESSAGE_SIZE >(self->frame);
           Dump< MAX_PROTOCOL_MESSAGE_SIZE >(*self->msg);
           self->msg.reset();
@@ -318,8 +334,8 @@ namespace llarp
         path_dh_func dh_server =
             util::memFn(&Crypto::dh_server, CryptoManager::instance());
 
-        if(!self->m_LocalIdentity.KeyExchange(dh_server, sharedSecret,
-                                              self->msg->sender, self->frame.N))
+        if(!self->m_LocalIdentity.KeyExchange(dh_server, sharedSecret, sender,
+                                              self->frame.N))
         {
           LogError("x25519 key exchange failed");
           Dump< MAX_PROTOCOL_MESSAGE_SIZE >(self->frame);
@@ -334,13 +350,18 @@ namespace llarp
         std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
         crypto->shorthash(sharedKey, llarp_buffer_t(tmp));
 
-        self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
+        Introduction introReply = self->path->intro;
+        introReply.pathID       = self->frame.F;
+
+        self->handler->PutIntroFor(self->msg->tag, introReply);
         self->handler->PutReplyIntroFor(self->msg->tag, self->fromIntro);
-        self->handler->PutSenderFor(self->msg->tag, self->msg->sender, true);
+        self->handler->PutSenderFor(self->msg->tag, sender, true);
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
         self->msg->handler                     = self->handler;
         std::shared_ptr< ProtocolMessage > msg = std::move(self->msg);
+        msg->introReply                        = std::move(introReply);
+        msg->sender                            = std::move(sender);
         path::Path_ptr path                    = std::move(self->path);
         const PathID_t from                    = self->frame.F;
         LogicCall(self->logic,
@@ -405,27 +426,27 @@ namespace llarp
         return false;
       }
       v->frame = *this;
-      return worker->addJob(
-          [v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
-            if(not v->frame.Verify(v->si))
-            {
-              LogError("Signature failure from ", v->si.Addr());
-              delete v;
-              return;
-            }
-            if(not v->frame.DecryptPayloadInto(v->shared, *msg))
-            {
-              LogError("failed to decrypt message");
-              delete v;
-              return;
-            }
-            RecvDataEvent ev;
-            ev.fromPath = std::move(recvPath);
-            ev.pathid   = v->frame.F;
-            ev.msg      = std::move(msg);
-            msg->handler->QueueRecvData(std::move(ev));
-            delete v;
-          });
+      return worker->addJob([v, msg = std::move(msg),
+                             recvPath = std::move(recvPath)]() {
+        if(not v->frame.Verify(v->si))
+        {
+          LogError("Signature failure from ", v->si.Addr());
+          delete v;
+          return;
+        }
+        if(not v->frame.DecryptPayloadInto(v->shared, recvPath->intro, *msg))
+        {
+          LogError("failed to decrypt message");
+          delete v;
+          return;
+        }
+        RecvDataEvent ev;
+        ev.fromPath = std::move(recvPath);
+        ev.pathid   = v->frame.F;
+        ev.msg      = std::move(msg);
+        msg->handler->QueueRecvData(std::move(ev));
+        delete v;
+      });
     }
 
     bool

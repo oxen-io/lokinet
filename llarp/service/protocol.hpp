@@ -40,14 +40,13 @@ namespace llarp
     /// inner message
     struct ProtocolMessage
     {
-      ProtocolMessage(const ConvoTag& tag);
-      ProtocolMessage();
-      ~ProtocolMessage();
+      ProtocolMessage()   = default;
+      ~ProtocolMessage()  = default;
       ProtocolType proto  = eProtocolTrafficV4;
       llarp_time_t queued = 0s;
       std::vector< byte_t > payload;
       Introduction introReply;
-      ServiceInfo sender;
+      nonstd::optional< ServiceInfo > sender;
       IDataHandler* handler = nullptr;
       ConvoTag tag;
       uint64_t seqno   = 0;
@@ -133,6 +132,7 @@ namespace llarp
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey,
+                         const Introduction& intro,
                          ProtocolMessage& into) const;
 
       bool

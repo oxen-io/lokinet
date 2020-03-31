@@ -14,7 +14,7 @@ namespace llarp
       m_UpstreamQueue->emplace_back();
       auto& pkt = m_UpstreamQueue->back();
       pkt.first.resize(X.sz);
-      std::copy_n(X.base, X.sz, pkt.first.begin());
+      std::copy_n(X.base, X.sz, pkt.first.data());
       pkt.second = Y;
       return true;
     }
@@ -29,7 +29,7 @@ namespace llarp
       m_DownstreamQueue->emplace_back();
       auto& pkt = m_DownstreamQueue->back();
       pkt.first.resize(X.sz);
-      std::copy_n(X.base, X.sz, pkt.first.begin());
+      std::copy_n(X.base, X.sz, pkt.first.data());
       pkt.second = Y;
       return true;
     }
