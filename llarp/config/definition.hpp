@@ -22,6 +22,10 @@ namespace llarp
     OptionDefinitionBase(std::string section_,
                          std::string name_,
                          bool required_);
+    OptionDefinitionBase(std::string section_,
+                         std::string name_,
+                         bool required_,
+                         bool multiValued_);
 
     virtual
     ~OptionDefinitionBase() {}
@@ -83,6 +87,19 @@ namespace llarp
                            nonstd::optional<T> defaultValue_,
                            std::function<void(T)> acceptor_ = nullptr)
       : OptionDefinitionBase(section_, name_, required_)
+      , defaultValue(defaultValue_)
+      , acceptor(acceptor_)
+    {
+    }
+
+    /// As above, but also takes a bool value for multiValued.
+    OptionDefinition(std::string section_,
+                           std::string name_,
+                           bool required_,
+                           bool multiValued_,
+                           nonstd::optional<T> defaultValue_,
+                           std::function<void(T)> acceptor_ = nullptr)
+      : OptionDefinitionBase(section_, name_, required_, multiValued_)
       , defaultValue(defaultValue_)
       , acceptor(acceptor_)
     {

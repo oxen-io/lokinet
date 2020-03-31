@@ -153,6 +153,7 @@ namespace llarp
     conf.defineOption<std::string>("network", "strict-connect", false, "",
                                    AssignmentAcceptor(m_strictConnect));
 
+    // TODO: make sure this is documented... what does it mean though?
     conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
       m_options.emplace(name, value);
       return true;
@@ -174,21 +175,18 @@ namespace llarp
   {
     (void)params;
 
-    conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
+    // TODO: make sure this is documented
+    // TODO: refactor to remove freehand options map
+    conf.defineOption<std::string>("network", "upstream-dns", false, true, "",
+      [this](std::string arg) {
+        m_options.emplace("upstream-dns", std::move(arg));
+      });
 
-      if (name == "upstream-dns")
-      {
-        m_options.emplace("upstream-dns", value);
-        return true;
-      }
-      else if (name == "local-dns")
-      {
-        m_options.emplace("local-dns", value);
-        return true;
-      }
-
-      return false;
-    });
+    // TODO: make sure this is documented
+    conf.defineOption<std::string>("network", "local-dns", false, true, "",
+      [this](std::string arg) {
+        m_options.emplace("local-dns", std::move(arg));
+      });
   }
 
   LinksConfig::LinkInfo
@@ -320,17 +318,11 @@ namespace llarp
   {
     (void)params;
 
-    conf.addUndeclaredHandler("bootstrap", [&](string_view, string_view name, string_view value) {
-      if (name != "add-node")
-      {
-        return false;
-      }
-      else
-      {
-        routers.emplace_back(str(value));
-        return true;
-      }
-    });
+    conf.defineOption<std::string>("bootstrap", "add-node", false, true, "",
+      [this](std::string arg) {
+        // TODO: validate as router fs path
+        routers.emplace_back(std::move(arg));
+      });
   }
 
   void

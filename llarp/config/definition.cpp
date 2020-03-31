@@ -14,6 +14,16 @@ OptionDefinitionBase::OptionDefinitionBase(std::string section_,
   , required(required_)
 {
 }
+OptionDefinitionBase::OptionDefinitionBase(std::string section_,
+                                           std::string name_,
+                                           bool required_,
+                                           bool multiValued_)
+  : section(section_)
+  , name(name_)
+  , required(required_)
+  , multiValued(multiValued_)
+{
+}
 
 ConfigDefinition&
 ConfigDefinition::defineOption(OptionDefinition_ptr def)
