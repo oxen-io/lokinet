@@ -195,20 +195,7 @@ main(int argc, char* argv[])
     fs::path fname = fs::path(conffname);
     fs::path basedir = fname.parent_path();
 
-    if (!basedir.empty())
-    {
-      std::error_code ec;
-      if (!fs::create_directories(basedir, ec))
-      {
-        if (ec)
-        {
-          llarp::LogError("failed to create '", basedir.string(), "': ", ec.message());
-          return 1;
-        }
-      }
-    }
-
-    if (genconfigOnly)
+    if(genconfigOnly)
     {
       llarp::ensureConfig(llarp::GetDefaultDataDir(),
                           llarp::GetDefaultConfigPath(),
@@ -230,21 +217,6 @@ main(int argc, char* argv[])
   }
   else
   {
-    auto basepath = llarp::GetDefaultDataDir();
-
-    llarp::LogDebug("Find or create ", basepath.string());
-    std::error_code ec;
-    // These paths are guaranteed to exist - $APPDATA or $HOME
-    // so only create .lokinet/*
-    if (!fs::create_directory(basepath, ec))
-    {
-      if (ec)
-      {
-        llarp::LogError("failed to create '", basepath.string(), "': ", ec.message());
-        return 1;
-      }
-    }
-
     llarp::ensureConfig(llarp::GetDefaultDataDir(),
                         llarp::GetDefaultConfigPath(),
                         overwrite,
