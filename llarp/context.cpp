@@ -44,11 +44,6 @@ namespace llarp
       }
     }
 
-    // System config
-    if (!config->system.pidfile.empty())
-    {
-      SetPIDFile(config->system.pidfile);
-    }
     auto threads = config->router.m_workerThreads;
     if(threads <= 0)
       threads = 1;
@@ -62,12 +57,6 @@ namespace llarp
     nodedb_dir = config->netdb.m_nodedbDir;
 
     return true;
-  }
-
-  void
-  Context::SetPIDFile(const std::string& fname)
-  {
-    pidfile = fname;
   }
 
   bool
@@ -135,8 +124,6 @@ namespace llarp
       llarp::LogError("cannot run non configured context");
       return 1;
     }
-    if (!WritePIDFile())
-      return 1;
     // run
     if (!router->StartJsonRpc())
       return 1;
@@ -176,34 +163,6 @@ namespace llarp
     {
       closeWaiter->get_future().wait();
       closeWaiter.reset();
-    }
-  }
-
-  bool
-  Context::WritePIDFile() const
-  {
-    if (pidfile.size())
-    {
-      std::ofstream f(pidfile);
-      f << std::to_string(getpid());
-      return f.good();
-    }
-
-    return true;
-  }
-
-  void
-  Context::RemovePIDFile() const
-  {
-    if (pidfile.size())
-    {
-      fs::path f = pidfile;
-      std::error_code ex;
-      if (fs::exists(f, ex))
-      {
-        if (!ex)
-          fs::remove(f);
-      }
     }
   }
 
@@ -256,8 +215,6 @@ namespace llarp
 
     llarp::LogDebug("free logic");
     logic.reset();
-
-    RemovePIDFile();
   }
 
   bool

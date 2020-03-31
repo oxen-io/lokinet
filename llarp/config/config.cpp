@@ -268,16 +268,6 @@ namespace llarp
   }
 
   void
-  SystemConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    // TODO: remove in favor of deriving from [router]:data-dir
-    conf.defineOption<std::string>("system", "pidfile", false, pidfile,
-                                   AssignmentAcceptor(pidfile));
-  }
-
-  void
   ApiConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
     (void)params;
@@ -491,7 +481,6 @@ namespace llarp
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
     services.defineConfigOptions(conf, params);
-    system.defineConfigOptions(conf, params);
     api.defineConfigOptions(conf, params);
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
@@ -624,15 +613,6 @@ namespace llarp
 
     def.addOptionComment("api", "bind", "IP address and port to bind to.");
     def.addOptionComment("api", "bind", "Recommend localhost-only for security purposes.");
-
-    // system
-    def.addSectionComment("system", "System setings for running lokinet.");
-
-    def.addOptionComment("system", "user", "The user which lokinet should run as.");
-
-    def.addOptionComment("system", "group", "The group which lokinet should run as.");
-
-    def.addOptionComment("system", "pidfile", "Location of the pidfile for lokinet.");
 
     // dns
     def.addSectionComment("dns", "DNS configuration");

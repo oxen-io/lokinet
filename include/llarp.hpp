@@ -101,21 +101,12 @@ namespace llarp
 #endif
 
    private:
-    void
-    SetPIDFile(const std::string& fname);
-
-    bool
-    WritePIDFile() const;
-
-    void
-    RemovePIDFile() const;
 
     void
     SigINT();
 
     std::string configfile;
-    std::string pidfile;
-    std::unique_ptr<std::promise<void>> closeWaiter;
+    std::unique_ptr< std::promise< void > > closeWaiter;
   };
 }  // namespace llarp
 

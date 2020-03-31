@@ -118,14 +118,6 @@ namespace llarp
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
   };
 
-  struct SystemConfig
-  {
-    std::string pidfile;
-
-    void
-    defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
-  };
-
   struct ApiConfig
   {
     bool m_enableRPCServer;
@@ -199,7 +191,6 @@ namespace llarp
     DnsConfig dns;
     LinksConfig links;
     ServicesConfig services;
-    SystemConfig system;
     ApiConfig api;
     LokidConfig lokid;
     BootstrapConfig bootstrap;
