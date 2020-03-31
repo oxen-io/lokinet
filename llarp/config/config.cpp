@@ -94,9 +94,14 @@ namespace llarp
 
     conf.defineOption<std::string>("router", "public-address", false, "",
       [this](std::string arg) {
-        llarp::LogInfo("public ip ", arg, " size ", arg.size());
-        if(arg.size() < 17)
+        if (not arg.empty())
         {
+
+          llarp::LogInfo("public ip ", arg, " size ", arg.size());
+
+          if(arg.size() > 16)
+            throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
+
           // assume IPv4
           llarp::Addr a(arg);
           llarp::LogInfo("setting public ipv4 ", a);
