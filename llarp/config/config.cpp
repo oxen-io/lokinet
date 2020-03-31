@@ -42,7 +42,13 @@ namespace llarp
   void
   RouterConfig::defineConfigOptions(Configuration& conf, const ConfigGenParameters& params)
   {
-    conf.defineOption<int>("router", "job-queue-size", false, m_JobQueueSize,
+    constexpr int DefaultJobQueueSize = 1024 * 8;
+    constexpr auto DefaultNetId = "lokinet";
+    constexpr int DefaultPublicPort = 1090;
+    constexpr int DefaultWorkerThreads = 1;
+    constexpr int DefaultNetThreads = 1;
+
+    conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize,
       [this](int arg) {
         if (arg < 1024)
           throw std::invalid_argument("job-queue-size must be 1024 or greater");
@@ -50,7 +56,7 @@ namespace llarp
         m_JobQueueSize = arg;
       });
 
-    conf.defineOption<std::string>("router", "netid", true, m_netId,
+    conf.defineOption<std::string>("router", "netid", false, DefaultNetId,
       [this](std::string arg) {
         if(arg.size() > NetID::size())
           throw std::invalid_argument(stringify(
@@ -79,7 +85,7 @@ namespace llarp
         m_maxConnectedRouters = arg;
       });
 
-    conf.defineOption<std::string>("router", "nickname", false, m_nickname,
+    conf.defineOption<std::string>("router", "nickname", false, "",
                                    AssignmentAcceptor(m_nickname));
 
     conf.defineOption<std::string>("router", "data-dir", false, GetDefaultDataDir(),
@@ -98,7 +104,7 @@ namespace llarp
         }
       });
 
-    conf.defineOption<int>("router", "public-port", false, 1090,
+    conf.defineOption<int>("router", "public-port", false, DefaultPublicPort,
       [this](int arg) {
         if (arg <= 0)
           throw std::invalid_argument("public-port must be > 0");
@@ -109,7 +115,7 @@ namespace llarp
         m_publicOverride   = true;
       });
 
-    conf.defineOption<int>("router", "worker-threads", false, m_workerThreads,
+    conf.defineOption<int>("router", "worker-threads", false, DefaultWorkerThreads,
       [this](int arg) {
         if (arg <= 0)
           throw std::invalid_argument("worker-threads must be > 0");
@@ -117,7 +123,7 @@ namespace llarp
         m_workerThreads = arg;
       });
 
-    conf.defineOption<int>("router", "net-threads", false, m_numNetThreads, 
+    conf.defineOption<int>("router", "net-threads", false, DefaultNetThreads, 
       [this](int arg) {
         if (arg <= 0)
           throw std::invalid_argument("net-threads must be > 0");
@@ -125,6 +131,8 @@ namespace llarp
         m_numNetThreads = arg;
       });
 
+    // TODO: remove optional from m_blockBogons, we don't need to know whether or not it was
+    //       specified
     conf.defineOption<bool>("router", "block-bogons", false, m_blockBogons,
                             AssignmentAcceptor(m_blockBogons));
   }
@@ -134,14 +142,16 @@ namespace llarp
   {
     (void)params;
 
-    // TODO: review default value
-    conf.defineOption<bool>("network", "profiling", false, m_enableProfiling,
+    constexpr bool DefaultProfilingValue = true;
+
+    conf.defineOption<bool>("network", "profiling", false, DefaultProfilingValue,
                             AssignmentAcceptor(m_enableProfiling));
 
+    // TODO: this should be implied from [router]:data-dir
     conf.defineOption<std::string>("network", "profiles", false, m_routerProfilesFile,
                                    AssignmentAcceptor(m_routerProfilesFile));
 
-    conf.defineOption<std::string>("network", "strict-connect", false, m_strictConnect,
+    conf.defineOption<std::string>("network", "strict-connect", false, "",
                                    AssignmentAcceptor(m_strictConnect));
 
     conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
@@ -155,6 +165,7 @@ namespace llarp
   {
     (void)params;
 
+    // TODO: all of NetdbConfig can probably go away in favor of deriving from [router]:data-dir
     conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
                                    AssignmentAcceptor(m_nodedbDir));
   }
@@ -262,6 +273,7 @@ namespace llarp
   {
     (void)params;
 
+    // TODO: remove in favor of deriving from [router]:data-dir
     conf.defineOption<std::string>("system", "pidfile", false, pidfile,
                                    AssignmentAcceptor(pidfile));
   }
@@ -271,10 +283,13 @@ namespace llarp
   {
     (void)params;
 
-    conf.defineOption<bool>("api", "enabled", false, m_enableRPCServer,
+    constexpr bool DefaultRPCEnabled = true;
+    constexpr auto DefaultRPCBindAddr = "127.0.0.1:1190";
+
+    conf.defineOption<bool>("api", "enabled", false, DefaultRPCEnabled,
                             AssignmentAcceptor(m_enableRPCServer));
 
-    conf.defineOption<std::string>("api", "bind", false, m_rpcBindAddr,
+    conf.defineOption<std::string>("api", "bind", false, DefaultRPCBindAddr,
                                    AssignmentAcceptor(m_rpcBindAddr));
 
     // TODO: this was from pre-refactor:
@@ -286,6 +301,9 @@ namespace llarp
   {
     (void)params;
 
+    constexpr bool DefaultWhitelistRouters = false;
+    constexpr auto DefaultLokidRPCAddr = "127.0.0.1:22023";
+
     conf.defineOption<std::string>("lokid", "service-node-seed", false, "",
       [this](std::string arg) {
        if (not arg.empty())
@@ -295,17 +313,16 @@ namespace llarp
        }
       });
 
-    conf.defineOption<bool>("lokid", "enabled", false, whitelistRouters,
+    conf.defineOption<bool>("lokid", "enabled", false, DefaultWhitelistRouters,
                             AssignmentAcceptor(whitelistRouters));
 
-    // TODO: was also aliased as "addr" -- presumably because loki-launcher
-    conf.defineOption<std::string>("lokid", "jsonrpc", false, lokidRPCAddr,
+    conf.defineOption<std::string>("lokid", "jsonrpc", false, DefaultLokidRPCAddr,
                                    AssignmentAcceptor(lokidRPCAddr));
 
-    conf.defineOption<std::string>("lokid", "username", false, lokidRPCUser,
+    conf.defineOption<std::string>("lokid", "username", false, "",
                                    AssignmentAcceptor(lokidRPCUser));
 
-    conf.defineOption<std::string>("lokid", "password", false, lokidRPCPassword,
+    conf.defineOption<std::string>("lokid", "password", false, "",
                                    AssignmentAcceptor(lokidRPCPassword));
   }
 

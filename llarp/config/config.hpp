@@ -33,13 +33,10 @@ namespace llarp
 
   struct RouterConfig
   {
-    /// always maintain this many connections to other routers
-    size_t m_minConnectedRouters = 2;
+    size_t m_minConnectedRouters;
+    size_t m_maxConnectedRouters;
 
-    /// hard upperbound limit on the number of router to router connections
-    size_t m_maxConnectedRouters = 5;
-
-    std::string m_netId = "lokinet";
+    std::string m_netId;
     std::string m_nickname;
 
     std::string m_dataDir;
@@ -50,10 +47,10 @@ namespace llarp
     struct sockaddr_in m_ip4addr;
     AddressInfo m_addrInfo;
 
-    int m_workerThreads = 1;
-    int m_numNetThreads = 1;
+    int m_workerThreads;
+    int m_numNetThreads;
 
-    size_t m_JobQueueSize = size_t{1024 * 8};
+    size_t m_JobQueueSize;
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
@@ -131,8 +128,8 @@ namespace llarp
 
   struct ApiConfig
   {
-    bool m_enableRPCServer = false;
-    std::string m_rpcBindAddr = "127.0.0.1:1190";
+    bool m_enableRPCServer;
+    std::string m_rpcBindAddr;
 
     void
     defineConfigOptions(Configuration& conf, const ConfigGenParameters& params);
@@ -140,10 +137,10 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool usingSNSeed = false;
-    bool whitelistRouters = false;
-    fs::path ident_keyfile = "identity.key";
-    std::string lokidRPCAddr = "127.0.0.1:22023";
+    bool usingSNSeed;
+    bool whitelistRouters;
+    fs::path ident_keyfile = "identity.key"; // TODO: derive from [router]:data-dir
+    std::string lokidRPCAddr;
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 
