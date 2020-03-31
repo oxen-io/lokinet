@@ -65,8 +65,8 @@ TEST_CASE("ConfigDefinition section comments test")
 {
   llarp::ConfigDefinition config;
 
-  config.addSectionComment("foo", "test comment");
-  config.addSectionComment("foo", "test comment 2");
+  config.addSectionComments("foo", {"test comment"});
+  config.addSectionComments("foo", {"test comment 2"});
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo", "bar", true, 1));
 
@@ -84,8 +84,8 @@ TEST_CASE("ConfigDefinition option comments test")
 {
   llarp::ConfigDefinition config;
 
-  config.addOptionComment("foo", "bar", "test comment 1");
-  config.addOptionComment("foo", "bar", "test comment 2");
+  config.addOptionComments("foo", "bar", {"test comment 1"});
+  config.addOptionComments("foo", "bar", {"test comment 2"});
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo", "bar", true, 1));
 
@@ -103,11 +103,11 @@ TEST_CASE("ConfigDefinition empty comments test")
 {
   llarp::ConfigDefinition config;
 
-  config.addSectionComment("foo", "section comment");
-  config.addSectionComment("foo", "");
+  config.addSectionComments("foo", {"section comment"});
+  config.addSectionComments("foo", {""});
 
-  config.addOptionComment("foo", "bar", "option comment");
-  config.addOptionComment("foo", "bar", "");
+  config.addOptionComments("foo", "bar", {"option comment"});
+  config.addOptionComments("foo", "bar", {""});
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo", "bar", true, 1));
 
@@ -127,13 +127,13 @@ TEST_CASE("ConfigDefinition multi option comments")
 {
   llarp::ConfigDefinition config;
 
-  config.addSectionComment("foo", "foo section comment");
+  config.addSectionComments("foo", {"foo section comment"});
 
-  config.addOptionComment("foo", "bar", "foo bar option comment");
+  config.addOptionComments("foo", "bar", {"foo bar option comment"});
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo", "bar", true, 1));
 
-  config.addOptionComment("foo", "baz", "foo baz option comment");
+  config.addOptionComments("foo", "baz", {"foo baz option comment"});
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo", "baz", true, 1));
 
@@ -155,8 +155,8 @@ TEST_CASE("ConfigDefinition should print comments for missing keys")
   // TODO: this currently fails: how to implement?
   llarp::ConfigDefinition config;
 
-  config.addSectionComment("foo", "foo section comment");
-  config.addOptionComment("foo", "bar", "foo bar option comment");
+  config.addSectionComments("foo", {"foo section comment"});
+  config.addOptionComments("foo", "bar", {"foo bar option comment"});
 
   std::string output = config.generateINIConfig();
 

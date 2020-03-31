@@ -566,132 +566,178 @@ namespace llarp
     initializeConfig(def, params);
 
     // router
-    def.addSectionComment("router", "Configuration for routing activity.");
+    def.addSectionComments("router", {
+        "Configuration for routing activity.",
+      });
 
-    def.addOptionComment("router", "threads",
-        "The number of threads available for performing cryptographic functions.");
-    def.addOptionComment("router", "threads",
-        "The minimum is one thread, but network performance may increase with more.");
-    def.addOptionComment("router", "threads",
-        "threads. Should not exceed the number of logical CPU cores.");
+    def.addOptionComments("router", "threads", {
+        "The number of threads available for performing cryptographic functions.",
+        "The minimum is one thread, but network performance may increase with more.",
+        "threads. Should not exceed the number of logical CPU cores.",
+      });
 
-    def.addOptionComment("router", "data-dir",
-        "Optional directory for containing lokinet runtime data. This includes generated");
-    def.addOptionComment("router", "data-dir",
-        "private keys.");
+    def.addOptionComments("router", "data-dir", {
+        "Optional directory for containing lokinet runtime data. This includes generated",
+        "private keys.",
+      });
 
     // TODO: why did Kee want this, and/or what does it really do? Something about logs?
-    def.addOptionComment("router", "nickname", "Router nickname. Kee wanted it.");
+    def.addOptionComments("router", "nickname", {
+        "Router nickname. Kee wanted it."
+      });
 
-    def.addOptionComment("router", "min-connections",
-        "Minimum number of routers lokinet will attempt to maintain connections to.");
+    def.addOptionComments("router", "min-connections", {
+        "Minimum number of routers lokinet will attempt to maintain connections to.",
+      });
 
-    def.addOptionComment("router", "max-connections",
-        "Maximum number (hard limit) of routers lokinet will be connected to at any time.");
+    def.addOptionComments("router", "max-connections", {
+        "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
+      });
 
     // logging
-    def.addSectionComment("logging", "logging settings");
+    def.addSectionComments("logging", {
+        "logging settings",
+      });
 
-    def.addOptionComment("logging", "level",
-        "Minimum log level to print. Logging below this level will be ignored.");
-    def.addOptionComment("logging", "level", "Valid log levels, in ascending order, are:");
-    def.addOptionComment("logging", "level", "  trace");
-    def.addOptionComment("logging", "level", "  debug");
-    def.addOptionComment("logging", "level", "  info");
-    def.addOptionComment("logging", "level", "  warn");
-    def.addOptionComment("logging", "level", "  error");
+    def.addOptionComments("logging", "level", {
+        "Minimum log level to print. Logging below this level will be ignored.",
+        "Valid log levels, in ascending order, are:",
+        "  trace",
+        "  debug",
+        "  info",
+        "  warn",
+        "  error",
+      });
 
-    def.addOptionComment("logging", "type", "Log type (format). Valid options are:");
-    def.addOptionComment("logging", "type", "  file - plaintext formatting");
-    def.addOptionComment("logging", "type", "  json - json-formatted log statements");
-    def.addOptionComment("logging", "type", "  syslog - logs directed to syslog");
+    def.addOptionComments("logging", "type", {
+        "Log type (format). Valid options are:",
+        "  file - plaintext formatting",
+        "  json - json-formatted log statements",
+        "  syslog - logs directed to syslog",
+      });
 
     // api
-    def.addSectionComment("api", "JSON API settings");
+    def.addSectionComments("api", {
+        "JSON API settings",
+      });
 
-    def.addOptionComment("api", "enabled", "Determines whether or not the JSON API is enabled.");
+    def.addOptionComments("api", "enabled", {
+        "Determines whether or not the JSON API is enabled.",
+      });
 
-    def.addOptionComment("api", "bind", "IP address and port to bind to.");
-    def.addOptionComment("api", "bind", "Recommend localhost-only for security purposes.");
+    def.addOptionComments("api", "bind", {
+        "IP address and port to bind to.",
+        "Recommend localhost-only for security purposes.",
+      });
 
     // dns
-    def.addSectionComment("dns", "DNS configuration");
+    def.addSectionComments("dns", {
+        "DNS configuration",
+      });
 
-    def.addOptionComment("dns", "upstream",
-        "Upstream resolver to use as fallback for non-loki addresses.");
-    def.addOptionComment("dns", "upstream", "Multiple values accepted.");
+    def.addOptionComments("dns", "upstream", {
+        "Upstream resolver to use as fallback for non-loki addresses.",
+        "Multiple values accepted.",
+      });
 
-    def.addOptionComment("dns", "bind", "Address to bind to for handling DNS requests.");
-    def.addOptionComment("dns", "bind", "Multiple values accepted.");
+    def.addOptionComments("dns", "bind", {
+        "Address to bind to for handling DNS requests.",
+        "Multiple values accepted.",
+      });
 
     // netdb
-    def.addSectionComment("netdb", "Configuration for lokinet's database of service nodes");
+    def.addSectionComments("netdb", {
+        "Configuration for lokinet's database of service nodes",
+      });
 
-    def.addOptionComment("netdb", "dir", "Root directory of netdb.");
+    def.addOptionComments("netdb", "dir", {
+        "Root directory of netdb.",
+      });
 
     // bootstrap
-    def.addSectionComment("bootstrap", "Configure nodes that will bootstrap us onto the network");
+    def.addSectionComments("bootstrap", {
+        "Configure nodes that will bootstrap us onto the network",
+      });
 
-    def.addOptionComment("bootstrap", "add-node",
-        "Specify a bootstrap file containing a signed RouterContact of a service node");
-    def.addOptionComment("bootstrap", "add-node",
-        "which can act as a bootstrap. Accepts multiple values.");
+    def.addOptionComments("bootstrap", "add-node", {
+        "Specify a bootstrap file containing a signed RouterContact of a service node",
+        "which can act as a bootstrap. Accepts multiple values.",
+      });
 
     // network
-    def.addSectionComment("network", "Network settings");
+    def.addSectionComments("network", {
+        "Network settings",
+      });
 
-    def.addOptionComment("network", "profiles", "File to contain router profiles.");
+    def.addOptionComments("network", "profiles", {
+        "File to contain router profiles.",
+      });
 
-    def.addOptionComment("network", "strict-connect",
-        "Public key of a router which will act as sole first-hop. This may be used to");
-    def.addOptionComment("network", "strict-connect",
-        "provide a trusted router (consider that you are not fully anonymous with your");
-    def.addOptionComment("network", "strict-connect",
-        "first hop).");
+    def.addOptionComments("network", "strict-connect", {
+        "Public key of a router which will act as sole first-hop. This may be used to",
+        "provide a trusted router (consider that you are not fully anonymous with your",
+        "first hop).",
+      });
 
-    def.addOptionComment("network", "exit-node", "Public key of an exit-node.");
+    def.addOptionComments("network", "exit-node", {
+        "Public key of an exit-node.",
+      });
 
-    def.addOptionComment("network", "ifname", "Interface name for lokinet traffic.");
+    def.addOptionComments("network", "ifname", {
+        "Interface name for lokinet traffic.",
+      });
 
-    def.addOptionComment("network", "ifaddr", "Local IP address for lokinet traffic.");
+    def.addOptionComments("network", "ifaddr", {
+        "Local IP address for lokinet traffic.",
+      });
 
     // snapp
-    def.addSectionComment("snapp", "Snapp settings");
+    def.addSectionComments("snapp", {
+        "Snapp settings",
+      });
 
-    def.addOptionComment("snapp", "keyfile",
-        "The private key to persist address with. If not specified the address will be");
-    def.addOptionComment("snapp", "keyfile",
-        "ephemeral.");
+    def.addOptionComments("snapp", "keyfile", {
+        "The private key to persist address with. If not specified the address will be",
+        "ephemeral.",
+      });
 
     // TODO: is this redundant with / should be merged with basic client config?
-    def.addOptionComment("snapp", "reachable",
-        "Determines whether we will publish our snapp's introset to the DHT.");
+    def.addOptionComments("snapp", "reachable", {
+        "Determines whether we will publish our snapp's introset to the DHT.",
+      });
 
     // TODO: merge with client conf?
-    def.addOptionComment("snapp", "hops", "Number of hops in a path. Min 1, max 8.");
+    def.addOptionComments("snapp", "hops", {
+        "Number of hops in a path. Min 1, max 8.",
+      });
 
     // TODO: is this actually different than client's paths min/max config?
-    def.addOptionComment("snapp", "paths", "Number of paths to maintain at any given time.");
+    def.addOptionComments("snapp", "paths", {
+        "Number of paths to maintain at any given time.",
+      });
 
-    def.addOptionComment("snapp", "blacklist-snode", "Adds a `.snode` address to the blacklist.");
+    def.addOptionComments("snapp", "blacklist-snode", {
+        "Adds a `.snode` address to the blacklist.",
+      });
 
-    def.addOptionComment("snapp", "exit-node",
-        "Specify a `.snode` or `.loki` address to use as an exit broker.");
+    def.addOptionComments("snapp", "exit-node", {
+        "Specify a `.snode` or `.loki` address to use as an exit broker.",
+      });
 
     // TODO: merge with client conf?
-    def.addOptionComment("snapp", "local-dns",
-        "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port");
+    def.addOptionComments("snapp", "local-dns", {
+        "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port",
+      });
 
-    def.addOptionComment("snapp", "upstream-dns",
-        "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply");
-    def.addOptionComment("snapp", "upstream-dns",
-        "with `srvfail`.");
+    def.addOptionComments("snapp", "upstream-dns", {
+        "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply",
+        "with `srvfail`.",
+      });
 
-    def.addOptionComment("snapp", "mapaddr",
-        "Permanently map a `.loki` address to an IP owned by the snapp. Example:");
-    def.addOptionComment("snapp", "mapaddr",
-        "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.");
-
+    def.addOptionComments("snapp", "mapaddr", {
+        "Permanently map a `.loki` address to an IP owned by the snapp. Example:",
+        "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.",
+      });
 
     return def.generateINIConfig(true);
   }
@@ -707,33 +753,40 @@ namespace llarp
     initializeConfig(def, params);
 
     // lokid
-    def.addSectionComment("lokid", "Lokid configuration (settings for talking to lokid");
+    def.addSectionComments("lokid", {
+        "Lokid configuration (settings for talking to lokid",
+      });
 
-    def.addOptionComment("lokid", "enabled",
-        "Whether or not we should talk to lokid. Must be enabled for staked routers.");
+    def.addOptionComments("lokid", "enabled", {
+        "Whether or not we should talk to lokid. Must be enabled for staked routers.",
+      });
 
-    def.addOptionComment("lokid", "jsonrpc",
-        "Host and port of running lokid that we should talk to.");
+    def.addOptionComments("lokid", "jsonrpc", {
+        "Host and port of running lokid that we should talk to.",
+      });
 
     // TODO: doesn't appear to be used in the codebase
-    def.addOptionComment("lokid", "service-node-seed", "File containing service node's seed.");
+    def.addOptionComments("lokid", "service-node-seed", {
+        "File containing service node's seed.",
+      });
 
     // extra [network] options
     // TODO: probably better to create an [exit] section and only allow it for routers
-    def.addOptionComment("network", "exit",
-        "Whether or not we should act as an exit node. Beware that this increases demand");
-    def.addOptionComment("network", "exit",
-        "on the server and may pose liability concerns. Enable at your own risk.");
+    def.addOptionComments("network", "exit", {
+        "Whether or not we should act as an exit node. Beware that this increases demand",
+        "on the server and may pose liability concerns. Enable at your own risk.",
+      });
 
     // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
     //       additionally, what's default? What if I don't whitelist anything?
-    def.addOptionComment("network", "exit-whitelist",
-        "List of destination protocol:port pairs to whitelist, example: udp:*");
-    def.addOptionComment("network", "exit-whitelist",
-        "or tcp:80. Multiple values supported.");
+    def.addOptionComments("network", "exit-whitelist", {
+        "List of destination protocol:port pairs to whitelist, example: udp:*",
+        "or tcp:80. Multiple values supported.",
+      });
 
-    def.addOptionComment("network", "exit-blacklist",
-        "Blacklist of destinations (same format as whitelist).");
+    def.addOptionComments("network", "exit-blacklist", {
+        "Blacklist of destinations (same format as whitelist).",
+      });
 
     return def.generateINIConfig(true);
   }

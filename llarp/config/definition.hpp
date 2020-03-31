@@ -306,7 +306,7 @@ namespace llarp
     /// @param section
     /// @param comment
     void
-    addSectionComment(const std::string& section, std::string comment);
+    addSectionComments(const std::string& section, std::vector<std::string> comments);
 
     /// Add comments for a given option. Similar to addSectionComment, but applies to a specific
     /// [section]:name pair.
@@ -315,7 +315,9 @@ namespace llarp
     /// @param name
     /// @param comment
     void
-    addOptionComment(const std::string& section, const std::string& name, std::string comment);
+    addOptionComments(const std::string& section,
+                      const std::string& name,
+                      std::vector<std::string> comments);
 
     /// Generate a config string from the current config definition, optionally using overridden
     /// values. The generated config will preserve insertion order of both sections and their
@@ -346,7 +348,7 @@ namespace llarp
 
     std::unordered_map<std::string, UndeclaredValueHandler> m_undeclaredHandlers;
 
-    // track insertion order
+    // track insertion order. the vector<string>s are ordered list of section/option names.
     std::vector<std::string> m_sectionOrdering;
     std::unordered_map<std::string, std::vector<std::string>> m_definitionOrdering;
 

@@ -113,18 +113,26 @@ ConfigDefinition::acceptAllOptions()
 }
 
 void
-ConfigDefinition::addSectionComment(const std::string& section,
-                                 std::string comment)
+ConfigDefinition::addSectionComments(const std::string& section,
+                                     std::vector<std::string> comments)
 {
-  m_sectionComments[section].push_back(std::move(comment));
+  auto& sectionComments = m_sectionComments[section];
+  for (size_t i=0; i<comments.size(); ++i)
+  {
+    sectionComments.emplace_back(std::move(comments[i]));
+  }
 }
 
 void
-ConfigDefinition::addOptionComment(const std::string& section,
-                                const std::string& name,
-                                std::string comment)
+ConfigDefinition::addOptionComments(const std::string& section,
+                                    const std::string& name,
+                                    std::vector<std::string> comments)
 {
-  m_definitionComments[section][name].push_back(std::move(comment));
+  auto& defComments = m_definitionComments[section][name];
+  for (size_t i=0; i<comments.size(); ++i)
+  {
+    defComments.emplace_back(std::move(comments[i]));
+  }
 }
 
 std::string
