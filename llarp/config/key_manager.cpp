@@ -31,11 +31,13 @@ namespace llarp
     if (m_initialized)
       return false;
 
+    fs::path root = config.router.m_dataDir;
+
     // TODO: use fs::path, or at least support windows-style separators
-    m_rcPath           = config.router.m_dataDir + "/rc.signed";
-    m_idKeyPath        = config.router.m_dataDir + "/identity.key";
-    m_encKeyPath       = config.router.m_dataDir + "/encryption.key";
-    m_transportKeyPath = config.router.m_dataDir + "/transport.key";
+    m_rcPath           = root / "rc.signed";
+    m_idKeyPath        = root / "identity.key";
+    m_encKeyPath       = root / "encryption.key";
+    m_transportKeyPath = root / "transport.key";
 
     m_usingLokid = config.lokid.whitelistRouters;
     m_lokidRPCAddr = config.lokid.lokidRPCAddr;
@@ -117,7 +119,7 @@ namespace llarp
   }
 
   bool
-  KeyManager::backupFileByMoving(const std::string& filepath)
+  KeyManager::backupFileByMoving(const fs::path& filepath)
   {
     auto findFreeBackupFilename = [](const fs::path& filepath) {
       for (int i = 0; i < 9; i++)
@@ -181,9 +183,8 @@ namespace llarp
 
   bool
   KeyManager::loadOrCreateKey(
-      const std::string& filepath,
-      llarp::SecretKey& key,
-      std::function<void(llarp::SecretKey& key)> keygen)
+      const fs::path& filepath, llarp::SecretKey& key,
+      std::function< void(llarp::SecretKey& key) > keygen)
   {
     fs::path path(filepath);
     std::error_code ec;

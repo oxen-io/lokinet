@@ -29,7 +29,7 @@ namespace llarp
     /// @param filepath is the name of the original file to backup.
     /// @return true if the file could be moved or didn't exist, false otherwise
     static bool
-    backupFileByMoving(const std::string& filepath);
+    backupFileByMoving(const fs::path& filepath);
 
     /// Constructor
     KeyManager();
@@ -67,10 +67,10 @@ namespace llarp
     llarp::SecretKey transportKey;
 
    private:
-    std::string m_rcPath;
-    std::string m_idKeyPath;
-    std::string m_encKeyPath;
-    std::string m_transportKeyPath;
+    fs::path m_rcPath;
+    fs::path m_idKeyPath;
+    fs::path m_encKeyPath;
+    fs::path m_transportKeyPath;
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
 
@@ -87,10 +87,8 @@ namespace llarp
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(
-        const std::string& filepath,
-        llarp::SecretKey& key,
-        std::function<void(llarp::SecretKey& key)> keygen);
+    loadOrCreateKey(const fs::path& filepath, llarp::SecretKey& key,
+                    std::function< void(llarp::SecretKey& key) > keygen);
 
     /// Requests the identity key from lokid via HTTP (curl)
     bool
