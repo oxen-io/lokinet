@@ -10,13 +10,13 @@ TEST_CASE("OptionDefinition int parse test", "[config]")
   llarp::OptionDefinition<int> def("foo", "bar", false, 42);
 
   CHECK(def.getValue() == 42);
-  CHECK(def.numFound == 0);
+  CHECK(def.getNumberFound() == 0);
 
   CHECK(def.defaultValueAsString() == "42");
 
   CHECK_NOTHROW(def.parseValue("43"));
   CHECK(def.getValue() == 43);
-  CHECK(def.numFound == 1);
+  CHECK(def.getNumberFound() == 1);
 
   CHECK(def.defaultValueAsString() == "42");
 }
@@ -30,7 +30,7 @@ TEST_CASE("OptionDefinition string parse test", "[config]")
 
   CHECK_NOTHROW(def.parseValue("foo"));
   CHECK(def.getValue() == "foo");
-  CHECK(def.numFound == 1);
+  CHECK(def.getNumberFound() == 1);
 }
 
 TEST_CASE("OptionDefinition multiple parses test", "[config]")
@@ -41,12 +41,13 @@ TEST_CASE("OptionDefinition multiple parses test", "[config]")
 
     CHECK_NOTHROW(def.parseValue("9"));
     CHECK(def.getValue() == 9);
-    CHECK(def.numFound == 1);
+    CHECK(def.getNumberFound() == 1);
 
     // should allow since it is multi-value
     CHECK_NOTHROW(def.parseValue("12"));
-    CHECK(def.getValue() == 12);
-    CHECK(def.numFound == 2);
+    CHECK(def.getValue() == 9); // getValue() should return first value
+    REQUIRE(def.getNumberFound() == 2);
+
   }
 
   {
@@ -54,11 +55,11 @@ TEST_CASE("OptionDefinition multiple parses test", "[config]")
 
     CHECK_NOTHROW(def.parseValue("3"));
     CHECK(def.getValue() == 3);
-    CHECK(def.numFound == 1);
+    CHECK(def.getNumberFound() == 1);
 
     // shouldn't allow since not multi-value
     CHECK_THROWS(def.parseValue("2"));
-    CHECK(def.numFound == 1);
+    CHECK(def.getNumberFound() == 1);
   }
 
 }
@@ -341,4 +342,24 @@ TEST_CASE("ConfigDefinition AssignmentAcceptor", "[config]")
   CHECK_NOTHROW(config.acceptAllOptions());
 
   REQUIRE(val == 3);
+}
+
+TEST_CASE("ConfigDefinition multiple values", "[config]")
+{
+  llarp::ConfigDefinition config;
+
+  std::vector<int> values;
+  config.defineOption<int>("foo", "bar", false, true, 2, [&](int arg) {
+    values.push_back(arg);
+  });
+
+  config.addConfigValue("foo", "bar", "1");
+  config.addConfigValue("foo", "bar", "2");
+  config.addConfigValue("foo", "bar", "3");
+  CHECK_NOTHROW(config.acceptAllOptions());
+
+  REQUIRE(values.size() == 3);
+  CHECK(values[0] == 1);
+  CHECK(values[1] == 2);
+  CHECK(values[2] == 3);
 }

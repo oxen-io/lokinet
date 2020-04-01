@@ -42,6 +42,12 @@ namespace llarp
     virtual void
     parseValue(const std::string& input) = 0;
 
+    /// Subclasses should provide the number of values found.
+    ///
+    /// @return number of values found
+    virtual size_t
+    getNumberFound() const = 0;
+
     /// Subclasess should write their parsed value as a string, optionally falling back to any
     /// specified default if `useDefault` is true.
     ///
@@ -59,7 +65,6 @@ namespace llarp
     std::string name;
     bool required = false;
     bool multiValued = false;
-    size_t numFound = 0;
   };
 
   /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
@@ -105,19 +110,43 @@ namespace llarp
     {
     }
 
-    /// Returns the parsed value, if available. Otherwise, provides the default value if the option
-    /// is not required. Otherwise, returns an empty optional.
+    /// Returns the first parsed value, if available. Otherwise, provides the default value if the
+    /// option is not required. Otherwise, returns an empty optional.
     ///
     /// @return an optional with the parsed value, the default value, or no value.
     nonstd::optional<T>
     getValue() const
     {
-      if (parsedValue)
-        return parsedValue.value();
-      else if (not required)
+      if (parsedValues.size())
+        return parsedValues[0];
+      else if (not required and not multiValued)
         return defaultValue.value();
       else
         return {};
+    }
+
+    /// Returns the value at the given index.
+    ///
+    /// @param index 
+    /// @return the value at the given index, if it exists
+    /// @throws range_error exception if index >= size
+    T
+    getValueAt(size_t index) const
+    {
+      if (index >= parsedValues.size())
+        throw std::range_error(stringify(
+              "no value at index ", index, ", size: ", parsedValues.size()));
+
+      return parsedValues[index];
+    }
+
+    /// Returns the number of values found.
+    ///
+    /// @return number of values found
+    size_t
+    getNumberFound() const override
+    {
+      return parsedValues.size();
     }
 
     std::string
@@ -133,10 +162,10 @@ namespace llarp
     void
     parseValue(const std::string& input) override
     {
-      if (not multiValued and parsedValue.has_value())
+      if (not multiValued and parsedValues.size() > 0)
       {
         throw std::invalid_argument(stringify("duplicate value for ", name,
-              ", previous value: ", parsedValue.value()));
+              ", previous value: ", parsedValues[0]));
       }
       
       std::istringstream iss(input);
@@ -148,8 +177,7 @@ namespace llarp
       }
       else
       {
-        parsedValue = t;
-        numFound++;
+        parsedValues.emplace_back(std::move(t));
       }
 
     }
@@ -158,8 +186,8 @@ namespace llarp
     valueAsString(bool useDefault) override
     {
       std::ostringstream oss;
-      if (parsedValue.has_value())
-        oss << parsedValue.value();
+      if (parsedValues.size() > 0)
+        oss << parsedValues[0];
       else if (useDefault and defaultValue.has_value())
         oss << defaultValue.value();
 
@@ -174,23 +202,37 @@ namespace llarp
     void
     tryAccept() const override
     {
-      if (required and not parsedValue.has_value())
+      if (required and parsedValues.size() == 0)
       {
         throw std::runtime_error(stringify("cannot call tryAccept() on [",
               section, "]:", name, " when required but no value available"));
       }
 
+      // don't use default value if we are multi-valued and have no value
+      if (multiValued && parsedValues.size() == 0)
+        return;
+
       if (acceptor)
       {
-        auto maybe = getValue();
-        assert(maybe.has_value()); // should be guaranteed by our earlier check
-        // TODO: avoid copies here if possible
-        acceptor(maybe.value());
+        if (multiValued)
+        {
+          for (const auto& value : parsedValues)
+          {
+            acceptor(value);
+          }
+        }
+        else
+        {
+          auto maybe = getValue();
+          assert(maybe.has_value()); // should be guaranteed by our earlier checks
+          // TODO: avoid copies here if possible
+          acceptor(maybe.value());
+        }
       }
     }
 
     nonstd::optional<T> defaultValue;
-    nonstd::optional<T> parsedValue; // needs to be set when parseValue() called
+    std::vector<T> parsedValues;
     std::function<void(T)> acceptor;
   };
 
@@ -248,7 +290,7 @@ namespace llarp
     /// called).
     ///
     /// If the specified option doesn't exist, an exception will be thrown. Otherwise, the option's
-    /// parsedValue() will be invoked, and should throw an exception if the string can't be parsed.
+    /// parseValue() will be invoked, and should throw an exception if the string can't be parsed.
     ///
     /// @param section is the section this value resides in
     /// @param name is the name of the value

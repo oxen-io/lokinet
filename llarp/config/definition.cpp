@@ -98,14 +98,14 @@ ConfigDefinition::validateRequiredFields()
   {
     visitDefinitions(section, [&](const std::string&, const OptionDefinition_ptr& def)
     {
-      if (def->required and def->numFound < 1)
+      if (def->required and def->getNumberFound() < 1)
       {
         throw std::invalid_argument(stringify(
               "[", section, "]:", def->name, " is required but missing"));
       }
 
       // should be handled earlier in OptionDefinition::parseValue()
-      assert(def->numFound <= 1 or def->multiValued);
+      assert(def->getNumberFound() <= 1 or def->multiValued);
     });
   });
 }
@@ -176,7 +176,7 @@ ConfigDefinition::generateINIConfig(bool useValues)
         oss << "# " << comment << "\n";
       }
 
-      if (useValues and def->numFound > 0)
+      if (useValues and def->getNumberFound() > 0)
       {
         oss << name << "=" << def->valueAsString(false) << "\n";
       }
