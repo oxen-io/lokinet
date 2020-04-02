@@ -68,7 +68,7 @@ build:linux_debug:
 build:win32:
   image: ubuntu:bionic
   tags:
-    - ubuntu
+    - linux
   stage: build
   before_script:
     - apt-get update && apt-get install -y build-essential cmake nsis git g++-mingw-w64
