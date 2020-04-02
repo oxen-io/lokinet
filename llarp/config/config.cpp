@@ -7,7 +7,6 @@
 #include <router_contact.hpp>
 #include <stdexcept>
 #include <util/fs.hpp>
-#include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
@@ -28,17 +27,6 @@ namespace llarp
 
   constexpr int DefaultMinConnectionsForClient = 4;
   constexpr int DefaultMaxConnectionsForClient = 6;
-
-  LoggingConfig::LogType
-  LoggingConfig::LogTypeFromString(const std::string& str)
-  {
-    if (str == "unknown") return LogType::Unknown;
-    else if (str == "file") return LogType::File;
-    else if (str == "json") return LogType::Json;
-    else if (str == "syslog") return LogType::Syslog;
-
-    return LogType::Unknown;
-  }
 
   void
   RouterConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
@@ -353,7 +341,7 @@ namespace llarp
 
     conf.defineOption<std::string>("logging", "type", false, DefaultLogType,
       [this](std::string arg) {
-      LoggingConfig::LogType type = LogTypeFromString(arg);
+      LogType type = LogTypeFromString(arg);
         if (type == LogType::Unknown)
           throw std::invalid_argument(stringify("invalid log type: ", arg));
 

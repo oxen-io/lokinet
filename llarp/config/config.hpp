@@ -150,15 +150,6 @@ namespace llarp
 
   struct LoggingConfig
   {
-    enum class LogType
-    {
-      Unknown = 0,
-      File,
-      Json,
-      Syslog,
-    };
-    static LogType LogTypeFromString(const std::string&);
-
     LogType m_logType;
     LogLevel m_logLevel;
     std::string m_logFile;

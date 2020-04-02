@@ -1,12 +1,22 @@
 #ifndef LLARP_UTIL_LOGGER_HPP
 #define LLARP_UTIL_LOGGER_HPP
 
+#include <memory>
 #include <util/time.hpp>
 #include <util/logging/logstream.hpp>
 #include <util/logging/logger_internal.hpp>
+#include <util/thread/thread_pool.hpp>
 
 namespace llarp
 {
+  enum class LogType
+  {
+    Unknown = 0,
+    File,
+    Json,
+    Syslog,
+  };
+  LogType LogTypeFromString(const std::string&);
 
   struct LogContext
   {
@@ -32,6 +42,20 @@ namespace llarp
     /// Should only be called in rare circumstances, such as when the program is about to exit.
     void
     ImmediateFlush();
+
+    /// Initialize the logging system.
+    ///
+    /// @param level is the new log level (below which log statements will be ignored)
+    /// @param type is the type of logger to set up
+    /// @param file is the file to log to (relevant for types File and Json)
+    /// @param nickname is a tag to add to each log statement
+    /// @param threadpool is a threadpool where I/O can offloaded
+    void
+    Initialize(LogLevel level,
+               LogType type,
+               const std::string& file,
+               const std::string& nickname,
+               std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
   void
