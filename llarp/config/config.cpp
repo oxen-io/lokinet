@@ -90,7 +90,14 @@ namespace llarp
                                    AssignmentAcceptor(m_nickname));
 
     conf.defineOption<std::string>("router", "data-dir", false, GetDefaultDataDir(),
-                                   AssignmentAcceptor(m_dataDir));
+      [this](std::string arg) {
+        fs::path dir = arg;
+        if (not fs::exists(dir))
+          throw std::runtime_error(stringify(
+                "Specified [router]:data-dir ", arg, " does not exist"));
+
+        m_dataDir = std::move(dir);
+      });
 
     conf.defineOption<std::string>("router", "public-address", false, "",
       [this](std::string arg) {
@@ -249,9 +256,13 @@ namespace llarp
     conf.addUndeclaredHandler("connect", [this](string_view section,
                                                 string_view name,
                                                 string_view value) {
-      (void)section;
-      (void)name;
-      routers.emplace_back(value);
+      fs::path file = str(value);
+      if (not fs::exists(file))
+        throw std::runtime_error(stringify(
+              "Specified bootstrap file ", value,
+              "specified in [",section,"]:",name," does not exist"));
+
+      routers.emplace_back(std::move(file));
       return true;
     });
   }

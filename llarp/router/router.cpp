@@ -395,9 +395,9 @@ namespace llarp
         conf->router.m_maxConnectedRouters;
     _outboundSessionMaker.minConnectedRouters =
         conf->router.m_minConnectedRouters;
-    encryption_keyfile = conf->router.m_dataDir + "/encryption.key";
-    our_rc_file        = conf->router.m_dataDir + "/rc.signed";
-    transport_keyfile  = conf->router.m_dataDir + "/transport.key";
+    encryption_keyfile = conf->router.m_dataDir / "encryption.key";
+    our_rc_file        = conf->router.m_dataDir / "rc.signed";
+    transport_keyfile  = conf->router.m_dataDir / "transport.key";
     addrInfo           = conf->router.m_addrInfo;
     publicOverride     = conf->router.m_publicOverride;
     ip4addr            = conf->router.m_ip4addr;
@@ -451,17 +451,16 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
-    llarp::LogWarn("Bootstrap routers list size: ", conf->bootstrap.routers.size());
-    std::vector<std::string> configRouters = conf->connect.routers;
-    configRouters.insert(
-        configRouters.end(), conf->bootstrap.routers.begin(), conf->bootstrap.routers.end());
+    std::vector<fs::path> configRouters = conf->connect.routers;
+    configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
+                         conf->bootstrap.routers.end());
     BootstrapList b_list;
     for (const auto& router : configRouters)
     {
       bool isListFile = false;
       {
-        std::ifstream inf(router, std::ios::binary);
-        if (inf.is_open())
+        std::ifstream inf(router.c_str(), std::ios::binary);
+        if(inf.is_open())
         {
           const char ch = inf.get();
           isListFile = ch == 'l';
@@ -517,7 +516,7 @@ namespace llarp
 
     if (!usingSNSeed)
     {
-      ident_keyfile = conf->router.m_dataDir + "/identity.key";
+      ident_keyfile = conf->router.m_dataDir / "identity.key";
     }
 
     // create inbound links, if we are a service node

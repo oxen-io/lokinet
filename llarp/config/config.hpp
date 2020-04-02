@@ -39,7 +39,7 @@ namespace llarp
     std::string m_netId;
     std::string m_nickname;
 
-    std::string m_dataDir;
+    fs::path m_dataDir;
 
     bool m_blockBogons;
 
@@ -59,7 +59,7 @@ namespace llarp
   struct NetworkConfig
   {
     nonstd::optional< bool > m_enableProfiling;
-    std::string m_routerProfilesFile = "profiles.dat";
+    std::string m_routerProfilesFile;
     std::string m_strictConnect;
     FreehandOptions m_options;
 
@@ -105,7 +105,7 @@ namespace llarp
 
   struct ConnectConfig
   {
-    std::vector<std::string> routers;
+    std::vector<fs::path> routers;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
