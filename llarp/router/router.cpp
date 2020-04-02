@@ -621,10 +621,24 @@ namespace llarp
         assert(conf->logging.m_logType != LoggingConfig::LogType::Unknown);
         break;
       case LoggingConfig::LogType::File:
-        LogContext::Instance().logStream =
-            std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
+        if (logfile != stdout)
+        {
+          LogInfo("Switching logger to file ", conf->logging.m_logFile);
+          std::cout << std::flush;
+
+          LogContext::Instance().logStream =
+              std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
+        }
+        else
+        {
+          LogInfo("Logger remains stdout");
+        }
+
         break;
       case LoggingConfig::LogType::Json:
+        LogInfo("Switching logger to JSON with file: ", conf->logging.m_logFile);
+        std::cout << std::flush;
+
         LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
             diskworker(), logfile, 100ms, logfile != stdout);
         break;
@@ -632,6 +646,7 @@ namespace llarp
         if (logfile)
         {
           // TODO: this logic should be handled in Config
+          // TODO: this won't even work because of default value for 'file' (== "stdout")
           LogError("Cannot mix log type=syslog and file=*");
           ::fclose(logfile);
           return false;
@@ -640,6 +655,8 @@ namespace llarp
         LogError("syslog not supported on win32");
         return false;
 #else
+        LogInfo("Switching logger to syslog");
+        std::cout << std::flush;
         LogContext::Instance().logStream = std::make_unique< SysLogStream >();
 #endif
         break;

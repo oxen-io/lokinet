@@ -67,6 +67,13 @@ namespace llarp
       LogContext::Instance().runtimeLevel = lvl;
     }
   }
+
+  void
+  LogContext::ImmediateFlush()
+  {
+    logStream->ImmediateFlush();
+  }
+
 }  // namespace llarp
 
 extern "C"

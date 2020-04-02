@@ -263,6 +263,7 @@ main(int argc, char* argv[])
                                   "annoying image in your syslog for all time."})
           {
             LogError(wtf);
+            llarp::LogContext::Instance().ImmediateFlush();
           }
           std::abort();
         }
@@ -272,6 +273,8 @@ main(int argc, char* argv[])
 
   main_thread.join();
   const auto code = ftr.get();
+
+  llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32
   ::WSACleanup();
 #endif

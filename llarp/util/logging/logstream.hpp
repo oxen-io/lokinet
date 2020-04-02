@@ -44,6 +44,10 @@ namespace llarp
       Print(lvl, fname, ss.str());
     }
 
+    /// A blocking call to flush to disk. Should only be called in rare circumstances.
+    virtual void
+    ImmediateFlush() = 0;
+
     /// called every end of event loop tick
     virtual void
     Tick(llarp_time_t now) = 0;

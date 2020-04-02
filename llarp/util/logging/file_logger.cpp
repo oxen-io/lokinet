@@ -1,5 +1,7 @@
+#include <chrono>
 #include <util/logging/file_logger.hpp>
 #include <util/logging/logger_internal.hpp>
+#include <util/time.hpp>
 
 #include <utility>
 
@@ -90,6 +92,13 @@ namespace llarp
   {
     ILogStream::AppendLog(lvl, fname, lineno, nodename, msg);
     Tick(llarp::time_now_ms());
+  }
+
+  void
+  FileLogStream::ImmediateFlush()
+  {
+    Flush(&m_Lines, m_File);
+    m_LastFlush = time_now_ms();
   }
 
   void

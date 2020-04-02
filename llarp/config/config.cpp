@@ -347,7 +347,11 @@ namespace llarp
   {
     (void)params;
 
-    conf.defineOption<std::string>("logging", "type", false, "file",
+    constexpr auto DefaultLogType = "file";
+    constexpr auto DefaultLogFile = "stdout";
+    constexpr auto DefaultLogLevel = "info";
+
+    conf.defineOption<std::string>("logging", "type", false, DefaultLogType,
       [this](std::string arg) {
       LoggingConfig::LogType type = LogTypeFromString(arg);
         if (type == LogType::Unknown)
@@ -356,7 +360,7 @@ namespace llarp
         m_logType = type;
       });
 
-    conf.defineOption<std::string>("logging", "level", false, "info",
+    conf.defineOption<std::string>("logging", "level", false, DefaultLogLevel,
       [this](std::string arg) {
         nonstd::optional<LogLevel> level = LogLevelFromString(arg);
         if (not level.has_value())
@@ -365,7 +369,7 @@ namespace llarp
         m_logLevel = level.value();
       });
 
-    conf.defineOption<std::string>("logging", "file", false, "stdout",
+    conf.defineOption<std::string>("logging", "file", false, DefaultLogFile,
                                    AssignmentAcceptor(m_logFile));
   }
 

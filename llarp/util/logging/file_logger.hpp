@@ -47,7 +47,10 @@ namespace llarp
         const std::string& nodename,
         const std::string msg) override;
 
-    using Lines_t = thread::Queue<std::string>;
+    virtual void
+    ImmediateFlush() override;
+
+    using Lines_t = thread::Queue< std::string >;
 
    protected:
     Lines_t m_Lines;

@@ -27,6 +27,11 @@ namespace llarp
 
     void
     RevertRuntimeLevel();
+
+    /// A blocking call that will not return until any existing log functions have flushed.
+    /// Should only be called in rare circumstances, such as when the program is about to exit.
+    void
+    ImmediateFlush();
   };
 
   void
