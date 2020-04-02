@@ -157,8 +157,12 @@ struct llarp_nodedb
   select_random_hop_excluding(
       llarp::RouterContact& result, const std::set<llarp::RouterID>& exclude) EXCLUDES(access);
 
-  static bool
-  ensure_dir(const char* dir);
+  /// Ensures that the given nodedb 'dir' exists
+  ///
+  /// @param nodedbDir should be the desired nodedb directory
+  /// @throws on any filesistem error or if `nodedbDir` exists and is not a directory
+  static void
+  ensure_dir(const fs::path& nodedbDir);
 
   void
   SaveAll() EXCLUDES(access);

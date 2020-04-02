@@ -10,6 +10,7 @@
 #include <util/mem.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/thread_pool.hpp>
+#include <util/str.hpp>
 #include <dht/kademlia.hpp>
 
 #include <algorithm>
@@ -443,44 +444,35 @@ nodedb_async_load_rc(void* user)
   job->logic->queue_job({job, &nodedb_inform_load_rc});
 }
 
-bool
-llarp_nodedb::ensure_dir(const char* dir)
+void
+llarp_nodedb::ensure_dir(const fs::path& nodedbDir)
 {
-  fs::path path(dir);
-  std::error_code ec;
-
-  if (!fs::exists(dir, ec))
-    fs::create_directory(path, ec);
-
-  if (ec)
+  if (not fs::exists(nodedbDir))
   {
-    LogWarn("Could not create nodedb directory ", dir, ": ", ec.message());
-    return false;
+    // if the old 'netdb' directory exists, move it to this one
+    fs::path parent = nodedbDir.parent_path();
+    fs::path old = parent / "netdb";
+    if (fs::exists(old))
+      fs::rename(old, nodedbDir);
+    else
+      fs::create_directory(nodedbDir);
   }
 
-  if (!fs::is_directory(path))
-    LogWarn("Nodedb dir ", dir, " must be a directory");
-    return false;
-  }
+  if (not fs::is_directory(nodedbDir))
+    throw std::runtime_error(llarp::stringify("nodedb ", nodedbDir, " is not a directory"));
 
   for (const char& ch : skiplist_subdirs)
   {
     // this seems to be a problem on all targets
     // perhaps cpp17::fs is just as screwed-up
     // attempting to create a folder with no name
-    if (!ch)
-      return true;
-    std::string p;
-    p += ch;
-    fs::path sub = path / p;
-    fs::create_directory(sub, ec);
-    if (ec)
-    {
-      LogWarn("Could not create nodedb subdir ", sub, ": ", ec.message());
-      return false;
-    }
+    // what does this mean...?
+    if(!ch)
+      continue;
+
+    fs::path sub = nodedbDir / std::string(&ch, 1);
+    fs::create_directory(sub);
   }
-  return true;
 }
 
 ssize_t

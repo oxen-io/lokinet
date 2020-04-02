@@ -74,11 +74,7 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    if (!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
-    {
-      llarp::LogError("nodedb_dir is incorrect");
-      return 0;
-    }
+    llarp_nodedb::ensure_dir(nodedb_dir.c_str());
     return 1;
   }
 
