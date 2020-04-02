@@ -291,6 +291,12 @@ windows-release: windows-release-configure
 
 windows: windows-release
 
+mac-release: release-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cd '$(BUILD_ROOT)' && cpack -D CPACK_MONOLITHIC_INSTALL=1 -G productbuild ..
+
+mac: mac-release
+
 abyss: debug
 	$(ABYSS_EXE)
 
