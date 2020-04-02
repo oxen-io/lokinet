@@ -34,7 +34,7 @@ namespace llarp
     fs::path root = config.router.m_dataDir;
 
     // TODO: use fs::path, or at least support windows-style separators
-    m_rcPath           = root / "rc.signed";
+    m_rcPath           = root / "self.signed";
     m_idKeyPath        = root / "identity.key";
     m_encKeyPath       = root / "encryption.key";
     m_transportKeyPath = root / "transport.key";
