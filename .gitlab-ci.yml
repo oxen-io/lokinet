@@ -76,7 +76,7 @@ build:win32:
     - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=ON WINDOWS_ARCH=32 make windows
   artifacts:
     paths:
-      build/lokinet-*.exe
+      - build/lokinet-*.exe
 
 # needs libuv and libcurl
 #build:freebsd:
