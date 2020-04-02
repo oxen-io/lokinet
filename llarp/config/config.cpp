@@ -162,16 +162,6 @@ namespace llarp
   }
 
   void
-  NetdbConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    // TODO: all of NetdbConfig can probably go away in favor of deriving from [router]:data-dir
-    conf.defineOption<std::string>("netdb", "dir", false, m_nodedbDir,
-                                   AssignmentAcceptor(m_nodedbDir));
-  }
-
-  void
   DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
@@ -478,7 +468,6 @@ namespace llarp
     router.defineConfigOptions(conf, params);
     network.defineConfigOptions(conf, params);
     connect.defineConfigOptions(conf, params);
-    netdb.defineConfigOptions(conf, params);
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
     services.defineConfigOptions(conf, params);
@@ -618,15 +607,6 @@ namespace llarp
     def.addOptionComments("dns", "bind", {
         "Address to bind to for handling DNS requests.",
         "Multiple values accepted.",
-      });
-
-    // netdb
-    def.addSectionComments("netdb", {
-        "Configuration for lokinet's database of service nodes",
-      });
-
-    def.addOptionComments("netdb", "dir", {
-        "Root directory of netdb.",
       });
 
     // bootstrap

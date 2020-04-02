@@ -68,14 +68,6 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct NetdbConfig
-  {
-    std::string m_nodedbDir;
-
-    void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
   struct DnsConfig
   {
     FreehandOptions m_options;
@@ -179,7 +171,6 @@ namespace llarp
     RouterConfig router;
     NetworkConfig network;
     ConnectConfig connect;
-    NetdbConfig netdb;
     DnsConfig dns;
     LinksConfig links;
     ServicesConfig services;

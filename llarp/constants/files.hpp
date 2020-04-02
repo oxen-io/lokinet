@@ -11,6 +11,8 @@ namespace llarp
   constexpr auto our_enc_key_filename = "encryption.key";
   constexpr auto our_transport_key_filename = "transport.key";
 
+  constexpr auto nodedb_dirname = "nodedb";
+
   inline
   fs::path
   GetDefaultDataDir()
