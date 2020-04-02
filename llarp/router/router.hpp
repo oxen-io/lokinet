@@ -54,19 +54,15 @@ namespace llarp
     llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key
-    fs::path transport_keyfile = "transport.key";
-
-    // nodes to connect to on startup
-    // DEPRECATED
-    // std::map< std::string, fs::path > connect;
+    fs::path transport_keyfile;
 
     // long term identity key
-    fs::path ident_keyfile = "identity.key";
+    fs::path ident_keyfile;
 
-    fs::path encryption_keyfile = "encryption.key";
+    fs::path encryption_keyfile;
 
     // path to write our self signed rc to
-    fs::path our_rc_file = "rc.signed";
+    fs::path our_rc_file;
 
     // use file based logging?
     bool m_UseFileLogging = false;

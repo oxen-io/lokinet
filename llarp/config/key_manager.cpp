@@ -34,10 +34,10 @@ namespace llarp
     fs::path root = config.router.m_dataDir;
 
     // TODO: use fs::path, or at least support windows-style separators
-    m_rcPath           = root / "self.signed";
-    m_idKeyPath        = root / "identity.key";
-    m_encKeyPath       = root / "encryption.key";
-    m_transportKeyPath = root / "transport.key";
+    m_rcPath           = root / our_rc_filename;
+    m_idKeyPath        = root / our_identity_filename;
+    m_encKeyPath       = root / our_enc_key_filename;
+    m_transportKeyPath = root / our_transport_key_filename;
 
     m_usingLokid = config.lokid.whitelistRouters;
     m_lokidRPCAddr = config.lokid.lokidRPCAddr;

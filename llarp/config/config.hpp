@@ -7,6 +7,7 @@
 #include <util/str.hpp>
 #include <config/ini.hpp>
 #include <config/definition.hpp>
+#include <constants/files.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -131,7 +132,7 @@ namespace llarp
   {
     bool usingSNSeed;
     bool whitelistRouters;
-    fs::path ident_keyfile = "identity.key"; // TODO: derive from [router]:data-dir
+    fs::path ident_keyfile;
     std::string lokidRPCAddr;
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
@@ -210,15 +211,6 @@ namespace llarp
     std::string
     generateBaseRouterConfig(fs::path defaultDataDir);
   };
-
-  fs::path
-  GetDefaultDataDir();
-
-  fs::path
-  GetDefaultConfigFilename();
-
-  fs::path
-  GetDefaultConfigPath();
 
   void
   ensureConfig(const fs::path& defaultDataDir,

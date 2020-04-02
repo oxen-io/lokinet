@@ -2,6 +2,7 @@
 
 #include <config/ini.hpp>
 #include <constants/defaults.hpp>
+#include <constants/files.hpp>
 #include <net/net.hpp>
 #include <router_contact.hpp>
 #include <stdexcept>
@@ -307,7 +308,7 @@ namespace llarp
     constexpr bool DefaultWhitelistRouters = false;
     constexpr auto DefaultLokidRPCAddr = "127.0.0.1:22023";
 
-    conf.defineOption<std::string>("lokid", "service-node-seed", false, "",
+    conf.defineOption<std::string>("lokid", "service-node-seed", false, our_identity_filename,
       [this](std::string arg) {
        if (not arg.empty())
        {
@@ -383,7 +384,7 @@ namespace llarp
         m_keyfile = arg;
       });
 
-    conf.defineOption<bool>("snapp", "keyfile", false, ReachableDefault,
+    conf.defineOption<bool>("snapp", "reachable", false, ReachableDefault,
                             AssignmentAcceptor(m_reachable));
 
     conf.defineOption<int>("snapp", "hops", false, HopsDefault,
@@ -493,29 +494,6 @@ namespace llarp
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
     logging.defineConfigOptions(conf, params);
-  }
-
-  fs::path
-  GetDefaultDataDir()
-  {
-#ifdef _WIN32
-    const fs::path homedir = fs::path(getenv("APPDATA"));
-#else
-    const fs::path homedir = fs::path(getenv("HOME"));
-#endif
-    return homedir / fs::path(".lokinet/");
-  }
-
-  fs::path
-  GetDefaultConfigFilename()
-  {
-    return fs::path("lokinet.ini");
-  }
-
-  fs::path
-  GetDefaultConfigPath()
-  {
-    return GetDefaultDataDir() / GetDefaultConfigFilename();
   }
 
   void

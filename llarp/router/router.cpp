@@ -3,6 +3,7 @@
 
 #include <config/config.hpp>
 #include <constants/proto.hpp>
+#include <constants/files.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <crypto/crypto.hpp>
 #include <dht/context.hpp>
@@ -395,9 +396,9 @@ namespace llarp
         conf->router.m_maxConnectedRouters;
     _outboundSessionMaker.minConnectedRouters =
         conf->router.m_minConnectedRouters;
-    encryption_keyfile = conf->router.m_dataDir / "encryption.key";
-    our_rc_file        = conf->router.m_dataDir / "rc.signed";
-    transport_keyfile  = conf->router.m_dataDir / "transport.key";
+    encryption_keyfile = conf->router.m_dataDir / our_enc_key_filename;
+    our_rc_file        = conf->router.m_dataDir / our_rc_filename;
+    transport_keyfile  = conf->router.m_dataDir / our_transport_key_filename;
     addrInfo           = conf->router.m_addrInfo;
     publicOverride     = conf->router.m_publicOverride;
     ip4addr            = conf->router.m_ip4addr;
@@ -534,7 +535,7 @@ namespace llarp
 
     if (!usingSNSeed)
     {
-      ident_keyfile = conf->router.m_dataDir / "identity.key";
+      ident_keyfile = conf->router.m_dataDir / our_identity_filename;
     }
 
     // create inbound links, if we are a service node
