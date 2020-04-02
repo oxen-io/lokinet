@@ -454,6 +454,24 @@ namespace llarp
     std::vector<fs::path> configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());
+
+    // if our conf had no bootstrap files specified, try the default location of
+    // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
+    if (configRouters.size() == 0)
+    {
+      // TODO: use constant
+      fs::path defaultBootstrapFile = conf->router.m_dataDir / "bootstrap.signed";
+      if (fs::exists(defaultBootstrapFile))
+        configRouters.push_back(defaultBootstrapFile);
+      else
+      {
+        LogError("No bootstrap files specified in config file, and the default");
+        LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
+        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap'");
+        throw std::runtime_error("No bootstrap files available.");
+      }
+    }
+
     BootstrapList b_list;
     for (const auto& router : configRouters)
     {
