@@ -119,25 +119,27 @@ install:
 
 ### Windows
 
-build (where `$ARCH` is your platform - `i686` or `x86_64`):
+windows builds are cross compiled from ubuntu linux
 
-    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake
-    $ git clone https://github.com/loki-project/loki-network.git
-    $ cd loki-network
-    $ mkdir -p build; cd build
-    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK_RUNTIME=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -G 'Unix Makefiles'
+build requirements:
 
-install (elevated) to `$PROGRAMFILES/lokinet` or `$ProgramFiles(x86)/lokinet`:
+* GNU Make
+* CMake
+* C++ 14 capable C++ compiler
+* gcovr (if generating test coverage with gcc)
+* libuv >= 1.27.0
+* libsodium >= 1.0.17
+* libcurl
+* nsis
+* cpack
 
-    $ make install
+setup:
+ 
+    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis
+    
+building:
 
-if cross-compiling, install mingw-w64 from your distro's package manager, or [build from source](https://sourceforge.net/p/mingw-w64/wiki2/Cross%20Win32%20and%20Win64%20compiler/), then:
-
-    $ mkdir -p build; cd build
-    $ export COMPILER=clang # if using clang for windows
-    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK_RUNTIME=ON -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
-
-this will create a static binary that can be installed anywhere, with no other dependency other than libc (minimum v6.1)
+    $ make windows-release DOWNLOAD_SODIUM=ON STATIC_LINK=ON
 
 ### Solaris 2.10+
 

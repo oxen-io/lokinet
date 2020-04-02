@@ -8,6 +8,15 @@ endif()
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX)
 
+set(LLARP_VERSION_MAJOR 0)
+set(LLARP_VERSION_MINOR 7)
+set(LLARP_VERSION_PATCH 0)
+
+add_definitions(-DLLARP_VERSION_MAJOR=${LLARP_VERSION_MAJOR})
+add_definitions(-DLLARP_VERSION_MINOR=${LLARP_VERSION_MINOR})
+add_definitions(-DLLARP_VERSION_PATCH=${LLARP_VERSION_PATCH})
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -45,12 +54,6 @@ if (STATIC_LINK)
   message(STATUS "setting static library suffix search")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
-# No in-source building
-include(MacroEnsureOutOfSourceBuild)
-macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
-
 include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
@@ -62,9 +65,16 @@ else()
 endif(MSVC_VERSION)
 
 include(cmake/solaris.cmake)
-include(cmake/unix.cmake)
 include(cmake/win32.cmake)
-# try detecting the target arch and set the flags needed here
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+# No in-source building
+include(MacroEnsureOutOfSourceBuild)
+macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
+
+include(cmake/unix.cmake)
+
 if(NOT WIN32)
   if(IOS OR ANDROID)
     set(NON_PC_TARGET ON)
@@ -223,7 +233,7 @@ endif(JEMALLOC)
 
 
 find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
+if(PKG_CONFIG_FOUND AND LINUX)
     pkg_check_modules(SD libsystemd)
     # Default WITH_SYSTEMD to true if we found it
     option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
@@ -298,3 +308,5 @@ if (NOT SHADOW)
     add_subdirectory(jni)
   endif(ANDROID)
 endif()
+
+include(cmake/installer.cmake)
