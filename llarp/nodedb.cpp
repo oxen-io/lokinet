@@ -453,10 +453,15 @@ llarp_nodedb::ensure_dir(const char* dir)
     fs::create_directory(path, ec);
 
   if (ec)
+  {
+    LogWarn("Could not create nodedb directory ", dir, ": ", ec.message());
     return false;
+  }
 
   if (!fs::is_directory(path))
+    LogWarn("Nodedb dir ", dir, " must be a directory");
     return false;
+  }
 
   for (const char& ch : skiplist_subdirs)
   {
@@ -470,7 +475,10 @@ llarp_nodedb::ensure_dir(const char* dir)
     fs::path sub = path / p;
     fs::create_directory(sub, ec);
     if (ec)
+    {
+      LogWarn("Could not create nodedb subdir ", sub, ": ", ec.message());
       return false;
+    }
   }
   return true;
 }
