@@ -1,6 +1,6 @@
 BasedOnStyle: Google
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: 'true'
+AlignConsecutiveAssignments: 'false'
 AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlinesLeft: 'true'
 AlignOperands: 'false'
@@ -19,14 +19,17 @@ BreakBeforeTernaryOperators: 'true'
 BreakConstructorInitializersBeforeComma: 'true'
 Cpp11BracedListStyle: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
-Language: Cpp
 NamespaceIndentation: All
 PenaltyBreakString: '3'
-SpaceBeforeParens: Never
-SpacesInAngles: 'true'
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: 'false'
 SpacesInContainerLiterals: 'false'
 SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 Standard: Cpp11
 UseTab: Never
 SortIncludes: false
+ColumnLimit: 100
+
+# when wrapping function calls/declarations, force each parameter to have its own line
+BinPackParameters: 'true'
