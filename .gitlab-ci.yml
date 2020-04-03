@@ -73,7 +73,7 @@ build:win32:
   before_script:
     - apt-get update && apt-get install -y build-essential cmake nsis git g++-mingw-w64
   script:
-    - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=ON WINDOWS_ARCH=32 make windows
+    - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=ON WINDOWS_ARCH=64 make windows
   artifacts:
     paths:
       - build/lokinet-*.exe
