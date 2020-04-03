@@ -23,3 +23,6 @@
 	path = external/pybind11
 	url = https://github.com/pybind/pybind11
 	branch = stable
+[submodule "external/clang-format-hooks"]
+	path = external/clang-format-hooks
+	url = https://github.com/barisione/clang-format-hooks/
