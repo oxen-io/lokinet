@@ -1,2 +1,3 @@
 # macos specific cpack stuff goes here
-set(CPACK_PRODUCTBUILD_RESOURCES_DIR ${CMAKE_SOURCE_DIR}/osx-setup/resources)
+set(CPACK_GENERATOR "productbuild")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
