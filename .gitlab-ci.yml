@@ -78,6 +78,17 @@ build:win32:
     paths:
       - build/lokinet-*.exe
 
+build:macos:
+  tags:
+    - osx
+  stage: build
+  script:
+    - IS_NOTIFICATION=1 STATIC_LINK=ON DOWNLOAD_SODIUM=ON make mac
+  artifacts:
+    paths:
+      - build/*.pkg
+
+
 # needs libuv and libcurl
 #build:freebsd:
 #  tags:
