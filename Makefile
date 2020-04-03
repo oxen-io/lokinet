@@ -291,7 +291,11 @@ windows-release: windows-release-configure
 
 windows: windows-release
 
-mac-release: release-configure
+mac-release-configure: $(LIBUV_PREFIX)
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
+
+mac-release: mac-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)' package
 
 mac: mac-release

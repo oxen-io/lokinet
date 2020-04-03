@@ -82,10 +82,8 @@ build:macos:
   tags:
     - osx
   stage: build
-  before_script:
-    - brew install libuv libsodium
   script:
-    - IS_NOTIFICATION=1 make mac
+    - IS_NOTIFICATION=1 STATIC_LINK=ON DOWNLOAD_SODIUM=ON make mac
   artifacts:
     paths:
       - build/*.pkg
