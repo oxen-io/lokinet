@@ -78,6 +78,19 @@ build:win32:
     paths:
       - build/lokinet-*.exe
 
+build:macos:
+  tags:
+    - osx
+  stage: build
+  before_script:
+    - brew install libuv libsodium
+  script:
+    - IS_NOTIFICATION=1 make mac
+  artifacts:
+    paths:
+      - build/*.pkg
+
+
 # needs libuv and libcurl
 #build:freebsd:
 #  tags:
