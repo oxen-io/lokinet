@@ -15,7 +15,7 @@ namespace libuv
 {
   struct Loop final : public llarp_ev_loop
   {
-    typedef std::function< void(void) > Callback;
+    typedef std::function<void(void)> Callback;
 
     struct PendingTimer
     {
@@ -49,8 +49,7 @@ namespace libuv
     tick(int ms) override;
 
     uint32_t
-    call_after_delay(llarp_time_t delay_ms,
-                     std::function< void(void) > callback) override;
+    call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void
     cancel_delayed_call(uint32_t job_id) override;
@@ -108,7 +107,7 @@ namespace libuv
     }
 
     bool
-    add_ticker(std::function< void(void) > ticker) override;
+    add_ticker(std::function<void(void)> ticker) override;
 
     /// register event listener
     bool
@@ -118,36 +117,36 @@ namespace libuv
     }
 
     void
-    set_logic(std::shared_ptr< llarp::Logic > l) override
+    set_logic(std::shared_ptr<llarp::Logic> l) override
     {
       m_Logic = l;
       m_Logic->SetQueuer(llarp::util::memFn(&Loop::call_soon, this));
     }
 
-    std::shared_ptr< llarp::Logic > m_Logic;
+    std::shared_ptr<llarp::Logic> m_Logic;
 
     void
-    call_soon(std::function< void(void) > f) override;
+    call_soon(std::function<void(void)> f) override;
 
    private:
     uv_loop_t m_Impl;
     uv_timer_t* m_TickTimer;
     uv_async_t m_WakeUp;
-    std::atomic< bool > m_Run;
+    std::atomic<bool> m_Run;
     uv_async_t m_LogicCaller;
-    using AtomicQueue_t = llarp::thread::Queue< std::function< void(void) > >;
+    using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
     AtomicQueue_t m_LogicCalls;
 
 #ifdef LOKINET_DEBUG
     uint64_t last_time;
     uint64_t loop_run_count;
 #endif
-    std::atomic< uint32_t > m_nextID;
+    std::atomic<uint32_t> m_nextID;
 
-    std::map< uint32_t, Callback > m_pendingCalls;
+    std::map<uint32_t, Callback> m_pendingCalls;
 
-    llarp::thread::Queue< PendingTimer > m_timerQueue;
-    llarp::thread::Queue< uint32_t > m_timerCancelQueue;
+    llarp::thread::Queue<PendingTimer> m_timerQueue;
+    llarp::thread::Queue<uint32_t> m_timerCancelQueue;
   };
 
 }  // namespace libuv

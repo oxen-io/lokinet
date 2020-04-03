@@ -20,11 +20,9 @@ namespace llarp
     /// default path lifetime in ms
     constexpr std::chrono::milliseconds default_lifetime = 20min;
     /// minimum into lifetime we will advertise
-    constexpr std::chrono::milliseconds min_intro_lifetime =
-        default_lifetime / 2;
+    constexpr std::chrono::milliseconds min_intro_lifetime = default_lifetime / 2;
     /// spacing frequency at which we try to build paths for introductions
-    constexpr std::chrono::milliseconds intro_path_spread =
-        default_lifetime / 5;
+    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / 5;
     /// Minimum paths to keep around for intros; mainly used at startup (the
     /// spread, above, should be able to maintain more than this number of paths
     /// normally once things are going).

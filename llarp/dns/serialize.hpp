@@ -24,10 +24,10 @@ namespace llarp
     };
 
     bool
-    EncodeRData(llarp_buffer_t* buf, const std::vector< byte_t >& rdata);
+    EncodeRData(llarp_buffer_t* buf, const std::vector<byte_t>& rdata);
 
     bool
-    DecodeRData(llarp_buffer_t* buf, std::vector< byte_t >& rdata);
+    DecodeRData(llarp_buffer_t* buf, std::vector<byte_t>& rdata);
 
   }  // namespace dns
 }  // namespace llarp

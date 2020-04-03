@@ -14,7 +14,7 @@ extern "C"
    * Signature: ()Ljava/nio/Buffer;
    */
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_Obtain(JNIEnv *, jclass);
+  Java_network_loki_lokinet_LokinetDaemon_Obtain(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -22,7 +22,7 @@ extern "C"
    * Signature: (Ljava/nio/Buffer;)V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_Free(JNIEnv *, jclass, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_Free(JNIEnv*, jclass, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -30,7 +30,7 @@ extern "C"
    * Signature: (Lnetwork/loki/lokinet/LokinetConfig;)Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_Configure(JNIEnv *, jobject, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_Configure(JNIEnv*, jobject, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -38,7 +38,7 @@ extern "C"
    * Signature: ()I
    */
   JNIEXPORT jint JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_Mainloop(JNIEnv *, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_Mainloop(JNIEnv*, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -46,7 +46,7 @@ extern "C"
    * Signature: ()Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_IsRunning(JNIEnv *, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_IsRunning(JNIEnv*, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -54,7 +54,7 @@ extern "C"
    * Signature: ()Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_Stop(JNIEnv *, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_Stop(JNIEnv*, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
@@ -62,7 +62,7 @@ extern "C"
    * Signature: (Lnetwork/loki/lokinet/LokinetVPN;)Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv *, jobject, jobject);
+  Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv*, jobject, jobject);
 
 #ifdef __cplusplus
 }

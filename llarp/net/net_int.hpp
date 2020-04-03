@@ -23,7 +23,7 @@
 
 namespace llarp
 {
-  template < typename UInt_t >
+  template <typename UInt_t>
   struct huint_t
   {
     UInt_t h;
@@ -103,7 +103,7 @@ namespace llarp
       return h == x.h;
     }
 
-    using V6Container = std::vector< uint8_t >;
+    using V6Container = std::vector<uint8_t>;
     void
     ToV6(V6Container& c);
 
@@ -120,11 +120,11 @@ namespace llarp
     }
   };
 
-  using huint32_t  = huint_t< uint32_t >;
-  using huint16_t  = huint_t< uint16_t >;
-  using huint128_t = huint_t< llarp::uint128_t >;
+  using huint32_t = huint_t<uint32_t>;
+  using huint16_t = huint_t<uint16_t>;
+  using huint128_t = huint_t<llarp::uint128_t>;
 
-  template < typename UInt_t >
+  template <typename UInt_t>
   struct nuint_t
   {
     UInt_t n;
@@ -177,7 +177,7 @@ namespace llarp
       return n == x.n;
     }
 
-    using V6Container = std::vector< uint8_t >;
+    using V6Container = std::vector<uint8_t>;
     void
     ToV6(V6Container& c);
 
@@ -191,9 +191,9 @@ namespace llarp
     }
   };
 
-  using nuint32_t  = nuint_t< uint32_t >;
-  using nuint16_t  = nuint_t< uint16_t >;
-  using nuint128_t = nuint_t< llarp::uint128_t >;
+  using nuint32_t = nuint_t<uint32_t>;
+  using nuint16_t = nuint_t<uint16_t>;
+  using nuint128_t = nuint_t<llarp::uint128_t>;
 
   static inline nuint32_t
   xhtonl(huint32_t x)
@@ -222,23 +222,23 @@ namespace llarp
 
 namespace std
 {
-  template < typename UInt_t >
-  struct hash< llarp::nuint_t< UInt_t > >
+  template <typename UInt_t>
+  struct hash<llarp::nuint_t<UInt_t>>
   {
     size_t
-    operator()(const llarp::nuint_t< UInt_t >& x) const
+    operator()(const llarp::nuint_t<UInt_t>& x) const
     {
-      return std::hash< UInt_t >{}(x.n);
+      return std::hash<UInt_t>{}(x.n);
     }
   };
 
-  template < typename UInt_t >
-  struct hash< llarp::huint_t< UInt_t > >
+  template <typename UInt_t>
+  struct hash<llarp::huint_t<UInt_t>>
   {
     size_t
-    operator()(const llarp::huint_t< UInt_t >& x) const
+    operator()(const llarp::huint_t<UInt_t>& x) const
     {
-      return std::hash< UInt_t >{}(x.h);
+      return std::hash<UInt_t>{}(x.h);
     }
   };
 }  // namespace std

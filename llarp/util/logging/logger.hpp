@@ -83,7 +83,7 @@ namespace llarp
   struct LogContext
   {
     LogContext();
-    LogLevel curLevel     = eLogInfo;
+    LogLevel curLevel = eLogInfo;
     LogLevel startupLevel = eLogInfo;
     LogLevel runtimeLevel = eLogInfo;
     ILogStream_ptr logStream;
@@ -105,15 +105,15 @@ namespace llarp
   SetLogLevel(LogLevel lvl);
 
   /** internal */
-  template < typename... TArgs >
+  template <typename... TArgs>
   inline static void
   _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
     auto& log = LogContext::Instance();
-    if(log.curLevel > lvl)
+    if (log.curLevel > lvl)
       return;
     std::stringstream ss;
-    LogAppend(ss, std::forward< TArgs >(args)...);
+    LogAppend(ss, std::forward<TArgs>(args)...);
     log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
   }
   /*
@@ -255,16 +255,11 @@ namespace llarp
 #define LogWarnTag(tag, ...) _Log(llarp::eLogWarn, tag, __LINE__, __VA_ARGS__)
 #define LogErrorTag(tag, ...) _Log(llarp::eLogError, tag, __LINE__, __VA_ARGS__)
 
-#define LogTraceExplicit(tag, line, ...) \
-  _Log(llarp::eLogTrace, tag, line, __VA_ARGS__)
-#define LogDebugExplicit(tag, line, ...) \
-  _Log(llarp::eLogDebug, tag, line, __VA_ARGS__)
-#define LogInfoExplicit(tag, line, ...) \
-  _Log(llarp::eLogInfo, tag, line __VA_ARGS__)
-#define LogWarnExplicit(tag, line, ...) \
-  _Log(llarp::eLogWarn, tag, line, __VA_ARGS__)
-#define LogErrorExplicit(tag, line, ...) \
-  _Log(llarp::eLogError, tag, line, __VA_ARGS__)
+#define LogTraceExplicit(tag, line, ...) _Log(llarp::eLogTrace, tag, line, __VA_ARGS__)
+#define LogDebugExplicit(tag, line, ...) _Log(llarp::eLogDebug, tag, line, __VA_ARGS__)
+#define LogInfoExplicit(tag, line, ...) _Log(llarp::eLogInfo, tag, line __VA_ARGS__)
+#define LogWarnExplicit(tag, line, ...) _Log(llarp::eLogWarn, tag, line, __VA_ARGS__)
+#define LogErrorExplicit(tag, line, ...) _Log(llarp::eLogError, tag, line, __VA_ARGS__)
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"

@@ -12,7 +12,7 @@ namespace llarp
       /// H
       ShortHash m_Hash;
       /// K
-      std::vector< RouterID > m_Keys;
+      std::vector<RouterID> m_Keys;
       /// N
       uint64_t m_NumberOfEntries;
       /// O

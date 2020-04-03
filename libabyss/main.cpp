@@ -13,7 +13,7 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  nonstd::optional< Response >
+  nonstd::optional<Response>
   HandleJSONRPC(Method_t method, const Params& /*params*/) override
   {
     llarp::LogInfo("method: ", method);
@@ -23,14 +23,14 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
 
 struct DemoCall : public abyss::http::IRPCClientHandler
 {
-  std::function< void(void) > m_Callback;
-  std::shared_ptr< llarp::Logic > m_Logic;
+  std::function<void(void)> m_Callback;
+  std::shared_ptr<llarp::Logic> m_Logic;
 
-  DemoCall(abyss::http::ConnImpl* impl, std::shared_ptr< llarp::Logic > logic,
-           std::function< void(void) > callback)
-      : abyss::http::IRPCClientHandler(impl)
-      , m_Callback(callback)
-      , m_Logic(logic)
+  DemoCall(
+      abyss::http::ConnImpl* impl,
+      std::shared_ptr<llarp::Logic> logic,
+      std::function<void(void)> callback)
+      : abyss::http::IRPCClientHandler(impl), m_Callback(callback), m_Logic(logic)
   {
     llarp::LogInfo("new call");
   }
@@ -57,9 +57,9 @@ struct DemoCall : public abyss::http::IRPCClientHandler
 struct DemoClient : public abyss::http::JSONRPC
 {
   llarp_ev_loop_ptr m_Loop;
-  std::shared_ptr< llarp::Logic > m_Logic;
+  std::shared_ptr<llarp::Logic> m_Logic;
 
-  DemoClient(llarp_ev_loop_ptr l, std::shared_ptr< llarp::Logic > logic)
+  DemoClient(llarp_ev_loop_ptr l, std::shared_ptr<llarp::Logic> logic)
       : abyss::http::JSONRPC(), m_Loop(std::move(l)), m_Logic(logic)
   {
   }
@@ -73,8 +73,10 @@ struct DemoClient : public abyss::http::JSONRPC
   void
   DoDemoRequest()
   {
-    QueueRPC("test", nlohmann::json::object(),
-             std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
+    QueueRPC(
+        "test",
+        nlohmann::json::object(),
+        std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
     Flush();
   }
 };
@@ -104,7 +106,7 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
   WSADATA wsockd;
   int err;
   err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
-  if(err)
+  if (err)
   {
     perror("Failed to start Windows Sockets");
     return err;
@@ -118,18 +120,18 @@ main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
   // Now that libuv is the single non-Windows event loop impl, we can
   // go back to using the normal function
   llarp_ev_loop_ptr loop = llarp_make_ev_loop();
-  auto logic             = std::make_shared< llarp::Logic >();
+  auto logic = std::make_shared<llarp::Logic>();
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  addr.sin_port        = htons(1222);
-  addr.sin_family      = AF_INET;
+  addr.sin_port = htons(1222);
+  addr.sin_family = AF_INET;
   DemoServer serv;
   DemoClient client(loop, logic);
   llarp::Addr a(addr);
-  while(true)
+  while (true)
   {
     llarp::LogInfo("bind to ", a);
-    if(serv.ServeAsync(loop, logic, a))
+    if (serv.ServeAsync(loop, logic, a))
     {
       client.RunAsync(loop, a.ToString());
       client.DoDemoRequest();

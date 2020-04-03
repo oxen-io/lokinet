@@ -16,11 +16,10 @@ struct llarp_threadpool;
 #ifdef __cplusplus
 struct llarp_threadpool
 {
-  std::unique_ptr< llarp::thread::ThreadPool > impl;
+  std::unique_ptr<llarp::thread::ThreadPool> impl;
 
-  llarp_threadpool(int workers, llarp::string_view name,
-                   size_t queueLength = size_t{1024 * 8})
-      : impl(std::make_unique< llarp::thread::ThreadPool >(
+  llarp_threadpool(int workers, llarp::string_view name, size_t queueLength = size_t{1024 * 8})
+      : impl(std::make_unique<llarp::thread::ThreadPool>(
           workers, std::max(queueLength, size_t{32}), name))
   {
   }
@@ -43,52 +42,50 @@ struct llarp_threadpool
 };
 #endif
 
-struct llarp_threadpool *
-llarp_init_threadpool(int workers, const char *name, size_t queueLength);
+struct llarp_threadpool*
+llarp_init_threadpool(int workers, const char* name, size_t queueLength);
 
 void
-llarp_free_threadpool(struct llarp_threadpool **tp);
+llarp_free_threadpool(struct llarp_threadpool** tp);
 
-using llarp_thread_work_func = void (*)(void *);
+using llarp_thread_work_func = void (*)(void*);
 
 /** job to be done in worker thread */
 struct llarp_thread_job
 {
 #ifdef __cplusplus
   /** user data to pass to work function */
-  void *user{nullptr};
+  void* user{nullptr};
   /** called in threadpool worker thread */
   llarp_thread_work_func work{nullptr};
 
-  llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
+  llarp_thread_job(void* u, llarp_thread_work_func w) : user(u), work(w)
   {
   }
 
   llarp_thread_job() = default;
 #else
-  void *user;
+  void* user;
   llarp_thread_work_func work;
 #endif
 };
 
 void
-llarp_threadpool_tick(struct llarp_threadpool *tp);
+llarp_threadpool_tick(struct llarp_threadpool* tp);
 
 bool
-llarp_threadpool_queue_job(struct llarp_threadpool *tp,
-                           struct llarp_thread_job j);
+llarp_threadpool_queue_job(struct llarp_threadpool* tp, struct llarp_thread_job j);
 
 #ifdef __cplusplus
 
 bool
-llarp_threadpool_queue_job(struct llarp_threadpool *tp,
-                           std::function< void(void) > func);
+llarp_threadpool_queue_job(struct llarp_threadpool* tp, std::function<void(void)> func);
 
 #endif
 
 void
-llarp_threadpool_start(struct llarp_threadpool *tp);
+llarp_threadpool_start(struct llarp_threadpool* tp);
 void
-llarp_threadpool_stop(struct llarp_threadpool *tp);
+llarp_threadpool_stop(struct llarp_threadpool* tp);
 
 #endif

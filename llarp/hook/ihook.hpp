@@ -13,7 +13,7 @@ namespace llarp
     {
       virtual ~IBackend() = 0;
       virtual void
-      NotifyAsync(std::unordered_map< std::string, std::string > params) = 0;
+      NotifyAsync(std::unordered_map<std::string, std::string> params) = 0;
 
       /// start backend
       virtual bool
@@ -24,7 +24,7 @@ namespace llarp
       Stop() = 0;
     };
 
-    using Backend_ptr = std::shared_ptr< IBackend >;
+    using Backend_ptr = std::shared_ptr<IBackend>;
 
     inline IBackend::~IBackend() = default;
   }  // namespace hooks

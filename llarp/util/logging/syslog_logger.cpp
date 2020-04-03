@@ -7,19 +7,23 @@
 namespace llarp
 {
   void
-  SysLogStream::PreLog(std::stringstream& ss, LogLevel lvl, const char* fname,
-                       int lineno, const std::string& nodename) const
+  SysLogStream::PreLog(
+      std::stringstream& ss,
+      LogLevel lvl,
+      const char* fname,
+      int lineno,
+      const std::string& nodename) const
   {
     ss << "[" << LogLevelToString(lvl) << "] ";
     ss << "[" << nodename << "]"
-       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
-       << ":" << lineno << "\t";
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "\t";
   }
 
   void
   SysLogStream::Print(LogLevel lvl, const char*, const std::string& msg)
   {
-    switch(lvl)
+    switch (lvl)
     {
       case eLogNone:
         return;

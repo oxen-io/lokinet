@@ -27,7 +27,7 @@ extern "C"
 namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
-  template < size_t sz >
+  template <size_t sz>
 #ifdef _WIN32
   // We CANNOT align on a 128-bit boundary, malloc(3C) on win32
   // only hands out 64-bit aligned pointers
@@ -36,13 +36,14 @@ namespace llarp
   struct alignas(std::max_align_t) AlignedBuffer
 #endif
   {
-    static_assert(sz >= 8,
-                  "AlignedBuffer cannot be used with buffers smaller than 8 "
-                  "bytes");
+    static_assert(
+        sz >= 8,
+        "AlignedBuffer cannot be used with buffers smaller than 8 "
+        "bytes");
 
     static constexpr size_t SIZE = sz;
 
-    using Data = std::array< byte_t, SIZE >;
+    using Data = std::array<byte_t, SIZE>;
 
     AlignedBuffer()
     {
@@ -74,10 +75,10 @@ namespace llarp
     }
 
     /// bitwise NOT
-    AlignedBuffer< sz >
+    AlignedBuffer<sz>
     operator~() const
     {
-      AlignedBuffer< sz > ret;
+      AlignedBuffer<sz> ret;
       std::transform(begin(), end(), ret.begin(), [](byte_t a) { return ~a; });
 
       return ret;
@@ -122,9 +123,8 @@ namespace llarp
     AlignedBuffer
     operator^(const AlignedBuffer& other) const
     {
-      AlignedBuffer< sz > ret;
-      std::transform(begin(), end(), other.begin(), ret.begin(),
-                     std::bit_xor< byte_t >());
+      AlignedBuffer<sz> ret;
+      std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<byte_t>());
       return ret;
     }
 
@@ -132,7 +132,7 @@ namespace llarp
     operator^=(const AlignedBuffer& other)
     {
       // Mutate in place instead.
-      for(size_t i = 0; i < sz; ++i)
+      for (size_t i = 0; i < sz; ++i)
       {
         m_data[i] ^= other.m_data[i];
       }
@@ -239,11 +239,11 @@ namespace llarp
     BDecode(llarp_buffer_t* buf)
     {
       llarp_buffer_t strbuf;
-      if(!bencode_read_string(buf, &strbuf))
+      if (!bencode_read_string(buf, &strbuf))
       {
         return false;
       }
-      if(strbuf.sz != sz)
+      if (strbuf.sz != sz)
       {
         llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;

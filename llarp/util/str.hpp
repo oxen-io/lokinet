@@ -6,7 +6,7 @@
 namespace llarp
 {
   bool
-  StrEq(const char *s1, const char *s2);
+  StrEq(const char* s1, const char* s2);
 
   bool
   IsFalseValue(string_view str);

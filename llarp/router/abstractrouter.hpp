@@ -62,74 +62,73 @@ namespace llarp
     virtual ~AbstractRouter() = default;
 
     virtual bool
-    HandleRecvLinkMessageBuffer(ILinkSession *from,
-                                const llarp_buffer_t &msg) = 0;
+    HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
 
-    virtual std::shared_ptr< Logic >
+    virtual std::shared_ptr<Logic>
     logic() const = 0;
 
-    virtual llarp_dht_context *
+    virtual llarp_dht_context*
     dht() const = 0;
 
-    virtual llarp_nodedb *
+    virtual llarp_nodedb*
     nodedb() const = 0;
 
-    virtual const path::PathContext &
+    virtual const path::PathContext&
     pathContext() const = 0;
 
-    virtual path::PathContext &
+    virtual path::PathContext&
     pathContext() = 0;
 
-    virtual const RouterContact &
+    virtual const RouterContact&
     rc() const = 0;
 
-    virtual exit::Context &
+    virtual exit::Context&
     exitContext() = 0;
 
-    virtual std::shared_ptr< KeyManager >
+    virtual std::shared_ptr<KeyManager>
     keyManager() const = 0;
 
-    virtual const SecretKey &
+    virtual const SecretKey&
     identity() const = 0;
 
-    virtual const SecretKey &
+    virtual const SecretKey&
     encryption() const = 0;
 
-    virtual Profiling &
+    virtual Profiling&
     routerProfiling() = 0;
 
     virtual llarp_ev_loop_ptr
     netloop() const = 0;
 
-    virtual std::shared_ptr< thread::ThreadPool >
+    virtual std::shared_ptr<thread::ThreadPool>
     threadpool() = 0;
 
-    virtual std::shared_ptr< thread::ThreadPool >
+    virtual std::shared_ptr<thread::ThreadPool>
     diskworker() = 0;
 
-    virtual service::Context &
+    virtual service::Context&
     hiddenServiceContext() = 0;
 
-    virtual const service::Context &
+    virtual const service::Context&
     hiddenServiceContext() const = 0;
 
-    virtual IOutboundMessageHandler &
+    virtual IOutboundMessageHandler&
     outboundMessageHandler() = 0;
 
-    virtual IOutboundSessionMaker &
+    virtual IOutboundSessionMaker&
     outboundSessionMaker() = 0;
 
-    virtual ILinkManager &
+    virtual ILinkManager&
     linkManager() = 0;
 
-    virtual I_RCLookupHandler &
+    virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
 
     virtual bool
-    Sign(Signature &sig, const llarp_buffer_t &buf) const = 0;
+    Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(Config *conf, llarp_nodedb *nodedb) = 0;
+    Configure(Config* conf, llarp_nodedb* nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
@@ -157,7 +156,7 @@ namespace llarp
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;
 
-    virtual const byte_t *
+    virtual const byte_t*
     pubkey() const = 0;
 
     /// connect to N random routers
@@ -165,7 +164,7 @@ namespace llarp
     ConnectToRandomRouters(int N) = 0;
     /// inject configuration and reconfigure router
     virtual bool
-    Reconfigure(Config *conf) = 0;
+    Reconfigure(Config* conf) = 0;
 
     virtual bool
     TryConnectAsync(RouterContact rc, uint16_t tries) = 0;
@@ -174,7 +173,7 @@ namespace llarp
     /// return true on 100% valid
     /// return false if not 100% valid
     virtual bool
-    ValidateConfig(Config *conf) const = 0;
+    ValidateConfig(Config* conf) const = 0;
 
     /// called by link when a remote session has no more sessions open
     virtual void
@@ -189,19 +188,18 @@ namespace llarp
     Uptime() const = 0;
 
     virtual bool
-    GetRandomGoodRouter(RouterID &r) = 0;
+    GetRandomGoodRouter(RouterID& r) = 0;
 
     virtual bool
-    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
-                  SendStatusHandler handler = nullptr) = 0;
+    SendToOrQueue(
+        const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler = nullptr) = 0;
 
     virtual void
-    PersistSessionUntil(const RouterID &remote, llarp_time_t until) = 0;
+    PersistSessionUntil(const RouterID& remote, llarp_time_t until) = 0;
 
     virtual bool
-    ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
-                              routing::IMessageHandler *h,
-                              const PathID_t &rxid) = 0;
+    ParseRoutingMessageBuffer(
+        const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid) = 0;
 
     /// count the number of service nodes we are connected to
     virtual size_t
@@ -212,11 +210,10 @@ namespace llarp
     NumberOfConnectedClients() const = 0;
 
     virtual bool
-    GetRandomConnectedRouter(RouterContact &result) const = 0;
+    GetRandomConnectedRouter(RouterContact& result) const = 0;
 
     virtual void
-    HandleDHTLookupForExplore(RouterID remote,
-                              const std::vector< RouterContact > &results) = 0;
+    HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results) = 0;
 
     /// lookup router by pubkey
     /// if we are a service node this is done direct otherwise it's done via
@@ -233,20 +230,19 @@ namespace llarp
 
     /// set router's service node whitelist
     virtual void
-    SetRouterWhitelist(const std::vector< RouterID > &routers) = 0;
+    SetRouterWhitelist(const std::vector<RouterID>& routers) = 0;
 
     /// visit each connected link session
     virtual void
-    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
-                bool randomize) const = 0;
+    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const = 0;
 
     virtual bool
-    ConnectionToRouterAllowed(const RouterID &router) const = 0;
+    ConnectionToRouterAllowed(const RouterID& router) const = 0;
 
     /// return true if we have at least 1 session to this router in either
     /// direction
     virtual bool
-    HasSessionTo(const RouterID &router) const = 0;
+    HasSessionTo(const RouterID& router) const = 0;
 
     virtual uint32_t
     NextPathBuildNumber() = 0;

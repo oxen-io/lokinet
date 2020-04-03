@@ -11,21 +11,20 @@ namespace llarp
   {
     struct NlohmannJSONParser : public IParser
     {
-      NlohmannJSONParser(size_t contentSize)
-          : m_Buf(contentSize + 1), m_Offset(0)
+      NlohmannJSONParser(size_t contentSize) : m_Buf(contentSize + 1), m_Offset(0)
       {
         assert(contentSize != 0);
       }
 
-      std::vector< char > m_Buf;
+      std::vector<char> m_Buf;
       size_t m_Offset;
 
       bool
       FeedData(const char* buf, size_t sz) override
       {
-        if(sz == 0)
+        if (sz == 0)
           return true;
-        if(m_Offset + sz > m_Buf.size() - 1)
+        if (m_Offset + sz > m_Buf.size() - 1)
           return false;
         std::copy_n(buf, sz, m_Buf.data() + m_Offset);
         m_Offset += sz;
@@ -36,7 +35,7 @@ namespace llarp
       Result
       Parse(nlohmann::json& obj) const override
       {
-        if(m_Offset < m_Buf.size() - 1)
+        if (m_Offset < m_Buf.size() - 1)
           return eNeedData;
 
         try
@@ -44,7 +43,7 @@ namespace llarp
           obj = nlohmann::json::parse(m_Buf.data());
           return eDone;
         }
-        catch(const nlohmann::json::exception&)
+        catch (const nlohmann::json::exception&)
         {
           return eParseError;
         }

@@ -18,20 +18,19 @@ namespace llarp
     bool
     EncryptedIntroSet::BEncode(llarp_buffer_t* buf) const
     {
-      if(not bencode_start_dict(buf))
+      if (not bencode_start_dict(buf))
         return false;
-      if(not BEncodeWriteDictEntry("d", derivedSigningKey, buf))
+      if (not BEncodeWriteDictEntry("d", derivedSigningKey, buf))
         return false;
-      if(not BEncodeWriteDictEntry("n", nounce, buf))
+      if (not BEncodeWriteDictEntry("n", nounce, buf))
         return false;
-      if(not BEncodeWriteDictInt("s", signedAt.count(), buf))
+      if (not BEncodeWriteDictInt("s", signedAt.count(), buf))
         return false;
-      if(not bencode_write_bytestring(buf, "x", 1))
+      if (not bencode_write_bytestring(buf, "x", 1))
         return false;
-      if(not bencode_write_bytestring(buf, introsetPayload.data(),
-                                      introsetPayload.size()))
+      if (not bencode_write_bytestring(buf, introsetPayload.data(), introsetPayload.size()))
         return false;
-      if(not BEncodeWriteDictEntry("z", sig, buf))
+      if (not BEncodeWriteDictEntry("z", sig, buf))
         return false;
       return bencode_end(buf);
     }
@@ -40,27 +39,27 @@ namespace llarp
     EncryptedIntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(key == "x")
+      if (key == "x")
       {
         llarp_buffer_t strbuf;
-        if(not bencode_read_string(buf, &strbuf))
+        if (not bencode_read_string(buf, &strbuf))
           return false;
-        if(strbuf.sz > MAX_INTROSET_SIZE)
+        if (strbuf.sz > MAX_INTROSET_SIZE)
           return false;
         introsetPayload.resize(strbuf.sz);
         std::copy_n(strbuf.base, strbuf.sz, introsetPayload.data());
         return true;
       }
-      if(not BEncodeMaybeReadDictEntry("d", derivedSigningKey, read, key, buf))
+      if (not BEncodeMaybeReadDictEntry("d", derivedSigningKey, read, key, buf))
         return false;
 
-      if(not BEncodeMaybeReadDictEntry("n", nounce, read, key, buf))
+      if (not BEncodeMaybeReadDictEntry("n", nounce, read, key, buf))
         return false;
 
-      if(not BEncodeMaybeReadDictInt("s", signedAt, read, key, buf))
+      if (not BEncodeMaybeReadDictInt("s", signedAt, read, key, buf))
         return false;
 
-      if(not BEncodeMaybeReadDictEntry("z", sig, read, key, buf))
+      if (not BEncodeMaybeReadDictEntry("z", sig, read, key, buf))
         return false;
       return read;
     }
@@ -78,21 +77,20 @@ namespace llarp
       printer.printAttribute("d", derivedSigningKey);
       printer.printAttribute("n", nounce);
       printer.printAttribute("s", signedAt.count());
-      printer.printAttribute(
-          "x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
+      printer.printAttribute("x", "[" + std::to_string(introsetPayload.size()) + " bytes]");
       printer.printAttribute("z", sig);
       return out;
     }
 
-    nonstd::optional< IntroSet >
+    nonstd::optional<IntroSet>
     EncryptedIntroSet::MaybeDecrypt(const PubKey& root) const
     {
       SharedSecret k(root);
       IntroSet i;
-      std::vector< byte_t > payload = introsetPayload;
+      std::vector<byte_t> payload = introsetPayload;
       llarp_buffer_t buf(payload);
       CryptoManager::instance()->xchacha20(buf, k, nounce);
-      if(not i.BDecode(&buf))
+      if (not i.BDecode(&buf))
         return {};
       return i;
     }
@@ -107,16 +105,16 @@ namespace llarp
     EncryptedIntroSet::Sign(const PrivateKey& k)
     {
       signedAt = llarp::time_now_ms();
-      if(not k.toPublic(derivedSigningKey))
+      if (not k.toPublic(derivedSigningKey))
         return false;
       sig.Zero();
-      std::array< byte_t, MAX_INTROSET_SIZE + 128 > tmp;
+      std::array<byte_t, MAX_INTROSET_SIZE + 128> tmp;
       llarp_buffer_t buf(tmp);
-      if(not BEncode(&buf))
+      if (not BEncode(&buf))
         return false;
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
-      if(not CryptoManager::instance()->sign(sig, k, buf))
+      if (not CryptoManager::instance()->sign(sig, k, buf))
         return false;
       LogDebug("signed encrypted introset: ", *this);
       return true;
@@ -125,16 +123,16 @@ namespace llarp
     bool
     EncryptedIntroSet::Verify(llarp_time_t now) const
     {
-      if(IsExpired(now))
+      if (IsExpired(now))
         return false;
-      std::array< byte_t, MAX_INTROSET_SIZE + 128 > tmp;
+      std::array<byte_t, MAX_INTROSET_SIZE + 128> tmp;
       llarp_buffer_t buf(tmp);
       EncryptedIntroSet copy(*this);
       copy.sig.Zero();
-      if(not copy.BEncode(&buf))
+      if (not copy.BEncode(&buf))
         return false;
       LogDebug("verify encrypted introset: ", copy, " sig = ", sig);
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
       return CryptoManager::instance()->verify(derivedSigningKey, buf, sig);
     }
@@ -143,13 +141,14 @@ namespace llarp
     IntroSet::ExtractStatus() const
     {
       util::StatusObject obj{{"published", to_json(T)}};
-      std::vector< util::StatusObject > introsObjs;
-      std::transform(I.begin(), I.end(), std::back_inserter(introsObjs),
-                     [](const auto& intro) -> util::StatusObject {
-                       return intro.ExtractStatus();
-                     });
+      std::vector<util::StatusObject> introsObjs;
+      std::transform(
+          I.begin(),
+          I.end(),
+          std::back_inserter(introsObjs),
+          [](const auto& intro) -> util::StatusObject { return intro.ExtractStatus(); });
       obj["intros"] = introsObjs;
-      if(!topic.IsZero())
+      if (!topic.IsZero())
         obj["topic"] = topic.ToString();
       return obj;
     }
@@ -158,35 +157,35 @@ namespace llarp
     IntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
+      if (!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
         return false;
 
-      if(key == "i")
+      if (key == "i")
       {
         return BEncodeReadList(I, buf);
       }
-      if(!BEncodeMaybeReadDictEntry("k", K, read, key, buf))
+      if (!BEncodeMaybeReadDictEntry("k", K, read, key, buf))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
+      if (!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
         return false;
 
-      if(!BEncodeMaybeReadDictInt("t", T, read, key, buf))
+      if (!BEncodeMaybeReadDictInt("t", T, read, key, buf))
         return false;
 
-      if(key == "w")
+      if (key == "w")
       {
         W.emplace();
         return bencode_decode_dict(*W, buf);
       }
 
-      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+      if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("z", Z, read, key, buf))
+      if (!BEncodeMaybeReadDictEntry("z", Z, read, key, buf))
         return false;
 
-      if(read)
+      if (read)
         return true;
 
       return bencode_discard(buf);
@@ -195,40 +194,40 @@ namespace llarp
     bool
     IntroSet::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictEntry("a", A, buf))
+      if (!BEncodeWriteDictEntry("a", A, buf))
         return false;
       // start introduction list
-      if(!bencode_write_bytestring(buf, "i", 1))
+      if (!bencode_write_bytestring(buf, "i", 1))
         return false;
-      if(!BEncodeWriteList(I.begin(), I.end(), buf))
+      if (!BEncodeWriteList(I.begin(), I.end(), buf))
         return false;
       // end introduction list
 
       // pq pubkey
-      if(!BEncodeWriteDictEntry("k", K, buf))
+      if (!BEncodeWriteDictEntry("k", K, buf))
         return false;
 
       // topic tag
-      if(topic.ToString().size())
+      if (topic.ToString().size())
       {
-        if(!BEncodeWriteDictEntry("n", topic, buf))
+        if (!BEncodeWriteDictEntry("n", topic, buf))
           return false;
       }
       // Timestamp published
-      if(!BEncodeWriteDictInt("t", T.count(), buf))
+      if (!BEncodeWriteDictInt("t", T.count(), buf))
         return false;
 
       // write version
-      if(!BEncodeWriteDictInt("v", version, buf))
+      if (!BEncodeWriteDictInt("v", version, buf))
         return false;
-      if(W)
+      if (W)
       {
-        if(!BEncodeWriteDictEntry("w", *W, buf))
+        if (!BEncodeWriteDictEntry("w", *W, buf))
           return false;
       }
-      if(!BEncodeWriteDictEntry("z", Z, buf))
+      if (!BEncodeWriteDictEntry("z", Z, buf))
         return false;
 
       return bencode_end(buf);
@@ -237,8 +236,8 @@ namespace llarp
     bool
     IntroSet::HasExpiredIntros(llarp_time_t now) const
     {
-      for(const auto& i : I)
-        if(now >= i.expiresAt)
+      for (const auto& i : I)
+        if (now >= i.expiresAt)
           return true;
       return false;
     }
@@ -252,48 +251,46 @@ namespace llarp
     bool
     IntroSet::Verify(llarp_time_t now) const
     {
-      std::array< byte_t, MAX_INTROSET_SIZE > tmp;
+      std::array<byte_t, MAX_INTROSET_SIZE> tmp;
       llarp_buffer_t buf(tmp);
       IntroSet copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
       {
         return false;
       }
       // rewind and resize buffer
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
-      if(!A.Verify(buf, Z))
+      if (!A.Verify(buf, Z))
       {
         return false;
       }
       // validate PoW
-      if(W && !W->IsValid(now))
+      if (W && !W->IsValid(now))
       {
         return false;
       }
       // valid timestamps
       // add max clock skew
       now += MAX_INTROSET_TIME_DELTA;
-      for(const auto& intro : I)
+      for (const auto& intro : I)
       {
-        if(intro.expiresAt > now
-           && intro.expiresAt - now > path::default_lifetime)
+        if (intro.expiresAt > now && intro.expiresAt - now > path::default_lifetime)
         {
-          if(W
-             && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
+          if (W && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
           {
             return false;
           }
-          if(!W.has_value())
+          if (!W.has_value())
           {
             LogWarn("intro has too high expire time");
             return false;
           }
         }
       }
-      if(IsExpired(now))
+      if (IsExpired(now))
       {
         LogWarn("introset expired: ", *this);
         return false;
@@ -305,7 +302,7 @@ namespace llarp
     IntroSet::GetNewestIntroExpiration() const
     {
       llarp_time_t t = 0s;
-      for(const auto& intro : I)
+      for (const auto& intro : I)
         t = std::max(intro.expiresAt, t);
       return t;
     }
@@ -320,7 +317,7 @@ namespace llarp
 
       std::string _topic = topic.ToString();
 
-      if(!_topic.empty())
+      if (!_topic.empty())
       {
         printer.printAttribute("topic", _topic);
       }
@@ -330,7 +327,7 @@ namespace llarp
       }
 
       printer.printAttribute("T", T.count());
-      if(W)
+      if (W)
       {
         printer.printAttribute("W", W.value());
       }

@@ -6,21 +6,21 @@
 
 namespace llarp
 {
-  struct RouterID : public AlignedBuffer< 32 >
+  struct RouterID : public AlignedBuffer<32>
   {
     static constexpr size_t SIZE = 32;
 
-    using Data = std::array< byte_t, SIZE >;
+    using Data = std::array<byte_t, SIZE>;
 
     RouterID()
     {
     }
 
-    RouterID(const byte_t* buf) : AlignedBuffer< SIZE >(buf)
+    RouterID(const byte_t* buf) : AlignedBuffer<SIZE>(buf)
     {
     }
 
-    RouterID(const Data& data) : AlignedBuffer< SIZE >(data)
+    RouterID(const Data& data) : AlignedBuffer<SIZE>(data)
     {
     }
 
@@ -46,7 +46,7 @@ namespace llarp
       return out << id.ToString();
     }
 
-    using Hash = AlignedBuffer< SIZE >::Hash;
+    using Hash = AlignedBuffer<SIZE>::Hash;
   };
 
   inline bool

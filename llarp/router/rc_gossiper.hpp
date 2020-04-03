@@ -15,7 +15,7 @@ namespace llarp
     ~RCGossiper() override = default;
 
     bool
-    GossipRC(const RouterContact &rc) override;
+    GossipRC(const RouterContact& rc) override;
 
     void
     Decay(Time_t now) override;
@@ -24,16 +24,16 @@ namespace llarp
     ShouldGossipOurRC(Time_t now) const override;
 
     bool
-    IsOurRC(const RouterContact &rc) const override;
+    IsOurRC(const RouterContact& rc) const override;
 
     void
-    Init(ILinkManager *, const RouterID &);
+    Init(ILinkManager*, const RouterID&);
 
    private:
     RouterID m_OurRouterID;
-    Time_t m_LastGossipedOurRC  = 0s;
-    ILinkManager *m_LinkManager = nullptr;
-    util::DecayingHashSet< RouterID > m_Filter;
+    Time_t m_LastGossipedOurRC = 0s;
+    ILinkManager* m_LinkManager = nullptr;
+    util::DecayingHashSet<RouterID> m_Filter;
   };
 }  // namespace llarp
 

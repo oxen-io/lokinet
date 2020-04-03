@@ -23,9 +23,9 @@
 bool
 operator==(const sockaddr& a, const sockaddr& b)
 {
-  if(a.sa_family != b.sa_family)
+  if (a.sa_family != b.sa_family)
     return false;
-  switch(a.sa_family)
+  switch (a.sa_family)
   {
     case AF_INET:
       return *((const sockaddr_in*)&a) == *((const sockaddr_in*)&b);
@@ -79,9 +79,12 @@ operator==(const sockaddr_in6& a, const sockaddr_in6& b)
 // the inline monkey patch for downlevel platforms
 #ifndef _MSC_VER
 extern "C" DWORD FAR PASCAL
-_GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
-                      PIP_ADAPTER_ADDRESSES pAdapterAddresses,
-                      PULONG pOutBufLen);
+_GetAdaptersAddresses(
+    ULONG Family,
+    ULONG Flags,
+    PVOID Reserved,
+    PIP_ADAPTER_ADDRESSES pAdapterAddresses,
+    PULONG pOutBufLen);
 #endif
 
 // in any case, we still need to implement some form of
@@ -130,12 +133,12 @@ llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
   struct addrinfo hints;
   struct addrinfo* result = nullptr;
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family   = AF_UNSPEC;
+  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_TCP;
-  hints.ai_flags    = AI_NUMERICHOST;
-  const int status  = getaddrinfo(src, nullptr, &hints, &result);
-  if(!status)
+  hints.ai_flags = AI_NUMERICHOST;
+  const int status = getaddrinfo(src, nullptr, &hints, &result);
+  if (!status)
   {
     memcpy(dst, result->ai_addr, result->ai_addrlen);
     freeaddrinfo(result);
@@ -164,21 +167,21 @@ static bool
 _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 {
   DWORD dwRet;
-  ULONG ulOutBufLen             = DEFAULT_BUFFER_SIZE;
+  ULONG ulOutBufLen = DEFAULT_BUFFER_SIZE;
   PIP_ADAPTER_INFO pAdapterInfo = nullptr;
-  PIP_ADAPTER_INFO pAdapter     = nullptr;
+  PIP_ADAPTER_INFO pAdapter = nullptr;
 
   /* loop to handle interfaces coming online causing a buffer overflow
    * between first call to list buffer length and second call to enumerate.
    */
-  for(unsigned i = 3; i; i--)
+  for (unsigned i = 3; i; i--)
   {
 #ifdef DEBUG
     fprintf(stderr, "IP_ADAPTER_INFO buffer length %lu bytes.\n", ulOutBufLen);
 #endif
     pAdapterInfo = (IP_ADAPTER_INFO*)_llarp_nt_heap_alloc(ulOutBufLen);
-    dwRet        = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
-    if(ERROR_BUFFER_OVERFLOW == dwRet)
+    dwRet = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
+    if (ERROR_BUFFER_OVERFLOW == dwRet)
     {
       _llarp_nt_heap_free(pAdapterInfo);
       pAdapterInfo = nullptr;
@@ -189,13 +192,13 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
     }
   }
 
-  switch(dwRet)
+  switch (dwRet)
   {
     case ERROR_SUCCESS: /* NO_ERROR */
       break;
     case ERROR_BUFFER_OVERFLOW:
       errno = ENOBUFS;
-      if(pAdapterInfo)
+      if (pAdapterInfo)
         _llarp_nt_heap_free(pAdapterInfo);
       return false;
     default:
@@ -203,20 +206,19 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 #ifdef DEBUG
       fprintf(stderr, "system call failed: %lu\n", GetLastError());
 #endif
-      if(pAdapterInfo)
+      if (pAdapterInfo)
         _llarp_nt_heap_free(pAdapterInfo);
       return false;
   }
 
   /* count valid adapters */
   int n = 0, k = 0;
-  for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
+  for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
   {
-    for(IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr;
-        pIPAddr                 = pIPAddr->Next)
+    for (IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr; pIPAddr = pIPAddr->Next)
     {
       /* skip null adapters */
-      if(strlen(pIPAddr->IpAddress.String) == 0)
+      if (strlen(pIPAddr->IpAddress.String) == 0)
         continue;
       ++n;
     }
@@ -227,50 +229,45 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 #endif
 
   /* contiguous block for adapter list */
-  struct _llarp_nt_ifaddrs_t* ifa =
-      llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
+  struct _llarp_nt_ifaddrs_t* ifa = llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
   struct _llarp_nt_ifaddrs_t* ift = ifa;
-  int val                         = 0;
+  int val = 0;
   /* now populate list */
-  for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
+  for (pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
   {
-    for(IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr;
-        pIPAddr                 = pIPAddr->Next)
+    for (IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr; pIPAddr = pIPAddr->Next)
     {
       /* skip null adapters */
-      if(strlen(pIPAddr->IpAddress.String) == 0)
+      if (strlen(pIPAddr->IpAddress.String) == 0)
         continue;
 
       /* address */
       ift->_ifa.ifa_addr = (struct sockaddr*)&ift->_addr;
-      val =
-          llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String, ift->_ifa.ifa_addr);
+      val = llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String, ift->_ifa.ifa_addr);
       assert(1 == val);
 
       /* name */
 #ifdef DEBUG
-      fprintf(stderr, "name:%s IPv4 index:%lu\n", pAdapter->AdapterName,
-              pAdapter->Index);
+      fprintf(stderr, "name:%s IPv4 index:%lu\n", pAdapter->AdapterName, pAdapter->Index);
 #endif
       ift->_ifa.ifa_name = ift->_name;
       StringCchCopyN(ift->_ifa.ifa_name, 128, pAdapter->AdapterName, 128);
 
       /* flags: assume up, broadcast and multicast */
       ift->_ifa.ifa_flags = IFF_UP | IFF_BROADCAST | IFF_MULTICAST;
-      if(pAdapter->Type == MIB_IF_TYPE_LOOPBACK)
+      if (pAdapter->Type == MIB_IF_TYPE_LOOPBACK)
         ift->_ifa.ifa_flags |= IFF_LOOPBACK;
 
       /* netmask */
       ift->_ifa.ifa_netmask = (sockaddr*)&ift->_netmask;
-      val =
-          llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask);
+      val = llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask);
       assert(1 == val);
 
       /* next */
-      if(k++ < (n - 1))
+      if (k++ < (n - 1))
       {
         ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
-        ift                = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
+        ift = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
       }
       else
       {
@@ -279,7 +276,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
     }
   }
 
-  if(pAdapterInfo)
+  if (pAdapterInfo)
     _llarp_nt_heap_free(pAdapterInfo);
   *ifap = (struct llarp_nt_ifaddrs_t*)ifa;
   return true;
@@ -432,8 +429,7 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
        * Windows 7 SP1 returns 64 for Teredo links which is incorrect.
        */
 
-#define IN6_IS_ADDR_TEREDO(addr) \
-  (((const uint32_t*)(addr))[0] == ntohl(0x20010000))
+#define IN6_IS_ADDR_TEREDO(addr) (((const uint32_t*)(addr))[0] == ntohl(0x20010000))
 
       if(AF_INET6 == unicast->Address.lpSockaddr->sa_family &&
          /* TunnelType only applies to one interface on the adapter and no
@@ -639,13 +635,13 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   // IP_ADAPTER_ADDRESSES *pAdapterAddresses = nullptr, *adapter;
   char szAdapterName[256];
 
-  if(!ifname)
+  if (!ifname)
     return 0;
 
   StringCchCopyN(szAdapterName, sizeof(szAdapterName), ifname, 256);
   dwRet = GetAdapterIndex((LPWSTR)szAdapterName, &ifIndex);
 
-  if(!dwRet)
+  if (!dwRet)
     return ifIndex;
   else
     return 0;
@@ -715,8 +711,7 @@ llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
 {
   assert(nullptr != ifap);
 #ifdef DEBUG
-  fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap,
-          (void*)errno);
+  fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap, (void*)errno);
 #endif
   return _llarp_nt_getadaptersinfo(ifap);
 }
@@ -724,7 +719,7 @@ llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
 static void
 llarp_nt_freeifaddrs(struct llarp_nt_ifaddrs_t* ifa)
 {
-  if(!ifa)
+  if (!ifa)
     return;
   free(ifa);
 }
@@ -733,7 +728,7 @@ llarp_nt_freeifaddrs(struct llarp_nt_ifaddrs_t* ifa)
 static unsigned
 llarp_nt_if_nametoindex(const char* ifname)
 {
-  if(!ifname)
+  if (!ifname)
     return 0;
   return _llarp_nt_getadaptersaddresses_nametoindex(ifname);
 }
@@ -750,33 +745,33 @@ bool
 llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 {
   ifaddrs* ifa = nullptr;
-  bool found   = false;
+  bool found = false;
   socklen_t sl = sizeof(sockaddr_in6);
-  if(af == AF_INET)
+  if (af == AF_INET)
     sl = sizeof(sockaddr_in);
 
 #ifndef _WIN32
-  if(getifaddrs(&ifa) == -1)
+  if (getifaddrs(&ifa) == -1)
 #else
-  if(!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
+  if (!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
   {
     sockaddr_in* lo = (sockaddr_in*)addr;
-    lo->sin_family  = af;
-    lo->sin_port    = 0;
+    lo->sin_family = af;
+    lo->sin_port = 0;
     inet_pton(af, "127.0.0.1", &lo->sin_addr);
     return true;
   }
-  if(!getifaddrs(&ifa))
+  if (!getifaddrs(&ifa))
 #endif
     return false;
   ifaddrs* i = ifa;
-  while(i)
+  while (i)
   {
-    if(i->ifa_addr)
+    if (i->ifa_addr)
     {
       // llarp::LogInfo(__FILE__, "scanning ", i->ifa_name, " af: ",
       // std::to_string(i->ifa_addr->sa_family));
-      if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
+      if (llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
         // can't do this here
         // llarp::Addr a(*i->ifa_addr);
@@ -784,10 +779,10 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
         //{
         // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
         memcpy(addr, i->ifa_addr, sl);
-        if(af == AF_INET6)
+        if (af == AF_INET6)
         {
           // set scope id
-          auto* ip6addr          = (sockaddr_in6*)addr;
+          auto* ip6addr = (sockaddr_in6*)addr;
           ip6addr->sin6_scope_id = if_nametoindex(ifname);
           ip6addr->sin6_flowinfo = 0;
         }
@@ -798,7 +793,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
     }
     i = i->ifa_next;
   }
-  if(ifa)
+  if (ifa)
     freeifaddrs(ifa);
   return found;
 }
@@ -806,24 +801,24 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 namespace llarp
 {
   static void
-  IterAllNetworkInterfaces(std::function< void(ifaddrs* const) > visit)
+  IterAllNetworkInterfaces(std::function<void(ifaddrs* const)> visit)
   {
     ifaddrs* ifa = nullptr;
 #ifndef _WIN32
-    if(getifaddrs(&ifa) == -1)
+    if (getifaddrs(&ifa) == -1)
 #else
-    if(!getifaddrs(&ifa))
+    if (!getifaddrs(&ifa))
 #endif
       return;
 
     ifaddrs* i = ifa;
-    while(i)
+    while (i)
     {
       visit(i);
       i = i->ifa_next;
     }
 
-    if(ifa)
+    if (ifa)
       freeifaddrs(ifa);
   }
 
@@ -832,18 +827,18 @@ namespace llarp
   {
     bool found = false;
     IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if(found)
+      if (found)
         return;
-      if(i->ifa_addr)
+      if (i->ifa_addr)
       {
-        if(i->ifa_addr->sa_family == af)
+        if (i->ifa_addr->sa_family == af)
         {
           llarp::Addr a(*i->ifa_addr);
 
-          if(!a.IsBogon())
+          if (!a.IsBogon())
           {
             ifname = i->ifa_name;
-            found  = true;
+            found = true;
           }
         }
       }
@@ -855,12 +850,12 @@ namespace llarp
   std::string
   FindFreeRange()
   {
-    std::vector< IPRange > currentRanges;
+    std::vector<IPRange> currentRanges;
     IterAllNetworkInterfaces([&](ifaddrs* i) {
-      if(i && i->ifa_addr)
+      if (i && i->ifa_addr)
       {
         const auto fam = i->ifa_addr->sa_family;
-        if(fam != AF_INET)
+        if (fam != AF_INET)
           return;
         auto* addr = (sockaddr_in*)i->ifa_addr;
         auto* mask = (sockaddr_in*)i->ifa_netmask;
@@ -870,55 +865,54 @@ namespace llarp
         // do not delete, otherwise GCC will do horrible things to this lambda
         LogDebug("found ", ifaddr, " with mask ", ifmask);
 #endif
-        if(addr->sin_addr.s_addr)
+        if (addr->sin_addr.s_addr)
           // skip unconfig'd adapters (windows passes these through the unix-y
           // wrapper)
-          currentRanges.emplace_back(
-              IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
-                      net::IPPacket::ExpandV4(xntohl(ifmask))});
+          currentRanges.emplace_back(IPRange{net::IPPacket::ExpandV4(xntohl(ifaddr)),
+                                             net::IPPacket::ExpandV4(xntohl(ifmask))});
       }
     });
     // try 10.x.0.0/16
     byte_t oct = 0;
-    while(oct < 255)
+    while (oct < 255)
     {
       const huint32_t loaddr = ipaddr_ipv4_bits(10, oct, 0, 1);
       const huint32_t hiaddr = ipaddr_ipv4_bits(10, oct, 255, 255);
-      bool hit               = false;
-      for(const auto& range : currentRanges)
+      bool hit = false;
+      for (const auto& range : currentRanges)
       {
         hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
-      if(!hit)
+      if (!hit)
         return loaddr.ToString() + "/16";
       ++oct;
     }
     // try 192.168.x.0/24
     oct = 0;
-    while(oct < 255)
+    while (oct < 255)
     {
       const huint32_t loaddr = ipaddr_ipv4_bits(192, 168, oct, 1);
       const huint32_t hiaddr = ipaddr_ipv4_bits(192, 168, oct, 255);
-      bool hit               = false;
-      for(const auto& range : currentRanges)
+      bool hit = false;
+      for (const auto& range : currentRanges)
       {
         hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
-      if(!hit)
+      if (!hit)
         return loaddr.ToString() + "/24";
     }
     // try 172.16.x.0/24
     oct = 0;
-    while(oct < 255)
+    while (oct < 255)
     {
       const huint32_t loaddr = ipaddr_ipv4_bits(172, 16, oct, 1);
       const huint32_t hiaddr = ipaddr_ipv4_bits(172, 16, oct, 255);
-      bool hit               = false;
-      for(const auto& range : currentRanges)
+      bool hit = false;
+      for (const auto& range : currentRanges)
       {
         hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
       }
-      if(!hit)
+      if (!hit)
         return loaddr.ToString() + "/24";
       ++oct;
     }
@@ -932,22 +926,21 @@ namespace llarp
   FindFreeTun()
   {
     uint8_t num = 0;
-    while(num < 255)
+    while (num < 255)
     {
       std::stringstream ifname_ss;
       ifname_ss << "lokitun" << num;
       std::string iftestname = ifname_ss.str();
       struct sockaddr addr;
       bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
-      if(!found)
+      if (!found)
       {
-        llarp::LogDebug("Detected " + iftestname
-                        + " is available for use, configuring as such");
+        llarp::LogDebug("Detected " + iftestname + " is available for use, configuring as such");
         break;
       }
       num++;
     }
-    if(num == 255)
+    if (num == 255)
     {
       llarp::LogError("Could not find any free lokitun interface names");
       return "";
@@ -967,7 +960,7 @@ namespace llarp
   {
     sockaddr_storage s;
     auto* sptr = (sockaddr*)&s;
-    if(!llarp_getifaddr(ifname.c_str(), af, sptr))
+    if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return false;
     addr = *sptr;
     return true;
@@ -976,22 +969,22 @@ namespace llarp
   bool
   AllInterfaces(int af, Addr& result)
   {
-    if(af == AF_INET)
+    if (af == AF_INET)
     {
       sockaddr_in addr;
-      addr.sin_family      = AF_INET;
+      addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
-      addr.sin_port        = htons(0);
-      result               = addr;
+      addr.sin_port = htons(0);
+      result = addr;
       return true;
     }
-    if(af == AF_INET6)
+    if (af == AF_INET6)
     {
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
-      addr6.sin6_port   = htons(0);
-      addr6.sin6_addr   = IN6ADDR_ANY_INIT;
-      result            = addr6;
+      addr6.sin6_port = htons(0);
+      addr6.sin6_addr = IN6ADDR_ANY_INIT;
+      result = addr6;
       return true;
     }
 
@@ -1007,10 +1000,10 @@ namespace llarp
     (void)addr;
     return false;
 #else
-    if(!ipv6_is_siit(addr))
+    if (!ipv6_is_siit(addr))
       return false;
-    return IsIPv4Bogon(ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13],
-                                        addr.s6_addr[14], addr.s6_addr[15]));
+    return IsIPv4Bogon(
+        ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13], addr.s6_addr[14], addr.s6_addr[15]));
 #endif
   }
 
@@ -1033,21 +1026,21 @@ namespace llarp
     const auto colinpos = str.find(":");
     const auto slashpos = str.find("/");
     std::string bitsstr;
-    if(slashpos != std::string::npos)
+    if (slashpos != std::string::npos)
     {
       bitsstr = str.substr(slashpos + 1);
-      str     = str.substr(0, slashpos);
+      str = str.substr(0, slashpos);
     }
-    if(colinpos == std::string::npos)
+    if (colinpos == std::string::npos)
     {
       huint32_t ip;
-      if(!ip.FromString(str))
+      if (!ip.FromString(str))
         return false;
       addr = net::IPPacket::ExpandV4(ip);
-      if(!bitsstr.empty())
+      if (!bitsstr.empty())
       {
         auto bits = atoi(bitsstr.c_str());
-        if(bits < 0 || bits > 32)
+        if (bits < 0 || bits > 32)
           return false;
         netmask_bits = netmask_ipv6_bits(96 + bits);
       }
@@ -1056,12 +1049,12 @@ namespace llarp
     }
     else
     {
-      if(!addr.FromString(str))
+      if (!addr.FromString(str))
         return false;
-      if(!bitsstr.empty())
+      if (!bitsstr.empty())
       {
         auto bits = atoi(bitsstr.c_str());
-        if(bits < 0 || bits > 128)
+        if (bits < 0 || bits > 128)
           return false;
         netmask_bits = netmask_ipv6_bits(bits);
       }
@@ -1079,11 +1072,11 @@ namespace llarp
     char buf[INET6_ADDRSTRLEN + 1] = {0};
     std::string str;
     in6_addr inaddr = {};
-    size_t numset   = 0;
-    uint128_t bits  = netmask_bits.h;
-    while(bits)
+    size_t numset = 0;
+    uint128_t bits = netmask_bits.h;
+    while (bits)
     {
-      if(bits & 1)
+      if (bits & 1)
         numset++;
       bits >>= 1;
     }
@@ -1101,18 +1094,25 @@ namespace llarp
   bool
   IsIPv4Bogon(const huint32_t& addr)
   {
-    static std::vector< IPRange > bogonRanges = {
-        iprange_ipv4(0, 0, 0, 0, 8),       iprange_ipv4(10, 0, 0, 0, 8),
-        iprange_ipv4(21, 0, 0, 0, 8),      iprange_ipv4(100, 64, 0, 0, 10),
-        iprange_ipv4(127, 0, 0, 0, 8),     iprange_ipv4(169, 254, 0, 0, 8),
-        iprange_ipv4(172, 16, 0, 0, 12),   iprange_ipv4(192, 0, 0, 0, 24),
-        iprange_ipv4(192, 0, 2, 0, 24),    iprange_ipv4(192, 88, 99, 0, 24),
-        iprange_ipv4(192, 168, 0, 0, 16),  iprange_ipv4(198, 18, 0, 0, 15),
-        iprange_ipv4(198, 51, 100, 0, 24), iprange_ipv4(203, 0, 113, 0, 24),
-        iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
-    for(const auto& bogon : bogonRanges)
+    static std::vector<IPRange> bogonRanges = {iprange_ipv4(0, 0, 0, 0, 8),
+                                               iprange_ipv4(10, 0, 0, 0, 8),
+                                               iprange_ipv4(21, 0, 0, 0, 8),
+                                               iprange_ipv4(100, 64, 0, 0, 10),
+                                               iprange_ipv4(127, 0, 0, 0, 8),
+                                               iprange_ipv4(169, 254, 0, 0, 8),
+                                               iprange_ipv4(172, 16, 0, 0, 12),
+                                               iprange_ipv4(192, 0, 0, 0, 24),
+                                               iprange_ipv4(192, 0, 2, 0, 24),
+                                               iprange_ipv4(192, 88, 99, 0, 24),
+                                               iprange_ipv4(192, 168, 0, 0, 16),
+                                               iprange_ipv4(198, 18, 0, 0, 15),
+                                               iprange_ipv4(198, 51, 100, 0, 24),
+                                               iprange_ipv4(203, 0, 113, 0, 24),
+                                               iprange_ipv4(224, 0, 0, 0, 4),
+                                               iprange_ipv4(240, 0, 0, 0, 4)};
+    for (const auto& bogon : bogonRanges)
     {
-      if(bogon.ContainsV4(addr))
+      if (bogon.ContainsV4(addr))
       {
 #if defined(TESTNET)
         return false;

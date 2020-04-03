@@ -15,13 +15,13 @@ namespace llarp
 {
   namespace service
   {
-    struct Tag : public AlignedBuffer< 16 >
+    struct Tag : public AlignedBuffer<16>
     {
-      Tag() : AlignedBuffer< SIZE >()
+      Tag() : AlignedBuffer<SIZE>()
       {
       }
 
-      Tag(const byte_t* d) : AlignedBuffer< SIZE >(d)
+      Tag(const byte_t* d) : AlignedBuffer<SIZE>(d)
       {
       }
 
@@ -31,18 +31,14 @@ namespace llarp
         // unsigned long but zero-extends this on LLP64 systems
         // 2Jan19: reeee someone undid the patch
         std::copy(
-            str.begin(),
-            str.begin() + std::min(std::string::size_type(16), str.size()),
-            begin());
+            str.begin(), str.begin() + std::min(std::string::size_type(16), str.size()), begin());
       }
 
       Tag&
       operator=(const std::string& str)
       {
         std::copy(
-            str.begin(),
-            str.begin() + std::min(std::string::size_type(16), str.size()),
-            begin());
+            str.begin(), str.begin() + std::min(std::string::size_type(16), str.size()), begin());
         return *this;
       }
 
@@ -61,7 +57,7 @@ namespace llarp
         return data()[0] == 0;
       }
 
-      using Hash = AlignedBuffer< SIZE >::Hash;
+      using Hash = AlignedBuffer<SIZE>::Hash;
     };
   }  // namespace service
 }  // namespace llarp

@@ -10,7 +10,7 @@ namespace llarp
   {
     /// hidden service address
 
-    using VanityNonce = AlignedBuffer< 16 >;
+    using VanityNonce = AlignedBuffer<16>;
   }  // namespace service
 }  // namespace llarp
 #endif

@@ -15,10 +15,9 @@
 // io packet for TUN read/write
 struct asio_evt_pkt
 {
-  OVERLAPPED pkt = {
-      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
-  bool write = false;        // true, or false if read pkt
-  size_t sz;  // should match the queued data size, if not try again?
+  OVERLAPPED pkt = {0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
+  bool write = false;                      // true, or false if read pkt
+  size_t sz;                               // should match the queued data size, if not try again?
   void* buf;  // must remain valid until we get notification; this is _supposed_
               // to be zero-copy
 };
@@ -95,7 +94,7 @@ struct win32_tun_io
   ~win32_tun_io()
   {
     CancelIo(tunif->tun_fd);
-    if(tunif->tun_fd)
+    if (tunif->tun_fd)
       tuntap_destroy(tunif);
   }
 };

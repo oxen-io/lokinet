@@ -4,15 +4,13 @@ using UINT4 = uint32_t;
 
 /* forward declaration */
 void
-Transform(uint32_t *buf, uint32_t *in);
+Transform(uint32_t* buf, uint32_t* in);
 
 static unsigned char PADDING[64] = {
-    0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 /* F, G and H are basic MD5 functions: selection, majority, parity */
 #define F(x, y, z) (((x) & (y)) | ((~x) & (z)))
@@ -63,7 +61,7 @@ MD5::MD5()
 }
 
 void
-MD5::Update(const unsigned char *inBuf, uint32_t inLen)
+MD5::Update(const unsigned char* inBuf, uint32_t inLen)
 {
   UINT4 input[16];
   int mdi;
@@ -72,20 +70,20 @@ MD5::Update(const unsigned char *inBuf, uint32_t inLen)
   mdi = (int)((this->i[0] >> 3) & 0x3F);
 
   /* update number of bits */
-  if((this->i[0] + ((UINT4)inLen << 3)) < this->i[0])
+  if ((this->i[0] + ((UINT4)inLen << 3)) < this->i[0])
     this->i[1]++;
   this->i[0] += ((UINT4)inLen << 3);
   this->i[1] += ((UINT4)inLen >> 29);
 
-  while(inLen--)
+  while (inLen--)
   {
     /* add new character to buffer, increment mdi */
     in[mdi++] = *inBuf++;
 
     /* transform if necessary */
-    if(mdi == 0x40)
+    if (mdi == 0x40)
     {
-      for(unsigned int j = 0, jj = 0; j < 16; j++, jj += 4)
+      for (unsigned int j = 0, jj = 0; j < 16; j++, jj += 4)
       {
         input[j] = (((UINT4)in[jj + 3]) << 24) | (((UINT4)in[jj + 2]) << 16)
             | (((UINT4)in[jj + 1]) << 8) | ((UINT4)in[jj]);
@@ -97,7 +95,7 @@ MD5::Update(const unsigned char *inBuf, uint32_t inLen)
 }
 
 void
-MD5::Final(uint8_t *digest)
+MD5::Final(uint8_t* digest)
 {
   UINT4 input[16];
   int mdi;
@@ -115,7 +113,7 @@ MD5::Final(uint8_t *digest)
   this->Update(PADDING, padLen);
 
   /* append length in bits and transform */
-  for(unsigned int j = 0, jj = 0; j < 14; j++, jj += 4)
+  for (unsigned int j = 0, jj = 0; j < 14; j++, jj += 4)
   {
     input[j] = (((UINT4)in[jj + 3]) << 24) | (((UINT4)in[jj + 2]) << 16)
         | (((UINT4)in[jj + 1]) << 8) | ((UINT4)in[jj]);
@@ -123,9 +121,9 @@ MD5::Final(uint8_t *digest)
   Transform(this->buf, input);
 
   /* store buffer in digest */
-  for(unsigned int j = 0, jj = 0; j < 4; j++, jj += 4)
+  for (unsigned int j = 0, jj = 0; j < 4; j++, jj += 4)
   {
-    digest[jj]     = (unsigned char)(this->buf[j] & 0xFF);
+    digest[jj] = (unsigned char)(this->buf[j] & 0xFF);
     digest[jj + 1] = (unsigned char)((this->buf[j] >> 8) & 0xFF);
     digest[jj + 2] = (unsigned char)((this->buf[j] >> 16) & 0xFF);
     digest[jj + 3] = (unsigned char)((this->buf[j] >> 24) & 0xFF);
@@ -135,7 +133,7 @@ MD5::Final(uint8_t *digest)
 /* Basic MD5 step. Transform buf based on in.
  */
 void
-Transform(UINT4 *buf, UINT4 *in)
+Transform(UINT4* buf, UINT4* in)
 {
   UINT4 a = buf[0], b = buf[1], c = buf[2], d = buf[3];
 

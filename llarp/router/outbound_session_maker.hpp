@@ -25,28 +25,25 @@ namespace llarp
 
   struct OutboundSessionMaker final : public IOutboundSessionMaker
   {
-    using CallbacksQueue = std::list< RouterCallback >;
+    using CallbacksQueue = std::list<RouterCallback>;
 
    public:
     ~OutboundSessionMaker() override = default;
 
     bool
-    OnSessionEstablished(ILinkSession *session) override;
+    OnSessionEstablished(ILinkSession* session) override;
 
     void
-    OnConnectTimeout(ILinkSession *session) override;
+    OnConnectTimeout(ILinkSession* session) override;
 
     void
-    CreateSessionTo(const RouterID &router, RouterCallback on_result) override
-        EXCLUDES(_mutex);
+    CreateSessionTo(const RouterID& router, RouterCallback on_result) override EXCLUDES(_mutex);
 
     void
-    CreateSessionTo(const RouterContact &rc, RouterCallback on_result) override
-        EXCLUDES(_mutex);
+    CreateSessionTo(const RouterContact& rc, RouterCallback on_result) override EXCLUDES(_mutex);
 
     bool
-    HavePendingSessionTo(const RouterID &router) const override
-        EXCLUDES(_mutex);
+    HavePendingSessionTo(const RouterID& router) const override EXCLUDES(_mutex);
 
     void
     ConnectToRandomRouters(int numDesired) override;
@@ -55,13 +52,16 @@ namespace llarp
     ExtractStatus() const override;
 
     bool
-    ShouldConnectTo(const RouterID &router) const override EXCLUDES(_mutex);
+    ShouldConnectTo(const RouterID& router) const override EXCLUDES(_mutex);
 
     void
-    Init(ILinkManager *linkManager, I_RCLookupHandler *rcLookup,
-         Profiling *profiler, std::shared_ptr< Logic > logic,
-         llarp_nodedb *nodedb,
-         std::shared_ptr< llarp::thread::ThreadPool > threadpool);
+    Init(
+        ILinkManager* linkManager,
+        I_RCLookupHandler* rcLookup,
+        Profiling* profiler,
+        std::shared_ptr<Logic> logic,
+        llarp_nodedb* nodedb,
+        std::shared_ptr<llarp::thread::ThreadPool> threadpool);
 
     void
     SetOurRouter(RouterID r)
@@ -76,47 +76,44 @@ namespace llarp
 
    private:
     void
-    DoEstablish(const RouterID &router) EXCLUDES(_mutex);
+    DoEstablish(const RouterID& router) EXCLUDES(_mutex);
 
     void
-    GotRouterContact(const RouterID &router, const RouterContact &rc)
-        EXCLUDES(_mutex);
+    GotRouterContact(const RouterID& router, const RouterContact& rc) EXCLUDES(_mutex);
 
     void
-    InvalidRouter(const RouterID &router);
+    InvalidRouter(const RouterID& router);
 
     void
-    RouterNotFound(const RouterID &router);
+    RouterNotFound(const RouterID& router);
 
     void
-    OnRouterContactResult(const RouterID &router, const RouterContact *const rc,
-                          const RCRequestResult result);
+    OnRouterContactResult(
+        const RouterID& router, const RouterContact* const rc, const RCRequestResult result);
 
     void
     VerifyRC(const RouterContact rc);
 
     void
-    CreatePendingSession(const RouterID &router) EXCLUDES(_mutex);
+    CreatePendingSession(const RouterID& router) EXCLUDES(_mutex);
 
     void
-    FinalizeRequest(const RouterID &router, const SessionResult type)
-        EXCLUDES(_mutex);
+    FinalizeRequest(const RouterID& router, const SessionResult type) EXCLUDES(_mutex);
 
     mutable util::Mutex _mutex;  // protects pendingSessions, pendingCallbacks
 
-    std::unordered_map< RouterID, std::shared_ptr< PendingSession >,
-                        RouterID::Hash >
-        pendingSessions GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, std::shared_ptr<PendingSession>, RouterID::Hash> pendingSessions
+        GUARDED_BY(_mutex);
 
-    std::unordered_map< RouterID, CallbacksQueue, RouterID::Hash >
-        pendingCallbacks GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
+        GUARDED_BY(_mutex);
 
-    ILinkManager *_linkManager   = nullptr;
-    I_RCLookupHandler *_rcLookup = nullptr;
-    Profiling *_profiler         = nullptr;
-    llarp_nodedb *_nodedb        = nullptr;
-    std::shared_ptr< Logic > _logic;
-    std::shared_ptr< llarp::thread::ThreadPool > _threadpool;
+    ILinkManager* _linkManager = nullptr;
+    I_RCLookupHandler* _rcLookup = nullptr;
+    Profiling* _profiler = nullptr;
+    llarp_nodedb* _nodedb = nullptr;
+    std::shared_ptr<Logic> _logic;
+    std::shared_ptr<llarp::thread::ThreadPool> _threadpool;
     RouterID us;
   };
 

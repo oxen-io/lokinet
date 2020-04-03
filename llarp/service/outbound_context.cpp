@@ -38,15 +38,13 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleDataDrop(path::Path_ptr p, const PathID_t& dst,
-                                    uint64_t seq)
+    OutboundContext::HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t seq)
     {
       // pick another intro
-      if(dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
+      if (dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
-        LogWarn(Name(), " message ", seq, " dropped by endpoint ",
-                p->Endpoint(), " via ", dst);
-        if(MarkCurrentIntroBad(Now()))
+        LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(), " via ", dst);
+        if (MarkCurrentIntroBad(Now()))
         {
           SwapIntros();
         }
@@ -63,9 +61,9 @@ namespace llarp
 
     {
       updatingIntroSet = false;
-      for(const auto& intro : introset.I)
+      for (const auto& intro : introset.I)
       {
-        if(intro.expiresAt > m_NextIntro.expiresAt)
+        if (intro.expiresAt > m_NextIntro.expiresAt)
           m_NextIntro = intro;
       }
     }
@@ -76,7 +74,7 @@ namespace llarp
     void
     OutboundContext::SwapIntros()
     {
-      if(remoteIntro != m_NextIntro)
+      if (remoteIntro != m_NextIntro)
       {
         LogInfo(Name(), " swap intro to use ", RouterID(m_NextIntro.router));
         remoteIntro = m_NextIntro;
@@ -86,29 +84,27 @@ namespace llarp
     }
 
     bool
-    OutboundContext::OnIntroSetUpdate(const Address&,
-                                      nonstd::optional< IntroSet > foundIntro,
-                                      const RouterID& endpoint)
+    OutboundContext::OnIntroSetUpdate(
+        const Address&, nonstd::optional<IntroSet> foundIntro, const RouterID& endpoint)
     {
-      if(markedBad)
+      if (markedBad)
         return true;
       updatingIntroSet = false;
-      if(foundIntro.has_value())
+      if (foundIntro.has_value())
       {
-        if(foundIntro->T == 0s)
+        if (foundIntro->T == 0s)
         {
-          LogWarn(Name(),
-                  " got introset with zero timestamp: ", foundIntro.value());
+          LogWarn(Name(), " got introset with zero timestamp: ", foundIntro.value());
           return true;
         }
-        if(currentIntroSet.T > foundIntro->T)
+        if (currentIntroSet.T > foundIntro->T)
         {
           LogInfo("introset is old, dropping");
           return true;
         }
 
         const llarp_time_t now = Now();
-        if(foundIntro->IsExpired(now))
+        if (foundIntro->IsExpired(now))
         {
           LogError("got expired introset from lookup from ", endpoint);
           return true;
@@ -127,8 +123,7 @@ namespace llarp
     bool
     OutboundContext::ReadyToSend() const
     {
-      return (!remoteIntro.router.IsZero())
-          && GetPathByRouter(remoteIntro.router) != nullptr;
+      return (!remoteIntro.router.IsZero()) && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
     void
@@ -136,17 +131,16 @@ namespace llarp
     {
       const auto now = Now();
       Introduction selectedIntro;
-      for(const auto& intro : currentIntroSet.I)
+      for (const auto& intro : currentIntroSet.I)
       {
-        if(intro.expiresAt > selectedIntro.expiresAt && intro.router != r)
+        if (intro.expiresAt > selectedIntro.expiresAt && intro.router != r)
         {
           selectedIntro = intro;
         }
       }
-      if(selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
+      if (selectedIntro.router.IsZero() || selectedIntro.ExpiresSoon(now))
         return;
-      LogWarn(Name(), " shfiting intro off of ", r, " to ",
-              RouterID(selectedIntro.router));
+      LogWarn(Name(), " shfiting intro off of ", r, " to ", RouterID(selectedIntro.router));
       m_NextIntro = selectedIntro;
     }
 
@@ -162,13 +156,12 @@ namespace llarp
     {
       path::Builder::HandlePathBuilt(p);
       /// don't use it if we are marked bad
-      if(markedBad)
+      if (markedBad)
         return;
-      p->SetDataHandler(
-          util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
+      p->SetDataHandler(util::memFn(&OutboundContext::HandleHiddenServiceFrame, this));
       p->SetDropHandler(util::memFn(&OutboundContext::HandleDataDrop, this));
       // we now have a path to the next intro, swap intros
-      if(p->Endpoint() == m_NextIntro.router)
+      if (p->Endpoint() == m_NextIntro.router)
         SwapIntros();
       else
       {
@@ -177,70 +170,73 @@ namespace llarp
     }
 
     void
-    OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
-                                   ProtocolType t)
+    OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t)
     {
-      if(not currentConvoTag.IsZero())
+      if (not currentConvoTag.IsZero())
         return;
-      if(remoteIntro.router.IsZero())
+      if (remoteIntro.router.IsZero())
         SwapIntros();
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
-      if(path == nullptr)
+      if (path == nullptr)
       {
         // try parent as fallback
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
-        if(path == nullptr)
+        if (path == nullptr)
         {
-          if(!BuildCooldownHit(Now()))
+          if (!BuildCooldownHit(Now()))
             BuildOneAlignedTo(remoteIntro.router);
-          LogWarn(Name(), " dropping intro frame, no path to ",
-                  remoteIntro.router);
+          LogWarn(Name(), " dropping intro frame, no path to ", remoteIntro.router);
           return;
         }
       }
       currentConvoTag.Randomize();
-      auto frame = std::make_shared< ProtocolFrame >();
-      auto ex    = std::make_shared< AsyncKeyExchange >(
-          m_Endpoint->RouterLogic(), remoteIdent, m_Endpoint->GetIdentity(),
-          currentIntroSet.K, remoteIntro, m_DataHandler, currentConvoTag, t);
+      auto frame = std::make_shared<ProtocolFrame>();
+      auto ex = std::make_shared<AsyncKeyExchange>(
+          m_Endpoint->RouterLogic(),
+          remoteIdent,
+          m_Endpoint->GetIdentity(),
+          currentIntroSet.K,
+          remoteIntro,
+          m_DataHandler,
+          currentConvoTag,
+          t);
 
-      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(),
-                           std::placeholders::_1, path);
+      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
-      frame->F           = ex->msg.introReply.pathID;
-      m_Endpoint->CryptoWorker()->addJob(
-          std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
+      frame->F = ex->msg.introReply.pathID;
+      m_Endpoint->CryptoWorker()->addJob(std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
     }
 
     std::string
     OutboundContext::Name() const
     {
-      return "OBContext:" + m_Endpoint->Name() + "-"
-          + currentIntroSet.A.Addr().ToString();
+      return "OBContext:" + m_Endpoint->Name() + "-" + currentIntroSet.A.Addr().ToString();
     }
 
     void
     OutboundContext::UpdateIntroSet()
     {
-      if(updatingIntroSet || markedBad)
+      if (updatingIntroSet || markedBad)
         return;
       const auto addr = currentIntroSet.A.Addr();
       // we want to use the parent endpoint's paths because outbound context
       // does not implement path::PathSet::HandleGotIntroMessage
-      const auto paths    = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
+      const auto paths = GetManyPathsWithUniqueEndpoints(m_Endpoint, 2);
       uint64_t relayOrder = 0;
-      for(const auto& path : paths)
+      for (const auto& path : paths)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             util::memFn(&OutboundContext::OnIntroSetUpdate, shared_from_this()),
-            location, PubKey{addr.as_array()}, relayOrder,
+            location,
+            PubKey{addr.as_array()},
+            relayOrder,
             m_Endpoint->GenTXID());
         relayOrder++;
-        if(job->SendRequestViaPath(path, m_Endpoint->Router()))
+        if (job->SendRequestViaPath(path, m_Endpoint->Router()))
           updatingIntroSet = true;
       }
     }
@@ -248,23 +244,23 @@ namespace llarp
     util::StatusObject
     OutboundContext::ExtractStatus() const
     {
-      auto obj                     = path::Builder::ExtractStatus();
-      obj["currentConvoTag"]       = currentConvoTag.ToHex();
-      obj["remoteIntro"]           = remoteIntro.ExtractStatus();
-      obj["sessionCreatedAt"]      = to_json(createdAt);
-      obj["lastGoodSend"]          = to_json(lastGoodSend);
-      obj["seqno"]                 = sequenceNo;
-      obj["markedBad"]             = markedBad;
-      obj["lastShift"]             = to_json(lastShift);
-      obj["remoteIdentity"]        = remoteIdent.Addr().ToString();
+      auto obj = path::Builder::ExtractStatus();
+      obj["currentConvoTag"] = currentConvoTag.ToHex();
+      obj["remoteIntro"] = remoteIntro.ExtractStatus();
+      obj["sessionCreatedAt"] = to_json(createdAt);
+      obj["lastGoodSend"] = to_json(lastGoodSend);
+      obj["seqno"] = sequenceNo;
+      obj["markedBad"] = markedBad;
+      obj["lastShift"] = to_json(lastShift);
+      obj["remoteIdentity"] = remoteIdent.Addr().ToString();
       obj["currentRemoteIntroset"] = currentIntroSet.ExtractStatus();
-      obj["nextIntro"]             = m_NextIntro.ExtractStatus();
+      obj["nextIntro"] = m_NextIntro.ExtractStatus();
 
-      std::transform(m_BadIntros.begin(), m_BadIntros.end(),
-                     std::back_inserter(obj["badIntros"]),
-                     [](const auto& item) -> util::StatusObject {
-                       return item.first.ExtractStatus();
-                     });
+      std::transform(
+          m_BadIntros.begin(),
+          m_BadIntros.end(),
+          std::back_inserter(obj["badIntros"]),
+          [](const auto& item) -> util::StatusObject { return item.first.ExtractStatus(); });
       return obj;
     }
 
@@ -272,41 +268,41 @@ namespace llarp
     OutboundContext::Pump(llarp_time_t now)
     {
       // we are probably dead af
-      if(m_LookupFails > 16 || m_BuildFails > 10)
+      if (m_LookupFails > 16 || m_BuildFails > 10)
         return true;
 
       // check for expiration
-      if(remoteIntro.ExpiresSoon(now))
+      if (remoteIntro.ExpiresSoon(now))
       {
         UpdateIntroSet();
         // shift intro if it expires "soon"
-        if(ShiftIntroduction())
+        if (ShiftIntroduction())
           SwapIntros();  // swap intros if we shifted
       }
       // lookup router in intro if set and unknown
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
       // expire bad intros
       auto itr = m_BadIntros.begin();
-      while(itr != m_BadIntros.end())
+      while (itr != m_BadIntros.end())
       {
-        if(now > itr->second && now - itr->second > path::default_lifetime)
+        if (now > itr->second && now - itr->second > path::default_lifetime)
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
       }
       // send control message if we look too quiet
-      if(lastGoodSend > 0s)
+      if (lastGoodSend > 0s)
       {
-        if(now - lastGoodSend > (sendTimeout / 2))
+        if (now - lastGoodSend > (sendTimeout / 2))
         {
-          if(!GetNewestPathByRouter(remoteIntro.router))
+          if (!GetNewestPathByRouter(remoteIntro.router))
           {
-            if(!BuildCooldownHit(now))
+            if (!BuildCooldownHit(now))
               BuildOneAlignedTo(remoteIntro.router);
           }
           else
           {
-            Encrypted< 64 > tmp;
+            Encrypted<64> tmp;
             tmp.Randomize();
             llarp_buffer_t buf(tmp.data(), tmp.size());
             AsyncEncryptAndSendTo(buf, eProtocolControl);
@@ -314,37 +310,38 @@ namespace llarp
         }
       }
       // if we are dead return true so we are removed
-      return lastGoodSend > 0s
-          ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
-          : (now >= createdAt && now - createdAt > connectTimeout);
+      return lastGoodSend > 0s ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
+                               : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
     bool
-    OutboundContext::SelectHop(llarp_nodedb* db,
-                               const std::set< RouterID >& prev,
-                               RouterContact& cur, size_t hop,
-                               path::PathRole roles)
+    OutboundContext::SelectHop(
+        llarp_nodedb* db,
+        const std::set<RouterID>& prev,
+        RouterContact& cur,
+        size_t hop,
+        path::PathRole roles)
     {
-      if(m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
+      if (m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
       {
         ShiftIntroduction(false);
       }
-      if(m_NextIntro.router.IsZero())
+      if (m_NextIntro.router.IsZero())
         return false;
-      std::set< RouterID > exclude = prev;
+      std::set<RouterID> exclude = prev;
       exclude.insert(m_NextIntro.router);
-      for(const auto& snode : m_Endpoint->SnodeBlacklist())
+      for (const auto& snode : m_Endpoint->SnodeBlacklist())
         exclude.insert(snode);
-      if(hop == 0)
+      if (hop == 0)
       {
         // exclude any exits as our first hop
         const auto exits = m_Endpoint->GetExitRouters();
         exclude.insert(exits.begin(), exits.end());
       }
-      if(hop == numHops - 1)
+      if (hop == numHops - 1)
       {
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-        if(db->Get(m_NextIntro.router, cur))
+        if (db->Get(m_NextIntro.router, cur))
           return true;
         ++m_BuildFails;
         return false;
@@ -355,15 +352,15 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if(markedBad || path::Builder::BuildCooldownHit(now))
+      if (markedBad || path::Builder::BuildCooldownHit(now))
         return false;
-      const bool canBuild = NumInStatus(path::ePathBuilding) == 0
-          and path::Builder::ShouldBuildMore(now);
-      if(not canBuild)
+      const bool canBuild =
+          NumInStatus(path::ePathBuilding) == 0 and path::Builder::ShouldBuildMore(now);
+      if (not canBuild)
         return false;
       llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {
-        if(path->IsReady())
+        if (path->IsReady())
           t = std::max(path->ExpireTime(), t);
       });
       return t >= now + path::default_lifetime / 4;
@@ -381,22 +378,21 @@ namespace llarp
       // insert bad intro
       m_BadIntros[intro] = now;
       // try shifting intro without rebuild
-      if(ShiftIntroduction(false))
+      if (ShiftIntroduction(false))
       {
         // we shifted
         // check if we have a path to the next intro router
-        if(GetNewestPathByRouter(m_NextIntro.router))
+        if (GetNewestPathByRouter(m_NextIntro.router))
           return true;
         // we don't have a path build one if we aren't building too fast
-        if(!BuildCooldownHit(now))
+        if (!BuildCooldownHit(now))
           BuildOneAlignedTo(m_NextIntro.router);
         return true;
       }
 
       // we didn't shift check if we should update introset
-      if(now - lastShift >= MIN_SHIFT_INTERVAL
-         || currentIntroSet.HasExpiredIntros(now)
-         || currentIntroSet.IsExpired(now))
+      if (now - lastShift >= MIN_SHIFT_INTERVAL || currentIntroSet.HasExpiredIntros(now)
+          || currentIntroSet.IsExpired(now))
       {
         // update introset
         LogInfo(Name(), " updating introset");
@@ -410,12 +406,12 @@ namespace llarp
     OutboundContext::ShiftIntroduction(bool rebuild)
     {
       bool success = false;
-      auto now     = Now();
-      if(now - lastShift < MIN_SHIFT_INTERVAL)
+      auto now = Now();
+      if (now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
-      bool shifted                       = false;
-      std::vector< Introduction > intros = currentIntroSet.I;
-      if(intros.size() > 1)
+      bool shifted = false;
+      std::vector<Introduction> intros = currentIntroSet.I;
+      if (intros.size() > 1)
       {
         std::random_device rd;
         std::mt19937 g(rd());
@@ -423,50 +419,48 @@ namespace llarp
       }
 
       // to find a intro on the same router as before that is newer
-      for(const auto& intro : intros)
+      for (const auto& intro : intros)
       {
-        if(intro.ExpiresSoon(now))
+        if (intro.ExpiresSoon(now))
           continue;
-        if(m_Endpoint->SnodeBlacklist().count(intro.router))
+        if (m_Endpoint->SnodeBlacklist().count(intro.router))
           continue;
-        if(m_BadIntros.find(intro) == m_BadIntros.end()
-           && remoteIntro.router == intro.router)
+        if (m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro.router == intro.router)
         {
-          if(intro.expiresAt > m_NextIntro.expiresAt)
+          if (intro.expiresAt > m_NextIntro.expiresAt)
           {
-            success     = true;
+            success = true;
             m_NextIntro = intro;
             return true;
           }
         }
       }
-      if(!success)
+      if (!success)
       {
         /// pick newer intro not on same router
-        for(const auto& intro : intros)
+        for (const auto& intro : intros)
         {
-          if(m_Endpoint->SnodeBlacklist().count(intro.router))
+          if (m_Endpoint->SnodeBlacklist().count(intro.router))
             continue;
           m_Endpoint->EnsureRouterIsKnown(intro.router);
-          if(intro.ExpiresSoon(now))
+          if (intro.ExpiresSoon(now))
             continue;
-          if(m_BadIntros.find(intro) == m_BadIntros.end()
-             && m_NextIntro != intro)
+          if (m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
           {
-            if(intro.expiresAt > m_NextIntro.expiresAt)
+            if (intro.expiresAt > m_NextIntro.expiresAt)
             {
-              shifted     = intro.router != m_NextIntro.router;
+              shifted = intro.router != m_NextIntro.router;
               m_NextIntro = intro;
-              success     = true;
+              success = true;
             }
           }
         }
       }
-      if(m_NextIntro.router.IsZero())
+      if (m_NextIntro.router.IsZero())
         return false;
-      if(shifted)
+      if (shifted)
         lastShift = now;
-      if(rebuild && !BuildCooldownHit(Now()))
+      if (rebuild && !BuildCooldownHit(Now()))
         BuildOneAlignedTo(m_NextIntro.router);
       return success;
     }
@@ -478,45 +472,45 @@ namespace llarp
       UpdateIntroSet();
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
-      if(endpoint == remoteIntro.router)
+      if (endpoint == remoteIntro.router)
       {
         // figure out how many paths to this router we have
         size_t num = 0;
         ForEachPath([&](const path::Path_ptr& p) {
-          if(p->Endpoint() == endpoint && p->IsReady())
+          if (p->Endpoint() == endpoint && p->IsReady())
             ++num;
         });
         // if we have more than two then we are probably fine
-        if(num > 2)
+        if (num > 2)
           return;
         // if we have one working one ...
-        if(num == 1)
+        if (num == 1)
         {
           num = 0;
           ForEachPath([&](const path::Path_ptr& p) {
-            if(p->Endpoint() == endpoint)
+            if (p->Endpoint() == endpoint)
               ++num;
           });
           // if we have 2 or more established or pending don't do anything
-          if(num > 2)
+          if (num > 2)
             return;
           BuildOneAlignedTo(endpoint);
         }
-        else if(num == 0)
+        else if (num == 0)
         {
           // we have no paths to this router right now
           // hop off it
           Introduction picked;
           // get the latest intro that isn't on that endpoint
-          for(const auto& intro : currentIntroSet.I)
+          for (const auto& intro : currentIntroSet.I)
           {
-            if(intro.router == endpoint)
+            if (intro.router == endpoint)
               continue;
-            if(intro.expiresAt > picked.expiresAt)
+            if (intro.expiresAt > picked.expiresAt)
               picked = intro;
           }
           // we got nothing
-          if(picked.router.IsZero())
+          if (picked.router.IsZero())
           {
             return;
           }
@@ -525,8 +519,7 @@ namespace llarp
           num = 0;
           ForEachPath([&](const path::Path_ptr& p) {
             // don't count timed out paths
-            if(p->Status() != path::ePathTimeout
-               && p->Endpoint() == m_NextIntro.router)
+            if (p->Status() != path::ePathTimeout && p->Endpoint() == m_NextIntro.router)
               ++num;
           });
           // build a path if one isn't already pending build or established
@@ -536,8 +529,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p,
-                                              const ProtocolFrame& frame)
+    OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame)
     {
       return m_Endpoint->HandleHiddenServiceFrame(p, frame);
     }

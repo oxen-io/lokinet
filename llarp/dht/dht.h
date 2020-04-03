@@ -59,7 +59,6 @@ void
 __llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id);
 
 void
-llarp_dht_lookup_router(struct llarp_dht_context* ctx,
-                        struct llarp_router_lookup_job* job);
+llarp_dht_lookup_router(struct llarp_dht_context* ctx, struct llarp_router_lookup_job* job);
 
 #endif

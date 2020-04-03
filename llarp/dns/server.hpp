@@ -24,34 +24,33 @@ namespace llarp
 
       /// handle a hooked message
       virtual bool
-      HandleHookedDNSMessage(Message query,
-                             std::function< void(Message) > sendReply) = 0;
+      HandleHookedDNSMessage(Message query, std::function<void(Message)> sendReply) = 0;
     };
 
-    struct Proxy : public std::enable_shared_from_this< Proxy >
+    struct Proxy : public std::enable_shared_from_this<Proxy>
     {
-      using Logic_ptr = std::shared_ptr< Logic >;
-      Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic,
-            llarp_ev_loop_ptr clientLoop, Logic_ptr clientLogic,
-            IQueryHandler* handler);
+      using Logic_ptr = std::shared_ptr<Logic>;
+      Proxy(
+          llarp_ev_loop_ptr serverLoop,
+          Logic_ptr serverLogic,
+          llarp_ev_loop_ptr clientLoop,
+          Logic_ptr clientLogic,
+          IQueryHandler* handler);
 
       bool
-      Start(const llarp::Addr addr,
-            const std::vector< llarp::Addr >& resolvers);
+      Start(const llarp::Addr addr, const std::vector<llarp::Addr>& resolvers);
 
       void
       Stop();
 
-      using Buffer_t = std::vector< uint8_t >;
+      using Buffer_t = std::vector<uint8_t>;
 
      private:
       /// low level packet handler
       static void
-      HandleUDPRecv_client(llarp_udp_io*, const struct sockaddr*,
-                           ManagedBuffer);
+      HandleUDPRecv_client(llarp_udp_io*, const struct sockaddr*, ManagedBuffer);
       static void
-      HandleUDPRecv_server(llarp_udp_io*, const struct sockaddr*,
-                           ManagedBuffer);
+      HandleUDPRecv_server(llarp_udp_io*, const struct sockaddr*, ManagedBuffer);
 
       /// low level ticker
       static void
@@ -83,7 +82,7 @@ namespace llarp
       Logic_ptr m_ServerLogic;
       Logic_ptr m_ClientLogic;
       IQueryHandler* m_QueryHandler;
-      std::vector< llarp::Addr > m_Resolvers;
+      std::vector<llarp::Addr> m_Resolvers;
 
       struct TX
       {
@@ -107,7 +106,7 @@ namespace llarp
       };
 
       // maps tx to who to send reply to
-      std::unordered_map< TX, llarp::Addr, TX::Hash > m_Forwarded;
+      std::unordered_map<TX, llarp::Addr, TX::Hash> m_Forwarded;
     };
   }  // namespace dns
 }  // namespace llarp

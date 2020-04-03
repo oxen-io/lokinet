@@ -22,7 +22,7 @@ namespace llarp
   std::string
   LogLevelToName(LogLevel lvl);
 
-  nonstd::optional< LogLevel >
+  nonstd::optional<LogLevel>
   LogLevelFromString(std::string level);
 
 }  // namespace llarp

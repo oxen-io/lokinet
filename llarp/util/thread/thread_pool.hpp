@@ -21,8 +21,8 @@ namespace llarp
       // - the max number of pending jobs
       // - the number of threads
      public:
-      using Job      = std::function< void() >;
-      using JobQueue = Queue< Job >;
+      using Job = std::function<void()>;
+      using JobQueue = Queue<Job>;
 
       enum class Status
       {
@@ -40,18 +40,17 @@ namespace llarp
 
       util::Mutex m_mutex;
 
-      std::atomic< Status > m_status;
+      std::atomic<Status> m_status;
 
       size_t m_gateCount GUARDED_BY(m_gateMutex);
-      size_t m_numThreadsReady
-          GUARDED_BY(m_gateMutex);  // Threads ready to go through the gate.
+      size_t m_numThreadsReady GUARDED_BY(m_gateMutex);  // Threads ready to go through the gate.
 
       std::mutex m_gateMutex;
       std::condition_variable m_gateCV;
       std::condition_variable m_numThreadsCV;
 
       std::string m_name;
-      std::vector< std::thread > m_threads;
+      std::vector<std::thread> m_threads;
       size_t m_createdThreads;
 
       void
@@ -180,7 +179,7 @@ namespace llarp
     inline size_t
     ThreadPool::activeThreadCount() const
     {
-      if(m_threads.size() == m_createdThreads)
+      if (m_threads.size() == m_createdThreads)
       {
         return m_threads.size() - m_idleThreads.load(std::memory_order_relaxed);
       }

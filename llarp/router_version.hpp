@@ -10,12 +10,11 @@ namespace llarp
 {
   struct RouterVersion
   {
-    using Version_t = std::array< uint16_t, 3 >;
+    using Version_t = std::array<uint16_t, 3>;
 
     RouterVersion() = default;
 
-    explicit RouterVersion(const Version_t& routerVersion,
-                           uint64_t protoVersion);
+    explicit RouterVersion(const Version_t& routerVersion, uint64_t protoVersion);
 
     bool
     BEncode(llarp_buffer_t* buf) const;
@@ -42,8 +41,7 @@ namespace llarp
     bool
     operator<(const RouterVersion& other) const
     {
-      return m_ProtoVersion < other.m_ProtoVersion
-          || m_Version < other.m_Version;
+      return m_ProtoVersion < other.m_ProtoVersion || m_Version < other.m_Version;
     }
 
     bool
@@ -55,12 +53,11 @@ namespace llarp
     bool
     operator==(const RouterVersion& other) const
     {
-      return m_ProtoVersion == other.m_ProtoVersion
-          && m_Version == other.m_Version;
+      return m_ProtoVersion == other.m_ProtoVersion && m_Version == other.m_Version;
     }
 
    private:
-    Version_t m_Version    = {{0, 0, 0}};
+    Version_t m_Version = {{0, 0, 0}};
     int64_t m_ProtoVersion = LLARP_PROTO_VERSION;
   };
 

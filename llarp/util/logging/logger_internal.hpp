@@ -15,19 +15,19 @@ namespace llarp
   {
   }
   /** internal */
-  template < typename TArg, typename... TArgs >
+  template <typename TArg, typename... TArgs>
   void
   LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args) noexcept
   {
-    ss << std::forward< TArg >(arg);
-    LogAppend(ss, std::forward< TArgs >(args)...);
+    ss << std::forward<TArg>(arg);
+    LogAppend(ss, std::forward<TArgs>(args)...);
   }
 
   inline std::string
   thread_id_string()
   {
     auto tid = std::this_thread::get_id();
-    std::hash< std::thread::id > h;
+    std::hash<std::thread::id> h;
     uint16_t id = h(tid) % 1000;
 #if defined(ANDROID) || defined(RPI)
     char buff[8] = {0};

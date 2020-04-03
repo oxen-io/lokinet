@@ -10,7 +10,7 @@ struct llarp_vpn_io;
 struct llarp_vpn_pkt_queue
 {
   using Packet_t = llarp::net::IPPacket;
-  llarp::thread::Queue< Packet_t > queue;
+  llarp::thread::Queue<Packet_t> queue;
 
   llarp_vpn_pkt_queue() : queue(1024){};
   ~llarp_vpn_pkt_queue() = default;
@@ -42,7 +42,7 @@ struct llarp_vpn_io_impl
 
  private:
   void
-  CallSafe(std::function< void(void) > f);
+  CallSafe(std::function<void(void)> f);
 
   void
   Expunge();

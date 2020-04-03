@@ -28,9 +28,9 @@ namespace llarp
   std::string
   huint32_t::ToString() const
   {
-    uint32_t n                = htonl(h);
+    uint32_t n = htonl(h);
     char tmp[INET_ADDRSTRLEN] = {0};
-    if(!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
       return "";
     return tmp;
   }
@@ -39,9 +39,9 @@ namespace llarp
   std::string
   huint128_t::ToString() const
   {
-    auto addr                  = ntoh128(h);
+    auto addr = ntoh128(h);
     char tmp[INET6_ADDRSTRLEN] = {0};
-    if(!inet_ntop(AF_INET6, (void*)&addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, (void*)&addr, tmp, sizeof(tmp)))
       return "";
     return tmp;
   }
@@ -51,7 +51,7 @@ namespace llarp
   huint32_t::FromString(const std::string& str)
   {
     uint32_t n;
-    if(!inet_pton(AF_INET, str.c_str(), &n))
+    if (!inet_pton(AF_INET, str.c_str(), &n))
       return false;
     h = ntohl(n);
     return true;
@@ -62,7 +62,7 @@ namespace llarp
   huint128_t::FromString(const std::string& str)
   {
     llarp::uint128_t i;
-    if(!inet_pton(AF_INET6, str.c_str(), &i))
+    if (!inet_pton(AF_INET6, str.c_str(), &i))
       return false;
     h = ntoh128(i);
     return true;
@@ -73,7 +73,7 @@ namespace llarp
   nuint32_t::ToString() const
   {
     char tmp[INET_ADDRSTRLEN] = {0};
-    if(!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
       return "";
     return tmp;
   }

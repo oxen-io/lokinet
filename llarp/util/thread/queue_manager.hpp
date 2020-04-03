@@ -15,9 +15,9 @@ namespace llarp
   {
     enum class ElementState : uint32_t
     {
-      Empty   = 0,
+      Empty = 0,
       Writing = 1,
-      Full    = 2,
+      Full = 2,
       Reading = 3
     };
 
@@ -32,7 +32,7 @@ namespace llarp
     inline std::ostream&
     operator<<(std::ostream& os, QueueReturn val)
     {
-      switch(val)
+      switch (val)
       {
         case QueueReturn::Success:
           os << "Success";
@@ -70,7 +70,7 @@ namespace llarp
      public:
       static constexpr size_t Alignment = 64;
 
-      using AtomicIndex = std::atomic< std::uint32_t >;
+      using AtomicIndex = std::atomic<std::uint32_t>;
 
      private:
       AtomicIndex m_pushIndex;  // Index in the buffer that the next
@@ -90,7 +90,7 @@ namespace llarp
       const uint32_t m_maxCombinedIndex;  // Maximum combined value of index and
                                           // generation for this object.
 
-      std::atomic< std::uint32_t >* m_states;  // Array of index states.
+      std::atomic<std::uint32_t>* m_states;  // Array of index states.
 
       AtomicIndex&
       pushIndex();
@@ -116,8 +116,7 @@ namespace llarp
       // Return the difference between the startingValue and the subtractValue
       // around a particular modulo.
       static int32_t
-      circularDifference(uint32_t startingValue, uint32_t subtractValue,
-                         uint32_t modulo);
+      circularDifference(uint32_t startingValue, uint32_t subtractValue, uint32_t modulo);
 
       // Return the number of possible generations a circular buffer can hold.
       static uint32_t
@@ -190,8 +189,8 @@ namespace llarp
       // 2. call commitPopIndex, emptying all cells up to the reserved index
       // 3. call abortPushIndexReservation on the index.
       bool
-      reservePopForClear(uint32_t& generation, uint32_t& index,
-                         uint32_t endGeneration, uint32_t endIndex);
+      reservePopForClear(
+          uint32_t& generation, uint32_t& index, uint32_t endGeneration, uint32_t endIndex);
 
       void
       abortPushIndexReservation(uint32_t generation, uint32_t index);

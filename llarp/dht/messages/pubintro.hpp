@@ -14,21 +14,19 @@ namespace llarp
     {
       static const uint64_t MaxPropagationDepth;
       llarp::service::EncryptedIntroSet introset;
-      bool relayed        = false;
+      bool relayed = false;
       uint64_t relayOrder = 0;
-      uint64_t txID       = 0;
-      PublishIntroMessage(const Key_t& from, bool relayed_)
-          : IMessage(from), relayed(relayed_)
+      uint64_t txID = 0;
+      PublishIntroMessage(const Key_t& from, bool relayed_) : IMessage(from), relayed(relayed_)
       {
       }
 
-      PublishIntroMessage(const llarp::service::EncryptedIntroSet& introset_,
-                          uint64_t tx, bool relayed_, uint64_t relayOrder_)
-          : IMessage({})
-          , introset(introset_)
-          , relayed(relayed_)
-          , relayOrder(relayOrder_)
-          , txID(tx)
+      PublishIntroMessage(
+          const llarp::service::EncryptedIntroSet& introset_,
+          uint64_t tx,
+          bool relayed_,
+          uint64_t relayOrder_)
+          : IMessage({}), introset(introset_), relayed(relayed_), relayOrder(relayOrder_), txID(tx)
       {
       }
 
@@ -42,8 +40,7 @@ namespace llarp
 
       bool
       HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+          llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

@@ -15,14 +15,14 @@ namespace llarp
   namespace service
   {
     /// Snapp Address
-    struct Address : public AlignedBuffer< 32 >
+    struct Address : public AlignedBuffer<32>
     {
       /// if parsed using FromString this contains the subdomain
       /// this member is not used when comparing it's extra data for dns
       std::string subdomain;
 
       /// list of whitelisted gtld to permit
-      static const std::set< std::string > AllowedTLDs;
+      static const std::set<std::string> AllowedTLDs;
 
       /// return true if we permit using this tld
       /// otherwise return false
@@ -35,21 +35,20 @@ namespace llarp
       bool
       FromString(const std::string& str, const char* tld = ".loki");
 
-      Address() : AlignedBuffer< 32 >()
+      Address() : AlignedBuffer<32>()
       {
       }
 
-      explicit Address(const Data& buf) : AlignedBuffer< 32 >(buf)
+      explicit Address(const Data& buf) : AlignedBuffer<32>(buf)
       {
       }
 
       Address(const Address& other)
-          : AlignedBuffer< 32 >(other.as_array()), subdomain(other.subdomain)
+          : AlignedBuffer<32>(other.as_array()), subdomain(other.subdomain)
       {
       }
 
-      explicit Address(const AlignedBuffer< 32 >& other)
-          : AlignedBuffer< 32 >(other)
+      explicit Address(const AlignedBuffer<32>& other) : AlignedBuffer<32>(other)
       {
       }
 
@@ -94,8 +93,7 @@ namespace llarp
         size_t
         operator()(const Address& buf) const
         {
-          return std::accumulate(buf.begin(), buf.end(), 0,
-                                 std::bit_xor< size_t >());
+          return std::accumulate(buf.begin(), buf.end(), 0, std::bit_xor<size_t>());
         }
       };
     };

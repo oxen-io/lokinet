@@ -1,5 +1,5 @@
 BasedOnStyle: Google
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: 'false'
 AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlinesLeft: 'true'
@@ -31,5 +31,10 @@ UseTab: Never
 SortIncludes: false
 ColumnLimit: 100
 
+# pointers and reference declaration are part of the type
+DerivePointerAlignment: false
+PointerAlignment: Left
+
 # when wrapping function calls/declarations, force each parameter to have its own line
-BinPackParameters: 'true'
+BinPackParameters: 'false'
+BinPackArguments: 'false'

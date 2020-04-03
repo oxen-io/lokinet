@@ -14,14 +14,13 @@ namespace llarp
     {
       Key_t location;
       llarp::service::Tag tagName;
-      uint64_t txID       = 0;
-      bool relayed        = false;
+      uint64_t txID = 0;
+      bool relayed = false;
       uint64_t relayOrder = 0;
 
-      FindIntroMessage(const Key_t& from, bool relay, uint64_t order)
-          : IMessage(from)
+      FindIntroMessage(const Key_t& from, bool relay, uint64_t order) : IMessage(from)
       {
-        relayed    = relay;
+        relayed = relay;
         relayOrder = order;
       }
 
@@ -30,8 +29,7 @@ namespace llarp
       {
       }
 
-      explicit FindIntroMessage(uint64_t txid, const Key_t& addr,
-                                uint64_t order)
+      explicit FindIntroMessage(uint64_t txid, const Key_t& addr, uint64_t order)
           : IMessage({}), location(addr), txID(txid), relayOrder(order)
       {
         tagName.Zero();
@@ -46,8 +44,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage::Ptr_t >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

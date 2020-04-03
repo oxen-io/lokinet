@@ -45,20 +45,19 @@ namespace llarp
       /// in debug mode, we implement lock() to enforce that any lock is only
       /// used from a single thread. the point of this is to identify locks that
       /// are actually needed by dying a painful death when used across threads
-      mutable nonstd::optional< std::thread::id > m_id;
+      mutable nonstd::optional<std::thread::id> m_id;
       void
       lock() const
       {
-        if(!m_id)
+        if (!m_id)
         {
           m_id.emplace(std::this_thread::get_id());
         }
-        else if(m_id.value() != std::this_thread::get_id())
+        else if (m_id.value() != std::this_thread::get_id())
         {
-          std::cerr << "NullMutex " << this
-                    << " was used across threads: locked by "
-                    << std::this_thread::get_id()
-                    << " and was previously locked by " << m_id.value() << "\n";
+          std::cerr << "NullMutex " << this << " was used across threads: locked by "
+                    << std::this_thread::get_id() << " and was previously locked by "
+                    << m_id.value() << "\n";
           // if you're encountering this abort() call, you may have discovered a
           // case where a NullMutex should be reverted to a "real mutex"
           std::abort();
@@ -95,48 +94,47 @@ namespace llarp
     using Mutex = std::shared_timed_mutex;
 
     /// Basic RAII lock type for the default mutex type.
-    using Lock = std::lock_guard< Mutex >;
+    using Lock = std::lock_guard<Mutex>;
 
     /// Returns a unique lock around the given lockable (typically a mutex)
     /// which gives exclusive control and is unlockable/relockable.  Any extra
     /// argument (e.g. std::defer_lock) is forwarded to the unique_lock
     /// constructor.
-    template < typename Mutex, typename... Args >
+    template <typename Mutex, typename... Args>
 #ifdef __GNUG__
     [[gnu::warn_unused_result]]
 #endif
-    std::unique_lock< Mutex >
+    std::unique_lock<Mutex>
     unique_lock(Mutex& lockable, Args&&... args)
     {
-      return std::unique_lock< Mutex >(lockable, std::forward< Args >(args)...);
+      return std::unique_lock<Mutex>(lockable, std::forward<Args>(args)...);
     }
 
     /// Returns a shared lock around the given lockable (typically a mutex)
     /// which gives "reader" access (i.e. which can be shared with other reader
     /// locks but not unique locks).  Any extra argument (e.g. std::defer_lock)
     /// is forwarded to the std::shared_lock constructor.
-    template < typename Mutex, typename... Args >
+    template <typename Mutex, typename... Args>
 #ifdef __GNUG__
     [[gnu::warn_unused_result]]
 #endif
-    std::shared_lock< Mutex >
+    std::shared_lock<Mutex>
     shared_lock(Mutex& lockable, Args&&... args)
     {
-      return std::shared_lock< Mutex >(lockable, std::forward< Args >(args)...);
+      return std::shared_lock<Mutex>(lockable, std::forward<Args>(args)...);
     }
 
     /// Obtains multiple unique locks simultaneously and atomically.  Returns a
     /// tuple of all the held locks.
-    template < typename... Mutex >
+    template <typename... Mutex>
 #ifdef __GNUG__
     [[gnu::warn_unused_result]]
 #endif
-    std::tuple< std::unique_lock< Mutex >... >
+    std::tuple<std::unique_lock<Mutex>...>
     unique_locks(Mutex&... lockables)
     {
       std::lock(lockables...);
-      return std::make_tuple(
-          std::unique_lock< Mutex >(lockables, std::adopt_lock)...);
+      return std::make_tuple(std::unique_lock<Mutex>(lockables, std::adopt_lock)...);
     }
 
     class Semaphore
@@ -155,7 +153,7 @@ namespace llarp
       notify() EXCLUDES(m_mutex)
       {
         {
-          std::lock_guard< std::mutex > lock(m_mutex);
+          std::lock_guard<std::mutex> lock(m_mutex);
           m_count++;
         }
         m_cv.notify_one();
@@ -173,7 +171,7 @@ namespace llarp
       waitFor(std::chrono::microseconds timeout) EXCLUDES(m_mutex)
       {
         auto lock = unique_lock(m_mutex);
-        if(!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
+        if (!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
           return false;
 
         m_count--;
@@ -197,7 +195,7 @@ namespace llarp
     // type for detecting contention on a resource
     struct ContentionKiller
     {
-      template < typename F >
+      template <typename F>
       void
       TryAccess(F visit) const
 #if defined(LOKINET_DEBUG)

@@ -18,7 +18,7 @@ namespace llarp
   {
     /// who did this message come from or is going to
     ILinkSession* session = nullptr;
-    uint64_t version      = LLARP_PROTO_VERSION;
+    uint64_t version = LLARP_PROTO_VERSION;
 
     PathID_t pathid;
 
@@ -35,7 +35,7 @@ namespace llarp
       // default version if not specified is 0
       uint64_t v = 0;
       // seek for version and set it if we got it
-      if(BEncodeSeekDictVersion(v, buf, 'v'))
+      if (BEncodeSeekDictVersion(v, buf, 'v'))
       {
         version = v;
       }

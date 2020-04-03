@@ -30,7 +30,7 @@ namespace llarp
   SecretKey::LoadFromFile(const char* fname)
   {
     std::ifstream f(fname, std::ios::in | std::ios::binary);
-    if(!f.is_open())
+    if (!f.is_open())
     {
       return false;
     }
@@ -39,19 +39,19 @@ namespace llarp
     const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);
 
-    if(sz == size())
+    if (sz == size())
     {
       // is raw buffer
-      std::copy_n(std::istreambuf_iterator< char >(f), sz, begin());
+      std::copy_n(std::istreambuf_iterator<char>(f), sz, begin());
       return true;
     }
-    std::array< byte_t, 128 > tmp;
+    std::array<byte_t, 128> tmp;
     llarp_buffer_t buf(tmp);
-    if(sz > sizeof(tmp))
+    if (sz > sizeof(tmp))
     {
       return false;
     }
-    f.read(reinterpret_cast< char* >(tmp.data()), sz);
+    f.read(reinterpret_cast<char*>(tmp.data()), sz);
     return BDecode(&buf);
   }
 
@@ -60,7 +60,7 @@ namespace llarp
   {
     PrivateKey key;
     PubKey pubkey;
-    if(!toPrivate(key) || !key.toPublic(pubkey))
+    if (!toPrivate(key) || !key.toPublic(pubkey))
       return false;
     std::memcpy(data() + 32, pubkey.data(), 32);
     return true;
@@ -73,7 +73,7 @@ namespace llarp
     // is the private key; the second half is the hash that gets used in
     // signing.
     unsigned char h[crypto_hash_sha512_BYTES];
-    if(crypto_hash_sha512(h, data(), 32) < 0)
+    if (crypto_hash_sha512(h, data(), 32) < 0)
       return false;
     h[0] &= 248;
     h[31] &= 63;
@@ -91,19 +91,18 @@ namespace llarp
   bool
   SecretKey::SaveToFile(const char* fname) const
   {
-    std::array< byte_t, 128 > tmp;
+    std::array<byte_t, 128> tmp;
     llarp_buffer_t buf(tmp);
-    if(!BEncode(&buf))
+    if (!BEncode(&buf))
     {
       return false;
     }
     const fs::path fpath = std::string(fname);
-    auto optional_f =
-        llarp::util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
-    if(!optional_f)
+    auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+    if (!optional_f)
       return false;
     auto& f = optional_f.value();
-    if(!f.is_open())
+    if (!f.is_open())
       return false;
     f.write((char*)buf.base, buf.cur - buf.base);
     return f.good();
@@ -113,20 +112,19 @@ namespace llarp
   IdentitySecret::LoadFromFile(const char* fname)
   {
     const fs::path fpath = std::string(fname);
-    auto optional        = util::OpenFileStream< std::ifstream >(
-        fpath, std::ios::binary | std::ios::in);
-    if(!optional)
+    auto optional = util::OpenFileStream<std::ifstream>(fpath, std::ios::binary | std::ios::in);
+    if (!optional)
       return false;
     auto& f = optional.value();
     f.seekg(0, std::ios::end);
     const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);
-    if(sz != 32)
+    if (sz != 32)
     {
       llarp::LogError("service node seed size invalid: ", sz, " != 32");
       return false;
     }
-    std::copy_n(std::istreambuf_iterator< char >(f), sz, begin());
+    std::copy_n(std::istreambuf_iterator<char>(f), sz, begin());
     return true;
   }
 

@@ -9,10 +9,9 @@ namespace llarp
   namespace routing
   {
     bool
-    TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf,
-                                      uint64_t counter)
+    TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf, uint64_t counter)
     {
-      if(buf.sz > MaxExitMTU)
+      if (buf.sz > MaxExitMTU)
         return false;
       X.emplace_back(buf.sz + 8);
       byte_t* ptr = X.back().data();
@@ -27,36 +26,34 @@ namespace llarp
     bool
     TransferTrafficMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "I"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "I"))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictList("X", X, buf))
+      if (!BEncodeWriteDictList("X", X, buf))
         return false;
       return bencode_end(buf);
     }
 
     bool
-    TransferTrafficMessage::DecodeKey(const llarp_buffer_t& key,
-                                      llarp_buffer_t* buf)
+    TransferTrafficMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, key, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, key, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, key, buf))
         return false;
-      if(!BEncodeMaybeReadDictList("X", X, read, key, buf))
+      if (!BEncodeMaybeReadDictList("X", X, read, key, buf))
         return false;
       return read;
     }
 
     bool
-    TransferTrafficMessage::HandleMessage(IMessageHandler* h,
-                                          AbstractRouter* r) const
+    TransferTrafficMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleTransferTrafficMessage(*this, r);
     }

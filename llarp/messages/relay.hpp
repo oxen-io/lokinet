@@ -12,7 +12,7 @@ namespace llarp
 {
   struct RelayUpstreamMessage : public ILinkMessage
   {
-    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
+    Encrypted<MAX_LINK_MSG_SIZE - 128> X;
     TunnelNonce Y;
 
     bool
@@ -41,7 +41,7 @@ namespace llarp
 
   struct RelayDownstreamMessage : public ILinkMessage
   {
-    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
+    Encrypted<MAX_LINK_MSG_SIZE - 128> X;
     TunnelNonce Y;
 
     bool

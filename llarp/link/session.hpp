@@ -28,12 +28,12 @@ namespace llarp
 
     /// equiv of shared_from_this but for the interface type so
     /// that each implementation can use shared_from_this
-    virtual std::shared_ptr< ILinkSession >
+    virtual std::shared_ptr<ILinkSession>
     BorrowSelf() = 0;
 
     /// hook for utp for when we have established a connection
     virtual void
-    OnLinkEstablished(ILinkLayer *){};
+    OnLinkEstablished(ILinkLayer*){};
 
     /// called every event loop tick
     virtual void
@@ -43,10 +43,10 @@ namespace llarp
     virtual void Tick(llarp_time_t) = 0;
 
     /// message delivery result hook function
-    using CompletionHandler = std::function< void(DeliveryStatus) >;
+    using CompletionHandler = std::function<void(DeliveryStatus)>;
 
-    using Packet_t  = PacketBuffer;
-    using Message_t = std::vector< byte_t >;
+    using Packet_t = PacketBuffer;
+    using Message_t = std::vector<byte_t>;
 
     /// send a message buffer to the remote endpoint
     virtual bool
@@ -95,14 +95,14 @@ namespace llarp
     GetRemoteRC() const = 0;
 
     /// handle a valid LIM
-    std::function< bool(const LinkIntroMessage *msg) > GotLIM;
+    std::function<bool(const LinkIntroMessage* msg)> GotLIM;
 
     /// send queue current blacklog
     virtual size_t
     SendQueueBacklog() const = 0;
 
     /// get parent link layer
-    virtual ILinkLayer *
+    virtual ILinkLayer*
     GetLinkLayer() const = 0;
 
     /// renegotiate session when we have a new RC locally

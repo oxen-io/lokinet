@@ -23,11 +23,10 @@ namespace llarp
     queue_job(struct llarp_thread_job job);
 
     bool
-    _traceLogicCall(std::function< void(void) > func, const char* filename,
-                    int lineo);
+    _traceLogicCall(std::function<void(void)> func, const char* filename, int lineo);
 
     uint32_t
-    call_later(llarp_time_t later, std::function< void(void) > func);
+    call_later(llarp_time_t later, std::function<void(void)> func);
 
     void
     cancel_call(uint32_t id);
@@ -42,7 +41,7 @@ namespace llarp
     can_flush() const;
 
     void
-    SetQueuer(std::function< void(std::function< void(void) >) > q);
+    SetQueuer(std::function<void(std::function<void(void)>)> q);
 
     void
     set_event_loop(llarp_ev_loop* loop);
@@ -54,9 +53,9 @@ namespace llarp
     using ID_t = std::thread::id;
     llarp_threadpool* const m_Thread;
     llarp_ev_loop* m_Loop = nullptr;
-    nonstd::optional< ID_t > m_ID;
+    nonstd::optional<ID_t> m_ID;
     util::ContentionKiller m_Killer;
-    std::function< void(std::function< void(void) >) > m_Queue;
+    std::function<void(std::function<void(void)>)> m_Queue;
   };
 }  // namespace llarp
 
