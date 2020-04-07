@@ -21,7 +21,7 @@ namespace llarp
 
      protected:
       /// flag for PathSet::Stop()
-      std::atomic< bool > _run;
+      std::atomic<bool> _run;
 
       virtual bool
       UrgentBuild(llarp_time_t now) const;
@@ -31,18 +31,16 @@ namespace llarp
       DoPathBuildBackoff();
 
       bool
-      DoUrgentBuildAlignedTo(const RouterID remote,
-                             std::vector< RouterContact >& hops);
+      DoUrgentBuildAlignedTo(const RouterID remote, std::vector<RouterContact>& hops);
 
       bool
-      DoBuildAlignedTo(const RouterID remote,
-                       std::vector< RouterContact >& hops);
+      DoBuildAlignedTo(const RouterID remote, std::vector<RouterContact>& hops);
 
      public:
       AbstractRouter* m_router;
       SecretKey enckey;
       size_t numHops;
-      llarp_time_t lastBuild          = 0s;
+      llarp_time_t lastBuild = 0s;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
       /// construct
@@ -54,8 +52,12 @@ namespace llarp
       ExtractStatus() const;
 
       bool
-      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop, PathRole roles) override;
+      SelectHop(
+          llarp_nodedb* db,
+          const std::set<RouterID>& prev,
+          RouterContact& cur,
+          size_t hop,
+          PathRole roles) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -106,12 +108,10 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) override;
 
       void
-      Build(const std::vector< RouterContact >& hops,
-            PathRole roles = ePathRoleAny) override;
+      Build(const std::vector<RouterContact>& hops, PathRole roles = ePathRoleAny) override;
 
       bool
-      SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops,
-                 PathRole roles = ePathRoleAny);
+      SelectHops(llarp_nodedb* db, std::vector<RouterContact>& hops, PathRole roles = ePathRoleAny);
 
       void
       ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
@@ -129,7 +129,7 @@ namespace llarp
       HandlePathBuildFailed(Path_ptr p) override;
     };
 
-    using Builder_ptr = std::shared_ptr< Builder >;
+    using Builder_ptr = std::shared_ptr<Builder>;
 
   }  // namespace path
 

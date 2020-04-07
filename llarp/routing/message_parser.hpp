@@ -22,8 +22,11 @@ namespace llarp
       ~InboundMessageParser();
 
       bool
-      ParseMessageBuffer(const llarp_buffer_t& buf, IMessageHandler* handler,
-                         const PathID_t& from, AbstractRouter* r);
+      ParseMessageBuffer(
+          const llarp_buffer_t& buf,
+          IMessageHandler* handler,
+          const PathID_t& from,
+          AbstractRouter* r);
 
       bool
       operator()(llarp_buffer_t* buffer, llarp_buffer_t* key);
@@ -35,7 +38,7 @@ namespace llarp
       struct MessageHolder;
 
       IMessage* msg{nullptr};
-      std::unique_ptr< MessageHolder > m_Holder;
+      std::unique_ptr<MessageHolder> m_Holder;
     };
   }  // namespace routing
 }  // namespace llarp

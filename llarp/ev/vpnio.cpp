@@ -12,12 +12,12 @@ llarp_vpn_io_impl::AsyncClose()
 }
 
 void
-llarp_vpn_io_impl::CallSafe(std::function< void(void) > f)
+llarp_vpn_io_impl::CallSafe(std::function<void(void)> f)
 {
   auto ctx = llarp::Context::Get(ptr);
-  if(ctx && ctx->CallSafe(f))
+  if (ctx && ctx->CallSafe(f))
     return;
-  else if(ctx == nullptr || ctx->logic == nullptr)
+  else if (ctx == nullptr || ctx->logic == nullptr)
     f();
 }
 
@@ -25,7 +25,7 @@ void
 llarp_vpn_io_impl::Expunge()
 {
   parent->impl = nullptr;
-  if(parent->closed)
+  if (parent->closed)
     parent->closed(parent);
   delete this;
 }

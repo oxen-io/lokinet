@@ -20,34 +20,33 @@ namespace llarp
     BadRC
   };
 
-  using RCRequestCallback = std::function< void(
-      const RouterID &, const RouterContact *const, const RCRequestResult) >;
+  using RCRequestCallback =
+      std::function<void(const RouterID&, const RouterContact* const, const RCRequestResult)>;
 
   struct I_RCLookupHandler
   {
     virtual ~I_RCLookupHandler() = default;
 
     virtual void
-    AddValidRouter(const RouterID &router) = 0;
+    AddValidRouter(const RouterID& router) = 0;
 
     virtual void
-    RemoveValidRouter(const RouterID &router) = 0;
+    RemoveValidRouter(const RouterID& router) = 0;
 
     virtual void
-    SetRouterWhitelist(const std::vector< RouterID > &routers) = 0;
+    SetRouterWhitelist(const std::vector<RouterID>& routers) = 0;
 
     virtual void
-    GetRC(const RouterID &router, RCRequestCallback callback,
-          bool forceLookup = false) = 0;
+    GetRC(const RouterID& router, RCRequestCallback callback, bool forceLookup = false) = 0;
 
     virtual bool
-    RemoteIsAllowed(const RouterID &remote) const = 0;
+    RemoteIsAllowed(const RouterID& remote) const = 0;
 
     virtual bool
-    CheckRC(const RouterContact &rc) const = 0;
+    CheckRC(const RouterContact& rc) const = 0;
 
     virtual bool
-    GetRandomWhitelistRouter(RouterID &router) const = 0;
+    GetRandomWhitelistRouter(RouterID& router) const = 0;
 
     virtual bool
     CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc) = 0;

@@ -16,46 +16,44 @@ namespace llarp
   }
 
   bool
-  RelayUpstreamMessage::BEncode(llarp_buffer_t *buf) const
+  RelayUpstreamMessage::BEncode(llarp_buffer_t* buf) const
   {
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
-    if(!BEncodeWriteDictMsgType(buf, "a", "u"))
+    if (!BEncodeWriteDictMsgType(buf, "a", "u"))
       return false;
 
-    if(!BEncodeWriteDictEntry("p", pathid, buf))
+    if (!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+    if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
       return false;
-    if(!BEncodeWriteDictEntry("x", X, buf))
+    if (!BEncodeWriteDictEntry("x", X, buf))
       return false;
-    if(!BEncodeWriteDictEntry("y", Y, buf))
+    if (!BEncodeWriteDictEntry("y", Y, buf))
       return false;
     return bencode_end(buf);
   }
 
   bool
-  RelayUpstreamMessage::DecodeKey(const llarp_buffer_t &key,
-                                  llarp_buffer_t *buf)
+  RelayUpstreamMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                  buf))
+    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
       return false;
     return read;
   }
 
   bool
-  RelayUpstreamMessage::HandleMessage(AbstractRouter *r) const
+  RelayUpstreamMessage::HandleMessage(AbstractRouter* r) const
   {
     auto path = r->pathContext().GetByDownstream(session->GetPubKey(), pathid);
-    if(path)
+    if (path)
     {
       return path->HandleUpstream(llarp_buffer_t(X), Y, r);
     }
@@ -72,46 +70,44 @@ namespace llarp
   }
 
   bool
-  RelayDownstreamMessage::BEncode(llarp_buffer_t *buf) const
+  RelayDownstreamMessage::BEncode(llarp_buffer_t* buf) const
   {
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
-    if(!BEncodeWriteDictMsgType(buf, "a", "d"))
+    if (!BEncodeWriteDictMsgType(buf, "a", "d"))
       return false;
 
-    if(!BEncodeWriteDictEntry("p", pathid, buf))
+    if (!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+    if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
       return false;
-    if(!BEncodeWriteDictEntry("x", X, buf))
+    if (!BEncodeWriteDictEntry("x", X, buf))
       return false;
-    if(!BEncodeWriteDictEntry("y", Y, buf))
+    if (!BEncodeWriteDictEntry("y", Y, buf))
       return false;
     return bencode_end(buf);
   }
 
   bool
-  RelayDownstreamMessage::DecodeKey(const llarp_buffer_t &key,
-                                    llarp_buffer_t *buf)
+  RelayDownstreamMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     bool read = false;
-    if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
       return false;
-    if(!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key,
-                                  buf))
+    if (!BEncodeMaybeVerifyVersion("v", version, LLARP_PROTO_VERSION, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
       return false;
-    if(!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
+    if (!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
       return false;
     return read;
   }
 
   bool
-  RelayDownstreamMessage::HandleMessage(AbstractRouter *r) const
+  RelayDownstreamMessage::HandleMessage(AbstractRouter* r) const
   {
     auto path = r->pathContext().GetByUpstream(session->GetPubKey(), pathid);
-    if(path)
+    if (path)
     {
       return path->HandleDownstream(llarp_buffer_t(X), Y, r);
     }

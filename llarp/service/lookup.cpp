@@ -12,7 +12,7 @@ namespace llarp
 
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx, std::string n)
+    IServiceLookup::IServiceLookup(ILookupHolder* p, uint64_t tx, std::string n)
         : m_parent(p), txid(tx), name(std::move(n))
     {
       m_created = time_now_ms();
@@ -20,10 +20,10 @@ namespace llarp
     }
 
     bool
-    IServiceLookup::SendRequestViaPath(path::Path_ptr path, AbstractRouter *r)
+    IServiceLookup::SendRequestViaPath(path::Path_ptr path, AbstractRouter* r)
     {
       auto msg = BuildRequestMessage();
-      if(!msg)
+      if (!msg)
         return false;
       endpoint = path->Endpoint();
       LogicCall(r->logic(), [=]() { path->SendRoutingMessage(*msg, r); });

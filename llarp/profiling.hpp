@@ -14,13 +14,13 @@ namespace llarp
   struct RouterProfile
   {
     static constexpr size_t MaxSize = 256;
-    uint64_t connectTimeoutCount    = 0;
-    uint64_t connectGoodCount       = 0;
-    uint64_t pathSuccessCount       = 0;
-    uint64_t pathFailCount          = 0;
-    llarp_time_t lastUpdated        = 0s;
-    llarp_time_t lastDecay          = 0s;
-    uint64_t version                = LLARP_PROTO_VERSION;
+    uint64_t connectTimeoutCount = 0;
+    uint64_t connectGoodCount = 0;
+    uint64_t pathSuccessCount = 0;
+    uint64_t pathFailCount = 0;
+    llarp_time_t lastUpdated = 0s;
+    llarp_time_t lastDecay = 0s;
+    uint64_t version = LLARP_PROTO_VERSION;
 
     bool
     BEncode(llarp_buffer_t* buf) const;
@@ -56,13 +56,11 @@ namespace llarp
 
     /// check if this router should have paths built over it
     bool
-    IsBadForPath(const RouterID& r, uint64_t chances = 8)
-        EXCLUDES(m_ProfilesMutex);
+    IsBadForPath(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
 
     /// check if this router should be connected directly to
     bool
-    IsBadForConnect(const RouterID& r, uint64_t chances = 8)
-        EXCLUDES(m_ProfilesMutex);
+    IsBadForConnect(const RouterID& r, uint64_t chances = 8) EXCLUDES(m_ProfilesMutex);
 
     void
     MarkConnectTimeout(const RouterID& r) EXCLUDES(m_ProfilesMutex);
@@ -89,8 +87,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const EXCLUDES(m_ProfilesMutex);
 
     bool
-    DecodeKey(const llarp_buffer_t& k,
-              llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
     // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
 
     bool
@@ -112,9 +109,9 @@ namespace llarp
     bool
     BEncodeNoLock(llarp_buffer_t* buf) const REQUIRES_SHARED(m_ProfilesMutex);
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
-    std::map< RouterID, RouterProfile > m_Profiles GUARDED_BY(m_ProfilesMutex);
+    std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0s;
-    std::atomic< bool > m_DisableProfiling;
+    std::atomic<bool> m_DisableProfiling;
   };
 
 }  // namespace llarp

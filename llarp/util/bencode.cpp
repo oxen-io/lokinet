@@ -8,7 +8,7 @@ bool
 bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 {
   size_t len;
-  if(*buffer->cur != 'i')
+  if (*buffer->cur != 'i')
     return false;
 
   char numbuf[32];
@@ -16,7 +16,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
   buffer->cur++;
 
   len = buffer->read_until('e', (byte_t*)numbuf, sizeof(numbuf) - 1);
-  if(!len)
+  if (!len)
   {
     return false;
   }
@@ -24,7 +24,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
   buffer->cur++;
 
   numbuf[len] = '\0';
-  if(result)
+  if (result)
     *result = std::strtoull(numbuf, nullptr, 10);
   return true;
 }
@@ -35,12 +35,12 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
   char numbuf[10];
 
   size_t len = buffer->read_until(':', (byte_t*)numbuf, sizeof(numbuf) - 1);
-  if(!len)
+  if (!len)
     return false;
 
-  numbuf[len]   = '\0';
+  numbuf[len] = '\0';
   const int num = atoi(numbuf);
-  if(num < 0)
+  if (num < 0)
   {
     return false;
   }
@@ -50,15 +50,15 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
   buffer->cur++;
 
   len = buffer->size_left();
-  if(len < slen)
+  if (len < slen)
   {
     return false;
   }
-  if(result)
+  if (result)
   {
     result->base = buffer->cur;
-    result->cur  = buffer->cur;
-    result->sz   = slen;
+    result->cur = buffer->cur;
+    result->sz = slen;
   }
   buffer->cur += slen;
   return true;
@@ -67,18 +67,17 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 {
-  if(!buff->writef("%zu:", sz))
+  if (!buff->writef("%zu:", sz))
   {
     return false;
   }
-  return buff->write(reinterpret_cast< const char* >(data),
-                     reinterpret_cast< const char* >(data) + sz);
+  return buff->write(reinterpret_cast<const char*>(data), reinterpret_cast<const char*>(data) + sz);
 }
 
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  if(!buff->writef("i%" PRIu64, i))
+  if (!buff->writef("i%" PRIu64, i))
   {
     return false;
   }
@@ -91,14 +90,14 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 bool
 bencode_discard(llarp_buffer_t* buf)
 {
-  if(buf->size_left() == 0)
+  if (buf->size_left() == 0)
     return true;
-  switch(*buf->cur)
+  switch (*buf->cur)
   {
     case 'l':
       return llarp::bencode_read_list(
           [](llarp_buffer_t* buffer, bool more) -> bool {
-            if(more)
+            if (more)
             {
               return bencode_discard(buffer);
             }
@@ -110,7 +109,7 @@ bencode_discard(llarp_buffer_t* buf)
     case 'd':
       return llarp::bencode_read_dict(
           [](llarp_buffer_t* buffer, llarp_buffer_t* key) -> bool {
-            if(key)
+            if (key)
               return bencode_discard(buffer);
             return true;
           },
@@ -132,10 +131,9 @@ bencode_discard(llarp_buffer_t* buf)
 }
 
 bool
-bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz,
-                           uint64_t i)
+bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz, uint64_t i)
 {
-  if(!bencode_write_bytestring(buff, name, sz))
+  if (!bencode_write_bytestring(buff, name, sz))
     return false;
 
   return bencode_write_uint64(buff, i);

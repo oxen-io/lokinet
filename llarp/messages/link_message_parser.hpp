@@ -45,7 +45,7 @@ namespace llarp
 
     struct msg_holder_t;
 
-    std::unique_ptr< msg_holder_t > holder;
+    std::unique_ptr<msg_holder_t> holder;
   };
 }  // namespace llarp
 #endif

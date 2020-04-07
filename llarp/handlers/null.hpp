@@ -7,19 +7,17 @@ namespace llarp
 {
   namespace handlers
   {
-    struct NullEndpoint final
-        : public llarp::service::Endpoint,
-          public std::enable_shared_from_this< NullEndpoint >
+    struct NullEndpoint final : public llarp::service::Endpoint,
+                                public std::enable_shared_from_this<NullEndpoint>
     {
-      NullEndpoint(const std::string &name, AbstractRouter *r,
-                   llarp::service::Context *parent)
+      NullEndpoint(const std::string& name, AbstractRouter* r, llarp::service::Context* parent)
           : llarp::service::Endpoint(name, r, parent)
       {
       }
 
       virtual bool
-      HandleInboundPacket(const service::ConvoTag, const llarp_buffer_t &,
-                          service::ProtocolType) override
+      HandleInboundPacket(
+          const service::ConvoTag, const llarp_buffer_t&, service::ProtocolType) override
       {
         return true;
       }

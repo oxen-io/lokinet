@@ -27,8 +27,7 @@ namespace tooling
 
   struct RouterEvent
   {
-    RouterEvent(std::string eventType, llarp::RouterID routerID,
-                bool triggered)
+    RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered)
         : eventType(eventType), routerID(routerID), triggered(triggered)
     {
     }
@@ -53,6 +52,6 @@ namespace tooling
     bool triggered = false;
   };
 
-  using RouterEventPtr = std::unique_ptr< RouterEvent >;
+  using RouterEventPtr = std::unique_ptr<RouterEvent>;
 
 }  // namespace tooling

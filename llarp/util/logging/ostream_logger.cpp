@@ -9,13 +9,16 @@ namespace llarp
   }
 
   void
-  OStreamLogStream::PreLog(std::stringstream& ss, LogLevel lvl,
-                           const char* fname, int lineno,
-                           const std::string& nodename) const
+  OStreamLogStream::PreLog(
+      std::stringstream& ss,
+      LogLevel lvl,
+      const char* fname,
+      int lineno,
+      const std::string& nodename) const
   {
-    if(m_withColours)
+    if (m_withColours)
     {
-      switch(lvl)
+      switch (lvl)
       {
         case eLogNone:
           return;
@@ -36,14 +39,14 @@ namespace llarp
     }
     ss << "[" << LogLevelToString(lvl) << "] ";
     ss << "[" << nodename << "]"
-       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
-       << ":" << lineno << "\t";
+       << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "\t";
   }
 
   void
   OStreamLogStream::PostLog(std::stringstream& ss) const
   {
-    if(m_withColours)
+    if (m_withColours)
       ss << (char)27 << "[0;0m";
     ss << std::endl;
   }

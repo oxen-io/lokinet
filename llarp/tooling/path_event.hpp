@@ -8,18 +8,15 @@ namespace tooling
 {
   struct PathAttemptEvent : public RouterEvent
   {
-    std::vector< llarp::path::PathHopConfig > hops;
+    std::vector<llarp::path::PathHopConfig> hops;
     llarp::PathID_t pathid;
 
-    PathAttemptEvent(
-        const llarp::RouterID& routerID,
-        std::shared_ptr< const llarp::path::Path > path)
+    PathAttemptEvent(const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::Path> path)
         : RouterEvent("PathAttemptEvent", routerID, false)
         , hops(path->hops)
         , pathid(path->hops[0].rxID)
     {
     }
-
 
     std::string
     ToString() const
@@ -28,14 +25,14 @@ namespace tooling
       result += "---- [";
 
       size_t i = 0;
-      for(const auto& hop : hops)
+      for (const auto& hop : hops)
       {
         i++;
 
         result += llarp::RouterID(hop.rc.pubkey).ShortString();
         result += "]";
 
-        if(i != hops.size())
+        if (i != hops.size())
         {
           result += " -> [";
         }
@@ -43,7 +40,6 @@ namespace tooling
 
       return result;
     }
-
   };
 
   struct PathRequestReceivedEvent : public RouterEvent
@@ -55,8 +51,7 @@ namespace tooling
     bool isEndpoint = false;
 
     PathRequestReceivedEvent(
-        const llarp::RouterID& routerID,
-        std::shared_ptr< const llarp::path::TransitHop > hop)
+        const llarp::RouterID& routerID, std::shared_ptr<const llarp::path::TransitHop> hop)
         : RouterEvent("PathRequestReceivedEvent", routerID, true)
         , prevHop(hop->info.downstream)
         , nextHop(hop->info.upstream)
@@ -65,7 +60,6 @@ namespace tooling
         , isEndpoint(routerID == nextHop ? true : false)
     {
     }
-
 
     std::string
     ToString() const
@@ -77,7 +71,7 @@ namespace tooling
       result += routerID.ShortString();
       result += "] -> [";
 
-      if(isEndpoint)
+      if (isEndpoint)
       {
         result += "nowhere]";
       }
@@ -89,7 +83,6 @@ namespace tooling
 
       return result;
     }
-
   };
 
   struct PathStatusReceivedEvent : public RouterEvent
@@ -98,12 +91,8 @@ namespace tooling
     uint64_t status;
 
     PathStatusReceivedEvent(
-        const llarp::RouterID& routerID,
-        const llarp::PathID_t rxid_,
-        uint64_t status_)
-        : RouterEvent("PathStatusReceivedEvent", routerID, true)
-        , rxid(rxid_)
-        , status(status_)
+        const llarp::RouterID& routerID, const llarp::PathID_t rxid_, uint64_t status_)
+        : RouterEvent("PathStatusReceivedEvent", routerID, true), rxid(rxid_), status(status_)
     {
     }
 

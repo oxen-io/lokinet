@@ -30,7 +30,7 @@ namespace llarp
       Stop();
 
      private:
-      std::unique_ptr< ServerImpl > m_Impl;
+      std::unique_ptr<ServerImpl> m_Impl;
     };
 
     struct CallerImpl;
@@ -58,7 +58,7 @@ namespace llarp
       Tick(llarp_time_t now);
 
      private:
-      std::unique_ptr< CallerImpl > m_Impl;
+      std::unique_ptr<CallerImpl> m_Impl;
     };
 
   }  // namespace rpc

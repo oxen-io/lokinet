@@ -17,8 +17,7 @@ namespace llarp
       TunnelNonce Y;
 
       PathTransferMessage() = default;
-      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p)
-          : P(p), T(f)
+      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p) : P(p), T(f)
       {
         Y.Randomize();
       }

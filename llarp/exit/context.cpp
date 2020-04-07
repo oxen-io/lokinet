@@ -15,7 +15,7 @@ namespace llarp
     {
       {
         auto itr = m_Exits.begin();
-        while(itr != m_Exits.end())
+        while (itr != m_Exits.end())
         {
           itr->second->Tick(now);
           ++itr;
@@ -23,9 +23,9 @@ namespace llarp
       }
       {
         auto itr = m_Closed.begin();
-        while(itr != m_Closed.end())
+        while (itr != m_Closed.end())
         {
-          if((*itr)->ShouldRemove())
+          if ((*itr)->ShouldRemove())
             itr = m_Closed.erase(itr);
           else
             ++itr;
@@ -37,7 +37,7 @@ namespace llarp
     Context::Stop()
     {
       auto itr = m_Exits.begin();
-      while(itr != m_Exits.end())
+      while (itr != m_Exits.end())
       {
         itr->second->Stop();
         m_Closed.emplace_back(std::move(itr->second));
@@ -50,7 +50,7 @@ namespace llarp
     {
       util::StatusObject obj{};
       auto itr = m_Exits.begin();
-      while(itr != m_Exits.end())
+      while (itr != m_Exits.end())
       {
         obj[itr->first] = itr->second->ExtractStatus();
         ++itr;
@@ -62,7 +62,7 @@ namespace llarp
     Context::CalculateExitTraffic(TrafficStats& stats)
     {
       auto itr = m_Exits.begin();
-      while(itr != m_Exits.end())
+      while (itr != m_Exits.end())
       {
         itr->second->CalculateTrafficStats(stats);
         ++itr;
@@ -73,10 +73,10 @@ namespace llarp
     Context::FindEndpointForPath(const PathID_t& path) const
     {
       auto itr = m_Exits.begin();
-      while(itr != m_Exits.end())
+      while (itr != m_Exits.end())
       {
         auto ep = itr->second->FindEndpointByPath(path);
-        if(ep)
+        if (ep)
           return ep;
         ++itr;
       }
@@ -84,13 +84,12 @@ namespace llarp
     }
 
     bool
-    Context::ObtainNewExit(const PubKey& pk, const PathID_t& path,
-                           bool permitInternet)
+    Context::ObtainNewExit(const PubKey& pk, const PathID_t& path, bool permitInternet)
     {
       auto itr = m_Exits.begin();
-      while(itr != m_Exits.end())
+      while (itr != m_Exits.end())
       {
-        if(itr->second->AllocateNewExit(pk, path, permitInternet))
+        if (itr->second->AllocateNewExit(pk, path, permitInternet))
           return true;
         ++itr;
       }
@@ -103,21 +102,21 @@ namespace llarp
       // check for duplicate exit by name
       {
         auto itr = m_Exits.find(name);
-        if(itr != m_Exits.end())
+        if (itr != m_Exits.end())
         {
           LogError("duplicate exit with name ", name);
           return false;
         }
       }
-      std::unique_ptr< handlers::ExitEndpoint > endpoint;
+      std::unique_ptr<handlers::ExitEndpoint> endpoint;
       // make new endpoint
-      endpoint = std::make_unique< handlers::ExitEndpoint >(name, m_Router);
+      endpoint = std::make_unique<handlers::ExitEndpoint>(name, m_Router);
       // configure
       {
         auto itr = conf.begin();
-        while(itr != conf.end())
+        while (itr != conf.end())
         {
-          if(!endpoint->SetOption(itr->first, itr->second))
+          if (!endpoint->SetOption(itr->first, itr->second))
           {
             LogWarn("Couldn't set option ", itr->first, " to  ", itr->second);
             return false;
@@ -126,7 +125,7 @@ namespace llarp
         }
       }
       // add endpoint
-      if(!endpoint->Start())
+      if (!endpoint->Start())
       {
         LogWarn("Couldn't start exit endpoint");
         return false;

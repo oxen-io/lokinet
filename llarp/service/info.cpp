@@ -14,19 +14,17 @@ namespace llarp
   namespace service
   {
     bool
-    ServiceInfo::Verify(const llarp_buffer_t& payload,
-                        const Signature& sig) const
+    ServiceInfo::Verify(const llarp_buffer_t& payload, const Signature& sig) const
     {
       return CryptoManager::instance()->verify(signkey, payload, sig);
     }
 
     bool
-    ServiceInfo::Update(const byte_t* sign, const byte_t* enc,
-                        const OptNonce& nonce)
+    ServiceInfo::Update(const byte_t* sign, const byte_t* enc, const OptNonce& nonce)
     {
       signkey = sign;
-      enckey  = enc;
-      if(nonce)
+      enckey = enc;
+      if (nonce)
       {
         vanity = nonce.value();
       }
@@ -37,13 +35,13 @@ namespace llarp
     ServiceInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))
+      if (!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, val))
+      if (!BEncodeMaybeReadDictEntry("s", signkey, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("v", version, read, key, val))
+      if (!BEncodeMaybeReadDictInt("v", version, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictEntry("x", vanity, read, key, val))
+      if (!BEncodeMaybeReadDictEntry("x", vanity, read, key, val))
         return false;
       return read;
     }
@@ -51,17 +49,17 @@ namespace llarp
     bool
     ServiceInfo::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictEntry("e", enckey, buf))
+      if (!BEncodeWriteDictEntry("e", enckey, buf))
         return false;
-      if(!BEncodeWriteDictEntry("s", signkey, buf))
+      if (!BEncodeWriteDictEntry("s", signkey, buf))
         return false;
-      if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
         return false;
-      if(!vanity.IsZero())
+      if (!vanity.IsZero())
       {
-        if(!BEncodeWriteDictEntry("x", vanity, buf))
+        if (!BEncodeWriteDictEntry("x", vanity, buf))
           return false;
       }
       return bencode_end(buf);
@@ -70,7 +68,7 @@ namespace llarp
     std::string
     ServiceInfo::Name() const
     {
-      if(m_CachedAddr.IsZero())
+      if (m_CachedAddr.IsZero())
       {
         Address addr;
         CalculateAddress(addr.as_array());
@@ -79,7 +77,8 @@ namespace llarp
       return m_CachedAddr.ToString();
     }
 
-    bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
+    bool
+    ServiceInfo::CalculateAddress(std::array<byte_t, 32>& data) const
     {
       data = signkey.as_array();
       return true;
@@ -88,7 +87,7 @@ namespace llarp
     bool
     ServiceInfo::UpdateAddr()
     {
-      if(m_CachedAddr.IsZero())
+      if (m_CachedAddr.IsZero())
       {
         return CalculateAddress(m_CachedAddr.as_array());
       }

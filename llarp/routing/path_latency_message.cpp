@@ -10,15 +10,14 @@ namespace llarp
     PathLatencyMessage::PathLatencyMessage() = default;
 
     bool
-    PathLatencyMessage::DecodeKey(const llarp_buffer_t& key,
-                                  llarp_buffer_t* val)
+    PathLatencyMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("L", L, read, key, val))
+      if (!BEncodeMaybeReadDictInt("L", L, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+      if (!BEncodeMaybeReadDictInt("S", S, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, key, val))
+      if (!BEncodeMaybeReadDictInt("T", T, read, key, val))
         return false;
       return read;
     }
@@ -26,28 +25,27 @@ namespace llarp
     bool
     PathLatencyMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "L"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "L"))
         return false;
-      if(L)
+      if (L)
       {
-        if(!BEncodeWriteDictInt("L", L, buf))
+        if (!BEncodeWriteDictInt("L", L, buf))
           return false;
       }
-      if(T)
+      if (T)
       {
-        if(!BEncodeWriteDictInt("T", T, buf))
+        if (!BEncodeWriteDictInt("T", T, buf))
           return false;
       }
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
       return bencode_end(buf);
     }
 
     bool
-    PathLatencyMessage::HandleMessage(IMessageHandler* h,
-                                      AbstractRouter* r) const
+    PathLatencyMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h && h->HandlePathLatencyMessage(*this, r);
     }

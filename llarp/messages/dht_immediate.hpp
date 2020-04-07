@@ -10,10 +10,10 @@ namespace llarp
 {
   struct DHTImmediateMessage final : public ILinkMessage
   {
-    DHTImmediateMessage()           = default;
+    DHTImmediateMessage() = default;
     ~DHTImmediateMessage() override = default;
 
-    std::vector< std::unique_ptr< dht::IMessage > > msgs;
+    std::vector<std::unique_ptr<dht::IMessage>> msgs;
 
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;

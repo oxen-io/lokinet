@@ -14,7 +14,7 @@ extern "C"
    * Signature: ()Ljava/lang/String;
    */
   JNIEXPORT jstring JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledWith(JNIEnv *, jclass);
+  Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledWith(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_Lokinet_JNI
@@ -22,14 +22,13 @@ extern "C"
    * Signature: (Ljava/lang/String;)Ljava/lang/String;
    */
   JNIEXPORT jstring JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv *, jclass,
-                                                      jstring);
+  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv*, jclass, jstring);
 
   JNIEXPORT jstring JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr(JNIEnv *, jclass);
+  Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr(JNIEnv*, jclass);
 
   JNIEXPORT jint JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_getIfRange(JNIEnv *, jclass);
+  Java_network_loki_lokinet_Lokinet_1JNI_getIfRange(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_Lokinet_JNI
@@ -37,11 +36,10 @@ extern "C"
    * Signature: ()V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv *, jclass);
+  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv*, jclass);
 
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv *, jclass,
-                                                              jint, jint);
+  Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass, jint, jint);
 
   /*
    * Class:     network_loki_lokinet_Lokinet_JNI
@@ -49,8 +47,7 @@ extern "C"
    * Signature: (Z)V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv *, jclass,
-                                                               jboolean);
+  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass, jboolean);
 
 #ifdef __cplusplus
 }

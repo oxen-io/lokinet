@@ -20,15 +20,15 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const
       {
-        if(now < started)
+        if (now < started)
           return false;
         return now - started > 30s;
       }
 
       void
-      InformResult(std::vector< RouterContact > result)
+      InformResult(std::vector<RouterContact> result)
       {
-        if(handler)
+        if (handler)
           handler(result);
       }
     };

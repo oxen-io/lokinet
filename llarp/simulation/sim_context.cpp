@@ -10,27 +10,23 @@ namespace llarp
     }
 
     void
-    Simulation::NodeUp(llarp::Context *)
+    Simulation::NodeUp(llarp::Context*)
     {
     }
 
     Node_ptr
-    Simulation::AddNode(const std::string &name)
+    Simulation::AddNode(const std::string& name)
     {
       auto itr = m_Nodes.find(name);
-      if(itr == m_Nodes.end())
+      if (itr == m_Nodes.end())
       {
-        itr =
-            m_Nodes
-                .emplace(name,
-                         std::make_shared< llarp::Context >(shared_from_this()))
-                .first;
+        itr = m_Nodes.emplace(name, std::make_shared<llarp::Context>(shared_from_this())).first;
       }
       return itr->second;
     }
 
     void
-    Simulation::DelNode(const std::string &name)
+    Simulation::DelNode(const std::string& name)
     {
       m_Nodes.erase(name);
     }

@@ -14,9 +14,9 @@ namespace llarp
       Key_t node;
       uint64_t txid = 0;
 
-      TXOwner()               = default;
+      TXOwner() = default;
       TXOwner(const TXOwner&) = default;
-      TXOwner(TXOwner&&)      = default;
+      TXOwner(TXOwner&&) = default;
 
       TXOwner&
       operator=(const TXOwner&) = default;

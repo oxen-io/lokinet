@@ -8,14 +8,18 @@ namespace llarp
 {
   namespace iwp
   {
-    LinkLayer::LinkLayer(std::shared_ptr< KeyManager > keyManager,
-                         GetRCFunc getrc, LinkMessageHandler h,
-                         SignBufferFunc sign, SessionEstablishedHandler est,
-                         SessionRenegotiateHandler reneg,
-                         TimeoutHandler timeout, SessionClosedHandler closed,
-                         PumpDoneHandler pumpDone, bool allowInbound)
-        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed,
-                     pumpDone)
+    LinkLayer::LinkLayer(
+        std::shared_ptr<KeyManager> keyManager,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone,
+        bool allowInbound)
+        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone)
         , permitInbound{allowInbound}
     {
     }
@@ -35,7 +39,7 @@ namespace llarp
     }
 
     void
-    LinkLayer::QueueWork(std::function< void(void) > func)
+    LinkLayer::QueueWork(std::function<void(void)> func)
     {
       m_Worker->addJob(func);
     }
@@ -43,18 +47,18 @@ namespace llarp
     void
     LinkLayer::RecvFrom(const Addr& from, ILinkSession::Packet_t pkt)
     {
-      std::shared_ptr< ILinkSession > session;
-      auto itr          = m_AuthedAddrs.find(from);
+      std::shared_ptr<ILinkSession> session;
+      auto itr = m_AuthedAddrs.find(from);
       bool isNewSession = false;
-      if(itr == m_AuthedAddrs.end())
+      if (itr == m_AuthedAddrs.end())
       {
         Lock_t lock(m_PendingMutex);
-        if(m_Pending.count(from) == 0)
+        if (m_Pending.count(from) == 0)
         {
-          if(not permitInbound)
+          if (not permitInbound)
             return;
           isNewSession = true;
-          m_Pending.insert({from, std::make_shared< Session >(this, from)});
+          m_Pending.insert({from, std::make_shared<Session>(this, from)});
         }
         session = m_Pending.find(from)->second;
       }
@@ -62,15 +66,14 @@ namespace llarp
       {
         Lock_t lock(m_AuthedLinksMutex);
         auto range = m_AuthedLinks.equal_range(itr->second);
-        session    = range.first->second;
+        session = range.first->second;
       }
-      if(session)
+      if (session)
       {
         bool success = session->Recv_LL(std::move(pkt));
-        if(!success and isNewSession)
+        if (!success and isNewSession)
         {
-          LogWarn(
-              "Brand new session failed; removing from pending sessions list");
+          LogWarn("Brand new session failed; removing from pending sessions list");
           m_Pending.erase(m_Pending.find(from));
         }
       }
@@ -79,7 +82,7 @@ namespace llarp
     bool
     LinkLayer::MapAddr(const RouterID& r, ILinkSession* s)
     {
-      if(!ILinkLayer::MapAddr(r, s))
+      if (!ILinkLayer::MapAddr(r, s))
         return false;
       m_AuthedAddrs.emplace(s->GetRemoteEndpoint(), r);
       return true;
@@ -91,11 +94,10 @@ namespace llarp
       m_AuthedAddrs.erase(a);
     }
 
-    std::shared_ptr< ILinkSession >
-    LinkLayer::NewOutboundSession(const RouterContact& rc,
-                                  const AddressInfo& ai)
+    std::shared_ptr<ILinkSession>
+    LinkLayer::NewOutboundSession(const RouterContact& rc, const AddressInfo& ai)
     {
-      return std::make_shared< Session >(this, rc, ai);
+      return std::make_shared<Session>(this, rc, ai);
     }
   }  // namespace iwp
 }  // namespace llarp

@@ -10,9 +10,12 @@ namespace llarp
   namespace dht
   {
     ServiceAddressLookup::ServiceAddressLookup(
-        const TXOwner &asker, const Key_t &addr, AbstractContext *ctx,
-        uint32_t order, service::EncryptedIntroSetLookupHandler handler)
-        : TX< TXOwner, service::EncryptedIntroSet >(asker, asker, ctx)
+        const TXOwner& asker,
+        const Key_t& addr,
+        AbstractContext* ctx,
+        uint32_t order,
+        service::EncryptedIntroSetLookupHandler handler)
+        : TX<TXOwner, service::EncryptedIntroSet>(asker, asker, ctx)
         , location(addr)
         , handleResult(std::move(handler))
         , relayOrder(order)
@@ -21,15 +24,14 @@ namespace llarp
     }
 
     bool
-    ServiceAddressLookup::Validate(
-        const service::EncryptedIntroSet &value) const
+    ServiceAddressLookup::Validate(const service::EncryptedIntroSet& value) const
     {
-      if(!value.Verify(parent->Now()))
+      if (!value.Verify(parent->Now()))
       {
         llarp::LogWarn("Got invalid introset from service lookup");
         return false;
       }
-      if(value.derivedSigningKey != location)
+      if (value.derivedSigningKey != location)
       {
         llarp::LogWarn("got introset with wrong target from service lookup");
         return false;
@@ -38,33 +40,32 @@ namespace llarp
     }
 
     void
-    ServiceAddressLookup::Start(const TXOwner &peer)
+    ServiceAddressLookup::Start(const TXOwner& peer)
     {
-      parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(peer.txid, location, relayOrder));
+      parent->DHTSendTo(
+          peer.node.as_array(), new FindIntroMessage(peer.txid, location, relayOrder));
     }
 
     void
     ServiceAddressLookup::SendReply()
     {
       // get newest introset
-      if(valuesFound.size())
+      if (valuesFound.size())
       {
         llarp::service::EncryptedIntroSet found;
-        for(const auto &introset : valuesFound)
+        for (const auto& introset : valuesFound)
         {
-          if(found.OtherIsNewer(introset))
+          if (found.OtherIsNewer(introset))
             found = introset;
         }
         valuesFound.clear();
         valuesFound.emplace_back(found);
       }
-      if(handleResult)
+      if (handleResult)
       {
         handleResult(valuesFound);
       }
-      parent->DHTSendTo(whoasked.node.as_array(),
-                        new GotIntroMessage(valuesFound, whoasked.txid));
+      parent->DHTSendTo(whoasked.node.as_array(), new GotIntroMessage(valuesFound, whoasked.txid));
     }
   }  // namespace dht
 }  // namespace llarp

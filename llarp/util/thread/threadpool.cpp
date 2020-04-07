@@ -7,65 +7,63 @@
 #include <functional>
 #include <queue>
 
-struct llarp_threadpool *
-llarp_init_threadpool(int workers, const char *name, size_t queueLength)
+struct llarp_threadpool*
+llarp_init_threadpool(int workers, const char* name, size_t queueLength)
 {
-  if(workers <= 0)
+  if (workers <= 0)
     workers = 1;
   return new llarp_threadpool(workers, name, queueLength);
 }
 
 void
-llarp_threadpool_join(struct llarp_threadpool *pool)
+llarp_threadpool_join(struct llarp_threadpool* pool)
 {
   llarp::LogDebug("threadpool join");
-  if(pool->impl)
+  if (pool->impl)
     pool->impl->stop();
   pool->impl.reset();
 }
 
 void
-llarp_threadpool_start(struct llarp_threadpool *pool)
+llarp_threadpool_start(struct llarp_threadpool* pool)
 {
-  if(pool->impl)
+  if (pool->impl)
     pool->impl->start();
 }
 
 void
-llarp_threadpool_stop(struct llarp_threadpool *pool)
+llarp_threadpool_stop(struct llarp_threadpool* pool)
 {
   llarp::LogDebug("threadpool stop");
-  if(pool->impl)
+  if (pool->impl)
     pool->impl->disable();
 }
 
 bool
-llarp_threadpool_queue_job(struct llarp_threadpool *pool,
-                           struct llarp_thread_job job)
+llarp_threadpool_queue_job(struct llarp_threadpool* pool, struct llarp_thread_job job)
 {
   return llarp_threadpool_queue_job(pool, std::bind(job.work, job.user));
 }
 
 bool
-llarp_threadpool_queue_job(struct llarp_threadpool *pool,
-                           std::function< void(void) > func)
+llarp_threadpool_queue_job(struct llarp_threadpool* pool, std::function<void(void)> func)
 {
   return pool->impl && pool->impl->addJob(func);
 }
 
 void
-llarp_threadpool_tick(struct llarp_threadpool *pool)
+llarp_threadpool_tick(struct llarp_threadpool* pool)
 {
-  if(pool->impl)
+  if (pool->impl)
   {
     pool->impl->drain();
   }
 }
 
 void
-llarp_free_threadpool(struct llarp_threadpool **pool)
+llarp_free_threadpool(struct llarp_threadpool** pool)
 {
-  if(*pool)
+  if (*pool)
   {
     delete *pool;
   }

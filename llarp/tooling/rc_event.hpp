@@ -8,8 +8,7 @@ namespace tooling
 {
   struct RCGossipReceivedEvent : public RouterEvent
   {
-    RCGossipReceivedEvent(const llarp::RouterID& routerID,
-                          const llarp::RouterContact& rc_)
+    RCGossipReceivedEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc_)
         : RouterEvent("RCGossipReceivedEvent", routerID, true), rc(rc_)
     {
     }
@@ -32,8 +31,7 @@ namespace tooling
 
   struct RCGossipSentEvent : public RouterEvent
   {
-    RCGossipSentEvent(const llarp::RouterID& routerID,
-                      const llarp::RouterContact& rc_)
+    RCGossipSentEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc_)
         : RouterEvent("RCGossipSentEvent", routerID, true), rc(rc_)
     {
     }
@@ -41,8 +39,8 @@ namespace tooling
     std::string
     ToString() const override
     {
-      return RouterEvent::ToString() + " ---- sending RC for RouterID: "
-          + llarp::RouterID(rc.pubkey).ShortString();
+      return RouterEvent::ToString()
+          + " ---- sending RC for RouterID: " + llarp::RouterID(rc.pubkey).ShortString();
     }
 
     std::string

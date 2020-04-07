@@ -6,9 +6,9 @@
 
 namespace llarp
 {
-  struct PathID_t final : public AlignedBuffer< PATHIDSIZE >
+  struct PathID_t final : public AlignedBuffer<PATHIDSIZE>
   {
-    using Hash = AlignedBuffer< PATHIDSIZE >::Hash;
+    using Hash = AlignedBuffer<PATHIDSIZE>::Hash;
   };
 
 }  // namespace llarp

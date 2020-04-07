@@ -2,47 +2,46 @@
 #include <dht/dht.h>
 #include <router_contact.hpp>
 
-llarp_dht_context::llarp_dht_context(llarp::AbstractRouter *router)
+llarp_dht_context::llarp_dht_context(llarp::AbstractRouter* router)
 {
   parent = router;
-  impl   = llarp::dht::makeContext();
+  impl = llarp::dht::makeContext();
 }
 
-struct llarp_dht_context *
-llarp_dht_context_new(llarp::AbstractRouter *router)
+struct llarp_dht_context*
+llarp_dht_context_new(llarp::AbstractRouter* router)
 {
   return new llarp_dht_context(router);
 }
 
 void
-llarp_dht_context_free(struct llarp_dht_context *ctx)
+llarp_dht_context_free(struct llarp_dht_context* ctx)
 {
   delete ctx;
 }
 
 void
-__llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
+__llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id)
 {
   ctx->impl->Nodes()->DelNode(llarp::dht::Key_t(id));
 }
 
 void
-llarp_dht_allow_transit(llarp_dht_context *ctx)
+llarp_dht_allow_transit(llarp_dht_context* ctx)
 {
   ctx->impl->AllowTransit() = true;
 }
 
 void
-llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
+llarp_dht_context_start(struct llarp_dht_context* ctx, const byte_t* key)
 {
   ctx->impl->Init(llarp::dht::Key_t(key), ctx->parent);
 }
 
 void
-llarp_dht_lookup_router(struct llarp_dht_context *ctx,
-                        struct llarp_router_lookup_job *job)
+llarp_dht_lookup_router(struct llarp_dht_context* ctx, struct llarp_router_lookup_job* job)
 {
-  job->dht   = ctx;
+  job->dht = ctx;
   job->found = false;
   job->result.Clear();
   // llarp_rc_clear(&job->result);

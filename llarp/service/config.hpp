@@ -12,11 +12,10 @@ namespace llarp
   {
     struct Config
     {
-      using section_values_t =
-          std::list< std::pair< std::string, std::string > >;
-      using section_t = std::pair< std::string, section_values_t >;
+      using section_values_t = std::list<std::pair<std::string, std::string>>;
+      using section_t = std::pair<std::string, section_values_t>;
 
-      std::list< section_t > services;
+      std::list<section_t> services;
 
       bool
       Load(string_view fname);

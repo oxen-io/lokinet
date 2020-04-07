@@ -23,9 +23,12 @@ namespace llarp
     {
       static constexpr size_t MaxUpstreamQueueSize = 256;
 
-      Endpoint(const llarp::PubKey& remoteIdent,
-               const llarp::PathID_t& beginPath, bool rewriteIP, huint128_t ip,
-               llarp::handlers::ExitEndpoint* parent);
+      Endpoint(
+          const llarp::PubKey& remoteIdent,
+          const llarp::PathID_t& beginPath,
+          bool rewriteIP,
+          huint128_t ip,
+          llarp::handlers::ExitEndpoint* parent);
 
       ~Endpoint();
 
@@ -113,16 +116,14 @@ namespace llarp
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
-      using InboundTrafficQueue_t =
-          std::deque< llarp::routing::TransferTrafficMessage >;
-      using TieredQueue = std::map< uint8_t, InboundTrafficQueue_t >;
+      using InboundTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
+      using TieredQueue = std::map<uint8_t, InboundTrafficQueue_t>;
       // maps number of fragments the message will fit in to the queue for it
       TieredQueue m_DownstreamQueues;
 
       struct UpstreamBuffer
       {
-        UpstreamBuffer(const llarp::net::IPPacket& p, uint64_t c)
-            : pkt(p), counter(c)
+        UpstreamBuffer(const llarp::net::IPPacket& p, uint64_t c) : pkt(p), counter(c)
         {
         }
 
@@ -136,7 +137,7 @@ namespace llarp
         }
       };
 
-      using UpstreamQueue_t = std::priority_queue< UpstreamBuffer >;
+      using UpstreamQueue_t = std::priority_queue<UpstreamBuffer>;
       UpstreamQueue_t m_UpstreamQueue;
       uint64_t m_Counter;
     };

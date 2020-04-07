@@ -12,11 +12,11 @@ namespace llarp
   llarp_time_t
   time_now_ms();
 
-  std::ostream &
-  operator<<(std::ostream &out, const llarp_time_t &t);
+  std::ostream&
+  operator<<(std::ostream& out, const llarp_time_t& t);
 
   nlohmann::json
-  to_json(const llarp_time_t &t);
+  to_json(const llarp_time_t& t);
 
 }  // namespace llarp
 

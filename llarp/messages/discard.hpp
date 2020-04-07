@@ -17,11 +17,11 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t* buf) const override
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!bencode_write_bytestring(buf, "a", 1))
+      if (!bencode_write_bytestring(buf, "a", 1))
         return false;
-      if(!bencode_write_bytestring(buf, "x", 1))
+      if (!bencode_write_bytestring(buf, "x", 1))
         return false;
       return bencode_end(buf);
     }
@@ -41,12 +41,12 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override
     {
-      if(key == "a")
+      if (key == "a")
       {
         llarp_buffer_t strbuf;
-        if(!bencode_read_string(buf, &strbuf))
+        if (!bencode_read_string(buf, &strbuf))
           return false;
-        if(strbuf.sz != 1)
+        if (strbuf.sz != 1)
           return false;
         return *strbuf.cur == 'x';
       }
@@ -70,7 +70,7 @@ namespace llarp
 
       DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
       {
-        S       = s;
+        S = s;
         version = LLARP_PROTO_VERSION;
       }
 
@@ -90,11 +90,11 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override
       {
         bool read = false;
-        if(!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
+        if (!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
           return false;
-        if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+        if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
           return false;
-        if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+        if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
           return false;
         return read;
       }
@@ -102,16 +102,16 @@ namespace llarp
       bool
       BEncode(llarp_buffer_t* buf) const override
       {
-        if(!bencode_start_dict(buf))
+        if (!bencode_start_dict(buf))
           return false;
 
-        if(!BEncodeWriteDictMsgType(buf, "A", "D"))
+        if (!BEncodeWriteDictMsgType(buf, "A", "D"))
           return false;
-        if(!BEncodeWriteDictEntry("P", P, buf))
+        if (!BEncodeWriteDictEntry("P", P, buf))
           return false;
-        if(!BEncodeWriteDictInt("S", S, buf))
+        if (!BEncodeWriteDictInt("S", S, buf))
           return false;
-        if(!BEncodeWriteDictInt("V", version, buf))
+        if (!BEncodeWriteDictInt("V", version, buf))
           return false;
 
         return bencode_end(buf);

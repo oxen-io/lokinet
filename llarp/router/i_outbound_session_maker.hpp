@@ -21,27 +21,26 @@ namespace llarp
     NoLink
   };
 
-  using RouterCallback =
-      std::function< void(const RouterID &, const SessionResult) >;
+  using RouterCallback = std::function<void(const RouterID&, const SessionResult)>;
 
   struct IOutboundSessionMaker
   {
     virtual ~IOutboundSessionMaker() = default;
 
     virtual bool
-    OnSessionEstablished(ILinkSession *session) = 0;
+    OnSessionEstablished(ILinkSession* session) = 0;
 
     virtual void
-    OnConnectTimeout(ILinkSession *session) = 0;
+    OnConnectTimeout(ILinkSession* session) = 0;
 
     virtual void
-    CreateSessionTo(const RouterID &router, RouterCallback on_result) = 0;
+    CreateSessionTo(const RouterID& router, RouterCallback on_result) = 0;
 
     virtual void
-    CreateSessionTo(const RouterContact &rc, RouterCallback on_result) = 0;
+    CreateSessionTo(const RouterContact& rc, RouterCallback on_result) = 0;
 
     virtual bool
-    HavePendingSessionTo(const RouterID &router) const = 0;
+    HavePendingSessionTo(const RouterID& router) const = 0;
 
     virtual void
     ConnectToRandomRouters(int numDesired) = 0;
@@ -50,7 +49,7 @@ namespace llarp
     ExtractStatus() const = 0;
 
     virtual bool
-    ShouldConnectTo(const RouterID &router) const = 0;
+    ShouldConnectTo(const RouterID& router) const = 0;
   };
 
 }  // namespace llarp

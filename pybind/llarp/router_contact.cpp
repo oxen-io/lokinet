@@ -7,7 +7,7 @@ namespace llarp
   void
   RouterContact_Init(py::module& mod)
   {
-    py::class_< RouterContact >(mod, "RouterContact")
+    py::class_<RouterContact>(mod, "RouterContact")
         .def(py::init<>())
         .def_property_readonly(
             "routerID",

@@ -29,8 +29,8 @@ namespace llarp
   fromEnv(const uint16_t& val, string_view envNameSuffix);
   size_t
   fromEnv(const size_t& val, string_view envNameSuffix);
-  nonstd::optional< bool >
-  fromEnv(const nonstd::optional< bool >& val, string_view envNameSuffix);
+  nonstd::optional<bool>
+  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix);
 
   class RouterConfig
   {
@@ -55,7 +55,7 @@ namespace llarp
     // long term identity key
     std::string m_identKeyfile = "identity.key";
 
-    nonstd::optional< bool > m_blockBogons;
+    nonstd::optional<bool> m_blockBogons;
 
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
@@ -95,10 +95,10 @@ namespace llarp
   class NetworkConfig
   {
    public:
-    using NetConfig = std::unordered_multimap< std::string, std::string >;
+    using NetConfig = std::unordered_multimap<std::string, std::string>;
 
    public:
-    nonstd::optional< bool > m_enableProfiling;
+    nonstd::optional<bool> m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
     NetConfig m_netConfig;
@@ -131,7 +131,7 @@ namespace llarp
 
   struct DnsConfig
   {
-    std::unordered_multimap< std::string, std::string > netConfig;
+    std::unordered_multimap<std::string, std::string> netConfig;
 
     void
     fromSection(string_view key, string_view val);
@@ -140,14 +140,14 @@ namespace llarp
   class LinksConfig
   {
    public:
-    static constexpr int Interface     = 0;
+    static constexpr int Interface = 0;
     static constexpr int AddressFamily = 1;
-    static constexpr int Port          = 2;
-    static constexpr int Options       = 3;
+    static constexpr int Port = 2;
+    static constexpr int Options = 3;
 
-    using ServerOptions = std::unordered_set< std::string >;
-    using LinkInfo = std::tuple< std::string, int, uint16_t, ServerOptions >;
-    using Links    = std::vector< LinkInfo >;
+    using ServerOptions = std::unordered_set<std::string>;
+    using LinkInfo = std::tuple<std::string, int, uint16_t, ServerOptions>;
+    using Links = std::vector<LinkInfo>;
 
    public:
     LinkInfo m_OutboundLink;
@@ -166,7 +166,7 @@ namespace llarp
 
   struct ConnectConfig
   {
-    std::vector< std::string > routers;
+    std::vector<std::string> routers;
 
     void
     fromSection(string_view key, string_view val);
@@ -174,7 +174,7 @@ namespace llarp
 
   struct ServicesConfig
   {
-    std::vector< std::pair< std::string, std::string > > services;
+    std::vector<std::pair<std::string, std::string>> services;
     void
     fromSection(string_view key, string_view val);
   };
@@ -190,7 +190,7 @@ namespace llarp
   class ApiConfig
   {
    public:
-    bool m_enableRPCServer    = false;
+    bool m_enableRPCServer = false;
     std::string m_rpcBindAddr = "127.0.0.1:1190";
 
    public:
@@ -205,9 +205,9 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool usingSNSeed         = false;
-    bool whitelistRouters    = false;
-    fs::path ident_keyfile   = "identity.key";
+    bool usingSNSeed = false;
+    bool whitelistRouters = false;
+    fs::path ident_keyfile = "identity.key";
     std::string lokidRPCAddr = "127.0.0.1:22023";
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
@@ -218,14 +218,14 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector< std::string > routers;
+    std::vector<std::string> routers;
     void
     fromSection(string_view key, string_view val);
   };
 
   struct LoggingConfig
   {
-    bool m_LogJSON  = false;
+    bool m_LogJSON = false;
     FILE* m_LogFile = stdout;
 
     void
@@ -271,8 +271,7 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath,
-                            bool isRouter);
+llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter);
 
 void
 llarp_ensure_router_config(std::ofstream& f, std::string basepath);

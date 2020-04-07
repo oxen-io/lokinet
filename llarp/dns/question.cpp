@@ -21,9 +21,9 @@ namespace llarp
     bool
     Question::Encode(llarp_buffer_t* buf) const
     {
-      if(!EncodeName(buf, qname))
+      if (!EncodeName(buf, qname))
         return false;
-      if(!buf->put_uint16(qtype))
+      if (!buf->put_uint16(qtype))
         return false;
       return buf->put_uint16(qclass);
     }
@@ -31,17 +31,17 @@ namespace llarp
     bool
     Question::Decode(llarp_buffer_t* buf)
     {
-      if(!DecodeName(buf, qname))
+      if (!DecodeName(buf, qname))
       {
         llarp::LogError("failed to decode name");
         return false;
       }
-      if(!buf->read_uint16(qtype))
+      if (!buf->read_uint16(qtype))
       {
         llarp::LogError("failed to decode type");
         return false;
       }
-      if(!buf->read_uint16(qclass))
+      if (!buf->read_uint16(qclass))
       {
         llarp::LogError("failed to decode class");
         return false;
@@ -53,7 +53,7 @@ namespace llarp
     Question::IsName(const std::string& other) const
     {
       // does other have a . at the end?
-      if(other.find_last_of('.') == (other.size() - 1))
+      if (other.find_last_of('.') == (other.size() - 1))
         return other == qname;
       // no, add it and retry
       return IsName(other + ".");

@@ -26,7 +26,7 @@ namespace llarp
   RouterID::FromString(const std::string& str)
   {
     auto pos = str.find(".snode");
-    if(pos == std::string::npos || pos == 0)
+    if (pos == std::string::npos || pos == 0)
     {
       return false;
     }

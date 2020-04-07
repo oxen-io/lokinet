@@ -9,9 +9,9 @@ namespace llarp
     void
     ThreadPool::join()
     {
-      for(auto& t : m_threads)
+      for (auto& t : m_threads)
       {
-        if(t.joinable())
+        if (t.joinable())
         {
           t.join();
         }
@@ -23,11 +23,11 @@ namespace llarp
     void
     ThreadPool::runJobs()
     {
-      while(m_status.load(std::memory_order_relaxed) == Status::Run)
+      while (m_status.load(std::memory_order_relaxed) == Status::Run)
       {
         auto functor = m_queue.tryPopFront();
 
-        if(functor.has_value())
+        if (functor.has_value())
         {
           functor.value()();
         }
@@ -35,7 +35,7 @@ namespace llarp
         {
           m_idleThreads++;
 
-          if(m_status == Status::Run && m_queue.empty())
+          if (m_status == Status::Run && m_queue.empty())
           {
             m_semaphore.wait();
           }
@@ -48,11 +48,11 @@ namespace llarp
     void
     ThreadPool::drainQueue()
     {
-      while(m_status.load(std::memory_order_relaxed) == Status::Drain)
+      while (m_status.load(std::memory_order_relaxed) == Status::Drain)
       {
         auto functor = m_queue.tryPopFront();
 
-        if(!functor)
+        if (!functor)
         {
           return;
         }
@@ -64,7 +64,7 @@ namespace llarp
     void
     ThreadPool::waitThreads()
     {
-      std::unique_lock< std::mutex > lock(m_gateMutex);
+      std::unique_lock<std::mutex> lock(m_gateMutex);
       m_numThreadsCV.wait(lock, [this] { return allThreadsReady(); });
     }
 
@@ -72,7 +72,7 @@ namespace llarp
     ThreadPool::releaseThreads()
     {
       {
-        std::lock_guard< std::mutex > lock(m_gateMutex);
+        std::lock_guard<std::mutex> lock(m_gateMutex);
         m_numThreadsReady = 0;
         ++m_gateCount;
       }
@@ -82,11 +82,11 @@ namespace llarp
     void
     ThreadPool::interrupt()
     {
-      std::lock_guard< std::mutex > lock(m_gateMutex);
+      std::lock_guard<std::mutex> lock(m_gateMutex);
 
       size_t count = m_idleThreads;
 
-      for(size_t i = 0; i < count; ++i)
+      for (size_t i = 0; i < count; ++i)
       {
         m_semaphore.notify();
       }
@@ -96,15 +96,14 @@ namespace llarp
     ThreadPool::worker()
     {
       // Lock will be valid until the end of the statement
-      size_t gateCount =
-          (std::lock_guard< std::mutex >(m_gateMutex), m_gateCount);
+      size_t gateCount = (std::lock_guard<std::mutex>(m_gateMutex), m_gateCount);
 
       util::SetThreadName(m_name);
 
-      for(;;)
+      for (;;)
       {
         {
-          std::unique_lock< std::mutex > lock(m_gateMutex);
+          std::unique_lock<std::mutex> lock(m_gateMutex);
           ++m_numThreadsReady;
           m_numThreadsCV.notify_one();
 
@@ -117,17 +116,17 @@ namespace llarp
 
         // Can't use a switch here as we want to load and fall through.
 
-        if(status == Status::Run)
+        if (status == Status::Run)
         {
           runJobs();
           status = m_status;
         }
 
-        if(status == Status::Drain)
+        if (status == Status::Drain)
         {
           drainQueue();
         }
-        else if(status == Status::Suspend)
+        else if (status == Status::Suspend)
         {
           continue;
         }
@@ -144,12 +143,11 @@ namespace llarp
     {
       try
       {
-        m_threads.at(m_createdThreads) =
-            std::thread(std::bind(&ThreadPool::worker, this));
+        m_threads.at(m_createdThreads) = std::thread(std::bind(&ThreadPool::worker, this));
         ++m_createdThreads;
         return true;
       }
-      catch(const std::system_error&)
+      catch (const std::system_error&)
       {
         return false;
       }
@@ -183,7 +181,7 @@ namespace llarp
 
       QueueReturn ret = m_queue.pushBack(job);
 
-      if(ret == QueueReturn::Success && m_idleThreads > 0)
+      if (ret == QueueReturn::Success && m_idleThreads > 0)
       {
         m_semaphore.notify();
       }
@@ -196,7 +194,7 @@ namespace llarp
       assert(job);
       QueueReturn ret = m_queue.pushBack(std::move(job));
 
-      if(ret == QueueReturn::Success && m_idleThreads > 0)
+      if (ret == QueueReturn::Success && m_idleThreads > 0)
       {
         m_semaphore.notify();
       }
@@ -210,7 +208,7 @@ namespace llarp
       assert(job);
       QueueReturn ret = m_queue.tryPushBack(job);
 
-      if(ret == QueueReturn::Success && m_idleThreads > 0)
+      if (ret == QueueReturn::Success && m_idleThreads > 0)
       {
         m_semaphore.notify();
       }
@@ -224,7 +222,7 @@ namespace llarp
       assert(job);
       QueueReturn ret = m_queue.tryPushBack(std::move(job));
 
-      if(ret == QueueReturn::Success && m_idleThreads > 0)
+      if (ret == QueueReturn::Success && m_idleThreads > 0)
       {
         m_semaphore.notify();
       }
@@ -237,7 +235,7 @@ namespace llarp
     {
       util::Lock lock(m_mutex);
 
-      if(m_status.load(std::memory_order_relaxed) == Status::Run)
+      if (m_status.load(std::memory_order_relaxed) == Status::Run)
       {
         m_status = Status::Drain;
 
@@ -255,7 +253,7 @@ namespace llarp
     {
       util::Lock lock(m_mutex);
 
-      if(m_status.load(std::memory_order_relaxed) == Status::Run)
+      if (m_status.load(std::memory_order_relaxed) == Status::Run)
       {
         m_queue.disable();
         m_status = Status::Stop;
@@ -272,15 +270,14 @@ namespace llarp
     {
       util::Lock lock(m_mutex);
 
-      if(m_status.load(std::memory_order_relaxed) != Status::Stop)
+      if (m_status.load(std::memory_order_relaxed) != Status::Stop)
       {
         return true;
       }
 
-      for(auto it = (m_threads.begin() + m_createdThreads);
-          it != m_threads.end(); ++it)
+      for (auto it = (m_threads.begin() + m_createdThreads); it != m_threads.end(); ++it)
       {
-        if(!spawn())
+        if (!spawn())
         {
           releaseThreads();
 
@@ -308,7 +305,7 @@ namespace llarp
     {
       util::Lock lock(m_mutex);
 
-      if(m_status.load(std::memory_order_relaxed) == Status::Run)
+      if (m_status.load(std::memory_order_relaxed) == Status::Run)
       {
         m_queue.disable();
         m_status = Status::Drain;
