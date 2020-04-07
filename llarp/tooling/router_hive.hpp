@@ -29,7 +29,10 @@ namespace tooling
     StartRouters(std::vector<llarp_main*>* routers);
 
     void
-    AddRouter(const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers);
+    AddRouter(
+        const std::shared_ptr<llarp::Config>& config,
+        std::vector<llarp_main*>* routers,
+        bool isRelay);
 
     /// safely visit router
     void

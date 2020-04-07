@@ -20,11 +20,9 @@ namespace llarp
         .def_readwrite("router", &Config::router)
         .def_readwrite("network", &Config::network)
         .def_readwrite("connect", &Config::connect)
-        .def_readwrite("netdb", &Config::netdb)
         .def_readwrite("dns", &Config::dns)
         .def_readwrite("links", &Config::links)
         .def_readwrite("services", &Config::services)
-        .def_readwrite("system", &Config::system)
         .def_readwrite("api", &Config::api)
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
@@ -37,55 +35,61 @@ namespace llarp
         .def_readwrite("maxConnectedRouters", &RouterConfig::m_maxConnectedRouters)
         .def_readwrite("netid", &RouterConfig::m_netId)
         .def_readwrite("nickname", &RouterConfig::m_nickname)
-        .def_readwrite("encryptionKeyfile", &RouterConfig::m_encryptionKeyfile)
-        .def_readwrite("ourRcFile", &RouterConfig::m_ourRcFile)
-        .def_readwrite("transportKeyfile", &RouterConfig::m_transportKeyfile)
-        .def_readwrite("identKeyfile", &RouterConfig::m_identKeyfile)
+        .def_property(
+            "dataDir",
+            [](RouterConfig& self) { return self.m_dataDir.c_str(); },
+            [](RouterConfig& self, std::string dir) { self.m_dataDir = dir; })
         .def_readwrite("blockBogons", &RouterConfig::m_blockBogons)
         .def_readwrite("publicOverride", &RouterConfig::m_publicOverride)
         .def_readwrite("ip4addr", &RouterConfig::m_ip4addr)
         .def(
             "overrideAddress",
             [](RouterConfig& self, std::string ip, std::string port) {
-              self.fromSection("public-ip", ip);
-              self.fromSection("public-port", port);
+              llarp::Addr addr(ip);
+              self.m_addrInfo.ip = *addr.addr6();
+
+              int portInt = stoi(port);
+              self.m_ip4addr.sin_port = portInt;
+              self.m_addrInfo.port = portInt;
+
+              self.m_publicOverride = true;
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
-        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)
-        .def_readwrite("DefaultLinkProto", &RouterConfig::m_DefaultLinkProto);
+        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
         .def_readwrite("enableProfiling", &NetworkConfig::m_enableProfiling)
         .def_readwrite("routerProfilesFile", &NetworkConfig::m_routerProfilesFile)
         .def_readwrite("strictConnect", &NetworkConfig::m_strictConnect)
-        .def_readwrite("netConfig", &NetworkConfig::m_netConfig);
+        .def_readwrite("options", &NetworkConfig::m_options);
 
     py::class_<ConnectConfig>(mod, "ConnectConfig")
         .def(py::init<>())
         .def_readwrite("routers", &ConnectConfig::routers);
 
-    py::class_<NetdbConfig>(mod, "NetdbConfig")
-        .def(py::init<>())
-        .def_readwrite("nodedbDir", &NetdbConfig::m_nodedbDir);
-
     py::class_<DnsConfig>(mod, "DnsConfig")
         .def(py::init<>())
-        .def_readwrite("netConfig", &DnsConfig::netConfig);
+        .def_readwrite("options", &DnsConfig::m_options);
 
     py::class_<LinksConfig>(mod, "LinksConfig")
         .def(py::init<>())
         .def_readwrite("OutboundLink", &LinksConfig::m_OutboundLink)
-        .def_readwrite("InboundLinks", &LinksConfig::m_InboundLinks);
+        .def_readwrite("InboundLinks", &LinksConfig::m_InboundLinks)
+        .def(
+            "addInboundLink",
+            [](LinksConfig& self, std::string interface, int family, uint16_t port) {
+              LinksConfig::LinkInfo info;
+              info.interface = std::move(interface);
+              info.addressFamily = family;
+              info.port = port;
+              self.m_InboundLinks.push_back(info);
+            });
 
     py::class_<ServicesConfig>(mod, "ServicesConfig")
         .def(py::init<>())
         .def_readwrite("services", &ServicesConfig::services);
-
-    py::class_<SystemConfig>(mod, "SystemConfig")
-        .def(py::init<>())
-        .def_readwrite("pidfile", &SystemConfig::pidfile);
 
     py::class_<ApiConfig>(mod, "ApiConfig")
         .def(py::init<>())
@@ -107,8 +111,8 @@ namespace llarp
 
     py::class_<LoggingConfig>(mod, "LoggingConfig")
         .def(py::init<>())
-        .def_readwrite("LogJSON", &LoggingConfig::m_LogJSON)
-        .def_readwrite("LogFile", &LoggingConfig::m_LogFile);
+        .def_readwrite("m_logType", &LoggingConfig::m_logType)
+        .def_readwrite("m_logFile", &LoggingConfig::m_logFile);
 
     py::class_<sockaddr_in>(mod, "sockaddr_in")
         .def_readwrite("sin_family", &sockaddr_in::sin_family)

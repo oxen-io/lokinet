@@ -14,9 +14,9 @@ namespace tooling
 {
   void
   RouterHive::AddRouter(
-      const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers)
+      const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers, bool isRelay)
   {
-    llarp_main* ctx = llarp_main_init_from_config(config->Copy());
+    llarp_main* ctx = llarp_main_init_from_config(config->Copy(), isRelay);
     if (llarp_main_setup(ctx) == 0)
     {
       llarp::Context::Get(ctx)->InjectHive(this);
@@ -27,13 +27,13 @@ namespace tooling
   void
   RouterHive::AddRelay(const std::shared_ptr<llarp::Config>& config)
   {
-    AddRouter(config, &relays);
+    AddRouter(config, &relays, true);
   }
 
   void
   RouterHive::AddClient(const std::shared_ptr<llarp::Config>& config)
   {
-    AddRouter(config, &clients);
+    AddRouter(config, &clients, false);
   }
 
   void

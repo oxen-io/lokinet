@@ -16,6 +16,8 @@
 #include <vector>
 #include <unordered_set>
 
+struct llarp_config;
+
 namespace llarp
 {
   using SectionValues_t = llarp::ConfigParser::SectionValues_t;
@@ -192,6 +194,9 @@ namespace llarp
 
     std::string
     generateBaseRouterConfig(fs::path defaultDataDir);
+
+    llarp_config*
+    Copy() const;
   };
 
   void
