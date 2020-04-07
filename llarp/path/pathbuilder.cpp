@@ -8,6 +8,7 @@
 #include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
 #include <util/thread/logic.hpp>
+#include <tooling/path_event.hpp>
 
 #include <functional>
 
@@ -131,6 +132,10 @@ namespace llarp
   {
     if(!ctx->pathset->IsStopped())
     {
+      ctx->router->NotifyRouterEvent< tooling::PathAttemptEvent >(
+          ctx->router->pubkey(),
+          ctx->path);
+
       const RouterID remote   = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
       auto sentHandler        = [ctx](auto status) {
@@ -445,6 +450,7 @@ namespace llarp
       auto path = std::make_shared< path::Path >(hops, self.get(), roles,
                                                  std::move(path_shortName));
       LogInfo(Name(), " build ", path->ShortName(), ": ", path->HopsString());
+
       path->SetBuildResultHook(
           [self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, m_router->logic(), m_router->threadpool(),
@@ -456,6 +462,7 @@ namespace llarp
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       m_router->routerProfiling().MarkPathSuccess(p.get());
+
       LogInfo(p->Name(), " built latency=", p->intro.latency);
       m_BuildStats.success++;
     }

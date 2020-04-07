@@ -199,6 +199,7 @@ set(LIB_SRC
   service/tag_lookup_job.cpp
   service/tag.cpp
 )
+  
 if(TRACY_ROOT)
   set(LIB_SRC ${LIB_SRC} ${TRACY_ROOT}/TracyClient.cpp)
 endif()
@@ -207,7 +208,12 @@ if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)
 endif()
 
+if(WITH_HIVE)
+  set(LIB_SRC ${LIB_SRC} tooling/router_hive.cpp)
+endif()
+
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
+
 target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
 target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB})
 
@@ -219,7 +225,7 @@ endif()
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})
   set(LIBS ${LIBS} Threads::Threads)
-  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
+  target_link_libraries(${SHARED_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
     target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
   else()

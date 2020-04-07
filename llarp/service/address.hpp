@@ -39,6 +39,12 @@ namespace llarp
       {
       }
 
+      explicit Address(const std::string& str) : AlignedBuffer< 32 >()
+      {
+        if(not FromString(str))
+          throw std::runtime_error("invalid address");
+      }
+
       explicit Address(const Data& buf) : AlignedBuffer< 32 >(buf)
       {
       }

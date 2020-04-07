@@ -10,6 +10,7 @@
 #include <util/logging/logger.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
+#include <tooling/path_event.hpp>
 
 #include <functional>
 #include <utility>
@@ -25,13 +26,16 @@ namespace llarp
     uint64_t status = 0;
     HopHandler_ptr path;
     AbstractRouter* router;
+    PathID_t pathid;
 
     LRSM_AsyncHandler(std::array< EncryptedFrame, 8 > _frames, uint64_t _status,
-                      HopHandler_ptr _path, AbstractRouter* _router)
+                      HopHandler_ptr _path, AbstractRouter* _router,
+                      const PathID_t& pathid)
         : frames(std::move(_frames))
         , status(_status)
         , path(std::move(_path))
         , router(_router)
+        , pathid(pathid)
     {
     }
 
@@ -40,6 +44,9 @@ namespace llarp
     void
     handle()
     {
+      router->NotifyRouterEvent< tooling::PathStatusReceivedEvent >(
+          router->pubkey(), pathid, status);
+
       path->HandleLRSM(status, frames, router);
     }
 
@@ -140,8 +147,8 @@ namespace llarp
       return false;
     }
 
-    auto handler =
-        std::make_shared< LRSM_AsyncHandler >(frames, status, path, router);
+    auto handler = std::make_shared< LRSM_AsyncHandler >(frames, status, path,
+                                                         router, pathid);
 
     handler->queue_handle();
 

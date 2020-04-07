@@ -109,6 +109,11 @@ COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"
 TRACY_ROOT ?=
 # enable sanitizer
 XSAN ?= False
+# lokinet hive build
+HIVE ?= OFF
+# compile unittests
+TESTS ?= ON
+
 
 # cmake generator type
 CMAKE_GEN ?= Unix Makefiles
@@ -125,7 +130,7 @@ SCAN_BUILD ?= scan-build
 
 UNAME = $(shell which uname)
 
-COMMON_CMAKE_OPTIONS = -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DDOWNLOAD_SODIUM=$(DOWNLOAD_SODIUM) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DXSAN=$(XSAN)
+COMMON_CMAKE_OPTIONS = -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DDOWNLOAD_SODIUM=$(DOWNLOAD_SODIUM) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DXSAN=$(XSAN) -DWITH_HIVE=$(HIVE) -DWITH_TESTS=$(TESTS)
 
 ifeq ($(shell $(UNAME)),SunOS)
 CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
@@ -305,7 +310,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	$(FORMAT) -i $$(find jni daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
+	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[h,c](pp)?$$')
 
 format-verify: format
 	(type $(FORMAT))

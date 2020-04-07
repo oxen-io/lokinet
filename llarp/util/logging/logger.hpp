@@ -107,14 +107,21 @@ namespace llarp
   /** internal */
   template < typename... TArgs >
   inline static void
+#ifndef LOKINET_HIVE
   _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
+#else
+  _Log(LogLevel, const char*, int, TArgs&&...) noexcept
+#endif
   {
+/* nop out logging for hive mode for now */
+#ifndef LOKINET_HIVE
     auto& log = LogContext::Instance();
     if(log.curLevel > lvl)
       return;
     std::stringstream ss;
     LogAppend(ss, std::forward< TArgs >(args)...);
     log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
+#endif
   }
   /*
     std::stringstream ss;

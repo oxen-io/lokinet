@@ -38,7 +38,11 @@ option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
-#option(WITH_SYSTEMD ...) defined below
+option(WITH_HIVE "build simulation stubs" OFF)
+
+if(WITH_HIVE)
+  set(WITH_SHARED ON)
+endif()
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -270,8 +274,11 @@ if(SUBMODULE_CHECK)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/optional-lite)
     check_submodule(external/date)
+    check_submodule(external/pybind11)
   endif()
 endif()
+
+add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
@@ -295,13 +302,20 @@ if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
 endif()
 
+if(WITH_HIVE)
+  add_definitions(-DLOKINET_HIVE=1)
+endif()
+
 add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 add_subdirectory(daemon)
+add_subdirectory(pybind)
+
+
 
 if (NOT SHADOW)
-  if(WITH_TESTS)
+  if(WITH_TESTS OR WITH_HIVE)
     add_subdirectory(test)
   endif()
   if(ANDROID)

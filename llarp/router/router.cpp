@@ -23,6 +23,8 @@
 #include <util/str.hpp>
 #include <ev/ev.hpp>
 
+#include "tooling/router_event.hpp"
+
 #include <fstream>
 #include <cstdlib>
 #include <iterator>
@@ -53,7 +55,12 @@ namespace llarp
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
+#ifdef LOKINET_HIVE
+      , _randomStartDelay(
+            std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
+#else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
+#endif
   {
     m_keyManager = std::make_shared< KeyManager >();
 
@@ -298,6 +305,7 @@ namespace llarp
     llarp_ev_loop_stop(_netloop);
     disk->stop();
     disk->shutdown();
+    _running.store(false);
   }
 
   void
@@ -462,6 +470,8 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
+    llarp::LogWarn("Bootstrap routers list size: ",
+                   conf->bootstrap.routers.size());
     std::vector< std::string > configRouters = conf->connect.routers;
     configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
                          conf->bootstrap.routers.end());
@@ -562,6 +572,7 @@ namespace llarp
       const auto &key = std::get< LinksConfig::Interface >(serverConfig);
       int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
       uint16_t port   = std::get< LinksConfig::Port >(serverConfig);
+      llarp::LogWarn("tun: ", key, " -- af: ", af, " -- port: ", port);
       if(!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
@@ -1050,7 +1061,7 @@ namespace llarp
       const RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
       // init gossiper here
-      _rcGossiper.Init(&_linkManager, us);
+      _rcGossiper.Init(&_linkManager, us, this);
       // relays do not use profiling
       routerProfiling().Disable();
     }

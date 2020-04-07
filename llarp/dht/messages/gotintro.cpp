@@ -1,10 +1,12 @@
 #include <dht/messages/gotintro.hpp>
 
+#include <service/intro.hpp>
 #include <dht/context.hpp>
 #include <memory>
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
+#include <tooling/dht_event.hpp>
 #include <utility>
 
 namespace llarp
@@ -22,7 +24,13 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > & /*replies*/) const
     {
-      auto &dht = *ctx->impl;
+      auto &dht    = *ctx->impl;
+      auto *router = dht.GetRouter();
+
+      router->NotifyRouterEvent< tooling::GotIntroReceivedEvent >(
+          router->pubkey(), Key_t(From.data()),
+          (found.size() > 0 ? found[0] : llarp::service::EncryptedIntroSet{}),
+          txid);
 
       for(const auto &introset : found)
       {

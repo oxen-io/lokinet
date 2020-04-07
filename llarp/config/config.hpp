@@ -13,6 +13,7 @@
 #include <vector>
 #include <unordered_set>
 
+struct llarp_config;
 namespace llarp
 {
   struct ConfigParser;
@@ -33,7 +34,7 @@ namespace llarp
 
   class RouterConfig
   {
-   private:
+   public:
     /// always maintain this many connections to other routers
     size_t m_minConnectedRouters = 2;
 
@@ -96,7 +97,7 @@ namespace llarp
    public:
     using NetConfig = std::unordered_multimap< std::string, std::string >;
 
-   private:
+   public:
     nonstd::optional< bool > m_enableProfiling;
     std::string m_routerProfilesFile = "profiles.dat";
     std::string m_strictConnect;
@@ -116,7 +117,7 @@ namespace llarp
 
   class NetdbConfig
   {
-   private:
+   public:
     std::string m_nodedbDir;
 
    public:
@@ -148,7 +149,7 @@ namespace llarp
     using LinkInfo = std::tuple< std::string, int, uint16_t, ServerOptions >;
     using Links    = std::vector< LinkInfo >;
 
-   private:
+   public:
     LinkInfo m_OutboundLink;
     Links m_InboundLinks;
 
@@ -188,7 +189,7 @@ namespace llarp
 
   class ApiConfig
   {
-   private:
+   public:
     bool m_enableRPCServer    = false;
     std::string m_rpcBindAddr = "127.0.0.1:1190";
 
@@ -233,7 +234,7 @@ namespace llarp
 
   struct Config
   {
-   private:
+   public:
     bool
     parse(const ConfigParser& parser);
 
@@ -256,6 +257,9 @@ namespace llarp
 
     bool
     LoadFromStr(string_view str);
+
+    llarp_config*
+    Copy() const;
   };
 
   fs::path

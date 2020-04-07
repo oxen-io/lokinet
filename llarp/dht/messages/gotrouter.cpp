@@ -5,6 +5,7 @@
 #include <path/path_context.hpp>
 #include <router/abstractrouter.hpp>
 #include <router/i_rc_lookup_handler.hpp>
+#include <tooling/rc_event.hpp>
 
 namespace llarp
 {
@@ -124,9 +125,13 @@ namespace llarp
       {
         if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;
-        if(txid == 0)
+        if(txid == 0)  // txid == 0 on gossip
         {
-          dht.GetRouter()->GossipRCIfNeeded(rc);
+          LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
+          auto *router = dht.GetRouter();
+          router->NotifyRouterEvent< tooling::RCGossipReceivedEvent >(
+                  router->pubkey(), rc);
+          router->GossipRCIfNeeded(rc);
         }
       }
       return true;

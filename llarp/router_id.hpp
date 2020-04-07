@@ -30,6 +30,9 @@ namespace llarp
     std::string
     ToString() const;
 
+    std::string
+    ShortString() const;
+
     bool
     FromString(const std::string& str);
 

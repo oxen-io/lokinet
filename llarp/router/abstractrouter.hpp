@@ -10,6 +10,11 @@
 #include <ev/ev.h>
 #include <functional>
 #include <router_contact.hpp>
+#include <tooling/router_event.hpp>
+
+#ifdef LOKINET_HIVE
+#include "tooling/router_hive.hpp"
+#endif
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
@@ -59,6 +64,10 @@ namespace llarp
 
   struct AbstractRouter
   {
+#ifdef LOKINET_HIVE
+    tooling::RouterHive *hive;
+#endif
+
     virtual ~AbstractRouter() = default;
 
     virtual bool
@@ -260,6 +269,19 @@ namespace llarp
     /// gossip an rc if required
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
+
+    template<class EventType, class... Params>
+    void
+    NotifyRouterEvent(Params&&... args) const
+    {
+      // TODO: no-op when appropriate
+      auto event = std::make_unique< EventType >(args...);
+#ifdef LOKINET_HIVE
+      hive->NotifyEvent(std::move(event));
+#elif LOKINET_DEBUG
+      LogDebug(event->ToString());
+#endif
+    }
   };
 }  // namespace llarp
 

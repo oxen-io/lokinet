@@ -95,7 +95,8 @@ namespace llarp
   {
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    mainloop = llarp_make_ev_loop();
+    if(mainloop == nullptr)
+      mainloop = llarp_make_ev_loop();
     logic->set_event_loop(mainloop.get());
 
     mainloop->set_logic(logic);
@@ -145,6 +146,7 @@ namespace llarp
 
     // run net io thread
     llarp::LogInfo("running mainloop");
+
     llarp_ev_loop_run_single_process(mainloop, logic);
     if(closeWaiter)
     {
@@ -298,13 +300,21 @@ namespace llarp
     configfile = fname;
     return Configure();
   }
+
+#ifdef LOKINET_HIVE
+  void
+  Context::InjectHive(tooling::RouterHive *hive)
+  {
+    router->hive = hive;
+  }
+#endif
 }  // namespace llarp
 
 struct llarp_main
 {
   llarp_main(llarp_config *conf);
   ~llarp_main() = default;
-  std::unique_ptr< llarp::Context > ctx;
+  std::shared_ptr< llarp::Context > ctx;
 };
 
 struct llarp_config
@@ -316,6 +326,17 @@ struct llarp_config
   {
   }
 };
+
+namespace llarp
+{
+  llarp_config *
+  Config::Copy() const
+  {
+    llarp_config *ptr = new llarp_config();
+    ptr->impl         = *this;
+    return ptr;
+  }
+}  // namespace llarp
 
 extern "C"
 {
@@ -539,11 +560,11 @@ llarp_main::llarp_main(llarp_config *conf)
 
 namespace llarp
 {
-  Context *
+  std::shared_ptr< Context >
   Context::Get(llarp_main *m)
   {
     if(m == nullptr || m->ctx == nullptr)
       return nullptr;
-    return m->ctx.get();
+    return m->ctx;
   }
 }  // namespace llarp

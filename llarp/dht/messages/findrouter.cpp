@@ -7,6 +7,8 @@
 #include <router/abstractrouter.hpp>
 #include <routing/dht_message.hpp>
 
+#include <tooling/dht_event.hpp>
+
 namespace llarp
 {
   namespace dht
@@ -152,6 +154,12 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht = *ctx->impl;
+
+      auto router = dht.GetRouter();
+      router->NotifyRouterEvent< tooling::FindRouterReceivedEvent >(
+          router->pubkey(),
+          this);
+
       if(!dht.AllowTransit())
       {
         llarp::LogWarn("Got DHT lookup from ", From,

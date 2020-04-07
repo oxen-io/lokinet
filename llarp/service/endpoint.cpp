@@ -1,7 +1,9 @@
 #include <chrono>
+#include <memory>
 #include <service/endpoint.hpp>
 
 #include <dht/context.hpp>
+#include <dht/key.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
@@ -23,6 +25,7 @@
 #include <util/meta/memfn.hpp>
 #include <hook/shell.hpp>
 #include <link/link_manager.hpp>
+#include <tooling/dht_event.hpp>
 
 #include <utility>
 
@@ -197,14 +200,19 @@ namespace llarp
       // prefetch addrs
       for(const auto& addr : m_state->m_PrefetchAddrs)
       {
-        if(!EndpointUtil::HasPathToService(addr, m_state->m_RemoteSessions))
-        {
-          if(!EnsurePathToService(
-                 addr, [](Address, OutboundContext*) {}, 10s))
-          {
-            LogWarn("failed to ensure path to ", addr);
-          }
-        }
+        EnsurePathToService(
+            addr,
+            [](Address, OutboundContext* ctx) {
+#ifdef LOKINET_HIVE
+              std::vector< byte_t > discard;
+              discard.resize(128);
+              ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard),
+                                         eProtocolControl);
+#else
+              (void)ctx;
+#endif
+            },
+            10s);
       }
 
       // deregister dead sessions
@@ -467,10 +475,15 @@ namespace llarp
 
       // do publishing for each path selected
       size_t published = 0;
+
       for(const auto& path : paths)
       {
         for(size_t i = 0; i < llarp::dht::IntroSetRequestsPerRelay; ++i)
         {
+          r->NotifyRouterEvent< tooling::PubIntroSentEvent >(
+              r->pubkey(),
+              llarp::dht::Key_t{introset.derivedSigningKey.as_array()},
+              RouterID(path->hops[path->hops.size() - 1].rc.pubkey), published);
           if(PublishIntroSetVia(introset, r, path, published))
             published++;
         }
@@ -758,6 +771,8 @@ namespace llarp
     bool
     Endpoint::LookupRouterAnon(RouterID router, RouterLookupHandler handler)
     {
+      using llarp::dht::FindRouterMessage;
+
       auto& routers = m_state->m_PendingRouters;
       if(routers.find(router) == routers.end())
       {
@@ -765,10 +780,20 @@ namespace llarp
         routing::DHTMessage msg;
         auto txid = GenTXID();
         msg.M.emplace_back(
-            std::make_unique< dht::FindRouterMessage >(txid, router));
+            std::make_unique< FindRouterMessage >(txid, router));
 
         if(path && path->SendRoutingMessage(msg, Router()))
         {
+
+          RouterLookupJob job(this, handler);
+
+          assert(msg.M.size() == 1);
+          auto dhtMsg = dynamic_cast< FindRouterMessage* >(msg.M[0].get());
+
+          m_router->NotifyRouterEvent< tooling::FindRouterSentEvent >(
+              m_router->pubkey(),
+              dhtMsg);
+
           routers.emplace(router, RouterLookupJob(this, handler));
           return true;
         }

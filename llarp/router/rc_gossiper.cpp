@@ -3,6 +3,7 @@
 #include <dht/messages/gotrouter.hpp>
 #include <util/time.hpp>
 #include <constants/link_layer.hpp>
+#include <tooling/rc_event.hpp>
 
 namespace llarp
 {
@@ -20,16 +21,20 @@ namespace llarp
   }
 
   void
-  RCGossiper::Init(ILinkManager* l, const RouterID& ourID)
+  RCGossiper::Init(ILinkManager* l, const RouterID& ourID,
+                   AbstractRouter* router)
   {
     m_OurRouterID = ourID;
     m_LinkManager = l;
+    m_router      = router;
   }
 
   bool
   RCGossiper::ShouldGossipOurRC(Time_t now) const
   {
-    return now >= (m_LastGossipedOurRC + GossipOurRCInterval);
+    bool should = now >= (m_LastGossipedOurRC + GossipOurRCInterval);
+    LogWarn("ShouldGossipOurRC: ", should);
+    return should;
   }
 
   bool
@@ -93,6 +98,11 @@ namespace llarp
       if(not gossip.BEncode(&buf))
         return;
       msg.resize(buf.cur - buf.base);
+
+      m_router->NotifyRouterEvent< tooling::RCGossipSentEvent >(
+          m_router->pubkey(),
+          rc);
+
       // send message
       peerSession->SendMessageBuffer(std::move(msg), nullptr);
     });

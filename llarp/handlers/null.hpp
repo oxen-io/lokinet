@@ -17,7 +17,7 @@ namespace llarp
       {
       }
 
-      bool
+      virtual bool
       HandleInboundPacket(const service::ConvoTag, const llarp_buffer_t &,
                           service::ProtocolType) override
       {

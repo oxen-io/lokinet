@@ -7,6 +7,8 @@
 #include <routing/dht_message.hpp>
 #include <nodedb.hpp>
 
+#include <tooling/dht_event.hpp>
+
 namespace llarp
 {
   namespace dht
@@ -56,8 +58,14 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      const auto now    = ctx->impl->Now();
-      const auto keyStr = introset.derivedSigningKey.ToHex();
+      const auto now = ctx->impl->Now();
+      const llarp::dht::Key_t addr(introset.derivedSigningKey);
+      const auto keyStr = addr.ToHex();
+
+      auto router = ctx->impl->GetRouter();
+      router->NotifyRouterEvent< tooling::PubIntroReceivedEvent >(
+          router->pubkey(), Key_t(relayed ? router->pubkey() : From.data()),
+          addr, txID, relayOrder);
 
       auto &dht = *ctx->impl;
       if(!introset.Verify(now))
@@ -77,8 +85,6 @@ namespace llarp
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-
-      const llarp::dht::Key_t addr(introset.derivedSigningKey);
 
       // identify closest 4 routers
       auto closestRCs = dht.GetRouter()->nodedb()->FindClosestTo(
