@@ -1,5 +1,5 @@
 BasedOnStyle: Google
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: 'false'
 AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlinesLeft: 'true'
@@ -32,4 +32,5 @@ SortIncludes: false
 ColumnLimit: 100
 
 # when wrapping function calls/declarations, force each parameter to have its own line
-BinPackParameters: 'true'
+BinPackParameters: 'false'
+BinPackArguments: 'false'
