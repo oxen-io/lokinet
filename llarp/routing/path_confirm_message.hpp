@@ -10,7 +10,7 @@ namespace llarp
     struct PathConfirmMessage final : public IMessage
     {
       llarp_time_t pathLifetime = 0s;
-      llarp_time_t pathCreated  = 0s;
+      llarp_time_t pathCreated = 0s;
 
       PathConfirmMessage() = default;
       PathConfirmMessage(llarp_time_t lifetime);
@@ -29,8 +29,8 @@ namespace llarp
       Clear() override
       {
         pathLifetime = 0s;
-        pathCreated  = 0s;
-        version      = 0;
+        pathCreated = 0s;
+        version = 0;
       }
     };
   }  // namespace routing

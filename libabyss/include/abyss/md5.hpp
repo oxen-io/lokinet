@@ -21,18 +21,17 @@ struct MD5
   static std::string
   SumHex(const std::string& str)
   {
-    std::array< uint8_t, 16 > digest;
+    std::array<uint8_t, 16> digest;
     auto dist = str.size();
     MD5 m;
     m.Update((const unsigned char*)str.c_str(), dist);
     m.Final(digest.data());
     std::string hex;
-    std::for_each(digest.begin(), digest.end(),
-                  [&hex](const unsigned char& ch) {
-                    char tmpbuf[4] = {0};
-                    std::snprintf(tmpbuf, sizeof(tmpbuf), "%.2x", ch);
-                    hex += std::string(tmpbuf);
-                  });
+    std::for_each(digest.begin(), digest.end(), [&hex](const unsigned char& ch) {
+      char tmpbuf[4] = {0};
+      std::snprintf(tmpbuf, sizeof(tmpbuf), "%.2x", ch);
+      hex += std::string(tmpbuf);
+    });
     return hex;
   }
 };

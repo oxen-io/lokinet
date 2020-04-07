@@ -9,9 +9,9 @@ namespace llarp
 {
   namespace dns
   {
-    using MsgID_t  = uint16_t;
+    using MsgID_t = uint16_t;
     using Fields_t = uint16_t;
-    using Count_t  = uint16_t;
+    using Count_t = uint16_t;
 
     struct MessageHeader : public Serialize
     {
@@ -35,9 +35,9 @@ namespace llarp
       bool
       operator==(const MessageHeader& other) const
       {
-        return id == other.id && fields == other.fields
-            && qd_count == other.qd_count && an_count == other.an_count
-            && ns_count == other.ns_count && ar_count == other.ar_count;
+        return id == other.id && fields == other.fields && qd_count == other.qd_count
+            && an_count == other.an_count && ns_count == other.ns_count
+            && ar_count == other.ar_count;
       }
     };
 
@@ -83,10 +83,10 @@ namespace llarp
 
       MsgID_t hdr_id;
       Fields_t hdr_fields;
-      std::vector< Question > questions;
-      std::vector< ResourceRecord > answers;
-      std::vector< ResourceRecord > authorities;
-      std::vector< ResourceRecord > additional;
+      std::vector<Question> questions;
+      std::vector<ResourceRecord> answers;
+      std::vector<ResourceRecord> authorities;
+      std::vector<ResourceRecord> additional;
     };
 
     inline std::ostream&

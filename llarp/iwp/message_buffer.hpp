@@ -37,13 +37,15 @@ namespace llarp
     struct OutboundMessage
     {
       OutboundMessage() = default;
-      OutboundMessage(uint64_t msgid, ILinkSession::Message_t data,
-                      llarp_time_t now,
-                      ILinkSession::CompletionHandler handler);
+      OutboundMessage(
+          uint64_t msgid,
+          ILinkSession::Message_t data,
+          llarp_time_t now,
+          ILinkSession::CompletionHandler handler);
 
       ILinkSession::Message_t m_Data;
       uint64_t m_MsgID = 0;
-      std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
+      std::bitset<MAX_LINK_MSG_SIZE / FragmentSize> m_Acks;
       ILinkSession::CompletionHandler m_Completed;
       llarp_time_t m_LastFlush = 0s;
       ShortHash m_Digest;
@@ -56,8 +58,7 @@ namespace llarp
       Ack(byte_t bitmask);
 
       void
-      FlushUnAcked(std::function< void(ILinkSession::Packet_t) > sendpkt,
-                   llarp_time_t now);
+      FlushUnAcked(std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now);
 
       bool
       ShouldFlush(llarp_time_t now) const;
@@ -78,15 +79,14 @@ namespace llarp
     struct InboundMessage
     {
       InboundMessage() = default;
-      InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h,
-                     llarp_time_t now);
+      InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h, llarp_time_t now);
 
       ILinkSession::Message_t m_Data;
       ShortHash m_Digset;
-      uint64_t m_MsgID            = 0;
-      llarp_time_t m_LastACKSent  = 0s;
+      uint64_t m_MsgID = 0;
+      llarp_time_t m_LastACKSent = 0s;
       llarp_time_t m_LastActiveAt = 0s;
-      std::bitset< MAX_LINK_MSG_SIZE / FragmentSize > m_Acks;
+      std::bitset<MAX_LINK_MSG_SIZE / FragmentSize> m_Acks;
 
       void
       HandleData(uint16_t idx, const llarp_buffer_t& buf, llarp_time_t now);
@@ -107,8 +107,7 @@ namespace llarp
       ShouldSendACKS(llarp_time_t now) const;
 
       void
-      SendACKS(std::function< void(ILinkSession::Packet_t) > sendpkt,
-               llarp_time_t now);
+      SendACKS(std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now);
 
       ILinkSession::Packet_t
       ACKS() const;

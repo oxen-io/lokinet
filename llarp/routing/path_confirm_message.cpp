@@ -14,17 +14,16 @@ namespace llarp
     }
 
     bool
-    PathConfirmMessage::DecodeKey(const llarp_buffer_t& key,
-                                  llarp_buffer_t* val)
+    PathConfirmMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("L", pathLifetime, read, key, val))
+      if (!BEncodeMaybeReadDictInt("L", pathLifetime, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+      if (!BEncodeMaybeReadDictInt("S", S, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", pathCreated, read, key, val))
+      if (!BEncodeMaybeReadDictInt("T", pathCreated, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
+      if (!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
       return read;
     }
@@ -32,24 +31,23 @@ namespace llarp
     bool
     PathConfirmMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "P"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "P"))
         return false;
-      if(!BEncodeWriteDictInt("L", pathLifetime.count(), buf))
+      if (!BEncodeWriteDictInt("L", pathLifetime.count(), buf))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", pathCreated.count(), buf))
+      if (!BEncodeWriteDictInt("T", pathCreated.count(), buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
       return bencode_end(buf);
     }
 
     bool
-    PathConfirmMessage::HandleMessage(IMessageHandler* h,
-                                      AbstractRouter* r) const
+    PathConfirmMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h && h->HandlePathConfirmMessage(*this, r);
     }

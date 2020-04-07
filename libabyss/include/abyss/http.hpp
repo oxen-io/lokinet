@@ -12,7 +12,7 @@ namespace abyss
   {
     struct RequestHeader
     {
-      using Headers_t = std::unordered_multimap< std::string, std::string >;
+      using Headers_t = std::unordered_multimap<std::string, std::string>;
       Headers_t Headers;
       std::string Method;
       std::string Path;

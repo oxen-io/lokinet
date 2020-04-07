@@ -9,35 +9,34 @@ namespace llarp
 {
   namespace handlers
   {
-    using Context_ptr = std::shared_ptr< llarp::Context >;
+    using Context_ptr = std::shared_ptr<llarp::Context>;
 
-    struct PythonEndpoint final
-        : public llarp::service::Endpoint,
-          public std::enable_shared_from_this< PythonEndpoint >
+    struct PythonEndpoint final : public llarp::service::Endpoint,
+                                  public std::enable_shared_from_this<PythonEndpoint>
     {
       PythonEndpoint(std::string name, Context_ptr routerContext)
           : llarp::service::Endpoint(
-              name, routerContext->router.get(),
-              &routerContext->router->hiddenServiceContext())
+              name, routerContext->router.get(), &routerContext->router->hiddenServiceContext())
           , OurName(name)
       {
       }
       const std::string OurName;
 
       bool
-      HandleInboundPacket(const service::ConvoTag tag,
-                          const llarp_buffer_t& pktbuf,
-                          service::ProtocolType proto) override
+      HandleInboundPacket(
+          const service::ConvoTag tag,
+          const llarp_buffer_t& pktbuf,
+          service::ProtocolType proto) override
       {
-        if(handlePacket)
+        if (handlePacket)
         {
-          AlignedBuffer< 32 > addr;
+          AlignedBuffer<32> addr;
           bool isSnode = false;
-          if(not GetEndpointWithConvoTag(tag, addr, isSnode))
+          if (not GetEndpointWithConvoTag(tag, addr, isSnode))
             return false;
-          if(isSnode)
+          if (isSnode)
             return true;
-          std::vector< byte_t > pkt;
+          std::vector<byte_t> pkt;
           pkt.resize(pktbuf.sz);
           std::copy_n(pktbuf.base, pktbuf.sz, pkt.data());
           handlePacket(service::Address(addr), std::move(pkt), proto);
@@ -57,20 +56,17 @@ namespace llarp
         return false;
       }
 
-      using PacketHandler_t = std::function< void(
-          service::Address, std::vector< byte_t >, service::ProtocolType) >;
+      using PacketHandler_t =
+          std::function<void(service::Address, std::vector<byte_t>, service::ProtocolType)>;
 
       PacketHandler_t handlePacket;
 
       void
-      SendPacket(service::Address remote, std::vector< byte_t > pkt,
-                 service::ProtocolType proto)
+      SendPacket(service::Address remote, std::vector<byte_t> pkt, service::ProtocolType proto)
       {
-        LogicCall(m_router->logic(),
-                  [remote, pkt, proto, self = shared_from_this()]() {
-                    self->SendToServiceOrQueue(remote, llarp_buffer_t(pkt),
-                                               proto);
-                  });
+        LogicCall(m_router->logic(), [remote, pkt, proto, self = shared_from_this()]() {
+          self->SendToServiceOrQueue(remote, llarp_buffer_t(pkt), proto);
+        });
       }
 
       std::string
@@ -80,6 +76,6 @@ namespace llarp
       }
     };
 
-    using PythonEndpoint_ptr = std::shared_ptr< PythonEndpoint >;
+    using PythonEndpoint_ptr = std::shared_ptr<PythonEndpoint>;
   }  // namespace handlers
 }  // namespace llarp

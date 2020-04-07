@@ -20,7 +20,7 @@ namespace llarp
   PoW::BEncode(llarp_buffer_t* buf) const
   {
     // TODO: implement me
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
     return bencode_end(buf);
   }
@@ -28,26 +28,26 @@ namespace llarp
   bool
   PoW::IsValid(llarp_time_t now) const
   {
-    if(now - timestamp > extendedLifetime)
+    if (now - timestamp > extendedLifetime)
       return false;
 
     ShortHash digest;
-    std::array< byte_t, MaxSize > tmp;
+    std::array<byte_t, MaxSize> tmp;
     llarp_buffer_t buf(tmp);
     // encode
-    if(!BEncode(&buf))
+    if (!BEncode(&buf))
       return false;
     // rewind
-    buf.sz  = buf.cur - buf.base;
+    buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
     // hash
-    if(!CryptoManager::instance()->shorthash(digest, buf))
+    if (!CryptoManager::instance()->shorthash(digest, buf))
       return false;
     // check bytes required
     uint32_t required = std::floor(std::log(extendedLifetime.count()));
-    for(uint32_t idx = 0; idx < required; ++idx)
+    for (uint32_t idx = 0; idx < required; ++idx)
     {
-      if(digest[idx])
+      if (digest[idx])
         return false;
     }
     return true;

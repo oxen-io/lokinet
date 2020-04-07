@@ -14,67 +14,66 @@ namespace llarp
     GotRouterMessage::~GotRouterMessage() = default;
 
     bool
-    GotRouterMessage::BEncode(llarp_buffer_t *buf) const
+    GotRouterMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(not bencode_start_dict(buf))
+      if (not bencode_start_dict(buf))
         return false;
 
       // message type
-      if(not BEncodeWriteDictMsgType(buf, "A", "S"))
+      if (not BEncodeWriteDictMsgType(buf, "A", "S"))
         return false;
 
-      if(closerTarget)
+      if (closerTarget)
       {
-        if(not BEncodeWriteDictEntry("K", *closerTarget, buf))
+        if (not BEncodeWriteDictEntry("K", *closerTarget, buf))
           return false;
       }
 
       // near
-      if(not nearKeys.empty())
+      if (not nearKeys.empty())
       {
-        if(not BEncodeWriteDictList("N", nearKeys, buf))
+        if (not BEncodeWriteDictList("N", nearKeys, buf))
           return false;
       }
 
-      if(not BEncodeWriteDictList("R", foundRCs, buf))
+      if (not BEncodeWriteDictList("R", foundRCs, buf))
         return false;
 
       // txid
-      if(not BEncodeWriteDictInt("T", txid, buf))
+      if (not BEncodeWriteDictInt("T", txid, buf))
         return false;
 
       // version
-      if(not BEncodeWriteDictInt("V", version, buf))
+      if (not BEncodeWriteDictInt("V", version, buf))
         return false;
 
       return bencode_end(buf);
     }
 
     bool
-    GotRouterMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
+    GotRouterMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      if(key == "K")
+      if (key == "K")
       {
-        if(closerTarget)  // duplicate key?
+        if (closerTarget)  // duplicate key?
           return false;
-        closerTarget = std::make_unique< dht::Key_t >();
+        closerTarget = std::make_unique<dht::Key_t>();
         return closerTarget->BDecode(val);
       }
-      if(key == "N")
+      if (key == "N")
       {
         return BEncodeReadList(nearKeys, val);
       }
-      if(key == "R")
+      if (key == "R")
       {
         return BEncodeReadList(foundRCs, val);
       }
-      if(key == "T")
+      if (key == "T")
       {
         return bencode_read_integer(val, &txid);
       }
       bool read = false;
-      if(!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read,
-                                    key, val))
+      if (!BEncodeMaybeVerifyVersion("V", version, LLARP_PROTO_VERSION, read, key, val))
         return false;
 
       return read;
@@ -82,25 +81,23 @@ namespace llarp
 
     bool
     GotRouterMessage::HandleMessage(
-        llarp_dht_context *ctx,
-        __attribute__((unused))
-        std::vector< std::unique_ptr< IMessage > > &replies) const
+        llarp_dht_context* ctx,
+        __attribute__((unused)) std::vector<std::unique_ptr<IMessage>>& replies) const
     {
-      auto &dht = *ctx->impl;
-      if(relayed)
+      auto& dht = *ctx->impl;
+      if (relayed)
       {
-        auto pathset =
-            ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
-        auto copy = std::make_shared< const GotRouterMessage >(*this);
+        auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
+        auto copy = std::make_shared<const GotRouterMessage>(*this);
         return pathset && pathset->HandleGotRouterMessage(copy);
       }
       // not relayed
       const TXOwner owner(From, txid);
 
-      if(dht.pendingExploreLookups().HasPendingLookupFrom(owner))
+      if (dht.pendingExploreLookups().HasPendingLookupFrom(owner))
       {
         LogDebug("got ", nearKeys.size(), " results in GRM for explore");
-        if(nearKeys.empty())
+        if (nearKeys.empty())
           dht.pendingExploreLookups().NotFound(owner, closerTarget);
         else
         {
@@ -109,28 +106,27 @@ namespace llarp
         return true;
       }
       // not explore lookup
-      if(dht.pendingRouterLookups().HasPendingLookupFrom(owner))
+      if (dht.pendingRouterLookups().HasPendingLookupFrom(owner))
       {
         LogDebug("got ", foundRCs.size(), " results in GRM for lookup");
-        if(foundRCs.empty())
+        if (foundRCs.empty())
           dht.pendingRouterLookups().NotFound(owner, closerTarget);
-        else if(foundRCs[0].pubkey.IsZero())
+        else if (foundRCs[0].pubkey.IsZero())
           return false;
         else
           dht.pendingRouterLookups().Found(owner, foundRCs[0].pubkey, foundRCs);
         return true;
       }
       // store if valid
-      for(const auto &rc : foundRCs)
+      for (const auto& rc : foundRCs)
       {
-        if(not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
+        if (not dht.GetRouter()->rcLookupHandler().CheckRC(rc))
           return false;
-        if(txid == 0)  // txid == 0 on gossip
+        if (txid == 0)  // txid == 0 on gossip
         {
           LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
-          auto *router = dht.GetRouter();
-          router->NotifyRouterEvent< tooling::RCGossipReceivedEvent >(
-                  router->pubkey(), rc);
+          auto* router = dht.GetRouter();
+          router->NotifyRouterEvent<tooling::RCGossipReceivedEvent>(router->pubkey(), rc);
           router->GossipRCIfNeeded(rc);
         }
       }

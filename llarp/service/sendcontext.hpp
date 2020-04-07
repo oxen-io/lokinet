@@ -21,8 +21,7 @@ namespace llarp
 
     struct SendContext
     {
-      SendContext(ServiceInfo ident, const Introduction& intro,
-                  path::PathSet* send, Endpoint* ep);
+      SendContext(ServiceInfo ident, const Introduction& intro, path::PathSet* send, Endpoint* ep);
 
       void
       AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
@@ -30,7 +29,7 @@ namespace llarp
       /// queue send a fully encrypted hidden service frame
       /// via a path
       bool
-      Send(std::shared_ptr< ProtocolFrame > f, path::Path_ptr path);
+      Send(std::shared_ptr<ProtocolFrame> f, path::Path_ptr path);
 
       /// flush upstream traffic when in router thread
       void
@@ -43,15 +42,15 @@ namespace llarp
       path::PathSet* const m_PathSet;
       IDataHandler* const m_DataHandler;
       Endpoint* const m_Endpoint;
-      uint64_t sequenceNo       = 0;
+      uint64_t sequenceNo = 0;
       llarp_time_t lastGoodSend = 0s;
       const llarp_time_t createdAt;
-      llarp_time_t sendTimeout    = 40s;
+      llarp_time_t sendTimeout = 40s;
       llarp_time_t connectTimeout = 60s;
-      bool markedBad              = false;
-      using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
-      using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
-      thread::Queue< SendEvent_t > m_SendQueue;
+      bool markedBad = false;
+      using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
+      using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
+      thread::Queue<SendEvent_t> m_SendQueue;
 
       virtual bool
       ShiftIntroduction(bool rebuild = true)

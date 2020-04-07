@@ -12,16 +12,16 @@ namespace llarp
   CaselessLessThan::operator()(string_view lhs, string_view rhs) const
   {
     const size_t s = std::min(lhs.size(), rhs.size());
-    for(size_t i = 0; i < s; ++i)
+    for (size_t i = 0; i < s; ++i)
     {
       auto l = std::tolower(lhs[i]);
       auto r = std::tolower(rhs[i]);
 
-      if(l < r)
+      if (l < r)
       {
         return true;
       }
-      if(l > r)
+      if (l > r)
       {
         return false;
       }
@@ -33,8 +33,7 @@ namespace llarp
   bool
   IsFalseValue(string_view str)
   {
-    static const std::set< string_view, CaselessLessThan > vals{"no", "false",
-                                                                "0", "off"};
+    static const std::set<string_view, CaselessLessThan> vals{"no", "false", "0", "off"};
 
     return vals.count(str) > 0;
   }
@@ -42,8 +41,7 @@ namespace llarp
   bool
   IsTrueValue(string_view str)
   {
-    static const std::set< string_view, CaselessLessThan > vals{"yes", "true",
-                                                                "1", "on"};
+    static const std::set<string_view, CaselessLessThan> vals{"yes", "true", "1", "on"};
 
     return vals.count(str) > 0;
   }
@@ -53,7 +51,7 @@ namespace llarp
   {
     size_t sz1 = strlen(s1);
     size_t sz2 = strlen(s2);
-    if(sz1 == sz2)
+    if (sz1 == sz2)
     {
       return strncmp(s1, s2, sz1) == 0;
     }
@@ -67,7 +65,7 @@ namespace llarp
   TrimWhitespace(string_view str)
   {
     size_t begin = str.find_first_not_of(whitespace);
-    if(begin == string_view::npos)
+    if (begin == string_view::npos)
     {
       str.remove_prefix(str.size());
       return str;
@@ -75,7 +73,7 @@ namespace llarp
     str.remove_prefix(begin);
 
     size_t end = str.find_last_not_of(whitespace);
-    if(end != string_view::npos)
+    if (end != string_view::npos)
       str.remove_suffix(str.size() - end - 1);
 
     return str;

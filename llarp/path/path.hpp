@@ -39,7 +39,7 @@ namespace llarp
     struct TransitHop;
     struct TransitHopInfo;
 
-    using TransitHop_ptr = std::shared_ptr< TransitHop >;
+    using TransitHop_ptr = std::shared_ptr<TransitHop>;
 
     /// configuration for a single hop when building a path
     struct PathHopConfig
@@ -75,21 +75,18 @@ namespace llarp
     /// A path we made
     struct Path final : public IHopHandler,
                         public routing::IMessageHandler,
-                        public std::enable_shared_from_this< Path >
+                        public std::enable_shared_from_this<Path>
     {
-      using BuildResultHookFunc = std::function< void(Path_ptr) >;
-      using CheckForDeadFunc    = std::function< bool(Path_ptr, llarp_time_t) >;
-      using DropHandlerFunc =
-          std::function< bool(Path_ptr, const PathID_t&, uint64_t) >;
-      using HopList = std::vector< PathHopConfig >;
-      using DataHandlerFunc =
-          std::function< bool(Path_ptr, const service::ProtocolFrame&) >;
-      using ExitUpdatedFunc = std::function< bool(Path_ptr) >;
-      using ExitClosedFunc  = std::function< bool(Path_ptr) >;
-      using ExitTrafficHandlerFunc =
-          std::function< bool(Path_ptr, const llarp_buffer_t&, uint64_t) >;
+      using BuildResultHookFunc = std::function<void(Path_ptr)>;
+      using CheckForDeadFunc = std::function<bool(Path_ptr, llarp_time_t)>;
+      using DropHandlerFunc = std::function<bool(Path_ptr, const PathID_t&, uint64_t)>;
+      using HopList = std::vector<PathHopConfig>;
+      using DataHandlerFunc = std::function<bool(Path_ptr, const service::ProtocolFrame&)>;
+      using ExitUpdatedFunc = std::function<bool(Path_ptr)>;
+      using ExitClosedFunc = std::function<bool(Path_ptr)>;
+      using ExitTrafficHandlerFunc = std::function<bool(Path_ptr, const llarp_buffer_t&, uint64_t)>;
       /// (path, backoff) backoff is 0 on success
-      using ObtainedExitHandler = std::function< bool(Path_ptr, llarp_time_t) >;
+      using ObtainedExitHandler = std::function<bool(Path_ptr, llarp_time_t)>;
 
       HopList hops;
 
@@ -99,8 +96,11 @@ namespace llarp
 
       llarp_time_t buildStarted = 0s;
 
-      Path(const std::vector< RouterContact >& routers, PathSet* parent,
-           PathRole startingRoles, std::string shortName);
+      Path(
+          const std::vector<RouterContact>& routers,
+          PathSet* parent,
+          PathRole startingRoles,
+          std::string shortName);
 
       util::StatusObject
       ExtractStatus() const;
@@ -118,13 +118,13 @@ namespace llarp
         {
           const auto& tx = p.hops[0].txID;
           const auto& rx = p.hops[0].rxID;
-          const auto& r  = p.hops[0].upstream;
-          const size_t rhash =
-              std::accumulate(r.begin(), r.end(), 0, std::bit_xor< size_t >());
-          return std::accumulate(rx.begin(), rx.begin(),
-                                 std::accumulate(tx.begin(), tx.end(), rhash,
-                                                 std::bit_xor< size_t >()),
-                                 std::bit_xor< size_t >());
+          const auto& r = p.hops[0].upstream;
+          const size_t rhash = std::accumulate(r.begin(), r.end(), 0, std::bit_xor<size_t>());
+          return std::accumulate(
+              rx.begin(),
+              rx.begin(),
+              std::accumulate(tx.begin(), tx.end(), rhash, std::bit_xor<size_t>()),
+              std::bit_xor<size_t>());
         }
       };
 
@@ -134,7 +134,7 @@ namespace llarp
         size_t
         operator()(const Path_ptr& p) const
         {
-          if(p == nullptr)
+          if (p == nullptr)
             return 0;
           return Hash{}(*p);
         }
@@ -146,7 +146,7 @@ namespace llarp
         size_t
         operator()(const Path_ptr& p) const
         {
-          if(p == nullptr)
+          if (p == nullptr)
             return 0;
           return RouterID::Hash{}(p->Endpoint());
         }
@@ -163,8 +163,7 @@ namespace llarp
       };
 
       /// unordered set of paths with unique endpoints
-      using UniqueEndpointSet_t =
-          std::unordered_set< Path_ptr, Endpoint_Hash, Endpoint_Equals >;
+      using UniqueEndpointSet_t = std::unordered_set<Path_ptr, Endpoint_Hash, Endpoint_Equals>;
 
       bool
       operator<(const Path& other) const
@@ -218,8 +217,8 @@ namespace llarp
       }
 
       bool
-      HandleLRSM(uint64_t status, std::array< EncryptedFrame, 8 >& frames,
-                 AbstractRouter* r) override;
+      HandleLRSM(
+          uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r) override;
 
       void
       SetBuildResultHook(BuildResultHookFunc func);
@@ -284,63 +283,52 @@ namespace llarp
       Rebuild();
 
       bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     AbstractRouter*) override;
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
       bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       AbstractRouter*) override;
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
 
       void
       Tick(llarp_time_t now, AbstractRouter* r);
 
       bool
-      SendRoutingMessage(const routing::IMessage& msg,
-                         AbstractRouter* r) override;
+      SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleObtainExitMessage(const routing::ObtainExitMessage& msg,
-                              AbstractRouter* r) override;
+      HandleObtainExitMessage(const routing::ObtainExitMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleUpdateExitVerifyMessage(const routing::UpdateExitVerifyMessage& msg,
-                                    AbstractRouter* r) override;
+      HandleUpdateExitVerifyMessage(
+          const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleTransferTrafficMessage(const routing::TransferTrafficMessage& msg,
-                                   AbstractRouter* r) override;
+      HandleTransferTrafficMessage(
+          const routing::TransferTrafficMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg,
-                              AbstractRouter* r) override;
+      HandleUpdateExitMessage(const routing::UpdateExitMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleCloseExitMessage(const routing::CloseExitMessage& msg,
-                             AbstractRouter* r) override;
+      HandleCloseExitMessage(const routing::CloseExitMessage& msg, AbstractRouter* r) override;
       bool
-      HandleGrantExitMessage(const routing::GrantExitMessage& msg,
-                             AbstractRouter* r) override;
+      HandleGrantExitMessage(const routing::GrantExitMessage& msg, AbstractRouter* r) override;
       bool
-      HandleRejectExitMessage(const routing::RejectExitMessage& msg,
-                              AbstractRouter* r) override;
+      HandleRejectExitMessage(const routing::RejectExitMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg,
-                               AbstractRouter* r) override;
+      HandleDataDiscardMessage(const routing::DataDiscardMessage& msg, AbstractRouter* r) override;
 
       bool
       HandlePathConfirmMessage(AbstractRouter* r);
 
       bool
-      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg,
-                               AbstractRouter* r) override;
+      HandlePathConfirmMessage(const routing::PathConfirmMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg,
-                               AbstractRouter* r) override;
+      HandlePathLatencyMessage(const routing::PathLatencyMessage& msg, AbstractRouter* r) override;
 
       bool
-      HandlePathTransferMessage(const routing::PathTransferMessage& msg,
-                                AbstractRouter* r) override;
+      HandlePathTransferMessage(
+          const routing::PathTransferMessage& msg, AbstractRouter* r) override;
 
       bool
       HandleHiddenServiceFrame(const service::ProtocolFrame& frame) override;
@@ -406,12 +394,10 @@ namespace llarp
       DownstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) override;
 
       void
-      HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
-                        AbstractRouter* r) override;
+      HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r) override;
 
       void
-      HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
-                          AbstractRouter* r) override;
+      HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r) override;
 
      private:
       /// call obtained exit hooks
@@ -425,21 +411,21 @@ namespace llarp
       ExitUpdatedFunc m_ExitUpdated;
       ExitClosedFunc m_ExitClosed;
       ExitTrafficHandlerFunc m_ExitTrafficHandler;
-      std::vector< ObtainedExitHandler > m_ObtainedExitHooks;
-      llarp_time_t m_LastRecvMessage     = 0s;
+      std::vector<ObtainedExitHandler> m_ObtainedExitHooks;
+      llarp_time_t m_LastRecvMessage = 0s;
       llarp_time_t m_LastLatencyTestTime = 0s;
-      uint64_t m_LastLatencyTestID       = 0;
-      uint64_t m_UpdateExitTX            = 0;
-      uint64_t m_CloseExitTX             = 0;
-      uint64_t m_ExitObtainTX            = 0;
+      uint64_t m_LastLatencyTestID = 0;
+      uint64_t m_UpdateExitTX = 0;
+      uint64_t m_CloseExitTX = 0;
+      uint64_t m_ExitObtainTX = 0;
       PathStatus _status;
       PathRole _role;
-      util::DecayingHashSet< TunnelNonce > m_UpstreamReplayFilter;
-      util::DecayingHashSet< TunnelNonce > m_DownstreamReplayFilter;
+      util::DecayingHashSet<TunnelNonce> m_UpstreamReplayFilter;
+      util::DecayingHashSet<TunnelNonce> m_DownstreamReplayFilter;
       uint64_t m_LastRXRate = 0;
-      uint64_t m_RXRate     = 0;
+      uint64_t m_RXRate = 0;
       uint64_t m_LastTXRate = 0;
-      uint64_t m_TXRate     = 0;
+      uint64_t m_TXRate = 0;
 
       const std::string m_shortName;
     };

@@ -25,7 +25,7 @@ namespace llarp
 
     ExitInfo() = default;
 
-    ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit) : pubkey(pk)
+    ExitInfo(const PubKey& pk, const nuint32_t& ipv4_exit) : pubkey(pk)
     {
       memset(address.s6_addr, 0, 16);
       address.s6_addr[11] = 0xff;
@@ -35,23 +35,23 @@ namespace llarp
     }
 
     bool
-    BEncode(llarp_buffer_t *buf) const;
+    BEncode(llarp_buffer_t* buf) const;
 
     bool
-    BDecode(llarp_buffer_t *buf)
+    BDecode(llarp_buffer_t* buf)
     {
       return bencode_decode_dict(*this, buf);
     }
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
-    std::ostream &
-    print(std::ostream &stream, int level, int spaces) const;
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const;
   };
 
-  inline std::ostream &
-  operator<<(std::ostream &out, const ExitInfo &xi)
+  inline std::ostream&
+  operator<<(std::ostream& out, const ExitInfo& xi)
   {
     return xi.print(out, -1, -1);
   }

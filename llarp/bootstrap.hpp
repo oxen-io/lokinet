@@ -6,7 +6,7 @@
 
 namespace llarp
 {
-  struct BootstrapList final : public std::set< RouterContact >
+  struct BootstrapList final : public std::set<RouterContact>
   {
     bool
     BDecode(llarp_buffer_t* buf);

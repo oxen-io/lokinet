@@ -12,20 +12,22 @@ namespace llarp
 {
   namespace dht
   {
-    struct PublishServiceJob : public TX< TXOwner, service::EncryptedIntroSet >
+    struct PublishServiceJob : public TX<TXOwner, service::EncryptedIntroSet>
     {
       uint64_t relayOrder;
       service::EncryptedIntroSet introset;
 
-      PublishServiceJob(const TXOwner &asker,
-                        const service::EncryptedIntroSet &introset,
-                        AbstractContext *ctx, uint64_t relayOrder);
+      PublishServiceJob(
+          const TXOwner& asker,
+          const service::EncryptedIntroSet& introset,
+          AbstractContext* ctx,
+          uint64_t relayOrder);
 
       bool
-      Validate(const service::EncryptedIntroSet &introset) const override;
+      Validate(const service::EncryptedIntroSet& introset) const override;
 
       void
-      Start(const TXOwner &peer) override;
+      Start(const TXOwner& peer) override;
 
       virtual void
       SendReply() override;
@@ -35,10 +37,13 @@ namespace llarp
     {
       PathID_t localPath;
       uint64_t txid;
-      LocalPublishServiceJob(const TXOwner &peer, const PathID_t &fromID,
-                             uint64_t txid,
-                             const service::EncryptedIntroSet &introset,
-                             AbstractContext *ctx, uint64_t relayOrder);
+      LocalPublishServiceJob(
+          const TXOwner& peer,
+          const PathID_t& fromID,
+          uint64_t txid,
+          const service::EncryptedIntroSet& introset,
+          AbstractContext* ctx,
+          uint64_t relayOrder);
 
       void
       SendReply() override;

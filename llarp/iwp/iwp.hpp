@@ -11,17 +11,27 @@ namespace llarp
   namespace iwp
   {
     LinkLayer_ptr
-    NewInboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                   LinkMessageHandler h, SignBufferFunc sign,
-                   SessionEstablishedHandler est,
-                   SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                   SessionClosedHandler closed, PumpDoneHandler pumpDone);
+    NewInboundLink(
+        std::shared_ptr<KeyManager> keyManager,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone);
     LinkLayer_ptr
-    NewOutboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                    LinkMessageHandler h, SignBufferFunc sign,
-                    SessionEstablishedHandler est,
-                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                    SessionClosedHandler closed, PumpDoneHandler pumpDone);
+    NewOutboundLink(
+        std::shared_ptr<KeyManager> keyManager,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone);
 
   }  // namespace iwp
 }  // namespace llarp

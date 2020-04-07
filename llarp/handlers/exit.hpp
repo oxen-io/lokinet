@@ -26,8 +26,7 @@ namespace llarp
       Name() const;
 
       bool
-      VisitEndpointsFor(const PubKey& pk,
-                        std::function< bool(exit::Endpoint* const) > visit);
+      VisitEndpointsFor(const PubKey& pk, std::function<bool(exit::Endpoint* const)> visit);
 
       util::StatusObject
       ExtractStatus() const;
@@ -39,12 +38,10 @@ namespace llarp
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 
       bool
-      HandleHookedDNSMessage(dns::Message msg,
-                             std::function< void(dns::Message) >) override;
+      HandleHookedDNSMessage(dns::Message msg, std::function<void(dns::Message)>) override;
 
       bool
-      AllocateNewExit(const PubKey pk, const PathID_t& path,
-                      bool permitInternet);
+      AllocateNewExit(const PubKey pk, const PathID_t& path, bool permitInternet);
 
       exit::Endpoint*
       FindEndpointByPath(const PathID_t& path);
@@ -57,7 +54,7 @@ namespace llarp
 
       /// handle ip packet from outside
       void
-      OnInetPacket(std::vector< byte_t > buf);
+      OnInetPacket(std::vector<byte_t> buf);
 
       AbstractRouter*
       GetRouter();
@@ -65,12 +62,12 @@ namespace llarp
       llarp_time_t
       Now() const;
 
-      template < typename Stats >
+      template <typename Stats>
       void
       CalculateTrafficStats(Stats& stats)
       {
         auto itr = m_ActiveExits.begin();
-        while(itr != m_ActiveExits.end())
+        while (itr != m_ActiveExits.end())
         {
           stats[itr->first].first += itr->second->TxRate();
           stats[itr->first].second += itr->second->RxRate();
@@ -122,8 +119,7 @@ namespace llarp
 
       /// async obtain snode session and call callback when it's ready to send
       void
-      ObtainSNodeSession(const RouterID& router,
-                         exit::SessionReadyFunc obtainCb);
+      ObtainSNodeSession(const RouterID& router, exit::SessionReadyFunc obtainCb);
 
       bool
       QueueSNodePacket(const llarp_buffer_t& buf, huint128_t from);
@@ -135,33 +131,30 @@ namespace llarp
       KickIdentOffExit(const PubKey& pk);
 
       AbstractRouter* m_Router;
-      std::shared_ptr< dns::Proxy > m_Resolver;
+      std::shared_ptr<dns::Proxy> m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
-      std::unordered_map< PathID_t, PubKey, PathID_t::Hash > m_Paths;
+      std::unordered_map<PathID_t, PubKey, PathID_t::Hash> m_Paths;
 
-      std::unordered_map< PubKey, exit::Endpoint*, PubKey::Hash > m_ChosenExits;
+      std::unordered_map<PubKey, exit::Endpoint*, PubKey::Hash> m_ChosenExits;
 
-      std::unordered_multimap< PubKey, std::unique_ptr< exit::Endpoint >,
-                               PubKey::Hash >
-          m_ActiveExits;
+      std::unordered_multimap<PubKey, std::unique_ptr<exit::Endpoint>, PubKey::Hash> m_ActiveExits;
 
-      using KeyMap_t = std::unordered_map< PubKey, huint128_t, PubKey::Hash >;
+      using KeyMap_t = std::unordered_map<PubKey, huint128_t, PubKey::Hash>;
 
       KeyMap_t m_KeyToIP;
 
-      using SNodes_t = std::set< PubKey >;
+      using SNodes_t = std::set<PubKey>;
       /// set of pubkeys we treat as snodes
       SNodes_t m_SNodeKeys;
 
       using SNodeSessions_t =
-          std::unordered_map< RouterID, std::shared_ptr< exit::SNodeSession >,
-                              RouterID::Hash >;
+          std::unordered_map<RouterID, std::shared_ptr<exit::SNodeSession>, RouterID::Hash>;
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;
 
-      std::unordered_map< huint128_t, PubKey > m_IPToKey;
+      std::unordered_map<huint128_t, PubKey> m_IPToKey;
 
       huint128_t m_IfAddr;
       huint128_t m_HigestAddr;
@@ -169,18 +162,22 @@ namespace llarp
       huint128_t m_NextAddr;
       IPRange m_OurRange;
 
-      std::unordered_map< huint128_t, llarp_time_t > m_IPActivity;
+      std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
 
       llarp_tun_io m_Tun;
 
       Addr m_LocalResolverAddr;
-      std::vector< Addr > m_UpstreamResolvers;
+      std::vector<Addr> m_UpstreamResolvers;
 
       using Pkt_t = net::IPPacket;
-      using PacketQueue_t =
-          util::CoDelQueue< Pkt_t, Pkt_t::GetTime, Pkt_t::PutTime,
-                            Pkt_t::CompareOrder, Pkt_t::GetNow, util::NullMutex,
-                            util::NullLock >;
+      using PacketQueue_t = util::CoDelQueue<
+          Pkt_t,
+          Pkt_t::GetTime,
+          Pkt_t::PutTime,
+          Pkt_t::CompareOrder,
+          Pkt_t::GetNow,
+          util::NullMutex,
+          util::NullLock>;
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;

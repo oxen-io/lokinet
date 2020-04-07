@@ -24,8 +24,7 @@ namespace llarp
 #endif
 
   LogContext::LogContext()
-      : logStream(std::make_unique< Stream_t >(_LOGSTREAM_INIT))
-      , started(llarp::time_now_ms())
+      : logStream(std::make_unique<Stream_t>(_LOGSTREAM_INIT)), started(llarp::time_now_ms())
   {
   }
 
@@ -63,7 +62,7 @@ namespace llarp
   SetLogLevel(LogLevel lvl)
   {
     LogContext::Instance().curLevel = lvl;
-    if(lvl == eLogDebug)
+    if (lvl == eLogDebug)
     {
       LogContext::Instance().runtimeLevel = lvl;
     }

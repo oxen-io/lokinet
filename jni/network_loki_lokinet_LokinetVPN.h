@@ -14,7 +14,7 @@ extern "C"
    * Signature: ()I
    */
   JNIEXPORT jint JNICALL
-  Java_network_loki_lokinet_LokinetVPN_PacketSize(JNIEnv *, jclass);
+  Java_network_loki_lokinet_LokinetVPN_PacketSize(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -22,7 +22,7 @@ extern "C"
    * Signature: ()Ljava/nio/Buffer;
    */
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetVPN_Alloc(JNIEnv *, jclass);
+  Java_network_loki_lokinet_LokinetVPN_Alloc(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -30,7 +30,7 @@ extern "C"
    * Signature: (Ljava/nio/Buffer;)V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetVPN_Free(JNIEnv *, jclass, jobject);
+  Java_network_loki_lokinet_LokinetVPN_Free(JNIEnv*, jclass, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -38,7 +38,7 @@ extern "C"
    * Signature: ()V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetVPN_Stop(JNIEnv *, jobject);
+  Java_network_loki_lokinet_LokinetVPN_Stop(JNIEnv*, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -46,7 +46,7 @@ extern "C"
    * Signature: (Ljava/nio/ByteBuffer;)I
    */
   JNIEXPORT jint JNICALL
-  Java_network_loki_lokinet_LokinetVPN_ReadPkt(JNIEnv *, jobject, jobject);
+  Java_network_loki_lokinet_LokinetVPN_ReadPkt(JNIEnv*, jobject, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -54,7 +54,7 @@ extern "C"
    * Signature: (Ljava/nio/ByteBuffer;)Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetVPN_WritePkt(JNIEnv *, jobject, jobject);
+  Java_network_loki_lokinet_LokinetVPN_WritePkt(JNIEnv*, jobject, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetVPN
@@ -62,7 +62,7 @@ extern "C"
    * Signature: (Lnetwork/loki/lokinet/LokinetVPN/VPNInfo;)V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetVPN_SetInfo(JNIEnv *, jobject, jobject);
+  Java_network_loki_lokinet_LokinetVPN_SetInfo(JNIEnv*, jobject, jobject);
 #ifdef __cplusplus
 }
 #endif

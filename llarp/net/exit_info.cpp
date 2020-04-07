@@ -16,23 +16,23 @@ namespace llarp
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
     char tmp[128] = {0};
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
 
-    if(!inet_ntop(AF_INET6, address.s6_addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, address.s6_addr, tmp, sizeof(tmp)))
       return false;
-    if(!BEncodeWriteDictString("a", std::string(tmp), buf))
-      return false;
-
-    if(!inet_ntop(AF_INET6, netmask.s6_addr, tmp, sizeof(tmp)))
-      return false;
-    if(!BEncodeWriteDictString("b", std::string(tmp), buf))
+    if (!BEncodeWriteDictString("a", std::string(tmp), buf))
       return false;
 
-    if(!BEncodeWriteDictEntry("k", pubkey, buf))
+    if (!inet_ntop(AF_INET6, netmask.s6_addr, tmp, sizeof(tmp)))
+      return false;
+    if (!BEncodeWriteDictString("b", std::string(tmp), buf))
       return false;
 
-    if(!BEncodeWriteDictInt("v", version, buf))
+    if (!BEncodeWriteDictEntry("k", pubkey, buf))
+      return false;
+
+    if (!BEncodeWriteDictInt("v", version, buf))
       return false;
 
     return bencode_end(buf);
@@ -43,10 +43,10 @@ namespace llarp
   {
     char tmp[128] = {0};
     llarp_buffer_t strbuf;
-    if(!bencode_read_string(buf, &strbuf))
+    if (!bencode_read_string(buf, &strbuf))
       return false;
 
-    if(strbuf.sz >= sizeof(tmp))
+    if (strbuf.sz >= sizeof(tmp))
       return false;
 
     memcpy(tmp, strbuf.base, strbuf.sz);
@@ -58,13 +58,13 @@ namespace llarp
   ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    if(!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
+    if (!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if(k == "a")
+    if (k == "a")
       return bdecode_ip_string(buf, address);
-    if(k == "b")
+    if (k == "b")
       return bdecode_ip_string(buf, netmask);
     return read;
   }
@@ -77,14 +77,13 @@ namespace llarp
     std::ostringstream ss;
     char tmp[128] = {0};
 
-    if(inet_ntop(AF_INET6, (void*)&address, tmp, sizeof(tmp)))
+    if (inet_ntop(AF_INET6, (void*)&address, tmp, sizeof(tmp)))
       ss << tmp;
     else
       return stream;
     ss << std::string("/");
 #if defined(ANDROID) || defined(RPI)
-    snprintf(tmp, sizeof(tmp), "%zu",
-             llarp::bits::count_array_bits(netmask.s6_addr));
+    snprintf(tmp, sizeof(tmp), "%zu", llarp::bits::count_array_bits(netmask.s6_addr));
     ss << tmp;
 #else
     ss << std::to_string(llarp::bits::count_array_bits(netmask.s6_addr));

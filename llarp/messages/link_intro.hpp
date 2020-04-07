@@ -32,7 +32,7 @@ namespace llarp
     HandleMessage(AbstractRouter* router) const override;
 
     bool
-    Sign(std::function< bool(Signature&, const llarp_buffer_t&) > signer);
+    Sign(std::function<bool(Signature&, const llarp_buffer_t&)> signer);
 
     bool
     Verify() const;
@@ -50,7 +50,7 @@ namespace llarp
     uint16_t
     Priority() const override
     {
-      return std::numeric_limits< uint16_t >::max();
+      return std::numeric_limits<uint16_t>::max();
     }
   };
 }  // namespace llarp

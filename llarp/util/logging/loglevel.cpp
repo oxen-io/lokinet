@@ -7,7 +7,7 @@ namespace llarp
   std::string
   LogLevelToString(LogLevel lvl)
   {
-    switch(lvl)
+    switch (lvl)
     {
       case eLogTrace:
         return "TRC";
@@ -27,7 +27,7 @@ namespace llarp
   std::string
   LogLevelToName(LogLevel lvl)
   {
-    switch(lvl)
+    switch (lvl)
     {
       case eLogTrace:
         return "Trace";
@@ -46,18 +46,21 @@ namespace llarp
     }
   }
 
-  nonstd::optional< LogLevel >
+  nonstd::optional<LogLevel>
   LogLevelFromString(std::string level)
   {
-    std::transform(
-        level.begin(), level.end(), level.begin(),
-        [](const unsigned char ch) -> char { return std::tolower(ch); });
-    static const std::unordered_map< std::string, LogLevel > levels = {
-        {"trace", eLogTrace}, {"debug", eLogDebug}, {"info", eLogInfo},
-        {"warn", eLogWarn},   {"error", eLogError}, {"none", eLogNone}};
+    std::transform(level.begin(), level.end(), level.begin(), [](const unsigned char ch) -> char {
+      return std::tolower(ch);
+    });
+    static const std::unordered_map<std::string, LogLevel> levels = {{"trace", eLogTrace},
+                                                                     {"debug", eLogDebug},
+                                                                     {"info", eLogInfo},
+                                                                     {"warn", eLogWarn},
+                                                                     {"error", eLogError},
+                                                                     {"none", eLogNone}};
 
     const auto itr = levels.find(level);
-    if(itr == levels.end())
+    if (itr == levels.end())
       return {};
     return itr->second;
   }

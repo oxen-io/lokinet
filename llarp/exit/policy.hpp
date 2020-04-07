@@ -9,9 +9,9 @@ namespace llarp
   {
     struct Policy
     {
-      uint64_t proto   = 0;
-      uint64_t port    = 0;
-      uint64_t drop    = 0;
+      uint64_t proto = 0;
+      uint64_t port = 0;
+      uint64_t drop = 0;
       uint64_t version = LLARP_PROTO_VERSION;
 
       bool

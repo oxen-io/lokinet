@@ -39,23 +39,23 @@ namespace llarp
   struct Context
   {
     /// get context from main pointer
-    static std::shared_ptr< Context >
-    Get(llarp_main *);
+    static std::shared_ptr<Context>
+    Get(llarp_main*);
 
     Context() = default;
 
-    std::unique_ptr< Crypto > crypto;
-    std::unique_ptr< CryptoManager > cryptoManager;
-    std::unique_ptr< AbstractRouter > router;
-    std::shared_ptr< thread::ThreadPool > worker;
-    std::shared_ptr< Logic > logic;
-    std::unique_ptr< Config > config;
-    std::unique_ptr< llarp_nodedb > nodedb;
+    std::unique_ptr<Crypto> crypto;
+    std::unique_ptr<CryptoManager> cryptoManager;
+    std::unique_ptr<AbstractRouter> router;
+    std::shared_ptr<thread::ThreadPool> worker;
+    std::shared_ptr<Logic> logic;
+    std::unique_ptr<Config> config;
+    std::unique_ptr<llarp_nodedb> nodedb;
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
     bool
-    LoadConfig(const std::string &fname);
+    LoadConfig(const std::string& fname);
 
     void
     Close();
@@ -93,16 +93,16 @@ namespace llarp
     /// return true if queued for calling
     /// return false if not queued for calling
     bool
-    CallSafe(std::function< void(void) > f);
+    CallSafe(std::function<void(void)> f);
 
 #ifdef LOKINET_HIVE
     void
-    InjectHive(tooling::RouterHive *hive);
+    InjectHive(tooling::RouterHive* hive);
 #endif
 
    private:
     void
-    SetPIDFile(const std::string &fname);
+    SetPIDFile(const std::string& fname);
 
     bool
     WritePIDFile() const;
@@ -118,7 +118,7 @@ namespace llarp
 
     std::string configfile;
     std::string pidfile;
-    std::unique_ptr< std::promise< void > > closeWaiter;
+    std::unique_ptr<std::promise<void>> closeWaiter;
   };
 }  // namespace llarp
 

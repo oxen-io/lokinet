@@ -35,13 +35,12 @@ namespace llarp
 
       bool
       HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+          llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const override;
 
       RouterID targetKey;
-      bool iterative   = false;
+      bool iterative = false;
       bool exploritory = false;
-      uint64_t txid    = 0;
+      uint64_t txid = 0;
       uint64_t version = 0;
     };
 
@@ -56,8 +55,7 @@ namespace llarp
       /// the path of the result
       /// TODO: smart path expiration logic needs to be implemented
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage::Ptr_t >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

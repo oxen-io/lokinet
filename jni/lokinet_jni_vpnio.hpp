@@ -12,22 +12,22 @@ namespace lokinet
 {
   struct VPNIO
   {
-    static VPNIO *
-    Get(llarp_vpn_io *vpn)
+    static VPNIO*
+    Get(llarp_vpn_io* vpn)
     {
-      return static_cast< VPNIO * >(vpn->user);
+      return static_cast<VPNIO*>(vpn->user);
     }
 
     virtual ~VPNIO() = default;
 
     llarp_vpn_io io;
     llarp_vpn_ifaddr_info info{{0}, {0}, 0};
-    std::unique_ptr< std::promise< void > > closeWaiter;
+    std::unique_ptr<std::promise<void>> closeWaiter;
 
     void
     Closed()
     {
-      if(closeWaiter)
+      if (closeWaiter)
         closeWaiter->set_value();
     }
 
@@ -42,23 +42,23 @@ namespace lokinet
 
     VPNIO()
     {
-      io.impl     = nullptr;
-      io.user     = this;
-      io.closed   = [](llarp_vpn_io *vpn) { VPNIO::Get(vpn)->Closed(); };
-      io.injected = [](llarp_vpn_io *vpn, bool good) {
-        VPNIO *ptr = VPNIO::Get(vpn);
-        if(good)
+      io.impl = nullptr;
+      io.user = this;
+      io.closed = [](llarp_vpn_io* vpn) { VPNIO::Get(vpn)->Closed(); };
+      io.injected = [](llarp_vpn_io* vpn, bool good) {
+        VPNIO* ptr = VPNIO::Get(vpn);
+        if (good)
           ptr->InjectSuccess();
         else
           ptr->InjectFail();
       };
-      io.tick = [](llarp_vpn_io *vpn) { VPNIO::Get(vpn)->Tick(); };
+      io.tick = [](llarp_vpn_io* vpn) { VPNIO::Get(vpn)->Tick(); };
     }
 
     bool
-    Init(llarp_main *ptr)
+    Init(llarp_main* ptr)
     {
-      if(Ready())
+      if (Ready())
         return false;
       return llarp_vpn_io_init(ptr, &io);
     }
@@ -72,44 +72,44 @@ namespace lokinet
     void
     Close()
     {
-      if(not Ready())
+      if (not Ready())
         return;
-      if(closeWaiter)
+      if (closeWaiter)
         return;
-      closeWaiter = std::make_unique< std::promise< void > >();
+      closeWaiter = std::make_unique<std::promise<void>>();
       llarp_vpn_io_close_async(&io);
       closeWaiter->get_future().wait();
       closeWaiter.reset();
       io.impl = nullptr;
     }
 
-    llarp_vpn_pkt_reader *
+    llarp_vpn_pkt_reader*
     Reader()
     {
       return llarp_vpn_io_packet_reader(&io);
     }
 
-    llarp_vpn_pkt_writer *
+    llarp_vpn_pkt_writer*
     Writer()
     {
       return llarp_vpn_io_packet_writer(&io);
     }
 
     ssize_t
-    ReadPacket(void *dst, size_t len)
+    ReadPacket(void* dst, size_t len)
     {
-      if(not Ready())
+      if (not Ready())
         return -1;
-      unsigned char *buf = (unsigned char *)dst;
+      unsigned char* buf = (unsigned char*)dst;
       return llarp_vpn_io_readpkt(Reader(), buf, len);
     }
 
     bool
-    WritePacket(void *pkt, size_t len)
+    WritePacket(void* pkt, size_t len)
     {
-      if(not Ready())
+      if (not Ready())
         return false;
-      unsigned char *buf = (unsigned char *)pkt;
+      unsigned char* buf = (unsigned char*)pkt;
       return llarp_vpn_io_writepkt(Writer(), buf, len);
     }
 

@@ -6,18 +6,18 @@ namespace llarp
 {
   // forward declair
   struct Context;
-  using Node_ptr = std::shared_ptr< llarp::Context >;
+  using Node_ptr = std::shared_ptr<llarp::Context>;
 
   namespace simulate
   {
-    struct Simulation : public std::enable_shared_from_this< Simulation >
+    struct Simulation : public std::enable_shared_from_this<Simulation>
     {
       Simulation();
 
       llarp::CryptoManager m_CryptoManager;
       llarp_ev_loop_ptr m_NetLoop;
 
-      std::unordered_map< std::string, Node_ptr > m_Nodes;
+      std::unordered_map<std::string, Node_ptr> m_Nodes;
 
       void
       NodeUp(llarp::Context* node);
@@ -29,6 +29,6 @@ namespace llarp
       DelNode(const std::string& name);
     };
 
-    using Sim_ptr = std::shared_ptr< Simulation >;
+    using Sim_ptr = std::shared_ptr<Simulation>;
   }  // namespace simulate
 }  // namespace llarp

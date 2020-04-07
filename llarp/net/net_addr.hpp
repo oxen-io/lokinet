@@ -46,14 +46,16 @@ namespace llarp
     from_char_array(string_view str);
 
     bool
-    from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
-              const uint8_t four);
+    from_4int(const uint8_t one, const uint8_t two, const uint8_t three, const uint8_t four);
 
-    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-         const uint8_t four);
+    Addr(const uint8_t one, const uint8_t two, const uint8_t three, const uint8_t four);
 
-    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-         const uint8_t four, const uint16_t p_port);
+    Addr(
+        const uint8_t one,
+        const uint8_t two,
+        const uint8_t three,
+        const uint8_t four,
+        const uint16_t p_port);
 
     Addr(const AddressInfo& other);
     Addr(const sockaddr_in& other);
@@ -122,7 +124,7 @@ namespace llarp
     getHostLong()
     {
       in_addr_t addr = this->addr4()->s_addr;
-      uint32_t byte  = ntohl(addr);
+      uint32_t byte = ntohl(addr);
       return byte;
     }
 
@@ -154,7 +156,7 @@ namespace llarp
       std::size_t
       operator()(Addr const& a) const noexcept
       {
-        if(a.af() == AF_INET)
+        if (a.af() == AF_INET)
         {
           return a.port() ^ a.addr4()->s_addr;
         }

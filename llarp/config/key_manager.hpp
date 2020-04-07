@@ -74,7 +74,7 @@ namespace llarp
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
 
-    bool m_usingLokid          = false;
+    bool m_usingLokid = false;
     std::string m_lokidRPCAddr = "127.0.0.1:22023";
     std::string m_lokidRPCUser;
     std::string m_lokidRPCPassword;
@@ -87,8 +87,10 @@ namespace llarp
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(const std::string& filepath, llarp::SecretKey& key,
-                    std::function< void(llarp::SecretKey& key) > keygen);
+    loadOrCreateKey(
+        const std::string& filepath,
+        llarp::SecretKey& key,
+        std::function<void(llarp::SecretKey& key)> keygen);
 
     /// Requests the identity key from lokid via HTTP (curl)
     bool

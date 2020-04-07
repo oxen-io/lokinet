@@ -13,21 +13,21 @@
 namespace llarp
 {
   bool
-  operator==(const AddressInfo &lhs, const AddressInfo &rhs)
+  operator==(const AddressInfo& lhs, const AddressInfo& rhs)
   {
     // we don't care about rank
-    return lhs.pubkey == rhs.pubkey && lhs.port == rhs.port
-        && lhs.dialect == rhs.dialect && lhs.ip == rhs.ip;
+    return lhs.pubkey == rhs.pubkey && lhs.port == rhs.port && lhs.dialect == rhs.dialect
+        && lhs.ip == rhs.ip;
   }
 
   bool
-  operator<(const AddressInfo &lhs, const AddressInfo &rhs)
+  operator<(const AddressInfo& lhs, const AddressInfo& rhs)
   {
     return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }
 
   bool
-  AddressInfo::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
+  AddressInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     uint64_t i;
     char tmp[128] = {0};
@@ -35,12 +35,12 @@ namespace llarp
     llarp_buffer_t strbuf;
 
     // rank
-    if(key == "c")
+    if (key == "c")
     {
-      if(!bencode_read_integer(buf, &i))
+      if (!bencode_read_integer(buf, &i))
         return false;
 
-      if(i > 65536 || i <= 0)
+      if (i > 65536 || i <= 0)
         return false;
 
       rank = i;
@@ -48,31 +48,31 @@ namespace llarp
     }
 
     // dialect
-    if(key == "d")
+    if (key == "d")
     {
-      if(!bencode_read_string(buf, &strbuf))
+      if (!bencode_read_string(buf, &strbuf))
         return false;
-      if(strbuf.sz > sizeof(tmp))
+      if (strbuf.sz > sizeof(tmp))
         return false;
       memcpy(tmp, strbuf.base, strbuf.sz);
       tmp[strbuf.sz] = 0;
-      dialect        = std::string(tmp);
+      dialect = std::string(tmp);
       return true;
     }
 
     // encryption public key
-    if(key == "e")
+    if (key == "e")
     {
       return pubkey.BDecode(buf);
     }
 
     // ip address
-    if(key == "i")
+    if (key == "i")
     {
-      if(!bencode_read_string(buf, &strbuf))
+      if (!bencode_read_string(buf, &strbuf))
         return false;
 
-      if(strbuf.sz >= sizeof(tmp))
+      if (strbuf.sz >= sizeof(tmp))
         return false;
 
       memcpy(tmp, strbuf.base, strbuf.sz);
@@ -81,12 +81,12 @@ namespace llarp
     }
 
     // port
-    if(key == "p")
+    if (key == "p")
     {
-      if(!bencode_read_integer(buf, &i))
+      if (!bencode_read_integer(buf, &i))
         return false;
 
-      if(i > 65536 || i <= 0)
+      if (i > 65536 || i <= 0)
         return false;
 
       port = i;
@@ -94,9 +94,9 @@ namespace llarp
     }
 
     // version
-    if(key == "v")
+    if (key == "v")
     {
-      if(!bencode_read_integer(buf, &i))
+      if (!bencode_read_integer(buf, &i))
         return false;
       return i == LLARP_PROTO_VERSION;
     }
@@ -106,53 +106,53 @@ namespace llarp
   }
 
   bool
-  AddressInfo::BEncode(llarp_buffer_t *buff) const
+  AddressInfo::BEncode(llarp_buffer_t* buff) const
   {
     char ipbuff[128] = {0};
-    const char *ipstr;
-    if(!bencode_start_dict(buff))
+    const char* ipstr;
+    if (!bencode_start_dict(buff))
       return false;
     /* rank */
-    if(!bencode_write_bytestring(buff, "c", 1))
+    if (!bencode_write_bytestring(buff, "c", 1))
       return false;
-    if(!bencode_write_uint64(buff, rank))
+    if (!bencode_write_uint64(buff, rank))
       return false;
     /* dialect */
-    if(!bencode_write_bytestring(buff, "d", 1))
+    if (!bencode_write_bytestring(buff, "d", 1))
       return false;
-    if(!bencode_write_bytestring(buff, dialect.c_str(), dialect.size()))
+    if (!bencode_write_bytestring(buff, dialect.c_str(), dialect.size()))
       return false;
     /* encryption key */
-    if(!bencode_write_bytestring(buff, "e", 1))
+    if (!bencode_write_bytestring(buff, "e", 1))
       return false;
-    if(!bencode_write_bytestring(buff, pubkey.data(), PUBKEYSIZE))
+    if (!bencode_write_bytestring(buff, pubkey.data(), PUBKEYSIZE))
       return false;
     /** ip */
-    ipstr = inet_ntop(AF_INET6, (void *)&ip, ipbuff, sizeof(ipbuff));
-    if(!ipstr)
+    ipstr = inet_ntop(AF_INET6, (void*)&ip, ipbuff, sizeof(ipbuff));
+    if (!ipstr)
       return false;
-    if(!bencode_write_bytestring(buff, "i", 1))
+    if (!bencode_write_bytestring(buff, "i", 1))
       return false;
-    if(!bencode_write_bytestring(buff, ipstr, strnlen(ipstr, sizeof(ipbuff))))
+    if (!bencode_write_bytestring(buff, ipstr, strnlen(ipstr, sizeof(ipbuff))))
       return false;
     /** port */
-    if(!bencode_write_bytestring(buff, "p", 1))
+    if (!bencode_write_bytestring(buff, "p", 1))
       return false;
-    if(!bencode_write_uint64(buff, port))
+    if (!bencode_write_uint64(buff, port))
       return false;
 
     /** version */
-    if(!bencode_write_uint64_entry(buff, "v", 1, LLARP_PROTO_VERSION))
+    if (!bencode_write_uint64_entry(buff, "v", 1, LLARP_PROTO_VERSION))
       return false;
     /** end */
     return bencode_end(buff);
   }
 
-  std::ostream &
-  AddressInfo::print(std::ostream &stream, int level, int spaces) const
+  std::ostream&
+  AddressInfo::print(std::ostream& stream, int level, int spaces) const
   {
     char tmp[128] = {0};
-    inet_ntop(AF_INET6, (void *)&ip, tmp, sizeof(tmp));
+    inet_ntop(AF_INET6, (void*)&ip, tmp, sizeof(tmp));
 
     Printer printer(stream, level, spaces);
     printer.printAttribute("ip", tmp);
@@ -162,10 +162,10 @@ namespace llarp
   }
 
   void
-  to_json(nlohmann::json &j, const AddressInfo &a)
+  to_json(nlohmann::json& j, const AddressInfo& a)
   {
     char tmp[128] = {0};
-    inet_ntop(AF_INET6, (void *)&a.ip, tmp, sizeof(tmp));
+    inet_ntop(AF_INET6, (void*)&a.ip, tmp, sizeof(tmp));
 
     j = nlohmann::json{{"rank", a.rank},
                        {"dialect", a.dialect},

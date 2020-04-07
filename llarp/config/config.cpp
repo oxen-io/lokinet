@@ -19,7 +19,7 @@
 
 namespace llarp
 {
-  const char *
+  const char*
   lokinetEnv(string_view suffix)
   {
     std::string env;
@@ -32,41 +32,41 @@ namespace llarp
   std::string
   fromEnv(string_view val, string_view envNameSuffix)
   {
-    if(const char *ptr = lokinetEnv(envNameSuffix))
+    if (const char* ptr = lokinetEnv(envNameSuffix))
       return ptr;
     return {val.begin(), val.end()};
   }
 
   int
-  fromEnv(const int &val, string_view envNameSuffix)
+  fromEnv(const int& val, string_view envNameSuffix)
   {
-    if(const char *ptr = lokinetEnv(envNameSuffix))
+    if (const char* ptr = lokinetEnv(envNameSuffix))
       return std::atoi(ptr);
     return val;
   }
 
   uint16_t
-  fromEnv(const uint16_t &val, string_view envNameSuffix)
+  fromEnv(const uint16_t& val, string_view envNameSuffix)
   {
-    if(const char *ptr = lokinetEnv(envNameSuffix))
+    if (const char* ptr = lokinetEnv(envNameSuffix))
       return std::atoi(ptr);
 
     return val;
   }
 
   size_t
-  fromEnv(const size_t &val, string_view envNameSuffix)
+  fromEnv(const size_t& val, string_view envNameSuffix)
   {
-    if(const char *ptr = lokinetEnv(envNameSuffix))
+    if (const char* ptr = lokinetEnv(envNameSuffix))
       return std::atoll(ptr);
 
     return val;
   }
 
-  nonstd::optional< bool >
-  fromEnv(const nonstd::optional< bool > &val, string_view envNameSuffix)
+  nonstd::optional<bool>
+  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix)
   {
-    if(const char *ptr = lokinetEnv(envNameSuffix))
+    if (const char* ptr = lokinetEnv(envNameSuffix))
       return IsTrueValue(ptr);
 
     return val;
@@ -78,14 +78,14 @@ namespace llarp
     return std::atoi(val.data());
   }
 
-  nonstd::optional< bool >
+  nonstd::optional<bool>
   setOptBool(string_view val)
   {
-    if(IsTrueValue(val))
+    if (IsTrueValue(val))
     {
       return true;
     }
-    else if(IsFalseValue(val))
+    else if (IsFalseValue(val))
     {
       return false;
     }
@@ -95,23 +95,23 @@ namespace llarp
   void
   RouterConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "job-queue-size")
+    if (key == "job-queue-size")
     {
       auto sval = svtoi(val);
-      if(sval >= 1024)
+      if (sval >= 1024)
       {
         m_JobQueueSize = sval;
         LogInfo("Set job queue size to ", m_JobQueueSize);
       }
     }
-    if(key == "default-protocol")
+    if (key == "default-protocol")
     {
       m_DefaultLinkProto = str(val);
       LogInfo("overriding default link protocol to '", val, "'");
     }
-    if(key == "netid")
+    if (key == "netid")
     {
-      if(val.size() <= NetID::size())
+      if (val.size() <= NetID::size())
       {
         m_netId = str(val);
         LogInfo("setting netid to '", val, "'");
@@ -121,77 +121,77 @@ namespace llarp
         llarp::LogError("invalid netid '", val, "', is too long");
       }
     }
-    if(key == "max-connections")
+    if (key == "max-connections")
     {
       auto ival = svtoi(val);
-      if(ival > 0)
+      if (ival > 0)
       {
         m_maxConnectedRouters = ival;
         LogInfo("max connections set to ", m_maxConnectedRouters);
       }
     }
-    if(key == "min-connections")
+    if (key == "min-connections")
     {
       auto ival = svtoi(val);
-      if(ival > 0)
+      if (ival > 0)
       {
         m_minConnectedRouters = ival;
         LogInfo("min connections set to ", m_minConnectedRouters);
       }
     }
-    if(key == "nickname")
+    if (key == "nickname")
     {
       m_nickname = str(val);
       // set logger name here
       LogContext::Instance().nodeName = nickname();
       LogInfo("nickname set");
     }
-    if(key == "encryption-privkey")
+    if (key == "encryption-privkey")
     {
       m_encryptionKeyfile = str(val);
       LogDebug("encryption key set to ", m_encryptionKeyfile);
     }
-    if(key == "contact-file")
+    if (key == "contact-file")
     {
       m_ourRcFile = str(val);
       LogDebug("rc file set to ", m_ourRcFile);
     }
-    if(key == "transport-privkey")
+    if (key == "transport-privkey")
     {
       m_transportKeyfile = str(val);
       LogDebug("transport key set to ", m_transportKeyfile);
     }
-    if((key == "identity-privkey" || key == "ident-privkey"))
+    if ((key == "identity-privkey" || key == "ident-privkey"))
     {
       m_identKeyfile = str(val);
       LogDebug("identity key set to ", m_identKeyfile);
     }
-    if(key == "public-address" || key == "public-ip")
+    if (key == "public-address" || key == "public-ip")
     {
       llarp::LogInfo("public ip ", val, " size ", val.size());
-      if(val.size() < 17)
+      if (val.size() < 17)
       {
         // assume IPv4
         llarp::Addr a(val);
         llarp::LogInfo("setting public ipv4 ", a);
-        m_addrInfo.ip    = *a.addr6();
+        m_addrInfo.ip = *a.addr6();
         m_publicOverride = true;
       }
     }
-    if(key == "public-port")
+    if (key == "public-port")
     {
       llarp::LogInfo("Setting public port ", val);
       int p = svtoi(val);
       // Not needed to flip upside-down - this is done in llarp::Addr(const
       // AddressInfo&)
       m_ip4addr.sin_port = p;
-      m_addrInfo.port    = p;
-      m_publicOverride   = true;
+      m_addrInfo.port = p;
+      m_publicOverride = true;
     }
-    if(key == "worker-threads" || key == "threads")
+    if (key == "worker-threads" || key == "threads")
     {
       m_workerThreads = svtoi(val);
-      if(m_workerThreads <= 0)
+      if (m_workerThreads <= 0)
       {
         LogWarn("worker threads invalid value: '", val, "' defaulting to 1");
         m_workerThreads = 1;
@@ -201,10 +201,10 @@ namespace llarp
         LogDebug("set to use ", m_workerThreads, " worker threads");
       }
     }
-    if(key == "net-threads")
+    if (key == "net-threads")
     {
       m_numNetThreads = svtoi(val);
-      if(m_numNetThreads <= 0)
+      if (m_numNetThreads <= 0)
       {
         LogWarn("net threads invalid value: '", val, "' defaulting to 1");
         m_numNetThreads = 1;
@@ -214,7 +214,7 @@ namespace llarp
         LogDebug("set to use ", m_numNetThreads, " net threads");
       }
     }
-    if(key == "block-bogons")
+    if (key == "block-bogons")
     {
       m_blockBogons = setOptBool(val);
     }
@@ -223,16 +223,16 @@ namespace llarp
   void
   NetworkConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "profiling")
+    if (key == "profiling")
     {
       m_enableProfiling = setOptBool(val);
     }
-    else if(key == "profiles")
+    else if (key == "profiles")
     {
       m_routerProfilesFile = str(val);
       llarp::LogInfo("setting profiles to ", routerProfilesFile());
     }
-    else if(key == "strict-connect")
+    else if (key == "strict-connect")
     {
       m_strictConnect = str(val);
     }
@@ -245,7 +245,7 @@ namespace llarp
   void
   NetdbConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "dir")
+    if (key == "dir")
     {
       m_nodedbDir = str(val);
     }
@@ -254,12 +254,12 @@ namespace llarp
   void
   DnsConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "upstream")
+    if (key == "upstream")
     {
       llarp::LogInfo("add upstream resolver ", val);
       netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
     }
-    if(key == "bind")
+    if (key == "bind")
     {
       llarp::LogInfo("set local dns to ", val);
       netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
@@ -271,13 +271,13 @@ namespace llarp
   {
     uint16_t proto = 0;
 
-    std::unordered_set< std::string > parsed_opts;
+    std::unordered_set<std::string> parsed_opts;
     std::string::size_type idx;
     static constexpr char delimiter = ',';
     do
     {
       idx = val.find_first_of(delimiter);
-      if(idx != string_view::npos)
+      if (idx != string_view::npos)
       {
         parsed_opts.emplace(TrimWhitespace(val.substr(0, idx)));
         val.remove_prefix(idx + 1);
@@ -286,17 +286,17 @@ namespace llarp
       {
         parsed_opts.emplace(TrimWhitespace(val));
       }
-    } while(idx != string_view::npos);
-    std::unordered_set< std::string > opts;
+    } while (idx != string_view::npos);
+    std::unordered_set<std::string> opts;
     /// for each option
-    for(const auto &item : parsed_opts)
+    for (const auto& item : parsed_opts)
     {
       /// see if it's a number
       auto port = std::atoi(item.c_str());
-      if(port > 0)
+      if (port > 0)
       {
         /// set port
-        if(proto == 0)
+        if (proto == 0)
         {
           proto = port;
         }
@@ -307,10 +307,10 @@ namespace llarp
       }
     }
 
-    if(key == "*")
+    if (key == "*")
     {
-      m_OutboundLink = std::make_tuple(
-          "*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
+      m_OutboundLink =
+          std::make_tuple("*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
     }
     else
     {
@@ -334,7 +334,7 @@ namespace llarp
   void
   SystemConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "pidfile")
+    if (key == "pidfile")
     {
       pidfile = str(val);
     }
@@ -343,15 +343,15 @@ namespace llarp
   void
   ApiConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "enabled")
+    if (key == "enabled")
     {
       m_enableRPCServer = IsTrueValue(val);
     }
-    if(key == "bind")
+    if (key == "bind")
     {
       m_rpcBindAddr = str(val);
     }
-    if(key == "authkey")
+    if (key == "authkey")
     {
       // TODO: add pubkey to whitelist
     }
@@ -360,24 +360,24 @@ namespace llarp
   void
   LokidConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "service-node-seed")
+    if (key == "service-node-seed")
     {
-      usingSNSeed   = true;
+      usingSNSeed = true;
       ident_keyfile = std::string{val};
     }
-    if(key == "enabled")
+    if (key == "enabled")
     {
       whitelistRouters = IsTrueValue(val);
     }
-    if(key == "jsonrpc" || key == "addr")
+    if (key == "jsonrpc" || key == "addr")
     {
       lokidRPCAddr = str(val);
     }
-    if(key == "username")
+    if (key == "username")
     {
       lokidRPCUser = str(val);
     }
-    if(key == "password")
+    if (key == "password")
     {
       lokidRPCPassword = str(val);
     }
@@ -386,7 +386,7 @@ namespace llarp
   void
   BootstrapConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "add-node")
+    if (key == "add-node")
     {
       routers.emplace_back(val.begin(), val.end());
     }
@@ -395,71 +395,71 @@ namespace llarp
   void
   LoggingConfig::fromSection(string_view key, string_view val)
   {
-    if(key == "type" && val == "syslog")
+    if (key == "type" && val == "syslog")
     {
       // TODO(despair): write event log syslog class
 #if defined(_WIN32)
       LogError("syslog not supported on win32");
 #else
       LogInfo("Switching to syslog");
-      LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+      LogContext::Instance().logStream = std::make_unique<SysLogStream>();
 #endif
     }
-    if(key == "level")
+    if (key == "level")
     {
       const auto maybe = LogLevelFromString(str(val));
-      if(not maybe.has_value())
+      if (not maybe.has_value())
       {
         LogError("bad log level: ", val);
         return;
       }
-      const LogLevel lvl                  = maybe.value();
+      const LogLevel lvl = maybe.value();
       LogContext::Instance().runtimeLevel = lvl;
       LogInfo("Log level set to ", LogLevelToName(lvl));
     }
-    if(key == "type" && val == "json")
+    if (key == "type" && val == "json")
     {
       m_LogJSON = true;
     }
-    if(key == "file")
+    if (key == "file")
     {
       LogInfo("open log file: ", val);
       std::string fname{val};
-      FILE *const logfile = ::fopen(fname.c_str(), "a");
-      if(logfile)
+      FILE* const logfile = ::fopen(fname.c_str(), "a");
+      if (logfile)
       {
         m_LogFile = logfile;
         LogInfo("will log to file ", val);
       }
-      else if(errno)
+      else if (errno)
       {
         LogError("could not open log file at '", val, "': ", strerror(errno));
         errno = 0;
       }
       else
       {
-        LogError("failed to open log file at '", val,
-                 "' for an unknown reason, bailing tf out kbai");
+        LogError(
+            "failed to open log file at '", val, "' for an unknown reason, bailing tf out kbai");
         ::abort();
       }
     }
   }
 
-  template < typename Section, typename Config >
+  template <typename Section, typename Config>
   Section
-  find_section(Config &c, const std::string &name)
+  find_section(Config& c, const std::string& name)
   {
     Section ret;
 
-    auto visitor = [&ret](const ConfigParser::Section_t &section) -> bool {
-      for(const auto &sec : section)
+    auto visitor = [&ret](const ConfigParser::Section_t& section) -> bool {
+      for (const auto& sec : section)
       {
         ret.fromSection(sec.first, sec.second);
       }
       return true;
     };
 
-    if(c.VisitSection(name.c_str(), visitor))
+    if (c.VisitSection(name.c_str(), visitor))
     {
       return ret;
     }
@@ -468,10 +468,10 @@ namespace llarp
   }
 
   bool
-  Config::Load(const char *fname)
+  Config::Load(const char* fname)
   {
     ConfigParser parser;
-    if(!parser.LoadFile(fname))
+    if (!parser.LoadFile(fname))
     {
       return false;
     }
@@ -483,7 +483,7 @@ namespace llarp
   Config::LoadFromStr(string_view str)
   {
     ConfigParser parser;
-    if(!parser.LoadFromStr(str))
+    if (!parser.LoadFromStr(str))
     {
       return false;
     }
@@ -492,22 +492,22 @@ namespace llarp
   }
 
   bool
-  Config::parse(const ConfigParser &parser)
+  Config::parse(const ConfigParser& parser)
   {
-    if(Lokinet_INIT())
+    if (Lokinet_INIT())
       return false;
-    router    = find_section< RouterConfig >(parser, "router");
-    network   = find_section< NetworkConfig >(parser, "network");
-    connect   = find_section< ConnectConfig >(parser, "connect");
-    netdb     = find_section< NetdbConfig >(parser, "netdb");
-    dns       = find_section< DnsConfig >(parser, "dns");
-    links     = find_section< LinksConfig >(parser, "bind");
-    services  = find_section< ServicesConfig >(parser, "services");
-    system    = find_section< SystemConfig >(parser, "system");
-    api       = find_section< ApiConfig >(parser, "api");
-    lokid     = find_section< LokidConfig >(parser, "lokid");
-    bootstrap = find_section< BootstrapConfig >(parser, "bootstrap");
-    logging   = find_section< LoggingConfig >(parser, "logging");
+    router = find_section<RouterConfig>(parser, "router");
+    network = find_section<NetworkConfig>(parser, "network");
+    connect = find_section<ConnectConfig>(parser, "connect");
+    netdb = find_section<NetdbConfig>(parser, "netdb");
+    dns = find_section<DnsConfig>(parser, "dns");
+    links = find_section<LinksConfig>(parser, "bind");
+    services = find_section<ServicesConfig>(parser, "services");
+    system = find_section<SystemConfig>(parser, "system");
+    api = find_section<ApiConfig>(parser, "api");
+    lokid = find_section<LokidConfig>(parser, "lokid");
+    bootstrap = find_section<BootstrapConfig>(parser, "bootstrap");
+    logging = find_section<LoggingConfig>(parser, "logging");
     return true;
   }
 
@@ -533,24 +533,23 @@ namespace llarp
 /// fname should be a relative path (from CWD) or absolute path to the config
 /// file
 extern "C" bool
-llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
-                    bool asRouter)
+llarp_ensure_config(const char* fname, const char* basedir, bool overwrite, bool asRouter)
 {
-  if(Lokinet_INIT())
+  if (Lokinet_INIT())
     return false;
   std::error_code ec;
-  if(fs::exists(fname, ec) && !overwrite)
+  if (fs::exists(fname, ec) && !overwrite)
   {
     return true;
   }
-  if(ec)
+  if (ec)
   {
     llarp::LogError(ec);
     return false;
   }
 
   std::string basepath;
-  if(basedir)
+  if (basedir)
   {
     basepath = basedir;
 #ifndef _WIN32
@@ -563,14 +562,14 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   llarp::LogInfo("Attempting to create config file ", fname);
 
   // abort if config already exists
-  if(!asRouter)
+  if (!asRouter)
   {
-    if(fs::exists(fname, ec) && !overwrite)
+    if (fs::exists(fname, ec) && !overwrite)
     {
       llarp::LogError(fname, " currently exists, please use -f to overwrite");
       return true;
     }
-    if(ec)
+    if (ec)
     {
       llarp::LogError(ec);
       return false;
@@ -578,16 +577,15 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   }
 
   // write fname ini
-  auto optional_f =
-      llarp::util::OpenFileStream< std::ofstream >(fname, std::ios::binary);
-  if(!optional_f || !optional_f.value().is_open())
+  auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
+  if (!optional_f || !optional_f.value().is_open())
   {
     llarp::LogError("failed to open ", fname, " for writing");
     return false;
   }
-  auto &f = optional_f.value();
+  auto& f = optional_f.value();
   llarp_generic_ensure_config(f, basepath, asRouter);
-  if(asRouter)
+  if (asRouter)
   {
     llarp_ensure_router_config(f, basepath);
   }
@@ -600,8 +598,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
 }
 
 void
-llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
-                            bool isRouter)
+llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter)
 {
   f << "# this configuration was auto generated with 'sane' defaults\n";
   f << "# change these values as desired\n";
@@ -618,8 +615,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
   f << "# encryption key for onion routing\n";
   f << "encryption-privkey=" << basepath << "encryption.private\n";
   f << std::endl;
-  f << "# uncomment following line to set router nickname to 'lokinet'"
-    << std::endl;
+  f << "# uncomment following line to set router nickname to 'lokinet'" << std::endl;
   f << "#nickname=lokinet\n";
   const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
 
@@ -695,7 +691,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath,
 }
 
 void
-llarp_ensure_router_config(std::ofstream &f, std::string basepath)
+llarp_ensure_router_config(std::ofstream& f, std::string basepath)
 {
   f << "# lokid settings (disabled by default)\n";
   f << "[lokid]\n";
@@ -720,7 +716,7 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "[bind]\n";
   // get ifname
   std::string ifname;
-  if(llarp::GetBestNetIF(ifname, AF_INET))
+  if (llarp::GetBestNetIF(ifname, AF_INET))
   {
     f << ifname << "=1090\n";
   }
@@ -734,19 +730,18 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 }
 
 bool
-llarp_ensure_client_config(std::ofstream &f, std::string basepath)
+llarp_ensure_client_config(std::ofstream& f, std::string basepath)
 {
   // write snapp-example.ini
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
-    auto stream = llarp::util::OpenFileStream< std::ofstream >(
-        snappExample_fpath, std::ios::binary);
-    if(!stream)
+    auto stream = llarp::util::OpenFileStream<std::ofstream>(snappExample_fpath, std::ios::binary);
+    if (!stream)
     {
       return false;
     }
-    auto &example_f = stream.value();
-    if(example_f.is_open())
+    auto& example_f = stream.value();
+    if (example_f.is_open())
     {
       // pick ip
       // don't revert me

@@ -14,14 +14,21 @@ namespace llarp
   /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
-    FileLogStream(std::shared_ptr< thread::ThreadPool > disk, FILE* f,
-                  llarp_time_t flushInterval, bool closefile = true);
+    FileLogStream(
+        std::shared_ptr<thread::ThreadPool> disk,
+        FILE* f,
+        llarp_time_t flushInterval,
+        bool closefile = true);
 
     ~FileLogStream() override;
 
     void
-    PreLog(std::stringstream& out, LogLevel lvl, const char* fname, int lineno,
-           const std::string& nodename) const override;
+    PreLog(
+        std::stringstream& out,
+        LogLevel lvl,
+        const char* fname,
+        int lineno,
+        const std::string& nodename) const override;
 
     void
     Print(LogLevel, const char*, const std::string& msg) override;
@@ -33,10 +40,14 @@ namespace llarp
     PostLog(std::stringstream&) const override{};
 
     void
-    AppendLog(LogLevel lvl, const char* fname, int lineno,
-              const std::string& nodename, const std::string msg) override;
+    AppendLog(
+        LogLevel lvl,
+        const char* fname,
+        int lineno,
+        const std::string& nodename,
+        const std::string msg) override;
 
-    using Lines_t = thread::Queue< std::string >;
+    using Lines_t = thread::Queue<std::string>;
 
    protected:
     Lines_t m_Lines;
@@ -51,7 +62,7 @@ namespace llarp
     void
     FlushLinesToDisk(llarp_time_t now);
 
-    std::shared_ptr< thread::ThreadPool > m_Disk;
+    std::shared_ptr<thread::ThreadPool> m_Disk;
     FILE* const m_File;
     const llarp_time_t m_FlushInterval;
     llarp_time_t m_LastFlush = 0s;

@@ -28,7 +28,7 @@ namespace llarp
   void
   Addr::port(uint16_t port)
   {
-    if(af() == AF_INET)
+    if (af() == AF_INET)
     {
       _addr4.sin_port = htons(port);
     }
@@ -78,11 +78,10 @@ namespace llarp
   Addr::from_char_array(string_view in)
   {
     auto pPosition = in.find(':');
-    if(pPosition != string_view::npos)
+    if (pPosition != string_view::npos)
     {
       // parse port
-      uint16_t port =
-          std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
+      uint16_t port = std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
       LogDebug("Setting port ", std::to_string(port));
       this->port(port);
     }
@@ -93,30 +92,30 @@ namespace llarp
     memset(&hint, '\0', sizeof hint);
 
     hint.ai_family = PF_UNSPEC;
-    hint.ai_flags  = AI_NUMERICHOST;
+    hint.ai_flags = AI_NUMERICHOST;
 
-    if(pPosition != string_view::npos)
+    if (pPosition != string_view::npos)
     {
-      ret = getaddrinfo(std::string(in.begin(), in.begin() + pPosition).c_str(),
-                        nullptr, &hint, &res);
+      ret = getaddrinfo(
+          std::string(in.begin(), in.begin() + pPosition).c_str(), nullptr, &hint, &res);
     }
     else
     {
       ret = getaddrinfo(std::string(in).c_str(), nullptr, &hint, &res);
     }
 
-    if(ret)
+    if (ret)
     {
       LogError("failed to determine address family: ", in);
       return false;
     }
 
-    if(res->ai_family == AF_INET6)
+    if (res->ai_family == AF_INET6)
     {
       LogError("IPv6 address not supported yet", in);
       return false;
     }
-    if(res->ai_family != AF_INET)
+    if (res->ai_family != AF_INET)
     {
       LogError("Address family not supported yet", in);
       return false;
@@ -124,7 +123,7 @@ namespace llarp
 
     // put it in _addr4
     struct in_addr* addr = &_addr4.sin_addr;
-    if(inet_aton(std::string(in).c_str(), addr) == 0)
+    if (inet_aton(std::string(in).c_str(), addr) == 0)
     {
       LogError("failed to parse ", in);
       return false;
@@ -132,14 +131,14 @@ namespace llarp
 
     _addr.sin6_family = res->ai_family;
     _addr4.sin_family = res->ai_family;
-    _addr4.sin_port   = 0;  // save a call, 0 is 0 no matter how u arrange it
-#if((__APPLE__ && __MACH__) || __FreeBSD__)
+    _addr4.sin_port = 0;  // save a call, 0 is 0 no matter how u arrange it
+#if ((__APPLE__ && __MACH__) || __FreeBSD__)
     _addr4.sin_len = sizeof(in_addr);
 #endif
     // set up SIIT
     uint8_t* addrptr = _addr.sin6_addr.s6_addr;
-    addrptr[11]      = 0xff;
-    addrptr[10]      = 0xff;
+    addrptr[11] = 0xff;
+    addrptr[10] = 0xff;
     memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
     freeaddrinfo(res);
 
@@ -147,18 +146,17 @@ namespace llarp
   }
 
   bool
-  Addr::from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
-                  const uint8_t four)
+  Addr::from_4int(const uint8_t one, const uint8_t two, const uint8_t three, const uint8_t four)
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     struct in_addr* addr = &_addr4.sin_addr;
-    auto* ip             = (unsigned char*)&(addr->s_addr);
+    auto* ip = (unsigned char*)&(addr->s_addr);
 
     _addr.sin6_family = AF_INET;  // set ipv4 mode
     _addr4.sin_family = AF_INET;
-    _addr4.sin_port   = 0;
+    _addr4.sin_port = 0;
 
-#if((__APPLE__ && __MACH__) || __FreeBSD__)
+#if ((__APPLE__ && __MACH__) || __FreeBSD__)
     _addr4.sin_len = sizeof(in_addr);
 #endif
     // FIXME: watch endian
@@ -168,23 +166,25 @@ namespace llarp
     ip[3] = four;
     // set up SIIT
     uint8_t* addrptr = _addr.sin6_addr.s6_addr;
-    addrptr[11]      = 0xff;
-    addrptr[10]      = 0xff;
+    addrptr[11] = 0xff;
+    addrptr[10] = 0xff;
     memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
     // copy ipv6 SIIT into _addr4
     memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
     return true;
   }
 
-  Addr::Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-             const uint8_t four)
-      : Addr()
+  Addr::Addr(const uint8_t one, const uint8_t two, const uint8_t three, const uint8_t four) : Addr()
   {
     this->from_4int(one, two, three, four);
   }
 
-  Addr::Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-             const uint8_t four, const uint16_t p_port)
+  Addr::Addr(
+      const uint8_t one,
+      const uint8_t two,
+      const uint8_t three,
+      const uint8_t four,
+      const uint16_t p_port)
       : Addr()
   {
     this->from_4int(one, two, three, four);
@@ -195,10 +195,10 @@ namespace llarp
   {
     memcpy(addr6(), other.ip.s6_addr, 16);
     _addr.sin6_port = htons(other.port);
-    if(ipv6_is_siit(other.ip))
+    if (ipv6_is_siit(other.ip))
     {
       _addr4.sin_family = AF_INET;
-      _addr4.sin_port   = htons(other.port);
+      _addr4.sin_port = htons(other.port);
       _addr.sin6_family = AF_INET;
       memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
     }
@@ -210,16 +210,15 @@ namespace llarp
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = AF_INET;
-    uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
-    uint16_t* port    = &_addr.sin6_port;
+    uint8_t* addrptr = _addr.sin6_addr.s6_addr;
+    uint16_t* port = &_addr.sin6_port;
     // SIIT
-    memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
-           sizeof(in_addr));
-    addrptr[11]       = 0xff;
-    addrptr[10]       = 0xff;
-    *port             = ((sockaddr_in*)(&other))->sin_port;
+    memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr, sizeof(in_addr));
+    addrptr[11] = 0xff;
+    addrptr[10] = 0xff;
+    *port = ((sockaddr_in*)(&other))->sin_port;
     _addr4.sin_family = AF_INET;
-    _addr4.sin_port   = *port;
+    _addr4.sin_port = *port;
     memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
   }
 
@@ -227,14 +226,14 @@ namespace llarp
   {
     memcpy(addr6(), other.sin6_addr.s6_addr, 16);
     _addr.sin6_port = htons(other.sin6_port);
-    auto ptr        = &_addr.sin6_addr.s6_addr[0];
+    auto ptr = &_addr.sin6_addr.s6_addr[0];
     // TODO: detect SIIT better
-    if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[8] == 0
-       && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0 && ptr[4] == 0
-       && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0 && ptr[0] == 0)
+    if (ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[8] == 0 && ptr[7] == 0
+        && ptr[6] == 0 && ptr[5] == 0 && ptr[4] == 0 && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0
+        && ptr[0] == 0)
     {
       _addr4.sin_family = AF_INET;
-      _addr4.sin_port   = htons(other.sin6_port);
+      _addr4.sin_port = htons(other.sin6_port);
       _addr.sin6_family = AF_INET;
       memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
     }
@@ -246,24 +245,22 @@ namespace llarp
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = other.sa_family;
-    uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
-    uint16_t* port    = &_addr.sin6_port;
-    switch(other.sa_family)
+    uint8_t* addrptr = _addr.sin6_addr.s6_addr;
+    uint16_t* port = &_addr.sin6_port;
+    switch (other.sa_family)
     {
       case AF_INET:
         // SIIT
-        memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
-               sizeof(in_addr));
-        addrptr[11]       = 0xff;
-        addrptr[10]       = 0xff;
-        *port             = ((sockaddr_in*)(&other))->sin_port;
+        memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr, sizeof(in_addr));
+        addrptr[11] = 0xff;
+        addrptr[10] = 0xff;
+        *port = ((sockaddr_in*)(&other))->sin_port;
         _addr4.sin_family = AF_INET;
-        _addr4.sin_port   = *port;
+        _addr4.sin_port = *port;
         memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
         break;
       case AF_INET6:
-        memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr,
-               16);
+        memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr, 16);
         *port = ((sockaddr_in6*)(&other))->sin6_port;
         break;
       // TODO : sockaddr_ll
@@ -283,9 +280,9 @@ namespace llarp
   std::ostream&
   operator<<(std::ostream& out, const Addr& a)
   {
-    char tmp[128]   = {0};
+    char tmp[128] = {0};
     const void* ptr = nullptr;
-    if(a.af() == AF_INET6)
+    if (a.af() == AF_INET6)
     {
       out << "[";
       ptr = a.addr6();
@@ -294,10 +291,10 @@ namespace llarp
     {
       ptr = a.addr4();
     }
-    if(inet_ntop(a.af(), (void*)ptr, tmp, sizeof(tmp)))
+    if (inet_ntop(a.af(), (void*)ptr, tmp, sizeof(tmp)))
     {
       out << tmp;
-      if(a.af() == AF_INET6)
+      if (a.af() == AF_INET6)
         out << "]";
     }
     return out << ":" << a.port();
@@ -309,22 +306,22 @@ namespace llarp
     void *dst, *src;
     uint16_t* ptr;
     size_t slen;
-    switch(af())
+    switch (af())
     {
       case AF_INET:
       {
         auto* ipv4_dst = (sockaddr_in*)other;
-        dst            = (void*)&ipv4_dst->sin_addr.s_addr;
-        src            = (void*)&_addr4.sin_addr.s_addr;
-        ptr            = &((sockaddr_in*)other)->sin_port;
-        slen           = sizeof(in_addr);
+        dst = (void*)&ipv4_dst->sin_addr.s_addr;
+        src = (void*)&_addr4.sin_addr.s_addr;
+        ptr = &((sockaddr_in*)other)->sin_port;
+        slen = sizeof(in_addr);
         break;
       }
       case AF_INET6:
       {
-        dst  = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
-        src  = (void*)_addr.sin6_addr.s6_addr;
-        ptr  = &((sockaddr_in6*)other)->sin6_port;
+        dst = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
+        src = (void*)_addr.sin6_addr.s6_addr;
+        ptr = &((sockaddr_in6*)other)->sin6_port;
         slen = sizeof(in6_addr);
         break;
       }
@@ -334,7 +331,7 @@ namespace llarp
       }
     }
     memcpy(dst, src, slen);
-    *ptr             = htons(port());
+    *ptr = htons(port());
     other->sa_family = af();
   }
 
@@ -352,7 +349,7 @@ namespace llarp
 
   Addr::operator const sockaddr*() const
   {
-    if(af() == AF_INET)
+    if (af() == AF_INET)
       return (const sockaddr*)&_addr4;
 
     return (const sockaddr*)&_addr;
@@ -360,7 +357,7 @@ namespace llarp
 
   Addr::operator sockaddr*() const
   {
-    if(af() == AF_INET)
+    if (af() == AF_INET)
       return (sockaddr*)&_addr4;
 
     return (sockaddr*)&_addr;
@@ -369,20 +366,19 @@ namespace llarp
   bool
   Addr::operator<(const Addr& other) const
   {
-    if(af() == AF_INET && other.af() == AF_INET)
+    if (af() == AF_INET && other.af() == AF_INET)
       return port() < other.port() || addr4()->s_addr < other.addr4()->s_addr;
 
-    return port() < other.port() || *addr6() < *other.addr6()
-        || af() < other.af();
+    return port() < other.port() || *addr6() < *other.addr6() || af() < other.af();
   }
 
   bool
   Addr::operator==(const Addr& other) const
   {
-    if(af() != other.af() || port() != other.port())
+    if (af() != other.af() || port() != other.port())
       return false;
 
-    if(af() == AF_INET)
+    if (af() == AF_INET)
       return addr4()->s_addr == other.addr4()->s_addr;
 
     return memcmp(addr6(), other.addr6(), 16) == 0;
@@ -393,24 +389,22 @@ namespace llarp
   {
     Zero(&_addr, sizeof(sockaddr_in6));
     _addr.sin6_family = other.sa_family;
-    uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
-    uint16_t* port    = &_addr.sin6_port;
-    switch(other.sa_family)
+    uint8_t* addrptr = _addr.sin6_addr.s6_addr;
+    uint16_t* port = &_addr.sin6_port;
+    switch (other.sa_family)
     {
       case AF_INET:
         // SIIT
-        memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
-               sizeof(in_addr));
-        addrptr[11]       = 0xff;
-        addrptr[10]       = 0xff;
-        *port             = ((sockaddr_in*)(&other))->sin_port;
+        memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr, sizeof(in_addr));
+        addrptr[11] = 0xff;
+        addrptr[10] = 0xff;
+        *port = ((sockaddr_in*)(&other))->sin_port;
         _addr4.sin_family = AF_INET;
-        _addr4.sin_port   = *port;
+        _addr4.sin_port = *port;
         memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
         break;
       case AF_INET6:
-        memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr,
-               16);
+        memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr, 16);
         *port = ((sockaddr_in6*)(&other))->sin6_port;
         break;
       // TODO : sockaddr_ll
@@ -466,7 +460,7 @@ namespace llarp
   socklen_t
   Addr::SockLen() const
   {
-    if(af() == AF_INET)
+    if (af() == AF_INET)
       return sizeof(sockaddr_in);
 
     return sizeof(sockaddr_in6);
@@ -489,7 +483,7 @@ namespace llarp
     std::size_t
     operator()(Addr const& a) const noexcept
     {
-      if(a.af() == AF_INET)
+      if (a.af() == AF_INET)
       {
         return a.port() ^ a.addr4()->s_addr;
       }

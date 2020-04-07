@@ -27,11 +27,11 @@ namespace llarp
     struct IntroSet
     {
       ServiceInfo A;
-      std::vector< Introduction > I;
+      std::vector<Introduction> I;
       PQPubKey K;
       Tag topic;
       llarp_time_t T = 0s;
-      nonstd::optional< PoW > W;
+      nonstd::optional<PoW> W;
       Signature Z;
       uint64_t version = LLARP_PROTO_VERSION;
 
@@ -84,10 +84,8 @@ namespace llarp
     inline bool
     operator==(const IntroSet& lhs, const IntroSet& rhs)
     {
-      return std::tie(lhs.A, lhs.I, lhs.K, lhs.T, lhs.version, lhs.topic, lhs.W,
-                      lhs.Z)
-          == std::tie(rhs.A, rhs.I, rhs.K, rhs.T, rhs.version, rhs.topic, rhs.W,
-                      rhs.Z);
+      return std::tie(lhs.A, lhs.I, lhs.K, lhs.T, lhs.version, lhs.topic, lhs.W, lhs.Z)
+          == std::tie(rhs.A, rhs.I, rhs.K, rhs.T, rhs.version, rhs.topic, rhs.W, rhs.Z);
     }
 
     inline bool
@@ -105,13 +103,13 @@ namespace llarp
     /// public version of the introset that is encrypted
     struct EncryptedIntroSet
     {
-      using Payload_t = std::vector< byte_t >;
+      using Payload_t = std::vector<byte_t>;
 
       PubKey derivedSigningKey;
       llarp_time_t signedAt = 0s;
       Payload_t introsetPayload;
       TunnelNonce nounce;
-      nonstd::optional< Tag > topic;
+      nonstd::optional<Tag> topic;
       Signature sig;
 
       bool
@@ -145,7 +143,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
-      nonstd::optional< IntroSet >
+      nonstd::optional<IntroSet>
       MaybeDecrypt(const PubKey& rootKey) const;
     };
 
@@ -175,9 +173,8 @@ namespace llarp
     }
 
     using EncryptedIntroSetLookupHandler =
-        std::function< void(const std::vector< EncryptedIntroSet >&) >;
-    using IntroSetLookupHandler =
-        std::function< void(const std::vector< IntroSet >&) >;
+        std::function<void(const std::vector<EncryptedIntroSet>&)>;
+    using IntroSetLookupHandler = std::function<void(const std::vector<IntroSet>&)>;
 
   }  // namespace service
 }  // namespace llarp

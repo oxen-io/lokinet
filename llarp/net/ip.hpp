@@ -42,13 +42,12 @@ struct ip_header
 #include <winsock2.h>
 typedef struct ip_hdr
 {
-  unsigned char
-      ip_header_len : 4;  // 4-bit header length (in 32-bit words) normally=5
-                          // (Means 20 Bytes may be 24 also)
-  unsigned char version : 4;       // 4-bit IPv4 version
-  unsigned char ip_tos;            // IP type of service
-  unsigned short ip_total_length;  // Total length
-  unsigned short ip_id;            // Unique identifier
+  unsigned char ip_header_len : 4;  // 4-bit header length (in 32-bit words) normally=5
+                                    // (Means 20 Bytes may be 24 also)
+  unsigned char version : 4;        // 4-bit IPv4 version
+  unsigned char ip_tos;             // IP type of service
+  unsigned short ip_total_length;   // Total length
+  unsigned short ip_id;             // Unique identifier
 
   unsigned char ip_frag_offset : 5;  // Fragment offset field
 
@@ -223,9 +222,9 @@ namespace llarp
       inline service::ProtocolType
       ServiceProtocol() const
       {
-        if(IsV4())
+        if (IsV4())
           return service::eProtocolTrafficV4;
-        if(IsV6())
+        if (IsV6())
           return service::eProtocolTrafficV6;
 
         return service::eProtocolControl;

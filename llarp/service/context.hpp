@@ -15,7 +15,7 @@ namespace llarp
     /// holds all the hidden service endpoints we own
     struct Context
     {
-      explicit Context(AbstractRouter *r);
+      explicit Context(AbstractRouter* r);
       ~Context();
 
       void
@@ -33,30 +33,27 @@ namespace llarp
 
       /// function visitor returns false to prematurely break iteration
       void
-      ForEachService(
-          std::function< bool(const std::string &, const Endpoint_ptr &) >
-              visit) const;
+      ForEachService(std::function<bool(const std::string&, const Endpoint_ptr&)> visit) const;
 
       /// add default endpoint with options
       bool
-      AddDefaultEndpoint(
-          const std::unordered_multimap< std::string, std::string > &opts);
+      AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>& opts);
 
       /// add endpoint via config
       bool
-      AddEndpoint(const Config::section_t &conf, bool autostart = false);
+      AddEndpoint(const Config::section_t& conf, bool autostart = false);
 
       /// inject endpoint instance
       void
-      InjectEndpoint(std::string name, std::shared_ptr< Endpoint > ep);
+      InjectEndpoint(std::string name, std::shared_ptr<Endpoint> ep);
 
       /// stop and remove an endpoint by name
       /// return false if we don't have the hidden service with that name
       bool
-      RemoveEndpoint(const std::string &name);
+      RemoveEndpoint(const std::string& name);
 
       Endpoint_ptr
-      GetEndpointByName(const std::string &name);
+      GetEndpointByName(const std::string& name);
 
       Endpoint_ptr
       GetDefault()
@@ -68,10 +65,9 @@ namespace llarp
       StartAll();
 
      private:
-      AbstractRouter *const m_Router;
-      std::unordered_map< std::string, std::shared_ptr< Endpoint > >
-          m_Endpoints;
-      std::list< std::shared_ptr< Endpoint > > m_Stopped;
+      AbstractRouter* const m_Router;
+      std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_Endpoints;
+      std::list<std::shared_ptr<Endpoint>> m_Stopped;
     };
   }  // namespace service
 }  // namespace llarp

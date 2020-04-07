@@ -34,12 +34,9 @@ namespace llarp
 
     struct AbstractContext
     {
-      using PendingIntrosetLookups =
-          TXHolder< TXOwner, service::EncryptedIntroSet, TXOwner::Hash >;
-      using PendingRouterLookups =
-          TXHolder< RouterID, RouterContact, RouterID::Hash >;
-      using PendingExploreLookups =
-          TXHolder< RouterID, RouterID, RouterID::Hash >;
+      using PendingIntrosetLookups = TXHolder<TXOwner, service::EncryptedIntroSet, TXOwner::Hash>;
+      using PendingRouterLookups = TXHolder<RouterID, RouterContact, RouterID::Hash>;
+      using PendingExploreLookups = TXHolder<RouterID, RouterID, RouterID::Hash>;
 
       virtual ~AbstractContext() = 0;
 
@@ -47,37 +44,49 @@ namespace llarp
       LookupRouter(const RouterID& target, RouterLookupHandler result) = 0;
 
       virtual void
-      LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
-                            uint64_t whoaskedTX, const Key_t& askpeer,
-                            RouterLookupHandler result = nullptr) = 0;
+      LookupRouterRecursive(
+          const RouterID& target,
+          const Key_t& whoasked,
+          uint64_t whoaskedTX,
+          const Key_t& askpeer,
+          RouterLookupHandler result = nullptr) = 0;
 
       /// Ask a Service Node to perform an Introset lookup for us
       virtual void
-      LookupIntroSetRelayed(const Key_t& target, const Key_t& whoasked,
-                            uint64_t whoaskedTX, const Key_t& askpeer,
-                            uint64_t relayOrder,
-                            service::EncryptedIntroSetLookupHandler result =
-                                service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetRelayed(
+          const Key_t& target,
+          const Key_t& whoasked,
+          uint64_t whoaskedTX,
+          const Key_t& askpeer,
+          uint64_t relayOrder,
+          service::EncryptedIntroSetLookupHandler result =
+              service::EncryptedIntroSetLookupHandler()) = 0;
 
       /// Directly as a Service Node for an Introset
       virtual void
-      LookupIntroSetDirect(const Key_t& target, const Key_t& whoasked,
-                           uint64_t whoaskedTX, const Key_t& askpeer,
-                           service::EncryptedIntroSetLookupHandler result =
-                               service::EncryptedIntroSetLookupHandler()) = 0;
+      LookupIntroSetDirect(
+          const Key_t& target,
+          const Key_t& whoasked,
+          uint64_t whoaskedTX,
+          const Key_t& askpeer,
+          service::EncryptedIntroSetLookupHandler result =
+              service::EncryptedIntroSetLookupHandler()) = 0;
 
       virtual bool
       HasRouterLookup(const RouterID& target) const = 0;
 
       /// issue dht lookup for router via askpeer and send reply to local path
       virtual void
-      LookupRouterForPath(const RouterID& target, uint64_t txid,
-                          const PathID_t& path, const Key_t& askpeer) = 0;
+      LookupRouterForPath(
+          const RouterID& target, uint64_t txid, const PathID_t& path, const Key_t& askpeer) = 0;
 
       virtual void
-      LookupIntroSetForPath(const Key_t& addr, uint64_t txid,
-                            const PathID_t& path, const Key_t& askpeer,
-                            uint64_t relayOrder) = 0;
+      LookupIntroSetForPath(
+          const Key_t& addr,
+          uint64_t txid,
+          const PathID_t& path,
+          const Key_t& askpeer,
+          uint64_t relayOrder) = 0;
 
       virtual void
       DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;
@@ -85,35 +94,45 @@ namespace llarp
       /// get routers closest to target excluding requester
       virtual bool
       HandleExploritoryRouterLookup(
-          const Key_t& requester, uint64_t txid, const RouterID& target,
-          std::vector< std::unique_ptr< IMessage > >& reply) = 0;
+          const Key_t& requester,
+          uint64_t txid,
+          const RouterID& target,
+          std::vector<std::unique_ptr<IMessage>>& reply) = 0;
 
       /// handle rc lookup from requester for target
       virtual void
       LookupRouterRelayed(
-          const Key_t& requester, uint64_t txid, const Key_t& target,
+          const Key_t& requester,
+          uint64_t txid,
+          const Key_t& target,
           bool recursive,
-          std::vector< std::unique_ptr< IMessage > >& replies) = 0;
+          std::vector<std::unique_ptr<IMessage>>& replies) = 0;
 
       virtual bool
       RelayRequestForPath(const PathID_t& localPath, const IMessage& msg) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void
-      PropagateLocalIntroSet(const PathID_t& path, uint64_t sourceTX,
-                             const service::EncryptedIntroSet& introset,
-                             const Key_t& peer, uint64_t relayOrder) = 0;
+      PropagateLocalIntroSet(
+          const PathID_t& path,
+          uint64_t sourceTX,
+          const service::EncryptedIntroSet& introset,
+          const Key_t& peer,
+          uint64_t relayOrder) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void
-      PropagateIntroSetTo(const Key_t& source, uint64_t sourceTX,
-                          const service::EncryptedIntroSet& introset,
-                          const Key_t& peer, uint64_t relayOrder) = 0;
+      PropagateIntroSetTo(
+          const Key_t& source,
+          uint64_t sourceTX,
+          const service::EncryptedIntroSet& introset,
+          const Key_t& peer,
+          uint64_t relayOrder) = 0;
 
       virtual void
       Init(const Key_t& us, AbstractRouter* router) = 0;
 
-      virtual nonstd::optional< llarp::service::EncryptedIntroSet >
+      virtual nonstd::optional<llarp::service::EncryptedIntroSet>
       GetIntroSetByLocation(const Key_t& location) const = 0;
 
       virtual llarp_time_t
@@ -149,7 +168,7 @@ namespace llarp
       virtual const PendingExploreLookups&
       pendingExploreLookups() const = 0;
 
-      virtual Bucket< ISNode >*
+      virtual Bucket<ISNode>*
       services() = 0;
 
       virtual bool&
@@ -157,7 +176,7 @@ namespace llarp
       virtual const bool&
       AllowTransit() const = 0;
 
-      virtual Bucket< RCNode >*
+      virtual Bucket<RCNode>*
       Nodes() const = 0;
 
       virtual void
@@ -173,14 +192,14 @@ namespace llarp
       StoreRC(const RouterContact rc) const = 0;
     };
 
-    std::unique_ptr< AbstractContext >
+    std::unique_ptr<AbstractContext>
     makeContext();
   }  // namespace dht
 }  // namespace llarp
 
 struct llarp_dht_context
 {
-  std::unique_ptr< llarp::dht::AbstractContext > impl;
+  std::unique_ptr<llarp::dht::AbstractContext> impl;
   llarp::AbstractRouter* parent;
   llarp_dht_context(llarp::AbstractRouter* router);
 };

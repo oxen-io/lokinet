@@ -23,12 +23,12 @@ namespace llarp
 
     struct IServiceLookup
     {
-      IServiceLookup()          = delete;
+      IServiceLookup() = delete;
       virtual ~IServiceLookup() = default;
 
       /// handle lookup result
       virtual bool
-      HandleResponse(const std::set< EncryptedIntroSet >&)
+      HandleResponse(const std::set<EncryptedIntroSet>&)
       {
         return false;
       }
@@ -37,13 +37,13 @@ namespace llarp
       bool
       IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20s) const
       {
-        if(now <= m_created)
+        if (now <= m_created)
           return false;
         return now - m_created > timeout;
       }
 
       /// build request message for service lookup
-      virtual std::shared_ptr< routing::IMessage >
+      virtual std::shared_ptr<routing::IMessage>
       BuildRequestMessage() = 0;
 
       /// build a new request message and send it via a path

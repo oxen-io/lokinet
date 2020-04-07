@@ -12,12 +12,12 @@ namespace llarp
 {
   namespace thread
   {
-    template < typename Type >
+    template <typename Type>
     class QueuePushGuard;
-    template < typename Type >
+    template <typename Type>
     class QueuePopGuard;
 
-    template < typename Type >
+    template <typename Type>
     class Queue
     {
       // This class provides a thread-safe, lock-free, fixed-size queue.
@@ -25,49 +25,47 @@ namespace llarp
       static constexpr size_t Alignment = 64;
 
      private:
-      Type *m_data;
-      const char m_dataPadding[Alignment - sizeof(Type *)];
+      Type* m_data;
+      const char m_dataPadding[Alignment - sizeof(Type*)];
 
       QueueManager m_manager;
 
-      std::atomic< std::uint32_t > m_waitingPoppers;
+      std::atomic<std::uint32_t> m_waitingPoppers;
       util::Semaphore m_popSemaphore;
-      const char
-          m_popSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
+      const char m_popSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
 
-      std::atomic< std::uint32_t > m_waitingPushers;
+      std::atomic<std::uint32_t> m_waitingPushers;
       util::Semaphore m_pushSemaphore;
-      const char
-          m_pushSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
+      const char m_pushSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
 
-      friend QueuePopGuard< Type >;
-      friend QueuePushGuard< Type >;
+      friend QueuePopGuard<Type>;
+      friend QueuePushGuard<Type>;
 
      public:
       explicit Queue(size_t capacity);
 
       ~Queue();
 
-      Queue(const Queue &) = delete;
-      Queue &
-      operator=(const Queue &) = delete;
+      Queue(const Queue&) = delete;
+      Queue&
+      operator=(const Queue&) = delete;
 
       // Push back to the queue, blocking until space is available (if
       // required). Will fail if the queue is disabled (or becomes disabled
       // while waiting for space on the queue).
       QueueReturn
-      pushBack(const Type &value);
+      pushBack(const Type& value);
 
       QueueReturn
-      pushBack(Type &&value);
+      pushBack(Type&& value);
 
       // Try to push back to the queue. Return false if the queue is full or
       // disabled.
       QueueReturn
-      tryPushBack(const Type &value);
+      tryPushBack(const Type& value);
 
       QueueReturn
-      tryPushBack(Type &&value);
+      tryPushBack(Type&& value);
 
       // Remove an element from the queue. Block until an element is available
       Type
@@ -75,10 +73,10 @@ namespace llarp
 
       // Remove an element from the queue. Block until an element is available
       // or until <timeout> microseconds have elapsed
-      nonstd::optional< Type >
+      nonstd::optional<Type>
       popFrontWithTimeout(std::chrono::microseconds timeout);
 
-      nonstd::optional< Type >
+      nonstd::optional<Type>
       tryPopFront();
 
       // Remove all elements from the queue. Note this is not atomic, and if
@@ -118,16 +116,16 @@ namespace llarp
     // On destruction, unless the `release` method has been called, will remove
     // and destroy all elements from the queue, putting the queue into an empty
     // state.
-    template < typename Type >
+    template <typename Type>
     class QueuePushGuard
     {
      private:
-      Queue< Type > *m_queue;
+      Queue<Type>* m_queue;
       uint32_t m_generation;
       uint32_t m_index;
 
      public:
-      QueuePushGuard(Queue< Type > &queue, uint32_t generation, uint32_t index)
+      QueuePushGuard(Queue<Type>& queue, uint32_t generation, uint32_t index)
           : m_queue(&queue), m_generation(generation), m_index(index)
       {
       }
@@ -141,16 +139,16 @@ namespace llarp
     // Provide a guard class to provide exception safety for popping from a
     // queue. On destruction, this will pop the the given element from the
     // queue.
-    template < typename Type >
+    template <typename Type>
     class QueuePopGuard
     {
      private:
-      Queue< Type > &m_queue;
+      Queue<Type>& m_queue;
       uint32_t m_generation;
       uint32_t m_index;
 
      public:
-      QueuePopGuard(Queue< Type > &queue, uint32_t generation, uint32_t index)
+      QueuePopGuard(Queue<Type>& queue, uint32_t generation, uint32_t index)
           : m_queue(queue), m_generation(generation), m_index(index)
       {
       }
@@ -158,8 +156,8 @@ namespace llarp
       ~QueuePopGuard();
     };
 
-    template < typename Type >
-    Queue< Type >::Queue(size_t capacity)
+    template <typename Type>
+    Queue<Type>::Queue(size_t capacity)
         : m_data(nullptr)
         , m_dataPadding()
         , m_manager(capacity)
@@ -170,24 +168,24 @@ namespace llarp
         , m_pushSemaphore(0)
         , m_pushSemaphorePadding()
     {
-      m_data = static_cast< Type * >(::operator new(capacity * sizeof(Type)));
+      m_data = static_cast<Type*>(::operator new(capacity * sizeof(Type)));
     }
 
-    template < typename Type >
-    Queue< Type >::~Queue()
+    template <typename Type>
+    Queue<Type>::~Queue()
     {
       removeAll();
 
       // We have already deleted the queue members above, free as (void *)
-      ::operator delete(static_cast< void * >(m_data));
+      ::operator delete(static_cast<void*>(m_data));
     }
 
-    template < typename Type >
+    template <typename Type>
     QueueReturn
-    Queue< Type >::tryPushBack(const Type &value)
+    Queue<Type>::tryPushBack(const Type& value)
     {
       uint32_t generation = 0;
-      uint32_t index      = 0;
+      uint32_t index = 0;
 
       // Sync point A
       //
@@ -197,7 +195,7 @@ namespace llarp
 
       QueueReturn retVal = m_manager.reservePushIndex(generation, index);
 
-      if(retVal != QueueReturn::Success)
+      if (retVal != QueueReturn::Success)
       {
         return retVal;
       }
@@ -205,16 +203,16 @@ namespace llarp
       // Copy into the array. If the copy constructor throws, the pushGuard will
       // roll the reserve back.
 
-      QueuePushGuard< Type > pushGuard(*this, generation, index);
+      QueuePushGuard<Type> pushGuard(*this, generation, index);
 
       // Construct in place.
-      ::new(&m_data[index]) Type(value);
+      ::new (&m_data[index]) Type(value);
 
       pushGuard.release();
 
       m_manager.commitPushIndex(generation, index);
 
-      if(m_waitingPoppers > 0)
+      if (m_waitingPoppers > 0)
       {
         m_popSemaphore.notify();
       }
@@ -222,12 +220,12 @@ namespace llarp
       return QueueReturn::Success;
     }
 
-    template < typename Type >
+    template <typename Type>
     QueueReturn
-    Queue< Type >::tryPushBack(Type &&value)
+    Queue<Type>::tryPushBack(Type&& value)
     {
       uint32_t generation = 0;
-      uint32_t index      = 0;
+      uint32_t index = 0;
 
       // Sync point A
       //
@@ -237,7 +235,7 @@ namespace llarp
 
       QueueReturn retVal = m_manager.reservePushIndex(generation, index);
 
-      if(retVal != QueueReturn::Success)
+      if (retVal != QueueReturn::Success)
       {
         return retVal;
       }
@@ -245,18 +243,18 @@ namespace llarp
       // Copy into the array. If the copy constructor throws, the pushGuard will
       // roll the reserve back.
 
-      QueuePushGuard< Type > pushGuard(*this, generation, index);
+      QueuePushGuard<Type> pushGuard(*this, generation, index);
 
-      Type &dummy = value;
+      Type& dummy = value;
 
       // Construct in place.
-      ::new(&m_data[index]) Type(std::move(dummy));
+      ::new (&m_data[index]) Type(std::move(dummy));
 
       pushGuard.release();
 
       m_manager.commitPushIndex(generation, index);
 
-      if(m_waitingPoppers > 0)
+      if (m_waitingPoppers > 0)
       {
         m_popSemaphore.notify();
       }
@@ -264,9 +262,9 @@ namespace llarp
       return QueueReturn::Success;
     }
 
-    template < typename Type >
-    nonstd::optional< Type >
-    Queue< Type >::tryPopFront()
+    template <typename Type>
+    nonstd::optional<Type>
+    Queue<Type>::tryPopFront()
     {
       uint32_t generation;
       uint32_t index;
@@ -279,7 +277,7 @@ namespace llarp
 
       QueueReturn retVal = m_manager.reservePopIndex(generation, index);
 
-      if(retVal != QueueReturn::Success)
+      if (retVal != QueueReturn::Success)
       {
         return {};
       }
@@ -289,19 +287,19 @@ namespace llarp
       // - update the queue
       // - notify any waiting pushers
 
-      QueuePopGuard< Type > popGuard(*this, generation, index);
-      return nonstd::optional< Type >(std::move(m_data[index]));
+      QueuePopGuard<Type> popGuard(*this, generation, index);
+      return nonstd::optional<Type>(std::move(m_data[index]));
     }
 
-    template < typename Type >
+    template <typename Type>
     QueueReturn
-    Queue< Type >::pushBack(const Type &value)
+    Queue<Type>::pushBack(const Type& value)
     {
-      for(;;)
+      for (;;)
       {
         QueueReturn retVal = tryPushBack(value);
 
-        switch(retVal)
+        switch (retVal)
         {
           // Queue disabled.
           case QueueReturn::QueueDisabled:
@@ -321,7 +319,7 @@ namespace llarp
         // consistency, which gives visibility of the change above to
         // waiting pushers in Synchronisation Point B.
 
-        if(full() && enabled())
+        if (full() && enabled())
         {
           m_pushSemaphore.wait();
         }
@@ -330,15 +328,15 @@ namespace llarp
       }
     }
 
-    template < typename Type >
+    template <typename Type>
     QueueReturn
-    Queue< Type >::pushBack(Type &&value)
+    Queue<Type>::pushBack(Type&& value)
     {
-      for(;;)
+      for (;;)
       {
         QueueReturn retVal = tryPushBack(std::move(value));
 
-        switch(retVal)
+        switch (retVal)
         {
           // Queue disabled.
           case QueueReturn::QueueDisabled:
@@ -358,7 +356,7 @@ namespace llarp
         // consistency, which gives visibility of the change above to
         // waiting pushers in Synchronisation Point C.
 
-        if(full() && enabled())
+        if (full() && enabled())
         {
           m_pushSemaphore.wait();
         }
@@ -367,18 +365,17 @@ namespace llarp
       }
     }
 
-    template < typename Type >
+    template <typename Type>
     Type
-    Queue< Type >::popFront()
+    Queue<Type>::popFront()
     {
       uint32_t generation = 0;
-      uint32_t index      = 0;
-      while(m_manager.reservePopIndex(generation, index)
-            != QueueReturn::Success)
+      uint32_t index = 0;
+      while (m_manager.reservePopIndex(generation, index) != QueueReturn::Success)
       {
         m_waitingPoppers.fetch_add(1, std::memory_order_relaxed);
 
-        if(empty())
+        if (empty())
         {
           m_popSemaphore.wait();
         }
@@ -386,29 +383,28 @@ namespace llarp
         m_waitingPoppers.fetch_sub(1, std::memory_order_relaxed);
       }
 
-      QueuePopGuard< Type > popGuard(*this, generation, index);
+      QueuePopGuard<Type> popGuard(*this, generation, index);
       return Type(std::move(m_data[index]));
     }
 
-    template < typename Type >
-    nonstd::optional< Type >
-    Queue< Type >::popFrontWithTimeout(std::chrono::microseconds timeout)
+    template <typename Type>
+    nonstd::optional<Type>
+    Queue<Type>::popFrontWithTimeout(std::chrono::microseconds timeout)
     {
       uint32_t generation = 0;
-      uint32_t index      = 0;
-      bool secondTry      = false;
-      bool success        = false;
-      for(;;)
+      uint32_t index = 0;
+      bool secondTry = false;
+      bool success = false;
+      for (;;)
       {
-        success = m_manager.reservePopIndex(generation, index)
-            == QueueReturn::Success;
+        success = m_manager.reservePopIndex(generation, index) == QueueReturn::Success;
 
-        if(secondTry || success)
+        if (secondTry || success)
           break;
 
         m_waitingPoppers.fetch_add(1, std::memory_order_relaxed);
 
-        if(empty())
+        if (empty())
         {
           m_popSemaphore.waitFor(timeout);
           secondTry = true;
@@ -417,29 +413,29 @@ namespace llarp
         m_waitingPoppers.fetch_sub(1, std::memory_order_relaxed);
       }
 
-      if(success)
+      if (success)
       {
-        QueuePopGuard< Type > popGuard(*this, generation, index);
+        QueuePopGuard<Type> popGuard(*this, generation, index);
         return Type(std::move(m_data[index]));
       }
 
       return {};
     }
 
-    template < typename Type >
+    template <typename Type>
     void
-    Queue< Type >::removeAll()
+    Queue<Type>::removeAll()
     {
       size_t elemCount = size();
 
       uint32_t poppedItems = 0;
 
-      while(poppedItems++ < elemCount)
+      while (poppedItems++ < elemCount)
       {
         uint32_t generation = 0;
-        uint32_t index      = 0;
+        uint32_t index = 0;
 
-        if(m_manager.reservePopIndex(generation, index) != QueueReturn::Success)
+        if (m_manager.reservePopIndex(generation, index) != QueueReturn::Success)
         {
           break;
         }
@@ -450,83 +446,82 @@ namespace llarp
 
       size_t wakeups = std::min(poppedItems, m_waitingPushers.load());
 
-      while(wakeups--)
+      while (wakeups--)
       {
         m_pushSemaphore.notify();
       }
     }
 
-    template < typename Type >
+    template <typename Type>
     void
-    Queue< Type >::disable()
+    Queue<Type>::disable()
     {
       m_manager.disable();
 
       uint32_t numWaiting = m_waitingPushers;
 
-      while(numWaiting--)
+      while (numWaiting--)
       {
         m_pushSemaphore.notify();
       }
     }
 
-    template < typename Type >
+    template <typename Type>
     void
-    Queue< Type >::enable()
+    Queue<Type>::enable()
     {
       m_manager.enable();
     }
 
-    template < typename Type >
+    template <typename Type>
     size_t
-    Queue< Type >::capacity() const
+    Queue<Type>::capacity() const
     {
       return m_manager.capacity();
     }
 
-    template < typename Type >
+    template <typename Type>
     size_t
-    Queue< Type >::size() const
+    Queue<Type>::size() const
     {
       return m_manager.size();
     }
 
-    template < typename Type >
+    template <typename Type>
     bool
-    Queue< Type >::enabled() const
+    Queue<Type>::enabled() const
     {
       return m_manager.enabled();
     }
 
-    template < typename Type >
+    template <typename Type>
     bool
-    Queue< Type >::full() const
+    Queue<Type>::full() const
     {
       return (capacity() <= size());
     }
 
-    template < typename Type >
+    template <typename Type>
     bool
-    Queue< Type >::empty() const
+    Queue<Type>::empty() const
     {
       return (0 >= size());
     }
 
-    template < typename Type >
-    QueuePushGuard< Type >::~QueuePushGuard()
+    template <typename Type>
+    QueuePushGuard<Type>::~QueuePushGuard()
     {
-      if(m_queue)
+      if (m_queue)
       {
         // Thread currently has the cell at index/generation. Dispose of it.
 
         uint32_t generation = 0;
-        uint32_t index      = 0;
+        uint32_t index = 0;
 
         // We should always have at least one item to pop.
         size_t poppedItems = 1;
 
-        while(m_queue->m_manager.reservePopForClear(generation, index,
-                                                    m_generation, m_index))
+        while (m_queue->m_manager.reservePopForClear(generation, index, m_generation, m_index))
         {
           m_queue->m_data[index].~Type();
 
@@ -539,28 +534,28 @@ namespace llarp
 
         m_queue->m_manager.abortPushIndexReservation(m_generation, m_index);
 
-        while(poppedItems--)
+        while (poppedItems--)
         {
           m_queue->m_pushSemaphore.notify();
         }
       }
     }
 
-    template < typename Type >
+    template <typename Type>
     void
-    QueuePushGuard< Type >::release()
+    QueuePushGuard<Type>::release()
     {
       m_queue = nullptr;
     }
 
-    template < typename Type >
-    QueuePopGuard< Type >::~QueuePopGuard()
+    template <typename Type>
+    QueuePopGuard<Type>::~QueuePopGuard()
     {
       m_queue.m_data[m_index].~Type();
       m_queue.m_manager.commitPopIndex(m_generation, m_index);
 
       // Notify a pusher
-      if(m_queue.m_waitingPushers > 0)
+      if (m_queue.m_waitingPushers > 0)
       {
         m_queue.m_pushSemaphore.notify();
       }

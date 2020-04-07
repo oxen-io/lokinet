@@ -10,28 +10,26 @@
 
 namespace llarp
 {
-  static constexpr size_t EncryptedFrameOverheadSize =
-      PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
+  static constexpr size_t EncryptedFrameOverheadSize = PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
   static constexpr size_t EncryptedFrameBodySize = 128 * 6;
-  static constexpr size_t EncryptedFrameSize =
-      EncryptedFrameOverheadSize + EncryptedFrameBodySize;
+  static constexpr size_t EncryptedFrameSize = EncryptedFrameOverheadSize + EncryptedFrameBodySize;
 
-  struct EncryptedFrame : public Encrypted< EncryptedFrameSize >
+  struct EncryptedFrame : public Encrypted<EncryptedFrameSize>
   {
     EncryptedFrame() : EncryptedFrame(EncryptedFrameBodySize)
     {
     }
 
     EncryptedFrame(size_t sz)
-        : Encrypted< EncryptedFrameSize >(std::min(sz, EncryptedFrameBodySize)
-                                          + EncryptedFrameOverheadSize)
+        : Encrypted<EncryptedFrameSize>(
+            std::min(sz, EncryptedFrameBodySize) + EncryptedFrameOverheadSize)
     {
     }
 
     void
     Resize(size_t sz)
     {
-      if(sz <= EncryptedFrameSize)
+      if (sz <= EncryptedFrameSize)
       {
         _sz = sz;
         UpdateBuffer();
@@ -52,16 +50,16 @@ namespace llarp
   };
 
   /// TODO: can only handle 1 frame at a time
-  template < typename User >
+  template <typename User>
   struct AsyncFrameDecrypter
   {
-    using User_ptr       = std::shared_ptr< User >;
-    using DecryptHandler = std::function< void(llarp_buffer_t*, User_ptr) >;
+    using User_ptr = std::shared_ptr<User>;
+    using DecryptHandler = std::function<void(llarp_buffer_t*, User_ptr)>;
 
     void
     Decrypt(User_ptr user)
     {
-      if(target.DecryptInPlace(seckey))
+      if (target.DecryptInPlace(seckey))
       {
         auto buf = target.Buffer();
         buf->cur = buf->base + EncryptedFrameOverheadSize;
@@ -81,12 +79,11 @@ namespace llarp
     EncryptedFrame target;
 
     void
-    AsyncDecrypt(const std::shared_ptr< thread::ThreadPool >& worker,
-                 const EncryptedFrame& frame, User_ptr u)
+    AsyncDecrypt(
+        const std::shared_ptr<thread::ThreadPool>& worker, const EncryptedFrame& frame, User_ptr u)
     {
       target = frame;
-      worker->addJob(
-          std::bind(&AsyncFrameDecrypter< User >::Decrypt, this, std::move(u)));
+      worker->addJob(std::bind(&AsyncFrameDecrypter<User>::Decrypt, this, std::move(u)));
     }
   };
 }  // namespace llarp

@@ -10,17 +10,20 @@ namespace llarp
 {
   namespace dht
   {
-    struct RecursiveRouterLookup : public TX< RouterID, RouterContact >
+    struct RecursiveRouterLookup : public TX<RouterID, RouterContact>
     {
       RouterLookupHandler resultHandler;
-      RecursiveRouterLookup(const TXOwner &whoasked, const RouterID &target,
-                            AbstractContext *ctx, RouterLookupHandler result);
+      RecursiveRouterLookup(
+          const TXOwner& whoasked,
+          const RouterID& target,
+          AbstractContext* ctx,
+          RouterLookupHandler result);
 
       bool
-      Validate(const RouterContact &rc) const override;
+      Validate(const RouterContact& rc) const override;
 
       void
-      Start(const TXOwner &peer) override;
+      Start(const TXOwner& peer) override;
 
       void
       SendReply() override;

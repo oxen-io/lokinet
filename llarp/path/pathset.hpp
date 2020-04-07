@@ -45,8 +45,8 @@ namespace llarp
       static constexpr double MinGoodRatio = 0.25;
 
       uint64_t attempts = 0;
-      uint64_t success  = 0;
-      uint64_t fails    = 0;
+      uint64_t success = 0;
+      uint64_t fails = 0;
       uint64_t timeouts = 0;
 
       util::StatusObject
@@ -84,11 +84,11 @@ namespace llarp
     // forward declare
     struct Path;
 
-    using Path_ptr = std::shared_ptr< Path >;
+    using Path_ptr = std::shared_ptr<Path>;
 
     struct PathSet;
 
-    using PathSet_ptr = std::shared_ptr< PathSet >;
+    using PathSet_ptr = std::shared_ptr<PathSet>;
 
     /// a set of paths owned by an entity
     struct PathSet
@@ -108,8 +108,7 @@ namespace llarp
 
       /// manual build on these hops
       virtual void
-      Build(const std::vector< RouterContact >& hops,
-            PathRole roles = ePathRoleAny) = 0;
+      Build(const std::vector<RouterContact>& hops, PathRole roles = ePathRoleAny) = 0;
 
       /// tick owned paths
       virtual void
@@ -199,15 +198,13 @@ namespace llarp
       }
 
       /// override me in subtype
-      virtual bool
-      HandleGotIntroMessage(std::shared_ptr< const dht::GotIntroMessage >)
+      virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool
-      HandleGotRouterMessage(std::shared_ptr< const dht::GotRouterMessage >)
+      virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
       {
         return false;
       }
@@ -219,8 +216,7 @@ namespace llarp
       }
 
       Path_ptr
-      GetEstablishedPathClosestTo(RouterID router,
-                                  PathRole roles = ePathRoleAny) const;
+      GetEstablishedPathClosestTo(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
       PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
@@ -229,8 +225,7 @@ namespace llarp
       GetPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
-      GetNewestPathByRouter(RouterID router,
-                            PathRole roles = ePathRoleAny) const;
+      GetNewestPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
       GetPathByID(PathID_t id) const;
@@ -240,11 +235,11 @@ namespace llarp
 
       bool
       GetCurrentIntroductionsWithFilter(
-          std::set< service::Introduction >& intros,
-          std::function< bool(const service::Introduction&) > filter) const;
+          std::set<service::Introduction>& intros,
+          std::function<bool(const service::Introduction&)> filter) const;
 
       bool
-      GetCurrentIntroductions(std::set< service::Introduction >& intros) const;
+      GetCurrentIntroductions(std::set<service::Introduction>& intros) const;
 
       virtual bool
       PublishIntroSet(const service::EncryptedIntroSet&, AbstractRouter*)
@@ -257,18 +252,22 @@ namespace llarp
       ResetInternalState() = 0;
 
       virtual bool
-      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop, PathRole roles) = 0;
+      SelectHop(
+          llarp_nodedb* db,
+          const std::set<RouterID>& prev,
+          RouterContact& cur,
+          size_t hop,
+          PathRole roles) = 0;
 
       virtual bool
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       void
-      ForEachPath(std::function< void(const Path_ptr&) > visit) const
+      ForEachPath(std::function<void(const Path_ptr&)> visit) const
       {
         Lock_t lock(m_PathsMutex);
         auto itr = m_Paths.begin();
-        while(itr != m_Paths.end())
+        while (itr != m_Paths.end())
         {
           visit(itr->second);
           ++itr;
@@ -289,7 +288,7 @@ namespace llarp
       void
       TickPaths(AbstractRouter* r);
 
-      using PathInfo_t = std::pair< RouterID, PathID_t >;
+      using PathInfo_t = std::pair<RouterID, PathID_t>;
 
       struct PathInfoHash
       {
@@ -309,10 +308,9 @@ namespace llarp
         }
       };
 
-      using Mtx_t     = util::NullMutex;
-      using Lock_t    = util::NullLock;
-      using PathMap_t = std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash,
-                                            PathInfoEquals >;
+      using Mtx_t = util::NullMutex;
+      using Lock_t = util::NullLock;
+      using PathMap_t = std::unordered_map<PathInfo_t, Path_ptr, PathInfoHash, PathInfoEquals>;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };

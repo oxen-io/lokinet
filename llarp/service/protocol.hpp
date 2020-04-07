@@ -33,7 +33,7 @@ namespace llarp
 
     using ProtocolType = uint64_t;
 
-    constexpr ProtocolType eProtocolControl   = 0UL;
+    constexpr ProtocolType eProtocolControl = 0UL;
     constexpr ProtocolType eProtocolTrafficV4 = 1UL;
     constexpr ProtocolType eProtocolTrafficV6 = 2UL;
 
@@ -43,14 +43,14 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto  = eProtocolTrafficV4;
+      ProtocolType proto = eProtocolTrafficV4;
       llarp_time_t queued = 0s;
-      std::vector< byte_t > payload;
+      std::vector<byte_t> payload;
       Introduction introReply;
       ServiceInfo sender;
       IDataHandler* handler = nullptr;
       ConvoTag tag;
-      uint64_t seqno   = 0;
+      uint64_t seqno = 0;
       uint64_t version = LLARP_PROTO_VERSION;
 
       bool
@@ -63,8 +63,7 @@ namespace llarp
       PutBuffer(const llarp_buffer_t& payload);
 
       static void
-      ProcessAsync(path::Path_ptr p, PathID_t from,
-                   std::shared_ptr< ProtocolMessage > self);
+      ProcessAsync(path::Path_ptr p, PathID_t from, std::shared_ptr<ProtocolMessage> self);
 
       bool
       operator<(const ProtocolMessage& other) const
@@ -76,7 +75,7 @@ namespace llarp
     /// outer message
     struct ProtocolFrame final : public routing::IMessage
     {
-      using Encrypted_t = Encrypted< 2048 >;
+      using Encrypted_t = Encrypted<2048>;
       PQCipherBlock C;
       Encrypted_t D;
       uint64_t R;
@@ -95,7 +94,7 @@ namespace llarp
           , F(other.F)
           , T(other.T)
       {
-        S       = other.S;
+        S = other.S;
         version = other.version;
       }
 
@@ -119,21 +118,22 @@ namespace llarp
       operator=(const ProtocolFrame& other);
 
       bool
-      EncryptAndSign(const ProtocolMessage& msg, const SharedSecret& sharedkey,
-                     const Identity& localIdent);
+      EncryptAndSign(
+          const ProtocolMessage& msg, const SharedSecret& sharedkey, const Identity& localIdent);
 
       bool
       Sign(const Identity& localIdent);
 
       bool
       AsyncDecryptAndVerify(
-          std::shared_ptr< Logic > logic, path::Path_ptr fromPath,
-          const std::shared_ptr< llarp::thread::ThreadPool >& worker,
-          const Identity& localIdent, IDataHandler* handler) const;
+          std::shared_ptr<Logic> logic,
+          path::Path_ptr fromPath,
+          const std::shared_ptr<llarp::thread::ThreadPool>& worker,
+          const Identity& localIdent,
+          IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(const SharedSecret& sharedkey,
-                         ProtocolMessage& into) const;
+      DecryptPayloadInto(const SharedSecret& sharedkey, ProtocolMessage& into) const;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
@@ -156,7 +156,7 @@ namespace llarp
         T.Zero();
         N.Zero();
         Z.Zero();
-        R       = 0;
+        R = 0;
         version = LLARP_PROTO_VERSION;
       }
 
@@ -164,8 +164,7 @@ namespace llarp
       Verify(const ServiceInfo& from) const;
 
       bool
-      HandleMessage(routing::IMessageHandler* h,
-                    AbstractRouter* r) const override;
+      HandleMessage(routing::IMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

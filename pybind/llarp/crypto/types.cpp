@@ -6,16 +6,16 @@ namespace llarp
   void
   CryptoTypes_Init(py::module& mod)
   {
-    py::class_< PubKey >(mod, "PubKey")
+    py::class_<PubKey>(mod, "PubKey")
         .def(py::init<>())
         .def("FromHex", &PubKey::FromString)
         .def("__repr__", &PubKey::ToString);
-    py::class_< SecretKey >(mod, "SecretKey")
+    py::class_<SecretKey>(mod, "SecretKey")
         .def(py::init<>())
         .def("LoadFile", &SecretKey::LoadFromFile)
         .def("SaveFile", &SecretKey::SaveToFile)
         .def("ToPublic", &SecretKey::toPublic);
-    py::class_< Signature >(mod, "Signature")
+    py::class_<Signature>(mod, "Signature")
         .def(py::init<>())
         .def("__repr__", [](const Signature sig) -> std::string {
           std::stringstream ss;

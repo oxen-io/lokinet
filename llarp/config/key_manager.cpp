@@ -14,8 +14,8 @@
 static size_t
 curl_RecvIdentKey(char* ptr, size_t, size_t nmemb, void* userdata)
 {
-  for(size_t idx = 0; idx < nmemb; idx++)
-    static_cast< std::vector< char >* >(userdata)->push_back(ptr[idx]);
+  for (size_t idx = 0; idx < nmemb; idx++)
+    static_cast<std::vector<char>*>(userdata)->push_back(ptr[idx]);
   return nmemb;
 }
 
@@ -28,22 +28,22 @@ namespace llarp
   bool
   KeyManager::initialize(const llarp::Config& config, bool genIfAbsent)
   {
-    if(m_initialized)
+    if (m_initialized)
       return false;
 
-    m_rcPath           = config.router.ourRcFile();
-    m_idKeyPath        = config.router.identKeyfile();
-    m_encKeyPath       = config.router.encryptionKeyfile();
+    m_rcPath = config.router.ourRcFile();
+    m_idKeyPath = config.router.identKeyfile();
+    m_encKeyPath = config.router.encryptionKeyfile();
     m_transportKeyPath = config.router.transportKeyfile();
 
-    m_usingLokid       = config.lokid.whitelistRouters;
-    m_lokidRPCAddr     = config.lokid.lokidRPCAddr;
-    m_lokidRPCUser     = config.lokid.lokidRPCUser;
+    m_usingLokid = config.lokid.whitelistRouters;
+    m_lokidRPCAddr = config.lokid.lokidRPCAddr;
+    m_lokidRPCUser = config.lokid.lokidRPCUser;
     m_lokidRPCPassword = config.lokid.lokidRPCPassword;
 
     RouterContact rc;
     bool exists = rc.Read(m_rcPath.c_str());
-    if(not exists and not genIfAbsent)
+    if (not exists and not genIfAbsent)
     {
       LogError("Could not read RouterContact at path ", m_rcPath);
       return false;
@@ -56,19 +56,21 @@ namespace llarp
     // if our RC file can't be verified, assume it is out of date (e.g. uses
     // older encryption) and needs to be regenerated. before doing so, backup
     // files that will be overwritten
-    if(exists and m_needBackup)
+    if (exists and m_needBackup)
     {
-      if(!genIfAbsent)
+      if (!genIfAbsent)
       {
         LogError("Our RouterContact ", m_rcPath, " is invalid or out of date");
         return false;
       }
       else
       {
-        LogWarn("Our RouterContact ", m_rcPath,
-                " seems out of date, backing up and regenerating private keys");
+        LogWarn(
+            "Our RouterContact ",
+            m_rcPath,
+            " seems out of date, backing up and regenerating private keys");
 
-        if(!backupKeyFilesByMoving())
+        if (!backupKeyFilesByMoving())
         {
           LogError(
               "Could not mv some key files, please ensure key files"
@@ -78,19 +80,19 @@ namespace llarp
       }
     }
 
-    if(not m_usingLokid)
+    if (not m_usingLokid)
     {
       // load identity key or create if needed
       auto identityKeygen = [](llarp::SecretKey& key) {
         // TODO: handle generating from service node seed
         llarp::CryptoManager::instance()->identity_keygen(key);
       };
-      if(not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
+      if (not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
         return false;
     }
     else
     {
-      if(not loadIdentityFromLokid())
+      if (not loadIdentityFromLokid())
         return false;
     }
 
@@ -98,7 +100,7 @@ namespace llarp
     auto encryptionKeygen = [](llarp::SecretKey& key) {
       llarp::CryptoManager::instance()->encryption_keygen(key);
     };
-    if(not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
+    if (not loadOrCreateKey(m_encKeyPath, encryptionKey, encryptionKeygen))
       return false;
 
     // TODO: transport key (currently done in LinkLayer)
@@ -106,7 +108,7 @@ namespace llarp
       key.Zero();
       CryptoManager::instance()->encryption_keygen(key);
     };
-    if(not loadOrCreateKey(m_transportKeyPath, transportKey, transportKeygen))
+    if (not loadOrCreateKey(m_transportKeyPath, transportKey, transportKeygen))
       return false;
 
     m_initialized = true;
@@ -117,13 +119,13 @@ namespace llarp
   KeyManager::backupFileByMoving(const std::string& filepath)
   {
     auto findFreeBackupFilename = [](const fs::path& filepath) {
-      for(int i = 0; i < 9; i++)
+      for (int i = 0; i < 9; i++)
       {
         std::string ext("." + std::to_string(i) + ".bak");
         fs::path newPath = filepath;
         newPath += ext;
 
-        if(not fs::exists(newPath))
+        if (not fs::exists(newPath))
           return newPath;
       }
       return fs::path();
@@ -131,31 +133,29 @@ namespace llarp
 
     std::error_code ec;
     bool exists = fs::exists(filepath, ec);
-    if(ec)
+    if (ec)
     {
-      LogError("Could not determine status of file ", filepath, ": ",
-               ec.message());
+      LogError("Could not determine status of file ", filepath, ": ", ec.message());
       return false;
     }
 
-    if(not exists)
+    if (not exists)
     {
       LogInfo("File ", filepath, " doesn't exist; no backup needed");
       return true;
     }
 
     fs::path newFilepath = findFreeBackupFilename(filepath);
-    if(newFilepath.empty())
+    if (newFilepath.empty())
     {
       LogWarn("Could not find an appropriate backup filename for", filepath);
       return false;
     }
 
-    LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath,
-            "...");
+    LogInfo("Backing up (moving) key file ", filepath, " to ", newFilepath, "...");
 
     fs::rename(filepath, newFilepath, ec);
-    if(ec)
+    if (ec)
     {
       LogError("Failed to move key file ", ec.message());
       return false;
@@ -167,12 +167,11 @@ namespace llarp
   bool
   KeyManager::backupKeyFilesByMoving() const
   {
-    std::vector< std::string > files = {m_rcPath, m_idKeyPath, m_encKeyPath,
-                                        m_transportKeyPath};
+    std::vector<std::string> files = {m_rcPath, m_idKeyPath, m_encKeyPath, m_transportKeyPath};
 
-    for(auto& filepath : files)
+    for (auto& filepath : files)
     {
-      if(not backupFileByMoving(filepath))
+      if (not backupFileByMoving(filepath))
         return false;
     }
 
@@ -181,14 +180,15 @@ namespace llarp
 
   bool
   KeyManager::loadOrCreateKey(
-      const std::string& filepath, llarp::SecretKey& key,
-      std::function< void(llarp::SecretKey& key) > keygen)
+      const std::string& filepath,
+      llarp::SecretKey& key,
+      std::function<void(llarp::SecretKey& key)> keygen)
   {
     fs::path path(filepath);
     std::error_code ec;
-    if(!fs::exists(path, ec))
+    if (!fs::exists(path, ec))
     {
-      if(ec)
+      if (ec)
       {
         LogError("Error checking key", filepath, ec.message());
         return false;
@@ -197,7 +197,7 @@ namespace llarp
       LogInfo("Generating new key", filepath);
       keygen(key);
 
-      if(!key.SaveToFile(filepath.c_str()))
+      if (!key.SaveToFile(filepath.c_str()))
       {
         LogError("Failed to save new key");
         return false;
@@ -216,7 +216,7 @@ namespace llarp
     return false;
 #else
     CURL* curl = curl_easy_init();
-    if(curl)
+    if (curl)
     {
       bool ret = false;
       std::stringstream ss;
@@ -230,11 +230,10 @@ namespace llarp
       list = curl_slist_append(list, "Content-Type: application/json");
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 
-      nlohmann::json request = {{"id", "0"},
-                                {"jsonrpc", "2.0"},
-                                {"method", "get_service_node_privkey"}};
-      const auto data        = request.dump();
-      std::vector< char > resp;
+      nlohmann::json request = {
+          {"id", "0"}, {"jsonrpc", "2.0"}, {"method", "get_service_node_privkey"}};
+      const auto data = request.dump();
+      std::vector<char> resp;
 
       curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
       curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
@@ -243,24 +242,23 @@ namespace llarp
 
       resp.clear();
       LogInfo("Getting Identity Keys from lokid...");
-      if(curl_easy_perform(curl) == CURLE_OK)
+      if (curl_easy_perform(curl) == CURLE_OK)
       {
         try
         {
           auto j = nlohmann::json::parse(resp);
-          if(not j.is_object())
+          if (not j.is_object())
             return false;
 
           const auto itr = j.find("result");
-          if(itr == j.end())
+          if (itr == j.end())
             return false;
-          if(not itr->is_object())
+          if (not itr->is_object())
             return false;
-          const auto k =
-              (*itr)["service_node_ed25519_privkey"].get< std::string >();
-          if(k.size() != (identityKey.size() * 2))
+          const auto k = (*itr)["service_node_ed25519_privkey"].get<std::string>();
+          if (k.size() != (identityKey.size() * 2))
           {
-            if(k.empty())
+            if (k.empty())
             {
               LogError("lokid gave no identity key");
             }
@@ -270,9 +268,9 @@ namespace llarp
             }
             return false;
           }
-          if(not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
+          if (not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
             return false;
-          if(CryptoManager::instance()->check_identity_privkey(identityKey))
+          if (CryptoManager::instance()->check_identity_privkey(identityKey))
           {
             ret = true;
           }
@@ -281,7 +279,7 @@ namespace llarp
             LogError("lokid gave bogus identity key");
           }
         }
-        catch(nlohmann::json::exception& ex)
+        catch (nlohmann::json::exception& ex)
         {
           LogError("Bad response from lokid: ", ex.what());
         }
@@ -290,10 +288,9 @@ namespace llarp
       {
         LogError("failed to get identity keys");
       }
-      if(ret)
+      if (ret)
       {
-        LogInfo("Got Identity Keys from lokid: ",
-                RouterID(seckey_topublic(identityKey)));
+        LogInfo("Got Identity Keys from lokid: ", RouterID(seckey_topublic(identityKey)));
       }
       curl_easy_cleanup(curl);
       curl_slist_free_all(list);

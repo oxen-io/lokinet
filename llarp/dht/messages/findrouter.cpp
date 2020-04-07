@@ -15,21 +15,18 @@ namespace llarp
   {
     bool
     RelayedFindRouterMessage::HandleMessage(
-        llarp_dht_context *ctx,
-        std::vector< std::unique_ptr< IMessage > > &replies) const
+        llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const
     {
-      auto &dht = *ctx->impl;
+      auto& dht = *ctx->impl;
       /// lookup for us, send an immeidate reply
       const Key_t us = dht.OurKey();
       const Key_t k{targetKey};
-      if(k == us)
+      if (k == us)
       {
-        auto path =
-            dht.GetRouter()->pathContext().GetByUpstream(targetKey, pathID);
-        if(path)
+        auto path = dht.GetRouter()->pathContext().GetByUpstream(targetKey, pathID);
+        if (path)
         {
-          replies.emplace_back(
-              new GotRouterMessage(k, txid, {dht.GetRouter()->rc()}, false));
+          replies.emplace_back(new GotRouterMessage(k, txid, {dht.GetRouter()->rc()}, false));
           return true;
         }
         return false;
@@ -37,7 +34,7 @@ namespace llarp
 
       Key_t peer;
       // check if we know this in our nodedb first
-      if(not dht.GetRouter()->ConnectionToRouterAllowed(targetKey))
+      if (not dht.GetRouter()->ConnectionToRouterAllowed(targetKey))
       {
         // explicitly disallowed by network
         replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
@@ -45,7 +42,7 @@ namespace llarp
       }
       // check netdb
       const auto rc = dht.GetRouter()->nodedb()->FindClosestTo(k);
-      if(rc.pubkey == targetKey)
+      if (rc.pubkey == targetKey)
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {rc}, false));
         return true;
@@ -59,89 +56,89 @@ namespace llarp
     FindRouterMessage::~FindRouterMessage() = default;
 
     bool
-    FindRouterMessage::BEncode(llarp_buffer_t *buf) const
+    FindRouterMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
 
       // message type
-      if(!bencode_write_bytestring(buf, "A", 1))
+      if (!bencode_write_bytestring(buf, "A", 1))
         return false;
-      if(!bencode_write_bytestring(buf, "R", 1))
+      if (!bencode_write_bytestring(buf, "R", 1))
         return false;
 
       // exploritory or not?
-      if(!bencode_write_bytestring(buf, "E", 1))
+      if (!bencode_write_bytestring(buf, "E", 1))
         return false;
-      if(!bencode_write_uint64(buf, exploritory ? 1 : 0))
+      if (!bencode_write_uint64(buf, exploritory ? 1 : 0))
         return false;
 
       // iterative or not?
-      if(!bencode_write_bytestring(buf, "I", 1))
+      if (!bencode_write_bytestring(buf, "I", 1))
         return false;
-      if(!bencode_write_uint64(buf, iterative ? 1 : 0))
+      if (!bencode_write_uint64(buf, iterative ? 1 : 0))
         return false;
 
       // key
-      if(!bencode_write_bytestring(buf, "K", 1))
+      if (!bencode_write_bytestring(buf, "K", 1))
         return false;
-      if(!bencode_write_bytestring(buf, targetKey.data(), targetKey.size()))
+      if (!bencode_write_bytestring(buf, targetKey.data(), targetKey.size()))
         return false;
 
       // txid
-      if(!bencode_write_bytestring(buf, "T", 1))
+      if (!bencode_write_bytestring(buf, "T", 1))
         return false;
-      if(!bencode_write_uint64(buf, txid))
+      if (!bencode_write_uint64(buf, txid))
         return false;
 
       // version
-      if(!bencode_write_bytestring(buf, "V", 1))
+      if (!bencode_write_bytestring(buf, "V", 1))
         return false;
-      if(!bencode_write_uint64(buf, version))
+      if (!bencode_write_uint64(buf, version))
         return false;
 
       return bencode_end(buf);
     }
 
     bool
-    FindRouterMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
+    FindRouterMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       llarp_buffer_t strbuf;
 
-      if(key == "E")
+      if (key == "E")
       {
         uint64_t result;
-        if(!bencode_read_integer(val, &result))
+        if (!bencode_read_integer(val, &result))
           return false;
 
         exploritory = result != 0;
         return true;
       }
 
-      if(key == "I")
+      if (key == "I")
       {
         uint64_t result;
-        if(!bencode_read_integer(val, &result))
+        if (!bencode_read_integer(val, &result))
           return false;
 
         iterative = result != 0;
         return true;
       }
-      if(key == "K")
+      if (key == "K")
       {
-        if(!bencode_read_string(val, &strbuf))
+        if (!bencode_read_string(val, &strbuf))
           return false;
-        if(strbuf.sz != targetKey.size())
+        if (strbuf.sz != targetKey.size())
           return false;
 
         std::copy(strbuf.base, strbuf.base + targetKey.SIZE, targetKey.begin());
         return true;
       }
-      if(key == "T")
+      if (key == "T")
       {
         return bencode_read_integer(val, &txid);
       }
-      if(key == "V")
+      if (key == "V")
       {
         return bencode_read_integer(val, &version);
       }
@@ -150,37 +147,32 @@ namespace llarp
 
     bool
     FindRouterMessage::HandleMessage(
-        llarp_dht_context *ctx,
-        std::vector< std::unique_ptr< IMessage > > &replies) const
+        llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const
     {
-      auto &dht = *ctx->impl;
+      auto& dht = *ctx->impl;
 
       auto router = dht.GetRouter();
-      router->NotifyRouterEvent< tooling::FindRouterReceivedEvent >(
-          router->pubkey(),
-          this);
+      router->NotifyRouterEvent<tooling::FindRouterReceivedEvent>(router->pubkey(), this);
 
-      if(!dht.AllowTransit())
+      if (!dht.AllowTransit())
       {
-        llarp::LogWarn("Got DHT lookup from ", From,
-                       " when we are not allowing dht transit");
+        llarp::LogWarn("Got DHT lookup from ", From, " when we are not allowing dht transit");
         return false;
       }
-      if(dht.pendingRouterLookups().HasPendingLookupFrom({From, txid}))
+      if (dht.pendingRouterLookups().HasPendingLookupFrom({From, txid}))
       {
         llarp::LogWarn("Duplicate FRM from ", From, " txid=", txid);
         return false;
       }
       RouterContact found;
-      if(targetKey.IsZero())
+      if (targetKey.IsZero())
       {
         llarp::LogError("invalid FRM from ", From, " key is zero");
         return false;
       }
       const Key_t k(targetKey);
-      if(exploritory)
-        return dht.HandleExploritoryRouterLookup(From, txid, targetKey,
-                                                 replies);
+      if (exploritory)
+        return dht.HandleExploritoryRouterLookup(From, txid, targetKey, replies);
       dht.LookupRouterRelayed(From, txid, k, !iterative, replies);
       return true;
     }

@@ -19,10 +19,10 @@ namespace abyss
   namespace http
   {
     using RPC_Method_t = std::string;
-    using RPC_Params   = nlohmann::json;
+    using RPC_Params = nlohmann::json;
     using RPC_Response = nlohmann::json;
-    using Headers_t    = std::unordered_multimap< std::string, std::string >;
-    using Response     = RequestHeader;
+    using Headers_t = std::unordered_multimap<std::string, std::string>;
+    using Response = RequestHeader;
     struct ConnImpl;
 
     /// jsonrpc response handler for client
@@ -60,7 +60,7 @@ namespace abyss
     /// jsonrpc client
     struct JSONRPC
     {
-      using HandlerFactory = std::function< IRPCClientHandler*(ConnImpl*) >;
+      using HandlerFactory = std::function<IRPCClientHandler*(ConnImpl*)>;
 
       JSONRPC();
       ~JSONRPC();
@@ -73,8 +73,7 @@ namespace abyss
       /// must be called after RunAsync returns true
       /// queue a call for rpc
       void
-      QueueRPC(RPC_Method_t method, RPC_Params params,
-               HandlerFactory createHandler);
+      QueueRPC(RPC_Method_t method, RPC_Params params, HandlerFactory createHandler);
 
       /// drop all pending calls on the floor
       void
@@ -99,9 +98,7 @@ namespace abyss
       struct Call
       {
         Call(RPC_Method_t&& m, RPC_Params&& p, HandlerFactory&& f)
-            : method(std::move(m))
-            , params(std::move(p))
-            , createHandler(std::move(f))
+            : method(std::move(m)), params(std::move(p)), createHandler(std::move(f))
         {
         }
         RPC_Method_t method;
@@ -118,11 +115,11 @@ namespace abyss
       static void
       OnTick(llarp_tcp_connecter* connect);
 
-      std::atomic< bool > m_Run;
+      std::atomic<bool> m_Run;
       llarp_tcp_connecter m_connect;
       llarp_ev_loop_ptr m_Loop;
-      std::deque< Call > m_PendingCalls;
-      std::list< std::unique_ptr< IRPCClientHandler > > m_Conns;
+      std::deque<Call> m_PendingCalls;
+      std::list<std::unique_ptr<IRPCClientHandler>> m_Conns;
     };
   }  // namespace http
 }  // namespace abyss

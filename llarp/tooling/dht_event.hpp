@@ -28,9 +28,8 @@ namespace tooling
     std::string
     ToString() const
     {
-      return RouterEvent::ToString() + " ---- introset pubkey: "
-          + introsetPubkey.ShortHex() + ", relay: " + relay.ShortString()
-          + ", relayIndex: " + std::to_string(relayIndex);
+      return RouterEvent::ToString() + " ---- introset pubkey: " + introsetPubkey.ShortHex()
+          + ", relay: " + relay.ShortString() + ", relayIndex: " + std::to_string(relayIndex);
     }
   };
 
@@ -58,8 +57,8 @@ namespace tooling
     std::string
     ToString() const override
     {
-      return RouterEvent::ToString() + "from " + from.ShortHex() + " location="
-          + location.ShortHex() + " order=" + std::to_string(relayOrder)
+      return RouterEvent::ToString() + "from " + from.ShortHex()
+          + " location=" + location.ShortHex() + " order=" + std::to_string(relayOrder)
           + " txid=" + std::to_string(txid);
     }
   };
@@ -87,8 +86,8 @@ namespace tooling
     ToString() const override
     {
       return RouterEvent::ToString() + "from " + From.ShortHex()
-          + " location=" + Introset.derivedSigningKey.ShortHex() + " order="
-          + std::to_string(RelayOrder) + " txid=" + std::to_string(TxID);
+          + " location=" + Introset.derivedSigningKey.ShortHex()
+          + " order=" + std::to_string(RelayOrder) + " txid=" + std::to_string(TxID);
     }
   };
 
@@ -101,9 +100,7 @@ namespace tooling
     uint64_t txid;
     uint64_t version;
 
-    FindRouterEvent(
-        const llarp::RouterID& ourRouter,
-        const llarp::dht::FindRouterMessage& msg)
+    FindRouterEvent(const llarp::RouterID& ourRouter, const llarp::dht::FindRouterMessage& msg)
         : RouterEvent("DHT: FindRouterEvent", ourRouter, true)
         , from(msg.From)
         , targetKey(msg.targetKey)
@@ -117,13 +114,10 @@ namespace tooling
     std::string
     ToString() const override
     {
-      return RouterEvent::ToString()
-        +" from "+ from.ShortHex()
-        +", targetKey: "+ targetKey.ToString()
-        +", iterative: "+ std::to_string(iterative)
-        +", exploritory "+ std::to_string(exploritory)
-        +", txid "+ std::to_string(txid)
-        +", version "+ std::to_string(version);
+      return RouterEvent::ToString() + " from " + from.ShortHex()
+          + ", targetKey: " + targetKey.ToString() + ", iterative: " + std::to_string(iterative)
+          + ", exploritory " + std::to_string(exploritory) + ", txid " + std::to_string(txid)
+          + ", version " + std::to_string(version);
     }
   };
 

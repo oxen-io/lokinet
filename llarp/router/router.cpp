@@ -42,35 +42,35 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(std::shared_ptr< llarp::thread::ThreadPool > _tp,
-                 llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > l)
+  Router::Router(
+      std::shared_ptr<llarp::thread::ThreadPool> _tp,
+      llarp_ev_loop_ptr __netloop,
+      std::shared_ptr<Logic> l)
       : ready(false)
       , _netloop(std::move(__netloop))
       , cryptoworker(std::move(_tp))
       , _logic(std::move(l))
       , paths(this)
       , _exitContext(this)
-      , disk(std::make_shared< llarp::thread::ThreadPool >(1, 1000,
-                                                           "diskworker"))
+      , disk(std::make_shared<llarp::thread::ThreadPool>(1, 1000, "diskworker"))
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
 #ifdef LOKINET_HIVE
-      , _randomStartDelay(
-            std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
+      , _randomStartDelay(std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
   {
-    m_keyManager = std::make_shared< KeyManager >();
+    m_keyManager = std::make_shared<KeyManager>();
 
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
-    this->ip4addr.sin_port   = htons(1090);
+    this->ip4addr.sin_port = htons(1090);
 
     _stopping.store(false);
     _running.store(false);
-    _lastTick       = llarp::time_now_ms();
+    _lastTick = llarp::time_now_ms();
     m_NextExploreAt = Clock_t::now();
   }
 
@@ -82,16 +82,15 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    if(_running)
+    if (_running)
     {
-      return util::StatusObject{
-          {"running", true},
-          {"numNodesKnown", _nodedb->num_loaded()},
-          {"dht", _dht->impl->ExtractStatus()},
-          {"services", _hiddenServiceContext.ExtractStatus()},
-          {"exit", _exitContext.ExtractStatus()},
-          {"links", _linkManager.ExtractStatus()},
-          {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
+      return util::StatusObject{{"running", true},
+                                {"numNodesKnown", _nodedb->num_loaded()},
+                                {"dht", _dht->impl->ExtractStatus()},
+                                {"services", _hiddenServiceContext.ExtractStatus()},
+                                {"exit", _exitContext.ExtractStatus()},
+                                {"links", _linkManager.ExtractStatus()},
+                                {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
     }
     else
     {
@@ -100,13 +99,12 @@ namespace llarp
   }
 
   bool
-  Router::HandleRecvLinkMessageBuffer(ILinkSession *session,
-                                      const llarp_buffer_t &buf)
+  Router::HandleRecvLinkMessageBuffer(ILinkSession* session, const llarp_buffer_t& buf)
   {
-    if(_stopping)
+    if (_stopping)
       return true;
 
-    if(!session)
+    if (!session)
     {
       LogWarn("no link session");
       return false;
@@ -115,7 +113,7 @@ namespace llarp
   }
 
   void
-  Router::PersistSessionUntil(const RouterID &remote, llarp_time_t until)
+  Router::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);
   }
@@ -124,28 +122,28 @@ namespace llarp
   Router::GossipRCIfNeeded(const RouterContact rc)
   {
     /// if we are not a service node forget about gossip
-    if(not IsServiceNode())
+    if (not IsServiceNode())
       return;
     /// wait for random uptime
-    if(std::chrono::milliseconds{Uptime()} < _randomStartDelay)
+    if (std::chrono::milliseconds{Uptime()} < _randomStartDelay)
       return;
     _rcGossiper.GossipRC(rc);
   }
 
   bool
-  Router::GetRandomGoodRouter(RouterID &router)
+  Router::GetRandomGoodRouter(RouterID& router)
   {
-    if(whitelistRouters)
+    if (whitelistRouters)
     {
       return _rcLookupHandler.GetRandomWhitelistRouter(router);
     }
 
-    auto pick_router = [&](auto &collection) -> bool {
+    auto pick_router = [&](auto& collection) -> bool {
       const auto sz = collection.size();
-      auto itr      = collection.begin();
-      if(sz == 0)
+      auto itr = collection.begin();
+      if (sz == 0)
         return false;
-      if(sz > 1)
+      if (sz > 1)
         std::advance(itr, randint() % sz);
       router = itr->first;
       return true;
@@ -159,12 +157,11 @@ namespace llarp
   Router::PumpLL()
   {
     static constexpr size_t PumpJobThreshhold = 50;
-    static constexpr auto PumpInterval        = 25ms;
-    const auto now                            = Now();
-    if(_stopping.load())
+    static constexpr auto PumpInterval = 25ms;
+    const auto now = Now();
+    if (_stopping.load())
       return;
-    if(_logic->numPendingJobs() >= PumpJobThreshhold
-       && _lastPump + PumpInterval >= now)
+    if (_logic->numPendingJobs() >= PumpJobThreshhold && _lastPump + PumpInterval >= now)
     {
       return;
     }
@@ -178,10 +175,9 @@ namespace llarp
   }
 
   bool
-  Router::SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
-                        SendStatusHandler handler)
+  Router::SendToOrQueue(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler)
   {
-    if(handler == nullptr)
+    if (handler == nullptr)
     {
       using std::placeholders::_1;
       handler = std::bind(&Router::MessageSent, this, remote, _1);
@@ -190,14 +186,13 @@ namespace llarp
   }
 
   void
-  Router::ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
-                      bool randomize) const
+  Router::ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize) const
   {
     _linkManager.ForEachPeer(visit, randomize);
   }
 
   void
-  Router::ForEachPeer(std::function< void(ILinkSession *) > visit)
+  Router::ForEachPeer(std::function<void(ILinkSession*)> visit)
   {
     _linkManager.ForEachPeer(visit);
   }
@@ -206,12 +201,12 @@ namespace llarp
   Router::try_connect(fs::path rcfile)
   {
     RouterContact remote;
-    if(!remote.Read(rcfile.string().c_str()))
+    if (!remote.Read(rcfile.string().c_str()))
     {
       LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(Now()))
+    if (remote.Verify(Now()))
     {
       LogDebug("verified signature");
       _outboundSessionMaker.CreateSessionTo(remote, nullptr);
@@ -223,7 +218,7 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
-    if(whitelistRouters)
+    if (whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
       LogError("running a service node on mobile device is not possible.");
@@ -236,35 +231,34 @@ namespace llarp
 #endif
     }
 
-    _identity   = m_keyManager->identityKey;
+    _identity = m_keyManager->identityKey;
     _encryption = m_keyManager->encryptionKey;
 
-    if(_identity.IsZero())
+    if (_identity.IsZero())
       return false;
-    if(_encryption.IsZero())
+    if (_encryption.IsZero())
       return false;
 
     return true;
   }
 
   bool
-  Router::Configure(Config *conf, llarp_nodedb *nodedb)
+  Router::Configure(Config* conf, llarp_nodedb* nodedb)
   {
-    if(nodedb == nullptr)
+    if (nodedb == nullptr)
     {
-      LogError(
-          "Attempting to Router::Configure but passed null nodedb pointer");
+      LogError("Attempting to Router::Configure but passed null nodedb pointer");
       return false;
     }
     _nodedb = nodedb;
 
-    if(not m_keyManager->initialize(*conf, true))
+    if (not m_keyManager->initialize(*conf, true))
       return false;
 
-    if(!FromConfig(conf))
+    if (!FromConfig(conf))
       return false;
 
-    if(!InitOutboundLinks())
+    if (!InitOutboundLinks())
       return false;
 
     return EnsureIdentity();
@@ -282,9 +276,9 @@ namespace llarp
   Router::SaveRC()
   {
     LogDebug("verify RC signature");
-    if(!_rc.Verify(Now()))
+    if (!_rc.Verify(Now()))
     {
-      Dump< MAX_RC_SIZE >(rc());
+      Dump<MAX_RC_SIZE>(rc());
       LogError("RC is invalid, not saving");
       return false;
     }
@@ -317,15 +311,14 @@ namespace llarp
   }
 
   bool
-  Router::ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
-                                    routing::IMessageHandler *h,
-                                    const PathID_t &rxid)
+  Router::ParseRoutingMessageBuffer(
+      const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid)
   {
     return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
   }
 
   bool
-  Router::ConnectionToRouterAllowed(const RouterID &router) const
+  Router::ConnectionToRouterAllowed(const RouterID& router) const
   {
     return _rcLookupHandler.RemoteIsAllowed(router);
   }
@@ -347,27 +340,27 @@ namespace llarp
   {
     SecretKey nextOnionKey;
     RouterContact nextRC = _rc;
-    if(rotateKeys)
+    if (rotateKeys)
     {
       CryptoManager::instance()->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
       // TODO: use disk worker
-      if(nextOnionKey.SaveToFile(f.c_str()))
+      if (nextOnionKey.SaveToFile(f.c_str()))
       {
         nextRC.enckey = seckey_topublic(nextOnionKey);
-        _encryption   = nextOnionKey;
+        _encryption = nextOnionKey;
       }
     }
-    if(!nextRC.Sign(identity()))
+    if (!nextRC.Sign(identity()))
       return false;
-    if(!nextRC.Verify(time_now_ms(), false))
+    if (!nextRC.Verify(time_now_ms(), false))
       return false;
     _rc = std::move(nextRC);
-    if(rotateKeys)
+    if (rotateKeys)
     {
       // propagate RC by renegotiating sessions
-      ForEachPeer([](ILinkSession *s) {
-        if(s->RenegotiateSession())
+      ForEachPeer([](ILinkSession* s) {
+        if (s->RenegotiateSession())
           LogInfo("renegotiated session");
         else
           LogWarn("failed to renegotiate session");
@@ -377,88 +370,86 @@ namespace llarp
   }
 
   bool
-  Router::FromConfig(Config *conf)
+  Router::FromConfig(Config* conf)
   {
     // Set netid before anything else
-    if(!conf->router.netId().empty()
-       && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
+    if (!conf->router.netId().empty() && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
     {
-      const auto &netid = conf->router.netId();
-      llarp::LogWarn("!!!! you have manually set netid to be '", netid,
-                     "' which does not equal '", llarp::DEFAULT_NETID,
-                     "' you will run as a different network, good luck "
-                     "and don't forget: something something MUH traffic "
-                     "shape correlation !!!!");
-      NetID::DefaultValue() =
-          NetID(reinterpret_cast< const byte_t * >(netid.c_str()));
+      const auto& netid = conf->router.netId();
+      llarp::LogWarn(
+          "!!!! you have manually set netid to be '",
+          netid,
+          "' which does not equal '",
+          llarp::DEFAULT_NETID,
+          "' you will run as a different network, good luck "
+          "and don't forget: something something MUH traffic "
+          "shape correlation !!!!");
+      NetID::DefaultValue() = NetID(reinterpret_cast<const byte_t*>(netid.c_str()));
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
     const auto linktypename = conf->router.defaultLinkProto();
-    _defaultLinkType        = LinkFactory::TypeFromName(linktypename);
-    if(_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
+    _defaultLinkType = LinkFactory::TypeFromName(linktypename);
+    if (_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
     {
-      LogError("failed to set link type to '", linktypename,
-               "' as that is invalid");
+      LogError("failed to set link type to '", linktypename, "' as that is invalid");
       return false;
     }
 
     // IWP config
-    m_OutboundPort = std::get< LinksConfig::Port >(conf->links.outboundLink());
+    m_OutboundPort = std::get<LinksConfig::Port>(conf->links.outboundLink());
     // Router config
     _rc.SetNick(conf->router.nickname());
-    _outboundSessionMaker.maxConnectedRouters =
-        conf->router.maxConnectedRouters();
-    _outboundSessionMaker.minConnectedRouters =
-        conf->router.minConnectedRouters();
+    _outboundSessionMaker.maxConnectedRouters = conf->router.maxConnectedRouters();
+    _outboundSessionMaker.minConnectedRouters = conf->router.minConnectedRouters();
     encryption_keyfile = conf->router.encryptionKeyfile();
-    our_rc_file        = conf->router.ourRcFile();
-    transport_keyfile  = conf->router.transportKeyfile();
-    addrInfo           = conf->router.addrInfo();
-    publicOverride     = conf->router.publicOverride();
-    ip4addr            = conf->router.ip4addr();
+    our_rc_file = conf->router.ourRcFile();
+    transport_keyfile = conf->router.transportKeyfile();
+    addrInfo = conf->router.addrInfo();
+    publicOverride = conf->router.publicOverride();
+    ip4addr = conf->router.ip4addr();
 
-    if(!conf->router.blockBogons().value_or(true))
+    if (!conf->router.blockBogons().value_or(true))
     {
       RouterContact::BlockBogons = false;
     }
 
     // Lokid Config
-    usingSNSeed      = conf->lokid.usingSNSeed;
-    ident_keyfile    = conf->lokid.ident_keyfile;
+    usingSNSeed = conf->lokid.usingSNSeed;
+    ident_keyfile = conf->lokid.ident_keyfile;
     whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr     = conf->lokid.lokidRPCAddr;
-    lokidRPCUser     = conf->lokid.lokidRPCUser;
+    lokidRPCAddr = conf->lokid.lokidRPCAddr;
+    lokidRPCUser = conf->lokid.lokidRPCUser;
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     // TODO: add config flag for "is service node"
-    if(conf->links.inboundLinks().size())
+    if (conf->links.inboundLinks().size())
     {
       m_isServiceNode = true;
     }
 
-    std::set< RouterID > strictConnectPubkeys;
+    std::set<RouterID> strictConnectPubkeys;
 
-    if(!conf->network.strictConnect().empty())
+    if (!conf->network.strictConnect().empty())
     {
-      const auto &val = conf->network.strictConnect();
-      if(IsServiceNode())
+      const auto& val = conf->network.strictConnect();
+      if (IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
         return false;
       }
       llarp::RouterID snode;
       llarp::PubKey pk;
-      if(pk.FromString(val))
+      if (pk.FromString(val))
       {
-        if(strictConnectPubkeys.emplace(pk).second)
+        if (strictConnectPubkeys.emplace(pk).second)
           llarp::LogInfo("added ", pk, " to strict connect list");
         else
           llarp::LogWarn("duplicate key for strict connect: ", pk);
       }
-      else if(snode.FromString(val))
+      else if (snode.FromString(val))
       {
-        if(strictConnectPubkeys.insert(snode).second)
+        if (strictConnectPubkeys.insert(snode).second)
         {
           llarp::LogInfo("added ", snode, " to strict connect list");
           netConfig.emplace("strict-connect", val);
@@ -470,26 +461,25 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
-    llarp::LogWarn("Bootstrap routers list size: ",
-                   conf->bootstrap.routers.size());
-    std::vector< std::string > configRouters = conf->connect.routers;
-    configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
-                         conf->bootstrap.routers.end());
+    llarp::LogWarn("Bootstrap routers list size: ", conf->bootstrap.routers.size());
+    std::vector<std::string> configRouters = conf->connect.routers;
+    configRouters.insert(
+        configRouters.end(), conf->bootstrap.routers.begin(), conf->bootstrap.routers.end());
     BootstrapList b_list;
-    for(const auto &router : configRouters)
+    for (const auto& router : configRouters)
     {
       bool isListFile = false;
       {
         std::ifstream inf(router, std::ios::binary);
-        if(inf.is_open())
+        if (inf.is_open())
         {
           const char ch = inf.get();
-          isListFile    = ch == 'l';
+          isListFile = ch == 'l';
         }
       }
-      if(isListFile)
+      if (isListFile)
       {
-        if(not BDecodeReadFile(router.c_str(), b_list))
+        if (not BDecodeReadFile(router.c_str(), b_list))
         {
           LogWarn("failed to read bootstrap list file '", router, "'");
           return false;
@@ -498,19 +488,18 @@ namespace llarp
       else
       {
         RouterContact rc;
-        if(not rc.Read(router.c_str()))
+        if (not rc.Read(router.c_str()))
         {
-          llarp::LogWarn("failed to decode bootstrap RC, file='", router,
-                         "' rc=", rc);
+          llarp::LogWarn("failed to decode bootstrap RC, file='", router, "' rc=", rc);
           return false;
         }
         b_list.insert(rc);
       }
     }
 
-    for(auto &rc : b_list)
+    for (auto& rc : b_list)
     {
-      if(not rc.Verify(Now()))
+      if (not rc.Verify(Now()))
       {
         LogWarn("ignoring invalid RC: ", RouterID(rc.pubkey));
         continue;
@@ -522,34 +511,40 @@ namespace llarp
 
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
-    _outboundSessionMaker.Init(&_linkManager, &_rcLookupHandler,
-                               &_routerProfiling, _logic, _nodedb,
-                               threadpool());
+    _outboundSessionMaker.Init(
+        &_linkManager, &_rcLookupHandler, &_routerProfiling, _logic, _nodedb, threadpool());
     _linkManager.Init(&_outboundSessionMaker);
-    _rcLookupHandler.Init(_dht, _nodedb, threadpool(), &_linkManager,
-                          &_hiddenServiceContext, strictConnectPubkeys,
-                          bootstrapRCList, whitelistRouters, m_isServiceNode);
+    _rcLookupHandler.Init(
+        _dht,
+        _nodedb,
+        threadpool(),
+        &_linkManager,
+        &_hiddenServiceContext,
+        strictConnectPubkeys,
+        bootstrapRCList,
+        whitelistRouters,
+        m_isServiceNode);
 
-    if(!usingSNSeed)
+    if (!usingSNSeed)
     {
       ident_keyfile = conf->router.identKeyfile();
     }
 
     // create inbound links, if we are a service node
-    for(const auto &serverConfig : conf->links.inboundLinks())
+    for (const auto& serverConfig : conf->links.inboundLinks())
     {
       // get default factory
       auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
       // for each option if provided ...
-      for(const auto &opt : std::get< LinksConfig::Options >(serverConfig))
+      for (const auto& opt : std::get<LinksConfig::Options>(serverConfig))
       {
         // try interpreting it as a link type
         const auto linktype = LinkFactory::TypeFromName(opt);
-        if(linktype != LinkFactory::LinkType::eLinkUnknown)
+        if (linktype != LinkFactory::LinkType::eLinkUnknown)
         {
           // override link factory if it's a valid link type
           auto factory = LinkFactory::Obtain(linktype, true);
-          if(factory)
+          if (factory)
           {
             inboundLinkFactory = std::move(factory);
             break;
@@ -558,22 +553,21 @@ namespace llarp
       }
 
       auto server = inboundLinkFactory(
-          m_keyManager, util::memFn(&AbstractRouter::rc, this),
+          m_keyManager,
+          util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
-          util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
-                      &_outboundSessionMaker),
+          util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
-                      &_outboundSessionMaker),
+          util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
           util::memFn(&AbstractRouter::PumpLL, this));
 
-      const auto &key = std::get< LinksConfig::Interface >(serverConfig);
-      int af          = std::get< LinksConfig::AddressFamily >(serverConfig);
-      uint16_t port   = std::get< LinksConfig::Port >(serverConfig);
+      const auto& key = std::get<LinksConfig::Interface>(serverConfig);
+      int af = std::get<LinksConfig::AddressFamily>(serverConfig);
+      uint16_t port = std::get<LinksConfig::Port>(serverConfig);
       llarp::LogWarn("tun: ", key, " -- af: ", af, " -- port: ", port);
-      if(!server->Configure(netloop(), key, af, port))
+      if (!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
         return false;
@@ -585,16 +579,16 @@ namespace llarp
     netConfig = conf->network.netConfig();
 
     // Network config
-    if(conf->network.enableProfiling().has_value())
+    if (conf->network.enableProfiling().has_value())
     {
-      if(not conf->network.enableProfiling().value())
+      if (not conf->network.enableProfiling().value())
       {
         routerProfiling().Disable();
         LogWarn("router profiling explicitly disabled");
       }
     }
 
-    if(!conf->network.routerProfilesFile().empty())
+    if (!conf->network.routerProfilesFile().empty())
     {
       routerProfilesFile = conf->network.routerProfilesFile();
       routerProfiling().Load(routerProfilesFile.c_str());
@@ -603,19 +597,18 @@ namespace llarp
 
     // API config
     enableRPCServer = conf->api.enableRPCServer();
-    rpcBindAddr     = conf->api.rpcBindAddr();
+    rpcBindAddr = conf->api.rpcBindAddr();
 
     // Services config
-    for(const auto &service : conf->services.services)
+    for (const auto& service : conf->services.services)
     {
-      if(LoadHiddenServiceConfig(service.second))
+      if (LoadHiddenServiceConfig(service.second))
       {
         llarp::LogInfo("loaded hidden service config for ", service.first);
       }
       else
       {
-        llarp::LogWarn("failed to load hidden service config for ",
-                       service.first);
+        llarp::LogWarn("failed to load hidden service config for ", service.first);
       }
     }
 
@@ -623,15 +616,15 @@ namespace llarp
 
     auto logfile = conf->logging.m_LogFile;
 
-    if(conf->logging.m_LogJSON)
-    {
-      LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
-          diskworker(), logfile, 100ms, logfile != stdout);
-    }
-    else if(logfile != stdout)
+    if (conf->logging.m_LogJSON)
     {
       LogContext::Instance().logStream =
-          std::make_unique< FileLogStream >(diskworker(), logfile, 100ms, true);
+          std::make_unique<JSONLogStream>(diskworker(), logfile, 100ms, logfile != stdout);
+    }
+    else if (logfile != stdout)
+    {
+      LogContext::Instance().logStream =
+          std::make_unique<FileLogStream>(diskworker(), logfile, 100ms, true);
     }
 
     netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
@@ -649,8 +642,9 @@ namespace llarp
   Router::IsBootstrapNode(const RouterID r) const
   {
     return std::count_if(
-               bootstrapRCList.begin(), bootstrapRCList.end(),
-               [r](const RouterContact &rc) -> bool { return rc.pubkey == r; })
+               bootstrapRCList.begin(),
+               bootstrapRCList.end(),
+               [r](const RouterContact& rc) -> bool { return rc.pubkey == r; })
         > 0;
   }
 
@@ -668,7 +662,7 @@ namespace llarp
     LogInfo(nodedb()->num_loaded(), " RCs loaded");
     LogInfo(bootstrapRCList.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
-    if(IsServiceNode())
+    if (IsServiceNode())
     {
       LogInfo(NumberOfConnectedClients(), " client connections");
       LogInfo(_rc.Age(now), " since we last updated our RC");
@@ -681,7 +675,7 @@ namespace llarp
   void
   Router::Tick()
   {
-    if(_stopping)
+    if (_stopping)
       return;
     // LogDebug("tick router");
     const auto now = Now();
@@ -690,22 +684,21 @@ namespace llarp
     {
       std::stringstream ss;
       ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
-      if(IsServiceNode())
+      if (IsServiceNode())
       {
         ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
-           << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients()
-           << " | " << pathContext().CurrentTransitPaths() << " active paths";
+           << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
+           << pathContext().CurrentTransitPaths() << " active paths";
       }
       else
       {
         ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
            << NumberOfConnectedRouters() << " | path success: ";
-        hiddenServiceContext().ForEachService(
-            [&ss](const auto &name, const auto &ep) {
-              ss << " [" << name << " " << std::setprecision(4)
-                 << (100.0 * ep->CurrentBuildStats().SuccessRatio()) << "%]";
-              return true;
-            });
+        hiddenServiceContext().ForEachService([&ss](const auto& name, const auto& ep) {
+          ss << " [" << name << " " << std::setprecision(4)
+             << (100.0 * ep->CurrentBuildStats().SuccessRatio()) << "%]";
+          return true;
+        });
       }
       const auto status = ss.str();
       ::sd_notify(0, status.c_str());
@@ -714,7 +707,7 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    if(ShouldReportStats(now))
+    if (ShouldReportStats(now))
     {
       ReportStats();
     }
@@ -725,11 +718,11 @@ namespace llarp
 
     const bool isSvcNode = IsServiceNode();
 
-    if(_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
-       || (now - _rc.last_updated) > rcRegenInterval)
+    if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
+        || (now - _rc.last_updated) > rcRegenInterval)
     {
       LogInfo("regenerating RC");
-      if(!UpdateOurRC(false))
+      if (!UpdateOurRC(false))
         LogError("Failed to update our RC");
     }
     else
@@ -738,22 +731,22 @@ namespace llarp
     }
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     // remove RCs for nodes that are no longer allowed by network policy
-    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+    nodedb()->RemoveIf([&](const RouterContact& rc) -> bool {
       // don't purge bootstrap nodes from nodedb
-      if(IsBootstrapNode(rc.pubkey))
+      if (IsBootstrapNode(rc.pubkey))
         return false;
       // if for some reason we stored an RC that isn't a valid router
       // purge this entry
-      if(not rc.IsPublicRouter())
+      if (not rc.IsPublicRouter())
         return true;
       // clients have a notion of a whilelist
       // we short circuit logic here so we dont remove
       // routers that are not whitelisted for first hops
-      if(not isSvcNode)
+      if (not isSvcNode)
         return false;
       // if we have a whitelist enabled and we don't
       // have the whitelist yet don't remove the entry
-      if(whitelistRouters and not gotWhitelist)
+      if (whitelistRouters and not gotWhitelist)
         return false;
       // if we have no whitelist enabled or we have
       // the whitelist enabled and we got the whitelist
@@ -765,26 +758,26 @@ namespace llarp
     _linkManager.CheckPersistingSessions(now);
 
     size_t connected = NumberOfConnectedRouters();
-    if(not isSvcNode)
+    if (not isSvcNode)
     {
       connected += _linkManager.NumberOfPendingConnections();
     }
 
-    const int interval       = isSvcNode ? 5 : 2;
+    const int interval = isSvcNode ? 5 : 2;
     const auto timepoint_now = Clock_t::now();
-    if(timepoint_now >= m_NextExploreAt)
+    if (timepoint_now >= m_NextExploreAt)
     {
       _rcLookupHandler.ExploreNetwork();
       m_NextExploreAt = timepoint_now + std::chrono::seconds(interval);
     }
-    size_t connectToNum      = _outboundSessionMaker.minConnectedRouters;
+    size_t connectToNum = _outboundSessionMaker.minConnectedRouters;
     const auto strictConnect = _rcLookupHandler.NumberOfStrictConnectRouters();
-    if(strictConnect > 0 && connectToNum > strictConnect)
+    if (strictConnect > 0 && connectToNum > strictConnect)
     {
       connectToNum = strictConnect;
     }
 
-    if(connected < connectToNum)
+    if (connected < connectToNum)
     {
       size_t dlt = connectToNum - connected;
       LogInfo("connecting to ", dlt, " random routers to keep alive");
@@ -794,31 +787,29 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if(rpcCaller)
+    if (rpcCaller)
       rpcCaller->Tick(now);
     // save profiles
-    if(routerProfiling().ShouldSave(now))
+    if (routerProfiling().ShouldSave(now))
     {
-      diskworker()->addJob(
-          [&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+      diskworker()->addJob([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
     // save nodedb
-    if(nodedb()->ShouldSaveToDisk(now))
+    if (nodedb()->ShouldSaveToDisk(now))
     {
       nodedb()->AsyncFlushToDisk();
     }
 
     // get connected peers
-    std::set< dht::Key_t > peersWeHave;
-    _linkManager.ForEachPeer([&peersWeHave](ILinkSession *s) {
-      if(!s->IsEstablished())
+    std::set<dht::Key_t> peersWeHave;
+    _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {
+      if (!s->IsEstablished())
         return;
       peersWeHave.emplace(s->GetPubKey());
     });
     // remove any nodes we don't have connections to
-    _dht->impl->Nodes()->RemoveIf([&peersWeHave](const dht::Key_t &k) -> bool {
-      return peersWeHave.count(k) == 0;
-    });
+    _dht->impl->Nodes()->RemoveIf(
+        [&peersWeHave](const dht::Key_t& k) -> bool { return peersWeHave.count(k) == 0; });
     // expire paths
     paths.ExpirePaths(now);
     // update tick timestamp
@@ -826,7 +817,7 @@ namespace llarp
   }
 
   bool
-  Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
+  Router::Sign(Signature& sig, const llarp_buffer_t& buf) const
   {
     return CryptoManager::instance()->sign(sig, identity(), buf);
   }
@@ -834,8 +825,7 @@ namespace llarp
   void
   Router::ScheduleTicker(llarp_time_t interval)
   {
-    ticker_job_id = _logic->call_later(
-        interval, std::bind(&Router::handle_router_ticker, this));
+    ticker_job_id = _logic->call_later(interval, std::bind(&Router::handle_router_ticker, this));
   }
 
   void
@@ -848,16 +838,15 @@ namespace llarp
   }
 
   bool
-  Router::GetRandomConnectedRouter(RouterContact &result) const
+  Router::GetRandomConnectedRouter(RouterContact& result) const
   {
     return _linkManager.GetRandomConnectedRouter(result);
   }
 
   void
-  Router::HandleDHTLookupForExplore(RouterID /*remote*/,
-                                    const std::vector< RouterContact > &results)
+  Router::HandleDHTLookupForExplore(RouterID /*remote*/, const std::vector<RouterContact>& results)
   {
-    for(const auto &rc : results)
+    for (const auto& rc : results)
     {
       _rcLookupHandler.CheckRC(rc);
     }
@@ -869,13 +858,12 @@ namespace llarp
   {
     _rcLookupHandler.GetRC(
         remote,
-        [=](const RouterID &id, const RouterContact *const rc,
-            const RCRequestResult result) {
+        [=](const RouterID& id, const RouterContact* const rc, const RCRequestResult result) {
           (void)id;
-          if(resultHandler)
+          if (resultHandler)
           {
-            std::vector< RouterContact > routers;
-            if(result == RCRequestResult::Success && rc != nullptr)
+            std::vector<RouterContact> routers;
+            if (result == RCRequestResult::Success && rc != nullptr)
             {
               routers.push_back(*rc);
             }
@@ -885,31 +873,28 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector< RouterID > &routers)
+  Router::SetRouterWhitelist(const std::vector<RouterID>& routers)
   {
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
 
   /// this function ensure there are sane defualts in a net config
   static void
-  EnsureNetConfigDefaultsSane(
-      std::unordered_multimap< std::string, std::string > &netConfig)
+  EnsureNetConfigDefaultsSane(std::unordered_multimap<std::string, std::string>& netConfig)
   {
-    static const std::unordered_map< std::string,
-                                     std::function< std::string(void) > >
-        netConfigDefaults = {
-            {"ifname", llarp::FindFreeTun},
-            {"ifaddr", llarp::FindFreeRange},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
+    static const std::unordered_map<std::string, std::function<std::string(void)>>
+        netConfigDefaults = {{"ifname", llarp::FindFreeTun},
+                             {"ifaddr", llarp::FindFreeRange},
+                             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
     // populate with fallback defaults if values not present
     auto itr = netConfigDefaults.begin();
-    while(itr != netConfigDefaults.end())
+    while (itr != netConfigDefaults.end())
     {
       auto found = netConfig.find(itr->first);
-      if(found == netConfig.end() || found->second.empty())
+      if (found == netConfig.end() || found->second.empty())
       {
         auto val = itr->second();
-        if(!val.empty())
+        if (!val.empty())
           netConfig.emplace(itr->first, std::move(val));
       }
       ++itr;
@@ -919,17 +904,17 @@ namespace llarp
   bool
   Router::StartJsonRpc()
   {
-    if(_running || _stopping)
+    if (_running || _stopping)
       return false;
 
-    if(enableRPCServer)
+    if (enableRPCServer)
     {
-      if(rpcBindAddr.empty())
+      if (rpcBindAddr.empty())
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
-      rpcServer = std::make_unique< rpc::Server >(this);
-      while(!rpcServer->Start(rpcBindAddr))
+      rpcServer = std::make_unique<rpc::Server>(this);
+      while (!rpcServer->Start(rpcBindAddr))
       {
         LogError("failed to bind jsonrpc to ", rpcBindAddr);
 #if defined(ANDROID) || defined(RPI)
@@ -947,14 +932,14 @@ namespace llarp
   bool
   Router::Run()
   {
-    if(_running || _stopping)
+    if (_running || _stopping)
       return false;
 
-    if(whitelistRouters)
+    if (whitelistRouters)
     {
-      rpcCaller = std::make_unique< rpc::Caller >(this);
+      rpcCaller = std::make_unique<rpc::Caller>(this);
       rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
-      while(!rpcCaller->Start(lokidRPCAddr))
+      while (!rpcCaller->Start(lokidRPCAddr))
       {
         LogError("failed to start jsonrpc caller to ", lokidRPCAddr);
 #if defined(ANDROID) || defined(RPI)
@@ -966,13 +951,13 @@ namespace llarp
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
-    if(!cryptoworker->start())
+    if (!cryptoworker->start())
     {
       LogError("crypto worker failed to start");
       return false;
     }
 
-    if(!disk->start())
+    if (!disk->start())
     {
       LogError("disk worker failed to start");
       return false;
@@ -982,7 +967,7 @@ namespace llarp
 
     Addr publicAddr(this->addrInfo);
 
-    if(this->publicOverride)
+    if (this->publicOverride)
     {
       LogDebug("public address:port ", publicAddr);
     }
@@ -990,25 +975,25 @@ namespace llarp
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
     // set router version if service node
-    if(IsServiceNode())
+    if (IsServiceNode())
     {
       _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
     }
 
     AddressInfo ai;
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
-      if(link->GetOurAddressInfo(ai))
+      if (link->GetOurAddressInfo(ai))
       {
         // override ip and port
-        if(this->publicOverride)
+        if (this->publicOverride)
         {
-          ai.ip   = *publicAddr.addr6();
+          ai.ip = *publicAddr.addr6();
           ai.port = publicAddr.port();
         }
-        if(RouterContact::BlockBogons && IsBogon(ai.ip))
+        if (RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
         _rc.addrs.push_back(ai);
-        if(ExitEnabled())
+        if (ExitEnabled())
         {
           const llarp::Addr addr(ai);
           const nuint32_t a{addr.addr4()->s_addr};
@@ -1022,19 +1007,19 @@ namespace llarp
     _rc.enckey = seckey_topublic(encryption());
 
     LogInfo("Signing rc...");
-    if(!_rc.Sign(identity()))
+    if (!_rc.Sign(identity()))
     {
       LogError("failed to sign rc");
       return false;
     }
 
-    if(!SaveRC())
+    if (!SaveRC())
     {
       LogError("failed to save RC");
       return false;
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if(!_linkManager.StartLinks(_logic, cryptoworker))
+    if (!_linkManager.StartLinks(_logic, cryptoworker))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1042,18 +1027,17 @@ namespace llarp
 
     EnsureNetConfigDefaultsSane(netConfig);
 
-    const auto limits =
-        IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
+    const auto limits = IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
 
-    _outboundSessionMaker.minConnectedRouters = std::max(
-        _outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
-    _outboundSessionMaker.maxConnectedRouters = std::max(
-        _outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
+    _outboundSessionMaker.minConnectedRouters =
+        std::max(_outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
+    _outboundSessionMaker.maxConnectedRouters =
+        std::max(_outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
 
-    if(IsServiceNode())
+    if (IsServiceNode())
     {
       // initialize as service node
-      if(!InitServiceNode())
+      if (!InitServiceNode())
       {
         LogError("Failed to initialize service node");
         return false;
@@ -1073,13 +1057,13 @@ namespace llarp
       CryptoManager::instance()->encryption_keygen(_encryption);
       _rc.pubkey = seckey_topublic(identity());
       _rc.enckey = seckey_topublic(encryption());
-      if(!_rc.Sign(identity()))
+      if (!_rc.Sign(identity()))
       {
         LogError("failed to regenerate keys and sign RC");
         return false;
       }
 
-      if(!CreateDefaultHiddenService())
+      if (!CreateDefaultHiddenService())
       {
         LogError("failed to set up default network endpoint");
         return false;
@@ -1087,7 +1071,7 @@ namespace llarp
     }
 
     LogInfo("starting hidden service context...");
-    if(!hiddenServiceContext().StartAll())
+    if (!hiddenServiceContext().StartAll())
     {
       LogError("Failed to start hidden service context");
       return false;
@@ -1096,7 +1080,7 @@ namespace llarp
     {
       ssize_t loaded = _nodedb->LoadAll();
       llarp::LogInfo("loaded ", loaded, " RCs");
-      if(loaded < 0)
+      if (loaded < 0)
       {
         // shouldn't be possible
         return false;
@@ -1105,9 +1089,9 @@ namespace llarp
 
     llarp_dht_context_start(dht(), pubkey());
 
-    for(const auto &rc : bootstrapRCList)
+    for (const auto& rc : bootstrapRCList)
     {
-      if(this->nodedb()->Insert(rc))
+      if (this->nodedb()->Insert(rc))
       {
         LogInfo("added bootstrap node ", RouterID(rc.pubkey));
       }
@@ -1142,7 +1126,7 @@ namespace llarp
   Router::Uptime() const
   {
     const llarp_time_t _now = Now();
-    if(_startedAt > 0s && _now > _startedAt)
+    if (_startedAt > 0s && _now > _startedAt)
       return _now - _startedAt;
     return 0s;
   }
@@ -1170,9 +1154,9 @@ namespace llarp
   void
   Router::Stop()
   {
-    if(!_running)
+    if (!_running)
       return;
-    if(_stopping)
+    if (_stopping)
       return;
 
     _stopping.store(true);
@@ -1183,7 +1167,7 @@ namespace llarp
 #endif
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
-    if(rpcServer)
+    if (rpcServer)
       rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
@@ -1191,7 +1175,7 @@ namespace llarp
   }
 
   bool
-  Router::HasSessionTo(const RouterID &remote) const
+  Router::HasSessionTo(const RouterID& remote) const
   {
     return _linkManager.HasSessionTo(remote);
   }
@@ -1212,12 +1196,12 @@ namespace llarp
   Router::ConnectToRandomRouters(int _want)
   {
     const size_t want = _want;
-    auto connected    = NumberOfConnectedRouters();
-    if(not IsServiceNode())
+    auto connected = NumberOfConnectedRouters();
+    if (not IsServiceNode())
     {
       connected += _linkManager.NumberOfPendingConnections();
     }
-    if(connected >= want)
+    if (connected >= want)
       return;
     _outboundSessionMaker.ConnectToRandomRouters(want);
   }
@@ -1232,13 +1216,13 @@ namespace llarp
   }
 
   bool
-  Router::ValidateConfig(Config * /*conf*/) const
+  Router::ValidateConfig(Config* /*conf*/) const
   {
     return true;
   }
 
   bool
-  Router::Reconfigure(Config *)
+  Router::Reconfigure(Config*)
   {
     // TODO: implement me
     return true;
@@ -1249,12 +1233,12 @@ namespace llarp
   {
     (void)tries;
 
-    if(rc.pubkey == pubkey())
+    if (rc.pubkey == pubkey())
     {
       return false;
     }
 
-    if(!_rcLookupHandler.RemoteIsAllowed(rc.pubkey))
+    if (!_rcLookupHandler.RemoteIsAllowed(rc.pubkey))
     {
       return false;
     }
@@ -1270,32 +1254,33 @@ namespace llarp
     const auto linkTypeName = LinkFactory::NameFromType(_defaultLinkType);
     LogInfo("initialize outbound link: ", linkTypeName);
     auto factory = LinkFactory::Obtain(_defaultLinkType, false);
-    if(factory == nullptr)
+    if (factory == nullptr)
     {
-      LogError("cannot initialize outbound link of type '", linkTypeName,
-               "' as it has no implementation");
+      LogError(
+          "cannot initialize outbound link of type '",
+          linkTypeName,
+          "' as it has no implementation");
       return false;
     }
-    auto link =
-        factory(m_keyManager, util::memFn(&AbstractRouter::rc, this),
-                util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
-                util::memFn(&AbstractRouter::Sign, this),
-                util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
-                            &_outboundSessionMaker),
-                util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-                util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
-                            &_outboundSessionMaker),
-                util::memFn(&AbstractRouter::SessionClosed, this),
-                util::memFn(&AbstractRouter::PumpLL, this));
+    auto link = factory(
+        m_keyManager,
+        util::memFn(&AbstractRouter::rc, this),
+        util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
+        util::memFn(&AbstractRouter::Sign, this),
+        util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
+        util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
+        util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
+        util::memFn(&AbstractRouter::SessionClosed, this),
+        util::memFn(&AbstractRouter::PumpLL, this));
 
-    if(!link)
+    if (!link)
       return false;
 
     const auto afs = {AF_INET, AF_INET6};
 
-    for(const auto af : afs)
+    for (const auto af : afs)
     {
-      if(!link->Configure(netloop(), "*", af, m_OutboundPort))
+      if (!link->Configure(netloop(), "*", af, m_OutboundPort))
         continue;
       _linkManager.AddLink(std::move(link), false);
       return true;
@@ -1315,23 +1300,23 @@ namespace llarp
   {
     LogDebug("opening hidden service config ", fname);
     service::Config conf;
-    if(!conf.Load(fname))
+    if (!conf.Load(fname))
       return false;
-    for(const auto &config : conf.services)
+    for (const auto& config : conf.services)
     {
       service::Config::section_t filteredConfig;
       mergeHiddenServiceConfig(config.second, filteredConfig.second);
       filteredConfig.first = config.first;
-      if(!hiddenServiceContext().AddEndpoint(filteredConfig))
+      if (!hiddenServiceContext().AddEndpoint(filteredConfig))
         return false;
     }
     return true;
   }
 
   void
-  Router::MessageSent(const RouterID &remote, SendStatus status)
+  Router::MessageSent(const RouterID& remote, SendStatus status)
   {
-    if(status == SendStatus::Success)
+    if (status == SendStatus::Success)
     {
       LogDebug("Message successfully sent to ", remote);
     }

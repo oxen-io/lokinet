@@ -8,27 +8,35 @@ namespace llarp
   namespace iwp
   {
     LinkLayer_ptr
-    NewInboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                   LinkMessageHandler h, SignBufferFunc sign,
-                   SessionEstablishedHandler est,
-                   SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                   SessionClosedHandler closed, PumpDoneHandler pumpDone)
+    NewInboundLink(
+        std::shared_ptr<KeyManager> keyManager,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone)
     {
-      return std::make_shared< LinkLayer >(keyManager, getrc, h, sign, est,
-                                           reneg, timeout, closed, pumpDone,
-                                           true);
+      return std::make_shared<LinkLayer>(
+          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, true);
     }
 
     LinkLayer_ptr
-    NewOutboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                    LinkMessageHandler h, SignBufferFunc sign,
-                    SessionEstablishedHandler est,
-                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                    SessionClosedHandler closed, PumpDoneHandler pumpDone)
+    NewOutboundLink(
+        std::shared_ptr<KeyManager> keyManager,
+        GetRCFunc getrc,
+        LinkMessageHandler h,
+        SignBufferFunc sign,
+        SessionEstablishedHandler est,
+        SessionRenegotiateHandler reneg,
+        TimeoutHandler timeout,
+        SessionClosedHandler closed,
+        PumpDoneHandler pumpDone)
     {
-      return std::make_shared< LinkLayer >(keyManager, getrc, h, sign, est,
-                                           reneg, timeout, closed, pumpDone,
-                                           false);
+      return std::make_shared<LinkLayer>(
+          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, false);
     }
   }  // namespace iwp
 }  // namespace llarp

@@ -81,13 +81,13 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
-    std::shared_ptr< Logic >
+    std::shared_ptr<Logic>
     logic() const override
     {
       return _logic;
     }
 
-    llarp_dht_context *
+    llarp_dht_context*
     dht() const override
     {
       return _dht;
@@ -96,58 +96,58 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
-    llarp_nodedb *
+    llarp_nodedb*
     nodedb() const override
     {
       return _nodedb;
     }
 
-    const path::PathContext &
+    const path::PathContext&
     pathContext() const override
     {
       return paths;
     }
 
-    path::PathContext &
+    path::PathContext&
     pathContext() override
     {
       return paths;
     }
 
-    const RouterContact &
+    const RouterContact&
     rc() const override
     {
       return _rc;
     }
 
     void
-    SetRouterWhitelist(const std::vector< RouterID > &routers) override;
+    SetRouterWhitelist(const std::vector<RouterID>& routers) override;
 
-    exit::Context &
+    exit::Context&
     exitContext() override
     {
       return _exitContext;
     }
 
-    std::shared_ptr< KeyManager >
+    std::shared_ptr<KeyManager>
     keyManager() const override
     {
       return m_keyManager;
     }
 
-    const SecretKey &
+    const SecretKey&
     identity() const override
     {
       return _identity;
     }
 
-    const SecretKey &
+    const SecretKey&
     encryption() const override
     {
       return _encryption;
     }
 
-    Profiling &
+    Profiling&
     routerProfiling() override
     {
       return _routerProfiling;
@@ -159,13 +159,13 @@ namespace llarp
       return _netloop;
     }
 
-    std::shared_ptr< llarp::thread::ThreadPool >
+    std::shared_ptr<llarp::thread::ThreadPool>
     threadpool() override
     {
       return cryptoworker;
     }
 
-    std::shared_ptr< llarp::thread::ThreadPool >
+    std::shared_ptr<llarp::thread::ThreadPool>
     diskworker() override
     {
       return disk;
@@ -179,22 +179,22 @@ namespace llarp
     LinkFactory::LinkType _defaultLinkType;
 
     llarp_ev_loop_ptr _netloop;
-    std::shared_ptr< llarp::thread::ThreadPool > cryptoworker;
-    std::shared_ptr< Logic > _logic;
+    std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;
+    std::shared_ptr<Logic> _logic;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    std::shared_ptr< thread::ThreadPool > disk;
-    llarp_dht_context *_dht = nullptr;
-    llarp_nodedb *_nodedb;
+    std::shared_ptr<thread::ThreadPool> disk;
+    llarp_dht_context* _dht = nullptr;
+    llarp_nodedb* _nodedb;
     llarp_time_t _startedAt;
 
     llarp_time_t
     Uptime() const override;
 
     bool
-    Sign(Signature &sig, const llarp_buffer_t &buf) const override;
+    Sign(Signature& sig, const llarp_buffer_t& buf) const override;
 
     uint16_t m_OutboundPort = 0;
     /// how often do we resign our RC? milliseconds.
@@ -211,13 +211,13 @@ namespace llarp
 
     service::Context _hiddenServiceContext;
 
-    service::Context &
+    service::Context&
     hiddenServiceContext() override
     {
       return _hiddenServiceContext;
     }
 
-    const service::Context &
+    const service::Context&
     hiddenServiceContext() const override
     {
       return _hiddenServiceContext;
@@ -232,7 +232,7 @@ namespace llarp
       return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
     }
 
-    using NetConfig_t = std::unordered_multimap< std::string, std::string >;
+    using NetConfig_t = std::unordered_multimap<std::string, std::string>;
 
     /// default network config for default network interface
     NetConfig_t netConfig;
@@ -245,7 +245,7 @@ namespace llarp
     {
       // TODO: use equal_range ?
       auto itr = netConfig.find("exit");
-      if(itr == netConfig.end())
+      if (itr == netConfig.end())
         return false;
       return IsTrueValue(itr->second.c_str());
     }
@@ -257,13 +257,13 @@ namespace llarp
     CreateDefaultHiddenService();
 
     const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
-    bool enableRPCServer                 = false;
-    std::unique_ptr< rpc::Server > rpcServer;
+    bool enableRPCServer = false;
+    std::unique_ptr<rpc::Server> rpcServer;
     std::string rpcBindAddr = DefaultRPCBindAddr;
     const llarp_time_t _randomStartDelay;
 
     /// lokid caller
-    std::unique_ptr< rpc::Caller > rpcCaller;
+    std::unique_ptr<rpc::Caller> rpcCaller;
     std::string lokidRPCAddr = "127.0.0.1:22023";
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
@@ -277,30 +277,30 @@ namespace llarp
     RCLookupHandler _rcLookupHandler;
     RCGossiper _rcGossiper;
 
-    using Clock_t     = std::chrono::steady_clock;
+    using Clock_t = std::chrono::steady_clock;
     using TimePoint_t = Clock_t::time_point;
 
     TimePoint_t m_NextExploreAt;
 
-    IOutboundMessageHandler &
+    IOutboundMessageHandler&
     outboundMessageHandler() override
     {
       return _outboundMessageHandler;
     }
 
-    IOutboundSessionMaker &
+    IOutboundSessionMaker&
     outboundSessionMaker() override
     {
       return _outboundSessionMaker;
     }
 
-    ILinkManager &
+    ILinkManager&
     linkManager() override
     {
       return _linkManager;
     }
 
-    I_RCLookupHandler &
+    I_RCLookupHandler&
     rcLookupHandler() override
     {
       return _rcLookupHandler;
@@ -309,20 +309,21 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    Router(std::shared_ptr< llarp::thread::ThreadPool > worker,
-           llarp_ev_loop_ptr __netloop, std::shared_ptr< Logic > logic);
+    Router(
+        std::shared_ptr<llarp::thread::ThreadPool> worker,
+        llarp_ev_loop_ptr __netloop,
+        std::shared_ptr<Logic> logic);
 
     ~Router() override;
 
     bool
-    HandleRecvLinkMessageBuffer(ILinkSession *from,
-                                const llarp_buffer_t &msg) override;
+    HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
 
     bool
     InitOutboundLinks();
 
     bool
-    GetRandomGoodRouter(RouterID &r) override;
+    GetRandomGoodRouter(RouterID& r) override;
 
     /// initialize us as a service node
     /// return true on success
@@ -343,10 +344,10 @@ namespace llarp
     LoadHiddenServiceConfig(string_view fname);
 
     bool
-    AddHiddenService(const service::Config::section_t &config);
+    AddHiddenService(const service::Config::section_t& config);
 
     bool
-    Configure(Config *conf, llarp_nodedb *nodedb = nullptr) override;
+    Configure(Config* conf, llarp_nodedb* nodedb = nullptr) override;
 
     bool
     StartJsonRpc() override;
@@ -363,7 +364,7 @@ namespace llarp
     StopLinks();
 
     void
-    PersistSessionUntil(const RouterID &remote, llarp_time_t until) override;
+    PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
 
     bool
     EnsureIdentity();
@@ -372,7 +373,7 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    ConnectionToRouterAllowed(const RouterID &router) const override;
+    ConnectionToRouterAllowed(const RouterID& router) const override;
 
     void
     HandleSaveRC() const;
@@ -380,7 +381,7 @@ namespace llarp
     bool
     SaveRC();
 
-    const byte_t *
+    const byte_t*
     pubkey() const override
     {
       return seckey_topublic(_identity);
@@ -391,7 +392,7 @@ namespace llarp
 
     /// inject configuration and reconfigure router
     bool
-    Reconfigure(Config *conf) override;
+    Reconfigure(Config* conf) override;
 
     bool
     TryConnectAsync(RouterContact rc, uint16_t tries) override;
@@ -400,7 +401,7 @@ namespace llarp
     /// return true on 100% valid
     /// return false if not 100% valid
     bool
-    ValidateConfig(Config *conf) const override;
+    ValidateConfig(Config* conf) const override;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
@@ -408,15 +409,15 @@ namespace llarp
     /// NOT threadsafe
     /// MUST be called in the logic thread
     bool
-    SendToOrQueue(const RouterID &remote, const ILinkMessage *msg,
-                  SendStatusHandler handler) override;
+    SendToOrQueue(
+        const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler) override;
 
     void
-    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
-                bool randomize = false) const override;
+    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
+        const override;
 
     void
-    ForEachPeer(std::function< void(ILinkSession *) > visit);
+    ForEachPeer(std::function<void(ILinkSession*)> visit);
 
     bool IsBootstrapNode(RouterID) const override;
 
@@ -449,9 +450,8 @@ namespace llarp
     /// successful parsing return true on parse and handle success otherwise
     /// return false
     bool
-    ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
-                              routing::IMessageHandler *h,
-                              const PathID_t &rxid) override;
+    ParseRoutingMessageBuffer(
+        const llarp_buffer_t& buf, routing::IMessageHandler* h, const PathID_t& rxid) override;
 
     void
     ConnectToRandomRouters(int N) override;
@@ -465,17 +465,16 @@ namespace llarp
     NumberOfConnectedClients() const override;
 
     bool
-    GetRandomConnectedRouter(RouterContact &result) const override;
+    GetRandomConnectedRouter(RouterContact& result) const override;
 
     void
-    HandleDHTLookupForExplore(
-        RouterID remote, const std::vector< RouterContact > &results) override;
+    HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results) override;
 
     void
     LookupRouter(RouterID remote, RouterLookupHandler resultHandler) override;
 
     bool
-    HasSessionTo(const RouterID &remote) const override;
+    HasSessionTo(const RouterID& remote) const override;
 
     std::string
     ShortName() const;
@@ -493,14 +492,14 @@ namespace llarp
     AfterStopIssued();
 
    private:
-    std::atomic< bool > _stopping;
-    std::atomic< bool > _running;
+    std::atomic<bool> _stopping;
+    std::atomic<bool> _running;
 
     bool m_isServiceNode = false;
 
     llarp_time_t m_LastStatsReport = 0s;
 
-    std::shared_ptr< llarp::KeyManager > m_keyManager;
+    std::shared_ptr<llarp::KeyManager> m_keyManager;
 
     uint32_t path_build_count = 0;
 
@@ -513,21 +512,21 @@ namespace llarp
     bool
     UpdateOurRC(bool rotateKeys = false);
 
-    template < typename Config >
+    template <typename Config>
     void
-    mergeHiddenServiceConfig(const Config &in, Config &out)
+    mergeHiddenServiceConfig(const Config& in, Config& out)
     {
-      for(const auto &item : netConfig)
+      for (const auto& item : netConfig)
         out.push_back({item.first, item.second});
-      for(const auto &item : in)
+      for (const auto& item : in)
         out.push_back({item.first, item.second});
     }
 
     bool
-    FromConfig(Config *conf);
+    FromConfig(Config* conf);
 
     void
-    MessageSent(const RouterID &remote, SendStatus status);
+    MessageSent(const RouterID& remote, SendStatus status);
   };
 
 }  // namespace llarp

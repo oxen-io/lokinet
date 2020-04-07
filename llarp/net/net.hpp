@@ -59,8 +59,8 @@ namespace llarp
 {
   struct IPRange
   {
-    using Addr_t            = huint128_t;
-    huint128_t addr         = {0};
+    using Addr_t = huint128_t;
+    huint128_t addr = {0};
     huint128_t netmask_bits = {0};
 
     /// return true if ip is contained in this ip range
@@ -83,16 +83,14 @@ namespace llarp
     huint128_t
     HighestAddr() const
     {
-      return (addr & netmask_bits)
-          + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h)))
+      return (addr & netmask_bits) + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h)))
           - huint128_t{1};
     }
 
     bool
     operator<(const IPRange& other) const
     {
-      return (this->addr & this->netmask_bits)
-          < (other.addr & other.netmask_bits)
+      return (this->addr & this->netmask_bits) < (other.addr & other.netmask_bits)
           || this->netmask_bits < other.netmask_bits;
     }
 
@@ -110,9 +108,8 @@ namespace llarp
   constexpr huint128_t
   __netmask_ipv6_bits(uint32_t numset)
   {
-    return (128 - numset)
-        ? (huint128_t{1} << numset) | __netmask_ipv6_bits(numset + 1)
-        : huint128_t{0};
+    return (128 - numset) ? (huint128_t{1} << numset) | __netmask_ipv6_bits(numset + 1)
+                          : huint128_t{0};
   }
 
   constexpr huint128_t
@@ -150,11 +147,10 @@ namespace llarp
   constexpr bool
   ipv6_is_siit(const in6_addr& addr)
   {
-    return addr.s6_addr[11] == 0xff && addr.s6_addr[10] == 0xff
-        && addr.s6_addr[9] == 0 && addr.s6_addr[8] == 0 && addr.s6_addr[7] == 0
-        && addr.s6_addr[6] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[4] == 0
-        && addr.s6_addr[3] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[1] == 0
-        && addr.s6_addr[0] == 0;
+    return addr.s6_addr[11] == 0xff && addr.s6_addr[10] == 0xff && addr.s6_addr[9] == 0
+        && addr.s6_addr[8] == 0 && addr.s6_addr[7] == 0 && addr.s6_addr[6] == 0
+        && addr.s6_addr[5] == 0 && addr.s6_addr[4] == 0 && addr.s6_addr[3] == 0
+        && addr.s6_addr[2] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[0] == 0;
   }
 
   bool

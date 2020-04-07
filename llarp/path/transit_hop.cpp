@@ -36,7 +36,7 @@ namespace llarp
     {
       m_UpstreamGather.enable();
       m_DownstreamGather.enable();
-      m_UpstreamWorkCounter   = 0;
+      m_UpstreamWorkCounter = 0;
       m_DownstreamWorkCounter = 0;
     }
 
@@ -53,25 +53,24 @@ namespace llarp
     }
 
     bool
-    TransitHop::HandleLRSM(uint64_t status,
-                           std::array< EncryptedFrame, 8 >& frames,
-                           AbstractRouter* r)
+    TransitHop::HandleLRSM(
+        uint64_t status, std::array<EncryptedFrame, 8>& frames, AbstractRouter* r)
     {
-      auto msg    = std::make_shared< LR_StatusMessage >(frames);
+      auto msg = std::make_shared<LR_StatusMessage>(frames);
       msg->status = status;
       msg->pathid = info.rxID;
 
       // TODO: add to IHopHandler some notion of "path status"
 
       const uint64_t ourStatus = LR_StatusRecord::SUCCESS;
-      if(!msg->AddFrame(pathKey, ourStatus))
+      if (!msg->AddFrame(pathKey, ourStatus))
       {
         return false;
       }
 
       LR_StatusMessage::QueueSendMessage(r, info.downstream, msg);
 
-      if((status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
+      if ((status & LR_StatusRecord::SUCCESS) != LR_StatusRecord::SUCCESS)
       {
         LogWarn(
             "TransitHop received non-successful LR_StatusMessage, queueing "
@@ -83,25 +82,20 @@ namespace llarp
       return true;
     }
 
-    TransitHopInfo::TransitHopInfo(const RouterID& down,
-                                   const LR_CommitRecord& record)
-        : txID(record.txid)
-        , rxID(record.rxid)
-        , upstream(record.nextHop)
-        , downstream(down)
+    TransitHopInfo::TransitHopInfo(const RouterID& down, const LR_CommitRecord& record)
+        : txID(record.txid), rxID(record.rxid), upstream(record.nextHop), downstream(down)
     {
     }
 
     bool
-    TransitHop::SendRoutingMessage(const routing::IMessage& msg,
-                                   AbstractRouter* r)
+    TransitHop::SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r)
     {
-      if(!IsEndpoint(r->pubkey()))
+      if (!IsEndpoint(r->pubkey()))
         return false;
 
-      std::array< byte_t, MAX_LINK_MSG_SIZE - 128 > tmp;
+      std::array<byte_t, MAX_LINK_MSG_SIZE - 128> tmp;
       llarp_buffer_t buf(tmp);
-      if(!msg.BEncode(&buf))
+      if (!msg.BEncode(&buf))
       {
         llarp::LogError("failed to encode routing message");
         return false;
@@ -111,7 +105,7 @@ namespace llarp
       buf.sz = buf.cur - buf.base;
       // pad to nearest MESSAGE_PAD_SIZE bytes
       auto dlt = buf.sz % pad_size;
-      if(dlt)
+      if (dlt)
       {
         dlt = pad_size - dlt;
         // randomize padding
@@ -127,35 +121,40 @@ namespace llarp
     {
       m_DownstreamWorkCounter++;
       auto flushIt = [self = shared_from_this(), r]() {
-        std::vector< RelayDownstreamMessage > msgs;
+        std::vector<RelayDownstreamMessage> msgs;
         do
         {
           auto maybe = self->m_DownstreamGather.tryPopFront();
-          if(not maybe.has_value())
+          if (not maybe.has_value())
             break;
           msgs.emplace_back(maybe.value());
-        } while(true);
+        } while (true);
         self->HandleAllDownstream(std::move(msgs), r);
       };
-      for(auto& ev : *msgs)
+      for (auto& ev : *msgs)
       {
         RelayDownstreamMessage msg;
         const llarp_buffer_t buf(ev.first);
         msg.pathid = info.rxID;
-        msg.Y      = ev.second ^ nonceXOR;
+        msg.Y = ev.second ^ nonceXOR;
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
         msg.X = buf;
-        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
-                        info.upstream, " to ", info.downstream);
-        if(m_DownstreamGather.full())
+        llarp::LogDebug(
+            "relay ",
+            msg.X.size(),
+            " bytes downstream from ",
+            info.upstream,
+            " to ",
+            info.downstream);
+        if (m_DownstreamGather.full())
         {
           LogicCall(r->logic(), flushIt);
         }
-        if(m_DownstreamGather.enabled())
+        if (m_DownstreamGather.enabled())
           m_DownstreamGather.pushBack(msg);
       }
       m_DownstreamWorkCounter--;
-      if(m_DownstreamWorkCounter == 0)
+      if (m_DownstreamWorkCounter == 0)
         LogicCall(r->logic(), flushIt);
     }
 
@@ -164,53 +163,52 @@ namespace llarp
     {
       m_UpstreamWorkCounter++;
       auto flushIt = [self = shared_from_this(), r]() {
-        std::vector< RelayUpstreamMessage > msgs;
+        std::vector<RelayUpstreamMessage> msgs;
         do
         {
           auto maybe = self->m_UpstreamGather.tryPopFront();
-          if(not maybe.has_value())
+          if (not maybe.has_value())
             break;
           msgs.emplace_back(maybe.value());
-        } while(true);
+        } while (true);
         self->HandleAllUpstream(std::move(msgs), r);
       };
-      for(auto& ev : *msgs)
+      for (auto& ev : *msgs)
       {
         const llarp_buffer_t buf(ev.first);
         RelayUpstreamMessage msg;
         CryptoManager::instance()->xchacha20(buf, pathKey, ev.second);
         msg.pathid = info.txID;
-        msg.Y      = ev.second ^ nonceXOR;
-        msg.X      = buf;
-        if(m_UpstreamGather.full())
+        msg.Y = ev.second ^ nonceXOR;
+        msg.X = buf;
+        if (m_UpstreamGather.full())
         {
           LogicCall(r->logic(), flushIt);
         }
-        if(m_UpstreamGather.enabled())
+        if (m_UpstreamGather.enabled())
           m_UpstreamGather.pushBack(msg);
       }
       m_UpstreamWorkCounter--;
-      if(m_UpstreamWorkCounter == 0)
+      if (m_UpstreamWorkCounter == 0)
         LogicCall(r->logic(), flushIt);
     }
 
     void
-    TransitHop::HandleAllUpstream(std::vector< RelayUpstreamMessage > msgs,
-                                  AbstractRouter* r)
+    TransitHop::HandleAllUpstream(std::vector<RelayUpstreamMessage> msgs, AbstractRouter* r)
     {
-      if(IsEndpoint(r->pubkey()))
+      if (IsEndpoint(r->pubkey()))
       {
-        for(const auto& msg : msgs)
+        for (const auto& msg : msgs)
         {
           const llarp_buffer_t buf(msg.X);
-          if(!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
+          if (!r->ParseRoutingMessageBuffer(buf, this, info.rxID))
           {
             LogWarn("invalid upstream data on endpoint ", info);
           }
           m_LastActivity = r->Now();
         }
         FlushDownstream(r);
-        for(const auto& other : m_FlushOthers)
+        for (const auto& other : m_FlushOthers)
         {
           other->FlushUpstream(r);
         }
@@ -218,10 +216,15 @@ namespace llarp
       }
       else
       {
-        for(const auto& msg : msgs)
+        for (const auto& msg : msgs)
         {
-          llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
-                          info.downstream, " to ", info.upstream);
+          llarp::LogDebug(
+              "relay ",
+              msg.X.size(),
+              " bytes upstream from ",
+              info.downstream,
+              " to ",
+              info.upstream);
           r->SendToOrQueue(info.upstream, &msg);
         }
       }
@@ -229,13 +232,17 @@ namespace llarp
     }
 
     void
-    TransitHop::HandleAllDownstream(std::vector< RelayDownstreamMessage > msgs,
-                                    AbstractRouter* r)
+    TransitHop::HandleAllDownstream(std::vector<RelayDownstreamMessage> msgs, AbstractRouter* r)
     {
-      for(const auto& msg : msgs)
+      for (const auto& msg : msgs)
       {
-        llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
-                        info.upstream, " to ", info.downstream);
+        llarp::LogDebug(
+            "relay ",
+            msg.X.size(),
+            " bytes downstream from ",
+            info.upstream,
+            " to ",
+            info.downstream);
         r->SendToOrQueue(info.downstream, &msg);
       }
       r->linkManager().PumpLinks();
@@ -244,10 +251,9 @@ namespace llarp
     void
     TransitHop::FlushUpstream(AbstractRouter* r)
     {
-      if(m_UpstreamQueue && !m_UpstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(&TransitHop::UpstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_UpstreamQueue), r));
+      if (m_UpstreamQueue && !m_UpstreamQueue->empty())
+        r->threadpool()->addJob(std::bind(
+            &TransitHop::UpstreamWork, shared_from_this(), std::move(m_UpstreamQueue), r));
 
       m_UpstreamQueue = nullptr;
     }
@@ -255,18 +261,16 @@ namespace llarp
     void
     TransitHop::FlushDownstream(AbstractRouter* r)
     {
-      if(m_DownstreamQueue && !m_DownstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(&TransitHop::DownstreamWork,
-                                          shared_from_this(),
-                                          std::move(m_DownstreamQueue), r));
+      if (m_DownstreamQueue && !m_DownstreamQueue->empty())
+        r->threadpool()->addJob(std::bind(
+            &TransitHop::DownstreamWork, shared_from_this(), std::move(m_DownstreamQueue), r));
       m_DownstreamQueue = nullptr;
     }
 
     /// this is where a DHT message is handled at the end of a path, that is,
     /// where a SNode receives a DHT message from a client along a path.
     bool
-    TransitHop::HandleDHTMessage(const llarp::dht::IMessage& msg,
-                                 AbstractRouter* r)
+    TransitHop::HandleDHTMessage(const llarp::dht::IMessage& msg, AbstractRouter* r)
     {
       return r->dht()->impl->RelayRequestForPath(info.rxID, msg);
     }
@@ -302,13 +306,12 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage& msg, AbstractRouter* r)
     {
-      if(msg.Verify()
-         && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
+      if (msg.Verify() && r->exitContext().ObtainNewExit(msg.I, info.rxID, msg.E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg.T;
-        if(!grant.Sign(r->identity()))
+        if (!grant.Sign(r->identity()))
         {
           llarp::LogError("Failed to sign grant exit message");
           return false;
@@ -320,7 +323,7 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg.T;
-      if(!reject.Sign(r->identity()))
+      if (!reject.Sign(r->identity()))
       {
         llarp::LogError("Failed to sign reject exit message");
         return false;
@@ -334,14 +337,14 @@ namespace llarp
     {
       const llarp::routing::DataDiscardMessage discard(info.rxID, msg.S);
       auto ep = r->exitContext().FindEndpointForPath(info.rxID);
-      if(ep && msg.Verify(ep->PubKey()))
+      if (ep && msg.Verify(ep->PubKey()))
       {
         llarp::routing::CloseExitMessage reply;
         reply.Y = msg.Y;
         reply.S = NextSeqNo();
-        if(reply.Sign(r->identity()))
+        if (reply.Sign(r->identity()))
         {
-          if(SendRoutingMessage(reply, r))
+          if (SendRoutingMessage(reply, r))
           {
             ep->Close();
             return true;
@@ -366,12 +369,12 @@ namespace llarp
         const llarp::routing::UpdateExitMessage& msg, AbstractRouter* r)
     {
       auto ep = r->exitContext().FindEndpointForPath(msg.P);
-      if(ep)
+      if (ep)
       {
-        if(!msg.Verify(ep->PubKey()))
+        if (!msg.Verify(ep->PubKey()))
           return false;
 
-        if(ep->UpdateLocalPath(info.rxID))
+        if (ep->UpdateLocalPath(info.rxID))
         {
           llarp::routing::UpdateExitVerifyMessage reply;
           reply.T = msg.T;
@@ -409,18 +412,17 @@ namespace llarp
         const llarp::routing::TransferTrafficMessage& msg, AbstractRouter* r)
     {
       auto endpoint = r->exitContext().FindEndpointForPath(info.rxID);
-      if(endpoint)
+      if (endpoint)
       {
         bool sent = true;
-        for(const auto& pkt : msg.X)
+        for (const auto& pkt : msg.X)
         {
           // check short packet buffer
-          if(pkt.size() <= 8)
+          if (pkt.size() <= 8)
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
-              counter);
+              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)), counter);
         }
         return sent;
       }
@@ -437,23 +439,23 @@ namespace llarp
     {
       auto path = r->pathContext().GetPathForTransfer(msg.P);
       llarp::routing::DataDiscardMessage discarded(msg.P, msg.S);
-      if(path == nullptr || msg.T.F != info.txID)
+      if (path == nullptr || msg.T.F != info.txID)
       {
         return SendRoutingMessage(discarded, r);
       }
 
-      std::array< byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE > tmp;
+      std::array<byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE> tmp;
       llarp_buffer_t buf(tmp);
-      if(!msg.T.BEncode(&buf))
+      if (!msg.T.BEncode(&buf))
       {
         llarp::LogWarn(info, " failed to transfer data message, encode failed");
         return SendRoutingMessage(discarded, r);
       }
       // rewind
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
-      if(path->HandleDownstream(buf, msg.Y, r))
+      if (path->HandleDownstream(buf, msg.Y, r))
       {
         m_FlushOthers.emplace(path);
         return true;
