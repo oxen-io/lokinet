@@ -108,7 +108,7 @@ namespace llarp
     nodeName = nickname;
 
     FILE* logfile = nullptr;
-    if (file == "stdout")
+    if (file == "stdout" or file.empty())
     {
       logfile = stdout;
     }
@@ -125,7 +125,7 @@ namespace llarp
     switch (type)
     {
       case LogType::Unknown:
-        throw std::invalid_argument("Cannot use LogType::Unknown");
+        // tolerate as fallback to LogType::File
 
       case LogType::File:
         if (logfile != stdout)

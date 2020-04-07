@@ -457,7 +457,7 @@ namespace llarp
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    if (configRouters.size() == 0)
+    if (configRouters.size() == 0 and not m_isServiceNode)
     {
       // TODO: use constant
       fs::path defaultBootstrapFile = conf->router.m_dataDir / "bootstrap.signed";
