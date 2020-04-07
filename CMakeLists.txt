@@ -323,4 +323,6 @@ if (NOT SHADOW)
   endif(ANDROID)
 endif()
 
+add_subdirectory(docs)
+
 include(cmake/installer.cmake)
