@@ -87,6 +87,7 @@ build:macos:
   artifacts:
     paths:
       - build/*.pkg
+      - build/daemon/lokinet
 
 
 # needs libuv and libcurl

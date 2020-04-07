@@ -296,9 +296,10 @@ mac-release-configure: $(LIBUV_PREFIX)
 	$(CONFIG_CMD) -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
 
 mac-release: mac-release-configure
-	$(MAKE) -C '$(BUILD_ROOT)' package
+	$(MAKE) -C '$(BUILD_ROOT)'
 
 mac: mac-release
+	$(MAKE) -C '$(BUILD_ROOT)' package
 
 abyss: debug
 	$(ABYSS_EXE)
