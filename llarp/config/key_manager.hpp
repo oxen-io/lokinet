@@ -87,8 +87,10 @@ namespace llarp
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(const fs::path& filepath, llarp::SecretKey& key,
-                    std::function< void(llarp::SecretKey& key) > keygen);
+    loadOrCreateKey(
+        const fs::path& filepath,
+        llarp::SecretKey& key,
+        std::function<void(llarp::SecretKey& key)> keygen);
 
     /// Requests the identity key from lokid via HTTP (curl)
     bool

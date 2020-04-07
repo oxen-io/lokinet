@@ -50,7 +50,7 @@ namespace llarp
     virtual void
     ImmediateFlush() override;
 
-    using Lines_t = thread::Queue< std::string >;
+    using Lines_t = thread::Queue<std::string>;
 
    protected:
     Lines_t m_Lines;

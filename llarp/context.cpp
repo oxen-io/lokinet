@@ -30,13 +30,11 @@ namespace llarp
   bool
   Context::Configure(bool isRelay, nonstd::optional<fs::path> dataDir)
   {
-    fs::path defaultDataDir = dataDir.has_value()
-        ? dataDir.value()
-        : GetDefaultDataDir();
+    fs::path defaultDataDir = dataDir.has_value() ? dataDir.value() : GetDefaultDataDir();
 
-    if(configfile.size())
+    if (configfile.size())
     {
-      if(!config->Load(configfile.c_str(), isRelay, defaultDataDir))
+      if (!config->Load(configfile.c_str(), isRelay, defaultDataDir))
       {
         config.release();
         llarp::LogError("failed to load config file ", configfile);
@@ -45,12 +43,11 @@ namespace llarp
     }
 
     auto threads = config->router.m_workerThreads;
-    if(threads <= 0)
+    if (threads <= 0)
       threads = 1;
-    worker = std::make_shared< llarp::thread::ThreadPool >(threads, 1024,
-                                                           "llarp-worker");
+    worker = std::make_shared<llarp::thread::ThreadPool>(threads, 1024, "llarp-worker");
     auto jobQueueSize = config->router.m_JobQueueSize;
-    if(jobQueueSize < 1024)
+    if (jobQueueSize < 1024)
       jobQueueSize = 1024;
     logic = std::make_shared<Logic>(jobQueueSize);
 
@@ -214,7 +211,7 @@ namespace llarp
   }
 
   bool
-  Context::LoadConfig(const std::string &fname, bool isRelay)
+  Context::LoadConfig(const std::string& fname, bool isRelay)
   {
     config = std::make_unique<Config>();
     configfile = fname;
@@ -281,23 +278,23 @@ extern "C"
       delete conf;
   }
 
-  struct llarp_main *
-  llarp_main_init_from_config(struct llarp_config *conf, bool isRelay)
+  struct llarp_main*
+  llarp_main_init_from_config(struct llarp_config* conf, bool isRelay)
   {
     if (conf == nullptr)
       return nullptr;
-    llarp_main *m = new llarp_main(conf);
-    if(m->ctx->Configure(isRelay, {}))
+    llarp_main* m = new llarp_main(conf);
+    if (m->ctx->Configure(isRelay, {}))
       return m;
     delete m;
     return nullptr;
   }
 
   bool
-  llarp_config_load_file(const char *fname, struct llarp_config **conf, bool isRelay)
+  llarp_config_load_file(const char* fname, struct llarp_config** conf, bool isRelay)
   {
-    llarp_config *c = new llarp_config();
-    if(c->impl.Load(fname, isRelay, {}))
+    llarp_config* c = new llarp_config();
+    if (c->impl.Load(fname, isRelay, {}))
     {
       *conf = c;
       return true;
@@ -434,7 +431,7 @@ extern "C"
   }
 
   bool
-  llarp_main_configure(struct llarp_main *ptr, struct llarp_config *conf, bool isRelay)
+  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf, bool isRelay)
   {
     if (ptr == nullptr || conf == nullptr)
       return false;

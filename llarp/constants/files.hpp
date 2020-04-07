@@ -13,8 +13,7 @@ namespace llarp
 
   constexpr auto nodedb_dirname = "nodedb";
 
-  inline
-  fs::path
+  inline fs::path
   GetDefaultDataDir()
   {
 #ifdef _WIN32
@@ -25,19 +24,16 @@ namespace llarp
     return homedir / ".lokinet/";
   }
 
-  inline
-  fs::path
+  inline fs::path
   GetDefaultConfigFilename()
   {
     return "lokinet.ini";
   }
 
-  inline
-  fs::path
+  inline fs::path
   GetDefaultConfigPath()
   {
     return GetDefaultDataDir() / GetDefaultConfigFilename();
   }
 
 }  // namespace llarp
-

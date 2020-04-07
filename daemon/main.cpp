@@ -65,7 +65,7 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
   // this is important, can downgrade from Info though
   llarp::LogDebug("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
-  ctx      = llarp_main_init(conffname.c_str(), opts.isRelay);
+  ctx = llarp_main_init(conffname.c_str(), opts.isRelay);
   int code = 1;
   if (ctx)
   {
@@ -103,18 +103,17 @@ main(int argc, char* argv[])
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
-  cxxopts::Options options("lokinet",
-                           "LokiNET is a free, open source, private, "
-                           "decentralized, \"market based sybil resistant\" "
-                           "and IP based onion routing network");
-  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
-      "h,help", "help", cxxopts::value< bool >())("version", "version",
-                                                  cxxopts::value< bool >())(
-      "g,generate", "generate client config", cxxopts::value< bool >())(
-      "r,relay", "run as relay instead of client", cxxopts::value< bool >())(
-      "f,force", "overwrite", cxxopts::value< bool >())(
-      "c,colour", "colour output",
-      cxxopts::value< bool >()->default_value("true"))(
+  cxxopts::Options options(
+      "lokinet",
+      "LokiNET is a free, open source, private, "
+      "decentralized, \"market based sybil resistant\" "
+      "and IP based onion routing network");
+  options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
+      "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
+      "g,generate", "generate client config", cxxopts::value<bool>())(
+      "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
+      "f,force", "overwrite", cxxopts::value<bool>())(
+      "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
       "b,background",
       "background mode (start, but do not connect to the network)",
       cxxopts::value<bool>())(
@@ -123,7 +122,7 @@ main(int argc, char* argv[])
   options.parse_positional("config");
 
   bool genconfigOnly = false;
-  bool overwrite     = false;
+  bool overwrite = false;
   std::string conffname;
   try
   {
@@ -163,17 +162,17 @@ main(int argc, char* argv[])
       opts.background = true;
     }
 
-    if(result.count("relay") > 0)
+    if (result.count("relay") > 0)
     {
       opts.isRelay = true;
     }
 
-    if(result.count("force") > 0)
+    if (result.count("force") > 0)
     {
       overwrite = true;
     }
 
-    if(result.count("config") > 0)
+    if (result.count("config") > 0)
     {
       auto arg = result["config"].as<std::string>();
       if (!arg.empty())
@@ -195,12 +194,10 @@ main(int argc, char* argv[])
     fs::path fname = fs::path(conffname);
     fs::path basedir = fname.parent_path();
 
-    if(genconfigOnly)
+    if (genconfigOnly)
     {
-      llarp::ensureConfig(llarp::GetDefaultDataDir(),
-                          llarp::GetDefaultConfigPath(),
-                          overwrite,
-                          opts.isRelay);
+      llarp::ensureConfig(
+          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
     }
     else
     {
@@ -217,10 +214,8 @@ main(int argc, char* argv[])
   }
   else
   {
-    llarp::ensureConfig(llarp::GetDefaultDataDir(),
-                        llarp::GetDefaultConfigPath(),
-                        overwrite,
-                        opts.isRelay);
+    llarp::ensureConfig(
+        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
     conffname = llarp::GetDefaultConfigPath().c_str();
   }
 

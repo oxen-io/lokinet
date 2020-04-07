@@ -467,7 +467,7 @@ llarp_nodedb::ensure_dir(const fs::path& nodedbDir)
     // perhaps cpp17::fs is just as screwed-up
     // attempting to create a folder with no name
     // what does this mean...?
-    if(!ch)
+    if (!ch)
       continue;
 
     fs::path sub = nodedbDir / std::string(&ch, 1);

@@ -36,18 +36,18 @@ namespace
 int
 main(int argc, char* argv[])
 {
-  cxxopts::Options options("lokinetctl",
-                           "LokiNET is a free, open source, private, "
-                           "decentralized, \"market based sybil resistant\" "
-                           "and IP based onion routing network");
+  cxxopts::Options options(
+      "lokinetctl",
+      "LokiNET is a free, open source, private, "
+      "decentralized, \"market based sybil resistant\" "
+      "and IP based onion routing network");
 
-  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
-      "h,help", "help", cxxopts::value< bool >())(
-      "c,config", "config file",
-      cxxopts::value< std::string >()->default_value(
-          llarp::GetDefaultConfigPath().string()))
-          ("dump", "dump rc file",
-           cxxopts::value< std::vector< std::string > >(), "FILE");
+  options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
+      "h,help", "help", cxxopts::value<bool>())(
+      "c,config",
+      "config file",
+      cxxopts::value<std::string>()->default_value(llarp::GetDefaultConfigPath().string()))(
+      "dump", "dump rc file", cxxopts::value<std::vector<std::string>>(), "FILE");
 
   try
   {
@@ -80,7 +80,6 @@ main(int argc, char* argv[])
         return 1;
       }
     }
-
   }
   catch (const cxxopts::OptionParseException& ex)
   {

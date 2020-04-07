@@ -16,7 +16,8 @@ namespace llarp
     Json,
     Syslog,
   };
-  LogType LogTypeFromString(const std::string&);
+  LogType
+  LogTypeFromString(const std::string&);
 
   struct LogContext
   {
@@ -51,11 +52,12 @@ namespace llarp
     /// @param nickname is a tag to add to each log statement
     /// @param threadpool is a threadpool where I/O can offloaded
     void
-    Initialize(LogLevel level,
-               LogType type,
-               const std::string& file,
-               const std::string& nickname,
-               std::shared_ptr<thread::ThreadPool> threadpool);
+    Initialize(
+        LogLevel level,
+        LogType type,
+        const std::string& file,
+        const std::string& nickname,
+        std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
   void

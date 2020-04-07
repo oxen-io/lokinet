@@ -33,10 +33,14 @@ namespace llarp
   LogType
   LogTypeFromString(const std::string& str)
   {
-    if (str == "unknown") return LogType::Unknown;
-    else if (str == "file") return LogType::File;
-    else if (str == "json") return LogType::Json;
-    else if (str == "syslog") return LogType::Syslog;
+    if (str == "unknown")
+      return LogType::Unknown;
+    else if (str == "file")
+      return LogType::File;
+    else if (str == "json")
+      return LogType::Json;
+    else if (str == "syslog")
+      return LogType::Syslog;
 
     return LogType::Unknown;
   }
@@ -93,11 +97,12 @@ namespace llarp
   }
 
   void
-  LogContext::Initialize(LogLevel level,
-                         LogType type,
-                         const std::string& file,
-                         const std::string& nickname,
-                         std::shared_ptr<thread::ThreadPool> threadpool)
+  LogContext::Initialize(
+      LogLevel level,
+      LogType type,
+      const std::string& file,
+      const std::string& nickname,
+      std::shared_ptr<thread::ThreadPool> threadpool)
   {
     SetLogLevel(level);
     nodeName = nickname;
@@ -112,8 +117,8 @@ namespace llarp
       logfile = ::fopen(file.c_str(), "a");
       if (not logfile)
       {
-        throw std::runtime_error(stringify(
-            "could not open logfile ", file, ", errno: ", strerror(errno)));
+        throw std::runtime_error(
+            stringify("could not open logfile ", file, ", errno: ", strerror(errno)));
       }
     }
 
@@ -129,7 +134,7 @@ namespace llarp
           std::cout << std::flush;
 
           LogContext::Instance().logStream =
-              std::make_unique< FileLogStream >(threadpool, logfile, 100ms, true);
+              std::make_unique<FileLogStream>(threadpool, logfile, 100ms, true);
         }
         else
         {
@@ -141,8 +146,8 @@ namespace llarp
         LogInfo("Switching logger to JSON with file: ", file);
         std::cout << std::flush;
 
-        LogContext::Instance().logStream = std::make_unique< JSONLogStream >(
-            threadpool, logfile, 100ms, logfile != stdout);
+        LogContext::Instance().logStream =
+            std::make_unique<JSONLogStream>(threadpool, logfile, 100ms, logfile != stdout);
         break;
       case LogType::Syslog:
         if (logfile)
@@ -157,10 +162,9 @@ namespace llarp
 #else
         LogInfo("Switching logger to syslog");
         std::cout << std::flush;
-        LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+        LogContext::Instance().logStream = std::make_unique<SysLogStream>();
 #endif
         break;
-
     }
   }
 

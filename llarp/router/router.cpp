@@ -373,17 +373,18 @@ namespace llarp
   Router::FromConfig(Config* conf)
   {
     // Set netid before anything else
-    if(!conf->router.m_netId.empty()
-       && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
+    if (!conf->router.m_netId.empty() && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
-      const auto &netid = conf->router.m_netId;
-      llarp::LogWarn("!!!! you have manually set netid to be '", netid,
-                     "' which does not equal '", llarp::DEFAULT_NETID,
-                     "' you will run as a different network, good luck "
-                     "and don't forget: something something MUH traffic "
-                     "shape correlation !!!!");
-      NetID::DefaultValue() =
-          NetID(reinterpret_cast< const byte_t * >(netid.c_str()));
+      const auto& netid = conf->router.m_netId;
+      llarp::LogWarn(
+          "!!!! you have manually set netid to be '",
+          netid,
+          "' which does not equal '",
+          llarp::DEFAULT_NETID,
+          "' you will run as a different network, good luck "
+          "and don't forget: something something MUH traffic "
+          "shape correlation !!!!");
+      NetID::DefaultValue() = NetID(reinterpret_cast<const byte_t*>(netid.c_str()));
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
@@ -392,16 +393,14 @@ namespace llarp
     m_OutboundPort = conf->links.m_OutboundLink.port;
     // Router config
     _rc.SetNick(conf->router.m_nickname);
-    _outboundSessionMaker.maxConnectedRouters =
-        conf->router.m_maxConnectedRouters;
-    _outboundSessionMaker.minConnectedRouters =
-        conf->router.m_minConnectedRouters;
+    _outboundSessionMaker.maxConnectedRouters = conf->router.m_maxConnectedRouters;
+    _outboundSessionMaker.minConnectedRouters = conf->router.m_minConnectedRouters;
     encryption_keyfile = conf->router.m_dataDir / our_enc_key_filename;
-    our_rc_file        = conf->router.m_dataDir / our_rc_filename;
-    transport_keyfile  = conf->router.m_dataDir / our_transport_key_filename;
-    addrInfo           = conf->router.m_addrInfo;
-    publicOverride     = conf->router.m_publicOverride;
-    ip4addr            = conf->router.m_ip4addr;
+    our_rc_file = conf->router.m_dataDir / our_rc_filename;
+    transport_keyfile = conf->router.m_dataDir / our_transport_key_filename;
+    addrInfo = conf->router.m_addrInfo;
+    publicOverride = conf->router.m_publicOverride;
+    ip4addr = conf->router.m_ip4addr;
 
     RouterContact::BlockBogons = conf->router.m_blockBogons;
 
@@ -414,17 +413,17 @@ namespace llarp
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     // TODO: add config flag for "is service node"
-    if(conf->links.m_InboundLinks.size())
+    if (conf->links.m_InboundLinks.size())
     {
       m_isServiceNode = true;
     }
 
     std::set<RouterID> strictConnectPubkeys;
 
-    if(!conf->network.m_strictConnect.empty())
+    if (!conf->network.m_strictConnect.empty())
     {
-      const auto &val = conf->network.m_strictConnect;
-      if(IsServiceNode())
+      const auto& val = conf->network.m_strictConnect;
+      if (IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
         return false;
@@ -453,8 +452,8 @@ namespace llarp
     }
 
     std::vector<fs::path> configRouters = conf->connect.routers;
-    configRouters.insert(configRouters.end(), conf->bootstrap.routers.begin(),
-                         conf->bootstrap.routers.end());
+    configRouters.insert(
+        configRouters.end(), conf->bootstrap.routers.begin(), conf->bootstrap.routers.end());
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
@@ -479,7 +478,7 @@ namespace llarp
       bool isListFile = false;
       {
         std::ifstream inf(router.c_str(), std::ios::binary);
-        if(inf.is_open())
+        if (inf.is_open())
         {
           const char ch = inf.get();
           isListFile = ch == 'l';
@@ -539,10 +538,11 @@ namespace llarp
     }
 
     // create inbound links, if we are a service node
-    for(const LinksConfig::LinkInfo &serverConfig : conf->links.m_InboundLinks)
+    for (const LinksConfig::LinkInfo& serverConfig : conf->links.m_InboundLinks)
     {
       auto server = iwp::NewInboundLink(
-          m_keyManager, util::memFn(&AbstractRouter::rc, this),
+          m_keyManager,
+          util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
           util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
@@ -554,7 +554,7 @@ namespace llarp
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
       uint16_t port = serverConfig.port;
-      if(!server->Configure(netloop(), key, af, port))
+      if (!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
         return false;
@@ -563,16 +563,16 @@ namespace llarp
     }
 
     // Network config
-    if(conf->network.m_enableProfiling.has_value())
+    if (conf->network.m_enableProfiling.has_value())
     {
-      if(not conf->network.m_enableProfiling.value())
+      if (not conf->network.m_enableProfiling.value())
       {
         routerProfiling().Disable();
         LogWarn("router profiling explicitly disabled");
       }
     }
 
-    if(!conf->network.m_routerProfilesFile.empty())
+    if (!conf->network.m_routerProfilesFile.empty())
     {
       routerProfilesFile = conf->network.m_routerProfilesFile;
       routerProfiling().Load(routerProfilesFile.c_str());
@@ -581,7 +581,7 @@ namespace llarp
 
     // API config
     enableRPCServer = conf->api.m_enableRPCServer;
-    rpcBindAddr     = conf->api.m_rpcBindAddr;
+    rpcBindAddr = conf->api.m_rpcBindAddr;
 
     // Services config
     for (const auto& service : conf->services.services)
@@ -1228,15 +1228,13 @@ namespace llarp
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
-        util::memFn(&IOutboundSessionMaker::OnSessionEstablished,
-                    &_outboundSessionMaker),
+        util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-        util::memFn(&IOutboundSessionMaker::OnConnectTimeout,
-                    &_outboundSessionMaker),
+        util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
         util::memFn(&AbstractRouter::SessionClosed, this),
         util::memFn(&AbstractRouter::PumpLL, this));
 
-    if(!link)
+    if (!link)
       return false;
 
     const auto afs = {AF_INET, AF_INET6};

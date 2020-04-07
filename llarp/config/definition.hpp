@@ -12,23 +12,19 @@
 
 namespace llarp
 {
-
   /// A base class for specifying config options and their constraints. The basic to/from string
   /// type functions are provided pure-virtual. The type-aware implementations which implement these
   /// functions are templated classes. One reason for providing a non-templated base class is so
   /// that they can all be mixed into the same containers (albiet as pointers).
-  struct OptionDefinitionBase 
+  struct OptionDefinitionBase
   {
-    OptionDefinitionBase(std::string section_,
-                         std::string name_,
-                         bool required_);
-    OptionDefinitionBase(std::string section_,
-                         std::string name_,
-                         bool required_,
-                         bool multiValued_);
+    OptionDefinitionBase(std::string section_, std::string name_, bool required_);
+    OptionDefinitionBase(
+        std::string section_, std::string name_, bool required_, bool multiValued_);
 
-    virtual
-    ~OptionDefinitionBase() {}
+    virtual ~OptionDefinitionBase()
+    {
+    }
 
     /// Subclasses should provide their default value as a string
     ///
@@ -59,7 +55,8 @@ namespace llarp
     /// Subclassess should call their acceptor, if present. See OptionDefinition for more details.
     ///
     /// @throws if the acceptor throws or the option is required but missing
-    virtual void tryAccept() const = 0;
+    virtual void
+    tryAccept() const = 0;
 
     std::string section;
     std::string name;
@@ -70,10 +67,11 @@ namespace llarp
   /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
   /// for implementations which can use the std::ostringstream and std::istringstream for to/from
   /// string functionality.
-  /// 
-  /// Note that types (T) used as template parameters here must be used verbatim when calling 
-  /// ConfigDefinition::getConfigValue(). Similar types such as uint32_t and int32_t cannot be mixed.
-  template<typename T>
+  ///
+  /// Note that types (T) used as template parameters here must be used verbatim when calling
+  /// ConfigDefinition::getConfigValue(). Similar types such as uint32_t and int32_t cannot be
+  /// mixed.
+  template <typename T>
   struct OptionDefinition : public OptionDefinitionBase
   {
     /// Constructor. Arguments are passed directly to OptionDefinitionBase.
@@ -86,27 +84,29 @@ namespace llarp
     /// @param acceptor_ is an optional function whose purpose is to both validate the parsed
     ///        input and internalize it (e.g. copy it for runtime use). The acceptor should throw
     ///        an exception with a useful message if it is not acceptable.
-    OptionDefinition(std::string section_,
-                           std::string name_,
-                           bool required_,
-                           nonstd::optional<T> defaultValue_,
-                           std::function<void(T)> acceptor_ = nullptr)
-      : OptionDefinitionBase(section_, name_, required_)
-      , defaultValue(defaultValue_)
-      , acceptor(acceptor_)
+    OptionDefinition(
+        std::string section_,
+        std::string name_,
+        bool required_,
+        nonstd::optional<T> defaultValue_,
+        std::function<void(T)> acceptor_ = nullptr)
+        : OptionDefinitionBase(section_, name_, required_)
+        , defaultValue(defaultValue_)
+        , acceptor(acceptor_)
     {
     }
 
     /// As above, but also takes a bool value for multiValued.
-    OptionDefinition(std::string section_,
-                           std::string name_,
-                           bool required_,
-                           bool multiValued_,
-                           nonstd::optional<T> defaultValue_,
-                           std::function<void(T)> acceptor_ = nullptr)
-      : OptionDefinitionBase(section_, name_, required_, multiValued_)
-      , defaultValue(defaultValue_)
-      , acceptor(acceptor_)
+    OptionDefinition(
+        std::string section_,
+        std::string name_,
+        bool required_,
+        bool multiValued_,
+        nonstd::optional<T> defaultValue_,
+        std::function<void(T)> acceptor_ = nullptr)
+        : OptionDefinitionBase(section_, name_, required_, multiValued_)
+        , defaultValue(defaultValue_)
+        , acceptor(acceptor_)
     {
     }
 
@@ -127,15 +127,15 @@ namespace llarp
 
     /// Returns the value at the given index.
     ///
-    /// @param index 
+    /// @param index
     /// @return the value at the given index, if it exists
     /// @throws range_error exception if index >= size
     T
     getValueAt(size_t index) const
     {
       if (index >= parsedValues.size())
-        throw std::range_error(stringify(
-              "no value at index ", index, ", size: ", parsedValues.size()));
+        throw std::range_error(
+            stringify("no value at index ", index, ", size: ", parsedValues.size()));
 
       return parsedValues[index];
     }
@@ -164,10 +164,10 @@ namespace llarp
     {
       if (not multiValued and parsedValues.size() > 0)
       {
-        throw std::invalid_argument(stringify("duplicate value for ", name,
-              ", previous value: ", parsedValues[0]));
+        throw std::invalid_argument(
+            stringify("duplicate value for ", name, ", previous value: ", parsedValues[0]));
       }
-      
+
       std::istringstream iss(input);
       T t;
       iss >> t;
@@ -179,7 +179,6 @@ namespace llarp
       {
         parsedValues.emplace_back(std::move(t));
       }
-
     }
 
     std::string
@@ -204,8 +203,12 @@ namespace llarp
     {
       if (required and parsedValues.size() == 0)
       {
-        throw std::runtime_error(stringify("cannot call tryAccept() on [",
-              section, "]:", name, " when required but no value available"));
+        throw std::runtime_error(stringify(
+            "cannot call tryAccept() on [",
+            section,
+            "]:",
+            name,
+            " when required but no value available"));
       }
 
       // don't use default value if we are multi-valued and have no value
@@ -224,7 +227,7 @@ namespace llarp
         else
         {
           auto maybe = getValue();
-          assert(maybe.has_value()); // should be guaranteed by our earlier checks
+          assert(maybe.has_value());  // should be guaranteed by our earlier checks
           // TODO: avoid copies here if possible
           acceptor(maybe.value());
         }
@@ -236,9 +239,8 @@ namespace llarp
     std::function<void(T)> acceptor;
   };
 
-  using UndeclaredValueHandler 
-      = std::function<void(string_view section, string_view name, string_view value)>;
-
+  using UndeclaredValueHandler =
+      std::function<void(string_view section, string_view name, string_view value)>;
 
   using OptionDefinition_ptr = std::unique_ptr<OptionDefinitionBase>;
 
@@ -253,17 +255,17 @@ namespace llarp
   ///
   /// The layout and grouping of the config options are modelled after the INI file format; each
   /// option has a name and is grouped under a section. Duplicate option names are allowed only if
-  /// they exist in a different section. The ConfigDefinition can be serialized in the INI file format
-  /// using the generateINIConfig() function.
+  /// they exist in a different section. The ConfigDefinition can be serialized in the INI file
+  /// format using the generateINIConfig() function.
   ///
   /// Configured values (e.g. those encountered when parsing a file) can be provided through calls
   /// to addConfigValue(). These take a std::string as a value, which is automatically parsed.
-  /// 
+  ///
   /// The ConfigDefinition can be used to print out a full config string (or file), including fields
   /// with defaults and optionally fields which have a specified value (values provided through
   /// calls to addConfigValue()).
-  struct ConfigDefinition {
-
+  struct ConfigDefinition
+  {
     /// Spefify the parameters and type of a configuration option. The parameters are members of
     /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.
     ///
@@ -278,7 +280,7 @@ namespace llarp
 
     /// Convenience function which calls defineOption with a OptionDefinition of the specified type
     /// and with parameters passed through to OptionDefinition's constructor.
-    template<typename T, typename... Params>
+    template <typename T, typename... Params>
     ConfigDefinition&
     defineOption(Params&&... args)
     {
@@ -297,9 +299,7 @@ namespace llarp
     /// @return `*this` for chaining calls
     /// @throws if the option doesn't exist or the provided string isn't parseable
     ConfigDefinition&
-    addConfigValue(string_view section,
-                   string_view name,
-                   string_view value);
+    addConfigValue(string_view section, string_view name, string_view value);
 
     /// Get a config value. If the value hasn't been provided but a default has, the default will
     /// be returned. If no value and no default is provided, an empty optional will be returned.
@@ -312,15 +312,16 @@ namespace llarp
     /// @return an optional providing the configured value, the default, or empty
     /// @throws std::invalid_argument if there is no such config option or the wrong type T was
     //          provided
-    template<typename T>
-    nonstd::optional<T> getConfigValue(string_view section, string_view name)
+    template <typename T>
+    nonstd::optional<T>
+    getConfigValue(string_view section, string_view name)
     {
       OptionDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
 
       auto derived = dynamic_cast<const OptionDefinition<T>*>(definition.get());
       if (not derived)
-        throw std::invalid_argument(stringify("", typeid(T).name(),
-            " is the incorrect type for [", section, "]:", name));
+        throw std::invalid_argument(
+            stringify("", typeid(T).name(), " is the incorrect type for [", section, "]:", name));
 
       return derived->getValue();
     }
@@ -333,7 +334,7 @@ namespace llarp
     ///
     /// @param section is the section for which any undeclared values will invoke the provided
     ///        handler
-    /// @param handler 
+    /// @param handler
     /// @throws if there is already a handler for this section
     void
     addUndeclaredHandler(const std::string& section, UndeclaredValueHandler handler);
@@ -374,9 +375,8 @@ namespace llarp
     /// @param name
     /// @param comment
     void
-    addOptionComments(const std::string& section,
-                      const std::string& name,
-                      std::vector<std::string> comments);
+    addOptionComments(
+        const std::string& section, const std::string& name, std::vector<std::string> comments);
 
     /// Generate a config string from the current config definition, optionally using overridden
     /// values. The generated config will preserve insertion order of both sections and their
@@ -393,15 +393,18 @@ namespace llarp
     generateINIConfig(bool useValues = false);
 
    private:
-
-    OptionDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name);
-    const OptionDefinition_ptr& lookupDefinitionOrThrow(string_view section, string_view name) const;
+    OptionDefinition_ptr&
+    lookupDefinitionOrThrow(string_view section, string_view name);
+    const OptionDefinition_ptr&
+    lookupDefinitionOrThrow(string_view section, string_view name) const;
 
     using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
-    void visitSections(SectionVisitor visitor) const;
+    void
+    visitSections(SectionVisitor visitor) const;
 
     using DefVisitor = std::function<void(const std::string&, const OptionDefinition_ptr&)>;
-    void visitDefinitions(const std::string& section, DefVisitor visitor) const;
+    void
+    visitDefinitions(const std::string& section, DefVisitor visitor) const;
 
     SectionMap m_definitions;
 
@@ -422,13 +425,11 @@ namespace llarp
   ///
   /// Note that this holds on to a reference; it must only be used when this is safe to do. In
   /// particular, a reference to a local variable may be problematic.
-  template<typename T>
+  template <typename T>
   std::function<void(T)>
-  AssignmentAcceptor(T& ref) {
-    return [&](T arg) mutable {
-      ref = std::move(arg);
-    };
+  AssignmentAcceptor(T& ref)
+  {
+    return [&](T arg) mutable { ref = std::move(arg); };
   }
 
-} // namespace llarp
-
+}  // namespace llarp

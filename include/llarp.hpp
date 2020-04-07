@@ -55,7 +55,7 @@ namespace llarp
     std::string nodedb_dir;
 
     bool
-    LoadConfig(const std::string &fname, bool isRelay);
+    LoadConfig(const std::string& fname, bool isRelay);
 
     void
     Close();
@@ -101,12 +101,11 @@ namespace llarp
 #endif
 
    private:
-
     void
     SigINT();
 
     std::string configfile;
-    std::unique_ptr< std::promise< void > > closeWaiter;
+    std::unique_ptr<std::promise<void>> closeWaiter;
   };
 }  // namespace llarp
 

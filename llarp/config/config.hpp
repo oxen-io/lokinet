@@ -22,7 +22,7 @@ namespace llarp
   using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
-  using FreehandOptions = std::unordered_multimap< std::string, std::string >;
+  using FreehandOptions = std::unordered_multimap<std::string, std::string>;
 
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
@@ -59,7 +59,7 @@ namespace llarp
 
   struct NetworkConfig
   {
-    nonstd::optional< bool > m_enableProfiling;
+    nonstd::optional<bool> m_enableProfiling;
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
     FreehandOptions m_options;
@@ -106,7 +106,7 @@ namespace llarp
 
   struct ServicesConfig
   {
-    std::vector< std::pair< std::string, std::string > > services;
+    std::vector<std::pair<std::string, std::string>> services;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -135,7 +135,7 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector< std::string > routers;
+    std::vector<std::string> routers;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -195,10 +195,8 @@ namespace llarp
   };
 
   void
-  ensureConfig(const fs::path& defaultDataDir,
-               const fs::path& confFile,
-               bool overwrite,
-               bool asRouter);
+  ensureConfig(
+      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
 

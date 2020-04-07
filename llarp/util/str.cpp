@@ -91,7 +91,7 @@ namespace llarp
       next = str.find_first_of(delimiter, last);
       if (next > last)
       {
-        splits.push_back(str.substr(last, next-last));
+        splits.push_back(str.substr(last, next - last));
 
         last = next;
 
@@ -103,7 +103,6 @@ namespace llarp
       {
         break;
       }
-
     }
 
     return splits;

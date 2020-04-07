@@ -34,9 +34,9 @@ namespace llarp
     fs::path root = config.router.m_dataDir;
 
     // TODO: use fs::path, or at least support windows-style separators
-    m_rcPath           = root / our_rc_filename;
-    m_idKeyPath        = root / our_identity_filename;
-    m_encKeyPath       = root / our_enc_key_filename;
+    m_rcPath = root / our_rc_filename;
+    m_idKeyPath = root / our_identity_filename;
+    m_encKeyPath = root / our_enc_key_filename;
     m_transportKeyPath = root / our_transport_key_filename;
 
     m_usingLokid = config.lokid.whitelistRouters;
@@ -183,8 +183,9 @@ namespace llarp
 
   bool
   KeyManager::loadOrCreateKey(
-      const fs::path& filepath, llarp::SecretKey& key,
-      std::function< void(llarp::SecretKey& key) > keygen)
+      const fs::path& filepath,
+      llarp::SecretKey& key,
+      std::function<void(llarp::SecretKey& key)> keygen)
   {
     fs::path path(filepath);
     std::error_code ec;

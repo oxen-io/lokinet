@@ -145,8 +145,7 @@ namespace llarp
   }
 
   void
-  ConfigParser::IterAll(
-      std::function< void(string_view, const SectionValues_t&) > visit)
+  ConfigParser::IterAll(std::function<void(string_view, const SectionValues_t&)> visit)
   {
     for (const auto& item : m_Config)
       visit(item.first, item.second);
@@ -154,8 +153,7 @@ namespace llarp
 
   bool
   ConfigParser::VisitSection(
-      const char* name,
-      std::function< bool(const SectionValues_t& sect) > visit) const
+      const char* name, std::function<bool(const SectionValues_t& sect)> visit) const
   {
     // m_Config is effectively:
     // unordered_map< string, unordered_multimap< string, string  >>
