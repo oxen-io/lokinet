@@ -158,7 +158,8 @@ if (NOT MSVC_VERSION)
 	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # STREQUAL because AppleClang's libc++ doesn't yet support thread safety annotations
   add_compile_options(-Wthread-safety)
 endif()
 

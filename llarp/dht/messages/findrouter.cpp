@@ -152,7 +152,7 @@ namespace llarp
       auto& dht = *ctx->impl;
 
       auto router = dht.GetRouter();
-      router->NotifyRouterEvent<tooling::FindRouterReceivedEvent>(router->pubkey(), this);
+      router->NotifyRouterEvent<tooling::FindRouterReceivedEvent>(router->pubkey(), *this);
 
       if (!dht.AllowTransit())
       {

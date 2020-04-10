@@ -777,8 +777,9 @@ namespace llarp
 
           assert(msg.M.size() == 1);
           auto dhtMsg = dynamic_cast<FindRouterMessage*>(msg.M[0].get());
+          assert(dhtMsg != nullptr);
 
-          m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), dhtMsg);
+          m_router->NotifyRouterEvent<tooling::FindRouterSentEvent>(m_router->pubkey(), *dhtMsg);
 
           routers.emplace(router, RouterLookupJob(this, handler));
           return true;

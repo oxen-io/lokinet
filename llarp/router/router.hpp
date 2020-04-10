@@ -477,10 +477,10 @@ namespace llarp
     HasSessionTo(const RouterID& remote) const override;
 
     std::string
-    ShortName() const;
+    ShortName() const override;
 
     uint32_t
-    NextPathBuildNumber();
+    NextPathBuildNumber() override;
 
     void
     handle_router_ticker();
