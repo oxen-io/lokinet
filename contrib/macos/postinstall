@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# set up lokinet data dir
+[ -e /var/lib/lokinet/ ] || mkdir /var/lib/lokinet 
+# bootstrap
+/usr/local/bin/lokinet-bootstrap mainnet /var/lib/lokinet/bootstrap.signed
+# generate configs
+/usr/local/bin/lokinet -g /var/lib/lokinet/lokinet.ini
+# register with launchd
+launchctl load /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
