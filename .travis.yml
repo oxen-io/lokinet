@@ -10,7 +10,7 @@ matrix:
   - name: "lint check"
     os: linux
     compiler: gcc
-    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-9/bin:$PATH"
     addons:
       apt:
         sources:
@@ -34,7 +34,7 @@ matrix:
         - ninja-build
         - libsodium-dev
         - libsystemd-dev
-        - python3-dev
+        - python3.6
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
