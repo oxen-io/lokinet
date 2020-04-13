@@ -14,9 +14,9 @@ matrix:
     addons:
       apt:
         sources:
-          - llvm-toolchain-bionic-8
+          - llvm-toolchain-bionic-9
         packages:
-          - clang-format-8
+          - clang-format-9
   - name: "make debug (linux/gcc)"
     os: linux
     compiler: gcc
@@ -34,6 +34,7 @@ matrix:
         - ninja-build
         - libsodium-dev
         - libsystemd-dev
+        - python3-dev
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
