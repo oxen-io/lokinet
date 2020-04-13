@@ -23,17 +23,20 @@ matrix:
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
     addons: &core_apt_addons
       apt:
+        sources:
+          - deadsnakes
         packages:
-        - build-essential
-        - cmake
-        - curl
-        - git
-        - libcap-dev
-        - libcurl4-openssl-dev
-        - libuv1-dev
-        - ninja-build
-        - libsodium-dev
-        - libsystemd-dev
+          - build-essential
+          - cmake
+          - curl
+          - git
+          - libcap-dev
+          - libcurl4-openssl-dev
+          - libuv1-dev
+          - ninja-build
+          - libsodium-dev
+          - libsystemd-dev
+          - python3.8
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
