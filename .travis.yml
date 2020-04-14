@@ -23,8 +23,6 @@ matrix:
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
     addons: &core_apt_addons
       apt:
-        sources:
-          - deadsnakes
         packages:
           - build-essential
           - cmake
@@ -36,7 +34,6 @@ matrix:
           - ninja-build
           - libsodium-dev
           - libsystemd-dev
-          - python3.8
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
@@ -183,6 +180,7 @@ addons:
     - mingw-w64 mingw-w64-common
     - ninja-build
     - libsodium-dev
+    - python3.8
   homebrew:
     update: true
     packages:
@@ -193,10 +191,11 @@ addons:
     - make
     - ninja
     - libsodium
+    - python3.8
 
 before_install:
   # because travis is hot garbage
-  - pyenv global system 3.7
+  - pyenv global system 3.8
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
       choco install curl make ninja;
       choco upgrade cmake.install;
