@@ -2,21 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-        <key>Label</key>
-        <string>network.loki.lokinet.daemon</string>
+	<key>Label</key>
+	<string>network.loki.lokinet.daemon</string>
 
-        <key>ProgramArguments</key>
-        <array>
-        <string>/usr/local/bin/lokinet</string>
-        <string>/var/lib/lokinet/lokinet.ini</string>
-        </array>
-        <key>KeepAlive</key>
-        <true/>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/var/lib/lokinet/lokinet_macos_daemon_script.sh</string>
+	</array>
 
-        <key>StandardOutPath</key>
-        <string>/var/log/lokinet/stdout.log</string>
+	<!-- Keep Lokinet alive unless magic file exists -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>PathState</key>
+		<dict>
+			<key>/var/lib/lokinet/suspend-launchd-service</key>
+			<false/>
+		</dict>
+	</dict>
 
-        <key>StandardErrorPath</key>
-        <string>/var/log/lokinet/stderr.log</string>
+	<key>StandardOutPath</key>
+    <string>/var/lib/lokinet/stdout</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/lib/lokinet/stderr</string>
+	
 </dict>
 </plist>
