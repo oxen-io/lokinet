@@ -162,6 +162,8 @@ env:
 
 addons:
   apt:
+    sources:
+    - deadsnake
     packages:
     - binutils-gold
     - build-essential
