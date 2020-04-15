@@ -36,7 +36,7 @@ namespace llarp
       using Time_t = std::chrono::milliseconds;
 
       /// maximum number of messages we can ack in a multiack
-      static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
+      static constexpr std::size_t MaxACKSInMACK = 32;
 
       /// outbound session
       Session(LinkLayer* parent, const RouterContact& rc, const AddressInfo& ai);
