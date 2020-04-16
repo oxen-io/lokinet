@@ -199,8 +199,6 @@ addons:
     - python@3.8
 
 before_install:
-  # because travis is hot garbage
-  - pyenv global system 3.8
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
       choco install curl make ninja;
       choco upgrade cmake.install;
