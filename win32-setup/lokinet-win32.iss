@@ -156,20 +156,6 @@ Version: TWindowsVersion;
 function reg_query_helper(): Integer;
 external 'reg_query_helper@files:regdbhelper.dll cdecl setuponly';
 
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
-  begin
-  if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
-     // I need a better message...
-    MsgBox('Restart your computer, then set up IPv6 in Network Connections. [Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
-  if IsTaskSelected('migrateconfigs') then
-    MsgBox('Lokinet JSON-RPC API endpoint enabled. Any custom configuration was retained in %APPDATA%\.lokinet\lokinet.old.ini.', mbInformation, MB_OK);
-  end;
-  // TODO: switch to gcc built qt5
-  MsgBox('You may need to install/update the Visual C++ 2015 Runtime: https://aka.ms/vs/16/release/vc_redist.x86.exe');
-end;
-
 function IsTapInstalled(): Boolean;
 begin
 Result := TapInstalled;
@@ -184,6 +170,63 @@ begin
   else
   begin
     Result := false;
+  end;
+end;
+
+function VCinstalled(const regKey: string): Boolean;
+ { Function for Inno Setup Compiler }
+ { Returns True if same or later Microsoft Visual C++ 2015 Redistributable is installed, otherwise False. }
+ var
+  major: Cardinal;
+  minor: Cardinal;
+  bld: Cardinal;
+  rbld: Cardinal;
+ begin
+  Result := False;
+
+  if RegQueryDWordValue(HKEY_LOCAL_MACHINE, regKey, 'Major', major) then begin
+    if RegQueryDWordValue(HKEY_LOCAL_MACHINE, regKey, 'Minor', minor) then begin
+      if RegQueryDWordValue(HKEY_LOCAL_MACHINE, regKey, 'Bld', bld) then begin
+        if RegQueryDWordValue(HKEY_LOCAL_MACHINE, regKey, 'RBld', rbld) then begin
+            Log('VC 2015-2019 Redist Major is: ' + IntToStr(major) + ' Minor is: ' + IntToStr(minor) + ' Bld is: ' + IntToStr(bld) + ' Rbld is: ' + IntToStr(rbld));
+            { Version info was found. Return true if later or equal to our 14.23.27820.0 redistributable }
+            { Note brackets required because of weird operator precendence }
+            Result := (major >= 14) and (minor >= 00)
+        end;
+      end;
+    end;
+  end;
+ end;
+
+function VCRedistNeedsInstall: Boolean;
+begin
+ if NOT IsWin64 then 
+  Result := not (VCinstalled('SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86'))
+ else
+  Result := not (VCinstalled('SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x86'));  
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var ErrorCode: Integer;
+begin
+  if CurStep = ssInstall then
+  begin
+    // TODO: switch to gcc built qt5
+  if (VCRedistNeedsInstall()) then
+    begin
+      ShellExec('', 'https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads','', '', SW_SHOW, ewNoWait, ErrorCode);
+      ShellExec('', 'https://aka.ms/vs/16/release/vc_redist.x86.exe','', '', SW_SHOW, ewNoWait, ErrorCode);
+      MsgBox('You need to install/update the Visual C++ 2015 Runtime', mbCriticalError, MB_OK);
+      Abort();
+    end
+  end;
+  if CurStep = ssPostInstall then
+  begin
+  if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
+     // I need a better message...
+    MsgBox('Restart your computer, then set up IPv6 in Network Connections. [Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
+  if IsTaskSelected('migrateconfigs') then
+    MsgBox('Lokinet JSON-RPC API endpoint enabled. Any custom configuration was retained in %APPDATA%\.lokinet\lokinet.old.ini.', mbInformation, MB_OK);
   end;
 end;
 
@@ -214,8 +257,8 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBa
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; OnlyBelowVersion: 0, 6.0
 Filename: "{app}\lokinet-qt5-ui\lokinetui.exe"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; MinVersion: 0,6.0
 ; wait until either one or two of these terminates
-Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
-Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
+Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
+Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0; Check: not IsTapInstalled
 Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
 Filename: "{tmp}\7z.exe"; Parameters: "x lokinet-qt5-ui.7z -aoa"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "installing modern Qt5 UI"; StatusMsg: "Installing modern Qt5 UI..."; MinVersion: 0, 6.0;
 Filename: "{app}\lokinet-bootstrap.exe"; Parameters:"-L https://seed.lokinet.org/lokinet.signed --cacert rootcerts.pem -o ""{userappdata}\.lokinet\bootstrap.signed"""; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
