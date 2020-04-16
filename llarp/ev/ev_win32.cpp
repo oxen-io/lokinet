@@ -167,8 +167,8 @@ tun_ev_loop(void* u)
       logic->call_soon([pkt, size, ev]() {
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
-        delete pkt;
         delete[] pkt->buf;
+        delete pkt;
       });
       byte_t* readbuf = new byte_t[1500];
       ev->read(readbuf, 1500);
