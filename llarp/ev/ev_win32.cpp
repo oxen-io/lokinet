@@ -100,7 +100,7 @@ win32_tun_io::do_write(void* data, size_t sz)
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
   code = GetLastError();
   //llarp::LogInfo("wrote data, error ", code);
-  return (code == 0 || code == 997)
+  return (code == 0 || code == 997);
 }
 
 // while this one is called from the event loop
@@ -112,7 +112,7 @@ win32_tun_io::flush_write()
     t->before_write(t);
 }
 
-bool
+void
 win32_tun_io::read(byte_t* buf, size_t sz)
 {
   DWORD code;
@@ -123,8 +123,7 @@ win32_tun_io::read(byte_t* buf, size_t sz)
   pkt->write = false;
   ReadFile(tunif->tun_fd, buf, sz, nullptr, &pkt->pkt);
   code = GetLastError();
-  //llarp::LogInfo("read data, error ", code);
-  return (code == 0 || code == 997)
+  llarp::LogInfo("read data, error ", code);
 }
 
 // and now the event loop itself

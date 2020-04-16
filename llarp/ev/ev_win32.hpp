@@ -88,7 +88,7 @@ struct win32_tun_io
   void
   flush_write();
 
-  bool
+  void
   read(byte_t* buf, size_t sz);
 
   ~win32_tun_io()
