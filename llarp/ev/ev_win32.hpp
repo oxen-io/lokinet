@@ -80,7 +80,7 @@ struct win32_tun_io
   add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
-  void
+  bool
   do_write(void* data, size_t sz);
 
   // we call this one when we get a packet in the event port
@@ -88,7 +88,7 @@ struct win32_tun_io
   void
   flush_write();
 
-  void
+  bool
   read(byte_t* buf, size_t sz);
 
   ~win32_tun_io()

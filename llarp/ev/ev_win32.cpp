@@ -30,8 +30,7 @@ begin_tun_loop(int nThreads, llarp_ev_loop* loop)
 bool
 win32_tun_io::queue_write(const byte_t* buf, size_t sz)
 {
-  do_write((void*)buf, sz);
-  return true;
+  return do_write((void*)buf, sz);
 }
 
 bool
@@ -89,7 +88,7 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
 }
 
 // places data in event queue for kernel to process
-void
+bool
 win32_tun_io::do_write(void* data, size_t sz)
 {
   DWORD code;
@@ -100,7 +99,8 @@ win32_tun_io::do_write(void* data, size_t sz)
   memset(&pkt->pkt, '\0', sizeof(pkt->pkt));
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
   code = GetLastError();
-  llarp::LogInfo("wrote data, error ", code);
+  //llarp::LogInfo("wrote data, error ", code);
+  return (code == 0 || code == 997)
 }
 
 // while this one is called from the event loop
@@ -112,7 +112,7 @@ win32_tun_io::flush_write()
     t->before_write(t);
 }
 
-void
+bool
 win32_tun_io::read(byte_t* buf, size_t sz)
 {
   DWORD code;
@@ -123,7 +123,8 @@ win32_tun_io::read(byte_t* buf, size_t sz)
   pkt->write = false;
   ReadFile(tunif->tun_fd, buf, sz, nullptr, &pkt->pkt);
   code = GetLastError();
-  llarp::LogInfo("read data, error ", code);
+  //llarp::LogInfo("read data, error ", code);
+  return (code == 0 || code == 997)
 }
 
 // and now the event loop itself
