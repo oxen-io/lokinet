@@ -83,7 +83,7 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
   // we're already non-blocking
   // add to list
   tun_listeners.push_back(this);
-  byte_t* readbuf = new byte_t[1500];
+  byte_t* readbuf = (byte_t*)malloc(1500);
   read(readbuf, 1500);
   return true;
 }
@@ -167,16 +167,16 @@ tun_ev_loop(void* u)
       logic->call_soon([pkt, size, ev]() {
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
-        delete[] pkt->buf;
+        free(pkt->buf);
         delete pkt;
       });
-      byte_t* readbuf = new byte_t[1500];
+      byte_t* readbuf = (byte_t*)malloc(1500);
       ev->read(readbuf, 1500);
     }
     else
     {
       // ok let's queue another read!
-      byte_t* readbuf = new byte_t[1500];
+      byte_t* readbuf = (byte_t*)malloc(1500);
       ev->read(readbuf, 1500);
     }
     logic->call_soon([ev]() {
