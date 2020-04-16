@@ -65,7 +65,6 @@ struct win32_tun_io
 {
   llarp_tun_io* t;
   device* tunif;
-  byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
   win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init()){};
 

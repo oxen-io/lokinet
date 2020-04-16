@@ -83,7 +83,8 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
   // we're already non-blocking
   // add to list
   tun_listeners.push_back(this);
-  read(readbuf, 4096);
+  byte_t* readbuf = new byte_t[1500];
+  read(readbuf, 1500);
   return true;
 }
 
@@ -122,8 +123,6 @@ win32_tun_io::read(byte_t* buf, size_t sz)
   pkt->sz = sz;
   pkt->write = false;
   ReadFile(tunif->tun_fd, buf, sz, nullptr, &pkt->pkt);
-  code = GetLastError();
-  llarp::LogInfo("read data, error ", code);
 }
 
 // and now the event loop itself
@@ -169,13 +168,16 @@ tun_ev_loop(void* u)
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
         delete pkt;
+        delete[] pkt->buf;
       });
-      ev->read(ev->readbuf, sizeof(ev->readbuf));
+      byte_t* readbuf = new byte_t[1500];
+      ev->read(readbuf, 1500);
     }
     else
     {
       // ok let's queue another read!
-      ev->read(ev->readbuf, sizeof(ev->readbuf));
+      byte_t* readbuf = new byte_t[1500];
+      ev->read(readbuf, 1500);
     }
     logic->call_soon([ev]() {
       ev->flush_write();      
