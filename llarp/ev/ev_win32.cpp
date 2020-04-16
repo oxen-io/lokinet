@@ -10,7 +10,6 @@ static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 // we hand the kernel our thread handles to process completion events
 static HANDLE* kThreadPool;
 static int poolSize;
-static CRITICAL_SECTION HandlerMtx;
 
 // list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list<win32_tun_io*> tun_listeners;
@@ -38,12 +37,6 @@ win32_tun_io::queue_write(const byte_t* buf, size_t sz)
 bool
 win32_tun_io::setup()
 {
-  // Create a critical section to synchronise access to the TUN handler.
-  // This *probably* has the effect of making packets move in order now
-  // as only one IOCP thread will have access to the TUN handler at a
-  // time
-  InitializeCriticalSection(&HandlerMtx);
-
   if (tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
   {
     llarp::LogWarn("failed to start interface");
@@ -99,12 +92,15 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
 void
 win32_tun_io::do_write(void* data, size_t sz)
 {
+  DWORD code;
   asio_evt_pkt* pkt = new asio_evt_pkt;
   pkt->buf = data;
   pkt->sz = sz;
   pkt->write = true;
   memset(&pkt->pkt, '\0', sizeof(pkt->pkt));
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
+  code = GetLastError();
+  llarp::LogInfo("wrote data, error ", code);
 }
 
 // while this one is called from the event loop
@@ -119,12 +115,15 @@ win32_tun_io::flush_write()
 void
 win32_tun_io::read(byte_t* buf, size_t sz)
 {
+  DWORD code;
   asio_evt_pkt* pkt = new asio_evt_pkt;
   pkt->buf = buf;
   memset(&pkt->pkt, '\0', sizeof(OVERLAPPED));
   pkt->sz = sz;
   pkt->write = false;
   ReadFile(tunif->tun_fd, buf, sz, nullptr, &pkt->pkt);
+  code = GetLastError();
+  llarp::LogInfo("read data, error ", code);
 }
 
 // and now the event loop itself
@@ -217,7 +216,6 @@ exit_tun_loop()
       itr = tun_listeners.erase(itr);
     }
     CloseHandle(tun_event_queue);
-    DeleteCriticalSection(&HandlerMtx);
   }
 }
 
