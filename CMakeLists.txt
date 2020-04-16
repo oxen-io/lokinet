@@ -311,7 +311,9 @@ add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 add_subdirectory(daemon)
-add_subdirectory(pybind)
+if(WITH_HIVE)
+  add_subdirectory(pybind)
+endif()
 
 
 
