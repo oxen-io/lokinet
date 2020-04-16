@@ -151,9 +151,9 @@ tun_ev_loop(void* u)
       for (const auto& tun : tun_listeners)
       {
         logic->call_soon([tun]() {
+          tun->flush_write();
           if (tun->t->tick)
             tun->t->tick(tun->t);
-          tun->flush_write();
         });
       }
       continue;  // let's go at it once more
@@ -166,29 +166,17 @@ tun_ev_loop(void* u)
     if (!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
-      // skip if our buffer remains empty
-      // (if our buffer is empty, we don't even have a valid IP frame.
-      // just throw it out)
-      if (*(byte_t*)pkt->buf == '\0')
-      {
-        delete pkt;
-        continue;
-      }
-      // EnterCriticalSection(&HandlerMtx);
       logic->call_soon([pkt, size, ev]() {
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
         delete pkt;
       });
       ev->read(ev->readbuf, sizeof(ev->readbuf));
-      // LeaveCriticalSection(&HandlerMtx);
     }
     else
     {
       // ok let's queue another read!
-      // EnterCriticalSection(&HandlerMtx);
       ev->read(ev->readbuf, sizeof(ev->readbuf));
-      // LeaveCriticalSection(&HandlerMtx);
     }
     logic->call_soon([ev]() {
       ev->flush_write();      
