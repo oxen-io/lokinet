@@ -128,11 +128,11 @@ matrix:
     env: BUILD_TYPE=Release
   - name: "windows installer"
     os: linux
-    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON NATIVE=OFF
   allow_failures:
   - name: "windows installer"
     os: linux
-    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON NATIVE=OFF
   - name: "make windows docker image"
     os: linux
     dist: xenial
