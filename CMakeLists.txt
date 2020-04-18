@@ -38,6 +38,7 @@ option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for developmen
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
 option(WITH_HIVE "build simulation stubs" OFF)
+option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 
 if(WITH_HIVE)
   set(WITH_SHARED ON)
@@ -329,4 +330,6 @@ endif()
 
 add_subdirectory(docs)
 
-include(cmake/installer.cmake)
+if(BUILD_PACKAGE)
+    include(cmake/installer.cmake)
+endif()
