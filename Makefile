@@ -83,7 +83,6 @@ TOOLCHAIN ?=
 # 64 for 64bit windows, 32 for 32bit windows
 # defaults to 64 bit for now
 WINDOWS_ARCH ?= 64
-
 # native avx2 code
 AVX2 ?= OFF
 # statically link everything
@@ -288,7 +287,7 @@ windows-debug: windows-debug-configure
 
 windows-release-configure: $(LIBUV_PREFIX)
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD_WINDOWS) -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw$(WINDOWS_ARCH).cmake' -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
+	$(CONFIG_CMD_WINDOWS) -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw$(WINDOWS_ARCH).cmake' -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'

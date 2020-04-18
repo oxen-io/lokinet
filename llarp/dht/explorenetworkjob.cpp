@@ -17,8 +17,10 @@ namespace llarp
     {
       auto msg = new FindRouterMessage(peer.txid);
       auto router = parent->GetRouter();
-      router->NotifyRouterEvent<tooling::FindRouterSentEvent>(router->pubkey(), *msg);
-
+      if (router)
+      {
+        router->NotifyRouterEvent<tooling::FindRouterSentEvent>(router->pubkey(), *msg);
+      }
       parent->DHTSendTo(peer.node.as_array(), msg);
     }
 

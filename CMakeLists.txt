@@ -279,7 +279,9 @@ if(SUBMODULE_CHECK)
   endif()
 endif()
 
-add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+if(WITH_HIVE)
+  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+endif()
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
@@ -311,7 +313,9 @@ add_subdirectory(crypto)
 add_subdirectory(llarp)
 add_subdirectory(libabyss)
 add_subdirectory(daemon)
-add_subdirectory(pybind)
+if(WITH_HIVE)
+  add_subdirectory(pybind)
+endif()
 
 
 

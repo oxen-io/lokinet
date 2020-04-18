@@ -10,30 +10,33 @@ matrix:
   - name: "lint check"
     os: linux
     compiler: gcc
-    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-8/bin:$PATH"
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-9/bin:$PATH"
     addons:
       apt:
         sources:
-          - llvm-toolchain-bionic-8
+          - llvm-toolchain-bionic-9
         packages:
-          - clang-format-8
+          - clang-format-9
   - name: "make debug (linux/gcc)"
     os: linux
     compiler: gcc
     env: BUILD_TYPE=Debug IS_NOTIFICATION=1
     addons: &core_apt_addons
       apt:
+        sources:  
+          - deadsnakes
         packages:
-        - build-essential
-        - cmake
-        - curl
-        - git
-        - libcap-dev
-        - libcurl4-openssl-dev
-        - libuv1-dev
-        - ninja-build
-        - libsodium-dev
-        - libsystemd-dev
+          - build-essential
+          - cmake
+          - curl
+          - git
+          - libcap-dev
+          - libcurl4-openssl-dev
+          - libuv1-dev
+          - ninja-build
+          - libsodium-dev
+          - libsystemd-dev
+          - python3.8
   - name: "make release (linux/gcc)"
     os: linux
     compiler: gcc
@@ -125,11 +128,11 @@ matrix:
     env: BUILD_TYPE=Release
   - name: "windows installer"
     os: linux
-    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON NATIVE=OFF
   allow_failures:
   - name: "windows installer"
     os: linux
-    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON NATIVE=OFF
   - name: "make windows docker image"
     os: linux
     dist: xenial
@@ -162,6 +165,8 @@ env:
 
 addons:
   apt:
+    sources:
+    - deadsnakes
     packages:
     - binutils-gold
     - build-essential
@@ -180,6 +185,7 @@ addons:
     - mingw-w64 mingw-w64-common
     - ninja-build
     - libsodium-dev
+    - python3.8-dev
   homebrew:
     update: true
     packages:
@@ -190,6 +196,7 @@ addons:
     - make
     - ninja
     - libsodium
+    - python@3.8
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
