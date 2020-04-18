@@ -1,5 +1,5 @@
 PROJECT_NAME           = "Lokinet"
-PROJECT_NUMBER         = v@LLARP_VERSION@
+PROJECT_NUMBER         = v@lokinet_VERSION@
 PROJECT_BRIEF          = "Anonymous, decentralized and IP based overlay network for the internet."
 OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@
 STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ @PROJECT_BINARY_DIR@

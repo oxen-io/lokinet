@@ -24,8 +24,8 @@ add_custom_command(
     OUTPUT html/index.html
     COMMAND ${SPHINX_BUILD}
         -Dbreathe_projects.lokinet=${CMAKE_CURRENT_BINARY_DIR}/doxyxml
-        -Dversion=${LLARP_VERSION} -Drelease=${LLARP_VERSION}
-        -Aversion=${LLARP_VERSION} -Aversions=${LLARP_VERSION_MAJOR},${LLARP_VERSION_MINOR},${LLARP_VERSION_PATCH}
+        -Dversion=${lokinet_VERSION} -Drelease=${lokinet_VERSION}
+        -Aversion=${lokinet_VERSION} -Aversions=${lokinet_VERSION_MAJOR},${lokinet_VERSION_MINOR},${lokinet_VERSION_PATCH}
         -b html
         ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/html
     DEPENDS

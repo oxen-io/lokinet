@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)  # xenial's cmake version
+cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -6,15 +6,14 @@ if(CCACHE_PROGRAM)
 endif()
 
 set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME}
+    VERSION 0.7.0
+    DESCRIPTION "lokinet - IP packet onion router"
+    LANGUAGES C CXX)
 
-set(LLARP_VERSION_MAJOR 0)
-set(LLARP_VERSION_MINOR 7)
-set(LLARP_VERSION_PATCH 0)
-
-add_definitions(-DLLARP_VERSION_MAJOR=${LLARP_VERSION_MAJOR})
-add_definitions(-DLLARP_VERSION_MINOR=${LLARP_VERSION_MINOR})
-add_definitions(-DLLARP_VERSION_PATCH=${LLARP_VERSION_PATCH})
+add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
+add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
+add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
 
 
 # Core options
