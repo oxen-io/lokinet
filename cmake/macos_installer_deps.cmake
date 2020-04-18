@@ -1,21 +1,29 @@
 # macos specific cpack stuff goes here
 
-# Here we copy 'lokinet-gui.app' into "extra/" where a postinstall script will then move it to
-# /Applications/. The app bundle (lokinet-gui.app) should be built from the lokinet gui repository
-# and then copied into the lokinet source tree where this install command will find it.
-# 
-# TODO: 1) avoid "extra/" here -- this is a hack that works with postinstall script to place this
-#          in /Applications. this means it does nothing useful with "make install"
-# TODO: 2) review permissions here. something odd is happening between moving and copying this
-#          app bundle around. but we shouldn't need such loose permissions.
-# TODO: 3) avoid the need to manually copy 'lokinet-gui.app' into place
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/lokinet-gui.app
-        DESTINATION "extra"
+# Here we build lokinet-network-control-panel into 'lokinet-gui.app' in "extra/" where a postinstall
+# script will then move it to /Applications/.
+
+set(LOKINET_GUI_REPO "https://github.com/loki-project/loki-network-control-panel.git"
+    CACHE STRING "Can be set to override the default lokinet-gui git repository")
+set(LOKINET_GUI_CHECKOUT ""
+    CACHE STRING "Can be set to specify a particular branch or tag to build from LOKINET_GUI_REPO")
+
+include(ExternalProject)
+
+message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_BRANCH}")
+
+ExternalProject_Add(lokinet-gui
+    GIT_REPOSITORY "${LOKINET_GUI_REPO}"
+    GIT_TAG "${LOKINET_GUI_CHECKOUT}"
+    CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
+    )
+
+
+install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
+        DESTINATION "../../Applications"
         COMPONENT gui
         PATTERN "*"
-        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-                    GROUP_EXECUTE GROUP_WRITE GROUP_READ
-                    WORLD_EXECUTE WORLD_WRITE WORLD_READ)
+        )
 
 # copy files that will be later moved by the postinstall script to proper locations
 install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_macos_daemon_script.sh
@@ -34,3 +42,6 @@ set(CPACK_COMPONENT_GUI_DESCRIPTION "Small GUI which provides stats and limited 
 set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
+
+# The GUI is GPLv3, and so the bundled core+GUI must be as well:
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/contrib/gpl-3.0.txt")
