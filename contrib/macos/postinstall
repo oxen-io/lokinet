@@ -18,12 +18,6 @@ mv /usr/local/extra/network.loki.lokinet.daemon.plist /Library/LaunchDaemons/
 chown $CHOWN /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 chmod 640 /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 
-# move gui to /Applications
-if [ -d /usr/local/extra/lokinet-gui.app ]
-then
-    mv /usr/local/extra/lokinet-gui.app /Applications/LokinetGUI.app
-fi
-
 # clean up by removing 'extra/' (so long as it's empty)
 rmdir /usr/local/extra/
 
