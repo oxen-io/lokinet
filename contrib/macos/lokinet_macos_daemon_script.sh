@@ -26,7 +26,7 @@ OLD_SERVERS="$(networksetup -getdnsservers "$SERVICE_NAME" \
 
 networksetup -setdnsservers "$SERVICE_NAME" 127.0.0.1
 
-/usr/local/bin/lokinet /var/lib/lokinet/lokinet.ini
+/opt/lokinet/bin/lokinet /var/lib/lokinet/lokinet.ini
 
 networksetup -setdnsservers "$SERVICE_NAME" $OLD_SERVERS
 

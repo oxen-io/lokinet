@@ -10,23 +10,23 @@ chown $CHOWN /var/lib/lokinet
 chmod g+w /var/lib/lokinet
 
 # mv files copied into $INSTALL_PREFIX/extra/ to their proper locations
-mv /usr/local/extra/lokinet_macos_daemon_script.sh /var/lib/lokinet
+mv /opt/lokinet/extra/lokinet_macos_daemon_script.sh /var/lib/lokinet
 chown $CHOWN /var/lib/lokinet/lokinet_macos_daemon_script.sh
 chmod 770 /var/lib/lokinet/lokinet_macos_daemon_script.sh
 
-mv /usr/local/extra/network.loki.lokinet.daemon.plist /Library/LaunchDaemons/
+mv /opt/lokinet/extra/network.loki.lokinet.daemon.plist /Library/LaunchDaemons/
 chown $CHOWN /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 chmod 640 /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 
 # clean up by removing 'extra/' (so long as it's empty)
-rmdir /usr/local/extra/
+rmdir /opt/lokinet/extra/
 
 # bootstrap
-/usr/local/bin/lokinet-bootstrap mainnet /var/lib/lokinet/bootstrap.signed
+/opt/lokinet/bin/lokinet-bootstrap mainnet /var/lib/lokinet/bootstrap.signed
 chown $CHOWN /var/lib/lokinet/bootstrap.signed
 
 # generate configs
-/usr/local/bin/lokinet -g /var/lib/lokinet/lokinet.ini
+/opt/lokinet/bin/lokinet -g /var/lib/lokinet/lokinet.ini
 chown $CHOWN /var/lib/lokinet/lokinet.ini
 
 # register with launchd and start

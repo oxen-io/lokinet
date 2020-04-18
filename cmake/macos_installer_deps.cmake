@@ -40,7 +40,7 @@ set(CPACK_COMPONENT_GUI_DISPLAY_NAME "Lokinet GUI")
 set(CPACK_COMPONENT_GUI_DESCRIPTION "Small GUI which provides stats and limited runtime control of the Lokinet service. Resides in the system tray.")
 
 set(CPACK_GENERATOR "productbuild")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/lokinet")
 set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
 
 # The GUI is GPLv3, and so the bundled core+GUI must be as well:
