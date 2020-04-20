@@ -11,6 +11,8 @@ project(${PROJECT_NAME}
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
+set(RELEASE_MOTTO "I'll remember that..." CACHE STRING "Release motto")
+
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
 add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
