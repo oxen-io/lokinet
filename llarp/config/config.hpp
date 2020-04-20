@@ -1,6 +1,7 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
 
+#include <chrono>
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/fs.hpp>
@@ -8,6 +9,8 @@
 #include <config/ini.hpp>
 #include <config/definition.hpp>
 #include <constants/files.hpp>
+#include <service/tag.hpp>
+#include <service/address.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -159,15 +162,26 @@ namespace llarp
 
   struct SnappConfig
   {
+    std::string m_name;
     std::string m_keyfile;
+    service::Tag m_tag;
+    std::set<service::Tag> m_prefetchTags;
+    std::set<service::Address> m_prefetchAddrs;
+    std::chrono::milliseconds m_minLatency;
     bool m_reachable;
     int m_hops;
     int m_paths;
+    bool m_bundleRC;
     std::vector<std::string> m_snodeBlacklist;
     std::string m_exitNode;
     std::string m_localDNS;
     std::string m_upstreamDNS;
     std::string m_mapAddr;
+
+    // TODO:
+    // on-up
+    // on-down
+    // on-ready
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -185,6 +199,7 @@ namespace llarp
     LokidConfig lokid;
     BootstrapConfig bootstrap;
     LoggingConfig logging;
+    std::unordered_map<std::string, SnappConfig> snapps;
 
     // Initialize config definition
     void

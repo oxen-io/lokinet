@@ -1,3 +1,4 @@
+#include <chrono>
 #include <config/config.hpp>
 
 #include <config/ini.hpp>
@@ -387,47 +388,89 @@ namespace llarp
     static constexpr bool ReachableDefault = true;
     static constexpr int HopsDefault = 4;
     static constexpr int PathsDefault = 6;
+    static constexpr bool BundleRCDefault = false;
+    static constexpr int MinLatencyDefault = 5000;
 
-    conf.defineOption<std::string>("snapp", "keyfile", false, "", [this](std::string arg) {
+    if (m_name.empty())
+      throw std::runtime_error("Cannot create SnappConfig with empty name");
+
+    const std::string section = m_name + "-snapp";
+
+    conf.defineOption<std::string>(section, "keyfile", false, "", [this](std::string arg) {
       // TODO: validate as valid .loki / .snode address
       m_keyfile = arg;
     });
 
-    conf.defineOption<bool>(
-        "snapp", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+    conf.defineOption<std::string>(section, "tag", false, "", [=](std::string arg) {
+      if (arg.size() < service::Tag::size())
+        throw std::invalid_argument(
+            stringify("[", section, "]:tag must not be larger than", service::Tag::size()));
 
-    conf.defineOption<int>("snapp", "hops", false, HopsDefault, [this](int arg) {
+      m_tag = arg;
+    });
+
+    conf.defineOption<std::string>(section, "prefetch-tag", false, "", [=](std::string arg) {
+      if (arg.size() < service::Tag::size())
+        throw std::invalid_argument(stringify(
+            "[", section, "]:prefetch-tag must not be larger than", service::Tag::size()));
+
+      m_prefetchTags.insert(service::Tag(arg));
+    });
+
+    conf.defineOption<std::string>(section, "prefetch-addr", false, "", [=](std::string arg) {
+      if (arg.size() != service::Address::size())
+        throw std::invalid_argument(stringify(
+            "[", section, "]:prefetch-addr must not be larger than", service::Address::size()));
+
+      m_prefetchAddrs.insert(service::Address(arg));
+    });
+
+    conf.defineOption<int>(section, "min-latency", false, MinLatencyDefault, [=](int arg) {
+      if (arg <= 0)
+        throw std::invalid_argument(
+            stringify("[", section, "]:min-latency must be greater than 0"));
+
+      m_minLatency = std::chrono::milliseconds(arg);
+    });
+
+    conf.defineOption<bool>(
+        section, "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+
+    conf.defineOption<int>(section, "hops", false, HopsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[snapp]:hops must be >= 1 and <= 8");
     });
 
-    conf.defineOption<int>("snapp", "paths", false, PathsDefault, [this](int arg) {
+    conf.defineOption<int>(section, "paths", false, PathsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[snapp]:paths must be >= 1 and <= 8");
     });
 
-    conf.defineOption<std::string>("snapp", "exit-node", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>(section, "exit-node", false, "", [this](std::string arg) {
       // TODO: validate as valid .loki / .snode address
       m_exitNode = arg;
     });
 
-    conf.defineOption<std::string>("snapp", "local-dns", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>(section, "local-dns", false, "", [this](std::string arg) {
       // TODO: validate as IP address
       m_localDNS = arg;
     });
 
-    conf.defineOption<std::string>("snapp", "upstream-dns", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>(section, "upstream-dns", false, "", [this](std::string arg) {
       // TODO: validate as IP address
       m_upstreamDNS = arg;
     });
 
-    conf.defineOption<std::string>("snapp", "mapaddr", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>(section, "mapaddr", false, "", [this](std::string arg) {
       // TODO: parse / validate as loki_addr : IP addr pair
       m_mapAddr = arg;
     });
 
+    conf.defineOption<bool>(
+        section, "bundle-rc", false, BundleRCDefault, AssignmentAcceptor(m_bundleRC));
+
     conf.addUndeclaredHandler(
-        "snapp", [&](std::string_view, std::string_view name, std::string_view value) {
+        section, [&](std::string_view, std::string_view name, std::string_view value) {
           if (name == "blacklist-snode")
           {
             m_snodeBlacklist.push_back(str(value));
@@ -457,6 +500,30 @@ namespace llarp
         return false;
       }
 
+      // first pass: find any "foo-snapp" sections and configure them as config options
+      // this will cause the ConfigDefinition to handle them as values are fed to it during
+      // the second pass below
+      parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+        (void)values;
+
+        const static string_view suffix = "-snapp";
+        if (section.size() > suffix.size())
+        {
+          string_view snappName = section.substr(0, section.size() - suffix.size());
+          string_view ending = section.substr(snappName.size());
+
+          if (ending == suffix)
+          {
+            SnappConfig snappConf;
+            snappConf.m_name = str(snappName);
+            snappConf.defineConfigOptions(conf, params);
+
+            snapps[str(snappName)] = std::move(snappConf);
+          }
+        }
+      });
+
+      // second pass: feed all k:v pairs to ConfigDefinition for processing
       parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
@@ -789,13 +856,13 @@ namespace llarp
 
     // snapp
     def.addSectionComments(
-        "snapp",
+        "example-snapp",
         {
             "Snapp settings",
         });
 
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "keyfile",
         {
             "The private key to persist address with. If not specified the address will be",
@@ -804,7 +871,7 @@ namespace llarp
 
     // TODO: is this redundant with / should be merged with basic client config?
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "reachable",
         {
             "Determines whether we will publish our snapp's introset to the DHT.",
@@ -812,7 +879,7 @@ namespace llarp
 
     // TODO: merge with client conf?
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "hops",
         {
             "Number of hops in a path. Min 1, max 8.",
@@ -820,21 +887,21 @@ namespace llarp
 
     // TODO: is this actually different than client's paths min/max config?
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "paths",
         {
             "Number of paths to maintain at any given time.",
         });
 
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "blacklist-snode",
         {
             "Adds a `.snode` address to the blacklist.",
         });
 
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "exit-node",
         {
             "Specify a `.snode` or `.loki` address to use as an exit broker.",
@@ -842,14 +909,14 @@ namespace llarp
 
     // TODO: merge with client conf?
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "local-dns",
         {
             "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port",
         });
 
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "upstream-dns",
         {
             "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply",
@@ -857,7 +924,7 @@ namespace llarp
         });
 
     def.addOptionComments(
-        "snapp",
+        "example-snapp",
         "mapaddr",
         {
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",
