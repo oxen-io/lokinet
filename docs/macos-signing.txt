@@ -27,7 +27,7 @@ Either way, these two values can be specified either by hex value or description
 You also need to set up the notarization parameters; these can either be specified directly on the
 cmake command line by adding:
 
-  -DMACOS_NOTORIZE_ASC=XYZ123 -DMACOS_NOTORIZE_USER=me@example.com -DMACOS_NOTORIZE_PASS=@keychain:codesigning-password
+  -DMACOS_NOTARIZE_ASC=XYZ123 -DMACOS_NOTARIZE_USER=me@example.com -DMACOS_NOTARIZE_PASS=@keychain:codesigning-password
 
 or, more simply, by putting them inside a `~/.notarization.cmake` file that will be included if it
 exists (and the MACOS_SIGN_* variables are set) -- see below.
@@ -60,9 +60,9 @@ Developer account device-specific login credentials.
 
 Optionally, put these last three inside a `~/.notarization.cmake` file:
 
-    set(MACOS_NOTORIZE_USER "jagerman@jagerman.com")
-    set(MACOS_NOTORIZE_PASS "@keychain:codesigning-password")
-    set(MACOS_NOTORIZE_ASC "SUQ8J2PCT7")
+    set(MACOS_NOTARIZE_USER "jagerman@jagerman.com")
+    set(MACOS_NOTARIZE_PASS "@keychain:codesigning-password")
+    set(MACOS_NOTARIZE_ASC "SUQ8J2PCT7")
 
 Then, finally, you can build the package from the build directory with:
 
