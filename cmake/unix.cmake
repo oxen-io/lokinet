@@ -2,11 +2,6 @@ if(NOT UNIX)
   return()
 endif()
 
-# because apple means embracing bitrot
-if(APPLE)
-  add_compile_options(-mmacosx-version-min=10.13)
-endif()
-
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
 
