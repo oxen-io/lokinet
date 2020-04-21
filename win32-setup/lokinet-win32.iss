@@ -212,7 +212,7 @@ begin
   if CurStep = ssInstall then
   begin
     // TODO: switch to gcc built qt5
-  if (VCRedistNeedsInstall()) then
+  if (VCRedistNeedsInstall()) and Version.NTPlatform and (Version.Major >= 6) and (Version.Minor >= 0) then
     begin
       ShellExec('', 'https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads','', '', SW_SHOW, ewNoWait, ErrorCode);
       ShellExec('', 'https://aka.ms/vs/16/release/vc_redist.x86.exe','', '', SW_SHOW, ewNoWait, ErrorCode);
