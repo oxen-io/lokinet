@@ -31,6 +31,9 @@ ExternalProject_Add(lokinet-gui
 
 
 
+install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
+        DESTINATION "bin/"
+        COMPONENT lokinet)
 
 install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
         DESTINATION "../../Applications"
