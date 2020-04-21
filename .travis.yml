@@ -9,15 +9,13 @@ matrix:
   - name: "lint check"
     os: linux
     compiler: gcc
-    env: PATH="/usr/lib/llvm-9/bin:$PATH"
+    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-9/bin:$PATH"
     addons:
       apt:
         sources:
           - llvm-toolchain-bionic-9
         packages:
           - clang-format-9
-    script:
-      - make format-verify
   - name: "make debug (linux/gcc)"
     os: linux
     compiler: gcc
@@ -211,11 +209,11 @@ before_install:
 
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DNATIVE_BUILD=${NATIVE:-ON} -DSTATIC_LINK_RUNTIME=${STATIC_LINK:-OFF} -DDOWNLOAD_SODIUM=${DOWNLOAD_SODIUM:-ON} .. && make';
+      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && make test';
     elif [[ ! -z $DOCKER_FILE ]]; then
       docker build -f $DOCKER_FILE .;
     else
-      mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DNATIVE_BUILD=${NATIVE:-ON} -DSTATIC_LINK=${STATIC_LINK:-OFF} -DDOWNLOAD_SODIUM=${DOWNLOAD_SODIUM:-ON} .. && make ${MAKE_TARGET:-test};
+      make DOWNLOAD_SODIUM=ON ${MAKE_TARGET:-test};
     fi
 
 after_script:
