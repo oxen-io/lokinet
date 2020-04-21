@@ -65,7 +65,6 @@ struct win32_tun_io
 {
   llarp_tun_io* t;
   device* tunif;
-  byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
   win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init()){};
 
@@ -80,7 +79,7 @@ struct win32_tun_io
   add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
-  void
+  bool
   do_write(void* data, size_t sz);
 
   // we call this one when we get a packet in the event port

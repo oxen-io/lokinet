@@ -14,6 +14,7 @@ if(NOT MSVC_VERSION)
   # to .r[o]data section one after the other!
   add_compile_options(-fno-ident -Wa,-mbig-obj)
   link_libraries( -lws2_32 -lshlwapi -ldbghelp -luser32 -liphlpapi -lpsapi -luserenv )
+  add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
   if (CMAKE_C_COMPILER_AR AND STATIC_LINK_RUNTIME)
     set(CMAKE_AR ${CMAKE_C_COMPILER_AR})
     set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")

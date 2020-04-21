@@ -10,7 +10,6 @@ static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 // we hand the kernel our thread handles to process completion events
 static HANDLE* kThreadPool;
 static int poolSize;
-static CRITICAL_SECTION HandlerMtx;
 
 // list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list<win32_tun_io*> tun_listeners;
@@ -31,19 +30,12 @@ begin_tun_loop(int nThreads, llarp_ev_loop* loop)
 bool
 win32_tun_io::queue_write(const byte_t* buf, size_t sz)
 {
-  do_write((void*)buf, sz);
-  return true;
+  return do_write((void*)buf, sz);
 }
 
 bool
 win32_tun_io::setup()
 {
-  // Create a critical section to synchronise access to the TUN handler.
-  // This *probably* has the effect of making packets move in order now
-  // as only one IOCP thread will have access to the TUN handler at a
-  // time
-  InitializeCriticalSection(&HandlerMtx);
-
   if (tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
   {
     llarp::LogWarn("failed to start interface");
@@ -91,20 +83,25 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
   // we're already non-blocking
   // add to list
   tun_listeners.push_back(this);
-  read(readbuf, 4096);
+  byte_t* readbuf = (byte_t*)malloc(1500);
+  read(readbuf, 1500);
   return true;
 }
 
 // places data in event queue for kernel to process
-void
+bool
 win32_tun_io::do_write(void* data, size_t sz)
 {
+  DWORD code;
   asio_evt_pkt* pkt = new asio_evt_pkt;
   pkt->buf = data;
   pkt->sz = sz;
   pkt->write = true;
   memset(&pkt->pkt, '\0', sizeof(pkt->pkt));
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
+  code = GetLastError();
+  //llarp::LogInfo("wrote data, error ", code);
+  return (code == 0 || code == 997);
 }
 
 // while this one is called from the event loop
@@ -119,6 +116,7 @@ win32_tun_io::flush_write()
 void
 win32_tun_io::read(byte_t* buf, size_t sz)
 {
+  DWORD code;
   asio_evt_pkt* pkt = new asio_evt_pkt;
   pkt->buf = buf;
   memset(&pkt->pkt, '\0', sizeof(OVERLAPPED));
@@ -151,9 +149,9 @@ tun_ev_loop(void* u)
       for (const auto& tun : tun_listeners)
       {
         logic->call_soon([tun]() {
+          tun->flush_write();
           if (tun->t->tick)
             tun->t->tick(tun->t);
-          tun->flush_write();
         });
       }
       continue;  // let's go at it once more
@@ -166,34 +164,25 @@ tun_ev_loop(void* u)
     if (!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
-      // skip if our buffer remains empty
-      // (if our buffer is empty, we don't even have a valid IP frame.
-      // just throw it out)
-      if (*(byte_t*)pkt->buf == '\0')
-      {
-        delete pkt;
-        continue;
-      }
-      // EnterCriticalSection(&HandlerMtx);
       logic->call_soon([pkt, size, ev]() {
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
+        free(pkt->buf);
         delete pkt;
       });
-      ev->read(ev->readbuf, sizeof(ev->readbuf));
-      // LeaveCriticalSection(&HandlerMtx);
+      byte_t* readbuf = (byte_t*)malloc(1500);
+      ev->read(readbuf, 1500);
     }
     else
     {
       // ok let's queue another read!
-      // EnterCriticalSection(&HandlerMtx);
-      ev->read(ev->readbuf, sizeof(ev->readbuf));
-      // LeaveCriticalSection(&HandlerMtx);
+      byte_t* readbuf = (byte_t*)malloc(1500);
+      ev->read(readbuf, 1500);
     }
     logic->call_soon([ev]() {
-      if (ev->t->tick)
+      ev->flush_write();      
+      if(ev->t->tick)
         ev->t->tick(ev->t);
-      ev->flush_write();
     });
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
@@ -229,7 +218,6 @@ exit_tun_loop()
       itr = tun_listeners.erase(itr);
     }
     CloseHandle(tun_event_queue);
-    DeleteCriticalSection(&HandlerMtx);
   }
 }
 
