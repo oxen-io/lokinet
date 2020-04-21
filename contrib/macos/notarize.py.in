@@ -6,7 +6,7 @@ import subprocess
 import time
 
 pkg = "lokinet-@PROJECT_VERSION@-Darwin.pkg"
-userpass = ('--username', "@MACOS_NOTORIZE_USER@", '--password', "@MACOS_NOTORIZE_PASS@")
+userpass = ('--username', "@MACOS_NOTARIZE_USER@", '--password', "@MACOS_NOTARIZE_PASS@")
 print("Submitting {} for notarization; this may take a minute...".format(pkg))
 
 started = time.time()
@@ -15,12 +15,10 @@ result = subprocess.run([
     '--notarize-app',
     '--primary-bundle-id', 'org.lokinet.lokinet.pkg.@PROJECT_VERSION@',
     *userpass,
-    '--asc-provider', "@MACOS_NOTORIZE_ASC@",
+    '--asc-provider', "@MACOS_NOTARIZE_ASC@",
     '--file', pkg,
     '--output-format', 'xml'
     ], stdout=subprocess.PIPE)
-
-result.check_returncode()
 
 data = plistlib.loads(result.stdout)
 if 'success-message' not in data or 'notarization-upload' not in data or 'RequestUUID' not in data['notarization-upload']:
