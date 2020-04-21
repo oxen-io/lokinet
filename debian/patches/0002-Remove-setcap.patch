@@ -9,11 +9,11 @@ doesn't work with debian's temporary install location).
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/daemon/CMakeLists.txt b/daemon/CMakeLists.txt
-index 051ada2..2cb7793 100644
+index bf3e540..ee6121a 100644
 --- a/daemon/CMakeLists.txt
 +++ b/daemon/CMakeLists.txt
-@@ -36,7 +36,7 @@ else()
-         install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
+@@ -35,7 +35,7 @@ else()
+         install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin COMPONENT lokinet)
      endif()
  
 -    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

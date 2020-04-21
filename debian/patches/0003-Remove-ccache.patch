@@ -10,11 +10,11 @@ log.
  1 file changed, 5 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d5bdada..5a80409 100644
+index 5d56e92..680a1af 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -1,10 +1,5 @@
- cmake_minimum_required(VERSION 3.5.1)  # xenial's cmake version
+ cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
  
 -find_program(CCACHE_PROGRAM ccache)
 -if(CCACHE_PROGRAM)
@@ -22,5 +22,5 @@ index d5bdada..5a80409 100644
 -endif()
 -
  set(PROJECT_NAME lokinet)
- project(${PROJECT_NAME} C CXX)
- 
+ project(${PROJECT_NAME}
+     VERSION 0.7.1
