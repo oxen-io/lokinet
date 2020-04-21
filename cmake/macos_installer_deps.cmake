@@ -31,7 +31,7 @@ ExternalProject_Add(lokinet-gui
 
 
 
-install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
+install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
         DESTINATION "bin/"
         COMPONENT lokinet)
 
