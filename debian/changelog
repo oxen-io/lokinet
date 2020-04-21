@@ -1,3 +1,75 @@
+lokinet (0.7.1-1) sid; urgency=medium
+
+  [ Jason Rhinelander ]
+  * [PATCH] update lokinetmon to work again with dns rebinding protection
+  * Add "deb-" into version tag
+
+  [ Ryan Tharp ]
+  * fix make static when TOOLCHAIN isn't set
+
+  [ Jeff Becker ]
+  * when we have an inbound session and we do a forward dns lookup we should not look up the descriptor on the network as we already have a session with them
+  * disable accedental fec in iwp outbound messages
+  * fix use after move
+  * remove un needed check
+  * add bounds check
+  * strict check of bounds
+  * cpack win32
+  * set license
+  * initial lokinet-bootstrap in powershell for windows
+  * make installer pull in tuntap driver
+  * update ci for windows installers
+  * allow fail
+  * update lokinet-bootstrap
+  * make gitlab pump out 32 bit installers, no lto for builds as that is cursed for now.
+  * move cmake unix down
+  * add mac target for release
+  * more macos installer bits
+  * fix gitlab ci file
+  * fix gitlab tag
+  * fix gitlab tag (again)
+  * use 64 bit windows target for now
+  * fix up cpack for macos
+  * remove god awful "packaging" cruft that is no longer used.
+  * make gitlab mac runner poop out mac pkg builds too
+  * static link on macos
+  * turn off optimizations for releases
+  * make apple builds build for older versions and embrace the bitrot
+  * tinker with release scripts to hopefully appease the apple gods.
+  * macos post install script that bootstraps, generates configs and registers plist
+  * add plist
+  * gut ui-*
+
+  [ Stephen Shelton ]
+  * MacOS installer / runtime nonsense
+  * Bundle gui in mac installer
+
+  [ Jason Rhinelander ]
+  * Consolidate cmake vars & definitions
+  * Build lokinet-gui with ExternalProject
+  * Add -DBUILD_PACKAGE=ON to make cpack code opt-in
+  * Change mac install prefix to /opt/lokinet
+  * Add simple installer readme
+  * codesigning and notarization
+  * Move release motto string into CMakeLists.txt
+  * Notarize has an "a" in it
+  * Pass CMAKE_PREFIX_PATH through to lokinet-gui
+  * NOTARIZE only has one O
+
+  [ Stephen Shelton ]
+  * Include macos uninstall script
+
+  [ Jason Rhinelander ]
+  * Add stapling after notarization
+  * Bump version to 0.7.1
+  * Disable thread safety annotations on AppleClang
+  * Remove unwanted defines
+
+  [ Stephen Shelton ]
+  * Handle no-explicitly-set-dns case in launchd script
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 Apr 2020 19:26:46 -0300
+
 lokinet (0.7.0-2) sid; urgency=medium
 
   * Add lokinetmon package
