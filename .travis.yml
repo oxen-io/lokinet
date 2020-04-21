@@ -211,11 +211,11 @@ before_install:
 
 script:
   - if [ "$TRAVIS_OS_NAME" == "windows" ]; then
-      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 mkdir build && cd build && cmake .. && make test';
+      cmd.exe /C '"C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DNATIVE_BUILD=${NATIVE:-ON} -DSTATIC_LINK_RUNTIME=${STATIC_LINK:-OFF} -DDOWNLOAD_SODIUM=${DOWNLOAD_SODIUM:-OFF} .. && make';
     elif [[ ! -z $DOCKER_FILE ]]; then
       docker build -f $DOCKER_FILE .;
     else
-      mkdir build && cd build && cmake -DDOWNLOAD_SODIUM=ON .. && make ${MAKE_TARGET:-test};
+      mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DNATIVE_BUILD=${NATIVE:-ON} -DSTATIC_LINK=${STATIC_LINK:-OFF} -DDOWNLOAD_SODIUM=${DOWNLOAD_SODIUM:-OFF} .. && make ${MAKE_TARGET:-test};
     fi
 
 after_script:
