@@ -100,7 +100,7 @@ win32_tun_io::do_write(void* data, size_t sz)
   memset(&pkt->pkt, '\0', sizeof(pkt->pkt));
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
   code = GetLastError();
-  //llarp::LogInfo("wrote data, error ", code);
+  // llarp::LogInfo("wrote data, error ", code);
   return (code == 0 || code == 997);
 }
 
@@ -180,8 +180,8 @@ tun_ev_loop(void* u)
       ev->read(readbuf, 1500);
     }
     logic->call_soon([ev]() {
-      ev->flush_write();      
-      if(ev->t->tick)
+      ev->flush_write();
+      if (ev->t->tick)
         ev->t->tick(ev->t);
     });
   }
