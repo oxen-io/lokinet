@@ -1,8 +1,0 @@
-#!/bin/sh
-echo "Running preinstall" > /tmp/lokinet_preinstall.log
-if [ ! -d "$HOME/.lokinet" ]
-then
-  mkdir $HOME/.lokinet >> /tmp/lokinet_preinstall.log
-fi
-find $HOME/.lokinet >> /tmp/lokinet_preinstall.log
-exit 0 # all good

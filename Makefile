@@ -80,6 +80,10 @@ JAVA_HOME ?= /usr/lib/jvm/default-java
 
 TOOLCHAIN ?=
 
+# 64 for 64bit windows, 32 for 32bit windows
+# defaults to 64 bit for now
+WINDOWS_ARCH ?= 64
+
 # native avx2 code
 AVX2 ?= OFF
 # statically link everything
@@ -132,7 +136,7 @@ ANALYZE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "$(SCA
 COVERAGE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DWITH_COVERAGE=yes $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
 else
 CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) -DTRACY_ROOT=$(TRACY_ROOT) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
-CONFIG_CMD_WINDOWS = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
+CONFIG_CMD_WINDOWS = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=ON -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS)")
 
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
 
@@ -166,7 +170,7 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
@@ -230,7 +234,7 @@ check: debug
 test: check
 
 static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
-	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
+	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DNATIVE_BUILD=OFF ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
 
 static: static-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
@@ -271,7 +275,7 @@ android: android-gradle
 
 windows-debug-configure: $(LIBUV_PREFIX)
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD_WINDOWS) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT=$(LIBUV_PREFIX)
+	$(CONFIG_CMD_WINDOWS) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw$(WINDOWS_ARCH).cmake'  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT=$'(LIBUV_PREFIX)' '$(REPO)'
 
 windows-debug: windows-debug-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
@@ -279,13 +283,23 @@ windows-debug: windows-debug-configure
 
 windows-release-configure: $(LIBUV_PREFIX)
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD_WINDOWS) -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT=$(LIBUV_PREFIX)
+	$(CONFIG_CMD_WINDOWS) -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw$(WINDOWS_ARCH).cmake' -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp '$(BUILD_ROOT)/daemon/lokinet.exe' '$(REPO)/lokinet.exe'
+	cd '$(BUILD_ROOT)' && cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
 
-windows: windows-debug
+windows: windows-release
+
+mac-release-configure: $(LIBUV_PREFIX)
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
+
+mac-release: mac-release-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+
+mac: mac-release
+	$(MAKE) -C '$(BUILD_ROOT)' package
 
 abyss: debug
 	$(ABYSS_EXE)
@@ -341,7 +355,7 @@ docker-fedora:
 
 debian-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
+	$(CONFIG_CMD) -DDEBIAN=ON -DCMAKE_BUILD_TYPE=Release
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'

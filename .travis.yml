@@ -117,6 +117,30 @@ matrix:
     dist: xenial
     env: DOCKER_FILE=docker/gcc-trunk.Dockerfile
     services: docker
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
+  - name: "windows installer"
+    os: linux
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+  allow_failures:
+  - name: "windows installer"
+    os: linux
+    env: MAKE_TARGET=windows STATIC_LINK=ON DOWNLOAD_SODIUM=ON
+  - name: "make windows docker image"
+    os: linux
+    dist: xenial
+    env: DOCKER_FILE=docker/alpine-windows.Dockerfile
+    services: docker
+  - name: "native windows debug"
+    os: windows
+    env: BUILD_TYPE=Debug
+  - name: "native windows release"
+    os: windows
+    env: BUILD_TYPE=Release
 #  - name: "native windows debug"
 #    os: windows
 #    env: BUILD_TYPE=Debug
@@ -137,6 +161,25 @@ env:
     - STATIC_LINK=OFF
 
 addons:
+  apt:
+    packages:
+    - binutils-gold
+    - build-essential
+    - clang-format
+    - cmake
+    - curl
+    - docker-ce
+    - nsis
+    - g++-mingw-w64
+    - g++-mingw-w64-x86-64
+    - gcc-mingw-w64-base
+    - git
+    - libcap-dev
+    - libcurl4-openssl-dev
+    - libuv1-dev
+    - mingw-w64 mingw-w64-common
+    - ninja-build
+    - libsodium-dev
   homebrew:
     update: true
     packages:

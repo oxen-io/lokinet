@@ -1,0 +1,73 @@
+Codesigning and notarization on macOS
+
+This is painful.  Thankfully most of the pain is now in CMake and a python script.
+
+To build, codesign, and notarized and installer package, CMake needs to be invoked with:
+
+    cd build
+    rm -rf *  # optional but recommended
+    cmake .. -DBUILD_PACKAGE=ON -DDOWNLOAD_SODIUM=ON -DMACOS_SIGN_APP=ABC123... -DMACOS_SIGN_PKG=DEF456...
+
+where the ABC123... key is a "Developer ID Installer" key and PKG key is a "Developer ID
+Application" key.  You have to go through a bunch of pain, pay Apple money, and then read a bunch of
+poorly written documentation that doesn't help very much to create these and get them working.  But once you have them
+set up in Keychain, you should be able to list your keys with:
+
+    security find-identity -v
+
+and you should see (at least) one "Developer ID Installer: ..." and one "Developer ID Application:
+...".  You need both for reasons that only Apple knows.  The former is used to sign the installer
+.pkg, and the latter is used to sign everything *inside* the .pkg, and you can't use the same key
+for both because Apple designed code signing by marketing committee rather than ask any actual
+competent software developers how code signing should work.
+
+Either way, these two values can be specified either by hex value or description string that
+`security find-identity -v` spits out.
+
+You also need to set up the notarization parameters; these can either be specified directly on the
+cmake command line by adding:
+
+  -DMACOS_NOTARIZE_ASC=XYZ123 -DMACOS_NOTARIZE_USER=me@example.com -DMACOS_NOTARIZE_PASS=@keychain:codesigning-password
+
+or, more simply, by putting them inside a `~/.notarization.cmake` file that will be included if it
+exists (and the MACOS_SIGN_* variables are set) -- see below.
+
+These three values here are:
+
+MACOS_NOTARIZE_ASC: 
+
+Organization-specific unique value; this is printed inside (brackets) when you run: `security
+find-identity -v`:
+
+    1) 1C75DDBF884DEF3D5927C3F29BB7FC5ADAE2E1B3 "Apple Development: me@example.com (ABC123XYZ9)"
+
+MACOS_NOTARIZE_USER:
+
+Your Apple Developer login.
+
+MACOS_NOTARIZE_PASS:
+
+This should be an app-specific password created for signing on the Apple Developer website.  You
+*can* specify it directly, but it is much better to use the magic `@keychain:blah` value, where
+'blah' is a password name recorded in Keychain.  To get that in place you run:
+
+    export HISTFILE=''  # for bash: you don't want to store this in your history
+    xcrun altool --store-password-in-keychain-item "NOTARIZE_PASSWORD" -u "user" -p "password"
+
+where NOTARIZE_PASSWORD is just some name for the password (I called it 'blah' or
+'codesigning-password' above), and the "user" and "password" are replaced with your actual Apple
+Developer account device-specific login credentials.
+
+Optionally, put these last three inside a `~/.notarization.cmake` file:
+
+    set(MACOS_NOTARIZE_USER "jagerman@jagerman.com")
+    set(MACOS_NOTARIZE_PASS "@keychain:codesigning-password")
+    set(MACOS_NOTARIZE_ASC "SUQ8J2PCT7")
+
+Then, finally, you can build the package from the build directory with:
+
+    make package -j4  # or whatever -j makes you happy
+    make notarize
+
+The former builds and signs the package, the latter submits it for notarization.  This can take a
+few minutes; the script polls Apple's server until it is finished passing or failing notarization.

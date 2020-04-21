@@ -1,3 +1,5 @@
+set(CMAKE_SYSTEM_VERSION 6.0)
+
 # target environment on the build host system
 # second one is for non-root installs
 set(CMAKE_FIND_ROOT_PATH ${TOOLCHAIN_PATHS})
