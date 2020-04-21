@@ -24,6 +24,19 @@ OLD_SERVERS="$(networksetup -getdnsservers "$SERVICE_NAME" \
         | tr '\n' ' ' \
         | sed 's/ $//')"
 
+# <3 Apple
+# 
+# if there were no explicit DNS servers, this will return:
+# "There aren't any DNS Servers set on Ethernet."
+# This might be internationalized, so we'll suffice it to see if there's a space
+pattern=" |'"
+if [[ $OLD_SERVERS =~ $pattern ]]
+then
+  # and when there aren't any explicit servers set, we want to pass the literal
+  # string "empty"
+  OLD_SERVERS="empty"
+fi
+
 networksetup -setdnsservers "$SERVICE_NAME" 127.0.0.1
 
 /opt/lokinet/bin/lokinet /var/lib/lokinet/lokinet.ini
