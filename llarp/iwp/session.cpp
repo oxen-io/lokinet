@@ -186,13 +186,14 @@ namespace llarp
         return false;
       const auto now   = m_Parent->Now();
       const auto msgid = m_TXID++;
+      const auto bufsz = buf.size();
       auto& msg =
           m_TXMsgs
               .emplace(msgid,
                        OutboundMessage{msgid, std::move(buf), now, completed})
               .first->second;
       EncryptAndSend(msg.XMIT());
-      if(buf.size() > FragmentSize)
+      if(bufsz > FragmentSize)
       {
         msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
       }
@@ -715,8 +716,10 @@ namespace llarp
     void
     Session::HandleXMIT(Packet_t data)
     {
-      if(data.size() < (CommandOverhead + PacketOverhead + sizeof(uint16_t)
-                        + sizeof(uint64_t) + ShortHash::SIZE))
+      static constexpr size_t XMITOverhead =
+          (CommandOverhead + PacketOverhead + sizeof(uint16_t)
+           + sizeof(uint64_t) + ShortHash::SIZE);
+      if(data.size() < XMITOverhead)
       {
         LogError("short XMIT from ", m_RemoteAddr);
         return;
@@ -748,13 +751,9 @@ namespace llarp
                         rxid,
                         InboundMessage{rxid, sz, std::move(h), m_Parent->Now()})
                     .first;
-
-          auto _sizeDelta = data.size()
-              - (CommandOverhead + sizeof(uint16_t) + sizeof(uint64_t)
-                 + PacketOverhead + 32);
-          if(_sizeDelta == 0)
+          sz = std::min(sz, uint16_t{FragmentSize});
+          if((data.size() - XMITOverhead) == sz)
           {
-            sz = std::min(sz, uint16_t{FragmentSize});
             {
               const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
               itr->second.HandleData(0, buf, now);

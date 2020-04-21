@@ -420,6 +420,13 @@ namespace llarp
                                          bool isV6) -> bool {
         using service::Address;
         using service::OutboundContext;
+        if(self->HasAddress(addr))
+        {
+          const auto ip = self->ObtainIPForAddr(addr, false);
+          msg->AddINReply(ip, isV6);
+          reply(*msg);
+          return true;
+        }
         return self->EnsurePathToService(
             addr,
             [=](const Address &, OutboundContext *ctx) {

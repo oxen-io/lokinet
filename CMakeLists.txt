@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)  # xenial's cmake version
+cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -6,7 +6,17 @@ if(CCACHE_PROGRAM)
 endif()
 
 set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME}
+    VERSION 0.7.1
+    DESCRIPTION "lokinet - IP packet onion router"
+    LANGUAGES C CXX)
+
+set(RELEASE_MOTTO "I'll remember that..." CACHE STRING "Release motto")
+
+add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
+add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
+add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
+
 
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
@@ -30,6 +40,7 @@ option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for developmen
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
 #option(WITH_SYSTEMD ...) defined below
+option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -45,12 +56,6 @@ if (STATIC_LINK)
   message(STATUS "setting static library suffix search")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
-# No in-source building
-include(MacroEnsureOutOfSourceBuild)
-macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
-
 include(cmake/basic_definitions.cmake)
 
 if(MSVC_VERSION)
@@ -62,9 +67,16 @@ else()
 endif(MSVC_VERSION)
 
 include(cmake/solaris.cmake)
-include(cmake/unix.cmake)
 include(cmake/win32.cmake)
-# try detecting the target arch and set the flags needed here
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+# No in-source building
+include(MacroEnsureOutOfSourceBuild)
+macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
+
+include(cmake/unix.cmake)
+
 if(NOT WIN32)
   if(IOS OR ANDROID)
     set(NON_PC_TARGET ON)
@@ -144,7 +156,8 @@ if (NOT MSVC_VERSION)
 	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  # STREQUAL because AppleClang's libc++ doesn't yet support thread safety annotations
   add_compile_options(-Wthread-safety)
 endif()
 
@@ -223,7 +236,7 @@ endif(JEMALLOC)
 
 
 find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
+if(PKG_CONFIG_FOUND AND LINUX)
     pkg_check_modules(SD libsystemd)
     # Default WITH_SYSTEMD to true if we found it
     option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
@@ -297,4 +310,8 @@ if (NOT SHADOW)
   if(ANDROID)
     add_subdirectory(jni)
   endif(ANDROID)
+endif()
+
+if(BUILD_PACKAGE)
+    include(cmake/installer.cmake)
 endif()

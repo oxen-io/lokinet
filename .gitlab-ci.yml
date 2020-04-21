@@ -64,6 +64,32 @@ build:linux_debug:
       - build/daemon/lokinet
       - build/daemon/lokinetctl
 
+
+build:win32:
+  image: ubuntu:bionic
+  tags:
+    - linux
+  stage: build
+  before_script:
+    - apt-get update && apt-get install -y build-essential cmake nsis git g++-mingw-w64
+  script:
+    - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=ON WINDOWS_ARCH=64 make windows
+  artifacts:
+    paths:
+      - build/lokinet-*.exe
+
+build:macos:
+  tags:
+    - osx
+  stage: build
+  script:
+    - IS_NOTIFICATION=1 STATIC_LINK=ON DOWNLOAD_SODIUM=ON make mac
+  artifacts:
+    paths:
+      - build/*.pkg
+      - build/daemon/lokinet
+
+
 # needs libuv and libcurl
 #build:freebsd:
 #  tags:
