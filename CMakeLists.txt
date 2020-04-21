@@ -287,6 +287,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/cxxopts)
     check_submodule(external/date)
     check_submodule(external/pybind11)
+    check_submodule(external/libuv)
   endif()
 endif()
 

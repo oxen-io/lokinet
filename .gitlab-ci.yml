@@ -6,20 +6,6 @@ stages:
   - build
   - test
 
-# disabled because gcc9 can't build net_if.hpp
-#build:linux:
-#  image: alpine:latest
-#  tags:
-#    - linux
-#  stage: build
-#  before_script:
-#    - apk add --update g++ make cmake linux-headers libcap-dev libuv-dev curl-dev git
-#  script:
-#    - make STATIC_LINK=ON DOWNLOAD_SODIUM=ON
-#  artifacts:
-#    paths:
-#      - "lokinet"
-
 # we'll just try our travis set up for now
 build:linux_release:
   image: ubuntu:xenial
@@ -33,7 +19,7 @@ build:linux_release:
     - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils python3-pip
     - pip3 install git-archive-all
   script:
-    - make static DOWNLOAD_SODIUM=ON DOWNLOAD_UV=ON
+    - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DDOWNLOAD_CURL=ON -DDOWNLOAD_SODIUM=ON -DSTATIC_LINK_RUNTIME=ON && make
     # alternatively: git describe --tag
     - LOKINET_VERSION=$(./lokinet-static --version|sed s/lokinet-//)
     - echo lokinet-linux-x64-v$LOKINET_VERSION
@@ -58,7 +44,7 @@ build:linux_debug:
     - echo 'deb https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware.list
     - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev libcurl4-openssl-dev libuv1-dev ninja-build
   script:
-    - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=OFF make
+    - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DDOWNLOAD_CURL=ON -DDOWNLOAD_SODIUM=ON -DSTATIC_LINK_RUNTIME=ON && make package
   artifacts:
     paths:
       - build/daemon/lokinet
@@ -73,7 +59,7 @@ build:win32:
   before_script:
     - apt-get update && apt-get install -y build-essential cmake nsis git g++-mingw-w64
   script:
-    - DOWNLOAD_SODIUM=ON IS_NOTIFICATION=1 STATIC_LINK=ON WINDOWS_ARCH=64 make windows
+    - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw64.cmake -DSTATIC_LINK_RUNTIME=ON && make package
   artifacts:
     paths:
       - build/lokinet-*.exe
@@ -88,29 +74,3 @@ build:macos:
     paths:
       - build/*.pkg
       - build/daemon/lokinet
-
-
-# needs libuv and libcurl
-#build:freebsd:
-#  tags:
-#     - freebsd
-#  stage: build
-#  script:
-#    - gmake DOWNLOAD_SODIUM=ON
-#  artifacts:
-#    paths:
-#      - "lokinet"
-
-# need windows runner on lokiproject
-#build:windows:
-#  tags:
-#    - windows
-#  stage: build
-#  script:
-    #- make static CC=gcc CXX=g++
-    # can't use STATIC because LTO doesn't work on cross-compiled targets
-    # -DSTATIC_LINK_RUNTIME=ON -DLIBUV_ROOT=libuv
-#    - cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake  -DDOWNLOAD_SODIUM=ON
-#  artifacts:
-#    paths:
-#      - "lokinet.exe"
