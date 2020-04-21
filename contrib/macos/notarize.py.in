@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import sys
+import plistlib
+import subprocess
+import time
+
+pkg = "lokinet-@PROJECT_VERSION@-Darwin.pkg"
+userpass = ('--username', "@MACOS_NOTARIZE_USER@", '--password', "@MACOS_NOTARIZE_PASS@")
+print("Submitting {} for notarization; this may take a minute...".format(pkg))
+
+started = time.time()
+result = subprocess.run([
+    'xcrun', 'altool',
+    '--notarize-app',
+    '--primary-bundle-id', 'org.lokinet.lokinet.pkg.@PROJECT_VERSION@',
+    *userpass,
+    '--asc-provider', "@MACOS_NOTARIZE_ASC@",
+    '--file', pkg,
+    '--output-format', 'xml'
+    ], stdout=subprocess.PIPE)
+
+data = plistlib.loads(result.stdout)
+if 'success-message' not in data or 'notarization-upload' not in data or 'RequestUUID' not in data['notarization-upload']:
+    print("Something failed, leaving you with this nice XML to figure out:\n{}".format(data))
+    sys.exit(1)
+
+uuid = data['notarization-upload']['RequestUUID']
+elapsed = time.time() - started
+mins, secs = int(elapsed // 60), elapsed % 60
+print("Notarization submitted with request uuid = {} in {:d}m{:05.2f}s".format(uuid, mins, secs))
+print(data['success-message'])
+
+print("Begin polling for notarization result")
+started_waiting = time.time()
+done = False
+success = False
+while not done:
+    time.sleep(5)
+    result = subprocess.run([
+        'xcrun', 'altool',
+        '--notarization-info', uuid,
+        *userpass,
+        '--output-format', 'xml'
+        ], stdout=subprocess.PIPE)
+    result.check_returncode()
+    data = plistlib.loads(result.stdout)
+    if 'notarization-info' not in data or 'Status' not in data['notarization-info']:
+        status = 'Request failed'
+    else:
+        status = data['notarization-info']['Status Message'] if 'Status Message' in data['notarization-info'] else ''
+        st = data['notarization-info']['Status']
+        if st == 'success':
+            success = True
+            done = True
+        elif st == 'invalid':
+            done = True
+        elif st == 'in progress' and len(status) == 0:
+            status = 'Notarization in progress'
+
+        if done and 'LogFileURL' in data['notarization-info']:
+            status += '\n\nlog file: {}'.format(data['notarization-info']['LogFileURL'])
+
+    elapsed = time.time() - started_waiting
+    mins, secs = int(elapsed // 60), int(elapsed % 60)
+
+    print("\033[1K\r(+{:d}m{:02d}s) {}: {}".format(mins, secs, st, status), end='', flush=True)
+
+print("\n")
+sys.exit(0 if success else 42)
