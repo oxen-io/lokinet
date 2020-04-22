@@ -35,7 +35,6 @@ set(EXE_LIBS ${STATIC_LIB} ws2_32 iphlpapi)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-  add_definitions(-DRELEASE_MOTTO=${RELEASE_MOTTO})
 endif()
 
 if (NOT STATIC_LINK_RUNTIME AND NOT MSVC)
