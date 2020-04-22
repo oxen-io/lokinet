@@ -21,7 +21,7 @@ namespace llarp
                          public std::enable_shared_from_this<TunEndpoint>
     {
       TunEndpoint(
-          const std::string& nickname,
+          const SnappConfig& conf,
           AbstractRouter* r,
           llarp::service::Context* parent,
           bool lazyVPN = false);
@@ -34,7 +34,7 @@ namespace llarp
       }
 
       bool
-      SetOption(const std::string& k, const std::string& v) override;
+      Configure(SnappConfig conf) override;
 
       void
       Tick(llarp_time_t now) override;

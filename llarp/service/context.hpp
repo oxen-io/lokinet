@@ -3,7 +3,7 @@
 
 #include <handlers/tun.hpp>
 #include <net/net.hpp>
-#include <service/config.hpp>
+#include <config/config.hpp>
 #include <service/endpoint.hpp>
 
 #include <unordered_map>
@@ -40,8 +40,8 @@ namespace llarp
       AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>& opts);
 
       /// add endpoint via config
-      bool
-      AddEndpoint(const Config::section_t& conf, bool autostart = false);
+      void
+      AddEndpoint(const SnappConfig& conf, bool autostart = false);
 
       /// inject endpoint instance
       void

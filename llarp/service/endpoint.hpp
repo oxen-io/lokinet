@@ -69,7 +69,7 @@ namespace llarp
     {
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
-      Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
+      Endpoint(const SnappConfig& conf, AbstractRouter* r, Context* parent);
       ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void
@@ -94,7 +94,7 @@ namespace llarp
       SetHandler(IDataHandler* h);
 
       virtual bool
-      SetOption(const std::string& k, const std::string& v);
+      Configure(SnappConfig conf);
 
       void
       Tick(llarp_time_t now) override;

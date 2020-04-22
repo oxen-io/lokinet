@@ -276,20 +276,6 @@ namespace llarp
   }
 
   void
-  ServicesConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    conf.addUndeclaredHandler(
-        "services",
-        [this](std::string_view section, std::string_view name, std::string_view value) {
-          (void)section;
-          services.emplace_back(name, value);
-          return true;
-        });
-  }
-
-  void
   ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
@@ -400,6 +386,8 @@ namespace llarp
       // TODO: validate as valid .loki / .snode address
       m_keyfile = arg;
     });
+
+    // TODO: m_endpointType -- this is used downstream, but was it ever supported in config file?
 
     conf.defineOption<std::string>(section, "tag", false, "", [=](std::string arg) {
       if (arg.size() < service::Tag::size())
@@ -582,7 +570,6 @@ namespace llarp
     connect.defineConfigOptions(conf, params);
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
-    services.defineConfigOptions(conf, params);
     api.defineConfigOptions(conf, params);
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);

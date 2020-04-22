@@ -114,13 +114,6 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct ServicesConfig
-  {
-    std::vector<std::pair<std::string, std::string>> services;
-    void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
   struct ApiConfig
   {
     bool m_enableRPCServer;
@@ -164,6 +157,7 @@ namespace llarp
   {
     std::string m_name;
     std::string m_keyfile;
+    std::string m_endpointType;
     service::Tag m_tag;
     std::set<service::Tag> m_prefetchTags;
     std::set<service::Address> m_prefetchAddrs;
@@ -194,7 +188,6 @@ namespace llarp
     ConnectConfig connect;
     DnsConfig dns;
     LinksConfig links;
-    ServicesConfig services;
     ApiConfig api;
     LokidConfig lokid;
     BootstrapConfig bootstrap;

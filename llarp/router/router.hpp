@@ -334,12 +334,6 @@ namespace llarp
     Close();
 
     bool
-    LoadHiddenServiceConfig(std::string_view fname);
-
-    bool
-    AddHiddenService(const service::Config::section_t& config);
-
-    bool
     Configure(Config* conf, llarp_nodedb* nodedb = nullptr) override;
 
     bool

@@ -33,20 +33,22 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, AbstractRouter* r, Context* parent)
+    Endpoint::Endpoint(const SnappConfig& conf, AbstractRouter* r, Context* parent)
         : path::Builder(r, 3, path::default_len), context(parent), m_RecvQueue(128)
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
-      m_state->m_Name = name;
+      m_state->m_Name = conf.m_name;
       m_state->m_Tag.Zero();
       m_RecvQueue.enable();
     }
 
     bool
-    Endpoint::SetOption(const std::string& k, const std::string& v)
+    Endpoint::Configure(SnappConfig conf)
     {
-      return m_state->SetOption(k, v, *this);
+      numPaths = conf.m_paths;
+      numHops = conf.m_hops;
+      return m_state->Configure(std::move(conf));
     }
 
     llarp_ev_loop_ptr

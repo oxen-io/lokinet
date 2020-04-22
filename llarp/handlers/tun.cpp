@@ -50,10 +50,10 @@ namespace llarp
     }
 
     TunEndpoint::TunEndpoint(
-        const std::string& nickname, AbstractRouter* r, service::Context* parent, bool lazyVPN)
-        : service::Endpoint(nickname, r, parent)
-        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop(), r->netloop())
-        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop(), r->netloop())
+        const SnappConfig& conf, AbstractRouter* r, service::Context* parent, bool lazyVPN)
+        : service::Endpoint(conf, r, parent)
+        , m_UserToNetworkPktQueue(conf.m_name + "_sendq", r->netloop(), r->netloop())
+        , m_NetworkToUserPktQueue(conf.m_name + "_recvq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
@@ -105,8 +105,9 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::SetOption(const std::string& k, const std::string& v)
+    TunEndpoint::Configure(SnappConfig conf)
     {
+      /*
       if (k == "reachable")
       {
         if (IsFalseValue(v))
@@ -315,7 +316,8 @@ namespace llarp
         strncpy(tunif->ifaddr, addr.c_str(), sizeof(tunif->ifaddr) - 1);
         return true;
       }
-      return Endpoint::SetOption(k, v);
+      */
+      return Endpoint::Configure(conf);
     }
 
     bool

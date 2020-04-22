@@ -583,17 +583,14 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    // Services config
-    for (const auto& service : conf->services.services)
+    // load SNApps
+    for (const auto& pairs : conf->snapps)
     {
-      if (LoadHiddenServiceConfig(service.second))
-      {
-        llarp::LogInfo("loaded hidden service config for ", service.first);
-      }
-      else
-      {
-        llarp::LogWarn("failed to load hidden service config for ", service.first);
-      }
+      // TODO: this was previously incorporating the "sane defaults" for netConfig
+      //       netConfig should be refactored to use strongly typed member variables
+      //       instead of an ad-hoc multimap
+      const SnappConfig& snappConfig = pairs.second;
+      hiddenServiceContext().AddEndpoint(snappConfig);
     }
 
     // Logging config
@@ -1256,24 +1253,6 @@ namespace llarp
   {
     // add endpoint
     return hiddenServiceContext().AddDefaultEndpoint(netConfig);
-  }
-
-  bool
-  Router::LoadHiddenServiceConfig(std::string_view fname)
-  {
-    LogDebug("opening hidden service config ", fname);
-    service::Config conf;
-    if (!conf.Load(fname))
-      return false;
-    for (const auto& config : conf.services)
-    {
-      service::Config::section_t filteredConfig;
-      mergeHiddenServiceConfig(config.second, filteredConfig.second);
-      filteredConfig.first = config.first;
-      if (!hiddenServiceContext().AddEndpoint(filteredConfig))
-        return false;
-    }
-    return true;
   }
 
   void

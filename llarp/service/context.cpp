@@ -5,6 +5,7 @@
 #include <nodedb.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/endpoint.hpp>
+#include <stdexcept>
 
 namespace llarp
 {
@@ -13,29 +14,24 @@ namespace llarp
     namespace
     {
       using EndpointConstructor = std::function<service::Endpoint_ptr(
-          const std::string&, AbstractRouter*, service::Context*)>;
+          const SnappConfig&, AbstractRouter*, service::Context*)>;
       using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
       static EndpointConstructors endpointConstructors = {
           {"tun",
-           [](const std::string& nick, AbstractRouter* r, service::Context* c)
-               -> service::Endpoint_ptr {
-             return std::make_shared<handlers::TunEndpoint>(nick, r, c, false);
+           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+             return std::make_shared<handlers::TunEndpoint>(conf, r, c, false);
            }},
           {"android",
-           [](const std::string& nick, AbstractRouter* r, service::Context* c)
-               -> service::Endpoint_ptr {
-             return std::make_shared<handlers::TunEndpoint>(nick, r, c, true);
+           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+             return std::make_shared<handlers::TunEndpoint>(conf, r, c, true);
            }},
           {"ios",
-           [](const std::string& nick, AbstractRouter* r, service::Context* c)
-               -> service::Endpoint_ptr {
-             return std::make_shared<handlers::TunEndpoint>(nick, r, c, true);
+           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+             return std::make_shared<handlers::TunEndpoint>(conf, r, c, true);
            }},
-          {"null",
-           [](const std::string& nick, AbstractRouter* r, service::Context* c)
-               -> service::Endpoint_ptr {
-             return std::make_shared<handlers::NullEndpoint>(nick, r, c);
+          {"null", [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+             return std::make_shared<handlers::NullEndpoint>(conf, r, c);
            }}};
 
     }  // namespace
@@ -140,8 +136,10 @@ namespace llarp
     }
 
     bool
-    Context::AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>& opts)
+    Context::AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>&)
     {
+      throw std::runtime_error("FIXME");
+      /*
       Config::section_values_t configOpts;
       configOpts.push_back({"type", DefaultEndpointType()});
       // non reachable by default as this is the default endpoint
@@ -160,6 +158,7 @@ namespace llarp
         }
       }
       return AddEndpoint({"default", configOpts});
+      */
     }
 
     bool
@@ -198,86 +197,52 @@ namespace llarp
       }
     }
 
-    bool
-    Context::AddEndpoint(const Config::section_t& conf, bool autostart)
+    void
+    Context::AddEndpoint(const SnappConfig& conf, bool autostart)
     {
-      {
-        auto itr = m_Endpoints.find(conf.first);
-        if (itr != m_Endpoints.end())
-        {
-          LogError("cannot add hidden service with duplicate name: ", conf.first);
-          return false;
-        }
-      }
-      // extract type
-      std::string endpointType = DefaultEndpointType();
-      std::string keyfile;
-      for (const auto& option : conf.second)
-      {
-        if (option.first == "type")
-          endpointType = option.second;
-        if (option.first == "keyfile")
-          keyfile = option.second;
-      }
+      if (m_Endpoints.find(conf.m_name) != m_Endpoints.end())
+        throw std::invalid_argument(stringify("Snapp ", conf.m_name, " already exists"));
 
-      service::Endpoint_ptr service;
+      // use specified type, fall back to default
+      std::string endpointType = conf.m_name;
+      if (endpointType.empty())
+        endpointType = DefaultEndpointType();
 
-      {
-        // detect type
-        const auto itr = endpointConstructors.find(endpointType);
-        if (itr == endpointConstructors.end())
-        {
-          LogError("no such endpoint type: ", endpointType);
-          return false;
-        }
+      // use factory to create endpoint
+      const auto itr = endpointConstructors.find(endpointType);
+      if (itr == endpointConstructors.end())
+        throw std::invalid_argument(stringify("Endpoint type ", endpointType, " does not exist"));
 
-        // construct
-        service = itr->second(conf.first, m_Router, this);
-        if (service)
-        {
-          // if ephemeral, then we need to regen key
-          // if privkey file, then set it and load it
-          if (!keyfile.empty())
-          {
-            service->SetOption("keyfile", keyfile);
-            // load keyfile, so we have the correct name for logging
-          }
-          LogInfo("Establishing endpoint identity");
-          service->LoadKeyFile();  // only start endpoint not tun
-          // now Name() will be correct
-        }
-      }
-      if (service == nullptr)
-        return false;
-      // configure
-      for (const auto& option : conf.second)
-      {
-        auto& k = option.first;
-        if (k == "type")
-          continue;
-        auto& v = option.second;
-        if (!service->SetOption(k, v))
-        {
-          LogError("failed to set ", k, "=", v, " for hidden service endpoint ", conf.first);
-          return false;
-        }
-      }
+      auto service = itr->second(conf, m_Router, this);
+      if (not service)
+        throw std::runtime_error(stringify(
+            "Failed to create endpoint service for ",
+            conf.m_name,
+            "(type: ",
+            conf.m_endpointType,
+            ")"));
+
+      // pass conf to service
+      service->Configure(conf);
+
+      // autostart if requested
       if (autostart)
       {
         // start
         if (service->Start())
         {
           LogInfo("autostarting hidden service endpoint ", service->Name());
-          m_Endpoints.emplace(conf.first, service);
-          return true;
+          m_Endpoints.emplace(conf.m_name, service);
         }
-        LogError("failed to start hidden service endpoint ", conf.first);
-        return false;
+        else
+        {
+          throw std::runtime_error(
+              stringify("failed to start hidden service endpoint ", conf.m_name));
+        }
       }
 
       LogInfo("added hidden service endpoint ", service->Name());
-      m_Endpoints.emplace(conf.first, service);
-      return true;
+      m_Endpoints.emplace(conf.m_name, service);
     }
   }  // namespace service
 }  // namespace llarp

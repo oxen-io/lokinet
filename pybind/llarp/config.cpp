@@ -22,11 +22,11 @@ namespace llarp
         .def_readwrite("connect", &Config::connect)
         .def_readwrite("dns", &Config::dns)
         .def_readwrite("links", &Config::links)
-        .def_readwrite("services", &Config::services)
         .def_readwrite("api", &Config::api)
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
         .def_readwrite("logging", &Config::logging)
+        .def_readwrite("snapps", &Config::snapps)
         .def("LoadFile", &Config::Load)
         .def("LoadDefault", [](Config& self, bool isRelay, std::string dir) {
           return self.LoadDefault(isRelay, dir);
@@ -97,10 +97,6 @@ namespace llarp
               self.m_InboundLinks.push_back(info);
             });
 
-    py::class_<ServicesConfig>(mod, "ServicesConfig")
-        .def(py::init<>())
-        .def_readwrite("services", &ServicesConfig::services);
-
     py::class_<ApiConfig>(mod, "ApiConfig")
         .def(py::init<>())
         .def_readwrite("enableRPCServer", &ApiConfig::m_enableRPCServer)
@@ -123,6 +119,25 @@ namespace llarp
         .def(py::init<>())
         .def_readwrite("m_logType", &LoggingConfig::m_logType)
         .def_readwrite("m_logFile", &LoggingConfig::m_logFile);
+
+    py::class_<SnappConfig>(mod, "SnappConfig")
+        .def(py::init<>())
+        .def_readwrite("name", &SnappConfig::m_name)
+        .def_readwrite("keyfile", &SnappConfig::m_keyfile)
+        .def_readwrite("endpointType", &SnappConfig::m_endpointType)
+        .def_readwrite("tag", &SnappConfig::m_tag)
+        .def_readwrite("prefetchTags", &SnappConfig::m_prefetchTags)
+        .def_readwrite("prefetchAddrs", &SnappConfig::m_prefetchAddrs)
+        .def_readwrite("minLatency", &SnappConfig::m_minLatency)
+        .def_readwrite("reachable", &SnappConfig::m_reachable)
+        .def_readwrite("hops", &SnappConfig::m_hops)
+        .def_readwrite("paths", &SnappConfig::m_paths)
+        .def_readwrite("bundleRC", &SnappConfig::m_bundleRC)
+        .def_readwrite("snodeBlacklist", &SnappConfig::m_snodeBlacklist)
+        .def_readwrite("exitNode", &SnappConfig::m_exitNode)
+        .def_readwrite("localDNS", &SnappConfig::m_localDNS)
+        .def_readwrite("upstreamDNS", &SnappConfig::m_upstreamDNS)
+        .def_readwrite("mapAddr", &SnappConfig::m_mapAddr);
 
     py::class_<sockaddr_in>(mod, "sockaddr_in")
         .def_readwrite("sin_family", &sockaddr_in::sin_family)
