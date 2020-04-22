@@ -236,7 +236,7 @@ endif(JEMALLOC)
 
 
 find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND AND LINUX)
+if(PKG_CONFIG_FOUND)
     pkg_check_modules(SD libsystemd)
     # Default WITH_SYSTEMD to true if we found it
     option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
