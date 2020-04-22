@@ -1,3 +1,11 @@
+lokinet (0.7.1-2) sid; urgency=medium
+
+  * Rediff patches
+  * Remove lokinetctl from binary package
+  * No LINUX variable in cmake
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 Apr 2020 12:03:59 -0300
+
 lokinet (0.7.1-1) sid; urgency=medium
 
   [ Jason Rhinelander ]
