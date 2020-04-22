@@ -1,0 +1,23 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Wed, 22 Apr 2020 12:00:09 -0300
+Subject: No LINUX variable in cmake
+
+Just let the pkg_check fail when libsystemd isn't install; it shouldn't
+hurt anything.
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1826d6b..bd329c6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -234,7 +234,7 @@ endif(JEMALLOC)
+ 
+ 
+ find_package(PkgConfig QUIET)
+-if(PKG_CONFIG_FOUND AND LINUX)
++if(PKG_CONFIG_FOUND)
+     pkg_check_modules(SD libsystemd)
+     # Default WITH_SYSTEMD to true if we found it
+     option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
