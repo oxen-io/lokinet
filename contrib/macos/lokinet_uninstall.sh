@@ -1,4 +1,5 @@
 #!/bin/sh
+touch /var/lib/lokinet/suspend-launchd-service # Prevent the `stop` below from immediately restarting it
 launchctl stop network.loki.lokinet.daemon
 launchctl unload /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 
