@@ -153,7 +153,7 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct SnappConfig
+  struct EndpointConfig
   {
     std::string m_name;
     std::string m_keyfile;
@@ -192,7 +192,7 @@ namespace llarp
     LokidConfig lokid;
     BootstrapConfig bootstrap;
     LoggingConfig logging;
-    std::unordered_map<std::string, SnappConfig> snapps;
+    std::unordered_map<std::string, EndpointConfig> snapps;
 
     // Initialize config definition
     void

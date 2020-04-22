@@ -10,7 +10,7 @@ namespace llarp
     struct NullEndpoint final : public llarp::service::Endpoint,
                                 public std::enable_shared_from_this<NullEndpoint>
     {
-      NullEndpoint(const SnappConfig& conf, AbstractRouter* r, llarp::service::Context* parent)
+      NullEndpoint(const EndpointConfig& conf, AbstractRouter* r, llarp::service::Context* parent)
           : llarp::service::Endpoint(conf, r, parent)
       {
       }

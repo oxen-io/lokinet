@@ -98,7 +98,7 @@ namespace llarp
       util::DecayingHashSet<Address> m_RemoteLookupFilter;
 
       bool
-      Configure(SnappConfig conf);
+      Configure(EndpointConfig conf);
 
       util::StatusObject
       ExtractStatus(util::StatusObject& obj) const;

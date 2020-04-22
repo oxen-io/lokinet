@@ -50,7 +50,7 @@ namespace llarp
     }
 
     TunEndpoint::TunEndpoint(
-        const SnappConfig& conf, AbstractRouter* r, service::Context* parent, bool lazyVPN)
+        const EndpointConfig& conf, AbstractRouter* r, service::Context* parent, bool lazyVPN)
         : service::Endpoint(conf, r, parent)
         , m_UserToNetworkPktQueue(conf.m_name + "_sendq", r->netloop(), r->netloop())
         , m_NetworkToUserPktQueue(conf.m_name + "_recvq", r->netloop(), r->netloop())
@@ -105,7 +105,7 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::Configure(SnappConfig conf)
+    TunEndpoint::Configure(EndpointConfig conf)
     {
       /*
       if (k == "reachable")

@@ -41,7 +41,7 @@ namespace llarp
 
       /// add endpoint via config
       void
-      AddEndpoint(const SnappConfig& conf, bool autostart = false);
+      AddEndpoint(const EndpointConfig& conf, bool autostart = false);
 
       /// inject endpoint instance
       void

@@ -14,23 +14,23 @@ namespace llarp
     namespace
     {
       using EndpointConstructor = std::function<service::Endpoint_ptr(
-          const SnappConfig&, AbstractRouter*, service::Context*)>;
+          const EndpointConfig&, AbstractRouter*, service::Context*)>;
       using EndpointConstructors = std::map<std::string, EndpointConstructor>;
 
       static EndpointConstructors endpointConstructors = {
           {"tun",
-           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+           [](const EndpointConfig& conf, AbstractRouter* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(conf, r, c, false);
            }},
           {"android",
-           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+           [](const EndpointConfig& conf, AbstractRouter* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(conf, r, c, true);
            }},
           {"ios",
-           [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+           [](const EndpointConfig& conf, AbstractRouter* r, service::Context* c) {
              return std::make_shared<handlers::TunEndpoint>(conf, r, c, true);
            }},
-          {"null", [](const SnappConfig& conf, AbstractRouter* r, service::Context* c) {
+          {"null", [](const EndpointConfig& conf, AbstractRouter* r, service::Context* c) {
              return std::make_shared<handlers::NullEndpoint>(conf, r, c);
            }}};
 
@@ -198,7 +198,7 @@ namespace llarp
     }
 
     void
-    Context::AddEndpoint(const SnappConfig& conf, bool autostart)
+    Context::AddEndpoint(const EndpointConfig& conf, bool autostart)
     {
       if (m_Endpoints.find(conf.m_name) != m_Endpoints.end())
         throw std::invalid_argument(stringify("Snapp ", conf.m_name, " already exists"));

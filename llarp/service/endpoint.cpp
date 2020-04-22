@@ -33,7 +33,7 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const SnappConfig& conf, AbstractRouter* r, Context* parent)
+    Endpoint::Endpoint(const EndpointConfig& conf, AbstractRouter* r, Context* parent)
         : path::Builder(r, 3, path::default_len), context(parent), m_RecvQueue(128)
     {
       m_state = std::make_unique<EndpointState>();
@@ -44,7 +44,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::Configure(SnappConfig conf)
+    Endpoint::Configure(EndpointConfig conf)
     {
       numPaths = conf.m_paths;
       numHops = conf.m_hops;

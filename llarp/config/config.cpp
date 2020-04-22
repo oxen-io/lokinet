@@ -367,7 +367,7 @@ namespace llarp
   }
 
   void
-  SnappConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  EndpointConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
 
@@ -378,7 +378,7 @@ namespace llarp
     static constexpr int MinLatencyDefault = 5000;
 
     if (m_name.empty())
-      throw std::runtime_error("Cannot create SnappConfig with empty name");
+      throw std::runtime_error("Cannot create EndpointConfig with empty name");
 
     const std::string section = m_name + "-snapp";
 
@@ -502,7 +502,7 @@ namespace llarp
 
           if (ending == suffix)
           {
-            SnappConfig snappConf;
+            EndpointConfig snappConf;
             snappConf.m_name = str(snappName);
             snappConf.defineConfigOptions(conf, params);
 

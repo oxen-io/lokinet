@@ -589,8 +589,8 @@ namespace llarp
       // TODO: this was previously incorporating the "sane defaults" for netConfig
       //       netConfig should be refactored to use strongly typed member variables
       //       instead of an ad-hoc multimap
-      const SnappConfig& snappConfig = pairs.second;
-      hiddenServiceContext().AddEndpoint(snappConfig);
+      const EndpointConfig& endpointConfig = pairs.second;
+      hiddenServiceContext().AddEndpoint(endpointConfig);
     }
 
     // Logging config

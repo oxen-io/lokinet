@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     bool
-    EndpointState::Configure(SnappConfig conf)
+    EndpointState::Configure(EndpointConfig conf)
     {
       m_Keyfile = std::move(conf.m_keyfile);
       m_Tag = std::move(conf.m_tag);
@@ -20,7 +20,7 @@ namespace llarp
       m_MinPathLatency = conf.m_minLatency;
       m_BundleRC = conf.m_bundleRC;
 
-      // TODO: update SnappConfig to treat these as RouterIDs and detect dupes
+      // TODO: update EndpointConfig to treat these as RouterIDs and detect dupes
       for (const auto& item : conf.m_snodeBlacklist)
       {
         RouterID snode;
