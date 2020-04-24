@@ -3,6 +3,7 @@
 #include "llarp.h"
 #include "llarp.hpp"
 #include "util/thread/logic.hpp"
+#include "util/str.hpp"
 #include "router/abstractrouter.hpp"
 
 #include <chrono>
@@ -17,10 +18,19 @@ namespace tooling
       const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers, bool isRelay)
   {
     llarp_main* ctx = llarp_main_init_from_config(config->Copy(), isRelay);
-    if (llarp_main_setup(ctx) == 0)
+    auto result = llarp_main_setup(ctx);
+    if (result == 0)
     {
       llarp::Context::Get(ctx)->InjectHive(this);
       routers->push_back(ctx);
+    }
+    else
+    {
+      throw std::runtime_error(llarp::stringify(
+          "Failed to add RouterHive ",
+          (isRelay ? "relay" : "client"),
+          ", llarp_main_setup() returned ",
+          result));
     }
   }
 
@@ -37,12 +47,12 @@ namespace tooling
   }
 
   void
-  RouterHive::StartRouters(std::vector<llarp_main*>* routers)
+  RouterHive::StartRouters(std::vector<llarp_main*>* routers, bool isRelay)
   {
     for (llarp_main* ctx : *routers)
     {
-      routerMainThreads.emplace_back([ctx]() {
-        llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false});
+      routerMainThreads.emplace_back([=]() {
+        llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false, isRelay});
       });
       std::this_thread::sleep_for(2ms);
     }
@@ -51,13 +61,13 @@ namespace tooling
   void
   RouterHive::StartRelays()
   {
-    StartRouters(&relays);
+    StartRouters(&relays, true);
   }
 
   void
   RouterHive::StartClients()
   {
-    StartRouters(&clients);
+    StartRouters(&clients, false);
   }
 
   void
@@ -202,6 +212,7 @@ namespace tooling
     return results;
   }
 
+  // TODO: DRY -- this smells a lot like  RelayConnectedRelays()
   std::vector<llarp::RouterContact>
   RouterHive::GetRelayRCs()
   {
@@ -214,7 +225,7 @@ namespace tooling
     for (auto relay : relays)
     {
       auto ctx = llarp::Context::Get(relay);
-      LogicCall(ctx->logic, [&, i, ctx]() {
+      LogicCall(ctx->logic, [&]() {
         llarp::RouterContact rc = ctx->router->rc();
         std::lock_guard<std::mutex> guard{results_lock};
         results[i] = std::move(rc);
@@ -223,9 +234,10 @@ namespace tooling
       i++;
     }
 
-    while (true)
+    int numTries = 0;
+    size_t read_done_count = 0;
+    while (numTries < 100)
     {
-      size_t read_done_count = 0;
       {
         std::lock_guard<std::mutex> guard{results_lock};
         read_done_count = done_count;
@@ -234,7 +246,14 @@ namespace tooling
         break;
 
       std::this_thread::sleep_for(100ms);
+      numTries++;
     }
+
+    if (read_done_count != relays.size())
+    {
+      LogWarn("could not read all relays, last done_count: ", read_done_count);
+    }
+
     return results;
   }
 

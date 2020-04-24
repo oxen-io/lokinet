@@ -189,6 +189,20 @@ namespace llarp
     bool
     Load(const char* fname, bool isRelay, fs::path defaultDataDir);
 
+    /// Load (initialize) a default config.
+    ///
+    /// This delegates to the ConfigDefinition to generate a default config,
+    /// as though an empty config were specified.
+    ///
+    /// If using Config without the intention of loading from file (or string), this is necessary
+    /// in order to obtain sane defaults.
+    ///
+    /// @param isRelay determines whether the config will reflect that of a relay or client
+    /// @param dataDir is a path representing a directory to be used as the data dir
+    /// @return true on success, false otherwise
+    bool
+    LoadDefault(bool isRelay, fs::path dataDir);
+
     std::string
     generateBaseClientConfig(fs::path defaultDataDir);
 

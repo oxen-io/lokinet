@@ -13,6 +13,7 @@
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
 #include <rpc/rpc.hpp>
+#include <stdexcept>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logging/file_logger.hpp>
@@ -247,21 +248,23 @@ namespace llarp
   {
     if (nodedb == nullptr)
     {
-      LogError("Attempting to Router::Configure but passed null nodedb pointer");
-      return false;
+      throw std::invalid_argument("nodedb cannot be null");
     }
     _nodedb = nodedb;
 
     if (not m_keyManager->initialize(*conf, true))
-      return false;
+      throw std::runtime_error("KeyManager failed to initialize");
 
     if (!FromConfig(conf))
-      return false;
+      throw std::runtime_error("FromConfig() failed");
 
     if (!InitOutboundLinks())
-      return false;
+      throw std::runtime_error("InitOutboundLinks() failed");
 
-    return EnsureIdentity();
+    if (not EnsureIdentity())
+      throw std::runtime_error("EnsureIdentity() failed");
+
+    return true;
   }
 
   /// called in disk worker thread
@@ -425,8 +428,7 @@ namespace llarp
       const auto& val = conf->network.m_strictConnect;
       if (IsServiceNode())
       {
-        llarp::LogError("cannot use strict-connect option as service node");
-        return false;
+        throw std::runtime_error("cannot use strict-connect option as service node");
       }
       llarp::RouterID snode;
       llarp::PubKey pk;
@@ -488,8 +490,7 @@ namespace llarp
       {
         if (not BDecodeReadFile(router.c_str(), b_list))
         {
-          LogWarn("failed to read bootstrap list file '", router, "'");
-          return false;
+          throw std::runtime_error(stringify("failed to read bootstrap list file '", router, "'"));
         }
       }
       else
@@ -497,8 +498,8 @@ namespace llarp
         RouterContact rc;
         if (not rc.Read(router.c_str()))
         {
-          llarp::LogWarn("failed to decode bootstrap RC, file='", router, "' rc=", rc);
-          return false;
+          throw std::runtime_error(
+              stringify("failed to decode bootstrap RC, file='", router, "' rc=", rc));
         }
         b_list.insert(rc);
       }
@@ -556,8 +557,7 @@ namespace llarp
       uint16_t port = serverConfig.port;
       if (!server->Configure(netloop(), key, af, port))
       {
-        LogError("failed to bind inbound link on ", key, " port ", port);
-        return false;
+        throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
       _linkManager.AddLink(std::move(server), true);
     }
@@ -1235,7 +1235,7 @@ namespace llarp
         util::memFn(&AbstractRouter::PumpLL, this));
 
     if (!link)
-      return false;
+      throw std::runtime_error("NewOutboundLink() failed to provide a link");
 
     const auto afs = {AF_INET, AF_INET6};
 
@@ -1246,7 +1246,8 @@ namespace llarp
       _linkManager.AddLink(std::move(link), false);
       return true;
     }
-    return false;
+    throw std::runtime_error(
+        stringify("Failed to init AF_INET and AF_INET6 on port ", m_OutboundPort));
   }
 
   bool

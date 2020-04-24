@@ -207,16 +207,22 @@ namespace llarp
   {
     (void)params;
 
+    constexpr auto DefaultOutboundLinkValue = "1090";
+
+    conf.defineOption<std::string>(
+        "bind", "*", false, false, DefaultOutboundLinkValue, [this](std::string arg) {
+          m_OutboundLink = std::move(LinkInfoFromINIValues("*", arg));
+        });
+
     conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
       LinkInfo info = LinkInfoFromINIValues(name, value);
 
       if (info.port <= 0)
         throw std::invalid_argument(stringify("Invalid [bind] port specified on interface", name));
 
-      if (name == "*")
-        m_OutboundLink = std::move(info);
-      else
-        m_InboundLinks.emplace_back(std::move(info));
+      assert(name != "*");  // handled by defineOption("bind", "*", ...) above
+
+      m_InboundLinks.emplace_back(std::move(info));
 
       return true;
     });
@@ -443,6 +449,29 @@ namespace llarp
     catch (const std::exception& e)
     {
       LogError("Error trying to init and parse config from file: ", e.what());
+      return false;
+    }
+  }
+
+  bool
+  Config::LoadDefault(bool isRelay, fs::path dataDir)
+  {
+    try
+    {
+      ConfigGenParameters params;
+      params.isRelay = isRelay;
+      params.defaultDataDir = std::move(dataDir);
+
+      ConfigDefinition conf;
+      initializeConfig(conf, params);
+
+      conf.acceptAllOptions();
+
+      return true;
+    }
+    catch (const std::exception& e)
+    {
+      LogError("Error trying to init default config: ", e.what());
       return false;
     }
   }
