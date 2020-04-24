@@ -2,11 +2,11 @@
 
 #include <config/ini.hpp>
 #include <constants/defaults.hpp>
-#include <constants/limits.hpp>
+#include <constants/files.hpp>
 #include <net/net.hpp>
 #include <router_contact.hpp>
+#include <stdexcept>
 #include <util/fs.hpp>
-#include <util/logging/logger_syslog.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
@@ -16,787 +16,842 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
+#include "ghc/filesystem.hpp"
 
 namespace llarp
 {
-  const char*
-  lokinetEnv(string_view suffix)
-  {
-    std::string env;
-    env.reserve(8 + suffix.size());
-    env.append("LOKINET_"s);
-    env.append(suffix.begin(), suffix.end());
-    return std::getenv(env.c_str());
-  }
+  // constants for config file default values
+  constexpr int DefaultMinConnectionsForRouter = 6;
+  constexpr int DefaultMaxConnectionsForRouter = 60;
 
-  std::string
-  fromEnv(string_view val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return ptr;
-    return {val.begin(), val.end()};
-  }
-
-  int
-  fromEnv(const int& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoi(ptr);
-    return val;
-  }
-
-  uint16_t
-  fromEnv(const uint16_t& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoi(ptr);
-
-    return val;
-  }
-
-  size_t
-  fromEnv(const size_t& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return std::atoll(ptr);
-
-    return val;
-  }
-
-  nonstd::optional<bool>
-  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix)
-  {
-    if (const char* ptr = lokinetEnv(envNameSuffix))
-      return IsTrueValue(ptr);
-
-    return val;
-  }
-
-  int
-  svtoi(string_view val)
-  {
-    return std::atoi(val.data());
-  }
-
-  nonstd::optional<bool>
-  setOptBool(string_view val)
-  {
-    if (IsTrueValue(val))
-    {
-      return true;
-    }
-    else if (IsFalseValue(val))
-    {
-      return false;
-    }
-    return {};
-  }
+  constexpr int DefaultMinConnectionsForClient = 4;
+  constexpr int DefaultMaxConnectionsForClient = 6;
 
   void
-  RouterConfig::fromSection(string_view key, string_view val)
+  RouterConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    if (key == "job-queue-size")
-    {
-      auto sval = svtoi(val);
-      if (sval >= 1024)
+    constexpr int DefaultJobQueueSize = 1024 * 8;
+    constexpr auto DefaultNetId = "lokinet";
+    constexpr int DefaultPublicPort = 1090;
+    constexpr int DefaultWorkerThreads = 1;
+    constexpr int DefaultNetThreads = 1;
+    constexpr bool DefaultBlockBogons = true;
+
+    conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
+      if (arg < 1024)
+        throw std::invalid_argument("job-queue-size must be 1024 or greater");
+
+      m_JobQueueSize = arg;
+    });
+
+    conf.defineOption<std::string>("router", "netid", false, DefaultNetId, [this](std::string arg) {
+      if (arg.size() > NetID::size())
+        throw std::invalid_argument(stringify("netid is too long, max length is ", NetID::size()));
+
+      m_netId = std::move(arg);
+    });
+
+    int minConnections =
+        (params.isRelay ? DefaultMinConnectionsForRouter : DefaultMinConnectionsForClient);
+    conf.defineOption<int>("router", "min-connections", false, minConnections, [=](int arg) {
+      if (arg < minConnections)
+        throw std::invalid_argument(stringify("min-connections must be >= ", minConnections));
+
+      m_minConnectedRouters = arg;
+    });
+
+    int maxConnections =
+        (params.isRelay ? DefaultMaxConnectionsForRouter : DefaultMaxConnectionsForClient);
+    conf.defineOption<int>("router", "max-connections", false, maxConnections, [=](int arg) {
+      if (arg < maxConnections)
+        throw std::invalid_argument(stringify("max-connections must be >= ", maxConnections));
+
+      m_maxConnectedRouters = arg;
+    });
+
+    conf.defineOption<std::string>("router", "nickname", false, "", AssignmentAcceptor(m_nickname));
+
+    conf.defineOption<std::string>(
+        "router", "data-dir", false, GetDefaultDataDir(), [this](std::string arg) {
+          fs::path dir = arg;
+          if (not fs::exists(dir))
+            throw std::runtime_error(
+                stringify("Specified [router]:data-dir ", arg, " does not exist"));
+
+          m_dataDir = std::move(dir);
+        });
+
+    conf.defineOption<std::string>("router", "public-address", false, "", [this](std::string arg) {
+      if (not arg.empty())
       {
-        m_JobQueueSize = sval;
-        LogInfo("Set job queue size to ", m_JobQueueSize);
-      }
-    }
-    if (key == "default-protocol")
-    {
-      m_DefaultLinkProto = str(val);
-      LogInfo("overriding default link protocol to '", val, "'");
-    }
-    if (key == "netid")
-    {
-      if (val.size() <= NetID::size())
-      {
-        m_netId = str(val);
-        LogInfo("setting netid to '", val, "'");
-      }
-      else
-      {
-        llarp::LogError("invalid netid '", val, "', is too long");
-      }
-    }
-    if (key == "max-connections")
-    {
-      auto ival = svtoi(val);
-      if (ival > 0)
-      {
-        m_maxConnectedRouters = ival;
-        LogInfo("max connections set to ", m_maxConnectedRouters);
-      }
-    }
-    if (key == "min-connections")
-    {
-      auto ival = svtoi(val);
-      if (ival > 0)
-      {
-        m_minConnectedRouters = ival;
-        LogInfo("min connections set to ", m_minConnectedRouters);
-      }
-    }
-    if (key == "nickname")
-    {
-      m_nickname = str(val);
-      // set logger name here
-      LogContext::Instance().nodeName = nickname();
-      LogInfo("nickname set");
-    }
-    if (key == "encryption-privkey")
-    {
-      m_encryptionKeyfile = str(val);
-      LogDebug("encryption key set to ", m_encryptionKeyfile);
-    }
-    if (key == "contact-file")
-    {
-      m_ourRcFile = str(val);
-      LogDebug("rc file set to ", m_ourRcFile);
-    }
-    if (key == "transport-privkey")
-    {
-      m_transportKeyfile = str(val);
-      LogDebug("transport key set to ", m_transportKeyfile);
-    }
-    if ((key == "identity-privkey" || key == "ident-privkey"))
-    {
-      m_identKeyfile = str(val);
-      LogDebug("identity key set to ", m_identKeyfile);
-    }
-    if (key == "public-address" || key == "public-ip")
-    {
-      llarp::LogInfo("public ip ", val, " size ", val.size());
-      if (val.size() < 17)
-      {
+        llarp::LogInfo("public ip ", arg, " size ", arg.size());
+
+        if (arg.size() > 16)
+          throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
+
         // assume IPv4
-        llarp::Addr a(val);
+        llarp::Addr a(arg);
         llarp::LogInfo("setting public ipv4 ", a);
         m_addrInfo.ip = *a.addr6();
         m_publicOverride = true;
       }
-    }
-    if (key == "public-port")
-    {
-      llarp::LogInfo("Setting public port ", val);
-      int p = svtoi(val);
-      // Not needed to flip upside-down - this is done in llarp::Addr(const
-      // AddressInfo&)
-      m_ip4addr.sin_port = p;
-      m_addrInfo.port = p;
+    });
+
+    conf.defineOption<int>("router", "public-port", false, DefaultPublicPort, [this](int arg) {
+      if (arg <= 0)
+        throw std::invalid_argument("public-port must be > 0");
+
+      // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
+      m_ip4addr.sin_port = arg;
+      m_addrInfo.port = arg;
       m_publicOverride = true;
-    }
-    if (key == "worker-threads" || key == "threads")
-    {
-      m_workerThreads = svtoi(val);
-      if (m_workerThreads <= 0)
-      {
-        LogWarn("worker threads invalid value: '", val, "' defaulting to 1");
-        m_workerThreads = 1;
-      }
-      else
-      {
-        LogDebug("set to use ", m_workerThreads, " worker threads");
-      }
-    }
-    if (key == "net-threads")
-    {
-      m_numNetThreads = svtoi(val);
-      if (m_numNetThreads <= 0)
-      {
-        LogWarn("net threads invalid value: '", val, "' defaulting to 1");
-        m_numNetThreads = 1;
-      }
-      else
-      {
-        LogDebug("set to use ", m_numNetThreads, " net threads");
-      }
-    }
-    if (key == "block-bogons")
-    {
-      m_blockBogons = setOptBool(val);
-    }
+    });
+
+    conf.defineOption<int>(
+        "router", "worker-threads", false, DefaultWorkerThreads, [this](int arg) {
+          if (arg <= 0)
+            throw std::invalid_argument("worker-threads must be > 0");
+
+          m_workerThreads = arg;
+        });
+
+    conf.defineOption<int>("router", "net-threads", false, DefaultNetThreads, [this](int arg) {
+      if (arg <= 0)
+        throw std::invalid_argument("net-threads must be > 0");
+
+      m_numNetThreads = arg;
+    });
+
+    conf.defineOption<bool>(
+        "router", "block-bogons", false, DefaultBlockBogons, AssignmentAcceptor(m_blockBogons));
   }
 
   void
-  NetworkConfig::fromSection(string_view key, string_view val)
+  NetworkConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    if (key == "profiling")
-    {
-      m_enableProfiling = setOptBool(val);
-    }
-    else if (key == "profiles")
-    {
-      m_routerProfilesFile = str(val);
-      llarp::LogInfo("setting profiles to ", routerProfilesFile());
-    }
-    else if (key == "strict-connect")
-    {
-      m_strictConnect = str(val);
-    }
-    else
-    {
-      m_netConfig.emplace(str(key), str(val));  // str()'s here for gcc 5 compat
-    }
-  }
+    (void)params;
 
-  void
-  NetdbConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "dir")
-    {
-      m_nodedbDir = str(val);
-    }
-  }
+    constexpr bool DefaultProfilingValue = true;
 
-  void
-  DnsConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "upstream")
-    {
-      llarp::LogInfo("add upstream resolver ", val);
-      netConfig.emplace("upstream-dns", str(val));  // str() for gcc 5 compat
-    }
-    if (key == "bind")
-    {
-      llarp::LogInfo("set local dns to ", val);
-      netConfig.emplace("local-dns", str(val));  // str() for gcc 5 compat
-    }
-  }
+    conf.defineOption<bool>(
+        "network",
+        "profiling",
+        false,
+        DefaultProfilingValue,
+        AssignmentAcceptor(m_enableProfiling));
 
-  void
-  LinksConfig::fromSection(string_view key, string_view val)
-  {
-    uint16_t proto = 0;
+    // TODO: this should be implied from [router]:data-dir
+    conf.defineOption<std::string>(
+        "network",
+        "profiles",
+        false,
+        m_routerProfilesFile,
+        AssignmentAcceptor(m_routerProfilesFile));
 
-    std::unordered_set<std::string> parsed_opts;
-    std::string::size_type idx;
-    static constexpr char delimiter = ',';
-    do
-    {
-      idx = val.find_first_of(delimiter);
-      if (idx != string_view::npos)
-      {
-        parsed_opts.emplace(TrimWhitespace(val.substr(0, idx)));
-        val.remove_prefix(idx + 1);
-      }
-      else
-      {
-        parsed_opts.emplace(TrimWhitespace(val));
-      }
-    } while (idx != string_view::npos);
-    std::unordered_set<std::string> opts;
-    /// for each option
-    for (const auto& item : parsed_opts)
-    {
-      /// see if it's a number
-      auto port = std::atoi(item.c_str());
-      if (port > 0)
-      {
-        /// set port
-        if (proto == 0)
-        {
-          proto = port;
-        }
-      }
-      else
-      {
-        opts.insert(item);
-      }
-    }
+    conf.defineOption<std::string>(
+        "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
 
-    if (key == "*")
-    {
-      m_OutboundLink =
-          std::make_tuple("*", AF_INET, fromEnv(proto, "OUTBOUND_PORT"), std::move(opts));
-    }
-    else
-    {
-      // str() here for gcc 5 compat
-      m_InboundLinks.emplace_back(str(key), AF_INET, proto, std::move(opts));
-    }
-  }
-
-  void
-  ConnectConfig::fromSection(string_view /*key*/, string_view val)
-  {
-    routers.emplace_back(val.begin(), val.end());
-  }
-
-  void
-  ServicesConfig::fromSection(string_view key, string_view val)
-  {
-    services.emplace_back(str(key), str(val));  // str()'s here for gcc 5 compat
-  }
-
-  void
-  SystemConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "pidfile")
-    {
-      pidfile = str(val);
-    }
-  }
-
-  void
-  ApiConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "enabled")
-    {
-      m_enableRPCServer = IsTrueValue(val);
-    }
-    if (key == "bind")
-    {
-      m_rpcBindAddr = str(val);
-    }
-    if (key == "authkey")
-    {
-      // TODO: add pubkey to whitelist
-    }
-  }
-
-  void
-  LokidConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "service-node-seed")
-    {
-      usingSNSeed = true;
-      ident_keyfile = std::string{val};
-    }
-    if (key == "enabled")
-    {
-      whitelistRouters = IsTrueValue(val);
-    }
-    if (key == "jsonrpc" || key == "addr")
-    {
-      lokidRPCAddr = str(val);
-    }
-    if (key == "username")
-    {
-      lokidRPCUser = str(val);
-    }
-    if (key == "password")
-    {
-      lokidRPCPassword = str(val);
-    }
-  }
-
-  void
-  BootstrapConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "add-node")
-    {
-      routers.emplace_back(val.begin(), val.end());
-    }
-  }
-
-  void
-  LoggingConfig::fromSection(string_view key, string_view val)
-  {
-    if (key == "type" && val == "syslog")
-    {
-      // TODO(despair): write event log syslog class
-#if defined(_WIN32)
-      LogError("syslog not supported on win32");
-#else
-      LogInfo("Switching to syslog");
-      LogContext::Instance().logStream = std::make_unique<SysLogStream>();
-#endif
-    }
-    if (key == "level")
-    {
-      const auto maybe = LogLevelFromString(str(val));
-      if (not maybe.has_value())
-      {
-        LogError("bad log level: ", val);
-        return;
-      }
-      const LogLevel lvl = maybe.value();
-      LogContext::Instance().runtimeLevel = lvl;
-      LogInfo("Log level set to ", LogLevelToName(lvl));
-    }
-    if (key == "type" && val == "json")
-    {
-      m_LogJSON = true;
-    }
-    if (key == "file")
-    {
-      LogInfo("open log file: ", val);
-      std::string fname{val};
-      FILE* const logfile = ::fopen(fname.c_str(), "a");
-      if (logfile)
-      {
-        m_LogFile = logfile;
-        LogInfo("will log to file ", val);
-      }
-      else if (errno)
-      {
-        LogError("could not open log file at '", val, "': ", strerror(errno));
-        errno = 0;
-      }
-      else
-      {
-        LogError(
-            "failed to open log file at '", val, "' for an unknown reason, bailing tf out kbai");
-        ::abort();
-      }
-    }
-  }
-
-  template <typename Section, typename Config>
-  Section
-  find_section(Config& c, const std::string& name)
-  {
-    Section ret;
-
-    auto visitor = [&ret](const ConfigParser::Section_t& section) -> bool {
-      for (const auto& sec : section)
-      {
-        ret.fromSection(sec.first, sec.second);
-      }
+    // TODO: make sure this is documented... what does it mean though?
+    conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
+      m_options.emplace(name, value);
       return true;
-    };
+    });
+  }
 
-    if (c.VisitSection(name.c_str(), visitor))
+  void
+  DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    // TODO: make sure this is documented
+    // TODO: refactor to remove freehand options map
+    conf.defineOption<std::string>(
+        "network", "upstream-dns", false, true, "", [this](std::string arg) {
+          m_options.emplace("upstream-dns", std::move(arg));
+        });
+
+    // TODO: make sure this is documented
+    conf.defineOption<std::string>(
+        "network", "local-dns", false, true, "", [this](std::string arg) {
+          m_options.emplace("local-dns", std::move(arg));
+        });
+  }
+
+  LinksConfig::LinkInfo
+  LinksConfig::LinkInfoFromINIValues(string_view name, string_view value)
+  {
+    // we treat the INI k:v pair as:
+    // k: interface name, * indicating outbound
+    // v: a comma-separated list of values, an int indicating port (everything else ignored)
+    //    this is somewhat of a backwards- and forwards-compatibility thing
+
+    LinkInfo info;
+    info.addressFamily = AF_INET;
+    info.interface = str(name);
+
+    std::vector<string_view> splits = split(value, ',');
+    for (string_view str : splits)
     {
-      return ret;
+      int asNum = std::atoi(str.data());
+      if (asNum > 0)
+        info.port = asNum;
+
+      // otherwise, ignore ("future-proofing")
     }
 
-    return {};
+    return info;
+  }
+
+  void
+  LinksConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
+      LinkInfo info = LinkInfoFromINIValues(name, value);
+
+      if (info.port <= 0)
+        throw std::invalid_argument(stringify("Invalid [bind] port specified on interface", name));
+
+      if (name == "*")
+        m_OutboundLink = std::move(info);
+      else
+        m_InboundLinks.emplace_back(std::move(info));
+
+      return true;
+    });
+  }
+
+  void
+  ConnectConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    conf.addUndeclaredHandler(
+        "connect", [this](string_view section, string_view name, string_view value) {
+          fs::path file = str(value);
+          if (not fs::exists(file))
+            throw std::runtime_error(stringify(
+                "Specified bootstrap file ",
+                value,
+                "specified in [",
+                section,
+                "]:",
+                name,
+                " does not exist"));
+
+          routers.emplace_back(std::move(file));
+          return true;
+        });
+  }
+
+  void
+  ServicesConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    conf.addUndeclaredHandler(
+        "services", [this](string_view section, string_view name, string_view value) {
+          (void)section;
+          services.emplace_back(name, value);
+          return true;
+        });
+  }
+
+  void
+  ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    constexpr bool DefaultRPCEnabled = true;
+    constexpr auto DefaultRPCBindAddr = "127.0.0.1:1190";
+
+    conf.defineOption<bool>(
+        "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
+
+    conf.defineOption<std::string>(
+        "api", "bind", false, DefaultRPCBindAddr, AssignmentAcceptor(m_rpcBindAddr));
+
+    // TODO: this was from pre-refactor:
+    // TODO: add pubkey to whitelist
+  }
+
+  void
+  LokidConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    constexpr bool DefaultWhitelistRouters = false;
+    constexpr auto DefaultLokidRPCAddr = "127.0.0.1:22023";
+
+    conf.defineOption<std::string>(
+        "lokid", "service-node-seed", false, our_identity_filename, [this](std::string arg) {
+          if (not arg.empty())
+          {
+            usingSNSeed = true;
+            ident_keyfile = std::move(arg);
+          }
+        });
+
+    conf.defineOption<bool>(
+        "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
+
+    conf.defineOption<std::string>(
+        "lokid", "jsonrpc", false, DefaultLokidRPCAddr, AssignmentAcceptor(lokidRPCAddr));
+
+    conf.defineOption<std::string>(
+        "lokid", "username", false, "", AssignmentAcceptor(lokidRPCUser));
+
+    conf.defineOption<std::string>(
+        "lokid", "password", false, "", AssignmentAcceptor(lokidRPCPassword));
+  }
+
+  void
+  BootstrapConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    conf.defineOption<std::string>(
+        "bootstrap", "add-node", false, true, "", [this](std::string arg) {
+          // TODO: validate as router fs path
+          routers.emplace_back(std::move(arg));
+        });
+  }
+
+  void
+  LoggingConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    constexpr auto DefaultLogType = "file";
+    constexpr auto DefaultLogFile = "stdout";
+    constexpr auto DefaultLogLevel = "info";
+
+    conf.defineOption<std::string>(
+        "logging", "type", false, DefaultLogType, [this](std::string arg) {
+          LogType type = LogTypeFromString(arg);
+          if (type == LogType::Unknown)
+            throw std::invalid_argument(stringify("invalid log type: ", arg));
+
+          m_logType = type;
+        });
+
+    conf.defineOption<std::string>(
+        "logging", "level", false, DefaultLogLevel, [this](std::string arg) {
+          nonstd::optional<LogLevel> level = LogLevelFromString(arg);
+          if (not level.has_value())
+            throw std::invalid_argument(stringify("invalid log level value: ", arg));
+
+          m_logLevel = level.value();
+        });
+
+    conf.defineOption<std::string>(
+        "logging", "file", false, DefaultLogFile, AssignmentAcceptor(m_logFile));
+  }
+
+  void
+  SnappConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    static constexpr bool ReachableDefault = true;
+    static constexpr int HopsDefault = 4;
+    static constexpr int PathsDefault = 6;
+
+    conf.defineOption<std::string>("snapp", "keyfile", false, "", [this](std::string arg) {
+      // TODO: validate as valid .loki / .snode address
+      m_keyfile = arg;
+    });
+
+    conf.defineOption<bool>(
+        "snapp", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+
+    conf.defineOption<int>("snapp", "hops", false, HopsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[snapp]:hops must be >= 1 and <= 8");
+    });
+
+    conf.defineOption<int>("snapp", "paths", false, PathsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[snapp]:paths must be >= 1 and <= 8");
+    });
+
+    conf.defineOption<std::string>("snapp", "exit-node", false, "", [this](std::string arg) {
+      // TODO: validate as valid .loki / .snode address
+      m_exitNode = arg;
+    });
+
+    conf.defineOption<std::string>("snapp", "local-dns", false, "", [this](std::string arg) {
+      // TODO: validate as IP address
+      m_localDNS = arg;
+    });
+
+    conf.defineOption<std::string>("snapp", "upstream-dns", false, "", [this](std::string arg) {
+      // TODO: validate as IP address
+      m_upstreamDNS = arg;
+    });
+
+    conf.defineOption<std::string>("snapp", "mapaddr", false, "", [this](std::string arg) {
+      // TODO: parse / validate as loki_addr : IP addr pair
+      m_mapAddr = arg;
+    });
+
+    conf.addUndeclaredHandler("snapp", [&](string_view, string_view name, string_view value) {
+      if (name == "blacklist-snode")
+      {
+        m_snodeBlacklist.push_back(str(value));
+        return true;
+      }
+
+      return false;
+    });
   }
 
   bool
-  Config::Load(const char* fname)
+  Config::Load(const char* fname, bool isRelay, fs::path defaultDataDir)
   {
-    ConfigParser parser;
-    if (!parser.LoadFile(fname))
+    try
     {
+      ConfigGenParameters params;
+      params.isRelay = isRelay;
+      params.defaultDataDir = std::move(defaultDataDir);
+
+      ConfigDefinition conf;
+      initializeConfig(conf, params);
+
+      ConfigParser parser;
+      if (!parser.LoadFile(fname))
+      {
+        return false;
+      }
+
+      parser.IterAll([&](string_view section, const SectionValues_t& values) {
+        for (const auto& pair : values)
+        {
+          conf.addConfigValue(section, pair.first, pair.second);
+        }
+      });
+
+      conf.acceptAllOptions();
+
+      // TODO: better way to support inter-option constraints
+      if (router.m_maxConnectedRouters < router.m_minConnectedRouters)
+        throw std::invalid_argument("[router]:min-connections must be <= [router]:max-connections");
+
+      return true;
+    }
+    catch (const std::exception& e)
+    {
+      LogError("Error trying to init and parse config from file: ", e.what());
       return false;
     }
-
-    return parse(parser);
   }
 
-  bool
-  Config::LoadFromStr(string_view str)
+  void
+  Config::initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    ConfigParser parser;
-    if (!parser.LoadFromStr(str))
-    {
-      return false;
-    }
-
-    return parse(parser);
-  }
-
-  bool
-  Config::parse(const ConfigParser& parser)
-  {
+    // TODO: this seems like a random place to put this, should this be closer
+    //       to main() ?
     if (Lokinet_INIT())
-      return false;
-    router = find_section<RouterConfig>(parser, "router");
-    network = find_section<NetworkConfig>(parser, "network");
-    connect = find_section<ConnectConfig>(parser, "connect");
-    netdb = find_section<NetdbConfig>(parser, "netdb");
-    dns = find_section<DnsConfig>(parser, "dns");
-    links = find_section<LinksConfig>(parser, "bind");
-    services = find_section<ServicesConfig>(parser, "services");
-    system = find_section<SystemConfig>(parser, "system");
-    api = find_section<ApiConfig>(parser, "api");
-    lokid = find_section<LokidConfig>(parser, "lokid");
-    bootstrap = find_section<BootstrapConfig>(parser, "bootstrap");
-    logging = find_section<LoggingConfig>(parser, "logging");
-    return true;
+      throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
+
+    router.defineConfigOptions(conf, params);
+    network.defineConfigOptions(conf, params);
+    connect.defineConfigOptions(conf, params);
+    dns.defineConfigOptions(conf, params);
+    links.defineConfigOptions(conf, params);
+    services.defineConfigOptions(conf, params);
+    api.defineConfigOptions(conf, params);
+    lokid.defineConfigOptions(conf, params);
+    bootstrap.defineConfigOptions(conf, params);
+    logging.defineConfigOptions(conf, params);
   }
 
-  fs::path
-  GetDefaultConfigDir()
+  void
+  ensureConfig(
+      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter)
   {
-#ifdef _WIN32
-    const fs::path homedir = fs::path(getenv("APPDATA"));
-#else
-    const fs::path homedir = fs::path(getenv("HOME"));
-#endif
-    return homedir / fs::path(".lokinet");
+    std::error_code ec;
+
+    // fail to overwrite if not instructed to do so
+    if (fs::exists(confFile, ec) && !overwrite)
+    {
+      LogDebug("Not creating config file; it already exists.");
+      return;
+    }
+
+    if (ec)
+      throw std::runtime_error(stringify("filesystem error: ", ec));
+
+    // create parent dir if it doesn't exist
+    if (not fs::exists(confFile.parent_path(), ec))
+    {
+      if (not fs::create_directory(confFile.parent_path()))
+        throw std::runtime_error(stringify("Failed to create parent directory for ", confFile));
+    }
+    if (ec)
+      throw std::runtime_error(stringify("filesystem error: ", ec));
+
+    llarp::LogInfo("Attempting to create config file, asRouter: ", asRouter, " path: ", confFile);
+
+    llarp::Config config;
+    std::string confStr;
+    if (asRouter)
+      confStr = config.generateBaseRouterConfig(std::move(defaultDataDir));
+    else
+      confStr = config.generateBaseClientConfig(std::move(defaultDataDir));
+
+    // open a filestream
+    auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
+    if (not stream.has_value() or not stream.value().is_open())
+      throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
+
+    llarp::LogInfo("confStr: ", confStr);
+
+    stream.value() << confStr;
+    stream.value().flush();
+
+    llarp::LogInfo("Generated new config ", confFile);
   }
 
-  fs::path
-  GetDefaultConfigPath()
+  void
+  generateCommonConfigComments(ConfigDefinition& def)
   {
-    return GetDefaultConfigDir() / "lokinet.ini";
+    // router
+    def.addSectionComments(
+        "router",
+        {
+            "Configuration for routing activity.",
+        });
+
+    def.addOptionComments(
+        "router",
+        "threads",
+        {
+            "The number of threads available for performing cryptographic functions.",
+            "The minimum is one thread, but network performance may increase with more.",
+            "threads. Should not exceed the number of logical CPU cores.",
+        });
+
+    def.addOptionComments(
+        "router",
+        "data-dir",
+        {
+            "Optional directory for containing lokinet runtime data. This includes generated",
+            "private keys.",
+        });
+
+    // TODO: why did Kee want this, and/or what does it really do? Something about logs?
+    def.addOptionComments("router", "nickname", {"Router nickname. Kee wanted it."});
+
+    def.addOptionComments(
+        "router",
+        "min-connections",
+        {
+            "Minimum number of routers lokinet will attempt to maintain connections to.",
+        });
+
+    def.addOptionComments(
+        "router",
+        "max-connections",
+        {
+            "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
+        });
+
+    // logging
+    def.addSectionComments(
+        "logging",
+        {
+            "logging settings",
+        });
+
+    def.addOptionComments(
+        "logging",
+        "level",
+        {
+            "Minimum log level to print. Logging below this level will be ignored.",
+            "Valid log levels, in ascending order, are:",
+            "  trace",
+            "  debug",
+            "  info",
+            "  warn",
+            "  error",
+        });
+
+    def.addOptionComments(
+        "logging",
+        "type",
+        {
+            "Log type (format). Valid options are:",
+            "  file - plaintext formatting",
+            "  json - json-formatted log statements",
+            "  syslog - logs directed to syslog",
+        });
+
+    // api
+    def.addSectionComments(
+        "api",
+        {
+            "JSON API settings",
+        });
+
+    def.addOptionComments(
+        "api",
+        "enabled",
+        {
+            "Determines whether or not the JSON API is enabled.",
+        });
+
+    def.addOptionComments(
+        "api",
+        "bind",
+        {
+            "IP address and port to bind to.",
+            "Recommend localhost-only for security purposes.",
+        });
+
+    // dns
+    def.addSectionComments(
+        "dns",
+        {
+            "DNS configuration",
+        });
+
+    def.addOptionComments(
+        "dns",
+        "upstream",
+        {
+            "Upstream resolver to use as fallback for non-loki addresses.",
+            "Multiple values accepted.",
+        });
+
+    def.addOptionComments(
+        "dns",
+        "bind",
+        {
+            "Address to bind to for handling DNS requests.",
+            "Multiple values accepted.",
+        });
+
+    // bootstrap
+    def.addSectionComments(
+        "bootstrap",
+        {
+            "Configure nodes that will bootstrap us onto the network",
+        });
+
+    def.addOptionComments(
+        "bootstrap",
+        "add-node",
+        {
+            "Specify a bootstrap file containing a signed RouterContact of a service node",
+            "which can act as a bootstrap. Accepts multiple values.",
+        });
+
+    // network
+    def.addSectionComments(
+        "network",
+        {
+            "Network settings",
+        });
+
+    def.addOptionComments(
+        "network",
+        "profiles",
+        {
+            "File to contain router profiles.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "strict-connect",
+        {
+            "Public key of a router which will act as sole first-hop. This may be used to",
+            "provide a trusted router (consider that you are not fully anonymous with your",
+            "first hop).",
+        });
+
+    def.addOptionComments(
+        "network",
+        "exit-node",
+        {
+            "Public key of an exit-node.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "ifname",
+        {
+            "Interface name for lokinet traffic.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "ifaddr",
+        {
+            "Local IP address for lokinet traffic.",
+        });
+  }
+
+  std::string
+  Config::generateBaseClientConfig(fs::path defaultDataDir)
+  {
+    ConfigGenParameters params;
+    params.isRelay = false;
+    params.defaultDataDir = std::move(defaultDataDir);
+
+    llarp::ConfigDefinition def;
+    initializeConfig(def, params);
+    generateCommonConfigComments(def);
+
+    // snapp
+    def.addSectionComments(
+        "snapp",
+        {
+            "Snapp settings",
+        });
+
+    def.addOptionComments(
+        "snapp",
+        "keyfile",
+        {
+            "The private key to persist address with. If not specified the address will be",
+            "ephemeral.",
+        });
+
+    // TODO: is this redundant with / should be merged with basic client config?
+    def.addOptionComments(
+        "snapp",
+        "reachable",
+        {
+            "Determines whether we will publish our snapp's introset to the DHT.",
+        });
+
+    // TODO: merge with client conf?
+    def.addOptionComments(
+        "snapp",
+        "hops",
+        {
+            "Number of hops in a path. Min 1, max 8.",
+        });
+
+    // TODO: is this actually different than client's paths min/max config?
+    def.addOptionComments(
+        "snapp",
+        "paths",
+        {
+            "Number of paths to maintain at any given time.",
+        });
+
+    def.addOptionComments(
+        "snapp",
+        "blacklist-snode",
+        {
+            "Adds a `.snode` address to the blacklist.",
+        });
+
+    def.addOptionComments(
+        "snapp",
+        "exit-node",
+        {
+            "Specify a `.snode` or `.loki` address to use as an exit broker.",
+        });
+
+    // TODO: merge with client conf?
+    def.addOptionComments(
+        "snapp",
+        "local-dns",
+        {
+            "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port",
+        });
+
+    def.addOptionComments(
+        "snapp",
+        "upstream-dns",
+        {
+            "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply",
+            "with `srvfail`.",
+        });
+
+    def.addOptionComments(
+        "snapp",
+        "mapaddr",
+        {
+            "Permanently map a `.loki` address to an IP owned by the snapp. Example:",
+            "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.",
+        });
+
+    return def.generateINIConfig(true);
+  }
+
+  std::string
+  Config::generateBaseRouterConfig(fs::path defaultDataDir)
+  {
+    ConfigGenParameters params;
+    params.isRelay = true;
+    params.defaultDataDir = std::move(defaultDataDir);
+
+    llarp::ConfigDefinition def;
+    initializeConfig(def, params);
+    generateCommonConfigComments(def);
+
+    // lokid
+    def.addSectionComments(
+        "lokid",
+        {
+            "Lokid configuration (settings for talking to lokid",
+        });
+
+    def.addOptionComments(
+        "lokid",
+        "enabled",
+        {
+            "Whether or not we should talk to lokid. Must be enabled for staked routers.",
+        });
+
+    def.addOptionComments(
+        "lokid",
+        "jsonrpc",
+        {
+            "Host and port of running lokid that we should talk to.",
+        });
+
+    // TODO: doesn't appear to be used in the codebase
+    def.addOptionComments(
+        "lokid",
+        "service-node-seed",
+        {
+            "File containing service node's seed.",
+        });
+
+    // extra [network] options
+    // TODO: probably better to create an [exit] section and only allow it for routers
+    def.addOptionComments(
+        "network",
+        "exit",
+        {
+            "Whether or not we should act as an exit node. Beware that this increases demand",
+            "on the server and may pose liability concerns. Enable at your own risk.",
+        });
+
+    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
+    //       additionally, what's default? What if I don't whitelist anything?
+    def.addOptionComments(
+        "network",
+        "exit-whitelist",
+        {
+            "List of destination protocol:port pairs to whitelist, example: udp:*",
+            "or tcp:80. Multiple values supported.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "exit-blacklist",
+        {
+            "Blacklist of destinations (same format as whitelist).",
+        });
+
+    return def.generateINIConfig(true);
   }
 
 }  // namespace llarp
-
-/// fname should be a relative path (from CWD) or absolute path to the config
-/// file
-extern "C" bool
-llarp_ensure_config(const char* fname, const char* basedir, bool overwrite, bool asRouter)
-{
-  if (Lokinet_INIT())
-    return false;
-  std::error_code ec;
-  if (fs::exists(fname, ec) && !overwrite)
-  {
-    return true;
-  }
-  if (ec)
-  {
-    llarp::LogError(ec);
-    return false;
-  }
-
-  std::string basepath;
-  if (basedir)
-  {
-    basepath = basedir;
-#ifndef _WIN32
-    basepath += "/";
-#else
-    basepath += "\\";
-#endif
-  }
-
-  llarp::LogInfo("Attempting to create config file ", fname);
-
-  // abort if config already exists
-  if (!asRouter)
-  {
-    if (fs::exists(fname, ec) && !overwrite)
-    {
-      llarp::LogError(fname, " currently exists, please use -f to overwrite");
-      return true;
-    }
-    if (ec)
-    {
-      llarp::LogError(ec);
-      return false;
-    }
-  }
-
-  // write fname ini
-  auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
-  if (!optional_f || !optional_f.value().is_open())
-  {
-    llarp::LogError("failed to open ", fname, " for writing");
-    return false;
-  }
-  auto& f = optional_f.value();
-  llarp_generic_ensure_config(f, basepath, asRouter);
-  if (asRouter)
-  {
-    llarp_ensure_router_config(f, basepath);
-  }
-  else
-  {
-    llarp_ensure_client_config(f, basepath);
-  }
-  llarp::LogInfo("Generated new config ", fname);
-  return true;
-}
-
-void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter)
-{
-  f << "# this configuration was auto generated with 'sane' defaults\n";
-  f << "# change these values as desired\n";
-  f << "\n\n";
-  f << "[router]\n";
-  f << "# number of crypto worker threads \n";
-  f << "threads=4\n";
-  f << "# path to store signed RC\n";
-  f << "contact-file=" << basepath << "self.signed\n";
-  f << "# path to store transport private key\n";
-  f << "transport-privkey=" << basepath << "transport.private\n";
-  f << "# path to store identity signing key\n";
-  f << "ident-privkey=" << basepath << "identity.private\n";
-  f << "# encryption key for onion routing\n";
-  f << "encryption-privkey=" << basepath << "encryption.private\n";
-  f << std::endl;
-  f << "# uncomment following line to set router nickname to 'lokinet'" << std::endl;
-  f << "#nickname=lokinet\n";
-  const auto limits = isRouter ? llarp::limits::snode : llarp::limits::client;
-
-  f << "# maintain min connections to other routers\n";
-  f << "min-routers=" << std::to_string(limits.DefaultMinRouters) << std::endl;
-  f << "# hard limit of routers globally we are connected to at any given "
-       "time\n";
-  f << "max-routers=" << std::to_string(limits.DefaultMaxRouters) << std::endl;
-  f << "\n\n";
-
-  // logging
-  f << "[logging]\n";
-  f << "level=info\n";
-  f << "# uncomment for logging to file\n";
-  f << "#type=file\n";
-  f << "#file=/path/to/logfile\n";
-  f << "# uncomment for syslog logging\n";
-  f << "#type=syslog\n";
-
-  f << "\n\n";
-
-  f << "# admin api\n";
-  f << "[api]\n";
-  f << "enabled=true\n";
-  f << "#authkey=insertpubkey1here\n";
-  f << "#authkey=insertpubkey2here\n";
-  f << "#authkey=insertpubkey3here\n";
-  f << "bind=127.0.0.1:1190\n";
-  f << "\n\n";
-
-  f << "# system settings for privileges and such\n";
-  f << "[system]\n";
-  f << "user=" << DEFAULT_LOKINET_USER << std::endl;
-  f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
-  f << "pidfile=" << basepath << "lokinet.pid\n";
-  f << "\n\n";
-
-  f << "# dns provider configuration section\n";
-  f << "[dns]\n";
-  f << "# resolver\n";
-  f << "upstream=" << DEFAULT_RESOLVER_US << std::endl;
-
-// Make auto-config smarter
-// will this break reproducibility rules?
-// (probably)
-#ifdef __linux__
-#ifdef ANDROID
-  f << "bind=127.0.0.1:1153\n";
-#else
-  f << "bind=127.3.2.1:53\n";
-#endif
-#else
-  f << "bind=127.0.0.1:53\n";
-#endif
-  f << "\n\n";
-
-  f << "# network database settings block \n";
-  f << "[netdb]\n";
-  f << "# directory for network database skiplist storage\n";
-  f << "dir=" << basepath << "netdb\n";
-  f << "\n\n";
-
-  f << "# bootstrap settings\n";
-  f << "[bootstrap]\n";
-  f << "# add a bootstrap node's signed identity to the list of nodes we want "
-       "to bootstrap from\n";
-  f << "# if we don't have any peers we connect to this router\n";
-  f << "add-node=" << basepath << "bootstrap.signed\n";
-  // we only process one of these...
-  // f << "# add another bootstrap node\n";
-  // f << "#add-node=/path/to/alternative/self.signed\n";
-  f << "\n\n";
-}
-
-void
-llarp_ensure_router_config(std::ofstream& f, std::string basepath)
-{
-  f << "# lokid settings (disabled by default)\n";
-  f << "[lokid]\n";
-  f << "enabled=false\n";
-  f << "jsonrpc=127.0.0.1:22023\n";
-  f << "#service-node-seed=/path/to/servicenode/seed\n";
-  f << std::endl;
-  f << "# network settings \n";
-  f << "[network]\n";
-  f << "profiles=" << basepath << "profiles.dat\n";
-  // better to let the routers auto-configure
-  // f << "ifaddr=auto\n";
-  // f << "ifname=auto\n";
-  f << "enabled=true\n";
-  f << "exit=false\n";
-  f << "#exit-blacklist=tcp:25\n";
-  f << "#exit-whitelist=tcp:*\n";
-  f << "#exit-whitelist=udp:*\n";
-  f << std::endl;
-  f << "# ROUTERS ONLY: publish network interfaces for handling inbound "
-       "traffic\n";
-  f << "[bind]\n";
-  // get ifname
-  std::string ifname;
-  if (llarp::GetBestNetIF(ifname, AF_INET))
-  {
-    f << ifname << "=1090\n";
-  }
-  else
-  {
-    f << "# could not autodetect network interface\n"
-      << "#eth0=1090\n";
-  }
-
-  f << std::endl;
-}
-
-bool
-llarp_ensure_client_config(std::ofstream& f, std::string basepath)
-{
-  // write snapp-example.ini
-  const std::string snappExample_fpath = basepath + "snapp-example.ini";
-  {
-    auto stream = llarp::util::OpenFileStream<std::ofstream>(snappExample_fpath, std::ios::binary);
-    if (!stream)
-    {
-      return false;
-    }
-    auto& example_f = stream.value();
-    if (example_f.is_open())
-    {
-      // pick ip
-      // don't revert me
-      const static std::string ip = "10.33.0.1/16";
-      /*
-      std::string ip = llarp::findFreePrivateRange();
-      if(ip == "")
-      {
-        llarp::LogError(
-            "Couldn't easily detect a private range to map lokinet onto");
-        return false;
-      }
-     */
-      example_f << "# this is an example configuration for a snapp\n";
-      example_f << "[example-snapp]\n";
-      example_f << "# keyfile is the path to the private key of the snapp, "
-                   "your .loki is tied to this key, DON'T LOSE IT\n";
-      example_f << "keyfile=" << basepath << "example-snap-keyfile.private\n";
-      example_f << "# ifaddr is the ip range to allocate to this snapp\n";
-      example_f << "ifaddr=" << ip << std::endl;
-      // probably fine to leave this (and not-auto-detect it) I'm not worried
-      // about any collisions
-      example_f << "# ifname is the name to try and give to the network "
-                   "interface this snap owns\n";
-      example_f << "ifname=snapp-tun0\n";
-    }
-    else
-    {
-      llarp::LogError("failed to write ", snappExample_fpath);
-    }
-  }
-  // now do up fname
-  f << "\n\n";
-  f << "# snapps configuration section\n";
-  f << "[services]\n";
-  f << "# uncomment next line to enable a snapp\n";
-  f << "#example-snapp=" << snappExample_fpath << std::endl;
-  f << "\n\n";
-
-  f << "# network settings \n";
-  f << "[network]\n";
-  f << "profiles=" << basepath << "profiles.dat\n";
-  f << "# uncomment next line to add router with pubkey to list of routers we "
-       "connect directly to\n";
-  f << "#strict-connect=pubkey\n";
-  f << "# uncomment next line to use router with pubkey as an exit node\n";
-  f << "#exit-node=pubkey\n";
-
-  // better to set them to auto then to hard code them now
-  // operating environment may change over time and this will help adapt
-  // f << "ifname=auto\n";
-  // f << "ifaddr=auto\n";
-
-  // should this also be auto? or not declared?
-  // probably auto in case they want to set up a hidden service
-  f << "enabled=true\n";
-  return true;
-}

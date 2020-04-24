@@ -2,6 +2,8 @@
 #define LLARP_STR_HPP
 
 #include <util/string_view.hpp>
+#include <sstream>
+#include <vector>
 
 namespace llarp
 {
@@ -27,6 +29,27 @@ namespace llarp
 #endif
   string_view
   TrimWhitespace(string_view str);
+
+  template <typename... T>
+  std::string
+  stringify(T&&... stuff)
+  {
+    std::ostringstream o;
+#ifdef __cpp_fold_expressions
+    (o << ... << std::forward<T>(stuff));
+#else
+    (void)std::initializer_list<int>{(o << std::forward<T>(stuff), 0)...};
+#endif
+    return o.str();
+  }
+
+  /// Split a string on a given delimiter
+  //
+  /// @param str is the string to split
+  /// @param delimiter is the character to split on
+  /// @return a vector of string_views with the split words, excluding the delimeter
+  std::vector<string_view>
+  split(string_view str, char delimiter);
 
 }  // namespace llarp
 

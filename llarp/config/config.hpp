@@ -5,6 +5,9 @@
 #include <router_contact.hpp>
 #include <util/fs.hpp>
 #include <util/str.hpp>
+#include <config/ini.hpp>
+#include <config/definition.hpp>
+#include <constants/files.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -14,269 +17,192 @@
 #include <unordered_set>
 
 struct llarp_config;
+
 namespace llarp
 {
-  struct ConfigParser;
+  using SectionValues_t = llarp::ConfigParser::SectionValues_t;
+  using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
-  inline const char*
-  lokinetEnv(string_view suffix);
+  // TODO: don't use these maps. they're sloppy and difficult to follow
+  using FreehandOptions = std::unordered_multimap<std::string, std::string>;
 
-  std::string
-  fromEnv(string_view val, string_view envNameSuffix);
-  int
-  fromEnv(const int& val, string_view envNameSuffix);
-  uint16_t
-  fromEnv(const uint16_t& val, string_view envNameSuffix);
-  size_t
-  fromEnv(const size_t& val, string_view envNameSuffix);
-  nonstd::optional<bool>
-  fromEnv(const nonstd::optional<bool>& val, string_view envNameSuffix);
-
-  class RouterConfig
+  /// Small struct to gather all parameters needed for config generation to reduce the number of
+  /// parameters that need to be passed around.
+  struct ConfigGenParameters
   {
-   public:
-    /// always maintain this many connections to other routers
-    size_t m_minConnectedRouters = 2;
+    bool isRelay = false;
+    fs::path defaultDataDir;
+  };
 
-    /// hard upperbound limit on the number of router to router connections
-    size_t m_maxConnectedRouters = 5;
+  struct RouterConfig
+  {
+    size_t m_minConnectedRouters;
+    size_t m_maxConnectedRouters;
 
     std::string m_netId;
     std::string m_nickname;
 
-    std::string m_encryptionKeyfile = "encryption.key";
+    fs::path m_dataDir;
 
-    // path to write our self signed rc to
-    std::string m_ourRcFile = "rc.signed";
-
-    // transient iwp encryption key
-    std::string m_transportKeyfile = "transport.key";
-
-    // long term identity key
-    std::string m_identKeyfile = "identity.key";
-
-    nonstd::optional<bool> m_blockBogons;
+    bool m_blockBogons;
 
     bool m_publicOverride = false;
     struct sockaddr_in m_ip4addr;
     AddressInfo m_addrInfo;
 
-    int m_workerThreads = 1;
-    int m_numNetThreads = 1;
+    int m_workerThreads;
+    int m_numNetThreads;
 
-    size_t m_JobQueueSize = size_t{1024 * 8};
-
-    std::string m_DefaultLinkProto = "iwp";
-
-   public:
-    // clang-format off
-    size_t jobQueueSize() const                { return fromEnv(m_JobQueueSize, "JOB_QUEUE_SIZE"); }
-    size_t minConnectedRouters() const         { return fromEnv(m_minConnectedRouters, "MIN_CONNECTED_ROUTERS"); }
-    size_t maxConnectedRouters() const         { return fromEnv(m_maxConnectedRouters, "MAX_CONNECTED_ROUTERS"); }
-    std::string encryptionKeyfile() const      { return fromEnv(m_encryptionKeyfile, "ENCRYPTION_KEYFILE"); }
-    std::string ourRcFile() const              { return fromEnv(m_ourRcFile, "OUR_RC_FILE"); }
-    std::string transportKeyfile() const       { return fromEnv(m_transportKeyfile, "TRANSPORT_KEYFILE"); }
-    std::string identKeyfile() const           { return fromEnv(m_identKeyfile, "IDENT_KEYFILE"); }
-    std::string netId() const                  { return fromEnv(m_netId, "NETID"); }
-    std::string nickname() const               { return fromEnv(m_nickname, "NICKNAME"); }
-    bool publicOverride() const                { return fromEnv(m_publicOverride, "PUBLIC_OVERRIDE"); }
-    const struct sockaddr_in& ip4addr() const  { return m_ip4addr; }
-    const AddressInfo& addrInfo() const        { return m_addrInfo; }
-    int workerThreads() const                  { return fromEnv(m_workerThreads, "WORKER_THREADS"); }
-    int numNetThreads() const                  { return fromEnv(m_numNetThreads, "NUM_NET_THREADS"); }
-    std::string defaultLinkProto() const       { return fromEnv(m_DefaultLinkProto, "LINK_PROTO"); }
-    nonstd::optional< bool > blockBogons() const { return fromEnv(m_blockBogons, "BLOCK_BOGONS"); }
-    // clang-format on
+    size_t m_JobQueueSize;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  class NetworkConfig
+  struct NetworkConfig
   {
-   public:
-    using NetConfig = std::unordered_multimap<std::string, std::string>;
-
-   public:
     nonstd::optional<bool> m_enableProfiling;
-    std::string m_routerProfilesFile = "profiles.dat";
+    std::string m_routerProfilesFile;
     std::string m_strictConnect;
-    NetConfig m_netConfig;
-
-   public:
-    // clang-format off
-    nonstd::optional< bool > enableProfiling() const { return fromEnv(m_enableProfiling, "ENABLE_PROFILING"); }
-    std::string routerProfilesFile() const         { return fromEnv(m_routerProfilesFile, "ROUTER_PROFILES_FILE"); }
-    std::string strictConnect() const              { return fromEnv(m_strictConnect, "STRICT_CONNECT"); }
-    const NetConfig& netConfig() const             { return m_netConfig; }
-    // clang-format on
+    FreehandOptions m_options;
 
     void
-    fromSection(string_view key, string_view val);
-  };
-
-  class NetdbConfig
-  {
-   public:
-    std::string m_nodedbDir;
-
-   public:
-    // clang-format off
-    std::string nodedbDir() const { return fromEnv(m_nodedbDir, "NODEDB_DIR"); }
-    // clang-format on
-
-    void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct DnsConfig
   {
-    std::unordered_multimap<std::string, std::string> netConfig;
+    FreehandOptions m_options;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  class LinksConfig
+  struct LinksConfig
   {
-   public:
-    static constexpr int Interface = 0;
-    static constexpr int AddressFamily = 1;
-    static constexpr int Port = 2;
-    static constexpr int Options = 3;
+    struct LinkInfo
+    {
+      std::string interface;
+      int addressFamily;
+      uint16_t port = -1;
+    };
+    /// Create a LinkInfo from the given string.
+    /// @throws if str does not represent a LinkInfo.
+    LinkInfo
+    LinkInfoFromINIValues(string_view name, string_view value);
 
-    using ServerOptions = std::unordered_set<std::string>;
-    using LinkInfo = std::tuple<std::string, int, uint16_t, ServerOptions>;
-    using Links = std::vector<LinkInfo>;
-
-   public:
     LinkInfo m_OutboundLink;
-    Links m_InboundLinks;
-
-   public:
-    // clang-format off
-    const LinkInfo& outboundLink() const  { return m_OutboundLink; }
-
-    const Links& inboundLinks() const { return m_InboundLinks; }
-    // clang-format on
+    std::vector<LinkInfo> m_InboundLinks;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ConnectConfig
   {
-    std::vector<std::string> routers;
+    std::vector<fs::path> routers;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct ServicesConfig
   {
     std::vector<std::pair<std::string, std::string>> services;
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct SystemConfig
+  struct ApiConfig
   {
-    std::string pidfile;
+    bool m_enableRPCServer;
+    std::string m_rpcBindAddr;
 
     void
-    fromSection(string_view key, string_view val);
-  };
-
-  class ApiConfig
-  {
-   public:
-    bool m_enableRPCServer = false;
-    std::string m_rpcBindAddr = "127.0.0.1:1190";
-
-   public:
-    // clang-format off
-    bool enableRPCServer() const    { return fromEnv(m_enableRPCServer, "ENABLE_RPC_SERVER"); }
-    std::string rpcBindAddr() const { return fromEnv(m_rpcBindAddr, "RPC_BIND_ADDR"); }
-    // clang-format on
-
-    void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LokidConfig
   {
-    bool usingSNSeed = false;
-    bool whitelistRouters = false;
-    fs::path ident_keyfile = "identity.key";
-    std::string lokidRPCAddr = "127.0.0.1:22023";
+    bool usingSNSeed;
+    bool whitelistRouters;
+    fs::path ident_keyfile;
+    std::string lokidRPCAddr;
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct BootstrapConfig
   {
     std::vector<std::string> routers;
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct LoggingConfig
   {
-    bool m_LogJSON = false;
-    FILE* m_LogFile = stdout;
+    LogType m_logType;
+    LogLevel m_logLevel;
+    std::string m_logFile;
 
     void
-    fromSection(string_view key, string_view val);
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+  };
+
+  struct SnappConfig
+  {
+    std::string m_keyfile;
+    bool m_reachable;
+    int m_hops;
+    int m_paths;
+    std::vector<std::string> m_snodeBlacklist;
+    std::string m_exitNode;
+    std::string m_localDNS;
+    std::string m_upstreamDNS;
+    std::string m_mapAddr;
+
+    void
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
   struct Config
   {
-   public:
-    bool
-    parse(const ConfigParser& parser);
-
-   public:
     RouterConfig router;
     NetworkConfig network;
     ConnectConfig connect;
-    NetdbConfig netdb;
     DnsConfig dns;
     LinksConfig links;
     ServicesConfig services;
-    SystemConfig system;
     ApiConfig api;
     LokidConfig lokid;
     BootstrapConfig bootstrap;
     LoggingConfig logging;
 
-    bool
-    Load(const char* fname);
+    // Initialize config definition
+    void
+    initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params);
 
+    // Load a config from the given file
     bool
-    LoadFromStr(string_view str);
+    Load(const char* fname, bool isRelay, fs::path defaultDataDir);
+
+    std::string
+    generateBaseClientConfig(fs::path defaultDataDir);
+
+    std::string
+    generateBaseRouterConfig(fs::path defaultDataDir);
 
     llarp_config*
     Copy() const;
   };
 
-  fs::path
-  GetDefaultConfigDir();
-
-  fs::path
-  GetDefaultConfigPath();
+  void
+  ensureConfig(
+      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
-
-void
-llarp_generic_ensure_config(std::ofstream& f, std::string basepath, bool isRouter);
-
-void
-llarp_ensure_router_config(std::ofstream& f, std::string basepath);
-
-bool
-llarp_ensure_client_config(std::ofstream& f, std::string basepath);
 
 #endif

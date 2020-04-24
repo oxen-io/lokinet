@@ -10,7 +10,6 @@
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
-#include <link/factory.hpp>
 #include <link/link_manager.hpp>
 #include <link/server.hpp>
 #include <messages/link_message_parser.hpp>
@@ -55,19 +54,15 @@ namespace llarp
     llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key
-    fs::path transport_keyfile = "transport.key";
-
-    // nodes to connect to on startup
-    // DEPRECATED
-    // std::map< std::string, fs::path > connect;
+    fs::path transport_keyfile;
 
     // long term identity key
-    fs::path ident_keyfile = "identity.key";
+    fs::path ident_keyfile;
 
-    fs::path encryption_keyfile = "encryption.key";
+    fs::path encryption_keyfile;
 
     // path to write our self signed rc to
-    fs::path our_rc_file = "rc.signed";
+    fs::path our_rc_file;
 
     // use file based logging?
     bool m_UseFileLogging = false;
@@ -175,8 +170,6 @@ namespace llarp
     bool publicOverride = false;
     struct sockaddr_in ip4addr;
     AddressInfo addrInfo;
-
-    LinkFactory::LinkType _defaultLinkType;
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;

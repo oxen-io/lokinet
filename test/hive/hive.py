@@ -52,17 +52,14 @@ class RouterHive(object):
 
   def AddRelay(self, index):
     dirname = "%s/relays/%d" % (self.tmpdir, index)
-    makedirs("%s/netdb" % dirname, exist_ok=True)
+    makedirs("%s/nodedb" % dirname, exist_ok=True)
 
     config = pyllarp.Config()
 
     port = index + 30000
     tunname = "lokihive%d" % index
 
-    config.router.encryptionKeyfile = "%s/encryption.key" % dirname
-    config.router.transportKeyfile = "%s/transport.key" % dirname
-    config.router.identKeyfile = "%s/identity.key" % dirname
-    config.router.ourRcFile = "%s/rc.signed" % dirname
+    config.router.dataDir = dirname
     config.router.netid = self.netid
     config.router.nickname = "Router%d" % index
     config.router.publicOverride = True
@@ -76,15 +73,11 @@ class RouterHive(object):
 
     config.network.enableProfiling = False
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname
-    config.network.netConfig = {"type": "null"}
+    config.network.options = {"type": "null"}
 
-    config.netdb.nodedbDir = "%s/netdb" % dirname
+    config.links.addInboundLink("lo", AF_INET, port);
 
-    config.links.InboundLinks = [("lo", AF_INET, port, set())]
-
-    config.system.pidfile = "%s/lokinet.pid" % dirname
-
-    config.dns.netConfig = {"local-dns": ("127.3.2.1:%d" % port)}
+    config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
     if index != 1:
       config.bootstrap.routers = ["%s/relays/1/rc.signed" % self.tmpdir]
@@ -94,29 +87,22 @@ class RouterHive(object):
 
   def AddClient(self, index):
     dirname = "%s/clients/%d" % (self.tmpdir, index)
-    makedirs("%s/netdb" % dirname, exist_ok=True)
+    makedirs("%s/nodedb" % dirname, exist_ok=True)
 
     config = pyllarp.Config()
 
     port = index + 40000
     tunname = "lokihive%d" % index
 
-    config.router.encryptionKeyfile = "%s/encryption.key" % dirname
-    config.router.transportKeyfile = "%s/transport.key" % dirname
-    config.router.identKeyfile = "%s/identity.key" % dirname
-    config.router.ourRcFile = "%s/rc.signed" % dirname
+    config.router.dataDir = dirname
     config.router.netid = self.netid
     config.router.blockBogons = False
 
     config.network.enableProfiling = False
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname
-    config.network.netConfig = {"type": "null"}
+    config.network.options = {"type": "null"}
 
-    config.netdb.nodedbDir = "%s/netdb" % dirname
-
-    config.system.pidfile = "%s/lokinet.pid" % dirname
-
-    config.dns.netConfig = {"local-dns": ("127.3.2.1:%d" % port)}
+    config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
     config.bootstrap.routers = ["%s/relays/1/rc.signed" % self.tmpdir]
 

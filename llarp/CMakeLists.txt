@@ -2,9 +2,10 @@ include(Version)
 
 set(LIB_UTIL_SRC
   config/config.cpp
+  config/definition.cpp
   config/ini.cpp
   config/key_manager.cpp
-  constants/limits.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
   util/encode.cpp
@@ -142,7 +143,6 @@ set(LIB_SRC
   iwp/linklayer.cpp
   iwp/message_buffer.cpp
   iwp/session.cpp
-  link/factory.cpp
   link/link_manager.cpp
   link/server.cpp
   messages/dht_immediate.cpp

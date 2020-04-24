@@ -12,7 +12,7 @@ namespace llarp
       ConfigParser parser;
       if (!parser.LoadFile(fname))
         return false;
-      parser.IterAll([&](string_view name, const ConfigParser::Section_t& section) {
+      parser.IterAll([&](string_view name, const ConfigParser::SectionValues_t& section) {
         Config::section_t values;
         values.first.assign(name.begin(), name.end());
         for (const auto& item : section)

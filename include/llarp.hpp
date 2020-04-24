@@ -55,7 +55,7 @@ namespace llarp
     std::string nodedb_dir;
 
     bool
-    LoadConfig(const std::string& fname);
+    LoadConfig(const std::string& fname, bool isRelay);
 
     void
     Close();
@@ -73,7 +73,7 @@ namespace llarp
     HandleSignal(int sig);
 
     bool
-    Configure();
+    Configure(bool isRelay, nonstd::optional<fs::path> dataDir);
 
     bool
     IsUp() const;
@@ -102,22 +102,9 @@ namespace llarp
 
    private:
     void
-    SetPIDFile(const std::string& fname);
-
-    bool
-    WritePIDFile() const;
-
-    void
-    RemovePIDFile() const;
-
-    void
     SigINT();
 
-    bool
-    ReloadConfig();
-
     std::string configfile;
-    std::string pidfile;
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
 }  // namespace llarp

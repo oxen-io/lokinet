@@ -1,84 +1,23 @@
 #ifndef LLARP_UTIL_LOGGER_HPP
 #define LLARP_UTIL_LOGGER_HPP
 
+#include <memory>
 #include <util/time.hpp>
 #include <util/logging/logstream.hpp>
 #include <util/logging/logger_internal.hpp>
-/*
-#ifdef _WIN32
-#define VC_EXTRALEAN
-#include <windows.h>
-#endif
-#ifdef ANDROID
-#include <android/log.h>
-#endif
-#ifdef RPI
-#include <cstdio>
-#endif
-
-#include <ctime>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <thread>
-#include <functional>
-*/
+#include <util/thread/thread_pool.hpp>
 
 namespace llarp
 {
-  /*
-  struct Logger
+  enum class LogType
   {
-    std::string nodeName;
-    LogLevel minlevel = eLogInfo;
-    ILogStream_ptr m_stream;
-
-    std::unique_ptr< std::ostream > _altOut;
-
-#ifdef _WIN32
-    bool isConsoleModern =
-        true;  // qol fix so oldfag clients don't see ugly escapes
-    HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    short old_attrs;
-#endif
-    Logger() : Logger(std::cout)
-    {
-#ifdef _WIN32
-      // Attempt to use ANSI escapes directly
-      // if the modern console is active.
-      DWORD mode_flags;
-
-      GetConsoleMode(fd1, &mode_flags);
-      // since release SDKs don't have ANSI escape support yet
-      // we get all or nothing: if we can't get it, then we wouldn't
-      // be able to get any of them individually
-      mode_flags |= 0x0004 | 0x0008;
-      BOOL t = SetConsoleMode(fd1, mode_flags);
-      if(!t)
-        this->isConsoleModern = false;  // fall back to setting colours manually
-#endif
-    }
-
-    Logger(std::ostream& o) : out(o)
-    {
-    }
-
-    /// open logger to file
-    /// return false on failure
-    /// return true on successful open
-    bool
-    OpenLogFile(const std::string& file);
-
-    /// call once to use syslog based logging
-    void
-    UseSyslog();
-
-    virtual void
-    Print(LogLevel lvl, const std::string& msg);
+    Unknown = 0,
+    File,
+    Json,
+    Syslog,
   };
-  */
+  LogType
+  LogTypeFromString(const std::string&);
 
   struct LogContext
   {
@@ -99,6 +38,26 @@ namespace llarp
 
     void
     RevertRuntimeLevel();
+
+    /// A blocking call that will not return until any existing log functions have flushed.
+    /// Should only be called in rare circumstances, such as when the program is about to exit.
+    void
+    ImmediateFlush();
+
+    /// Initialize the logging system.
+    ///
+    /// @param level is the new log level (below which log statements will be ignored)
+    /// @param type is the type of logger to set up
+    /// @param file is the file to log to (relevant for types File and Json)
+    /// @param nickname is a tag to add to each log statement
+    /// @param threadpool is a threadpool where I/O can offloaded
+    void
+    Initialize(
+        LogLevel level,
+        LogType type,
+        const std::string& file,
+        const std::string& nickname,
+        std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
   void
@@ -123,131 +82,6 @@ namespace llarp
     log.logStream->AppendLog(lvl, fname, lineno, log.nodeName, ss.str());
 #endif
   }
-  /*
-    std::stringstream ss;
-#ifdef ANDROID
-    int loglev = -1;
-    switch(lvl)
-    {
-      case eLogNone:
-        break;
-      case eLogDebug:
-        ss << "[DBG] ";
-        loglev = ANDROID_LOG_DEBUG;
-        break;
-      case eLogInfo:
-        ss << "[NFO] ";
-        loglev = ANDROID_LOG_INFO;
-        break;
-      case eLogWarn:
-        ss << "[WRN] ";
-        loglev = ANDROID_LOG_WARN;
-        break;
-      case eLogError:
-        ss << "[ERR] ";
-        loglev = ANDROID_LOG_ERROR;
-        break;
-    }
-#else
-#ifdef _WIN32
-    if(_glog.isConsoleModern)
-    {
-#endif
-      switch(lvl)
-      {
-        case eLogNone:
-          break;
-        case eLogDebug:
-          ss << (char)27 << "[0m";
-          ss << "[DBG] ";
-          break;
-        case eLogInfo:
-          ss << (char)27 << "[1m";
-          ss << "[NFO] ";
-          break;
-        case eLogWarn:
-          ss << (char)27 << "[1;33m";
-          ss << "[WRN] ";
-          break;
-        case eLogError:
-          ss << (char)27 << "[1;31m";
-          ss << "[ERR] ";
-          break;
-      }
-#ifdef _WIN32
-    }
-    else  // legacy console
-    {
-      // these _should_ be low white on black
-      GetConsoleScreenBufferInfo(_glog.fd1, &_glog.consoleInfo);
-      _glog.old_attrs = _glog.consoleInfo.wAttributes;
-      switch(lvl)
-      {
-        case eLogNone:
-          break;
-        case eLogDebug:
-          SetConsoleTextAttribute(_glog.fd1,
-                                  FOREGROUND_RED | FOREGROUND_GREEN
-                                      | FOREGROUND_BLUE);  // low white on black
-          ss << "[DBG] ";
-          break;
-        case eLogInfo:
-          SetConsoleTextAttribute(
-              _glog.fd1,
-              FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN
-                  | FOREGROUND_BLUE);  // high white on black
-          ss << "[NFO] ";
-          break;
-        case eLogWarn:
-          SetConsoleTextAttribute(_glog.fd1,
-                                  FOREGROUND_RED | FOREGROUND_GREEN
-                                      | FOREGROUND_INTENSITY);  // bright yellow
-          ss << "[WRN] ";
-          break;
-        case eLogError:
-          SetConsoleTextAttribute(
-              _glog.fd1, FOREGROUND_RED | FOREGROUND_INTENSITY);  // bright red
-          ss << "[ERR] ";
-          break;
-      }
-    }
-#endif
-#endif
-    std::string tag = fname;
-    if(_glog.nodeName.size())
-      ss << _glog.nodeName << " ";
-    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << tag
-       << ":" << lineno;
-    ss << "\t";
-    LogAppend(ss, std::forward< TArgs >(args)...);
-#ifndef ANDROID
-#ifdef _WIN32
-    if(_glog.isConsoleModern)
-    {
-#endif
-      ss << (char)27 << "[0;0m";
-      _glog.out << ss.str() << std::endl;
-#ifdef TESTNET
-      _glog.out << std::flush;
-#endif
-#ifdef _WIN32
-    }
-    else
-    {
-      _glog.out << ss.str() << std::endl;
-      SetConsoleTextAttribute(
-          _glog.fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-    }
-
-#endif
-#else
-    {
-      tag = "LOKINET|" + tag;
-      __android_log_write(loglev, tag.c_str(), ss.str().c_str());
-    }
-#endif
-  }
-  */
 }  // namespace llarp
 
 #define LogTrace(...) _Log(llarp::eLogTrace, LOG_TAG, __LINE__, __VA_ARGS__)

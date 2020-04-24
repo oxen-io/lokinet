@@ -1,11 +1,13 @@
 #include <config/ini.hpp>
 
 #include <util/logging/logger.hpp>
+#include <util/str.hpp>
 
 #include <cctype>
 #include <fstream>
 #include <list>
 #include <iostream>
+#include <cassert>
 
 namespace llarp
 {
@@ -129,7 +131,7 @@ namespace llarp
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
         }
-        Section_t& sect = m_Config[str(sectName)];
+        SectionValues_t& sect = m_Config[str(sectName)];
         LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
         sect.emplace(str(k), str(v));  // str()'s here for gcc 5 compat
       }
@@ -143,7 +145,7 @@ namespace llarp
   }
 
   void
-  ConfigParser::IterAll(std::function<void(string_view, const Section_t&)> visit)
+  ConfigParser::IterAll(std::function<void(string_view, const SectionValues_t&)> visit)
   {
     for (const auto& item : m_Config)
       visit(item.first, item.second);
@@ -151,8 +153,12 @@ namespace llarp
 
   bool
   ConfigParser::VisitSection(
-      const char* name, std::function<bool(const Section_t& sect)> visit) const
+      const char* name, std::function<bool(const SectionValues_t& sect)> visit) const
   {
+    // m_Config is effectively:
+    // unordered_map< string, unordered_multimap< string, string  >>
+    // in human terms: a map of of sections
+    //                 where a section is a multimap of k:v pairs
     auto itr = m_Config.find(name);
     if (itr == m_Config.end())
       return false;

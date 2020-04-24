@@ -28,12 +28,13 @@ namespace llarp
   }
 
   bool
-  Context::Configure()
+  Context::Configure(bool isRelay, nonstd::optional<fs::path> dataDir)
   {
-    // llarp::LogInfo("loading config at ", configfile);
+    fs::path defaultDataDir = dataDir.has_value() ? dataDir.value() : GetDefaultDataDir();
+
     if (configfile.size())
     {
-      if (!config->Load(configfile.c_str()))
+      if (!config->Load(configfile.c_str(), isRelay, defaultDataDir))
       {
         config.release();
         llarp::LogError("failed to load config file ", configfile);
@@ -41,29 +42,18 @@ namespace llarp
       }
     }
 
-    // System config
-    if (!config->system.pidfile.empty())
-    {
-      SetPIDFile(config->system.pidfile);
-    }
-    auto threads = config->router.workerThreads();
+    auto threads = config->router.m_workerThreads;
     if (threads <= 0)
       threads = 1;
     worker = std::make_shared<llarp::thread::ThreadPool>(threads, 1024, "llarp-worker");
-    auto jobQueueSize = config->router.jobQueueSize();
+    auto jobQueueSize = config->router.m_JobQueueSize;
     if (jobQueueSize < 1024)
       jobQueueSize = 1024;
     logic = std::make_shared<Logic>(jobQueueSize);
 
-    nodedb_dir = config->netdb.nodedbDir();
+    nodedb_dir = config->router.m_dataDir / nodedb_dirname;
 
     return true;
-  }
-
-  void
-  Context::SetPIDFile(const std::string& fname)
-  {
-    pidfile = fname;
   }
 
   bool
@@ -81,11 +71,7 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    if (!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
-    {
-      llarp::LogError("nodedb_dir is incorrect");
-      return 0;
-    }
+    llarp_nodedb::ensure_dir(nodedb_dir.c_str());
     return 1;
   }
 
@@ -131,8 +117,6 @@ namespace llarp
       llarp::LogError("cannot run non configured context");
       return 1;
     }
-    if (!WritePIDFile())
-      return 1;
     // run
     if (!router->StartJsonRpc())
       return 1;
@@ -175,34 +159,6 @@ namespace llarp
     }
   }
 
-  bool
-  Context::WritePIDFile() const
-  {
-    if (pidfile.size())
-    {
-      std::ofstream f(pidfile);
-      f << std::to_string(getpid());
-      return f.good();
-    }
-
-    return true;
-  }
-
-  void
-  Context::RemovePIDFile() const
-  {
-    if (pidfile.size())
-    {
-      fs::path f = pidfile;
-      std::error_code ex;
-      if (fs::exists(f, ex))
-      {
-        if (!ex)
-          fs::remove(f);
-      }
-    }
-  }
-
   void
   Context::HandleSignal(int sig)
   {
@@ -210,43 +166,8 @@ namespace llarp
     {
       SigINT();
     }
-    // TODO(despair): implement hot-reloading config on NT
-#ifndef _WIN32
-    if (sig == SIGHUP)
-    {
-      llarp::LogInfo("SIGHUP");
-      if (router)
-      {
-        router->hiddenServiceContext().ForEachService(
-            [](const std::string& name, const llarp::service::Endpoint_ptr& ep) -> bool {
-              ep->ResetInternalState();
-              llarp::LogInfo("Reset internal state for ", name);
-              return true;
-            });
-        router->PumpLL();
-        Config newconfig;
-        if (!newconfig.Load(configfile.c_str()))
-        {
-          llarp::LogError("failed to load config file ", configfile);
-          return;
-        }
-        // validate config
-        if (!router->ValidateConfig(&newconfig))
-        {
-          llarp::LogWarn("new configuration is invalid");
-          return;
-        }
-        // reconfigure
-        if (!router->Reconfigure(&newconfig))
-        {
-          llarp::LogError("Failed to reconfigure so we will stop.");
-          router->Stop();
-          return;
-        }
-        llarp::LogInfo("router reconfigured");
-      }
-    }
-#endif
+    // TODO: Hot reloading would be kewl
+    //       (it used to exist here, but wasn't maintained)
   }
 
   void
@@ -287,16 +208,14 @@ namespace llarp
 
     llarp::LogDebug("free logic");
     logic.reset();
-
-    RemovePIDFile();
   }
 
   bool
-  Context::LoadConfig(const std::string& fname)
+  Context::LoadConfig(const std::string& fname, bool isRelay)
   {
     config = std::make_unique<Config>();
     configfile = fname;
-    return Configure();
+    return Configure(isRelay, {});
   }
 
 #ifdef LOKINET_HIVE
@@ -371,30 +290,22 @@ extern "C"
   }
 
   struct llarp_main*
-  llarp_main_init_from_config(struct llarp_config* conf)
+  llarp_main_init_from_config(struct llarp_config* conf, bool isRelay)
   {
     if (conf == nullptr)
       return nullptr;
     llarp_main* m = new llarp_main(conf);
-    if (m->ctx->Configure())
+    if (m->ctx->Configure(isRelay, {}))
       return m;
     delete m;
     return nullptr;
   }
 
   bool
-  llarp_config_read_file(struct llarp_config* conf, const char* fname)
-  {
-    if (conf == nullptr)
-      return false;
-    return conf->impl.Load(fname);
-  }
-
-  bool
-  llarp_config_load_file(const char* fname, struct llarp_config** conf)
+  llarp_config_load_file(const char* fname, struct llarp_config** conf, bool isRelay)
   {
     llarp_config* c = new llarp_config();
-    if (c->impl.Load(fname))
+    if (c->impl.Load(fname, isRelay, {}))
     {
       *conf = c;
       return true;
@@ -531,13 +442,13 @@ extern "C"
   }
 
   bool
-  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf)
+  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf, bool isRelay)
   {
     if (ptr == nullptr || conf == nullptr)
       return false;
     // give new config
     ptr->ctx->config.reset(new llarp::Config(conf->impl));
-    return ptr->ctx->Configure();
+    return ptr->ctx->Configure(isRelay, {});
   }
 
   bool

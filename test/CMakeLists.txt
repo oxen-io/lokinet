@@ -13,7 +13,6 @@ set(CATCH_EXE catchAll)
 
 # Old gtest-based tests; new tests should use Catch2, instead.
 list(APPEND GTEST_SRC
-    config/test_llarp_config_config.cpp
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp
@@ -81,6 +80,8 @@ add_executable(${CATCH_EXE}
   util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   util/test_llarp_util_decaying_hashset.cpp
+  config/test_llarp_config_definition.cpp
+  config/test_llarp_config_output.cpp
   check_main.cpp)
 
 target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)

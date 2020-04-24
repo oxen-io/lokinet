@@ -12,8 +12,8 @@ namespace llarp
 {
   struct ConfigParser
   {
-    using Section_t = std::unordered_multimap<std::string, std::string>;
-    using Config_impl_t = std::unordered_map<std::string, Section_t>;
+    using SectionValues_t = std::unordered_multimap<std::string, std::string>;
+    using Config_impl_t = std::unordered_map<std::string, SectionValues_t>;
     /// clear parser
     void
     Clear();
@@ -32,12 +32,12 @@ namespace llarp
 
     /// iterate all sections and thier values
     void
-    IterAll(std::function<void(string_view, const Section_t&)> visit);
+    IterAll(std::function<void(string_view, const SectionValues_t&)> visit);
 
     /// visit a section in config read only by name
     /// return false if no section or value propagated from visitor
     bool
-    VisitSection(const char* name, std::function<bool(const Section_t&)> visit) const;
+    VisitSection(const char* name, std::function<bool(const SectionValues_t&)> visit) const;
 
    private:
     bool

@@ -2,8 +2,8 @@
 #include <router/router.hpp>
 
 #include <config/config.hpp>
-#include <constants/limits.hpp>
 #include <constants/proto.hpp>
+#include <constants/files.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <crypto/crypto.hpp>
 #include <dht/context.hpp>
@@ -373,9 +373,9 @@ namespace llarp
   Router::FromConfig(Config* conf)
   {
     // Set netid before anything else
-    if (!conf->router.netId().empty() && strcmp(conf->router.netId().c_str(), llarp::DEFAULT_NETID))
+    if (!conf->router.m_netId.empty() && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
-      const auto& netid = conf->router.netId();
+      const auto& netid = conf->router.m_netId;
       llarp::LogWarn(
           "!!!! you have manually set netid to be '",
           netid,
@@ -388,31 +388,21 @@ namespace llarp
       // reset netid in our rc
       _rc.netID = llarp::NetID();
     }
-    const auto linktypename = conf->router.defaultLinkProto();
-    _defaultLinkType = LinkFactory::TypeFromName(linktypename);
-    if (_defaultLinkType == LinkFactory::LinkType::eLinkUnknown)
-    {
-      LogError("failed to set link type to '", linktypename, "' as that is invalid");
-      return false;
-    }
 
     // IWP config
-    m_OutboundPort = std::get<LinksConfig::Port>(conf->links.outboundLink());
+    m_OutboundPort = conf->links.m_OutboundLink.port;
     // Router config
-    _rc.SetNick(conf->router.nickname());
-    _outboundSessionMaker.maxConnectedRouters = conf->router.maxConnectedRouters();
-    _outboundSessionMaker.minConnectedRouters = conf->router.minConnectedRouters();
-    encryption_keyfile = conf->router.encryptionKeyfile();
-    our_rc_file = conf->router.ourRcFile();
-    transport_keyfile = conf->router.transportKeyfile();
-    addrInfo = conf->router.addrInfo();
-    publicOverride = conf->router.publicOverride();
-    ip4addr = conf->router.ip4addr();
+    _rc.SetNick(conf->router.m_nickname);
+    _outboundSessionMaker.maxConnectedRouters = conf->router.m_maxConnectedRouters;
+    _outboundSessionMaker.minConnectedRouters = conf->router.m_minConnectedRouters;
+    encryption_keyfile = conf->router.m_dataDir / our_enc_key_filename;
+    our_rc_file = conf->router.m_dataDir / our_rc_filename;
+    transport_keyfile = conf->router.m_dataDir / our_transport_key_filename;
+    addrInfo = conf->router.m_addrInfo;
+    publicOverride = conf->router.m_publicOverride;
+    ip4addr = conf->router.m_ip4addr;
 
-    if (!conf->router.blockBogons().value_or(true))
-    {
-      RouterContact::BlockBogons = false;
-    }
+    RouterContact::BlockBogons = conf->router.m_blockBogons;
 
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
@@ -423,16 +413,16 @@ namespace llarp
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
     // TODO: add config flag for "is service node"
-    if (conf->links.inboundLinks().size())
+    if (conf->links.m_InboundLinks.size())
     {
       m_isServiceNode = true;
     }
 
     std::set<RouterID> strictConnectPubkeys;
 
-    if (!conf->network.strictConnect().empty())
+    if (!conf->network.m_strictConnect.empty())
     {
-      const auto& val = conf->network.strictConnect();
+      const auto& val = conf->network.m_strictConnect;
       if (IsServiceNode())
       {
         llarp::LogError("cannot use strict-connect option as service node");
@@ -461,16 +451,33 @@ namespace llarp
         llarp::LogError("invalid key for strict-connect: ", val);
     }
 
-    llarp::LogWarn("Bootstrap routers list size: ", conf->bootstrap.routers.size());
-    std::vector<std::string> configRouters = conf->connect.routers;
+    std::vector<fs::path> configRouters = conf->connect.routers;
     configRouters.insert(
         configRouters.end(), conf->bootstrap.routers.begin(), conf->bootstrap.routers.end());
+
+    // if our conf had no bootstrap files specified, try the default location of
+    // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
+    if (configRouters.size() == 0 and not m_isServiceNode)
+    {
+      // TODO: use constant
+      fs::path defaultBootstrapFile = conf->router.m_dataDir / "bootstrap.signed";
+      if (fs::exists(defaultBootstrapFile))
+        configRouters.push_back(defaultBootstrapFile);
+      else
+      {
+        LogError("No bootstrap files specified in config file, and the default");
+        LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
+        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap'");
+        throw std::runtime_error("No bootstrap files available.");
+      }
+    }
+
     BootstrapList b_list;
     for (const auto& router : configRouters)
     {
       bool isListFile = false;
       {
-        std::ifstream inf(router, std::ios::binary);
+        std::ifstream inf(router.c_str(), std::ios::binary);
         if (inf.is_open())
         {
           const char ch = inf.get();
@@ -527,32 +534,13 @@ namespace llarp
 
     if (!usingSNSeed)
     {
-      ident_keyfile = conf->router.identKeyfile();
+      ident_keyfile = conf->router.m_dataDir / our_identity_filename;
     }
 
     // create inbound links, if we are a service node
-    for (const auto& serverConfig : conf->links.inboundLinks())
+    for (const LinksConfig::LinkInfo& serverConfig : conf->links.m_InboundLinks)
     {
-      // get default factory
-      auto inboundLinkFactory = LinkFactory::Obtain(_defaultLinkType, true);
-      // for each option if provided ...
-      for (const auto& opt : std::get<LinksConfig::Options>(serverConfig))
-      {
-        // try interpreting it as a link type
-        const auto linktype = LinkFactory::TypeFromName(opt);
-        if (linktype != LinkFactory::LinkType::eLinkUnknown)
-        {
-          // override link factory if it's a valid link type
-          auto factory = LinkFactory::Obtain(linktype, true);
-          if (factory)
-          {
-            inboundLinkFactory = std::move(factory);
-            break;
-          }
-        }
-      }
-
-      auto server = inboundLinkFactory(
+      auto server = iwp::NewInboundLink(
           m_keyManager,
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
@@ -563,10 +551,9 @@ namespace llarp
           util::memFn(&AbstractRouter::SessionClosed, this),
           util::memFn(&AbstractRouter::PumpLL, this));
 
-      const auto& key = std::get<LinksConfig::Interface>(serverConfig);
-      int af = std::get<LinksConfig::AddressFamily>(serverConfig);
-      uint16_t port = std::get<LinksConfig::Port>(serverConfig);
-      llarp::LogWarn("tun: ", key, " -- af: ", af, " -- port: ", port);
+      const std::string& key = serverConfig.interface;
+      int af = serverConfig.addressFamily;
+      uint16_t port = serverConfig.port;
       if (!server->Configure(netloop(), key, af, port))
       {
         LogError("failed to bind inbound link on ", key, " port ", port);
@@ -575,29 +562,26 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
-    // set network config
-    netConfig = conf->network.netConfig();
-
     // Network config
-    if (conf->network.enableProfiling().has_value())
+    if (conf->network.m_enableProfiling.has_value())
     {
-      if (not conf->network.enableProfiling().value())
+      if (not conf->network.m_enableProfiling.value())
       {
         routerProfiling().Disable();
         LogWarn("router profiling explicitly disabled");
       }
     }
 
-    if (!conf->network.routerProfilesFile().empty())
+    if (!conf->network.m_routerProfilesFile.empty())
     {
-      routerProfilesFile = conf->network.routerProfilesFile();
+      routerProfilesFile = conf->network.m_routerProfilesFile;
       routerProfiling().Load(routerProfilesFile.c_str());
       llarp::LogInfo("setting profiles to ", routerProfilesFile);
     }
 
     // API config
-    enableRPCServer = conf->api.enableRPCServer();
-    rpcBindAddr = conf->api.rpcBindAddr();
+    enableRPCServer = conf->api.m_enableRPCServer;
+    rpcBindAddr = conf->api.m_rpcBindAddr;
 
     // Services config
     for (const auto& service : conf->services.services)
@@ -613,21 +597,16 @@ namespace llarp
     }
 
     // Logging config
+    LogContext::Instance().Initialize(
+        conf->logging.m_logLevel,
+        conf->logging.m_logType,
+        conf->logging.m_logFile,
+        conf->router.m_nickname,
+        diskworker());
 
-    auto logfile = conf->logging.m_LogFile;
-
-    if (conf->logging.m_LogJSON)
-    {
-      LogContext::Instance().logStream =
-          std::make_unique<JSONLogStream>(diskworker(), logfile, 100ms, logfile != stdout);
-    }
-    else if (logfile != stdout)
-    {
-      LogContext::Instance().logStream =
-          std::make_unique<FileLogStream>(diskworker(), logfile, 100ms, true);
-    }
-
-    netConfig.insert(conf->dns.netConfig.begin(), conf->dns.netConfig.end());
+    // TODO: clean this up. it appears that we're dumping the [dns] "options" into the
+    //       [network] "options"
+    conf->network.m_options.insert(conf->dns.m_options.begin(), conf->dns.m_options.end());
 
     return true;
   }
@@ -1027,13 +1006,6 @@ namespace llarp
 
     EnsureNetConfigDefaultsSane(netConfig);
 
-    const auto limits = IsServiceNode() ? llarp::limits::snode : llarp::limits::client;
-
-    _outboundSessionMaker.minConnectedRouters =
-        std::max(_outboundSessionMaker.minConnectedRouters, limits.DefaultMinRouters);
-    _outboundSessionMaker.maxConnectedRouters =
-        std::max(_outboundSessionMaker.maxConnectedRouters, limits.DefaultMaxRouters);
-
     if (IsServiceNode())
     {
       // initialize as service node
@@ -1251,18 +1223,7 @@ namespace llarp
   bool
   Router::InitOutboundLinks()
   {
-    const auto linkTypeName = LinkFactory::NameFromType(_defaultLinkType);
-    LogInfo("initialize outbound link: ", linkTypeName);
-    auto factory = LinkFactory::Obtain(_defaultLinkType, false);
-    if (factory == nullptr)
-    {
-      LogError(
-          "cannot initialize outbound link of type '",
-          linkTypeName,
-          "' as it has no implementation");
-      return false;
-    }
-    auto link = factory(
+    auto link = iwp::NewOutboundLink(
         m_keyManager,
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),

@@ -57,4 +57,10 @@ namespace llarp
     m_Out << msg << std::flush;
   }
 
+  void
+  OStreamLogStream::ImmediateFlush()
+  {
+    m_Out << std::flush;
+  }
+
 }  // namespace llarp

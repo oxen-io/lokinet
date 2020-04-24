@@ -5,6 +5,7 @@
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
+#include <util/str.hpp>
 
 #include <csignal>
 
@@ -64,7 +65,7 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
   // this is important, can downgrade from Info though
   llarp::LogDebug("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
-  ctx = llarp_main_init(conffname.c_str());
+  ctx = llarp_main_init(conffname.c_str(), opts.isRelay);
   int code = 1;
   if (ctx)
   {
@@ -102,7 +103,6 @@ main(int argc, char* argv[])
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
-
   cxxopts::Options options(
       "lokinet",
       "LokiNET is a free, open source, private, "
@@ -111,7 +111,7 @@ main(int argc, char* argv[])
   options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
       "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
       "g,generate", "generate client config", cxxopts::value<bool>())(
-      "r,router", "generate router config", cxxopts::value<bool>())(
+      "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
       "f,force", "overwrite", cxxopts::value<bool>())(
       "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
       "b,background",
@@ -122,8 +122,7 @@ main(int argc, char* argv[])
   options.parse_positional("config");
 
   bool genconfigOnly = false;
-  bool asRouter = false;
-  bool overWrite = false;
+  bool overwrite = false;
   std::string conffname;
   try
   {
@@ -163,17 +162,14 @@ main(int argc, char* argv[])
       opts.background = true;
     }
 
-    if (result.count("force") > 0)
+    if (result.count("relay") > 0)
     {
-      overWrite = true;
+      opts.isRelay = true;
     }
 
-    if (result.count("router") > 0)
+    if (result.count("force") > 0)
     {
-      asRouter = true;
-      // we should generate and exit (docker needs this, so we don't write a
-      // config each time on startup)
-      genconfigOnly = true;
+      overwrite = true;
     }
 
     if (result.count("config") > 0)
@@ -198,23 +194,10 @@ main(int argc, char* argv[])
     fs::path fname = fs::path(conffname);
     fs::path basedir = fname.parent_path();
 
-    if (!basedir.empty())
-    {
-      std::error_code ec;
-      if (!fs::create_directories(basedir, ec))
-      {
-        if (ec)
-        {
-          llarp::LogError("failed to create '", basedir.string(), "': ", ec.message());
-          return 1;
-        }
-      }
-    }
-
     if (genconfigOnly)
     {
-      if (!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(), overWrite, asRouter))
-        return 1;
+      llarp::ensureConfig(
+          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
     }
     else
     {
@@ -224,32 +207,16 @@ main(int argc, char* argv[])
         llarp::LogError("Config file not found ", conffname);
         return 1;
       }
+
+      if (ec)
+        throw std::runtime_error(llarp::stringify("filesystem error: ", ec));
     }
   }
   else
   {
-    auto basepath = llarp::GetDefaultConfigDir();
-
-    llarp::LogDebug("Find or create ", basepath.string());
-    std::error_code ec;
-    // These paths are guaranteed to exist - $APPDATA or $HOME
-    // so only create .lokinet/*
-    if (!fs::create_directory(basepath, ec))
-    {
-      if (ec)
-      {
-        llarp::LogError("failed to create '", basepath.string(), "': ", ec.message());
-        return 1;
-      }
-    }
-
-    auto fpath = llarp::GetDefaultConfigPath();
-
-    // if using default INI file, we're create it even if you don't ask us too
-    if (!llarp_ensure_config(
-            fpath.string().c_str(), basepath.string().c_str(), overWrite, asRouter))
-      return 1;
-    conffname = fpath.string();
+    llarp::ensureConfig(
+        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
+    conffname = llarp::GetDefaultConfigPath().c_str();
   }
 
   if (genconfigOnly)
@@ -291,6 +258,7 @@ main(int argc, char* argv[])
                                   "annoying image in your syslog for all time."})
           {
             LogError(wtf);
+            llarp::LogContext::Instance().ImmediateFlush();
           }
           std::abort();
         }
@@ -300,6 +268,8 @@ main(int argc, char* argv[])
 
   main_thread.join();
   const auto code = ftr.get();
+
+  llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32
   ::WSACleanup();
 #endif
