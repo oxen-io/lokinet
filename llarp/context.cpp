@@ -103,7 +103,7 @@ namespace llarp
     // must also be done after configure so that netid is properly set if it
     // is provided by config
     if (!this->LoadDatabase())
-      return 1;
+      return 2;
 
     return 0;
   }

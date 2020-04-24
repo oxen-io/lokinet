@@ -26,7 +26,7 @@ namespace tooling
 
    private:
     void
-    StartRouters(std::vector<llarp_main*>* routers);
+    StartRouters(std::vector<llarp_main*>* routers, bool isRelay);
 
     void
     AddRouter(

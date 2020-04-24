@@ -10,27 +10,32 @@ import sys
 from argparse import ArgumentParser as ap
 import threading
 from collections import deque
+import traceback
 
 class RouterHive(object):
 
   def __init__(self, n_relays=10, n_clients=10, netid="hive"):
+    try:
 
-    self.endpointName = "pyllarp"
-    self.tmpdir = "/tmp/lokinet_hive"
-    self.netid = netid
+      self.endpointName = "pyllarp"
+      self.tmpdir = "/tmp/lokinet_hive"
+      self.netid = netid
 
-    self.n_relays = n_relays
-    self.n_clients = n_clients
+      self.n_relays = n_relays
+      self.n_clients = n_clients
 
-    self.addrs = []
-    self.events = deque()
+      self.addrs = []
+      self.events = deque()
 
-    self.hive = None
-    self.RCs = []
+      self.hive = None
+      self.RCs = []
 
-    pyllarp.EnableDebug()
-    if not self.RemoveTmpDir():
-      raise RuntimeError("Failed to initialize Router Hive")
+      pyllarp.EnableDebug()
+      if not self.RemoveTmpDir():
+        raise RuntimeError("Failed to initialize Router Hive")
+
+    except Exception as error:
+      print("Exception in __init__: ", error);
 
   def RemoveTmpDir(self):
     if self.tmpdir.startswith("/tmp/") and len(self.tmpdir) > 5:
@@ -55,6 +60,7 @@ class RouterHive(object):
     makedirs("%s/nodedb" % dirname, exist_ok=True)
 
     config = pyllarp.Config()
+    config.LoadDefault(True, dirname);
 
     port = index + 30000
     tunname = "lokihive%d" % index
@@ -76,12 +82,16 @@ class RouterHive(object):
     config.network.options = {"type": "null"}
 
     config.links.addInboundLink("lo", AF_INET, port);
+    config.links.setOutboundLink("lo", AF_INET, port + 10000);
 
     config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
-    if index != 1:
-      config.bootstrap.routers = ["%s/relays/1/rc.signed" % self.tmpdir]
+    if index != 0:
+      config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
 
+    config.api.enableRPCServer = False
+
+    print("adding relay at index %d" % port);
     self.hive.AddRelay(config)
 
 
@@ -90,8 +100,9 @@ class RouterHive(object):
     makedirs("%s/nodedb" % dirname, exist_ok=True)
 
     config = pyllarp.Config()
+    config.LoadDefault(False, dirname);
 
-    port = index + 40000
+    port = index + 50000
     tunname = "lokihive%d" % index
 
     config.router.dataDir = dirname
@@ -102,9 +113,13 @@ class RouterHive(object):
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname
     config.network.options = {"type": "null"}
 
+    config.links.setOutboundLink("lo", AF_INET, port + 10000);
+
     config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
-    config.bootstrap.routers = ["%s/relays/1/rc.signed" % self.tmpdir]
+    config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
+
+    config.api.enableRPCServer = False
 
     self.hive.AddClient(config)
 
@@ -124,7 +139,7 @@ class RouterHive(object):
   def InitFirstRC(self):
     print("Starting first router to init its RC for bootstrap")
     self.hive = pyllarp.RouterHive()
-    self.AddRelay(1)
+    self.AddRelay(0)
     self.hive.StartRelays()
     print("sleeping 2 sec to give plenty of time to save bootstrap rc")
     sleep(2)

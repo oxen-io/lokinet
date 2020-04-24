@@ -27,7 +27,10 @@ namespace llarp
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
         .def_readwrite("logging", &Config::logging)
-        .def("LoadFile", &Config::Load);
+        .def("LoadFile", &Config::Load)
+        .def("LoadDefault", [](Config& self, bool isRelay, std::string dir) {
+          return self.LoadDefault(isRelay, dir);
+        });
 
     py::class_<RouterConfig>(mod, "RouterConfig")
         .def(py::init<>())
@@ -75,8 +78,15 @@ namespace llarp
 
     py::class_<LinksConfig>(mod, "LinksConfig")
         .def(py::init<>())
-        .def_readwrite("OutboundLink", &LinksConfig::m_OutboundLink)
-        .def_readwrite("InboundLinks", &LinksConfig::m_InboundLinks)
+        .def(
+            "setOutboundLink",
+            [](LinksConfig& self, std::string interface, int family, uint16_t port) {
+              LinksConfig::LinkInfo info;
+              info.interface = std::move(interface);
+              info.addressFamily = family;
+              info.port = port;
+              self.m_OutboundLink = std::move(info);
+            })
         .def(
             "addInboundLink",
             [](LinksConfig& self, std::string interface, int family, uint16_t port) {
