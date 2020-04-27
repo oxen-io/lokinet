@@ -72,6 +72,9 @@ namespace llarp
     std::optional<bool> m_enableProfiling;
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
+    std::string m_ifname;
+    std::string m_ifaddr;
+    std::string m_localDNS;
     FreehandOptions m_options;
 
     void

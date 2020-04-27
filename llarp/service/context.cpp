@@ -136,32 +136,6 @@ namespace llarp
     }
 
     bool
-    Context::AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>&)
-    {
-      throw std::runtime_error("FIXME");
-      /*
-      Config::section_values_t configOpts;
-      configOpts.push_back({"type", DefaultEndpointType()});
-      // non reachable by default as this is the default endpoint
-      // but only if no keyfile option provided
-      if (opts.count("keyfile") == 0)
-      {
-        configOpts.push_back({"reachable", "false"});
-      }
-
-      {
-        auto itr = opts.begin();
-        while (itr != opts.end())
-        {
-          configOpts.push_back({itr->first, itr->second});
-          ++itr;
-        }
-      }
-      return AddEndpoint({"default", configOpts});
-      */
-    }
-
-    bool
     Context::StartAll()
     {
       auto itr = m_Endpoints.begin();
@@ -198,7 +172,8 @@ namespace llarp
     }
 
     void
-    Context::AddEndpoint(const EndpointConfig& conf, bool autostart)
+    Context::AddEndpoint(
+        const EndpointConfig& conf, const NetworkConfig& networkConfig, bool autostart)
     {
       if (m_Endpoints.find(conf.m_name) != m_Endpoints.end())
         throw std::invalid_argument(stringify("Snapp ", conf.m_name, " already exists"));

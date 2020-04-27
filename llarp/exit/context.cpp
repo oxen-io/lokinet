@@ -97,8 +97,13 @@ namespace llarp
     }
 
     bool
-    Context::AddExitEndpoint(const std::string& name, const Config_t& conf)
+    Context::AddExitEndpoint(
+        const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
+      throw std::runtime_error("FIXME");
+      /*
+       * TODO: no more SetOption()
+       *
       // check for duplicate exit by name
       {
         auto itr = m_Exits.find(name);
@@ -132,6 +137,7 @@ namespace llarp
       }
       m_Exits.emplace(name, std::move(endpoint));
       return true;
+       */
     }
 
   }  // namespace exit

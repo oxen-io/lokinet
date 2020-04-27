@@ -1,7 +1,9 @@
 #include <exit/context.hpp>
 
+#include <config/config.hpp>
 #include <router/router.hpp>
 #include <exit/context.hpp>
+#include "config/config.hpp"
 
 #include <gtest/gtest.h>
 
@@ -22,12 +24,16 @@ TEST_F(ExitTest, AddMultipleIP)
   llarp::PathID_t firstPath, secondPath;
   firstPath.Randomize();
   secondPath.Randomize();
-  llarp::exit::Context::Config_t conf;
-  conf.emplace("exit", "true");
-  conf.emplace("type", "null");
-  conf.emplace("ifaddr", "10.0.0.1/24");
 
-  ASSERT_TRUE(context.AddExitEndpoint("test-exit", conf));
+  // TODO: exit and type
+  // llarp::exit::Context::Config_t conf;
+  // conf.emplace("exit", "true");
+  // conf.emplace("type", "null");
+
+  llarp::NetworkConfig networkConfig;
+  networkConfig.m_ifaddr = "10.0.0.1/24";
+
+  ASSERT_TRUE(context.AddExitEndpoint("test-exit", networkConfig, {}));
   ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, true));
   ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, true));
   ASSERT_TRUE(context.FindEndpointForPath(firstPath)->LocalIP()

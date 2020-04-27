@@ -35,13 +35,10 @@ namespace llarp
       void
       ForEachService(std::function<bool(const std::string&, const Endpoint_ptr&)> visit) const;
 
-      /// add default endpoint with options
-      bool
-      AddDefaultEndpoint(const std::unordered_multimap<std::string, std::string>& opts);
-
       /// add endpoint via config
       void
-      AddEndpoint(const EndpointConfig& conf, bool autostart = false);
+      AddEndpoint(
+          const EndpointConfig& conf, const NetworkConfig& networkConfig, bool autostart = false);
 
       /// inject endpoint instance
       void

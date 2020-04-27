@@ -4,6 +4,7 @@
 #include <router/abstractrouter.hpp>
 
 #include <bootstrap.hpp>
+#include <config/config.hpp>
 #include <config/key_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
@@ -25,6 +26,7 @@
 #include <routing/message_parser.hpp>
 #include <rpc/rpc.hpp>
 #include <service/context.hpp>
+#include <stdexcept>
 #include <util/buffer.hpp>
 #include <util/fs.hpp>
 #include <util/mem.hpp>
@@ -41,11 +43,6 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
-
-namespace llarp
-{
-  struct Config;
-}  // namespace llarp
 
 namespace llarp
 {
@@ -225,29 +222,27 @@ namespace llarp
       return now <= _lastTick || (now - _lastTick) <= llarp_time_t{30000};
     }
 
-    using NetConfig_t = std::unordered_multimap<std::string, std::string>;
-
-    /// default network config for default network interface
-    NetConfig_t netConfig;
-
     /// bootstrap RCs
     BootstrapList bootstrapRCList;
 
     bool
     ExitEnabled() const
     {
+      throw std::runtime_error("FIXME: this needs to be derived from config");
+      /*
       // TODO: use equal_range ?
       auto itr = netConfig.find("exit");
       if (itr == netConfig.end())
         return false;
       return IsTrueValue(itr->second.c_str());
+      */
     }
 
     void
     PumpLL() override;
 
-    bool
-    CreateDefaultHiddenService();
+    NetworkConfig networkConfig;
+    DnsConfig dnsConfig;
 
     const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
     bool enableRPCServer = false;
@@ -499,21 +494,14 @@ namespace llarp
     bool
     UpdateOurRC(bool rotateKeys = false);
 
-    template <typename Config>
-    void
-    mergeHiddenServiceConfig(const Config& in, Config& out)
-    {
-      for (const auto& item : netConfig)
-        out.push_back({item.first, item.second});
-      for (const auto& item : in)
-        out.push_back({item.first, item.second});
-    }
-
     bool
     FromConfig(Config* conf);
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
+
+    void
+    PopulateNetworkConfigDefaults();
   };
 
 }  // namespace llarp

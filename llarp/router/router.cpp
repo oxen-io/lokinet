@@ -375,6 +375,9 @@ namespace llarp
   bool
   Router::FromConfig(Config* conf)
   {
+    networkConfig = conf->network;
+    dnsConfig = conf->dns;
+
     // Set netid before anything else
     if (!conf->router.m_netId.empty() && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
@@ -421,36 +424,25 @@ namespace llarp
       m_isServiceNode = true;
     }
 
+    /// build a set of  strictConnectPubkeys (
+    /// TODO: make this consistent with config -- do we support multiple strict connections
+    //        or not?
     std::set<RouterID> strictConnectPubkeys;
-
-    if (!conf->network.m_strictConnect.empty())
+    if (not networkConfig.m_strictConnect.empty())
     {
-      const auto& val = conf->network.m_strictConnect;
+      const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
-      {
         throw std::runtime_error("cannot use strict-connect option as service node");
-      }
+
+      // try as a RouterID and as a PubKey, convert to RouterID if needed
       llarp::RouterID snode;
       llarp::PubKey pk;
       if (pk.FromString(val))
-      {
-        if (strictConnectPubkeys.emplace(pk).second)
-          llarp::LogInfo("added ", pk, " to strict connect list");
-        else
-          llarp::LogWarn("duplicate key for strict connect: ", pk);
-      }
+        strictConnectPubkeys.emplace(pk);
       else if (snode.FromString(val))
-      {
-        if (strictConnectPubkeys.insert(snode).second)
-        {
-          llarp::LogInfo("added ", snode, " to strict connect list");
-          netConfig.emplace("strict-connect", val);
-        }
-        else
-          llarp::LogWarn("duplicate key for strict connect: ", snode);
-      }
+        strictConnectPubkeys.insert(snode);
       else
-        llarp::LogError("invalid key for strict-connect: ", val);
+        throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
     }
 
     std::vector<fs::path> configRouters = conf->connect.routers;
@@ -583,14 +575,23 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    // load SNApps
-    for (const auto& pairs : conf->snapps)
+    // create endpoint
+    // TODO: ensure that preconditions are met, e.g. net ifname/ifaddr/etc is sane
+    if (conf->snapps.size() > 1)
     {
-      // TODO: this was previously incorporating the "sane defaults" for netConfig
-      //       netConfig should be refactored to use strongly typed member variables
-      //       instead of an ad-hoc multimap
-      const EndpointConfig& endpointConfig = pairs.second;
-      hiddenServiceContext().AddEndpoint(endpointConfig);
+      // TODO: refactor config to only allow one
+      throw std::runtime_error("Only one endpoint allowed (including SNApps");
+    }
+    else if (conf->snapps.size() == 1)
+    {
+      const auto itr = conf->snapps.begin();
+      const EndpointConfig& endpointConfig = itr->second;
+      hiddenServiceContext().AddEndpoint(endpointConfig, networkConfig);
+    }
+    else
+    {
+      // TODO: service context had logic that if keyfile was empty, reachable is false
+      hiddenServiceContext().AddEndpoint({}, networkConfig);
     }
 
     // Logging config
@@ -854,27 +855,18 @@ namespace llarp
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
 
-  /// this function ensure there are sane defualts in a net config
-  static void
-  EnsureNetConfigDefaultsSane(std::unordered_multimap<std::string, std::string>& netConfig)
+  /// Populates some default values on networkConfig if they are absent
+  void
+  Router::PopulateNetworkConfigDefaults()
   {
-    static const std::unordered_map<std::string, std::function<std::string(void)>>
-        netConfigDefaults = {{"ifname", llarp::FindFreeTun},
-                             {"ifaddr", llarp::FindFreeRange},
-                             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
-    // populate with fallback defaults if values not present
-    auto itr = netConfigDefaults.begin();
-    while (itr != netConfigDefaults.end())
-    {
-      auto found = netConfig.find(itr->first);
-      if (found == netConfig.end() || found->second.empty())
-      {
-        auto val = itr->second();
-        if (!val.empty())
-          netConfig.emplace(itr->first, std::move(val));
-      }
-      ++itr;
-    }
+    if (networkConfig.m_ifname.empty())
+      networkConfig.m_ifname = llarp::FindFreeTun();
+
+    if (networkConfig.m_ifaddr.empty())
+      networkConfig.m_ifaddr = llarp::FindFreeRange();
+
+    if (networkConfig.m_localDNS.empty())
+      networkConfig.m_localDNS = "127.0.0.1:53";
   }
 
   bool
@@ -1001,7 +993,7 @@ namespace llarp
       return false;
     }
 
-    EnsureNetConfigDefaultsSane(netConfig);
+    PopulateNetworkConfigDefaults();
 
     if (IsServiceNode())
     {
@@ -1029,12 +1021,6 @@ namespace llarp
       if (!_rc.Sign(identity()))
       {
         LogError("failed to regenerate keys and sign RC");
-        return false;
-      }
-
-      if (!CreateDefaultHiddenService())
-      {
-        LogError("failed to set up default network endpoint");
         return false;
       }
     }
@@ -1181,7 +1167,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    return _exitContext.AddExitEndpoint("default-connectivity", netConfig);
+    return _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
   }
 
   bool
@@ -1246,13 +1232,6 @@ namespace llarp
     }
     throw std::runtime_error(
         stringify("Failed to init AF_INET and AF_INET6 on port ", m_OutboundPort));
-  }
-
-  bool
-  Router::CreateDefaultHiddenService()
-  {
-    // add endpoint
-    return hiddenServiceContext().AddDefaultEndpoint(netConfig);
   }
 
   void

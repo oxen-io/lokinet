@@ -32,7 +32,8 @@ namespace llarp
       Stop();
 
       bool
-      AddExitEndpoint(const std::string& name, const Config_t& config);
+      AddExitEndpoint(
+          const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
       bool
       ObtainNewExit(const PubKey& remote, const PathID_t& path, bool permitInternet);
