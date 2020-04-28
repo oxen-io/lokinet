@@ -19,8 +19,8 @@ namespace llarp
       void
       Tick(llarp_time_t now);
 
-      bool
-      SetOption(const std::string& k, const std::string& v);
+      void
+      Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
       std::string
       Name() const;

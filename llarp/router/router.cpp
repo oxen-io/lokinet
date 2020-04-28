@@ -857,7 +857,7 @@ namespace llarp
 
   /// Populates some default values on networkConfig if they are absent
   void
-  Router::PopulateNetworkConfigDefaults()
+  Router::PopulateConfigDefaults()
   {
     if (networkConfig.m_ifname.empty())
       networkConfig.m_ifname = llarp::FindFreeTun();
@@ -865,8 +865,8 @@ namespace llarp
     if (networkConfig.m_ifaddr.empty())
       networkConfig.m_ifaddr = llarp::FindFreeRange();
 
-    if (networkConfig.m_localDNS.empty())
-      networkConfig.m_localDNS = "127.0.0.1:53";
+    if (dnsConfig.m_localDNS.empty())
+      dnsConfig.m_localDNS = "127.0.0.1:53";
   }
 
   bool
@@ -993,7 +993,7 @@ namespace llarp
       return false;
     }
 
-    PopulateNetworkConfigDefaults();
+    PopulateConfigDefaults();
 
     if (IsServiceNode())
     {
@@ -1167,7 +1167,8 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    return _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
+    _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
+    return true;
   }
 
   bool

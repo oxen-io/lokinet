@@ -33,7 +33,7 @@ TEST_F(ExitTest, AddMultipleIP)
   llarp::NetworkConfig networkConfig;
   networkConfig.m_ifaddr = "10.0.0.1/24";
 
-  ASSERT_TRUE(context.AddExitEndpoint("test-exit", networkConfig, {}));
+  ASSERT_NO_THROW(context.AddExitEndpoint("test-exit", networkConfig, {}));
   ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, true));
   ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, true));
   ASSERT_TRUE(context.FindEndpointForPath(firstPath)->LocalIP()

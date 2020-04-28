@@ -74,7 +74,6 @@ namespace llarp
     std::string m_strictConnect;
     std::string m_ifname;
     std::string m_ifaddr;
-    std::string m_localDNS;
     FreehandOptions m_options;
 
     void
@@ -83,6 +82,9 @@ namespace llarp
 
   struct DnsConfig
   {
+    std::string m_localDNS;
+    std::string m_upstreamDNS;
+
     FreehandOptions m_options;
 
     void

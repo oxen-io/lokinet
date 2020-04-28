@@ -1,5 +1,6 @@
 #include <exit/context.hpp>
 #include <memory>
+#include <stdexcept>
 
 namespace llarp
 {
@@ -96,48 +97,21 @@ namespace llarp
       return false;
     }
 
-    bool
+    void
     Context::AddExitEndpoint(
         const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
-      throw std::runtime_error("FIXME");
-      /*
-       * TODO: no more SetOption()
-       *
-      // check for duplicate exit by name
-      {
-        auto itr = m_Exits.find(name);
-        if (itr != m_Exits.end())
-        {
-          LogError("duplicate exit with name ", name);
-          return false;
-        }
-      }
-      std::unique_ptr<handlers::ExitEndpoint> endpoint;
-      // make new endpoint
-      endpoint = std::make_unique<handlers::ExitEndpoint>(name, m_Router);
-      // configure
-      {
-        auto itr = conf.begin();
-        while (itr != conf.end())
-        {
-          if (!endpoint->SetOption(itr->first, itr->second))
-          {
-            LogWarn("Couldn't set option ", itr->first, " to  ", itr->second);
-            return false;
-          }
-          ++itr;
-        }
-      }
+      if (m_Exits.find(name) != m_Exits.end())
+        throw std::invalid_argument(stringify("An exit with name ", name, " already exists"));
+
+      auto endpoint = std::make_unique<handlers::ExitEndpoint>(name, m_Router);
+      endpoint->Configure(networkConfig, dnsConfig);
+
       // add endpoint
       if (!endpoint->Start())
-      {
-        LogWarn("Couldn't start exit endpoint");
-        return false;
-      }
+        throw std::runtime_error(stringify("Failed to start endpoint ", name));
+
       m_Exits.emplace(name, std::move(endpoint));
-      return true;
-       */
     }
 
   }  // namespace exit
