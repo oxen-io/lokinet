@@ -11,7 +11,6 @@
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
-#include <util/lokinet_init.h>
 
 #include <cstdlib>
 #include <fstream>
@@ -550,11 +549,6 @@ namespace llarp
   void
   Config::initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    // TODO: this seems like a random place to put this, should this be closer
-    //       to main() ?
-    if (Lokinet_INIT())
-      throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
-
     router.defineConfigOptions(conf, params);
     network.defineConfigOptions(conf, params);
     connect.defineConfigOptions(conf, params);
