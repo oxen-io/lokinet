@@ -528,7 +528,10 @@ namespace llarp
     ExitEndpoint::Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
       /*
-       * TODO
+       * TODO: pre-config refactor, this was checking a couple things that were extremely vague
+       *       these could have appeared on either [dns] or [network], but they weren't documented
+       *       anywhere
+       *
       if (k == "type" && v == "null")
       {
         m_ShouldInitTun = false;
