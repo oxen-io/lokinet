@@ -82,10 +82,8 @@ namespace llarp
 
   struct DnsConfig
   {
-    std::string m_localDNS;
-    std::string m_upstreamDNS;
-
-    FreehandOptions m_options;
+    Addr m_bind;
+    std::vector<Addr> m_upstreamDNS;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

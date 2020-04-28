@@ -602,10 +602,6 @@ namespace llarp
         conf->router.m_nickname,
         diskworker());
 
-    // TODO: clean this up. it appears that we're dumping the [dns] "options" into the
-    //       [network] "options"
-    conf->network.m_options.insert(conf->dns.m_options.begin(), conf->dns.m_options.end());
-
     return true;
   }
 
@@ -864,9 +860,6 @@ namespace llarp
 
     if (networkConfig.m_ifaddr.empty())
       networkConfig.m_ifaddr = llarp::FindFreeRange();
-
-    if (dnsConfig.m_localDNS.empty())
-      dnsConfig.m_localDNS = "127.0.0.1:53";
   }
 
   bool

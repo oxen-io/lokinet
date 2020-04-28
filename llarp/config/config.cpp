@@ -177,27 +177,25 @@ namespace llarp
   {
     (void)params;
 
-    // TODO: make sure this is documented
-    // TODO: refactor to remove freehand options map
-    conf.defineOption<std::string>("dns", "upstream", false, true, "", [this](std::string arg) {
-      m_options.emplace("upstream", std::move(arg));
+    auto parseAddr = [](std::string input) {
+      Addr addr;
+      bool success = addr.from_char_array(input);
+      if (not success)
+        throw std::invalid_argument(stringify(input, " is not a valid address"));
+
+      // default port if it wasn't specified
+      if (input.find(":") == std::string::npos)
+        addr.port(53);
+
+      return addr;
+    };
+
+    conf.defineOption<std::string>("dns", "upstream-dns", true, "", [=](std::string arg) {
+      m_upstreamDNS.push_back(parseAddr(arg));
     });
 
-    // TODO: the m_options is fixed in another branch/PR, this will conflict when merged
-    //       you're welcome
-
-    // TODO: make sure this is documented
-    conf.defineOption<std::string>("dns", "local-dns", false, true, "", [this](std::string arg) {
-      m_options.emplace("local-dns", arg);
-      m_options.emplace("bind", arg);
-    });
-
-    // TODO: we'll only support "bind" going forward, for now make sure bind and local-dns are
-    //       equivalent
-    conf.defineOption<std::string>("dns", "bind", false, true, "", [this](std::string arg) {
-      m_options.emplace("local-dns", arg);
-      m_options.emplace("bind", arg);
-    });
+    conf.defineOption<std::string>(
+        "dns", "bind", false, "", [=](std::string arg) { m_bind = parseAddr(arg); });
   }
 
   LinksConfig::LinkInfo
@@ -756,9 +754,9 @@ namespace llarp
 
     def.addOptionComments(
         "dns",
-        "upstream",
+        "upstream-dns",
         {
-            "Upstream resolver to use as fallback for non-loki addresses.",
+            "Upstream resolver(s) to use as fallback for non-loki addresses.",
             "Multiple values accepted.",
         });
 

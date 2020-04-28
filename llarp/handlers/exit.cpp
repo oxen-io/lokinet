@@ -541,21 +541,8 @@ namespace llarp
       }
        */
 
-      // TODO: parse this in config, use a proper type for addr+port
-      auto parseAddr = [](std::string input) {
-        uint16_t port = 53;
-        auto pos = input.find(":");
-        if (pos != std::string::npos)
-        {
-          input = input.substr(0, pos);
-          port = std::atoi(input.substr(pos + 1).c_str());
-        }
-        return Addr(input, port);
-      };
-
-      m_LocalResolverAddr = parseAddr(dnsConfig.m_localDNS);
-
-      m_UpstreamResolvers.push_back(parseAddr(dnsConfig.m_upstreamDNS));
+      m_LocalResolverAddr = dnsConfig.m_bind;
+      m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
 
       if (!m_OurRange.FromString(networkConfig.m_ifaddr))
       {
@@ -568,7 +555,6 @@ namespace llarp
       {
         throw std::invalid_argument(
             stringify(Name(), " ifaddr is not a cidr: ", networkConfig.m_ifaddr));
-        return false;
       }
       std::string nmask_str = networkConfig.m_ifaddr.substr(1 + pos);
       std::string host_str = networkConfig.m_ifaddr.substr(0, pos);
@@ -592,8 +578,8 @@ namespace llarp
 
       if (networkConfig.m_ifname.length() >= sizeof(m_Tun.ifname))
       {
-        LogError(Name() + " ifname '", networkConfig.m_ifname, "' is too long");
-        return false;
+        throw std::invalid_argument(
+            stringify(Name() + " ifname '", networkConfig.m_ifname, "' is too long"));
       }
       strncpy(m_Tun.ifname, networkConfig.m_ifname.c_str(), sizeof(m_Tun.ifname) - 1);
       LogInfo(Name(), " set ifname to ", m_Tun.ifname);
