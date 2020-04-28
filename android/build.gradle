@@ -1,10 +1,10 @@
 buildscript {
     repositories {
-        mavenCentral()
         jcenter()
+	google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.3'
+        classpath 'com.android.tools.build:gradle:3.6.0' 
     }
 }
 
@@ -20,21 +20,20 @@ repositories {
 
 android {
     compileSdkVersion 28
-    buildToolsVersion "28.0.1"
     defaultConfig {
         applicationId "network.loki.lokinet"
         targetSdkVersion 28
-        minSdkVersion 23
+        minSdkVersion 24
         versionCode 1
-        versionName "0.4.0"
+        versionName "0.7.1"
         ndk {
-            abiFilters 'armeabi'             
+            abiFilters 'arm64-v8a'
         }
         externalNativeBuild {
             cmake {
                 targets "lokinetandroid"
-                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static", "-DANDROID_ARM_NEON=TRUE", "-DLIBUV_ROOT="  + libuvsrc, "-DANDROID_TOOLCHAIN=clang", "-DANDROID_ARM_MODE=arm"
-                cppFlags "-fexceptions -std=c++14 -frtti"
+                arguments "-DDOWNLOAD_UV=ON", "-DDOWNLOAD_SODIUM=ON", "-DNATIVE_BUILD=OFF"
+                cppFlags "-std=c++17"
             }
         }
         packagingOptions{
@@ -67,7 +66,8 @@ android {
     }
     externalNativeBuild {
         cmake {
-            path lokinetCMake
+            version "3.10.2+"
+            path "../CMakeLists.txt"
         }
     }
 }

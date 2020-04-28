@@ -7,7 +7,9 @@
 #include "crypto/types.hpp"
 
 #ifndef _WIN32
+#ifndef ANDROID
 #include <curl/curl.h>
+#endif
 #endif
 
 /// curl callback
@@ -211,8 +213,8 @@ namespace llarp
   bool
   KeyManager::loadIdentityFromLokid()
   {
-#if defined(_WIN32) || defined(_WIN64)
-    LogError("service node mode not supported on windows");
+#if defined(_WIN32) || defined(_WIN64) || defined(ANDROID)
+    LogError("service node mode not supported");
     return false;
 #else
     CURL* curl = curl_easy_init();

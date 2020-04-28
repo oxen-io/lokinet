@@ -10,7 +10,7 @@ endif()
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
 
-
+if(NOT ANDROID)
 option(DOWNLOAD_CURL "download and statically compile in CURL" OFF)
 # Allow -DDOWNLOAD_CURL=FORCE to download without even checking for a local libcurl
 if(NOT DOWNLOAD_CURL STREQUAL "FORCE")
@@ -25,6 +25,7 @@ elseif(DOWNLOAD_CURL)
   set(CURL_LIBRARIES curl_vendor)
 else()
   message(FATAL_ERROR "Could not find libcurl; either install it on your system or use -DDOWNLOAD_CURL=ON to download and build an internal copy")
+endif()
 endif()
 
 add_definitions(-DUNIX)
@@ -49,8 +50,10 @@ elseif(DOWNLOAD_UV)
   add_subdirectory(${LIBUV_ROOT})
   set(LIBUV_INCLUDE_DIRS ${LIBUV_ROOT}/include)
   set(LIBUV_LIBRARY uv_a)
+  if(NOT ANDROID)
   add_definitions(-D_LARGEFILE_SOURCE)
   add_definitions(-D_FILE_OFFSET_BITS=64)
+  endif()
 endif()
 
 include_directories(${LIBUV_INCLUDE_DIRS})

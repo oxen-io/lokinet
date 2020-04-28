@@ -27,7 +27,7 @@ extern "C"
       return JNI_FALSE;
     return VisitStringAsStringView<jboolean>(
         env, fname, [conf](llarp::string_view val) -> jboolean {
-          const auto filename = llarp::string_view_string(val);
+          const auto filename = std::string(val);
           if (llarp_config_read_file(conf, filename.c_str()))
             return JNI_TRUE;
           return JNI_FALSE;
