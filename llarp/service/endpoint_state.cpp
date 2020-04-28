@@ -11,12 +11,12 @@ namespace llarp
   namespace service
   {
     bool
-    EndpointState::Configure(EndpointConfig conf)
+    EndpointState::Configure(const EndpointConfig& conf)
     {
-      m_Keyfile = std::move(conf.m_keyfile);
-      m_Tag = std::move(conf.m_tag);
-      m_PrefetchTags = std::move(conf.m_prefetchTags);
-      m_PrefetchAddrs = std::move(conf.m_prefetchAddrs);
+      m_Keyfile = conf.m_keyfile;
+      m_Tag = conf.m_tag;
+      m_PrefetchTags = conf.m_prefetchTags;
+      m_PrefetchAddrs = conf.m_prefetchAddrs;
       m_MinPathLatency = conf.m_minLatency;
       m_BundleRC = conf.m_bundleRC;
 
