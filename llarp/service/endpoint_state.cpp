@@ -19,16 +19,7 @@ namespace llarp
       m_PrefetchAddrs = conf.m_prefetchAddrs;
       m_MinPathLatency = conf.m_minLatency;
       m_BundleRC = conf.m_bundleRC;
-
-      // TODO: update EndpointConfig to treat these as RouterIDs and detect dupes
-      for (const auto& item : conf.m_snodeBlacklist)
-      {
-        RouterID snode;
-        if (not snode.FromString(item))
-          throw std::runtime_error(stringify("Invalide RouterID: ", item));
-
-        m_SnodeBlacklist.insert(snode);
-      }
+      m_SnodeBlacklist = conf.m_snodeBlacklist;
 
       // TODO:
       /*

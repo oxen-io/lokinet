@@ -448,16 +448,15 @@ namespace llarp
     conf.defineOption<bool>(
         section, "bundle-rc", false, BundleRCDefault, AssignmentAcceptor(m_bundleRC));
 
-    conf.addUndeclaredHandler(
-        section, [&](std::string_view, std::string_view name, std::string_view value) {
-          if (name == "blacklist-snode")
-          {
-            m_snodeBlacklist.push_back(str(value));
-            return true;
-          }
+    conf.defineOption<std::string>(section, "blacklist-snode", true, "", [this](std::string arg) {
+      RouterID id;
+      if (not id.FromString(arg))
+        throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
 
-          return false;
-        });
+      auto itr = m_snodeBlacklist.emplace(std::move(id));
+      if (itr.second)
+        throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
+    });
   }
 
   bool

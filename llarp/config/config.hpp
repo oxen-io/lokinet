@@ -166,7 +166,7 @@ namespace llarp
     int m_hops;
     int m_paths;
     bool m_bundleRC;
-    std::vector<std::string> m_snodeBlacklist;
+    std::set<RouterID> m_snodeBlacklist;
     std::string m_exitNode;
     std::string m_localDNS;
     std::string m_upstreamDNS;
