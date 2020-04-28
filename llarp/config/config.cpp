@@ -163,13 +163,6 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
-
-    // TODO: make sure this is documented... what does it mean though?
-    conf.addUndeclaredHandler(
-        "network", [&](std::string_view, std::string_view name, std::string_view value) {
-          m_options.emplace(name, value);
-          return true;
-        });
   }
 
   void

@@ -27,8 +27,6 @@ namespace llarp
   using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
-  using FreehandOptions = std::unordered_multimap<std::string, std::string>;
-
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
   struct ConfigGenParameters
@@ -74,7 +72,6 @@ namespace llarp
     std::string m_strictConnect;
     std::string m_ifname;
     std::string m_ifaddr;
-    FreehandOptions m_options;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
