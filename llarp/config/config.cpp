@@ -244,8 +244,6 @@ namespace llarp
       assert(name != "*");  // handled by defineOption("bind", "*", ...) above
 
       m_InboundLinks.emplace_back(std::move(info));
-
-      return true;
     });
   }
 

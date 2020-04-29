@@ -469,7 +469,7 @@ namespace llarp
       {
         LogError("No bootstrap files specified in config file, and the default");
         LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
-        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap'");
+        LogError("Please provide a bootstrap file (e.g. run 'lokinet-bootstrap)'");
         throw std::runtime_error("No bootstrap files available.");
       }
     }
@@ -1241,8 +1241,9 @@ namespace llarp
 
     for (const auto af : afs)
     {
-      if (!link->Configure(netloop(), "*", af, m_OutboundPort))
+      if (not link->Configure(netloop(), "*", af, m_OutboundPort))
         continue;
+
       _linkManager.AddLink(std::move(link), false);
       return true;
     }
