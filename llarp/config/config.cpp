@@ -533,6 +533,17 @@ namespace llarp
     addIgnoreOption("system", "pidfile");
 
     addIgnoreOption("api", "authkey");
+
+    addIgnoreOption("netdb", "dir");
+
+    // these weren't even ever used!
+    addIgnoreOption("router", "max-routers");
+    addIgnoreOption("router", "min-routers");
+
+    // TODO: this may have been a synonym for [router]worker-threads
+    addIgnoreOption("router", "threads");
+
+    addIgnoreOption("metrics", "json-metrics-path");
   }
 
   void
