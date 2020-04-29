@@ -228,7 +228,7 @@ namespace llarp
   {
     (void)params;
 
-    constexpr auto DefaultOutboundLinkValue = "1090";
+    constexpr auto DefaultOutboundLinkValue = "0";
 
     conf.defineOption<std::string>(
         "bind", "*", false, false, DefaultOutboundLinkValue, [this](std::string arg) {
