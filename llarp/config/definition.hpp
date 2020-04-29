@@ -168,17 +168,19 @@ namespace llarp
             stringify("duplicate value for ", name, ", previous value: ", parsedValues[0]));
       }
 
+      parsedValues.emplace_back(fromString(input));
+    }
+
+    T
+    fromString(const std::string& input)
+    {
       std::istringstream iss(input);
       T t;
       iss >> t;
       if (iss.fail())
-      {
         throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
-      }
       else
-      {
-        parsedValues.emplace_back(std::move(t));
-      }
+        return t;
     }
 
     std::string
@@ -238,6 +240,12 @@ namespace llarp
     std::vector<T> parsedValues;
     std::function<void(T)> acceptor;
   };
+
+  /// Specialization for bool types. We don't want to use stringstream parsing in this
+  /// case because we want to accept "truthy" and "falsy" string values (e.g. "off" == false)
+  template <>
+  bool
+  OptionDefinition<bool>::fromString(const std::string& input);
 
   using UndeclaredValueHandler =
       std::function<void(string_view section, string_view name, string_view value)>;

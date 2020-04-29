@@ -387,3 +387,19 @@ TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
   CHECK(undeclaredName == "enp35s0");
   CHECK(undeclaredValue == "1091");
 }
+
+TEST_CASE("ConfigDefinition truthy bool values", "[config]")
+{
+  llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+
+  // defaults to true
+  auto maybe = def.getValue();
+  CHECK(maybe.has_value());
+  CHECK(maybe.value() == true);
+
+  // "off" should result in false
+  CHECK_NOTHROW(def.parseValue("off"));
+  maybe = def.getValue();
+  CHECK(maybe.has_value());
+  CHECK(maybe.value() == false);
+}

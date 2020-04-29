@@ -16,6 +16,18 @@ namespace llarp
   {
   }
 
+  template <>
+  bool
+  OptionDefinition<bool>::fromString(const std::string& input)
+  {
+    if (input == "false" || input == "off" || input == "0" || input == "no")
+      return false;
+    else if (input == "true" || input == "on" || input == "1" || input == "yes")
+      return true;
+    else
+      throw std::invalid_argument(stringify(input, " is not a valid bool"));
+  }
+
   ConfigDefinition&
   ConfigDefinition::defineOption(OptionDefinition_ptr def)
   {
