@@ -124,6 +124,18 @@ namespace llarp
 
     conf.defineOption<bool>(
         "router", "block-bogons", false, DefaultBlockBogons, AssignmentAcceptor(m_blockBogons));
+
+    conf.defineOption<std::string>(
+        "router", "contact-file", false, "", AssignmentAcceptor(m_routerContactFile));
+
+    conf.defineOption<std::string>(
+        "router", "encryption-privkey", false, "", AssignmentAcceptor(m_encryptionKeyFile));
+
+    conf.defineOption<std::string>(
+        "router", "ident-privkey", false, "", AssignmentAcceptor(m_identityKeyFile));
+
+    conf.defineOption<std::string>(
+        "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
   }
 
   void

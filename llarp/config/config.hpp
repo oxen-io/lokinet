@@ -55,6 +55,11 @@ namespace llarp
 
     size_t m_JobQueueSize;
 
+    std::string m_routerContactFile;
+    std::string m_encryptionKeyFile;
+    std::string m_identityKeyFile;
+    std::string m_transportKeyFile;
+
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
