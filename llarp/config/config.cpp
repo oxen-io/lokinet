@@ -433,6 +433,7 @@ namespace llarp
 
       ConfigDefinition conf;
       initializeConfig(conf, params);
+      addBackwardsCompatibleConfigOptions(conf);
 
       ConfigParser parser;
       if (!parser.LoadFile(fname))
@@ -503,6 +504,23 @@ namespace llarp
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
     logging.defineConfigOptions(conf, params);
+  }
+
+  void
+  Config::addBackwardsCompatibleConfigOptions(ConfigDefinition& conf)
+  {
+    auto addIgnoreOption = [&](const std::string& section, const std::string& name) {
+      conf.defineOption<std::string>(section, name, false, true, "", [=](std::string arg) {
+        (void)arg;
+        LogWarn("*** WARNING: The config option [", section, "]:", name, " is deprecated");
+      });
+    };
+
+    addIgnoreOption("system", "user");
+    addIgnoreOption("system", "group");
+    addIgnoreOption("system", "pidfile");
+
+    addIgnoreOption("api", "authkey");
   }
 
   void

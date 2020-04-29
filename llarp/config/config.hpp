@@ -185,6 +185,13 @@ namespace llarp
     void
     initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params);
 
+    /// Insert config entries for backwards-compatibility (e.g. so that the config system will
+    /// tolerate old values that are no longer accepted)
+    ///
+    /// @param conf is the config to modify
+    void
+    addBackwardsCompatibleConfigOptions(ConfigDefinition& conf);
+
     // Load a config from the given file
     bool
     Load(const char* fname, bool isRelay, fs::path defaultDataDir);
