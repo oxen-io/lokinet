@@ -379,38 +379,6 @@ namespace llarp
 
     // TODO: m_endpointType -- this is used downstream, but was it ever supported in config file?
 
-    conf.defineOption<std::string>(section, "tag", false, "", [=](std::string arg) {
-      if (arg.size() < service::Tag::size())
-        throw std::invalid_argument(
-            stringify("[", section, "]:tag must not be larger than", service::Tag::size()));
-
-      m_tag = arg;
-    });
-
-    conf.defineOption<std::string>(section, "prefetch-tag", false, "", [=](std::string arg) {
-      if (arg.size() < service::Tag::size())
-        throw std::invalid_argument(stringify(
-            "[", section, "]:prefetch-tag must not be larger than", service::Tag::size()));
-
-      m_prefetchTags.insert(service::Tag(arg));
-    });
-
-    conf.defineOption<std::string>(section, "prefetch-addr", false, "", [=](std::string arg) {
-      if (arg.size() != service::Address::size())
-        throw std::invalid_argument(stringify(
-            "[", section, "]:prefetch-addr must not be larger than", service::Address::size()));
-
-      m_prefetchAddrs.insert(service::Address(arg));
-    });
-
-    conf.defineOption<int>(section, "min-latency", false, MinLatencyDefault, [=](int arg) {
-      if (arg <= 0)
-        throw std::invalid_argument(
-            stringify("[", section, "]:min-latency must be greater than 0"));
-
-      m_minLatency = std::chrono::milliseconds(arg);
-    });
-
     conf.defineOption<bool>(
         section, "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 

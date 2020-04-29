@@ -74,17 +74,10 @@ namespace llarp
 
       llarp_time_t m_LastPublish = 0s;
       llarp_time_t m_LastPublishAttempt = 0s;
-      llarp_time_t m_MinPathLatency = 1s;
       /// our introset
       IntroSet m_IntroSet;
       /// pending remote service lookups by id
       PendingLookups m_PendingLookups;
-      /// prefetch remote address list
-      std::set<Address> m_PrefetchAddrs;
-      /// hidden service tag
-      Tag m_Tag;
-      /// prefetch descriptors for these hidden service tags
-      std::set<Tag> m_PrefetchTags;
       /// on initialize functions
       std::list<std::function<bool(void)>> m_OnInit;
 

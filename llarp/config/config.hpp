@@ -9,8 +9,6 @@
 #include <config/ini.hpp>
 #include <config/definition.hpp>
 #include <constants/files.hpp>
-#include <service/tag.hpp>
-#include <service/address.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -158,10 +156,6 @@ namespace llarp
     std::string m_name;
     std::string m_keyfile;
     std::string m_endpointType;
-    service::Tag m_tag;
-    std::set<service::Tag> m_prefetchTags;
-    std::set<service::Address> m_prefetchAddrs;
-    std::chrono::milliseconds m_minLatency;
     bool m_reachable;
     int m_hops;
     int m_paths;

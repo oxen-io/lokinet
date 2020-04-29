@@ -14,10 +14,6 @@ namespace llarp
     EndpointState::Configure(const EndpointConfig& conf)
     {
       m_Keyfile = conf.m_keyfile;
-      m_Tag = conf.m_tag;
-      m_PrefetchTags = conf.m_prefetchTags;
-      m_PrefetchAddrs = conf.m_prefetchAddrs;
-      m_MinPathLatency = conf.m_minLatency;
       m_BundleRC = conf.m_bundleRC;
       m_SnodeBlacklist = conf.m_snodeBlacklist;
 
@@ -57,11 +53,6 @@ namespace llarp
       obj["lastPublished"] = to_json(m_LastPublish);
       obj["lastPublishAttempt"] = to_json(m_LastPublishAttempt);
       obj["introset"] = m_IntroSet.ExtractStatus();
-
-      if (!m_Tag.IsZero())
-      {
-        obj["tag"] = m_Tag.ToString();
-      }
 
       static auto getSecond = [](const auto& item) -> auto
       {

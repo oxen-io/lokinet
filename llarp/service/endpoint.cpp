@@ -39,7 +39,6 @@ namespace llarp
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
       m_state->m_Name = conf.m_name;
-      m_state->m_Tag.Zero();
       m_RecvQueue.enable();
     }
 
@@ -102,7 +101,6 @@ namespace llarp
           ManualRebuild(1);
         return;
       }
-      introSet().topic = m_state->m_Tag;
       auto maybe = m_Identity.EncryptAndSignIntroSet(introSet(), now);
       if (not maybe.has_value())
       {
@@ -194,23 +192,6 @@ namespace llarp
       EndpointUtil::ExpirePendingTx(now, m_state->m_PendingLookups);
       // expire pending router lookups
       EndpointUtil::ExpirePendingRouterLookups(now, m_state->m_PendingRouters);
-
-      // prefetch addrs
-      for (const auto& addr : m_state->m_PrefetchAddrs)
-      {
-        EnsurePathToService(
-            addr,
-            [](Address, OutboundContext* ctx) {
-#ifdef LOKINET_HIVE
-              std::vector<byte_t> discard;
-              discard.resize(128);
-              ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard), eProtocolControl);
-#else
-              (void)ctx;
-#endif
-            },
-            10s);
-      }
 
       // deregister dead sessions
       EndpointUtil::DeregisterDeadSessions(now, m_state->m_DeadSessions);
