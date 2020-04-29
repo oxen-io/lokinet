@@ -165,16 +165,25 @@ namespace llarp
 
     // TODO: make sure this is documented
     // TODO: refactor to remove freehand options map
-    conf.defineOption<std::string>(
-        "network", "upstream-dns", false, true, "", [this](std::string arg) {
-          m_options.emplace("upstream-dns", std::move(arg));
-        });
+    conf.defineOption<std::string>("dns", "upstream", false, true, "", [this](std::string arg) {
+      m_options.emplace("upstream", std::move(arg));
+    });
+
+    // TODO: the m_options is fixed in another branch/PR, this will conflict when merged
+    //       you're welcome
 
     // TODO: make sure this is documented
-    conf.defineOption<std::string>(
-        "network", "local-dns", false, true, "", [this](std::string arg) {
-          m_options.emplace("local-dns", std::move(arg));
-        });
+    conf.defineOption<std::string>("dns", "local-dns", false, true, "", [this](std::string arg) {
+      m_options.emplace("local-dns", arg);
+      m_options.emplace("bind", arg);
+    });
+
+    // TODO: we'll only support "bind" going forward, for now make sure bind and local-dns are
+    //       equivalent
+    conf.defineOption<std::string>("dns", "bind", false, true, "", [this](std::string arg) {
+      m_options.emplace("local-dns", arg);
+      m_options.emplace("bind", arg);
+    });
   }
 
   LinksConfig::LinkInfo
