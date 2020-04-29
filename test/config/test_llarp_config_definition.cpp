@@ -363,3 +363,27 @@ TEST_CASE("ConfigDefinition multiple values", "[config]")
   CHECK(values[1] == 2);
   CHECK(values[2] == 3);
 }
+
+TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
+{
+  llarp::ConfigDefinition config;
+
+  std::string val1;
+  std::string undeclaredName;
+  std::string undeclaredValue;
+
+  config.defineOption<std::string>(
+      "bind", "*", false, false, "1090", [&](std::string arg) { val1 = arg; });
+
+  config.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
+    undeclaredName = std::string(name);
+    undeclaredValue = std::string(value);
+  });
+
+  config.addConfigValue("bind", "enp35s0", "1091");
+  CHECK_NOTHROW(config.acceptAllOptions());
+
+  CHECK(val1 == "1090");
+  CHECK(undeclaredName == "enp35s0");
+  CHECK(undeclaredValue == "1091");
+}
