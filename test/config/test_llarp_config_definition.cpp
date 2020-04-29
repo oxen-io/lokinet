@@ -363,3 +363,71 @@ TEST_CASE("ConfigDefinition multiple values", "[config]")
   CHECK(values[1] == 2);
   CHECK(values[2] == 3);
 }
+
+TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
+{
+  llarp::ConfigDefinition config;
+
+  std::string val1;
+  std::string undeclaredName;
+  std::string undeclaredValue;
+
+  config.defineOption<std::string>(
+      "bind", "*", false, false, "1090", [&](std::string arg) { val1 = arg; });
+
+  config.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
+    undeclaredName = std::string(name);
+    undeclaredValue = std::string(value);
+  });
+
+  config.addConfigValue("bind", "enp35s0", "1091");
+  CHECK_NOTHROW(config.acceptAllOptions());
+
+  CHECK(val1 == "1090");
+  CHECK(undeclaredName == "enp35s0");
+  CHECK(undeclaredValue == "1091");
+}
+
+TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
+{
+  // truthy values
+  for (auto val : {"true", "on", "yes", "1"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, false);
+
+    // defaults to false
+    auto maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == false);
+
+    // val should result in true
+    CHECK_NOTHROW(def.parseValue(val));
+    maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == true);
+  }
+
+  // falsy values
+  for (auto val : {"false", "off", "no", "0"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+
+    // defaults to true
+    auto maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == true);
+
+    // val should result in false
+    CHECK_NOTHROW(def.parseValue(val));
+    maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == false);
+  }
+
+  // illegal values
+  for (auto val : {"", " ", "TRUE", "argle", " false", "2"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+    CHECK_THROWS(def.parseValue(val));
+  }
+}

@@ -33,11 +33,27 @@ namespace llarp
 
     fs::path root = config.router.m_dataDir;
 
-    // TODO: use fs::path, or at least support windows-style separators
-    m_rcPath = root / our_rc_filename;
-    m_idKeyPath = root / our_identity_filename;
-    m_encKeyPath = root / our_enc_key_filename;
-    m_transportKeyPath = root / our_transport_key_filename;
+    // utility function to assign a path, using the specified config parameter if present and
+    // falling back to root / defaultName if not
+    auto deriveFile = [&](const std::string& defaultName, const std::string& option) {
+      if (option.empty())
+      {
+        return root / defaultName;
+      }
+      else
+      {
+        fs::path file(option);
+        if (not file.is_absolute())
+          throw std::runtime_error(stringify("override for ", defaultName, " cannot be relative"));
+
+        return file;
+      }
+    };
+
+    m_rcPath = deriveFile(our_rc_filename, config.router.m_routerContactFile);
+    m_idKeyPath = deriveFile(our_identity_filename, config.router.m_identityKeyFile);
+    m_encKeyPath = deriveFile(our_enc_key_filename, config.router.m_encryptionKeyFile);
+    m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.m_transportKeyFile);
 
     m_usingLokid = config.lokid.whitelistRouters;
     m_lokidRPCAddr = config.lokid.lokidRPCAddr;

@@ -16,6 +16,18 @@ namespace llarp
   {
   }
 
+  template <>
+  bool
+  OptionDefinition<bool>::fromString(const std::string& input)
+  {
+    if (input == "false" || input == "off" || input == "0" || input == "no")
+      return false;
+    else if (input == "true" || input == "on" || input == "1" || input == "yes")
+      return true;
+    else
+      throw std::invalid_argument(stringify(input, " is not a valid bool"));
+  }
+
   ConfigDefinition&
   ConfigDefinition::defineOption(OptionDefinition_ptr def)
   {
@@ -37,12 +49,17 @@ namespace llarp
   ConfigDefinition&
   ConfigDefinition::addConfigValue(string_view section, string_view name, string_view value)
   {
+    // see if we have an undeclared handler to fall back to in case section or section:name is
+    // absent
+    auto undItr = m_undeclaredHandlers.find(std::string(section));
+    bool haveUndeclaredHandler = (undItr != m_undeclaredHandlers.end());
+
+    // get section, falling back to undeclared handler if needed
     auto secItr = m_definitions.find(std::string(section));
     if (secItr == m_definitions.end())
     {
       // fallback to undeclared handler if available
-      auto undItr = m_undeclaredHandlers.find(std::string(section));
-      if (undItr == m_undeclaredHandlers.end())
+      if (not haveUndeclaredHandler)
         throw std::invalid_argument(stringify("no declared section [", section, "]"));
       else
       {
@@ -53,10 +70,20 @@ namespace llarp
     }
 
     // section was valid, get definition by name
+    // fall back to undeclared handler if needed
     auto& sectionDefinitions = secItr->second;
     auto defItr = sectionDefinitions.find(std::string(name));
     if (defItr == sectionDefinitions.end())
-      throw std::invalid_argument(stringify("no declared option [", section, "]:", name));
+    {
+      if (not haveUndeclaredHandler)
+        throw std::invalid_argument(stringify("no declared option [", section, "]:", name));
+      else
+      {
+        auto& handler = undItr->second;
+        handler(section, name, value);
+        return *this;
+      }
+    }
 
     OptionDefinition_ptr& definition = defItr->second;
     definition->parseValue(std::string(value));

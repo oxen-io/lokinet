@@ -55,6 +55,11 @@ namespace llarp
 
     size_t m_JobQueueSize;
 
+    std::string m_routerContactFile;
+    std::string m_encryptionKeyFile;
+    std::string m_identityKeyFile;
+    std::string m_transportKeyFile;
+
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -184,6 +189,13 @@ namespace llarp
     // Initialize config definition
     void
     initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params);
+
+    /// Insert config entries for backwards-compatibility (e.g. so that the config system will
+    /// tolerate old values that are no longer accepted)
+    ///
+    /// @param conf is the config to modify
+    void
+    addBackwardsCompatibleConfigOptions(ConfigDefinition& conf);
 
     // Load a config from the given file
     bool

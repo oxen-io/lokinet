@@ -124,6 +124,18 @@ namespace llarp
 
     conf.defineOption<bool>(
         "router", "block-bogons", false, DefaultBlockBogons, AssignmentAcceptor(m_blockBogons));
+
+    conf.defineOption<std::string>(
+        "router", "contact-file", false, "", AssignmentAcceptor(m_routerContactFile));
+
+    conf.defineOption<std::string>(
+        "router", "encryption-privkey", false, "", AssignmentAcceptor(m_encryptionKeyFile));
+
+    conf.defineOption<std::string>(
+        "router", "ident-privkey", false, "", AssignmentAcceptor(m_identityKeyFile));
+
+    conf.defineOption<std::string>(
+        "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
   }
 
   void
@@ -165,16 +177,25 @@ namespace llarp
 
     // TODO: make sure this is documented
     // TODO: refactor to remove freehand options map
-    conf.defineOption<std::string>(
-        "network", "upstream-dns", false, true, "", [this](std::string arg) {
-          m_options.emplace("upstream-dns", std::move(arg));
-        });
+    conf.defineOption<std::string>("dns", "upstream", false, true, "", [this](std::string arg) {
+      m_options.emplace("upstream", std::move(arg));
+    });
+
+    // TODO: the m_options is fixed in another branch/PR, this will conflict when merged
+    //       you're welcome
 
     // TODO: make sure this is documented
-    conf.defineOption<std::string>(
-        "network", "local-dns", false, true, "", [this](std::string arg) {
-          m_options.emplace("local-dns", std::move(arg));
-        });
+    conf.defineOption<std::string>("dns", "local-dns", false, true, "", [this](std::string arg) {
+      m_options.emplace("local-dns", arg);
+      m_options.emplace("bind", arg);
+    });
+
+    // TODO: we'll only support "bind" going forward, for now make sure bind and local-dns are
+    //       equivalent
+    conf.defineOption<std::string>("dns", "bind", false, true, "", [this](std::string arg) {
+      m_options.emplace("local-dns", arg);
+      m_options.emplace("bind", arg);
+    });
   }
 
   LinksConfig::LinkInfo
@@ -186,6 +207,7 @@ namespace llarp
     //    this is somewhat of a backwards- and forwards-compatibility thing
 
     LinkInfo info;
+    info.port = 0;
     info.addressFamily = AF_INET;
     info.interface = str(name);
 
@@ -207,7 +229,7 @@ namespace llarp
   {
     (void)params;
 
-    constexpr auto DefaultOutboundLinkValue = "1090";
+    constexpr auto DefaultOutboundLinkValue = "0";
 
     conf.defineOption<std::string>(
         "bind", "*", false, false, DefaultOutboundLinkValue, [this](std::string arg) {
@@ -223,8 +245,6 @@ namespace llarp
       assert(name != "*");  // handled by defineOption("bind", "*", ...) above
 
       m_InboundLinks.emplace_back(std::move(info));
-
-      return true;
     });
   }
 
@@ -424,6 +444,7 @@ namespace llarp
 
       ConfigDefinition conf;
       initializeConfig(conf, params);
+      addBackwardsCompatibleConfigOptions(conf);
 
       ConfigParser parser;
       if (!parser.LoadFile(fname))
@@ -494,6 +515,34 @@ namespace llarp
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
     logging.defineConfigOptions(conf, params);
+  }
+
+  void
+  Config::addBackwardsCompatibleConfigOptions(ConfigDefinition& conf)
+  {
+    auto addIgnoreOption = [&](const std::string& section, const std::string& name) {
+      conf.defineOption<std::string>(section, name, false, true, "", [=](std::string arg) {
+        (void)arg;
+        LogWarn("*** WARNING: The config option [", section, "]:", name, " is deprecated");
+      });
+    };
+
+    addIgnoreOption("system", "user");
+    addIgnoreOption("system", "group");
+    addIgnoreOption("system", "pidfile");
+
+    addIgnoreOption("api", "authkey");
+
+    addIgnoreOption("netdb", "dir");
+
+    // these weren't even ever used!
+    addIgnoreOption("router", "max-routers");
+    addIgnoreOption("router", "min-routers");
+
+    // TODO: this may have been a synonym for [router]worker-threads
+    addIgnoreOption("router", "threads");
+
+    addIgnoreOption("metrics", "json-metrics-path");
   }
 
   void
