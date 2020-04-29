@@ -388,18 +388,46 @@ TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
   CHECK(undeclaredValue == "1091");
 }
 
-TEST_CASE("ConfigDefinition truthy bool values", "[config]")
+TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
 {
-  llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+  // truthy values
+  for (auto val : {"true", "on", "yes", "1"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, false);
 
-  // defaults to true
-  auto maybe = def.getValue();
-  CHECK(maybe.has_value());
-  CHECK(maybe.value() == true);
+    // defaults to false
+    auto maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == false);
 
-  // "off" should result in false
-  CHECK_NOTHROW(def.parseValue("off"));
-  maybe = def.getValue();
-  CHECK(maybe.has_value());
-  CHECK(maybe.value() == false);
+    // val should result in true
+    CHECK_NOTHROW(def.parseValue(val));
+    maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == true);
+  }
+
+  // falsy values
+  for (auto val : {"false", "off", "no", "0"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+
+    // defaults to true
+    auto maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == true);
+
+    // val should result in false
+    CHECK_NOTHROW(def.parseValue(val));
+    maybe = def.getValue();
+    CHECK(maybe.has_value());
+    CHECK(maybe.value() == false);
+  }
+
+  // illegal values
+  for (auto val : {"", " ", "TRUE", "argle", " false", "2"})
+  {
+    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+    CHECK_THROWS(def.parseValue(val));
+  }
 }
