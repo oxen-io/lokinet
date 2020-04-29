@@ -207,6 +207,7 @@ namespace llarp
     //    this is somewhat of a backwards- and forwards-compatibility thing
 
     LinkInfo info;
+    info.port = 0;
     info.addressFamily = AF_INET;
     info.interface = str(name);
 
