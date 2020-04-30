@@ -2,6 +2,7 @@
 
 #include <util/str.hpp>
 
+#include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -122,9 +123,9 @@ namespace llarp
       if (parsedValues.size())
         return parsedValues[0];
       else if (not required and not multiValued)
-        return defaultValue.value();
+        return defaultValue;
       else
-        return {};
+        return nonstd::nullopt;
     }
 
     /// Returns the value at the given index.
@@ -223,6 +224,7 @@ namespace llarp
       {
         if (multiValued)
         {
+          std::cout << name << " has " << parsedValues.size() << " parsedValues" << std::endl;
           for (const auto& value : parsedValues)
           {
             acceptor(value);
@@ -230,10 +232,16 @@ namespace llarp
         }
         else
         {
+          std::cout << name << " is NOT multi-valued" << std::endl;
           auto maybe = getValue();
-          assert(maybe.has_value());  // should be guaranteed by our earlier checks
-          // TODO: avoid copies here if possible
-          acceptor(maybe.value());
+          if (maybe.has_value())
+          {
+            acceptor(maybe.value());
+          }
+          else
+          {
+            assert(not defaultValue.has_value());  // maybe should have a value if defaultValue does
+          }
         }
       }
     }

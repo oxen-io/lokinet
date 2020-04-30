@@ -182,12 +182,13 @@ namespace llarp
       return addr;
     };
 
-    conf.defineOption<std::string>("dns", "upstream-dns", true, "", [=](std::string arg) {
-      m_upstreamDNS.push_back(parseAddr(arg));
-    });
+    conf.defineOption<std::string>(
+        "dns", "upstream-dns", false, true, nonstd::nullopt, [=](std::string arg) {
+          m_upstreamDNS.push_back(parseAddr(arg));
+        });
 
     conf.defineOption<std::string>(
-        "dns", "bind", false, "", [=](std::string arg) { m_bind = parseAddr(arg); });
+        "dns", "bind", false, nonstd::nullopt, [=](std::string arg) { m_bind = parseAddr(arg); });
   }
 
   LinksConfig::LinkInfo
