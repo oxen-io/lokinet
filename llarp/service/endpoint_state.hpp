@@ -52,7 +52,6 @@ namespace llarp
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
-      bool m_BundleRC = false;
 
       util::Mutex m_SendQueueMutex;  // protects m_SendQueue
       std::deque<SendEvent_t> m_SendQueue GUARDED_BY(m_SendQueueMutex);

@@ -21,7 +21,6 @@ namespace llarp
                          public std::enable_shared_from_this<TunEndpoint>
     {
       TunEndpoint(
-          const EndpointConfig& conf,
           AbstractRouter* r,
           llarp::service::Context* parent,
           bool lazyVPN = false);

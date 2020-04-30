@@ -14,7 +14,6 @@ namespace llarp
     EndpointState::Configure(const EndpointConfig& conf)
     {
       m_Keyfile = conf.m_keyfile;
-      m_BundleRC = conf.m_bundleRC;
       m_SnodeBlacklist = conf.m_snodeBlacklist;
 
       // TODO:

@@ -49,11 +49,10 @@ namespace llarp
       }
     }
 
-    TunEndpoint::TunEndpoint(
-        const EndpointConfig& conf, AbstractRouter* r, service::Context* parent, bool lazyVPN)
-        : service::Endpoint(conf, r, parent)
-        , m_UserToNetworkPktQueue(conf.m_name + "_sendq", r->netloop(), r->netloop())
-        , m_NetworkToUserPktQueue(conf.m_name + "_recvq", r->netloop(), r->netloop())
+    TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent, bool lazyVPN)
+        : service::Endpoint(r, parent)
+        , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
+        , m_NetworkToUserPktQueue("endpoint_recvq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {

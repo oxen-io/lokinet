@@ -575,24 +575,7 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    // create endpoint
-    // TODO: ensure that preconditions are met, e.g. net ifname/ifaddr/etc is sane
-    if (conf->snapps.size() > 1)
-    {
-      // TODO: refactor config to only allow one
-      throw std::runtime_error("Only one endpoint allowed (including SNApps");
-    }
-    else if (conf->snapps.size() == 1)
-    {
-      const auto itr = conf->snapps.begin();
-      const EndpointConfig& endpointConfig = itr->second;
-      hiddenServiceContext().AddEndpoint(endpointConfig, networkConfig);
-    }
-    else
-    {
-      // TODO: service context had logic that if keyfile was empty, reachable is false
-      hiddenServiceContext().AddEndpoint({}, networkConfig);
-    }
+    hiddenServiceContext().AddEndpoint(conf->endpoint);
 
     // Logging config
     LogContext::Instance().Initialize(

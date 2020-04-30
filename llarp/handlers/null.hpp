@@ -10,8 +10,8 @@ namespace llarp
     struct NullEndpoint final : public llarp::service::Endpoint,
                                 public std::enable_shared_from_this<NullEndpoint>
     {
-      NullEndpoint(const EndpointConfig& conf, AbstractRouter* r, llarp::service::Context* parent)
-          : llarp::service::Endpoint(conf, r, parent)
+      NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
+          : llarp::service::Endpoint(r, parent)
       {
       }
 

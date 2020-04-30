@@ -153,17 +153,15 @@ namespace llarp
 
   struct EndpointConfig
   {
-    std::string m_name;
     std::string m_keyfile;
     std::string m_endpointType;
     bool m_reachable;
     int m_hops;
     int m_paths;
-    bool m_bundleRC;
     std::set<RouterID> m_snodeBlacklist;
+#ifdef LOKINET_EXITS
     std::string m_exitNode;
-    std::string m_localDNS;
-    std::string m_upstreamDNS;
+#endif
     std::string m_mapAddr;
 
     // TODO:
@@ -186,7 +184,7 @@ namespace llarp
     LokidConfig lokid;
     BootstrapConfig bootstrap;
     LoggingConfig logging;
-    std::unordered_map<std::string, EndpointConfig> snapps;
+    EndpointConfig endpoint;
 
     // Initialize config definition
     void

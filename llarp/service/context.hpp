@@ -13,6 +13,8 @@ namespace llarp
   namespace service
   {
     /// holds all the hidden service endpoints we own
+    /// TODO: this should be refactored (removed entirely...?) now that lokinet
+    ///       only supports one endpoint per instance
     struct Context
     {
       explicit Context(AbstractRouter* r);
@@ -37,8 +39,7 @@ namespace llarp
 
       /// add endpoint via config
       void
-      AddEndpoint(
-          const EndpointConfig& conf, const NetworkConfig& networkConfig, bool autostart = false);
+      AddEndpoint(const EndpointConfig& conf, bool autostart = false);
 
       /// inject endpoint instance
       void

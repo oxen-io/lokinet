@@ -361,69 +361,49 @@ namespace llarp
   {
     (void)params;
 
-    static constexpr bool ReachableDefault = true;
+    static constexpr bool ReachableDefault = false;
     static constexpr int HopsDefault = 4;
     static constexpr int PathsDefault = 6;
-    static constexpr bool BundleRCDefault = false;
-    static constexpr int MinLatencyDefault = 5000;
 
-    if (m_name.empty())
-      throw std::runtime_error("Cannot create EndpointConfig with empty name");
-
-    const std::string section = m_name + "-snapp";
-
-    conf.defineOption<std::string>(section, "keyfile", false, "", [this](std::string arg) {
-      // TODO: validate as valid .loki / .snode address
-      m_keyfile = arg;
-    });
-
-    // TODO: m_endpointType -- this is used downstream, but was it ever supported in config file?
+    conf.defineOption<std::string>(
+        "endpoint", "keyfile", false, "", [this](std::string arg) { m_keyfile = arg; });
 
     conf.defineOption<bool>(
-        section, "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+        "endpoint", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 
-    conf.defineOption<int>(section, "hops", false, HopsDefault, [this](int arg) {
+    conf.defineOption<int>("endpoint", "hops", false, HopsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[snapp]:hops must be >= 1 and <= 8");
+        throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
     });
 
-    conf.defineOption<int>(section, "paths", false, PathsDefault, [this](int arg) {
+    conf.defineOption<int>("endpoint", "paths", false, PathsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[snapp]:paths must be >= 1 and <= 8");
+        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
     });
 
-    conf.defineOption<std::string>(section, "exit-node", false, "", [this](std::string arg) {
+#ifdef LOKINET_EXITS
+    conf.defineOption<std::string>("endpoint", "exit-node", false, "", [this](std::string arg) {
       // TODO: validate as valid .loki / .snode address
+      //       probably not .snode...?
       m_exitNode = arg;
     });
+#endif
 
-    conf.defineOption<std::string>(section, "local-dns", false, "", [this](std::string arg) {
-      // TODO: validate as IP address
-      m_localDNS = arg;
-    });
-
-    conf.defineOption<std::string>(section, "upstream-dns", false, "", [this](std::string arg) {
-      // TODO: validate as IP address
-      m_upstreamDNS = arg;
-    });
-
-    conf.defineOption<std::string>(section, "mapaddr", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>("endpoint", "mapaddr", false, "", [this](std::string arg) {
       // TODO: parse / validate as loki_addr : IP addr pair
       m_mapAddr = arg;
     });
 
-    conf.defineOption<bool>(
-        section, "bundle-rc", false, BundleRCDefault, AssignmentAcceptor(m_bundleRC));
+    conf.defineOption<std::string>(
+        "endpoint", "blacklist-snode", false, true, "", [this](std::string arg) {
+          RouterID id;
+          if (not id.FromString(arg))
+            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
 
-    conf.defineOption<std::string>(section, "blacklist-snode", true, "", [this](std::string arg) {
-      RouterID id;
-      if (not id.FromString(arg))
-        throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
-
-      auto itr = m_snodeBlacklist.emplace(std::move(id));
-      if (itr.second)
-        throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
-    });
+          auto itr = m_snodeBlacklist.emplace(std::move(id));
+          if (itr.second)
+            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
+        });
   }
 
   bool
@@ -445,30 +425,6 @@ namespace llarp
         return false;
       }
 
-      // first pass: find any "foo-snapp" sections and configure them as config options
-      // this will cause the ConfigDefinition to handle them as values are fed to it during
-      // the second pass below
-      parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
-        (void)values;
-
-        const static string_view suffix = "-snapp";
-        if (section.size() > suffix.size())
-        {
-          string_view snappName = section.substr(0, section.size() - suffix.size());
-          string_view ending = section.substr(snappName.size());
-
-          if (ending == suffix)
-          {
-            EndpointConfig snappConf;
-            snappConf.m_name = str(snappName);
-            snappConf.defineConfigOptions(conf, params);
-
-            snapps[str(snappName)] = std::move(snappConf);
-          }
-        }
-      });
-
-      // second pass: feed all k:v pairs to ConfigDefinition for processing
       parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
@@ -526,6 +482,7 @@ namespace llarp
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
     logging.defineConfigOptions(conf, params);
+    endpoint.defineConfigOptions(conf, params);
   }
 
   void
@@ -795,13 +752,13 @@ namespace llarp
 
     // snapp
     def.addSectionComments(
-        "example-snapp",
+        "endpoint",
         {
             "Snapp settings",
         });
 
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "keyfile",
         {
             "The private key to persist address with. If not specified the address will be",
@@ -810,60 +767,44 @@ namespace llarp
 
     // TODO: is this redundant with / should be merged with basic client config?
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "reachable",
         {
             "Determines whether we will publish our snapp's introset to the DHT.",
         });
 
-    // TODO: merge with client conf?
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "hops",
         {
             "Number of hops in a path. Min 1, max 8.",
         });
 
-    // TODO: is this actually different than client's paths min/max config?
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "paths",
         {
             "Number of paths to maintain at any given time.",
         });
 
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "blacklist-snode",
         {
             "Adds a `.snode` address to the blacklist.",
         });
 
+#ifdef LOKINET_EXITS
     def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "exit-node",
         {
             "Specify a `.snode` or `.loki` address to use as an exit broker.",
         });
-
-    // TODO: merge with client conf?
-    def.addOptionComments(
-        "example-snapp",
-        "local-dns",
-        {
-            "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port",
-        });
+#endif
 
     def.addOptionComments(
-        "example-snapp",
-        "upstream-dns",
-        {
-            "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply",
-            "with `srvfail`.",
-        });
-
-    def.addOptionComments(
-        "example-snapp",
+        "endpoint",
         "mapaddr",
         {
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",

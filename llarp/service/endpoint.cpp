@@ -33,12 +33,12 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const EndpointConfig& conf, AbstractRouter* r, Context* parent)
+    Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder(r, 3, path::default_len), context(parent), m_RecvQueue(128)
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
-      m_state->m_Name = conf.m_name;
+      m_state->m_Name = "endpoint";
       m_RecvQueue.enable();
     }
 
@@ -633,12 +633,6 @@ namespace llarp
     {
       return m_ExitMap.TransformValues<RouterID>(
           [](const exit::BaseSession_ptr& ptr) -> RouterID { return ptr->Endpoint(); });
-    }
-
-    bool
-    Endpoint::ShouldBundleRC() const
-    {
-      return m_state->m_BundleRC;
     }
 
     void

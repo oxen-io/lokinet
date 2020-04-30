@@ -69,7 +69,7 @@ namespace llarp
     {
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
-      Endpoint(const EndpointConfig& conf, AbstractRouter* r, Context* parent);
+      Endpoint(AbstractRouter* r, Context* parent);
       ~Endpoint() override;
 
       /// return true if we are ready to recv packets from the void
@@ -256,7 +256,10 @@ namespace llarp
       MarkAddressOutbound(const Address&) override;
 
       bool
-      ShouldBundleRC() const override;
+      ShouldBundleRC() const
+      {
+        return false;
+      }
 
       /// return true if we have a convotag as an exit session
       /// or as a hidden service session
