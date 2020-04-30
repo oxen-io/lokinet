@@ -172,7 +172,7 @@ namespace llarp
     }
 
     void
-    Context::AddEndpoint(const EndpointConfig& conf, bool autostart)
+    Context::AddEndpoint(const NetworkConfig& conf, bool autostart)
     {
       // TODO: refactor Context to only contain one endpoint
       constexpr auto endpointName = "endpoint";

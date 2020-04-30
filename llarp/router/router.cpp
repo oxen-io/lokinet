@@ -375,9 +375,6 @@ namespace llarp
   bool
   Router::FromConfig(Config* conf)
   {
-    networkConfig = conf->network;
-    dnsConfig = conf->dns;
-
     // Set netid before anything else
     if (!conf->router.m_netId.empty() && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
@@ -575,7 +572,7 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    hiddenServiceContext().AddEndpoint(conf->endpoint);
+    hiddenServiceContext().AddEndpoint(conf->network);
 
     // Logging config
     LogContext::Instance().Initialize(

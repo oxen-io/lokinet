@@ -144,6 +144,9 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultProfilingValue = true;
+    static constexpr bool ReachableDefault = false;
+    static constexpr int HopsDefault = 4;
+    static constexpr int PathsDefault = 6;
 
     conf.defineOption<bool>(
         "network",
@@ -162,6 +165,46 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
+
+    conf.defineOption<std::string>(
+        "network", "keyfile", false, "", [this](std::string arg) { m_keyfile = arg; });
+
+    conf.defineOption<bool>(
+        "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+
+    conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
+    });
+
+    conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+    });
+
+#ifdef LOKINET_EXITS
+    conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
+      // TODO: validate as valid .loki / .snode address
+      //       probably not .snode...?
+      m_exitNode = arg;
+    });
+#endif
+
+    conf.defineOption<std::string>("network", "mapaddr", false, "", [this](std::string arg) {
+      // TODO: parse / validate as loki_addr : IP addr pair
+      m_mapAddr = arg;
+    });
+
+    conf.defineOption<std::string>(
+        "network", "blacklist-snode", false, true, "", [this](std::string arg) {
+          RouterID id;
+          if (not id.FromString(arg))
+            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
+
+          auto itr = m_snodeBlacklist.emplace(std::move(id));
+          if (itr.second)
+            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
+        });
   }
 
   void
@@ -357,56 +400,6 @@ namespace llarp
         "logging", "file", false, DefaultLogFile, AssignmentAcceptor(m_logFile));
   }
 
-  void
-  EndpointConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    static constexpr bool ReachableDefault = false;
-    static constexpr int HopsDefault = 4;
-    static constexpr int PathsDefault = 6;
-
-    conf.defineOption<std::string>(
-        "endpoint", "keyfile", false, "", [this](std::string arg) { m_keyfile = arg; });
-
-    conf.defineOption<bool>(
-        "endpoint", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
-
-    conf.defineOption<int>("endpoint", "hops", false, HopsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
-    });
-
-    conf.defineOption<int>("endpoint", "paths", false, PathsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
-    });
-
-#ifdef LOKINET_EXITS
-    conf.defineOption<std::string>("endpoint", "exit-node", false, "", [this](std::string arg) {
-      // TODO: validate as valid .loki / .snode address
-      //       probably not .snode...?
-      m_exitNode = arg;
-    });
-#endif
-
-    conf.defineOption<std::string>("endpoint", "mapaddr", false, "", [this](std::string arg) {
-      // TODO: parse / validate as loki_addr : IP addr pair
-      m_mapAddr = arg;
-    });
-
-    conf.defineOption<std::string>(
-        "endpoint", "blacklist-snode", false, true, "", [this](std::string arg) {
-          RouterID id;
-          if (not id.FromString(arg))
-            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
-
-          auto itr = m_snodeBlacklist.emplace(std::move(id));
-          if (itr.second)
-            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
-        });
-  }
-
   bool
   Config::Load(const char* fname, bool isRelay, fs::path defaultDataDir)
   {
@@ -483,7 +476,6 @@ namespace llarp
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
     logging.defineConfigOptions(conf, params);
-    endpoint.defineConfigOptions(conf, params);
   }
 
   void
@@ -751,15 +743,14 @@ namespace llarp
     initializeConfig(def, params);
     generateCommonConfigComments(def);
 
-    // snapp
     def.addSectionComments(
-        "endpoint",
+        "network",
         {
             "Snapp settings",
         });
 
     def.addOptionComments(
-        "endpoint",
+        "network",
         "keyfile",
         {
             "The private key to persist address with. If not specified the address will be",
@@ -768,28 +759,28 @@ namespace llarp
 
     // TODO: is this redundant with / should be merged with basic client config?
     def.addOptionComments(
-        "endpoint",
+        "network",
         "reachable",
         {
             "Determines whether we will publish our snapp's introset to the DHT.",
         });
 
     def.addOptionComments(
-        "endpoint",
+        "network",
         "hops",
         {
             "Number of hops in a path. Min 1, max 8.",
         });
 
     def.addOptionComments(
-        "endpoint",
+        "network",
         "paths",
         {
             "Number of paths to maintain at any given time.",
         });
 
     def.addOptionComments(
-        "endpoint",
+        "network",
         "blacklist-snode",
         {
             "Adds a `.snode` address to the blacklist.",
@@ -797,7 +788,7 @@ namespace llarp
 
 #ifdef LOKINET_EXITS
     def.addOptionComments(
-        "endpoint",
+        "network",
         "exit-node",
         {
             "Specify a `.snode` or `.loki` address to use as an exit broker.",
@@ -805,7 +796,7 @@ namespace llarp
 #endif
 
     def.addOptionComments(
-        "endpoint",
+        "network",
         "mapaddr",
         {
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",

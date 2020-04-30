@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     bool
-    EndpointState::Configure(const EndpointConfig& conf)
+    EndpointState::Configure(const NetworkConfig& conf)
     {
       m_Keyfile = conf.m_keyfile;
       m_SnodeBlacklist = conf.m_snodeBlacklist;

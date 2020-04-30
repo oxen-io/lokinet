@@ -71,6 +71,22 @@ namespace llarp
     std::string m_ifname;
     std::string m_ifaddr;
 
+    std::string m_keyfile;
+    std::string m_endpointType;
+    bool m_reachable;
+    int m_hops;
+    int m_paths;
+    std::set<RouterID> m_snodeBlacklist;
+#ifdef LOKINET_EXITS
+    std::string m_exitNode;
+#endif
+    std::string m_mapAddr;
+
+    // TODO:
+    // on-up
+    // on-down
+    // on-ready
+
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -151,28 +167,6 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct EndpointConfig
-  {
-    std::string m_keyfile;
-    std::string m_endpointType;
-    bool m_reachable;
-    int m_hops;
-    int m_paths;
-    std::set<RouterID> m_snodeBlacklist;
-#ifdef LOKINET_EXITS
-    std::string m_exitNode;
-#endif
-    std::string m_mapAddr;
-
-    // TODO:
-    // on-up
-    // on-down
-    // on-ready
-
-    void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
   struct Config
   {
     RouterConfig router;
@@ -184,7 +178,6 @@ namespace llarp
     LokidConfig lokid;
     BootstrapConfig bootstrap;
     LoggingConfig logging;
-    EndpointConfig endpoint;
 
     // Initialize config definition
     void

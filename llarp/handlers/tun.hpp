@@ -33,7 +33,7 @@ namespace llarp
       }
 
       bool
-      Configure(EndpointConfig conf) override;
+      Configure(const NetworkConfig& conf) override;
 
       void
       Tick(llarp_time_t now) override;

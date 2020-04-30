@@ -94,7 +94,7 @@ namespace llarp
       SetHandler(IDataHandler* h);
 
       virtual bool
-      Configure(EndpointConfig conf);
+      Configure(const NetworkConfig& conf);
 
       void
       Tick(llarp_time_t now) override;

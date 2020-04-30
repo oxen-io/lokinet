@@ -104,7 +104,7 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::Configure(EndpointConfig conf)
+    TunEndpoint::Configure(const NetworkConfig& conf)
     {
       /*
       if (k == "reachable")

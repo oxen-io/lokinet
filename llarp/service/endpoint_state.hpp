@@ -90,7 +90,7 @@ namespace llarp
       util::DecayingHashSet<Address> m_RemoteLookupFilter;
 
       bool
-      Configure(const EndpointConfig& conf);
+      Configure(const NetworkConfig& conf);
 
       util::StatusObject
       ExtractStatus(util::StatusObject& obj) const;

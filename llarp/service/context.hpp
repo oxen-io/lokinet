@@ -39,7 +39,7 @@ namespace llarp
 
       /// add endpoint via config
       void
-      AddEndpoint(const EndpointConfig& conf, bool autostart = false);
+      AddEndpoint(const NetworkConfig& conf, bool autostart = false);
 
       /// inject endpoint instance
       void
