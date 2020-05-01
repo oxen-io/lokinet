@@ -387,6 +387,7 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
+      LogWarn("LoadKeyFile()");
       const auto& keyfile = m_state->m_Keyfile;
       if (!keyfile.empty())
       {
