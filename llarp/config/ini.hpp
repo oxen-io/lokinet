@@ -2,6 +2,7 @@
 #define LOKINET_BOOTSERV_CONFIG_HPP
 
 #include <string_view>
+#include <string>
 #include <functional>
 #include <memory>
 #include <unordered_map>
