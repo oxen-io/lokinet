@@ -33,7 +33,7 @@ namespace llarp
       }
 
       bool
-      Configure(const NetworkConfig& conf) override;
+      Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 
       void
       Tick(llarp_time_t now) override;

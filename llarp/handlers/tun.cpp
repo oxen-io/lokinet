@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "net/net.hpp"
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
 #include <handlers/tun.hpp>
@@ -104,27 +105,22 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::Configure(const NetworkConfig& conf)
+    TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
-      /*
-      if (k == "reachable")
+      if (conf.m_reachable)
       {
-        if (IsFalseValue(v))
-        {
-          m_PublishIntroSet = false;
-          LogInfo(Name(), " setting to be not reachable by default");
-        }
-        else if (IsTrueValue(v))
-        {
           m_PublishIntroSet = true;
           LogInfo(Name(), " setting to be reachable by default");
-        }
-        else
-        {
-          LogError(Name(), " config option reachable = '", v, "' does not make sense");
-          return false;
-        }
       }
+      else
+      {
+        m_PublishIntroSet = false;
+        LogInfo(Name(), " setting to be not reachable by default");
+      }
+
+      /*
+       * TODO: reinstate this option (it's not even clear what section this came from...)
+       *
       if (k == "isolate-network" && IsTrueValue(v.c_str()))
       {
 #if defined(__linux__)
@@ -141,6 +137,12 @@ namespace llarp
         return false;
 #endif
       }
+      */
+
+      /*
+       * TODO: this is currently defined for [router] / RouterConfig, but is clearly an [endpoint]
+       *       option. either move it to [endpoint] or plumb RouterConfig through
+       *
       if (k == "strict-connect")
       {
         RouterID connect;
@@ -164,27 +166,29 @@ namespace llarp
         }
         return true;
       }
-      // Name won't be set because we need to read the config before we can read
-      // the keyfile
-      if (k == "exit-node")
+       */
+
+#ifdef LOKINET_EXITS
+
+      if (not conf.m_exitNode.empty())
       {
         IPRange exitRange;
         llarp::RouterID exitRouter;
         std::string routerStr;
-        const auto pos = v.find(",");
+        const auto pos = conf.m_exitNode.find(",");
         if (pos != std::string::npos)
         {
-          auto range_str = v.substr(1 + pos);
+          auto range_str = conf.m_exitNode.substr(1 + pos);
           if (!exitRange.FromString(range_str))
           {
             LogError("bad exit range: '", range_str, "'");
             return false;
           }
-          routerStr = v.substr(0, pos);
+          routerStr = conf.m_exitNode.substr(0, pos);
         }
         else
         {
-          routerStr = v;
+          routerStr = conf.m_exitNode;
         }
         routerStr = str(TrimWhitespace(routerStr));
         if (!(exitRouter.FromString(routerStr)
@@ -203,54 +207,31 @@ namespace llarp
         m_ExitMap.Insert(exitRange, exit);
         llarp::LogInfo(Name(), " using exit at ", exitRouter, " for ", exitRange);
       }
-      if (k == "local-dns")
+#endif
+
+      m_LocalResolverAddr = dnsConf.m_bind;
+      m_UpstreamResolvers = dnsConf.m_upstreamDNS;
+
+      if (not conf.m_mapAddr.empty())
       {
-        std::string resolverAddr = v;
-        uint16_t dnsport = 53;
-        auto pos = v.find(":");
-        if (pos != std::string::npos)
-        {
-          resolverAddr = v.substr(0, pos);
-          dnsport = std::atoi(v.substr(pos + 1).c_str());
-        }
-        m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
-        // this field is ignored on all other platforms
-        tunif->dnsaddr = m_LocalResolverAddr.ton();
-        llarp::LogInfo(Name(), " binding DNS server to ", m_LocalResolverAddr);
-      }
-      if (k == "upstream-dns")
-      {
-        std::string resolverAddr = v;
-        uint16_t dnsport = 53;
-        auto pos = v.find(":");
-        if (pos != std::string::npos)
-        {
-          resolverAddr = v.substr(0, pos);
-          dnsport = std::atoi(v.substr(pos + 1).c_str());
-        }
-        m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " adding upstream DNS server ", resolverAddr, ":", dnsport);
-      }
-      if (k == "mapaddr")
-      {
-        auto pos = v.find(":");
+        auto pos = conf.m_mapAddr.find(":");
         if (pos == std::string::npos)
         {
           llarp::LogError(
               "Cannot map address ",
-              v,
+              conf.m_mapAddr,
               " invalid format, missing colon (:), expects "
               "address.loki:ip.address.goes.here");
           return false;
         }
         service::Address addr;
-        auto addr_str = v.substr(0, pos);
+        auto addr_str = conf.m_mapAddr.substr(0, pos);
         if (!addr.FromString(addr_str))
         {
           llarp::LogError(Name() + " cannot map invalid address ", addr_str);
           return false;
         }
-        auto ip_str = v.substr(pos + 1);
+        auto ip_str = conf.m_mapAddr.substr(pos + 1);
         huint32_t ip;
         huint128_t ipv6;
         if (ip.FromString(ip_str))
@@ -265,41 +246,51 @@ namespace llarp
           llarp::LogError(Name(), "failed to map ", ip_str, " failed to parse IP");
           return false;
         }
-        return MapAddress(addr, ipv6, false);
+
+        if (not MapAddress(addr, ipv6, false))
+          return false;
       }
-      if (k == "ifname" && tunif)
+
+      std::string ifname = conf.m_ifname;
+      if (ifname.empty())
+        ifname = FindFreeTun();
+
+      LogWarn("ifname @ TunEndpoint: ", ifname);
+
+      if (tunif)
       {
-        if (v.length() >= sizeof(tunif->ifname))
+        if (ifname.length() >= sizeof(tunif->ifname))
         {
-          llarp::LogError(Name() + " ifname '", v, "' is too long");
+          llarp::LogError(Name() + " ifname '", ifname, "' is too long");
           return false;
         }
-        strncpy(tunif->ifname, v.c_str(), sizeof(tunif->ifname) - 1);
+        strncpy(tunif->ifname, ifname.c_str(), sizeof(tunif->ifname) - 1);
         llarp::LogInfo(Name() + " setting ifname to ", tunif->ifname);
-        return true;
       }
-      if (k == "ifaddr" && tunif)
+
+      std::string ifaddr = conf.m_ifaddr;
+      if (ifaddr.empty())
+        ifaddr = FindFreeRange();
+
+      LogWarn("ifaddr @ TunEndpoint: ", ifaddr);
+
+      if (tunif)
       {
         std::string addr;
         m_UseV6 = addr.find(":") != std::string::npos;
-        auto pos = v.find("/");
+        auto pos = ifaddr.find("/");
         if (pos != std::string::npos)
         {
-          int num;
-          std::string part = v.substr(pos + 1);
-#if defined(ANDROID) || defined(RPI)
-          num = atoi(part.c_str());
-#else
-          num = std::stoi(part);
-#endif
+          std::string part = ifaddr.substr(pos + 1);
+          int num = std::stoi(part);
           if (num > 0)
           {
             tunif->netmask = num;
-            addr = v.substr(0, pos);
+            addr = ifaddr.substr(0, pos);
           }
           else
           {
-            llarp::LogError("bad ifaddr value: ", v);
+            llarp::LogError("bad ifaddr value: ", ifaddr);
             return false;
           }
         }
@@ -309,14 +300,13 @@ namespace llarp
             tunif->netmask = 128;
           else
             tunif->netmask = 32;
-          addr = v;
+          addr = ifaddr;
         }
         llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ", tunif->netmask);
         strncpy(tunif->ifaddr, addr.c_str(), sizeof(tunif->ifaddr) - 1);
-        return true;
       }
-      */
-      return Endpoint::Configure(conf);
+
+      return Endpoint::Configure(conf, dnsConf);
     }
 
     bool

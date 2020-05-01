@@ -572,7 +572,7 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    hiddenServiceContext().AddEndpoint(conf->network);
+    hiddenServiceContext().AddEndpoint(*conf);
 
     // Logging config
     LogContext::Instance().Initialize(
@@ -831,17 +831,6 @@ namespace llarp
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
 
-  /// Populates some default values on networkConfig if they are absent
-  void
-  Router::PopulateConfigDefaults()
-  {
-    if (networkConfig.m_ifname.empty())
-      networkConfig.m_ifname = llarp::FindFreeTun();
-
-    if (networkConfig.m_ifaddr.empty())
-      networkConfig.m_ifaddr = llarp::FindFreeRange();
-  }
-
   bool
   Router::StartJsonRpc()
   {
@@ -965,8 +954,6 @@ namespace llarp
       LogWarn("One or more links failed to start.");
       return false;
     }
-
-    PopulateConfigDefaults();
 
     if (IsServiceNode())
     {

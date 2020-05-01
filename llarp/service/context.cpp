@@ -172,7 +172,7 @@ namespace llarp
     }
 
     void
-    Context::AddEndpoint(const NetworkConfig& conf, bool autostart)
+    Context::AddEndpoint(const Config& conf, bool autostart)
     {
       // TODO: refactor Context to only contain one endpoint
       constexpr auto endpointName = "endpoint";
@@ -193,7 +193,7 @@ namespace llarp
         throw std::runtime_error(stringify("Failed to construct endpoint of type ", endpointType));
 
       // pass conf to service
-      service->Configure(conf);
+      service->Configure(conf.network, conf.dns);
 
       // autostart if requested
       if (autostart)

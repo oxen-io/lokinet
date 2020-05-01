@@ -499,9 +499,6 @@ namespace llarp
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
-
-    void
-    PopulateConfigDefaults();
   };
 
 }  // namespace llarp

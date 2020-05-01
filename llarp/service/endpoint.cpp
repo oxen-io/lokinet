@@ -43,7 +43,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::Configure(const NetworkConfig& conf)
+    Endpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
       numPaths = conf.m_paths;
       numHops = conf.m_hops;
