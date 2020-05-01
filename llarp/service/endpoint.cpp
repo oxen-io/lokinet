@@ -45,8 +45,12 @@ namespace llarp
     bool
     Endpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
-      numPaths = conf.m_paths;
-      numHops = conf.m_hops;
+      if (conf.m_paths > 0)
+        numPaths = conf.m_paths;
+
+      if (conf.m_hops)
+        numHops = conf.m_hops;
+
       return m_state->Configure(std::move(conf));
     }
 
