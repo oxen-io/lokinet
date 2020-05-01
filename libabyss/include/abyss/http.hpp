@@ -1,9 +1,9 @@
 #ifndef ABYSS_HTTP_HPP
 #define ABYSS_HTTP_HPP
 #include <util/json.hpp>
-#include <util/string_view.hpp>
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace abyss
@@ -20,18 +20,16 @@ namespace abyss
 
     struct HeaderReader
     {
-      using string_view = llarp::string_view;
-
       RequestHeader Header;
       virtual ~HeaderReader()
       {
       }
 
       bool
-      ProcessHeaderLine(string_view line, bool& done);
+      ProcessHeaderLine(std::string_view line, bool& done);
 
       virtual bool
-      ShouldProcessHeader(const string_view& line) const = 0;
+      ShouldProcessHeader(std::string_view line) const = 0;
     };
 
   }  // namespace http

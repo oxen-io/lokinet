@@ -1,8 +1,6 @@
 #ifndef LLARP_UTIL_JSON_HPP
 #define LLARP_UTIL_JSON_HPP
 
-#include <util/string_view.hpp>
-
 #include <nlohmann/json.hpp>
 
 #include <memory>

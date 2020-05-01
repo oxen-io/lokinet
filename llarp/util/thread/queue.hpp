@@ -4,7 +4,7 @@
 #include <util/thread/queue_manager.hpp>
 #include <util/thread/threading.hpp>
 
-#include <nonstd/optional.hpp>
+#include <optional>
 #include <atomic>
 #include <tuple>
 
@@ -73,10 +73,10 @@ namespace llarp
 
       // Remove an element from the queue. Block until an element is available
       // or until <timeout> microseconds have elapsed
-      nonstd::optional<Type>
+      std::optional<Type>
       popFrontWithTimeout(std::chrono::microseconds timeout);
 
-      nonstd::optional<Type>
+      std::optional<Type>
       tryPopFront();
 
       // Remove all elements from the queue. Note this is not atomic, and if
@@ -263,7 +263,7 @@ namespace llarp
     }
 
     template <typename Type>
-    nonstd::optional<Type>
+    std::optional<Type>
     Queue<Type>::tryPopFront()
     {
       uint32_t generation;
@@ -288,7 +288,7 @@ namespace llarp
       // - notify any waiting pushers
 
       QueuePopGuard<Type> popGuard(*this, generation, index);
-      return nonstd::optional<Type>(std::move(m_data[index]));
+      return std::optional<Type>(std::move(m_data[index]));
     }
 
     template <typename Type>
@@ -388,7 +388,7 @@ namespace llarp
     }
 
     template <typename Type>
-    nonstd::optional<Type>
+    std::optional<Type>
     Queue<Type>::popFrontWithTimeout(std::chrono::microseconds timeout)
     {
       uint32_t generation = 0;

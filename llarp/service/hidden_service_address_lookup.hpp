@@ -16,7 +16,7 @@ namespace llarp
       uint64_t relayOrder;
       const dht::Key_t location;
       using HandlerFunc =
-          std::function<bool(const Address&, nonstd::optional<IntroSet>, const RouterID&)>;
+          std::function<bool(const Address&, std::optional<IntroSet>, const RouterID&)>;
       HandlerFunc handle;
 
       HiddenServiceAddressLookup(

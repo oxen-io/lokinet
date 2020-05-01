@@ -400,10 +400,7 @@ namespace llarp
       HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, llarp_async_verify_rc* j);
 
       bool
-      OnLookup(
-          const service::Address& addr,
-          nonstd::optional<IntroSet> i,
-          const RouterID& endpoint); /*  */
+      OnLookup(const service::Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
 
       bool
       DoNetworkIsolation(bool failed);

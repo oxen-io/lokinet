@@ -163,7 +163,7 @@ namespace llarp
     nickname.Zero();
     enckey.Zero();
     pubkey.Zero();
-    routerVersion = nonstd::optional<RouterVersion>{};
+    routerVersion = std::optional<RouterVersion>{};
     last_updated = 0s;
   }
 
@@ -258,7 +258,7 @@ namespace llarp
   }
 
   void
-  RouterContact::SetNick(string_view nick)
+  RouterContact::SetNick(std::string_view nick)
   {
     nickname.Zero();
     std::copy(

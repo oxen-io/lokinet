@@ -12,7 +12,7 @@
 namespace llarp
 {
   bool
-  ConfigParser::LoadFile(string_view fname)
+  ConfigParser::LoadFile(std::string_view fname)
   {
     std::string name{fname};
     {
@@ -31,7 +31,7 @@ namespace llarp
   }
 
   bool
-  ConfigParser::LoadFromStr(string_view str)
+  ConfigParser::LoadFromStr(std::string_view str)
   {
     m_Data.resize(str.size());
     std::copy(str.begin(), str.end(), m_Data.begin());
@@ -55,7 +55,7 @@ namespace llarp
   bool
   ConfigParser::Parse()
   {
-    std::list<string_view> lines;
+    std::list<std::string_view> lines;
     {
       auto itr = m_Data.begin();
       // split into lines
@@ -71,16 +71,16 @@ namespace llarp
       }
     }
 
-    string_view sectName;
+    std::string_view sectName;
     size_t lineno = 0;
     for (const auto& line : lines)
     {
       lineno++;
-      string_view realLine;
+      std::string_view realLine;
       auto comment = line.find_first_of(';');
-      if (comment == string_view::npos)
+      if (comment == std::string_view::npos)
         comment = line.find_first_of('#');
-      if (comment == string_view::npos)
+      if (comment == std::string_view::npos)
         realLine = line;
       else
         realLine = line.substr(0, comment);
@@ -91,8 +91,8 @@ namespace llarp
       auto sectOpenPos = realLine.find_first_of('[');
       auto sectClosPos = realLine.find_first_of(']');
       auto kvDelim = realLine.find_first_of('=');
-      if (sectOpenPos != string_view::npos && sectClosPos != string_view::npos
-          && kvDelim == string_view::npos)
+      if (sectOpenPos != std::string_view::npos && sectClosPos != std::string_view::npos
+          && kvDelim == std::string_view::npos)
       {
         // section header
 
@@ -106,13 +106,13 @@ namespace llarp
         // set section name
         sectName = realLine.substr(sectOpenPos, sectClosPos);
       }
-      else if (kvDelim != string_view::npos)
+      else if (kvDelim != std::string_view::npos)
       {
         // key value pair
-        string_view::size_type k_start = 0;
-        string_view::size_type k_end = kvDelim;
-        string_view::size_type v_start = kvDelim + 1;
-        string_view::size_type v_end = realLine.size() - 1;
+        std::string_view::size_type k_start = 0;
+        std::string_view::size_type k_end = kvDelim;
+        std::string_view::size_type v_start = kvDelim + 1;
+        std::string_view::size_type v_end = realLine.size() - 1;
         // clamp whitespaces
         while (whitespace(realLine[k_start]) && k_start != kvDelim)
           ++k_start;
@@ -124,8 +124,8 @@ namespace llarp
           --v_end;
 
         // sect.k = v
-        string_view k = realLine.substr(k_start, k_end - k_start);
-        string_view v = realLine.substr(v_start, 1 + (v_end - v_start));
+        std::string_view k = realLine.substr(k_start, k_end - k_start);
+        std::string_view v = realLine.substr(v_start, 1 + (v_end - v_start));
         if (k.size() == 0 || v.size() == 0)
         {
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
@@ -145,7 +145,7 @@ namespace llarp
   }
 
   void
-  ConfigParser::IterAll(std::function<void(string_view, const SectionValues_t&)> visit)
+  ConfigParser::IterAll(std::function<void(std::string_view, const SectionValues_t&)> visit)
   {
     for (const auto& item : m_Config)
       visit(item.first, item.second);

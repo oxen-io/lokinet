@@ -1,7 +1,6 @@
 #pragma once
 
 #include <util/str.hpp>
-#include <nonstd/optional.hpp>
 
 #include <memory>
 #include <set>
@@ -9,6 +8,9 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
+#include <functional>
+#include <optional>
+#include <cassert>
 
 namespace llarp
 {
@@ -88,7 +90,7 @@ namespace llarp
         std::string section_,
         std::string name_,
         bool required_,
-        nonstd::optional<T> defaultValue_,
+        std::optional<T> defaultValue_,
         std::function<void(T)> acceptor_ = nullptr)
         : OptionDefinitionBase(section_, name_, required_)
         , defaultValue(defaultValue_)
@@ -102,7 +104,7 @@ namespace llarp
         std::string name_,
         bool required_,
         bool multiValued_,
-        nonstd::optional<T> defaultValue_,
+        std::optional<T> defaultValue_,
         std::function<void(T)> acceptor_ = nullptr)
         : OptionDefinitionBase(section_, name_, required_, multiValued_)
         , defaultValue(defaultValue_)
@@ -114,7 +116,7 @@ namespace llarp
     /// option is not required. Otherwise, returns an empty optional.
     ///
     /// @return an optional with the parsed value, the default value, or no value.
-    nonstd::optional<T>
+    std::optional<T>
     getValue() const
     {
       if (parsedValues.size())
@@ -236,7 +238,7 @@ namespace llarp
       }
     }
 
-    nonstd::optional<T> defaultValue;
+    std::optional<T> defaultValue;
     std::vector<T> parsedValues;
     std::function<void(T)> acceptor;
   };
@@ -248,7 +250,7 @@ namespace llarp
   OptionDefinition<bool>::fromString(const std::string& input);
 
   using UndeclaredValueHandler =
-      std::function<void(string_view section, string_view name, string_view value)>;
+      std::function<void(std::string_view section, std::string_view name, std::string_view value)>;
 
   using OptionDefinition_ptr = std::unique_ptr<OptionDefinitionBase>;
 
@@ -307,7 +309,7 @@ namespace llarp
     /// @return `*this` for chaining calls
     /// @throws if the option doesn't exist or the provided string isn't parseable
     ConfigDefinition&
-    addConfigValue(string_view section, string_view name, string_view value);
+    addConfigValue(std::string_view section, std::string_view name, std::string_view value);
 
     /// Get a config value. If the value hasn't been provided but a default has, the default will
     /// be returned. If no value and no default is provided, an empty optional will be returned.
@@ -321,8 +323,8 @@ namespace llarp
     /// @throws std::invalid_argument if there is no such config option or the wrong type T was
     //          provided
     template <typename T>
-    nonstd::optional<T>
-    getConfigValue(string_view section, string_view name)
+    std::optional<T>
+    getConfigValue(std::string_view section, std::string_view name)
     {
       OptionDefinition_ptr& definition = lookupDefinitionOrThrow(section, name);
 
@@ -402,9 +404,9 @@ namespace llarp
 
    private:
     OptionDefinition_ptr&
-    lookupDefinitionOrThrow(string_view section, string_view name);
+    lookupDefinitionOrThrow(std::string_view section, std::string_view name);
     const OptionDefinition_ptr&
-    lookupDefinitionOrThrow(string_view section, string_view name) const;
+    lookupDefinitionOrThrow(std::string_view section, std::string_view name) const;
 
     using SectionVisitor = std::function<void(const std::string&, const DefinitionMap&)>;
     void

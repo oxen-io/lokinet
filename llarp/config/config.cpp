@@ -16,7 +16,7 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include "ghc/filesystem.hpp"
+#include <filesystem>
 
 namespace llarp
 {
@@ -164,10 +164,11 @@ namespace llarp
         "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
 
     // TODO: make sure this is documented... what does it mean though?
-    conf.addUndeclaredHandler("network", [&](string_view, string_view name, string_view value) {
-      m_options.emplace(name, value);
-      return true;
-    });
+    conf.addUndeclaredHandler(
+        "network", [&](std::string_view, std::string_view name, std::string_view value) {
+          m_options.emplace(name, value);
+          return true;
+        });
   }
 
   void
@@ -199,7 +200,7 @@ namespace llarp
   }
 
   LinksConfig::LinkInfo
-  LinksConfig::LinkInfoFromINIValues(string_view name, string_view value)
+  LinksConfig::LinkInfoFromINIValues(std::string_view name, std::string_view value)
   {
     // we treat the INI k:v pair as:
     // k: interface name, * indicating outbound
@@ -211,8 +212,8 @@ namespace llarp
     info.addressFamily = AF_INET;
     info.interface = str(name);
 
-    std::vector<string_view> splits = split(value, ',');
-    for (string_view str : splits)
+    std::vector<std::string_view> splits = split(value, ',');
+    for (std::string_view str : splits)
     {
       int asNum = std::atoi(str.data());
       if (asNum > 0)
@@ -233,19 +234,21 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "bind", "*", false, false, DefaultOutboundLinkValue, [this](std::string arg) {
-          m_OutboundLink = std::move(LinkInfoFromINIValues("*", arg));
+          m_OutboundLink = LinkInfoFromINIValues("*", arg);
         });
 
-    conf.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
-      LinkInfo info = LinkInfoFromINIValues(name, value);
+    conf.addUndeclaredHandler(
+        "bind", [&](std::string_view, std::string_view name, std::string_view value) {
+          LinkInfo info = LinkInfoFromINIValues(name, value);
 
-      if (info.port <= 0)
-        throw std::invalid_argument(stringify("Invalid [bind] port specified on interface", name));
+          if (info.port <= 0)
+            throw std::invalid_argument(
+                stringify("Invalid [bind] port specified on interface", name));
 
-      assert(name != "*");  // handled by defineOption("bind", "*", ...) above
+          assert(name != "*");  // handled by defineOption("bind", "*", ...) above
 
-      m_InboundLinks.emplace_back(std::move(info));
-    });
+          m_InboundLinks.emplace_back(std::move(info));
+        });
   }
 
   void
@@ -254,7 +257,7 @@ namespace llarp
     (void)params;
 
     conf.addUndeclaredHandler(
-        "connect", [this](string_view section, string_view name, string_view value) {
+        "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
           fs::path file = str(value);
           if (not fs::exists(file))
             throw std::runtime_error(stringify(
@@ -277,7 +280,8 @@ namespace llarp
     (void)params;
 
     conf.addUndeclaredHandler(
-        "services", [this](string_view section, string_view name, string_view value) {
+        "services",
+        [this](std::string_view section, std::string_view name, std::string_view value) {
           (void)section;
           services.emplace_back(name, value);
           return true;
@@ -364,7 +368,7 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "logging", "level", false, DefaultLogLevel, [this](std::string arg) {
-          nonstd::optional<LogLevel> level = LogLevelFromString(arg);
+          std::optional<LogLevel> level = LogLevelFromString(arg);
           if (not level.has_value())
             throw std::invalid_argument(stringify("invalid log level value: ", arg));
 
@@ -422,15 +426,16 @@ namespace llarp
       m_mapAddr = arg;
     });
 
-    conf.addUndeclaredHandler("snapp", [&](string_view, string_view name, string_view value) {
-      if (name == "blacklist-snode")
-      {
-        m_snodeBlacklist.push_back(str(value));
-        return true;
-      }
+    conf.addUndeclaredHandler(
+        "snapp", [&](std::string_view, std::string_view name, std::string_view value) {
+          if (name == "blacklist-snode")
+          {
+            m_snodeBlacklist.push_back(str(value));
+            return true;
+          }
 
-      return false;
-    });
+          return false;
+        });
   }
 
   bool
@@ -452,7 +457,7 @@ namespace llarp
         return false;
       }
 
-      parser.IterAll([&](string_view section, const SectionValues_t& values) {
+      parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
           conf.addConfigValue(section, pair.first, pair.second);

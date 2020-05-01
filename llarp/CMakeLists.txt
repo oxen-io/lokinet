@@ -44,8 +44,7 @@ endif()
 target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_LIBRARIES})
 target_link_libraries(${UTIL_LIB} PUBLIC
     nlohmann_json::nlohmann_json
-    ghc_filesystem
-    optional-lite
+    filesystem
     date::date
     )
 

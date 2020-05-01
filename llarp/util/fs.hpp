@@ -9,14 +9,14 @@
 #define PATH_SEP "/"
 #endif
 
-#include <ghc/filesystem.hpp>
-namespace fs = ghc::filesystem;
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #ifndef _MSC_VER
 #include <dirent.h>
 #endif
 
-#include <nonstd/optional.hpp>
+#include <optional>
 
 namespace llarp
 {
@@ -32,7 +32,7 @@ namespace llarp
     /// open a stream to a file and ensure it exists before open
     /// sets any permissions on creation
     template <typename T>
-    nonstd::optional<T>
+    std::optional<T>
     OpenFileStream(fs::path pathname, std::ios::openmode mode)
     {
       if (EnsurePrivateFile(pathname))

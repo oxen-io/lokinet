@@ -1259,7 +1259,7 @@ namespace llarp
   }
 
   bool
-  Router::LoadHiddenServiceConfig(string_view fname)
+  Router::LoadHiddenServiceConfig(std::string_view fname)
   {
     LogDebug("opening hidden service config ", fname);
     service::Config conf;

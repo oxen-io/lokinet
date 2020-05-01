@@ -1,11 +1,11 @@
 #include <ev/ev.h>
 #include <util/mem.hpp>
-#include <util/string_view.hpp>
 #include <util/thread/logic.hpp>
 #include <net/net_addr.hpp>
 
 #include <cstddef>
 #include <cstring>
+#include <string_view>
 
 // We libuv now
 #include <ev/ev_libuv.hpp>
@@ -144,7 +144,7 @@ void
 llarp_tcp_async_try_connect(struct llarp_ev_loop* loop, struct llarp_tcp_connecter* tcp)
 {
   tcp->loop = loop;
-  llarp::string_view addr_str, port_str;
+  std::string_view addr_str, port_str;
   // try parsing address
   const char* begin = tcp->remote;
   const char* ptr = strstr(tcp->remote, ":");
@@ -162,9 +162,9 @@ llarp_tcp_async_try_connect(struct llarp_ev_loop* loop, struct llarp_tcp_connect
   {
     ++end;
   }
-  addr_str = llarp::string_view(begin, ptr - begin);
+  addr_str = std::string_view(begin, ptr - begin);
   ++ptr;
-  port_str = llarp::string_view(ptr, end - ptr);
+  port_str = std::string_view(ptr, end - ptr);
   // actually parse address
   llarp::Addr addr(addr_str, port_str);
 

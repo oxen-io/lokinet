@@ -1,6 +1,6 @@
 #include <net/net.hpp>
 #include <net/net_addr.hpp>
-#include <util/string_view.hpp>
+#include <string_view>
 
 // for addrinfo
 #ifndef _WIN32
@@ -59,26 +59,26 @@ namespace llarp
     return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
   }
 
-  Addr::Addr(string_view str) : Addr()
+  Addr::Addr(std::string_view str) : Addr()
   {
     this->from_char_array(str);
   }
 
-  Addr::Addr(string_view str, const uint16_t p_port) : Addr(str)
+  Addr::Addr(std::string_view str, const uint16_t p_port) : Addr(str)
   {
     this->port(p_port);
   }
 
-  Addr::Addr(string_view addr_str, string_view port_str)
+  Addr::Addr(std::string_view addr_str, std::string_view port_str)
       : Addr(addr_str, std::strtoul(port_str.data(), nullptr, 10))
   {
   }
 
   bool
-  Addr::from_char_array(string_view in)
+  Addr::from_char_array(std::string_view in)
   {
     auto pPosition = in.find(':');
-    if (pPosition != string_view::npos)
+    if (pPosition != std::string_view::npos)
     {
       // parse port
       uint16_t port = std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
@@ -94,7 +94,7 @@ namespace llarp
     hint.ai_family = PF_UNSPEC;
     hint.ai_flags = AI_NUMERICHOST;
 
-    if (pPosition != string_view::npos)
+    if (pPosition != std::string_view::npos)
     {
       ret = getaddrinfo(
           std::string(in.begin(), in.begin() + pPosition).c_str(), nullptr, &hint, &res);

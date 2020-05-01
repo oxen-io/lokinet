@@ -1,8 +1,8 @@
 #ifndef LOKINET_BOOTSERV_CONFIG_HPP
 #define LOKINET_BOOTSERV_CONFIG_HPP
 
-#include <util/string_view.hpp>
-
+#include <string_view>
+#include <string>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -22,17 +22,17 @@ namespace llarp
     /// return true on success
     /// return false on error
     bool
-    LoadFile(string_view fname);
+    LoadFile(std::string_view fname);
 
     /// load from string
     /// return true on success
     /// return false on error
     bool
-    LoadFromStr(string_view str);
+    LoadFromStr(std::string_view str);
 
     /// iterate all sections and thier values
     void
-    IterAll(std::function<void(string_view, const SectionValues_t&)> visit);
+    IterAll(std::function<void(std::string_view, const SectionValues_t&)> visit);
 
     /// visit a section in config read only by name
     /// return false if no section or value propagated from visitor

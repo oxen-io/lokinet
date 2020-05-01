@@ -4,7 +4,7 @@
 #include <thread>
 #include <shared_mutex>
 #include <mutex>
-#include <nonstd/optional.hpp>
+#include <optional>
 
 #include "annotations.hpp"
 
@@ -45,7 +45,7 @@ namespace llarp
       /// in debug mode, we implement lock() to enforce that any lock is only
       /// used from a single thread. the point of this is to identify locks that
       /// are actually needed by dying a painful death when used across threads
-      mutable nonstd::optional<std::thread::id> m_id;
+      mutable std::optional<std::thread::id> m_id;
       void
       lock() const
       {

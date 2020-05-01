@@ -1,11 +1,14 @@
 #include <abyss/http.hpp>
+#include <util/str.hpp>
+
 #include <algorithm>
+
 namespace abyss
 {
   namespace http
   {
     bool
-    HeaderReader::ProcessHeaderLine(string_view line, bool& done)
+    HeaderReader::ProcessHeaderLine(std::string_view line, bool& done)
     {
       if (line.size() == 0)
       {
@@ -13,10 +16,10 @@ namespace abyss
         return true;
       }
       auto idx = line.find_first_of(':');
-      if (idx == string_view::npos)
+      if (idx == std::string_view::npos)
         return false;
-      string_view header = line.substr(0, idx);
-      string_view val = line.substr(1 + idx);
+      std::string_view header = line.substr(0, idx);
+      std::string_view val = line.substr(1 + idx);
       // to lowercase
       std::string lowerHeader;
       lowerHeader.reserve(header.size());

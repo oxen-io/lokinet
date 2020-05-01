@@ -3,7 +3,6 @@
 
 #include <ev/ev.h>
 #include <util/json.hpp>
-#include <util/string_view.hpp>
 #include <abyss/http.hpp>
 
 #include <deque>

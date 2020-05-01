@@ -9,7 +9,7 @@
 namespace llarp
 {
   bool
-  CaselessLessThan::operator()(string_view lhs, string_view rhs) const
+  CaselessLessThan::operator()(std::string_view lhs, std::string_view rhs) const
   {
     const size_t s = std::min(lhs.size(), rhs.size());
     for (size_t i = 0; i < s; ++i)
@@ -31,17 +31,17 @@ namespace llarp
   }
 
   bool
-  IsFalseValue(string_view str)
+  IsFalseValue(std::string_view str)
   {
-    static const std::set<string_view, CaselessLessThan> vals{"no", "false", "0", "off"};
+    static const std::set<std::string_view, CaselessLessThan> vals{"no", "false", "0", "off"};
 
     return vals.count(str) > 0;
   }
 
   bool
-  IsTrueValue(string_view str)
+  IsTrueValue(std::string_view str)
   {
-    static const std::set<string_view, CaselessLessThan> vals{"yes", "true", "1", "on"};
+    static const std::set<std::string_view, CaselessLessThan> vals{"yes", "true", "1", "on"};
 
     return vals.count(str) > 0;
   }
@@ -61,11 +61,11 @@ namespace llarp
 
   constexpr static char whitespace[] = " \t\n\r\f\v";
 
-  string_view
-  TrimWhitespace(string_view str)
+  std::string_view
+  TrimWhitespace(std::string_view str)
   {
     size_t begin = str.find_first_not_of(whitespace);
-    if (begin == string_view::npos)
+    if (begin == std::string_view::npos)
     {
       str.remove_prefix(str.size());
       return str;
@@ -73,20 +73,20 @@ namespace llarp
     str.remove_prefix(begin);
 
     size_t end = str.find_last_not_of(whitespace);
-    if (end != string_view::npos)
+    if (end != std::string_view::npos)
       str.remove_suffix(str.size() - end - 1);
 
     return str;
   }
 
-  std::vector<string_view>
-  split(string_view str, char delimiter)
+  std::vector<std::string_view>
+  split(std::string_view str, char delimiter)
   {
-    std::vector<string_view> splits;
+    std::vector<std::string_view> splits;
 
     size_t last = 0;
     size_t next = 0;
-    while (last < str.size() and next < string_view::npos)
+    while (last < str.size() and next < std::string_view::npos)
     {
       next = str.find_first_of(delimiter, last);
       if (next > last)

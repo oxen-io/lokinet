@@ -66,7 +66,7 @@ namespace llarp
 
   struct NetworkConfig
   {
-    nonstd::optional<bool> m_enableProfiling;
+    std::optional<bool> m_enableProfiling;
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
     FreehandOptions m_options;
@@ -94,7 +94,7 @@ namespace llarp
     /// Create a LinkInfo from the given string.
     /// @throws if str does not represent a LinkInfo.
     LinkInfo
-    LinkInfoFromINIValues(string_view name, string_view value);
+    LinkInfoFromINIValues(std::string_view name, std::string_view value);
 
     LinkInfo m_OutboundLink;
     std::vector<LinkInfo> m_InboundLinks;

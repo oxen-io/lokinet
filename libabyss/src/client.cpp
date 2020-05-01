@@ -9,6 +9,7 @@ namespace abyss
 {
   namespace http
   {
+    using namespace std::literals;
     namespace json = llarp::json;
     struct ConnImpl : HeaderReader
     {
@@ -85,35 +86,34 @@ namespace abyss
       }
 
       bool
-      ProcessStatusLine(string_view line)
+      ProcessStatusLine(std::string_view line)
       {
         auto idx = line.find_first_of(' ');
-        if (idx == string_view::npos)
+        if (idx == std::string_view::npos)
           return false;
 
-        string_view codePart = line.substr(1 + idx);
+        std::string_view codePart = line.substr(1 + idx);
         idx = codePart.find_first_of(' ');
 
-        if (idx == string_view::npos)
+        if (idx == std::string_view::npos)
           return false;
         return HandleStatusCode(codePart.substr(0, idx));
       }
 
       bool
-      ShouldProcessHeader(const llarp::string_view& name) const
+      ShouldProcessHeader(std::string_view name) const
       {
-        return name == llarp::string_view("content-length")
-            || name == llarp::string_view("content-type")
-            || name == llarp::string_view("www-authenticate");
+        return name == "content-length"sv || name == "content-type"sv
+            || name == "www-authenticate"sv;
       }
 
       /// return true if we get a 200 status code
       bool
-      HandleStatusCode(string_view code)
+      HandleStatusCode(std::string_view code)
       {
-        if (code == string_view("200"))
+        if (code == "200"sv)
           return true;
-        if (code == string_view("401"))
+        if (code == "401"sv)
         {
           m_ShouldAuth = true;
           return true;
@@ -259,7 +259,7 @@ namespace abyss
           const char* end = strstr(buf, "\r\n");
           if (!end)
             return false;
-          string_view line(buf, end - buf);
+          std::string_view line(buf, end - buf);
           switch (state)
           {
             case eReadStatusLine:
