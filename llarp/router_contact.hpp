@@ -105,7 +105,7 @@ namespace llarp
 
     llarp_time_t last_updated = 0s;
     uint64_t version = LLARP_PROTO_VERSION;
-    nonstd::optional<RouterVersion> routerVersion;
+    std::optional<RouterVersion> routerVersion;
 
     util::StatusObject
     ExtractStatus() const;
@@ -174,7 +174,7 @@ namespace llarp
     IsPublicRouter() const;
 
     void
-    SetNick(string_view nick);
+    SetNick(std::string_view nick);
 
     bool
     Verify(llarp_time_t now, bool allowExpired = true) const;

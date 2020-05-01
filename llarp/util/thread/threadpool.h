@@ -1,7 +1,6 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
 
-#include <util/string_view.hpp>
 #include <util/thread/queue.hpp>
 #include <util/thread/thread_pool.hpp>
 #include <util/thread/threading.hpp>
@@ -10,6 +9,7 @@
 
 #include <memory>
 #include <queue>
+#include <string_view>
 
 struct llarp_threadpool;
 
@@ -18,7 +18,7 @@ struct llarp_threadpool
 {
   std::unique_ptr<llarp::thread::ThreadPool> impl;
 
-  llarp_threadpool(int workers, llarp::string_view name, size_t queueLength = size_t{1024 * 8})
+  llarp_threadpool(int workers, std::string_view name, size_t queueLength = size_t{1024 * 8})
       : impl(std::make_unique<llarp::thread::ThreadPool>(
           workers, std::max(queueLength, size_t{32}), name))
   {

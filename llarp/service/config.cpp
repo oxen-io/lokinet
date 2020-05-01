@@ -7,12 +7,12 @@ namespace llarp
   namespace service
   {
     bool
-    Config::Load(string_view fname)
+    Config::Load(std::string_view fname)
     {
       ConfigParser parser;
       if (!parser.LoadFile(fname))
         return false;
-      parser.IterAll([&](string_view name, const ConfigParser::SectionValues_t& section) {
+      parser.IterAll([&](std::string_view name, const ConfigParser::SectionValues_t& section) {
         Config::section_t values;
         values.first.assign(name.begin(), name.end());
         for (const auto& item : section)

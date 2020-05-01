@@ -1,10 +1,9 @@
 #ifndef LLARP_SERVICE_CONFIG_HPP
 #define LLARP_SERVICE_CONFIG_HPP
 
-#include <util/string_view.hpp>
-
 #include <list>
 #include <string>
+#include <string_view>
 
 namespace llarp
 {
@@ -18,7 +17,7 @@ namespace llarp
       std::list<section_t> services;
 
       bool
-      Load(string_view fname);
+      Load(std::string_view fname);
     };
   }  // namespace service
 }  // namespace llarp

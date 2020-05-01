@@ -6,7 +6,6 @@
 #include <net/net_int.hpp>
 #include <net/net.h>
 #include <util/mem.hpp>
-#include <util/string_view.hpp>
 #include <util/bits.hpp>
 
 #include <functional>

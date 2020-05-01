@@ -28,7 +28,7 @@ namespace llarp
   }
 
   bool
-  Context::Configure(bool isRelay, nonstd::optional<fs::path> dataDir)
+  Context::Configure(bool isRelay, std::optional<fs::path> dataDir)
   {
     fs::path defaultDataDir = dataDir.has_value() ? dataDir.value() : GetDefaultDataDir();
 

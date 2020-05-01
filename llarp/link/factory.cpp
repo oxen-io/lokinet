@@ -4,7 +4,7 @@
 namespace llarp
 {
   LinkFactory::LinkType
-  LinkFactory::TypeFromName(string_view str)
+  LinkFactory::TypeFromName(std::string_view str)
   {
     if (str == "iwp")
       return LinkType::eLinkIWP;

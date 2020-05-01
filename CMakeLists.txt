@@ -81,6 +81,14 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
 
+set(CMAKE_CXX_STANDARD 17)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
 include(cmake/unix.cmake)
 
 if(NOT WIN32)
@@ -96,14 +104,6 @@ if(NOT WIN32)
     endif()
   endif()
 endif()
-
-set(CMAKE_CXX_STANDARD 14)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
 
 # this is messing with release builds
 add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
@@ -276,16 +276,16 @@ if(SUBMODULE_CHECK)
     check_submodule(external/nlohmann)
     check_submodule(external/googletest)
     check_submodule(external/cxxopts)
-    check_submodule(external/ghc-filesystem)
-    check_submodule(external/optional-lite)
     check_submodule(external/date)
     check_submodule(external/pybind11)
   endif()
 endif()
 
-if(WITH_HIVE)
-  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
-endif()
+# We only actually need pybind11 with WITH_HIVE, but if we don't load it here then something further
+# down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
+# So load this here universally so that pybind's more intelligent python finder finds python3.x
+# (which the crappier loader invoked below then respects).
+add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
@@ -294,8 +294,6 @@ endif()
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
 add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
-add_subdirectory(external/ghc-filesystem)
-add_subdirectory(external/optional-lite EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
 
 if(ANDROID)

@@ -8,12 +8,14 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace abyss
 {
   namespace httpd
   {
+    using namespace std::literals;
     namespace json = llarp::json;
     struct ConnImpl : abyss::http::HeaderReader
     {
@@ -76,15 +78,15 @@ namespace abyss
       }
 
       bool
-      ProcessMethodLine(string_view line)
+      ProcessMethodLine(std::string_view line)
       {
         auto idx = line.find_first_of(' ');
-        if (idx == string_view::npos)
+        if (idx == std::string_view::npos)
           return false;
         Header.Method = std::string(line.substr(0, idx));
         line = line.substr(idx + 1);
         idx = line.find_first_of(' ');
-        if (idx == string_view::npos)
+        if (idx == std::string_view::npos)
           return false;
         Header.Path = std::string(line.substr(0, idx));
         m_State = eReadHTTPHeaders;
@@ -92,11 +94,10 @@ namespace abyss
       }
 
       bool
-      ShouldProcessHeader(const string_view& name) const
+      ShouldProcessHeader(std::string_view name) const
       {
         // TODO: header whitelist
-        return name == string_view("content-type") || name == string_view("content-length")
-            || name == string_view("host");
+        return name == "content-type"sv || name == "content-length"sv || name == "host"sv;
       }
 
       bool
@@ -138,7 +139,7 @@ namespace abyss
             return WriteResponseSimple(
                 415, "Unsupported Media Type", "text/plain", "no content type provided");
           }
-          else if (itr->second != string_view("application/json"))
+          else if (itr->second != "application/json"sv)
           {
             return WriteResponseSimple(
                 415, "Unsupported Media Type", "text/plain", "this does not look like jsonrpc 2.0");
@@ -231,7 +232,7 @@ namespace abyss
           const char* end = strstr(buf, "\r\n");
           while (end)
           {
-            string_view line(buf, end - buf);
+            std::string_view line(buf, end - buf);
             switch (m_State)
             {
               case eReadHTTPMethodLine:

@@ -82,7 +82,7 @@ namespace llarp
       return out;
     }
 
-    nonstd::optional<IntroSet>
+    std::optional<IntroSet>
     EncryptedIntroSet::MaybeDecrypt(const PubKey& root) const
     {
       SharedSecret k(root);

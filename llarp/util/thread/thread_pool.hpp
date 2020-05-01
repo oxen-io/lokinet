@@ -1,7 +1,6 @@
 #ifndef LLARP_THREAD_POOL_HPP
 #define LLARP_THREAD_POOL_HPP
 
-#include <util/string_view.hpp>
 #include <util/thread/queue.hpp>
 #include <util/thread/threading.hpp>
 
@@ -9,6 +8,7 @@
 #include <functional>
 #include <thread>
 #include <vector>
+#include <string_view>
 
 namespace llarp
 {
@@ -84,7 +84,7 @@ namespace llarp
       }
 
      public:
-      ThreadPool(size_t numThreads, size_t maxJobs, string_view name);
+      ThreadPool(size_t numThreads, size_t maxJobs, std::string_view name);
 
       ~ThreadPool();
 

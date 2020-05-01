@@ -402,7 +402,7 @@ namespace llarp
       bool
       OnLookup(
           const service::Address& addr,
-          nonstd::optional<IntroSet> i,
+          std::optional<IntroSet> i,
           const RouterID& endpoint); /*  */
 
       bool

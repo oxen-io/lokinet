@@ -3,12 +3,10 @@
 
 #include <ev/ev.h>
 #include <util/json.hpp>
-#include <util/string_view.hpp>
 #include <util/thread/logic.hpp>
 #include <util/time.hpp>
 
 #include <nlohmann/json.hpp>
-#include <nonstd/optional.hpp>
 
 #include <list>
 #include <memory>

@@ -1,9 +1,6 @@
 #include <config/definition.hpp>
-#include <util/string_view.hpp>
 
 #include <catch2/catch.hpp>
-
-using llarp::string_view;
 
 TEST_CASE("OptionDefinition int parse test", "[config]")
 {
@@ -225,7 +222,7 @@ TEST_CASE("ConfigDefinition undeclared definition basic test", "[config]")
 
   bool invoked = false;
 
-  config.addUndeclaredHandler("foo", [&](string_view section, string_view name, string_view value) {
+  config.addUndeclaredHandler("foo", [&](std::string_view section, std::string_view name, std::string_view value) {
     CHECK(section == "foo");
     CHECK(name == "bar");
     CHECK(value == "val");
@@ -244,11 +241,11 @@ TEST_CASE("ConfigDefinition undeclared add more than once test", "[config]")
 
   std::string calledBy = "";
 
-  config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+  config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
       calledBy = "a";
   });
   REQUIRE_THROWS_WITH(
-    config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+    config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
         calledBy = "b";
     }),
     "section foo already has a handler");
@@ -265,7 +262,7 @@ TEST_CASE("ConfigDefinition undeclared add/remove test", "[config]")
   std::string calledBy = "";
 
   // add...
-  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
     calledBy = "a";
   }));
 
@@ -283,7 +280,7 @@ TEST_CASE("ConfigDefinition undeclared add/remove test", "[config]")
       "no declared section [foo]");
 
   // ...then add again
-  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+  REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
     calledBy = "b";
   }));
 
@@ -296,7 +293,7 @@ TEST_CASE("ConfigDefinition undeclared handler exception propagation test", "[co
 {
   llarp::ConfigDefinition config;
 
-  config.addUndeclaredHandler("foo", [](string_view, string_view, string_view) {
+  config.addUndeclaredHandler("foo", [](std::string_view, std::string_view, std::string_view) {
       throw std::runtime_error("FAIL");
   });
 
@@ -307,7 +304,7 @@ TEST_CASE("ConfigDefinition undeclared handler wrong section", "[config]")
 {
   llarp::ConfigDefinition config;
 
-  config.addUndeclaredHandler("foo", [](string_view, string_view, string_view) {
+  config.addUndeclaredHandler("foo", [](std::string_view, std::string_view, std::string_view) {
       throw std::runtime_error("FAIL");
   });
 
@@ -320,7 +317,7 @@ TEST_CASE("ConfigDefinition undeclared handler duplicate names", "[config]")
 
   int count = 0;
 
-  config.addUndeclaredHandler("foo", [&](string_view, string_view, string_view) {
+  config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
       count++;
   });
 
@@ -375,7 +372,7 @@ TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
   config.defineOption<std::string>(
       "bind", "*", false, false, "1090", [&](std::string arg) { val1 = arg; });
 
-  config.addUndeclaredHandler("bind", [&](string_view, string_view name, string_view value) {
+  config.addUndeclaredHandler("bind", [&](std::string_view, std::string_view name, std::string_view value) {
     undeclaredName = std::string(name);
     undeclaredValue = std::string(value);
   });

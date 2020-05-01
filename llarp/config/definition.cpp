@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <cassert>
 
 namespace llarp
 {
@@ -47,7 +48,7 @@ namespace llarp
   }
 
   ConfigDefinition&
-  ConfigDefinition::addConfigValue(string_view section, string_view name, string_view value)
+  ConfigDefinition::addConfigValue(std::string_view section, std::string_view name, std::string_view value)
   {
     // see if we have an undeclared handler to fall back to in case section or section:name is
     // absent
@@ -207,7 +208,7 @@ namespace llarp
   }
 
   const OptionDefinition_ptr&
-  ConfigDefinition::lookupDefinitionOrThrow(string_view section, string_view name) const
+  ConfigDefinition::lookupDefinitionOrThrow(std::string_view section, std::string_view name) const
   {
     const auto sectionItr = m_definitions.find(std::string(section));
     if (sectionItr == m_definitions.end())
@@ -222,7 +223,7 @@ namespace llarp
   }
 
   OptionDefinition_ptr&
-  ConfigDefinition::lookupDefinitionOrThrow(string_view section, string_view name)
+  ConfigDefinition::lookupDefinitionOrThrow(std::string_view section, std::string_view name)
   {
     return const_cast<OptionDefinition_ptr&>(
         const_cast<const ConfigDefinition*>(this)->lookupDefinitionOrThrow(section, name));

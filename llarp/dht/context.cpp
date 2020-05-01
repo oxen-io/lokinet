@@ -157,7 +157,7 @@ namespace llarp
       Init(const Key_t& us, AbstractRouter* router) override;
 
       /// get localally stored introset by service address
-      nonstd::optional<llarp::service::EncryptedIntroSet>
+      std::optional<llarp::service::EncryptedIntroSet>
       GetIntroSetByLocation(const Key_t& location) const override;
 
       void
@@ -412,7 +412,7 @@ namespace llarp
       }
     }
 
-    nonstd::optional<llarp::service::EncryptedIntroSet>
+    std::optional<llarp::service::EncryptedIntroSet>
     Context::GetIntroSetByLocation(const Key_t& key) const
     {
       auto itr = _services->nodes.find(key);

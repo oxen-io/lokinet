@@ -4,9 +4,9 @@
 #include <net/address_info.hpp>
 #include <net/net.h>
 #include <net/net.hpp>
-#include <util/string_view.hpp>
 #include <net/net_int.hpp>
 
+#include <string_view>
 #include <string>
 
 namespace llarp
@@ -21,11 +21,11 @@ namespace llarp
 
     Addr();
 
-    Addr(string_view str);
+    Addr(std::string_view str);
 
-    Addr(string_view str, const uint16_t p_port);
+    Addr(std::string_view str, const uint16_t p_port);
 
-    Addr(string_view addr_str, string_view port_str);
+    Addr(std::string_view addr_str, std::string_view port_str);
 
     void
     port(uint16_t port);
@@ -43,7 +43,7 @@ namespace llarp
     addr4() const;
 
     bool
-    from_char_array(string_view str);
+    from_char_array(std::string_view str);
 
     bool
     from_4int(const uint8_t one, const uint8_t two, const uint8_t three, const uint8_t four);

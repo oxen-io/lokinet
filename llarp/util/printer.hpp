@@ -1,13 +1,13 @@
 #ifndef LLARP_PRINTER_HPP
 #define LLARP_PRINTER_HPP
 
-#include <util/string_view.hpp>
 #include <util/meta/traits.hpp>
 
 #include <functional>
 #include <iostream>
 #include <cassert>
 #include <algorithm>
+#include <string_view>
 
 namespace llarp
 {
@@ -57,7 +57,7 @@ namespace llarp
     /// - If `Type` is a `void *`, `const void *` or function pointer, and not
     /// null, print in hex format or print "null".
     /// - If `Type` is a `char *`, a `const char *`, a C-style char array, a
-    /// `std::string` or `llarp::string_view` print the string wrapped in `"`.
+    /// `std::string` or `std::string_view` print the string wrapped in `"`.
     /// - If `Type` is a pointer type, print the pointer, followed by the value
     /// if not-null.
     /// - If `Type` is a pair/tuple type, print the elements of the tuple.
@@ -66,15 +66,15 @@ namespace llarp
     /// - If `Type` is any other type, call the `print` method on that type.
     template <typename Type>
     void
-    printAttribute(string_view name, const Type& value) const;
+    printAttribute(std::string_view name, const Type& value) const;
 
     template <typename Type>
     void
-    printAttributeAsHex(string_view name, const Type& value) const;
+    printAttributeAsHex(std::string_view name, const Type& value) const;
 
     template <typename InputIt>
     void
-    printAttribute(string_view name, const InputIt& begin, const InputIt& end) const;
+    printAttribute(std::string_view name, const InputIt& begin, const InputIt& end) const;
 
     template <typename Type>
     void
@@ -87,20 +87,20 @@ namespace llarp
     template <typename Type>
     void
     printForeignAttribute(
-        string_view name, const Type& value, const PrintFunction<Type>& printFunction) const;
+        std::string_view name, const Type& value, const PrintFunction<Type>& printFunction) const;
 
     template <typename Type>
     void
     printForeignValue(const Type& value, const PrintFunction<Type>& printFunction) const;
 
     void
-    printHexAddr(string_view name, const void* address) const;
+    printHexAddr(std::string_view name, const void* address) const;
     void
     printHexAddr(const void* address) const;
 
     template <class Type>
     void
-    printOrNull(string_view name, const Type& address) const;
+    printOrNull(std::string_view name, const Type& address) const;
     template <class Type>
     void
     printOrNull(const Type& address) const;
@@ -215,7 +215,7 @@ namespace llarp
     static void
     printType(
         std::ostream& stream,
-        const string_view& value,
+        const std::string_view& value,
         int level,
         int spaces,
         traits::select::Case<traits::is_container>);
@@ -257,7 +257,7 @@ namespace llarp
 
   template <typename Type>
   inline void
-  Printer::printAttribute(string_view name, const Type& value) const
+  Printer::printAttribute(std::string_view name, const Type& value) const
   {
     assert(!name.empty());
     printIndent();
@@ -269,7 +269,7 @@ namespace llarp
 
   template <typename Type>
   inline void
-  Printer::printAttributeAsHex(string_view name, const Type& value) const
+  Printer::printAttributeAsHex(std::string_view name, const Type& value) const
   {
     static_assert(std::is_integral<Type>::value, "type should be integral");
     assert(!name.empty());
@@ -289,7 +289,7 @@ namespace llarp
 
   template <typename InputIt>
   inline void
-  Printer::printAttribute(string_view name, const InputIt& begin, const InputIt& end) const
+  Printer::printAttribute(std::string_view name, const InputIt& begin, const InputIt& end) const
   {
     assert(!name.empty());
     printIndent();
@@ -320,7 +320,7 @@ namespace llarp
   template <typename Type>
   inline void
   Printer::printForeignAttribute(
-      string_view name, const Type& value, const PrintFunction<Type>& printFunction) const
+      std::string_view name, const Type& value, const PrintFunction<Type>& printFunction) const
   {
     assert(!name.empty());
     printIndent();
@@ -341,7 +341,7 @@ namespace llarp
 
   template <typename Type>
   inline void
-  Printer::printOrNull(string_view name, const Type& address) const
+  Printer::printOrNull(std::string_view name, const Type& address) const
   {
     assert(!name.empty());
     printIndent();
@@ -385,7 +385,7 @@ namespace llarp
 
   template <>
   inline void
-  Printer::printOrNull<const void*>(string_view name, const void* const& address) const
+  Printer::printOrNull<const void*>(std::string_view name, const void* const& address) const
   {
     assert(!name.empty());
     printIndent();
@@ -397,7 +397,7 @@ namespace llarp
   }
   template <>
   inline void
-  Printer::printOrNull<void*>(string_view name, void* const& address) const
+  Printer::printOrNull<void*>(std::string_view name, void* const& address) const
   {
     const void* const& temp = address;
 

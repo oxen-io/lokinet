@@ -941,7 +941,7 @@ namespace llarp
 
     bool
     Endpoint::OnLookup(
-        const Address& addr, nonstd::optional<IntroSet> introset, const RouterID& endpoint)
+        const Address& addr, std::optional<IntroSet> introset, const RouterID& endpoint)
     {
       const auto now = Router()->Now();
       auto& fails = m_state->m_ServiceLookupFails;

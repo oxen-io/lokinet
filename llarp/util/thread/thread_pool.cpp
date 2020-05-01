@@ -153,7 +153,7 @@ namespace llarp
       }
     }
 
-    ThreadPool::ThreadPool(size_t numThreads, size_t maxJobs, string_view name)
+    ThreadPool::ThreadPool(size_t numThreads, size_t maxJobs, std::string_view name)
         : m_queue(maxJobs)
         , m_semaphore(0)
         , m_idleThreads(0)

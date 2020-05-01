@@ -1,7 +1,7 @@
 #ifndef LLARP_UTIL_LOG_LEVEL_HPP
 #define LLARP_UTIL_LOG_LEVEL_HPP
 #include <string>
-#include <nonstd/optional.hpp>
+#include <optional>
 
 namespace llarp
 {
@@ -22,7 +22,7 @@ namespace llarp
   std::string
   LogLevelToName(LogLevel lvl);
 
-  nonstd::optional<LogLevel>
+  std::optional<LogLevel>
   LogLevelFromString(std::string level);
 
 }  // namespace llarp

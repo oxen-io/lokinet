@@ -59,7 +59,7 @@ namespace llarp
   }
 
   void
-  Printer::printHexAddr(string_view name, const void* address) const
+  Printer::printHexAddr(std::string_view name, const void* address) const
   {
     printIndent();
     m_stream << name << " = ";
@@ -182,7 +182,7 @@ namespace llarp
   void
   PrintHelper::printType(
       std::ostream& stream,
-      const string_view& value,
+      const std::string_view& value,
       int,
       int spacesPerLevel,
       traits::select::Case<traits::is_container>)

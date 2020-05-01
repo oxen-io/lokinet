@@ -334,7 +334,7 @@ namespace llarp
     Close();
 
     bool
-    LoadHiddenServiceConfig(string_view fname);
+    LoadHiddenServiceConfig(std::string_view fname);
 
     bool
     AddHiddenService(const service::Config::section_t& config);

@@ -85,7 +85,7 @@ namespace llarp
 
     bool
     OutboundContext::OnIntroSetUpdate(
-        const Address&, nonstd::optional<IntroSet> foundIntro, const RouterID& endpoint)
+        const Address&, std::optional<IntroSet> foundIntro, const RouterID& endpoint)
     {
       if (markedBad)
         return true;

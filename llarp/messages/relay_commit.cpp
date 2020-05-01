@@ -16,7 +16,7 @@
 #include <tooling/path_event.hpp>
 
 #include <functional>
-#include <nonstd/optional.hpp>
+#include <optional>
 
 namespace llarp
 {
@@ -185,7 +185,7 @@ namespace llarp
     // the actual hop
     std::shared_ptr<Hop> hop;
 
-    const nonstd::optional<llarp::Addr> fromAddr;
+    const std::optional<llarp::Addr> fromAddr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec, const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
@@ -194,7 +194,7 @@ namespace llarp
         , hop(std::make_shared<Hop>())
         , fromAddr(
               commit->session->GetRemoteRC().IsPublicRouter()
-                  ? nonstd::optional<llarp::Addr>{}
+                  ? std::optional<llarp::Addr>{}
                   : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();

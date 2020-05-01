@@ -4,7 +4,6 @@
 #include <dns/message.hpp>
 #include <ev/ev.h>
 #include <net/net.hpp>
-#include <util/string_view.hpp>
 #include <util/thread/logic.hpp>
 
 #include <unordered_map>

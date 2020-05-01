@@ -46,7 +46,7 @@ namespace llarp
     }
   }
 
-  nonstd::optional<LogLevel>
+  std::optional<LogLevel>
   LogLevelFromString(std::string level)
   {
     std::transform(level.begin(), level.end(), level.begin(), [](const unsigned char ch) -> char {
