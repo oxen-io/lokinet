@@ -255,8 +255,6 @@ namespace llarp
       if (ifname.empty())
         ifname = FindFreeTun();
 
-      LogWarn("ifname @ TunEndpoint: ", ifname);
-
       if (tunif)
       {
         if (ifname.length() >= sizeof(tunif->ifname))
@@ -271,8 +269,6 @@ namespace llarp
       std::string ifaddr = conf.m_ifaddr;
       if (ifaddr.empty())
         ifaddr = FindFreeRange();
-
-      LogWarn("ifaddr @ TunEndpoint: ", ifaddr);
 
       if (tunif)
       {

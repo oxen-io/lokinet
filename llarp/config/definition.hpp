@@ -224,7 +224,6 @@ namespace llarp
       {
         if (multiValued)
         {
-          std::cout << name << " has " << parsedValues.size() << " parsedValues" << std::endl;
           for (const auto& value : parsedValues)
           {
             acceptor(value);
@@ -232,7 +231,6 @@ namespace llarp
         }
         else
         {
-          std::cout << name << " is NOT multi-valued" << std::endl;
           auto maybe = getValue();
           if (maybe.has_value())
           {
