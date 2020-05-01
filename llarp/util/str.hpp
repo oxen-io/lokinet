@@ -45,7 +45,9 @@ namespace llarp
 
   // Shortcut for explicitly casting a string_view to a string.  Saves 8 characters compared to
   // `std::string(view)`.
-  inline std::string str(std::string_view s) {
+  inline std::string
+  str(std::string_view s)
+  {
     return std::string{s};
   }
 

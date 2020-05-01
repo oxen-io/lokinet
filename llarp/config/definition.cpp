@@ -48,7 +48,8 @@ namespace llarp
   }
 
   ConfigDefinition&
-  ConfigDefinition::addConfigValue(std::string_view section, std::string_view name, std::string_view value)
+  ConfigDefinition::addConfigValue(
+      std::string_view section, std::string_view name, std::string_view value)
   {
     // see if we have an undeclared handler to fall back to in case section or section:name is
     // absent

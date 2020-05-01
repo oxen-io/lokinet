@@ -103,8 +103,7 @@ namespace abyss
       bool
       ShouldProcessHeader(std::string_view name) const
       {
-        return name == "content-length"sv
-            || name == "content-type"sv
+        return name == "content-length"sv || name == "content-type"sv
             || name == "www-authenticate"sv;
       }
 
