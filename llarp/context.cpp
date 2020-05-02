@@ -51,7 +51,7 @@ namespace llarp
       jobQueueSize = 1024;
     logic = std::make_shared<Logic>(jobQueueSize);
 
-    nodedb_dir = config->router.m_dataDir / nodedb_dirname;
+    nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
 
     return true;
   }

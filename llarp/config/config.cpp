@@ -72,7 +72,7 @@ namespace llarp
     conf.defineOption<std::string>("router", "nickname", false, "", AssignmentAcceptor(m_nickname));
 
     conf.defineOption<std::string>(
-        "router", "data-dir", false, GetDefaultDataDir(), [this](std::string arg) {
+        "router", "data-dir", false, GetDefaultDataDir().string(), [this](std::string arg) {
           fs::path dir = arg;
           if (not fs::exists(dir))
             throw std::runtime_error(
