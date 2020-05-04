@@ -109,8 +109,8 @@ namespace llarp
     {
       if (conf.m_reachable)
       {
-          m_PublishIntroSet = true;
-          LogInfo(Name(), " setting to be reachable by default");
+        m_PublishIntroSet = true;
+        LogInfo(Name(), " setting to be reachable by default");
       }
       else
       {
@@ -252,9 +252,6 @@ namespace llarp
       }
 
       std::string ifname = conf.m_ifname;
-      if (ifname.empty())
-        ifname = FindFreeTun();
-
       if (tunif)
       {
         if (ifname.length() >= sizeof(tunif->ifname))
@@ -267,9 +264,6 @@ namespace llarp
       }
 
       std::string ifaddr = conf.m_ifaddr;
-      if (ifaddr.empty())
-        ifaddr = FindFreeRange();
-
       if (tunif)
       {
         std::string addr;

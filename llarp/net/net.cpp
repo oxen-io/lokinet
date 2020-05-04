@@ -344,10 +344,13 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 #else
   if (!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
   {
-    sockaddr_in* lo = (sockaddr_in*)addr;
-    lo->sin_family = af;
-    lo->sin_port = 0;
-    inet_pton(af, "127.0.0.1", &lo->sin_addr);
+    if (addr)
+    {
+      sockaddr_in* lo = (sockaddr_in*)addr;
+      lo->sin_family = af;
+      lo->sin_port = 0;
+      inet_pton(af, "127.0.0.1", &lo->sin_addr);
+    }
     return true;
   }
   if (!getifaddrs(&ifa))
@@ -367,13 +370,16 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
         // if(!a.isPrivate())
         //{
         // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
-        memcpy(addr, i->ifa_addr, sl);
-        if (af == AF_INET6)
+        if (addr)
         {
-          // set scope id
-          auto* ip6addr = (sockaddr_in6*)addr;
-          ip6addr->sin6_scope_id = if_nametoindex(ifname);
-          ip6addr->sin6_flowinfo = 0;
+          memcpy(addr, i->ifa_addr, sl);
+          if (af == AF_INET6)
+          {
+            // set scope id
+            auto* ip6addr = (sockaddr_in6*)addr;
+            ip6addr->sin6_scope_id = if_nametoindex(ifname);
+            ip6addr->sin6_flowinfo = 0;
+          }
         }
         found = true;
         break;
@@ -436,7 +442,7 @@ namespace llarp
   }
 
   // TODO: ipv6?
-  std::string
+  std::optional<std::string>
   FindFreeRange()
   {
     std::vector<IPRange> currentRanges;
@@ -505,43 +511,26 @@ namespace llarp
         return loaddr.ToString() + "/24";
       ++oct;
     }
-    LogError(
-        "cannot autodetect any free ip ranges on your system for use, please "
-        "configure this manually");
-    return "";
+    return std::nullopt;
   }
 
-  std::string
+  std::optional<std::string>
   FindFreeTun()
   {
-    uint8_t num = 0;
+    int num = 0;
     while (num < 255)
     {
       std::stringstream ifname_ss;
       ifname_ss << "lokitun" << num;
       std::string iftestname = ifname_ss.str();
-      struct sockaddr addr;
-      bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
+      bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, nullptr);
       if (!found)
       {
-        llarp::LogDebug("Detected " + iftestname + " is available for use, configuring as such");
-        break;
+        return iftestname;
       }
       num++;
     }
-    if (num == 255)
-    {
-      llarp::LogError("Could not find any free lokitun interface names");
-      return "";
-    }
-// include lokitun prefix to communicate result is valid
-#if defined(ANDROID) || defined(RPI)
-    char buff[IFNAMSIZ + 1] = {0};
-    snprintf(buff, sizeof(buff), "lokitun%u", num);
-    return buff;
-#else
-    return "lokitun" + std::to_string(num);
-#endif
+    return std::nullopt;
   }
 
   bool

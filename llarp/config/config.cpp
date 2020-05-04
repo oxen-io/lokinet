@@ -195,10 +195,27 @@ namespace llarp
       m_mapAddr = arg;
     });
 
-    conf.defineOption<std::string>(
-        "network", "ifaddr", false, "", [this](std::string arg) { m_ifaddr = arg; });
-    conf.defineOption<std::string>(
-        "network", "ifname", false, "", [this](std::string arg) { m_ifname = arg; });
+    conf.defineOption<std::string>("network", "ifaddr", false, "", [this](std::string arg) {
+      if (arg.empty())
+      {
+        const auto maybe = llarp::FindFreeRange();
+        if (not maybe.has_value())
+          throw std::invalid_argument("cannot determine free ip range");
+        arg = maybe.value();
+      }
+      m_ifaddr = arg;
+    });
+
+    conf.defineOption<std::string>("network", "ifname", false, "", [this](std::string arg) {
+      if (arg.empty())
+      {
+        const auto maybe = llarp::FindFreeTun();
+        if (not maybe.has_value())
+          throw std::invalid_argument("cannot determine free interface name");
+        arg = maybe.value();
+      }
+      m_ifname = arg;
+    });
 
     conf.defineOption<std::string>(
         "network", "blacklist-snode", false, true, "", [this](std::string arg) {
