@@ -125,7 +125,7 @@ namespace llarp
       else if (not required and not multiValued)
         return defaultValue;
       else
-        return nonstd::nullopt;
+        return std::nullopt;
     }
 
     /// Returns the value at the given index.
