@@ -421,6 +421,8 @@ namespace llarp
       m_isServiceNode = true;
     }
 
+    networkConfig = conf->network;
+
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
     //        or not?
