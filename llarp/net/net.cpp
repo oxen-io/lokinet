@@ -533,15 +533,14 @@ namespace llarp
     return std::nullopt;
   }
 
-  bool
-  GetIFAddr(const std::string& ifname, Addr& addr, int af)
+  std::optional<llarp::Addr>
+  GetIFAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
-    auto* sptr = (sockaddr*)&s;
+    sockaddr* sptr = (sockaddr*)&s;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
-      return false;
-    addr = *sptr;
-    return true;
+      return std::nullopt;
+    return llarp::Addr{*sptr};
   }
 
   bool

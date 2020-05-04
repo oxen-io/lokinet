@@ -14,6 +14,8 @@
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
+#include <util/str.hpp>
+
 namespace llarp
 {
   Addr::Addr()
@@ -58,11 +60,14 @@ namespace llarp
 
   Addr::Addr(std::string_view str) : Addr()
   {
-    this->FromString(str);
+    if (not FromString(str))
+      throw std::invalid_argument(stringify("failed to parse bullshit value: ", str));
   }
 
-  Addr::Addr(std::string_view str, const uint16_t p_port) : Addr(str)
+  Addr::Addr(std::string_view str, const uint16_t p_port) : Addr()
   {
+    if (not FromString(str))
+      throw std::invalid_argument(stringify("failed to parse bullshit value: ", str));
     this->port(p_port);
   }
 
@@ -271,7 +276,7 @@ namespace llarp
         break;
       // TODO : sockaddr_ll
       default:
-        break;
+        throw std::invalid_argument("bad address family");
     }
   }
 

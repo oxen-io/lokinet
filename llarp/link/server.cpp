@@ -123,8 +123,19 @@ namespace llarp
       if (!AllInterfaces(af, m_ourAddr))
         return false;
     }
-    else if (!GetIFAddr(ifname, m_ourAddr, af))
-      m_ourAddr = Addr(ifname);
+    else
+    {
+      const auto maybe = GetIFAddr(ifname, af);
+      if (maybe.has_value())
+      {
+        m_ourAddr = maybe.value();
+      }
+      else
+      {
+        if (not m_ourAddr.FromString(ifname))
+          throw std::invalid_argument(stringify("cannot parse network address: ", ifname));
+      }
+    }
     m_ourAddr.port(port);
     return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr) != -1;
   }

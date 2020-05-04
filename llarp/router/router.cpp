@@ -848,14 +848,10 @@ namespace llarp
         rpcBindAddr = DefaultRPCBindAddr;
       }
       rpcServer = std::make_unique<rpc::Server>(this);
-      while (!rpcServer->Start(rpcBindAddr))
+      if (not rpcServer->Start(rpcBindAddr))
       {
         LogError("failed to bind jsonrpc to ", rpcBindAddr);
-#if defined(ANDROID) || defined(RPI)
-        sleep(1);
-#else
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-#endif
+        return false;
       }
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
@@ -873,14 +869,10 @@ namespace llarp
     {
       rpcCaller = std::make_unique<rpc::Caller>(this);
       rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
-      while (!rpcCaller->Start(lokidRPCAddr))
+      if (not rpcCaller->Start(lokidRPCAddr))
       {
-        LogError("failed to start jsonrpc caller to ", lokidRPCAddr);
-#if defined(ANDROID) || defined(RPI)
-        sleep(1);
-#else
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-#endif
+        LogError("RPC Caller to ", lokidRPCAddr, " failed to start");
+        return false;
       }
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
@@ -901,11 +893,6 @@ namespace llarp
 
     Addr publicAddr(this->addrInfo);
 
-    if (this->publicOverride)
-    {
-      LogDebug("public address:port ", publicAddr);
-    }
-
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
     // set router version if service node
@@ -914,8 +901,8 @@ namespace llarp
       _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
     }
 
-    AddressInfo ai;
     _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
+      AddressInfo ai;
       if (link->GetOurAddressInfo(ai))
       {
         // override ip and port
@@ -926,6 +913,7 @@ namespace llarp
         }
         if (RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
+        LogInfo("adding address: ", ai);
         _rc.addrs.push_back(ai);
         if (ExitEnabled())
         {

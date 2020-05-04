@@ -100,7 +100,6 @@ namespace llarp
       if (arg <= 0)
         throw std::invalid_argument("public-port must be > 0");
 
-      // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
       m_ip4addr.sin_port = arg;
       m_addrInfo.port = arg;
       m_publicOverride = true;
