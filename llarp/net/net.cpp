@@ -578,7 +578,12 @@ namespace llarp
     return false;
 #else
     if (!ipv6_is_siit(addr))
+    {
+      static in6_addr zero = {};
+      if (addr == zero)
+        return true;
       return false;
+    }
     return IsIPv4Bogon(
         ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13], addr.s6_addr[14], addr.s6_addr[15]));
 #endif
