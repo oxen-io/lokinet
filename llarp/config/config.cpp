@@ -214,7 +214,7 @@ namespace llarp
 
     auto parseAddr = [](std::string input) {
       Addr addr;
-      bool success = addr.from_char_array(input);
+      bool success = addr.FromString(input);
       if (not success)
         throw std::invalid_argument(stringify(input, " is not a valid address"));
 
