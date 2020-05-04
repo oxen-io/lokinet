@@ -62,7 +62,7 @@ namespace llarp
     {
       // fallback to undeclared handler if available
       if (not haveUndeclaredHandler)
-        throw std::invalid_argument(stringify("no declared section [", section, "]"));
+        throw std::invalid_argument(stringify("unrecognized section [", section, "]"));
       else
       {
         auto& handler = undItr->second;
@@ -78,7 +78,7 @@ namespace llarp
     if (defItr == sectionDefinitions.end())
     {
       if (not haveUndeclaredHandler)
-        throw std::invalid_argument(stringify("no declared option [", section, "]:", name));
+        throw std::invalid_argument(stringify("unrecognized option [", section, "]:", name));
       else
       {
         auto& handler = undItr->second;
