@@ -71,14 +71,13 @@ namespace llarp
 
     conf.defineOption<std::string>("router", "nickname", false, "", AssignmentAcceptor(m_nickname));
 
-    conf.defineOption<std::string>(
-        "router", "data-dir", false, GetDefaultDataDir(), [this](std::string arg) {
-          fs::path dir = arg;
-          if (not fs::exists(dir))
+    conf.defineOption<fs::path>(
+        "router", "data-dir", false, params.defaultDataDir, [this](fs::path arg) {
+          if (not fs::exists(arg))
             throw std::runtime_error(
                 stringify("Specified [router]:data-dir ", arg, " does not exist"));
 
-          m_dataDir = std::move(dir);
+          m_dataDir = std::move(arg);
         });
 
     conf.defineOption<std::string>("router", "public-address", false, "", [this](std::string arg) {
@@ -101,7 +100,6 @@ namespace llarp
       if (arg <= 0)
         throw std::invalid_argument("public-port must be > 0");
 
-      // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
       m_ip4addr.sin_port = arg;
       m_addrInfo.port = arg;
       m_publicOverride = true;
@@ -195,16 +193,33 @@ namespace llarp
       m_mapAddr = arg;
     });
 
-    conf.defineOption<std::string>(
-        "network", "ifaddr", false, "", [this](std::string arg) { m_ifaddr = arg; });
-    conf.defineOption<std::string>(
-        "network", "ifname", false, "", [this](std::string arg) { m_ifname = arg; });
+    conf.defineOption<std::string>("network", "ifaddr", false, "", [this](std::string arg) {
+      if (arg.empty())
+      {
+        const auto maybe = llarp::FindFreeRange();
+        if (not maybe.has_value())
+          throw std::invalid_argument("cannot determine free ip range");
+        arg = maybe.value();
+      }
+      m_ifaddr = arg;
+    });
+
+    conf.defineOption<std::string>("network", "ifname", false, "", [this](std::string arg) {
+      if (arg.empty())
+      {
+        const auto maybe = llarp::FindFreeTun();
+        if (not maybe.has_value())
+          throw std::invalid_argument("cannot determine free interface name");
+        arg = maybe.value();
+      }
+      m_ifname = arg;
+    });
 
     conf.defineOption<std::string>(
         "network", "blacklist-snode", false, true, "", [this](std::string arg) {
           RouterID id;
           if (not id.FromString(arg))
-            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
+            throw std::invalid_argument(stringify("Invalid RouterID: ", arg));
 
           auto itr = m_snodeBlacklist.emplace(std::move(id));
           if (itr.second)
@@ -509,6 +524,8 @@ namespace llarp
     addIgnoreOption("router", "threads");
 
     addIgnoreOption("metrics", "json-metrics-path");
+
+    addIgnoreOption("network", "enabled");
   }
 
   void

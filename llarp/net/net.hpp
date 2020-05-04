@@ -168,16 +168,16 @@ namespace llarp
   GetBestNetIF(std::string& ifname, int af = AF_INET);
 
   /// look at adapter ranges and find a free one
-  std::string
+  std::optional<std::string>
   FindFreeRange();
 
   /// look at adapter names and find a free one
-  std::string
+  std::optional<std::string>
   FindFreeTun();
 
   /// get network interface address for network interface with ifname
-  bool
-  GetIFAddr(const std::string& ifname, Addr& addr, int af = AF_INET);
+  std::optional<llarp::Addr>
+  GetIFAddr(const std::string& ifname, int af = AF_INET);
 
 }  // namespace llarp
 

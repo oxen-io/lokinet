@@ -215,7 +215,8 @@ namespace llarp
   {
     config = std::make_unique<Config>();
     configfile = fname;
-    return Configure(isRelay, {});
+    const fs::path filepath(fname);
+    return Configure(isRelay, filepath.parent_path());
   }
 
 #ifdef LOKINET_HIVE
@@ -305,7 +306,8 @@ extern "C"
   llarp_config_load_file(const char* fname, struct llarp_config** conf, bool isRelay)
   {
     llarp_config* c = new llarp_config();
-    if (c->impl.Load(fname, isRelay, {}))
+    const fs::path filepath(fname);
+    if (c->impl.Load(fname, isRelay, filepath.parent_path()))
     {
       *conf = c;
       return true;
