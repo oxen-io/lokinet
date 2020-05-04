@@ -573,8 +573,10 @@ namespace llarp
     // API config
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
-
-    hiddenServiceContext().AddEndpoint(*conf);
+    if (not IsServiceNode())
+    {
+      hiddenServiceContext().AddEndpoint(*conf);
+    }
 
     // Logging config
     LogContext::Instance().Initialize(
