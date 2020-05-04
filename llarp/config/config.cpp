@@ -1,3 +1,4 @@
+#include <chrono>
 #include <config/config.hpp>
 
 #include <config/ini.hpp>
@@ -10,7 +11,6 @@
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
-#include <util/lokinet_init.h>
 
 #include <cstdlib>
 #include <fstream>
@@ -144,6 +144,9 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultProfilingValue = true;
+    static constexpr bool ReachableDefault = false;
+    static constexpr int HopsDefault = 4;
+    static constexpr int PathsDefault = 6;
 
     conf.defineOption<bool>(
         "network",
@@ -163,11 +166,44 @@ namespace llarp
     conf.defineOption<std::string>(
         "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
 
-    // TODO: make sure this is documented... what does it mean though?
-    conf.addUndeclaredHandler(
-        "network", [&](std::string_view, std::string_view name, std::string_view value) {
-          m_options.emplace(name, value);
-          return true;
+    conf.defineOption<std::string>(
+        "network", "keyfile", false, "", [this](std::string arg) { m_keyfile = arg; });
+
+    conf.defineOption<bool>(
+        "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
+
+    conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
+    });
+
+    conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
+      if (arg < 1 or arg > 8)
+        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+    });
+
+#ifdef LOKINET_EXITS
+    conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
+      // TODO: validate as valid .loki / .snode address
+      //       probably not .snode...?
+      m_exitNode = arg;
+    });
+#endif
+
+    conf.defineOption<std::string>("network", "mapaddr", false, "", [this](std::string arg) {
+      // TODO: parse / validate as loki_addr : IP addr pair
+      m_mapAddr = arg;
+    });
+
+    conf.defineOption<std::string>(
+        "network", "blacklist-snode", false, true, "", [this](std::string arg) {
+          RouterID id;
+          if (not id.FromString(arg))
+            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
+
+          auto itr = m_snodeBlacklist.emplace(std::move(id));
+          if (itr.second)
+            throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
         });
   }
 
@@ -176,27 +212,26 @@ namespace llarp
   {
     (void)params;
 
-    // TODO: make sure this is documented
-    // TODO: refactor to remove freehand options map
-    conf.defineOption<std::string>("dns", "upstream", false, true, "", [this](std::string arg) {
-      m_options.emplace("upstream", std::move(arg));
-    });
+    auto parseAddr = [](std::string input) {
+      Addr addr;
+      bool success = addr.FromString(input);
+      if (not success)
+        throw std::invalid_argument(stringify(input, " is not a valid address"));
 
-    // TODO: the m_options is fixed in another branch/PR, this will conflict when merged
-    //       you're welcome
+      // default port if it wasn't specified
+      if (input.find(":") == std::string::npos)
+        addr.port(53);
 
-    // TODO: make sure this is documented
-    conf.defineOption<std::string>("dns", "local-dns", false, true, "", [this](std::string arg) {
-      m_options.emplace("local-dns", arg);
-      m_options.emplace("bind", arg);
-    });
+      return addr;
+    };
 
-    // TODO: we'll only support "bind" going forward, for now make sure bind and local-dns are
-    //       equivalent
-    conf.defineOption<std::string>("dns", "bind", false, true, "", [this](std::string arg) {
-      m_options.emplace("local-dns", arg);
-      m_options.emplace("bind", arg);
-    });
+    conf.defineOption<std::string>(
+        "dns", "upstream", false, true, nonstd::nullopt, [=](std::string arg) {
+          m_upstreamDNS.push_back(parseAddr(arg));
+        });
+
+    conf.defineOption<std::string>(
+        "dns", "bind", false, nonstd::nullopt, [=](std::string arg) { m_bind = parseAddr(arg); });
   }
 
   LinksConfig::LinkInfo
@@ -270,20 +305,6 @@ namespace llarp
                 " does not exist"));
 
           routers.emplace_back(std::move(file));
-          return true;
-        });
-  }
-
-  void
-  ServicesConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    conf.addUndeclaredHandler(
-        "services",
-        [this](std::string_view section, std::string_view name, std::string_view value) {
-          (void)section;
-          services.emplace_back(name, value);
           return true;
         });
   }
@@ -379,65 +400,6 @@ namespace llarp
         "logging", "file", false, DefaultLogFile, AssignmentAcceptor(m_logFile));
   }
 
-  void
-  SnappConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
-  {
-    (void)params;
-
-    static constexpr bool ReachableDefault = true;
-    static constexpr int HopsDefault = 4;
-    static constexpr int PathsDefault = 6;
-
-    conf.defineOption<std::string>("snapp", "keyfile", false, "", [this](std::string arg) {
-      // TODO: validate as valid .loki / .snode address
-      m_keyfile = arg;
-    });
-
-    conf.defineOption<bool>(
-        "snapp", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
-
-    conf.defineOption<int>("snapp", "hops", false, HopsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[snapp]:hops must be >= 1 and <= 8");
-    });
-
-    conf.defineOption<int>("snapp", "paths", false, PathsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[snapp]:paths must be >= 1 and <= 8");
-    });
-
-    conf.defineOption<std::string>("snapp", "exit-node", false, "", [this](std::string arg) {
-      // TODO: validate as valid .loki / .snode address
-      m_exitNode = arg;
-    });
-
-    conf.defineOption<std::string>("snapp", "local-dns", false, "", [this](std::string arg) {
-      // TODO: validate as IP address
-      m_localDNS = arg;
-    });
-
-    conf.defineOption<std::string>("snapp", "upstream-dns", false, "", [this](std::string arg) {
-      // TODO: validate as IP address
-      m_upstreamDNS = arg;
-    });
-
-    conf.defineOption<std::string>("snapp", "mapaddr", false, "", [this](std::string arg) {
-      // TODO: parse / validate as loki_addr : IP addr pair
-      m_mapAddr = arg;
-    });
-
-    conf.addUndeclaredHandler(
-        "snapp", [&](std::string_view, std::string_view name, std::string_view value) {
-          if (name == "blacklist-snode")
-          {
-            m_snodeBlacklist.push_back(str(value));
-            return true;
-          }
-
-          return false;
-        });
-  }
-
   bool
   Config::Load(const char* fname, bool isRelay, fs::path defaultDataDir)
   {
@@ -505,17 +467,11 @@ namespace llarp
   void
   Config::initializeConfig(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    // TODO: this seems like a random place to put this, should this be closer
-    //       to main() ?
-    if (Lokinet_INIT())
-      throw std::runtime_error("Can't initializeConfig() when Lokinet_INIT() == true");
-
     router.defineConfigOptions(conf, params);
     network.defineConfigOptions(conf, params);
     connect.defineConfigOptions(conf, params);
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
-    services.defineConfigOptions(conf, params);
     api.defineConfigOptions(conf, params);
     lokid.defineConfigOptions(conf, params);
     bootstrap.defineConfigOptions(conf, params);
@@ -702,9 +658,9 @@ namespace llarp
 
     def.addOptionComments(
         "dns",
-        "upstream",
+        "upstream-dns",
         {
-            "Upstream resolver to use as fallback for non-loki addresses.",
+            "Upstream resolver(s) to use as fallback for non-loki addresses.",
             "Multiple values accepted.",
         });
 
@@ -787,15 +743,14 @@ namespace llarp
     initializeConfig(def, params);
     generateCommonConfigComments(def);
 
-    // snapp
     def.addSectionComments(
-        "snapp",
+        "network",
         {
             "Snapp settings",
         });
 
     def.addOptionComments(
-        "snapp",
+        "network",
         "keyfile",
         {
             "The private key to persist address with. If not specified the address will be",
@@ -804,60 +759,44 @@ namespace llarp
 
     // TODO: is this redundant with / should be merged with basic client config?
     def.addOptionComments(
-        "snapp",
+        "network",
         "reachable",
         {
             "Determines whether we will publish our snapp's introset to the DHT.",
         });
 
-    // TODO: merge with client conf?
     def.addOptionComments(
-        "snapp",
+        "network",
         "hops",
         {
             "Number of hops in a path. Min 1, max 8.",
         });
 
-    // TODO: is this actually different than client's paths min/max config?
     def.addOptionComments(
-        "snapp",
+        "network",
         "paths",
         {
             "Number of paths to maintain at any given time.",
         });
 
     def.addOptionComments(
-        "snapp",
+        "network",
         "blacklist-snode",
         {
             "Adds a `.snode` address to the blacklist.",
         });
 
+#ifdef LOKINET_EXITS
     def.addOptionComments(
-        "snapp",
+        "network",
         "exit-node",
         {
             "Specify a `.snode` or `.loki` address to use as an exit broker.",
         });
-
-    // TODO: merge with client conf?
-    def.addOptionComments(
-        "snapp",
-        "local-dns",
-        {
-            "Address to bind local DNS resolver to. Ex: `127.3.2.1:53`. Iif port is omitted, port",
-        });
+#endif
 
     def.addOptionComments(
-        "snapp",
-        "upstream-dns",
-        {
-            "Address to forward non-lokinet related queries to. If not set, lokinet DNS will reply",
-            "with `srvfail`.",
-        });
-
-    def.addOptionComments(
-        "snapp",
+        "network",
         "mapaddr",
         {
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",

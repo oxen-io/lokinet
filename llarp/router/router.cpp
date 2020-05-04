@@ -421,36 +421,25 @@ namespace llarp
       m_isServiceNode = true;
     }
 
+    /// build a set of  strictConnectPubkeys (
+    /// TODO: make this consistent with config -- do we support multiple strict connections
+    //        or not?
     std::set<RouterID> strictConnectPubkeys;
-
-    if (!conf->network.m_strictConnect.empty())
+    if (not networkConfig.m_strictConnect.empty())
     {
-      const auto& val = conf->network.m_strictConnect;
+      const auto& val = networkConfig.m_strictConnect;
       if (IsServiceNode())
-      {
         throw std::runtime_error("cannot use strict-connect option as service node");
-      }
+
+      // try as a RouterID and as a PubKey, convert to RouterID if needed
       llarp::RouterID snode;
       llarp::PubKey pk;
       if (pk.FromString(val))
-      {
-        if (strictConnectPubkeys.emplace(pk).second)
-          llarp::LogInfo("added ", pk, " to strict connect list");
-        else
-          llarp::LogWarn("duplicate key for strict connect: ", pk);
-      }
+        strictConnectPubkeys.emplace(pk);
       else if (snode.FromString(val))
-      {
-        if (strictConnectPubkeys.insert(snode).second)
-        {
-          llarp::LogInfo("added ", snode, " to strict connect list");
-          netConfig.emplace("strict-connect", val);
-        }
-        else
-          llarp::LogWarn("duplicate key for strict connect: ", snode);
-      }
+        strictConnectPubkeys.insert(snode);
       else
-        llarp::LogError("invalid key for strict-connect: ", val);
+        throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
     }
 
     std::vector<fs::path> configRouters = conf->connect.routers;
@@ -583,18 +572,7 @@ namespace llarp
     enableRPCServer = conf->api.m_enableRPCServer;
     rpcBindAddr = conf->api.m_rpcBindAddr;
 
-    // Services config
-    for (const auto& service : conf->services.services)
-    {
-      if (LoadHiddenServiceConfig(service.second))
-      {
-        llarp::LogInfo("loaded hidden service config for ", service.first);
-      }
-      else
-      {
-        llarp::LogWarn("failed to load hidden service config for ", service.first);
-      }
-    }
+    hiddenServiceContext().AddEndpoint(*conf);
 
     // Logging config
     LogContext::Instance().Initialize(
@@ -603,10 +581,6 @@ namespace llarp
         conf->logging.m_logFile,
         conf->router.m_nickname,
         diskworker());
-
-    // TODO: clean this up. it appears that we're dumping the [dns] "options" into the
-    //       [network] "options"
-    conf->network.m_options.insert(conf->dns.m_options.begin(), conf->dns.m_options.end());
 
     return true;
   }
@@ -857,29 +831,6 @@ namespace llarp
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
 
-  /// this function ensure there are sane defualts in a net config
-  static void
-  EnsureNetConfigDefaultsSane(std::unordered_multimap<std::string, std::string>& netConfig)
-  {
-    static const std::unordered_map<std::string, std::function<std::string(void)>>
-        netConfigDefaults = {{"ifname", llarp::FindFreeTun},
-                             {"ifaddr", llarp::FindFreeRange},
-                             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
-    // populate with fallback defaults if values not present
-    auto itr = netConfigDefaults.begin();
-    while (itr != netConfigDefaults.end())
-    {
-      auto found = netConfig.find(itr->first);
-      if (found == netConfig.end() || found->second.empty())
-      {
-        auto val = itr->second();
-        if (!val.empty())
-          netConfig.emplace(itr->first, std::move(val));
-      }
-      ++itr;
-    }
-  }
-
   bool
   Router::StartJsonRpc()
   {
@@ -1004,8 +955,6 @@ namespace llarp
       return false;
     }
 
-    EnsureNetConfigDefaultsSane(netConfig);
-
     if (IsServiceNode())
     {
       // initialize as service node
@@ -1032,12 +981,6 @@ namespace llarp
       if (!_rc.Sign(identity()))
       {
         LogError("failed to regenerate keys and sign RC");
-        return false;
-      }
-
-      if (!CreateDefaultHiddenService())
-      {
-        LogError("failed to set up default network endpoint");
         return false;
       }
     }
@@ -1184,7 +1127,8 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    return _exitContext.AddExitEndpoint("default-connectivity", netConfig);
+    _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
+    return true;
   }
 
   bool
@@ -1249,31 +1193,6 @@ namespace llarp
     }
     throw std::runtime_error(
         stringify("Failed to init AF_INET and AF_INET6 on port ", m_OutboundPort));
-  }
-
-  bool
-  Router::CreateDefaultHiddenService()
-  {
-    // add endpoint
-    return hiddenServiceContext().AddDefaultEndpoint(netConfig);
-  }
-
-  bool
-  Router::LoadHiddenServiceConfig(std::string_view fname)
-  {
-    LogDebug("opening hidden service config ", fname);
-    service::Config conf;
-    if (!conf.Load(fname))
-      return false;
-    for (const auto& config : conf.services)
-    {
-      service::Config::section_t filteredConfig;
-      mergeHiddenServiceConfig(config.second, filteredConfig.second);
-      filteredConfig.first = config.first;
-      if (!hiddenServiceContext().AddEndpoint(filteredConfig))
-        return false;
-    }
-    return true;
   }
 
   void

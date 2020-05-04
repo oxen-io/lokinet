@@ -1,6 +1,7 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
 
+#include <chrono>
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/fs.hpp>
@@ -24,8 +25,6 @@ namespace llarp
   using Config_impl_t = llarp::ConfigParser::Config_impl_t;
 
   // TODO: don't use these maps. they're sloppy and difficult to follow
-  using FreehandOptions = std::unordered_multimap<std::string, std::string>;
-
   /// Small struct to gather all parameters needed for config generation to reduce the number of
   /// parameters that need to be passed around.
   struct ConfigGenParameters
@@ -69,7 +68,24 @@ namespace llarp
     std::optional<bool> m_enableProfiling;
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
-    FreehandOptions m_options;
+    std::string m_ifname;
+    std::string m_ifaddr;
+
+    std::string m_keyfile;
+    std::string m_endpointType;
+    bool m_reachable;
+    int m_hops;
+    int m_paths;
+    std::set<RouterID> m_snodeBlacklist;
+#ifdef LOKINET_EXITS
+    std::string m_exitNode;
+#endif
+    std::string m_mapAddr;
+
+    // TODO:
+    // on-up
+    // on-down
+    // on-ready
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -77,7 +93,8 @@ namespace llarp
 
   struct DnsConfig
   {
-    FreehandOptions m_options;
+    Addr m_bind;
+    std::vector<Addr> m_upstreamDNS;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -107,13 +124,6 @@ namespace llarp
   {
     std::vector<fs::path> routers;
 
-    void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
-  struct ServicesConfig
-  {
-    std::vector<std::pair<std::string, std::string>> services;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -157,22 +167,6 @@ namespace llarp
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
 
-  struct SnappConfig
-  {
-    std::string m_keyfile;
-    bool m_reachable;
-    int m_hops;
-    int m_paths;
-    std::vector<std::string> m_snodeBlacklist;
-    std::string m_exitNode;
-    std::string m_localDNS;
-    std::string m_upstreamDNS;
-    std::string m_mapAddr;
-
-    void
-    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
-  };
-
   struct Config
   {
     RouterConfig router;
@@ -180,7 +174,6 @@ namespace llarp
     ConnectConfig connect;
     DnsConfig dns;
     LinksConfig links;
-    ServicesConfig services;
     ApiConfig api;
     LokidConfig lokid;
     BootstrapConfig bootstrap;

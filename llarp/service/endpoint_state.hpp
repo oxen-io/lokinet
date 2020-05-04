@@ -52,7 +52,6 @@ namespace llarp
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
-      bool m_BundleRC = false;
 
       util::Mutex m_SendQueueMutex;  // protects m_SendQueue
       std::deque<SendEvent_t> m_SendQueue GUARDED_BY(m_SendQueueMutex);
@@ -74,17 +73,10 @@ namespace llarp
 
       llarp_time_t m_LastPublish = 0s;
       llarp_time_t m_LastPublishAttempt = 0s;
-      llarp_time_t m_MinPathLatency = 1s;
       /// our introset
       IntroSet m_IntroSet;
       /// pending remote service lookups by id
       PendingLookups m_PendingLookups;
-      /// prefetch remote address list
-      std::set<Address> m_PrefetchAddrs;
-      /// hidden service tag
-      Tag m_Tag;
-      /// prefetch descriptors for these hidden service tags
-      std::set<Tag> m_PrefetchTags;
       /// on initialize functions
       std::list<std::function<bool(void)>> m_OnInit;
 
@@ -98,7 +90,7 @@ namespace llarp
       util::DecayingHashSet<Address> m_RemoteLookupFilter;
 
       bool
-      SetOption(const std::string& k, const std::string& v, Endpoint& ep);
+      Configure(const NetworkConfig& conf);
 
       util::StatusObject
       ExtractStatus(util::StatusObject& obj) const;

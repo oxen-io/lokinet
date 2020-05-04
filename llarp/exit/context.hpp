@@ -13,8 +13,6 @@ namespace llarp
     /// owner of all the exit endpoints
     struct Context
     {
-      using Config_t = std::unordered_multimap<std::string, std::string>;
-
       Context(AbstractRouter* r);
       ~Context();
 
@@ -31,8 +29,9 @@ namespace llarp
       void
       Stop();
 
-      bool
-      AddExitEndpoint(const std::string& name, const Config_t& config);
+      void
+      AddExitEndpoint(
+          const std::string& name, const NetworkConfig& networkConfig, const DnsConfig& dnsConfig);
 
       bool
       ObtainNewExit(const PubKey& remote, const PathID_t& path, bool permitInternet);

@@ -524,9 +524,14 @@ namespace llarp
       return true;
     }
 
-    bool
-    ExitEndpoint::SetOption(const std::string& k, const std::string& v)
+    void
+    ExitEndpoint::Configure(const NetworkConfig& networkConfig, const DnsConfig& dnsConfig)
     {
+      /*
+       * TODO: pre-config refactor, this was checking a couple things that were extremely vague
+       *       these could have appeared on either [dns] or [network], but they weren't documented
+       *       anywhere
+       *
       if (k == "type" && v == "null")
       {
         m_ShouldInitTun = false;
@@ -537,89 +542,53 @@ namespace llarp
         m_PermitExit = IsTrueValue(v.c_str());
         return true;
       }
-      if (k == "local-dns")
-      {
-        std::string resolverAddr = v;
-        uint16_t dnsport = 53;
-        auto pos = v.find(":");
-        if (pos != std::string::npos)
-        {
-          resolverAddr = v.substr(0, pos);
-          dnsport = std::atoi(v.substr(pos + 1).c_str());
-        }
-        m_LocalResolverAddr = Addr(resolverAddr, dnsport);
-        LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
-      }
-      if (k == "upstream-dns")
-      {
-        std::string resolverAddr = v;
-        uint16_t dnsport = 53;
-        auto pos = v.find(":");
-        if (pos != std::string::npos)
-        {
-          resolverAddr = v.substr(0, pos);
-          dnsport = std::atoi(v.substr(pos + 1).c_str());
-        }
-        m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        LogInfo(Name(), " adding upstream dns set to ", resolverAddr, ":", dnsport);
-      }
-      if (k == "ifaddr")
-      {
-        if (!m_OurRange.FromString(v))
-        {
-          LogError(Name(), " has invalid address range: ", v);
-          return false;
-        }
-        auto pos = v.find("/");
-        if (pos == std::string::npos)
-        {
-          LogError(Name(), " ifaddr is not a cidr: ", v);
-          return false;
-        }
-        std::string nmask_str = v.substr(1 + pos);
-        std::string host_str = v.substr(0, pos);
-        // string, or just a plain char array?
-        strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
-        m_Tun.netmask = std::atoi(nmask_str.c_str());
-        m_IfAddr = m_OurRange.addr;
-        m_NextAddr = m_IfAddr;
-        m_HigestAddr = m_OurRange.HighestAddr();
-        LogInfo(
-            Name(),
-            " set ifaddr range to ",
-            m_Tun.ifaddr,
-            "/",
-            m_Tun.netmask,
-            " lo=",
-            m_IfAddr,
-            " hi=",
-            m_HigestAddr);
-        m_UseV6 = false;
-      }
-      if (k == "ifname")
-      {
-        if (v.length() >= sizeof(m_Tun.ifname))
-        {
-          LogError(Name() + " ifname '", v, "' is too long");
-          return false;
-        }
-        strncpy(m_Tun.ifname, v.c_str(), sizeof(m_Tun.ifname) - 1);
-        LogInfo(Name(), " set ifname to ", m_Tun.ifname);
-      }
-      if (k == "exit-whitelist")
-      {
-        // add exit policy whitelist rule
-        // TODO: implement me
-        return true;
-      }
-      if (k == "exit-blacklist")
-      {
-        // add exit policy blacklist rule
-        // TODO: implement me
-        return true;
-      }
+       */
 
-      return true;
+      m_LocalResolverAddr = dnsConfig.m_bind;
+      m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
+
+      if (!m_OurRange.FromString(networkConfig.m_ifaddr))
+      {
+        throw std::invalid_argument(
+            stringify(Name(), " has invalid address range: ", networkConfig.m_ifaddr));
+      }
+      // TODO: clean this up (make a util function for handling CIDR, etc.)
+      auto pos = networkConfig.m_ifaddr.find("/");
+      if (pos == std::string::npos)
+      {
+        throw std::invalid_argument(
+            stringify(Name(), " ifaddr is not a cidr: ", networkConfig.m_ifaddr));
+      }
+      std::string nmask_str = networkConfig.m_ifaddr.substr(1 + pos);
+      std::string host_str = networkConfig.m_ifaddr.substr(0, pos);
+      // string, or just a plain char array?
+      strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
+      m_Tun.netmask = std::atoi(nmask_str.c_str());
+      m_IfAddr = m_OurRange.addr;
+      m_NextAddr = m_IfAddr;
+      m_HigestAddr = m_OurRange.HighestAddr();
+      LogInfo(
+          Name(),
+          " set ifaddr range to ",
+          m_Tun.ifaddr,
+          "/",
+          m_Tun.netmask,
+          " lo=",
+          m_IfAddr,
+          " hi=",
+          m_HigestAddr);
+      m_UseV6 = false;
+
+      if (networkConfig.m_ifname.length() >= sizeof(m_Tun.ifname))
+      {
+        throw std::invalid_argument(
+            stringify(Name() + " ifname '", networkConfig.m_ifname, "' is too long"));
+      }
+      strncpy(m_Tun.ifname, networkConfig.m_ifname.c_str(), sizeof(m_Tun.ifname) - 1);
+      LogInfo(Name(), " set ifname to ", m_Tun.ifname);
+
+      // TODO: "exit-whitelist" and "exit-blacklist"
+      //       (which weren't originally implemented)
     }
 
     huint128_t

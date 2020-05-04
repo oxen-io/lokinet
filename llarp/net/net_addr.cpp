@@ -28,10 +28,7 @@ namespace llarp
   void
   Addr::port(uint16_t port)
   {
-    if (af() == AF_INET)
-    {
-      _addr4.sin_port = htons(port);
-    }
+    _addr4.sin_port = htons(port);
     _addr.sin6_port = htons(port);
   }
 
@@ -61,7 +58,7 @@ namespace llarp
 
   Addr::Addr(std::string_view str) : Addr()
   {
-    this->from_char_array(str);
+    this->FromString(str);
   }
 
   Addr::Addr(std::string_view str, const uint16_t p_port) : Addr(str)
@@ -75,17 +72,27 @@ namespace llarp
   }
 
   bool
-  Addr::from_char_array(std::string_view in)
+  Addr::FromString(std::string_view in)
   {
+    // TODO: this will overwrite port, which may not be specified in the input string
+    Zero(&_addr, sizeof(sockaddr_in6));
+
+    std::string ipPortion;
     auto pPosition = in.find(':');
     if (pPosition != std::string_view::npos)
     {
       // parse port
-      uint16_t port = std::atoi(std::string(in.begin() + pPosition + 1, in.end()).c_str());
-      LogDebug("Setting port ", std::to_string(port));
+      const std::string portStr = std::string(in.substr(pPosition + 1));
+      uint16_t port = std::atoi(portStr.c_str());
       this->port(port);
+
+      ipPortion = std::string(in.substr(0, pPosition));
     }
-    Zero(&_addr, sizeof(sockaddr_in6));
+    else
+    {
+      ipPortion = std::string(in);
+    }
+
     struct addrinfo hint, *res = nullptr;
     int ret;
 
@@ -123,7 +130,7 @@ namespace llarp
 
     // put it in _addr4
     struct in_addr* addr = &_addr4.sin_addr;
-    if (inet_aton(std::string(in).c_str(), addr) == 0)
+    if (inet_aton(ipPortion.c_str(), addr) == 0)
     {
       LogError("failed to parse ", in);
       return false;
@@ -131,7 +138,6 @@ namespace llarp
 
     _addr.sin6_family = res->ai_family;
     _addr4.sin_family = res->ai_family;
-    _addr4.sin_port = 0;  // save a call, 0 is 0 no matter how u arrange it
 #if ((__APPLE__ && __MACH__) || __FreeBSD__)
     _addr4.sin_len = sizeof(in_addr);
 #endif

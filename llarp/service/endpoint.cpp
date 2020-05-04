@@ -33,20 +33,25 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, AbstractRouter* r, Context* parent)
+    Endpoint::Endpoint(AbstractRouter* r, Context* parent)
         : path::Builder(r, 3, path::default_len), context(parent), m_RecvQueue(128)
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
-      m_state->m_Name = name;
-      m_state->m_Tag.Zero();
+      m_state->m_Name = "endpoint";
       m_RecvQueue.enable();
     }
 
     bool
-    Endpoint::SetOption(const std::string& k, const std::string& v)
+    Endpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
-      return m_state->SetOption(k, v, *this);
+      if (conf.m_paths > 0)
+        numPaths = conf.m_paths;
+
+      if (conf.m_hops)
+        numHops = conf.m_hops;
+
+      return m_state->Configure(std::move(conf));
     }
 
     llarp_ev_loop_ptr
@@ -100,7 +105,6 @@ namespace llarp
           ManualRebuild(1);
         return;
       }
-      introSet().topic = m_state->m_Tag;
       auto maybe = m_Identity.EncryptAndSignIntroSet(introSet(), now);
       if (not maybe.has_value())
       {
@@ -192,23 +196,6 @@ namespace llarp
       EndpointUtil::ExpirePendingTx(now, m_state->m_PendingLookups);
       // expire pending router lookups
       EndpointUtil::ExpirePendingRouterLookups(now, m_state->m_PendingRouters);
-
-      // prefetch addrs
-      for (const auto& addr : m_state->m_PrefetchAddrs)
-      {
-        EnsurePathToService(
-            addr,
-            [](Address, OutboundContext* ctx) {
-#ifdef LOKINET_HIVE
-              std::vector<byte_t> discard;
-              discard.resize(128);
-              ctx->AsyncEncryptAndSendTo(llarp_buffer_t(discard), eProtocolControl);
-#else
-              (void)ctx;
-#endif
-            },
-            10s);
-      }
 
       // deregister dead sessions
       EndpointUtil::DeregisterDeadSessions(now, m_state->m_DeadSessions);
@@ -400,6 +387,7 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
+      LogWarn("LoadKeyFile()");
       const auto& keyfile = m_state->m_Keyfile;
       if (!keyfile.empty())
       {
@@ -650,12 +638,6 @@ namespace llarp
     {
       return m_ExitMap.TransformValues<RouterID>(
           [](const exit::BaseSession_ptr& ptr) -> RouterID { return ptr->Endpoint(); });
-    }
-
-    bool
-    Endpoint::ShouldBundleRC() const
-    {
-      return m_state->m_BundleRC;
     }
 
     void

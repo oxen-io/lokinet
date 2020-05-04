@@ -178,7 +178,6 @@ set(LIB_SRC
   rpc/rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp
-  service/config.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
