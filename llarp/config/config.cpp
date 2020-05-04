@@ -196,6 +196,11 @@ namespace llarp
     });
 
     conf.defineOption<std::string>(
+        "network", "ifaddr", false, "", [this](std::string arg) { m_ifaddr = arg; });
+    conf.defineOption<std::string>(
+        "network", "ifname", false, "", [this](std::string arg) { m_ifname = arg; });
+
+    conf.defineOption<std::string>(
         "network", "blacklist-snode", false, true, "", [this](std::string arg) {
           RouterID id;
           if (not id.FromString(arg))
