@@ -226,7 +226,7 @@ namespace llarp
     };
 
     conf.defineOption<std::string>(
-        "dns", "upstream-dns", false, true, nonstd::nullopt, [=](std::string arg) {
+        "dns", "upstream", false, true, nonstd::nullopt, [=](std::string arg) {
           m_upstreamDNS.push_back(parseAddr(arg));
         });
 
