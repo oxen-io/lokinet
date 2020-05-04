@@ -215,7 +215,8 @@ namespace llarp
   {
     config = std::make_unique<Config>();
     configfile = fname;
-    return Configure(isRelay, {});
+    const fs::path filepath(fname);
+    return Configure(isRelay, filepath.parent_path());
   }
 
 #ifdef LOKINET_HIVE
