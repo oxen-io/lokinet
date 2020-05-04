@@ -204,7 +204,7 @@ namespace llarp
         "network", "blacklist-snode", false, true, "", [this](std::string arg) {
           RouterID id;
           if (not id.FromString(arg))
-            throw std::invalid_argument(stringify("Invalide RouterID: ", arg));
+            throw std::invalid_argument(stringify("Invalid RouterID: ", arg));
 
           auto itr = m_snodeBlacklist.emplace(std::move(id));
           if (itr.second)
@@ -509,6 +509,8 @@ namespace llarp
     addIgnoreOption("router", "threads");
 
     addIgnoreOption("metrics", "json-metrics-path");
+
+    addIgnoreOption("network", "enabled");
   }
 
   void
