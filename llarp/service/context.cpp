@@ -174,17 +174,14 @@ namespace llarp
     void
     Context::AddEndpoint(const Config& conf, bool autostart)
     {
-      // TODO: refactor Context to only contain one endpoint
-      constexpr auto endpointName = "endpoint";
+      constexpr auto endpointName = "default";
 
       if (m_Endpoints.find(endpointName) != m_Endpoints.end())
         throw std::invalid_argument("service::Context only supports one endpoint now");
 
-      // TODO: make endpoint type configurable [again]
-      std::string endpointType = DefaultEndpointType();
-
+      const auto& endpointType = conf.network.m_endpointType;
       // use factory to create endpoint
-      const auto itr = endpointConstructors.find(DefaultEndpointType());
+      const auto itr = endpointConstructors.find(endpointType);
       if (itr == endpointConstructors.end())
         throw std::invalid_argument(stringify("Endpoint type ", endpointType, " does not exist"));
 

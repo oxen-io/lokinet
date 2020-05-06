@@ -146,6 +146,9 @@ namespace llarp
     static constexpr int HopsDefault = 4;
     static constexpr int PathsDefault = 6;
 
+    conf.defineOption<std::string>(
+        "network", "type", false, "tun", AssignmentAcceptor(m_endpointType));
+
     conf.defineOption<bool>(
         "network",
         "profiling",

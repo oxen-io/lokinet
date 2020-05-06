@@ -543,6 +543,10 @@ namespace llarp
         return true;
       }
        */
+      if (networkConfig.m_endpointType == "null")
+      {
+        m_ShouldInitTun = false;
+      }
 
       m_LocalResolverAddr = dnsConfig.m_bind;
       m_UpstreamResolvers = dnsConfig.m_upstreamDNS;

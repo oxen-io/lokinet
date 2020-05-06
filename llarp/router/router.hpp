@@ -228,7 +228,7 @@ namespace llarp
     bool
     ExitEnabled() const
     {
-      return false; // FIXME - have to fix the FIXME because FIXME
+      return false;  // FIXME - have to fix the FIXME because FIXME
       throw std::runtime_error("FIXME: this needs to be derived from config");
       /*
       // TODO: use equal_range ?
