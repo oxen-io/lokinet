@@ -35,17 +35,17 @@ namespace llarp
     }
 
     bool
-    Proxy::Start(const llarp::Addr addr, const std::vector<llarp::Addr>& resolvers)
+    Proxy::Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers)
     {
       m_Resolvers.clear();
       m_Resolvers = resolvers;
-      const llarp::Addr any("0.0.0.0", 0);
+      const IpAddress any("0.0.0.0", 0);
       auto self = shared_from_this();
       LogicCall(m_ClientLogic, [=]() {
-        llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any);
+        llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
       });
       LogicCall(m_ServerLogic, [=]() {
-        llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr);
+        llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr());
       });
       return true;
     }
@@ -59,28 +59,26 @@ namespace llarp
     }
 
     void
-    Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from, ManagedBuffer buf)
+    Proxy::HandleUDPRecv_server(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
     {
-      const llarp::Addr addr(*from);
       Buffer_t msgbuf = CopyBuffer(buf.underlying);
       auto self = static_cast<Proxy*>(u->user)->shared_from_this();
       // yes we use the server loop here because if the server loop is not the
       // client loop we'll crash again
       LogicCall(
-          self->m_ServerLogic, [self, addr, msgbuf]() { self->HandlePktServer(addr, msgbuf); });
+          self->m_ServerLogic, [self, from, msgbuf]() { self->HandlePktServer(from, msgbuf); });
     }
 
     void
-    Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from, ManagedBuffer buf)
+    Proxy::HandleUDPRecv_client(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
     {
-      const llarp::Addr addr(*from);
       Buffer_t msgbuf = CopyBuffer(buf.underlying);
       auto self = static_cast<Proxy*>(u->user)->shared_from_this();
       LogicCall(
-          self->m_ServerLogic, [self, addr, msgbuf]() { self->HandlePktClient(addr, msgbuf); });
+          self->m_ServerLogic, [self, from, msgbuf]() { self->HandlePktClient(from, msgbuf); });
     }
 
-    llarp::Addr
+    IpAddress
     Proxy::PickRandomResolver() const
     {
       const size_t sz = m_Resolvers.size();
@@ -97,7 +95,7 @@ namespace llarp
     }
 
     void
-    Proxy::SendServerMessageTo(llarp::Addr to, Message msg)
+    Proxy::SendServerMessageTo(const SockAddr& to, Message msg)
     {
       auto self = shared_from_this();
       LogicCall(m_ServerLogic, [to, msg, self]() {
@@ -115,7 +113,7 @@ namespace llarp
     }
 
     void
-    Proxy::SendClientMessageTo(llarp::Addr to, Message msg)
+    Proxy::SendClientMessageTo(const SockAddr& to, Message msg)
     {
       auto self = shared_from_this();
       LogicCall(m_ClientLogic, [to, msg, self]() {
@@ -133,7 +131,7 @@ namespace llarp
     }
 
     void
-    Proxy::HandlePktClient(llarp::Addr from, Buffer_t buf)
+    Proxy::HandlePktClient(const SockAddr& from, Buffer_t buf)
     {
       llarp_buffer_t pkt(buf);
       MessageHeader hdr;
@@ -146,7 +144,7 @@ namespace llarp
       auto itr = m_Forwarded.find(tx);
       if (itr == m_Forwarded.end())
         return;
-      const Addr requester = itr->second;
+      const auto& requester = itr->second;
       auto self = shared_from_this();
       Message msg(hdr);
       if (msg.Decode(&pkt))
@@ -156,7 +154,11 @@ namespace llarp
           msg.hdr_id = itr->first.txid;
           if (!m_QueryHandler->HandleHookedDNSMessage(
                   std::move(msg),
-                  std::bind(&Proxy::SendServerMessageTo, self, requester, std::placeholders::_1)))
+                  std::bind(
+                      &Proxy::SendServerMessageTo,
+                      self,
+                      requester.createSockAddr(),
+                      std::placeholders::_1)))
           {
             llarp::LogWarn("failed to handle hooked dns");
           }
@@ -166,14 +168,14 @@ namespace llarp
       LogicCall(m_ServerLogic, [=]() {
         // forward reply to requester via server
         const llarp_buffer_t tmpbuf(buf);
-        llarp_ev_udp_sendto(&self->m_Server, requester, tmpbuf);
+        llarp_ev_udp_sendto(&self->m_Server, requester.createSockAddr(), tmpbuf);
       });
       // remove pending
       m_Forwarded.erase(itr);
     }
 
     void
-    Proxy::HandlePktServer(llarp::Addr from, Buffer_t buf)
+    Proxy::HandlePktServer(const SockAddr& from, Buffer_t buf)
     {
       MessageHeader hdr;
       llarp_buffer_t pkt(buf);
@@ -236,7 +238,7 @@ namespace llarp
         LogicCall(m_ClientLogic, [=] {
           // do query
           const llarp_buffer_t tmpbuf(buf);
-          llarp_ev_udp_sendto(&self->m_Client, tx.from, tmpbuf);
+          llarp_ev_udp_sendto(&self->m_Client, tx.from.createSockAddr(), tmpbuf);
         });
       }
       else
@@ -246,7 +248,7 @@ namespace llarp
         LogicCall(m_ClientLogic, [=] {
           // send it
           const llarp_buffer_t tmpbuf(buf);
-          llarp_ev_udp_sendto(&self->m_Client, resolver, tmpbuf);
+          llarp_ev_udp_sendto(&self->m_Client, resolver.createSockAddr(), tmpbuf);
         });
       }
     }

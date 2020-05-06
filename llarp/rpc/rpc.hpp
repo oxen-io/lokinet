@@ -2,6 +2,7 @@
 #define LLARP_RPC_HPP
 
 #include <util/time.hpp>
+#include <net/ip_address.hpp>
 
 #include <functional>
 #include <memory>
@@ -23,7 +24,7 @@ namespace llarp
       ~Server();
 
       bool
-      Start(const std::string& bindaddr);
+      Start(const IpAddress& bindaddr);
 
       /// stop and close
       void
@@ -47,7 +48,7 @@ namespace llarp
 
       /// start with jsonrpc endpoint address
       bool
-      Start(const std::string& remote);
+      Start(const IpAddress& remote);
 
       /// stop and close
       void

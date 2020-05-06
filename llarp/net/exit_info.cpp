@@ -3,6 +3,7 @@
 #endif
 
 #include <net/exit_info.hpp>
+#include <net/net.hpp>
 #include <util/bencode.h>
 #include <util/bits.hpp>
 #include <util/mem.h>
@@ -15,6 +16,11 @@ namespace llarp
   bool
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
+    // TODO: derive these from ipAdress
+    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
+    in6_addr address;
+    in6_addr netmask;
+
     char tmp[128] = {0};
     if (!bencode_start_dict(buf))
       return false;
@@ -57,6 +63,11 @@ namespace llarp
   bool
   ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
+    // TODO: derive these from ipAdress
+    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
+    in6_addr address;
+    in6_addr netmask;
+
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
       return false;
@@ -72,6 +83,11 @@ namespace llarp
   std::ostream&
   ExitInfo::print(std::ostream& stream, int level, int spaces) const
   {
+    // TODO: derive these from ipAdress
+    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
+    in6_addr address;
+    in6_addr netmask;
+
     Printer printer(stream, level, spaces);
 
     std::ostringstream ss;

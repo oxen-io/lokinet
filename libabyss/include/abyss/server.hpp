@@ -2,6 +2,7 @@
 #define ABYSS_SERVER_HPP
 
 #include <ev/ev.h>
+#include <net/sock_addr.hpp>
 #include <util/json.hpp>
 #include <util/thread/logic.hpp>
 #include <util/time.hpp>
@@ -50,7 +51,9 @@ namespace abyss
 
       bool
       ServeAsync(
-          llarp_ev_loop_ptr loop, std::shared_ptr<llarp::Logic> logic, const sockaddr* bindaddr);
+          llarp_ev_loop_ptr loop,
+          std::shared_ptr<llarp::Logic> logic,
+          const llarp::SockAddr& bindaddr);
 
       void
       RemoveConn(IRPCHandler* handler);

@@ -43,7 +43,7 @@ namespace libuv
 
     /// return false on socket error (non blocking)
     bool
-    tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) override;
+    tcp_connect(llarp_tcp_connecter* tcp, const llarp::SockAddr& addr) override;
 
     int
     tick(int ms) override;
@@ -73,7 +73,7 @@ namespace libuv
     CloseAll();
 
     bool
-    udp_listen(llarp_udp_io* l, const sockaddr* src) override;
+    udp_listen(llarp_udp_io* l, const llarp::SockAddr& src) override;
 
     bool
     udp_close(llarp_udp_io* l) override;
@@ -95,13 +95,13 @@ namespace libuv
     }
 
     bool
-    tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr) override;
+    tcp_listen(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr) override;
 
     bool
     add_pipe(llarp_ev_pkt_pipe* p) override;
 
     llarp::ev_io*
-    bind_tcp(llarp_tcp_acceptor*, const sockaddr*) override
+    bind_tcp(llarp_tcp_acceptor*, const llarp::SockAddr&) override
     {
       return nullptr;
     }

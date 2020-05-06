@@ -343,7 +343,9 @@ namespace llarp
     }
     for (const auto& exit : exits)
     {
-      if (IsBogonRange(exit.address, exit.netmask))
+      // TODO: see if exit's range overlaps with bogon...?
+      //       e.g. "IsBogonRange(address, netmask)"
+      if (exit.ipAddress.isBogon())
       {
         llarp::LogError("bogon exit: ", exit);
         return false;

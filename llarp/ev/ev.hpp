@@ -1,7 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 
-#include <net/net_addr.hpp>
+#include <net/ip_address.hpp>
 #include <ev/ev.h>
 #include <util/buffer.hpp>
 #include <util/codel.hpp>
@@ -159,7 +159,7 @@ namespace llarp
     read(byte_t* buf, size_t sz) = 0;
 
     virtual int
-    sendto(const sockaddr* dst, const void* data, size_t sz)
+    sendto(const SockAddr& dst, const void* data, size_t sz)
     {
       UNREFERENCED_PARAMETER(dst);
       UNREFERENCED_PARAMETER(data);
@@ -379,7 +379,7 @@ namespace llarp
 
     virtual int
     sendto(
-        __attribute__((unused)) const sockaddr* dst,
+        __attribute__((unused)) const SockAddr& dst,
         __attribute__((unused)) const void* data,
         __attribute__((unused)) size_t sz)
     {
@@ -525,7 +525,6 @@ namespace llarp
   // on sockets
   struct tcp_conn : public ev_io
   {
-    sockaddr_storage _addr;
     bool _shouldClose = false;
     bool _calledConnected = false;
     llarp_tcp_conn tcp;
@@ -551,15 +550,10 @@ namespace llarp
     }
 
     /// outbound
-    tcp_conn(llarp_ev_loop* loop, int _fd, const sockaddr* addr, llarp_tcp_connecter* conn)
+    tcp_conn(llarp_ev_loop* loop, int _fd, const SockAddr& addr, llarp_tcp_connecter* conn)
         : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(conn)
     {
-      socklen_t slen = sizeof(sockaddr_in);
-      if (addr->sa_family == AF_INET6)
-        slen = sizeof(sockaddr_in6);
-      else if (addr->sa_family == AF_UNIX)
-        slen = sizeof(sockaddr_un);
-      memcpy(&_addr, addr, slen);
+      (void)addr;
       tcp.impl = this;
       tcp.loop = loop;
       tcp.closed = nullptr;
@@ -730,7 +724,7 @@ struct llarp_ev_loop
 
   /// return false on socket error (non blocking)
   virtual bool
-  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
+  tcp_connect(llarp_tcp_connecter* tcp, const llarp::SockAddr& addr) = 0;
 
   virtual int
   tick(int ms) = 0;
@@ -748,7 +742,7 @@ struct llarp_ev_loop
   stop() = 0;
 
   virtual bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src) = 0;
+  udp_listen(llarp_udp_io* l, const llarp::SockAddr& src) = 0;
 
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
@@ -772,7 +766,7 @@ struct llarp_ev_loop
   create_tun(llarp_tun_io* tun) = 0;
 
   virtual llarp::ev_io*
-  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
+  bind_tcp(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr) = 0;
 
   virtual bool
   add_pipe(llarp_ev_pkt_pipe*)
@@ -788,7 +782,7 @@ struct llarp_ev_loop
   add_ev(llarp::ev_io* ev, bool write) = 0;
 
   virtual bool
-  tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+  tcp_listen(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr)
   {
     auto conn = bind_tcp(tcp, addr);
     return conn && add_ev(conn, true);
@@ -878,7 +872,7 @@ struct PacketBuffer
 
 struct PacketEvent
 {
-  llarp::Addr remote;
+  llarp::SockAddr remote;
   PacketBuffer pkt;
 };
 

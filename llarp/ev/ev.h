@@ -1,6 +1,7 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
 
+#include <net/ip_address.hpp>
 #include <util/buffer.hpp>
 #include <util/time.hpp>
 #include <tuntap.h>
@@ -76,10 +77,10 @@ struct llarp_udp_io
 
   /// called every event loop tick after reads
   void (*tick)(struct llarp_udp_io*);
-  /// sockaddr * is the source address
-  void (*recvfrom)(struct llarp_udp_io*, const struct sockaddr*, ManagedBuffer);
+
+  void (*recvfrom)(struct llarp_udp_io*, const llarp::SockAddr& source, ManagedBuffer);
   /// set by parent
-  int (*sendto)(struct llarp_udp_io*, const struct sockaddr*, const byte_t*, size_t);
+  int (*sendto)(struct llarp_udp_io*, const llarp::SockAddr&, const byte_t*, size_t);
 };
 
 /// get all packets recvieved last tick
@@ -89,11 +90,11 @@ llarp_ev_udp_recvmany(struct llarp_udp_io* udp, struct llarp_pkt_list* pkts);
 
 /// add UDP handler
 int
-llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const struct sockaddr* src);
+llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const llarp::SockAddr& src);
 
 /// send a UDP packet
 int
-llarp_ev_udp_sendto(struct llarp_udp_io* udp, const struct sockaddr* to, const llarp_buffer_t& pkt);
+llarp_ev_udp_sendto(struct llarp_udp_io* udp, const llarp::SockAddr& to, const llarp_buffer_t& pkt);
 
 /// close UDP handler
 int
@@ -140,7 +141,7 @@ struct llarp_tcp_connecter
   /// remote address family
   int af;
   /// remote address string
-  char remote[512];
+  llarp::IpAddress remote;
   /// userdata pointer
   void* user;
   /// private implementation (dont set me)
@@ -180,7 +181,8 @@ struct llarp_tcp_acceptor
 /// return false if failed to bind
 /// return true on success
 bool
-llarp_tcp_serve(struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* t, const sockaddr* bindaddr);
+llarp_tcp_serve(
+    struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* t, const llarp::SockAddr& bindaddr);
 
 /// close and stop accepting connections
 void

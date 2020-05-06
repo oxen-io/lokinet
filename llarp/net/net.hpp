@@ -3,6 +3,7 @@
 
 #include <net/uint128.hpp>
 #include <net/address_info.hpp>
+#include <net/ip_address.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
 #include <util/mem.hpp>
@@ -158,10 +159,8 @@ namespace llarp
   bool
   IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
-  struct Addr;  // fwd declr
-
   bool
-  AllInterfaces(int af, Addr& addr);
+  AllInterfaces(int af, IpAddress& addr);
 
   /// get first network interface with public address
   bool
@@ -176,11 +175,9 @@ namespace llarp
   FindFreeTun();
 
   /// get network interface address for network interface with ifname
-  std::optional<llarp::Addr>
+  std::optional<IpAddress>
   GetIFAddr(const std::string& ifname, int af = AF_INET);
 
 }  // namespace llarp
-
-#include <net/net_addr.hpp>
 
 #endif

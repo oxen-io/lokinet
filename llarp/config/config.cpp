@@ -88,21 +88,15 @@ namespace llarp
         if (arg.size() > 16)
           throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
 
-        // assume IPv4
-        llarp::Addr a(arg);
-        llarp::LogInfo("setting public ipv4 ", a);
-        m_addrInfo.ip = *a.addr6();
-        m_publicOverride = true;
+        m_publicAddress.setAddress(arg);
       }
     });
 
     conf.defineOption<int>("router", "public-port", false, DefaultPublicPort, [this](int arg) {
-      if (arg <= 0)
-        throw std::invalid_argument("public-port must be > 0");
+      if (arg <= 0 || arg > std::numeric_limits<uint16_t>::max())
+        throw std::invalid_argument("public-port must be >= 0 and <= 65536");
 
-      m_ip4addr.sin_port = arg;
-      m_addrInfo.port = arg;
-      m_publicOverride = true;
+      m_publicAddress.setPort(arg);
     });
 
     conf.defineOption<int>(
@@ -232,26 +226,13 @@ namespace llarp
   {
     (void)params;
 
-    auto parseAddr = [](std::string input) {
-      Addr addr;
-      bool success = addr.FromString(input);
-      if (not success)
-        throw std::invalid_argument(stringify(input, " is not a valid address"));
-
-      // default port if it wasn't specified
-      if (input.find(":") == std::string::npos)
-        addr.port(53);
-
-      return addr;
-    };
-
     conf.defineOption<std::string>(
         "dns", "upstream", false, true, std::nullopt, [=](std::string arg) {
-          m_upstreamDNS.push_back(parseAddr(arg));
+          m_upstreamDNS.push_back(IpAddress(arg));
         });
 
     conf.defineOption<std::string>(
-        "dns", "bind", false, std::nullopt, [=](std::string arg) { m_bind = parseAddr(arg); });
+        "dns", "bind", false, std::nullopt, [=](std::string arg) { m_bind = IpAddress(arg); });
   }
 
   LinksConfig::LinkInfo

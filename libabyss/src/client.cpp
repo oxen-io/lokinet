@@ -404,9 +404,9 @@ namespace abyss
     }
 
     bool
-    JSONRPC::RunAsync(llarp_ev_loop_ptr loop, const std::string& remote)
+    JSONRPC::RunAsync(llarp_ev_loop_ptr loop, const llarp::IpAddress& remote)
     {
-      strncpy(m_connect.remote, remote.c_str(), sizeof(m_connect.remote) - 1);
+      m_connect.remote = remote;
       // TODO: ipv6
       m_connect.connected = &JSONRPC::OnConnected;
       m_connect.error = &JSONRPC::OnConnectFail;

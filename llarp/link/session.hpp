@@ -87,7 +87,7 @@ namespace llarp
     IsInbound() const = 0;
 
     /// get remote address
-    virtual Addr
+    virtual IpAddress
     GetRemoteEndpoint() const = 0;
 
     // get remote rc

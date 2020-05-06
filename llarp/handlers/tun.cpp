@@ -80,9 +80,9 @@ namespace llarp
 
       std::vector<std::string> resolvers;
       for (const auto& addr : m_UpstreamResolvers)
-        resolvers.emplace_back(addr.ToString());
+        resolvers.emplace_back(addr.toString());
       obj["ustreamResolvers"] = resolvers;
-      obj["localResolver"] = m_LocalResolverAddr.ToString();
+      obj["localResolver"] = m_LocalResolverAddr.toString();
       util::StatusObject ips{};
       for (const auto& item : m_IPActivity)
       {
@@ -818,7 +818,7 @@ namespace llarp
         env.emplace("IF_NAME", tunif->ifname);
       std::string strictConnect;
       for (const auto& addr : m_StrictConnectAddrs)
-        strictConnect += addr.ToString() + " ";
+        strictConnect += addr.toString() + " ";
       env.emplace("STRICT_CONNECT_ADDRS", strictConnect);
       return env;
     }

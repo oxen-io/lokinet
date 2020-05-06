@@ -41,19 +41,19 @@ namespace llarp
       Rank() const override;
 
       void
-      RecvFrom(const Addr& from, ILinkSession::Packet_t pkt) override;
+      RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) override;
 
       bool
       MapAddr(const RouterID& pk, ILinkSession* s) override;
 
       void
-      UnmapAddr(const Addr& addr);
+      UnmapAddr(const IpAddress& addr);
 
       void
       QueueWork(std::function<void(void)> work);
 
      private:
-      std::unordered_map<Addr, RouterID, Addr::Hash> m_AuthedAddrs;
+      std::unordered_map<IpAddress, RouterID, IpAddress::Hash> m_AuthedAddrs;
       const bool permitInbound;
     };
 

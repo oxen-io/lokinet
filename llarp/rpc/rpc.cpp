@@ -188,7 +188,7 @@ namespace llarp
       }
 
       bool
-      Start(const std::string& remote)
+      Start(const IpAddress& remote)
       {
         return RunAsync(router->netloop(), remote);
       }
@@ -459,8 +459,12 @@ namespace llarp
       }
 
       bool
-      Start(const std::string& addr)
+      Start(const IpAddress& addr)
       {
+        // NOTE/TODO: RPC on HTTP here can assume 127.0.0.1 or localhost, this isn't safe to expose
+        //       externally anyway
+        throw std::runtime_error("FIXME: replace with lokimq, or fix this stuff");
+        /*
         sockaddr_in saddr;
         saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         saddr.sin_family = AF_INET;
@@ -478,7 +482,8 @@ namespace llarp
         {
           _handler.expectedHostname = addr;
         }
-        return _handler.ServeAsync(router->netloop(), router->logic(), (const sockaddr*)&saddr);
+        */
+        return _handler.ServeAsync(router->netloop(), router->logic(), addr.createSockAddr());
       }
     };
 
@@ -495,7 +500,7 @@ namespace llarp
     }
 
     bool
-    Caller::Start(const std::string& addr)
+    Caller::Start(const IpAddress& addr)
     {
       return m_Impl->Start(addr);
     }
@@ -525,7 +530,7 @@ namespace llarp
     }
 
     bool
-    Server::Start(const std::string& addr)
+    Server::Start(const IpAddress& addr)
     {
       return m_Impl->Start(addr);
     }

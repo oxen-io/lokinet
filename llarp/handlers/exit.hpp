@@ -166,8 +166,8 @@ namespace llarp
 
       llarp_tun_io m_Tun;
 
-      Addr m_LocalResolverAddr;
-      std::vector<Addr> m_UpstreamResolvers;
+      IpAddress m_LocalResolverAddr;
+      std::vector<IpAddress> m_UpstreamResolvers;
 
       using Pkt_t = net::IPPacket;
       using PacketQueue_t = util::CoDelQueue<

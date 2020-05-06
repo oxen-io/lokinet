@@ -343,7 +343,7 @@ namespace llarp
           llarp::LogWarn("Could not create tunnel for exit endpoint");
           return false;
         }
-        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.ToString());
+        llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.toString());
         return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers);
       }
       return true;

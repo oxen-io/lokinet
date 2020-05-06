@@ -4,6 +4,8 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
+#include <net/ip_address.hpp>
+
 #include <unordered_set>
 #include <deque>
 
@@ -41,7 +43,7 @@ namespace llarp
       /// outbound session
       Session(LinkLayer* parent, const RouterContact& rc, const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, const Addr& from);
+      Session(LinkLayer* parent, const IpAddress& from);
 
       ~Session() = default;
 
@@ -88,7 +90,7 @@ namespace llarp
         return m_RemoteRC.pubkey;
       }
 
-      Addr
+      IpAddress
       GetRemoteEndpoint() const override
       {
         return m_RemoteAddr;
@@ -164,7 +166,7 @@ namespace llarp
       /// parent link layer
       LinkLayer* const m_Parent;
       const llarp_time_t m_CreatedAt;
-      const Addr m_RemoteAddr;
+      const IpAddress m_RemoteAddr;
 
       AddressInfo m_ChosenAI;
       /// remote rc

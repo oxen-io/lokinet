@@ -13,7 +13,6 @@
 #endif
 #endif
 
-#include <net/net_addr.hpp>
 #include <net/ip.hpp>
 #include <util/logging/logger.hpp>
 #include <util/str.hpp>
@@ -428,9 +427,10 @@ namespace llarp
       {
         if (i->ifa_addr->sa_family == af)
         {
-          llarp::Addr a(*i->ifa_addr);
+          llarp::SockAddr a(*i->ifa_addr);
+          llarp::IpAddress ip(a);
 
-          if (!a.IsBogon())
+          if (!ip.isBogon())
           {
             ifname = i->ifa_name;
             found = true;
@@ -533,18 +533,18 @@ namespace llarp
     return std::nullopt;
   }
 
-  std::optional<llarp::Addr>
+  std::optional<IpAddress>
   GetIFAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
     sockaddr* sptr = (sockaddr*)&s;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    return llarp::Addr{*sptr};
+    return IpAddress(SockAddr(sptr));
   }
 
   bool
-  AllInterfaces(int af, Addr& result)
+  AllInterfaces(int af, IpAddress& result)
   {
     if (af == AF_INET)
     {
@@ -552,17 +552,20 @@ namespace llarp
       addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
       addr.sin_port = htons(0);
-      result = addr;
+      result = IpAddress(SockAddr(addr));
       return true;
     }
     if (af == AF_INET6)
     {
+      throw std::runtime_error("Fix me: IPv6 not supported yet");
+      /*
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
       addr6.sin6_port = htons(0);
       addr6.sin6_addr = IN6ADDR_ANY_INIT;
-      result = addr6;
+      result = IpAddress(SockAddr(addr6));
       return true;
+      */
     }
 
     // TODO: implement sockaddr_ll
