@@ -14,10 +14,10 @@ namespace llarp
     struct PythonEndpoint final : public llarp::service::Endpoint,
                                   public std::enable_shared_from_this<PythonEndpoint>
     {
-      PythonEndpoint(const SnappConfig& conf, Context_ptr routerContext)
+      PythonEndpoint(std::string name, Context_ptr routerContext)
           : llarp::service::Endpoint(
-              conf, routerContext->router.get(), &routerContext->router->hiddenServiceContext())
-          , OurName(conf.m_name)
+              routerContext->router.get(), &routerContext->router->hiddenServiceContext())
+          , OurName(std::move(name))
       {
       }
       const std::string OurName;

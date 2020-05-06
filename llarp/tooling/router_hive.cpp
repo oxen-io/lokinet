@@ -218,42 +218,14 @@ namespace tooling
   {
     std::vector<llarp::RouterContact> results;
     results.resize(relays.size());
-    std::mutex results_lock;
 
     size_t i = 0;
-    size_t done_count = 0;
     for (auto relay : relays)
     {
       auto ctx = llarp::Context::Get(relay);
-      LogicCall(ctx->logic, [&]() {
-        llarp::RouterContact rc = ctx->router->rc();
-        std::lock_guard<std::mutex> guard{results_lock};
-        results[i] = std::move(rc);
-        done_count++;
-      });
+      results[i] = ctx->router->rc();
       i++;
     }
-
-    int numTries = 0;
-    size_t read_done_count = 0;
-    while (numTries < 100)
-    {
-      {
-        std::lock_guard<std::mutex> guard{results_lock};
-        read_done_count = done_count;
-      }
-      if (read_done_count == relays.size())
-        break;
-
-      std::this_thread::sleep_for(100ms);
-      numTries++;
-    }
-
-    if (read_done_count != relays.size())
-    {
-      LogWarn("could not read all relays, last done_count: ", read_done_count);
-    }
-
     return results;
   }
 

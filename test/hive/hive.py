@@ -47,13 +47,6 @@ class RouterHive(object):
 
     return False
 
-  def MakeEndpoint(self, router, after):
-    if router.IsRelay():
-      return
-    ep = pyllarp.Endpoint(self.endpointName, router)
-    router.AddEndpoint(ep)
-    if after is not None:
-      router.CallSafe(lambda : after(ep))
 
   def AddRelay(self, index):
     dirname = "%s/relays/%d" % (self.tmpdir, index)
@@ -79,12 +72,12 @@ class RouterHive(object):
 
     config.network.enableProfiling = False
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname
-    config.network.options = {"type": "null"}
+    config.network.endpointType = 'null'
 
     config.links.addInboundLink("lo", AF_INET, port);
     config.links.setOutboundLink("lo", AF_INET, port + 10000);
 
-    config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
+    # config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
     if index != 0:
       config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
@@ -111,30 +104,17 @@ class RouterHive(object):
 
     config.network.enableProfiling = False
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname
-    config.network.options = {"type": "null"}
+    config.network.endpointType = 'null'
 
     config.links.setOutboundLink("lo", AF_INET, port + 10000);
 
-    config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
+    # config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
 
     config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
 
     config.api.enableRPCServer = False
 
     self.hive.AddClient(config)
-
-  def onGotEndpoint(self, ep):
-    addr = ep.OurAddress()
-    self.addrs.append(pyllarp.ServiceAddress(addr))
-
-  def sendToAddress(self, router, toaddr, pkt):
-    if router.IsRelay():
-      return
-    if router.TrySendPacket("default", toaddr, pkt):
-      print("sending {} bytes to {}".format(len(pkt), toaddr))
-
-  def broadcastTo(self, addr, pkt):
-    self.hive.ForEachRouter(lambda r : sendToAddress(r, addr, pkt))
 
   def InitFirstRC(self):
     print("Starting first router to init its RC for bootstrap")
@@ -154,17 +134,14 @@ class RouterHive(object):
 
     self.hive = pyllarp.RouterHive()
 
-    for i in range(1, self.n_relays + 1):
+    for i in range(0, self.n_relays):
       self.AddRelay(i)
 
-    for i in range(1, self.n_clients + 1):
+    for i in range(0, self.n_clients):
       self.AddClient(i)
 
     print("Starting relays")
     self.hive.StartRelays()
-
-    sleep(0.2)
-    self.hive.ForEachRelay(lambda r: self.MakeEndpoint(r, self.onGotEndpoint))
 
     print("Sleeping 2 seconds before starting clients")
     sleep(2)
@@ -172,9 +149,6 @@ class RouterHive(object):
     self.RCs = self.hive.GetRelayRCs()
 
     self.hive.StartClients()
-
-    sleep(0.2)
-    self.hive.ForEachClient(lambda r: self.MakeEndpoint(r, self.onGotEndpoint))
 
   def Stop(self):
     self.hive.StopAll()
