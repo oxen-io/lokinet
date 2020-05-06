@@ -20,10 +20,7 @@ namespace llarp
                          public dns::IQueryHandler,
                          public std::enable_shared_from_this<TunEndpoint>
     {
-      TunEndpoint(
-          AbstractRouter* r,
-          llarp::service::Context* parent,
-          bool lazyVPN = false);
+      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent, bool lazyVPN = false);
       ~TunEndpoint() override;
 
       path::PathSet_ptr
