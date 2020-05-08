@@ -91,10 +91,5 @@ TEST_CASE("SockAddr from sockaddr_in6", "[SockAddr]")
 
   llarp::SockAddr addr(sin6);
 
-  char buf[128];
-  inet_ntop(AF_INET6, &(sin6.sin6_addr), buf, INET6_ADDRSTRLEN);
-
-  llarp::LogWarn("Addr: ", buf);
-
   CHECK(addr.toString() == "127.0.0.1:53");
 }
