@@ -38,7 +38,8 @@ namespace llarp
 
   SockAddr::SockAddr(std::string_view addr)
   {
-    throw std::runtime_error("FIXME");
+    init();
+    fromString(addr);
   }
 
   SockAddr::SockAddr(const SockAddr&)
@@ -97,8 +98,11 @@ namespace llarp
       auto byteStr = ipSplits[i];
       auto result = std::from_chars(byteStr.data(), byteStr.data() + byteStr.size(), ipBytes[i]);
 
-      if (result.ec == std::errc::invalid_argument)
+      if (result.ec != std::errc())
         throw std::runtime_error(stringify(str, " contains invalid number"));
+
+      if (result.ptr != (byteStr.data() + byteStr.size()))
+        throw std::runtime_error(stringify(str, " contains non-numeric values"));
     }
 
     // attempt port before setting IPv4 bytes
@@ -108,8 +112,11 @@ namespace llarp
       auto portStr = splits[1];
       auto result = std::from_chars(portStr.data(), portStr.data() + portStr.size(), port);
 
-      if (result.ec == std::errc::invalid_argument)
+      if (result.ec != std::errc())
         throw std::runtime_error(stringify(str, " contains invalid port"));
+
+      if (result.ptr != (portStr.data() + portStr.size()))
+        throw std::runtime_error(stringify(str, " contains junk after port"));
 
       setPort(port);
     }
@@ -130,7 +137,7 @@ namespace llarp
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
 
     // ensure SIIT
-    if (not ip6[10] == 0xff or not ip6[11])
+    if (ip6[10] != 0xff or ip6[11] != 0xff)
       throw std::runtime_error("Only SIIT address supported");
 
     constexpr auto MaxIPv4PlusPortStringSize = 22;
@@ -147,7 +154,7 @@ namespace llarp
     str.append(std::to_string(ip6[15]));
 
     str.append(1, ':');
-    str.append(std::to_string(m_addr.sin6_port));
+    str.append(std::to_string(getPort()));
 
     return str;
   }
