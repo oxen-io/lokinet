@@ -2,6 +2,7 @@
 
 #include <netinet/in.h>
 #include <util/str.hpp>
+#include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 
 #include <charconv>
@@ -16,6 +17,16 @@ namespace llarp
   SockAddr::init()
   {
     llarp::Zero(&m_addr, sizeof(m_addr));
+  }
+
+  void
+  SockAddr::applySIITBytes()
+  {
+    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
+
+    // SIIT == Stateless IP/ICMP Translation (represent IPv4 with IPv6)
+    ip6[10] = 0xff;
+    ip6[11] = 0xff;
   }
 
   SockAddr::SockAddr()
@@ -42,30 +53,76 @@ namespace llarp
     fromString(addr);
   }
 
-  SockAddr::SockAddr(const SockAddr&)
+  SockAddr::SockAddr(const SockAddr& other)
   {
-    throw std::runtime_error("FIXME");
+    *this = other;
   }
 
   SockAddr&
-  SockAddr::operator=(const SockAddr&) const
+  SockAddr::operator=(const SockAddr& other)
   {
-    throw std::runtime_error("FIXME");
+    *this = other.m_addr;
+    return *this;
   }
 
   SockAddr::SockAddr(const sockaddr& addr)
   {
-    throw std::runtime_error("FIXME");
+    *this = addr;
+  }
+
+  SockAddr&
+  SockAddr::operator=(const sockaddr& other)
+  {
+    if (other.sa_family == AF_INET6)
+      *this = (const sockaddr_in6&)other;
+    else if (other.sa_family == AF_INET)
+      *this = (const sockaddr_in&)other;
+    else
+      throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
+
+    return *this;
   }
 
   SockAddr::SockAddr(const sockaddr_in& addr)
   {
-    throw std::runtime_error("FIXME");
+    *this = addr;
+  }
+
+  SockAddr&
+  SockAddr::operator=(const sockaddr_in& other)
+  {
+    init();
+    applySIITBytes();
+
+    // avoid byte order conversion (this is NBO -> NBO)
+    memcpy(m_addr.sin6_addr.s6_addr + 12, &other.sin_addr.s_addr, sizeof(in_addr));
+    m_addr.sin6_port = other.sin_port;
+
+    m_empty = false;
+
+    return *this;
+  }
+
+  SockAddr::SockAddr(const sockaddr_in6& addr)
+  {
+    *this = addr;
+  }
+
+  SockAddr&
+  SockAddr::operator=(const sockaddr_in6& other)
+  {
+    init();
+
+    memcpy(&m_addr, &other, sizeof(sockaddr_in6));
+
+    m_empty = false;
+
+    return *this;
   }
 
   SockAddr::operator const sockaddr*() const
   {
-    throw std::runtime_error("FIXME");
+    return (sockaddr*)&m_addr;
   }
 
   void
@@ -131,9 +188,6 @@ namespace llarp
     if (isEmpty())
       return "";
 
-    if (m_addr.sin6_family != AF_INET)
-      throw std::runtime_error("Only IPv4 supported");
-
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
 
     // ensure SIIT
@@ -168,14 +222,12 @@ namespace llarp
   void
   SockAddr::setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
   {
-    m_addr.sin6_family = AF_INET;
+    m_addr.sin6_family = AF_INET6;
 
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
 
-    // SIIT (represent IPv4 with IPv6)
-    ip6[10] = 0xff;
-    ip6[11] = 0xff;
+    applySIITBytes();
 
     ip6[12] = a;
     ip6[13] = b;

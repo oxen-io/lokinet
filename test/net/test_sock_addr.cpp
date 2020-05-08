@@ -1,24 +1,11 @@
+#include <util/mem.hpp>
 #include <net/sock_addr.hpp>
-#include <net/ip_address.hpp>
 #include <net/net_if.hpp>
+#include <util/logging/logger.hpp>
 
 #include <catch2/catch.hpp>
 
-TEST_CASE("SockAddr from sockaddr", "[SockAddr]")
-{
-  sockaddr sa;
-
-  // check that this compiles (taking sockaddr by ref)
-  CHECK_NOTHROW(llarp::SockAddr(sa));
-
-  sockaddr* saptr = &sa;
-
-  // check that this compiles (taking sockaddr by ref from cast from ptr)
-  // this was giving odd compilation errors from within net/net.cpp
-  llarp::SockAddr addr(*saptr);
-
-  llarp::IpAddress ip(addr);
-}
+#include <arpa/inet.h>
 
 TEST_CASE("SockAddr from IPv4", "[SockAddr]")
 {
@@ -78,4 +65,36 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:65536"), "1.2.3.4:65536 contains invalid port");
 
   CHECK_THROWS_WITH(llarp::SockAddr("1.2.3.4:1a"), "1.2.3.4:1a contains junk after port");
+}
+
+TEST_CASE("SockAddr from sockaddr_in", "[SockAddr]")
+{
+  sockaddr_in sin4;
+  llarp::Zero(&sin4, sizeof(sockaddr_in));
+  sin4.sin_family = AF_INET;
+  sin4.sin_addr.s_addr = inet_addr("127.0.0.1");
+  sin4.sin_port = htons(1234);
+
+  llarp::SockAddr addr(sin4);
+
+  CHECK(addr.toString() == "127.0.0.1:1234");
+}
+
+TEST_CASE("SockAddr from sockaddr_in6", "[SockAddr]")
+{
+  sockaddr_in6 sin6;
+  llarp::Zero(&sin6, sizeof(sockaddr_in6));
+  sin6.sin6_family = AF_INET6;
+  inet_pton(AF_INET6, "::ffff:127.0.0.1", &sin6.sin6_addr);
+
+  sin6.sin6_port = htons(53);
+
+  llarp::SockAddr addr(sin6);
+
+  char buf[128];
+  inet_ntop(AF_INET6, &(sin6.sin6_addr), buf, INET6_ADDRSTRLEN);
+
+  llarp::LogWarn("Addr: ", buf);
+
+  CHECK(addr.toString() == "127.0.0.1:53");
 }

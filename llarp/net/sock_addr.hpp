@@ -18,10 +18,20 @@ namespace llarp
 
     SockAddr(const SockAddr&);
     SockAddr&
-    operator=(const SockAddr&) const;
+    operator=(const SockAddr&);
 
     SockAddr(const sockaddr& addr);
+    SockAddr&
+    operator=(const sockaddr& addr);
+
     SockAddr(const sockaddr_in& addr);
+    SockAddr&
+    operator=(const sockaddr_in& addr);
+
+    SockAddr(const sockaddr_in6& addr);
+    SockAddr&
+    operator=(const sockaddr_in6& addr);
+
     operator const sockaddr*() const;
 
     void
@@ -52,6 +62,9 @@ namespace llarp
 
     void
     init();
+
+    void
+    applySIITBytes();
   };
 
   std::ostream&
