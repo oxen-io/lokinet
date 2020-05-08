@@ -30,6 +30,12 @@ struct RCTest : public test::LlarpTest<>
 
 TEST_F(RCTest, TestSignVerify)
 {
+  // TODO: RouterContact no longer takes a netmask (the nuint32_t below)
+  //       This was previously used in a call to IsBogonRange, but this wasn't actually
+  //       implemented anyway
+  throw std::runtime_error("FIXME: RouterContact doesn't take a netmask anymore");
+
+  /*
   NetID netid(DEF_VALUE);
   RC_t rc;
   SecKey_t encr;
@@ -46,4 +52,5 @@ TEST_F(RCTest, TestSignVerify)
 
   ASSERT_TRUE(rc.Sign(sign));
   ASSERT_TRUE(rc.Verify(time_now_ms()));
+  */
 }

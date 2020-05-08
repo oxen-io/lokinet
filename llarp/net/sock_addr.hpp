@@ -9,31 +9,49 @@ namespace llarp
 {
   /// A simple SockAddr wrapper which provides a sockaddr_in (IPv4). Memory management is handled
   /// in constructor and destructor (if needed) and copying is disabled.
-  ///
-  /// This is immutable other than assignment operator.
   struct SockAddr
   {
     SockAddr();
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
-    SockAddr(uint32_t addr);
     SockAddr(std::string_view addr);
 
     SockAddr(const SockAddr&);
     SockAddr&
     operator=(const SockAddr&) const;
 
-    SockAddr(const sockaddr* addr);
     SockAddr(const sockaddr& addr);
-    SockAddr(const sockaddr_in* addr);
     SockAddr(const sockaddr_in& addr);
     operator const sockaddr*() const;
 
+    void
+    fromString(std::string_view str);
+
+    std::string
+    toString() const;
+
+    /// Returns true if this is an empty SockAddr, defined by having no IP address set. An empty IP
+    /// address with a valid port is still considered empty.
+    ///
+    /// @return true if this is empty, false otherwise
     bool
     isEmpty() const;
 
+    void
+    setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+
+    void
+    setPort(uint16_t port);
+
+    uint16_t
+    getPort() const;
+
    private:
-    sockaddr_in addr;
+    bool m_empty = true;
+    sockaddr_in6 m_addr;
+
+    void
+    init();
   };
 
   std::ostream&

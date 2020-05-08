@@ -162,7 +162,7 @@ llarp_tcp_async_try_connect(struct llarp_ev_loop* loop, struct llarp_tcp_connect
 
 bool
 llarp_tcp_serve(
-    struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* tcp, const struct sockaddr* bindaddr)
+    struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* tcp, const llarp::SockAddr& bindaddr)
 {
   tcp->loop = loop;
   return loop->tcp_listen(tcp, bindaddr);

@@ -32,6 +32,8 @@ struct AbyssTestBase : public ::testing::Test
   void
   Start()
   {
+    throw std::runtime_error("FIXME (replace libabyss with lokimq)");
+    /*
     loop  = llarp_make_ev_loop();
     logic = std::make_shared< llarp::Logic >();
     loop->set_logic(logic);
@@ -50,6 +52,7 @@ struct AbyssTestBase : public ::testing::Test
       }
       std::this_thread::sleep_for(1s);
     }
+    */
   }
 
   void

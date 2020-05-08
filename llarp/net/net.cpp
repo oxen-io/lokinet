@@ -1,6 +1,7 @@
 #include <net/net.hpp>
 
 #include <net/net_if.hpp>
+#include <stdexcept>
 
 #ifdef ANDROID
 #include <android/ifaddrs.h>
@@ -427,14 +428,17 @@ namespace llarp
       {
         if (i->ifa_addr->sa_family == af)
         {
-          llarp::SockAddr a(*i->ifa_addr);
-          llarp::IpAddress ip(a);
+          /* TODO: why the fuck does'n this work?
+          // llarp::SockAddr a(i->ifa_addr);
+          // llarp::IpAddress ip(a);
 
           if (!ip.isBogon())
           {
             ifname = i->ifa_name;
             found = true;
           }
+          */
+          throw std::runtime_error("WTF");
         }
       }
     });
@@ -540,7 +544,10 @@ namespace llarp
     sockaddr* sptr = (sockaddr*)&s;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    return IpAddress(SockAddr(sptr));
+    // TODO: why the fuck does this not compile?
+    // llarp::SockAddr saddr = SockAddr(*sptr);
+    // return llarp::IpAddress(saddr);
+    throw std::runtime_error("WTF");
   }
 
   bool
@@ -552,7 +559,10 @@ namespace llarp
       addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
       addr.sin_port = htons(0);
-      result = IpAddress(SockAddr(addr));
+      // TODO: why the fuck doesn't this work?
+      // SockAddr saddr = SockAddr(addr);
+      // result = IpAddress(saddr);
+      throw std::runtime_error("WTF");
       return true;
     }
     if (af == AF_INET6)

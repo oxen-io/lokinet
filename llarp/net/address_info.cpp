@@ -1,4 +1,5 @@
 #include <net/address_info.hpp>
+#include <stdexcept>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -146,6 +147,18 @@ namespace llarp
       return false;
     /** end */
     return bencode_end(buff);
+  }
+
+  IpAddress
+  AddressInfo::toIpAddress() const
+  {
+    throw std::runtime_error("FIXME");
+  }
+
+  void
+  AddressInfo::fromIpAddress(const IpAddress& address)
+  {
+    throw std::runtime_error("FIXME");
   }
 
   std::ostream&

@@ -150,6 +150,8 @@ set(LIB_SRC
   messages/relay_commit.cpp
   messages/relay_status.cpp
   net/address_info.cpp
+  net/ip_address.cpp
+  net/sock_addr.cpp
   net/exit_info.cpp
   nodedb.cpp
   path/ihophandler.cpp
