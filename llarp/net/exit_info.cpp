@@ -73,7 +73,11 @@ namespace llarp
     {
       // TODO: read into ipAddress
       in6_addr tmp;
-      return bdecode_ip_string(buf, tmp);
+      if (not bdecode_ip_string(buf, tmp))
+        return false;
+
+      SockAddr addr(tmp);
+      ipAddress = IpAddress(addr);
     }
     if (k == "b")
     {
