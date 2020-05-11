@@ -80,7 +80,7 @@ namespace llarp
   bool
   IpAddress::isIPv4()
   {
-    throw std::runtime_error("FIXME");
+    throw std::runtime_error("FIXME - IpAddress::isIPv4()");
   }
 
   bool
@@ -117,13 +117,13 @@ namespace llarp
   bool
   IpAddress::operator<(const IpAddress& other) const
   {
-    throw std::runtime_error("FIXME");
+    throw std::runtime_error("FIXME - IpAddress::operator<()");
   }
 
   bool
   IpAddress::operator==(const IpAddress& other) const
   {
-    throw std::runtime_error("FIXME");
+    throw std::runtime_error("FIXME - IpAddress::operator==()");
   }
 
   std::ostream&

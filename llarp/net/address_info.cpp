@@ -152,13 +152,13 @@ namespace llarp
   IpAddress
   AddressInfo::toIpAddress() const
   {
-    throw std::runtime_error("FIXME");
+    throw std::runtime_error("FIXME - AddressInfo::toIpAddress()");
   }
 
   void
   AddressInfo::fromIpAddress(const IpAddress& address)
   {
-    throw std::runtime_error("FIXME");
+    throw std::runtime_error("FIXME - AddressInfo::fromIpAddress()");
   }
 
   std::ostream&
