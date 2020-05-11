@@ -461,28 +461,7 @@ namespace llarp
       bool
       Start(const IpAddress& addr)
       {
-        // NOTE/TODO: RPC on HTTP here can assume 127.0.0.1 or localhost, this isn't safe to expose
-        //       externally anyway
-        throw std::runtime_error("FIXME: replace with lokimq, or fix this stuff");
-        /*
-        sockaddr_in saddr;
-        saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        saddr.sin_family = AF_INET;
-        saddr.sin_port = 1190;
-
-        auto idx = addr.find_first_of(':');
-        if (idx != std::string::npos)
-        {
-          _handler.expectedHostname = addr.substr(0, idx);
-          Addr netaddr{addr.substr(0, idx), addr.substr(1 + idx)};
-          saddr.sin_addr.s_addr = netaddr.ton();
-          saddr.sin_port = htons(netaddr.port());
-        }
-        else
-        {
-          _handler.expectedHostname = addr;
-        }
-        */
+        _handler.expectedHostname = "localhost";
         return _handler.ServeAsync(router->netloop(), router->logic(), addr.createSockAddr());
       }
     };

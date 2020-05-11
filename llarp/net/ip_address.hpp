@@ -136,6 +136,7 @@ namespace llarp
     };
 
    private:
+    bool m_empty = true;
     std::string m_ipAddress;
     std::optional<uint16_t> m_port = std::nullopt;
   };

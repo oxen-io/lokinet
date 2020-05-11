@@ -20,6 +20,8 @@ namespace llarp
     uint16_t port = addr.getPort();
     if (port > 0)
       m_port = port;
+
+    m_empty = addr.isEmpty();
   }
 
   IpAddress&
@@ -31,6 +33,8 @@ namespace llarp
     uint16_t port = addr.getPort();
     if (port > 0)
       m_port = port;
+
+    m_empty = addr.isEmpty();
 
     return *this;
   }
@@ -57,6 +61,8 @@ namespace llarp
     uint16_t port = addr.getPort();
     if (port > 0)
       m_port = port;
+
+    m_empty = addr.isEmpty();
   }
 
   void
@@ -67,6 +73,8 @@ namespace llarp
 
     m_ipAddress = std::string(str);
     m_port = port;
+
+    m_empty = addr.isEmpty();
   }
 
   bool
@@ -78,7 +86,7 @@ namespace llarp
   bool
   IpAddress::isEmpty() const
   {
-    throw std::runtime_error("FIXME");
+    return m_empty;
   }
 
   SockAddr
