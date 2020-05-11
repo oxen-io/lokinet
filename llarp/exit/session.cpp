@@ -99,7 +99,7 @@ namespace llarp
     bool
     BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
     {
-      return dlt >= 10s;
+      return dlt >= path::alive_timeout;
     }
 
     void
