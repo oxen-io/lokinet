@@ -130,6 +130,7 @@ namespace llarp
   operator<<(std::ostream& out, const IpAddress& address)
   {
     out << address.toString();
+    return out;
   }
 
 }  // namespace llarp
