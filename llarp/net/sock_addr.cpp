@@ -8,6 +8,8 @@
 #include <charconv>
 #include <stdexcept>
 
+#include <arpa/inet.h>
+
 namespace llarp
 {
   /// shared utility functions
@@ -238,27 +240,38 @@ namespace llarp
       return "";
 
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
-
-    // ensure SIIT
-    if (ip6[10] != 0xff or ip6[11] != 0xff)
-      throw std::runtime_error("Only SIIT address supported");
-
-    constexpr auto MaxIPv4PlusPortStringSize = 22;
     std::string str;
-    str.reserve(MaxIPv4PlusPortStringSize);
 
-    // TODO: ensure these don't each incur a memory allocation
-    str.append(std::to_string(ip6[12]));
-    str.append(1, '.');
-    str.append(std::to_string(ip6[13]));
-    str.append(1, '.');
-    str.append(std::to_string(ip6[14]));
-    str.append(1, '.');
-    str.append(std::to_string(ip6[15]));
+    if (ip6[10] == 0xff and ip6[11] == 0xff)
+    {
+      // treat SIIT like IPv4
+      constexpr auto MaxIPv4PlusPortStringSize = 22;
+      str.reserve(MaxIPv4PlusPortStringSize);
+
+      // TODO: ensure these don't each incur a memory allocation
+      str.append(std::to_string(ip6[12]));
+      str.append(1, '.');
+      str.append(std::to_string(ip6[13]));
+      str.append(1, '.');
+      str.append(std::to_string(ip6[14]));
+      str.append(1, '.');
+      str.append(std::to_string(ip6[15]));
+    }
+    else
+    {
+      constexpr auto MaxIPv6PlusPortStringSize = 128;
+      str.reserve(MaxIPv6PlusPortStringSize);
+
+      char buf[128] = {0x0};
+      inet_ntop(AF_INET6, &m_addr.sin6_addr.s6_addr, buf, sizeof(buf));
+
+      str.append("[");
+      str.append(buf);
+      str.append("]");
+    }
 
     str.append(1, ':');
     str.append(std::to_string(getPort()));
-
     return str;
   }
 
