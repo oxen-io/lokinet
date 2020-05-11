@@ -428,7 +428,7 @@ namespace llarp
       {
         if (i->ifa_addr->sa_family == af)
         {
-          llarp::SockAddr a(i->ifa_addr);
+          llarp::SockAddr a(*i->ifa_addr);
           llarp::IpAddress ip(a);
 
           if (!ip.isBogon())
