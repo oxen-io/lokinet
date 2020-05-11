@@ -278,7 +278,8 @@ namespace llarp
   std::ostream&
   operator<<(std::ostream& out, const SockAddr& address)
   {
-    throw std::runtime_error("FIXME - SockAddr operator<<()");
+    out << address.toString();
+    return out;
   }
 
 }  // namespace llarp
