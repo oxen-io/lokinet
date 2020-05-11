@@ -760,9 +760,11 @@ namespace libuv
   OnAsyncWake(uv_async_t* async_handle)
   {
     Loop* loop = static_cast<Loop*>(async_handle->data);
+    loop->update_time();
     loop->process_timer_queue();
     loop->process_cancel_queue();
     loop->FlushLogic();
+    llarp::LogContext::Instance().logStream->Tick(loop->time_now());
   }
 
   Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024), m_timerQueue(20), m_timerCancelQueue(20)

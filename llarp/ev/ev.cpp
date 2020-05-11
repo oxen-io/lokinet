@@ -26,12 +26,7 @@ llarp_make_ev_loop()
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev, std::shared_ptr<llarp::Logic> logic)
 {
-  while (ev->running())
-  {
-    ev->update_time();
-    ev->tick(EV_TICK_INTERVAL);
-    llarp::LogContext::Instance().logStream->Tick(ev->time_now());
-  }
+  ev->run();
   logic->clear_event_loop();
   ev->stopped();
 }
