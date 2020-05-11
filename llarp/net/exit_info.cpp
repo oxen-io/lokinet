@@ -78,6 +78,7 @@ namespace llarp
 
       SockAddr addr(tmp);
       ipAddress = IpAddress(addr);
+      return true;
     }
     if (k == "b")
     {
