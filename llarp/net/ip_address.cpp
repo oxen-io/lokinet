@@ -117,13 +117,13 @@ namespace llarp
   bool
   IpAddress::operator<(const IpAddress& other) const
   {
-    throw std::runtime_error("FIXME - IpAddress::operator<()");
+    return createSockAddr() < other.createSockAddr();
   }
 
   bool
   IpAddress::operator==(const IpAddress& other) const
   {
-    throw std::runtime_error("FIXME - IpAddress::operator==()");
+    return createSockAddr() == other.createSockAddr();
   }
 
   std::ostream&

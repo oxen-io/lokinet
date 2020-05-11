@@ -147,6 +147,29 @@ namespace llarp
     return &m_addr;
   }
 
+  bool
+  SockAddr::operator<(const SockAddr& other) const
+  {
+    return (m_addr.sin6_addr.s6_addr < other.m_addr.sin6_addr.s6_addr);
+  }
+
+  bool
+  SockAddr::operator==(const SockAddr& other) const
+  {
+    if (m_addr.sin6_family != other.m_addr.sin6_family)
+      return false;
+
+    if (getPort() != other.getPort())
+      return false;
+
+    return (
+        0
+        == memcmp(
+            m_addr.sin6_addr.s6_addr,
+            other.m_addr.sin6_addr.s6_addr,
+            sizeof(m_addr.sin6_addr.s6_addr)));
+  }
+
   void
   SockAddr::fromString(std::string_view str)
   {
