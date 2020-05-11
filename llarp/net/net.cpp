@@ -428,17 +428,14 @@ namespace llarp
       {
         if (i->ifa_addr->sa_family == af)
         {
-          /* TODO: why the fuck does'n this work?
-          // llarp::SockAddr a(i->ifa_addr);
-          // llarp::IpAddress ip(a);
+          llarp::SockAddr a(i->ifa_addr);
+          llarp::IpAddress ip(a);
 
           if (!ip.isBogon())
           {
             ifname = i->ifa_name;
             found = true;
           }
-          */
-          throw std::runtime_error("WTF");
         }
       }
     });
@@ -544,10 +541,8 @@ namespace llarp
     sockaddr* sptr = (sockaddr*)&s;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    // TODO: why the fuck does this not compile?
-    // llarp::SockAddr saddr = SockAddr(*sptr);
-    // return llarp::IpAddress(saddr);
-    throw std::runtime_error("WTF");
+    llarp::SockAddr saddr = SockAddr(*sptr);
+    return llarp::IpAddress(saddr);
   }
 
   bool
@@ -559,10 +554,8 @@ namespace llarp
       addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
       addr.sin_port = htons(0);
-      // TODO: why the fuck doesn't this work?
-      // SockAddr saddr = SockAddr(addr);
-      // result = IpAddress(saddr);
-      throw std::runtime_error("WTF");
+      SockAddr saddr = SockAddr(addr);
+      result = IpAddress(saddr);
       return true;
     }
     if (af == AF_INET6)

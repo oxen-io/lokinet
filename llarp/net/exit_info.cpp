@@ -16,16 +16,17 @@ namespace llarp
   bool
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
-    // TODO: derive these from ipAdress
-    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
-    in6_addr address;
+    SockAddr addr = ipAddress.createSockAddr();
+    const sockaddr_in6* addr6 = addr;
+
     in6_addr netmask;
+    memset(netmask.s6_addr, 0xff, 16);
 
     char tmp[128] = {0};
     if (!bencode_start_dict(buf))
       return false;
 
-    if (!inet_ntop(AF_INET6, address.s6_addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, &addr6->sin6_addr, tmp, sizeof(tmp)))
       return false;
     if (!BEncodeWriteDictString("a", std::string(tmp), buf))
       return false;
@@ -63,26 +64,31 @@ namespace llarp
   bool
   ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
-    // TODO: derive these from ipAdress
-    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
-    in6_addr address;
-    in6_addr netmask;
-
     bool read = false;
     if (!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
       return false;
     if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
     if (k == "a")
-      return bdecode_ip_string(buf, address);
+    {
+      // TODO: read into ipAddress
+      in6_addr tmp;
+      return bdecode_ip_string(buf, tmp);
+    }
     if (k == "b")
+    {
+      // TODO: we don't use this currently, but we shoudn't drop it on the floor
+      //       it appears that all clients should be advertising 0xff..ff for netmask
+      in6_addr netmask;
       return bdecode_ip_string(buf, netmask);
+    }
     return read;
   }
 
   std::ostream&
   ExitInfo::print(std::ostream& stream, int level, int spaces) const
   {
+    /*
     // TODO: derive these from ipAdress
     throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
     in6_addr address;
@@ -105,6 +111,8 @@ namespace llarp
     ss << std::to_string(llarp::bits::count_array_bits(netmask.s6_addr));
 #endif
     printer.printValue(ss.str());
+    */
+    stream << ipAddress.toString();
     return stream;
   }
 

@@ -48,7 +48,7 @@ namespace llarp
     /// @param addr is an SockAddr to initialize from.
     IpAddress(const SockAddr& addr);
 
-    SockAddr&
+    IpAddress&
     operator=(const sockaddr& other);
 
     /// Return the port. Returns -1 if no port has been provided.

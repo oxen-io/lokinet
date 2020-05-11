@@ -125,11 +125,20 @@ namespace llarp
     return (sockaddr*)&m_addr;
   }
 
+  SockAddr::operator const sockaddr_in6*() const
+  {
+    return &m_addr;
+  }
+
   void
   SockAddr::fromString(std::string_view str)
   {
     if (str.empty())
-      throw std::invalid_argument("cannot construct IPv4 from empty string");
+    {
+      init();
+      m_empty = true;
+      return;
+    }
 
     // NOTE: this potentially involves multiple memory allocations,
     //       reimplement without split() if it is performance bottleneck

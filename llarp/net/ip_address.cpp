@@ -1,50 +1,72 @@
 #include <net/ip_address.hpp>
 
+#include <net/net.hpp>
+
 namespace llarp
 {
   IpAddress::IpAddress(std::string_view str)
   {
-    throw std::runtime_error("FIXME");
+    setAddress(str);
   }
 
   IpAddress::IpAddress(std::string_view str, std::optional<uint16_t> port)
   {
-    throw std::runtime_error("FIXME");
+    setAddress(str, port);
   }
 
   IpAddress::IpAddress(const SockAddr& addr)
   {
-    throw std::runtime_error("FIXME");
+    m_ipAddress = addr.toString();
+    uint16_t port = addr.getPort();
+    if (port > 0)
+      m_port = port;
   }
 
-  SockAddr&
+  IpAddress&
   IpAddress::operator=(const sockaddr& other)
   {
-    throw std::runtime_error("FIXME");
+    SockAddr addr(other);
+
+    m_ipAddress = addr.toString();
+    uint16_t port = addr.getPort();
+    if (port > 0)
+      m_port = port;
+
+    return *this;
   }
 
   std::optional<uint16_t>
   IpAddress::getPort() const
   {
-    throw std::runtime_error("FIXME");
+    return m_port;
   }
 
   void
   IpAddress::setPort(std::optional<uint16_t> port)
   {
-    throw std::runtime_error("FIXME");
+    m_port = port;
   }
 
   void
   IpAddress::setAddress(std::string_view str)
   {
-    throw std::runtime_error("FIXME");
+    SockAddr addr;
+    addr.fromString(str);
+
+    m_ipAddress = std::string(str);
+    uint16_t port = addr.getPort();
+    if (port > 0)
+      m_port = port;
   }
 
   void
   IpAddress::setAddress(std::string_view str, std::optional<uint16_t> port)
   {
-    throw std::runtime_error("FIXME");
+    SockAddr addr;
+    addr.fromString(str);
+
+    m_ipAddress = std::string(str);
+    m_port = port;
   }
 
   bool
@@ -62,19 +84,26 @@ namespace llarp
   SockAddr
   IpAddress::createSockAddr() const
   {
-    throw std::runtime_error("FIXME");
+    SockAddr addr(m_ipAddress);
+    if (m_port)
+      addr.setPort(m_port.value());
+
+    return addr;
   }
 
   bool
   IpAddress::isBogon() const
   {
-    throw std::runtime_error("FIXME");
+    SockAddr addr(m_ipAddress);
+    const sockaddr_in6* addr6 = addr;
+    uint8_t* raw = addr6->sin6_addr.s6_addr;
+    return IsIPv4Bogon(ipaddr_ipv4_bits(raw[12], raw[13], raw[14], raw[15]));
   }
 
   std::string
   IpAddress::toString() const
   {
-    throw std::runtime_error("FIXME");
+    return m_ipAddress;  // TODO: port
   }
 
   bool
@@ -92,7 +121,7 @@ namespace llarp
   std::ostream&
   operator<<(std::ostream& out, const IpAddress& address)
   {
-    throw std::runtime_error("FIXME");
+    out << address.toString();
   }
 
 }  // namespace llarp

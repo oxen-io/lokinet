@@ -33,6 +33,7 @@ namespace llarp
     operator=(const sockaddr_in6& addr);
 
     operator const sockaddr*() const;
+    operator const sockaddr_in6*() const;
 
     void
     fromString(std::string_view str);
