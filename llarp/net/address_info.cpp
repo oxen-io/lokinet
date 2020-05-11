@@ -152,13 +152,23 @@ namespace llarp
   IpAddress
   AddressInfo::toIpAddress() const
   {
-    throw std::runtime_error("FIXME - AddressInfo::toIpAddress()");
+    SockAddr addr(ip);
+    addr.setPort(port);
+    return IpAddress(addr);
   }
 
   void
   AddressInfo::fromIpAddress(const IpAddress& address)
   {
-    throw std::runtime_error("FIXME - AddressInfo::fromIpAddress()");
+    SockAddr addr = address.createSockAddr();
+    const sockaddr_in6* addr6 = addr;
+    memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
+
+    auto maybePort = address.getPort();
+    if (maybePort)
+      port = maybePort.value();
+    else
+      port = 0;
   }
 
   std::ostream&

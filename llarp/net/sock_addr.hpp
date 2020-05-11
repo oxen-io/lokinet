@@ -32,6 +32,10 @@ namespace llarp
     SockAddr&
     operator=(const sockaddr_in6& addr);
 
+    SockAddr(const in6_addr& addr);
+    SockAddr&
+    operator=(const in6_addr& addr);
+
     operator const sockaddr*() const;
     operator const sockaddr_in6*() const;
 

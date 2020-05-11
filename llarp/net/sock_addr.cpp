@@ -120,6 +120,23 @@ namespace llarp
     return *this;
   }
 
+  SockAddr::SockAddr(const in6_addr& addr)
+  {
+    *this = addr;
+  }
+
+  SockAddr&
+  SockAddr::operator=(const in6_addr& other)
+  {
+    init();
+
+    memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
+
+    m_empty = false;
+
+    return *this;
+  }
+
   SockAddr::operator const sockaddr*() const
   {
     return (sockaddr*)&m_addr;
