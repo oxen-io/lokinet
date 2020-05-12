@@ -170,7 +170,7 @@ namespace llarp
   void
   OutboundSessionMaker::DoEstablish(const RouterID& router)
   {
-    auto l = util::unique_lock(_mutex);
+    std::unique_lock l{_mutex};
 
     auto itr = pendingSessions.find(router);
 
@@ -193,7 +193,7 @@ namespace llarp
   OutboundSessionMaker::GotRouterContact(const RouterID& router, const RouterContact& rc)
   {
     {
-      auto l = util::unique_lock(_mutex);
+      std::unique_lock l{_mutex};
 
       // in case other request found RC for this router after this request was
       // made

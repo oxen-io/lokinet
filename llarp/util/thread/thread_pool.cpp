@@ -64,7 +64,7 @@ namespace llarp
     void
     ThreadPool::waitThreads()
     {
-      std::unique_lock<std::mutex> lock(m_gateMutex);
+      std::unique_lock lock{m_gateMutex};
       m_numThreadsCV.wait(lock, [this] { return allThreadsReady(); });
     }
 
@@ -72,7 +72,7 @@ namespace llarp
     ThreadPool::releaseThreads()
     {
       {
-        std::lock_guard<std::mutex> lock(m_gateMutex);
+        std::lock_guard lock{m_gateMutex};
         m_numThreadsReady = 0;
         ++m_gateCount;
       }
@@ -82,7 +82,7 @@ namespace llarp
     void
     ThreadPool::interrupt()
     {
-      std::lock_guard<std::mutex> lock(m_gateMutex);
+      std::lock_guard lock{m_gateMutex};
 
       size_t count = m_idleThreads;
 
@@ -96,14 +96,14 @@ namespace llarp
     ThreadPool::worker()
     {
       // Lock will be valid until the end of the statement
-      size_t gateCount = (std::lock_guard<std::mutex>(m_gateMutex), m_gateCount);
+      size_t gateCount = (std::lock_guard{m_gateMutex}, m_gateCount);
 
       util::SetThreadName(m_name);
 
       for (;;)
       {
         {
-          std::unique_lock<std::mutex> lock(m_gateMutex);
+          std::unique_lock lock{m_gateMutex};
           ++m_numThreadsReady;
           m_numThreadsCV.notify_one();
 

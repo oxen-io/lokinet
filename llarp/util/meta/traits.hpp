@@ -10,19 +10,6 @@ namespace llarp
 {
   namespace traits
   {
-#ifdef __cpp_lib_void_t
-    using std::void_t;
-#else
-    /// C++17 void_t backport
-    template <typename... Ts>
-    struct void_t_impl
-    {
-      using type = void;
-    };
-    template <typename... Ts>
-    using void_t = typename void_t_impl<Ts...>::type;
-#endif
-
     /// Represents the empty type
     struct Bottom
     {
@@ -46,7 +33,7 @@ namespace llarp
     // - has dereference operator
     // - has arrow operator
     template <typename T>
-    struct is_pointy<T, std::conditional_t<false, void_t<decltype(*std::declval<T>())>, void>>
+    struct is_pointy<T, std::conditional_t<false, std::void_t<decltype(*std::declval<T>())>, void>>
         : public std::true_type
     {
     };
@@ -65,7 +52,7 @@ namespace llarp
         T,
         std::conditional_t<
             false,
-            void_t< typename T::value_type,
+            std::void_t< typename T::value_type,
                     typename T::size_type,
                     typename T::iterator,
                     typename T::const_iterator,

@@ -96,45 +96,14 @@ namespace llarp
     /// Basic RAII lock type for the default mutex type.
     using Lock = std::lock_guard<Mutex>;
 
-    /// Returns a unique lock around the given lockable (typically a mutex)
-    /// which gives exclusive control and is unlockable/relockable.  Any extra
-    /// argument (e.g. std::defer_lock) is forwarded to the unique_lock
-    /// constructor.
-    template <typename Mutex, typename... Args>
-#ifdef __GNUG__
-    [[gnu::warn_unused_result]]
-#endif
-    std::unique_lock<Mutex>
-    unique_lock(Mutex& lockable, Args&&... args)
-    {
-      return std::unique_lock<Mutex>(lockable, std::forward<Args>(args)...);
-    }
-
-    /// Returns a shared lock around the given lockable (typically a mutex)
-    /// which gives "reader" access (i.e. which can be shared with other reader
-    /// locks but not unique locks).  Any extra argument (e.g. std::defer_lock)
-    /// is forwarded to the std::shared_lock constructor.
-    template <typename Mutex, typename... Args>
-#ifdef __GNUG__
-    [[gnu::warn_unused_result]]
-#endif
-    std::shared_lock<Mutex>
-    shared_lock(Mutex& lockable, Args&&... args)
-    {
-      return std::shared_lock<Mutex>(lockable, std::forward<Args>(args)...);
-    }
-
     /// Obtains multiple unique locks simultaneously and atomically.  Returns a
     /// tuple of all the held locks.
     template <typename... Mutex>
-#ifdef __GNUG__
-    [[gnu::warn_unused_result]]
-#endif
-    std::tuple<std::unique_lock<Mutex>...>
+    [[nodiscard]] auto
     unique_locks(Mutex&... lockables)
     {
       std::lock(lockables...);
-      return std::make_tuple(std::unique_lock<Mutex>(lockables, std::adopt_lock)...);
+      return std::make_tuple(std::unique_lock{lockables, std::adopt_lock}...);
     }
 
     class Semaphore
@@ -162,7 +131,7 @@ namespace llarp
       void
       wait() EXCLUDES(m_mutex)
       {
-        auto lock = unique_lock(m_mutex);
+        std::unique_lock lock{m_mutex};
         m_cv.wait(lock, [this] { return m_count > 0; });
         m_count--;
       }
@@ -170,7 +139,7 @@ namespace llarp
       bool
       waitFor(std::chrono::microseconds timeout) EXCLUDES(m_mutex)
       {
-        auto lock = unique_lock(m_mutex);
+        std::unique_lock lock{m_mutex};
         if (!m_cv.wait_for(lock, timeout, [this] { return m_count > 0; }))
           return false;
 

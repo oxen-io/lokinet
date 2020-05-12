@@ -484,7 +484,7 @@ llarp_nodedb::LoadAll()
 size_t
 llarp_nodedb::num_loaded() const
 {
-  auto l = llarp::util::shared_lock(access);
+  std::shared_lock l{access};
   return entries.size();
 }
 
