@@ -9,6 +9,7 @@
 #include <config/ini.hpp>
 #include <config/definition.hpp>
 #include <constants/files.hpp>
+#include <net/ip_address.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -45,9 +46,7 @@ namespace llarp
 
     bool m_blockBogons;
 
-    bool m_publicOverride = false;
-    struct sockaddr_in m_ip4addr;
-    AddressInfo m_addrInfo;
+    IpAddress m_publicAddress;
 
     int m_workerThreads;
     int m_numNetThreads;
@@ -93,8 +92,8 @@ namespace llarp
 
   struct DnsConfig
   {
-    Addr m_bind;
-    std::vector<Addr> m_upstreamDNS;
+    IpAddress m_bind;
+    std::vector<IpAddress> m_upstreamDNS;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

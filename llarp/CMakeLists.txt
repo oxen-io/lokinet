@@ -60,7 +60,6 @@ set(LIB_PLATFORM_SRC
   ev/ev_libuv.cpp
   net/ip.cpp
   net/net.cpp
-  net/net_addr.cpp
   net/net_int.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
@@ -151,6 +150,8 @@ set(LIB_SRC
   messages/relay_commit.cpp
   messages/relay_status.cpp
   net/address_info.cpp
+  net/ip_address.cpp
+  net/sock_addr.cpp
   net/exit_info.cpp
   nodedb.cpp
   path/ihophandler.cpp

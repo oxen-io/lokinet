@@ -163,10 +163,7 @@ namespace llarp
       return disk;
     }
 
-    // our ipv4 public setting
-    bool publicOverride = false;
-    struct sockaddr_in ip4addr;
-    AddressInfo addrInfo;
+    IpAddress _ourAddress;
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;
@@ -245,15 +242,15 @@ namespace llarp
     NetworkConfig networkConfig;
     DnsConfig dnsConfig;
 
-    const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
+    const IpAddress DefaultRPCBindAddr = IpAddress("127.0.0.1:1190");
     bool enableRPCServer = false;
     std::unique_ptr<rpc::Server> rpcServer;
-    std::string rpcBindAddr = DefaultRPCBindAddr;
+    IpAddress rpcBindAddr = DefaultRPCBindAddr;
     const llarp_time_t _randomStartDelay;
 
     /// lokid caller
     std::unique_ptr<rpc::Caller> rpcCaller;
-    std::string lokidRPCAddr = "127.0.0.1:22023";
+    IpAddress lokidRPCAddr = IpAddress("127.0.0.1:22023");
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 

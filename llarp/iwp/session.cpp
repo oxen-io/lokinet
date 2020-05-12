@@ -31,7 +31,7 @@ namespace llarp
         , m_Inbound{false}
         , m_Parent(p)
         , m_CreatedAt{p->Now()}
-        , m_RemoteAddr(ai)
+        , m_RemoteAddr(ai.toIpAddress())
         , m_ChosenAI(ai)
         , m_RemoteRC(rc)
     {
@@ -40,7 +40,7 @@ namespace llarp
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(rc.pubkey));
     }
 
-    Session::Session(LinkLayer* p, const Addr& from)
+    Session::Session(LinkLayer* p, const IpAddress& from)
         : m_State{State::Initial}
         , m_Inbound{true}
         , m_Parent(p)
@@ -58,7 +58,7 @@ namespace llarp
     {
       LogDebug("send ", sz, " to ", m_RemoteAddr);
       const llarp_buffer_t pkt(buf, sz);
-      m_Parent->SendTo_LL(m_RemoteAddr, pkt);
+      m_Parent->SendTo_LL(m_RemoteAddr.createSockAddr(), pkt);
       m_LastTX = time_now_ms();
       m_TXRate += sz;
     }
@@ -309,7 +309,7 @@ namespace llarp
               {"replayFilter", m_ReplayFilter.size()},
               {"txMsgQueueSize", m_TXMsgs.size()},
               {"rxMsgQueueSize", m_RXMsgs.size()},
-              {"remoteAddr", m_RemoteAddr.ToString()},
+              {"remoteAddr", m_RemoteAddr.toString()},
               {"remoteRC", m_RemoteRC.ExtractStatus()},
               {"created", to_json(m_CreatedAt)},
               {"uptime", to_json(now - m_CreatedAt)}};

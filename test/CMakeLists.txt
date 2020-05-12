@@ -82,7 +82,8 @@ add_executable(${CATCH_EXE}
   util/test_llarp_util_decaying_hashset.cpp
   config/test_llarp_config_definition.cpp
   config/test_llarp_config_output.cpp
-  net/test_addr.cpp
+  net/test_ip_address.cpp
+  net/test_sock_addr.cpp
   check_main.cpp)
 
 target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)

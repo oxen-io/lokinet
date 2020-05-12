@@ -1,4 +1,5 @@
 #include <net/address_info.hpp>
+#include <stdexcept>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -146,6 +147,28 @@ namespace llarp
       return false;
     /** end */
     return bencode_end(buff);
+  }
+
+  IpAddress
+  AddressInfo::toIpAddress() const
+  {
+    SockAddr addr(ip);
+    addr.setPort(port);
+    return IpAddress(addr);
+  }
+
+  void
+  AddressInfo::fromIpAddress(const IpAddress& address)
+  {
+    SockAddr addr = address.createSockAddr();
+    const sockaddr_in6* addr6 = addr;
+    memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
+
+    auto maybePort = address.getPort();
+    if (maybePort)
+      port = maybePort.value();
+    else
+      port = 0;
   }
 
   std::ostream&

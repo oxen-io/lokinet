@@ -2,6 +2,7 @@
 #define LLARP_PATH_CONTEXT_HPP
 
 #include <crypto/encrypted_frame.hpp>
+#include <net/ip_address.hpp>
 #include <path/ihophandler.hpp>
 #include <path/path_types.hpp>
 #include <path/pathset.hpp>
@@ -52,7 +53,7 @@ namespace llarp
       RejectTransit();
 
       bool
-      CheckPathLimitHitByIP(const llarp::Addr& ip);
+      CheckPathLimitHitByIP(const IpAddress& ip);
 
       bool
       AllowingTransit() const;
@@ -170,7 +171,7 @@ namespace llarp
       SyncTransitMap_t m_TransitPaths;
       SyncOwnedPathsMap_t m_OurPaths;
       bool m_AllowTransit;
-      util::DecayingHashSet<llarp::Addr> m_PathLimits;
+      util::DecayingHashSet<IpAddress> m_PathLimits;
     };
   }  // namespace path
 }  // namespace llarp

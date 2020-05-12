@@ -65,10 +65,6 @@ namespace llarp
   {
     m_keyManager = std::make_shared<KeyManager>();
 
-    // set rational defaults
-    this->ip4addr.sin_family = AF_INET;
-    this->ip4addr.sin_port = htons(1090);
-
     _stopping.store(false);
     _running.store(false);
     _lastTick = llarp::time_now_ms();
@@ -401,9 +397,7 @@ namespace llarp
     encryption_keyfile = conf->router.m_dataDir / our_enc_key_filename;
     our_rc_file = conf->router.m_dataDir / our_rc_filename;
     transport_keyfile = conf->router.m_dataDir / our_transport_key_filename;
-    addrInfo = conf->router.m_addrInfo;
-    publicOverride = conf->router.m_publicOverride;
-    ip4addr = conf->router.m_ip4addr;
+    _ourAddress = conf->router.m_publicAddress;
 
     RouterContact::BlockBogons = conf->router.m_blockBogons;
 
@@ -411,7 +405,7 @@ namespace llarp
     usingSNSeed = conf->lokid.usingSNSeed;
     ident_keyfile = conf->lokid.ident_keyfile;
     whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = conf->lokid.lokidRPCAddr;
+    lokidRPCAddr = IpAddress(conf->lokid.lokidRPCAddr);  // TODO: make config's option an IpAddress
     lokidRPCUser = conf->lokid.lokidRPCUser;
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
@@ -572,7 +566,7 @@ namespace llarp
 
     // API config
     enableRPCServer = conf->api.m_enableRPCServer;
-    rpcBindAddr = conf->api.m_rpcBindAddr;
+    rpcBindAddr = IpAddress(conf->api.m_rpcBindAddr);  // TODO: make this an IpAddress in config
     if (not IsServiceNode())
     {
       hiddenServiceContext().AddEndpoint(*conf);
@@ -843,7 +837,7 @@ namespace llarp
 
     if (enableRPCServer)
     {
-      if (rpcBindAddr.empty())
+      if (rpcBindAddr.isEmpty())
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
@@ -891,8 +885,6 @@ namespace llarp
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
-    Addr publicAddr(this->addrInfo);
-
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
     // set router version if service node
@@ -906,10 +898,9 @@ namespace llarp
       if (link->GetOurAddressInfo(ai))
       {
         // override ip and port
-        if (this->publicOverride)
+        if (not _ourAddress.isEmpty())
         {
-          ai.ip = *publicAddr.addr6();
-          ai.port = publicAddr.port();
+          ai.fromIpAddress(_ourAddress);
         }
         if (RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
@@ -917,10 +908,9 @@ namespace llarp
         _rc.addrs.push_back(ai);
         if (ExitEnabled())
         {
-          const llarp::Addr addr(ai);
-          const nuint32_t a{addr.addr4()->s_addr};
-          _rc.exits.emplace_back(_rc.pubkey, a);
-          LogInfo("Exit relay started, advertised as exiting at: ", a);
+          const IpAddress address = ai.toIpAddress();
+          _rc.exits.emplace_back(_rc.pubkey, address);
+          LogInfo("Exit relay started, advertised as exiting at: ", address);
         }
       }
     });

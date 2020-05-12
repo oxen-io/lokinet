@@ -37,7 +37,7 @@ namespace llarp
           IQueryHandler* handler);
 
       bool
-      Start(const llarp::Addr addr, const std::vector<llarp::Addr>& resolvers);
+      Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers);
 
       void
       Stop();
@@ -47,9 +47,9 @@ namespace llarp
      private:
       /// low level packet handler
       static void
-      HandleUDPRecv_client(llarp_udp_io*, const struct sockaddr*, ManagedBuffer);
+      HandleUDPRecv_client(llarp_udp_io*, const SockAddr&, ManagedBuffer);
       static void
-      HandleUDPRecv_server(llarp_udp_io*, const struct sockaddr*, ManagedBuffer);
+      HandleUDPRecv_server(llarp_udp_io*, const SockAddr&, ManagedBuffer);
 
       /// low level ticker
       static void
@@ -59,18 +59,18 @@ namespace llarp
       Tick(llarp_time_t now);
 
       void
-      HandlePktClient(llarp::Addr from, Buffer_t buf);
+      HandlePktClient(const SockAddr& from, Buffer_t buf);
 
       void
-      HandlePktServer(llarp::Addr from, Buffer_t buf);
+      HandlePktServer(const SockAddr& from, Buffer_t buf);
 
       void
-      SendClientMessageTo(llarp::Addr to, Message msg);
+      SendClientMessageTo(const SockAddr& to, Message msg);
 
       void
-      SendServerMessageTo(llarp::Addr to, Message msg);
+      SendServerMessageTo(const SockAddr& to, Message msg);
 
-      llarp::Addr
+      IpAddress
       PickRandomResolver() const;
 
      private:
@@ -81,12 +81,12 @@ namespace llarp
       Logic_ptr m_ServerLogic;
       Logic_ptr m_ClientLogic;
       IQueryHandler* m_QueryHandler;
-      std::vector<llarp::Addr> m_Resolvers;
+      std::vector<IpAddress> m_Resolvers;
 
       struct TX
       {
         MsgID_t txid;
-        llarp::Addr from;
+        IpAddress from;
 
         bool
         operator==(const TX& other) const
@@ -99,13 +99,13 @@ namespace llarp
           size_t
           operator()(const TX& t) const noexcept
           {
-            return t.txid ^ llarp::Addr::Hash()(t.from);
+            return t.txid ^ IpAddress::Hash()(t.from);
           }
         };
       };
 
       // maps tx to who to send reply to
-      std::unordered_map<TX, llarp::Addr, TX::Hash> m_Forwarded;
+      std::unordered_map<TX, IpAddress, TX::Hash> m_Forwarded;
     };
   }  // namespace dns
 }  // namespace llarp

@@ -2,6 +2,7 @@
 #define ABYSS_CLIENT_HPP
 
 #include <ev/ev.h>
+#include <net/ip_address.hpp>
 #include <util/json.hpp>
 #include <abyss/http.hpp>
 
@@ -67,7 +68,7 @@ namespace abyss
       /// start runing on event loop async
       /// return true on success otherwise return false
       bool
-      RunAsync(llarp_ev_loop_ptr loop, const std::string& endpoint);
+      RunAsync(llarp_ev_loop_ptr loop, const llarp::IpAddress& endpoint);
 
       /// must be called after RunAsync returns true
       /// queue a call for rpc

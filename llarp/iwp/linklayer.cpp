@@ -45,7 +45,7 @@ namespace llarp
     }
 
     void
-    LinkLayer::RecvFrom(const Addr& from, ILinkSession::Packet_t pkt)
+    LinkLayer::RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt)
     {
       std::shared_ptr<ILinkSession> session;
       auto itr = m_AuthedAddrs.find(from);
@@ -89,9 +89,9 @@ namespace llarp
     }
 
     void
-    LinkLayer::UnmapAddr(const Addr& a)
+    LinkLayer::UnmapAddr(const IpAddress& addr)
     {
-      m_AuthedAddrs.erase(a);
+      m_AuthedAddrs.erase(addr);
     }
 
     std::shared_ptr<ILinkSession>

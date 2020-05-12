@@ -188,7 +188,7 @@ namespace llarp
       }
 
       bool
-      Start(const std::string& remote)
+      Start(const IpAddress& remote)
       {
         return RunAsync(router->netloop(), remote);
       }
@@ -459,26 +459,10 @@ namespace llarp
       }
 
       bool
-      Start(const std::string& addr)
+      Start(const IpAddress& addr)
       {
-        sockaddr_in saddr;
-        saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        saddr.sin_family = AF_INET;
-        saddr.sin_port = 1190;
-
-        auto idx = addr.find_first_of(':');
-        if (idx != std::string::npos)
-        {
-          _handler.expectedHostname = addr.substr(0, idx);
-          Addr netaddr{addr.substr(0, idx), addr.substr(1 + idx)};
-          saddr.sin_addr.s_addr = netaddr.ton();
-          saddr.sin_port = htons(netaddr.port());
-        }
-        else
-        {
-          _handler.expectedHostname = addr;
-        }
-        return _handler.ServeAsync(router->netloop(), router->logic(), (const sockaddr*)&saddr);
+        _handler.expectedHostname = "localhost";
+        return _handler.ServeAsync(router->netloop(), router->logic(), addr.createSockAddr());
       }
     };
 
@@ -495,7 +479,7 @@ namespace llarp
     }
 
     bool
-    Caller::Start(const std::string& addr)
+    Caller::Start(const IpAddress& addr)
     {
       return m_Impl->Start(addr);
     }
@@ -525,7 +509,7 @@ namespace llarp
     }
 
     bool
-    Server::Start(const std::string& addr)
+    Server::Start(const IpAddress& addr)
     {
       return m_Impl->Start(addr);
     }

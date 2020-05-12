@@ -185,7 +185,7 @@ namespace llarp
     // the actual hop
     std::shared_ptr<Hop> hop;
 
-    const std::optional<llarp::Addr> fromAddr;
+    const std::optional<IpAddress> fromAddr;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter_ptr dec, const LR_CommitMessage* commit)
         : decrypter(std::move(dec))
@@ -194,7 +194,7 @@ namespace llarp
         , hop(std::make_shared<Hop>())
         , fromAddr(
               commit->session->GetRemoteRC().IsPublicRouter()
-                  ? std::optional<llarp::Addr>{}
+                  ? std::optional<IpAddress>{}
                   : commit->session->GetRemoteEndpoint())
     {
       hop->info.downstream = commit->session->GetPubKey();

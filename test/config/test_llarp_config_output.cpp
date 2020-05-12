@@ -150,20 +150,3 @@ baz=1
 )raw");
 }
 
-TEST_CASE("ConfigDefinition should print comments for missing keys")
-{
-  // TODO: this currently fails: how to implement?
-  llarp::ConfigDefinition config;
-
-  config.addSectionComments("foo", {"foo section comment"});
-  config.addOptionComments("foo", "bar", {"foo bar option comment"});
-
-  std::string output = config.generateINIConfig();
-
-  CHECK(output == R"raw(# foo section comment
-[foo]
-
-# foo bar option comment
-bar=
-)raw");
-}

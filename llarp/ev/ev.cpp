@@ -1,7 +1,7 @@
 #include <ev/ev.h>
 #include <util/mem.hpp>
+#include <util/str.hpp>
 #include <util/thread/logic.hpp>
-#include <net/net_addr.hpp>
 
 #include <cstddef>
 #include <cstring>
@@ -37,7 +37,7 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev, std::shared_ptr<llarp::Lo
 }
 
 int
-llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const struct sockaddr* src)
+llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const llarp::SockAddr& src)
 {
   udp->parent = ev;
   if (ev->udp_listen(udp, src))
@@ -68,7 +68,7 @@ llarp_ev_loop_stop(const llarp_ev_loop_ptr& loop)
 }
 
 int
-llarp_ev_udp_sendto(struct llarp_udp_io* udp, const sockaddr* to, const llarp_buffer_t& buf)
+llarp_ev_udp_sendto(struct llarp_udp_io* udp, const llarp::SockAddr& to, const llarp_buffer_t& buf)
 {
   return udp->sendto(udp, to, buf.base, buf.sz);
 }
@@ -144,29 +144,13 @@ void
 llarp_tcp_async_try_connect(struct llarp_ev_loop* loop, struct llarp_tcp_connecter* tcp)
 {
   tcp->loop = loop;
-  std::string_view addr_str, port_str;
-  // try parsing address
-  const char* begin = tcp->remote;
-  const char* ptr = strstr(tcp->remote, ":");
-  // get end of address
 
-  if (ptr == nullptr)
-  {
-    llarp::LogError("bad address: ", tcp->remote);
-    if (tcp->error)
-      tcp->error(tcp);
-    return;
-  }
-  const char* end = ptr;
-  while (*end && ((end - begin) < static_cast<ptrdiff_t>(sizeof tcp->remote)))
-  {
-    ++end;
-  }
-  addr_str = std::string_view(begin, ptr - begin);
-  ++ptr;
-  port_str = std::string_view(ptr, end - ptr);
-  // actually parse address
-  llarp::Addr addr(addr_str, port_str);
+  llarp::IpAddress address(tcp->remote);
+
+  if (not address.getPort())
+    throw std::runtime_error(llarp::stringify("Address with no port: ", address));
+
+  llarp::SockAddr addr = address.createSockAddr();
 
   if (!loop->tcp_connect(tcp, addr))
   {
@@ -178,7 +162,7 @@ llarp_tcp_async_try_connect(struct llarp_ev_loop* loop, struct llarp_tcp_connect
 
 bool
 llarp_tcp_serve(
-    struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* tcp, const struct sockaddr* bindaddr)
+    struct llarp_ev_loop* loop, struct llarp_tcp_acceptor* tcp, const llarp::SockAddr& bindaddr)
 {
   tcp->loop = loop;
   return loop->tcp_listen(tcp, bindaddr);

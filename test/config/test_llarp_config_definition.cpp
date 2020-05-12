@@ -275,9 +275,7 @@ TEST_CASE("ConfigDefinition undeclared add/remove test", "[config]")
   // ...then remove...
   REQUIRE_NOTHROW(config.removeUndeclaredHandler("foo"));
 
-  CHECK_THROWS_WITH(
-      config.addConfigValue("foo", "bar", "val"),
-      "no declared section [foo]");
+  CHECK_THROWS_WITH(config.addConfigValue("foo", "bar", "val"), "unrecognized section [foo]");
 
   // ...then add again
   REQUIRE_NOTHROW(config.addUndeclaredHandler("foo", [&](std::string_view, std::string_view, std::string_view) {
@@ -308,7 +306,7 @@ TEST_CASE("ConfigDefinition undeclared handler wrong section", "[config]")
       throw std::runtime_error("FAIL");
   });
 
-  REQUIRE_THROWS_WITH(config.addConfigValue("argle", "bar", "val"), "no declared section [argle]");
+  REQUIRE_THROWS_WITH(config.addConfigValue("argle", "bar", "val"), "unrecognized section [argle]");
 }
 
 TEST_CASE("ConfigDefinition undeclared handler duplicate names", "[config]")

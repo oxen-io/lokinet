@@ -4,7 +4,7 @@
 #include <crypto/types.hpp>
 #include <ev/ev.h>
 #include <link/session.hpp>
-#include <net/net.hpp>
+#include <net/sock_addr.hpp>
 #include <router_contact.hpp>
 #include <util/status.hpp>
 #include <util/thread/logic.hpp>
@@ -82,7 +82,7 @@ namespace llarp
     udp_tick(llarp_udp_io* udp);
 
     void
-    SendTo_LL(const llarp::Addr& to, const llarp_buffer_t& pkt)
+    SendTo_LL(const SockAddr& to, const llarp_buffer_t& pkt)
     {
       llarp_ev_udp_sendto(&m_udp, to, pkt);
     }
@@ -97,7 +97,7 @@ namespace llarp
     Pump();
 
     virtual void
-    RecvFrom(const Addr& from, ILinkSession::Packet_t pkt) = 0;
+    RecvFrom(const SockAddr& from, ILinkSession::Packet_t pkt) = 0;
 
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
@@ -225,20 +225,20 @@ namespace llarp
     std::shared_ptr<llarp::Logic> m_Logic = nullptr;
     std::shared_ptr<llarp::thread::ThreadPool> m_Worker = nullptr;
     llarp_ev_loop_ptr m_Loop;
-    Addr m_ourAddr;
+    IpAddress m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
 
     using AuthedLinks =
         std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>, RouterID::Hash>;
     using Pending =
-        std::unordered_multimap<llarp::Addr, std::shared_ptr<ILinkSession>, llarp::Addr::Hash>;
+        std::unordered_multimap<IpAddress, std::shared_ptr<ILinkSession>, IpAddress::Hash>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    std::unordered_map<llarp::Addr, llarp_time_t, llarp::Addr::Hash> m_RecentlyClosed;
+    std::unordered_map<IpAddress, llarp_time_t, IpAddress::Hash> m_RecentlyClosed;
   };
 
   using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;

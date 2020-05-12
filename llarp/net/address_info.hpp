@@ -2,6 +2,7 @@
 #define LLARP_AI_HPP
 
 #include <crypto/types.hpp>
+#include <net/ip_address.hpp>
 #include <net/net.h>
 #include <util/bencode.hpp>
 #include <util/mem.h>
@@ -38,6 +39,14 @@ namespace llarp
 
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
+
+    /// Return an IpAddress representing the address portion of this AddressInfo
+    IpAddress
+    toIpAddress() const;
+
+    /// Updates our ip and port to reflact that of the given IpAddress
+    void
+    fromIpAddress(const IpAddress& address);
 
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const;

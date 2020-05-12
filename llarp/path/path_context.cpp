@@ -35,14 +35,14 @@ namespace llarp
     }
 
     bool
-    PathContext::CheckPathLimitHitByIP(const llarp::Addr& ip)
+    PathContext::CheckPathLimitHitByIP(const IpAddress& ip)
     {
 #ifdef TESTNET
       return false;
 #else
-      llarp::Addr remote = ip;
-      // set port to zero
-      remote.port(0);
+      IpAddress remote = ip;
+      // null out the port -- we don't care about it for path limiting purposes
+      remote.setPort(0);
       // try inserting remote address by ip into decaying hash set
       // if it cannot insert it has hit a limit
       return not m_PathLimits.Insert(remote);

@@ -1,5 +1,4 @@
 #include <ev/ev_libuv.hpp>
-#include <net/net_addr.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
 
@@ -54,10 +53,10 @@ namespace libuv
     llarp_tcp_connecter* const m_TCP;
     llarp_tcp_acceptor* const m_Accept;
     llarp_tcp_conn m_Conn;
-    llarp::Addr m_Addr;
+    llarp::SockAddr m_Addr;
 
-    conn_glue(uv_loop_t* loop, llarp_tcp_connecter* tcp, const sockaddr* addr)
-        : m_TCP(tcp), m_Accept(nullptr), m_Addr(*addr)
+    conn_glue(uv_loop_t* loop, llarp_tcp_connecter* tcp, const llarp::SockAddr& addr)
+        : m_TCP(tcp), m_Accept(nullptr), m_Addr(addr)
     {
       m_Connect.data = this;
       m_Handle.data = this;
@@ -69,8 +68,8 @@ namespace libuv
       m_Conn.write = &ExplicitWrite;
     }
 
-    conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const sockaddr* addr)
-        : m_TCP(nullptr), m_Accept(tcp), m_Addr(*addr)
+    conn_glue(uv_loop_t* loop, llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr)
+        : m_TCP(nullptr), m_Accept(tcp), m_Addr(addr)
     {
       m_Connect.data = nullptr;
       m_Handle.data = this;
@@ -397,11 +396,12 @@ namespace libuv
     uv_udp_t m_Handle;
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
-    llarp::Addr m_Addr;
+    llarp::SockAddr m_Addr;
     llarp_pkt_list m_LastPackets;
     std::array<char, 1500> m_Buffer;
 
-    udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const sockaddr* src) : m_UDP(udp), m_Addr(*src)
+    udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const llarp::SockAddr& src)
+        : m_UDP(udp), m_Addr(src)
     {
       m_Handle.data = this;
       m_Ticker.data = this;
@@ -417,13 +417,13 @@ namespace libuv
       buf->len = sz;
     }
 
+    /// callback for libuv
     static void
-    OnRecv(
-        uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned)
+    OnRecv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const sockaddr* addr, unsigned)
     {
       udp_glue* glue = static_cast<udp_glue*>(handle->data);
       if (addr)
-        glue->RecvFrom(nread, buf, addr);
+        glue->RecvFrom(nread, buf, llarp::SockAddr(*addr));
       if (nread <= 0 || glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
         delete[] buf->base;
     }
@@ -437,7 +437,7 @@ namespace libuv
     }
 
     void
-    RecvFrom(ssize_t sz, const uv_buf_t* buf, const struct sockaddr* fromaddr)
+    RecvFrom(ssize_t sz, const uv_buf_t* buf, const llarp::SockAddr& fromaddr)
     {
       if (sz > 0 && m_UDP)
       {
@@ -450,7 +450,7 @@ namespace libuv
         else
         {
           PacketBuffer pbuf(buf->base, pktsz);
-          m_LastPackets.emplace_back(PacketEvent{*fromaddr, std::move(pbuf)});
+          m_LastPackets.emplace_back(PacketEvent{fromaddr, std::move(pbuf)});
         }
       }
     }
@@ -470,7 +470,7 @@ namespace libuv
     }
 
     static int
-    SendTo(llarp_udp_io* udp, const sockaddr* to, const byte_t* ptr, size_t sz)
+    SendTo(llarp_udp_io* udp, const llarp::SockAddr& to, const byte_t* ptr, size_t sz)
     {
       auto* self = static_cast<udp_glue*>(udp->impl);
       if (self == nullptr)
@@ -817,7 +817,7 @@ namespace libuv
   }
 
   bool
-  Loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
+  Loop::tcp_connect(llarp_tcp_connecter* tcp, const llarp::SockAddr& addr)
   {
     auto* impl = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl = impl;
@@ -981,7 +981,7 @@ namespace libuv
   }
 
   bool
-  Loop::udp_listen(llarp_udp_io* udp, const sockaddr* src)
+  Loop::udp_listen(llarp_udp_io* udp, const llarp::SockAddr& src)
   {
     auto* impl = new udp_glue(&m_Impl, udp, src);
     udp->impl = impl;
@@ -1036,7 +1036,7 @@ namespace libuv
   }
 
   bool
-  Loop::tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+  Loop::tcp_listen(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr)
   {
     auto* glue = new conn_glue(&m_Impl, tcp, addr);
     tcp->impl = glue;

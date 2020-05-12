@@ -295,11 +295,11 @@ namespace llarp
       /// our ip range we are using
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
-      std::vector<llarp::Addr> m_UpstreamResolvers;
+      std::vector<IpAddress> m_UpstreamResolvers;
       /// local dns
-      llarp::Addr m_LocalResolverAddr;
+      IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks
-      std::vector<llarp::Addr> m_StrictConnectAddrs;
+      std::vector<IpAddress> m_StrictConnectAddrs;
       /// use v6?
       bool m_UseV6;
       struct lazy_vpn
