@@ -107,6 +107,8 @@ namespace llarp
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {
+      if (not service::Endpoint::Configure(conf, dnsConf))
+        return false;
       if (conf.m_reachable)
       {
         m_PublishIntroSet = true;
