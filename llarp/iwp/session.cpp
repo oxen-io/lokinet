@@ -911,11 +911,6 @@ namespace llarp
               return false;
             }
           }
-          else
-          {
-            // this case should never happen
-            ::abort();
-          }
           break;
         case State::Introduction:
           if (m_Inbound)
