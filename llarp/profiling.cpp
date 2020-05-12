@@ -217,7 +217,7 @@ namespace llarp
   bool
   Profiling::Save(const char* fname)
   {
-    auto lock = util::shared_lock(m_ProfilesMutex);
+    std::shared_lock lock{m_ProfilesMutex};
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector<byte_t> tmp(sz, 0);
@@ -243,7 +243,7 @@ namespace llarp
   bool
   Profiling::BEncode(llarp_buffer_t* buf) const
   {
-    auto lock = util::shared_lock(m_ProfilesMutex);
+    std::shared_lock lock{m_ProfilesMutex};
     return BEncodeNoLock(buf);
   }
 

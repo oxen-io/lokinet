@@ -25,7 +25,7 @@ namespace llarp
       bool
       Block()
       {
-        std::unique_lock<std::mutex> lock{mutex};
+        std::unique_lock lock{mutex};
         if (pending == 1)
         {
           pending = 0;

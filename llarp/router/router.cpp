@@ -150,7 +150,7 @@ namespace llarp
       return true;
     };
 
-    auto l = util::shared_lock(nodedb()->access);
+    std::shared_lock l{nodedb()->access};
     return pick_router(nodedb()->entries);
   }
 
