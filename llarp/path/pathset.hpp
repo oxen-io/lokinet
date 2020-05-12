@@ -198,13 +198,15 @@ namespace llarp
       }
 
       /// override me in subtype
-      virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
+      virtual bool
+      HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
         return false;
       }
 
       /// override me in subtype
-      virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
+      virtual bool
+      HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
       {
         return false;
       }
@@ -226,6 +228,9 @@ namespace llarp
 
       Path_ptr
       GetNewestPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
+
+      Path_ptr
+      GetRandomPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
       GetPathByID(PathID_t id) const;
