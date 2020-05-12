@@ -15,9 +15,11 @@ class Monitor:
     def __init__(self, url):
         self.data = dict()
         self.win = curses.initscr()
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         self._url = url
         while len(self._globalspeed) < self._speedSamples:
-            self._globalspeed.append((0, 0))
+            self._globalspeed.append((0, 0, 0, 0))
 
     def __del__(self):
         curses.endwin()
@@ -82,6 +84,18 @@ class Monitor:
             idx += 1
         return "{} {}ps".format("%.2f" % rate, units[idx])
 
+    def get_all_paths(self):
+        for k in self.data['services']:
+            status = self.data['services'][k]
+            for path in (status['paths'] or []):
+                yield path
+            for s in (status['remoteSessions'] or []):
+                for path in s['paths']:
+                    yield path
+            for s in (status['snodeSessions'] or []):
+                for path in s['paths']:
+                    yield path
+    
     def display_service(self, y, name, status):
         """display a service at current position"""
         self.win.move(y, 1)
@@ -128,27 +142,34 @@ class Monitor:
         y += 2
         self.win.move(y, 1)
         self.win.addstr(
-            "global speed:\t\t[{}\ttx]\t[{}\trx]".format(
+            "throughput:\t\t[{}\ttx]\t[{}\trx]".format(
                 self.speedOf(self.txrate), self.speedOf(self.rxrate)
             )
         )
+        bloat_tx, bloat_rx = self.calculate_bloat(self.data['links']['outbound'], self.get_all_paths())
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr("goodput:\t\t[{}\ttx]\t[{}\trx]".format(self.speedOf(self.txrate-bloat_tx), self.speedOf(self.rxrate-bloat_rx)))
+        y += 1
+        self.win.move(y, 1)
+        self.win.addstr("overhead:\t\t[{}\ttx]\t[{}\trx]".format(self.speedOf(bloat_tx), self.speedOf(bloat_rx)))
+        
 
-        self._globalspeed.append((self.txrate, self.rxrate))
+        self._globalspeed.append((self.txrate, self.rxrate, bloat_tx, bloat_rx))
         while len(self._globalspeed) > self._speedSamples:
             self._globalspeed.pop(0)
         return self.display_speedgraph(y + 2, self._globalspeed)
 
-    def display_speedgraph(self, y, samps, maxsz=20):
+    def display_speedgraph(self, y, samps, maxsz=40):
         """ display global speed graph """
-
         def scale(x, n):
             while n > 0:
                 x /= 2
                 n -= 1
             return int(x)
 
-        txmax, rxmax = 1000, 1000
-        for tx, rx in samps:
+        txmax, rxmax = 1024, 1024
+        for tx, rx, _tx, _rx in samps:
             if tx > txmax:
                 txmax = tx
             if rx > rxmax:
@@ -164,13 +185,13 @@ class Monitor:
             txscale += 1
             txmax /= 2
 
-        def makebar(samp, max):
-            bar = "#" * samp
+        def makebar(samp, badsamp, max):
+            bar = "#" * (samp - badsamp)
             pad = " " * (max - samp)
-            return pad, bar
+            return pad, bar, '#' * badsamp
 
-        txlabelpad = int(txmax / 2) - 1
-        rxlabelpad = int(rxmax / 2) - 1
+        txlabelpad = int(txmax / 2)# - 1
+        rxlabelpad = int(rxmax / 2)# - 1
         if txlabelpad <= 0:
             txlabelpad = 1
         if rxlabelpad <= 0:
@@ -182,32 +203,77 @@ class Monitor:
         self.win.addstr(
             "{}tx{}{}rx{}".format(txlabelpad, txlabelpad, rxlabelpad, rxlabelpad)
         )
-        for tx, rx in samps:
+        for tx, rx, btx, brx in samps:
             y += 1
             self.win.move(y, 1)
-            txpad, txbar = makebar(scale(tx, txscale), int(txmax))
-            rxpad, rxbar = makebar(scale(rx, rxscale), int(rxmax))
-            self.win.addstr("{}{}|{}{}".format(txpad, txbar, rxbar, rxpad))
+            txpad, txbar, btxbar = makebar(scale(tx,txscale),scale(btx,txscale), int(txmax))
+            rxpad, rxbar, brxbar = makebar(scale(rx,rxscale),scale(brx,rxscale), int(rxmax))
+            self.win.addstr(txpad)
+            self.win.addstr(btxbar, curses.color_pair(1))
+            self.win.addstr(txbar)
+            self.win.addstr('|')
+            self.win.addstr(rxbar)
+            self.win.addstr(brxbar, curses.color_pair(1))
+            self.win.addstr(rxpad)
+
         return y + 2
+
+    def calculate_bloat(self, links, paths):
+        """
+        calculate bandwith overhead
+        """
+        lltx = 0
+        llrx = 0
+        tx = 0
+        rx = 0
+        for link in links:
+            sessions = link["sessions"]["established"]
+            for s in sessions:
+                lltx += s['tx']
+                llrx += s['rx']
+        for path in paths:
+            tx += path['txRateCurrent']
+            rx += path['rxRateCurrent']
+        if lltx > tx:
+            lltx -= tx
+        if llrx > rx:
+            llrx -= rx
+        return lltx, llrx
+            
 
     def display_link(self, y, link):
         y += 1
         self.win.move(y, 1)
         sessions = link["sessions"]["established"]
         for s in sessions:
-            y += 1
-            self.win.move(y, 1)
-            self.txrate += s["txRateCurrent"]
-            self.rxrate += s["rxRateCurrent"]
-            self.win.addstr(
-                "{}\t[{}\ttx]\t[{}\trx]".format(
-                    s["remoteAddr"], self.speedOf(s["txRateCurrent"]), self.speedOf(s["rxRateCurrent"])
-                )
+            y = self.display_link_session(y, s)
+        return y
+            
+    def display_link_session(self, y, s):
+        y += 1
+        self.win.move(y, 1)
+        self.txrate += s["txRateCurrent"]
+        self.rxrate += s["rxRateCurrent"]
+        self.win.addstr(
+            "{}\t[{}\ttx]\t[{}\trx]".format(
+                s["remoteAddr"], self.speedOf(s["txRateCurrent"]), self.speedOf(s["rxRateCurrent"])
             )
-            if (s['txMsgQueueSize'] or 0) > 1:
-                self.win.addstr(" [out window:\t{}]".format(s['txMsgQueueSize']))
+        )
+        if (s['txMsgQueueSize'] or 0) > 1:
+            self.win.addstr(" [out window: {}]".format(s['txMsgQueueSize']))
             if (s['rxMsgQueueSize'] or 0) > 1:
-                self.win.addstr(" [in window:\t{}]".format(s['rxMsgQueueSize']))
+                self.win.addstr(" [in window: {}]".format(s['rxMsgQueueSize']))
+        def display(acks, label, num='acks', dem='packets'):
+            if acks[dem] > 0:
+                self.win.addstr(" [{}: {}]".format(label, round(float(acks[num]) / float(acks[dem]), 2)))
+        if ('recvMACKs' in s) and ('sendMACKs' in s):
+            display(s['sendMACKs'], 'out MACK density')
+            display(s['recvMACKs'], 'in MACK density')
+        d =  {'recvAcks': 'in acks', 'sendAcks': 'out acks', 'recvRTX': 'in RTX', 'sendRTX': 'out RTX'}
+        for k in d:
+            v = d[k]
+            if (k in s) and (s[k] > 0):
+                self.win.addstr(" [{}: {}]".format(v, s[k]))
         return y
 
     def display_dht(self, y, data):
@@ -245,7 +311,7 @@ class Monitor:
                     y = self.display_service(y, k, services[k])
                 y = self.display_dht(y, self.data["dht"])
             except Exception as exc:
-                pass
+                print(exc)
         else:
             self.win.move(1, 1)
             self.win.addstr("lokinet offline")
