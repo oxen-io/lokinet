@@ -169,11 +169,13 @@ namespace llarp
     conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
+      m_hops = arg;
     });
 
     conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+      m_paths = arg;
     });
 
 #ifdef LOKINET_EXITS
