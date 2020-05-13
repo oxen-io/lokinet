@@ -763,23 +763,19 @@ namespace llarp
               {
                 return;
               }
-            }
-            auto handleit = [self = shared_from_this(), rxid](bool verified) {
-              auto msg = std::move(self->m_RXMsgs[rxid]);
-              if (verified)
+
+              if (not itr->second.Verify())
               {
-                const llarp_buffer_t buf(msg.m_Data);
-                self->m_Parent->HandleMessage(self.get(), buf);
+                LogError("bad short xmit hash from ", m_RemoteAddr);
+                return;
               }
-              if (self->m_ReplayFilter.emplace(rxid, self->m_Parent->Now()).second)
-                self->m_SendMACKs.emplace(rxid);
-              self->m_RXMsgs.erase(rxid);
-            };
-            auto& msg = m_RXMsgs[rxid];
-            m_Parent->QueueWork([self = shared_from_this(), &msg, handleit]() {
-              const bool verified = msg.Verify();
-              LogicCall(self->m_Parent->logic(), std::bind(handleit, verified));
-            });
+            }
+            auto msg = std::move(itr->second);
+            const llarp_buffer_t buf(msg.m_Data);
+            m_Parent->HandleMessage(this, buf);
+            if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
+              m_SendMACKs.emplace(rxid);
+            m_RXMsgs.erase(rxid);
           }
         }
         else
