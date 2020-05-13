@@ -17,14 +17,9 @@ namespace llarp
         , m_LastFlush{now}
         , m_StartedAt{now}
     {
-      m_Acks.set(0);
-    }
-
-    void
-    OutboundMessage::CalculateHash()
-    {
       const llarp_buffer_t buf(m_Data);
       CryptoManager::instance()->shorthash(m_Digest, buf);
+      m_Acks.set(0);
     }
 
     ILinkSession::Packet_t

@@ -183,22 +183,15 @@ namespace llarp
       const auto now = m_Parent->Now();
       const auto msgid = m_TXID++;
       const auto bufsz = buf.size();
-      m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed});
-      auto self = shared_from_this();
-      auto sendit = [bufsz, self](OutboundMessage& msg) {
-        self->EncryptAndSend(msg.XMIT());
-        if (bufsz > FragmentSize)
-        {
-          msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, self), self->m_Parent->Now());
-        }
-        self->m_Stats.totalInFlightTX++;
-      };
-      auto& msg = m_TXMsgs[msgid];
-      m_Parent->QueueWork([&msg, sendit, self]() {
-        msg.CalculateHash();
-        LogicCall(self->m_Parent->logic(), std::bind(sendit, msg));
-      });
-
+      auto& msg = m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed})
+                      .first->second;
+      EncryptAndSend(msg.XMIT());
+      if (bufsz > FragmentSize)
+      {
+        msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
+      }
+      m_Stats.totalInFlightTX++;
+      LogDebug("send message ", msgid);
       return true;
     }
 
