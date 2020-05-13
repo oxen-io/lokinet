@@ -765,7 +765,7 @@ namespace llarp
               }
             }
             auto handleit = [self = shared_from_this(), rxid](bool verified) {
-              auto& msg = self->m_RXMsgs[rxid];
+              auto msg = std::move(self->m_RXMsgs[rxid]);
               if (verified)
               {
                 const llarp_buffer_t buf(msg.m_Data);
