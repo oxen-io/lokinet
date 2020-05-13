@@ -43,6 +43,9 @@ namespace llarp
           llarp_time_t now,
           ILinkSession::CompletionHandler handler);
 
+      void
+      CalculateHash();
+
       ILinkSession::Message_t m_Data;
       uint64_t m_MsgID = 0;
       std::bitset<MAX_LINK_MSG_SIZE / FragmentSize> m_Acks;
