@@ -180,9 +180,14 @@ namespace llarp
         }
         ++itr;
       }
-      std::random_device rd;
-      std::mt19937 g(rd());
-      std::shuffle(chosen.begin(), chosen.end(), g);
+      if (chosen.empty())
+        return nullptr;
+      if (chosen.size() >= 2)
+      {
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(chosen.begin(), chosen.end(), g);
+      }
       return chosen[0];
     }
 
