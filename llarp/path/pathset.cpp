@@ -182,13 +182,12 @@ namespace llarp
       }
       if (chosen.empty())
         return nullptr;
+      size_t idx = 0;
       if (chosen.size() >= 2)
       {
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(chosen.begin(), chosen.end(), g);
+        idx = rand() % chosen.size();
       }
-      return chosen[0];
+      return chosen[idx];
     }
 
     Path_ptr
