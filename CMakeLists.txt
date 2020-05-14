@@ -272,8 +272,11 @@ if(SUBMODULE_CHECK)
     if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
       check_submodule(external/libuv)
     endif()
+    check_submodule(external/loki-mq)
   endif()
 endif()
+
+add_subdirectory(external/loki-mq EXCLUDE_FROM_ALL)
 
 # We only actually need pybind11 with WITH_HIVE, but if we don't load it here then something further
 # down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
