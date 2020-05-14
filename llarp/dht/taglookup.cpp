@@ -19,7 +19,7 @@ namespace llarp
         return false;
       if (introset.topic.value() != target)
       {
-        llarp::LogWarn("got introset with missmatched topic in tag lookup");
+        llarp::LogWarn("got introset with mismatched topic in tag lookup");
         return false;
       }
       return true;

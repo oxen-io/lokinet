@@ -45,7 +45,7 @@ namespace llarp
         return false;
       if (version != LLARP_PROTO_VERSION)
       {
-        llarp::LogWarn("llarp protocol version missmatch ", version, " != ", LLARP_PROTO_VERSION);
+        llarp::LogWarn("llarp protocol version mismatch ", version, " != ", LLARP_PROTO_VERSION);
         return false;
       }
       llarp::LogDebug("LIM version ", version);

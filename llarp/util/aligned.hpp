@@ -245,7 +245,7 @@ namespace llarp
       }
       if (strbuf.sz != sz)
       {
-        llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
+        llarp::LogError("bdecode buffer size mismatch ", strbuf.sz, "!=", sz);
         return false;
       }
       memcpy(data(), strbuf.base, sz);
