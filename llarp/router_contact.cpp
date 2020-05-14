@@ -321,7 +321,7 @@ namespace llarp
   {
     if (netID != NetID::DefaultValue())
     {
-      llarp::LogError("netid mismatch: '", netID, "' != '", NetID::DefaultValue(), "'");
+      llarp::LogError("netid mismatch: '", netID, "' (theirs) != '", NetID::DefaultValue(), "' (ours)");
       return false;
     }
     if (IsExpired(now))
