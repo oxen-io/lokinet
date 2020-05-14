@@ -161,8 +161,7 @@ namespace llarp
     conf.defineOption<std::string>(
         "network", "strict-connect", false, "", AssignmentAcceptor(m_strictConnect));
 
-    conf.defineOption<std::string>(
-        "network", "keyfile", false, "", [this](std::string arg) { m_keyfile = arg; });
+    conf.defineOption<std::string>("network", "keyfile", false, "", AssignmentAcceptor(m_keyfile));
 
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));

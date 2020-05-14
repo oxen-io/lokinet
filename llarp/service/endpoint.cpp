@@ -51,7 +51,7 @@ namespace llarp
       if (conf.m_hops)
         numHops = conf.m_hops;
 
-      return m_state->Configure(std::move(conf));
+      return m_state->Configure(conf);
     }
 
     llarp_ev_loop_ptr
