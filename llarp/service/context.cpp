@@ -189,11 +189,11 @@ namespace llarp
       if (not service)
         throw std::runtime_error(stringify("Failed to construct endpoint of type ", endpointType));
 
-      if (not service->LoadKeyFile())
-        throw std::runtime_error("Endpoint's keyfile could not be loaded");
-
       // pass conf to service
       service->Configure(conf.network, conf.dns);
+
+      if (not service->LoadKeyFile())
+        throw std::runtime_error("Endpoint's keyfile could not be loaded");
 
       // autostart if requested
       if (autostart)
