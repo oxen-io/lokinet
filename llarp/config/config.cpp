@@ -228,22 +228,20 @@ namespace llarp
   DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
-
-    conf.defineOption<std::string>(
-        "dns", "upstream", false, true, std::nullopt, [=](std::string arg) {
-          IpAddress addr{arg};
-          const auto maybePort = addr.getPort();
-          if (not maybePort.has_value())
-            addr.setPort(53);
-          m_upstreamDNS.push_back(std::move(addr));
-        });
-
-    conf.defineOption<std::string>("dns", "bind", false, std::nullopt, [=](std::string arg) {
+    static auto parseDNSAddr = [](auto arg) {
       IpAddress addr{arg};
       const auto maybePort = addr.getPort();
       if (not maybePort.has_value())
         addr.setPort(53);
-      m_bind = std::move(addr);
+      return addr;
+    };
+    conf.defineOption<std::string>(
+        "dns", "upstream", false, true, std::nullopt, [=](std::string arg) {
+          m_upstreamDNS.push_back(parseDNSAddr(std::move(arg)));
+        });
+
+    conf.defineOption<std::string>("dns", "bind", false, std::nullopt, [=](std::string arg) {
+      m_bind = parseDNSAddr(std::move(arg));
     });
   }
 
