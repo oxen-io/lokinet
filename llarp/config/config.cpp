@@ -231,11 +231,20 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "dns", "upstream", false, true, std::nullopt, [=](std::string arg) {
-          m_upstreamDNS.push_back(IpAddress(arg));
+          IpAddress addr{arg};
+          const auto maybePort = addr.getPort();
+          if (not maybePort.has_value())
+            addr.setPort(53);
+          m_upstreamDNS.push_back(std::move(addr));
         });
 
-    conf.defineOption<std::string>(
-        "dns", "bind", false, std::nullopt, [=](std::string arg) { m_bind = IpAddress(arg); });
+    conf.defineOption<std::string>("dns", "bind", false, std::nullopt, [=](std::string arg) {
+      IpAddress addr{arg};
+      const auto maybePort = addr.getPort();
+      if (not maybePort.has_value())
+        addr.setPort(53);
+      m_bind = std::move(addr);
+    });
   }
 
   LinksConfig::LinkInfo
