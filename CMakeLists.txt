@@ -276,6 +276,8 @@ if(SUBMODULE_CHECK)
   endif()
 endif()
 
+add_subdirectory(external/loki-mq EXCLUDE_FROM_ALL)
+
 # We only actually need pybind11 with WITH_HIVE, but if we don't load it here then something further
 # down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
 # So load this here universally so that pybind's more intelligent python finder finds python3.x
