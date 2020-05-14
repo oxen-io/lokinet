@@ -12,7 +12,6 @@
 #include <link/server.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
-#include <rpc/rpc.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
@@ -725,8 +724,6 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if (rpcCaller)
-      rpcCaller->Tick(now);
     // save profiles
     if (routerProfiling().ShouldSave(now))
     {
@@ -828,12 +825,6 @@ namespace llarp
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
-      rpcServer = std::make_unique<rpc::Server>(this);
-      if (not rpcServer->Start(rpcBindAddr))
-      {
-        LogError("failed to bind jsonrpc to ", rpcBindAddr);
-        return false;
-      }
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
 
@@ -848,13 +839,6 @@ namespace llarp
 
     if (whitelistRouters)
     {
-      rpcCaller = std::make_unique<rpc::Caller>(this);
-      rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
-      if (not rpcCaller->Start(lokidRPCAddr))
-      {
-        LogError("RPC Caller to ", lokidRPCAddr, " failed to start");
-        return false;
-      }
       LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
@@ -1054,8 +1038,6 @@ namespace llarp
 #endif
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
-    if (rpcServer)
-      rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
     _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));

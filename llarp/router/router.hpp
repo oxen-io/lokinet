@@ -24,7 +24,6 @@
 #include <router/rc_lookup_handler.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
-#include <rpc/rpc.hpp>
 #include <service/context.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
@@ -244,12 +243,10 @@ namespace llarp
 
     const IpAddress DefaultRPCBindAddr = IpAddress("127.0.0.1:1190");
     bool enableRPCServer = false;
-    std::unique_ptr<rpc::Server> rpcServer;
     IpAddress rpcBindAddr = DefaultRPCBindAddr;
     const llarp_time_t _randomStartDelay;
 
     /// lokid caller
-    std::unique_ptr<rpc::Caller> rpcCaller;
     IpAddress lokidRPCAddr = IpAddress("127.0.0.1:22023");
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
