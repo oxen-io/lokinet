@@ -186,7 +186,7 @@ namespace llarp
   bool
   RCLookupHandler::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
   {
-    // missmatch of identity ?
+    // mismatch of identity ?
     if (newrc.pubkey != oldrc.pubkey)
       return false;
 

@@ -69,7 +69,7 @@ namespace llarp
       if (msg->rc.pubkey != m_ExpectedIdent)
       {
         LogError(
-            "ident key missmatch from ",
+            "ident key mismatch from ",
             m_RemoteAddr,
             " ",
             msg->rc.pubkey,
@@ -89,7 +89,7 @@ namespace llarp
     {
       if (msg->rc.pubkey != m_RemoteRC.pubkey)
       {
-        LogError("ident key missmatch");
+        LogError("ident key mismatch");
         return false;
       }
       m_RemoteRC = msg->rc;
@@ -455,7 +455,7 @@ namespace llarp
       const auto begin = pkt.data() + PacketOverhead;
       if (not std::equal(begin, begin + token.size(), token.data()))
       {
-        LogError("token missmatch from ", m_RemoteAddr);
+        LogError("token mismatch from ", m_RemoteAddr);
         return;
       }
       m_LastRX = m_Parent->Now();
@@ -565,7 +565,7 @@ namespace llarp
       if (H != expected)
       {
         LogError(
-            "keyed hash missmatch ",
+            "keyed hash mismatch ",
             H,
             " != ",
             expected,
@@ -614,7 +614,7 @@ namespace llarp
         if (pkt[PacketOverhead] != LLARP_PROTO_VERSION)
         {
           LogError(
-              "protocol version missmatch ", int(pkt[PacketOverhead]), " != ", LLARP_PROTO_VERSION);
+              "protocol version mismatch ", int(pkt[PacketOverhead]), " != ", LLARP_PROTO_VERSION);
           continue;
         }
         recvMsgs->emplace_back(std::move(pkt));
@@ -827,7 +827,7 @@ namespace llarp
         }
         else
         {
-          LogError("hash missmatch for message ", itr->first);
+          LogError("hash mismatch for message ", itr->first);
         }
         m_RXMsgs.erase(itr);
       }
