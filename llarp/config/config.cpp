@@ -228,7 +228,7 @@ namespace llarp
   DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
-    static auto parseDNSAddr = [](auto arg) {
+    auto parseDNSAddr = [](auto arg) {
       IpAddress addr{arg};
       const auto maybePort = addr.getPort();
       if (not maybePort.has_value())
