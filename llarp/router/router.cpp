@@ -843,7 +843,6 @@ namespace llarp
   bool
   Router::StartRpcServer()
   {
-
     if (enableRPCServer)
     {
       if (rpcBindAddr.empty())

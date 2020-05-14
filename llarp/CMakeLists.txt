@@ -223,7 +223,6 @@ if(WITH_HIVE)
 endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokimq)
-
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 if(BUILD_SHARED_LIBS)
