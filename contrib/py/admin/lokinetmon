@@ -193,8 +193,8 @@ class Monitor:
             txscale += 1
             txmax /= 2
 
-        txlabelpad = int(txmax / 2)# - 1
-        rxlabelpad = int(rxmax / 2)# - 1
+        txlabelpad = int(txmax / 2)
+        rxlabelpad = int(rxmax / 2)
         if txlabelpad <= 0:
             txlabelpad = 1
         if rxlabelpad <= 0:
@@ -313,7 +313,6 @@ class Monitor:
         """draw main window"""
         if self.data is not None:
             self.win.addstr(1, 1, "lokinet online")
-            # print(self.data)
             services = self.data["services"] or {}
             y_pos = 3
             try:
