@@ -52,10 +52,15 @@ if(WITH_HIVE)
   set(WITH_SHARED ON)
 endif()
 
+include(CheckCXXSourceCompiles)
+include(CheckLibraryExists)
+
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
 include(cmake/libatomic.cmake)
+include(cmake/check_for_std_optional.cmake)
+include(cmake/check_for_std_filesystem.cmake)
 
 if (STATIC_LINK AND STATIC_LINK_RUNTIME)
   message(FATAL "Cannot set both STATIC_LINK and STATIC_LINK_RUNTIME")

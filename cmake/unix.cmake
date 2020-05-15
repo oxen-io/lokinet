@@ -2,9 +2,6 @@ if(NOT UNIX)
   return()
 endif()
 
-include(CheckCXXSourceCompiles)
-include(CheckLibraryExists)
-
 # can't have UNIX defined
 # can't have the include paths for libuv either?
 if(NOT IOS AND NOT ANDROID AND NOT WIN32)
@@ -75,8 +72,6 @@ else()
 endif()
 
 set(EXE_LIBS ${STATIC_LIB})
-
-include(check_for_std_filesystem)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
