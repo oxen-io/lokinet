@@ -304,9 +304,6 @@ mac-release: mac-release-configure
 mac: mac-release
 	$(MAKE) -C '$(BUILD_ROOT)' package
 
-abyss: debug
-	$(ABYSS_EXE)
-
 format:
 	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[h,c](pp)?$$')
 
@@ -322,26 +319,6 @@ analyze-config: clean
 analyze: analyze-config
 	$(SCAN_BUILD) $(MAKE) -C $(BUILD_ROOT)
 
-coverage-config: clean
-	mkdir -p '$(BUILD_ROOT)'
-	$(COVERAGE_CONFIG_CMD)
-
-coverage: coverage-config
-	$(MAKE) -C $(BUILD_ROOT)
-	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) check || true # continue even if tests fail
-	mkdir -p "$(COVERAGE_OUTDIR)"
-ifeq ($(CLANG),OFF)
-	gcovr -r . --branches --html --html-details -o "$(COVERAGE_OUTDIR)/lokinet.html"
-else
-	llvm-profdata merge default.profraw -output $(BUILD_ROOT)/profdata
-	llvm-cov show -format=html -output-dir="$(COVERAGE_OUTDIR)" -instr-profile "$(BUILD_ROOT)/profdata" "$(BUILD_ROOT)/testAll" $(shell find ./llarp -type f)
-endif
-
-lint: $(LINT_CHECK)
-
-%.cpp-check: %.cpp
-	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/include -I$(REPO)/llarp -I$(REPO)/vendor/cppbackport-master/lib
-
 docker-kubernetes:
 	docker build -f docker/loki-svc-kubernetes.Dockerfile .
 
@@ -356,17 +333,6 @@ docker-debian:
 docker-fedora:
 	docker build -f docker/fedora.Dockerfile .
 
-debian-configure:
-	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DCMAKE_BUILD_TYPE=Release
-
-debian: debian-configure
-	$(MAKE) -C '$(BUILD_ROOT)'
-	cp $(EXE) lokinet
-
-debian-test:
-	test x$(CROSS) = xOFF && $(MAKE) -C $(BUILD_ROOT) check || test x$(CROSS) = xON
-
 install:
 	DESTDIR=$(DESTDIR) $(MAKE) -C '$(BUILD_ROOT)' install
 
@@ -374,10 +340,6 @@ doc: debug-configure
 	$(MAKE) -C $(BUILD_ROOT) clean
 	$(MAKE) -C $(BUILD_ROOT) doc
 
-dist:
-	OUT='lokinet-$(shell git describe --exact-match --tags $(git log -n1 --pretty='%h') || ( echo -n $(GIT_BRANCH)- && git rev-parse --short HEAD) ).tar.xz' bash -c 'git-archive-all -C $(REPO) --force-submodules $$OUT && gpg --sign --detach $$OUT'
-
 tarball:
-	OUT='lokinet-$(shell git describe --exact-match --tags $(git log -n1 --pretty='%h') || ( echo -n $(GIT_BRANCH)- && git rev-parse --short HEAD) ).tar.xz' bash -c 'git-archive-all -C $(REPO) --force-submodules $$OUT'
+	OUT='lokinet-$(shell git describe --exact-match --tags $(git log -n1 --pretty='%h') 2> /dev/null || ( echo -n $(GIT_BRANCH)- && git rev-parse --short HEAD) ).tar.xz' sh -c 'git-archive-all -C $(REPO) --force-submodules $$OUT && rm -f $$OUT.sig && (gpg --sign --detach $$OUT || echo did not sign tarball)'
 
-.PHONY: debian-install
