@@ -1,6 +1,5 @@
 language: cpp
 dist: bionic
-osx_image: xcode11.3
 
 cache: ccache
 
@@ -60,9 +59,11 @@ matrix:
     addons: *core_apt_addons
   - name: "make debug (macOS/clang)"
     os: osx
+    osx_image: xcode10.1
     env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
   - name: "make release (macOS/clang)"
     os: osx
+    osx_image: xcode11.4
     env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
   - name: "make release (linux/gcc/arm64)"
     arch: arm64
