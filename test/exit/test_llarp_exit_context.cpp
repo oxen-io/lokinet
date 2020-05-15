@@ -31,11 +31,14 @@ TEST_F(ExitTest, AddMultipleIP)
   // conf.emplace("type", "null");
 
   llarp::NetworkConfig networkConfig;
+  networkConfig.m_endpointType = "null";
+  networkConfig.m_ifname = "lokitunX";
   networkConfig.m_ifaddr = "10.0.0.1/24";
 
   ASSERT_NO_THROW(context.AddExitEndpoint("test-exit", networkConfig, {}));
-  ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, true));
-  ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, true));
-  ASSERT_TRUE(context.FindEndpointForPath(firstPath)->LocalIP()
-              == context.FindEndpointForPath(secondPath)->LocalIP());
+  ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, false));
+  ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, false));
+  ASSERT_TRUE(
+      context.FindEndpointForPath(firstPath)->LocalIP()
+      == context.FindEndpointForPath(secondPath)->LocalIP());
 }

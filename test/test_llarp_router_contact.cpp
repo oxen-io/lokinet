@@ -4,6 +4,7 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <llarp_test.hpp>
 #include <router_contact.hpp>
+#include <net/net_int.hpp>
 
 using namespace ::llarp;
 using namespace ::testing;
@@ -12,7 +13,7 @@ static const byte_t DEF_VALUE[] = "unittest";
 
 struct RCTest : public test::LlarpTest<>
 {
-  using RC_t     = RouterContact;
+  using RC_t = RouterContact;
   using SecKey_t = SecretKey;
 
   RCTest() : oldval(NetID::DefaultValue())
@@ -30,12 +31,6 @@ struct RCTest : public test::LlarpTest<>
 
 TEST_F(RCTest, TestSignVerify)
 {
-  // TODO: RouterContact no longer takes a netmask (the nuint32_t below)
-  //       This was previously used in a call to IsBogonRange, but this wasn't actually
-  //       implemented anyway
-  throw std::runtime_error("FIXME: RouterContact doesn't take a netmask anymore");
-
-  /*
   NetID netid(DEF_VALUE);
   RC_t rc;
   SecKey_t encr;
@@ -43,7 +38,7 @@ TEST_F(RCTest, TestSignVerify)
 
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
-  rc.exits.emplace_back(rc.pubkey, nuint32_t{0x08080808});
+  rc.exits.emplace_back(rc.pubkey, IpAddress("1.1.1.1"));
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == NetID::DefaultValue());
 
@@ -52,5 +47,4 @@ TEST_F(RCTest, TestSignVerify)
 
   ASSERT_TRUE(rc.Sign(sign));
   ASSERT_TRUE(rc.Verify(time_now_ms()));
-  */
 }

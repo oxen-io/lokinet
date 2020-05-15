@@ -16,22 +16,22 @@ namespace llarp
   bool
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
-    SockAddr addr = ipAddress.createSockAddr();
-    const sockaddr_in6* addr6 = addr;
+    SockAddr exitaddr = ipAddress.createSockAddr();
+    const sockaddr_in6* exitaddr6 = exitaddr;
 
-    in6_addr netmask;
-    memset(netmask.s6_addr, 0xff, 16);
+    SockAddr netmaskaddr = netmask.createSockAddr();
+    const sockaddr_in6* netmaskaddr6 = netmaskaddr;
 
     char tmp[128] = {0};
     if (!bencode_start_dict(buf))
       return false;
 
-    if (!inet_ntop(AF_INET6, &addr6->sin6_addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, &exitaddr6->sin6_addr, tmp, sizeof(tmp)))
       return false;
     if (!BEncodeWriteDictString("a", std::string(tmp), buf))
       return false;
 
-    if (!inet_ntop(AF_INET6, netmask.s6_addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, &netmaskaddr6->sin6_addr, tmp, sizeof(tmp)))
       return false;
     if (!BEncodeWriteDictString("b", std::string(tmp), buf))
       return false;
@@ -71,7 +71,6 @@ namespace llarp
       return false;
     if (k == "a")
     {
-      // TODO: read into ipAddress
       in6_addr tmp;
       if (not bdecode_ip_string(buf, tmp))
         return false;
@@ -82,10 +81,12 @@ namespace llarp
     }
     if (k == "b")
     {
-      // TODO: we don't use this currently, but we shoudn't drop it on the floor
-      //       it appears that all clients should be advertising 0xff..ff for netmask
-      in6_addr netmask;
-      return bdecode_ip_string(buf, netmask);
+      in6_addr tmp;
+      if (not bdecode_ip_string(buf, tmp))
+        return false;
+      SockAddr addr(tmp);
+      netmask = IpAddress(addr);
+      return true;
     }
     return read;
   }

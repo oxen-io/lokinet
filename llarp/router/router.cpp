@@ -619,7 +619,7 @@ namespace llarp
       LogInfo(_rc.Age(now), " since we last updated our RC");
       LogInfo(_rc.TimeUntilExpires(now), " until our RC expires");
     }
-    LogInfo(m_LastStatsReport, " last reported stats");
+    LogInfo(now - m_LastStatsReport, " last reported stats");
     m_LastStatsReport = now;
   }
 
