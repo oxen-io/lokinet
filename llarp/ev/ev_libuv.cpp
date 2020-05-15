@@ -746,12 +746,23 @@ namespace libuv
   };
 #endif
 
+  void
+  Loop::FlushLogic()
+  {
+    while (not m_LogicCalls.empty())
+    {
+      auto f = m_LogicCalls.popFront();
+      f();
+    }
+  }
+
   static void
   OnAsyncWake(uv_async_t* async_handle)
   {
     Loop* loop = static_cast<Loop*>(async_handle->data);
     loop->process_timer_queue();
     loop->process_cancel_queue();
+    loop->FlushLogic();
   }
 
   Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024), m_timerQueue(20), m_timerCancelQueue(20)
@@ -774,25 +785,6 @@ namespace libuv
 #else
     uv_loop_configure(&m_Impl, UV_LOOP_BLOCK_SIGNAL, SIGPIPE);
 #endif
-    m_LogicCaller.data = this;
-    int err;
-    if ((err = uv_async_init(
-             &m_Impl,
-             &m_LogicCaller,
-             [](uv_async_t* h) {
-               Loop* l = static_cast<Loop*>(h->data);
-               while (not l->m_LogicCalls.empty())
-               {
-                 auto f = l->m_LogicCalls.popFront();
-                 f();
-               }
-             }))
-        != 0)
-    {
-      llarp::LogError("Libuv uv_async_init returned error: ", uv_strerror(err));
-      return false;
-    }
-
     m_TickTimer = new uv_timer_t;
     m_TickTimer->data = this;
     m_Run.store(true);
@@ -832,6 +824,12 @@ namespace libuv
   OnTickTimeout(uv_timer_t* timer)
   {
     uv_stop(timer->loop);
+  }
+
+  int
+  Loop::run()
+  {
+    return uv_run(&m_Impl, UV_RUN_DEFAULT);
   }
 
   int
@@ -951,7 +949,7 @@ namespace libuv
     {
       llarp::LogInfo("stopping event loop");
       CloseAll();
-      // uv_stop(&m_Impl);
+      uv_stop(&m_Impl);
     }
     m_Run.store(false);
   }
@@ -1061,7 +1059,7 @@ namespace libuv
   Loop::call_soon(std::function<void(void)> f)
   {
     m_LogicCalls.tryPushBack(f);
-    uv_async_send(&m_LogicCaller);
+    uv_async_send(&m_WakeUp);
   }
 
 }  // namespace libuv
