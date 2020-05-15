@@ -374,4 +374,10 @@ doc: debug-configure
 	$(MAKE) -C $(BUILD_ROOT) clean
 	$(MAKE) -C $(BUILD_ROOT) doc
 
+dist:
+	OUT='lokinet-$(shell git describe --exact-match --tags $(git log -n1 --pretty='%h') || ( echo -n $(GIT_BRANCH)- && git rev-parse --short HEAD) ).tar.xz' bash -c 'git-archive-all -C $(REPO) --force-submodules $$OUT && gpg --sign --detach $$OUT'
+
+tarball:
+	OUT='lokinet-$(shell git describe --exact-match --tags $(git log -n1 --pretty='%h') || ( echo -n $(GIT_BRANCH)- && git rev-parse --short HEAD) ).tar.xz' bash -c 'git-archive-all -C $(REPO) --force-submodules $$OUT'
+
 .PHONY: debian-install
