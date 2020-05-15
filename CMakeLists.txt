@@ -43,6 +43,7 @@ option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
+option(TRAVIS_CI_SUCKS "are we building inside travis-ci?" OFF)
 
 if(WITH_HIVE)
   set(WITH_SHARED ON)
@@ -285,7 +286,12 @@ endif()
 # down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
 # So load this here universally so that pybind's more intelligent python finder finds python3.x
 # (which the crappier loader invoked below then respects).
-add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+# however! travis is FUBAR right now so disable it in travis builds
+if(TRAVIS_CI_SUCKS)
+  message(WARNING "travis-ci python is broken garbage we have disabled pybind11, THANKS!")
+else()
+  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+endif()
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
