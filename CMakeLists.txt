@@ -43,7 +43,10 @@ option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
-option(TRAVIS_CI_SUCKS "are we building inside travis-ci?" OFF)
+
+if($ENV{TRAVIS})
+  set(TRAVIS_CI_SUCKS ON)
+endif()
 
 if(WITH_HIVE)
   set(WITH_SHARED ON)
