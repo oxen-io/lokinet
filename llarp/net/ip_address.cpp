@@ -104,7 +104,7 @@ namespace llarp
   {
     SockAddr addr(m_ipAddress);
     const sockaddr_in6* addr6 = addr;
-    uint8_t* raw = addr6->sin6_addr.s6_addr;
+    const uint8_t* raw = addr6->sin6_addr.s6_addr;
     return IsIPv4Bogon(ipaddr_ipv4_bits(raw[12], raw[13], raw[14], raw[15]));
   }
 

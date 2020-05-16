@@ -69,12 +69,7 @@ namespace llarp
       if (msg->rc.pubkey != m_ExpectedIdent)
       {
         LogError(
-            "ident key mismatch from ",
-            m_RemoteAddr,
-            " ",
-            msg->rc.pubkey,
-            " != ",
-            m_ExpectedIdent);
+            "ident key mismatch from ", m_RemoteAddr, " ", msg->rc.pubkey, " != ", m_ExpectedIdent);
         return false;
       }
       m_State = State::Ready;

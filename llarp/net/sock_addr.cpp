@@ -239,7 +239,7 @@ namespace llarp
     if (isEmpty())
       return "";
 
-    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
+    const uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     std::string str;
 
     if (ip6[10] == 0xff and ip6[11] == 0xff)

@@ -19,6 +19,7 @@ namespace llarp
   struct ExitInfo
   {
     IpAddress ipAddress;
+    IpAddress netmask;
     PubKey pubkey;
     uint64_t version = LLARP_PROTO_VERSION;
 

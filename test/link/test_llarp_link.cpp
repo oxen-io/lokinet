@@ -14,16 +14,16 @@
 using namespace ::llarp;
 using namespace ::testing;
 
-struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
+struct LinkLayerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
 {
   static constexpr uint16_t AlicePort = 41163;
-  static constexpr uint16_t BobPort   = 8088;
+  static constexpr uint16_t BobPort = 8088;
 
   struct Context
   {
     Context()
     {
-      keyManager = std::make_shared< KeyManager >();
+      keyManager = std::make_shared<KeyManager>();
 
       SecretKey signingKey;
       CryptoManager::instance()->identity_keygen(signingKey);
@@ -41,14 +41,14 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       rc.enckey = encryptionKey.toPublic();
     }
 
-    std::shared_ptr< thread::ThreadPool > worker;
+    std::shared_ptr<thread::ThreadPool> worker;
 
-    std::shared_ptr< KeyManager > keyManager;
+    std::shared_ptr<KeyManager> keyManager;
 
     RouterContact rc;
 
     bool madeSession = false;
-    bool gotLIM      = false;
+    bool gotLIM = false;
 
     bool
     IsGucci() const
@@ -59,7 +59,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     void
     Setup()
     {
-      worker = std::make_shared< thread::ThreadPool >(1, 128, "test-worker");
+      worker = std::make_shared<thread::ThreadPool>(1, 128, "test-worker");
       worker->start();
     }
 
@@ -75,13 +75,13 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
       return rc.pubkey;
     }
 
-    std::shared_ptr< ILinkLayer > link;
+    std::shared_ptr<ILinkLayer> link;
 
     static std::string
     localLoopBack()
     {
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__) || (__sun)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__) \
+    || (__sun)
       return "lo0";
 #else
       return "lo";
@@ -89,11 +89,11 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     }
 
     bool
-    Start(std::shared_ptr< Logic > logic, llarp_ev_loop_ptr loop, uint16_t port)
+    Start(std::shared_ptr<Logic> logic, llarp_ev_loop_ptr loop, uint16_t port)
     {
-      if(!link)
+      if (!link)
         return false;
-      if(!link->Configure(loop, localLoopBack(), AF_INET, port))
+      if (!link->Configure(loop, localLoopBack(), AF_INET, port))
         return false;
       /*
        * TODO: ephemeral key management
@@ -101,9 +101,9 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
         return false;
        */
       rc.addrs.emplace_back();
-      if(!link->GetOurAddressInfo(rc.addrs[0]))
+      if (!link->GetOurAddressInfo(rc.addrs[0]))
         return false;
-      if(!rc.Sign(keyManager->identityKey))
+      if (!rc.Sign(keyManager->identityKey))
         return false;
       return link->Start(logic, worker);
     }
@@ -111,9 +111,9 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     void
     Stop()
     {
-      if(link)
+      if (link)
         link->Stop();
-      if(worker)
+      if (worker)
       {
         worker->drain();
         worker->stop();
@@ -131,11 +131,11 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   Context Alice;
   Context Bob;
 
-  bool success           = false;
+  bool success = false;
   const bool shouldDebug = false;
 
   llarp_ev_loop_ptr netLoop;
-  std::shared_ptr< Logic > m_logic;
+  std::shared_ptr<Logic> m_logic;
 
   llarp_time_t oldRCLifetime;
   llarp::LogLevel oldLevel;
@@ -148,12 +148,12 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   SetUp()
   {
     oldLevel = llarp::LogContext::Instance().curLevel;
-    if(shouldDebug)
+    if (shouldDebug)
       llarp::SetLogLevel(eLogTrace);
-    oldRCLifetime              = RouterContact::Lifetime;
+    oldRCLifetime = RouterContact::Lifetime;
     RouterContact::BlockBogons = false;
-    RouterContact::Lifetime    = 500ms;
-    netLoop                    = llarp_make_ev_loop();
+    RouterContact::Lifetime = 500ms;
+    netLoop = llarp_make_ev_loop();
     m_logic.reset(new Logic());
     Alice.Setup();
     Bob.Setup();
@@ -167,7 +167,7 @@ struct LinkLayerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
     m_logic.reset();
     netLoop.reset();
     RouterContact::BlockBogons = true;
-    RouterContact::Lifetime    = oldRCLifetime;
+    RouterContact::Lifetime = oldRCLifetime;
     llarp::SetLogLevel(oldLevel);
   }
 
@@ -195,10 +195,10 @@ TEST_F(LinkLayerTest, TestIWP)
 #else
   auto sendDiscardMessage = [](ILinkSession* s, auto callback) -> bool {
     // send discard message in reply to complete unit test
-    std::vector< byte_t > tmp(32);
+    std::vector<byte_t> tmp(32);
     llarp_buffer_t otherBuf(tmp);
     DiscardMessage discard;
-    if(!discard.BEncode(&otherBuf))
+    if (!discard.BEncode(&otherBuf))
       return false;
     return s->SendMessageBuffer(std::move(tmp), callback);
   };
@@ -212,10 +212,10 @@ TEST_F(LinkLayerTest, TestIWP)
       // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp_buffer_t copy(buf.base, buf.sz);
-        if(not Alice.gotLIM)
+        if (not Alice.gotLIM)
         {
           LinkIntroMessage msg;
-          if(msg.BDecode(&copy))
+          if (msg.BDecode(&copy))
           {
             Alice.gotLIM = s->GotLIM(&msg);
           }
@@ -231,13 +231,12 @@ TEST_F(LinkLayerTest, TestIWP)
       // SessionEstablishedHandler
       [&, this](ILinkSession* s) -> bool {
         const auto rc = s->GetRemoteRC();
-        if(rc.pubkey != Bob.GetRC().pubkey)
+        if (rc.pubkey != Bob.GetRC().pubkey)
           return false;
         LogInfo("alice established with bob");
         Alice.madeSession = true;
         sendDiscardMessage(s, [&](auto status) {
-          success =
-              status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
+          success = status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess;
           LogInfo("message sent to bob suceess=", success);
           this->Stop();
         });
@@ -269,17 +268,17 @@ TEST_F(LinkLayerTest, TestIWP)
       // LinkMessageHandler
       [&](ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp_buffer_t copy(buf.base, buf.sz);
-        if(not Bob.gotLIM)
+        if (not Bob.gotLIM)
         {
           LinkIntroMessage msg;
-          if(msg.BDecode(&copy))
+          if (msg.BDecode(&copy))
           {
             Bob.gotLIM = s->GotLIM(&msg);
           }
           return Bob.gotLIM;
         }
         DiscardMessage discard;
-        if(discard.BDecode(&copy))
+        if (discard.BDecode(&copy))
         {
           LogInfo("bog got discard message from alice");
           return true;
@@ -294,7 +293,7 @@ TEST_F(LinkLayerTest, TestIWP)
 
       // SessionEstablishedHandler
       [&](ILinkSession* s) -> bool {
-        if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
+        if (s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         LogInfo("bob established with alice");
         Bob.madeSession = true;
@@ -319,8 +318,7 @@ TEST_F(LinkLayerTest, TestIWP)
   ASSERT_TRUE(Alice.Start(m_logic, netLoop, AlicePort));
   ASSERT_TRUE(Bob.Start(m_logic, netLoop, BobPort));
 
-  LogicCall(m_logic,
-            [&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
+  LogicCall(m_logic, [&]() { ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC())); });
 
   RunMainloop();
   ASSERT_TRUE(Alice.IsGucci());

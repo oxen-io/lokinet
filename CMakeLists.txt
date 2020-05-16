@@ -44,9 +44,16 @@ option(WITH_TESTS "build unit tests" ON)
 option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
 
+if($ENV{TRAVIS})
+  set(TRAVIS_CI_SUCKS ON)
+endif()
+
 if(WITH_HIVE)
   set(WITH_SHARED ON)
 endif()
+
+include(CheckCXXSourceCompiles)
+include(CheckLibraryExists)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
@@ -90,6 +97,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/unix.cmake)
+include(cmake/check_for_std_optional.cmake)
+include(cmake/check_for_std_filesystem.cmake)
 
 if(NOT WIN32)
   if(IOS OR ANDROID)
@@ -285,7 +294,12 @@ endif()
 # down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
 # So load this here universally so that pybind's more intelligent python finder finds python3.x
 # (which the crappier loader invoked below then respects).
-add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+# however! travis is FUBAR right now so disable it in travis builds
+if(TRAVIS_CI_SUCKS)
+  message(WARNING "travis-ci python is broken garbage we have disabled pybind11, THANKS!")
+else()
+  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+endif()
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)

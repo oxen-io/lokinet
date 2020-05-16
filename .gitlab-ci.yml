@@ -30,22 +30,22 @@ build:linux_release:
     - apt-get update && apt-get install -y apt-transport-https curl
     - curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
     - echo 'deb https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware.list
-    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils
+    - apt-get update && apt-get install -y build-essential ca-certificates cmake curl git libcap-dev pkg-config wget xz-utils python3-pip
+    - pip3 install git-archive-all
   script:
-    - make static DOWNLOAD_SODIUM=ON
+    - make static DOWNLOAD_SODIUM=ON DOWNLOAD_UV=ON
     # alternatively: git describe --tag
     - LOKINET_VERSION=$(./lokinet-static --version|sed s/lokinet-//)
     - echo lokinet-linux-x64-v$LOKINET_VERSION
     - mkdir lokinet-linux-x64-v$LOKINET_VERSION
     - cp lokinet-bootstrap lokinet-linux-x64-v$LOKINET_VERSION
     - cp build/daemon/lokinet lokinet-linux-x64-v$LOKINET_VERSION
-    - cp build/daemon/lokinetctl lokinet-linux-x64-v$LOKINET_VERSION
     - cp docs/linux-setcap-readme.txt lokinet-linux-x64-v$LOKINET_VERSION
     - tar cJf lokinet-linux-x64-v$LOKINET_VERSION.tar.xz lokinet-linux-x64-v$LOKINET_VERSION
-    - echo "lokinet-linux-x64-v$LOKINET_VERSION.tar.xz should be ready"
+    - make tarball
   artifacts:
     paths:
-      - lokinet-linux-x64-v*.tar.xz
+      - lokinet-*.tar.xz
 
 build:linux_debug:
   image: ubuntu:xenial

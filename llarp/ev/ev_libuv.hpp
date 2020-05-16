@@ -30,10 +30,7 @@ namespace libuv
     init() override;
 
     int
-    run() override
-    {
-      return -1;
-    }
+    run() override;
 
     bool
     running() const override;
@@ -128,12 +125,14 @@ namespace libuv
     void
     call_soon(std::function<void(void)> f) override;
 
+    void
+    FlushLogic();
+
    private:
     uv_loop_t m_Impl;
     uv_timer_t* m_TickTimer;
     uv_async_t m_WakeUp;
     std::atomic<bool> m_Run;
-    uv_async_t m_LogicCaller;
     using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
     AtomicQueue_t m_LogicCalls;
 
