@@ -20,3 +20,7 @@
 [submodule "external/clang-format-hooks"]
 	path = external/clang-format-hooks
 	url = https://github.com/barisione/clang-format-hooks/
+[submodule "external/libuv"]
+	path = external/libuv
+	url = https://github.com/libuv/libuv
+	branch = v1.x

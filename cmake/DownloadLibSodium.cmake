@@ -19,8 +19,8 @@ else()
   set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
 endif()
 
-if (LIBSODIUM_CROSS_TARGET)
-    set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${LIBSODIUM_CROSS_TARGET} --host=${LIBSODIUM_CROSS_TARGET})
+if (CROSS_TARGET)
+    set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${CROSS_TARGET} --host=${CROSS_TARGET})
 endif()
 
 
