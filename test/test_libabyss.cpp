@@ -116,7 +116,7 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   }
 
   Response
-  HandleJSONRPC(Method_t method, const Params& /*params*/)
+  HandleJSONRPC(Method_t method, const Params& /*params*/) override
   {
     test->AssertMethod(method);
     test->called = true;

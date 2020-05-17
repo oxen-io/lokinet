@@ -89,7 +89,7 @@ class IntQueue
     }
     else
     {
-      return {};
+      return std::nullopt;
     }
   }
 

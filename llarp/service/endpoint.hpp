@@ -256,7 +256,7 @@ namespace llarp
       MarkAddressOutbound(const Address&) override;
 
       bool
-      ShouldBundleRC() const
+      ShouldBundleRC() const override
       {
         return false;
       }

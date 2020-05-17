@@ -92,7 +92,8 @@ namespace llarp
   }
 
   std::ostream&
-  ExitInfo::print(std::ostream& stream, int level, int spaces) const
+  ExitInfo::print(
+      std::ostream& stream, [[maybe_unused]] int level, [[maybe_unused]] int spaces) const
   {
     /*
     // TODO: derive these from ipAdress

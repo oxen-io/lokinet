@@ -166,12 +166,12 @@ namespace llarp
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 
-    conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
+    conf.defineOption<int>("network", "hops", false, HopsDefault, [](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
     });
 
-    conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
+    conf.defineOption<int>("network", "paths", false, PathsDefault, [](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
     });

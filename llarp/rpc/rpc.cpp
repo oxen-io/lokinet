@@ -258,7 +258,7 @@ namespace llarp
         handler({}, false);
         return false;
       }
-      for (const auto item : itr.value())
+      for (const auto& item : itr.value())
       {
         if (not item.is_object())
           continue;
