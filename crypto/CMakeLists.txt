@@ -42,20 +42,17 @@ set(NTRU_AVX_SRC
   libntrup/src/avx/rq.c
   libntrup/src/avx/rq_mod3.c
 )
-if(NOT NATIVE_BUILD AND USE_AVX2)
-  # Assume cxxflags are already enabling AVX2
+
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-mavx2 COMPILER_SUPPORTS_AVX2)
+check_cxx_compiler_flag(-mfma COMPILER_SUPPORTS_FMA)
+if(COMPILER_SUPPORTS_AVX2 AND COMPILER_SUPPORTS_FMA)
   target_sources(lokinet-cryptography PRIVATE ${NTRU_AVX_SRC})
+  set_property(SOURCE ${NTRU_AVX_SRC} APPEND PROPERTY COMPILE_FLAGS "-mavx2 -mfma")
+  message(STATUS "Building libntrup with runtime AVX2/FMA support")
 else()
-  include(CheckCXXCompilerFlag)
-  check_cxx_compiler_flag(-mavx2 COMPILER_SUPPORTS_AVX2)
-  check_cxx_compiler_flag(-mfma COMPILER_SUPPORTS_FMA)
-  if(COMPILER_SUPPORTS_AVX2 AND COMPILER_SUPPORTS_FMA)
-    target_sources(lokinet-cryptography PRIVATE ${NTRU_AVX_SRC})
-    set_property(SOURCE ${NTRU_AVX_SRC} APPEND PROPERTY COMPILE_FLAGS "-mavx2 -mfma")
-    message(STATUS "Building libntrup with runtime AVX2/FMA support")
-  else()
-    message(STATUS "Not building with libntrup runtime AVX2/FMA support (can't figure out how to compile with AVX2/FMA: -mavx2 -mfma didn't work)")
-  endif()
+  target_sources(lokinet-cryptography PRIVATE libntrup/src/noavx-stubs.c)
+  message(STATUS "Not building with libntrup runtime AVX2/FMA support (either this architecture doesn't support them, or your compile doesn't support the -mavx2 -mfma flags")
 endif()
 
 enable_lto(lokinet-cryptography)

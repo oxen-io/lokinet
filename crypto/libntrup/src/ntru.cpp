@@ -43,14 +43,12 @@ extern "C"
     {
       __crypto_kem_dec     = &crypto_kem_dec_avx2;
       __crypto_kem_enc     = &crypto_kem_enc_avx2;
-      __crypto_kem_dec     = &crypto_kem_dec_avx2;
       __crypto_kem_keypair = &crypto_kem_keypair_avx2;
     }
     else
     {
       __crypto_kem_dec     = &crypto_kem_dec_ref;
       __crypto_kem_enc     = &crypto_kem_enc_ref;
-      __crypto_kem_dec     = &crypto_kem_dec_ref;
       __crypto_kem_keypair = &crypto_kem_keypair_ref;
     }
   }
