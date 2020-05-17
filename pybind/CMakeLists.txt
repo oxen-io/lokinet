@@ -1,4 +1,4 @@
-set(LLARP_PYBIND_SRC
+pybind11_add_module(pyllarp MODULE
   module.cpp
   llarp/context.cpp
   llarp/router_id.cpp
@@ -13,8 +13,6 @@ set(LLARP_PYBIND_SRC
   llarp/tooling/router_event.cpp
   llarp/service/address.cpp
 )
-
-pybind11_add_module(pyllarp MODULE ${LLARP_PYBIND_SRC})
-target_include_directories(pyllarp PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/crypto/libntrup/include ${CMAKE_SOURCE_DIR}/llarp ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(pyllarp PUBLIC ${EXE_LIBS})
+target_link_libraries(pyllarp PUBLIC liblokinet)
+target_include_directories(pyllarp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
