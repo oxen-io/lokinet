@@ -140,12 +140,6 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   link_libraries( ${DEBUG_FLAGS} )
 endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 
-# Add non-386 target-specific options here
-if(NON_PC_TARGET)
-  add_definitions(-DRPI)
-  set(WITH_STATIC ON)
-endif(NON_PC_TARGET)
-
 if(WITH_SHELLHOOKS)
   add_definitions(-DENABLE_SHELLHOOKS)
 endif(WITH_SHELLHOOKS)

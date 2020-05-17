@@ -111,7 +111,7 @@ namespace llarp
     else
       return stream;
     ss << std::string("/");
-#if defined(ANDROID) || defined(RPI)
+#if defined(ANDROID)
     snprintf(tmp, sizeof(tmp), "%zu", llarp::bits::count_array_bits(netmask.s6_addr));
     ss << tmp;
 #else
