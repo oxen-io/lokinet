@@ -13,14 +13,20 @@ file(MAKE_DIRECTORY ${LIBCURL_PREFIX}/include)
 include(ExternalProject)
 include(ProcessorCount)
 
-set(CURL_CONFIGURE_FLAGS_COMMON --prefix=${LIBCURL_PREFIX} --without-ssl --without-nss --without-ca-bundle --without-libidn2 --without-zlib --without-librtmp --without-ca-fallback --without-ca-path --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
+set(libcurl_cc ${CMAKE_C_COMPILER})
+if(CCACHE_PROGRAM)
+  set(libcurl_cc "${CCACHE_PROGRAM} ${libcurl_cc}")
+endif()
+set(CURL_CONFIGURE ./configure --prefix=${LIBCURL_PREFIX} --quiet
+    --without-ssl --without-nss --without-gnutls --without-mbedtls --without-wolfssl --without-mesalink
+    --without-bearssl --without-ca-bundle --without-libidn2 --without-zlib --without-nghttp2 --without-nghttp3
+    --without-quiche --without-zsh-functions-dir --without-fish-functions-dir
+    --without-librtmp --without-ca-fallback --without-ca-path --without-brotli --without-ldap --without-libpsl
+    --enable-static --disable-shared CC=${libcurl_cc})
 
 if (CMAKE_C_COMPILER_ARG1)
-  set(CURL_CONFIGURE_FLAGS_COMMON ${CURL_CONFIGURE_FLAGS_COMMON} CPPFLAGS=${CMAKE_C_COMPILER_ARG1})
+  set(CURL_CONFIGURE ${CURL_CONFIGURE} CPPFLAGS=${CMAKE_C_COMPILER_ARG1})
 endif()
-
-set(CURL_CONFIGURE ./configure ${CURL_CONFIGURE_FLAGS_COMMON})
-
 
 if (CROSS_TARGET)
     set(CURL_CONFIGURE ${CURL_CONFIGURE} --target=${CROSS_TARGET} --host=${CROSS_TARGET})
