@@ -6,7 +6,7 @@
 #include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
 
-#ifndef _WIN32
+#ifdef HAVE_CURL
 #include <curl/curl.h>
 #endif
 
@@ -230,8 +230,8 @@ namespace llarp
   bool
   KeyManager::loadIdentityFromLokid()
   {
-#if defined(_WIN32) || defined(_WIN64)
-    LogError("service node mode not supported on windows");
+#ifndef HAVE_CURL
+    LogError("this lokinet was not built with service node mode support");
     return false;
 #else
     CURL* curl = curl_easy_init();
