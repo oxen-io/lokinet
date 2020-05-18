@@ -6,6 +6,7 @@
 
 add_library(filesystem INTERFACE)
 
+# why does cmake insist on using C++14 for this
 set(filesystem_code [[
 #include <filesystem>
 
@@ -14,6 +15,8 @@ int main() {
     return !cwd.string().empty();
 }
 ]])
+
+set(CMAKE_CXX_STANDARD 17)
 
 check_cxx_source_compiles("${filesystem_code}" filesystem_compiled)
 if(filesystem_compiled)
