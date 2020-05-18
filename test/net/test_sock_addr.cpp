@@ -5,8 +5,6 @@
 
 #include <catch2/catch.hpp>
 
-#include <arpa/inet.h>
-
 TEST_CASE("SockAddr from IPv4", "[SockAddr]")
 {
   llarp::SockAddr addr(1, 2, 3, 4);
