@@ -17,7 +17,7 @@ namespace llarp
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
     {
-      LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r);
+      explicit LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r);
 
       /// Connect to lokid async
       void
