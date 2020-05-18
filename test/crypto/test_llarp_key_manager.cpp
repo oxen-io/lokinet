@@ -113,6 +113,7 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
 TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
 {
   llarp::Config conf;
+  conf.LoadDefault(false, {});
 
   KeyManager keyManager;
   ASSERT_TRUE(keyManager.initialize(conf, true));
@@ -128,6 +129,7 @@ TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
 TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
 {
   llarp::Config conf;
+  conf.LoadDefault(false, {});
 
   KeyManager keyManager;
   ASSERT_FALSE(keyManager.initialize(conf, false));
