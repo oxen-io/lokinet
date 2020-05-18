@@ -14,11 +14,6 @@
 using namespace ::llarp;
 using namespace ::testing;
 
-static constexpr auto rcFile = "rc.signed";
-static constexpr auto encFile = "encryption.key";
-static constexpr auto transportFile = "transport.key";
-static constexpr auto identFile = "identity.key";
-
 struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
 {
   // paranoid file guards for anything KeyManager might touch
@@ -28,10 +23,10 @@ struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   test::FileGuard m_identFileGuard;
 
   KeyManagerTest()
-      : m_rcFileGuard(rcFile)
-      , m_encFileGuard(encFile)
-      , m_transportFileGuard(transportFile)
-      , m_identFileGuard(identFile)
+      : m_rcFileGuard(our_rc_filename)
+      , m_encFileGuard(our_enc_key_filename)
+      , m_transportFileGuard(our_transport_key_filename)
+      , m_identFileGuard(our_identity_filename)
   {
   }
 
@@ -40,7 +35,7 @@ struct KeyManagerTest : public test::LlarpTest< llarp::sodium::CryptoLibSodium >
   generateRcFile()
   {
     RouterContact rc;
-    return rc.Write(rcFile);
+    return rc.Write(our_rc_filename);
   }
 };
 
@@ -123,11 +118,11 @@ TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
   ASSERT_TRUE(keyManager.initialize(conf, true));
 
   // KeyManager doesn't generate RC file, but should generate others
-  ASSERT_FALSE(fs::exists(rcFile));
+  ASSERT_FALSE(fs::exists(our_rc_filename));
 
-  ASSERT_TRUE(fs::exists(encFile));
-  ASSERT_TRUE(fs::exists(transportFile));
-  ASSERT_TRUE(fs::exists(identFile));
+  ASSERT_TRUE(fs::exists(our_enc_key_filename));
+  ASSERT_TRUE(fs::exists(our_transport_key_filename));
+  ASSERT_TRUE(fs::exists(our_identity_filename));
 }
 
 TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
@@ -138,10 +133,10 @@ TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
   ASSERT_FALSE(keyManager.initialize(conf, false));
 
   // KeyManager shouldn't have touched any files without (genIfAbsent == true)
-  ASSERT_FALSE(fs::exists(rcFile));
-  ASSERT_FALSE(fs::exists(encFile));
-  ASSERT_FALSE(fs::exists(transportFile));
-  ASSERT_FALSE(fs::exists(identFile));
+  ASSERT_FALSE(fs::exists(our_rc_filename));
+  ASSERT_FALSE(fs::exists(our_enc_key_filename));
+  ASSERT_FALSE(fs::exists(our_transport_key_filename));
+  ASSERT_FALSE(fs::exists(our_identity_filename));
 }
 
 TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
@@ -151,7 +146,7 @@ TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
   conf.lokid.whitelistRouters = false;
 
   std::fstream f;
-  f.open(rcFile, std::ios::out);
+  f.open(our_rc_filename, std::ios::out);
   f << "bad_rc_file";
   f.close();
 
@@ -159,23 +154,23 @@ TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
   ASSERT_TRUE(keyManager.initialize(conf, true));
   ASSERT_TRUE(keyManager.needBackup());
 
-  ASSERT_TRUE(fs::exists(encFile));
-  ASSERT_TRUE(fs::exists(transportFile));
-  ASSERT_TRUE(fs::exists(identFile));
+  ASSERT_TRUE(fs::exists(our_enc_key_filename));
+  ASSERT_TRUE(fs::exists(our_transport_key_filename));
+  ASSERT_TRUE(fs::exists(our_identity_filename));
 
   // test that keys are sane
   SecretKey key;
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(encFile));
+  ASSERT_TRUE(key.LoadFromFile(our_enc_key_filename));
   ASSERT_FALSE(key.IsZero());
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(transportFile));
+  ASSERT_TRUE(key.LoadFromFile(our_transport_key_filename));
   ASSERT_FALSE(key.IsZero());
 
   key.Zero();
-  ASSERT_TRUE(key.LoadFromFile(identFile));
+  ASSERT_TRUE(key.LoadFromFile(our_identity_filename));
   ASSERT_FALSE(key.IsZero());
 }
 
