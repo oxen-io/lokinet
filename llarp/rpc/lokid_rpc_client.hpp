@@ -3,6 +3,7 @@
 #include <router_id.hpp>
 
 #include <lokimq/lokimq.h>
+
 #include <crypto/types.hpp>
 
 namespace llarp
