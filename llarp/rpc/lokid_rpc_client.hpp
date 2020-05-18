@@ -14,17 +14,6 @@ namespace llarp
 
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
-    {
-      /// Not copyable or movable (because lokimq::LokiMQ is not copyable or movable).
-      /// Consider wrapping in a std::unique_ptr or std::shared_ptr if you need to pass this around.
-      LokidRpcClient(const LokidRpcClient&) = delete;
-      LokidRpcClient&
-      operator=(const LokidRpcClient&) = delete;
-      LokidRpcClient(LokidRpcClient&&) = delete;
-      LokidRpcClient&
-      operator=(LokidRpcClient&&) = delete;
-
-      /// Constructor
       LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r);
 
       /// Connect to lokid async
@@ -55,9 +44,6 @@ namespace llarp
       std::string m_CurrentBlockHash;
 
       AbstractRouter* const m_Router;
-
-      void
-      request();
     };
 
   }  // namespace rpc
