@@ -37,13 +37,16 @@ target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PRO
 
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
-  curl
   nlohmann_json::nlohmann_json
   filesystem
   date::date
 )
-if(TARGET libcurl_external)
-  add_dependencies(lokinet-util libcurl_external)
+if(TARGET curl)
+  target_link_libraries(lokinet-util PUBLIC curl)
+  target_compile_definitions(lokinet-util HAVE_CURL)
+  if(TARGET libcurl_external)
+    add_dependencies(lokinet-util libcurl_external)
+  endif()
 endif()
 
 if(ANDROID)
