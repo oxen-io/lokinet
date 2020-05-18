@@ -141,7 +141,7 @@ namespace llarp
           uint64_t txid,
           const service::EncryptedIntroSet& introset,
           const Key_t& tellpeer,
-          uint64_t relayOrder);
+          uint64_t relayOrder) override;
 
       /// send introset to peer from source with S counter and excluding peers
       void
@@ -150,7 +150,7 @@ namespace llarp
           uint64_t txid,
           const service::EncryptedIntroSet& introset,
           const Key_t& tellpeer,
-          uint64_t relayOrder);
+          uint64_t relayOrder) override;
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void

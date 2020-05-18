@@ -1,5 +1,5 @@
 if (WITH_HIVE)
-  add_custom_target(hive_build DEPENDS ${STATIC_LIB} pyllarp)
+  add_custom_target(hive_build DEPENDS liblokinet pyllarp)
   add_custom_target(hive ${CMAKE_COMMAND} -E
       env PYTHONPATH="$ENV{PYTHONPATH}:${CMAKE_BINARY_DIR}/pybind"
       ${PYTHON_EXECUTABLE} -m pytest
@@ -8,11 +8,14 @@ if (WITH_HIVE)
       hive_build)
 endif()
 
-set(GTEST_EXE testAll)
-set(CATCH_EXE catchAll)
-
 # Old gtest-based tests; new tests should use Catch2, instead.
-list(APPEND GTEST_SRC
+add_executable(testAll
+    # helpers
+    main.cpp
+    crypto/mock_crypto.cpp
+    dht/mock_context.cpp
+    test_util.cpp
+    # actual test cases
     config/test_llarp_config_ini.cpp
     crypto/test_llarp_crypto_types.cpp
     crypto/test_llarp_crypto.cpp
@@ -49,31 +52,21 @@ list(APPEND GTEST_SRC
     util/thread/test_llarp_util_thread_pool.cpp
 )
 
-add_executable(${GTEST_EXE}
-    # helpers
-    main.cpp
-    crypto/mock_crypto.cpp
-    dht/mock_context.cpp
-    test_util.cpp
-    # actual test cases
-    ${GTEST_SRC}
-)
-
-target_link_libraries(${GTEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
-target_include_directories(${GTEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(testAll PUBLIC gmock gtest liblokinet)
+target_include_directories(testAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(WIN32)
-    target_sources(${GTEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
-    target_link_libraries(${GTEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
+    target_sources(testAll PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
+    target_link_libraries(testAll PUBLIC ws2_32 iphlpapi shlwapi)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_link_directories(${GTEST_EXE} PRIVATE /usr/local/lib)
+    target_link_directories(testAll PRIVATE /usr/local/lib)
 endif()
 
 add_subdirectory(Catch2)
 
-add_executable(${CATCH_EXE}
+add_executable(catchAll
   nodedb/test_nodedb.cpp
   path/test_path.cpp
   util/test_llarp_util_bits.cpp
@@ -86,12 +79,12 @@ add_executable(${CATCH_EXE}
   net/test_sock_addr.cpp
   check_main.cpp)
 
-target_link_libraries(${CATCH_EXE} PUBLIC ${STATIC_LIB} Catch2::Catch2)
-target_include_directories(${CATCH_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)
+target_include_directories(catchAll PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Custom targets to invoke the different test suites:
-add_custom_target(catch COMMAND ${CATCH_EXE})
-add_custom_target(rungtest COMMAND ${GTEST_EXE})
+add_custom_target(catch COMMAND catchAll)
+add_custom_target(rungtest COMMAND testAll)
 
 # Add a custom "check" target that runs all the test suites:
 add_custom_target(check DEPENDS rungtest catch)

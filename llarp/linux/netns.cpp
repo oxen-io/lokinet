@@ -1,4 +1,4 @@
-#if defined(RPI) || defined(ANDROID) || NETNS == 0
+#if defined(ANDROID) || NETNS == 0
 
 #else
 #include <asm/types.h>

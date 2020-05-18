@@ -58,7 +58,8 @@ TEST_CASE("SockAddr fromString", "[SockAddr]")
   CHECK_THROWS_WITH(
       llarp::SockAddr("0xFF.0xFF.0xFF.0xFF"), "0xFF.0xFF.0xFF.0xFF contains non-numeric values");
 
-  CHECK_THROWS_WITH(llarp::SockAddr(""), "cannot construct IPv4 from empty string");
+  // This *is* supported now; it gives you an empty address (same as default constructed).
+  //CHECK_THROWS_WITH(llarp::SockAddr(""), "cannot construct IPv4 from empty string");
 
   CHECK_THROWS_WITH(llarp::SockAddr(" "), "  is not a valid IPv4 address");
 

@@ -83,18 +83,16 @@ TOOLCHAIN ?=
 WINDOWS_ARCH ?= 64
 # native avx2 code
 AVX2 ?= OFF
-# statically link everything
-STATIC_LINK ?= OFF
 # statically link dependencies
-STATIC ?= OFF
+STATIC_LINK ?= OFF
+# build shared lib liblokinet.so instead of static library
+BUILD_SHARED_LIBS ?= ON
 # enable network namespace isolation
 NETNS ?= OFF
 # enable shell hooks callbacks
 SHELL_HOOKS ?= OFF
 # cross compile?
 CROSS ?= OFF
-# build liblokinet-shared.so
-SHARED_LIB ?= OFF
 # enable generating coverage
 COVERAGE ?= OFF
 # allow downloading libsodium if >= 1.0.18 not installed
@@ -126,7 +124,7 @@ SCAN_BUILD ?= scan-build
 
 UNAME = $(shell which uname)
 
-COMMON_CMAKE_OPTIONS = -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DWITH_SHARED=$(SHARED_LIB) -DDOWNLOAD_SODIUM=$(DOWNLOAD_SODIUM) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DXSAN=$(XSAN) -DWITH_HIVE=$(HIVE) -DWITH_TESTS=$(TESTS)
+COMMON_CMAKE_OPTIONS = -DSTATIC_LINK=$(STATIC_LINK) -DBUILD_SHARED_LIBS=$(BUILD_SHARED_LIBS) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DDOWNLOAD_SODIUM=$(DOWNLOAD_SODIUM) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DXSAN=$(XSAN) -DWITH_HIVE=$(HIVE) -DWITH_TESTS=$(TESTS)
 
 ifeq ($(shell $(UNAME)),SunOS)
 CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSE_SHELLHOOKS=$(SHELL_HOOKS) $(COMMON_CMAKE_OPTIONS) '$(REPO)'")
@@ -235,7 +233,7 @@ check: debug
 test: check
 
 static-configure: $(LIBUV_PREFIX) $(LIBCURL_PREFIX)
-	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DNATIVE_BUILD=OFF ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
+	(test x$(TOOLCHAIN) = x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DNATIVE_BUILD=OFF ) || (test x$(TOOLCHAIN) != x && $(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Release -DSTATIC_LINK=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DLIBCURL_ROOT='$(LIBCURL_PREFIX)' -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) -DNATIVE_BUILD=OFF )
 
 static: static-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
@@ -303,7 +301,7 @@ mac: mac-release
 	$(MAKE) -C '$(BUILD_ROOT)' package
 
 format:
-	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[h,c](pp)?$$')
+	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[hc](pp)?$$')
 
 format-verify: format
 	(type $(FORMAT))

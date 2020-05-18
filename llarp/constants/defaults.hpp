@@ -11,20 +11,11 @@
 #define DEFAULT_RESOLVER_AU "1.1.1.1"
 #endif
 
-#ifdef DEBIAN
-#ifndef DEFAULT_LOKINET_USER
-#define DEFAULT_LOKINET_USER "debian-lokinet"
-#endif
-#ifndef DEFAULT_LOKINET_GROUP
-#define DEFAULT_LOKINET_GROUP "debian-lokinet"
-#endif
-#else
 #ifndef DEFAULT_LOKINET_USER
 #define DEFAULT_LOKINET_USER "lokinet"
 #endif
 #ifndef DEFAULT_LOKINET_GROUP
 #define DEFAULT_LOKINET_GROUP "lokinet"
-#endif
 #endif
 
 #endif

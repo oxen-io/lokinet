@@ -3,7 +3,6 @@
 
 #include <config/config.hpp>
 #include <crypto/crypto_libsodium.hpp>
-#include <crypto/crypto_noop.hpp>
 #include <dht/context.hpp>
 #include <ev/ev.hpp>
 #include <ev/vpnio.hpp>

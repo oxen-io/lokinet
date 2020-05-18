@@ -1,14 +1,20 @@
-add_library(${ABYSS_LIB} "${CMAKE_CURRENT_SOURCE_DIR}/src/md5.cpp"
-                         "${CMAKE_CURRENT_SOURCE_DIR}/src/http.cpp"
-                         "${CMAKE_CURRENT_SOURCE_DIR}/src/client.cpp"
-                         "${CMAKE_CURRENT_SOURCE_DIR}/src/server.cpp")
+add_library(abyss
+  src/md5.cpp
+  src/http.cpp
+  src/client.cpp
+  src/server.cpp)
 
-target_include_directories(${ABYSS_LIB} PUBLIC include)
-target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
+target_include_directories(abyss PUBLIC include)
+target_link_libraries(abyss PUBLIC lokinet-platform)
+enable_lto(abyss)
 
 # for freebsd
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_include_directories(${ABYSS_LIB} SYSTEM PUBLIC /usr/local/include)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+  target_include_directories(abyss SYSTEM PUBLIC /usr/local/include)
+endif()
 
-add_log_tag(${ABYSS_LIB})
+if(BUILD_SHARED_LIBS)
+  install(TARGETS abyss LIBRARY DESTINATION lib)
+endif()
+
+add_log_tag(abyss)

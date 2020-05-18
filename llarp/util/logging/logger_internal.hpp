@@ -29,7 +29,7 @@ namespace llarp
     auto tid = std::this_thread::get_id();
     std::hash<std::thread::id> h;
     uint16_t id = h(tid) % 1000;
-#if defined(ANDROID) || defined(RPI)
+#if defined(ANDROID)
     char buff[8] = {0};
     snprintf(buff, sizeof(buff), "%u", id);
     return buff;
