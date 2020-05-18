@@ -1,14 +1,11 @@
 #include <net/sock_addr.hpp>
 
-#include <netinet/in.h>
 #include <util/str.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 
 #include <charconv>
 #include <stdexcept>
-
-#include <arpa/inet.h>
 
 namespace llarp
 {

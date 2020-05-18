@@ -1,6 +1,18 @@
 #pragma once
 
+#ifndef _WIN32
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <wspiapi.h>
+extern "C" const char*
+inet_ntop(int af, const void* src, char* dst, size_t size);
+extern "C" int
+inet_pton(int af, const char* src, void* dst);
+#define inet_aton(x, y) inet_pton(AF_INET, x, y)
+#endif
 
 #include <string_view>
 #include <string>
