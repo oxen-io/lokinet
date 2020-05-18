@@ -6,20 +6,18 @@ cache: ccache
 matrix:
   fast_finish: true
   include:
-  - name: "lint check"
-    os: linux
+  - name: "make debug (macOS/clang)"
+    os: osx
+    osx_image: xcode10.1
+    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (macOS/clang)"
+    os: osx
+    osx_image: xcode11.4
+    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
+  - name: "make release (linux/gcc/s390x)"
+    arch: s390x
     compiler: gcc
-    env: MAKE_TARGET=format-verify PATH="/usr/lib/llvm-9/bin:$PATH"
-    addons:
-      apt:
-        sources:
-          - llvm-toolchain-bionic-9
-        packages:
-          - clang-format-9
-  - name: "make debug (linux/gcc)"
-    os: linux
-    compiler: gcc
-    env: BUILD_TYPE=Debug IS_NOTIFICATION=1
+    env: BUILD_TYPE=Release
     addons: &core_apt_addons
       apt:
         sources:  
@@ -36,45 +34,6 @@ matrix:
           - libsodium-dev
           - libsystemd-dev
           - python3.8-dev
-  - name: "make release (linux/gcc)"
-    os: linux
-    compiler: gcc
-    env: BUILD_TYPE=Release
-    addons: *core_apt_addons
-  - name: "make release (old linux/gcc)"
-    os: linux
-    dist: xenial
-    compiler: gcc
-    env: BUILD_TYPE=Release
-    addons: *core_apt_addons
-  - name: "make debug (linux/clang)"
-    os: linux
-    compiler: clang
-    env: BUILD_TYPE=Debug
-    addons: *core_apt_addons
-  - name: "make release (linux/clang)"
-    os: linux
-    compiler: clang
-    env: BUILD_TYPE=Release
-    addons: *core_apt_addons
-  - name: "make debug (macOS/clang)"
-    os: osx
-    osx_image: xcode10.1
-    env: BUILD_TYPE=Debug PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "make release (macOS/clang)"
-    os: osx
-    osx_image: xcode11.4
-    env: BUILD_TYPE=Release PATH="/usr/local/opt/ccache/libexec:$PATH"
-  - name: "make release (linux/gcc/arm64)"
-    arch: arm64
-    compiler: gcc
-    env: BUILD_TYPE=Release
-    addons: *core_apt_addons
-  - name: "make release (linux/gcc/s390x)"
-    arch: s390x
-    compiler: gcc
-    env: BUILD_TYPE=Release
-    addons: *core_apt_addons
   - name: "make release (linux/gcc/ppc64le)"
     arch: ppc64le
     compiler: gcc
