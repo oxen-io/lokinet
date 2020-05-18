@@ -147,6 +147,7 @@ TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
 TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
 {
   llarp::Config conf;
+  conf.LoadDefault(false, {});
 
   std::fstream f;
   f.open(rcFile, std::ios::out);
