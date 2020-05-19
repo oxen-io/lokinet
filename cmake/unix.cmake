@@ -62,8 +62,15 @@ elseif(DOWNLOAD_UV)
   add_definitions(-D_LARGEFILE_SOURCE)
   add_definitions(-D_FILE_OFFSET_BITS=64)
 endif()
-
 include_directories(${LIBUV_INCLUDE_DIRS})
+
+#find_package(LokiMQ)
+#if(LokiMQ_FOUND)
+#  message(STATUS "using system lokimq")
+#else()
+message(STATUS "using lokimq submodule")
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq)
+#endif()
 
 if(EMBEDDED_CFG OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   link_libatomic()

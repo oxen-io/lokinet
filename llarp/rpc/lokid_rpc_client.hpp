@@ -4,14 +4,16 @@
 
 #include <lokimq/lokimq.h>
 
-#include <future>
-
 namespace llarp
 {
+  struct AbstractRouter;
+
   namespace rpc
   {
+    using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
-    struct LokidRpcClient
+    struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>
     {
       /// Not copyable or movable (because lokimq::LokiMQ is not copyable or movable).
       /// Consider wrapping in a std::unique_ptr or std::shared_ptr if you need to pass this around.
@@ -23,36 +25,36 @@ namespace llarp
       operator=(LokidRpcClient&&) = delete;
 
       /// Constructor
-      /// TODO: take lokid pubkey and other auth parameters
-      LokidRpcClient(std::string lokidPubkey);
+      LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r);
 
-      /// Connect to lokid
+      /// Connect to lokid async
       void
-      connect();
-
-      /// Initiates a ping request to lokid, currently used to let lokid know that lokinet is still
-      /// running (required to prevent a Service Node from being deregistered).
-      ///
-      /// This uses the "lokinet_ping" API endpoint.
-      std::future<void>
-      ping();
-
-      /// Requests the most recent known block hash from lokid
-      ///
-      /// This uses the "poll_block_hash" API endpoint.
-      std::future<std::string>
-      requestNextBlockHash();
-
-      /// Requests a full list of known service nodes from lokid
-      ///
-      /// This uses the "get_n_service_nodes" API endpoint.
-      std::future<std::vector<RouterID>>
-      requestServiceNodeList();
+      ConnectAsync(std::string_view url);
 
      private:
-      std::string m_lokidPubkey;
-      lokimq::ConnectionID m_lokidConnectionId;
-      lokimq::LokiMQ m_lokiMQ;
+      /// called when we have connected to lokid via lokimq
+      void
+      Connected();
+
+      /// do a lmq command on the current connection
+      void
+      Command(std::string_view cmd);
+
+      template <typename HandlerFunc_t, typename Args_t>
+      void
+      Request(std::string_view cmd, HandlerFunc_t func, const Args_t& args)
+      {
+        m_lokiMQ->request(*m_Connection, std::move(cmd), std::move(func), args);
+      }
+
+      void
+      HandleGotServiceNodeList(std::string json);
+
+      std::optional<lokimq::ConnectionID> m_Connection;
+      LMQ_ptr m_lokiMQ;
+      std::string m_CurrentBlockHash;
+
+      AbstractRouter* const m_Router;
 
       void
       request();

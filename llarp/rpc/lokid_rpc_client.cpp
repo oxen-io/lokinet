@@ -3,34 +3,19 @@
 #include <util/logging/logger.h>
 #include <util/logging/logger.hpp>
 
-#include <future>
+#include <router/abstractrouter.hpp>
+
+#include <nlohmann/json.hpp>
+
+#include <util/time.hpp>
+#include <util/thread/logic.hpp>
 
 namespace llarp
 {
   namespace rpc
   {
-    static ::LogLevel
-    fromLokiMQLogLevel(lokimq::LogLevel level)
-    {
-      switch (level)
-      {
-        case lokimq::LogLevel::fatal:
-        case lokimq::LogLevel::error:
-          return eLogError;
-        case lokimq::LogLevel::warn:
-          return eLogWarn;
-        case lokimq::LogLevel::info:
-          return eLogInfo;
-        case lokimq::LogLevel::debug:
-        case lokimq::LogLevel::trace:
-          return eLogDebug;
-        default:
-          return eLogNone;
-      }
-    }
-
     static lokimq::LogLevel
-    toLokiMQLogLevel(::LogLevel level)
+    toLokiMQLogLevel(llarp::LogLevel level)
     {
       switch (level)
       {
@@ -48,65 +33,130 @@ namespace llarp
       }
     }
 
-    static void
-    lokimqLogger(lokimq::LogLevel level, const char* file, std::string msg)
+    LokidRpcClient::LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r)
+        : m_lokiMQ(std::move(lmq)), m_Router(r)
     {
-      switch (level)
+      // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
+    }
+
+    void
+    LokidRpcClient::ConnectAsync(std::string_view url)
+    {
+      LogInfo("connecting to lokid via LMQ at ", url);
+      m_lokiMQ->connect_remote(
+          std::move(url),
+          [self = shared_from_this()](lokimq::ConnectionID c) {
+            self->m_Connection = std::move(c);
+            self->Connected();
+          },
+          [](lokimq::ConnectionID, std::string_view f) {
+            llarp::LogWarn("Failed to connect to lokid: ", f);
+          });
+    }
+
+    void
+    LokidRpcClient::Command(std::string_view cmd)
+    {
+      LogDebug("lokid command: ", cmd);
+      m_lokiMQ->send(*m_Connection, std::move(cmd));
+    }
+
+    void
+    LokidRpcClient::Connected()
+    {
+      constexpr auto PingInterval = 1min;
+      constexpr auto NodeListUpdateInterval = 90s;
+
+      LogInfo("we connected to lokid [", *m_Connection, "]");
+      m_lokiMQ->add_timer(
+          [self = shared_from_this()]() {
+            LogInfo("Telling lokid we are live");
+            self->Command("rpc.lokinet_ping");
+          },
+          PingInterval);
+
+      m_lokiMQ->add_timer(
+          [self = shared_from_this()]() {
+            nlohmann::json request;
+            request["pubkey_ed25519"] = true;
+            request["active_only"] = true;
+            if (not self->m_CurrentBlockHash.empty())
+              request["poll_block_hash"] = self->m_CurrentBlockHash;
+            self->Request(
+                "rpc.get_service_nodes",
+                [self](bool success, std::vector<std::string> data) {
+                  if (not success)
+                  {
+                    LogWarn("failed to update service node list");
+                    return;
+                  }
+                  if (data.size() < 2)
+                  {
+                    LogWarn("lokid gave empty reply for service node list");
+                    return;
+                  }
+                  try
+                  {
+                    self->HandleGotServiceNodeList(std::move(data[1]));
+                  }
+                  catch (std::exception& ex)
+                  {
+                    LogError("failed to process service node list: ", ex.what());
+                  }
+                },
+                request.dump());
+          },
+          NodeListUpdateInterval);
+    }
+
+    void
+    LokidRpcClient::HandleGotServiceNodeList(std::string data)
+    {
+      auto j = nlohmann::json::parse(std::move(data));
       {
-        case lokimq::LogLevel::fatal:
-        case lokimq::LogLevel::error:
-          LogError(msg);
-          break;
-        case lokimq::LogLevel::warn:
-          LogWarn(msg);
-          break;
-        case lokimq::LogLevel::info:
-          LogInfo(msg);
-          break;
-        case lokimq::LogLevel::debug:
-        case lokimq::LogLevel::trace:
-          LogDebug(msg);
-          break;
+        const auto itr = j.find("block_hash");
+        if (itr != j.end())
+        {
+          m_CurrentBlockHash = itr->get<std::string>();
+        }
       }
-    }
+      {
+        const auto itr = j.find("unchanged");
+        if (itr != j.end())
+        {
+          if (itr->get<bool>())
+          {
+            LogDebug("service node list unchanged");
+            return;
+          }
+        }
+      }
 
-    LokidRpcClient::LokidRpcClient(std::string lokidPubkey)
-        : m_lokiMQ(lokimqLogger, lokimq::LogLevel::debug), m_lokidPubkey(std::move(lokidPubkey))
-    {
-      m_lokiMQ.log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
-    }
+      std::vector<RouterID> nodeList;
+      {
+        const auto itr = j.find("service_node_states");
+        if (itr != j.end() and itr->is_array())
+        {
+          for (auto j_itr = itr->begin(); j_itr != itr->end(); j_itr++)
+          {
+            const auto ed_itr = j_itr->find("pubkey_ed25519");
+            if (ed_itr == j_itr->end() or not ed_itr->is_string())
+              continue;
+            RouterID rid;
+            if (rid.FromHex(ed_itr->get<std::string>()))
+              nodeList.emplace_back(std::move(rid));
+          }
+        }
+      }
 
-    void
-    LokidRpcClient::connect()
-    {
-      m_lokidConnectionId = m_lokiMQ.connect_sn(m_lokidPubkey);  // not a blocking call
-    }
+      if (nodeList.empty())
+      {
+        LogWarn("got empty service node list from lokid");
+        return;
+      }
 
-    std::future<void>
-    LokidRpcClient::ping()
-    {
-      throw std::runtime_error("TODO: LokidRpcClient::ping()");
-    }
-
-    std::future<std::string>
-    LokidRpcClient::requestNextBlockHash()
-    {
-      throw std::runtime_error("TODO: LokidRpcClient::requestNextBlockHash()");
-    }
-
-    std::future<std::vector<RouterID>>
-    LokidRpcClient::requestServiceNodeList()
-    {
-      throw std::runtime_error("TODO: LokidRpcClient::requestServiceNodeList()");
-    }
-
-    void
-    LokidRpcClient::request()
-    {
-      // TODO: ensure we are connected
-      // m_lokiMQ.request(m_lokidConnectionId, ...);
-
-      throw std::runtime_error("TODO: LokidRpcClient::request()");
+      // inform router about the new list
+      LogicCall(m_Router->logic(), [r = m_Router, nodeList]() { r->SetRouterWhitelist(nodeList); });
     }
 
   }  // namespace rpc

@@ -73,6 +73,14 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
+    LMQ_ptr m_lmq;
+
+    LMQ_ptr
+    lmq() const override
+    {
+      return m_lmq;
+    }
+
     std::shared_ptr<Logic>
     logic() const override
     {
@@ -113,7 +121,7 @@ namespace llarp
     }
 
     void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) override;
+    SetRouterWhitelist(const std::vector<RouterID> routers) override;
 
     exit::Context&
     exitContext() override
@@ -249,7 +257,7 @@ namespace llarp
 
     rpc::LokidRpcClient m_lokidRpcClient;
 
-    IpAddress lokidRPCAddr = IpAddress("127.0.0.1:22023");
+    std::string lokidRPCAddr = "ipc://loki.sock";
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 

@@ -38,6 +38,8 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include <lokimq/lokimq.h>
+
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
@@ -47,6 +49,7 @@ namespace llarp
       llarp_ev_loop_ptr __netloop,
       std::shared_ptr<Logic> l)
       : ready(false)
+      , m_lmq(std::make_shared<lokimq::LokiMQ>())
       , _netloop(std::move(__netloop))
       , cryptoworker(std::move(_tp))
       , _logic(std::move(l))
@@ -61,6 +64,7 @@ namespace llarp
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
+      , m_lokidRpcClient(m_lmq, this)
   {
     m_keyManager = std::make_shared<KeyManager>();
 
@@ -394,7 +398,7 @@ namespace llarp
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
     whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = IpAddress(conf->lokid.lokidRPCAddr);  // TODO: make config's option an IpAddress
+    lokidRPCAddr = conf->lokid.lokidRPCAddr;
     lokidRPCUser = conf->lokid.lokidRPCUser;
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
 
@@ -808,7 +812,7 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector<RouterID>& routers)
+  Router::SetRouterWhitelist(const std::vector<RouterID> routers)
   {
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
@@ -839,8 +843,10 @@ namespace llarp
 
     if (whitelistRouters)
     {
-      LogInfo("RPC Caller to ", lokidRPCAddr, " started");
+      m_lokidRpcClient.ConnectAsync(std::string_view{lokidRPCAddr});
     }
+
+    m_lmq->start();
 
     if (!cryptoworker->start())
     {

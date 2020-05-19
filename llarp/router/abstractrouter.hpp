@@ -21,6 +21,11 @@ struct llarp_dht_context;
 struct llarp_nodedb;
 struct llarp_threadpool;
 
+namespace lokimq
+{
+  class LokiMQ;
+}
+
 namespace llarp
 {
   class Logic;
@@ -62,6 +67,8 @@ namespace llarp
     class ThreadPool;
   }
 
+  using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+
   struct AbstractRouter
   {
 #ifdef LOKINET_HIVE
@@ -72,6 +79,9 @@ namespace llarp
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+
+    virtual LMQ_ptr
+    lmq() const = 0;
 
     virtual std::shared_ptr<Logic>
     logic() const = 0;
@@ -239,7 +249,7 @@ namespace llarp
 
     /// set router's service node whitelist
     virtual void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) = 0;
+    SetRouterWhitelist(const std::vector<RouterID> routers) = 0;
 
     /// visit each connected link session
     virtual void

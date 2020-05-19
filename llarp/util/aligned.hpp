@@ -265,6 +265,12 @@ namespace llarp
       return ToHex().substr(0, 8);
     }
 
+    bool
+    FromHex(std::string_view str)
+    {
+      return HexDecode(str.begin(), str.end(), data(), size());
+    }
+
     std::ostream&
     print(std::ostream& stream, int level, int spaces) const
     {

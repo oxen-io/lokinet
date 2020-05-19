@@ -150,6 +150,20 @@ namespace llarp
     return sz == 0;
   }
 
+  template <typename InputIt, typename OutputIt>
+  bool
+  HexDecode(InputIt begin, InputIt end, OutputIt target, size_t sz)
+  {
+    while (begin != end && sz)
+    {
+      const auto first = *begin++;
+      const auto second = *begin++;
+      *(target++) = char2int(first) * 16 + char2int(second);
+      --sz;
+    }
+    return sz == 0;
+  }
+
   static const char base64_table[] = {
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
       'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
