@@ -255,7 +255,9 @@ if(SUBMODULE_CHECK)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
     check_submodule(external/pybind11)
-    check_submodule(external/libuv)
+    if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
+      check_submodule(external/libuv)
+    endif()
   endif()
 endif()
 
