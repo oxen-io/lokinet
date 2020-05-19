@@ -31,4 +31,3 @@
 	path = external/loki-mq
 	url = https://github.com/loki-project/loki-mq
 	branch = dev
-

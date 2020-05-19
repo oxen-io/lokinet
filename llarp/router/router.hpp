@@ -265,6 +265,7 @@ namespace llarp
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
+
     std::string lokidRPCAddr = "ipc://loki.sock";
     std::string lokidRPCUser;
     std::string lokidRPCPassword;

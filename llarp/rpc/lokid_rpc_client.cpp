@@ -32,6 +32,7 @@ namespace llarp
           return lokimq::LogLevel::trace;
       }
     }
+
     LokidRpcClient::LokidRpcClient(LMQ_ptr lmq, AbstractRouter* r)
         : m_lokiMQ(std::move(lmq)), m_Router(r)
     {

@@ -23,10 +23,6 @@ namespace llarp
       void
       ConnectAsync(std::string_view url);
 
-      /// blocking request identity key from lokid
-      std::optional<SecretKey>
-      ObtainIdentityKey();
-
      private:
       /// called when we have connected to lokid via lokimq
       void
