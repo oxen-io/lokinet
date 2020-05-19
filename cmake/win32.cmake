@@ -38,7 +38,11 @@ endif()
 # it is literally upward compatible with current windows 10
 if (STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
-  link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--large-address-aware,--dynamicbase,--pic-executable,-e,_mainCRTStartup,--subsystem,console:5.00 )
+  if (WOW64_CROSS_COMPILE)
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--large-address-aware,--dynamicbase,--pic-executable,-e,_mainCRTStartup,--subsystem,console:5.00 )
+  else()
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,_mainCRTStartup )
+  endif()
 endif()
 
 if(LIBUV_ROOT)
