@@ -43,7 +43,7 @@ target_link_libraries(lokinet-util PUBLIC
 )
 if(TARGET curl)
   target_link_libraries(lokinet-util PUBLIC curl)
-  target_compile_definitions(lokinet-util HAVE_CURL)
+  target_compile_definitions(lokinet-util PRIVATE HAVE_CURL)
   if(TARGET libcurl_external)
     add_dependencies(lokinet-util libcurl_external)
   endif()
