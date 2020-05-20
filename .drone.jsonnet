@@ -7,7 +7,6 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
     type: 'docker',
     name: name,
     platform: { arch: arch },
-    environment: { CLICOLOR_FORCE: '1' }, // Lets color through ninja (1.9+)
     steps: [
         {
             name: 'build',
