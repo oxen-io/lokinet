@@ -157,6 +157,7 @@ add_library(liblokinet
   path/pathset.cpp
   path/transit_hop.cpp
   peerstats/peer_db.cpp
+  peerstats/types.cpp
   pow.cpp
   profiling.cpp
   router/outbound_message_handler.cpp

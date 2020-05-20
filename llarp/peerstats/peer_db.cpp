@@ -1,65 +1,74 @@
 #include <peerstats/peer_db.hpp>
 
+#include <util/logging/logger.hpp>
+#include <util/str.hpp>
+
 namespace llarp
 {
-  PeerStats&
-  PeerStats::operator+=(const PeerStats& other)
+  void
+  PeerDb::loadDatabase(std::optional<std::filesystem::path> file)
   {
-    numConnectionAttempts += other.numConnectionAttempts;
-    numConnectionSuccesses += other.numConnectionSuccesses;
-    numConnectionRejections += other.numConnectionRejections;
-    numConnectionTimeouts += other.numConnectionTimeouts;
+    std::lock_guard gaurd(m_statsLock);
 
-    numPathBuilds += other.numPathBuilds;
-    numPacketsAttempted += other.numPacketsAttempted;
-    numPacketsSent += other.numPacketsSent;
-    numPacketsDropped += other.numPacketsDropped;
-    numPacketsResent += other.numPacketsResent;
+    m_peerStats.clear();
 
-    numDistinctRCsReceived += other.numDistinctRCsReceived;
-    numLateRCs += other.numLateRCs;
+    if (m_storage)
+      throw std::runtime_error("Reloading database not supported");  // TODO
 
-    peakBandwidthBytesPerSec = std::max(peakBandwidthBytesPerSec, other.peakBandwidthBytesPerSec);
-    longestRCReceiveInterval = std::max(longestRCReceiveInterval, other.longestRCReceiveInterval);
-    mostExpiredRC = std::max(mostExpiredRC, other.mostExpiredRC);
+    // sqlite_orm treats empty-string as an indicator to load a memory-backed database, which we'll
+    // use if file is an empty-optional
+    std::string fileString;
+    if (file.has_value())
+      fileString = file.value().native();
 
-    return *this;
+    m_storage = std::make_unique<PeerDbStorage>(initStorage(fileString));
   }
 
-  bool
-  PeerStats::operator==(const PeerStats& other)
+  void
+  PeerDb::flushDatabase()
   {
-    return numConnectionAttempts == other.numConnectionAttempts
-        and numConnectionSuccesses == other.numConnectionSuccesses
-        and numConnectionRejections == other.numConnectionRejections
-        and numConnectionTimeouts == other.numConnectionTimeouts
+    if (not m_storage)
+      throw std::runtime_error("Cannot flush database before it has been loaded");
 
-        and numPathBuilds == other.numPathBuilds
-        and numPacketsAttempted == other.numPacketsAttempted
-        and numPacketsSent == other.numPacketsSent and numPacketsDropped == other.numPacketsDropped
-        and numPacketsResent == other.numPacketsResent
+    decltype(m_peerStats) copy;
 
-        and numDistinctRCsReceived == other.numDistinctRCsReceived
-        and numLateRCs == other.numLateRCs
+    {
+      std::lock_guard gaurd(m_statsLock);
+      copy = m_peerStats;  // expensive deep copy
+    }
 
-        and peakBandwidthBytesPerSec == peakBandwidthBytesPerSec
-        and longestRCReceiveInterval == longestRCReceiveInterval and mostExpiredRC == mostExpiredRC;
+    for (const auto& entry : m_peerStats)
+    {
+      // call me paranoid...
+      assert(not entry.second.routerIdHex.empty());
+      assert(entry.first.ToHex() == entry.second.routerIdHex);
+
+      m_storage->insert(entry.second);
+    }
   }
 
   void
   PeerDb::accumulatePeerStats(const RouterID& routerId, const PeerStats& delta)
   {
+    if (routerId.ToHex() != delta.routerIdHex)
+      throw std::invalid_argument(
+          stringify("routerId ", routerId, " doesn't match ", delta.routerIdHex));
+
     std::lock_guard gaurd(m_statsLock);
-    m_peerStats[routerId] += delta;
+    auto itr = m_peerStats.find(routerId);
+    if (itr == m_peerStats.end())
+      itr = m_peerStats.insert({routerId, delta}).first;
+    else
+      itr->second += delta;
   }
 
-  PeerStats
+  std::optional<PeerStats>
   PeerDb::getCurrentPeerStats(const RouterID& routerId) const
   {
     std::lock_guard gaurd(m_statsLock);
     auto itr = m_peerStats.find(routerId);
     if (itr == m_peerStats.end())
-      return {};
+      return std::nullopt;
     else
       return itr->second;
   }
