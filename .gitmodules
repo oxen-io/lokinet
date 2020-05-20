@@ -31,3 +31,6 @@
 	path = external/loki-mq
 	url = https://github.com/loki-project/loki-mq
 	branch = dev
+[submodule "external/sqlite_orm"]
+	path = external/sqlite_orm
+	url = https://github.com/fnc12/sqlite_orm

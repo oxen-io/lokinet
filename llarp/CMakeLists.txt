@@ -34,12 +34,12 @@ target_link_libraries(lokinet-util PUBLIC
   filesystem
   date::date
   lokimq
+  sqlite3
 )
 
 if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
 endif()
-
 
 add_library(lokinet-platform
 # for networking
@@ -156,6 +156,7 @@ add_library(liblokinet
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
+  peerstats/peer_db.cpp
   pow.cpp
   profiling.cpp
   router/outbound_message_handler.cpp

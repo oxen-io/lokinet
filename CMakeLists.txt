@@ -305,6 +305,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
     check_submodule(external/pybind11)
+    check_submodule(external/sqlite_orm)
     if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
       check_submodule(external/libuv)
     endif()
@@ -323,6 +324,8 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
 add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
+
+include_directories(SYSTEM external/sqlite_orm/include)
 
 add_subdirectory(vendor)
 
