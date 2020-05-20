@@ -61,7 +61,7 @@ namespace llarp
     m_lokidRPCPassword = config.lokid.lokidRPCPassword;
 
     RouterContact rc;
-    bool exists = rc.Read(m_rcPath.c_str());
+    bool exists = rc.Read(m_rcPath.string().c_str());
     if (not exists and not genIfAbsent)
     {
       LogError("Could not read RouterContact at path ", m_rcPath);
@@ -186,7 +186,7 @@ namespace llarp
   bool
   KeyManager::backupKeyFilesByMoving() const
   {
-    std::vector<std::string> files = {m_rcPath, m_idKeyPath, m_encKeyPath, m_transportKeyPath};
+    std::vector<std::string> files = {m_rcPath.string(), m_idKeyPath.string(), m_encKeyPath.string(), m_transportKeyPath.string()};
 
     for (auto& filepath : files)
     {
@@ -216,7 +216,7 @@ namespace llarp
       LogInfo("Generating new key", filepath);
       keygen(key);
 
-      if (!key.SaveToFile(filepath.c_str()))
+      if (!key.SaveToFile(filepath.string().c_str()))
       {
         LogError("Failed to save new key");
         return false;
@@ -224,7 +224,7 @@ namespace llarp
     }
 
     LogDebug("Loading key from file ", filepath);
-    return key.LoadFromFile(filepath.c_str());
+    return key.LoadFromFile(filepath.string().c_str());
   }
 
   bool
