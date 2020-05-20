@@ -1,4 +1,4 @@
-local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-dev';
+local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-dev libsqlite3-dev';
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 
