@@ -94,7 +94,7 @@ namespace llarp
   {
     SockAddr addr(m_ipAddress);
     if (m_port)
-      addr.setPort(m_port.value());
+      addr.setPort(*m_port);
 
     return addr;
   }

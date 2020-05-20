@@ -577,7 +577,7 @@ TEST(TestQueue, moveIt)
 
   std::optional< MoveTester > optPopped = queue.tryPopFront();
 
-  ASSERT_TRUE(optPopped.has_value());
+  ASSERT_TRUE(optPopped);
 
   // Moved twice here to construct the optional.
   ASSERT_EQ(6u, counter);

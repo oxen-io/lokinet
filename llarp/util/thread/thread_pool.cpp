@@ -27,9 +27,9 @@ namespace llarp
       {
         auto functor = m_queue.tryPopFront();
 
-        if (functor.has_value())
+        if (functor)
         {
-          functor.value()();
+          (*functor)();
         }
         else
         {
@@ -57,7 +57,7 @@ namespace llarp
           return;
         }
 
-        functor.value()();
+        (*functor)();
       }
     }
 

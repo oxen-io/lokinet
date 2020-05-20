@@ -357,13 +357,10 @@ namespace llarp
     buf.sz = buf.cur - buf.base;
     {
       const fs::path path = std::string(fpath);
-      auto optional_f = llarp::util::OpenFileStream<std::ofstream>(path, std::ios::binary);
-      if (!optional_f)
+      auto f = llarp::util::OpenFileStream<std::ofstream>(path, std::ios::binary);
+      if (not f or not f->is_open())
         return false;
-      auto& f = optional_f.value();
-      if (!f.is_open())
-        return false;
-      f.write((char*)buf.base, buf.sz);
+      f->write((char*)buf.base, buf.sz);
     }
     return true;
   }

@@ -192,9 +192,9 @@ namespace llarp
       if (arg.empty())
       {
         const auto maybe = llarp::FindFreeRange();
-        if (not maybe.has_value())
+        if (not maybe)
           throw std::invalid_argument("cannot determine free ip range");
-        arg = maybe.value();
+        arg = *maybe;
       }
       m_ifaddr = arg;
     });
@@ -203,9 +203,9 @@ namespace llarp
       if (arg.empty())
       {
         const auto maybe = llarp::FindFreeTun();
-        if (not maybe.has_value())
+        if (not maybe)
           throw std::invalid_argument("cannot determine free interface name");
-        arg = maybe.value();
+        arg = *maybe;
       }
       m_ifname = arg;
     });
@@ -228,8 +228,7 @@ namespace llarp
     (void)params;
     auto parseDNSAddr = [](auto arg) {
       IpAddress addr{arg};
-      const auto maybePort = addr.getPort();
-      if (not maybePort.has_value())
+      if (not addr.getPort())
         addr.setPort(53);
       return addr;
     };
@@ -399,10 +398,10 @@ namespace llarp
     conf.defineOption<std::string>(
         "logging", "level", false, DefaultLogLevel, [this](std::string arg) {
           std::optional<LogLevel> level = LogLevelFromString(arg);
-          if (not level.has_value())
+          if (not level)
             throw std::invalid_argument(stringify("invalid log level value: ", arg));
 
-          m_logLevel = level.value();
+          m_logLevel = *level;
         });
 
     conf.defineOption<std::string>(
@@ -553,13 +552,13 @@ namespace llarp
 
     // open a filestream
     auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
-    if (not stream.has_value() or not stream.value().is_open())
+    if (not stream or not stream->is_open())
       throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
 
     llarp::LogInfo("confStr: ", confStr);
 
-    stream.value() << confStr;
-    stream.value().flush();
+    *stream << confStr;
+    stream->flush();
 
     llarp::LogInfo("Generated new config ", confFile);
   }

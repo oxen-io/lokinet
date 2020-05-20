@@ -164,11 +164,7 @@ namespace llarp
     const sockaddr_in6* addr6 = addr;
     memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
 
-    auto maybePort = address.getPort();
-    if (maybePort)
-      port = maybePort.value();
-    else
-      port = 0;
+    port = address.getPort().value_or(0);
   }
 
   std::ostream&

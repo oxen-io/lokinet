@@ -86,7 +86,7 @@ namespace llarp
       }
       if (key == "K")
       {
-        if (closer.has_value())  // duplicate key?
+        if (closer)  // duplicate key?
           return false;
         dht::Key_t K;
         if (not K.BDecode(buf))
@@ -111,9 +111,9 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictList("I", found, buf))
         return false;
-      if (closer.has_value())
+      if (closer)
       {
-        if (!BEncodeWriteDictEntry("K", closer.value(), buf))
+        if (!BEncodeWriteDictEntry("K", *closer, buf))
           return false;
       }
       if (!BEncodeWriteDictInt("T", txid, buf))

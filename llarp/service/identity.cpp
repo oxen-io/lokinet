@@ -118,7 +118,7 @@ namespace llarp
         auto optional_f = util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
         if (!optional_f)
           return false;
-        auto& f = optional_f.value();
+        auto& f = *optional_f;
         if (!f.is_open())
           return false;
         f.write((char*)buf.cur, buf.sz);
@@ -143,7 +143,7 @@ namespace llarp
       if (!bencode_decode_dict(*this, &buf))
         return false;
 
-      ServiceInfo::OptNonce van;
+      std::optional<VanityNonce> van;
       if (!vanity.IsZero())
         van = vanity;
       // update pubkeys

@@ -13,8 +13,8 @@ namespace llarp
     std::promise<ID_t> result;
     // queue setting id and try to get the result back
     llarp_threadpool_queue_job(m_Thread, [&]() {
-      m_ID.emplace(std::this_thread::get_id());
-      result.set_value(m_ID.value());
+      m_ID = std::this_thread::get_id();
+      result.set_value(*m_ID);
     });
     // get the result back
     ID_t spawned = result.get_future().get();
@@ -129,7 +129,7 @@ namespace llarp
   bool
   Logic::can_flush() const
   {
-    return m_ID.value() == std::this_thread::get_id();
+    return *m_ID == std::this_thread::get_id();
   }
 
   void

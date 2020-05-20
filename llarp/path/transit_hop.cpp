@@ -125,9 +125,9 @@ namespace llarp
         do
         {
           auto maybe = self->m_DownstreamGather.tryPopFront();
-          if (not maybe.has_value())
+          if (not maybe)
             break;
-          msgs.emplace_back(maybe.value());
+          msgs.emplace_back(*maybe);
         } while (true);
         self->HandleAllDownstream(std::move(msgs), r);
       };
@@ -167,9 +167,9 @@ namespace llarp
         do
         {
           auto maybe = self->m_UpstreamGather.tryPopFront();
-          if (not maybe.has_value())
+          if (not maybe)
             break;
-          msgs.emplace_back(maybe.value());
+          msgs.emplace_back(*maybe);
         } while (true);
         self->HandleAllUpstream(std::move(msgs), r);
       };

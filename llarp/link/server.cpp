@@ -125,10 +125,9 @@ namespace llarp
     }
     else
     {
-      const auto maybe = GetIFAddr(ifname, af);
-      if (maybe.has_value())
+      if (const auto maybe = GetIFAddr(ifname, af))
       {
-        m_ourAddr = maybe.value();
+        m_ourAddr = *maybe;
       }
       else
       {

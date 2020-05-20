@@ -38,8 +38,8 @@ namespace llarp
             selected = introset;
         }
         const auto maybe = selected.MaybeDecrypt(rootkey);
-        if (maybe.has_value())
-          found = maybe.value();
+        if (maybe)
+          found = *maybe;
       }
       return handle(remote, found, endpoint);
     }

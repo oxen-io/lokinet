@@ -46,9 +46,9 @@ namespace llarp
         do
         {
           auto maybe = m_SendQueue.tryPopFront();
-          if (not maybe.has_value())
+          if (not maybe)
             break;
-          auto& item = maybe.value();
+          auto& item = *maybe;
           if (item.second->SendRoutingMessage(*item.first, r))
           {
             lastGoodSend = r->Now();

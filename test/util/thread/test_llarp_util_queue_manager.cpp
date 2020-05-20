@@ -258,8 +258,8 @@ TEST(TestQueueManager, SimpleUsage)
 
   auto result = queue.tryPopFront();
 
-  ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(1, result.value());
+  ASSERT_TRUE(result);
+  ASSERT_EQ(1, *result);
 }
 
 class BasicFunctionality : public ::testing::TestWithParam< uint32_t >

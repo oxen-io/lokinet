@@ -259,7 +259,7 @@ llarp_nodedb::SaveAll()
         filepath, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
     if (!optional_ofs)
       continue;
-    auto& ofs = optional_ofs.value();
+    auto& ofs = *optional_ofs;
     ofs.write((char*)buf.base, buf.sz);
     ofs.flush();
     ofs.close();

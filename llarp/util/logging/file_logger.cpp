@@ -14,10 +14,9 @@ namespace llarp
     do
     {
       auto maybe_line = lines->tryPopFront();
-      if (not maybe_line.has_value())
+      if (not maybe_line)
         break;
-      const auto& line = maybe_line.value();
-      if (fprintf(f, "%s\n", line.c_str()) >= 0)
+      if (fprintf(f, "%s\n", maybe_line->c_str()) >= 0)
         wrote_stuff = true;
     } while (true);
 
@@ -43,7 +42,7 @@ namespace llarp
     do
     {
       auto line = m_Lines.tryPopFront();
-      if (not line.has_value())
+      if (not line)
         break;
     } while (true);
     fflush(m_File);
