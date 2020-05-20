@@ -1,4 +1,4 @@
-#include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 
 #include <util/buffer.hpp>
 #include <util/endian.hpp>

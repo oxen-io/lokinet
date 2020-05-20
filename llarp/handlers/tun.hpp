@@ -4,7 +4,7 @@
 #include <dns/server.hpp>
 #include <ev/ev.h>
 #include <ev/vpnio.hpp>
-#include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>

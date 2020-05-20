@@ -60,7 +60,7 @@ add_library(lokinet-platform
   ev/pipe.cpp
   ev/vpnio.cpp
   ev/ev_libuv.cpp
-  net/ip.cpp
+  net/ip_packet.cpp
   net/net.cpp
   net/net_int.cpp
   $<TARGET_OBJECTS:tuntap>

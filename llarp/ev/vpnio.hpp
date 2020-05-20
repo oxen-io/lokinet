@@ -1,6 +1,6 @@
 #ifndef LLARP_EV_VPNIO_HPP
 #define LLARP_EV_VPNIO_HPP
-#include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 #include <util/thread/queue.hpp>
 #include <functional>
 
