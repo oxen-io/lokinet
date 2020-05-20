@@ -6,19 +6,6 @@
 #include "crypto/crypto.hpp"
 #include "crypto/types.hpp"
 
-#ifdef HAVE_CURL
-#include <curl/curl.h>
-#endif
-
-/// curl callback
-static size_t
-curl_RecvIdentKey(char* ptr, size_t, size_t nmemb, void* userdata)
-{
-  for (size_t idx = 0; idx < nmemb; idx++)
-    static_cast<std::vector<char>*>(userdata)->push_back(ptr[idx]);
-  return nmemb;
-}
-
 namespace llarp
 {
   KeyManager::KeyManager() : m_initialized(false), m_needBackup(false)
@@ -54,11 +41,6 @@ namespace llarp
     m_idKeyPath = deriveFile(our_identity_filename, config.router.m_identityKeyFile);
     m_encKeyPath = deriveFile(our_enc_key_filename, config.router.m_encryptionKeyFile);
     m_transportKeyPath = deriveFile(our_transport_key_filename, config.router.m_transportKeyFile);
-
-    m_usingLokid = config.lokid.whitelistRouters;
-    m_lokidRPCAddr = config.lokid.lokidRPCAddr;
-    m_lokidRPCUser = config.lokid.lokidRPCUser;
-    m_lokidRPCPassword = config.lokid.lokidRPCPassword;
 
     RouterContact rc;
     bool exists = rc.Read(m_rcPath);
@@ -99,7 +81,7 @@ namespace llarp
       }
     }
 
-    if (not m_usingLokid)
+    if (not config.lokid.whitelistRouters)
     {
       // load identity key or create if needed
       auto identityKeygen = [](llarp::SecretKey& key) {
@@ -107,11 +89,6 @@ namespace llarp
         llarp::CryptoManager::instance()->identity_keygen(key);
       };
       if (not loadOrCreateKey(m_idKeyPath, identityKey, identityKeygen))
-        return false;
-    }
-    else
-    {
-      if (not loadIdentityFromLokid())
         return false;
     }
 
@@ -225,102 +202,6 @@ namespace llarp
 
     LogDebug("Loading key from file ", filepath);
     return key.LoadFromFile(filepath);
-  }
-
-  bool
-  KeyManager::loadIdentityFromLokid()
-  {
-#ifndef HAVE_CURL
-    LogError("this lokinet was not built with service node mode support");
-    return false;
-#else
-    CURL* curl = curl_easy_init();
-    if (curl)
-    {
-      bool ret = false;
-      std::stringstream ss;
-      ss << "http://" << m_lokidRPCAddr << "/json_rpc";
-      const auto url = ss.str();
-      curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-      curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
-      const auto auth = m_lokidRPCUser + ":" + m_lokidRPCPassword;
-      curl_easy_setopt(curl, CURLOPT_USERPWD, auth.c_str());
-      curl_slist* list = nullptr;
-      list = curl_slist_append(list, "Content-Type: application/json");
-      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-      nlohmann::json request = {
-          {"id", "0"}, {"jsonrpc", "2.0"}, {"method", "get_service_node_privkey"}};
-      const auto data = request.dump();
-      std::vector<char> resp;
-
-      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data.size());
-      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-      curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &curl_RecvIdentKey);
-
-      resp.clear();
-      LogInfo("Getting Identity Keys from lokid...");
-      if (curl_easy_perform(curl) == CURLE_OK)
-      {
-        try
-        {
-          auto j = nlohmann::json::parse(resp);
-          if (not j.is_object())
-            return false;
-
-          const auto itr = j.find("result");
-          if (itr == j.end())
-            return false;
-          if (not itr->is_object())
-            return false;
-          const auto k = (*itr)["service_node_ed25519_privkey"].get<std::string>();
-          if (k.size() != (identityKey.size() * 2))
-          {
-            if (k.empty())
-            {
-              LogError("lokid gave no identity key");
-            }
-            else
-            {
-              LogError("lokid gave invalid identity key");
-            }
-            return false;
-          }
-          if (not HexDecode(k.c_str(), identityKey.data(), identityKey.size()))
-            return false;
-          if (CryptoManager::instance()->check_identity_privkey(identityKey))
-          {
-            ret = true;
-          }
-          else
-          {
-            LogError("lokid gave bogus identity key");
-          }
-        }
-        catch (nlohmann::json::exception& ex)
-        {
-          LogError("Bad response from lokid: ", ex.what());
-        }
-      }
-      else
-      {
-        LogError("failed to get identity keys");
-      }
-      if (ret)
-      {
-        LogInfo("Got Identity Keys from lokid: ", RouterID(seckey_topublic(identityKey)));
-      }
-      curl_easy_cleanup(curl);
-      curl_slist_free_all(list);
-      return ret;
-    }
-    else
-    {
-      LogError("failed to init curl");
-      return false;
-    }
-#endif
   }
 
 }  // namespace llarp

@@ -47,6 +47,11 @@ namespace llarp
     struct Context;
   }
 
+  namespace rpc
+  {
+    struct LokidRpcClient;
+  }
+
   namespace path
   {
     struct PathContext;
@@ -82,6 +87,9 @@ namespace llarp
 
     virtual LMQ_ptr
     lmq() const = 0;
+
+    virtual std::shared_ptr<rpc::LokidRpcClient>
+    RpcClient() const = 0;
 
     virtual std::shared_ptr<Logic>
     logic() const = 0;
@@ -153,7 +161,7 @@ namespace llarp
     IsServiceNode() const = 0;
 
     virtual bool
-    StartJsonRpc() = 0;
+    StartRpcServer() = 0;
 
     virtual bool
     Run() = 0;

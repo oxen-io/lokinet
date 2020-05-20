@@ -64,7 +64,7 @@ namespace llarp
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
-      , m_lokidRpcClient(m_lmq, this)
+      , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
 
@@ -203,6 +203,8 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
+    _encryption = m_keyManager->encryptionKey;
+
     if (whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
@@ -214,10 +216,14 @@ namespace llarp
       return false;
 #endif
 #endif
+      const auto maybe = RpcClient()->ObtainIdentityKey();
+      if (maybe.has_value())
+        _identity = *maybe;
     }
-
-    _identity = m_keyManager->identityKey;
-    _encryption = m_keyManager->encryptionKey;
+    else
+    {
+      _identity = m_keyManager->identityKey;
+    }
 
     if (_identity.IsZero())
       return false;
@@ -236,6 +242,23 @@ namespace llarp
     }
     _nodedb = nodedb;
 
+    // we need this first so we can start lmq to fetch keys
+    enableRPCServer = conf->api.m_enableRPCServer;
+    rpcBindAddr = conf->api.m_rpcBindAddr;
+    whitelistRouters = conf->lokid.whitelistRouters;
+    lokidRPCAddr = conf->lokid.lokidRPCAddr;
+
+    if (not StartRpcServer())
+      throw std::runtime_error("Failed to start rpc server");
+
+    m_lmq->start();
+
+    if (whitelistRouters)
+    {
+      m_lokidRpcClient->ConnectAsync(std::string_view{lokidRPCAddr});
+    }
+
+    // fetch keys
     if (not m_keyManager->initialize(*conf, true, isRouter))
       throw std::runtime_error("KeyManager failed to initialize");
 
@@ -555,8 +578,6 @@ namespace llarp
     }
 
     // API config
-    enableRPCServer = conf->api.m_enableRPCServer;
-    rpcBindAddr = IpAddress(conf->api.m_rpcBindAddr);  // TODO: make this an IpAddress in config
     if (not IsServiceNode())
     {
       hiddenServiceContext().AddEndpoint(*conf);
@@ -818,18 +839,19 @@ namespace llarp
   }
 
   bool
-  Router::StartJsonRpc()
+  Router::StartRpcServer()
   {
     if (_running || _stopping)
       return false;
 
     if (enableRPCServer)
     {
-      if (rpcBindAddr.isEmpty())
+      if (rpcBindAddr.empty())
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
-      LogInfo("Bound RPC server to ", rpcBindAddr);
+      // TODO: set up rpc server
+      // LogInfo("Bound RPC server to ", rpcBindAddr);
     }
 
     return true;
@@ -840,13 +862,6 @@ namespace llarp
   {
     if (_running || _stopping)
       return false;
-
-    if (whitelistRouters)
-    {
-      m_lokidRpcClient.ConnectAsync(std::string_view{lokidRPCAddr});
-    }
-
-    m_lmq->start();
 
     if (!cryptoworker->start())
     {

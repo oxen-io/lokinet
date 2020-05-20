@@ -62,51 +62,52 @@ namespace llarp
     }
 
     void
+    LokidRpcClient::UpdateServiceNodeList()
+    {
+      nlohmann::json request;
+      request["pubkey_ed25519"] = true;
+      request["active_only"] = true;
+      if (not m_CurrentBlockHash.empty())
+        request["poll_block_hash"] = m_CurrentBlockHash;
+      Request(
+          "rpc.get_service_nodes",
+          [self = shared_from_this()](bool success, std::vector<std::string> data) {
+            if (not success)
+            {
+              LogWarn("failed to update service node list");
+              return;
+            }
+            if (data.size() < 2)
+            {
+              LogWarn("lokid gave empty reply for service node list");
+              return;
+            }
+            try
+            {
+              self->HandleGotServiceNodeList(std::move(data[1]));
+            }
+            catch (std::exception& ex)
+            {
+              LogError("failed to process service node list: ", ex.what());
+            }
+          },
+          request.dump());
+    }
+
+    void
     LokidRpcClient::Connected()
     {
       constexpr auto PingInterval = 1min;
-      constexpr auto NodeListUpdateInterval = 90s;
+      constexpr auto NodeListUpdateInterval = 30s;
 
       LogInfo("we connected to lokid [", *m_Connection, "]");
+      Command("admin.lokinet_ping");
       m_lokiMQ->add_timer(
-          [self = shared_from_this()]() {
-            LogInfo("Telling lokid we are live");
-            self->Command("rpc.lokinet_ping");
-          },
-          PingInterval);
+          [self = shared_from_this()]() { self->Command("admin.lokinet_ping"); }, PingInterval);
 
+      UpdateServiceNodeList();
       m_lokiMQ->add_timer(
-          [self = shared_from_this()]() {
-            nlohmann::json request;
-            request["pubkey_ed25519"] = true;
-            request["active_only"] = true;
-            if (not self->m_CurrentBlockHash.empty())
-              request["poll_block_hash"] = self->m_CurrentBlockHash;
-            self->Request(
-                "rpc.get_service_nodes",
-                [self](bool success, std::vector<std::string> data) {
-                  if (not success)
-                  {
-                    LogWarn("failed to update service node list");
-                    return;
-                  }
-                  if (data.size() < 2)
-                  {
-                    LogWarn("lokid gave empty reply for service node list");
-                    return;
-                  }
-                  try
-                  {
-                    self->HandleGotServiceNodeList(std::move(data[1]));
-                  }
-                  catch (std::exception& ex)
-                  {
-                    LogError("failed to process service node list: ", ex.what());
-                  }
-                },
-                request.dump());
-          },
-          NodeListUpdateInterval);
+          [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
     }
 
     void
@@ -154,9 +155,48 @@ namespace llarp
         LogWarn("got empty service node list from lokid");
         return;
       }
-
       // inform router about the new list
       LogicCall(m_Router->logic(), [r = m_Router, nodeList]() { r->SetRouterWhitelist(nodeList); });
+    }
+
+    std::optional<SecretKey>
+    LokidRpcClient::ObtainIdentityKey()
+    {
+      std::promise<std::optional<SecretKey>> promise;
+
+      Request(
+          "admin.get_service_privkeys",
+          [self = shared_from_this(), &promise](bool success, std::vector<std::string> data) {
+            if (not success)
+            {
+              LogError("failed to get private key");
+              promise.set_value(std::nullopt);
+              return;
+            }
+            if (data.size() < 2)
+            {
+              LogError("failed to get private key, no response");
+              promise.set_value(std::nullopt);
+              return;
+            }
+            try
+            {
+              auto j = nlohmann::json::parse(data[1]);
+              SecretKey k;
+              if (not k.FromHex(j.at("service_node_ed25519_privkey").get<std::string>()))
+              {
+                promise.set_value(std::nullopt);
+                return;
+              }
+              promise.set_value(k);
+            }
+            catch (std::exception& ex)
+            {
+              LogError("failed to get private key: ", ex.what());
+              promise.set_value(std::nullopt);
+            }
+          });
+      return promise.get_future().get();
     }
 
   }  // namespace rpc

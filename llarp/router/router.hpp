@@ -81,6 +81,12 @@ namespace llarp
       return m_lmq;
     }
 
+    std::shared_ptr<rpc::LokidRpcClient>
+    RpcClient() const override
+    {
+      return m_lokidRpcClient;
+    }
+
     std::shared_ptr<Logic>
     logic() const override
     {
@@ -250,12 +256,12 @@ namespace llarp
     NetworkConfig networkConfig;
     DnsConfig dnsConfig;
 
-    const IpAddress DefaultRPCBindAddr = IpAddress("127.0.0.1:1190");
+    const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
     bool enableRPCServer = false;
-    IpAddress rpcBindAddr = DefaultRPCBindAddr;
+    std::string rpcBindAddr = DefaultRPCBindAddr;
     const llarp_time_t _randomStartDelay;
 
-    rpc::LokidRpcClient m_lokidRpcClient;
+    std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
     std::string lokidRPCAddr = "ipc://loki.sock";
     std::string lokidRPCUser;
@@ -337,7 +343,7 @@ namespace llarp
     Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
-    StartJsonRpc() override;
+    StartRpcServer() override;
 
     bool
     Run() override;

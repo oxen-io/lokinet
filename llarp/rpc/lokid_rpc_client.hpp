@@ -3,6 +3,7 @@
 #include <router_id.hpp>
 
 #include <lokimq/lokimq.h>
+#include <crypto/types.hpp>
 
 namespace llarp
 {
@@ -20,6 +21,10 @@ namespace llarp
       void
       ConnectAsync(std::string_view url);
 
+      /// blocking request identity key from lokid
+      std::optional<SecretKey>
+      ObtainIdentityKey();
+
      private:
       /// called when we have connected to lokid via lokimq
       void
@@ -29,11 +34,21 @@ namespace llarp
       void
       Command(std::string_view cmd);
 
+      void
+      UpdateServiceNodeList();
+
       template <typename HandlerFunc_t, typename Args_t>
       void
       Request(std::string_view cmd, HandlerFunc_t func, const Args_t& args)
       {
         m_lokiMQ->request(*m_Connection, std::move(cmd), std::move(func), args);
+      }
+
+      template <typename HandlerFunc_t>
+      void
+      Request(std::string_view cmd, HandlerFunc_t func)
+      {
+        m_lokiMQ->request(*m_Connection, std::move(cmd), std::move(func));
       }
 
       void

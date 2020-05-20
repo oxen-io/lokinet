@@ -388,7 +388,8 @@ namespace llarp
         // we need to dh
         auto dh = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this, recvPath->intro);
         dh->path = recvPath;
-        return worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
+        worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
+        return true;
       }
 
       auto v = new AsyncDecrypt();
@@ -407,7 +408,7 @@ namespace llarp
         return false;
       }
       v->frame = *this;
-      return worker->addJob([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
+      worker->addJob([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
         if (not v->frame.Verify(v->si))
         {
           LogError("Signature failure from ", v->si.Addr());
@@ -427,6 +428,7 @@ namespace llarp
         msg->handler->QueueRecvData(std::move(ev));
         delete v;
       });
+      return true;
     }
 
     bool

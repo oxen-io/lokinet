@@ -117,9 +117,6 @@ namespace llarp
       llarp::LogError("cannot run non configured context");
       return 1;
     }
-    // run
-    if (!router->StartJsonRpc())
-      return 1;
 
     if (!opts.background)
     {
