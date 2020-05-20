@@ -3,6 +3,7 @@
 #include <router_id.hpp>
 
 #include <lokimq/lokimq.h>
+#include <crypto/types.hpp>
 
 #include <crypto/types.hpp>
 
@@ -22,6 +23,10 @@ namespace llarp
       /// Connect to lokid async
       void
       ConnectAsync(std::string_view url);
+
+      /// blocking request identity key from lokid
+      std::optional<SecretKey>
+      ObtainIdentityKey();
 
      private:
       /// called when we have connected to lokid via lokimq

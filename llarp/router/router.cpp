@@ -849,6 +849,7 @@ namespace llarp
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
+<<<<<<< HEAD
       // older configs just specify an ip/port tuple so check for that and prepend tcp:// in that
       // case
       if (rpcBindAddr.find("tcp://") == std::string::npos
@@ -859,6 +860,10 @@ namespace llarp
       }
       m_RPCServer->AsyncServeRPC(rpcBindAddr);
       LogInfo("Bound RPC server to ", rpcBindAddr);
+=======
+      // TODO: set up rpc server
+      // LogInfo("Bound RPC server to ", rpcBindAddr);
+>>>>>>> initial working code
     }
 
     return true;
