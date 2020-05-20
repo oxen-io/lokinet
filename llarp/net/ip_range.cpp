@@ -2,7 +2,6 @@
 
 namespace llarp
 {
-
   bool
   IPRange::ContainsV4(const huint32_t& ip) const
   {

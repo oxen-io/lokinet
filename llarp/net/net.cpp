@@ -465,8 +465,8 @@ namespace llarp
         if (addr->sin_addr.s_addr)
           // skip unconfig'd adapters (windows passes these through the unix-y
           // wrapper)
-          currentRanges.emplace_back(IPRange{net::ExpandV4(xntohl(ifaddr)),
-                                             net::ExpandV4(xntohl(ifmask))});
+          currentRanges.emplace_back(
+              IPRange{net::ExpandV4(xntohl(ifaddr)), net::ExpandV4(xntohl(ifmask))});
       }
     });
     // try 10.x.0.0/16
@@ -635,7 +635,10 @@ namespace llarp
   }
 #else
   bool
-  IsIPv4Bogon(const huint32_t&) { return false; }
+  IsIPv4Bogon(const huint32_t&)
+  {
+    return false;
+  }
 #endif
 
 }  // namespace llarp

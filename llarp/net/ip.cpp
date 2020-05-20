@@ -1,8 +1,8 @@
 #include <net/ip.hpp>
 #include <cstring>
 
-namespace llarp::net {
-
+namespace llarp::net
+{
   huint128_t
   In6ToHUInt(in6_addr addr)
   {
@@ -25,4 +25,4 @@ namespace llarp::net {
     return addr;
   }
 
-} // namespace llarp::net
+}  // namespace llarp::net

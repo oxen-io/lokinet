@@ -45,7 +45,6 @@ operator==(const in6_addr& a, const in6_addr& b);
 
 namespace llarp
 {
-
   /// get a netmask with the higest numset bits set
   constexpr huint128_t
   _netmask_ipv6_bits(uint32_t numset)

@@ -25,4 +25,4 @@ namespace llarp::net
     return ret;
   }
 
-} // namespace llarp::net
+}  // namespace llarp::net

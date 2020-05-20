@@ -16,8 +16,7 @@ namespace llarp
     static constexpr IPRange
     FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
     {
-      return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)),
-                     netmask_ipv6_bits(mask + 96)};
+      return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
     }
 
     /// return true if ip is contained in this ip range

@@ -950,8 +950,7 @@ namespace llarp
           {
             return false;
           }
-          pkt.UpdateIPv4Address(
-              xhtonl(net::TruncateV6(themIP)), xhtonl(net::TruncateV6(usIP)));
+          pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(themIP)), xhtonl(net::TruncateV6(usIP)));
         }
         else if (pkt.IsV6())
         {

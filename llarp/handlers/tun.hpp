@@ -253,8 +253,7 @@ namespace llarp
           else
           {
             if (pkt.IsV4())
-              pkt.UpdateIPv4Address(
-                  xhtonl(pkt.srcv4()), xhtonl(net::TruncateV6(m_OurIP)));
+              pkt.UpdateIPv4Address(xhtonl(pkt.srcv4()), xhtonl(net::TruncateV6(m_OurIP)));
             else
               return false;
           }
