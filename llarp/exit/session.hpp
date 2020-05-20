@@ -5,6 +5,7 @@
 #include <net/ip_packet.hpp>
 #include <path/pathbuilder.hpp>
 #include <routing/transfer_traffic_message.hpp>
+#include <constants/path.hpp>
 
 #include <deque>
 #include <queue>

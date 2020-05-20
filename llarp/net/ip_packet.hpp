@@ -86,7 +86,7 @@ struct ipv6_header
 };
 
 #include <memory>
-#include <service/protocol.hpp>
+#include <service/protocol_type.hpp>
 #include <utility>
 
 struct llarp_ev_loop;

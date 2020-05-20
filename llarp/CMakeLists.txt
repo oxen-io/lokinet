@@ -1,10 +1,6 @@
 include(Version)
 
 add_library(lokinet-util
-  config/config.cpp
-  config/definition.cpp
-  config/ini.cpp
-  config/key_manager.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
@@ -41,13 +37,6 @@ target_link_libraries(lokinet-util PUBLIC
   filesystem
   date::date
 )
-if(TARGET curl)
-  target_link_libraries(lokinet-util PUBLIC curl)
-  target_compile_definitions(lokinet-util PRIVATE HAVE_CURL)
-  if(TARGET libcurl_external)
-    add_dependencies(lokinet-util libcurl_external)
-  endif()
-endif()
 
 if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
@@ -58,14 +47,15 @@ add_library(lokinet-platform
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
-  ev/vpnio.cpp
   ev/ev_libuv.cpp
 
   net/ip.cpp
+  net/ip_address.cpp
   net/ip_packet.cpp
   net/ip_range.cpp
   net/net.cpp
   net/net_int.cpp
+  net/sock_addr.cpp
   $<TARGET_OBJECTS:tuntap>
 )
 
@@ -100,6 +90,11 @@ if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
 endif()
 
 add_library(liblokinet
+  config/config.cpp
+  config/definition.cpp
+  config/ini.cpp
+  config/key_manager.cpp
+
   dns/message.cpp
   dns/name.cpp
   dns/question.cpp
@@ -108,6 +103,8 @@ add_library(liblokinet
   dns/server.cpp
 
   consensus/table.cpp
+
+  ev/vpnio.cpp
 
   bootstrap.cpp
   context.cpp
@@ -152,8 +149,6 @@ add_library(liblokinet
   messages/relay_commit.cpp
   messages/relay_status.cpp
   net/address_info.cpp
-  net/ip_address.cpp
-  net/sock_addr.cpp
   net/exit_info.cpp
   nodedb.cpp
   path/ihophandler.cpp
@@ -199,6 +194,15 @@ add_library(liblokinet
   service/tag_lookup_job.cpp
   service/tag.cpp
 )
+
+if(TARGET curl)
+  # key_manager needs curl for now (to fetch service node keys from lokid)
+  target_link_libraries(liblokinet PUBLIC curl)
+  target_compile_definitions(liblokinet PRIVATE HAVE_CURL)
+  if(TARGET libcurl_external)
+    add_dependencies(liblokinet libcurl_external)
+  endif()
+endif()
 
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
