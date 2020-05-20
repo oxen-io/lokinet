@@ -15,6 +15,13 @@ int main() {
 }
 ]])
 
+if(CMAKE_CXX_COMPILER STREQUAL "AppleClang" AND CMAKE_OSX_DEPLOYMENT_TARGET)
+  # It seems that check_cxx_source_compiles doesn't respect the CMAKE_OSX_DEPLOYMENT_TARGET, so this
+  # check would pass on Catalina (10.15) and then later compilation would fail because you aren't
+  # allowed to use <filesystem> when the deployment target is anything before 10.15.
+  set(CMAKE_REQUIRED_FLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+endif()
+
 check_cxx_source_compiles("${filesystem_code}" filesystem_compiled)
 if(filesystem_compiled)
   message(STATUS "No extra link flag needed for std::filesystem")
@@ -35,5 +42,9 @@ unset(CMAKE_REQUIRED_LIBRARIES)
 if(filesystem_is_good EQUAL 1)
   message(STATUS "we have std::filesystem")
 else()
-  message(FATAL_ERROR "we don't have std::filesystem")
+  # Probably broken AF macos
+  message(STATUS "std::filesystem is not available, apparently this compiler isn't C++17 compliant; falling back to ghc::filesystem")
+  add_subdirectory(external/ghc-filesystem)
+  target_link_libraries(filesystem INTERFACE ghc_filesystem)
+  target_compile_definitions(filesystem INTERFACE USE_GHC_FILESYSTEM)
 endif()

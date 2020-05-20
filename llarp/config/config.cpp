@@ -16,7 +16,6 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include <filesystem>
 
 namespace llarp
 {

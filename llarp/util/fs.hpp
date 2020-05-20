@@ -9,8 +9,13 @@
 #define PATH_SEP "/"
 #endif
 
+#ifdef USE_GHC_FILESYSTEM
+#include <ghc/filesystem.hpp>
+namespace fs = ghc::filesystem;
+#else
 #include <filesystem>
 namespace fs = std::filesystem;
+#endif
 
 #ifndef _MSC_VER
 #include <dirent.h>
