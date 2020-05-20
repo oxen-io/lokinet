@@ -92,9 +92,6 @@ namespace llarp
     return huint32_t{(d) | (c << 8) | (b << 16) | (a << 24)};
   }
 
-  IPRange
-  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask);
-
   bool
   IsIPv4Bogon(const huint32_t& addr);
 

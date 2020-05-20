@@ -603,43 +603,39 @@ namespace llarp
     return IsBogon(host);
   }
 
-  IPRange
-  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
-  {
-    return IPRange{net::IPPacket::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)),
-                   netmask_ipv6_bits(mask + 96)};
-  }
+#if !defined(TESTNET)
+  static constexpr std::array bogonRanges = {IPRange::FromIPv4(0, 0, 0, 0, 8),
+                                             IPRange::FromIPv4(10, 0, 0, 0, 8),
+                                             IPRange::FromIPv4(21, 0, 0, 0, 8),
+                                             IPRange::FromIPv4(100, 64, 0, 0, 10),
+                                             IPRange::FromIPv4(127, 0, 0, 0, 8),
+                                             IPRange::FromIPv4(169, 254, 0, 0, 16),
+                                             IPRange::FromIPv4(172, 16, 0, 0, 12),
+                                             IPRange::FromIPv4(192, 0, 0, 0, 24),
+                                             IPRange::FromIPv4(192, 0, 2, 0, 24),
+                                             IPRange::FromIPv4(192, 88, 99, 0, 24),
+                                             IPRange::FromIPv4(192, 168, 0, 0, 16),
+                                             IPRange::FromIPv4(198, 18, 0, 0, 15),
+                                             IPRange::FromIPv4(198, 51, 100, 0, 24),
+                                             IPRange::FromIPv4(203, 0, 113, 0, 24),
+                                             IPRange::FromIPv4(224, 0, 0, 0, 4),
+                                             IPRange::FromIPv4(240, 0, 0, 0, 4)};
 
   bool
   IsIPv4Bogon(const huint32_t& addr)
   {
-    static std::vector<IPRange> bogonRanges = {iprange_ipv4(0, 0, 0, 0, 8),
-                                               iprange_ipv4(10, 0, 0, 0, 8),
-                                               iprange_ipv4(21, 0, 0, 0, 8),
-                                               iprange_ipv4(100, 64, 0, 0, 10),
-                                               iprange_ipv4(127, 0, 0, 0, 8),
-                                               iprange_ipv4(169, 254, 0, 0, 8),
-                                               iprange_ipv4(172, 16, 0, 0, 12),
-                                               iprange_ipv4(192, 0, 0, 0, 24),
-                                               iprange_ipv4(192, 0, 2, 0, 24),
-                                               iprange_ipv4(192, 88, 99, 0, 24),
-                                               iprange_ipv4(192, 168, 0, 0, 16),
-                                               iprange_ipv4(198, 18, 0, 0, 15),
-                                               iprange_ipv4(198, 51, 100, 0, 24),
-                                               iprange_ipv4(203, 0, 113, 0, 24),
-                                               iprange_ipv4(224, 0, 0, 0, 4),
-                                               iprange_ipv4(240, 0, 0, 0, 4)};
     for (const auto& bogon : bogonRanges)
     {
       if (bogon.ContainsV4(addr))
       {
-#if defined(TESTNET)
-        return false;
-#else
         return true;
-#endif
       }
     }
     return false;
   }
+#else
+  bool
+  IsIPv4Bogon(const huint32_t&) { return false; }
+#endif
+
 }  // namespace llarp
