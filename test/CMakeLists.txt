@@ -74,6 +74,7 @@ add_executable(catchAll
   util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp
   util/test_llarp_util_decaying_hashset.cpp
+  peerstats/peer_db.cpp
   config/test_llarp_config_definition.cpp
   config/test_llarp_config_output.cpp
   net/test_ip_address.cpp

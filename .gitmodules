@@ -27,3 +27,6 @@
 	path = external/libuv
 	url = https://github.com/libuv/libuv
 	branch = v1.x
+[submodule "external/sqlite_orm"]
+	path = external/sqlite_orm
+	url = https://github.com/fnc12/sqlite_orm

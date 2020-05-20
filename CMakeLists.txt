@@ -251,6 +251,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/date)
     check_submodule(external/pybind11)
     check_submodule(external/libuv)
+    check_submodule(external/sqlite_orm)
   endif()
 endif()
 
@@ -268,6 +269,8 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
 add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
+
+include_directories(SYSTEM external/sqlite_orm/include)
 
 add_subdirectory(vendor)
 
