@@ -48,30 +48,30 @@ namespace llarp
 
   /// get a netmask with the higest numset bits set
   constexpr huint128_t
-  __netmask_ipv6_bits(uint32_t numset)
+  _netmask_ipv6_bits(uint32_t numset)
   {
-    return (128 - numset) ? (huint128_t{1} << numset) | __netmask_ipv6_bits(numset + 1)
+    return (128 - numset) ? (huint128_t{1} << numset) | _netmask_ipv6_bits(numset + 1)
                           : huint128_t{0};
   }
 
   constexpr huint128_t
   netmask_ipv6_bits(uint32_t numset)
   {
-    return __netmask_ipv6_bits(128 - numset);
+    return _netmask_ipv6_bits(128 - numset);
   }
 
   /// get a netmask with the higest numset bits set
   constexpr uint32_t
-  __netmask_ipv4_bits(uint32_t numset)
+  _netmask_ipv4_bits(uint32_t numset)
   {
-    return (32 - numset) ? (1 << numset) | __netmask_ipv4_bits(numset + 1) : 0;
+    return (32 - numset) ? (1 << numset) | _netmask_ipv4_bits(numset + 1) : 0;
   }
 
   /// get a netmask given some /N range
   constexpr huint32_t
   netmask_ipv4_bits(uint32_t num)
   {
-    return huint32_t{__netmask_ipv4_bits(32 - num)};
+    return huint32_t{_netmask_ipv4_bits(32 - num)};
   }
 
   constexpr huint32_t
