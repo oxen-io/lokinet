@@ -41,8 +41,7 @@ namespace llarp
     /// NOTE: blocks on I/O
     ///
     /// @param config should be a prepared config object
-    /// @param genIfAbsent determines whether or not we will create files if
-    /// they
+    /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
     /// @return true on success, false otherwise
     bool
