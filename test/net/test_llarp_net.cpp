@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <net/net.hpp>
 #include <net/net_int.hpp>
 #include <net/ip.hpp>
+#include <net/ip_range.hpp>
 
 struct TestNet : public ::testing::Test
 {
@@ -26,7 +26,7 @@ TEST_F(TestNet, TestIn6AddrToHUIntLoopback)
   llarp::huint128_t loopback = {0};
   ASSERT_TRUE(loopback.FromString("::1"));
   in6_addr addr = IN6ADDR_LOOPBACK_INIT;
-  auto huint = llarp::net::IPPacket::In6ToHUInt(addr);
+  auto huint = llarp::net::In6ToHUInt(addr);
   ASSERT_EQ(huint, loopback);
 }
 
@@ -35,7 +35,7 @@ TEST_F(TestNet, TestIn6AddrToHUInt)
   llarp::huint128_t huint_parsed = {0};
   ASSERT_TRUE(huint_parsed.FromString("fd00::1"));
   in6_addr addr = { { { 0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01 } } };
-  auto huint = llarp::net::IPPacket::In6ToHUInt(addr);
+  auto huint = llarp::net::In6ToHUInt(addr);
   ASSERT_EQ(huint, huint_parsed);
   huint_parsed.h ++;
   ASSERT_NE(huint, huint_parsed);
@@ -44,19 +44,19 @@ TEST_F(TestNet, TestIn6AddrToHUInt)
 
 TEST_F(TestNet, TestRangeContains8)
 {
-  ASSERT_TRUE(llarp::iprange_ipv4(10, 0, 0, 1, 8)
+  ASSERT_TRUE(llarp::IPRange::FromIPv4(10, 0, 0, 1, 8)
                   .ContainsV4(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
 }
 
 TEST_F(TestNet, TestRangeContains24)
 {
-  ASSERT_TRUE(llarp::iprange_ipv4(10, 200, 0, 1, 24)
+  ASSERT_TRUE(llarp::IPRange::FromIPv4(10, 200, 0, 1, 24)
                   .ContainsV4(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
 }
 
 TEST_F(TestNet, TestRangeContainsFail)
 {
-  ASSERT_TRUE(!llarp::iprange_ipv4(192, 168, 0, 1, 24)
+  ASSERT_TRUE(!llarp::IPRange::FromIPv4(192, 168, 0, 1, 24)
                    .ContainsV4(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
 }
 

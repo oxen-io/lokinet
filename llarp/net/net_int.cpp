@@ -20,7 +20,7 @@ namespace llarp
   huint128_t::ToV6(V6Container& c)
   {
     c.resize(16);
-    const in6_addr addr = net::IPPacket::HUIntToIn6(*this);
+    const in6_addr addr = net::HUIntToIn6(*this);
     std::copy_n(addr.s6_addr, 16, c.begin());
   }
 

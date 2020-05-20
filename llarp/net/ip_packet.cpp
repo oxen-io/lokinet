@@ -1,4 +1,5 @@
 #include <net/ip_packet.hpp>
+#include <net/ip.hpp>
 
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
@@ -25,44 +26,6 @@ namespace llarp
     in6_uint32_ptr(const in6_addr& addr)
     {
       return (uint32_t*)addr.s6_addr;
-    }
-
-    huint128_t
-    IPPacket::In6ToHUInt(in6_addr addr)
-    {
-      uint8_t* ptr = reinterpret_cast<uint8_t*>(addr.s6_addr);
-      uint128_t x{0};
-      for (int i = 0; i < 16; i++)
-      {
-        x <<= 8;
-        x |= ptr[i];
-      }
-      return huint128_t{x};
-    }
-
-    in6_addr
-    IPPacket::HUIntToIn6(huint128_t x)
-    {
-      in6_addr addr;
-      auto i = ntoh128(x.h);
-      memcpy(&addr, &i, 16);
-      return addr;
-    }
-
-    huint128_t
-    IPPacket::ExpandV4(huint32_t i)
-    {
-      huint128_t ff = {0xff};
-      huint128_t expanded{i.h};
-      return (ff << 40) | (ff << 32) | expanded;
-    }
-
-    huint32_t
-    IPPacket::TruncateV6(huint128_t i)
-    {
-      huint32_t ret = {0};
-      ret.h = (uint32_t)(i.h & (0x00000000ffffffffUL));
-      return ret;
     }
 
     huint128_t

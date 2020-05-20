@@ -57,52 +57,6 @@ llarp_getPrivateIfs();
 
 namespace llarp
 {
-  struct IPRange
-  {
-    using Addr_t = huint128_t;
-    huint128_t addr = {0};
-    huint128_t netmask_bits = {0};
-
-    /// return true if ip is contained in this ip range
-    bool
-    Contains(const Addr_t& ip) const
-    {
-      return (addr & netmask_bits) == (ip & netmask_bits);
-    }
-
-    bool
-    ContainsV4(const huint32_t& ip) const;
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const IPRange& a)
-    {
-      return out << a.ToString();
-    }
-
-    /// get the highest address on this range
-    huint128_t
-    HighestAddr() const
-    {
-      return (addr & netmask_bits) + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h)))
-          - huint128_t{1};
-    }
-
-    bool
-    operator<(const IPRange& other) const
-    {
-      return (this->addr & this->netmask_bits) < (other.addr & other.netmask_bits)
-          || this->netmask_bits < other.netmask_bits;
-    }
-
-    std::string
-    ToString() const;
-
-    bool
-    FromString(std::string str);
-  };
-
-  huint128_t
-  ExpandV4(huint32_t x);
 
   /// get a netmask with the higest numset bits set
   constexpr huint128_t

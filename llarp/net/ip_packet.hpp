@@ -98,18 +98,6 @@ namespace llarp
     /// an Packet
     struct IPPacket
     {
-      static huint128_t
-      In6ToHUInt(in6_addr addr);
-
-      static in6_addr
-      HUIntToIn6(huint128_t x);
-
-      static huint128_t
-      ExpandV4(huint32_t x);
-
-      static huint32_t
-      TruncateV6(huint128_t x);
-
       static constexpr size_t MaxSize = 1500;
       llarp_time_t timestamp;
       size_t sz;

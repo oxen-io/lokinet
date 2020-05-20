@@ -1,7 +1,7 @@
 #ifndef LLARP_NET_IP_RANGE_MAP_HPP
 #define LLARP_NET_IP_RANGE_MAP_HPP
 
-#include <net/ip.hpp>
+#include <net/ip_range.hpp>
 
 namespace llarp
 {

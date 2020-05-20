@@ -236,7 +236,7 @@ namespace llarp
         huint128_t ipv6;
         if (ip.FromString(ip_str))
         {
-          ipv6 = net::IPPacket::ExpandV4(ip);
+          ipv6 = net::ExpandV4(ip);
         }
         else if (ipv6.FromString(ip_str))
         {
@@ -767,7 +767,7 @@ namespace llarp
       }
       if (ip.FromString(ifaddr))
       {
-        m_OurIP = net::IPPacket::ExpandV4(ip);
+        m_OurIP = net::ExpandV4(ip);
         m_OurRange.netmask_bits = netmask_ipv6_bits(netmask + 96);
       }
       else if (m_OurIP.FromString(ifaddr))
@@ -866,7 +866,7 @@ namespace llarp
 
         huint128_t dst;
         if (pkt.IsV4())
-          dst = net::IPPacket::ExpandV4(pkt.dstv4());
+          dst = net::ExpandV4(pkt.dstv4());
         else
           dst = pkt.dstv6();
 
@@ -951,7 +951,7 @@ namespace llarp
             return false;
           }
           pkt.UpdateIPv4Address(
-              xhtonl(net::IPPacket::TruncateV6(themIP)), xhtonl(net::IPPacket::TruncateV6(usIP)));
+              xhtonl(net::TruncateV6(themIP)), xhtonl(net::TruncateV6(usIP)));
         }
         else if (pkt.IsV6())
         {

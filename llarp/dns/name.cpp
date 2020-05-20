@@ -98,7 +98,7 @@ namespace llarp
         sub = sub.substr(pos + 1);
         pos = sub.find('.');
         a = atoi(sub.substr(0, pos).c_str());
-        ip = net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(a, b, c, d));
+        ip = net::ExpandV4(llarp::ipaddr_ipv4_bits(a, b, c, d));
         return true;
       }
       if (numdots == 32 && isV6)

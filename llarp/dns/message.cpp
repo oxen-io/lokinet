@@ -158,7 +158,7 @@ namespace llarp
         }
         else
         {
-          const auto addr = net::IPPacket::TruncateV6(ip);
+          const auto addr = net::TruncateV6(ip);
           rec.rr_type = qTypeA;
           rec.rData.resize(4);
           htobe32buf(rec.rData.data(), addr.h);
