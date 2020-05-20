@@ -36,22 +36,22 @@ namespace llarp
 
   struct RouterConfig
   {
-    size_t m_minConnectedRouters;
-    size_t m_maxConnectedRouters;
+    size_t m_minConnectedRouters = 0;
+    size_t m_maxConnectedRouters = 0;
 
     std::string m_netId;
     std::string m_nickname;
 
     fs::path m_dataDir;
 
-    bool m_blockBogons;
+    bool m_blockBogons = false;
 
     IpAddress m_publicAddress;
 
-    int m_workerThreads;
-    int m_numNetThreads;
+    int m_workerThreads = -1;
+    int m_numNetThreads = -1;
 
-    size_t m_JobQueueSize;
+    size_t m_JobQueueSize = 0;
 
     std::string m_routerContactFile;
     std::string m_encryptionKeyFile;
@@ -72,9 +72,9 @@ namespace llarp
 
     std::string m_keyfile;
     std::string m_endpointType;
-    bool m_reachable;
-    int m_hops;
-    int m_paths;
+    bool m_reachable = false;
+    int m_hops = -1;
+    int m_paths = -1;
     std::set<RouterID> m_snodeBlacklist;
 #ifdef LOKINET_EXITS
     std::string m_exitNode;
@@ -104,7 +104,7 @@ namespace llarp
     struct LinkInfo
     {
       std::string interface;
-      int addressFamily;
+      int addressFamily = -1;
       uint16_t port = -1;
     };
     /// Create a LinkInfo from the given string.
@@ -129,7 +129,7 @@ namespace llarp
 
   struct ApiConfig
   {
-    bool m_enableRPCServer;
+    bool m_enableRPCServer = false;
     std::string m_rpcBindAddr;
 
     void
@@ -138,8 +138,8 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool usingSNSeed;
-    bool whitelistRouters;
+    bool usingSNSeed = false;
+    bool whitelistRouters = false;
     fs::path ident_keyfile;
     std::string lokidRPCAddr;
     std::string lokidRPCUser;
@@ -158,8 +158,8 @@ namespace llarp
 
   struct LoggingConfig
   {
-    LogType m_logType;
-    LogLevel m_logLevel;
+    LogType m_logType = LogType::Unknown;
+    LogLevel m_logLevel = eLogNone;
     std::string m_logFile;
 
     void
