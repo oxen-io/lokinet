@@ -43,18 +43,6 @@ operator<(const in6_addr& a, const in6_addr& b);
 bool
 operator==(const in6_addr& a, const in6_addr& b);
 
-struct privatesInUse
-{
-  // true if used by real NICs on start
-  // false if not used, and means we could potentially use it if needed
-  bool ten;       // 16m ips
-  bool oneSeven;  // 1m  ips
-  bool oneNine;   // 65k ips
-};
-
-struct privatesInUse
-llarp_getPrivateIfs();
-
 namespace llarp
 {
 
