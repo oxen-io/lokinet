@@ -58,7 +58,7 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
     debian_pipeline("Ubuntu bionic/static (amd64)", "ubuntu:bionic", deps='g++-8 python3-dev',
                     cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DDOWNLOAD_SODIUM=ON -DDOWNLOAD_CURL=ON -DDOWNLOAD_UV=ON -DWITH_SYSTEMD=OFF',
-                    extra_cmds=['if ldd daemon/lokinet | grep -ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so; ' +
+                    extra_cmds=['if ldd daemon/lokinet | grep -ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so"; ' +
                                 'then echo -e "\\\\e[31;1mlokinet links to unexpected libraries\\\\e[0m"; fi']),
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
