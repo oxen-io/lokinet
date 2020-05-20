@@ -2,9 +2,10 @@
 #define LLARP_EXIT_SESSION_HPP
 
 #include <exit/exit_messages.hpp>
-#include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 #include <path/pathbuilder.hpp>
 #include <routing/transfer_traffic_message.hpp>
+#include <constants/path.hpp>
 
 #include <deque>
 #include <queue>

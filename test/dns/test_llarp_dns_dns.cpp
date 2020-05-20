@@ -52,7 +52,7 @@ TEST_F(DNSLibTest, TestPTR)
 {
   llarp::huint128_t ip = {0};
   llarp::huint128_t expected =
-      llarp::net::IPPacket::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
+      llarp::net::ExpandV4(llarp::ipaddr_ipv4_bits(10, 10, 10, 1));
   ASSERT_TRUE(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
   ASSERT_EQ(ip, expected);
 }

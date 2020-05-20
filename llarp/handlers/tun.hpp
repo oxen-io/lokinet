@@ -5,6 +5,7 @@
 #include <ev/ev.h>
 #include <ev/vpnio.hpp>
 #include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
@@ -242,7 +243,7 @@ namespace llarp
           {
             if (pkt.IsV4())
             {
-              pkt.UpdateIPv6Address(net::IPPacket::ExpandV4(pkt.srcv4()), m_OurIP);
+              pkt.UpdateIPv6Address(net::ExpandV4(pkt.srcv4()), m_OurIP);
             }
             else
             {
@@ -252,8 +253,7 @@ namespace llarp
           else
           {
             if (pkt.IsV4())
-              pkt.UpdateIPv4Address(
-                  xhtonl(pkt.srcv4()), xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
+              pkt.UpdateIPv4Address(xhtonl(pkt.srcv4()), xhtonl(net::TruncateV6(m_OurIP)));
             else
               return false;
           }

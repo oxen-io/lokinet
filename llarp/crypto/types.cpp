@@ -101,7 +101,7 @@ namespace llarp
     auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
     if (!optional_f)
       return false;
-    auto& f = optional_f.value();
+    auto& f = *optional_f;
     if (!f.is_open())
       return false;
     f.write((char*)buf.base, buf.cur - buf.base);
@@ -115,7 +115,7 @@ namespace llarp
     auto optional = util::OpenFileStream<std::ifstream>(fpath, std::ios::binary | std::ios::in);
     if (!optional)
       return false;
-    auto& f = optional.value();
+    auto& f = *optional;
     f.seekg(0, std::ios::end);
     const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);

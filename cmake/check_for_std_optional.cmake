@@ -6,7 +6,7 @@ set(std_optional_code [[
 int main() {
    std::optional<int> maybe;
    maybe = 1;
-   return maybe.value() == 1;
+   return *maybe == 1;
 }
 ]])
 

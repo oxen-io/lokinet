@@ -129,10 +129,10 @@ namespace llarp
       {
         huint32_t dst;
         if (m_RewriteSource)
-          dst = net::IPPacket::TruncateV6(m_Parent->GetIfAddr());
+          dst = net::TruncateV6(m_Parent->GetIfAddr());
         else
           dst = pkt.dstv4();
-        pkt.UpdateIPv4Address(xhtonl(net::IPPacket::TruncateV6(m_IP)), xhtonl(dst));
+        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(m_IP)), xhtonl(dst));
       }
       else
       {
@@ -159,8 +159,7 @@ namespace llarp
       if (pkt.IsV6())
         pkt.UpdateIPv6Address(src, m_IP);
       else
-        pkt.UpdateIPv4Address(
-            xhtonl(net::IPPacket::TruncateV6(src)), xhtonl(net::IPPacket::TruncateV6(m_IP)));
+        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(m_IP)));
 
       const auto _pktbuf = pkt.Buffer();
       const llarp_buffer_t& pktbuf = _pktbuf.underlying;

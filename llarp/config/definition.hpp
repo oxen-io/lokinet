@@ -156,8 +156,8 @@ namespace llarp
     defaultValueAsString() override
     {
       std::ostringstream oss;
-      if (defaultValue.has_value())
-        oss << defaultValue.value();
+      if (defaultValue)
+        oss << *defaultValue;
 
       return oss.str();
     }
@@ -192,8 +192,8 @@ namespace llarp
       std::ostringstream oss;
       if (parsedValues.size() > 0)
         oss << parsedValues[0];
-      else if (useDefault and defaultValue.has_value())
-        oss << defaultValue.value();
+      else if (useDefault and defaultValue)
+        oss << *defaultValue;
 
       return oss.str();
     }
@@ -232,13 +232,13 @@ namespace llarp
         else
         {
           auto maybe = getValue();
-          if (maybe.has_value())
+          if (maybe)
           {
-            acceptor(maybe.value());
+            acceptor(*maybe);
           }
           else
           {
-            assert(not defaultValue.has_value());  // maybe should have a value if defaultValue does
+            assert(not defaultValue);  // maybe should have a value if defaultValue does
           }
         }
       }

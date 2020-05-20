@@ -43,93 +43,34 @@ operator<(const in6_addr& a, const in6_addr& b);
 bool
 operator==(const in6_addr& a, const in6_addr& b);
 
-struct privatesInUse
-{
-  // true if used by real NICs on start
-  // false if not used, and means we could potentially use it if needed
-  bool ten;       // 16m ips
-  bool oneSeven;  // 1m  ips
-  bool oneNine;   // 65k ips
-};
-
-struct privatesInUse
-llarp_getPrivateIfs();
-
 namespace llarp
 {
-  struct IPRange
-  {
-    using Addr_t = huint128_t;
-    huint128_t addr = {0};
-    huint128_t netmask_bits = {0};
-
-    /// return true if ip is contained in this ip range
-    bool
-    Contains(const Addr_t& ip) const
-    {
-      return (addr & netmask_bits) == (ip & netmask_bits);
-    }
-
-    bool
-    ContainsV4(const huint32_t& ip) const;
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const IPRange& a)
-    {
-      return out << a.ToString();
-    }
-
-    /// get the highest address on this range
-    huint128_t
-    HighestAddr() const
-    {
-      return (addr & netmask_bits) + (huint128_t{1} << (128 - bits::count_bits_128(netmask_bits.h)))
-          - huint128_t{1};
-    }
-
-    bool
-    operator<(const IPRange& other) const
-    {
-      return (this->addr & this->netmask_bits) < (other.addr & other.netmask_bits)
-          || this->netmask_bits < other.netmask_bits;
-    }
-
-    std::string
-    ToString() const;
-
-    bool
-    FromString(std::string str);
-  };
-
-  huint128_t
-  ExpandV4(huint32_t x);
-
   /// get a netmask with the higest numset bits set
   constexpr huint128_t
-  __netmask_ipv6_bits(uint32_t numset)
+  _netmask_ipv6_bits(uint32_t numset)
   {
-    return (128 - numset) ? (huint128_t{1} << numset) | __netmask_ipv6_bits(numset + 1)
+    return (128 - numset) ? (huint128_t{1} << numset) | _netmask_ipv6_bits(numset + 1)
                           : huint128_t{0};
   }
 
   constexpr huint128_t
   netmask_ipv6_bits(uint32_t numset)
   {
-    return __netmask_ipv6_bits(128 - numset);
+    return _netmask_ipv6_bits(128 - numset);
   }
 
   /// get a netmask with the higest numset bits set
   constexpr uint32_t
-  __netmask_ipv4_bits(uint32_t numset)
+  _netmask_ipv4_bits(uint32_t numset)
   {
-    return (32 - numset) ? (1 << numset) | __netmask_ipv4_bits(numset + 1) : 0;
+    return (32 - numset) ? (1 << numset) | _netmask_ipv4_bits(numset + 1) : 0;
   }
 
   /// get a netmask given some /N range
   constexpr huint32_t
   netmask_ipv4_bits(uint32_t num)
   {
-    return huint32_t{__netmask_ipv4_bits(32 - num)};
+    return huint32_t{_netmask_ipv4_bits(32 - num)};
   }
 
   constexpr huint32_t
@@ -137,9 +78,6 @@ namespace llarp
   {
     return huint32_t{(d) | (c << 8) | (b << 16) | (a << 24)};
   }
-
-  IPRange
-  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask);
 
   bool
   IsIPv4Bogon(const huint32_t& addr);

@@ -106,12 +106,12 @@ namespace llarp
         return;
       }
       auto maybe = m_Identity.EncryptAndSignIntroSet(introSet(), now);
-      if (not maybe.has_value())
+      if (not maybe)
       {
         LogWarn("failed to generate introset for endpoint ", Name());
         return;
       }
-      if (PublishIntroSet(maybe.value(), Router()))
+      if (PublishIntroSet(*maybe, Router()))
       {
         LogInfo("(re)publishing introset for endpoint ", Name());
       }
@@ -798,9 +798,9 @@ namespace llarp
       do
       {
         auto maybe = m_RecvQueue.tryPopFront();
-        if (not maybe.has_value())
+        if (not maybe)
           return;
-        auto ev = std::move(maybe.value());
+        auto ev = std::move(*maybe);
         ProtocolMessage::ProcessAsync(ev.fromPath, ev.pathid, ev.msg);
       } while (true);
     }
@@ -928,7 +928,7 @@ namespace llarp
       const auto now = Router()->Now();
       auto& fails = m_state->m_ServiceLookupFails;
       auto& lookups = m_state->m_PendingServiceLookups;
-      if (not introset.has_value() || introset->IsExpired(now))
+      if (not introset or introset->IsExpired(now))
       {
         LogError(Name(), " failed to lookup ", addr.ToString(), " from ", endpoint);
         fails[endpoint] = fails[endpoint] + 1;
@@ -947,7 +947,7 @@ namespace llarp
       if (m_state->m_RemoteSessions.count(addr) > 0)
         return true;
 
-      PutNewOutboundContext(introset.value());
+      PutNewOutboundContext(*introset);
       return true;
     }
 

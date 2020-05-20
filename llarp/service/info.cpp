@@ -20,13 +20,14 @@ namespace llarp
     }
 
     bool
-    ServiceInfo::Update(const byte_t* sign, const byte_t* enc, const OptNonce& nonce)
+    ServiceInfo::Update(
+        const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce)
     {
       signkey = sign;
       enckey = enc;
       if (nonce)
       {
-        vanity = nonce.value();
+        vanity = *nonce;
       }
       return UpdateAddr();
     }

@@ -7,7 +7,6 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
     type: 'docker',
     name: name,
     platform: { arch: arch },
-    environment: { CLICOLOR_FORCE: '1' }, // Lets color through ninja (1.9+)
     steps: [
         {
             name: 'build',
@@ -59,10 +58,31 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
     debian_pipeline("Ubuntu bionic/static (amd64)", "ubuntu:bionic", deps='g++-8 python3-dev',
                     cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DDOWNLOAD_SODIUM=ON -DDOWNLOAD_CURL=ON -DDOWNLOAD_UV=ON -DWITH_SYSTEMD=OFF',
-                    extra_cmds=['if ldd daemon/lokinet | grep -ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so; ' +
+                    extra_cmds=['if ldd daemon/lokinet | grep -ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so"; ' +
                                 'then echo -e "\\\\e[31;1mlokinet links to unexpected libraries\\\\e[0m"; fi']),
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+    {
+        kind: 'pipeline',
+        type: 'exec',
+        name: 'macOS (Catalina w/macports)',
+        platform: { os: 'darwin', arch: 'amd64' },
+        environment: { CLICOLOR_FORCE: '1' }, // Lets color through ninja (1.9+)
+        steps: [
+            {
+                name: 'build',
+                commands: [
+                    'git submodule update --init --recursive',
+                    'mkdir build',
+                    'cd build',
+                    'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON',
+                    'ninja -v',
+                    './test/testAll --gtest_color=yes',
+                    './test/catchAll --use-colour yes',
+                ],
+            }
+        ]
+    },
 ]

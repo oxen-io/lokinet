@@ -279,13 +279,13 @@ namespace llarp
       {
         if (intro.expiresAt > now && intro.expiresAt - now > path::default_lifetime)
         {
-          if (W && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
-          {
-            return false;
-          }
-          if (!W.has_value())
+          if (!W)
           {
             LogWarn("intro has too high expire time");
+            return false;
+          }
+          if (intro.expiresAt - W->extendedLifetime > path::default_lifetime)
+          {
             return false;
           }
         }
@@ -329,7 +329,7 @@ namespace llarp
       printer.printAttribute("T", T.count());
       if (W)
       {
-        printer.printAttribute("W", W.value());
+        printer.printAttribute("W", *W);
       }
       else
       {

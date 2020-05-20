@@ -230,7 +230,7 @@ namespace llarp
       auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
       if (!optional_f)
         return false;
-      auto& f = optional_f.value();
+      auto& f = *optional_f;
       if (f.is_open())
       {
         f.write((char*)buf.base, buf.sz);

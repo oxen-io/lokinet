@@ -5,6 +5,7 @@
 #include <crypto/types.hpp>
 #include <dht/message.hpp>
 #include <routing/message.hpp>
+#include <service/protocol_type.hpp>
 #include <service/identity.hpp>
 #include <service/info.hpp>
 #include <service/intro.hpp>
@@ -30,12 +31,6 @@ namespace llarp
   namespace service
   {
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
-
-    using ProtocolType = uint64_t;
-
-    constexpr ProtocolType eProtocolControl = 0UL;
-    constexpr ProtocolType eProtocolTrafficV4 = 1UL;
-    constexpr ProtocolType eProtocolTrafficV6 = 2UL;
 
     /// inner message
     struct ProtocolMessage

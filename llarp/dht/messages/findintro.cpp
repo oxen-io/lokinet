@@ -122,9 +122,9 @@ namespace llarp
       {
         // we should have this value if introset was propagated properly
         const auto maybe = dht.GetIntroSetByLocation(location);
-        if (maybe.has_value())
+        if (maybe)
         {
-          replies.emplace_back(new GotIntroMessage({maybe.value()}, txID));
+          replies.emplace_back(new GotIntroMessage({*maybe}, txID));
         }
         else
         {

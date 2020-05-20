@@ -261,14 +261,14 @@ namespace llarp
         return;
       }
 
-      if (self->fromAddr.has_value())
+      if (self->fromAddr)
       {
         // only do ip limiting from non service nodes
 #ifndef LOKINET_HIVE
-        if (self->context->CheckPathLimitHitByIP(self->fromAddr.value()))
+        if (self->context->CheckPathLimitHitByIP(*self->fromAddr))
         {
           // we hit a limit so tell it to slow tf down
-          llarp::LogError("client path build hit limit ", self->fromAddr.value());
+          llarp::LogError("client path build hit limit ", *self->fromAddr);
           OnForwardLRCMResult(
               self->context->Router(),
               self->hop->info.rxID,

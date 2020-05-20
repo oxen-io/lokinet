@@ -90,11 +90,11 @@ namespace llarp
       if (markedBad)
         return true;
       updatingIntroSet = false;
-      if (foundIntro.has_value())
+      if (foundIntro)
       {
         if (foundIntro->T == 0s)
         {
-          LogWarn(Name(), " got introset with zero timestamp: ", foundIntro.value());
+          LogWarn(Name(), " got introset with zero timestamp: ", *foundIntro);
           return true;
         }
         if (currentIntroSet.T > foundIntro->T)
@@ -109,7 +109,7 @@ namespace llarp
           LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
-        currentIntroSet = foundIntro.value();
+        currentIntroSet = *foundIntro;
         ShiftIntroduction(false);
       }
       else

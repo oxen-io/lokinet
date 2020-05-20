@@ -23,8 +23,6 @@ namespace llarp
       VanityNonce vanity;
       uint64_t version = LLARP_PROTO_VERSION;
 
-      using OptNonce = std::optional<VanityNonce>;
-
       void
       RandomizeVanity()
       {
@@ -45,7 +43,7 @@ namespace llarp
       }
 
       bool
-      Update(const byte_t* sign, const byte_t* enc, const OptNonce& nonce = OptNonce());
+      Update(const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
 
       bool
       operator==(const ServiceInfo& other) const

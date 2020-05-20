@@ -392,14 +392,14 @@ TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
 
     // defaults to false
     auto maybe = def.getValue();
-    CHECK(maybe.has_value());
-    CHECK(maybe.value() == false);
+    REQUIRE(maybe);
+    CHECK(*maybe == false);
 
     // val should result in true
     CHECK_NOTHROW(def.parseValue(val));
     maybe = def.getValue();
-    CHECK(maybe.has_value());
-    CHECK(maybe.value() == true);
+    REQUIRE(maybe);
+    CHECK(*maybe);
   }
 
   // falsy values
@@ -409,14 +409,14 @@ TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
 
     // defaults to true
     auto maybe = def.getValue();
-    CHECK(maybe.has_value());
-    CHECK(maybe.value() == true);
+    REQUIRE(maybe);
+    CHECK(maybe == true);
 
     // val should result in false
     CHECK_NOTHROW(def.parseValue(val));
     maybe = def.getValue();
-    CHECK(maybe.has_value());
-    CHECK(maybe.value() == false);
+    REQUIRE(maybe);
+    CHECK(maybe == false);
   }
 
   // illegal values

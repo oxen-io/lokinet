@@ -306,7 +306,7 @@ format:
 format-verify: format
 	(type $(FORMAT))
 	$(FORMAT) --version
-	git diff --quiet || (echo 'Please run make format!!' && git --no-pager diff ; exit 1)
+	git --no-pager diff --exit-code --color || (echo '\n\n\e[31;1mLint check failed; please run make format!!\e[0m\n\n' ; exit 1)
 
 analyze-config: clean
 	mkdir -p '$(BUILD_ROOT)'

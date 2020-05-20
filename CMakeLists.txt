@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)  # Has to be set before `project()`, and ignored on non-macos
+# Has to be set before `project()`, and ignored on non-macos:
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "macOS deployment target (Apple clang only)")
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -261,6 +262,7 @@ if(SUBMODULE_CHECK)
     check_submodule(external/nlohmann)
     check_submodule(external/googletest)
     check_submodule(external/cxxopts)
+    check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
     check_submodule(external/pybind11)
     check_submodule(external/libuv)

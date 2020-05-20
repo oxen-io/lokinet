@@ -548,13 +548,10 @@ namespace llarp
     }
 
     // Network config
-    if (conf->network.m_enableProfiling.has_value())
+    if (conf->network.m_enableProfiling.has_value() and not*conf->network.m_enableProfiling)
     {
-      if (not conf->network.m_enableProfiling.value())
-      {
-        routerProfiling().Disable();
-        LogWarn("router profiling explicitly disabled");
-      }
+      routerProfiling().Disable();
+      LogWarn("router profiling explicitly disabled");
     }
 
     if (!conf->network.m_routerProfilesFile.empty())

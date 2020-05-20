@@ -125,9 +125,9 @@ namespace llarp
     if (!enckey.BEncode(buf))
       return false;
     // write router version if present
-    if (routerVersion.has_value())
+    if (routerVersion)
     {
-      if (not BEncodeWriteDictEntry("r", routerVersion.value(), buf))
+      if (not BEncodeWriteDictEntry("r", *routerVersion, buf))
         return false;
     }
     /* write last updated */
@@ -180,7 +180,7 @@ namespace llarp
     {
       obj["nickname"] = Nick();
     }
-    if (routerVersion.has_value())
+    if (routerVersion)
     {
       obj["routerVersion"] = routerVersion->ToString();
     }
@@ -246,7 +246,7 @@ namespace llarp
   bool
   RouterContact::IsPublicRouter() const
   {
-    if (not routerVersion.has_value())
+    if (not routerVersion)
       return false;
     return !addrs.empty();
   }
@@ -390,17 +390,16 @@ namespace llarp
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
     const fs::path fpath = std::string(fname); /*  */
-    auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
-    if (!optional_f)
+    auto f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+    if (!f)
     {
       return false;
     }
-    auto& f = optional_f.value();
-    if (!f.is_open())
+    if (!f->is_open())
     {
       return false;
     }
-    f.write((char*)buf.base, buf.sz);
+    f->write((char*)buf.base, buf.sz);
     return true;
   }
 
