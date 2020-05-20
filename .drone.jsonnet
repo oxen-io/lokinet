@@ -2,7 +2,15 @@ local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 
-local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='Release', werror=true, cmake_extra='', extra_cmds=[], allow_fail=false) = {
+local debian_pipeline(name, image,
+        arch='amd64',
+        deps=default_deps,
+        build_type='Release',
+        lto=false,
+        werror=true,
+        cmake_extra='',
+        extra_cmds=[],
+        allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
     name: name,
@@ -23,6 +31,7 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
+                    (if lto then '' else '-DWITH_LTO=OFF ') +
                     cmake_extra,
                 'ninja -v',
                 './test/testAll --gtest_color=yes',
@@ -45,10 +54,10 @@ local debian_pipeline(name, image, arch='amd64', deps=default_deps, build_type='
                 'make format-verify']
         }]
     },
-    debian_pipeline("Debian sid (amd64)", "debian:sid"),
-    debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
+    debian_pipeline("Debian sid (amd64)", "debian:sid", lto=true),
+    debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug', lto=true),
     debian_pipeline("Debian sid/clang-10 (amd64)", "debian:sid", deps='clang-10 '+default_deps_nocxx,
-                    cmake_extra='-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 '),
+                    cmake_extra='-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 ', lto=true),
     debian_pipeline("Debian sid/gcc-10 (amd64)", "debian:sid", deps='g++-10 '+default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
     debian_pipeline("Debian buster (amd64)", "debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
