@@ -2,9 +2,11 @@
 
 namespace llarp
 {
-  PeerStats::PeerStats(const RouterID& routerId)
+  PeerStats::PeerStats() = default;
+
+  PeerStats::PeerStats(const RouterID& routerId_)
   {
-    routerIdHex = routerId.ToHex();
+    routerId = routerId_.ToString();
   }
 
   PeerStats&
@@ -35,7 +37,7 @@ namespace llarp
   bool
   PeerStats::operator==(const PeerStats& other)
   {
-    return routerIdHex == other.routerIdHex and numConnectionAttempts == other.numConnectionAttempts
+    return routerId == other.routerId and numConnectionAttempts == other.numConnectionAttempts
         and numConnectionSuccesses == other.numConnectionSuccesses
         and numConnectionRejections == other.numConnectionRejections
         and numConnectionTimeouts == other.numConnectionTimeouts

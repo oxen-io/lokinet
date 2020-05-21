@@ -16,7 +16,7 @@ namespace llarp
         file,
         make_table(
             "peerstats",
-            make_column("routerId", &PeerStats::routerIdHex, primary_key(), unique()),
+            make_column("routerId", &PeerStats::routerId, primary_key(), unique()),
             make_column("numConnectionAttempts", &PeerStats::numConnectionAttempts),
             make_column("numConnectionSuccesses", &PeerStats::numConnectionSuccesses),
             make_column("numConnectionRejections", &PeerStats::numConnectionRejections),

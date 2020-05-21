@@ -13,7 +13,7 @@ namespace llarp
   // Struct containing stats we know about a peer
   struct PeerStats
   {
-    std::string routerIdHex;
+    std::string routerId;
 
     int32_t numConnectionAttempts = 0;
     int32_t numConnectionSuccesses = 0;
@@ -33,6 +33,7 @@ namespace llarp
     int64_t longestRCReceiveIntervalMs = 0;
     int64_t mostExpiredRCMs = 0;
 
+    PeerStats();
     PeerStats(const RouterID& routerId);
 
     PeerStats&
