@@ -10,8 +10,7 @@ And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
 You can view documentation on how to get started [here](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) .
 
-![build status](https://gitlab.com/lokiproject/loki-network/badges/master/pipeline.svg "build status")
-![travis-ci](https://travis-ci.org/loki-project/loki-network.svg?branch=master "ci status")
+[![Build Status](https://drone.lokinet.dev/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/loki-project/loki-network)
 
 ## Usage
 
