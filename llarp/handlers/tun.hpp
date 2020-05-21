@@ -34,6 +34,9 @@ namespace llarp
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 
       void
+      SendPacketToRemote(const llarp_buffer_t&) override{};
+
+      void
       Tick(llarp_time_t now) override;
 
       util::StatusObject
@@ -81,21 +84,11 @@ namespace llarp
       /// overrides Endpoint
       bool
       HandleInboundPacket(
-          const service::ConvoTag tag, const llarp_buffer_t& pkt, service::ProtocolType t) override
-      {
-        if (t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6)
-          return false;
-        AlignedBuffer<32> addr;
-        bool snode = false;
-        if (!GetEndpointWithConvoTag(tag, addr, snode))
-          return false;
-        return HandleWriteIPPacket(
-            pkt, [=]() -> huint128_t { return ObtainIPForAddr(addr, snode); });
-      }
+          const service::ConvoTag tag, const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
       /// handle inbound traffic
       bool
-      HandleWriteIPPacket(const llarp_buffer_t& buf, std::function<huint128_t(void)> getFromIP);
+      HandleWriteIPPacket(const llarp_buffer_t& buf, huint128_t src, huint128_t dst);
 
       /// queue outbound packet to the world
       bool
@@ -192,8 +185,6 @@ namespace llarp
           net::IPPacket::CompareOrder,
           net::IPPacket::GetNow>;
 
-      /// queue packet for send on net thread from user
-      std::vector<net::IPPacket> m_TunPkts;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network
@@ -230,35 +221,6 @@ namespace llarp
         if (vpnif && vpnif->impl)
           return static_cast<llarp_vpn_io_impl*>(vpnif->impl);
         return nullptr;
-      }
-
-      bool
-      QueueInboundPacketForExit(const llarp_buffer_t& buf)
-      {
-        ManagedBuffer copy{buf};
-        return m_NetworkToUserPktQueue.EmplaceIf([&](llarp::net::IPPacket& pkt) -> bool {
-          if (!pkt.Load(copy.underlying))
-            return false;
-          if (SupportsV6())
-          {
-            if (pkt.IsV4())
-            {
-              pkt.UpdateIPv6Address(net::ExpandV4(pkt.srcv4()), m_OurIP);
-            }
-            else
-            {
-              pkt.UpdateIPv6Address(pkt.srcv6(), m_OurIP);
-            }
-          }
-          else
-          {
-            if (pkt.IsV4())
-              pkt.UpdateIPv4Address(xhtonl(pkt.srcv4()), xhtonl(net::TruncateV6(m_OurIP)));
-            else
-              return false;
-          }
-          return true;
-        });
       }
 
       template <typename Addr_t, typename Endpoint_t>

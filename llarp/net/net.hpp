@@ -95,6 +95,9 @@ namespace llarp
   IsBogon(const in6_addr& addr);
 
   bool
+  IsBogon(const huint128_t addr);
+
+  bool
   IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
   bool

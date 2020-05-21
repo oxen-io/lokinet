@@ -261,6 +261,9 @@ namespace llarp
         return false;
       }
 
+      void
+      BlacklistSNode(const RouterID snode) override;
+
       /// return true if we have a convotag as an exit session
       /// or as a hidden service session
       /// set addr and issnode
@@ -425,7 +428,7 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      net::IPRangeMap<exit::BaseSession_ptr> m_ExitMap;
+      net::IPRangeMap<path::PathSet_ptr> m_ExitMap;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
@@ -445,8 +448,10 @@ namespace llarp
       const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
       // clang-format on
-
+     protected:
       std::unique_ptr<EndpointState> m_state;
+
+     private:
       thread::Queue<RecvDataEvent> m_RecvQueue;
     };
 

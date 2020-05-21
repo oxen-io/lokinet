@@ -65,7 +65,7 @@ namespace llarp
     }
 
     void
-    BaseSession::BlacklistSnode(const RouterID snode)
+    BaseSession::BlacklistSNode(const RouterID snode)
     {
       m_SnodeBlacklist.insert(std::move(snode));
     }
@@ -99,7 +99,7 @@ namespace llarp
     bool
     BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
     {
-      return dlt >= 10s;
+      return dlt >= path::alive_timeout;
     }
 
     void
@@ -358,6 +358,26 @@ namespace llarp
     ExitSession::Name() const
     {
       return "Exit::" + m_ExitRouter.ToString();
+    }
+
+    void
+    SNodeSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    {
+      net::IPPacket pkt;
+      if (not pkt.Load(buf))
+        return;
+      pkt.ZeroAddresses();
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+    }
+
+    void
+    ExitSession::SendPacketToRemote(const llarp_buffer_t& buf)
+    {
+      net::IPPacket pkt;
+      if (not pkt.Load(buf))
+        return;
+      pkt.ZeroSourceAddress();
+      QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
     }
   }  // namespace exit
 }  // namespace llarp

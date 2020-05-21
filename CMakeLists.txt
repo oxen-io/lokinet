@@ -33,7 +33,7 @@ option(STATIC_LINK "link statically against dependencies" OFF)
 option(BUILD_SHARED_LIBS "build lokinet libraries as shared libraries instead of static" ON)
 option(SHADOW "use shadow testing framework. linux only" OFF)
 option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
-option(JEMALLOC "use jemalloc. Not required on BSD" OFF)
+option(WITH_JEMALLOC "use jemalloc as allocator" OFF)
 option(TESTNET "testnet build" OFF)
 option(WITH_COVERAGE "generate coverage data" OFF)
 option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
@@ -49,6 +49,12 @@ endif()
 
 include(CheckCXXSourceCompiles)
 include(CheckLibraryExists)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/enable_lto.cmake)
 include(cmake/target_link_libraries_system.cmake)
@@ -79,14 +85,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
-
-set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
 
 # Always build PIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -212,15 +210,6 @@ if(NOT GIT_VERSION)
 endif()
 
 string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
-
-# HeapAlloc(2) on Windows was significantly revamped in 2009
-# but the old algorithm isn't too bad either
-# this is _the_ system allocator on BSD UNIX
-# openbsd replaced it with a secure/randomised malloc not too
-# long ago
-if(JEMALLOC)
-  set(MALLOC_LIB jemalloc)
-endif()
 
 
 find_package(PkgConfig QUIET)

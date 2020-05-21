@@ -15,7 +15,8 @@ namespace llarp
     {
       m_Keyfile = conf.m_keyfile;
       m_SnodeBlacklist = conf.m_snodeBlacklist;
-
+      m_ExitEnabled = conf.m_AllowExit;
+      m_ExitNode = conf.m_exitNode;
       // TODO:
       /*
       if (k == "on-up")

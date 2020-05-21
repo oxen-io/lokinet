@@ -21,10 +21,14 @@ namespace llarp
                              public std::enable_shared_from_this<OutboundContext>
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
+
       ~OutboundContext() override;
 
       util::StatusObject
       ExtractStatus() const;
+
+      void
+      BlacklistSNode(const RouterID) override{};
 
       bool
       ShouldBundleRC() const override;
@@ -66,6 +70,10 @@ namespace llarp
       /// return true if we are ready to send
       bool
       ReadyToSend() const;
+
+      /// for exits
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override;
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
@@ -128,6 +136,8 @@ namespace llarp
       llarp_time_t lastShift = 0s;
       uint16_t m_LookupFails = 0;
       uint16_t m_BuildFails = 0;
+      llarp_time_t m_LastInboundTraffic = 0s;
+      bool m_GotInboundTraffic = false;
     };
   }  // namespace service
 

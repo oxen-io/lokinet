@@ -54,7 +54,7 @@ namespace llarp
     }
 
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
-        : path::Builder(parent->Router(), 4, path::default_len)
+        : path::Builder(parent->Router(), 4, parent->numHops)
         , SendContext(introset.A, {}, this, parent)
         , location(introset.A.Addr().ToKey())
         , currentIntroSet(introset)
@@ -270,6 +270,17 @@ namespace llarp
       // we are probably dead af
       if (m_LookupFails > 16 || m_BuildFails > 10)
         return true;
+
+      constexpr auto InboundTrafficTimeout = 5s;
+
+      if (m_GotInboundTraffic and m_LastInboundTraffic + InboundTrafficTimeout <= now)
+      {
+        if (std::chrono::abs(now - lastGoodSend) < InboundTrafficTimeout)
+        {
+          // timeout on other side
+          MarkCurrentIntroBad(now);
+        }
+      }
 
       // check for expiration
       if (remoteIntro.ExpiresSoon(now))
@@ -531,7 +542,15 @@ namespace llarp
     bool
     OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame)
     {
+      m_LastInboundTraffic = m_Endpoint->Now();
+      m_GotInboundTraffic = true;
       return m_Endpoint->HandleHiddenServiceFrame(p, frame);
+    }
+
+    void
+    OutboundContext::SendPacketToRemote(const llarp_buffer_t& buf)
+    {
+      AsyncEncryptAndSendTo(buf, eProtocolExit);
     }
 
   }  // namespace service

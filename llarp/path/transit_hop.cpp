@@ -210,7 +210,7 @@ namespace llarp
         FlushDownstream(r);
         for (const auto& other : m_FlushOthers)
         {
-          other->FlushUpstream(r);
+          other->FlushDownstream(r);
         }
         m_FlushOthers.clear();
       }

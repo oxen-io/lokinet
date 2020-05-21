@@ -45,7 +45,7 @@ namespace llarp
       }
 
       void
-      BlacklistSnode(const RouterID snode);
+      BlacklistSNode(const RouterID snode) override;
 
       util::StatusObject
       ExtractStatus() const;
@@ -187,6 +187,9 @@ namespace llarp
       std::string
       Name() const override;
 
+      virtual void
+      SendPacketToRemote(const llarp_buffer_t& pkt) override;
+
      protected:
       void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
@@ -212,6 +215,9 @@ namespace llarp
 
       std::string
       Name() const override;
+
+      virtual void
+      SendPacketToRemote(const llarp_buffer_t& pkt) override;
 
      protected:
       void

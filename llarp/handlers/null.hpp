@@ -33,6 +33,9 @@ namespace llarp
       {
         return false;
       }
+
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override{};
     };
   }  // namespace handlers
 }  // namespace llarp

@@ -197,6 +197,9 @@ namespace llarp
         return false;
       }
 
+      virtual void
+      BlacklistSNode(const RouterID) = 0;
+
       /// override me in subtype
       virtual bool HandleGotIntroMessage(std::shared_ptr<const dht::GotIntroMessage>)
       {
@@ -261,6 +264,9 @@ namespace llarp
 
       virtual bool
       BuildOneAlignedTo(const RouterID endpoint) = 0;
+
+      virtual void
+      SendPacketToRemote(const llarp_buffer_t& pkt) = 0;
 
       void
       ForEachPath(std::function<void(const Path_ptr&)> visit) const

@@ -10,6 +10,8 @@
 #include <config/definition.hpp>
 #include <constants/files.hpp>
 #include <net/ip_address.hpp>
+#include <net/net_int.hpp>
+#include <service/address.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -75,11 +77,10 @@ namespace llarp
     bool m_reachable = false;
     int m_hops = -1;
     int m_paths = -1;
+    bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
-#ifdef LOKINET_EXITS
-    std::string m_exitNode;
-#endif
-    std::string m_mapAddr;
+    std::optional<service::Address> m_exitNode;
+    std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     // TODO:
     // on-up

@@ -5,6 +5,7 @@
 #include <constants/defaults.hpp>
 #include <constants/files.hpp>
 #include <net/net.hpp>
+#include <net/ip.hpp>
 #include <router_contact.hpp>
 #include <stdexcept>
 #include <util/fs.hpp>
@@ -142,6 +143,8 @@ namespace llarp
     conf.defineOption<std::string>(
         "network", "type", false, "tun", AssignmentAcceptor(m_endpointType));
 
+    conf.defineOption<bool>("network", "exit", false, false, AssignmentAcceptor(m_AllowExit));
+
     conf.defineOption<bool>(
         "network",
         "profiling",
@@ -165,27 +168,59 @@ namespace llarp
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 
-    conf.defineOption<int>("network", "hops", false, HopsDefault, [](int arg) {
+    conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
+      m_hops = arg;
     });
 
-    conf.defineOption<int>("network", "paths", false, PathsDefault, [](int arg) {
+    conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+      m_paths = arg;
     });
 
-#ifdef LOKINET_EXITS
     conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
-      // TODO: validate as valid .loki / .snode address
-      //       probably not .snode...?
-      m_exitNode = arg;
+      if (arg.empty())
+        return;
+      service::Address exit;
+      if (not exit.FromString(arg))
+      {
+        throw std::invalid_argument(stringify("[endpoint]:exit-node bad address: ", arg));
+      }
+      m_exitNode = exit;
     });
-#endif
 
     conf.defineOption<std::string>("network", "mapaddr", false, "", [this](std::string arg) {
-      // TODO: parse / validate as loki_addr : IP addr pair
-      m_mapAddr = arg;
+      if (arg.empty())
+        return;
+      huint128_t ip;
+      service::Address addr;
+      const auto pos = arg.find(":");
+      if (pos == std::string::npos)
+      {
+        throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid entry: ", arg));
+      }
+      std::string addrstr = arg.substr(0, pos);
+      std::string ipstr = arg.substr(pos + 1);
+      if (not ip.FromString(ipstr))
+      {
+        huint32_t ipv4;
+        if (not ipv4.FromString(ipstr))
+        {
+          throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid ip: ", ipstr));
+        }
+        ip = net::ExpandV4(ipv4);
+      }
+      if (not addr.FromString(addrstr))
+      {
+        throw std::invalid_argument(stringify("[endpoint]:mapaddr invalid addresss: ", addrstr));
+      }
+      if (m_mapAddrs.find(ip) != m_mapAddrs.end())
+      {
+        throw std::invalid_argument(stringify("[endpoint]:mapaddr ip already mapped: ", ipstr));
+      }
+      m_mapAddrs[ip] = addr;
     });
 
     conf.defineOption<std::string>("network", "ifaddr", false, "", [this](std::string arg) {
@@ -796,14 +831,12 @@ namespace llarp
             "Adds a `.snode` address to the blacklist.",
         });
 
-#ifdef LOKINET_EXITS
     def.addOptionComments(
         "network",
         "exit-node",
         {
-            "Specify a `.snode` or `.loki` address to use as an exit broker.",
+            "Specify a `.loki` address to use as an exit broker.",
         });
-#endif
 
     def.addOptionComments(
         "network",
