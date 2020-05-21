@@ -753,6 +753,7 @@ namespace llarp
               {
                 return;
               }
+
               if (not itr->second.Verify())
               {
                 LogError("bad short xmit hash from ", m_RemoteAddr);

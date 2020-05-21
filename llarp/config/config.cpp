@@ -272,7 +272,7 @@ namespace llarp
           m_upstreamDNS.push_back(parseDNSAddr(std::move(arg)));
         });
 
-    conf.defineOption<std::string>("dns", "bind", false, std::nullopt, [=](std::string arg) {
+    conf.defineOption<std::string>("dns", "bind", false, "127.3.2.1:53", [=](std::string arg) {
       m_bind = parseDNSAddr(std::move(arg));
     });
   }
