@@ -231,6 +231,9 @@ namespace llarp
       GetNewestPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
 
       Path_ptr
+      GetRandomPathByRouter(RouterID router, PathRole roles = ePathRoleAny) const;
+
+      Path_ptr
       GetPathByID(PathID_t id) const;
 
       Path_ptr

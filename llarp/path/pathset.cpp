@@ -5,6 +5,8 @@
 #include <routing/dht_message.hpp>
 #include <router/abstractrouter.hpp>
 
+#include <random>
+
 namespace llarp
 {
   namespace path
@@ -159,6 +161,33 @@ namespace llarp
         ++itr;
       }
       return chosen;
+    }
+
+    Path_ptr
+    PathSet::GetRandomPathByRouter(RouterID id, PathRole roles) const
+    {
+      Lock_t l(m_PathsMutex);
+      std::vector<Path_ptr> chosen;
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
+      {
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+        {
+          if (itr->second->Endpoint() == id)
+          {
+            chosen.emplace_back(itr->second);
+          }
+        }
+        ++itr;
+      }
+      if (chosen.empty())
+        return nullptr;
+      size_t idx = 0;
+      if (chosen.size() >= 2)
+      {
+        idx = rand() % chosen.size();
+      }
+      return chosen[idx];
     }
 
     Path_ptr
