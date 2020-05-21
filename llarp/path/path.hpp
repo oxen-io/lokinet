@@ -26,8 +26,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <util/decaying_hashset.hpp>
-
 namespace llarp
 {
   class Logic;
@@ -282,11 +280,6 @@ namespace llarp
       void
       Rebuild();
 
-      bool
-      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
-      bool
-      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter*) override;
-
       void
       Tick(llarp_time_t now, AbstractRouter* r);
 
@@ -420,8 +413,6 @@ namespace llarp
       uint64_t m_ExitObtainTX = 0;
       PathStatus _status;
       PathRole _role;
-      util::DecayingHashSet<TunnelNonce> m_UpstreamReplayFilter;
-      util::DecayingHashSet<TunnelNonce> m_DownstreamReplayFilter;
       uint64_t m_LastRXRate = 0;
       uint64_t m_RXRate = 0;
       uint64_t m_LastTXRate = 0;

@@ -58,19 +58,6 @@ namespace llarp
         EnterState(ePathBuilding, parent->Now());
     }
 
-    bool
-    Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
-
-    {
-      return m_UpstreamReplayFilter.Insert(Y) and IHopHandler::HandleUpstream(X, Y, r);
-    }
-
-    bool
-    Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
-    {
-      return m_DownstreamReplayFilter.Insert(Y) and IHopHandler::HandleDownstream(X, Y, r);
-    }
-
     void
     Path::SetBuildResultHook(BuildResultHookFunc func)
     {
@@ -371,9 +358,6 @@ namespace llarp
 
       m_RXRate = 0;
       m_TXRate = 0;
-
-      m_UpstreamReplayFilter.Decay(now);
-      m_DownstreamReplayFilter.Decay(now);
 
       if (_status == ePathBuilding)
       {

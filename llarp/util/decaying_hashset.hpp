@@ -20,7 +20,7 @@ namespace llarp
       bool
       Contains(const Val_t& v) const
       {
-        return m_Values.find(v) != m_Values.end();
+        return m_Values.count(v) != 0;
       }
 
       /// return true if inserted
@@ -30,7 +30,7 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
-        return m_Values.emplace(v, now).second;
+        return m_Values.try_emplace(v, now).second;
       }
 
       /// decay hashset entries
@@ -54,6 +54,12 @@ namespace llarp
       DecayInterval() const
       {
         return m_CacheInterval;
+      }
+
+      bool
+      Empty() const
+      {
+        return m_Values.empty();
       }
 
       void
