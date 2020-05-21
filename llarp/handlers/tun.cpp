@@ -190,7 +190,7 @@ namespace llarp
         {
           routerStr = conf.m_exitNode;
         }
-        routerStr = str(TrimWhitespace(routerStr));
+        routerStr = TrimWhitespace(routerStr);
         if (!(exitRouter.FromString(routerStr)
               || HexDecode(routerStr.c_str(), exitRouter.begin(), exitRouter.size())))
         {

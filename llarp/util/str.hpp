@@ -36,14 +36,6 @@ namespace llarp
     return o.str();
   }
 
-  // Shortcut for explicitly casting a string_view to a string.  Saves 8 characters compared to
-  // `std::string(view)`.
-  inline std::string
-  str(std::string_view s)
-  {
-    return std::string{s};
-  }
-
   /// Split a string on a given delimiter
   //
   /// @param str is the string to split
