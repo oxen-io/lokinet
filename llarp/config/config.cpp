@@ -301,7 +301,7 @@ namespace llarp
 
     conf.addUndeclaredHandler(
         "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
-          fs::path file = value;
+          fs::path file{value.begin(), value.end()};
           if (not fs::exists(file))
             throw std::runtime_error(stringify(
                 "Specified bootstrap file ",
