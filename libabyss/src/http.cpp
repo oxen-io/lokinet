@@ -32,8 +32,7 @@ namespace abyss
       if (ShouldProcessHeader(lowerHeader))
       {
         val = val.substr(val.find_first_not_of(' '));
-        // llarp::str() here for gcc 5 compat
-        Header.Headers.emplace(std::move(lowerHeader), llarp::str(val));
+        Header.Headers.emplace(std::move(lowerHeader), val);
       }
       return true;
     }

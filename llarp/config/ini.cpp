@@ -131,9 +131,9 @@ namespace llarp
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
         }
-        SectionValues_t& sect = m_Config[str(sectName)];
+        SectionValues_t& sect = m_Config[std::string{sectName}];
         LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
-        sect.emplace(str(k), str(v));  // str()'s here for gcc 5 compat
+        sect.emplace(k, v);
       }
       else  // malformed?
       {

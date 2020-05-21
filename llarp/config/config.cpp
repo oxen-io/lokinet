@@ -253,7 +253,7 @@ namespace llarp
     LinkInfo info;
     info.port = 0;
     info.addressFamily = AF_INET;
-    info.interface = str(name);
+    info.interface = name;
 
     std::vector<std::string_view> splits = split(value, ',');
     for (std::string_view str : splits)
@@ -301,7 +301,7 @@ namespace llarp
 
     conf.addUndeclaredHandler(
         "connect", [this](std::string_view section, std::string_view name, std::string_view value) {
-          fs::path file = str(value);
+          fs::path file = value;
           if (not fs::exists(file))
             throw std::runtime_error(stringify(
                 "Specified bootstrap file ",

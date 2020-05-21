@@ -13,7 +13,7 @@ TEST_CASE("TrimWhitespace -- positive tests", "[str][trim]")
   auto fo = "\fthe   "s;
   auto fum = " \t\r\n\v\f Beanstalk\n\n\n\t\r\f\v   \n\n\r\f\f\f\f\v"s;
   for (auto* s: {&fee, &fi, &fo, &fum})
-    *s = llarp::str(llarp::TrimWhitespace(*s));
+    *s = llarp::TrimWhitespace(*s);
 
   REQUIRE( fee == "J a c k" );
   REQUIRE( fi == "a\nd" );
@@ -26,7 +26,7 @@ TEST_CASE("TrimWhitespace -- negative tests", "[str][trim]")
   // Test that things that shouldn't be trimmed don't get trimmed
   auto c = GENERATE(range(std::numeric_limits<char>::min(), std::numeric_limits<char>::max()));
   std::string plant = c + "bean"s + c;
-  plant = llarp::str(llarp::TrimWhitespace(plant));
+  plant = llarp::TrimWhitespace(plant);
   if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v')
     REQUIRE( plant == "bean" );
   else
