@@ -378,9 +378,12 @@ namespace llarp
       // check to see if this path is dead
       if (_status == ePathEstablished)
       {
-        const auto dlt = now - m_LastLatencyTestTime;
+        auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
+          // bail doing test if we are active
+          if (now - m_LastRecvMessage < path::latency_interval)
+            return;
           routing::PathLatencyMessage latency;
           latency.T = randint();
           m_LastLatencyTestID = latency.T;
@@ -389,24 +392,12 @@ namespace llarp
           FlushUpstream(r);
           return;
         }
-        if (m_LastRecvMessage > 0s && now > m_LastRecvMessage)
+        dlt = now - m_LastRecvMessage;
+        if (dlt >= path::alive_timeout)
         {
-          const auto delay = now - m_LastRecvMessage;
-          if (m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
-          {
-            LogWarn(Name(), " waited for ", dlt, " and path is unresponsive");
-            r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
-          }
-        }
-        else if (dlt >= path::alive_timeout && m_LastRecvMessage == 0s)
-        {
-          if (m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
-          {
-            LogWarn(Name(), " waited for ", dlt, " and path looks dead");
-            r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
-          }
+          LogWarn(Name(), " waited for ", dlt, " and path looks dead");
+          r->routerProfiling().MarkPathFail(this);
+          EnterState(ePathTimeout, now);
         }
       }
     }
