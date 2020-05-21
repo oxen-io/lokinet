@@ -175,6 +175,7 @@ add_library(liblokinet
   routing/path_transfer_message.cpp
   routing/transfer_traffic_message.cpp
   rpc/lokid_rpc_client.cpp
+  rpc/rpc_server.cpp
   service/address.cpp
   service/async_key_exchange.cpp
   service/context.cpp

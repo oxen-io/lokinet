@@ -64,6 +64,7 @@ namespace llarp
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
+      , m_RPCServer(new rpc::RpcServer(m_lmq, this))
       , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
@@ -850,8 +851,16 @@ namespace llarp
       {
         rpcBindAddr = DefaultRPCBindAddr;
       }
-      // TODO: set up rpc server
-      // LogInfo("Bound RPC server to ", rpcBindAddr);
+      // older configs just specify an ip/port tuple so check for that and prepend tcp:// in that
+      // case
+      if (rpcBindAddr.find("tcp://") == std::string::npos
+          and rpcBindAddr.find("ipc://") == std::string::npos)
+      {
+        LogWarn("RPC Server protocol not specified, defaulting to tcp");
+        rpcBindAddr = "tcp://" + rpcBindAddr;
+      }
+      m_RPCServer->AsyncServeRPC(rpcBindAddr);
+      LogInfo("Bound RPC server to ", rpcBindAddr);
     }
 
     return true;

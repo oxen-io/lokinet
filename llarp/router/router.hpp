@@ -25,6 +25,7 @@
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
 #include <rpc/lokid_rpc_client.hpp>
+#include <rpc/rpc_server.hpp>
 #include <service/context.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
@@ -256,9 +257,11 @@ namespace llarp
     NetworkConfig networkConfig;
     DnsConfig dnsConfig;
 
-    const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
+    const std::string DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
     bool enableRPCServer = false;
     std::string rpcBindAddr = DefaultRPCBindAddr;
+    std::unique_ptr<rpc::RpcServer> m_RPCServer;
+
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
