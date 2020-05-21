@@ -19,10 +19,29 @@ namespace llarp
     // use if file is an empty-optional
     std::string fileString;
     if (file.has_value())
+    {
       fileString = file.value().native();
+      LogInfo("Loading PeerDb from file ", fileString);
+    }
+    else
+    {
+      LogInfo("Loading memory-backed PeerDb");
+    }
 
     m_storage = std::make_unique<PeerDbStorage>(initStorage(fileString));
     m_storage->sync_schema(true);  // true for "preserve" as in "don't nuke" (how cute!)
+
+    auto allStats = m_storage->get_all<PeerStats>();
+    LogInfo("Loading ", allStats.size(), " PeerStats from table peerstats...");
+    for (const PeerStats& stats : allStats)
+    {
+      RouterID id;
+      if (not id.FromString(stats.routerId))
+        throw std::runtime_error(
+            stringify("Database contains invalid PeerStats with id ", stats.routerId));
+
+      m_peerStats[id] = stats;
+    }
   }
 
   void
@@ -41,8 +60,8 @@ namespace llarp
     for (const auto& entry : copy)
     {
       // call me paranoid...
-      assert(not entry.second.routerIdHex.empty());
-      assert(entry.first.ToHex() == entry.second.routerIdHex);
+      assert(not entry.second.routerId.empty());
+      assert(entry.first.ToString() == entry.second.routerId);
 
       m_storage->replace(entry.second);
     }
@@ -51,9 +70,9 @@ namespace llarp
   void
   PeerDb::accumulatePeerStats(const RouterID& routerId, const PeerStats& delta)
   {
-    if (routerId.ToHex() != delta.routerIdHex)
+    if (routerId.ToString() != delta.routerId)
       throw std::invalid_argument(
-          stringify("routerId ", routerId, " doesn't match ", delta.routerIdHex));
+          stringify("routerId ", routerId, " doesn't match ", delta.routerId));
 
     std::lock_guard gaurd(m_statsLock);
     auto itr = m_peerStats.find(routerId);

@@ -59,18 +59,31 @@ TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
   CHECK(db.getCurrentPeerStats(id).has_value() == false);
 }
 
-/*
-TEST_CASE("Test file-backed database", "[PeerDb]")
+TEST_CASE("Test PeerDb file-backed database reloads properly", "[PeerDb]")
 {
-  llarp::PeerDb db;
-  db.loadDatabase("/tmp/peerdb_test_tmp.db.sqlite");
+  const std::string filename = "/tmp/peerdb_test_tmp2.db.sqlite";
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x02);
 
-  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x01);
-  llarp::PeerStats stats(id);
-  stats.numConnectionAttempts = 42;
+  {
+    llarp::PeerDb db;
+    db.loadDatabase(filename);
 
-  db.accumulatePeerStats(id, stats);
+    llarp::PeerStats stats(id);
+    stats.numConnectionAttempts = 43;
 
-  db.flushDatabase();
+    db.accumulatePeerStats(id, stats);
+
+    db.flushDatabase();
+  }
+
+  {
+    llarp::PeerDb db;
+    db.loadDatabase(filename);
+
+    auto stats = db.getCurrentPeerStats(id);
+    CHECK(stats.has_value() == true);
+    CHECK(stats.value().numConnectionAttempts == 43);
+  }
+
+  fs::remove(filename);
 }
-*/
