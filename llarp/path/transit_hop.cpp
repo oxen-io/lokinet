@@ -32,7 +32,7 @@ namespace llarp
       return stream;
     }
 
-    TransitHop::TransitHop() : m_UpstreamGather(128), m_DownstreamGather(128)
+    TransitHop::TransitHop() : m_UpstreamGather(512), m_DownstreamGather(512)
     {
       m_UpstreamGather.enable();
       m_DownstreamGather.enable();
