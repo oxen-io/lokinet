@@ -1,11 +1,12 @@
-#include <numeric>
 #include <peerstats/peer_db.hpp>
+#include <test_util.hpp>
 
+#include <numeric>
 #include <catch2/catch.hpp>
 
 TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
 {
-  const llarp::RouterID id = {};
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x01);
   const llarp::PeerStats empty(id);
 
   llarp::PeerDb db;
@@ -43,7 +44,7 @@ TEST_CASE("Test PeerDb load twice", "[PeerDb]")
 
 TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
 {
-  const llarp::RouterID id = {};
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x01);
 
   llarp::PeerDb db;
 
@@ -62,9 +63,9 @@ TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
 TEST_CASE("Test file-backed database", "[PeerDb]")
 {
   llarp::PeerDb db;
-  db.loadDatabase(std::nullopt);
+  db.loadDatabase("/tmp/peerdb_test_tmp.db.sqlite");
 
-  const llarp::RouterID id = {};
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0x01);
   llarp::PeerStats stats(id);
   stats.numConnectionAttempts = 42;
 

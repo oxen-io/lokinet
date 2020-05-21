@@ -22,6 +22,7 @@ namespace llarp
       fileString = file.value().native();
 
     m_storage = std::make_unique<PeerDbStorage>(initStorage(fileString));
+    m_storage->sync_schema(true);  // true for "preserve" as in "don't nuke" (how cute!)
   }
 
   void
@@ -37,13 +38,13 @@ namespace llarp
       copy = m_peerStats;  // expensive deep copy
     }
 
-    for (const auto& entry : m_peerStats)
+    for (const auto& entry : copy)
     {
       // call me paranoid...
       assert(not entry.second.routerIdHex.empty());
       assert(entry.first.ToHex() == entry.second.routerIdHex);
 
-      m_storage->insert(entry.second);
+      m_storage->replace(entry.second);
     }
   }
 
