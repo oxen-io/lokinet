@@ -143,10 +143,8 @@ namespace llarp
     Session::EncryptWorker(CryptoQueue_ptr msgs)
     {
       LogDebug("encrypt worker ", msgs->size(), " messages");
-      auto itr = msgs->begin();
-      while (itr != msgs->end())
+      for (auto& pkt : *msgs)
       {
-        Packet_t pkt = std::move(*itr);
         llarp_buffer_t pktbuf(pkt);
         const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
         pktbuf.base += PacketOverhead;
@@ -157,7 +155,6 @@ namespace llarp
         pktbuf.sz = pkt.size() - HMACSIZE;
         CryptoManager::instance()->hmac(pkt.data(), pktbuf, m_SessionKey);
         Send_LL(pkt.data(), pkt.size());
-        ++itr;
       }
     }
 
@@ -910,11 +907,6 @@ namespace llarp
               LogWarn("bad intro from ", m_RemoteAddr);
               return false;
             }
-          }
-          else
-          {
-            // this case should never happen
-            ::abort();
           }
           break;
         case State::Introduction:

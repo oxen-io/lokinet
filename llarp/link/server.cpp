@@ -116,7 +116,13 @@ namespace llarp
   {
     m_Loop = loop;
     m_udp.user = this;
-    m_udp.recvfrom = nullptr;
+    m_udp.recvfrom = [](llarp_udp_io* udp, const llarp::SockAddr& from, ManagedBuffer pktbuf) {
+      ILinkSession::Packet_t pkt;
+      auto& buf = pktbuf.underlying;
+      pkt.resize(buf.sz);
+      std::copy_n(buf.base, buf.sz, pkt.data());
+      static_cast<ILinkLayer*>(udp->user)->RecvFrom(from, std::move(pkt));
+    };
     m_udp.tick = &ILinkLayer::udp_tick;
     if (ifname == "*")
     {
@@ -495,23 +501,7 @@ namespace llarp
   ILinkLayer::udp_tick(llarp_udp_io* udp)
   {
     ILinkLayer* link = static_cast<ILinkLayer*>(udp->user);
-    auto pkts = std::make_shared<llarp_pkt_list>();
-    llarp_ev_udp_recvmany(&link->m_udp, pkts.get());
-    auto logic = link->logic();
-    if (logic == nullptr)
-      return;
-    LogicCall(logic, [pkts, link]() {
-      auto itr = pkts->begin();
-      while (itr != pkts->end())
-      {
-        if (link->m_RecentlyClosed.find(itr->remote) == link->m_RecentlyClosed.end())
-        {
-          link->RecvFrom(itr->remote, std::move(itr->pkt));
-        }
-        ++itr;
-      }
-      link->Pump();
-    });
+    link->Pump();
   }
 
 }  // namespace llarp
