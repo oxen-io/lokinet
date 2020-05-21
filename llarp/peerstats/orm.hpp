@@ -29,8 +29,8 @@ namespace llarp
             make_column("numDistinctRCsReceived", &PeerStats::numDistinctRCsReceived),
             make_column("numLateRCs", &PeerStats::numLateRCs),
             make_column("peakBandwidthBytesPerSec", &PeerStats::peakBandwidthBytesPerSec),
-            make_column("longestRCReceiveInterval", &PeerStats::longestRCReceiveIntervalMs),
-            make_column("mostExpiredRC", &PeerStats::mostExpiredRCMs)));
+            make_column("longestRCReceiveIntervalMs", &PeerStats::longestRCReceiveIntervalMs),
+            make_column("mostExpiredRCMs", &PeerStats::mostExpiredRCMs)));
   }
 
   using PeerDbStorage = decltype(initStorage(""));
