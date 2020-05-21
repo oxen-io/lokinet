@@ -67,8 +67,10 @@ local debian_pipeline(name, image,
     debian_pipeline("Ubuntu bionic/static (amd64)", "ubuntu:bionic", deps='g++-8 python3-dev',
                     cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DDOWNLOAD_SODIUM=ON -DDOWNLOAD_CURL=ON -DDOWNLOAD_UV=ON -DWITH_SYSTEMD=OFF',
-                    extra_cmds=['if ldd daemon/lokinet | grep -ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so"; ' +
-                                'then echo -e "\\\\e[31;1mlokinet links to unexpected libraries\\\\e[0m"; fi']),
+                    extra_cmds=['if ldd daemon/lokinet | grep -Ev "(linux-vdso|ld-linux-x86-64|lib(pthread|dl|rt|stdc\\\\+\\\\+|gcc_s|c|m))\\\\.so"; ' +
+                                'then /bin/echo -e "\\\\e[31;1mlokinet links to unexpected libraries\\\\e[0m"; false; ' +
+                                'else /bin/echo -e "\\\\e[32;1mNo unexpected linked libraries found\\\\e[0m"; ' +
+                                'fi']),
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
