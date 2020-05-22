@@ -409,10 +409,10 @@ namespace libuv
     }
 
     static void
-    Alloc(uv_handle_t*h, size_t suggested_size, uv_buf_t* buf)
+    Alloc(uv_handle_t* h, size_t suggested_size, uv_buf_t* buf)
     {
-      udp_glue * self = static_cast<udp_glue*>(h->data);
-      if(self->m_Buffer.empty())
+      udp_glue* self = static_cast<udp_glue*>(h->data);
+      if (self->m_Buffer.empty())
         self->m_Buffer.resize(suggested_size);
       buf->base = self->m_Buffer.data();
       buf->len = self->m_Buffer.size();
