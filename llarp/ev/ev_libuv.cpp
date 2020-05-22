@@ -397,6 +397,7 @@ namespace libuv
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::SockAddr m_Addr;
+    std::vector<char> m_Buffer;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const llarp::SockAddr& src)
         : m_UDP(udp), m_Addr(src)
@@ -408,11 +409,13 @@ namespace libuv
     }
 
     static void
-    Alloc(uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
+    Alloc(uv_handle_t*h, size_t suggested_size, uv_buf_t* buf)
     {
-      const size_t sz = std::min(suggested_size, size_t{1500});
-      buf->base = new char[sz];
-      buf->len = sz;
+      udp_glue * self = static_cast<udp_glue*>(h->data);
+      if(self->m_Buffer.empty())
+        self->m_Buffer.resize(suggested_size);
+      buf->base = self->m_Buffer.data();
+      buf->len = self->m_Buffer.size();
     }
 
     /// callback for libuv
@@ -422,7 +425,6 @@ namespace libuv
       udp_glue* glue = static_cast<udp_glue*>(handle->data);
       if (addr)
         glue->RecvFrom(nread, buf, llarp::SockAddr(*addr));
-      delete[] buf->base;
     }
 
     void
