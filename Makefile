@@ -300,6 +300,16 @@ mac-release: mac-release-configure
 mac: mac-release
 	$(MAKE) -C '$(BUILD_ROOT)' package
 
+mac-release-configure: $(LIBUV_PREFIX)
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)' -DLIBUV_ROOT='$(LIBUV_PREFIX)' -DWITH_TESTS=OFF '$(REPO)'
+
+mac-release: mac-release-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+
+mac: mac-release
+	$(MAKE) -C '$(BUILD_ROOT)' package
+
 format:
 	$(FORMAT) -i $$(find jni daemon llarp include libabyss pybind | grep -E '\.[hc](pp)?$$')
 
