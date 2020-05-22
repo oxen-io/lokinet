@@ -174,11 +174,6 @@ namespace llarp
   bool
   Router::SendToOrQueue(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler handler)
   {
-    if (handler == nullptr)
-    {
-      using std::placeholders::_1;
-      handler = std::bind(&Router::MessageSent, this, remote, _1);
-    }
     return _outboundMessageHandler.QueueMessage(remote, msg, handler);
   }
 
