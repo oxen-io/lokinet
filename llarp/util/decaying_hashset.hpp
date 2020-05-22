@@ -40,8 +40,8 @@ namespace llarp
         if (now == 0s)
           now = llarp::time_now_ms();
 
-        auto itr = m_Values.begin();
-        while (itr != m_Values.end())
+        auto itr = m_Values.cbegin();
+        while (itr != m_Values.cend())
         {
           if ((m_CacheInterval + itr->second) <= now)
             itr = m_Values.erase(itr);
