@@ -39,15 +39,7 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
-
-        auto itr = m_Values.cbegin();
-        while (itr != m_Values.cend())
-        {
-          if ((m_CacheInterval + itr->second) <= now)
-            itr = m_Values.erase(itr);
-          else
-            ++itr;
-        }
+        EraseIf([&](const auto& item) { return (m_CacheInterval + item.second) <= now; });
       }
 
       Time_t
@@ -69,6 +61,23 @@ namespace llarp
       }
 
      private:
+      template <typename Predicate_t>
+      void
+      EraseIf(Predicate_t pred)
+      {
+        for (auto i = m_Values.begin(), last = m_Values.end(); i != last;)
+        {
+          if (pred(*i))
+          {
+            i = m_Values.erase(i);
+          }
+          else
+          {
+            ++i;
+          }
+        }
+      }
+
       Time_t m_CacheInterval;
       std::unordered_map<Val_t, Time_t, Hash_t> m_Values;
     };

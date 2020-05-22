@@ -308,14 +308,16 @@ namespace llarp
         auto itr = map.begin();
         while (itr != map.end())
         {
-          itr->second->DecayFilters(now);
           if (itr->second->Expired(now))
           {
             m_Router->outboundMessageHandler().QueueRemoveEmptyPath(itr->first);
             itr = map.erase(itr);
           }
           else
+          {
+            itr->second->DecayFilters(now);
             ++itr;
+          }
         }
       }
       {
@@ -324,13 +326,15 @@ namespace llarp
         auto itr = map.begin();
         while (itr != map.end())
         {
-          itr->second->DecayFilters(now);
           if (itr->second->Expired(now))
           {
             itr = map.erase(itr);
           }
           else
+          {
+            itr->second->DecayFilters(now);
             ++itr;
+          }
         }
       }
     }

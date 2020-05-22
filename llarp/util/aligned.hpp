@@ -270,12 +270,10 @@ namespace llarp
 
     struct Hash
     {
-      size_t
-      operator()(const AlignedBuffer& buf) const
+      std::size_t
+      operator()(const AlignedBuffer& buf) const noexcept
       {
-        size_t hash;
-        std::memcpy(&hash, buf.data(), sizeof(hash));
-        return hash;
+        return *reinterpret_cast<const std::size_t*>(buf.data());
       }
     };
 
