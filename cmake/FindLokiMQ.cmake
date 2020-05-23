@@ -15,8 +15,6 @@ set(LOKIMQ_LIBRARIES ${LOKIMQ_LIBRARY} ${PC_LOKIMQ_LIBRARIES})
 set(LOKIMQ_INCLUDE_DIRS ${LOKIMQ_INCLUDE_DIR})
 
 include(FindPackageHandleStandardArgs)
-# handle the QUIETLY and REQUIRED arguments and set LIBUV_FOUND to TRUE
-# if all listed variables are TRUE
 find_package_handle_standard_args(LokiMQ DEFAULT_MSG
                                   LOKIMQ_LIBRARY LOKIMQ_INCLUDE_DIR)
 

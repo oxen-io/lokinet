@@ -64,7 +64,7 @@ elseif(DOWNLOAD_UV)
 endif()
 include_directories(${LIBUV_INCLUDE_DIRS})
 
-find_package(LokiMQ 1.2)
+find_package(LokiMQ 1.2 QUIET)
 if(LokiMQ_FOUND)
   message(STATUS "using system lokimq")
 else()
