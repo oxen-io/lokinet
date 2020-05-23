@@ -760,7 +760,6 @@ namespace llarp
     {
       nodedb()->AsyncFlushToDisk();
     }
-
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
     _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {
