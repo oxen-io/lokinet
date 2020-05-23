@@ -193,7 +193,6 @@ class Monitor:
             txscale += 1
             txmax /= 2
 
-
         txlabelpad = int(txmax / 2)
         rxlabelpad = int(rxmax / 2)
         if txlabelpad <= 0:

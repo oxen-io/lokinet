@@ -60,13 +60,11 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
       , m_RPCServer(new rpc::RpcServer(m_lmq, this))
-
 #ifdef LOKINET_HIVE
       , _randomStartDelay(std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
-      , m_RPCServer(new rpc::RpcServer(m_lmq, this))
       , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
