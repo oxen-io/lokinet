@@ -60,7 +60,7 @@ namespace llarp
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
       , m_RPCServer(new rpc::RpcServer(m_lmq, this))
-      
+
 #ifdef LOKINET_HIVE
       , _randomStartDelay(std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
 #else
