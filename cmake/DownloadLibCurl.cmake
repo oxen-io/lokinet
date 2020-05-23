@@ -17,11 +17,13 @@ set(libcurl_cc ${CMAKE_C_COMPILER})
 if(CCACHE_PROGRAM)
   set(libcurl_cc "${CCACHE_PROGRAM} ${libcurl_cc}")
 endif()
-set(CURL_CONFIGURE ./configure --prefix=${LIBCURL_PREFIX} --quiet
+set(CURL_CONFIGURE ./configure --prefix=${LIBCURL_PREFIX}
     --without-ssl --without-nss --without-gnutls --without-mbedtls --without-wolfssl --without-mesalink
     --without-bearssl --without-ca-bundle --without-libidn2 --without-zlib --without-nghttp2 --without-nghttp3
     --without-quiche --without-zsh-functions-dir --without-fish-functions-dir
-    --without-librtmp --without-ca-fallback --without-ca-path --without-brotli --without-ldap --without-libpsl
+    --without-librtmp --without-ca-fallback --without-ca-path --without-brotli --without-libpsl
+    --disable-manual --disable-dict --disable-file --disable-ftp --disable-gopher --disable-imap --disable-ldap --disable-ldaps
+    --disable-pop3 --disable-rtsp --disable-smtp --disable-telnet --disable-tftp
     --enable-static --disable-shared CC=${libcurl_cc})
 
 if (CMAKE_C_COMPILER_ARG1)
@@ -40,7 +42,6 @@ ExternalProject_Add(libcurl_external
     URL_HASH ${LIBCURL_HASH}
     CONFIGURE_COMMAND ${CURL_CONFIGURE}
     BUILD_COMMAND make -j${PROCESSOR_COUNT}
-    INSTALL_COMMAND ${MAKE}
     BUILD_BYPRODUCTS ${LIBCURL_PREFIX}/lib/libcurl.a ${LIBCURL_PREFIX}/include
 )
 
