@@ -53,7 +53,6 @@ namespace llarp
     using ID_t = std::thread::id;
     llarp_ev_loop* m_Loop = nullptr;
     std::optional<ID_t> m_ID;
-    util::ContentionKiller m_Killer;
     std::function<void(std::function<void(void)>)> m_Queue;
   };
 }  // namespace llarp
