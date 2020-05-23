@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Script used with Drone CI to upload build artifacts (because specifying all this in
 # .drone.jsonnet is too painful).
@@ -13,19 +13,19 @@ if [ -z "$SSH_KEY" ]; then
     exit 0
 fi
 
-echo "$SSH_KEY" >~/ssh_key
+echo "$SSH_KEY" >ssh_key
 
 set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
-chmod 600 ~/ssh_key
+chmod 600 ssh_key
 
 if [ -n "$DRONE_TAG" ]; then
     # For a tag build use something like `lokinet-linux-amd64-v1.2.3`
-    base="lokinet-linux-$DRONE_STAGE_ARCH-$DRONE_TAG"
+    base="lokinet-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH-$DRONE_TAG"
 else
     # Otherwise build a length name from the datetime and commit hash, such as:
     # lokinet-linux-amd64-20200522T212342Z-04d7dcc54
-    base="lokinet-linux-$DRONE_STAGE_ARCH-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
+    base="lokinet-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
 fi
 
 mkdir -v "$base"
@@ -47,7 +47,7 @@ for p in "${upload_dirs[@]}"; do
 -mkdir $dir_tmp"
 done
 
-sftp -i ~/ssh_key -b - -o StrictHostKeyChecking=off drone@builds.lokinet.dev <<SFTP
+sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@builds.lokinet.dev <<SFTP
 $mkdirs
 put $base.tar.xz $upload_to
 SFTP

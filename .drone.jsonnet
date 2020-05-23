@@ -90,6 +90,34 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
     ]
 };
 
+// Macos build
+local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra_cmds=[], allow_fail=false) = {
+    kind: 'pipeline',
+    type: 'exec',
+    name: name,
+    platform: { os: 'darwin', arch: 'amd64' },
+    steps: [
+        {
+            name: 'build',
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            commands: [
+                // If you don't do this then the C compiler doesn't have an include path containing
+                // basic system headers.  WTF apple:
+                'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
+                'git submodule update --init --recursive',
+                'mkdir build',
+                'cd build',
+                'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
+                    cmake_extra,
+                'ninja -v',
+                './test/testAll --gtest_color=yes',
+                './test/catchAll --use-colour yes',
+            ] + extra_cmds,
+        }
+    ]
+};
+
 
 [
     {
@@ -136,26 +164,12 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
     deb_builder("ubuntu:focal", "focal", "ubuntu/focal"),
     deb_builder("debian:sid", "sid", "debian/sid", arch='arm64'),
 
-    // Macos build
-    {
-        kind: 'pipeline',
-        type: 'exec',
-        name: 'macOS (Catalina w/macports)',
-        platform: { os: 'darwin', arch: 'amd64' },
-        environment: { CLICOLOR_FORCE: '1' }, // Lets color through ninja (1.9+)
-        steps: [
-            {
-                name: 'build',
-                commands: [
-                    'git submodule update --init --recursive',
-                    'mkdir build',
-                    'cd build',
-                    'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON',
-                    'ninja -v',
-                    './test/testAll --gtest_color=yes',
-                    './test/catchAll --use-colour yes',
-                ],
-            }
-        ]
-    },
+    // Macos builds:
+    mac_builder('macOS (Release)'),
+    mac_builder('macOS (Debug)', build_type='Debug'),
+    mac_builder('macOS (Static)', cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
+                extra_cmds=[
+                    '../contrib/ci/drone-check-static-libs.sh',
+                    '../contrib/ci/drone-static-upload.sh'
+                ]),
 ]
