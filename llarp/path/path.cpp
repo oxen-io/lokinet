@@ -439,31 +439,33 @@ namespace llarp
         msg.pathid = TXID();
         ++idx;
       }
-      LogicCall(
-          r->logic(),
-          std::bind(&Path::HandleAllUpstream, shared_from_this(), std::move(sendmsgs), r));
+      LogicCall(r->logic(), [self = shared_from_this(), data = std::move(sendmsgs), r]() {
+        self->HandleAllUpstream(std::move(data), r);
+      });
     }
 
     void
     Path::FlushUpstream(AbstractRouter* r)
     {
-      if (m_UpstreamQueue && !m_UpstreamQueue->empty())
+      if (m_UpstreamQueue && not m_UpstreamQueue->empty())
       {
+        TrafficQueue_ptr data = nullptr;
+        std::swap(m_UpstreamQueue, data);
         r->threadpool()->addJob(
-            std::bind(&Path::UpstreamWork, shared_from_this(), std::move(m_UpstreamQueue), r));
+            [self = shared_from_this(), data, r]() { self->UpstreamWork(std::move(data), r); });
       }
-      m_UpstreamQueue = nullptr;
     }
 
     void
     Path::FlushDownstream(AbstractRouter* r)
     {
-      if (m_DownstreamQueue && !m_DownstreamQueue->empty())
+      if (m_DownstreamQueue && not m_DownstreamQueue->empty())
       {
+        TrafficQueue_ptr data = nullptr;
+        std::swap(m_DownstreamQueue, data);
         r->threadpool()->addJob(
-            std::bind(&Path::DownstreamWork, shared_from_this(), std::move(m_DownstreamQueue), r));
+            [self = shared_from_this(), data, r]() { self->DownstreamWork(std::move(data), r); });
       }
-      m_DownstreamQueue = nullptr;
     }
 
     bool
@@ -507,9 +509,9 @@ namespace llarp
         sendMsgs[idx].X = buf;
         ++idx;
       }
-      LogicCall(
-          r->logic(),
-          std::bind(&Path::HandleAllDownstream, shared_from_this(), std::move(sendMsgs), r));
+      LogicCall(r->logic(), [self = shared_from_this(), msgs = std::move(sendMsgs), r]() {
+        self->HandleAllDownstream(std::move(msgs), r);
+      });
     }
 
     void
