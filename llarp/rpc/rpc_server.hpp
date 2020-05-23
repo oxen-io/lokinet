@@ -17,7 +17,7 @@ namespace llarp::rpc
     explicit RpcServer(LMQ_ptr, AbstractRouter*);
     ~RpcServer() = default;
     void
-    AsyncServeRPC(const std::string_view addr);
+    AsyncServeRPC(std::string addr);
 
    private:
     LMQ_ptr m_LMQ;
