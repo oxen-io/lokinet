@@ -41,8 +41,55 @@ local debian_pipeline(name, image,
                 './test/catchAll --use-colour yes',
             ] + extra_cmds,
         }
+    ],
+};
+
+// Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
+local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=false) = {
+    kind: 'pipeline',
+    type: 'docker',
+    name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
+    platform: { arch: arch },
+    environment: { distro_branch: distro_branch, distro: distro },
+    steps: [
+        {
+            name: 'build',
+            image: image,
+            failure: 'ignore',
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            commands: [
+                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
+                'apt-get update',
+                'apt-get install -y eatmydata',
+                'eatmydata apt-get install -y git devscripts equivs ccache git-buildpackage python3-dev' + (if imaginary_repo then ' gpg' else'')
+                ] + (if imaginary_repo then [ // Some distros need the imaginary.stream repo for backported sodium, etc.
+                    'echo deb https://deb.imaginary.stream $${distro} main >/etc/apt/sources.list.d/imaginary.stream.list',
+                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
+                    'eatmydata apt-get update'
+                ] else []) + [
+                |||
+                    # Look for the debian branch in this repo first, try upstream if that fails.
+                    if ! git checkout $${distro_branch}; then
+                        git remote add --fetch upstream https://github.com/loki-project/loki-network.git &&
+                        git checkout $${distro_branch}
+                    fi
+                |||,
+                'git merge ${DRONE_COMMIT}',
+                'eatmydata git submodule update --init --recursive',
+                'export DEBEMAIL="${DRONE_COMMIT_AUTHOR_EMAIL}" DEBFULLNAME="${DRONE_COMMIT_AUTHOR_NAME}"',
+                'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
+                'eatmydata mk-build-deps --install --remove --tool "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
+                'export DEB_BUILD_OPTIONS="parallel=$$(nproc)"',
+                'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
+                'debuild -e CCACHE_DIR -b',
+                'pwd',
+                'find ./contrib/ci',
+                './contrib/ci/drone-debs-upload.sh ' + distro,
+            ]
+        }
     ]
 };
+
 
 [
     {
@@ -65,11 +112,8 @@ local debian_pipeline(name, image,
                     cmake_extra='-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 ', lto=true),
     debian_pipeline("Debian sid/gcc-10 (amd64)", "debian:sid", deps='g++-10 '+default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10'),
-    debian_pipeline("Debian buster (amd64)", "debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
-    debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_base,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
 
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
@@ -85,6 +129,12 @@ local debian_pipeline(name, image,
                         '../contrib/ci/drone-check-static-libs.sh',
                         '../contrib/ci/drone-static-upload.sh'
                     ]),
+
+    // Deb builds:
+    deb_builder("debian:sid", "sid", "debian/sid"),
+    deb_builder("debian:buster", "buster", "debian/buster", imaginary_repo=true),
+    deb_builder("ubuntu:focal", "focal", "ubuntu/focal"),
+    deb_builder("debian:sid", "sid", "debian/sid", arch='arm64'),
 
     // Macos build
     {
