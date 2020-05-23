@@ -28,8 +28,9 @@ namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
   template <size_t sz>
-  struct alignas(std::min(alignof(uint64_t), alignof(std::max_align_t))) AlignedBuffer
+  struct alignas(std::max_align_t) AlignedBuffer
   {
+    static_assert(alignof(std::max_align_t) <= 16, "insane alignment");
     static_assert(
         sz >= 8,
         "AlignedBuffer cannot be used with buffers smaller than 8 "
