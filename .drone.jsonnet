@@ -2,6 +2,7 @@ local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 
+// Regular build on a debian-like system:
 local debian_pipeline(name, image,
         arch='amd64',
         deps=default_deps,
@@ -15,17 +16,19 @@ local debian_pipeline(name, image,
     type: 'docker',
     name: name,
     platform: { arch: arch },
+    trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
     steps: [
         {
             name: 'build',
             image: image,
             [if allow_fail then "failure"]: "ignore",
             commands: [
+                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 'apt-get update',
                 'apt-get install -y eatmydata',
                 'eatmydata apt-get dist-upgrade -y',
                 'eatmydata apt-get install -y cmake git ninja-build pkg-config ccache ' + deps,
-                'git submodule update --init --recursive',
+                'eatmydata git submodule update --init --recursive',
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
@@ -53,6 +56,8 @@ local debian_pipeline(name, image,
                 'make format-verify']
         }]
     },
+
+    // Various debian builds
     debian_pipeline("Debian sid (amd64)", "debian:sid", lto=true),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug', lto=true),
     debian_pipeline("Debian sid/clang-10 (amd64)", "debian:sid", deps='clang-10 '+default_deps_nocxx,
@@ -71,10 +76,14 @@ local debian_pipeline(name, image,
                                 'then /bin/echo -e "\\\\e[31;1mlokinet links to unexpected libraries\\\\e[0m"; false; ' +
                                 'else /bin/echo -e "\\\\e[32;1mNo unexpected linked libraries found\\\\e[0m"; ' +
                                 'fi']),
+
+    // ARM builds (ARM64 and armhf)
     debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+
+    // Macos build
     {
         kind: 'pipeline',
         type: 'exec',
