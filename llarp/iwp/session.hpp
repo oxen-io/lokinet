@@ -204,7 +204,7 @@ namespace llarp
       /// set of rx messages to send in next round of multiacks
       std::unordered_set<uint64_t> m_SendMACKs;
 
-      using CryptoQueue_t = std::vector<Packet_t>;
+      using CryptoQueue_t = std::list<Packet_t>;
       using CryptoQueue_ptr = std::shared_ptr<CryptoQueue_t>;
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
