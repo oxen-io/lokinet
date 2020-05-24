@@ -620,7 +620,7 @@ namespace llarp
     void
     Session::HandlePlaintext(CryptoQueue_ptr msgs)
     {
-      for (auto itr = msgs->begin(), end = msgs->end(); itr != end;)
+      for (auto itr = msgs->begin(), end = msgs->end(); itr != end; itr = msgs->erase(itr))
       {
         Packet_t result = *itr;
         LogDebug("Command ", int(result[PacketOverhead + 1]));
@@ -650,7 +650,6 @@ namespace llarp
           default:
             LogError("invalid command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
         }
-        itr = msgs->erase(itr);
       }
       SendMACK();
       Pump();
