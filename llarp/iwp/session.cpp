@@ -612,15 +612,17 @@ namespace llarp
         recvMsgs->emplace_back(std::move(pkt));
       }
       LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      LogicCall(
-          m_Parent->logic(), std::bind(&Session::HandlePlaintext, shared_from_this(), recvMsgs));
+      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = recvMsgs] {
+        self->HandlePlaintext(std::move(msgs));
+      });
     }
 
     void
     Session::HandlePlaintext(CryptoQueue_ptr msgs)
     {
-      for (auto& result : *msgs)
+      for (auto itr = msgs->begin(), end = msgs->end(); itr != end;)
       {
+        Packet_t result{std::move(*itr)};
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch (result[PacketOverhead + 1])
         {
@@ -648,6 +650,7 @@ namespace llarp
           default:
             LogError("invalid command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
         }
+        itr = msgs->erase(itr);
       }
       SendMACK();
       Pump();
