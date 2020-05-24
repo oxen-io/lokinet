@@ -274,7 +274,9 @@ namespace llarp
       std::size_t
       operator()(const AlignedBuffer& buf) const noexcept
       {
-        return *reinterpret_cast<const std::size_t*>(buf.data());
+        std::size_t h = 0;
+        std::memcpy(&h, buf.data(), sizeof(std::size_t));
+        return h;
       }
     };
 
