@@ -26,7 +26,7 @@ namespace llarp
     struct IHopHandler
     {
       using TrafficEvent_t = std::pair<std::vector<byte_t>, TunnelNonce>;
-      using TrafficQueue_t = std::vector<TrafficEvent_t>;
+      using TrafficQueue_t = std::list<TrafficEvent_t>;
       using TrafficQueue_ptr = std::shared_ptr<TrafficQueue_t>;
 
       virtual ~IHopHandler() = default;
