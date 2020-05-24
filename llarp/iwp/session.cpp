@@ -622,7 +622,7 @@ namespace llarp
     {
       for (auto itr = msgs->begin(), end = msgs->end(); itr != end;)
       {
-        Packet_t result{std::move(*itr)};
+        Packet_t result = *itr;
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch (result[PacketOverhead + 1])
         {
