@@ -737,7 +737,7 @@ namespace libuv
   {
     while (not m_LogicCalls.empty())
     {
-      auto f = m_LogicCalls.popFront();
+      auto f = std::move(m_LogicCalls.popFront());
       f();
     }
   }
