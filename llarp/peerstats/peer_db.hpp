@@ -1,11 +1,11 @@
 #pragma once
 
-#include <chrono>
 #include <filesystem>
 #include <unordered_map>
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <config/config.hpp>
 #include <router_id.hpp>
 #include <util/time.hpp>
 #include <peerstats/types.hpp>
@@ -19,6 +19,9 @@ namespace llarp
   /// a flush.
   struct PeerDb
   {
+    /// Constructor
+    PeerDb();
+
     /// Loads the database from disk using the provided filepath. If the file is equal to
     /// `std::nullopt`, the database will be loaded into memory (useful for testing).
     ///
@@ -62,11 +65,27 @@ namespace llarp
     std::optional<PeerStats>
     getCurrentPeerStats(const RouterID& routerId) const;
 
+    /// Configures the PeerDb based on RouterConfig
+    ///
+    /// @param routerConfig
+    void
+    configure(const RouterConfig& routerConfig);
+
+    /// Returns whether or not we should flush, as determined by the last time we flushed and the
+    /// configured flush interval.
+    ///
+    /// @param now is the current[-ish] time
+    bool
+    shouldFlush(llarp_time_t now);
+
    private:
     std::unordered_map<RouterID, PeerStats, RouterID::Hash> m_peerStats;
     std::mutex m_statsLock;
 
     std::unique_ptr<PeerDbStorage> m_storage;
+
+    llarp_time_t m_targetFlushInterval = 30s;
+    std::atomic<llarp_time_t> m_lastFlush;
   };
 
 }  // namespace llarp

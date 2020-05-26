@@ -16,6 +16,7 @@
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
 #include <path/path_context.hpp>
+#include <peerstats/peer_db.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <router/outbound_message_handler.hpp>
@@ -480,6 +481,7 @@ namespace llarp
     llarp_time_t m_LastStatsReport = 0s;
 
     std::shared_ptr<llarp::KeyManager> m_keyManager;
+    std::unique_ptr<PeerDb> m_peerDb;
 
     uint32_t path_build_count = 0;
 

@@ -36,6 +36,7 @@ namespace llarp
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
+    constexpr bool DefaultEnablePeerStats = false;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
       if (arg < 1024)
@@ -128,6 +129,13 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
+
+    conf.defineOption<bool>(
+        "router",
+        "enable-peer-stats",
+        false,
+        DefaultEnablePeerStats,
+        AssignmentAcceptor(m_enablePeerStats));
   }
 
   void
@@ -921,6 +929,13 @@ namespace llarp
         "exit-blacklist",
         {
             "Blacklist of destinations (same format as whitelist).",
+        });
+
+    def.addOptionComments(
+        "router",
+        "enable-peer-stats",
+        {
+            "Enable collection of SNode peer stats",
         });
 
     return def.generateINIConfig(true);
