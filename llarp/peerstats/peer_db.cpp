@@ -5,6 +5,11 @@
 
 namespace llarp
 {
+  PeerDb::PeerDb()
+  {
+    m_lastFlush.store({});
+  }
+
   void
   PeerDb::loadDatabase(std::optional<std::filesystem::path> file)
   {
@@ -47,6 +52,12 @@ namespace llarp
   void
   PeerDb::flushDatabase()
   {
+    LogDebug("flushing PeerDb...");
+
+    auto start = time_now_ms();
+    if (not shouldFlush(start))
+      LogWarn("Double PeerDb flush?");
+
     if (not m_storage)
       throw std::runtime_error("Cannot flush database before it has been loaded");
 
@@ -65,6 +76,13 @@ namespace llarp
 
       m_storage->replace(entry.second);
     }
+
+    auto end = time_now_ms();
+
+    auto elapsed = end - start;
+    LogDebug("PeerDb flush took about ", elapsed, " millis");
+
+    m_lastFlush.store(end);
   }
 
   void
@@ -91,6 +109,23 @@ namespace llarp
       return std::nullopt;
     else
       return itr->second;
+  }
+
+  void
+  PeerDb::configure(const RouterConfig& routerConfig)
+  {
+    if (not routerConfig.m_enablePeerStats)
+      throw std::runtime_error("[router]:enable-peer-stats is not enabled");
+
+    fs::path dbPath = routerConfig.m_dataDir / "peerstats.sqlite";
+
+    loadDatabase(dbPath);
+  }
+
+  bool
+  PeerDb::shouldFlush(llarp_time_t now)
+  {
+    return (now - m_lastFlush.load() >= m_targetFlushInterval);
   }
 
 };  // namespace llarp

@@ -36,6 +36,7 @@ namespace llarp
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
+    constexpr bool DefaultEnablePeerStats = false;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
       if (arg < 1024)
@@ -128,6 +129,13 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
+
+    conf.defineOption<bool>(
+        "router",
+        "enable-peer-stats",
+        false,
+        DefaultEnablePeerStats,
+        AssignmentAcceptor(m_enablePeerStats));
   }
 
   void
@@ -985,6 +993,40 @@ namespace llarp
         "service-node-seed",
         {
             "File containing service node's seed.",
+        });
+
+    // extra [network] options
+    // TODO: probably better to create an [exit] section and only allow it for routers
+    def.addOptionComments(
+        "network",
+        "exit",
+        {
+            "Whether or not we should act as an exit node. Beware that this increases demand",
+            "on the server and may pose liability concerns. Enable at your own risk.",
+        });
+
+    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
+    //       additionally, what's default? What if I don't whitelist anything?
+    def.addOptionComments(
+        "network",
+        "exit-whitelist",
+        {
+            "List of destination protocol:port pairs to whitelist, example: udp:*",
+            "or tcp:80. Multiple values supported.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "exit-blacklist",
+        {
+            "Blacklist of destinations (same format as whitelist).",
+        });
+
+    def.addOptionComments(
+        "router",
+        "enable-peer-stats",
+        {
+            "Enable collection of SNode peer stats",
         });
 
     return def.generateINIConfig(true);

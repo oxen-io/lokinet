@@ -578,6 +578,14 @@ namespace llarp
       hiddenServiceContext().AddEndpoint(*conf);
     }
 
+    // peer stats
+    if (conf->router.m_enablePeerStats)
+    {
+      LogInfo("Initializing peerdb...");
+      m_peerDb = std::make_unique<PeerDb>();
+      m_peerDb->configure(conf->router);
+    }
+
     // Logging config
     LogContext::Instance().Initialize(
         conf->logging.m_logLevel,
@@ -754,6 +762,10 @@ namespace llarp
     {
       nodedb()->AsyncFlushToDisk();
     }
+
+    if (m_peerDb and m_peerDb->shouldFlush(now))
+      diskworker()->addJob([this]() { m_peerDb->flushDatabase(); });
+
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
     _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {

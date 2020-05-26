@@ -64,6 +64,8 @@ namespace llarp
     std::string m_identityKeyFile;
     std::string m_transportKeyFile;
 
+    bool m_enablePeerStats = false;
+
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
