@@ -222,8 +222,7 @@ main(int argc, char* argv[])
 
     if (genconfigOnly)
     {
-      llarp::ensureConfig(
-          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
+      llarp::ensureConfig(basedir, fname, overwrite, opts.isRelay);
     }
     else
     {
