@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <unordered_map>
 
 #include <sqlite_orm/sqlite_orm.h>
@@ -54,8 +55,23 @@ namespace llarp
     /// 3) Call accumulatePeerStats() with the stats
     /// 4) Reset the stats to 0
     /// 5) <Repeat 2-4 periodically>
+    ///
+    /// @param routerId is the id of the router whose stats should be modified.
+    /// @param delta is the stats to add to the existing stats
     void
     accumulatePeerStats(const RouterID& routerId, const PeerStats& delta);
+
+    /// Allows write-access to the stats for a given peer while appropriate mutex lock is held. This
+    /// is an alternative means of incrementing peer stats that is suitable for one-off
+    /// modifications.
+    ///
+    /// Note that this holds m_statsLock during the callback invocation, so the callback should
+    /// return as quickly as possible.
+    ///
+    /// @param routerId is the id of the router whose stats should be modified.
+    /// @param callback is a function which will be called immediately with mutex held
+    void
+    modifyPeerStats(const RouterID& routerId, std::function<void(PeerStats&)> callback);
 
     /// Provides a snapshot of the most recent PeerStats we have for the given peer. If we don't
     /// have any stats for the peer, std::nullopt

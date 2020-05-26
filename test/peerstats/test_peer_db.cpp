@@ -87,3 +87,27 @@ TEST_CASE("Test PeerDb file-backed database reloads properly", "[PeerDb]")
 
   fs::remove(filename);
 }
+
+TEST_CASE("Test PeerDb modifyPeerStats", "[PeerDb]")
+{
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xF2);
+
+  int numTimesCalled = 0;
+
+  llarp::PeerDb db;
+  db.loadDatabase(std::nullopt);
+
+  db.modifyPeerStats(id, [&](llarp::PeerStats& stats) {
+    numTimesCalled++;
+
+    stats.numPathBuilds += 42;
+  });
+
+  db.flushDatabase();
+
+  CHECK(numTimesCalled == 1);
+
+  auto stats = db.getCurrentPeerStats(id);
+  CHECK(stats.has_value());
+  CHECK(stats.value().numPathBuilds == 42);
+}
