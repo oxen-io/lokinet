@@ -125,7 +125,8 @@ namespace llarp
   bool
   PeerDb::shouldFlush(llarp_time_t now)
   {
-    return (now - m_lastFlush.load() >= m_targetFlushInterval);
+    static constexpr llarp_time_t TargetFlushInterval = 30s;
+    return (now - m_lastFlush.load() >= TargetFlushInterval);
   }
 
 };  // namespace llarp

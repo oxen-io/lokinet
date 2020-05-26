@@ -84,7 +84,6 @@ namespace llarp
 
     std::unique_ptr<PeerDbStorage> m_storage;
 
-    llarp_time_t m_targetFlushInterval = 30s;
     std::atomic<llarp_time_t> m_lastFlush;
   };
 
