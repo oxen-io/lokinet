@@ -100,6 +100,16 @@ namespace llarp
       itr->second += delta;
   }
 
+  void
+  PeerDb::modifyPeerStats(const RouterID& routerId, std::function<void(PeerStats&)> callback)
+  {
+    std::lock_guard gaurd(m_statsLock);
+
+    PeerStats& stats = m_peerStats[routerId];
+    stats.routerId = routerId.ToString();
+    callback(stats);
+  }
+
   std::optional<PeerStats>
   PeerDb::getCurrentPeerStats(const RouterID& routerId) const
   {
@@ -125,7 +135,7 @@ namespace llarp
   bool
   PeerDb::shouldFlush(llarp_time_t now)
   {
-    static constexpr llarp_time_t TargetFlushInterval = 30s;
+    constexpr llarp_time_t TargetFlushInterval = 30s;
     return (now - m_lastFlush.load() >= TargetFlushInterval);
   }
 
