@@ -57,6 +57,9 @@ tuntap_get_hwaddr(struct device *dev);
   "08002BE10318}"
 #define ETHER_ADDR_LEN 6
 
+/* TRUE if we're using wintun(4D) instead of tap0901(4D) */
+static BOOL using_wintun;
+
 /* From OpenVPN tap driver, proto.h */
 typedef unsigned long IPADDR;
 
@@ -143,6 +146,12 @@ reg_query(char *key_name)
       goto clean;
     }
     /* If its a tap adapter, its all good */
+    /* first attempt at detecting wintun */
+    if(strncmp(data, "wintun", 6) == 0)
+    {
+      using_wintun = TRUE;
+      tuntap_log(TUNTAP_LOG_INFO, "we have detected at least one wintun interface. Reserved for future use.");
+    }
     if(strncmp(data, "tap0901", 7) == 0)
     {
       DWORD type;
