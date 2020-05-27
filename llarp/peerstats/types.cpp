@@ -30,6 +30,7 @@ namespace llarp
     longestRCReceiveIntervalMs =
         std::max(longestRCReceiveIntervalMs, other.longestRCReceiveIntervalMs);
     mostExpiredRCMs = std::max(mostExpiredRCMs, other.mostExpiredRCMs);
+    lastRCUpdated = std::max(lastRCUpdated, other.lastRCUpdated);
 
     return *this;
   }
@@ -52,7 +53,30 @@ namespace llarp
 
         and peakBandwidthBytesPerSec == other.peakBandwidthBytesPerSec
         and longestRCReceiveIntervalMs == other.longestRCReceiveIntervalMs
-        and mostExpiredRCMs == other.mostExpiredRCMs;
+        and mostExpiredRCMs == other.mostExpiredRCMs and lastRCUpdated == other.lastRCUpdated;
+  }
+
+  util::StatusObject
+  PeerStats::toJson() const
+  {
+    return {
+        {"routerId", routerId},
+        // {"numConnectionAttempts", numConnectionAttempts},
+        // {"numConnectionSuccesses", numConnectionSuccesses},
+        // {"numConnectionRejections", numConnectionRejections},
+        // {"numConnectionTimeouts", numConnectionTimeouts},
+        // {"numPathBuilds", numPathBuilds},
+        // {"numPacketsAttempted", numPacketsAttempted},
+        // {"numPacketsSent", numPacketsSent},
+        // {"numPacketsDropped", numPacketsDropped},
+        // {"numPacketsResent", numPacketsResent},
+        {"numDistinctRCsReceived", numDistinctRCsReceived},
+        {"numLateRCs", numLateRCs},
+        // {"peakBandwidthBytesPerSec", peakBandwidthBytesPerSec},
+        {"longestRCReceiveIntervalMs", longestRCReceiveIntervalMs},
+        {"mostExpiredRCMs", mostExpiredRCMs},
+        {"lastRCUpdated", lastRCUpdated},
+    };
   }
 
 };  // namespace llarp

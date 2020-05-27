@@ -104,6 +104,12 @@ namespace llarp
     bool
     shouldFlush(llarp_time_t now);
 
+    /// Get JSON status for API
+    ///
+    /// @return JSON object representing our current status
+    util::StatusObject
+    ExtractStatus() const;
+
    private:
     std::unordered_map<RouterID, PeerStats, RouterID::Hash> m_peerStats;
     std::mutex m_statsLock;
