@@ -379,7 +379,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Write(const char* fname) const
+  RouterContact::Write(const fs::path& fname) const
   {
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
@@ -389,8 +389,7 @@ namespace llarp
     }
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
-    const fs::path fpath = std::string(fname); /*  */
-    auto f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+    auto f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
     if (!f)
     {
       return false;
@@ -404,12 +403,12 @@ namespace llarp
   }
 
   bool
-  RouterContact::Read(const char* fname)
+  RouterContact::Read(const fs::path& fname)
   {
     std::array<byte_t, MAX_RC_SIZE> tmp;
     llarp_buffer_t buf(tmp);
     std::ifstream f;
-    f.open(fname, std::ios::binary);
+    f.open(fname.string(), std::ios::binary);
     if (!f.is_open())
     {
       llarp::LogError("Failed to open ", fname);

@@ -61,7 +61,7 @@ namespace llarp
     m_lokidRPCPassword = config.lokid.lokidRPCPassword;
 
     RouterContact rc;
-    bool exists = rc.Read(m_rcPath.string().c_str());
+    bool exists = rc.Read(m_rcPath);
     if (not exists and not genIfAbsent)
     {
       LogError("Could not read RouterContact at path ", m_rcPath);

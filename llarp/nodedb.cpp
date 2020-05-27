@@ -299,14 +299,14 @@ llarp_nodedb::loadfile(const fs::path& fpath)
   if (fpath.extension() != RC_FILE_EXT)
     return false;
   llarp::RouterContact rc;
-  if (!rc.Read(fpath.string().c_str()))
+  if (!rc.Read(fpath))
   {
-    llarp::LogError("failed to read file ", fpath);
+    llarp::LogError("failed to read file ", fpath.string());
     return false;
   }
   if (!rc.Verify(llarp::time_now_ms()))
   {
-    llarp::LogError(fpath, " contains invalid RC");
+    llarp::LogError(fpath.string(), " contains invalid RC");
     return false;
   }
   {
