@@ -296,12 +296,12 @@ namespace llarp
   /// read entire file and decode its contents into t
   template <typename T>
   bool
-  BDecodeReadFile(const char* fpath, T& t)
+  BDecodeReadFile(const fs::path& fpath, T& t)
   {
     std::vector<byte_t> ptr;
     {
       std::ifstream f;
-      f.open(fpath);
+      f.open(fpath.string());
       if (!f.is_open())
       {
         return false;

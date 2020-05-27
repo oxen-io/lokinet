@@ -301,12 +301,12 @@ llarp_nodedb::loadfile(const fs::path& fpath)
   llarp::RouterContact rc;
   if (!rc.Read(fpath))
   {
-    llarp::LogError("failed to read file ", fpath.string());
+    llarp::LogError("failed to read file ", fpath);
     return false;
   }
   if (!rc.Verify(llarp::time_now_ms()))
   {
-    llarp::LogError(fpath.string(), " contains invalid RC");
+    llarp::LogError(fpath, " contains invalid RC");
     return false;
   }
   {

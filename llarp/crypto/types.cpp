@@ -27,9 +27,9 @@ namespace llarp
   }
 
   bool
-  SecretKey::LoadFromFile(const char* fname)
+  SecretKey::LoadFromFile(const fs::path& fname)
   {
-    std::ifstream f(fname, std::ios::in | std::ios::binary);
+    std::ifstream f(fname.string(), std::ios::in | std::ios::binary);
     if (!f.is_open())
     {
       return false;
@@ -89,7 +89,7 @@ namespace llarp
   }
 
   bool
-  SecretKey::SaveToFile(const char* fname) const
+  SecretKey::SaveToFile(const fs::path& fname) const
   {
     std::array<byte_t, 128> tmp;
     llarp_buffer_t buf(tmp);
@@ -97,8 +97,7 @@ namespace llarp
     {
       return false;
     }
-    const fs::path fpath = std::string(fname);
-    auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+    auto optional_f = llarp::util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
     if (!optional_f)
       return false;
     auto& f = *optional_f;
@@ -109,10 +108,9 @@ namespace llarp
   }
 
   bool
-  IdentitySecret::LoadFromFile(const char* fname)
+  IdentitySecret::LoadFromFile(const fs::path& fname)
   {
-    const fs::path fpath = std::string(fname);
-    auto optional = util::OpenFileStream<std::ifstream>(fpath, std::ios::binary | std::ios::in);
+    auto optional = util::OpenFileStream<std::ifstream>(fname, std::ios::binary | std::ios::in);
     if (!optional)
       return false;
     auto& f = *optional;

@@ -473,7 +473,7 @@ namespace llarp
       }
       if (isListFile)
       {
-        if (not BDecodeReadFile(router.string().c_str(), b_list))
+        if (not BDecodeReadFile(router, b_list))
         {
           throw std::runtime_error(stringify("failed to read bootstrap list file '", router, "'"));
         }
@@ -481,7 +481,7 @@ namespace llarp
       else
       {
         RouterContact rc;
-        if (not rc.Read(router.string().c_str()))
+        if (not rc.Read(router))
         {
           throw std::runtime_error(
               stringify("failed to decode bootstrap RC, file='", router, "' rc=", rc));
