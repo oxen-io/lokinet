@@ -1,6 +1,7 @@
 #include <peerstats/peer_db.hpp>
 
 #include <util/logging/logger.hpp>
+#include <util/status.hpp>
 #include <util/str.hpp>
 
 namespace llarp
@@ -80,7 +81,7 @@ namespace llarp
     auto end = time_now_ms();
 
     auto elapsed = end - start;
-    LogDebug("PeerDb flush took about ", elapsed, " millis");
+    LogInfo("PeerDb flush took about ", elapsed, " millis");
 
     m_lastFlush.store(end);
   }
@@ -128,18 +129,23 @@ namespace llarp
 
     RouterID id(rc.pubkey);
     auto& stats = m_peerStats[id];
+    stats.routerId = id.ToString();
 
     if (stats.lastRCUpdated < rc.last_updated.count())
     {
-      // we track max expiry as the delta between (time received - last expiration time),
-      // and this value will often be negative for a healthy router
-      // TODO: handle case where new RC is also expired? just ignore?
-      int64_t expiry = (now.count() - (stats.lastRCUpdated + RouterContact::Lifetime.count()));
-
-      if (stats.numDistinctRCsReceived == 0)
-        stats.mostExpiredRCMs = expiry;
-      else
+      if (stats.numDistinctRCsReceived > 0)
+      {
+        // we track max expiry as the delta between (time received - last expiration time),
+        // and this value will often be negative for a healthy router
+        // TODO: handle case where new RC is also expired? just ignore?
+        int64_t expiry = (now.count() - (stats.lastRCUpdated + RouterContact::Lifetime.count()));
         stats.mostExpiredRCMs = std::max(stats.mostExpiredRCMs, expiry);
+
+        if (stats.numDistinctRCsReceived == 1)
+          stats.mostExpiredRCMs = expiry;
+        else
+          stats.mostExpiredRCMs = std::max(stats.mostExpiredRCMs, expiry);
+      }
 
       stats.numDistinctRCsReceived++;
       stats.lastRCUpdated = rc.last_updated.count();
@@ -162,6 +168,34 @@ namespace llarp
   {
     constexpr llarp_time_t TargetFlushInterval = 30s;
     return (now - m_lastFlush.load() >= TargetFlushInterval);
+  }
+
+  util::StatusObject
+  PeerDb::ExtractStatus() const
+  {
+    std::lock_guard gaurd(m_statsLock);
+
+    bool loaded = (m_storage.get() != nullptr);
+    util::StatusObject dbFile = nullptr;
+    if (loaded)
+      dbFile = m_storage->filename();
+
+    std::vector<util::StatusObject> statsObjs;
+    statsObjs.reserve(m_peerStats.size());
+    LogInfo("Building peer stats...");
+    for (const auto& pair : m_peerStats)
+    {
+      LogInfo("Stat here");
+      statsObjs.push_back(pair.second.toJson());
+    }
+
+    util::StatusObject obj{
+        {"dbLoaded", loaded},
+        {"dbFile", dbFile},
+        {"lastFlushMs", m_lastFlush.load().count()},
+        {"stats", statsObjs},
+    };
+    return obj;
   }
 
 };  // namespace llarp

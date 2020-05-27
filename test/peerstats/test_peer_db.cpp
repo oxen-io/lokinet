@@ -130,7 +130,7 @@ TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
 
   auto stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
-  CHECK(stats.value().mostExpiredRCMs == (0s - rcLifetime).count());
+  CHECK(stats.value().mostExpiredRCMs == 0);  // not calculated on first received RC
   CHECK(stats.value().numDistinctRCsReceived == 1);
   CHECK(stats.value().lastRCUpdated == 10000);
 
@@ -139,7 +139,7 @@ TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
   stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
   // these values should remain unchanged, this is not a new RC
-  CHECK(stats.value().mostExpiredRCMs == (0s - rcLifetime).count());
+  CHECK(stats.value().mostExpiredRCMs == 0);
   CHECK(stats.value().numDistinctRCsReceived == 1);
   CHECK(stats.value().lastRCUpdated == 10000);
 

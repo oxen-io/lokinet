@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include <router_id.hpp>
+#include <util/status.hpp>
 #include <util/time.hpp>
 
 /// Types stored in our peerstats database are declared here
@@ -41,6 +42,9 @@ namespace llarp
     operator+=(const PeerStats& other);
     bool
     operator==(const PeerStats& other);
+
+    util::StatusObject
+    toJson() const;
   };
 
 }  // namespace llarp

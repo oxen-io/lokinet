@@ -25,6 +25,7 @@
 #include <ev/ev.hpp>
 
 #include "tooling/router_event.hpp"
+#include "util/status.hpp"
 
 #include <fstream>
 #include <cstdlib>
@@ -81,13 +82,19 @@ namespace llarp
   {
     if (_running)
     {
-      return util::StatusObject{{"running", true},
-                                {"numNodesKnown", _nodedb->num_loaded()},
-                                {"dht", _dht->impl->ExtractStatus()},
-                                {"services", _hiddenServiceContext.ExtractStatus()},
-                                {"exit", _exitContext.ExtractStatus()},
-                                {"links", _linkManager.ExtractStatus()},
-                                {"outboundMessages", _outboundMessageHandler.ExtractStatus()}};
+      util::StatusObject peerStatsObj = nullptr;
+      if (m_peerDb)
+        peerStatsObj = m_peerDb->ExtractStatus();
+
+      return util::StatusObject{
+          {"running", true},
+          {"numNodesKnown", _nodedb->num_loaded()},
+          {"dht", _dht->impl->ExtractStatus()},
+          {"services", _hiddenServiceContext.ExtractStatus()},
+          {"exit", _exitContext.ExtractStatus()},
+          {"links", _linkManager.ExtractStatus()},
+          {"outboundMessages", _outboundMessageHandler.ExtractStatus()},
+          {"peerStats", peerStatsObj}};
     }
     else
     {
