@@ -3,6 +3,8 @@
 
 #include <numeric>
 #include <catch2/catch.hpp>
+#include "router_contact.hpp"
+#include "util/time.hpp"
 
 TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
 {
@@ -110,4 +112,43 @@ TEST_CASE("Test PeerDb modifyPeerStats", "[PeerDb]")
   auto stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
   CHECK(stats.value().numPathBuilds == 42);
+}
+
+TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
+{
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xCA);
+
+  auto rcLifetime = llarp::RouterContact::Lifetime;
+  llarp_time_t now = 0s;
+
+  llarp::RouterContact rc;
+  rc.pubkey = llarp::PubKey(id);
+  rc.last_updated = 10s;
+
+  llarp::PeerDb db;
+  db.handleGossipedRC(rc, now);
+
+  auto stats = db.getCurrentPeerStats(id);
+  CHECK(stats.has_value());
+  CHECK(stats.value().mostExpiredRCMs == (0s - rcLifetime).count());
+  CHECK(stats.value().numDistinctRCsReceived == 1);
+  CHECK(stats.value().lastRCUpdated == 10000);
+
+  now = 9s;
+  db.handleGossipedRC(rc, now);
+  stats = db.getCurrentPeerStats(id);
+  CHECK(stats.has_value());
+  // these values should remain unchanged, this is not a new RC
+  CHECK(stats.value().mostExpiredRCMs == (0s - rcLifetime).count());
+  CHECK(stats.value().numDistinctRCsReceived == 1);
+  CHECK(stats.value().lastRCUpdated == 10000);
+
+  rc.last_updated = 11s;
+
+  db.handleGossipedRC(rc, now);
+  stats = db.getCurrentPeerStats(id);
+  // new RC received at 9sec, making it (expiration time - 9 sec) expired (a negative number)
+  CHECK(stats.value().mostExpiredRCMs == (9s - (now + rcLifetime)).count());
+  CHECK(stats.value().numDistinctRCsReceived == 2);
+  CHECK(stats.value().lastRCUpdated == 11000);
 }

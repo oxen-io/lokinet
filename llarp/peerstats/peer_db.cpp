@@ -122,6 +122,31 @@ namespace llarp
   }
 
   void
+  PeerDb::handleGossipedRC(const RouterContact& rc, llarp_time_t now)
+  {
+    std::lock_guard gaurd(m_statsLock);
+
+    RouterID id(rc.pubkey);
+    auto& stats = m_peerStats[id];
+
+    if (stats.lastRCUpdated < rc.last_updated.count())
+    {
+      // we track max expiry as the delta between (time received - last expiration time),
+      // and this value will often be negative for a healthy router
+      // TODO: handle case where new RC is also expired? just ignore?
+      int64_t expiry = (now.count() - (stats.lastRCUpdated + RouterContact::Lifetime.count()));
+
+      if (stats.numDistinctRCsReceived == 0)
+        stats.mostExpiredRCMs = expiry;
+      else
+        stats.mostExpiredRCMs = std::max(stats.mostExpiredRCMs, expiry);
+
+      stats.numDistinctRCsReceived++;
+      stats.lastRCUpdated = rc.last_updated.count();
+    }
+  }
+
+  void
   PeerDb::configure(const RouterConfig& routerConfig)
   {
     if (not routerConfig.m_enablePeerStats)

@@ -582,7 +582,7 @@ namespace llarp
     if (conf->router.m_enablePeerStats)
     {
       LogInfo("Initializing peerdb...");
-      m_peerDb = std::make_unique<PeerDb>();
+      m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf->router);
     }
 
