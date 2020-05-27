@@ -32,6 +32,7 @@ namespace llarp
     double peakBandwidthBytesPerSec = 0;
     int64_t longestRCReceiveIntervalMs = 0;
     int64_t mostExpiredRCMs = 0;
+    int64_t lastRCUpdated = 0;
 
     PeerStats();
     PeerStats(const RouterID& routerId);

@@ -11,6 +11,7 @@
 #include <functional>
 #include <router_contact.hpp>
 #include <tooling/router_event.hpp>
+#include <peerstats/peer_db.hpp>
 
 #ifdef LOKINET_HIVE
 #include "tooling/router_hive.hpp"
@@ -132,6 +133,9 @@ namespace llarp
 
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
+
+    virtual std::shared_ptr<PeerDb>
+    peerDb() = 0;
 
     virtual bool
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;

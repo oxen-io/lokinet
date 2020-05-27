@@ -81,6 +81,16 @@ namespace llarp
     std::optional<PeerStats>
     getCurrentPeerStats(const RouterID& routerId) const;
 
+    /// Handles a new gossiped RC, updating stats as needed. The database tracks the last
+    /// advertised update time, so it knows whether this is a new RC or not.
+    ///
+    /// The given RC is assumed to be valid.
+    ///
+    /// @param rc is the RouterContact to handle
+    /// @param now is an optional time representing the current time
+    void
+    handleGossipedRC(const RouterContact& rc, llarp_time_t now = time_now_ms());
+
     /// Configures the PeerDb based on RouterConfig
     ///
     /// @param routerConfig

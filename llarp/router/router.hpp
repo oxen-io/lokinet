@@ -293,6 +293,12 @@ namespace llarp
       return _rcLookupHandler;
     }
 
+    std::shared_ptr<PeerDb>
+    peerDb() override
+    {
+      return m_peerDb;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
@@ -481,7 +487,7 @@ namespace llarp
     llarp_time_t m_LastStatsReport = 0s;
 
     std::shared_ptr<llarp::KeyManager> m_keyManager;
-    std::unique_ptr<PeerDb> m_peerDb;
+    std::shared_ptr<PeerDb> m_peerDb;
 
     uint32_t path_build_count = 0;
 
