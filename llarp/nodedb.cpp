@@ -299,7 +299,7 @@ llarp_nodedb::loadfile(const fs::path& fpath)
   if (fpath.extension() != RC_FILE_EXT)
     return false;
   llarp::RouterContact rc;
-  if (!rc.Read(fpath.string().c_str()))
+  if (!rc.Read(fpath))
   {
     llarp::LogError("failed to read file ", fpath);
     return false;

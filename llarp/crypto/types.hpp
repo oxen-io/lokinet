@@ -5,6 +5,7 @@
 #include <router_id.hpp>
 #include <util/aligned.hpp>
 #include <util/types.hpp>
+#include <util/fs.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -122,10 +123,10 @@ namespace llarp
     toPrivate(PrivateKey& key) const;
 
     bool
-    LoadFromFile(const char* fname);
+    LoadFromFile(const fs::path& fname);
 
     bool
-    SaveToFile(const char* fname) const;
+    SaveToFile(const fs::path& fname) const;
   };
 
   inline std::ostream&
@@ -204,7 +205,7 @@ namespace llarp
 
     /// load service node seed from file
     bool
-    LoadFromFile(const char* fname);
+    LoadFromFile(const fs::path& fname);
   };
 
   inline std::ostream&

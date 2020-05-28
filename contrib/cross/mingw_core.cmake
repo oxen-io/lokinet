@@ -20,7 +20,6 @@ if($ENV{COMPILER} MATCHES "clang")
 else()
     set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc${TOOLCHAIN_SUFFIX})
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++${TOOLCHAIN_SUFFIX})
-    add_compile_options("-Wa,-mbig-obj")
 endif()
 
 set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)

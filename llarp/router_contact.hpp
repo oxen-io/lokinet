@@ -208,10 +208,10 @@ namespace llarp
     print(std::ostream& stream, int level, int spaces) const;
 
     bool
-    Read(const char* fname);
+    Read(const fs::path& fname);
 
     bool
-    Write(const char* fname) const;
+    Write(const fs::path& fname) const;
 
     bool
     VerifySignature() const;

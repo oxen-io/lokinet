@@ -9,6 +9,6 @@ namespace llarp
   {
     std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> now{
         std::chrono::milliseconds{ts.now}};
-    return date::operator<<(out, now) << " UTC [+" << ts.delta << "]";
+    return date::operator<<(out, now) << " GMT [+" << ts.delta << "]";
   }
 }  // namespace llarp
