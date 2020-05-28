@@ -20,6 +20,8 @@
 #include <util/compare_ptr.hpp>
 #include <util/thread/logic.hpp>
 
+#include "auth.hpp"
+
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -176,6 +178,9 @@ namespace llarp
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrame& msg);
+
+      void
+      SetEndpointAuth(std::shared_ptr<IAuthPolicy> policy);
 
       // virtual huint128_t
       // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
@@ -353,6 +358,12 @@ namespace llarp
       virtual void
       IntroSetPublished();
 
+      void
+      AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthStatus)> hook);
+
+      void
+      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthStatus st);
+
       uint64_t
       GenTXID();
 
@@ -446,6 +457,7 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
+      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

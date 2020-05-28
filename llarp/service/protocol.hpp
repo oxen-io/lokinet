@@ -125,7 +125,7 @@ namespace llarp
           path::Path_ptr fromPath,
           const std::shared_ptr<llarp::thread::ThreadPool>& worker,
           const Identity& localIdent,
-          IDataHandler* handler) const;
+          Endpoint* handler) const;
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey, ProtocolMessage& into) const;

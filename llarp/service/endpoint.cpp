@@ -854,6 +854,19 @@ namespace llarp
     }
 
     void
+    Endpoint::AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthStatus)> hook)
+    {
+      if (m_AuthPolicy)
+      {
+        m_AuthPolicy->AuthenticateAsync(std::move(addr), std::move(tag), std::move(hook));
+      }
+      else
+      {
+        RouterLogic()->Call([hook]() { hook(AuthStatus::eAuthSuccess); });
+      }
+    }
+
+    void
     Endpoint::RemoveConvoTag(const ConvoTag& t)
     {
       Sessions().erase(t);
@@ -876,8 +889,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (!frame.AsyncDecryptAndVerify(
-              EndpointLogic(), p, CryptoWorker(), m_Identity, m_DataHandler))
+      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, CryptoWorker(), m_Identity, this))
       {
         // send discard
         ProtocolFrame f;
