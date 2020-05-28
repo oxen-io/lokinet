@@ -20,7 +20,7 @@
 #include <util/compare_ptr.hpp>
 #include <util/thread/logic.hpp>
 
-#include "auth.hpp"
+#include <service/auth.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -359,10 +359,10 @@ namespace llarp
       IntroSetPublished();
 
       void
-      AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthStatus)> hook);
+      AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthResult)> hook);
 
       void
-      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthStatus st);
+      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
 
       uint64_t
       GenTXID();

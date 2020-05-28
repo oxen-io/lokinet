@@ -30,6 +30,8 @@ namespace llarp
 
   namespace service
   {
+    struct Endpoint;
+
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
     /// inner message
@@ -43,7 +45,7 @@ namespace llarp
       std::vector<byte_t> payload;
       Introduction introReply;
       ServiceInfo sender;
-      IDataHandler* handler = nullptr;
+      Endpoint* handler = nullptr;
       ConvoTag tag;
       uint64_t seqno = 0;
       uint64_t version = LLARP_PROTO_VERSION;

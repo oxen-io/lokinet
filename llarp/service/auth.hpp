@@ -1,25 +1,25 @@
 #pragma once
 #include <optional>
 #include <string>
-#include <funcional>
+#include <functional>
 #include "address.hpp"
 #include "handler.hpp"
 
 namespace llarp::service
 {
   /// authentication status
-  enum class AuthResult
+  enum AuthResult
   {
     /// explicitly accepted
-    eAuthAccepted,
+    eAuthAccepted = 0,
     /// explicitly rejected
-    eAuthRejected,
+    eAuthRejected = 1,
     /// attempt failed
-    eAuthFailed,
+    eAuthFailed = 2,
     /// attempt rate limited
-    eAuthRateLimit,
+    eAuthRateLimit = 3,
     /// need mo munny
-    eAuthPaymentRequired
+    eAuthPaymentRequired = 4
   };
 
   /// maybe get auth result from string

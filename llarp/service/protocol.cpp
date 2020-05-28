@@ -5,7 +5,7 @@
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
-
+#include <service/endpoint.hpp>
 #include <utility>
 
 namespace llarp
@@ -336,11 +336,11 @@ namespace llarp
         msg->handler = self->handler;
 
         self->handler->AsyncAuthConvoTag(
-            msg->sender,
+            msg->sender.Addr(),
             msg->tag,
             [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
-                AuthStatus st) {
-              if (st == AuthStatus::eAuthSuccess)
+                AuthResult result) {
+              if (result == AuthResult::eAuthAccepted)
               {
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);
@@ -350,7 +350,7 @@ namespace llarp
               }
               else
               {
-                handler->SendAuthReject(path, from, msg->tag, st);
+                handler->SendAuthReject(path, from, msg->tag, result);
               }
             });
       }

@@ -854,7 +854,7 @@ namespace llarp
     }
 
     void
-    Endpoint::AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthStatus)> hook)
+    Endpoint::AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthResult)> hook)
     {
       if (m_AuthPolicy)
       {
@@ -862,7 +862,26 @@ namespace llarp
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook(AuthStatus::eAuthSuccess); });
+        RouterLogic()->Call([hook]() { hook(AuthResult::eAuthAccepted); });
+      }
+    }
+
+    void
+    Endpoint::SendAuthReject(
+        path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
+    {
+      if (result == AuthResult::eAuthAccepted)
+        return;
+      ProtocolFrame f;
+      f.R = result;
+      f.T = tag;
+      f.F = path->intro.pathID;
+
+      if (f.Sign(m_Identity))
+      {
+        util::Lock lock(m_state->m_SendQueueMutex);
+        m_state->m_SendQueue.emplace_back(
+            std::make_shared<const routing::PathTransferMessage>(f, replyPath), path);
       }
     }
 
