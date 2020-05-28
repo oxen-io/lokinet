@@ -39,13 +39,14 @@ namespace llarp
 
     auto allStats = m_storage->get_all<PeerStats>();
     LogInfo("Loading ", allStats.size(), " PeerStats from table peerstats...");
-    for (const PeerStats& stats : allStats)
+    for (PeerStats& stats : allStats)
     {
       RouterID id;
       if (not id.FromString(stats.routerId))
         throw std::runtime_error(
             stringify("Database contains invalid PeerStats with id ", stats.routerId));
 
+      stats.stale = false;
       m_peerStats[id] = stats;
     }
   }
@@ -57,31 +58,50 @@ namespace llarp
 
     auto start = time_now_ms();
     if (not shouldFlush(start))
-      LogWarn("Double PeerDb flush?");
+    {
+      LogWarn("Call to flushDatabase() while already in progress, ignoring");
+      return;
+    }
 
     if (not m_storage)
       throw std::runtime_error("Cannot flush database before it has been loaded");
 
-    decltype(m_peerStats) copy;
+    std::vector<PeerStats> staleStats;
 
     {
       std::lock_guard gaurd(m_statsLock);
-      copy = m_peerStats;  // expensive deep copy
+
+      // copy all stale entries
+      for (auto& entry : m_peerStats)
+      {
+        if (entry.second.stale)
+        {
+          staleStats.push_back(entry.second);
+          entry.second.stale = false;
+        }
+      }
     }
 
-    for (const auto& entry : copy)
-    {
-      // call me paranoid...
-      assert(not entry.second.routerId.empty());
-      assert(entry.first.ToString() == entry.second.routerId);
+    LogInfo("Updating ", staleStats.size(), " stats");
 
-      m_storage->replace(entry.second);
+    {
+      auto guard = m_storage->transaction_guard();
+
+      for (const auto& stats : staleStats)
+      {
+        // call me paranoid...
+        assert(not stats.routerId.empty());
+
+        m_storage->replace(stats);
+      }
+
+      guard.commit();
     }
 
     auto end = time_now_ms();
 
     auto elapsed = end - start;
-    LogInfo("PeerDb flush took about ", elapsed, " millis");
+    LogInfo("PeerDb flush took about ", elapsed, " seconds");
 
     m_lastFlush.store(end);
   }
@@ -99,6 +119,8 @@ namespace llarp
       itr = m_peerStats.insert({routerId, delta}).first;
     else
       itr->second += delta;
+
+    itr->second.stale = true;
   }
 
   void
@@ -108,6 +130,7 @@ namespace llarp
 
     PeerStats& stats = m_peerStats[routerId];
     stats.routerId = routerId.ToString();
+    stats.stale = true;
     callback(stats);
   }
 
@@ -149,6 +172,7 @@ namespace llarp
 
       stats.numDistinctRCsReceived++;
       stats.lastRCUpdated = rc.last_updated.count();
+      stats.stale = true;
     }
   }
 

@@ -35,6 +35,9 @@ namespace llarp
     int64_t mostExpiredRCMs = 0;
     int64_t lastRCUpdated = 0;
 
+    // not serialized
+    bool stale = true;
+
     PeerStats();
     PeerStats(const RouterID& routerId);
 
