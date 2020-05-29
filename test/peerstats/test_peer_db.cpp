@@ -3,6 +3,7 @@
 
 #include <numeric>
 #include <catch2/catch.hpp>
+#include "peerstats/types.hpp"
 #include "router_contact.hpp"
 #include "util/time.hpp"
 
@@ -147,8 +148,70 @@ TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
 
   db.handleGossipedRC(rc, now);
   stats = db.getCurrentPeerStats(id);
-  // new RC received at 9sec, making it (expiration time - 9 sec) expired (a negative number)
-  CHECK(stats.value().mostExpiredRCMs == (9s - (now + rcLifetime)).count());
+  // should be (previous expiration time - new received time)
+  CHECK(stats.value().mostExpiredRCMs == ((10s + rcLifetime) - now).count());
   CHECK(stats.value().numDistinctRCsReceived == 2);
   CHECK(stats.value().lastRCUpdated == 11000);
+}
+
+TEST_CASE("Test PeerDb handleGossipedRC expiry calcs", "[PeerDb]")
+{
+  const llarp::RouterID id = llarp::test::makeBuf<llarp::RouterID>(0xF9);
+
+  // see comments in peer_db.cpp above PeerDb::handleGossipedRC() for some context around these
+  // tests and esp. these numbers
+  const llarp_time_t ref = 48h;
+  const llarp_time_t rcLifetime = llarp::RouterContact::Lifetime;
+
+  // rc1, first rc received
+  const llarp_time_t s1 = ref;
+  const llarp_time_t r1 = s1 + 30s;
+  const llarp_time_t e1 = s1 + rcLifetime;
+  llarp::RouterContact rc1;
+  rc1.pubkey = llarp::PubKey(id);
+  rc1.last_updated = s1;
+
+  // rc2, second rc received
+  // received "healthily", with lots of room to spare before rc1 expires
+  const llarp_time_t s2 = s1 + 8h;
+  const llarp_time_t r2 = s2 + 30s;  // healthy recv time
+  const llarp_time_t e2 = s2 + rcLifetime;
+  llarp::RouterContact rc2;
+  rc2.pubkey = llarp::PubKey(id);
+  rc2.last_updated = s2;
+
+  // rc3, third rc received
+  // received "unhealthily" (after rc2 expires)
+  const llarp_time_t s3 = s2 + 8h;
+  const llarp_time_t r3 = e2 + 1h;  // received after e2
+  const llarp_time_t e3 = s3 + rcLifetime;
+  llarp::RouterContact rc3;
+  rc3.pubkey = llarp::PubKey(id);
+  rc3.last_updated = s3;
+
+  llarp::PeerDb db;
+
+  db.handleGossipedRC(rc1, r1);
+  auto stats1 = db.getCurrentPeerStats(id);
+  CHECK(stats1.has_value());
+  CHECK(stats1.value().mostExpiredRCMs == 0);
+  CHECK(stats1.value().numDistinctRCsReceived == 1);
+  CHECK(stats1.value().lastRCUpdated == s1.count());
+
+  db.handleGossipedRC(rc2, r2);
+  auto stats2 = db.getCurrentPeerStats(id);
+  CHECK(stats2.has_value());
+  CHECK(stats2.value().mostExpiredRCMs == (e1 - r2).count());
+  CHECK(stats2.value().mostExpiredRCMs > 0);  // ensure positive indicates healthy
+  CHECK(stats2.value().numDistinctRCsReceived == 2);
+  CHECK(stats2.value().lastRCUpdated == s2.count());
+
+  db.handleGossipedRC(rc3, r3);
+  auto stats3 = db.getCurrentPeerStats(id);
+  CHECK(stats3.has_value());
+  CHECK(stats3.value().mostExpiredRCMs == (e2 - r3).count());
+  CHECK(
+      stats3.value().mostExpiredRCMs < 0);  // ensure negative indicates unhealthy and we use min()
+  CHECK(stats3.value().numDistinctRCsReceived == 3);
+  CHECK(stats3.value().lastRCUpdated == s3.count());
 }
