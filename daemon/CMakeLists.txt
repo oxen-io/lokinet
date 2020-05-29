@@ -43,4 +43,7 @@ else()
         target_link_libraries(lokinetctl PRIVATE ${CURL_LIBRARIES})
     endif(CURL_FOUND)
 
+
+    install(PROGRAMS lokinet-vpn DESTINATION bin COMPONENT lokinet)
+    
 endif()

@@ -44,10 +44,16 @@ def main():
     for hop in rpc.get_first_hops():
         ip = hop.split(':')[0]
         hops[ip] = 0
-
+    if len(hops) == 0:
+        print("lokinet is not connected yet")
+        return 1
     with IPRoute() as ip:
         ip.bind()
-        idx = ip.link_lookup(ifname=args.ifname)[0]
+        try:
+            idx = ip.link_lookup(ifname=args.ifname)[0]
+        except:
+            print("cannot find {}".format(args.ifname))
+            return 1
         gateways = ip.get_default_routes(family=AF_INET)
         gateway = None
         for g in gateways:
@@ -69,11 +75,24 @@ def main():
                         ip.route("del", dst="{}/32".format(address), gateway=gateway)
                 except:
                     pass
+                
             if args.action == 'up':
-                ip.route('add', dst='0.0.0.0/0', oif=idx)
+                try:
+                    ip.route('add', dst='0.0.0.0/0', oif=idx)
+                except:
+                    print('failed to add default route')
+                    return 1
             elif args.action == 'down':
-                ip.route('del', dst='0.0.0.0/0', oif=idx)
+                try:
+                    ip.route('del', dst='0.0.0.0/0', oif=idx)
+                except:
+                    print('failed to remove default route')
+                    return 1
+        else:
+            print("could not find gateway")
+            return 1
+    return 0
                 
                 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
