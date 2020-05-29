@@ -145,32 +145,85 @@ namespace llarp
       return itr->second;
   }
 
+  /// Assume we receive an RC at some point `R` in time which was signed at some point `S` in time
+  /// and expires at some point `E` in time, as depicted below:
+  ///
+  /// +-----------------------------+
+  /// | signed rc                   |  <- useful lifetime of RC
+  /// +-----------------------------+
+  /// ^  [ . . . . . . . . ] <----------- window in which we receive this RC gossiped to us
+  /// |  ^                          ^
+  /// |  |                          |
+  /// S  R                          E
+  ///
+  /// One useful metric from this is the difference between (E - R), the useful contact time of this
+  /// RC. As we track this metric over time, the high and low watermarks serve to tell us how
+  /// quickly we receive signed RCs from a given router and how close to expiration they are when
+  /// we receive them. The latter is particularly useful, and should always be a positive number for
+  /// a healthy router. A negative number indicates that we are receiving an expired RC.
+  ///
+  /// TODO: we actually discard expired RCs, so we currently would not detect a negative value for
+  ///       (E - R)
+  ///
+  /// Another related metric is the distance between a newly received RC and the previous RC's
+  /// expiration, which represents how close we came to having no useful RC to work with. This
+  /// should be a high (positive) number for a healthy router, and if negative indicates that we
+  /// had no way to contact this router for a period of time.
+  ///
+  ///                               E1      E2      E3
+  ///                               |       |       |
+  ///                               v       |       |
+  /// +-----------------------------+       |       |
+  /// | signed rc 1                 |       |       |
+  /// +-----------------------------+       |       |
+  ///    [ . . . . . ]                      v       |
+  ///    ^    +-----------------------------+       |
+  ///    |    | signed rc 2                 |       |
+  ///    |    +-----------------------------+       |
+  ///    |      [ . . . . . . . . . . ]             v
+  ///    |      ^     +-----------------------------+
+  ///    |      |     | signed rc 3                 |
+  ///    |      |     +-----------------------------+
+  ///    |      |                              [ . . ]
+  ///    |      |                              ^
+  ///    |      |                              |
+  ///    R1     R2                             R3
+  ///
+  /// Example: the delta between (E1 - R2) is healthy, but the delta between (E2 - R3) is indicates
+  /// that we had a brief period of time where we had no valid (non-expired) RC for this router
+  /// (because it is negative).
   void
   PeerDb::handleGossipedRC(const RouterContact& rc, llarp_time_t now)
   {
     std::lock_guard gaurd(m_statsLock);
 
+    LogWarn("Handling gossiped RC", rc);
+
     RouterID id(rc.pubkey);
     auto& stats = m_peerStats[id];
     stats.routerId = id.ToString();
 
-    if (stats.lastRCUpdated < rc.last_updated.count())
-    {
-      if (stats.numDistinctRCsReceived > 0)
-      {
-        // we track max expiry as the delta between (time received - last expiration time),
-        // and this value will often be negative for a healthy router
-        // TODO: handle case where new RC is also expired? just ignore?
-        int64_t expiry = (now.count() - (stats.lastRCUpdated + RouterContact::Lifetime.count()));
-        stats.mostExpiredRCMs = std::max(stats.mostExpiredRCMs, expiry);
+    const bool isNewRC = (stats.lastRCUpdated < rc.last_updated.count());
 
-        if (stats.numDistinctRCsReceived == 1)
+    if (isNewRC)
+    {
+      stats.numDistinctRCsReceived++;
+
+      if (stats.numDistinctRCsReceived > 1)
+      {
+        const int64_t prevRCExpiration = (stats.lastRCUpdated + RouterContact::Lifetime.count());
+
+        // we track max expiry as the delta between (last expiration time - time received),
+        // and this value will be negative for an unhealthy router
+        // TODO: handle case where new RC is also expired? just ignore?
+        int64_t expiry = (prevRCExpiration - now.count());
+
+        if (stats.numDistinctRCsReceived == 2)
           stats.mostExpiredRCMs = expiry;
         else
-          stats.mostExpiredRCMs = std::max(stats.mostExpiredRCMs, expiry);
+          stats.mostExpiredRCMs = std::min(stats.mostExpiredRCMs, expiry);
       }
 
-      stats.numDistinctRCsReceived++;
       stats.lastRCUpdated = rc.last_updated.count();
       stats.stale = true;
     }
@@ -206,10 +259,8 @@ namespace llarp
 
     std::vector<util::StatusObject> statsObjs;
     statsObjs.reserve(m_peerStats.size());
-    LogInfo("Building peer stats...");
     for (const auto& pair : m_peerStats)
     {
-      LogInfo("Stat here");
       statsObjs.push_back(pair.second.toJson());
     }
 
