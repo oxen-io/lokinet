@@ -37,6 +37,7 @@ ExternalProject_Add(libsodium_external
     URL ${LIBSODIUM_URL}
     URL_HASH ${LIBSODIUM_HASH}
     CONFIGURE_COMMAND ${SODIUM_CONFIGURE}
+    PATCH_COMMAND patch -p1 -d <SOURCE_DIR> < ${CMAKE_SOURCE_DIR}/win32-setup/libsodium-1.0.18-win32.patch
     BUILD_COMMAND make -j${PROCESSOR_COUNT}
     INSTALL_COMMAND ${MAKE}
     BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a ${LIBSODIUM_PREFIX}/include

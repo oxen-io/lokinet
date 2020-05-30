@@ -41,7 +41,7 @@ if (STATIC_LINK)
   if (WOW64_CROSS_COMPILE)
     link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--large-address-aware,--dynamicbase,--pic-executable,-e,_mainCRTStartup,--subsystem,console:5.00 )
   else()
-    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,_mainCRTStartup )
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,mainCRTStartup )
   endif()
 endif()
 
