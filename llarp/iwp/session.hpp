@@ -47,12 +47,6 @@ namespace llarp
 
       ~Session() = default;
 
-      std::shared_ptr<ILinkSession>
-      BorrowSelf() override
-      {
-        return shared_from_this();
-      }
-
       void
       Pump() override;
 

@@ -90,6 +90,7 @@ namespace llarp
       m_RemoteRC = msg->rc;
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
       auto self = shared_from_this();
+      assert(self.use_count() > 1);
       SendOurLIM([self](ILinkSession::DeliveryStatus st) {
         if (st == ILinkSession::DeliveryStatus::eDeliverySuccess)
         {
@@ -241,6 +242,7 @@ namespace llarp
         }
       }
       auto self = shared_from_this();
+      assert(self.use_count() > 1);
       if (m_EncryptNext && !m_EncryptNext->empty())
       {
         m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] { self->EncryptWorker(data); });
