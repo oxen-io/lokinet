@@ -155,10 +155,6 @@ namespace llarp
       std::string
       Name() const override;
 
-      /// get a set of all the routers we use as exit node
-      std::set<RouterID>
-      GetExitRouters() const;
-
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
 

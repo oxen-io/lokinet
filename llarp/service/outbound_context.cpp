@@ -343,12 +343,6 @@ namespace llarp
       exclude.insert(m_NextIntro.router);
       for (const auto& snode : m_Endpoint->SnodeBlacklist())
         exclude.insert(snode);
-      if (hop == 0)
-      {
-        // exclude any exits as our first hop
-        const auto exits = m_Endpoint->GetExitRouters();
-        exclude.insert(exits.begin(), exits.end());
-      }
       if (hop == numHops - 1)
       {
         m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);

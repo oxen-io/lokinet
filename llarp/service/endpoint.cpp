@@ -613,12 +613,6 @@ namespace llarp
       std::set<RouterID> exclude = prev;
       for (const auto& snode : SnodeBlacklist())
         exclude.insert(snode);
-      if (hop == 0)
-      {
-        const auto exits = GetExitRouters();
-        // exclude exit node as first hop in any paths
-        exclude.insert(exits.begin(), exits.end());
-      }
       if (hop == numHops - 1)
       {
         // diversify endpoints
@@ -631,12 +625,6 @@ namespace llarp
     Endpoint::PathBuildStarted(path::Path_ptr path)
     {
       path::Builder::PathBuildStarted(path);
-    }
-
-    std::set<RouterID>
-    Endpoint::GetExitRouters() const
-    {
-      return {};
     }
 
     void
