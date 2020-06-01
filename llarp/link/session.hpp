@@ -26,11 +26,6 @@ namespace llarp
       eDeliveryDropped = 1
     };
 
-    /// equiv of shared_from_this but for the interface type so
-    /// that each implementation can use shared_from_this
-    virtual std::shared_ptr<ILinkSession>
-    BorrowSelf() = 0;
-
     /// hook for utp for when we have established a connection
     virtual void
     OnLinkEstablished(ILinkLayer*){};
