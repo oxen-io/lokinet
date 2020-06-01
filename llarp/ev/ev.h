@@ -25,6 +25,8 @@
 #include <uv.h>
 #endif
 
+#include <constants/evloop.hpp>
+
 /**
  * ev.h
  *
@@ -47,8 +49,9 @@ using llarp_ev_loop_ptr = std::shared_ptr<llarp_ev_loop>;
 
 /// make an event loop using our baked in event loop on Windows
 /// make an event loop using libuv otherwise.
+/// @param queue_size how big the logic job queue is
 llarp_ev_loop_ptr
-llarp_make_ev_loop();
+llarp_make_ev_loop(std::size_t queue_size = llarp::event_loop_queue_size);
 
 // run mainloop
 void

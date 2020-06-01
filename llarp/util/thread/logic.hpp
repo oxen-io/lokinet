@@ -11,10 +11,6 @@ namespace llarp
   class Logic
   {
    public:
-    Logic(size_t queueLength = size_t{1024 * 8});
-
-    ~Logic();
-
     /// stop all operation and wait for that to die
     void
     stop();
@@ -33,9 +29,6 @@ namespace llarp
 
     void
     remove_call(uint32_t id);
-
-    size_t
-    numPendingJobs() const;
 
     bool
     can_flush() const;

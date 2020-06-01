@@ -12,8 +12,6 @@ You can view documentation on how to get started [here](https://loki-project.git
 
 [![Build Status](https://drone.lokinet.dev/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/loki-project/loki-network)
 
-You can find Bleeding edge builds [here](https://builds.lokinet.dev) (these builds may eat your first born).
-
 ## Usage
 
 See the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.

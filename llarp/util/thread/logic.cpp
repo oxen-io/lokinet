@@ -6,20 +6,6 @@
 
 namespace llarp
 {
-  Logic::Logic(size_t)
-  {
-  }
-
-  Logic::~Logic()
-  {
-  }
-
-  size_t
-  Logic::numPendingJobs() const
-  {
-    return 0;
-  }
-
   bool
   Logic::queue_job(struct llarp_thread_job job)
   {

@@ -45,10 +45,7 @@ namespace llarp
     if (threads <= 0)
       threads = 1;
     worker = std::make_shared<llarp::thread::ThreadPool>(threads, 1024, "llarp-worker");
-    auto jobQueueSize = config->router.m_JobQueueSize;
-    if (jobQueueSize < 1024)
-      jobQueueSize = 1024;
-    logic = std::make_shared<Logic>(jobQueueSize);
+    logic = std::make_shared<Logic>();
 
     nodedb_dir = config->router.m_dataDir / nodedb_dirname;
 
@@ -80,7 +77,12 @@ namespace llarp
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     if (mainloop == nullptr)
-      mainloop = llarp_make_ev_loop();
+    {
+      auto jobQueueSize = config->router.m_JobQueueSize;
+      if (jobQueueSize < 1024)
+        jobQueueSize = 1024;
+      mainloop = llarp_make_ev_loop(jobQueueSize);
+    }
     logic->set_event_loop(mainloop.get());
 
     mainloop->set_logic(logic);

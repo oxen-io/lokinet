@@ -34,6 +34,10 @@ namespace llarp
     constexpr auto latency_interval = 20s;
     /// if a path is inactive for this amount of time it's dead
     constexpr auto alive_timeout = latency_interval * 1.5;
+
+    /// how big transit hop traffic queues are
+    constexpr std::size_t transit_hop_queue_size = 256;
+
   }  // namespace path
 }  // namespace llarp
 

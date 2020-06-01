@@ -15,9 +15,9 @@
 #endif
 
 llarp_ev_loop_ptr
-llarp_make_ev_loop()
+llarp_make_ev_loop(size_t queueLength)
 {
-  llarp_ev_loop_ptr r = std::make_shared<libuv::Loop>();
+  llarp_ev_loop_ptr r = std::make_shared<libuv::Loop>(queueLength);
   r->init();
   r->update_time();
   return r;

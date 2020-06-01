@@ -153,12 +153,11 @@ namespace llarp
   void
   Router::PumpLL()
   {
-    static constexpr size_t PumpJobThreshhold = 50;
     static constexpr auto PumpInterval = 25ms;
     const auto now = Now();
     if (_stopping.load())
       return;
-    if (_logic->numPendingJobs() >= PumpJobThreshhold && _lastPump + PumpInterval >= now)
+    if (_lastPump + PumpInterval >= now)
     {
       return;
     }
