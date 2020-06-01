@@ -29,10 +29,61 @@ namespace llarp
             make_column("numDistinctRCsReceived", &PeerStats::numDistinctRCsReceived),
             make_column("numLateRCs", &PeerStats::numLateRCs),
             make_column("peakBandwidthBytesPerSec", &PeerStats::peakBandwidthBytesPerSec),
-            make_column("longestRCReceiveIntervalMs", &PeerStats::longestRCReceiveIntervalMs),
-            make_column("mostExpiredRCMs", &PeerStats::mostExpiredRCMs)));
+            make_column("longestRCReceiveInterval", &PeerStats::longestRCReceiveInterval),
+            make_column("leastRCRemainingLifetime", &PeerStats::leastRCRemainingLifetime)));
   }
 
   using PeerDbStorage = decltype(initStorage(""));
 
 }  // namespace llarp
+
+/// "custom" types for sqlite_orm
+/// reference: https://github.com/fnc12/sqlite_orm/blob/master/examples/enum_binding.cpp
+namespace sqlite_orm
+{
+  template <>
+  struct type_printer<llarp_time_t> : public integer_printer
+  {
+  };
+
+  template <>
+  struct statement_binder<llarp_time_t>
+  {
+    int
+    bind(sqlite3_stmt* stmt, int index, const llarp_time_t& value)
+    {
+      return statement_binder<int64_t>().bind(stmt, index, value.count());
+    }
+  };
+
+  template <>
+  struct field_printer<llarp_time_t>
+  {
+    std::string
+    operator()(const llarp_time_t& value) const
+    {
+      std::stringstream stream;
+      stream << value.count();
+      return stream.str();
+    }
+  };
+
+  template <>
+  struct row_extractor<llarp_time_t>
+  {
+    llarp_time_t
+    extract(const char* row_value)
+    {
+      int64_t raw = static_cast<int64_t>(atoi(row_value));
+      return llarp_time_t(raw);
+    }
+
+    llarp_time_t
+    extract(sqlite3_stmt* stmt, int columnIndex)
+    {
+      auto str = sqlite3_column_text(stmt, columnIndex);
+      return this->extract((const char*)str);
+    }
+  };
+
+}  // namespace sqlite_orm
