@@ -78,9 +78,7 @@ namespace llarp
     llarp::LogInfo("starting up");
     if (mainloop == nullptr)
     {
-      auto jobQueueSize = config->router.m_JobQueueSize;
-      if (jobQueueSize < 1024)
-        jobQueueSize = 1024;
+      auto jobQueueSize = std::max(event_loop_queue_size, config->router.m_JobQueueSize);
       mainloop = llarp_make_ev_loop(jobQueueSize);
     }
     logic->set_event_loop(mainloop.get());

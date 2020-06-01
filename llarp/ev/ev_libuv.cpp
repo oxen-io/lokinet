@@ -753,8 +753,8 @@ namespace libuv
     llarp::LogContext::Instance().logStream->Tick(loop->time_now());
   }
 
-  Loop::Loop(size_t queueLength)
-      : llarp_ev_loop(), m_LogicCalls(queueLength), m_timerQueue(20), m_timerCancelQueue(20)
+  Loop::Loop(size_t queue_size)
+      : llarp_ev_loop(), m_LogicCalls(queue_size), m_timerQueue(20), m_timerCancelQueue(20)
   {
   }
 
