@@ -4,9 +4,8 @@ namespace llarp
 {
   PeerStats::PeerStats() = default;
 
-  PeerStats::PeerStats(const RouterID& routerId_)
+  PeerStats::PeerStats(const RouterID& routerId_) : routerId(routerId_)
   {
-    routerId = routerId_.ToString();
   }
 
   PeerStats&
@@ -60,7 +59,7 @@ namespace llarp
   PeerStats::toJson() const
   {
     return {
-        {"routerId", routerId},
+        {"routerId", routerId.ToString()},
         // {"numConnectionAttempts", numConnectionAttempts},
         // {"numConnectionSuccesses", numConnectionSuccesses},
         // {"numConnectionRejections", numConnectionRejections},
