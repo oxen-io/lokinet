@@ -14,7 +14,7 @@ namespace llarp
   // Struct containing stats we know about a peer
   struct PeerStats
   {
-    std::string routerId;
+    RouterID routerId;
 
     int32_t numConnectionAttempts = 0;
     int32_t numConnectionSuccesses = 0;

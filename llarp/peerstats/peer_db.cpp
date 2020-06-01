@@ -16,10 +16,10 @@ namespace llarp
   {
     std::lock_guard gaurd(m_statsLock);
 
-    m_peerStats.clear();
-
     if (m_storage)
       throw std::runtime_error("Reloading database not supported");  // TODO
+
+    m_peerStats.clear();
 
     // sqlite_orm treats empty-string as an indicator to load a memory-backed database, which we'll
     // use if file is an empty-optional
@@ -41,13 +41,11 @@ namespace llarp
     LogInfo("Loading ", allStats.size(), " PeerStats from table peerstats...");
     for (PeerStats& stats : allStats)
     {
-      RouterID id;
-      if (not id.FromString(stats.routerId))
-        throw std::runtime_error(
-            stringify("Database contains invalid PeerStats with id ", stats.routerId));
+      // we cleared m_peerStats, and the database should enforce that routerId is unique...
+      assert(m_peerStats.find(stats.routerId) == m_peerStats.end());
 
       stats.stale = false;
-      m_peerStats[id] = stats;
+      m_peerStats[stats.routerId] = stats;
     }
   }
 
@@ -89,9 +87,6 @@ namespace llarp
 
       for (const auto& stats : staleStats)
       {
-        // call me paranoid...
-        assert(not stats.routerId.empty());
-
         m_storage->replace(stats);
       }
 
@@ -109,7 +104,7 @@ namespace llarp
   void
   PeerDb::accumulatePeerStats(const RouterID& routerId, const PeerStats& delta)
   {
-    if (routerId.ToString() != delta.routerId)
+    if (routerId != delta.routerId)
       throw std::invalid_argument(
           stringify("routerId ", routerId, " doesn't match ", delta.routerId));
 
@@ -129,7 +124,7 @@ namespace llarp
     std::lock_guard gaurd(m_statsLock);
 
     PeerStats& stats = m_peerStats[routerId];
-    stats.routerId = routerId.ToString();
+    stats.routerId = routerId;
     stats.stale = true;
     callback(stats);
   }
@@ -201,7 +196,7 @@ namespace llarp
 
     RouterID id(rc.pubkey);
     auto& stats = m_peerStats[id];
-    stats.routerId = id.ToString();
+    stats.routerId = id;
 
     const bool isNewRC = (stats.lastRCUpdated < rc.last_updated);
 

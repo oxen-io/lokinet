@@ -41,6 +41,7 @@ namespace llarp
 /// reference: https://github.com/fnc12/sqlite_orm/blob/master/examples/enum_binding.cpp
 namespace sqlite_orm
 {
+  /// llarp_time_t serialization
   template <>
   struct type_printer<llarp_time_t> : public integer_printer
   {
@@ -79,6 +80,53 @@ namespace sqlite_orm
     }
 
     llarp_time_t
+    extract(sqlite3_stmt* stmt, int columnIndex)
+    {
+      auto str = sqlite3_column_text(stmt, columnIndex);
+      return this->extract((const char*)str);
+    }
+  };
+
+  /// RouterID serialization
+  template <>
+  struct type_printer<llarp::RouterID> : public text_printer
+  {
+  };
+
+  template <>
+  struct statement_binder<llarp::RouterID>
+  {
+    int
+    bind(sqlite3_stmt* stmt, int index, const llarp::RouterID& value)
+    {
+      return statement_binder<std::string>().bind(stmt, index, value.ToString());
+    }
+  };
+
+  template <>
+  struct field_printer<llarp::RouterID>
+  {
+    std::string
+    operator()(const llarp::RouterID& value) const
+    {
+      return value.ToString();
+    }
+  };
+
+  template <>
+  struct row_extractor<llarp::RouterID>
+  {
+    llarp::RouterID
+    extract(const char* row_value)
+    {
+      llarp::RouterID id;
+      if (not id.FromString(row_value))
+        throw std::runtime_error("Invalid RouterID in sqlite3 database");
+
+      return id;
+    }
+
+    llarp::RouterID
     extract(sqlite3_stmt* stmt, int columnIndex)
     {
       auto str = sqlite3_column_text(stmt, columnIndex);
