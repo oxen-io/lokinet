@@ -620,9 +620,8 @@ namespace llarp
     void
     Session::HandlePlaintext(CryptoQueue_ptr msgs)
     {
-      for (auto itr = msgs->begin(), end = msgs->end(); itr != end; itr++)
+      for (auto& result : *msgs)
       {
-        Packet_t result = *itr;
         LogDebug("Command ", int(result[PacketOverhead + 1]));
         switch (result[PacketOverhead + 1])
         {
