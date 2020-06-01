@@ -597,6 +597,15 @@ namespace llarp
   }
 
   bool
+  IsBogon(const huint128_t ip)
+  {
+    const nuint128_t netIP{ntoh128(ip.h)};
+    in6_addr addr{};
+    std::copy_n((const uint8_t*)&netIP.n, 16, &addr.s6_addr[0]);
+    return IsBogon(addr);
+  }
+
+  bool
   IsBogonRange(const in6_addr& host, const in6_addr&)
   {
     // TODO: implement me

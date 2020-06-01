@@ -21,6 +21,10 @@ namespace llarp
   {
     /// Empty constructor.
     IpAddress() = default;
+    /// move construtor
+    IpAddress(IpAddress&&) = default;
+    /// copy construct
+    IpAddress(const IpAddress&);
 
     /// Constructor. Takes a string which can be an IPv4 or IPv6 address optionally followed by
     /// a colon and a port.
@@ -50,6 +54,14 @@ namespace llarp
 
     IpAddress&
     operator=(const sockaddr& other);
+
+    /// move assignment
+    IpAddress&
+    operator=(IpAddress&& other);
+
+    /// copy assignment
+    IpAddress&
+    operator=(const IpAddress& other);
 
     /// Return the port. Returns -1 if no port has been provided.
     ///
@@ -119,19 +131,7 @@ namespace llarp
       std::size_t
       operator()(const IpAddress& address) const noexcept
       {
-        (void)address;
-        // throw std::runtime_error("FIXME: IpAddress::Hash"); // can't do this in operator(),
-        // apparently, so hopefully it's me that stumbles upon this (if not, sorry!)
-        return 0;
-
-        /*
-        if(a.af() == AF_INET)
-        {
-          return a.port() ^ a.addr4()->s_addr;
-        }
-        static const uint8_t empty[16] = {0};
-        return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
-        */
+        return std::hash<std::string>{}(address.toString());
       }
     };
 

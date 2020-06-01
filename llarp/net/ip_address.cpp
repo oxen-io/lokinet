@@ -9,6 +9,11 @@ namespace llarp
     setAddress(str);
   }
 
+  IpAddress::IpAddress(const IpAddress& other)
+      : m_empty(other.m_empty), m_ipAddress(other.m_ipAddress), m_port(other.m_port)
+  {
+  }
+
   IpAddress::IpAddress(std::string_view str, std::optional<uint16_t> port)
   {
     setAddress(str, port);
@@ -25,6 +30,16 @@ namespace llarp
   }
 
   IpAddress&
+  IpAddress::operator=(IpAddress&& other)
+  {
+    m_ipAddress = std::move(other.m_ipAddress);
+    m_port = std::move(other.m_port);
+    m_empty = other.m_empty;
+    other.m_empty = false;
+    return *this;
+  }
+
+  IpAddress&
   IpAddress::operator=(const sockaddr& other)
   {
     SockAddr addr(other);
@@ -36,6 +51,14 @@ namespace llarp
 
     m_empty = addr.isEmpty();
 
+    return *this;
+  }
+  IpAddress&
+  IpAddress::operator=(const IpAddress& other)
+  {
+    m_empty = other.m_empty;
+    m_ipAddress = other.m_ipAddress;
+    m_port = other.m_port;
     return *this;
   }
 

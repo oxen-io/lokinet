@@ -241,6 +241,17 @@ namespace llarp
 
       void
       UpdateIPv6Address(huint128_t src, huint128_t dst);
+      /// set addresses to zero and recacluate checksums
+      void
+      ZeroAddresses();
+
+      /// zero out source address
+      void
+      ZeroSourceAddress();
+
+      /// make an icmp unreachable reply packet based of this ip packet
+      std::optional<IPPacket>
+      MakeICMPUnreachable() const;
     };
 
   }  // namespace net

@@ -4,6 +4,7 @@
 #include <crypto/types.hpp>
 #include <util/types.hpp>
 #include <crypto/encrypted_frame.hpp>
+#include <util/decaying_hashset.hpp>
 #include <messages/relay.hpp>
 #include <vector>
 
@@ -25,10 +26,13 @@ namespace llarp
     struct IHopHandler
     {
       using TrafficEvent_t = std::pair<std::vector<byte_t>, TunnelNonce>;
-      using TrafficQueue_t = std::vector<TrafficEvent_t>;
+      using TrafficQueue_t = std::list<TrafficEvent_t>;
       using TrafficQueue_ptr = std::shared_ptr<TrafficQueue_t>;
 
       virtual ~IHopHandler() = default;
+
+      void
+      DecayFilters(llarp_time_t now);
 
       virtual bool
       Expired(llarp_time_t now) const = 0;
@@ -70,6 +74,8 @@ namespace llarp
       uint64_t m_SequenceNum = 0;
       TrafficQueue_ptr m_UpstreamQueue;
       TrafficQueue_ptr m_DownstreamQueue;
+      util::DecayingHashSet<TunnelNonce> m_UpstreamReplayFilter;
+      util::DecayingHashSet<TunnelNonce> m_DownstreamReplayFilter;
 
       virtual void
       UpstreamWork(TrafficQueue_ptr queue, AbstractRouter* r) = 0;

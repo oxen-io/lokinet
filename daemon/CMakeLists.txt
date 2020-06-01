@@ -20,6 +20,9 @@ else()
             target_link_directories(${exe} PRIVATE /usr/local/lib)
         endif()
         target_link_libraries(${exe} PRIVATE liblokinet)
+        if(WITH_JEMALLOC)
+          target_link_libraries(${exe} PUBLIC jemalloc)
+        endif()
         target_compile_definitions(${exe} PRIVATE -DVERSIONTAG=${GIT_VERSION_REAL})
         add_log_tag(${exe})
     endforeach()
@@ -40,4 +43,7 @@ else()
         target_link_libraries(lokinetctl PRIVATE ${CURL_LIBRARIES})
     endif(CURL_FOUND)
 
+
+    install(PROGRAMS lokinet-vpn DESTINATION bin COMPONENT lokinet)
+    
 endif()

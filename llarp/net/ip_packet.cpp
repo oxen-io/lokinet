@@ -84,32 +84,32 @@ namespace llarp
       return huint32_t{ntohl(Header()->daddr)};
     }
 
-#if 0
-    static uint32_t
-    ipchksum_pseudoIPv4(nuint32_t src_ip, nuint32_t dst_ip, uint8_t proto,
-                        uint16_t innerlen)
+    huint128_t
+    IPPacket::dst4to6() const
     {
-#define IPCS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
-      uint32_t sum = IPCS(src_ip.n) + IPCS(dst_ip.n) + (uint32_t)proto
-          + (uint32_t)htons(innerlen);
-#undef IPCS
-      return sum;
+      return ExpandV4(dstv4());
+    }
+
+    huint128_t
+    IPPacket::src4to6() const
+    {
+      return ExpandV4(srcv4());
     }
 
     static uint16_t
-    ipchksum(const byte_t *buf, size_t sz, uint32_t sum = 0)
+    ipchksum(const byte_t* buf, size_t sz, uint32_t sum = 0)
     {
-      while(sz > 1)
+      while (sz > 1)
       {
-        sum += *(const uint16_t *)buf;
+        sum += *(const uint16_t*)buf;
         sz -= sizeof(uint16_t);
         buf += sizeof(uint16_t);
       }
-      if(sz != 0)
+      if (sz != 0)
       {
         uint16_t x = 0;
 
-        *(byte_t *)&x = *(const byte_t *)buf;
+        *(byte_t*)&x = *(const byte_t*)buf;
         sum += x;
       }
 
@@ -120,7 +120,6 @@ namespace llarp
 
       return uint16_t((~sum) & 0xFFff);
     }
-#endif
 
 #define ADD32CS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
 #define SUB32CS(x) ((uint32_t)((~x) & 0xFFff) + (uint32_t)((~x) >> 16))
@@ -418,6 +417,84 @@ namespace llarp
           deltaChecksumIPv6TCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP, nDstIP);
           break;
       }
+    }
+
+    void
+    IPPacket::ZeroAddresses()
+    {
+      if (IsV4())
+      {
+        UpdateIPv4Address({0}, {0});
+      }
+      else if (IsV6())
+      {
+        UpdateIPv6Address({0}, {0});
+      }
+    }
+
+    void
+    IPPacket::ZeroSourceAddress()
+    {
+      if (IsV4())
+      {
+        UpdateIPv4Address({0}, xhtonl(dstv4()));
+      }
+      else if (IsV6())
+      {
+        UpdateIPv6Address({0}, {ntoh128(dstv6().h)});
+      }
+    }
+    std::optional<IPPacket>
+    IPPacket::MakeICMPUnreachable() const
+    {
+      if (IsV4())
+      {
+        constexpr auto icmp_Header_size = 8;
+        constexpr auto ip_Header_size = 20;
+        net::IPPacket pkt{};
+        auto* pkt_Header = pkt.Header();
+
+        pkt_Header->version = 4;
+        pkt_Header->ihl = 0x05;
+        pkt_Header->tos = 0;
+        pkt_Header->check = 0;
+        pkt_Header->tot_len = ntohs(icmp_Header_size + ip_Header_size);
+        pkt_Header->saddr = Header()->daddr;
+        pkt_Header->daddr = Header()->saddr;
+        pkt_Header->protocol = 1;  // ICMP
+        pkt_Header->ttl = 1;
+        pkt_Header->frag_off = htons(0b0100000000000000);
+        // size pf ip header
+        const size_t l3_HeaderSize = Header()->ihl * 4;
+        // size of l4 packet to reflect back
+        const size_t l4_PacketSize = 8;
+        pkt_Header->tot_len += ntohs(l4_PacketSize + l3_HeaderSize);
+
+        uint16_t* checksum;
+        uint8_t* itr = pkt.buf + (pkt_Header->ihl * 4);
+        uint8_t* icmp_begin = itr;  // type 'destination unreachable'
+        *itr++ = 3;
+        // code	'Destination host unknown error'
+        *itr++ = 7;
+        // checksum + unused
+        htobe32buf(itr, 0);
+        checksum = (uint16_t*)itr;
+        itr += 4;
+        // next hop mtu is ignored but let's put something here anyways just in case tm
+        htobe16buf(itr, 1500);
+        itr += 2;
+        // copy ip header and first 8 bytes of datagram for icmp rject
+        std::copy_n(buf, l4_PacketSize + l3_HeaderSize, itr);
+        itr += l4_PacketSize + l3_HeaderSize;
+        // calculate checksum of ip header
+        pkt_Header->check = ipchksum(pkt.buf, pkt_Header->ihl * 4);
+        const auto icmp_size = std::distance(icmp_begin, itr);
+        // calculate icmp checksum
+        *checksum = ipchksum(icmp_begin, icmp_size);
+        pkt.sz = ntohs(pkt_Header->tot_len);
+        return pkt;
+      }
+      return std::nullopt;
     }
   }  // namespace net
 }  // namespace llarp

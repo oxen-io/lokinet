@@ -32,7 +32,8 @@ namespace llarp
       return stream;
     }
 
-    TransitHop::TransitHop() : m_UpstreamGather(128), m_DownstreamGather(128)
+    TransitHop::TransitHop()
+        : m_UpstreamGather(transit_hop_queue_size), m_DownstreamGather(transit_hop_queue_size)
     {
       m_UpstreamGather.enable();
       m_DownstreamGather.enable();
@@ -119,7 +120,6 @@ namespace llarp
     void
     TransitHop::DownstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      m_DownstreamWorkCounter++;
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayDownstreamMessage> msgs;
         do
@@ -161,7 +161,6 @@ namespace llarp
     void
     TransitHop::UpstreamWork(TrafficQueue_ptr msgs, AbstractRouter* r)
     {
-      m_UpstreamWorkCounter++;
       auto flushIt = [self = shared_from_this(), r]() {
         std::vector<RelayUpstreamMessage> msgs;
         do
@@ -210,7 +209,7 @@ namespace llarp
         FlushDownstream(r);
         for (const auto& other : m_FlushOthers)
         {
-          other->FlushUpstream(r);
+          other->FlushDownstream(r);
         }
         m_FlushOthers.clear();
       }
@@ -251,19 +250,28 @@ namespace llarp
     void
     TransitHop::FlushUpstream(AbstractRouter* r)
     {
-      if (m_UpstreamQueue && !m_UpstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(
-            &TransitHop::UpstreamWork, shared_from_this(), std::move(m_UpstreamQueue), r));
-
+      if (m_UpstreamQueue && not m_UpstreamQueue->empty())
+      {
+        if (r->threadpool()->addJob(std::bind(
+                &TransitHop::UpstreamWork, shared_from_this(), std::move(m_UpstreamQueue), r)))
+        {
+          m_UpstreamWorkCounter++;
+        }
+      }
       m_UpstreamQueue = nullptr;
     }
 
     void
     TransitHop::FlushDownstream(AbstractRouter* r)
     {
-      if (m_DownstreamQueue && !m_DownstreamQueue->empty())
-        r->threadpool()->addJob(std::bind(
-            &TransitHop::DownstreamWork, shared_from_this(), std::move(m_DownstreamQueue), r));
+      if (m_DownstreamQueue && not m_DownstreamQueue->empty())
+      {
+        if (r->threadpool()->addJob(std::bind(
+                &TransitHop::DownstreamWork, shared_from_this(), std::move(m_DownstreamQueue), r)))
+        {
+          m_DownstreamWorkCounter++;
+        }
+      }
       m_DownstreamQueue = nullptr;
     }
 

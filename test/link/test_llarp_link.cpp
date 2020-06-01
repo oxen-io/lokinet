@@ -155,6 +155,7 @@ struct LinkLayerTest : public test::LlarpTest<llarp::sodium::CryptoLibSodium>
     RouterContact::Lifetime = 500ms;
     netLoop = llarp_make_ev_loop();
     m_logic.reset(new Logic());
+    netLoop->set_logic(m_logic);
     Alice.Setup();
     Bob.Setup();
   }

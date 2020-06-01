@@ -613,12 +613,6 @@ namespace llarp
       std::set<RouterID> exclude = prev;
       for (const auto& snode : SnodeBlacklist())
         exclude.insert(snode);
-      if (hop == 0)
-      {
-        const auto exits = GetExitRouters();
-        // exclude exit node as first hop in any paths
-        exclude.insert(exits.begin(), exits.end());
-      }
       if (hop == numHops - 1)
       {
         // diversify endpoints
@@ -631,13 +625,6 @@ namespace llarp
     Endpoint::PathBuildStarted(path::Path_ptr path)
     {
       path::Builder::PathBuildStarted(path);
-    }
-
-    std::set<RouterID>
-    Endpoint::GetExitRouters() const
-    {
-      return m_ExitMap.TransformValues<RouterID>(
-          [](const exit::BaseSession_ptr& ptr) -> RouterID { return ptr->Endpoint(); });
     }
 
     void
@@ -850,7 +837,9 @@ namespace llarp
     bool
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
-      if (msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
+      if ((msg->proto == eProtocolExit
+           && (m_state->m_ExitEnabled || msg->sender.Addr() == m_state->m_ExitNode))
+          || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
         util::Lock l(m_state->m_InboundTrafficQueueMutex);
         m_state->m_InboundTrafficQueue.emplace(msg);
@@ -971,7 +960,6 @@ namespace llarp
       static constexpr size_t NumParallelLookups = 2;
       /// how many requests per router
       static constexpr size_t RequestsPerLookup = 2;
-      LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       MarkAddressOutbound(remote);
 
@@ -1325,6 +1313,12 @@ namespace llarp
     Endpoint::Router()
     {
       return m_state->m_Router;
+    }
+
+    void
+    Endpoint::BlacklistSNode(const RouterID snode)
+    {
+      m_state->m_SnodeBlacklist.insert(snode);
     }
 
     const std::set<RouterID>&

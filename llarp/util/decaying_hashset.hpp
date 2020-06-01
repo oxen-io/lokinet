@@ -20,7 +20,7 @@ namespace llarp
       bool
       Contains(const Val_t& v) const
       {
-        return m_Values.find(v) != m_Values.end();
+        return m_Values.count(v) != 0;
       }
 
       /// return true if inserted
@@ -30,7 +30,7 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
-        return m_Values.emplace(v, now).second;
+        return m_Values.try_emplace(v, now).second;
       }
 
       /// decay hashset entries
@@ -39,21 +39,19 @@ namespace llarp
       {
         if (now == 0s)
           now = llarp::time_now_ms();
-
-        auto itr = m_Values.begin();
-        while (itr != m_Values.end())
-        {
-          if ((m_CacheInterval + itr->second) <= now)
-            itr = m_Values.erase(itr);
-          else
-            ++itr;
-        }
+        EraseIf([&](const auto& item) { return (m_CacheInterval + item.second) <= now; });
       }
 
       Time_t
       DecayInterval() const
       {
         return m_CacheInterval;
+      }
+
+      bool
+      Empty() const
+      {
+        return m_Values.empty();
       }
 
       void
@@ -63,6 +61,23 @@ namespace llarp
       }
 
      private:
+      template <typename Predicate_t>
+      void
+      EraseIf(Predicate_t pred)
+      {
+        for (auto i = m_Values.begin(), last = m_Values.end(); i != last;)
+        {
+          if (pred(*i))
+          {
+            i = m_Values.erase(i);
+          }
+          else
+          {
+            ++i;
+          }
+        }
+      }
+
       Time_t m_CacheInterval;
       std::unordered_map<Val_t, Time_t, Hash_t> m_Values;
     };

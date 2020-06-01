@@ -28,14 +28,9 @@ namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
   template <size_t sz>
-#ifdef _WIN32
-  // We CANNOT align on a 128-bit boundary, malloc(3C) on win32
-  // only hands out 64-bit aligned pointers
-  struct alignas(uint64_t) AlignedBuffer
-#else
   struct alignas(std::max_align_t) AlignedBuffer
-#endif
   {
+    static_assert(alignof(std::max_align_t) <= 16, "insane alignment");
     static_assert(
         sz >= 8,
         "AlignedBuffer cannot be used with buffers smaller than 8 "
@@ -276,12 +271,12 @@ namespace llarp
 
     struct Hash
     {
-      size_t
-      operator()(const AlignedBuffer& buf) const
+      std::size_t
+      operator()(const AlignedBuffer& buf) const noexcept
       {
-        size_t hash;
-        std::memcpy(&hash, buf.data(), sizeof(hash));
-        return hash;
+        std::size_t h = 0;
+        std::memcpy(&h, buf.data(), sizeof(std::size_t));
+        return h;
       }
     };
 

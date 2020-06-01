@@ -397,8 +397,7 @@ namespace libuv
     uv_check_t m_Ticker;
     llarp_udp_io* const m_UDP;
     llarp::SockAddr m_Addr;
-    llarp_pkt_list m_LastPackets;
-    std::array<char, 1500> m_Buffer;
+    std::vector<char> m_Buffer;
 
     udp_glue(uv_loop_t* loop, llarp_udp_io* udp, const llarp::SockAddr& src)
         : m_UDP(udp), m_Addr(src)
@@ -410,11 +409,13 @@ namespace libuv
     }
 
     static void
-    Alloc(uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
+    Alloc(uv_handle_t* h, size_t suggested_size, uv_buf_t* buf)
     {
-      const size_t sz = std::min(suggested_size, size_t{1500});
-      buf->base = new char[sz];
-      buf->len = sz;
+      udp_glue* self = static_cast<udp_glue*>(h->data);
+      if (self->m_Buffer.empty())
+        self->m_Buffer.resize(suggested_size);
+      buf->base = self->m_Buffer.data();
+      buf->len = self->m_Buffer.size();
     }
 
     /// callback for libuv
@@ -424,16 +425,6 @@ namespace libuv
       udp_glue* glue = static_cast<udp_glue*>(handle->data);
       if (addr)
         glue->RecvFrom(nread, buf, llarp::SockAddr(*addr));
-      if (nread <= 0 || glue->m_UDP == nullptr || glue->m_UDP->recvfrom != nullptr)
-        delete[] buf->base;
-    }
-
-    bool
-    RecvMany(llarp_pkt_list* pkts)
-    {
-      *pkts = std::move(m_LastPackets);
-      m_LastPackets = llarp_pkt_list();
-      return pkts->size() > 0;
     }
 
     void
@@ -446,11 +437,6 @@ namespace libuv
         {
           const llarp_buffer_t pkt((const byte_t*)buf->base, pktsz);
           m_UDP->recvfrom(m_UDP, fromaddr, ManagedBuffer{pkt});
-        }
-        else
-        {
-          PacketBuffer pbuf(buf->base, pktsz);
-          m_LastPackets.emplace_back(PacketEvent{fromaddr, std::move(pbuf)});
         }
       }
     }
@@ -760,12 +746,15 @@ namespace libuv
   OnAsyncWake(uv_async_t* async_handle)
   {
     Loop* loop = static_cast<Loop*>(async_handle->data);
+    loop->update_time();
     loop->process_timer_queue();
     loop->process_cancel_queue();
     loop->FlushLogic();
+    llarp::LogContext::Instance().logStream->Tick(loop->time_now());
   }
 
-  Loop::Loop() : llarp_ev_loop(), m_LogicCalls(1024), m_timerQueue(20), m_timerCancelQueue(20)
+  Loop::Loop(size_t queue_size)
+      : llarp_ev_loop(), m_LogicCalls(queue_size), m_timerQueue(20), m_timerCancelQueue(20)
   {
   }
 
@@ -787,12 +776,13 @@ namespace libuv
 #endif
     m_TickTimer = new uv_timer_t;
     m_TickTimer->data = this;
+    if (uv_timer_init(&m_Impl, m_TickTimer) == -1)
+      return false;
     m_Run.store(true);
     m_nextID.store(0);
-
     m_WakeUp.data = this;
     uv_async_init(&m_Impl, &m_WakeUp, &OnAsyncWake);
-    return uv_timer_init(&m_Impl, m_TickTimer) != -1;
+    return true;
   }
 
   void
@@ -829,6 +819,11 @@ namespace libuv
   int
   Loop::run()
   {
+    uv_timer_start(
+        m_TickTimer,
+        [](uv_timer_t* t) { static_cast<Loop*>(t->loop->data)->FlushLogic(); },
+        1000,
+        1000);
     return uv_run(&m_Impl, UV_RUN_DEFAULT);
   }
 
@@ -923,11 +918,7 @@ namespace libuv
     while (not m_timerCancelQueue.empty())
     {
       uint64_t job_id = m_timerCancelQueue.popFront();
-      auto itr = m_pendingCalls.find(job_id);
-      if (itr != m_pendingCalls.end())
-      {
-        m_pendingCalls.erase(itr);
-      }
+      m_pendingCalls.erase(job_id);
     }
   }
 
@@ -937,8 +928,9 @@ namespace libuv
     auto itr = m_pendingCalls.find(job_id);
     if (itr != m_pendingCalls.end())
     {
-      LogicCall(m_Logic, itr->second);
-      m_pendingCalls.erase(itr);
+      if (itr->second)
+        itr->second();
+      m_pendingCalls.erase(itr->first);
     }
   }
 
@@ -1063,9 +1055,3 @@ namespace libuv
   }
 
 }  // namespace libuv
-
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io* u, struct llarp_pkt_list* pkts)
-{
-  return static_cast<libuv::udp_glue*>(u->impl)->RecvMany(pkts);
-}

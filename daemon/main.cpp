@@ -14,6 +14,32 @@
 #include <iostream>
 #include <future>
 
+#ifdef USE_JEMALLOC
+#include <new>
+#include <jemalloc/jemalloc.h>
+
+void*
+operator new(std::size_t sz)
+{
+  void* ptr = malloc(sz);
+  if (ptr)
+    return ptr;
+  else
+    throw std::bad_alloc{};
+}
+void
+operator delete(void* ptr) noexcept
+{
+  free(ptr);
+}
+
+void
+operator delete(void* ptr, size_t) noexcept
+{
+  free(ptr);
+}
+#endif
+
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
@@ -196,8 +222,7 @@ main(int argc, char* argv[])
 
     if (genconfigOnly)
     {
-      llarp::ensureConfig(
-          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
+      llarp::ensureConfig(basedir, fname, overwrite, opts.isRelay);
     }
     else
     {

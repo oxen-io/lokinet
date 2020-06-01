@@ -42,7 +42,7 @@ namespace llarp
   /// @param delimiter is the character to split on
   /// @return a vector of std::string_views with the split words, excluding the delimeter
   std::vector<std::string_view>
-  split(std::string_view str, char delimiter);
+  split(const std::string_view str, char delimiter);
 
 }  // namespace llarp
 

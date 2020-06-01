@@ -58,19 +58,6 @@ namespace llarp
         EnterState(ePathBuilding, parent->Now());
     }
 
-    bool
-    Path::HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
-
-    {
-      return m_UpstreamReplayFilter.Insert(Y) and IHopHandler::HandleUpstream(X, Y, r);
-    }
-
-    bool
-    Path::HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y, AbstractRouter* r)
-    {
-      return m_DownstreamReplayFilter.Insert(Y) and IHopHandler::HandleDownstream(X, Y, r);
-    }
-
     void
     Path::SetBuildResultHook(BuildResultHookFunc func)
     {
@@ -372,9 +359,6 @@ namespace llarp
       m_RXRate = 0;
       m_TXRate = 0;
 
-      m_UpstreamReplayFilter.Decay(now);
-      m_DownstreamReplayFilter.Decay(now);
-
       if (_status == ePathBuilding)
       {
         if (buildStarted == 0s)
@@ -394,9 +378,12 @@ namespace llarp
       // check to see if this path is dead
       if (_status == ePathEstablished)
       {
-        const auto dlt = now - m_LastLatencyTestTime;
+        auto dlt = now - m_LastLatencyTestTime;
         if (dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
+          // bail doing test if we are active
+          if (now - m_LastRecvMessage < path::latency_interval)
+            return;
           routing::PathLatencyMessage latency;
           latency.T = randint();
           m_LastLatencyTestID = latency.T;
@@ -405,24 +392,12 @@ namespace llarp
           FlushUpstream(r);
           return;
         }
-        if (m_LastRecvMessage > 0s && now > m_LastRecvMessage)
+        dlt = now - m_LastRecvMessage;
+        if (dlt >= path::alive_timeout)
         {
-          const auto delay = now - m_LastRecvMessage;
-          if (m_CheckForDead && m_CheckForDead(shared_from_this(), delay))
-          {
-            LogWarn(Name(), " waited for ", dlt, " and path is unresponsive");
-            r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
-          }
-        }
-        else if (dlt >= path::alive_timeout && m_LastRecvMessage == 0s)
-        {
-          if (m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
-          {
-            LogWarn(Name(), " waited for ", dlt, " and path looks dead");
-            r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
-          }
+          LogWarn(Name(), " waited for ", dlt, " and path looks dead");
+          r->routerProfiling().MarkPathFail(this);
+          EnterState(ePathTimeout, now);
         }
       }
     }
@@ -464,31 +439,33 @@ namespace llarp
         msg.pathid = TXID();
         ++idx;
       }
-      LogicCall(
-          r->logic(),
-          std::bind(&Path::HandleAllUpstream, shared_from_this(), std::move(sendmsgs), r));
+      LogicCall(r->logic(), [self = shared_from_this(), data = std::move(sendmsgs), r]() {
+        self->HandleAllUpstream(std::move(data), r);
+      });
     }
 
     void
     Path::FlushUpstream(AbstractRouter* r)
     {
-      if (m_UpstreamQueue && !m_UpstreamQueue->empty())
+      if (m_UpstreamQueue && not m_UpstreamQueue->empty())
       {
+        TrafficQueue_ptr data = nullptr;
+        std::swap(m_UpstreamQueue, data);
         r->threadpool()->addJob(
-            std::bind(&Path::UpstreamWork, shared_from_this(), std::move(m_UpstreamQueue), r));
+            [self = shared_from_this(), data, r]() { self->UpstreamWork(std::move(data), r); });
       }
-      m_UpstreamQueue = nullptr;
     }
 
     void
     Path::FlushDownstream(AbstractRouter* r)
     {
-      if (m_DownstreamQueue && !m_DownstreamQueue->empty())
+      if (m_DownstreamQueue && not m_DownstreamQueue->empty())
       {
+        TrafficQueue_ptr data = nullptr;
+        std::swap(m_DownstreamQueue, data);
         r->threadpool()->addJob(
-            std::bind(&Path::DownstreamWork, shared_from_this(), std::move(m_DownstreamQueue), r));
+            [self = shared_from_this(), data, r]() { self->DownstreamWork(std::move(data), r); });
       }
-      m_DownstreamQueue = nullptr;
     }
 
     bool
@@ -532,9 +509,9 @@ namespace llarp
         sendMsgs[idx].X = buf;
         ++idx;
       }
-      LogicCall(
-          r->logic(),
-          std::bind(&Path::HandleAllDownstream, shared_from_this(), std::move(sendMsgs), r));
+      LogicCall(r->logic(), [self = shared_from_this(), msgs = std::move(sendMsgs), r]() {
+        self->HandleAllDownstream(std::move(msgs), r);
+      });
     }
 
     void

@@ -155,10 +155,6 @@ namespace llarp
       std::string
       Name() const override;
 
-      /// get a set of all the routers we use as exit node
-      std::set<RouterID>
-      GetExitRouters() const;
-
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;
 
@@ -260,6 +256,9 @@ namespace llarp
       {
         return false;
       }
+
+      void
+      BlacklistSNode(const RouterID snode) override;
 
       /// return true if we have a convotag as an exit session
       /// or as a hidden service session
@@ -425,11 +424,12 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      net::IPRangeMap<exit::BaseSession_ptr> m_ExitMap;
+      net::IPRangeMap<path::PathSet_ptr> m_ExitMap;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
+      std::unique_ptr<EndpointState> m_state;
 
      private:
       void
@@ -445,8 +445,6 @@ namespace llarp
       const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
       // clang-format on
-
-      std::unique_ptr<EndpointState> m_state;
       thread::Queue<RecvDataEvent> m_RecvQueue;
     };
 

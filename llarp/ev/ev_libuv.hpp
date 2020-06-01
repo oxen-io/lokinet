@@ -24,7 +24,7 @@ namespace libuv
       Callback callback;
     };
 
-    Loop();
+    Loop(size_t queue_size);
 
     bool
     init() override;

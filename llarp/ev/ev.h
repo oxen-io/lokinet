@@ -25,6 +25,8 @@
 #include <uv.h>
 #endif
 
+#include <constants/evloop.hpp>
+
 /**
  * ev.h
  *
@@ -47,8 +49,9 @@ using llarp_ev_loop_ptr = std::shared_ptr<llarp_ev_loop>;
 
 /// make an event loop using our baked in event loop on Windows
 /// make an event loop using libuv otherwise.
+/// @param queue_size how big the logic job queue is
 llarp_ev_loop_ptr
-llarp_make_ev_loop();
+llarp_make_ev_loop(std::size_t queue_size = llarp::event_loop_queue_size);
 
 // run mainloop
 void
@@ -61,10 +64,6 @@ llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr& ev);
 /// stop event loop and wait for it to complete all jobs
 void
 llarp_ev_loop_stop(const llarp_ev_loop_ptr& ev);
-
-/// list of packets we recv'd
-/// forward declared
-struct llarp_pkt_list;
 
 /// UDP handling configuration
 struct llarp_udp_io
@@ -82,11 +81,6 @@ struct llarp_udp_io
   /// set by parent
   int (*sendto)(struct llarp_udp_io*, const llarp::SockAddr&, const byte_t*, size_t);
 };
-
-/// get all packets recvieved last tick
-/// return true if we got packets return false if we didn't
-bool
-llarp_ev_udp_recvmany(struct llarp_udp_io* udp, struct llarp_pkt_list* pkts);
 
 /// add UDP handler
 int
