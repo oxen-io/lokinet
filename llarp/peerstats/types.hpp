@@ -31,9 +31,9 @@ namespace llarp
     int32_t numLateRCs = 0;
 
     double peakBandwidthBytesPerSec = 0;
-    int64_t longestRCReceiveIntervalMs = 0;
-    int64_t mostExpiredRCMs = 0;
-    int64_t lastRCUpdated = 0;
+    llarp_time_t longestRCReceiveInterval = 0ms;
+    llarp_time_t leastRCRemainingLifetime = 0ms;
+    llarp_time_t lastRCUpdated = 0ms;
 
     // not serialized
     bool stale = true;

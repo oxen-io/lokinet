@@ -203,7 +203,7 @@ namespace llarp
     auto& stats = m_peerStats[id];
     stats.routerId = id.ToString();
 
-    const bool isNewRC = (stats.lastRCUpdated < rc.last_updated.count());
+    const bool isNewRC = (stats.lastRCUpdated < rc.last_updated);
 
     if (isNewRC)
     {
@@ -211,20 +211,20 @@ namespace llarp
 
       if (stats.numDistinctRCsReceived > 1)
       {
-        const int64_t prevRCExpiration = (stats.lastRCUpdated + RouterContact::Lifetime.count());
+        auto prevRCExpiration = (stats.lastRCUpdated + RouterContact::Lifetime);
 
         // we track max expiry as the delta between (last expiration time - time received),
         // and this value will be negative for an unhealthy router
         // TODO: handle case where new RC is also expired? just ignore?
-        int64_t expiry = (prevRCExpiration - now.count());
+        auto expiry = prevRCExpiration - now;
 
         if (stats.numDistinctRCsReceived == 2)
-          stats.mostExpiredRCMs = expiry;
+          stats.leastRCRemainingLifetime = expiry;
         else
-          stats.mostExpiredRCMs = std::min(stats.mostExpiredRCMs, expiry);
+          stats.leastRCRemainingLifetime = std::min(stats.leastRCRemainingLifetime, expiry);
       }
 
-      stats.lastRCUpdated = rc.last_updated.count();
+      stats.lastRCUpdated = rc.last_updated;
       stats.stale = true;
     }
   }

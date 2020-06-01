@@ -27,9 +27,8 @@ namespace llarp
     numLateRCs += other.numLateRCs;
 
     peakBandwidthBytesPerSec = std::max(peakBandwidthBytesPerSec, other.peakBandwidthBytesPerSec);
-    longestRCReceiveIntervalMs =
-        std::max(longestRCReceiveIntervalMs, other.longestRCReceiveIntervalMs);
-    mostExpiredRCMs = std::max(mostExpiredRCMs, other.mostExpiredRCMs);
+    longestRCReceiveInterval = std::max(longestRCReceiveInterval, other.longestRCReceiveInterval);
+    leastRCRemainingLifetime = std::max(leastRCRemainingLifetime, other.leastRCRemainingLifetime);
     lastRCUpdated = std::max(lastRCUpdated, other.lastRCUpdated);
 
     return *this;
@@ -52,8 +51,9 @@ namespace llarp
         and numLateRCs == other.numLateRCs
 
         and peakBandwidthBytesPerSec == other.peakBandwidthBytesPerSec
-        and longestRCReceiveIntervalMs == other.longestRCReceiveIntervalMs
-        and mostExpiredRCMs == other.mostExpiredRCMs and lastRCUpdated == other.lastRCUpdated;
+        and longestRCReceiveInterval == other.longestRCReceiveInterval
+        and leastRCRemainingLifetime == other.leastRCRemainingLifetime
+        and lastRCUpdated == other.lastRCUpdated;
   }
 
   util::StatusObject
@@ -73,9 +73,9 @@ namespace llarp
         {"numDistinctRCsReceived", numDistinctRCsReceived},
         {"numLateRCs", numLateRCs},
         // {"peakBandwidthBytesPerSec", peakBandwidthBytesPerSec},
-        {"longestRCReceiveIntervalMs", longestRCReceiveIntervalMs},
-        {"mostExpiredRCMs", mostExpiredRCMs},
-        {"lastRCUpdated", lastRCUpdated},
+        {"longestRCReceiveInterval", longestRCReceiveInterval.count()},
+        {"leastRCRemainingLifetime", leastRCRemainingLifetime.count()},
+        {"lastRCUpdated", lastRCUpdated.count()},
     };
   }
 
