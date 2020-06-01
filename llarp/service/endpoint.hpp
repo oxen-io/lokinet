@@ -429,6 +429,7 @@ namespace llarp
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
+      std::unique_ptr<EndpointState> m_state;
 
      private:
       void
@@ -444,10 +445,6 @@ namespace llarp
       const ConvoMap& Sessions() const;
       ConvoMap&       Sessions();
       // clang-format on
-     protected:
-      std::unique_ptr<EndpointState> m_state;
-
-     private:
       thread::Queue<RecvDataEvent> m_RecvQueue;
     };
 
