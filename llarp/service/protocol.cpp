@@ -342,6 +342,7 @@ namespace llarp
                 AuthResult result) {
               if (result == AuthResult::eAuthAccepted)
               {
+                LogInfo("Accepted Convo T=", msg->tag);
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);
                 handler->PutSenderFor(msg->tag, msg->sender, true);
@@ -350,6 +351,7 @@ namespace llarp
               }
               else
               {
+                LogInfo("Rejected Convo T=", msg->tag);
                 handler->SendAuthReject(path, from, msg->tag, result);
               }
             });

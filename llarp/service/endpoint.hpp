@@ -441,6 +441,7 @@ namespace llarp
       hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
+      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
 
      private:
       void
@@ -457,7 +458,6 @@ namespace llarp
       ConvoMap&       Sessions();
       // clang-format on
       thread::Queue<RecvDataEvent> m_RecvQueue;
-      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
     };
 
     using Endpoint_ptr = std::shared_ptr<Endpoint>;

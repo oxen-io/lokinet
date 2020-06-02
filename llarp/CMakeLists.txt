@@ -176,8 +176,10 @@ add_library(liblokinet
   routing/transfer_traffic_message.cpp
   rpc/lokid_rpc_client.cpp
   rpc/rpc_server.cpp
+  rpc/endpoint_rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp
+  service/auth.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp

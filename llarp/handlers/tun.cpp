@@ -17,6 +17,7 @@
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
+#include <rpc/endpoint_rpc.hpp>
 
 #include <util/str.hpp>
 
@@ -112,6 +113,14 @@ namespace llarp
       {
         m_PublishIntroSet = false;
         LogInfo(Name(), " setting to be not reachable by default");
+      }
+
+      if (conf.m_AuthUrl.has_value() and conf.m_AuthMethod.has_value())
+      {
+        auto auth = std::make_shared<rpc::EndpointAuthRPC>(
+            *conf.m_AuthUrl, *conf.m_AuthMethod, Router()->lmq(), shared_from_this());
+        auth->Start();
+        m_AuthPolicy = std::move(auth);
       }
 
       /*

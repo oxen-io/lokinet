@@ -165,6 +165,18 @@ namespace llarp
 
     conf.defineOption<std::string>("network", "keyfile", false, "", AssignmentAcceptor(m_keyfile));
 
+    conf.defineOption<std::string>("network", "auth-url", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      m_AuthUrl = std::move(arg);
+    });
+
+    conf.defineOption<std::string>("network", "auth-method", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      m_AuthMethod = std::move(arg);
+    });
+
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 
@@ -191,7 +203,7 @@ namespace llarp
       m_exitNode = exit;
     });
 
-    conf.defineOption<std::string>("network", "mapaddr", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>("network", "mapaddr", false, true, "", [this](std::string arg) {
       if (arg.empty())
         return;
       huint128_t ip;
@@ -904,6 +916,20 @@ namespace llarp
         {
             "Whether or not we should act as an exit node. Beware that this increases demand",
             "on the server and may pose liability concerns. Enable at your own risk.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-url",
+        {
+            "lmq endpoint to talk to for authenticating new sessions",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-method",
+        {
+            "lmq function to call for authenticating new sessions",
         });
 
     // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)

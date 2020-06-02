@@ -1,6 +1,7 @@
 #pragma once
 
 #include <service/auth.hpp>
+#include <lokimq/lokimq.h>
 
 namespace llarp::service
 {
@@ -18,6 +19,9 @@ namespace llarp::rpc
     explicit EndpointAuthRPC(
         std::string url, std::string method, LMQ_ptr lmq, Endpoint_ptr endpoint);
     ~EndpointAuthRPC() = default;
+
+    void
+    Start();
 
     void
     AuthenticateAsync(
