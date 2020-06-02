@@ -175,8 +175,8 @@ namespace llarp
     });
 
     conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+      if (arg < 2 or arg > 8)
+        throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
       m_Paths = arg;
     });
 
