@@ -613,7 +613,7 @@ namespace llarp
       std::set<RouterID> exclude = prev;
       for (const auto& snode : SnodeBlacklist())
         exclude.insert(snode);
-      if (hop == numHops - 1)
+      if (hop == numHops - 1 and numHops > 1)
       {
         // diversify endpoints
         ForEachPath([&exclude](const path::Path_ptr& path) { exclude.insert(path->Endpoint()); });
