@@ -281,6 +281,13 @@ namespace llarp
       return false;
     }
 
+    SessionStats
+    Session::GetSessionStats() const
+    {
+      // TODO: thread safety
+      return m_Stats;
+    }
+
     util::StatusObject
     Session::ExtractStatus() const
     {

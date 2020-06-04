@@ -75,6 +75,9 @@ namespace llarp
     void
     CheckPersistingSessions(llarp_time_t now) override;
 
+    void
+    updatePeerDb(std::shared_ptr<PeerDb> peerDb) override;
+
     util::StatusObject
     ExtractStatus() const override;
 
@@ -96,6 +99,8 @@ namespace llarp
     // sessions to persist -> timestamp to end persist at
     std::unordered_map<RouterID, llarp_time_t, RouterID::Hash> m_PersistingSessions
         GUARDED_BY(_mutex);
+
+    std::unordered_map<RouterID, SessionStats, RouterID::Hash> m_lastRouterStats;
 
     IOutboundSessionMaker* _sessionMaker;
   };
