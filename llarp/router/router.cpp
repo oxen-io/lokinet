@@ -262,7 +262,6 @@ namespace llarp
   Router::HandleSaveRC() const
   {
     std::string fname = our_rc_file.string();
-    LogWarn("WRITING RC TO DISK @ ", fname);
     _rc.Write(fname.c_str());
   }
 
