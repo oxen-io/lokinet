@@ -391,20 +391,25 @@ namespace llarp
     _rc.SetNick(conf->router.m_nickname);
     _outboundSessionMaker.maxConnectedRouters = conf->router.m_maxConnectedRouters;
     _outboundSessionMaker.minConnectedRouters = conf->router.m_minConnectedRouters;
-    encryption_keyfile = conf->router.m_dataDir / our_enc_key_filename;
-    our_rc_file = conf->router.m_dataDir / our_rc_filename;
-    transport_keyfile = conf->router.m_dataDir / our_transport_key_filename;
+
+    encryption_keyfile = m_keyManager->m_encKeyPath;
+    our_rc_file = m_keyManager->m_rcPath;
+    transport_keyfile = m_keyManager->m_transportKeyPath;
+    ident_keyfile = m_keyManager->m_idKeyPath;
+
     _ourAddress = conf->router.m_publicAddress;
 
     RouterContact::BlockBogons = conf->router.m_blockBogons;
 
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
-    ident_keyfile = conf->lokid.ident_keyfile;
     whitelistRouters = conf->lokid.whitelistRouters;
     lokidRPCAddr = IpAddress(conf->lokid.lokidRPCAddr);  // TODO: make config's option an IpAddress
     lokidRPCUser = conf->lokid.lokidRPCUser;
     lokidRPCPassword = conf->lokid.lokidRPCPassword;
+
+    if (usingSNSeed)
+      ident_keyfile = conf->lokid.ident_keyfile;
 
     // TODO: add config flag for "is service node"
     if (conf->links.m_InboundLinks.size())
@@ -514,11 +519,6 @@ namespace llarp
         bootstrapRCList,
         whitelistRouters,
         m_isServiceNode);
-
-    if (!usingSNSeed)
-    {
-      ident_keyfile = conf->router.m_dataDir / our_identity_filename;
-    }
 
     // create inbound links, if we are a service node
     for (const LinksConfig::LinkInfo& serverConfig : conf->links.m_InboundLinks)

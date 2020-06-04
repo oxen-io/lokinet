@@ -66,11 +66,12 @@ namespace llarp
     llarp::SecretKey encryptionKey;
     llarp::SecretKey transportKey;
 
-   private:
     fs::path m_rcPath;
     fs::path m_idKeyPath;
     fs::path m_encKeyPath;
     fs::path m_transportKeyPath;
+
+   private:
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
 
