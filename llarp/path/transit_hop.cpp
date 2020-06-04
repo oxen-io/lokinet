@@ -269,7 +269,7 @@ namespace llarp
         m_DownstreamWorkCounter++;
 
         r->threadpool()->addJob([self = shared_from_this(),
-                                 data = std::move(m_UpstreamQueue),
+                                 data = std::move(m_DownstreamQueue),
                                  r]() { self->DownstreamWork(data, r); });
       }
       m_DownstreamQueue = nullptr;
