@@ -43,9 +43,10 @@ namespace llarp
     /// @param config should be a prepared config object
     /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
+    /// @param isRouter
     /// @return true on success, false otherwise
     bool
-    initialize(const llarp::Config& config, bool genIfAbsent);
+    initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter);
 
     /// Obtain the self-signed RouterContact
     ///
@@ -65,11 +66,12 @@ namespace llarp
     llarp::SecretKey encryptionKey;
     llarp::SecretKey transportKey;
 
-   private:
     fs::path m_rcPath;
     fs::path m_idKeyPath;
     fs::path m_encKeyPath;
     fs::path m_transportKeyPath;
+
+   private:
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
 

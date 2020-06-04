@@ -64,7 +64,7 @@ namespace llarp
     LoadDatabase();
 
     int
-    Setup();
+    Setup(bool isRelay);
 
     int
     Run(llarp_main_runtime_opts opts);

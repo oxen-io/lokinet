@@ -26,7 +26,7 @@ namespace llarp
   }
 
   bool
-  KeyManager::initialize(const llarp::Config& config, bool genIfAbsent)
+  KeyManager::initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter)
   {
     if (m_initialized)
       return false;
@@ -70,7 +70,7 @@ namespace llarp
 
     // we need to back up keys if our self.signed doesn't appear to have a
     // valid signature
-    m_needBackup = (not rc.VerifySignature());
+    m_needBackup = (isRouter and not rc.VerifySignature());
 
     // if our RC file can't be verified, assume it is out of date (e.g. uses
     // older encryption) and needs to be regenerated. before doing so, backup

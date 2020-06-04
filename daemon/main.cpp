@@ -100,7 +100,7 @@ run_main_context(std::string conffname, llarp_main_runtime_opts opts)
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_setup(ctx);
+    code = llarp_main_setup(ctx, opts.isRelay);
     llarp::util::SetThreadName("llarp-mainloop");
     if (code == 0)
       code = llarp_main_run(ctx, opts);

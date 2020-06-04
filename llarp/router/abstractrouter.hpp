@@ -137,7 +137,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(Config* conf, llarp_nodedb* nodedb) = 0;
+    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
