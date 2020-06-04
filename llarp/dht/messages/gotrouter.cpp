@@ -124,7 +124,6 @@ namespace llarp
           return false;
         if (txid == 0)  // txid == 0 on gossip
         {
-          LogWarn("Received Gossiped RC, generating RCGossipReceivedEvent");
           auto* router = dht.GetRouter();
           router->NotifyRouterEvent<tooling::RCGossipReceivedEvent>(router->pubkey(), rc);
           router->GossipRCIfNeeded(rc);
