@@ -43,9 +43,10 @@ namespace llarp
     /// @param config should be a prepared config object
     /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
+    /// @param isRouter
     /// @return true on success, false otherwise
     bool
-    initialize(const llarp::Config& config, bool genIfAbsent);
+    initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter);
 
     /// Obtain the self-signed RouterContact
     ///

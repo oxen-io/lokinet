@@ -327,7 +327,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(Config* conf, llarp_nodedb* nodedb = nullptr) override;
+    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
     StartJsonRpc() override;

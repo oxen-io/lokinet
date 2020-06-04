@@ -234,7 +234,7 @@ namespace llarp
   }
 
   bool
-  Router::Configure(Config* conf, llarp_nodedb* nodedb)
+  Router::Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb)
   {
     if (nodedb == nullptr)
     {
@@ -242,7 +242,7 @@ namespace llarp
     }
     _nodedb = nodedb;
 
-    if (not m_keyManager->initialize(*conf, true))
+    if (not m_keyManager->initialize(*conf, true, isRouter))
       throw std::runtime_error("KeyManager failed to initialize");
 
     if (!FromConfig(conf))
@@ -331,6 +331,9 @@ namespace llarp
   bool
   Router::UpdateOurRC(bool rotateKeys)
   {
+    if (IsServiceNode())
+      return false;
+
     SecretKey nextOnionKey;
     RouterContact nextRC = _rc;
     if (rotateKeys)
@@ -660,16 +663,19 @@ namespace llarp
 
     const bool isSvcNode = IsServiceNode();
 
-    if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
-        || (now - _rc.last_updated) > rcRegenInterval)
+    if (isSvcNode)
     {
-      LogInfo("regenerating RC");
-      if (!UpdateOurRC(false))
-        LogError("Failed to update our RC");
-    }
-    else
-    {
-      GossipRCIfNeeded(_rc);
+      if (_rc.ExpiresSoon(now, std::chrono::milliseconds(randint() % 10000))
+          || (now - _rc.last_updated) > rcRegenInterval)
+      {
+        LogInfo("regenerating RC");
+        if (!UpdateOurRC(false))
+          LogError("Failed to update our RC");
+      }
+      else
+      {
+        GossipRCIfNeeded(_rc);
+      }
     }
     const bool gotWhitelist = _rcLookupHandler.HaveReceivedWhitelist();
     // remove RCs for nodes that are no longer allowed by network policy
@@ -876,60 +882,57 @@ namespace llarp
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
-    // set public signing key
-    _rc.pubkey = seckey_topublic(identity());
-    // set router version if service node
+    // initialize our RC if we're a service node
     if (IsServiceNode())
     {
+      // set public signing key
+      _rc.pubkey = seckey_topublic(identity());
       _rc.routerVersion = RouterVersion(llarp::VERSION, LLARP_PROTO_VERSION);
-    }
 
-    _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
-      AddressInfo ai;
-      if (link->GetOurAddressInfo(ai))
+      _linkManager.ForEachInboundLink([&](LinkLayer_ptr link) {
+        AddressInfo ai;
+        if (link->GetOurAddressInfo(ai))
+        {
+          // override ip and port
+          if (not _ourAddress.isEmpty())
+          {
+            ai.fromIpAddress(_ourAddress);
+          }
+          if (RouterContact::BlockBogons && IsBogon(ai.ip))
+            return;
+          LogInfo("adding address: ", ai);
+          _rc.addrs.push_back(ai);
+          if (ExitEnabled())
+          {
+            const IpAddress address = ai.toIpAddress();
+            _rc.exits.emplace_back(_rc.pubkey, address);
+            LogInfo("Exit relay started, advertised as exiting at: ", address);
+          }
+        }
+      });
+
+      // set public encryption key
+      _rc.enckey = seckey_topublic(encryption());
+
+      LogInfo("Signing rc...");
+      if (!_rc.Sign(identity()))
       {
-        // override ip and port
-        if (not _ourAddress.isEmpty())
-        {
-          ai.fromIpAddress(_ourAddress);
-        }
-        if (RouterContact::BlockBogons && IsBogon(ai.ip))
-          return;
-        LogInfo("adding address: ", ai);
-        _rc.addrs.push_back(ai);
-        if (ExitEnabled())
-        {
-          const IpAddress address = ai.toIpAddress();
-          _rc.exits.emplace_back(_rc.pubkey, address);
-          LogInfo("Exit relay started, advertised as exiting at: ", address);
-        }
+        LogError("failed to sign rc");
+        return false;
       }
-    });
 
-    // set public encryption key
-    _rc.enckey = seckey_topublic(encryption());
+      if (!SaveRC())
+      {
+        LogError("failed to save RC");
+        return false;
+      }
+      _outboundSessionMaker.SetOurRouter(pubkey());
+      if (!_linkManager.StartLinks(_logic, cryptoworker))
+      {
+        LogWarn("One or more links failed to start.");
+        return false;
+      }
 
-    LogInfo("Signing rc...");
-    if (!_rc.Sign(identity()))
-    {
-      LogError("failed to sign rc");
-      return false;
-    }
-
-    if (!SaveRC())
-    {
-      LogError("failed to save RC");
-      return false;
-    }
-    _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_logic, cryptoworker))
-    {
-      LogWarn("One or more links failed to start.");
-      return false;
-    }
-
-    if (IsServiceNode())
-    {
       // initialize as service node
       if (!InitServiceNode())
       {
@@ -949,13 +952,6 @@ namespace llarp
       // regenerate keys and resign rc before everything else
       CryptoManager::instance()->identity_keygen(_identity);
       CryptoManager::instance()->encryption_keygen(_encryption);
-      _rc.pubkey = seckey_topublic(identity());
-      _rc.enckey = seckey_topublic(encryption());
-      if (!_rc.Sign(identity()))
-      {
-        LogError("failed to regenerate keys and sign RC");
-        return false;
-      }
     }
 
     LogInfo("starting hidden service context...");

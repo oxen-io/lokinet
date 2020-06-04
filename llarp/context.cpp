@@ -72,7 +72,7 @@ namespace llarp
   }
 
   int
-  Context::Setup()
+  Context::Setup(bool isRelay)
   {
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
@@ -92,7 +92,7 @@ namespace llarp
 
     nodedb = std::make_unique<llarp_nodedb>(router->diskworker(), nodedb_dir);
 
-    if (!router->Configure(config.get(), nodedb.get()))
+    if (!router->Configure(config.get(), isRelay, nodedb.get()))
     {
       llarp::LogError("Failed to configure router");
       return 1;
@@ -323,9 +323,9 @@ extern "C"
   }
 
   int
-  llarp_main_setup(struct llarp_main* ptr)
+  llarp_main_setup(struct llarp_main* ptr, bool isRelay)
   {
-    return ptr->ctx->Setup();
+    return ptr->ctx->Setup(isRelay);
   }
 
   int

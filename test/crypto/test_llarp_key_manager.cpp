@@ -116,7 +116,7 @@ TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
   conf.LoadDefault(false, {});
 
   KeyManager keyManager;
-  ASSERT_TRUE(keyManager.initialize(conf, true));
+  ASSERT_TRUE(keyManager.initialize(conf, true, true));
 
   // KeyManager doesn't generate RC file, but should generate others
   ASSERT_FALSE(fs::exists(our_rc_filename));
@@ -132,7 +132,7 @@ TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
   conf.LoadDefault(false, {});
 
   KeyManager keyManager;
-  ASSERT_FALSE(keyManager.initialize(conf, false));
+  ASSERT_FALSE(keyManager.initialize(conf, false, true));
 
   // KeyManager shouldn't have touched any files without (genIfAbsent == true)
   ASSERT_FALSE(fs::exists(our_rc_filename));
@@ -153,7 +153,7 @@ TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
   f.close();
 
   KeyManager keyManager;
-  ASSERT_TRUE(keyManager.initialize(conf, true));
+  ASSERT_TRUE(keyManager.initialize(conf, true, true));
   ASSERT_TRUE(keyManager.needBackup());
 
   ASSERT_TRUE(fs::exists(our_enc_key_filename));
