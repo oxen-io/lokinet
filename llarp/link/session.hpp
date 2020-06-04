@@ -15,6 +15,19 @@ namespace llarp
   struct ILinkMessage;
   struct ILinkLayer;
 
+  struct SessionStats
+  {
+    // rate
+    uint64_t currentRateRX = 0;
+    uint64_t currentRateTX = 0;
+
+    uint64_t totalPacketsRX = 0;
+
+    uint64_t totalAckedTX = 0;
+    uint64_t totalDroppedTX = 0;
+    uint64_t totalInFlightTX = 0;
+  };
+
   struct ILinkSession
   {
     virtual ~ILinkSession() = default;
@@ -107,6 +120,10 @@ namespace llarp
     /// return true if we should send an explicit keepalive message
     virtual bool
     ShouldPing() const = 0;
+
+    /// return the current stats for this session
+    virtual SessionStats
+    GetSessionStats() const = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;

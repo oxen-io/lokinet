@@ -4,6 +4,7 @@
 #include <link/server.hpp>
 #include <util/thread/logic.hpp>
 #include <util/types.hpp>
+#include <peerstats/peer_db.hpp>
 
 #include <functional>
 
@@ -76,6 +77,9 @@ namespace llarp
 
     virtual void
     CheckPersistingSessions(llarp_time_t now) = 0;
+
+    virtual void
+    updatePeerDb(std::shared_ptr<PeerDb> peerDb) = 0;
 
     virtual util::StatusObject
     ExtractStatus() const = 0;

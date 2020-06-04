@@ -770,8 +770,18 @@ namespace llarp
       nodedb()->AsyncFlushToDisk();
     }
 
-    if (m_peerDb and m_peerDb->shouldFlush(now))
-      diskworker()->addJob([this]() { m_peerDb->flushDatabase(); });
+    if (m_peerDb)
+    {
+      // TODO: throttle this?
+      // TODO: need to capture session stats when session terminates / is removed from link manager
+      _linkManager.updatePeerDb(m_peerDb);
+
+      if (m_peerDb->shouldFlush(now))
+      {
+        LogWarn("Queing database flush...");
+        diskworker()->addJob([this]() { m_peerDb->flushDatabase(); });
+      }
+    }
 
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
