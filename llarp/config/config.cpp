@@ -130,12 +130,20 @@ namespace llarp
     conf.defineOption<std::string>(
         "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
 
-    conf.defineOption<bool>(
-        "router",
-        "enable-peer-stats",
-        false,
-        DefaultEnablePeerStats,
-        AssignmentAcceptor(m_enablePeerStats));
+    if (not params.isRelay)
+    {
+      // TODO: remove this -- all service nodes should run peer db
+      conf.defineOption<bool>(
+          "router",
+          "enable-peer-stats",
+          false,
+          DefaultEnablePeerStats,
+          AssignmentAcceptor(m_enablePeerStats));
+    }
+    else
+    {
+      m_enablePeerStats = true;
+    }
   }
 
   void

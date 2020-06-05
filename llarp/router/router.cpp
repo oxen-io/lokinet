@@ -573,6 +573,10 @@ namespace llarp
       m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf->router);
     }
+    else
+    {
+      assert(not IsServiceNode());  // enable peer stats must be enabled for service nodes
+    }
 
     // Logging config
     LogContext::Instance().Initialize(
