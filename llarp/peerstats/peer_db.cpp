@@ -14,7 +14,7 @@ namespace llarp
   void
   PeerDb::loadDatabase(std::optional<std::filesystem::path> file)
   {
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
 
     if (m_storage)
       throw std::runtime_error("Reloading database not supported");  // TODO
@@ -67,7 +67,7 @@ namespace llarp
     std::vector<PeerStats> staleStats;
 
     {
-      std::lock_guard gaurd(m_statsLock);
+      std::lock_guard guard(m_statsLock);
 
       // copy all stale entries
       for (auto& entry : m_peerStats)
@@ -108,7 +108,7 @@ namespace llarp
       throw std::invalid_argument(
           stringify("routerId ", routerId, " doesn't match ", delta.routerId));
 
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
     auto itr = m_peerStats.find(routerId);
     if (itr == m_peerStats.end())
       itr = m_peerStats.insert({routerId, delta}).first;
@@ -121,7 +121,7 @@ namespace llarp
   void
   PeerDb::modifyPeerStats(const RouterID& routerId, std::function<void(PeerStats&)> callback)
   {
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
 
     PeerStats& stats = m_peerStats[routerId];
     stats.routerId = routerId;
@@ -132,7 +132,7 @@ namespace llarp
   std::optional<PeerStats>
   PeerDb::getCurrentPeerStats(const RouterID& routerId) const
   {
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
     auto itr = m_peerStats.find(routerId);
     if (itr == m_peerStats.end())
       return std::nullopt;
@@ -190,7 +190,7 @@ namespace llarp
   void
   PeerDb::handleGossipedRC(const RouterContact& rc, llarp_time_t now)
   {
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
 
     RouterID id(rc.pubkey);
     auto& stats = m_peerStats[id];
@@ -243,7 +243,7 @@ namespace llarp
   util::StatusObject
   PeerDb::ExtractStatus() const
   {
-    std::lock_guard gaurd(m_statsLock);
+    std::lock_guard guard(m_statsLock);
 
     bool loaded = (m_storage.get() != nullptr);
     util::StatusObject dbFile = nullptr;
