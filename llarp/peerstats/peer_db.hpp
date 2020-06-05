@@ -112,7 +112,7 @@ namespace llarp
 
    private:
     std::unordered_map<RouterID, PeerStats, RouterID::Hash> m_peerStats;
-    std::mutex m_statsLock;
+    mutable std::mutex m_statsLock;
 
     std::unique_ptr<PeerDbStorage> m_storage;
 
