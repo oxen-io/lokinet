@@ -82,8 +82,10 @@ namespace llarp
     std::optional<service::Address> m_exitNode;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
+    bool m_AuthEnabled = false;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
+    std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
 
     // TODO:
     // on-up

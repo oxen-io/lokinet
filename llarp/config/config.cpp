@@ -165,17 +165,24 @@ namespace llarp
 
     conf.defineOption<std::string>("network", "keyfile", false, "", AssignmentAcceptor(m_keyfile));
 
-    conf.defineOption<std::string>("network", "auth-url", false, "", [this](std::string arg) {
-      if (arg.empty())
-        return;
-      m_AuthUrl = std::move(arg);
-    });
+    conf.defineOption<bool>("network", "auth", false, false, AssignmentAcceptor(m_AuthEnabled));
 
-    conf.defineOption<std::string>("network", "auth-method", false, "", [this](std::string arg) {
-      if (arg.empty())
-        return;
-      m_AuthMethod = std::move(arg);
-    });
+    conf.defineOption<std::string>("network", "auth-url", false, "", AssignmentAcceptor(m_AuthUrl));
+
+    conf.defineOption<std::string>(
+        "network", "auth-method", false, "llarp.auth", [this](std::string arg) {
+          if (arg.empty())
+            return;
+          m_AuthMethod = std::move(arg);
+        });
+
+    conf.defineOption<std::string>(
+        "network", "auth-whitelist", false, true, "", [this](std::string arg) {
+          service::Address addr;
+          if (not addr.FromString(arg))
+            throw std::invalid_argument(stringify("bad loki address: ", arg));
+          m_AuthWhitelist.emplace(std::move(addr));
+        });
 
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
@@ -864,6 +871,46 @@ namespace llarp
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",
             "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.",
         });
+    // extra [network] options
+    // TODO: probably better to create an [exit] section and only allow it for routers
+    def.addOptionComments(
+        "network",
+        "exit",
+        {
+            "Whether or not we should act as an exit node. Beware that this increases demand",
+            "on the server and may pose liability concerns. Enable at your own risk.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth",
+        {
+            "authenticate remote sessions against a whitelist or an external lmq server",
+            "true/false",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-url",
+        {
+            "lmq endpoint to talk to for authenticating new sessions",
+            "ipc:///var/lib/lokinet/auth.socket",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-method",
+        {
+            "lmq function to call for authenticating new sessions",
+            "llarp.auth",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-whitelist",
+        {
+            "manually add a remote endpoint by .loki address to the access whitelist",
+        });
 
     return def.generateINIConfig(true);
   }
@@ -906,47 +953,6 @@ namespace llarp
         "service-node-seed",
         {
             "File containing service node's seed.",
-        });
-
-    // extra [network] options
-    // TODO: probably better to create an [exit] section and only allow it for routers
-    def.addOptionComments(
-        "network",
-        "exit",
-        {
-            "Whether or not we should act as an exit node. Beware that this increases demand",
-            "on the server and may pose liability concerns. Enable at your own risk.",
-        });
-
-    def.addOptionComments(
-        "network",
-        "auth-url",
-        {
-            "lmq endpoint to talk to for authenticating new sessions",
-        });
-
-    def.addOptionComments(
-        "network",
-        "auth-method",
-        {
-            "lmq function to call for authenticating new sessions",
-        });
-
-    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
-    //       additionally, what's default? What if I don't whitelist anything?
-    def.addOptionComments(
-        "network",
-        "exit-whitelist",
-        {
-            "List of destination protocol:port pairs to whitelist, example: udp:*",
-            "or tcp:80. Multiple values supported.",
-        });
-
-    def.addOptionComments(
-        "network",
-        "exit-blacklist",
-        {
-            "Blacklist of destinations (same format as whitelist).",
         });
 
     return def.generateINIConfig(true);

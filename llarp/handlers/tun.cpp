@@ -118,7 +118,11 @@ namespace llarp
       if (conf.m_AuthUrl.has_value() and conf.m_AuthMethod.has_value())
       {
         auto auth = std::make_shared<rpc::EndpointAuthRPC>(
-            *conf.m_AuthUrl, *conf.m_AuthMethod, Router()->lmq(), shared_from_this());
+            *conf.m_AuthUrl,
+            *conf.m_AuthMethod,
+            conf.m_AuthWhitelist,
+            Router()->lmq(),
+            shared_from_this());
         auth->Start();
         m_AuthPolicy = std::move(auth);
       }
