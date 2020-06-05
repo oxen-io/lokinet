@@ -330,8 +330,6 @@ namespace llarp
   void
   LinkManager::updatePeerDb(std::shared_ptr<PeerDb> peerDb)
   {
-    LogWarn("LinkManager::updatePeerDb()");
-
     std::vector<std::pair<RouterID, SessionStats>> statsToUpdate;
 
     int64_t diffTotalTX = 0;
@@ -339,7 +337,6 @@ namespace llarp
     ForEachPeer([&](ILinkSession* session) {
       // derive RouterID
       RouterID id = RouterID(session->GetRemoteRC().pubkey);
-      LogWarn(" Session : ", id);
 
       SessionStats sessionStats = session->GetSessionStats();
       SessionStats diff;
