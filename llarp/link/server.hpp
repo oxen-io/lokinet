@@ -17,34 +17,53 @@
 
 namespace llarp
 {
-  /// handle a link layer message
+  /// handle a link layer message. this allows for the message to be handled by "upper layers"
+  ///
+  /// currently called from iwp::Session when messages are sent or received.
   using LinkMessageHandler = std::function<bool(ILinkSession*, const llarp_buffer_t&)>;
 
-  /// sign a buffer with identity key
+  /// sign a buffer with identity key. this function should take the given `llarp_buffer_t` and
+  /// sign it, prividing the signature in the out variable `Signature&`.
+  ///
+  /// currently called from iwp::Session for signing LIMs (link introduction messages)
   using SignBufferFunc = std::function<bool(Signature&, const llarp_buffer_t&)>;
 
   /// handle connection timeout
+  ///
+  /// currently called from ILinkLayer::Pump() when an unestablished session times out
   using TimeoutHandler = std::function<void(ILinkSession*)>;
 
   /// get our RC
+  ///
+  /// currently called by iwp::Session to include as part of a LIM (link introduction message)
   using GetRCFunc = std::function<const llarp::RouterContact&(void)>;
 
   /// handler of session established
   /// return false to reject
   /// return true to accept
+  ///
+  /// currently called in iwp::Session when a valid LIM is received.
   using SessionEstablishedHandler = std::function<bool(ILinkSession*)>;
 
   /// f(new, old)
   /// handler of session renegotiation
   /// returns true if the new rc is valid
   /// returns false otherwise and the session is terminated
+  ///
+  /// currently called from iwp::Session when we receive a renegotiation LIM
   using SessionRenegotiateHandler = std::function<bool(llarp::RouterContact, llarp::RouterContact)>;
 
   /// handles close of all sessions with pubkey
+  ///
+  /// Note that this handler is called while m_AuthedLinksMutex is held
+  ///
+  /// currently called from iwp::ILinkSession when a previously established session times out
   using SessionClosedHandler = std::function<void(llarp::RouterID)>;
 
   /// notifies router that a link session has ended its pump and we should flush
   /// messages to upper layers
+  ///
+  /// currently called at the end of every iwp::Session::Pump() call
   using PumpDoneHandler = std::function<void(void)>;
 
   struct ILinkLayer
