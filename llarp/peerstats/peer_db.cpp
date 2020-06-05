@@ -192,8 +192,6 @@ namespace llarp
   {
     std::lock_guard gaurd(m_statsLock);
 
-    LogWarn("Handling gossiped RC", rc);
-
     RouterID id(rc.pubkey);
     auto& stats = m_peerStats[id];
     stats.routerId = id;
