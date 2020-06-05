@@ -12,7 +12,7 @@ namespace llarp
   }
 
   void
-  PeerDb::loadDatabase(std::optional<std::filesystem::path> file)
+  PeerDb::loadDatabase(std::optional<fs::path> file)
   {
     std::lock_guard guard(m_statsLock);
 
