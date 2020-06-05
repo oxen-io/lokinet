@@ -153,7 +153,6 @@ namespace llarp
   void
   Router::PumpLL()
   {
-    const auto now = Now();
     if (_stopping.load())
       return;
     paths.PumpDownstream();
