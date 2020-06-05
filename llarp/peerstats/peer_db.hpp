@@ -6,6 +6,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <util/fs.hpp>
 #include <config/config.hpp>
 #include <router_id.hpp>
 #include <util/time.hpp>
@@ -35,7 +36,7 @@ namespace llarp
     ///        is provided. If no value is provided, the database will be memory-backed.
     /// @throws if sqlite_orm/sqlite3 is unable to open or create a database at the given file
     void
-    loadDatabase(std::optional<std::filesystem::path> file);
+    loadDatabase(std::optional<fs::path> file);
 
     /// Flushes the database. Must be called after loadDatabase(). This call will block during I/O
     /// and should be called in an appropriate threading context. However, it will make a temporary
