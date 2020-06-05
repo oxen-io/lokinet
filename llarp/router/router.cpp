@@ -153,20 +153,11 @@ namespace llarp
   void
   Router::PumpLL()
   {
-    static constexpr auto PumpInterval = 25ms;
-    const auto now = Now();
     if (_stopping.load())
       return;
-    if (_lastPump + PumpInterval >= now)
-    {
-      return;
-    }
-    _lastPump = now;
     paths.PumpDownstream();
     paths.PumpUpstream();
-
     _outboundMessageHandler.Tick();
-
     _linkManager.PumpLinks();
   }
 

@@ -153,9 +153,7 @@ namespace llarp
         if (m_DownstreamGather.enabled())
           m_DownstreamGather.pushBack(msg);
       }
-      m_DownstreamWorkCounter--;
-      if (m_DownstreamWorkCounter == 0)
-        LogicCall(r->logic(), flushIt);
+      LogicCall(r->logic(), flushIt);
     }
 
     void
@@ -187,9 +185,7 @@ namespace llarp
         if (m_UpstreamGather.enabled())
           m_UpstreamGather.pushBack(msg);
       }
-      m_UpstreamWorkCounter--;
-      if (m_UpstreamWorkCounter == 0)
-        LogicCall(r->logic(), flushIt);
+      LogicCall(r->logic(), flushIt);
     }
 
     void
@@ -252,8 +248,6 @@ namespace llarp
     {
       if (m_UpstreamQueue && not m_UpstreamQueue->empty())
       {
-        m_UpstreamWorkCounter++;
-
         r->threadpool()->addJob([self = shared_from_this(),
                                  data = std::move(m_UpstreamQueue),
                                  r]() { self->UpstreamWork(data, r); });
@@ -266,8 +260,6 @@ namespace llarp
     {
       if (m_DownstreamQueue && not m_DownstreamQueue->empty())
       {
-        m_DownstreamWorkCounter++;
-
         r->threadpool()->addJob([self = shared_from_this(),
                                  data = std::move(m_DownstreamQueue),
                                  r]() { self->DownstreamWork(data, r); });

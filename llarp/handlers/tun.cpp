@@ -1019,6 +1019,7 @@ namespace llarp
     {
       // called in the isolated network thread
       auto* self = static_cast<TunEndpoint*>(tun->user);
+      self->Flush();
       self->FlushToUser([self, tun](net::IPPacket& pkt) -> bool {
         if (not llarp_ev_tun_async_write(tun, pkt.Buffer()))
         {
