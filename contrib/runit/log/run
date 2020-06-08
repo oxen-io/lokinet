@@ -1,0 +1,3 @@
+#!/bin/sh
+mkdir -p /var/log/lokinet
+exec chpst -u root:root svlogd -tt /var/log/lokinet/

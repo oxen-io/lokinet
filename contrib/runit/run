@@ -1,0 +1,2 @@
+#!/bin/sh
+exec chpst -u loki:loki /usr/local/bin/lokinet ~loki/.lokinet/lokinet.ini 2>&1
