@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	SPDX-License-Identifier: GPL-2.0
+
+	Copyright (C) 2019 WireGuard LLC. All Rights Reserved.
+-->
+<?if $(var.EXAMPLETUN_PLATFORM) = "amd64"?>
+	<?define UpgradeCode = "{{{FIXED 64BIT UUID}}}"?>
+<?elseif $(var.EXAMPLETUN_PLATFORM) = "x86"?>
+	<?define UpgradeCode = "{{{FIXED 32BIT UUID}}}"?>
+<?else?>
+	<?error Unknown platform ?>
+<?endif?>
+
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product
+		Id="*"
+		Name="WinTun_Loki"
+		Language="1033"
+		Version="1.0"
+		Manufacturer="Loki Project"
+		UpgradeCode="$(var.UpgradeCode)">
+		<Package
+			InstallerVersion="310"
+			Compressed="yes"
+			InstallScope="perMachine"
+			Description="Wintun for Lokinet"
+			ReadOnly="yes" />
+
+		<MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+		<Property Id="ARPNOMODIFY" Value="yes" />
+		<Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+		<Property Id="DISABLEADVTSHORTCUTS" Value="yes" />
+		<Property Id="DISABLEROLLBACK" Value="yes" />
+		<Property Id="MSIDISABLERMRESTART" Value="1" />
+		<Property Id="MSIRMSHUTDOWN" Value="1" />
+
+		<MajorUpgrade
+			AllowDowngrades="no"
+			AllowSameVersionUpgrades="yes"
+			DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+			Schedule="afterInstallExecute" />
+
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Merge Id="WintunMergeModule" Language="0" DiskId="1" SourceFile=".deps\wintun-$(var.EXAMPLETUN_PLATFORM).msm" />
+		</Directory>
+
+		<Feature Id="WintunFeature" Title="Wintun" Level="1">
+			<MergeRef Id="WintunMergeModule" />
+		</Feature>
+	</Product>
+</Wix>
