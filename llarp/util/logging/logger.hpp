@@ -60,8 +60,24 @@ namespace llarp
         std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
+  /// RAII type to turn logging off
+  /// logging is suppressed as long as the silencer is in scope
+  struct LogSilencer
+  {
+    LogSilencer();
+    ~LogSilencer();
+    explicit LogSilencer(LogContext& ctx);
+
+   private:
+    LogContext& parent;
+    ILogStream_ptr stream;
+  };
+
   void
   SetLogLevel(LogLevel lvl);
+
+  LogLevel
+  GetLogLevel();
 
   /** internal */
   template <typename... TArgs>
@@ -75,7 +91,7 @@ namespace llarp
 /* nop out logging for hive mode for now */
 #ifndef LOKINET_HIVE
     auto& log = LogContext::Instance();
-    if (log.curLevel > lvl)
+    if (log.curLevel > lvl || log.logStream == nullptr)
       return;
     std::stringstream ss;
     LogAppend(ss, std::forward<TArgs>(args)...);

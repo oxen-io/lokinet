@@ -45,11 +45,11 @@ namespace llarp
     bool
     Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
     {
-      if (conf.m_paths > 0)
-        numPaths = conf.m_paths;
+      if (conf.m_Paths.has_value())
+        numPaths = *conf.m_Paths;
 
-      if (conf.m_hops)
-        numHops = conf.m_hops;
+      if (conf.m_Hops.has_value())
+        numHops = *conf.m_Hops;
 
       return m_state->Configure(conf);
     }
@@ -387,7 +387,6 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
-      LogWarn("LoadKeyFile()");
       const auto& keyfile = m_state->m_Keyfile;
       if (!keyfile.empty())
       {

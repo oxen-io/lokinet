@@ -90,6 +90,12 @@ namespace llarp
     }
   }
 
+  LogLevel
+  GetLogLevel()
+  {
+    return LogContext::Instance().curLevel;
+  }
+
   void
   LogContext::ImmediateFlush()
   {
@@ -166,6 +172,19 @@ namespace llarp
 #endif
         break;
     }
+  }
+
+  LogSilencer::LogSilencer() : LogSilencer(LogContext::Instance())
+  {
+  }
+
+  LogSilencer::LogSilencer(LogContext& ctx) : parent(ctx), stream(std::move(ctx.logStream))
+  {
+  }
+
+  LogSilencer::~LogSilencer()
+  {
+    parent.logStream = std::move(stream);
   }
 
 }  // namespace llarp

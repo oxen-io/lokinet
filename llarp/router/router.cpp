@@ -442,8 +442,10 @@ namespace llarp
       // TODO: use constant
       fs::path defaultBootstrapFile = conf->router.m_dataDir / "bootstrap.signed";
       if (fs::exists(defaultBootstrapFile))
+      {
         configRouters.push_back(defaultBootstrapFile);
-      else
+      }
+      else if (not conf->bootstrap.skipBootstrap)
       {
         LogError("No bootstrap files specified in config file, and the default");
         LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");

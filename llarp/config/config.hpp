@@ -72,11 +72,11 @@ namespace llarp
     std::string m_ifname;
     std::string m_ifaddr;
 
-    std::string m_keyfile;
+    std::optional<fs::path> m_keyfile;
     std::string m_endpointType;
     bool m_reachable = false;
-    int m_hops = -1;
-    int m_paths = -1;
+    std::optional<int> m_Hops;
+    std::optional<int> m_Paths;
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
     std::optional<service::Address> m_exitNode;
@@ -152,7 +152,9 @@ namespace llarp
 
   struct BootstrapConfig
   {
-    std::vector<std::string> routers;
+    std::vector<fs::path> routers;
+    /// for unit tests
+    bool skipBootstrap = false;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -192,7 +194,7 @@ namespace llarp
 
     // Load a config from the given file
     bool
-    Load(const char* fname, bool isRelay, fs::path defaultDataDir);
+    Load(const fs::path fname, bool isRelay, fs::path defaultDataDir);
 
     /// Load (initialize) a default config.
     ///
@@ -223,5 +225,13 @@ namespace llarp
       const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
+
+struct llarp_config
+{
+  llarp::Config impl;
+  llarp_config() = default;
+
+  explicit llarp_config(const llarp_config* other);
+};
 
 #endif

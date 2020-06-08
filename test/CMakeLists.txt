@@ -69,6 +69,7 @@ add_subdirectory(Catch2)
 add_executable(catchAll
   nodedb/test_nodedb.cpp
   path/test_path.cpp
+  regress/2020-06-08-key-backup-bug.cpp
   util/test_llarp_util_bits.cpp
   util/test_llarp_util_printer.cpp
   util/test_llarp_util_str.cpp

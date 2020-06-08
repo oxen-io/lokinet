@@ -750,7 +750,9 @@ namespace libuv
     loop->process_timer_queue();
     loop->process_cancel_queue();
     loop->FlushLogic();
-    llarp::LogContext::Instance().logStream->Tick(loop->time_now());
+    auto& log = llarp::LogContext::Instance();
+    if (log.logStream)
+      log.logStream->Tick(loop->time_now());
   }
 
   Loop::Loop(size_t queue_size)
