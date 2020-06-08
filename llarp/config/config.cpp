@@ -171,13 +171,13 @@ namespace llarp
     conf.defineOption<int>("network", "hops", false, HopsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:hops must be >= 1 and <= 8");
-      m_hops = arg;
+      m_Hops = arg;
     });
 
     conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
       if (arg < 1 or arg > 8)
         throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
-      m_paths = arg;
+      m_Paths = arg;
     });
 
     conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
@@ -407,8 +407,15 @@ namespace llarp
 
     conf.defineOption<std::string>(
         "bootstrap", "add-node", false, true, "", [this](std::string arg) {
-          // TODO: validate as router fs path
+          if (arg.empty())
+          {
+            throw std::invalid_argument("cannot use empty filename as bootstrap");
+          }
           routers.emplace_back(std::move(arg));
+          if (not fs::exists(routers.back()))
+          {
+            throw std::invalid_argument("file does not exist: " + arg);
+          }
         });
   }
 
@@ -444,7 +451,7 @@ namespace llarp
   }
 
   bool
-  Config::Load(const char* fname, bool isRelay, fs::path defaultDataDir)
+  Config::Load(const fs::path fname, bool isRelay, fs::path defaultDataDir)
   {
     try
     {

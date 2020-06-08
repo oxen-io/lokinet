@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <util/fs.hpp>
 
 namespace llarp
 {
@@ -22,7 +23,7 @@ namespace llarp
     /// return true on success
     /// return false on error
     bool
-    LoadFile(std::string_view fname);
+    LoadFile(const fs::path fname);
 
     /// load from string
     /// return true on success
@@ -45,7 +46,7 @@ namespace llarp
 
     std::vector<char> m_Data;
     Config_impl_t m_Config;
-    std::string m_FileName;
+    fs::path m_FileName;
   };
 
 }  // namespace llarp

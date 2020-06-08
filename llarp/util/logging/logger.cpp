@@ -90,6 +90,12 @@ namespace llarp
     }
   }
 
+  LogLevel
+  GetLogLevel()
+  {
+    return LogContext::Instance().curLevel;
+  }
+
   void
   LogContext::ImmediateFlush()
   {

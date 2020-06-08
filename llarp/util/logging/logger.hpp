@@ -63,6 +63,9 @@ namespace llarp
   void
   SetLogLevel(LogLevel lvl);
 
+  LogLevel
+  GetLogLevel();
+
   /** internal */
   template <typename... TArgs>
   inline static void

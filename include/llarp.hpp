@@ -107,6 +107,7 @@ namespace llarp
     std::string configfile;
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
+
 }  // namespace llarp
 
 #endif

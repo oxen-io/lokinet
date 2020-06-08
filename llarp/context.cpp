@@ -234,15 +234,9 @@ struct llarp_main
   std::shared_ptr<llarp::Context> ctx;
 };
 
-struct llarp_config
+llarp_config::llarp_config(const llarp_config* other) : impl(other->impl)
 {
-  llarp::Config impl;
-  llarp_config() = default;
-
-  llarp_config(const llarp_config* other) : impl(other->impl)
-  {
-  }
-};
+}
 
 namespace llarp
 {
