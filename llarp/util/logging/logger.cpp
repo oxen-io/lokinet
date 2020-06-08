@@ -174,6 +174,16 @@ namespace llarp
     }
   }
 
+  void
+  SilenceLog(std::function<void(void)> func)
+  {
+    auto& log = LogContext::Instance();
+    ILogStream_ptr oldStream = std::move(log.logStream);
+    log.logStream = nullptr;
+    func();
+    log.logStream = std::move(oldStream);
+  }
+
 }  // namespace llarp
 
 extern "C"

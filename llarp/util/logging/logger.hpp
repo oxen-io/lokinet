@@ -60,6 +60,10 @@ namespace llarp
         std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
+  // call a function where the logging is slienced
+  void
+  SilenceLog(std::function<void(void)> func);
+
   void
   SetLogLevel(LogLevel lvl);
 
@@ -78,7 +82,7 @@ namespace llarp
 /* nop out logging for hive mode for now */
 #ifndef LOKINET_HIVE
     auto& log = LogContext::Instance();
-    if (log.curLevel > lvl)
+    if (log.curLevel > lvl || log.logStream == nullptr)
       return;
     std::stringstream ss;
     LogAppend(ss, std::forward<TArgs>(args)...);
