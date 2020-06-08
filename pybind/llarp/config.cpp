@@ -41,19 +41,10 @@ namespace llarp
             [](RouterConfig& self) { return self.m_dataDir.c_str(); },
             [](RouterConfig& self, std::string dir) { self.m_dataDir = dir; })
         .def_readwrite("blockBogons", &RouterConfig::m_blockBogons)
-        .def_readwrite("publicOverride", &RouterConfig::m_publicOverride)
-        .def_readwrite("ip4addr", &RouterConfig::m_ip4addr)
         .def(
             "overrideAddress",
-            [](RouterConfig& self, std::string ip, std::string port) {
-              llarp::Addr addr(ip);
-              self.m_addrInfo.ip = *addr.addr6();
-
-              int portInt = stoi(port);
-              self.m_ip4addr.sin_port = portInt;
-              self.m_addrInfo.port = portInt;
-
-              self.m_publicOverride = true;
+            [](RouterConfig& self, std::string addr) {
+              self.m_publicAddress = llarp::IpAddress(addr);
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
@@ -67,10 +58,10 @@ namespace llarp
         .def_readwrite("keyfile", &NetworkConfig::m_keyfile)
         .def_readwrite("endpointType", &NetworkConfig::m_endpointType)
         .def_readwrite("reachable", &NetworkConfig::m_reachable)
-        .def_readwrite("hops", &NetworkConfig::m_hops)
-        .def_readwrite("paths", &NetworkConfig::m_paths)
+        .def_readwrite("hops", &NetworkConfig::m_Hops)
+        .def_readwrite("paths", &NetworkConfig::m_Paths)
         .def_readwrite("snodeBlacklist", &NetworkConfig::m_snodeBlacklist)
-        .def_readwrite("mapAddr", &NetworkConfig::m_mapAddr)
+        .def_readwrite("mapAddr", &NetworkConfig::m_mapAddrs)
         .def_readwrite("strictConnect", &NetworkConfig::m_strictConnect);
 
     py::class_<ConnectConfig>(mod, "ConnectConfig")
@@ -116,7 +107,21 @@ namespace llarp
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())
-        .def_readwrite("routers", &BootstrapConfig::routers);
+        .def_property(
+            "routers",
+            [](BootstrapConfig& self) {
+              std::vector<std::string> args;
+              for (const auto& arg : self.routers)
+                args.emplace_back(arg.string());
+              return args;
+            },
+            [](BootstrapConfig& self, std::vector<std::string> args) {
+              self.routers.clear();
+              for (const auto& arg : args)
+              {
+                self.routers.emplace_back(arg);
+              }
+            });
 
     py::class_<LoggingConfig>(mod, "LoggingConfig")
         .def(py::init<>())

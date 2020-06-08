@@ -14,7 +14,9 @@ import traceback
 
 class RouterHive(object):
 
-  def __init__(self, n_relays=10, n_clients=10, netid="hive"):
+  def __init__(self, n_relays=10, n_clients=10, netid="hive", shutup=True):
+    self._log = pyllarp.LogContext()
+    self._log.shutup = shutup
     try:
 
       self.endpointName = "pyllarp"
@@ -61,13 +63,7 @@ class RouterHive(object):
     config.router.dataDir = dirname
     config.router.netid = self.netid
     config.router.nickname = "Router%d" % index
-    config.router.publicOverride = True
-    config.router.overrideAddress("127.0.0.1", '{}'.format(port))
-    """
-    config.router.ip4addr.sin_family = AF_INET
-    config.router.ip4addr.sin_port = htons(port)
-    config.router.ip4addr.sin_addr.set("127.0.0.1")
-    """
+    config.router.overrideAddress('127.0.0.1:{}'.format(port))
     config.router.blockBogons = False
 
     config.network.enableProfiling = False
@@ -176,7 +172,7 @@ class RouterHive(object):
     return rcs
 
 
-def main(n_relays=10, n_clients=10, print_each_event=True):
+def main(n_relays=10, n_clients=10, print_each_event=True, verbose=False):
 
   running = True
 
@@ -188,7 +184,7 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
   signal(SIGINT, handle_sigint)
 
   try:
-    hive = RouterHive(n_relays, n_clients)
+    hive = RouterHive(n_relays, n_clients, shutup=not verbose)
     hive.Start()
 
   except Exception as err:
@@ -239,7 +235,8 @@ def main(n_relays=10, n_clients=10, print_each_event=True):
       pprint(event_counts)
 
     hive.events = []
-    sleep(1)
+    for _ in range(100):
+      sleep(1.0 / 100)
 
   print('stopping')
   hive.Stop()
@@ -254,5 +251,6 @@ if __name__ == '__main__':
   parser.add_argument('--print-events', dest="print_events", action='store_true')
   parser.add_argument('--relay-count', dest="relay_count", type=int, default=10)
   parser.add_argument('--client-count', dest="client_count", type=int, default=10)
+  parser.add_argument('--verbose', action='store_true', dest='verbose')
   args = parser.parse_args()
-  main(n_relays=args.relay_count, n_clients=args.client_count, print_each_event = args.print_events)
+  main(n_relays=args.relay_count, n_clients=args.client_count, print_each_event = args.print_events, verbose=args.verbose)

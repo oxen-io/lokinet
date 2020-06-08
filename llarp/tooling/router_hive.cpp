@@ -18,7 +18,7 @@ namespace tooling
       const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers, bool isRelay)
   {
     llarp_main* ctx = llarp_main_init_from_config(config->Copy(), isRelay);
-    auto result = llarp_main_setup(ctx);
+    auto result = llarp_main_setup(ctx, isRelay);
     if (result == 0)
     {
       llarp::Context::Get(ctx)->InjectHive(this);

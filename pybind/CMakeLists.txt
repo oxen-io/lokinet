@@ -5,6 +5,7 @@ pybind11_add_module(pyllarp MODULE
   llarp/router_contact.cpp
   llarp/crypto/types.cpp
   llarp/config.cpp
+  llarp/logger.cpp
   llarp/dht/dht_types.cpp
   llarp/path/path_types.cpp
   llarp/path/path_hop_config.cpp
