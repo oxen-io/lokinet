@@ -174,14 +174,17 @@ namespace llarp
     }
   }
 
-  void
-  SilenceLog(std::function<void(void)> func)
+  LogSilencer::LogSilencer() : LogSilencer(LogContext::Instance())
   {
-    auto& log = LogContext::Instance();
-    ILogStream_ptr oldStream = std::move(log.logStream);
-    log.logStream = nullptr;
-    func();
-    log.logStream = std::move(oldStream);
+  }
+
+  LogSilencer::LogSilencer(LogContext& ctx) : stream(std::move(ctx.logStream))
+  {
+  }
+
+  LogSilencer::~LogSilencer()
+  {
+    LogContext::Instance().logStream = std::move(stream);
   }
 
 }  // namespace llarp

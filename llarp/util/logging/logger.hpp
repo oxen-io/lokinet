@@ -60,9 +60,17 @@ namespace llarp
         std::shared_ptr<thread::ThreadPool> threadpool);
   };
 
-  // call a function where the logging is slienced
-  void
-  SilenceLog(std::function<void(void)> func);
+  /// RAII type to turn logging off
+  /// logging is suppressed as long as the silencer is in scope
+  struct LogSilencer
+  {
+    LogSilencer();
+    ~LogSilencer();
+    explicit LogSilencer(LogContext& ctx);
+
+   private:
+    ILogStream_ptr stream;
+  };
 
   void
   SetLogLevel(LogLevel lvl);
