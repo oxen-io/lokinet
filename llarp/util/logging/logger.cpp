@@ -178,13 +178,13 @@ namespace llarp
   {
   }
 
-  LogSilencer::LogSilencer(LogContext& ctx) : stream(std::move(ctx.logStream))
+  LogSilencer::LogSilencer(LogContext& ctx) : parent(ctx), stream(std::move(ctx.logStream))
   {
   }
 
   LogSilencer::~LogSilencer()
   {
-    LogContext::Instance().logStream = std::move(stream);
+    parent.logStream = std::move(stream);
   }
 
 }  // namespace llarp

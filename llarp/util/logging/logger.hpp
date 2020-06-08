@@ -69,6 +69,7 @@ namespace llarp
     explicit LogSilencer(LogContext& ctx);
 
    private:
+    LogContext& parent;
     ILogStream_ptr stream;
   };
 
