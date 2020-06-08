@@ -434,6 +434,14 @@ namespace llarp
     void
     SessionClosed(RouterID remote) override;
 
+    /// called by link when an unestablished connection times out
+    void
+    ConnectionTimedOut(ILinkSession* session);
+
+    /// called by link when session is fully established
+    bool
+    ConnectionEstablished(ILinkSession* session);
+
     /// call internal router ticker
     void
     Tick();

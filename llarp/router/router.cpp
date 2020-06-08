@@ -548,9 +548,9 @@ namespace llarp
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
-          util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
+          util::memFn(&Router::ConnectionEstablished, this),
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-          util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
+          util::memFn(&Router::ConnectionTimedOut, this),
           util::memFn(&AbstractRouter::SessionClosed, this),
           util::memFn(&AbstractRouter::PumpLL, this),
           util::memFn(&AbstractRouter::QueueWork, this));
@@ -822,6 +822,30 @@ namespace llarp
     dht()->impl->Nodes()->DelNode(k);
 
     LogInfo("Session to ", remote, " fully closed");
+  }
+
+  void
+  Router::ConnectionTimedOut(ILinkSession* session)
+  {
+    if (m_peerDb)
+    {
+      RouterID id{session->GetPubKey()};
+      // TODO: make sure this is a public router (on whitelist)?
+      m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionTimeouts++; });
+    }
+    _outboundSessionMaker.OnConnectTimeout(session);
+  }
+
+  bool
+  Router::ConnectionEstablished(ILinkSession* session)
+  {
+    if (m_peerDb)
+    {
+      RouterID id{session->GetPubKey()};
+      // TODO: make sure this is a public router (on whitelist)?
+      m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionSuccesses++; });
+    }
+    return _outboundSessionMaker.OnSessionEstablished(session);
   }
 
   bool
@@ -1175,9 +1199,9 @@ namespace llarp
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
-        util::memFn(&IOutboundSessionMaker::OnSessionEstablished, &_outboundSessionMaker),
+        util::memFn(&Router::ConnectionEstablished, this),
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
-        util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
+        util::memFn(&Router::ConnectionTimedOut, this),
         util::memFn(&AbstractRouter::SessionClosed, this),
         util::memFn(&AbstractRouter::PumpLL, this),
         util::memFn(&AbstractRouter::QueueWork, this));
