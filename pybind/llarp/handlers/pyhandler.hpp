@@ -69,6 +69,9 @@ namespace llarp
         });
       }
 
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override{};
+
       std::string
       GetOurAddress() const
       {

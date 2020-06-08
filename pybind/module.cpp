@@ -16,4 +16,5 @@ PYBIND11_MODULE(pyllarp, m)
   llarp::handlers::PyHandler_Init(m);
   llarp::service::Address_Init(m);
   m.def("EnableDebug", []() { llarp::SetLogLevel(llarp::eLogDebug); });
+  llarp::Logger_Init(m);
 }

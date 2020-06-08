@@ -5,10 +5,15 @@
 
 #include <unordered_map>
 
+#include <util/fs.hpp>
+
 namespace py = pybind11;
 
 namespace llarp
 {
+  void
+  Logger_Init(py::module& mod);
+
   void
   Context_Init(py::module& mod);
 
