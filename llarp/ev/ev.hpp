@@ -810,6 +810,13 @@ struct llarp_ev_loop
 
   virtual void
   call_soon(std::function<void(void)> f) = 0;
+
+  virtual void
+  register_poll_fd_readable(int fd, std::function<void(void)> callback) = 0;
+
+  virtual void
+  deregister_poll_fd_readable(int fd) = 0;
+
 };
 
 #endif

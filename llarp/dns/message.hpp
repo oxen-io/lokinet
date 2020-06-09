@@ -49,9 +49,6 @@ namespace llarp
       Message(const Message& other);
 
       void
-      UpdateHeader();
-
-      void
       AddNXReply(RR_TTL_t ttl = 1);
 
       void

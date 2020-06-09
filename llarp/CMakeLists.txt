@@ -101,6 +101,7 @@ add_library(liblokinet
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
+  dns/unbound_resolver.cpp
 
   consensus/table.cpp
 
@@ -220,7 +221,7 @@ if(WITH_HIVE)
   target_sources(liblokinet PRIVATE tooling/router_hive.cpp)
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts abyss lokinet-platform lokinet-util lokinet-cryptography)
+target_link_libraries(liblokinet PUBLIC cxxopts unbound abyss lokinet-platform lokinet-util lokinet-cryptography)
 
 if(BUILD_SHARED_LIBS)
   install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION lib)

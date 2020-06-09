@@ -126,6 +126,12 @@ namespace libuv
     call_soon(std::function<void(void)> f) override;
 
     void
+    register_poll_fd_readable(int fd, Callback callback) override;
+
+    void
+    deregister_poll_fd_readable(int fd) override;
+
+    void
     FlushLogic();
 
    private:
@@ -143,6 +149,8 @@ namespace libuv
     std::atomic<uint32_t> m_nextID;
 
     std::map<uint32_t, Callback> m_pendingCalls;
+
+    std::unordered_map<int, uv_poll_t> m_Polls;
 
     llarp::thread::Queue<PendingTimer> m_timerQueue;
     llarp::thread::Queue<uint32_t> m_timerCancelQueue;

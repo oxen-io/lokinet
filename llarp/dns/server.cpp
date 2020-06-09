@@ -37,8 +37,14 @@ namespace llarp
     bool
     Proxy::Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers)
     {
-      m_Resolvers.clear();
-      m_Resolvers = resolvers;
+      if (resolvers.size())
+      {
+        if (not SetupUnboundResolver(resolvers))
+        {
+          return false;
+        }
+      }
+
       const IpAddress any("0.0.0.0", 0);
       auto self = shared_from_this();
       LogicCall(m_ClientLogic, [=]() {
@@ -87,6 +93,36 @@ namespace llarp
       auto itr = m_Resolvers.begin();
       std::advance(itr, llarp::randint() % sz);
       return *itr;
+    }
+
+    bool
+    Proxy::SetupUnboundResolver(const std::vector<IpAddress>& resolvers)
+    {
+      auto replyFunc = [self=weak_from_this()](const SockAddr& to, Message msg)
+          {
+            auto this_ptr = self.lock();
+            if (this_ptr)
+            {
+              this_ptr->SendServerMessageTo(to, msg);
+            }
+          };
+
+      m_UnboundResolver = std::make_shared<UnboundResolver>(m_ServerLoop, std::move(replyFunc));
+      if (not m_UnboundResolver->Init())
+      {
+        m_UnboundResolver = nullptr;
+        return false;
+      }
+      for (const auto& resolver : resolvers)
+      {
+        if (not m_UnboundResolver->AddUpstreamResolver(resolver.toString()))
+        {
+          m_UnboundResolver = nullptr;
+          return false;
+        }
+      }
+
+      return true;
     }
 
     void
@@ -186,7 +222,6 @@ namespace llarp
       }
 
       TX tx = {hdr.id, from};
-      auto itr = m_Forwarded.find(tx);
       Message msg(hdr);
       if (!msg.Decode(&pkt))
       {
@@ -222,7 +257,7 @@ namespace llarp
           llarp::LogWarn("failed to handle hooked dns");
         }
       }
-      else if (m_Resolvers.size() == 0)
+      else if (not m_UnboundResolver)
       {
         // no upstream resolvers
         // let's serv fail it
@@ -230,26 +265,9 @@ namespace llarp
 
         SendServerMessageTo(from, std::move(msg));
       }
-      else if (itr == m_Forwarded.end())
-      {
-        // new forwarded query
-        tx.from = PickRandomResolver();
-        m_Forwarded[tx] = from;
-        LogicCall(m_ClientLogic, [=] {
-          // do query
-          const llarp_buffer_t tmpbuf(buf);
-          llarp_ev_udp_sendto(&self->m_Client, tx.from.createSockAddr(), tmpbuf);
-        });
-      }
       else
       {
-        // send the query again because it's probably FEC from the requester
-        const auto resolver = itr->first.from;
-        LogicCall(m_ClientLogic, [=] {
-          // send it
-          const llarp_buffer_t tmpbuf(buf);
-          llarp_ev_udp_sendto(&self->m_Client, resolver.createSockAddr(), tmpbuf);
-        });
+        m_UnboundResolver->Lookup(from, msg);
       }
     }
 
