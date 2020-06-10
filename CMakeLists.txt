@@ -5,7 +5,12 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "macOS deployment target (App
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+  foreach(lang C CXX)
+    if(NOT DEFINED CMAKE_${lang}_COMPILER_LAUNCHER AND NOT CMAKE_${lang}_COMPILER MATCHES ".*/ccache")
+      message(STATUS "Enabling ccache for ${lang}")
+      set(CMAKE_${lang}_COMPILER_LAUNCHER ${CCACHE_PROGRAM} CACHE STRING "")
+    endif()
+  endforeach()
 endif()
 
 set(PROJECT_NAME lokinet)
