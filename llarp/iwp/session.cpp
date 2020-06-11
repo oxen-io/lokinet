@@ -76,7 +76,7 @@ namespace llarp
       GotLIM = util::memFn(&Session::GotRenegLIM, this);
       m_RemoteRC = msg->rc;
       m_Parent->MapAddr(m_RemoteRC.pubkey, this);
-      return m_Parent->SessionEstablished(this);
+      return m_Parent->SessionEstablished(this, true);
     }
 
     bool
@@ -96,7 +96,7 @@ namespace llarp
         {
           self->m_State = State::Ready;
           self->m_Parent->MapAddr(self->m_RemoteRC.pubkey, self.get());
-          self->m_Parent->SessionEstablished(self.get());
+          self->m_Parent->SessionEstablished(self.get(), false);
         }
       });
       return true;
