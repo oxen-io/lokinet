@@ -230,7 +230,8 @@ TEST_F(LinkLayerTest, TestIWP)
       },
 
       // SessionEstablishedHandler
-      [&, this](ILinkSession* s) -> bool {
+      [&, this](ILinkSession* s, bool inbound) -> bool {
+        (void)inbound;
         const auto rc = s->GetRemoteRC();
         if (rc.pubkey != Bob.GetRC().pubkey)
           return false;
@@ -293,7 +294,8 @@ TEST_F(LinkLayerTest, TestIWP)
       },
 
       // SessionEstablishedHandler
-      [&](ILinkSession* s) -> bool {
+      [&](ILinkSession* s, bool inbound) -> bool {
+        (void)inbound;
         if (s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         LogInfo("bob established with alice");

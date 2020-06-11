@@ -23,6 +23,7 @@
 #include <util/meta/memfn.hpp>
 #include <util/str.hpp>
 #include <ev/ev.hpp>
+#include <tooling/peer_stats_event.hpp>
 
 #include "tooling/router_event.hpp"
 #include "util/status.hpp"
@@ -820,14 +821,15 @@ namespace llarp
   }
 
   bool
-  Router::ConnectionEstablished(ILinkSession* session)
+  Router::ConnectionEstablished(ILinkSession* session, bool inbound)
   {
+    RouterID id{session->GetPubKey()};
     if (m_peerDb)
     {
-      RouterID id{session->GetPubKey()};
       // TODO: make sure this is a public router (on whitelist)?
       m_peerDb->modifyPeerStats(id, [&](PeerStats& stats) { stats.numConnectionSuccesses++; });
     }
+    NotifyRouterEvent<tooling::LinkSessionEstablishedEvent>(pubkey(), id, inbound);
     return _outboundSessionMaker.OnSessionEstablished(session);
   }
 

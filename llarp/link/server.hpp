@@ -43,7 +43,7 @@ namespace llarp
   /// return true to accept
   ///
   /// currently called in iwp::Session when a valid LIM is received.
-  using SessionEstablishedHandler = std::function<bool(ILinkSession*)>;
+  using SessionEstablishedHandler = std::function<bool(ILinkSession*, bool)>;
 
   /// f(new, old)
   /// handler of session renegotiation
