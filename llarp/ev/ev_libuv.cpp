@@ -461,8 +461,28 @@ namespace libuv
       auto* self = static_cast<udp_glue*>(udp->impl);
       if (self == nullptr)
         return -1;
-      uv_buf_t buf = uv_buf_init((char*)ptr, sz);
-      return uv_udp_try_send(&self->m_Handle, &buf, 1, to);
+      char* data = new char[sz];
+      std::copy_n(ptr, sz, data);
+      uv_buf_t buf = uv_buf_init(data, sz);
+      uv_udp_send_t* req = new uv_udp_send_t;
+      req->data = data;
+      if (uv_udp_send(
+              req,
+              &self->m_Handle,
+              &buf,
+              1,
+              to,
+              [](uv_udp_send_t* req, int) {
+                delete[](char*) req->data;
+                delete req;
+              })
+          != 0)
+
+      {
+        delete req;
+        return -1;
+      }
+      return 0;
     }
 
     bool

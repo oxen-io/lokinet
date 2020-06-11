@@ -5,7 +5,6 @@
 #include <util/time.hpp>
 #include <util/logging/logstream.hpp>
 #include <util/logging/logger_internal.hpp>
-#include <util/thread/thread_pool.hpp>
 
 namespace llarp
 {
@@ -21,6 +20,8 @@ namespace llarp
 
   struct LogContext
   {
+    using IOFunc_t = std::function<void(void)>;
+
     LogContext();
     LogLevel curLevel = eLogInfo;
     LogLevel startupLevel = eLogInfo;
@@ -50,14 +51,14 @@ namespace llarp
     /// @param type is the type of logger to set up
     /// @param file is the file to log to (relevant for types File and Json)
     /// @param nickname is a tag to add to each log statement
-    /// @param threadpool is a threadpool where I/O can offloaded
+    /// @param io is a callable that queues work that does io, async
     void
     Initialize(
         LogLevel level,
         LogType type,
         const std::string& file,
         const std::string& nickname,
-        std::shared_ptr<thread::ThreadPool> threadpool);
+        std::function<void(IOFunc_t)> io);
   };
 
   /// RAII type to turn logging off

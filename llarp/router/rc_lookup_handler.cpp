@@ -194,7 +194,7 @@ namespace llarp
       return false;
 
     auto func = std::bind(&RCLookupHandler::CheckRC, this, newrc);
-    _threadpool->addJob(func);
+    _work(func);
 
     // update dht if required
     if (_dht->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
@@ -299,7 +299,7 @@ namespace llarp
   RCLookupHandler::Init(
       llarp_dht_context* dht,
       llarp_nodedb* nodedb,
-      std::shared_ptr<llarp::thread::ThreadPool> threadpool,
+      WorkerFunc_t dowork,
       ILinkManager* linkManager,
       service::Context* hiddenServiceContext,
       const std::set<RouterID>& strictConnectPubkeys,
@@ -309,7 +309,7 @@ namespace llarp
   {
     _dht = dht;
     _nodedb = nodedb;
-    _threadpool = threadpool;
+    _work = dowork;
     _hiddenServiceContext = hiddenServiceContext;
     _strictConnectPubkeys = strictConnectPubkeys;
     _bootstrapRCList = bootstrapRCList;

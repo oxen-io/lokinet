@@ -44,19 +44,15 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(
-      std::shared_ptr<llarp::thread::ThreadPool> _tp,
-      llarp_ev_loop_ptr __netloop,
-      std::shared_ptr<Logic> l)
+  Router::Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> l)
       : ready(false)
       , m_lmq(std::make_shared<lokimq::LokiMQ>())
       , _netloop(std::move(__netloop))
-      , cryptoworker(std::move(_tp))
       , _logic(std::move(l))
       , paths(this)
       , _exitContext(this)
-      , disk(std::make_shared<llarp::thread::ThreadPool>(1, 1000, "diskworker"))
       , _dht(llarp_dht_context_new(this))
+      , m_DiskThread(m_lmq->add_tagged_thread("disk"))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
       , m_RPCServer(new rpc::RpcServer(m_lmq, this))
@@ -237,22 +233,20 @@ namespace llarp
   bool
   Router::Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb)
   {
-    if (nodedb == nullptr)
-    {
-      throw std::invalid_argument("nodedb cannot be null");
-    }
-    _nodedb = nodedb;
-
     // we need this first so we can start lmq to fetch keys
-    enableRPCServer = conf->api.m_enableRPCServer;
-    rpcBindAddr = conf->api.m_rpcBindAddr;
-    whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = conf->lokid.lokidRPCAddr;
-
+    if (conf)
+    {
+      enableRPCServer = conf->api.m_enableRPCServer;
+      rpcBindAddr = conf->api.m_rpcBindAddr;
+      whitelistRouters = conf->lokid.whitelistRouters;
+      lokidRPCAddr = conf->lokid.lokidRPCAddr;
+    }
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
     m_lmq->start();
+
+    _nodedb = nodedb;
 
     if (whitelistRouters)
     {
@@ -260,12 +254,13 @@ namespace llarp
     }
 
     // fetch keys
-    if (not m_keyManager->initialize(*conf, true, isRouter))
-      throw std::runtime_error("KeyManager failed to initialize");
-
-    if (!FromConfig(conf))
-      throw std::runtime_error("FromConfig() failed");
-
+    if (conf)
+    {
+      if (not m_keyManager->initialize(*conf, true, isRouter))
+        throw std::runtime_error("KeyManager failed to initialize");
+      if (!FromConfig(conf))
+        throw std::runtime_error("FromConfig() failed");
+    }
     if (!InitOutboundLinks())
       throw std::runtime_error("InitOutboundLinks() failed");
 
@@ -293,7 +288,7 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    diskworker()->addJob(std::bind(&Router::HandleSaveRC, this));
+    QueueDiskIO(std::bind(&Router::HandleSaveRC, this));
     return true;
   }
 
@@ -308,8 +303,6 @@ namespace llarp
   {
     LogInfo("closing router");
     llarp_ev_loop_stop(_netloop);
-    disk->stop();
-    disk->shutdown();
     _running.store(false);
   }
 
@@ -527,12 +520,17 @@ namespace llarp
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
     _outboundSessionMaker.Init(
-        &_linkManager, &_rcLookupHandler, &_routerProfiling, _logic, _nodedb, threadpool());
+        &_linkManager,
+        &_rcLookupHandler,
+        &_routerProfiling,
+        _logic,
+        _nodedb,
+        util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
-        threadpool(),
+        util::memFn(&AbstractRouter::QueueWork, this),
         &_linkManager,
         &_hiddenServiceContext,
         strictConnectPubkeys,
@@ -552,7 +550,8 @@ namespace llarp
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this));
+          util::memFn(&AbstractRouter::PumpLL, this),
+          util::memFn(&AbstractRouter::QueueWork, this));
 
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
@@ -590,7 +589,7 @@ namespace llarp
         conf->logging.m_logType,
         conf->logging.m_logFile,
         conf->router.m_nickname,
-        diskworker());
+        util::memFn(&AbstractRouter::QueueDiskIO, this));
 
     return true;
   }
@@ -753,7 +752,7 @@ namespace llarp
     // save profiles
     if (routerProfiling().ShouldSave(now))
     {
-      diskworker()->addJob([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+      QueueDiskIO([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
     // save nodedb
     if (nodedb()->ShouldSaveToDisk(now))
@@ -869,18 +868,6 @@ namespace llarp
     if (_running || _stopping)
       return false;
 
-    if (!cryptoworker->start())
-    {
-      LogError("crypto worker failed to start");
-      return false;
-    }
-
-    if (!disk->start())
-    {
-      LogError("disk worker failed to start");
-      return false;
-    }
-
     routerProfiling().Load(routerProfilesFile.c_str());
 
     // set public signing key
@@ -932,7 +919,7 @@ namespace llarp
       }
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_logic, cryptoworker))
+    if (!_linkManager.StartLinks(_logic))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1157,7 +1144,8 @@ namespace llarp
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
         util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
         util::memFn(&AbstractRouter::SessionClosed, this),
-        util::memFn(&AbstractRouter::PumpLL, this));
+        util::memFn(&AbstractRouter::PumpLL, this),
+        util::memFn(&AbstractRouter::QueueWork, this));
 
     if (!link)
       throw std::runtime_error("NewOutboundLink() failed to provide a link");

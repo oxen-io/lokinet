@@ -125,7 +125,6 @@ namespace llarp
       AsyncDecryptAndVerify(
           std::shared_ptr<Logic> logic,
           path::Path_ptr fromPath,
-          const std::shared_ptr<llarp::thread::ThreadPool>& worker,
           const Identity& localIdent,
           Endpoint* handler) const;
 

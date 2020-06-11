@@ -89,12 +89,12 @@ namespace llarp
   }
 
   bool
-  LinkManager::StartLinks(Logic_ptr logic, std::shared_ptr<thread::ThreadPool> worker)
+  LinkManager::StartLinks(Logic_ptr logic)
   {
     LogInfo("starting ", outboundLinks.size(), " outbound links");
     for (const auto& link : outboundLinks)
     {
-      if (!link->Start(logic, worker))
+      if (!link->Start(logic))
       {
         LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
@@ -107,7 +107,7 @@ namespace llarp
       LogInfo("starting ", inboundLinks.size(), " inbound links");
       for (const auto& link : inboundLinks)
       {
-        if (!link->Start(logic, worker))
+        if (!link->Start(logic))
         {
           LogWarn("Link ", link->Name(), " failed to start");
           return false;

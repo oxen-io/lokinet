@@ -6,17 +6,6 @@
 
 namespace llarp
 {
-  bool
-  Logic::queue_job(struct llarp_thread_job job)
-  {
-    if (job.user && job.work)
-    {
-      LogicCall(this, std::bind(job.work, job.user));
-      return true;
-    }
-    return false;
-  }
-
   void
   Logic::stop()
   {

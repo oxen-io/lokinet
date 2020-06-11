@@ -47,6 +47,10 @@ namespace llarp
   /// messages to upper layers
   using PumpDoneHandler = std::function<void(void)>;
 
+  using Work_t = std::function<void(void)>;
+  /// queue work to worker thread
+  using WorkerFunc_t = std::function<void(Work_t)>;
+
   struct ILinkLayer
   {
     ILinkLayer(
@@ -58,7 +62,8 @@ namespace llarp
         SessionRenegotiateHandler renegotiate,
         TimeoutHandler timeout,
         SessionClosedHandler closed,
-        PumpDoneHandler pumpDone);
+        PumpDoneHandler pumpDone,
+        WorkerFunc_t doWork);
     virtual ~ILinkLayer();
 
     /// get current time via event loop
@@ -106,7 +111,7 @@ namespace llarp
     TryEstablishTo(RouterContact rc);
 
     bool
-    Start(std::shared_ptr<llarp::Logic> l, std::shared_ptr<thread::ThreadPool> worker);
+    Start(std::shared_ptr<llarp::Logic> l);
 
     virtual void
     Stop();
@@ -176,6 +181,7 @@ namespace llarp
     SessionRenegotiateHandler SessionRenegotiate;
     PumpDoneHandler PumpDone;
     std::shared_ptr<KeyManager> keyManager;
+    WorkerFunc_t QueueWork;
 
     std::shared_ptr<Logic>
     logic()
@@ -223,7 +229,6 @@ namespace llarp
     PutSession(const std::shared_ptr<ILinkSession>& s);
 
     std::shared_ptr<llarp::Logic> m_Logic = nullptr;
-    std::shared_ptr<llarp::thread::ThreadPool> m_Worker = nullptr;
     llarp_ev_loop_ptr m_Loop;
     IpAddress m_ourAddr;
     llarp_udp_io m_udp;

@@ -417,6 +417,31 @@ namespace llarp
     if (ifa)
       freeifaddrs(ifa);
   }
+  namespace net
+  {
+    std::string
+    LoopbackInterfaceName()
+    {
+      const auto loopback = IPRange::FromIPv4(127, 0, 0, 0, 8);
+      std::string ifname;
+      IterAllNetworkInterfaces([&ifname, loopback](ifaddrs* const i) {
+        if (i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+        {
+          llarp::nuint32_t addr{((sockaddr_in*)i->ifa_addr)->sin_addr.s_addr};
+          if (loopback.ContainsV4(xntohl(addr)))
+          {
+            ifname = i->ifa_name;
+          }
+        }
+      });
+      if (ifname.empty())
+      {
+        throw std::runtime_error(
+            "we have no ipv4 loopback interface for some ungodly reason, yeah idk fam");
+      }
+      return ifname;
+    }
+  }  // namespace net
 
   bool
   GetBestNetIF(std::string& ifname, int af)

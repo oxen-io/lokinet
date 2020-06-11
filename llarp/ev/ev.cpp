@@ -26,6 +26,8 @@ llarp_make_ev_loop(size_t queueLength)
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev, std::shared_ptr<llarp::Logic> logic)
 {
+  if (ev == nullptr or logic == nullptr)
+    return;
   ev->run();
   logic->clear_event_loop();
   ev->stopped();
@@ -34,6 +36,8 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev, std::shared_ptr<llarp::Lo
 int
 llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const llarp::SockAddr& src)
 {
+  if (ev == nullptr or udp == nullptr)
+    return -1;
   udp->parent = ev;
   if (ev->udp_listen(udp, src))
     return 0;

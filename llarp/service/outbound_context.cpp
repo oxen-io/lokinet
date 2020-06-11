@@ -207,7 +207,7 @@ namespace llarp
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       frame->F = ex->msg.introReply.pathID;
-      m_Endpoint->CryptoWorker()->addJob(std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
+      m_Endpoint->Router()->QueueWork(std::bind(&AsyncKeyExchange::Encrypt, ex, frame));
     }
 
     std::string

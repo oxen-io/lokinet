@@ -77,7 +77,7 @@ namespace llarp
   struct AbstractRouter
   {
 #ifdef LOKINET_HIVE
-    tooling::RouterHive* hive;
+    tooling::RouterHive* hive = nullptr;
 #endif
 
     virtual ~AbstractRouter() = default;
@@ -127,11 +127,13 @@ namespace llarp
     virtual llarp_ev_loop_ptr
     netloop() const = 0;
 
-    virtual std::shared_ptr<thread::ThreadPool>
-    threadpool() = 0;
+    /// call function in crypto worker
+    virtual void
+    QueueWork(std::function<void(void)>) = 0;
 
-    virtual std::shared_ptr<thread::ThreadPool>
-    diskworker() = 0;
+    /// call function in disk io thread
+    virtual void
+    QueueDiskIO(std::function<void(void)>) = 0;
 
     virtual service::Context&
     hiddenServiceContext() = 0;
@@ -286,14 +288,10 @@ namespace llarp
 
     template <class EventType, class... Params>
     void
-    NotifyRouterEvent(Params&&... args) const
+    NotifyRouterEvent([[maybe_unused]] Params&&... args) const
     {
-      // TODO: no-op when appropriate
-      auto event = std::make_unique<EventType>(args...);
 #ifdef LOKINET_HIVE
-      hive->NotifyEvent(std::move(event));
-#elif LOKINET_DEBUG
-      LogDebug(event->ToString());
+      hive->NotifyEvent(std::make_unique<EventType>(args...));
 #endif
     }
   };

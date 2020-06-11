@@ -241,7 +241,7 @@ namespace llarp
       auto func =
           std::bind(&LR_StatusMessage::CreateAndSend, router, pathid, nextHop, pathKey, status);
 
-      router->threadpool()->addJob(func);
+      router->QueueWork(func);
     }
 
     /// this is done from logic thread
@@ -478,7 +478,10 @@ namespace llarp
     auto frameDecrypt = std::make_shared<LRCMFrameDecrypt>(context, std::move(decrypter), this);
 
     // decrypt frames async
-    frameDecrypt->decrypter->AsyncDecrypt(context->Worker(), frameDecrypt->frames[0], frameDecrypt);
+    frameDecrypt->decrypter->AsyncDecrypt(
+        frameDecrypt->frames[0], frameDecrypt, [r = context->Router()](auto func) {
+          r->QueueWork(std::move(func));
+        });
     return true;
   }
 }  // namespace llarp

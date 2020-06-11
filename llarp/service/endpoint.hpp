@@ -141,10 +141,6 @@ namespace llarp
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
-      /// crypto worker threadpool
-      std::shared_ptr<llarp::thread::ThreadPool>
-      CryptoWorker();
-
       AbstractRouter*
       Router();
 

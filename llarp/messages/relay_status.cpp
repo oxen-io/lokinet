@@ -55,7 +55,7 @@ namespace llarp
     queue_handle()
     {
       auto func = std::bind(&llarp::LRSM_AsyncHandler::handle, shared_from_this());
-      router->threadpool()->addJob(func);
+      router->QueueWork(func);
     }
   };
 

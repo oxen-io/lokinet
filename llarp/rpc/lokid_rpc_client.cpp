@@ -1,6 +1,5 @@
 #include <rpc/lokid_rpc_client.hpp>
 
-#include <util/logging/logger.h>
 #include <util/logging/logger.hpp>
 
 #include <router/abstractrouter.hpp>
@@ -173,7 +172,7 @@ namespace llarp
               promise.set_value(std::nullopt);
               return;
             }
-            if (data.size() < 2)
+            if (data.empty())
             {
               LogError("failed to get private key, no response");
               promise.set_value(std::nullopt);
@@ -181,7 +180,7 @@ namespace llarp
             }
             try
             {
-              auto j = nlohmann::json::parse(data[1]);
+              auto j = nlohmann::json::parse(data[0]);
               SecretKey k;
               if (not k.FromHex(j.at("service_node_ed25519_privkey").get<std::string>()))
               {

@@ -5,7 +5,6 @@
 #include <router/i_rc_lookup_handler.hpp>
 
 #include <util/thread/threading.hpp>
-#include <util/thread/thread_pool.hpp>
 
 #include <unordered_map>
 #include <set>
@@ -27,6 +26,8 @@ namespace llarp
   struct RCLookupHandler final : public I_RCLookupHandler
   {
    public:
+    using Work_t = std::function<void(void)>;
+    using WorkerFunc_t = std::function<void(Work_t)>;
     using CallbacksQueue = std::list<RCRequestCallback>;
 
     ~RCLookupHandler() override = default;
@@ -72,7 +73,7 @@ namespace llarp
     Init(
         llarp_dht_context* dht,
         llarp_nodedb* nodedb,
-        std::shared_ptr<llarp::thread::ThreadPool> threadpool,
+        WorkerFunc_t dowork,
         ILinkManager* linkManager,
         service::Context* hiddenServiceContext,
         const std::set<RouterID>& strictConnectPubkeys,
@@ -98,7 +99,7 @@ namespace llarp
 
     llarp_dht_context* _dht = nullptr;
     llarp_nodedb* _nodedb = nullptr;
-    std::shared_ptr<llarp::thread::ThreadPool> _threadpool = nullptr;
+    WorkerFunc_t _work = nullptr;
     service::Context* _hiddenServiceContext = nullptr;
     ILinkManager* _linkManager = nullptr;
 

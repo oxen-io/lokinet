@@ -4,7 +4,6 @@
 #include <link/i_link_manager.hpp>
 
 #include <util/compare_ptr.hpp>
-#include <util/thread/threading.hpp>
 #include <link/server.hpp>
 
 #include <unordered_map>
@@ -42,7 +41,7 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(Logic_ptr logic, std::shared_ptr<thread::ThreadPool> worker) override;
+    StartLinks(Logic_ptr logic) override;
 
     void
     Stop() override;

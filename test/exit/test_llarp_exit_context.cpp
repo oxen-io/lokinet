@@ -9,10 +9,10 @@
 
 struct ExitTest : public ::testing::Test
 {
-  ExitTest() : r(nullptr, nullptr, nullptr), context(&r)
+  ExitTest() : r(nullptr, nullptr), context(&r)
   {
+    r.Configure(nullptr, false, nullptr);
   }
-
   llarp::Router r;
   llarp::exit::Context context;
 };

@@ -6,7 +6,6 @@
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
-#include <util/thread/thread_pool.hpp>
 #include <config/key_manager.hpp>
 
 #include <memory>
@@ -27,6 +26,7 @@ namespace llarp
           TimeoutHandler timeout,
           SessionClosedHandler closed,
           PumpDoneHandler pumpDone,
+          WorkerFunc_t dowork,
           bool permitInbound);
 
       ~LinkLayer() override;
@@ -48,9 +48,6 @@ namespace llarp
 
       void
       UnmapAddr(const IpAddress& addr);
-
-      void
-      QueueWork(std::function<void(void)> work);
 
      private:
       std::unordered_map<IpAddress, RouterID, IpAddress::Hash> m_AuthedAddrs;

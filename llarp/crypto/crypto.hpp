@@ -122,7 +122,7 @@ namespace llarp
     Crypto* m_prevCrypto;
 
    public:
-    CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
+    explicit CryptoManager(Crypto* crypto) : m_prevCrypto(m_crypto)
     {
       m_crypto = crypto;
     }

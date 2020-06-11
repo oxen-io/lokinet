@@ -46,7 +46,6 @@ namespace llarp
     std::unique_ptr<Crypto> crypto;
     std::unique_ptr<CryptoManager> cryptoManager;
     std::unique_ptr<AbstractRouter> router;
-    std::shared_ptr<thread::ThreadPool> worker;
     std::shared_ptr<Logic> logic;
     std::unique_ptr<Config> config;
     std::unique_ptr<llarp_nodedb> nodedb;

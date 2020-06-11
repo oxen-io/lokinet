@@ -3,7 +3,6 @@
 
 #include <ev/ev.hpp>
 #include <util/mem.h>
-#include <util/thread/threadpool.h>
 #include <optional>
 
 namespace llarp
@@ -14,9 +13,6 @@ namespace llarp
     /// stop all operation and wait for that to die
     void
     stop();
-
-    bool
-    queue_job(struct llarp_thread_job job);
 
     void
     Call(std::function<void(void)> func);

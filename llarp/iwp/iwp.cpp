@@ -17,10 +17,11 @@ namespace llarp
         SessionRenegotiateHandler reneg,
         TimeoutHandler timeout,
         SessionClosedHandler closed,
-        PumpDoneHandler pumpDone)
+        PumpDoneHandler pumpDone,
+        WorkerFunc_t work)
     {
       return std::make_shared<LinkLayer>(
-          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, true);
+          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, work, true);
     }
 
     LinkLayer_ptr
@@ -33,10 +34,11 @@ namespace llarp
         SessionRenegotiateHandler reneg,
         TimeoutHandler timeout,
         SessionClosedHandler closed,
-        PumpDoneHandler pumpDone)
+        PumpDoneHandler pumpDone,
+        WorkerFunc_t work)
     {
       return std::make_shared<LinkLayer>(
-          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, false);
+          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, work, false);
     }
   }  // namespace iwp
 }  // namespace llarp

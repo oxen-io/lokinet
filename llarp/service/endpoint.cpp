@@ -689,8 +689,8 @@ namespace llarp
         {
           llarp_async_verify_rc* job = new llarp_async_verify_rc();
           job->nodedb = Router()->nodedb();
-          job->cryptoworker = Router()->threadpool();
-          job->diskworker = Router()->diskworker();
+          job->worker = util::memFn(&AbstractRouter::QueueWork, Router());
+          job->disk = util::memFn(&AbstractRouter::QueueDiskIO, Router());
           job->logic = Router()->logic();
           job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg, std::placeholders::_1);
           job->rc = rc;
@@ -908,7 +908,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, CryptoWorker(), m_Identity, this))
+      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
       {
         // send discard
         ProtocolFrame f;
@@ -1240,7 +1240,7 @@ namespace llarp
             f.F = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
             auto self = this;
-            return CryptoWorker()->addJob([transfer, p, m, K, self]() {
+            Router()->QueueWork([transfer, p, m, K, self]() {
               if (not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
               {
                 LogError("failed to encrypt and sign");
@@ -1250,6 +1250,7 @@ namespace llarp
               util::Lock lock(self->m_state->m_SendQueueMutex);
               self->m_state->m_SendQueue.emplace_back(transfer, p);
             });
+            return true;
           }
         }
       }
@@ -1331,12 +1332,6 @@ namespace llarp
     Endpoint::EndpointLogic()
     {
       return m_state->m_IsolatedLogic ? m_state->m_IsolatedLogic : Router()->logic();
-    }
-
-    std::shared_ptr<llarp::thread::ThreadPool>
-    Endpoint::CryptoWorker()
-    {
-      return Router()->threadpool();
     }
 
     AbstractRouter*

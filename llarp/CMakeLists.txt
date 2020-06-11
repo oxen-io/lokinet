@@ -22,9 +22,7 @@ add_library(lokinet-util
   util/str.cpp
   util/thread/logic.cpp
   util/thread/queue_manager.cpp
-  util/thread/thread_pool.cpp
   util/thread/threading.cpp
-  util/thread/threadpool.cpp
   util/time.cpp
 )
 add_dependencies(lokinet-util genversion)

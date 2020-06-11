@@ -26,7 +26,7 @@ namespace llarp
 
   // namespace
   FileLogStream::FileLogStream(
-      std::shared_ptr<thread::ThreadPool> disk, FILE* f, llarp_time_t flushInterval, bool closeFile)
+      std::function<void(Work_t)> disk, FILE* f, llarp_time_t flushInterval, bool closeFile)
       : m_Lines(1024 * 8)
       , m_Disk(std::move(disk))
       , m_File(f)
@@ -112,7 +112,7 @@ namespace llarp
   {
     FILE* const f = m_File;
     auto lines = &m_Lines;
-    m_Disk->addJob([f, lines]() { Flush(lines, f); });
+    m_Disk([f, lines]() { Flush(lines, f); });
     m_LastFlush = now;
   }
 }  // namespace llarp

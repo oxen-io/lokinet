@@ -6,6 +6,7 @@
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 #include <service/endpoint.hpp>
+#include <router/abstractrouter.hpp>
 #include <utility>
 
 namespace llarp
@@ -384,7 +385,6 @@ namespace llarp
     ProtocolFrame::AsyncDecryptAndVerify(
         std::shared_ptr<Logic> logic,
         path::Path_ptr recvPath,
-        const std::shared_ptr<llarp::thread::ThreadPool>& worker,
         const Identity& localIdent,
         Endpoint* handler) const
     {
@@ -397,7 +397,7 @@ namespace llarp
         auto dh = std::make_shared<AsyncFrameDecrypt>(
             logic, localIdent, handler, msg, *this, recvPath->intro);
         dh->path = recvPath;
-        worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
+        handler->Router()->QueueWork(std::bind(&AsyncFrameDecrypt::Work, dh));
         return true;
       }
 
@@ -415,7 +415,7 @@ namespace llarp
         return false;
       }
       v->frame = *this;
-      worker->addJob([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
+      handler->Router()->QueueWork([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
         if (not v->frame.Verify(v->si))
         {
           LogError("Signature failure from ", v->si.Addr());

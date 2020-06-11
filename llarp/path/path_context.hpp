@@ -34,7 +34,7 @@ namespace llarp
 
     struct PathContext
     {
-      PathContext(AbstractRouter* router);
+      explicit PathContext(AbstractRouter* router);
 
       /// called from router tick function
       void
@@ -146,9 +146,6 @@ namespace llarp
             visit(item.second);
         }
       };
-
-      std::shared_ptr<thread::ThreadPool>
-      Worker();
 
       std::shared_ptr<Logic>
       logic();

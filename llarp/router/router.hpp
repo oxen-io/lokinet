@@ -34,7 +34,6 @@
 #include <util/status.hpp>
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
-#include <util/thread/threadpool.h>
 #include <util/time.hpp>
 
 #include <functional>
@@ -166,31 +165,30 @@ namespace llarp
       return _netloop;
     }
 
-    std::shared_ptr<llarp::thread::ThreadPool>
-    threadpool() override
+    void
+    QueueWork(std::function<void(void)> func) override
     {
-      return cryptoworker;
+      m_lmq->job(std::move(func));
     }
 
-    std::shared_ptr<llarp::thread::ThreadPool>
-    diskworker() override
+    void
+    QueueDiskIO(std::function<void(void)> func) override
     {
-      return disk;
+      m_lmq->job(std::move(func), m_DiskThread);
     }
 
     IpAddress _ourAddress;
 
     llarp_ev_loop_ptr _netloop;
-    std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;
     std::shared_ptr<Logic> _logic;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    std::shared_ptr<thread::ThreadPool> disk;
     llarp_dht_context* _dht = nullptr;
     llarp_nodedb* _nodedb;
     llarp_time_t _startedAt;
+    const lokimq::TaggedThreadID m_DiskThread;
 
     llarp_time_t
     Uptime() const override;
@@ -311,10 +309,7 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    Router(
-        std::shared_ptr<llarp::thread::ThreadPool> worker,
-        llarp_ev_loop_ptr __netloop,
-        std::shared_ptr<Logic> logic);
+    explicit Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
     ~Router() override;
 

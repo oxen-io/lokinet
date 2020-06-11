@@ -6,7 +6,6 @@
 #include <util/buffer.hpp>
 #include <utility>
 #include <util/mem.h>
-#include <util/thread/threadpool.h>
 
 namespace llarp
 {
@@ -78,12 +77,14 @@ namespace llarp
     const SecretKey& seckey;
     EncryptedFrame target;
 
+    using WorkFunc_t = std::function<void(void)>;
+    using WorkerFunction_t = std::function<void(WorkFunc_t)>;
+
     void
-    AsyncDecrypt(
-        const std::shared_ptr<thread::ThreadPool>& worker, const EncryptedFrame& frame, User_ptr u)
+    AsyncDecrypt(const EncryptedFrame& frame, User_ptr u, WorkerFunction_t worker)
     {
       target = frame;
-      worker->addJob(std::bind(&AsyncFrameDecrypter<User>::Decrypt, this, std::move(u)));
+      worker(std::bind(&AsyncFrameDecrypter<User>::Decrypt, this, std::move(u)));
     }
   };
 }  // namespace llarp

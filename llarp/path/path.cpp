@@ -451,7 +451,7 @@ namespace llarp
       {
         TrafficQueue_ptr data = nullptr;
         std::swap(m_UpstreamQueue, data);
-        r->threadpool()->addJob(
+        r->QueueWork(
             [self = shared_from_this(), data, r]() { self->UpstreamWork(std::move(data), r); });
       }
     }
@@ -463,7 +463,7 @@ namespace llarp
       {
         TrafficQueue_ptr data = nullptr;
         std::swap(m_DownstreamQueue, data);
-        r->threadpool()->addJob(
+        r->QueueWork(
             [self = shared_from_this(), data, r]() { self->DownstreamWork(std::move(data), r); });
       }
     }

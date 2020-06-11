@@ -7,6 +7,7 @@
 #include <routing/handler.hpp>
 #include <router_id.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/thread/queue.hpp>
 
 namespace llarp
 {
