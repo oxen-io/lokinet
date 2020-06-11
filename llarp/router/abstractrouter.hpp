@@ -128,10 +128,12 @@ namespace llarp
     netloop() const = 0;
 
     /// call function in crypto worker
-    virtual void QueueWork(std::function<void(void)>) = 0;
+    virtual void
+    QueueWork(std::function<void(void)>) = 0;
 
     /// call function in disk io thread
-    virtual void QueueDiskIO(std::function<void(void)>) = 0;
+    virtual void
+    QueueDiskIO(std::function<void(void)>) = 0;
 
     virtual service::Context&
     hiddenServiceContext() = 0;
