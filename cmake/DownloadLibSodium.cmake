@@ -12,6 +12,10 @@ file(MAKE_DIRECTORY ${LIBSODIUM_PREFIX}/include)
 
 include(ExternalProject)
 include(ProcessorCount)
+ProcessorCount(PROCESSOR_COUNT)
+if(PROCESSOR_COUNT EQUAL 0)
+    set(PROCESSOR_COUNT 1)
+endif()
 
 set(sodium_cc ${CMAKE_C_COMPILER})
 if(CCACHE_PROGRAM)
