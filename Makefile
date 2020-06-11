@@ -310,7 +310,7 @@ mac: mac-release
 	$(MAKE) -C '$(BUILD_ROOT)' package
 
 format:
-	$(FORMAT) -i $$(find jni daemon llarp include pybind | grep -E '\.[h,c](pp)?$$')
+	$(FORMAT) -i $$(find jni daemon llarp include pybind | grep -E '\.[hc](pp)?$$')
 
 format-verify: format
 	(type $(FORMAT))

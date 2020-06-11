@@ -39,17 +39,18 @@ namespace llarp
     }
 
     void
-    LokidRpcClient::ConnectAsync(std::string_view url)
+    LokidRpcClient::ConnectAsync(lokimq::address url)
     {
       LogInfo("connecting to lokid via LMQ at ", url);
       m_lokiMQ->connect_remote(
-          std::move(url),
+          url.zmq_address(),
           [self = shared_from_this()](lokimq::ConnectionID c) {
             self->m_Connection = std::move(c);
             self->Connected();
           },
-          [](lokimq::ConnectionID, std::string_view f) {
+          [self = shared_from_this(), url](lokimq::ConnectionID, std::string_view f) {
             llarp::LogWarn("Failed to connect to lokid: ", f);
+            LogicCall(self->m_Router->logic(), [self, url]() { self->ConnectAsync(url); });
           });
     }
 
@@ -103,10 +104,9 @@ namespace llarp
       Command("admin.lokinet_ping");
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->Command("admin.lokinet_ping"); }, PingInterval);
-
-      UpdateServiceNodeList();
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
+      UpdateServiceNodeList();
     }
 
     void

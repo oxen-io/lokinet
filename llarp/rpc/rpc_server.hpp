@@ -2,6 +2,7 @@
 
 #include <string_view>
 #include <lokimq/lokimq.h>
+#include <lokimq/address.h>
 
 namespace llarp
 {
@@ -17,7 +18,7 @@ namespace llarp::rpc
     explicit RpcServer(LMQ_ptr, AbstractRouter*);
     ~RpcServer() = default;
     void
-    AsyncServeRPC(std::string addr);
+    AsyncServeRPC(lokimq::address addr);
 
    private:
     LMQ_ptr m_LMQ;

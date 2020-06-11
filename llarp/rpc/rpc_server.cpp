@@ -10,10 +10,21 @@ namespace llarp::rpc
   }
 
   void
-  RpcServer::AsyncServeRPC(std::string url)
+  RpcServer::AsyncServeRPC(lokimq::address url)
   {
-    m_LMQ->listen_plain(std::move(url));
+    m_LMQ->listen_plain(url.zmq_address());
     m_LMQ->add_category("llarp", lokimq::AuthLevel::none)
+        .add_command(
+            "halt",
+            [&](lokimq::Message& msg) {
+              if (not m_Router->IsRunning())
+              {
+                msg.send_reply("router is not running");
+                return;
+              }
+              m_Router->Stop();
+              msg.send_reply("OK");
+            })
         .add_request_command(
             "version", [](lokimq::Message& msg) { msg.send_reply(llarp::VERSION_FULL); })
         .add_request_command("status", [&](lokimq::Message& msg) {

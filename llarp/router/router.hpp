@@ -44,6 +44,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <lokimq/address.h>
+
 namespace llarp
 {
   struct Router final : public AbstractRouter
@@ -255,16 +257,16 @@ namespace llarp
     NetworkConfig networkConfig;
     DnsConfig dnsConfig;
 
-    const std::string DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
+    const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
-    std::string rpcBindAddr = DefaultRPCBindAddr;
+    lokimq::address rpcBindAddr = DefaultRPCBindAddr;
     std::unique_ptr<rpc::RpcServer> m_RPCServer;
 
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
-    std::string lokidRPCAddr = "ipc://loki.sock";
+    lokimq::address lokidRPCAddr;
     std::string lokidRPCUser;
     std::string lokidRPCPassword;
 

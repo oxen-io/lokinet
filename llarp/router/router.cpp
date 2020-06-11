@@ -237,9 +237,9 @@ namespace llarp
     if (conf)
     {
       enableRPCServer = conf->api.m_enableRPCServer;
-      rpcBindAddr = conf->api.m_rpcBindAddr;
+      rpcBindAddr = lokimq::address(conf->api.m_rpcBindAddr);
       whitelistRouters = conf->lokid.whitelistRouters;
-      lokidRPCAddr = conf->lokid.lokidRPCAddr;
+      lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
     }
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
@@ -250,7 +250,7 @@ namespace llarp
 
     if (whitelistRouters)
     {
-      m_lokidRpcClient->ConnectAsync(std::string_view{lokidRPCAddr});
+      m_lokidRpcClient->ConnectAsync(lokidRPCAddr);
     }
 
     // fetch keys
@@ -415,9 +415,7 @@ namespace llarp
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
     whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = conf->lokid.lokidRPCAddr;
-    lokidRPCUser = conf->lokid.lokidRPCUser;
-    lokidRPCPassword = conf->lokid.lokidRPCPassword;
+    lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
 
     if (usingSNSeed)
       ident_keyfile = conf->lokid.ident_keyfile;
@@ -842,19 +840,6 @@ namespace llarp
   {
     if (enableRPCServer)
     {
-      if (rpcBindAddr.empty())
-      {
-        rpcBindAddr = DefaultRPCBindAddr;
-      }
-
-      // older configs just specify an ip/port tuple so check for that and prepend tcp:// in that
-      // case
-      if (rpcBindAddr.find("tcp://") == std::string::npos
-          and rpcBindAddr.find("ipc://") == std::string::npos)
-      {
-        LogWarn("RPC Server protocol not specified, defaulting to tcp");
-        rpcBindAddr = "tcp://" + rpcBindAddr;
-      }
       m_RPCServer->AsyncServeRPC(rpcBindAddr);
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
