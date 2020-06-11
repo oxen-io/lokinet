@@ -23,7 +23,7 @@ namespace llarp::rpc
         Whitelist_t whitelist,
         LMQ_ptr lmq,
         Endpoint_ptr endpoint);
-    ~EndpointAuthRPC() = default;
+    virtual ~EndpointAuthRPC() = default;
 
     void
     Start();
