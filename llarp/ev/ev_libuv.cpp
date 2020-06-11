@@ -1059,9 +1059,10 @@ namespace libuv
   void
   OnUVPollFDReadable(uv_poll_t* handle, int status, [[maybe_unused]] int events)
   {
-    if (status < 0) return; // probably fd was closed
+    if (status < 0)
+      return;  // probably fd was closed
 
-    auto func = static_cast<libuv::Loop::Callback* >(handle->data);
+    auto func = static_cast<libuv::Loop::Callback*>(handle->data);
 
     (*func)();
   }
@@ -1071,7 +1072,10 @@ namespace libuv
   {
     if (m_Polls.count(fd))
     {
-      llarp::LogError("Attempting to create event loop poll on fd ", fd, ", but an event loop poll for that fd already exists.");
+      llarp::LogError(
+          "Attempting to create event loop poll on fd ",
+          fd,
+          ", but an event loop poll for that fd already exists.");
       return;
     }
 
@@ -1081,9 +1085,8 @@ namespace libuv
     auto& new_poll = m_Polls[fd];
 
     uv_poll_init(&m_Impl, &new_poll, fd);
-    new_poll.data = (void *) function_ptr;
+    new_poll.data = (void*)function_ptr;
     uv_poll_start(&new_poll, UV_READABLE, &OnUVPollFDReadable);
-
   }
 
   void
@@ -1094,7 +1097,7 @@ namespace libuv
     if (itr != m_Polls.end())
     {
       uv_poll_stop(&(itr->second));
-      auto func = static_cast<Callback* >(itr->second.data);
+      auto func = static_cast<Callback*>(itr->second.data);
       delete func;
       m_Polls.erase(itr);
     }

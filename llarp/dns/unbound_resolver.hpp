@@ -17,8 +17,7 @@ namespace llarp::dns
 
   class UnboundResolver : public std::enable_shared_from_this<UnboundResolver>
   {
-
-  private:
+   private:
     ub_ctx* unboundContext;
 
     bool started;
@@ -26,27 +25,29 @@ namespace llarp::dns
     llarp_ev_loop_ptr eventLoop;
     ReplyFunction replyFunc;
 
-    void Reset();
+    void
+    Reset();
 
-    void DeregisterPollFD();
-    void RegisterPollFD();
+    void
+    DeregisterPollFD();
+    void
+    RegisterPollFD();
 
-  public:
+   public:
+    UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc);
 
-
-    UnboundResolver(
-        llarp_ev_loop_ptr eventLoop,
-        ReplyFunction replyFunc);
-
-    static void Callback(void* data, int err, ub_result* result);
+    static void
+    Callback(void* data, int err, ub_result* result);
 
     // upstream resolver IP can be IPv4 or IPv6
-    bool Init();
+    bool
+    Init();
 
-    bool AddUpstreamResolver(const std::string& upstreamResolverIP);
+    bool
+    AddUpstreamResolver(const std::string& upstreamResolverIP);
 
-    void Lookup(const SockAddr& source, Message& msg);
+    void
+    Lookup(const SockAddr& source, Message& msg);
   };
 
-} // namespace llarp::dns
-
+}  // namespace llarp::dns

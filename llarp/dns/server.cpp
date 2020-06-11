@@ -98,14 +98,13 @@ namespace llarp
     bool
     Proxy::SetupUnboundResolver(const std::vector<IpAddress>& resolvers)
     {
-      auto replyFunc = [self=weak_from_this()](const SockAddr& to, Message msg)
-          {
-            auto this_ptr = self.lock();
-            if (this_ptr)
-            {
-              this_ptr->SendServerMessageTo(to, msg);
-            }
-          };
+      auto replyFunc = [self = weak_from_this()](const SockAddr& to, Message msg) {
+        auto this_ptr = self.lock();
+        if (this_ptr)
+        {
+          this_ptr->SendServerMessageTo(to, msg);
+        }
+      };
 
       m_UnboundResolver = std::make_shared<UnboundResolver>(m_ServerLoop, std::move(replyFunc));
       if (not m_UnboundResolver->Init())

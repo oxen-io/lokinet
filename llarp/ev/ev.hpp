@@ -816,7 +816,6 @@ struct llarp_ev_loop
 
   virtual void
   deregister_poll_fd_readable(int fd) = 0;
-
 };
 
 #endif

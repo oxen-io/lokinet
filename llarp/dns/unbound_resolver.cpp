@@ -12,7 +12,8 @@ namespace llarp::dns
     SockAddr source;
   };
 
-  void UnboundResolver::Reset()
+  void
+  UnboundResolver::Reset()
   {
     started = false;
     if (unboundContext)
@@ -23,30 +24,33 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  void UnboundResolver::DeregisterPollFD()
+  void
+  UnboundResolver::DeregisterPollFD()
   {
     eventLoop->deregister_poll_fd_readable(ub_fd(unboundContext));
   }
 
-  void UnboundResolver::RegisterPollFD()
+  void
+  UnboundResolver::RegisterPollFD()
   {
-    eventLoop->register_poll_fd_readable(ub_fd(unboundContext), [=](){ ub_process(unboundContext); });
+    eventLoop->register_poll_fd_readable(
+        ub_fd(unboundContext), [=]() { ub_process(unboundContext); });
   }
 
-  UnboundResolver::UnboundResolver(
-      llarp_ev_loop_ptr eventLoop,
-      ReplyFunction replyFunc)
-    : unboundContext(nullptr), started(false), eventLoop(eventLoop), replyFunc(replyFunc)
+  UnboundResolver::UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc)
+      : unboundContext(nullptr), started(false), eventLoop(eventLoop), replyFunc(replyFunc)
   {
   }
 
   // static callback
-  void UnboundResolver::Callback(void* data, int err, ub_result* result)
+  void
+  UnboundResolver::Callback(void* data, int err, ub_result* result)
   {
     std::unique_ptr<PendingUnboundLookup> lookup{static_cast<PendingUnboundLookup*>(data)};
 
     auto this_ptr = lookup->resolver.lock();
-    if (not this_ptr) return; // resolver is gone, so we don't reply.
+    if (not this_ptr)
+      return;  // resolver is gone, so we don't reply.
 
     if (err != 0)
     {
@@ -73,7 +77,8 @@ namespace llarp::dns
     ub_resolve_free(result);
   }
 
-  bool UnboundResolver::Init()
+  bool
+  UnboundResolver::Init()
   {
     if (started)
     {
@@ -92,7 +97,8 @@ namespace llarp::dns
     return true;
   }
 
-  bool UnboundResolver::AddUpstreamResolver(const std::string& upstreamResolverIP)
+  bool
+  UnboundResolver::AddUpstreamResolver(const std::string& upstreamResolverIP)
   {
     if (ub_ctx_set_fwd(unboundContext, upstreamResolverIP.c_str()) != 0)
     {
@@ -102,7 +108,8 @@ namespace llarp::dns
     return true;
   }
 
-  void UnboundResolver::Lookup(const SockAddr& source, Message& msg)
+  void
+  UnboundResolver::Lookup(const SockAddr& source, Message& msg)
   {
     if (not unboundContext)
     {
@@ -115,7 +122,14 @@ namespace llarp::dns
 
     const auto& q = msg.questions[0];
     auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, source};
-    int err = ub_resolve_async(unboundContext, q.Name().c_str(), q.qtype, q.qclass, (void*)lookup, &UnboundResolver::Callback, nullptr);
+    int err = ub_resolve_async(
+        unboundContext,
+        q.Name().c_str(),
+        q.qtype,
+        q.qclass,
+        (void*)lookup,
+        &UnboundResolver::Callback,
+        nullptr);
 
     if (err != 0)
     {
@@ -125,4 +139,4 @@ namespace llarp::dns
     }
   }
 
-} // namespace llarp::dns
+}  // namespace llarp::dns
