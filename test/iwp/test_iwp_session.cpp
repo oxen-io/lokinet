@@ -11,7 +11,7 @@
 #include <util/time.hpp>
 
 #undef LOG_TAG
-#define LOG_TAG "test_iwp_session.cpp"
+#define LOG_TAG __FILE__
 
 namespace iwp = llarp::iwp;
 namespace util = llarp::util;
@@ -56,6 +56,13 @@ struct IWPLinkContext
     rc.enckey = keyManager->encryptionKey.toPublic();
   }
 
+  template <typename Func_t>
+  void
+  Call(Func_t work)
+  {
+    m_Loop->call_soon(std::move(work));
+  }
+
   bool
   HandleMessage(llarp::ILinkSession* from, const llarp_buffer_t& buf)
   {
@@ -92,14 +99,14 @@ struct IWPLinkContext
         // timeout handler
         [&](llarp::ILinkSession*) {
           llarp_ev_loop_stop(m_Loop);
-          REQUIRE(false);
+          FAIL("session timeout");
         },
         // session closed handler
         [](llarp::RouterID) {},
         // pump done handler
         []() {},
         // do work function
-        [l = m_Loop](llarp::Work_t work) { l->call_after_delay(1ms, work); });
+        [l = m_Loop](llarp::Work_t work) { l->call_soon(work); });
     REQUIRE(link->Configure(
         m_Loop, llarp::net::LoopbackInterfaceName(), AF_INET, *localAddr.getPort()));
 
@@ -177,7 +184,7 @@ RunIWPTest(Func_t test, Duration_t timeout = 1s)
   auto endTest = [logic, loop]() { LogicCall(logic, [loop]() { llarp_ev_loop_stop(loop); }); };
 
   loop->call_after_delay(
-      std::chrono::duration_cast<llarp_time_t>(timeout), []() { REQUIRE(false); });
+      std::chrono::duration_cast<llarp_time_t>(timeout), []() { FAIL("test timeout"); });
   test(start, endIfDone, endTest, initiator, recipiant);
   llarp_ev_loop_run_single_process(loop, logic);
   llarp::RouterContact::BlockBogons = oldBlockBogons;
@@ -238,13 +245,14 @@ TEST_CASE("IWP send messages", "[iwp]")
                 std::function<void(void)> endTestNow,
                 Context_ptr alice,
                 Context_ptr bob) {
-    constexpr int aliceNumSend = 128;
+    constexpr int numSend = 128;
     int aliceNumSent = 0;
+    int bobNumSent = 0;
     // when alice makes a session to bob send `aliceNumSend` messages to him
     alice->InitLink<false>([endIfDone, alice, &aliceNumSent](auto session) {
-      for (auto index = 0; index < aliceNumSend; index++)
+      for (auto index = 0; index < numSend; index++)
       {
-        alice->m_Loop->call_soon([session, endIfDone, alice, &aliceNumSent]() {
+        alice->Call([session, endIfDone, alice, &aliceNumSent]() {
           // generate a discard message that is 512 bytes long
           llarp::DiscardMessage msg;
           std::vector<byte_t> msgBuff(512);
@@ -261,13 +269,38 @@ TEST_CASE("IWP send messages", "[iwp]")
               aliceNumSent++;
             }
             // if we sent all the messages sucessfully we end the unit test
-            alice->gucci = aliceNumSent == aliceNumSend;
+            alice->gucci = aliceNumSent == numSend;
             endIfDone();
           });
         });
       }
     });
-    bob->InitLink<true>([bob](auto) { bob->gucci = true; });
+    bob->InitLink<true>([endIfDone, bob, &bobNumSent](auto session) {
+      for (auto index = 0; index < numSend; index++)
+      {
+        bob->Call([session, endIfDone, bob, &bobNumSent]() {
+          // generate a discard message that is 512 bytes long
+          llarp::DiscardMessage msg;
+          std::vector<byte_t> msgBuff(512);
+          llarp_buffer_t buf(msgBuff);
+          // add random padding
+          llarp::CryptoManager::instance()->randomize(buf);
+          // encode the discard message
+          msg.BEncode(&buf);
+          // send the message
+          session->SendMessageBuffer(msgBuff, [endIfDone, bob, &bobNumSent](auto status) {
+            if (status == llarp::ILinkSession::DeliveryStatus::eDeliverySuccess)
+            {
+              // on successful transmit increment the number we sent
+              bobNumSent++;
+            }
+            // if we sent all the messages sucessfully we end the unit test
+            bob->gucci = bobNumSent == numSend;
+            endIfDone();
+          });
+        });
+      }
+    });
     // start unit test
     auto logic = start();
     // try establishing a session from alice to bob
