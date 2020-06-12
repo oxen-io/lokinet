@@ -2,6 +2,12 @@ local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 
+local submodules = {
+    name: 'submodules',
+    image: 'drone/git',
+    commands: ['git fetch --tags', 'git submodule update --init --recursive']
+};
+
 // Regular build on a debian-like system:
 local debian_pipeline(name, image,
         arch='amd64',
@@ -18,6 +24,7 @@ local debian_pipeline(name, image,
     platform: { arch: arch },
     trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
     steps: [
+        submodules,
         {
             name: 'build',
             image: image,
@@ -29,7 +36,6 @@ local debian_pipeline(name, image,
                 'apt-get install -y eatmydata',
                 'eatmydata apt-get dist-upgrade -y',
                 'eatmydata apt-get install -y cmake git ninja-build pkg-config ccache ' + deps,
-                'eatmydata git submodule update --init --recursive',
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
@@ -52,6 +58,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
     platform: { arch: arch },
     environment: { distro_branch: distro_branch, distro: distro },
     steps: [
+        submodules,
         {
             name: 'build',
             image: image,
@@ -75,7 +82,6 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
                     fi
                 |||,
                 'git merge ${DRONE_COMMIT}',
-                'eatmydata git submodule update --init --recursive',
                 'export DEBEMAIL="${DRONE_COMMIT_AUTHOR_EMAIL}" DEBFULLNAME="${DRONE_COMMIT_AUTHOR_NAME}"',
                 'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
                 'eatmydata mk-build-deps --install --remove --tool "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
@@ -97,6 +103,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     name: name,
     platform: { os: 'darwin', arch: 'amd64' },
     steps: [
+        { name: 'submodules', commands: ['git fetch --tags', 'git submodule update --init --recursive'] },
         {
             name: 'build',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
@@ -104,7 +111,6 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 // If you don't do this then the C compiler doesn't have an include path containing
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
-                'git submodule update --init --recursive',
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
