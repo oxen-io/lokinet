@@ -176,8 +176,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
             name: 'build', image: 'debian:sid',
             commands: [
                 'apt-get update', 'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y make git clang-format-9',
-                'make format-verify']
+                'eatmydata apt-get install -y git clang-format-9',
+                './contrib/ci/drone-format-verify.sh']
         }]
     },
 

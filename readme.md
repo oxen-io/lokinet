@@ -57,61 +57,44 @@ to run as relay:
 
 **DO NOT RUN AS ELEVATED USER**, run as normal user.
 
-to run as client, run the `run-lokinet.bat` batch file as your normal user.
-
-
 ## Building
 
 Build requirements:
 
-* GNU Make
 * CMake
-* C++ 14 capable C++ compiler
+* C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
-* libcurl
 
 ### Linux
 
 build:
 
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev libcurl4-openssl-dev pkg-config
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
+    $ mkdir build 
+    $ cd build
+    $ cmake .. 
     $ make 
 
 install:
 
     $ sudo make install
 
-
-alternatively make a debian package with:
-
-    $ debuild -uc -us -b
-
-this puts the built packages in `../`
-
-
-#### Static Linux
-
-static native optimized:
-
-    $ make static STATIC_LINK=ON
-
-cross compile fully static armhf (rpi 2 and up)
-
-    $ make static STATIC_LINK=ON DOWNLOAD_SODIUM=ON TOOLCHAIN=contrib/cross/armhf.toolchain.cmake
-
 ### MacOS
 
 build:
     make sure you have cmake, libuv and xcode command line tools installed
     
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make -j8
-
+    $ mkdir build 
+    $ cd build
+    $ cmake .. 
+    $ make 
+    
 install:
 
     $ sudo make install
@@ -122,12 +105,11 @@ windows builds are cross compiled from ubuntu linux
 
 build requirements:
 
-* GNU Make
 * CMake
-* C++ 14 capable C++ compiler
+* C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
-* libsodium >= 1.0.17
+* libsodium >= 1.0.18
 * libcurl
 * nsis
 * cpack
@@ -138,7 +120,12 @@ setup:
     
 building:
 
-    $ make windows-release DOWNLOAD_SODIUM=ON STATIC_LINK=ON
+    $ git clone --recursive https://github.com/loki-project/loki-network
+    $ cd loki-network
+    $ mkdir build-windows
+    $ cd build-windows
+    $ cmake -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
+    $ cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
 
 ### Solaris 2.10+
 
@@ -155,29 +142,14 @@ build:
     $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+    $ make -j8
 
 install:
 
     $ sudo make install
-
-
-### NetBSD (and other platforms where pkgsrc is _the_ native package mgr)
-
-TODO: add pkgsrc instructions
-
-### OpenBSD (uses legacy netbsd pkg manager)
-
-build:
-
-    # pkg_add curl cmake git (optional: ninja ccache)
-    $ git clone https://github.com/loki-project/loki-network
-    $ cd loki-network
-    $ gmake -j8
-
-install (root):
-
-    # gmake install
 
 ### FreeBSD
 
