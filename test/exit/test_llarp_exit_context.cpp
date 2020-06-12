@@ -50,6 +50,6 @@ TEST_CASE("ensure snode address allocation", "[snode]")
         == context.FindEndpointForPath(secondPath)->LocalIP());
     ctx_pp->CloseAsync();
   });
-  REQUIRE(llarp_main_run(ctx, llarp_main_runtime_opts{isRelay: true}) == 0);
+  REQUIRE(llarp_main_run(ctx, llarp_main_runtime_opts{.isRelay = true}) == 0);
   llarp_main_free(ctx);
 }
