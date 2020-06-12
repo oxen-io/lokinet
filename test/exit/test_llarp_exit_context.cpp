@@ -1,44 +1,55 @@
-#include <exit/context.hpp>
-
 #include <config/config.hpp>
 #include <router/router.hpp>
 #include <exit/context.hpp>
-#include "config/config.hpp"
+#include <crypto/types.hpp>
+#include <llarp.h>
+#include <llarp.hpp>
+#include <catch2/catch.hpp>
 
-#include <gtest/gtest.h>
-
-struct ExitTest : public ::testing::Test
+static llarp_main*
+make_context()
 {
-  ExitTest() : r(nullptr, nullptr), context(&r)
-  {
-    r.Configure(nullptr, false, nullptr);
-  }
-  llarp::Router r;
-  llarp::exit::Context context;
-};
+  // make config
+  auto config = llarp_default_relay_config();
+  // set testing defaults
+  config->impl.network.m_endpointType = "null";
+  config->impl.bootstrap.skipBootstrap = true;
+  config->impl.api.m_enableRPCServer = false;
+  // make a fake inbound link
+  config->impl.links.m_InboundLinks.emplace_back();
+  auto& link = config->impl.links.m_InboundLinks.back();
+  link.interface = llarp::net::LoopbackInterfaceName();
+  link.addressFamily = AF_INET;
+  link.port = 0;
+  // configure
+  auto ptr = llarp_main_init_from_config(config, true);
+  llarp_config_free(config);
+  return ptr;
+}
 
-TEST_F(ExitTest, AddMultipleIP)
+TEST_CASE("ensure snode address allocation", "[snode]")
 {
-  llarp::PubKey pk;
-  pk.Randomize();
-  llarp::PathID_t firstPath, secondPath;
-  firstPath.Randomize();
-  secondPath.Randomize();
+  llarp::LogSilencer shutup;
+  auto ctx = make_context();
+  REQUIRE(llarp_main_setup(ctx, true) == 0);
+  auto ctx_pp = llarp::Context::Get(ctx);
+  ctx_pp->CallSafe([ctx_pp]() {
+    REQUIRE(ctx_pp->router->IsServiceNode());
+    auto& context = ctx_pp->router->exitContext();
+    llarp::PubKey pk;
+    pk.Randomize();
 
-  // TODO: exit and type
-  // llarp::exit::Context::Config_t conf;
-  // conf.emplace("exit", "true");
-  // conf.emplace("type", "null");
+    llarp::PathID_t firstPath, secondPath;
+    firstPath.Randomize();
+    secondPath.Randomize();
 
-  llarp::NetworkConfig networkConfig;
-  networkConfig.m_endpointType = "null";
-  networkConfig.m_ifname = "lokitunX";
-  networkConfig.m_ifaddr = "10.0.0.1/24";
-
-  ASSERT_NO_THROW(context.AddExitEndpoint("test-exit", networkConfig, {}));
-  ASSERT_TRUE(context.ObtainNewExit(pk, firstPath, false));
-  ASSERT_TRUE(context.ObtainNewExit(pk, secondPath, false));
-  ASSERT_TRUE(
-      context.FindEndpointForPath(firstPath)->LocalIP()
-      == context.FindEndpointForPath(secondPath)->LocalIP());
+    REQUIRE(context.ObtainNewExit(pk, firstPath, false));
+    REQUIRE(context.ObtainNewExit(pk, secondPath, false));
+    REQUIRE(
+        context.FindEndpointForPath(firstPath)->LocalIP()
+        == context.FindEndpointForPath(secondPath)->LocalIP());
+    ctx_pp->CloseAsync();
+  });
+  REQUIRE(llarp_main_run(ctx, llarp_main_runtime_opts{isRelay: true}) == 0);
+  llarp_main_free(ctx);
 }

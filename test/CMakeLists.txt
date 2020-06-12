@@ -28,7 +28,6 @@ add_executable(testAll
     dht/test_llarp_dht_tx.cpp
     dht/test_llarp_dht_txowner.cpp
     dns/test_llarp_dns_dns.cpp
-    exit/test_llarp_exit_context.cpp
     llarp_test.cpp
     net/test_llarp_net.cpp
     router/test_llarp_router_version.cpp
@@ -74,6 +73,7 @@ add_executable(catchAll
   config/test_llarp_config_output.cpp
   net/test_ip_address.cpp
   net/test_sock_addr.cpp
+  exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
   check_main.cpp)
 

@@ -377,7 +377,7 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultRPCEnabled = true;
-    constexpr auto DefaultRPCBindAddr = "127.0.0.1:1190";
+    constexpr auto DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
 
     conf.defineOption<bool>(
         "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
@@ -395,7 +395,7 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultWhitelistRouters = false;
-    constexpr auto DefaultLokidRPCAddr = "127.0.0.1:22023";
+    constexpr auto DefaultLokidRPCAddr = "tcp://127.0.0.1:22023";
 
     conf.defineOption<std::string>(
         "lokid", "service-node-seed", false, our_identity_filename, [this](std::string arg) {

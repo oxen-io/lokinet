@@ -17,6 +17,7 @@ make_context(std::optional<fs::path> keyfile)
   context->config->network.m_endpointType = "null";
   context->config->network.m_keyfile = keyfile;
   context->config->bootstrap.skipBootstrap = true;
+  context->config->api.m_enableRPCServer = false;
 
   return context;
 }
