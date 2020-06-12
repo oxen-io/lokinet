@@ -150,7 +150,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (focal amd64)", "ubuntu:bionic", deps='g++-8 python3-dev', lto=true,
+    debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 python3-dev', lto=true,
                     cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DDOWNLOAD_SODIUM=ON -DDOWNLOAD_CURL=ON -DDOWNLOAD_UV=ON -DWITH_SYSTEMD=OFF',
                     extra_cmds=[
