@@ -116,7 +116,6 @@ win32_tun_io::flush_write()
 void
 win32_tun_io::read(byte_t* buf, size_t sz)
 {
-  DWORD code;
   asio_evt_pkt* pkt = new asio_evt_pkt;
   pkt->buf = buf;
   memset(&pkt->pkt, '\0', sizeof(OVERLAPPED));

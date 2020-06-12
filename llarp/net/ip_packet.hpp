@@ -70,7 +70,9 @@ typedef struct ip_hdr
 #define ihl ip_header_len
 #define protocol ip_protocol
 #define frag_off ip_frag_offset
-
+#define tos ip_tos
+#define ttl ip_ttl
+#define tot_len ip_total_length
 #endif
 
 struct ipv6_header
