@@ -13,7 +13,9 @@
 
 namespace llarp::dns
 {
-  using ReplyFunction = std::function<void(const SockAddr& source, const Message& msg)>;
+  using ReplyFunction =
+      std::function<void(SockAddr source, std::array<byte_t, 1500> buf, size_t size)>;
+  using FailFunction = std::function<void(SockAddr source, Message msg)>;
 
   class UnboundResolver : public std::enable_shared_from_this<UnboundResolver>
   {
@@ -24,6 +26,7 @@ namespace llarp::dns
 
     llarp_ev_loop_ptr eventLoop;
     ReplyFunction replyFunc;
+    FailFunction failFunc;
 
     void
     Reset();
@@ -34,7 +37,7 @@ namespace llarp::dns
     RegisterPollFD();
 
    public:
-    UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc);
+    UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc, FailFunction failFunc);
 
     static void
     Callback(void* data, int err, ub_result* result);
@@ -47,7 +50,7 @@ namespace llarp::dns
     AddUpstreamResolver(const std::string& upstreamResolverIP);
 
     void
-    Lookup(const SockAddr& source, Message& msg);
+    Lookup(const SockAddr& source, Message msg);
   };
 
 }  // namespace llarp::dns

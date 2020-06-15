@@ -37,8 +37,13 @@ namespace llarp::dns
         ub_fd(unboundContext), [=]() { ub_process(unboundContext); });
   }
 
-  UnboundResolver::UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc)
-      : unboundContext(nullptr), started(false), eventLoop(eventLoop), replyFunc(replyFunc)
+  UnboundResolver::UnboundResolver(
+      llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc, FailFunction failFunc)
+      : unboundContext(nullptr)
+      , started(false)
+      , eventLoop(eventLoop)
+      , replyFunc(replyFunc)
+      , failFunc(failFunc)
   {
   }
 
@@ -56,7 +61,7 @@ namespace llarp::dns
     {
       Message& msg = lookup->msg;
       msg.AddServFail();
-      this_ptr->replyFunc(lookup->source, msg);
+      this_ptr->failFunc(lookup->source, msg);
       ub_resolve_free(result);
       return;
     }
@@ -69,10 +74,13 @@ namespace llarp::dns
     hdr.Decode(&buf);
     hdr.id = lookup->msg.hdr_id;
 
-    Message msg(hdr);
-    msg.Decode(&buf);
+    buf.cur = buf.base;
+    hdr.Encode(&buf);
 
-    this_ptr->replyFunc(lookup->source, msg);
+    std::array<byte_t, 1500> buf_copy;
+    std::copy_n(buf.base, buf.sz, buf_copy.begin());
+
+    this_ptr->replyFunc(lookup->source, std::move(buf_copy), buf.sz);
 
     ub_resolve_free(result);
   }
@@ -109,12 +117,12 @@ namespace llarp::dns
   }
 
   void
-  UnboundResolver::Lookup(const SockAddr& source, Message& msg)
+  UnboundResolver::Lookup(const SockAddr& source, Message msg)
   {
     if (not unboundContext)
     {
       msg.AddServFail();
-      replyFunc(source, msg);
+      failFunc(source, std::move(msg));
       return;
     }
 
@@ -134,7 +142,7 @@ namespace llarp::dns
     if (err != 0)
     {
       msg.AddServFail();
-      replyFunc(source, msg);
+      failFunc(source, std::move(msg));
       return;
     }
   }

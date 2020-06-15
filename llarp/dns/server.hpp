@@ -66,7 +66,16 @@ namespace llarp
       SendClientMessageTo(const SockAddr& to, Message msg);
 
       void
+      SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf);
+
+      void
       SendServerMessageTo(const SockAddr& to, Message msg);
+
+      void
+      HandleUpstreamResponse(SockAddr to, std::array<byte_t, 1500> buf, size_t len);
+
+      void
+      HandleUpstreamFailure(const SockAddr& to, Message msg);
 
       IpAddress
       PickRandomResolver() const;

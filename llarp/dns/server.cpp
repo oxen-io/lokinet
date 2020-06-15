@@ -98,17 +98,28 @@ namespace llarp
     bool
     Proxy::SetupUnboundResolver(const std::vector<IpAddress>& resolvers)
     {
-      auto replyFunc = [self = weak_from_this()](const SockAddr& to, Message msg) {
+      auto failFunc = [self = weak_from_this()](SockAddr to, Message msg) {
         auto this_ptr = self.lock();
         if (this_ptr)
         {
-          this_ptr->SendServerMessageTo(to, msg);
+          this_ptr->SendServerMessageTo(to, std::move(msg));
         }
       };
 
-      m_UnboundResolver = std::make_shared<UnboundResolver>(m_ServerLoop, std::move(replyFunc));
+      auto replyFunc = [self = weak_from_this()](
+                           SockAddr to, std::array<byte_t, 1500> buf, size_t len) {
+        auto this_ptr = self.lock();
+        if (this_ptr)
+        {
+          this_ptr->HandleUpstreamResponse(to, std::move(buf), len);
+        }
+      };
+
+      m_UnboundResolver = std::make_shared<UnboundResolver>(
+          m_ServerLoop, std::move(replyFunc), std::move(failFunc));
       if (not m_UnboundResolver->Init())
       {
+        llarp::LogError("Failed to initialize upstream DNS resolver.");
         m_UnboundResolver = nullptr;
         return false;
       }
@@ -116,6 +127,7 @@ namespace llarp
       {
         if (not m_UnboundResolver->AddUpstreamResolver(resolver.toString()))
         {
+          llarp::LogError("Failed to add upstream DNS server: ", resolver.toString());
           m_UnboundResolver = nullptr;
           return false;
         }
@@ -130,20 +142,37 @@ namespace llarp
     }
 
     void
+    Proxy::SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf)
+    {
+      llarp_ev_udp_sendto(&m_Server, to, buf);
+    }
+
+    void
     Proxy::SendServerMessageTo(const SockAddr& to, Message msg)
     {
       auto self = shared_from_this();
-      LogicCall(m_ServerLogic, [to, msg, self]() {
+      LogicCall(m_ServerLogic, [to, msg = std::move(msg), self]() {
         std::array<byte_t, 1500> tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if (msg.Encode(&buf))
         {
           buf.sz = buf.cur - buf.base;
           buf.cur = buf.base;
-          llarp_ev_udp_sendto(&self->m_Server, to, buf);
+          self->SendServerMessageBufferTo(to, buf);
         }
         else
           llarp::LogWarn("failed to encode dns message when sending");
+      });
+    }
+
+    void
+    Proxy::HandleUpstreamResponse(SockAddr to, std::array<byte_t, 1500> buf, size_t len)
+    {
+      auto self = shared_from_this();
+      LogicCall(m_ServerLogic, [to, buffer = std::move(buf), self, len]() {
+        llarp_buffer_t buf(buffer);
+        buf.sz = len;
+        self->SendServerMessageBufferTo(to, buf);
       });
     }
 
@@ -266,7 +295,7 @@ namespace llarp
       }
       else
       {
-        m_UnboundResolver->Lookup(from, msg);
+        m_UnboundResolver->Lookup(from, std::move(msg));
       }
     }
 
