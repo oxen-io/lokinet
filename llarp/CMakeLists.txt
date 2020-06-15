@@ -223,7 +223,7 @@ endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts abyss lokinet-platform lokinet-util lokinet-cryptography)
 
-target_link_libraries(liblokinet PRIVATE PkgConfig::UNBOUND)
+target_link_libraries(liblokinet PRIVATE libunbound)
 
 if(BUILD_SHARED_LIBS)
   install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION lib)

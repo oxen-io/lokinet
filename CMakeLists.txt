@@ -225,12 +225,12 @@ endif()
 
 string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 
-
-find_package(PkgConfig REQUIRED)
-
-pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
-
-add_library(libunbound INTERFACE)
+if (NOT BUILD_STATIC_DEPS)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
+  add_library(libunbound INTERFACE)
+  target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
+endif()
 
 pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
