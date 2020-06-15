@@ -58,6 +58,7 @@ namespace llarp
 
     void
     Init(
+        AbstractRouter* router,
         ILinkManager* linkManager,
         I_RCLookupHandler* rcLookup,
         Profiling* profiler,
@@ -110,6 +111,7 @@ namespace llarp
     std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
         GUARDED_BY(_mutex);
 
+    AbstractRouter* _router = nullptr;
     ILinkManager* _linkManager = nullptr;
     I_RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;

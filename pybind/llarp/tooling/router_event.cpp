@@ -78,6 +78,9 @@ namespace tooling
     py::class_<LinkSessionEstablishedEvent, RouterEvent>(mod, "LinkSessionEstablishedEvent")
         .def_readonly("remoteId", &LinkSessionEstablishedEvent::remoteId)
         .def_readonly("inbound", &LinkSessionEstablishedEvent::inbound);
+
+    py::class_<ConnectionAttemptEvent, RouterEvent>(mod, "ConnectionAttemptEvent")
+        .def_readonly("remoteId", &ConnectionAttemptEvent::remoteId);
   }
 
 }  // namespace tooling
