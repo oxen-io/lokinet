@@ -255,7 +255,9 @@ if(SUBMODULE_CHECK)
     check_submodule(external/ghc-filesystem)
     check_submodule(external/date)
     check_submodule(external/pybind11)
-    check_submodule(external/libuv)
+    if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
+      check_submodule(external/libuv)
+    endif()
   endif()
 endif()
 
@@ -263,7 +265,12 @@ endif()
 # down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
 # So load this here universally so that pybind's more intelligent python finder finds python3.x
 # (which the crappier loader invoked below then respects).
-add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+# however! travis is FUBAR right now so disable it in travis builds
+if(TRAVIS_CI_SUCKS OR NOT WITH_HIVE)
+  message(WARNING "you're on travis (which is broken garbage) or are compiling without routerhive, we have disabled pybind11, THANKS!")
+else()
+  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+endif()
 
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)

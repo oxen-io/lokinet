@@ -21,7 +21,7 @@ namespace llarp
 #else
     const fs::path homedir = getenv("HOME");
 #endif
-    return homedir / ".lokinet/";
+    return homedir / ".lokinet";
   }
 
   inline fs::path

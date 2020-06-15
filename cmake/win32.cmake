@@ -28,8 +28,21 @@ if (NOT STATIC_LINK AND NOT MSVC)
   message("for release builds, turn on STATIC_LINK in cmake options")
 endif()
 
+# win32 is the last platform for which we grab libuv manually
+# if you want to use the included submodule do
+# cmake .. -G Ninja -DLIBUV_ROOT=../external/libuv.
+# otherwise grab mine (github.com/despair86/libuv.git) if you need to run on older hardware
+# and clone to win32-setup/libuv
+# then
+# cmake .. -G Ninja -DLIBUV_ROOT=../win32-setup/libuv
+# it is literally upward compatible with current windows 10
 if (STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
+  if (WOW64_CROSS_COMPILE)
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--large-address-aware,--dynamicbase,--pic-executable,-e,_mainCRTStartup,--subsystem,console:5.00 )
+  else()
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,mainCRTStartup )
+  endif()
 endif()
 
 if(LIBUV_ROOT)

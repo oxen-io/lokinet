@@ -28,7 +28,12 @@ namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
   template <size_t sz>
+  // Microsoft C malloc(3C) cannot return pointers aligned wider than 8 ffs
+#ifdef _WIN32
+  struct alignas(uint64_t) AlignedBuffer
+#else
   struct alignas(std::max_align_t) AlignedBuffer
+#endif
   {
     static_assert(alignof(std::max_align_t) <= 16, "insane alignment");
     static_assert(

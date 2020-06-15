@@ -50,6 +50,80 @@ local debian_pipeline(name, image,
     ],
 };
 
+// 32-bit windows build on alpine:
+local alpine_wow64_pipeline(name, image,
+        arch='amd64',
+        deps='mingw-w64-binutils mingw-w64-gcc mingw-w64-crt mingw-w64-headers mingw-w64-winpthreads',
+        build_type='Release',
+        lto=false,
+        werror=false,
+        cmake_extra='',
+        extra_cmds=[],
+        allow_fail=false) = {
+    kind: 'pipeline',
+    type: 'docker',
+    name: name,
+    platform: { arch: arch },
+    trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+    steps: [
+        submodules,
+        {
+            name: 'build',
+            image: image,
+            [if allow_fail then "failure"]: "ignore",
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            commands: [
+                'apk add cmake git ninja pkgconf ccache patch make ' + deps,
+                'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
+                'mkdir build',
+                'cd build',
+                'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw32.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
+                    (if lto then '' else '-DWITH_LTO=OFF ') +
+                    cmake_extra,
+                'ninja -v',
+            ] + extra_cmds,
+        }
+    ],
+};
+
+// 64-bit windows build on alpine:
+local alpine_win32_pipeline(name, image,
+        arch='amd64',
+        deps='mingw-w64-binutils mingw-w64-gcc mingw-w64-crt mingw-w64-headers mingw-w64-winpthreads',
+        build_type='Release',
+        lto=false,
+        werror=false,
+        cmake_extra='',
+        extra_cmds=[],
+        allow_fail=false) = {
+    kind: 'pipeline',
+    type: 'docker',
+    name: name,
+    platform: { arch: arch },
+    trigger: { branch: { exclude: ['debian/*', 'ubuntu/*'] } },
+    steps: [
+        submodules,
+        {
+            name: 'build',
+            image: image,
+            [if allow_fail then "failure"]: "ignore",
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            commands: [
+                'apk add cmake git ninja pkgconf ccache patch make ' + deps,
+                'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
+                'mkdir build',
+                'cd build',
+                'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw64.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
+                    (if lto then '' else '-DWITH_LTO=OFF ') +
+                    cmake_extra,
+                'ninja -v',
+            ] + extra_cmds,
+        }
+    ],
+};
+
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
 local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=false) = {
     kind: 'pipeline',
@@ -154,6 +228,10 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+    
+    // Windows builds (WOW64 and native)
+    alpine_win32_pipeline("win32 on alpine (amd64)", "alpine:edge", cmake_extra="-DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
+    alpine_wow64_pipeline("win32 on alpine (i386)", "i386/alpine:edge", cmake_extra="-DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
     debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 python3-dev', lto=true,
