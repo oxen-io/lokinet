@@ -26,25 +26,16 @@ namespace tooling
 
    private:
     void
-    StartRouters(std::vector<llarp_main*>* routers, bool isRelay);
+    StartRouters(bool isRelay);
 
     void
     AddRouter(
         const std::shared_ptr<llarp::Config>& config,
-        std::vector<llarp_main*>* routers,
         bool isRelay);
 
     /// safely visit router
     void
     VisitRouter(llarp_main* router, std::function<void(Context_ptr)> visit);
-
-    /// safely visit relay at index N
-    void
-    VisitRelay(size_t index, std::function<void(Context_ptr)> visit);
-
-    /// safely visit client at index N
-    void
-    VisitClient(size_t index, std::function<void(Context_ptr)> visit);
 
    public:
     RouterHive() = default;
@@ -76,18 +67,18 @@ namespace tooling
     void
     ForEachRelay(std::function<void(Context_ptr)> visit)
     {
-      for (size_t idx = 0; idx < relays.size(); ++idx)
+      for (auto [routerId, ctx] : relays)
       {
-        VisitRelay(idx, visit);
+        VisitRouter(ctx, visit);
       }
     }
 
     void
     ForEachClient(std::function<void(Context_ptr)> visit)
     {
-      for (size_t idx = 0; idx < clients.size(); ++idx)
+      for (auto [routerId, ctx] : clients)
       {
-        VisitClient(idx, visit);
+        VisitRouter(ctx, visit);
       }
     }
 
@@ -105,8 +96,8 @@ namespace tooling
     std::vector<llarp::RouterContact>
     GetRelayRCs();
 
-    std::vector<llarp_main*> relays;
-    std::vector<llarp_main*> clients;
+    std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> relays;
+    std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> clients;
 
     std::vector<std::thread> routerMainThreads;
 
