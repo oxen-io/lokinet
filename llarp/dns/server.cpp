@@ -106,12 +106,11 @@ namespace llarp
         }
       };
 
-      auto replyFunc = [self = weak_from_this()](
-                           SockAddr to, std::array<byte_t, 1500> buf, size_t len) {
+      auto replyFunc = [self = weak_from_this()](SockAddr to, std::vector<byte_t> buf) {
         auto this_ptr = self.lock();
         if (this_ptr)
         {
-          this_ptr->HandleUpstreamResponse(to, std::move(buf), len);
+          this_ptr->HandleUpstreamResponse(to, std::move(buf));
         }
       };
 
@@ -166,12 +165,11 @@ namespace llarp
     }
 
     void
-    Proxy::HandleUpstreamResponse(SockAddr to, std::array<byte_t, 1500> buf, size_t len)
+    Proxy::HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf)
     {
       auto self = shared_from_this();
-      LogicCall(m_ServerLogic, [to, buffer = std::move(buf), self, len]() {
+      LogicCall(m_ServerLogic, [to, buffer = std::move(buf), self]() {
         llarp_buffer_t buf(buffer);
-        buf.sz = len;
         self->SendServerMessageBufferTo(to, buf);
       });
     }

@@ -72,7 +72,7 @@ namespace llarp
       SendServerMessageTo(const SockAddr& to, Message msg);
 
       void
-      HandleUpstreamResponse(SockAddr to, std::array<byte_t, 1500> buf, size_t len);
+      HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf);
 
       void
       HandleUpstreamFailure(const SockAddr& to, Message msg);

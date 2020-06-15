@@ -77,10 +77,10 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    std::array<byte_t, 1500> buf_copy;
+    std::vector<byte_t> buf_copy(buf.sz);
     std::copy_n(buf.base, buf.sz, buf_copy.begin());
 
-    this_ptr->replyFunc(lookup->source, std::move(buf_copy), buf.sz);
+    this_ptr->replyFunc(lookup->source, std::move(buf_copy));
 
     ub_resolve_free(result);
   }
