@@ -508,7 +508,7 @@ namespace llarp
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
     _outboundSessionMaker.Init(
-        &_linkManager, &_rcLookupHandler, &_routerProfiling, _logic, _nodedb, threadpool());
+        this, &_linkManager, &_rcLookupHandler, &_routerProfiling, _logic, _nodedb, threadpool());
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,

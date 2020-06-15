@@ -2,7 +2,7 @@ import pyllarp
 from time import time
 
 def test_peer_stats(HiveForPeerStats):
-  hive = HiveForPeerStats(n_relays=5, n_clients=0, netid="hive")
+  hive = HiveForPeerStats(n_relays=12, n_clients=0, netid="hive")
 
   start_time = time()
   cur_time = start_time
