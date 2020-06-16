@@ -616,8 +616,6 @@ namespace llarp
     if (not stream or not stream->is_open())
       throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
 
-    llarp::LogInfo("confStr: ", confStr);
-
     *stream << confStr;
     stream->flush();
 
