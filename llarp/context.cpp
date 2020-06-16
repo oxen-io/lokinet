@@ -140,6 +140,7 @@ namespace llarp
     /// already closing
     if (closeWaiter)
       return;
+
     if (CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
       closeWaiter = std::make_unique<std::promise<void>>();
   }

@@ -31,7 +31,7 @@ make_context()
 
 TEST_CASE("ensure snode address allocation", "[snode]")
 {
-  llarp::LogSilencer shutup;
+  // llarp::LogSilencer shutup;
   auto ctx = make_context();
   REQUIRE(llarp_main_setup(ctx, true) == 0);
   auto ctx_pp = llarp::Context::Get(ctx);
