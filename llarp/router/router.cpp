@@ -1022,6 +1022,26 @@ namespace llarp
   }
 
   void
+  Router::Die()
+  {
+    if (!_running)
+      return;
+    if (_stopping)
+      return;
+
+    _stopping.store(true);
+    LogContext::Instance().RevertRuntimeLevel();
+    LogWarn("stopping router hard");
+#if defined(WITH_SYSTEMD)
+    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
+#endif
+    hiddenServiceContext().StopAll();
+    _exitContext.Stop();
+    StopLinks();
+    Close();
+  }
+
+  void
   Router::Stop()
   {
     if (!_running)

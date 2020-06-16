@@ -3,7 +3,6 @@
 
 #include <ev/ev.hpp>
 #include <util/mem.h>
-#include <optional>
 
 namespace llarp
 {
@@ -26,9 +25,6 @@ namespace llarp
     void
     remove_call(uint32_t id);
 
-    bool
-    can_flush() const;
-
     void
     SetQueuer(std::function<void(std::function<void(void)>)> q);
 
@@ -39,9 +35,7 @@ namespace llarp
     clear_event_loop();
 
    private:
-    using ID_t = std::thread::id;
     llarp_ev_loop* m_Loop = nullptr;
-    std::optional<ID_t> m_ID;
     std::function<void(std::function<void(void)>)> m_Queue;
   };
 }  // namespace llarp

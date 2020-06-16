@@ -176,6 +176,10 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    /// non gracefully stop the router
+    virtual void
+    Die() = 0;
+
     /// pump low level links
     virtual void
     PumpLL() = 0;

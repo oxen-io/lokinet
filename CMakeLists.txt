@@ -276,17 +276,9 @@ if(SUBMODULE_CHECK)
   endif()
 endif()
 
-# We only actually need pybind11 with WITH_HIVE, but if we don't load it here then something further
-# down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
-# So load this here universally so that pybind's more intelligent python finder finds python3.x
-# (which the crappier loader invoked below then respects).
-# however! travis is FUBAR right now so disable it in travis builds
-if(TRAVIS_CI_SUCKS OR NOT WITH_HIVE)
-  message(WARNING "you're on travis (which is broken garbage) or are compiling without routerhive, we have disabled pybind11, THANKS!")
-else()
+if(WITH_HIVE)
   add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
 endif()
-
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()

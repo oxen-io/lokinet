@@ -352,6 +352,10 @@ namespace llarp
     void
     Stop() override;
 
+    /// non graceful stop router
+    void
+    Die() override;
+
     /// close all sessions and shutdown all links
     void
     StopLinks();
