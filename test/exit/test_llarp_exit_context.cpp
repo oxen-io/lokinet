@@ -10,8 +10,9 @@ llarp_main*
 make_context()
 {
   // make config
-  auto config = llarp_default_relay_config();
+  auto config = new llarp_config();
   REQUIRE(config != nullptr);
+  REQUIRE(config->impl.LoadDefault(true, fs::current_path()));
   // set testing defaults
   config->impl.network.m_endpointType = "null";
   config->impl.bootstrap.skipBootstrap = true;
@@ -31,7 +32,7 @@ make_context()
 
 TEST_CASE("ensure snode address allocation", "[snode]")
 {
-  // llarp::LogSilencer shutup;
+  llarp::LogSilencer shutup;
   auto ctx = make_context();
   REQUIRE(llarp_main_setup(ctx, true) == 0);
   auto ctx_pp = llarp::Context::Get(ctx);
