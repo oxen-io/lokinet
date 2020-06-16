@@ -11,7 +11,7 @@ def crash_handler (event):
     gdb.execute("set logging file " + log_file_name )
     gdb.execute("set logging on")
     gdb.execute("set logging redirect on")
-    gdb.execute("thread apply all bt")
+    gdb.execute("thread apply all bt full")
     gdb.execute("q")
 
 gdb.events.stop.connect(crash_handler)
