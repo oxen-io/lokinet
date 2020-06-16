@@ -122,6 +122,19 @@ if(NOT WIN32)
   endif()
 endif()
 
+
+option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
+if(NOT FORCE_LOKIMQ_SUBMODULE)
+  find_package(LokiMQ 1.2)
+endif()
+if(LokiMQ_FOUND)
+  message(STATUS "using system lokimq")
+else()
+  message(STATUS "using lokimq submodule")
+  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq EXCLUDE_FROM_ALL)
+endif()
+
+
 # this is messing with release builds
 add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
 
