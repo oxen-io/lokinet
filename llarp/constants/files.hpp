@@ -4,6 +4,10 @@
 
 #include <stdlib.h>
 
+#ifndef _WIN32
+#include <pwd.h>
+#endif
+
 namespace llarp
 {
   constexpr auto our_rc_filename = "self.signed";
@@ -19,7 +23,19 @@ namespace llarp
 #ifdef _WIN32
     const fs::path homedir = getenv("APPDATA");
 #else
-    const fs::path homedir = getenv("HOME");
+    fs::path homedir;
+
+    auto pw = getpwuid(getuid());
+    if (pw)
+    {
+      homedir = pw->pw_dir;
+    }
+    else
+    {
+      // no home dir specified yea idk
+      homedir = "/var/lib/lokinet";
+      return homedir;
+    }
 #endif
     return homedir / ".lokinet";
   }
