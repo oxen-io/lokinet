@@ -29,6 +29,9 @@ if(RELEASE_MOTTO)
 endif()
 
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -93,8 +96,6 @@ endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
