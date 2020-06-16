@@ -38,16 +38,16 @@ local debian_pipeline(name, image,
                 'apt-get update',
                 'apt-get install -y eatmydata',
                 'eatmydata apt-get dist-upgrade -y',
-                'eatmydata apt-get install -y cmake git ninja-build pkg-config ccache ' + deps,
+                'eatmydata apt-get install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
-                    cmake_extra,
-                'ninja -v',
-                './test/testAll --gtest_color=yes',
-                './test/catchAll --use-colour yes',
+                cmake_extra,
+                'ninja clean && ninja -v',
+                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
+                '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
             ] + extra_cmds,
         }
     ],
@@ -86,7 +86,7 @@ local windows_cross_pipeline(name, image,
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
                     cmake_extra,
-                'ninja -v',
+                'ninja clean && ninja -v',
             ] + extra_cmds,
         }
     ],
@@ -158,7 +158,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     cmake_extra,
-                'ninja -v',
+                'ninja clean && ninja -v',
                 './test/testAll --gtest_color=yes',
                 './test/catchAll --use-colour yes',
             ] + extra_cmds,
