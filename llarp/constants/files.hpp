@@ -26,7 +26,7 @@ namespace llarp
     fs::path homedir;
 
     auto pw = getpwuid(getuid());
-    if (pw)
+    if (pw and pw->pw_dir)
     {
       homedir = pw->pw_dir;
     }
