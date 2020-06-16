@@ -6,11 +6,12 @@
 #include <llarp.hpp>
 #include <catch2/catch.hpp>
 
-static llarp_main*
+llarp_main*
 make_context()
 {
   // make config
   auto config = llarp_default_relay_config();
+  REQUIRE(config != nullptr);
   // set testing defaults
   config->impl.network.m_endpointType = "null";
   config->impl.bootstrap.skipBootstrap = true;
@@ -23,6 +24,7 @@ make_context()
   link.port = 0;
   // configure
   auto ptr = llarp_main_init_from_config(config, true);
+  REQUIRE(ptr != nullptr);
   llarp_config_free(config);
   return ptr;
 }

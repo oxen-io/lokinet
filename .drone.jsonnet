@@ -46,7 +46,7 @@ local debian_pipeline(name, image,
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                 cmake_extra,
                 'ninja clean && ninja -v',
-                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
+                './test/testAll --gtest_color=yes',
                 '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
             ] + extra_cmds,
         }
