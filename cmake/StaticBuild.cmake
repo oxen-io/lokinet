@@ -157,7 +157,7 @@ build_external(openssl
 add_static_target(OpenSSL::SSL openssl_external libssl.a)
 add_static_target(OpenSSL::Crypto openssl_external libcrypto.a)
 if(WIN32)
-  set_target_properties(OpenSSL::Crypto INTERFACE "ws2_32;crypt32;iphlpapi")
+  target_link_libraries(OpenSSL::Crypto INTERFACE "ws2_32;crypt32;iphlpapi")
 endif()
 
 set(OPENSSL_INCLUDE_DIR ${DEPS_DESTDIR}/include)
