@@ -29,6 +29,9 @@ if(RELEASE_MOTTO)
 endif()
 
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+
 # Core options
 option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
@@ -93,8 +96,6 @@ endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
@@ -225,21 +226,25 @@ endif()
 
 string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 
+find_package(PkgConfig REQUIRED)
 
-find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(SD libsystemd)
-    # Default WITH_SYSTEMD to true if we found it
-    option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+if (NOT BUILD_STATIC_DEPS)
+  pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
+  add_library(libunbound INTERFACE)
+  target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
+endif()
 
-    if(WITH_SYSTEMD)
-      if(NOT SD_FOUND)
-        message(FATAL_ERROR "libsystemd not found")
-      endif()
-      add_definitions(-DWITH_SYSTEMD)
-      include_directories(${SD_INCLUDE_DIRS})
-      set(SD_LIBS ${SD_LDFLAGS})
-    endif()
+pkg_check_modules(SD libsystemd)
+# Default WITH_SYSTEMD to true if we found it
+option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+
+if(WITH_SYSTEMD)
+  if(NOT SD_FOUND)
+    message(FATAL_ERROR "libsystemd not found")
+  endif()
+  add_definitions(-DWITH_SYSTEMD)
+  include_directories(${SD_INCLUDE_DIRS})
+  set(SD_LIBS ${SD_LDFLAGS})
 endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)

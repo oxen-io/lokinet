@@ -70,11 +70,11 @@ endif()
 option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
 
 # Allow -DDOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
-if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE")
+if((NOT BUILD_STATIC_DEPS) AND (NOT DOWNLOAD_SODIUM STREQUAL "FORCE"))
   find_package(Sodium 1.0.18)
 endif()
 
-if(sodium_FOUND)
+if(sodium_FOUND OR BUILD_STATIC_DEPS)
   target_link_libraries(lokinet-cryptography PUBLIC sodium)
 elseif(DOWNLOAD_SODIUM)
   message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")

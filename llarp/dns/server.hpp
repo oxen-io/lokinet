@@ -5,6 +5,7 @@
 #include <ev/ev.h>
 #include <net/net.hpp>
 #include <util/thread/logic.hpp>
+#include <dns/unbound_resolver.hpp>
 
 #include <unordered_map>
 
@@ -56,9 +57,6 @@ namespace llarp
       HandleTick(llarp_udp_io*);
 
       void
-      Tick(llarp_time_t now);
-
-      void
       HandlePktClient(const SockAddr& from, Buffer_t buf);
 
       void
@@ -68,10 +66,22 @@ namespace llarp
       SendClientMessageTo(const SockAddr& to, Message msg);
 
       void
+      SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf);
+
+      void
       SendServerMessageTo(const SockAddr& to, Message msg);
+
+      void
+      HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf);
+
+      void
+      HandleUpstreamFailure(const SockAddr& to, Message msg);
 
       IpAddress
       PickRandomResolver() const;
+
+      bool
+      SetupUnboundResolver(const std::vector<IpAddress>& resolvers);
 
      private:
       llarp_udp_io m_Server;
@@ -82,6 +92,7 @@ namespace llarp
       Logic_ptr m_ClientLogic;
       IQueryHandler* m_QueryHandler;
       std::vector<IpAddress> m_Resolvers;
+      std::shared_ptr<UnboundResolver> m_UnboundResolver;
 
       struct TX
       {

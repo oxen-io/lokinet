@@ -957,7 +957,7 @@ namespace libuv
         [](uv_handle_t* h, void*) {
           if (uv_is_closing(h))
             return;
-          if (h->data && uv_is_active(h) && h->type != UV_TIMER)
+          if (h->data && uv_is_active(h) && h->type != UV_TIMER && h->type != UV_POLL)
           {
             static_cast<glue*>(h->data)->Close();
           }
@@ -1054,6 +1054,53 @@ namespace libuv
   {
     m_LogicCalls.tryPushBack(f);
     uv_async_send(&m_WakeUp);
+  }
+
+  void
+  OnUVPollFDReadable(uv_poll_t* handle, int status, [[maybe_unused]] int events)
+  {
+    if (status < 0)
+      return;  // probably fd was closed
+
+    auto func = static_cast<libuv::Loop::Callback*>(handle->data);
+
+    (*func)();
+  }
+
+  void
+  Loop::register_poll_fd_readable(int fd, Callback callback)
+  {
+    if (m_Polls.count(fd))
+    {
+      llarp::LogError(
+          "Attempting to create event loop poll on fd ",
+          fd,
+          ", but an event loop poll for that fd already exists.");
+      return;
+    }
+
+    // new a copy as the one passed in here will go out of scope
+    auto function_ptr = new Callback(callback);
+
+    auto& new_poll = m_Polls[fd];
+
+    uv_poll_init(&m_Impl, &new_poll, fd);
+    new_poll.data = (void*)function_ptr;
+    uv_poll_start(&new_poll, UV_READABLE, &OnUVPollFDReadable);
+  }
+
+  void
+  Loop::deregister_poll_fd_readable(int fd)
+  {
+    auto itr = m_Polls.find(fd);
+
+    if (itr != m_Polls.end())
+    {
+      uv_poll_stop(&(itr->second));
+      auto func = static_cast<Callback*>(itr->second.data);
+      delete func;
+      m_Polls.erase(itr);
+    }
   }
 
 }  // namespace libuv

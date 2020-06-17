@@ -29,8 +29,11 @@ else
 fi
 
 mkdir -v "$base"
-mv -v daemon/lokinet "$base"
-cp -av ../lokinet-bootstrap "$base"
+# copy lokinet-bootstrap.ps1 and lokinet.exe if we are a windows build
+test -e daemon/lokinet.exe && cp -av daemon/lokinet.exe ../lokinet-bootstrap.ps1 "$base"
+# copy lokinet-bootstrap shell script and built binary if we aren't a windows build
+test -e daemon/lokinet && cp -av daemon/lokinet ../lokinet-bootstrap "$base"
+# tar dat shiz up yo
 tar cJvf "${base}.tar.xz" "$base"
 
 upload_to="builds.lokinet.dev/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
