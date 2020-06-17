@@ -1,8 +1,8 @@
 local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev';
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
+local default_windows_deps='mingw-w64-binutils mingw-w64-gcc mingw-w64-crt mingw-w64-headers mingw-w64-winpthreads perl openssh zip bash'; // deps for windows cross compile
 
-local default_windows_deps='mingw-w64-binutils mingw-w64-gcc mingw-w64-crt mingw-w64-headers mingw-w64-winpthreads perl openssh bash xz'; // deps for windows cross compile
 
 
 local submodules = {
@@ -200,11 +200,11 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // Windows builds (WOW64 and native)
     windows_cross_pipeline("win32 on alpine (amd64)", "alpine:edge",
         toolchain='mingw64', extra_cmds=[
-          '../contrib/ci/drone-static-upload.sh'
+          '../contrib/ci/drone-windows-upload.sh'
     ]),
      windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge",
         toolchain='mingw32', extra_cmds=[
-          '../contrib/ci/drone-static-upload.sh'
+          '../contrib/ci/drone-windows-upload.sh'
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
