@@ -957,7 +957,9 @@ namespace libuv
             return;
           if (h->data && uv_is_active(h) && h->type != UV_TIMER && h->type != UV_POLL)
           {
-            static_cast<glue*>(h->data)->Close();
+            auto glue = reinterpret_cast<libuv::glue*>(h->data);
+            if (glue)
+              glue->Close();
           }
         },
         nullptr);

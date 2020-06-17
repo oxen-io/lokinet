@@ -355,7 +355,8 @@ namespace llarp
       IntroSetPublished();
 
       void
-      AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthResult)> hook);
+      AsyncProcessAuthMessage(
+          std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
 
       void
       SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);

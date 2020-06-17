@@ -4,46 +4,50 @@ import sys
 
 from socket import AF_INET
 
-import requests
+import zmq
 from pyroute2 import IPRoute
 
 class LokinetRPC:
 
     def __init__(self, url):
+        self._rpc_context = zmq.Context()
+        self._rpc_socket = self._rpc_context.socket(zmq.DEALER)
+        self._rpc_socket.setsockopt(zmq.CONNECT_TIMEOUT, 5000)
+        self._rpc_socket.setsockopt(zmq.HANDSHAKE_IVL, 5000)
+        self._rpc_socket.connect(url)
         self._url = url
     
-    def _jsonrpc(self, method, params={}):
-        r = requests.post(
-            self._url,
-            headers={"Content-Type": "application/json", "Host": "localhost"},
-            json={
-                "jsonrpc": "2.0",
-                "id": "0",
-                "method": "{}".format(method),
-                "params": params,
-            },
-        )
-        return r.json()
+    def rpc(self, method):
+        self._rpc_socket.send_multipart([method.encode(), b'lokinet_vpn'+method.encode()])
+        if not self._rpc_socket.poll(timeout=50):
+            return
+        reply = self._rpc_socket.recv_multipart()
+        if len(reply) >= 3 and reply[0:2] == [b'REPLY', b'lokinet_vpn'+method.encode()]:
+            return reply[2].decode()
         
     def get_first_hops(self):
-        data = self._jsonrpc("llarp.admin.dumpstate")
+        data = self.rpc("llarp.status")
         for link in data['result']['links']['outbound']:
             for session in link["sessions"]['established']:
                 yield session['remoteAddr']
 
+    def close(self):
+        self._rpc_socket.close(linger=0)
+
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--rpc", type=str, default='127.0.0.1:1190')
+    ap.add_argument("--rpc", type=str, default='tcp://127.0.0.1:1190')
     ap.add_argument("--ifname", type=str, default="lokitun0")
     ap.add_argument("--up", action='store_const', dest='action', const='up')
     ap.add_argument("--down", action='store_const', dest='action', const='down')
     args = ap.parse_args()
-    rpc = LokinetRPC('http://{}/jsonrpc'.format(args.rpc))
+    rpc = LokinetRPC(args.rpc)
     hops = dict()
     for hop in rpc.get_first_hops():
         ip = hop.split(':')[0]
         hops[ip] = 0
+    rpc.close()
     if len(hops) == 0:
         print("lokinet is not connected yet")
         return 1

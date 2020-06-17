@@ -36,21 +36,40 @@ namespace llarp::rpc
 
   void
   EndpointAuthRPC::AuthenticateAsync(
-      llarp::service::Address from,
-      llarp::service::ConvoTag,
+      std::shared_ptr<llarp::service::ProtocolMessage> msg,
       std::function<void(service::AuthResult)> hook)
   {
+    const auto from = msg->sender.Addr();
     if (m_AuthWhitelist.count(from))
     {
+      // explicitly whitelisted source
       m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthAccepted); });
       return;
     }
     if (not m_Conn.has_value())
     {
+      // we don't have a connection to the backend so it's failed
       m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthFailed); });
       return;
     }
-    // call method with 1 parameter: the loki address of the remote
+
+    if (msg->proto != llarp::service::eProtocolAuth)
+    {
+      // not an auth message, reject
+      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthRejected); });
+      return;
+    }
+
+    const auto maybe = msg->MaybeEncodeAuthInfo();
+    if (not maybe.has_value())
+    {
+      // cannot generate meta info, failed
+      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthFailed); });
+      return;
+    }
+    std::string_view metaInfo{(char*)maybe->data(), maybe->size()};
+    std::string_view payload{(char*)msg->payload.data(), msg->payload.size()};
+    // call method with 2 parameters: metainfo and userdata
     m_LMQ->request(
         *m_Conn,
         m_AuthMethod,
@@ -67,7 +86,8 @@ namespace llarp::rpc
           }
           self->m_Endpoint->RouterLogic()->Call([hook, result]() { hook(result); });
         },
-        from.ToString());
+        metaInfo,
+        payload);
   }  // namespace llarp::rpc
 
 }  // namespace llarp::rpc

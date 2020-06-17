@@ -854,11 +854,12 @@ namespace llarp
     }
 
     void
-    Endpoint::AsyncAuthConvoTag(Address addr, ConvoTag tag, std::function<void(AuthResult)> hook)
+    Endpoint::AsyncProcessAuthMessage(
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook)
     {
       if (m_AuthPolicy)
       {
-        m_AuthPolicy->AuthenticateAsync(std::move(addr), std::move(tag), std::move(hook));
+        m_AuthPolicy->AuthenticateAsync(std::move(msg), std::move(hook));
       }
       else
       {

@@ -35,6 +35,7 @@ namespace llarp::service
     /// result later
     virtual void
     AuthenticateAsync(
-        service::Address from, service::ConvoTag tag, std::function<void(AuthResult)> hook) = 0;
+        std::shared_ptr<llarp::service::ProtocolMessage> msg,
+        std::function<void(AuthResult)> hook) = 0;
   };
 }  // namespace llarp::service

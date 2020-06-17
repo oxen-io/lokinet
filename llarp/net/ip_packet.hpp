@@ -75,16 +75,33 @@ typedef struct ip_hdr
 #define tot_len ip_total_length
 #endif
 
-struct ipv6_header
+struct ipv6_header_preamble
 {
   unsigned char version : 4;
   unsigned char pad_small : 4;
   uint8_t pad[3];
+};
+
+struct ipv6_header
+{
+  union {
+    ipv6_header_preamble preamble;
+    uint32_t flowlabel;
+  } preamble;
+
   uint16_t payload_len;
   uint8_t proto;
   uint8_t hoplimit;
   in6_addr srcaddr;
   in6_addr dstaddr;
+
+  /// get 20 bit truncated flow label in network order
+  llarp::nuint32_t
+  FlowLabel() const;
+
+  /// put 20 bit truncated flow label network order
+  void
+  FlowLabel(llarp::nuint32_t flowlabel);
 };
 
 #include <memory>
@@ -242,14 +259,16 @@ namespace llarp
       UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 
       void
-      UpdateIPv6Address(huint128_t src, huint128_t dst);
+      UpdateIPv6Address(
+          huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel = std::nullopt);
+
       /// set addresses to zero and recacluate checksums
       void
-      ZeroAddresses();
+      ZeroAddresses(std::optional<nuint32_t> flowlabel = std::nullopt);
 
       /// zero out source address
       void
-      ZeroSourceAddress();
+      ZeroSourceAddress(std::optional<nuint32_t> flowlabel = std::nullopt);
 
       /// make an icmp unreachable reply packet based of this ip packet
       std::optional<IPPacket>

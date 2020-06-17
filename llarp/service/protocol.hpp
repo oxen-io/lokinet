@@ -50,6 +50,10 @@ namespace llarp
       uint64_t seqno = 0;
       uint64_t version = LLARP_PROTO_VERSION;
 
+      /// maybe encode metainfo for lmq endpoint auth
+      std::optional<std::vector<byte_t>>
+      MaybeEncodeAuthInfo() const;
+
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val);
 

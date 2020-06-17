@@ -73,10 +73,13 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictInt("a", proto, buf))
         return false;
-      if (!bencode_write_bytestring(buf, "d", 1))
-        return false;
-      if (!bencode_write_bytestring(buf, payload.data(), payload.size()))
-        return false;
+      if (not payload.empty())
+      {
+        if (!bencode_write_bytestring(buf, "d", 1))
+          return false;
+        if (!bencode_write_bytestring(buf, payload.data(), payload.size()))
+          return false;
+      }
       if (!BEncodeWriteDictEntry("i", introReply, buf))
         return false;
       if (!BEncodeWriteDictInt("n", seqno, buf))
@@ -91,6 +94,32 @@ namespace llarp
       if (!BEncodeWriteDictInt("v", version, buf))
         return false;
       return bencode_end(buf);
+    }
+
+    std::optional<std::vector<byte_t>>
+    ProtocolMessage::MaybeEncodeAuthInfo() const
+    {
+      std::array<byte_t, 1024> info;
+      llarp_buffer_t buf{info};
+      if (not bencode_start_dict(&buf))
+        return std::nullopt;
+      if (not BEncodeWriteDictInt("a", proto, &buf))
+        return std::nullopt;
+      if (not BEncodeWriteDictEntry("i", introReply, &buf))
+        return std::nullopt;
+      if (not BEncodeWriteDictEntry("s", sender, &buf))
+        return std::nullopt;
+      if (not BEncodeWriteDictEntry("t", tag, &buf))
+        return std::nullopt;
+      if (not BEncodeWriteDictInt("v", version, &buf))
+        return std::nullopt;
+      if (not bencode_end(&buf))
+        return std::nullopt;
+      const std::size_t encodedSize = buf.cur - buf.base;
+      std::vector<byte_t> data;
+      data.resize(encodedSize);
+      std::copy_n(buf.base, encodedSize, data.data());
+      return data;
     }
 
     ProtocolFrame::~ProtocolFrame() = default;
@@ -335,10 +364,8 @@ namespace llarp
         path::Path_ptr path = std::move(self->path);
         const PathID_t from = self->frame.F;
         msg->handler = self->handler;
-
-        self->handler->AsyncAuthConvoTag(
-            msg->sender.Addr(),
-            msg->tag,
+        self->handler->AsyncProcessAuthMessage(
+            msg,
             [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
                 AuthResult result) {
               if (result == AuthResult::eAuthAccepted)

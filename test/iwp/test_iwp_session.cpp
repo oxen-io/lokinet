@@ -142,7 +142,6 @@ RunIWPTest(Func_t test, Duration_t timeout = 1s)
 {
   // shut up logs
   llarp::LogSilencer shutup;
-
   // set up event loop
   auto logic = std::make_shared<llarp::Logic>();
   auto loop = llarp_make_ev_loop();

@@ -12,6 +12,22 @@
 #include <algorithm>
 #include <map>
 
+constexpr uint32_t ipv6_flowlabel_mask = 0b00000000000011111111111111111111;
+
+void
+ipv6_header::FlowLabel(llarp::nuint32_t label)
+{
+  // the ipv6 flow label is the last 20 bits in the first 32 bits of the header
+  preamble.flowlabel =
+      (htonl(ipv6_flowlabel_mask) & label.n) | (preamble.flowlabel & htonl(~ipv6_flowlabel_mask));
+}
+
+llarp::nuint32_t
+ipv6_header::FlowLabel() const
+{
+  return llarp::nuint32_t{preamble.flowlabel & htonl(ipv6_flowlabel_mask)};
+}
+
 namespace llarp
 {
   namespace net
@@ -334,7 +350,7 @@ namespace llarp
     }
 
     void
-    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst)
+    IPPacket::UpdateIPv6Address(huint128_t src, huint128_t dst, std::optional<nuint32_t> flowlabel)
     {
       const size_t ihs = 4 + 4 + 16 + 16;
 
@@ -343,6 +359,11 @@ namespace llarp
         return;
 
       auto hdr = HeaderV6();
+      if (flowlabel.has_value())
+      {
+        // set flow label if desired
+        hdr->FlowLabel(*flowlabel);
+      }
 
       const auto oldSrcIP = hdr->srcaddr;
       const auto oldDstIP = hdr->dstaddr;
@@ -420,7 +441,7 @@ namespace llarp
     }
 
     void
-    IPPacket::ZeroAddresses()
+    IPPacket::ZeroAddresses(std::optional<nuint32_t> flowlabel)
     {
       if (IsV4())
       {
@@ -428,12 +449,12 @@ namespace llarp
       }
       else if (IsV6())
       {
-        UpdateIPv6Address({0}, {0});
+        UpdateIPv6Address({0}, {0}, flowlabel);
       }
     }
 
     void
-    IPPacket::ZeroSourceAddress()
+    IPPacket::ZeroSourceAddress(std::optional<nuint32_t> flowlabel)
     {
       if (IsV4())
       {
@@ -441,9 +462,10 @@ namespace llarp
       }
       else if (IsV6())
       {
-        UpdateIPv6Address({0}, {ntoh128(dstv6().h)});
+        UpdateIPv6Address({0}, {ntoh128(dstv6().h)}, flowlabel);
       }
     }
+
     std::optional<IPPacket>
     IPPacket::MakeICMPUnreachable() const
     {
