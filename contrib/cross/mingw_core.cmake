@@ -23,3 +23,4 @@ else()
 endif()
 
 set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)
+set(CMAKE_CROSSCOMPILE ON)
