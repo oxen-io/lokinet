@@ -3,7 +3,9 @@
 #include "pybind11/iostream.h"
 
 #include <tooling/router_hive.hpp>
+#include "router/abstractrouter.hpp"
 #include "llarp.hpp"
+
 namespace tooling
 {
   void
@@ -17,12 +19,16 @@ namespace tooling
         .def("StartRelays", &RouterHive::StartRelays)
         .def("StartClients", &RouterHive::StartClients)
         .def("StopAll", &RouterHive::StopRouters)
-        .def("ForEachRelay", &RouterHive::ForEachRelay)
-        .def("ForEachClient", &RouterHive::ForEachClient)
-        .def("ForEachRouter", &RouterHive::ForEachRouter)
+        .def("ForEachRelayContext", &RouterHive::ForEachRelayContext)
+        .def("ForEachClientContext", &RouterHive::ForEachClientContext)
+        .def("ForEachRouterContext", &RouterHive::ForEachRouterContext)
+        .def("ForEachRelayRouter", &RouterHive::ForEachRelayRouter)
+        .def("ForEachClientRouter", &RouterHive::ForEachClientRouter)
+        .def("ForEachRouterRouter", &RouterHive::ForEachRouterRouter)
         .def("GetNextEvent", &RouterHive::GetNextEvent)
         .def("GetAllEvents", &RouterHive::GetAllEvents)
         .def("RelayConnectedRelays", &RouterHive::RelayConnectedRelays)
-        .def("GetRelayRCs", &RouterHive::GetRelayRCs);
+        .def("GetRelayRCs", &RouterHive::GetRelayRCs)
+        .def("GetRelay", &RouterHive::GetRelay);
   }
 }  // namespace tooling

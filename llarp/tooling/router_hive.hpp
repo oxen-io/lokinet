@@ -16,6 +16,7 @@ struct llarp_main;
 namespace llarp
 {
   struct Context;
+  struct AbstractRouter;
 }
 
 namespace tooling
@@ -64,31 +65,23 @@ namespace tooling
     std::deque<RouterEventPtr>
     GetAllEvents();
 
+    // functions to safely visit each relay and/or client's AbstractRouter or Context
     void
-    ForEachRelay(std::function<void(Context_ptr)> visit)
-    {
-      for (auto [routerId, ctx] : relays)
-      {
-        VisitRouter(ctx, visit);
-      }
-    }
+    ForEachRelayRouter(std::function<void(llarp::AbstractRouter*)> visit);
+    void
+    ForEachClientRouter(std::function<void(llarp::AbstractRouter*)> visit);
+    void
+    ForEachRouterRouter(std::function<void(llarp::AbstractRouter*)> visit);
 
     void
-    ForEachClient(std::function<void(Context_ptr)> visit)
-    {
-      for (auto [routerId, ctx] : clients)
-      {
-        VisitRouter(ctx, visit);
-      }
-    }
-
-    /// safely visit every router context
+    ForEachRelayContext(std::function<void(Context_ptr)> visit);
     void
-    ForEachRouter(std::function<void(Context_ptr)> visit)
-    {
-      ForEachRelay(visit);
-      ForEachClient(visit);
-    }
+    ForEachClientContext(std::function<void(Context_ptr)> visit);
+    void
+    ForEachRouterContext(std::function<void(Context_ptr)> visit);
+
+    llarp::AbstractRouter*
+    GetRelay(const llarp::RouterID& id);
 
     std::vector<size_t>
     RelayConnectedRelays();

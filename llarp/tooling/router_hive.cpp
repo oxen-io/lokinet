@@ -160,6 +160,17 @@ namespace tooling
     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
   }
 
+  llarp::AbstractRouter*
+  RouterHive::GetRelay(const llarp::RouterID& id)
+  {
+    auto itr = relays.find(id);
+    if (itr == relays.end())
+      return nullptr;
+
+    auto ctx = llarp::Context::Get(itr->second);
+    return ctx->router.get();
+  }
+
   std::vector<size_t>
   RouterHive::RelayConnectedRelays()
   {
@@ -211,6 +222,57 @@ namespace tooling
       i++;
     }
     return results;
+  }
+
+  void
+  RouterHive::ForEachRelayRouter(std::function<void(llarp::AbstractRouter*)> visit)
+  {
+    for (auto [routerId, ctx] : relays)
+    {
+      visit(GetRelay(routerId));
+    }
+  }
+
+  void
+  RouterHive::ForEachClientRouter(std::function<void(llarp::AbstractRouter*)> visit)
+  {
+    for (auto [routerId, ctx] : clients)
+    {
+      visit(GetRelay(routerId));
+    }
+  }
+
+  void
+  RouterHive::ForEachRouterRouter(std::function<void(llarp::AbstractRouter*)> visit)
+  {
+    ForEachRelayRouter(visit);
+    ForEachClientRouter(visit);
+  }
+
+  void
+  RouterHive::ForEachRelayContext(std::function<void(Context_ptr)> visit)
+  {
+    for (auto [routerId, ctx] : relays)
+    {
+      VisitRouter(ctx, visit);
+    }
+  }
+
+  void
+  RouterHive::ForEachClientContext(std::function<void(Context_ptr)> visit)
+  {
+    for (auto [routerId, ctx] : clients)
+    {
+      VisitRouter(ctx, visit);
+    }
+  }
+
+  /// safely visit every router context
+  void
+  RouterHive::ForEachRouterContext(std::function<void(Context_ptr)> visit)
+  {
+    ForEachRelayContext(visit);
+    ForEachClientContext(visit);
   }
 
 }  // namespace tooling
