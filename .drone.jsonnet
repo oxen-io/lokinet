@@ -230,8 +230,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     
     // Windows builds (WOW64 and native)
-    alpine_win32_pipeline("win32 on alpine (amd64)", "alpine:edge", cmake_extra="-DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
-    alpine_wow64_pipeline("win32 on alpine (i386)", "i386/alpine:edge", cmake_extra="-DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
+    alpine_win32_pipeline("win32 on alpine (amd64)", "alpine:edge", cmake_extra="-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
+    alpine_wow64_pipeline("win32 on alpine (i386)", "i386/alpine:edge", cmake_extra="-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON", lto=false),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
     debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 python3-dev', lto=true,
@@ -255,7 +255,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // Macos builds:
     mac_builder('macOS (Release)'),
     mac_builder('macOS (Debug)', build_type='Debug'),
-    mac_builder('macOS (Static)', cmake_extra='-DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
+    mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DDOWNLOAD_SODIUM=FORCE -DDOWNLOAD_CURL=FORCE -DDOWNLOAD_UV=FORCE',
                 extra_cmds=[
                     '../contrib/ci/drone-check-static-libs.sh',
                     '../contrib/ci/drone-static-upload.sh'
