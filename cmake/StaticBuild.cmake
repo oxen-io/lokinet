@@ -178,8 +178,10 @@ build_external(unbound
   "CC=${deps_cc}" "CFLAGS=-O2 ${flto}"
 )
 add_static_target(libunbound unbound_external libunbound.a)
-if(WIN32)
-  set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "ws2_32;crypt32;iphlpapi")
+if(NOT WIN32)
+  set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "OpenSSL::SSL;OpenSSL::Crypto")
+else()
+  set_target_properties(libunbound PROPERTIES INTERFACE_LINK_LIBRARIES "OpenSSL::SSL;OpenSSL::Crypto;ws2_32;crypt32;iphlpapi")
 endif()
 
 
