@@ -45,8 +45,8 @@ local debian_pipeline(name, image,
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                 cmake_extra,
-                'ninja clean && ninja -v',
-                './test/testAll --gtest_color=yes',
+                'ninja -v',
+                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
                 '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
             ] + extra_cmds,
         }
@@ -85,8 +85,8 @@ local windows_cross_pipeline(name, image,
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
-                    cmake_extra,
-                'ninja clean && ninja -v',
+                cmake_extra,
+                'ninja -v',
             ] + extra_cmds,
         }
     ],
@@ -156,9 +156,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
-                    cmake_extra,
-                'ninja clean && ninja -v',
+                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
+                'ninja -v',
                 './test/testAll --gtest_color=yes',
                 './test/catchAll --use-colour yes',
             ] + extra_cmds,
