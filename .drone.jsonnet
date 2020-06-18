@@ -202,7 +202,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         toolchain='mingw64', extra_cmds=[
           '../contrib/ci/drone-windows-upload.sh'
     ]),
-     windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge", arch='i686',
+     windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge", arch='386',
         toolchain='mingw32', extra_cmds=[
           '../contrib/ci/drone-windows-upload.sh'
     ]),
