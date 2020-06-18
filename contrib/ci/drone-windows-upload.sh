@@ -21,11 +21,11 @@ chmod 600 ssh_key
 
 if [ -n "$DRONE_TAG" ]; then
     # For a tag build use something like `lokinet-linux-amd64-v1.2.3`
-    base="lokinet-windows-$DRONE_STAGE_ARCH-$DRONE_TAG"
+    base="lokinet-windows-$WINDOWS_BUILD_NAME-$DRONE_TAG"
 else
     # Otherwise build a length name from the datetime and commit hash, such as:
     # lokinet-linux-amd64-20200522T212342Z-04d7dcc54
-    base="lokinet-windows-$DRONE_STAGE_ARCH-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
+    base="lokinet-windows-$WINDOWS_BUILD_NAME-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
 fi
 
 mkdir -v "$base"

@@ -61,7 +61,7 @@ local windows_cross_pipeline(name, image,
         lto=false,
         werror=false,
         cmake_extra='',
-        toolchain='mingw32',
+        toolchain='32',
         extra_cmds=[],
         allow_fail=false) = {
     kind: 'pipeline',
@@ -75,13 +75,13 @@ local windows_cross_pipeline(name, image,
             name: 'build',
             image: image,
             [if allow_fail then "failure"]: "ignore",
-            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
+            environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
                 'apk add cmake git ninja pkgconf ccache patch make ' + deps,
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CROSSCOMPILE=ON -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -G Ninja -DCMAKE_CROSSCOMPILE=ON -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
@@ -199,11 +199,11 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     
     // Windows builds (WOW64 and native)
     windows_cross_pipeline("win32 on alpine (amd64)", "alpine:edge",
-        toolchain='mingw64', extra_cmds=[
+        toolchain='64', extra_cmds=[
           '../contrib/ci/drone-windows-upload.sh'
     ]),
-     windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge", arch='386',
-        toolchain='mingw32', extra_cmds=[
+     windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge",
+        toolchain='32', extra_cmds=[
           '../contrib/ci/drone-windows-upload.sh'
     ]),
 
