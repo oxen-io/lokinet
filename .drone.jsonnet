@@ -200,11 +200,11 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // Windows builds (WOW64 and native)
     windows_cross_pipeline("win32 on alpine (amd64)", "alpine:edge",
         toolchain='64', extra_cmds=[
-          '../contrib/ci/drone-windows-upload.sh'
+          '../contrib/ci/drone-static-upload.sh'
     ]),
      windows_cross_pipeline("win32 on alpine (i386)", "i386/alpine:edge",
         toolchain='32', extra_cmds=[
-          '../contrib/ci/drone-windows-upload.sh'
+          '../contrib/ci/drone-static-upload.sh'
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:

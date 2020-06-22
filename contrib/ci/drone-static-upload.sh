@@ -19,22 +19,32 @@ set -o xtrace  # Don't start tracing until *after* we write the ssh key
 
 chmod 600 ssh_key
 
+os="$DRONE_STAGE_OS-$DRONE_STAGE_ARCH"
+if [ -n "$WINDOWS_BUILD_NAME" ]; then
+    os="windows-$WINDOWS_BUILD_NAME"
+fi
+
 if [ -n "$DRONE_TAG" ]; then
     # For a tag build use something like `lokinet-linux-amd64-v1.2.3`
-    base="lokinet-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH-$DRONE_TAG"
+    base="lokinet-$os-$DRONE_TAG"
 else
     # Otherwise build a length name from the datetime and commit hash, such as:
     # lokinet-linux-amd64-20200522T212342Z-04d7dcc54
-    base="lokinet-$DRONE_STAGE_OS-$DRONE_STAGE_ARCH-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
+    base="lokinet-$os-$(date --date=@$DRONE_BUILD_CREATED +%Y%m%dT%H%M%SZ)-${DRONE_COMMIT:0:9}"
 fi
 
 mkdir -v "$base"
-# copy lokinet-bootstrap.ps1 and lokinet.exe if we are a windows build
-test -e daemon/lokinet.exe && cp -av daemon/lokinet.exe ../lokinet-bootstrap.ps1 "$base"
-# copy lokinet-bootstrap shell script and built binary if we aren't a windows build
-test -e daemon/lokinet && cp -av daemon/lokinet ../lokinet-bootstrap "$base"
-# tar dat shiz up yo
-tar cJvf "${base}.tar.xz" "$base"
+if [ -e daemon/lokinet.exe ]; then
+    cp -av daemon/lokinet.exe ../lokinet-bootstrap.ps1 "$base"
+    # zipit up yo
+    archive="$base.zip"
+    zip -r "$archive" "$base"
+else
+    cp -av daemon/lokinet ../lokinet-bootstrap "$base"
+    # tar dat shiz up yo
+    archive="$base.tar.xz"
+    tar cJvf "$archive" "$base"
+fi
 
 upload_to="builds.lokinet.dev/${DRONE_REPO// /_}/${DRONE_BRANCH// /_}"
 
@@ -52,10 +62,10 @@ done
 
 sftp -i ssh_key -b - -o StrictHostKeyChecking=off drone@builds.lokinet.dev <<SFTP
 $mkdirs
-put $base.tar.xz $upload_to
+put $archive $upload_to
 SFTP
 
 set +o xtrace
 
-echo -e "\n\n\n\n\e[32;1mUploaded to https://${upload_to}/${base}.tar.xz\e[0m\n\n\n"
+echo -e "\n\n\n\n\e[32;1mUploaded to https://${upload_to}/${archive}\e[0m\n\n\n"
 
