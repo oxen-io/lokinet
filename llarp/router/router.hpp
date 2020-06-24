@@ -51,6 +51,14 @@ namespace llarp
 {
   struct Router final : public AbstractRouter
   {
+    // XXX / TODO: this code shouldn't ever make it into a release binary
+    virtual void
+    stopGossipingRC()
+    {
+      m_shouldGossipRC = false;
+    }
+    bool m_shouldGossipRC = true;
+
     llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key

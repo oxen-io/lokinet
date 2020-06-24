@@ -125,6 +125,9 @@ namespace llarp
   void
   Router::GossipRCIfNeeded(const RouterContact rc)
   {
+    if (not m_shouldGossipRC)
+      return;
+
     /// if we are not a service node forget about gossip
     if (not IsServiceNode())
       return;
