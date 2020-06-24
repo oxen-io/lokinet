@@ -155,12 +155,11 @@ namespace llarp::rpc
             {
               endpoint = endpoint_itr->get<std::string>();
             }
-            std::promise<std::string> result;
-            LogicCall(r->logic(), [map, exit, range, token, endpoint, r, &result]() {
+            LogicCall(r->logic(), [map, exit, range, token, endpoint, r, reply]() {
               auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
               if (ep == nullptr)
               {
-                result.set_value(CreateJSONError("no endpoint with name " + endpoint));
+                reply(CreateJSONError("no endpoint with name " + endpoint));
                 return;
               }
               if (map and exit.has_value())
@@ -173,17 +172,15 @@ namespace llarp::rpc
               }
               else if (map and not exit.has_value())
               {
-                result.set_value(CreateJSONError("no exit address provided"));
+                reply(CreateJSONError("no exit address provided"));
                 return;
               }
               else if (not map)
               {
                 ep->UnmapExitRange(range);
               }
-              result.set_value(CreateJSONResponse("OK"));
+              reply(CreateJSONResponse("OK"));
             });
-            auto ftr = result.get_future();
-            reply(ftr.get());
           });
         });
   }
