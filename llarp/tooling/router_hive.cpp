@@ -161,8 +161,12 @@ namespace tooling
   }
 
   llarp::AbstractRouter*
-  RouterHive::GetRelay(const llarp::RouterID& id)
+  RouterHive::GetRelay(const llarp::RouterID& id, bool needMutexLock)
   {
+    auto guard = needMutexLock
+      ? std::make_optional<std::lock_guard<std::mutex>>(routerMutex)
+      : std::nullopt;
+
     auto itr = relays.find(id);
     if (itr == relays.end())
       return nullptr;
@@ -174,6 +178,7 @@ namespace tooling
   std::vector<size_t>
   RouterHive::RelayConnectedRelays()
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     std::vector<size_t> results;
     results.resize(relays.size());
     std::mutex results_lock;
@@ -211,6 +216,7 @@ namespace tooling
   std::vector<llarp::RouterContact>
   RouterHive::GetRelayRCs()
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     std::vector<llarp::RouterContact> results;
     results.resize(relays.size());
 
@@ -227,18 +233,20 @@ namespace tooling
   void
   RouterHive::ForEachRelayRouter(std::function<void(llarp::AbstractRouter*)> visit)
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     for (auto [routerId, ctx] : relays)
     {
-      visit(GetRelay(routerId));
+      visit(GetRelay(routerId, false));
     }
   }
 
   void
   RouterHive::ForEachClientRouter(std::function<void(llarp::AbstractRouter*)> visit)
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     for (auto [routerId, ctx] : clients)
     {
-      visit(GetRelay(routerId));
+      visit(GetRelay(routerId, false));
     }
   }
 

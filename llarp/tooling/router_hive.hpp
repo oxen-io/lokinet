@@ -81,7 +81,7 @@ namespace tooling
     ForEachRouterContext(std::function<void(Context_ptr)> visit);
 
     llarp::AbstractRouter*
-    GetRelay(const llarp::RouterID& id);
+    GetRelay(const llarp::RouterID& id, bool needMutexLock = true);
 
     std::vector<size_t>
     RelayConnectedRelays();
@@ -89,6 +89,7 @@ namespace tooling
     std::vector<llarp::RouterContact>
     GetRelayRCs();
 
+    std::mutex routerMutex;
     std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> relays;
     std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> clients;
 
