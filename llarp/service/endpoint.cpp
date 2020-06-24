@@ -51,6 +51,9 @@ namespace llarp
       if (conf.m_Hops.has_value())
         numHops = *conf.m_Hops;
 
+      conf.m_ExitMap.ForEachEntry(
+          [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
+
       return m_state->Configure(conf);
     }
 
@@ -837,7 +840,7 @@ namespace llarp
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
       if ((msg->proto == eProtocolExit
-           && (m_state->m_ExitEnabled || msg->sender.Addr() == m_state->m_ExitNode))
+           && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
           || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
         util::Lock l(m_state->m_InboundTrafficQueueMutex);
@@ -1376,5 +1379,40 @@ namespace llarp
     {
       return m_state->m_Sessions;
     }
+
+    void
+    Endpoint::SetAuthInfoForEndpoint(Address addr, AuthInfo info)
+    {
+      m_RemoteAuthInfos[addr] = std::move(info);
+    }
+
+    void
+    Endpoint::MapExitRange(IPRange range, Address exit)
+    {
+      LogInfo(Name(), " map ", range, " to exit at ", exit);
+      m_ExitMap.Insert(range, exit);
+    }
+
+    void
+    Endpoint::UnmapExitRange(IPRange range)
+    {
+      // unmap all ranges that fit in the range we gave
+      m_ExitMap.RemoveIf([&](const auto& item) -> bool {
+        if (not range.Contains(item.first))
+          return false;
+        LogInfo(Name(), " unmap ", item.first, " from exit at ", item.second);
+        return true;
+      });
+    }
+
+    std::optional<AuthInfo>
+    Endpoint::MaybeGetAuthInfoForEndpoint(Address remote)
+    {
+      const auto itr = m_RemoteAuthInfos.find(remote);
+      if (itr == m_RemoteAuthInfos.end())
+        return std::nullopt;
+      return itr->second;
+    }
+
   }  // namespace service
 }  // namespace llarp

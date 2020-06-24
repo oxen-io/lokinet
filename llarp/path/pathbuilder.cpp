@@ -214,8 +214,6 @@ namespace llarp
       {
         if (m_router->NumberOfConnectedRouters() == 0)
         {
-          // persist connection
-          m_router->ConnectToRandomRouters(1);
           return false;
         }
         bool got = false;

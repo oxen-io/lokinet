@@ -28,7 +28,6 @@ namespace llarp
     void
     TunEndpoint::FlushToUser(std::function<bool(net::IPPacket&)> send)
     {
-      m_ExitMap.ForEachValue([r = Router()](const auto& exit) { exit->DownstreamFlush(r); });
       // flush network to user
       m_NetworkToUserPktQueue.Process(send);
     }
@@ -74,7 +73,10 @@ namespace llarp
     {
       auto obj = service::Endpoint::ExtractStatus();
       obj["ifaddr"] = m_OurRange.ToString();
-
+      if (tunif)
+      {
+        obj["ifname"] = tunif->ifname;
+      }
       std::vector<std::string> resolvers;
       for (const auto& addr : m_UpstreamResolvers)
         resolvers.emplace_back(addr.toString());
@@ -196,37 +198,11 @@ namespace llarp
         }
         strncpy(tunif->ifname, ifname.c_str(), sizeof(tunif->ifname) - 1);
         llarp::LogInfo(Name() + " setting ifname to ", tunif->ifname);
-      }
 
-      std::string ifaddr = conf.m_ifaddr;
-      if (tunif)
-      {
-        std::string addr;
-        m_UseV6 = addr.find(":") != std::string::npos;
-        auto pos = ifaddr.find("/");
-        if (pos != std::string::npos)
-        {
-          std::string part = ifaddr.substr(pos + 1);
-          int num = std::stoi(part);
-          if (num > 0)
-          {
-            tunif->netmask = num;
-            addr = ifaddr.substr(0, pos);
-          }
-          else
-          {
-            llarp::LogError("bad ifaddr value: ", ifaddr);
-            return false;
-          }
-        }
-        else
-        {
-          if (m_UseV6)
-            tunif->netmask = 128;
-          else
-            tunif->netmask = 32;
-          addr = ifaddr;
-        }
+        m_OurRange = conf.m_ifaddr;
+        m_UseV6 = not m_OurRange.IsV4();
+        tunif->netmask = m_OurRange.HostmaskBits();
+        const auto addr = m_OurRange.BaseAddressString();
         llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ", tunif->netmask);
         strncpy(tunif->ifaddr, addr.c_str(), sizeof(tunif->ifaddr) - 1);
       }
@@ -251,7 +227,6 @@ namespace llarp
     TunEndpoint::Flush()
     {
       FlushSend();
-      m_ExitMap.ForEachValue([r = Router()](const auto& exit) { exit->UpstreamFlush(r); });
       Pump(Now());
     }
 
@@ -513,7 +488,6 @@ namespace llarp
     TunEndpoint::ResetInternalState()
     {
       service::Endpoint::ResetInternalState();
-      m_ExitMap.ForEachValue([](const auto& exit) { exit->ResetInternalState(); });
     }
 
     bool
@@ -581,11 +555,6 @@ namespace llarp
         llarp::LogWarn("Couldn't start endpoint");
         return false;
       }
-      const auto blacklist = SnodeBlacklist();
-      m_ExitMap.ForEachValue([blacklist](const auto& exit) {
-        for (const auto& snode : blacklist)
-          exit->BlacklistSNode(snode);
-      });
       return SetupNetworking();
     }
 
@@ -769,14 +738,12 @@ namespace llarp
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
-      m_ExitMap.ForEachValue([&](const auto& exit) { exit->Tick(now); });
       Endpoint::Tick(now);
     }
 
     bool
     TunEndpoint::Stop()
     {
-      m_ExitMap.ForEachValue([](const auto& exit) { exit->Stop(); });
       return llarp::service::Endpoint::Stop();
     }
 
@@ -800,7 +767,8 @@ namespace llarp
         auto itr = m_IPToAddr.find(dst);
         if (itr == m_IPToAddr.end())
         {
-          if (IsBogon(dst) or not m_state->m_ExitNode.has_value())
+          const auto exits = m_ExitMap.FindAll(dst);
+          if (IsBogon(dst) or exits.empty())
           {
             // send icmp unreachable
             const auto icmp = pkt.MakeICMPUnreachable();
@@ -811,13 +779,13 @@ namespace llarp
           }
           else
           {
+            const auto addr = *exits.begin();
             pkt.ZeroSourceAddress();
-            MarkAddressOutbound(*m_state->m_ExitNode);
+            MarkAddressOutbound(addr);
             EnsurePathToService(
-                *m_state->m_ExitNode,
-                [pkt, self = this](service::Address, service::OutboundContext*) {
-                  self->SendToServiceOrQueue(
-                      *self->m_state->m_ExitNode, pkt.ConstBuffer(), service::eProtocolExit);
+                addr,
+                [addr, pkt, self = this](service::Address, service::OutboundContext*) {
+                  self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::eProtocolExit);
                 },
                 1s);
           }
@@ -883,17 +851,7 @@ namespace llarp
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return false;
-
-      if (m_state->m_ExitNode == service::Address{addr.as_array()} and t == service::eProtocolExit)
-      {
-        // client side from exit
-        if (pkt.IsV4())
-          src = pkt.src4to6();
-        else if (pkt.IsV6())
-          src = pkt.srcv6();
-        dst = m_OurIP;
-      }
-      else if (m_state->m_ExitEnabled)
+      if (m_state->m_ExitEnabled)
       {
         // exit side from exit
         src = ObtainIPForAddr(addr, snode);
@@ -901,6 +859,22 @@ namespace llarp
           dst = pkt.dst4to6();
         else if (pkt.IsV6())
           dst = pkt.dstv6();
+      }
+      else if (t == service::eProtocolExit)
+      {
+        // client side exit traffic from exit
+        if (pkt.IsV4())
+          src = pkt.src4to6();
+        else if (pkt.IsV6())
+          src = pkt.srcv6();
+        dst = m_OurIP;
+        // find what exit we think this should be for
+        const auto mapped = m_ExitMap.FindAll(src);
+        if (mapped.count(service::Address{addr}) == 0 or IsBogon(src))
+        {
+          // we got exit traffic from someone who we should not have gotten it from
+          return false;
+        }
       }
       else
       {

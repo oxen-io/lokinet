@@ -53,7 +53,6 @@ namespace llarp
       std::string m_Name;
       std::string m_NetNS;
       bool m_ExitEnabled = false;
-      std::optional<service::Address> m_ExitNode;
 
       util::Mutex m_SendQueueMutex;  // protects m_SendQueue
       std::deque<SendEvent_t> m_SendQueue GUARDED_BY(m_SendQueueMutex);

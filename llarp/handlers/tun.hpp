@@ -40,7 +40,7 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       util::StatusObject
-      ExtractStatus() const;
+      ExtractStatus() const override;
 
       std::unordered_map<std::string, std::string>
       NotifyParams() const override;

@@ -114,6 +114,14 @@ namespace llarp
       if (lastGoodSend != 0s)
       {
         EncryptAndSendTo(data, protocol);
+        return;
+      }
+      const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
+      if (maybe.has_value())
+      {
+        // send auth message
+        const llarp_buffer_t authdata(maybe->token);
+        AsyncGenIntro(authdata, eProtocolAuth);
       }
       else
       {

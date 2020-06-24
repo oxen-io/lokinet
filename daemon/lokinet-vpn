@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import sys
+import os
 
 from socket import AF_INET
 
@@ -15,21 +17,75 @@ class LokinetRPC:
         self._rpc_socket.setsockopt(zmq.CONNECT_TIMEOUT, 5000)
         self._rpc_socket.setsockopt(zmq.HANDSHAKE_IVL, 5000)
         self._rpc_socket.connect(url)
-        self._url = url
     
-    def rpc(self, method):
-        self._rpc_socket.send_multipart([method.encode(), b'lokinet_vpn'+method.encode()])
+    def rpc(self, method, data=None):
+        tag = os.urandom(16)
+        req = [method.encode(), tag]
+        if data is not None:
+            req.append(json.dumps(data).encode('utf-8'))
+        self._rpc_socket.send_multipart(req)
         if not self._rpc_socket.poll(timeout=50):
             return
         reply = self._rpc_socket.recv_multipart()
-        if len(reply) >= 3 and reply[0:2] == [b'REPLY', b'lokinet_vpn'+method.encode()]:
-            return reply[2].decode()
-        
+        if len(reply) >= 3 and reply[0:2] == [b'REPLY', tag]:
+            try:
+                return json.loads(reply[2].decode())
+            except:
+                return None
+
+    def map_exit(self, addr, maprange, token=None):
+        """
+        map an exit range to a loki address and use token for auth if desires
+        """
+        if token is None:
+            data = self.rpc("llarp.exit", {'exit': addr, 'range': maprange})
+        else:
+            data = self.rpc("llarp.exit", {'exit': addr, 'token': token, 'range': maprange})
+        if data is None:
+            print("no response from rpc")
+            return False
+        if data['error'] is not None:
+            print('failed to map exit range: {}'.format(data['error']))
+            return False
+        print('mapped {} to {}: {}'.format(maprange, addr, data['result']))
+        return True
+
+    def unmap_exit(self, maprange):
+        """
+        unmap an ip range from exit
+        """
+        data = self.rpc("llarp.exit", {'range': maprange, 'unmap': True})
+        if data is None:
+            print("no response from rpc")
+            return False
+        if data['error'] is not None:
+            print('failed to unmap exit range: {}'.format(data['error']))
+            return False
+        print('unmapped {}: {}'.format(maprange, data['result']))
+        return True
+
+    def get_endpoint_ifname(self, endpoint):
+        """
+        get the network interface name belongint to the endpoint called endpoint
+        """
+        data = self.rpc("llarp.status")
+        if data is None or data['error'] is not None:
+            return
+        services = data['result']['services']
+        if endpoint not in services:
+            return
+        return services[endpoint]['ifname']
+    
     def get_first_hops(self):
         data = self.rpc("llarp.status")
-        for link in data['result']['links']['outbound']:
-            for session in link["sessions"]['established']:
-                yield session['remoteAddr']
+        if data is None:
+            print("no response from rpc")
+        elif data['error'] is not None:
+            print('error detecting first hops: {}'.format(data['error']))
+        else:
+            for link in data['result']['links']['outbound']:
+                for session in link["sessions"]['established']:
+                    yield session['remoteAddr']
 
     def close(self):
         self._rpc_socket.close(linger=0)
@@ -37,27 +93,49 @@ class LokinetRPC:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--rpc", type=str, default='tcp://127.0.0.1:1190')
-    ap.add_argument("--ifname", type=str, default="lokitun0")
+    ap.add_argument("--rpc", type=str, default='tcp://127.0.0.1:1190', help='rpc endpoint url for local lokinet')
+    ap.add_argument("--exit", type=str, required=True, help='loki address of exit to use')
+    ap.add_argument('--token', type=str, default=None, help='optional auth token to use when talking to exit')
+    ap.add_argument('--range', type=str, default='0.0.0.0/0', help='optional ip range to map to exit')
+    ap.add_argument("--endpoint", type=str, default='default', help='lokinet endpoint name to use')
     ap.add_argument("--up", action='store_const', dest='action', const='up')
     ap.add_argument("--down", action='store_const', dest='action', const='down')
     args = ap.parse_args()
     rpc = LokinetRPC(args.rpc)
+
     hops = dict()
     for hop in rpc.get_first_hops():
         ip = hop.split(':')[0]
         hops[ip] = 0
-    rpc.close()
     if len(hops) == 0:
         print("lokinet is not connected yet")
+        rpc.close()
+        return 1
+    ifname = rpc.get_endpoint_ifname(args.endpoint)
+    if ifname is None:
+        print("cannot determine lokinet network interface name")
+        rpc.close()
         return 1
     with IPRoute() as ip:
         ip.bind()
         try:
-            idx = ip.link_lookup(ifname=args.ifname)[0]
-        except:
-            print("cannot find {}".format(args.ifname))
+            idx = ip.link_lookup(ifname=ifname)[0]
+        except Exception as ex:
+            print("cannot find {}: {}".format(ifname, ex))
+            rpc.close()
             return 1
+        # set up exit after binding routing socket
+        if args.action == 'up':
+            if not rpc.map_exit(args.exit, args.range, args.token):
+                rpc.close()
+                print('cannot map exit')
+                return
+        elif args.action == 'down':
+            if not rpc.unmap_exit(args.range):
+                rpc.close()
+                print('cannot unmap exit')
+                return
+        rpc.close()
         gateways = ip.get_default_routes(family=AF_INET)
         gateway = None
         for g in gateways:

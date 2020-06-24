@@ -38,4 +38,11 @@ namespace llarp::service
         std::shared_ptr<llarp::service::ProtocolMessage> msg,
         std::function<void(AuthResult)> hook) = 0;
   };
+
+  /// info needed by clients in order to authenticate to a remote endpoint
+  struct AuthInfo
+  {
+    std::string token;
+  };
+
 }  // namespace llarp::service

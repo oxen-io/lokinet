@@ -203,11 +203,25 @@ namespace llarp
       if (arg.empty())
         return;
       service::Address exit;
+      IPRange range;
+      const auto pos = arg.find(":");
+      if (pos == std::string::npos)
+      {
+        range.FromString("0.0.0.0/0");
+      }
+      else if (not range.FromString(arg.substr(pos + 1)))
+      {
+        throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
+      }
+      if (pos != std::string::npos)
+      {
+        arg = arg.substr(0, pos);
+      }
       if (not exit.FromString(arg))
       {
-        throw std::invalid_argument(stringify("[endpoint]:exit-node bad address: ", arg));
+        throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
       }
-      m_exitNode = exit;
+      m_ExitMap.Insert(range, exit);
     });
 
     conf.defineOption<std::string>("network", "mapaddr", false, true, "", [this](std::string arg) {
@@ -248,9 +262,13 @@ namespace llarp
         const auto maybe = llarp::FindFreeRange();
         if (not maybe)
           throw std::invalid_argument("cannot determine free ip range");
-        arg = *maybe;
+        m_ifaddr = *maybe;
+        return;
       }
-      m_ifaddr = arg;
+      if (not m_ifaddr.FromString(arg))
+      {
+        throw std::invalid_argument(stringify("[network]:ifaddr invalid value: ", arg));
+      }
     });
 
     conf.defineOption<std::string>("network", "ifname", false, "", [this](std::string arg) {

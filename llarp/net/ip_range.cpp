@@ -3,12 +3,6 @@
 namespace llarp
 {
   bool
-  IPRange::ContainsV4(const huint32_t& ip) const
-  {
-    return Contains(net::ExpandV4(ip));
-  }
-
-  bool
   IPRange::FromString(std::string str)
   {
     const auto colinpos = str.find(":");
@@ -27,7 +21,7 @@ namespace llarp
       addr = net::ExpandV4(ip);
       if (!bitsstr.empty())
       {
-        auto bits = atoi(bitsstr.c_str());
+        const auto bits = stoi(bitsstr);
         if (bits < 0 || bits > 32)
           return false;
         netmask_bits = netmask_ipv6_bits(96 + bits);
@@ -55,21 +49,14 @@ namespace llarp
   }
 
   std::string
-  IPRange::ToString() const
+  IPRange::BaseAddressString() const
   {
-    char buf[INET6_ADDRSTRLEN + 1] = {0};
-    std::string str;
-    in6_addr inaddr = {};
-    size_t numset = 0;
-    uint128_t bits = netmask_bits.h;
-    while (bits)
+    if (IsV4())
     {
-      if (bits & 1)
-        numset++;
-      bits >>= 1;
+      const huint32_t addr4 = net::TruncateV6(addr);
+      return addr4.ToString();
     }
-    str += inet_ntop(AF_INET6, &inaddr, buf, sizeof(buf));
-    return str + "/" + std::to_string(numset);
+    return addr.ToString();
   }
 
 }  // namespace llarp

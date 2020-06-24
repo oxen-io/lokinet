@@ -20,7 +20,7 @@ namespace llarp::rpc
   void
   EndpointAuthRPC::Start()
   {
-    if (m_AuthURL.empty())
+    if (m_AuthURL.empty() or m_AuthMethod.empty())
       return;
     m_LMQ->connect_remote(
         m_AuthURL,
@@ -40,41 +40,37 @@ namespace llarp::rpc
       std::function<void(service::AuthResult)> hook)
   {
     const auto from = msg->sender.Addr();
+    auto reply = [logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
+      logic->Call([hook, result]() { hook(result); });
+    };
     if (m_AuthWhitelist.count(from))
     {
       // explicitly whitelisted source
-      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthAccepted); });
+      reply(service::AuthResult::eAuthAccepted);
       return;
     }
     if (not m_Conn.has_value())
     {
       // we don't have a connection to the backend so it's failed
-      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthFailed); });
+      reply(service::AuthResult::eAuthFailed);
       return;
     }
 
     if (msg->proto != llarp::service::eProtocolAuth)
     {
       // not an auth message, reject
-      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthRejected); });
+      reply(service::AuthResult::eAuthRejected);
       return;
     }
 
-    const auto maybe = msg->MaybeEncodeAuthInfo();
-    if (not maybe.has_value())
-    {
-      // cannot generate meta info, failed
-      m_Endpoint->RouterLogic()->Call([hook]() { hook(service::AuthResult::eAuthFailed); });
-      return;
-    }
-    std::string_view metaInfo{(char*)maybe->data(), maybe->size()};
+    const auto authinfo = msg->EncodeAuthInfo();
+    std::string_view metainfo{authinfo.data(), authinfo.size()};
     std::string_view payload{(char*)msg->payload.data(), msg->payload.size()};
     // call method with 2 parameters: metainfo and userdata
     m_LMQ->request(
         *m_Conn,
         m_AuthMethod,
-        [self = shared_from_this(), hook, from = from.ToString()](
-            bool success, std::vector<std::string> data) {
+        [self = shared_from_this(), reply](bool success, std::vector<std::string> data) {
           service::AuthResult result = service::AuthResult::eAuthFailed;
           if (success and not data.empty())
           {
@@ -84,10 +80,10 @@ namespace llarp::rpc
               result = *maybe;
             }
           }
-          self->m_Endpoint->RouterLogic()->Call([hook, result]() { hook(result); });
+          reply(result);
         },
-        metaInfo,
+        metainfo,
         payload);
-  }  // namespace llarp::rpc
+  }
 
 }  // namespace llarp::rpc

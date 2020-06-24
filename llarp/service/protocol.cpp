@@ -96,27 +96,27 @@ namespace llarp
       return bencode_end(buf);
     }
 
-    std::optional<std::vector<byte_t>>
-    ProtocolMessage::MaybeEncodeAuthInfo() const
+    std::vector<char>
+    ProtocolMessage::EncodeAuthInfo() const
     {
       std::array<byte_t, 1024> info;
       llarp_buffer_t buf{info};
       if (not bencode_start_dict(&buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not BEncodeWriteDictInt("a", proto, &buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not BEncodeWriteDictEntry("i", introReply, &buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not BEncodeWriteDictEntry("s", sender, &buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not BEncodeWriteDictEntry("t", tag, &buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not BEncodeWriteDictInt("v", version, &buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       if (not bencode_end(&buf))
-        return std::nullopt;
+        throw std::runtime_error("impossibly small buffer");
       const std::size_t encodedSize = buf.cur - buf.base;
-      std::vector<byte_t> data;
+      std::vector<char> data;
       data.resize(encodedSize);
       std::copy_n(buf.base, encodedSize, data.data());
       return data;

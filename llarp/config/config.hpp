@@ -11,6 +11,7 @@
 #include <constants/files.hpp>
 #include <net/ip_address.hpp>
 #include <net/net_int.hpp>
+#include <net/ip_range_map.hpp>
 #include <service/address.hpp>
 
 #include <cstdlib>
@@ -70,7 +71,7 @@ namespace llarp
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
     std::string m_ifname;
-    std::string m_ifaddr;
+    IPRange m_ifaddr;
 
     std::optional<fs::path> m_keyfile;
     std::string m_endpointType;
@@ -79,7 +80,7 @@ namespace llarp
     std::optional<int> m_Paths;
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
-    std::optional<service::Address> m_exitNode;
+    net::IPRangeMap<service::Address> m_ExitMap;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     bool m_AuthEnabled = false;
