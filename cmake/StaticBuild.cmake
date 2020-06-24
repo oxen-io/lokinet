@@ -214,4 +214,6 @@ if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   list(APPEND libzmq_link_libs iphlpapi)
 endif()
 
-set_target_properties(libzmq PROPERTIES INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}")
+set_target_properties(libzmq PROPERTIES
+  INTERFACE_LINK_LIBRARIES "${libzmq_link_libs}"
+  INTERFACE_COMPILE_DEFINITIONS "ZMQ_STATIC")
