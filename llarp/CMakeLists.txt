@@ -28,6 +28,8 @@ add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 
+find_package(SQLite3 REQUIRED)
+
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
