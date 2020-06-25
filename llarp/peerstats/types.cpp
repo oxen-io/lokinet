@@ -34,7 +34,7 @@ namespace llarp
   }
 
   bool
-  PeerStats::operator==(const PeerStats& other)
+  PeerStats::operator==(const PeerStats& other) const
   {
     return routerId == other.routerId and numConnectionAttempts == other.numConnectionAttempts
         and numConnectionSuccesses == other.numConnectionSuccesses

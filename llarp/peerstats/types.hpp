@@ -44,7 +44,7 @@ namespace llarp
     PeerStats&
     operator+=(const PeerStats& other);
     bool
-    operator==(const PeerStats& other);
+    operator==(const PeerStats& other) const;
 
     util::StatusObject
     toJson() const;

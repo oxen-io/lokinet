@@ -184,7 +184,6 @@ TEST_CASE("Test PeerDb handleGossipedRC expiry calcs", "[PeerDb]")
   // received "unhealthily" (after rc2 expires)
   const llarp_time_t s3 = s2 + 8h;
   const llarp_time_t r3 = e2 + 1h;  // received after e2
-  const llarp_time_t e3 = s3 + rcLifetime;
   llarp::RouterContact rc3;
   rc3.pubkey = llarp::PubKey(id);
   rc3.last_updated = s3;
