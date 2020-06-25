@@ -28,7 +28,13 @@ add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 
-find_package(SQLite3 REQUIRED)
+if(STATIC_LINK)
+  # sqlite3 target already set up
+else()
+  add_library(sqlite3 INTERFACE)
+  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
+endif()
 
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
