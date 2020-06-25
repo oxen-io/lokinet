@@ -163,9 +163,8 @@ namespace tooling
   llarp::AbstractRouter*
   RouterHive::GetRelay(const llarp::RouterID& id, bool needMutexLock)
   {
-    auto guard = needMutexLock
-      ? std::make_optional<std::lock_guard<std::mutex>>(routerMutex)
-      : std::nullopt;
+    auto guard =
+        needMutexLock ? std::make_optional<std::lock_guard<std::mutex>>(routerMutex) : std::nullopt;
 
     auto itr = relays.find(id);
     if (itr == relays.end())

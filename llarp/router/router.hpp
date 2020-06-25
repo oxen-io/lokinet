@@ -51,7 +51,6 @@ namespace llarp
 {
   struct Router final : public AbstractRouter
   {
-
     llarp_time_t _lastPump = 0s;
     bool ready;
     // transient iwp encryption key

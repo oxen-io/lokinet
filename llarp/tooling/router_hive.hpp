@@ -17,7 +17,7 @@ namespace llarp
 {
   struct Context;
   struct AbstractRouter;
-}
+}  // namespace llarp
 
 namespace tooling
 {
@@ -30,9 +30,7 @@ namespace tooling
     StartRouters(bool isRelay);
 
     void
-    AddRouter(
-        const std::shared_ptr<llarp::Config>& config,
-        bool isRelay);
+    AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRelay);
 
     /// safely visit router
     void
