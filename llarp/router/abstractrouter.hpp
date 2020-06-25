@@ -81,10 +81,6 @@ namespace llarp
     tooling::RouterHive* hive = nullptr;
 #endif
 
-    // XXX / TODO: this code shouldn't ever make it into a release binary
-    virtual void
-    stopGossipingRC() = 0;
-
     virtual ~AbstractRouter() = default;
 
     virtual bool

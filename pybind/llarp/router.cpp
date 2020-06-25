@@ -10,7 +10,6 @@ namespace llarp
     py::class_<AbstractRouter>(mod, "AbstractRouter")
         .def("rc", &AbstractRouter::rc)
         .def("Stop", &AbstractRouter::Stop)
-        .def("peerDb", &AbstractRouter::peerDb)
-        .def("stopGossipingRC", &AbstractRouter::stopGossipingRC);
+        .def("peerDb", &AbstractRouter::peerDb);
   }
 }  // namespace llarp
