@@ -123,6 +123,20 @@ if(NOT WIN32)
 endif()
 
 
+option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
+# Allow -DDOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
+if((NOT BUILD_STATIC_DEPS) AND (NOT DOWNLOAD_SODIUM STREQUAL "FORCE"))
+  find_package(Sodium 1.0.18)
+endif()
+
+if(SODIUM_FOUND OR BUILD_STATIC_DEPS)
+elseif(DOWNLOAD_SODIUM)
+  message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")
+  include(DownloadLibSodium)
+else()
+  message(FATAL_ERROR "Could not find libsodium >= 1.0.18; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
+endif()
+
 option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
 if(NOT FORCE_LOKIMQ_SUBMODULE)
   find_package(LokiMQ 1.2)

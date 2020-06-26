@@ -14,30 +14,6 @@ if(WITH_JEMALLOC)
   message(STATUS "using jemalloc")
 endif()
 
-add_library(curl INTERFACE)
-
-option(DOWNLOAD_CURL "download and statically compile in CURL" OFF)
-# Allow -DDOWNLOAD_CURL=FORCE to download without even checking for a local libcurl
-if(NOT DOWNLOAD_CURL STREQUAL "FORCE")
-  include(FindCURL)
-endif()
-
-if(CURL_FOUND)
-  message(STATUS "using system curl")
-  if(TARGET CURL::libcurl) # cmake 3.12+
-    target_link_libraries(curl INTERFACE CURL::libcurl)
-  else()
-    target_link_libraries(curl INTERFACE ${CURL_LIBRARIES})
-    target_include_directories(curl INTERFACE ${CURL_INCLUDE_DIRS})
-  endif()
-elseif(DOWNLOAD_CURL)
-  message(STATUS "libcurl not found, but DOWNLOAD_CURL specified, so downloading it")
-  include(DownloadLibCurl)
-  target_link_libraries(curl INTERFACE curl_vendor)
-else()
-  message(FATAL_ERROR "Could not find libcurl; either install it on your system or use -DDOWNLOAD_CURL=ON to download and build an internal copy")
-endif()
-
 add_definitions(-DUNIX)
 add_definitions(-DPOSIX)
 
