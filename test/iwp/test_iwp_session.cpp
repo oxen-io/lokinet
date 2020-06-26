@@ -138,7 +138,7 @@ using Context_ptr = std::shared_ptr<IWPLinkContext>;
 /// before it should assume failure of unit test
 template <typename Func_t, typename Duration_t = std::chrono::milliseconds>
 void
-RunIWPTest(Func_t test, Duration_t timeout = 1s)
+RunIWPTest(Func_t test, Duration_t timeout = 10s)
 {
   // shut up logs
   llarp::LogSilencer shutup;
