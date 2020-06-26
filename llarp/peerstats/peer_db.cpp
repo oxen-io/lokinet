@@ -26,7 +26,7 @@ namespace llarp
     std::string fileString;
     if (file.has_value())
     {
-      fileString = file->native();
+      fileString = file->string();
       LogInfo("Loading PeerDb from file ", fileString);
     }
     else
