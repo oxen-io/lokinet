@@ -19,7 +19,7 @@ TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
   delta.numConnectionAttempts = 4;
   delta.peakBandwidthBytesPerSec = 5;
   db.accumulatePeerStats(id, delta);
-  CHECK(db.getCurrentPeerStats(id).value() == delta);
+  CHECK(* db.getCurrentPeerStats(id) == delta);
 
   delta = llarp::PeerStats(id);
   delta.numConnectionAttempts = 5;
@@ -29,7 +29,7 @@ TEST_CASE("Test PeerDb PeerStats memory storage", "[PeerDb]")
   llarp::PeerStats expected(id);
   expected.numConnectionAttempts = 9;
   expected.peakBandwidthBytesPerSec = 6;
-  CHECK(db.getCurrentPeerStats(id).value() == expected);
+  CHECK(* db.getCurrentPeerStats(id) == expected);
 }
 
 TEST_CASE("Test PeerDb flush before load", "[PeerDb]")
@@ -55,7 +55,7 @@ TEST_CASE("Test PeerDb nukes stats on load", "[PeerDb]")
   stats.numConnectionAttempts = 1;
 
   db.accumulatePeerStats(id, stats);
-  CHECK(db.getCurrentPeerStats(id).value() == stats);
+  CHECK(* db.getCurrentPeerStats(id) == stats);
 
   db.loadDatabase(std::nullopt);
 
@@ -85,7 +85,7 @@ TEST_CASE("Test PeerDb file-backed database reloads properly", "[PeerDb]")
 
     auto stats = db.getCurrentPeerStats(id);
     CHECK(stats.has_value() == true);
-    CHECK(stats.value().numConnectionAttempts == 43);
+    CHECK(stats->numConnectionAttempts == 43);
   }
 
   fs::remove(filename);
@@ -112,7 +112,7 @@ TEST_CASE("Test PeerDb modifyPeerStats", "[PeerDb]")
 
   auto stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
-  CHECK(stats.value().numPathBuilds == 42);
+  CHECK(stats->numPathBuilds == 42);
 }
 
 TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
@@ -131,27 +131,27 @@ TEST_CASE("Test PeerDb handleGossipedRC", "[PeerDb]")
 
   auto stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
-  CHECK(stats.value().leastRCRemainingLifetime == 0ms);  // not calculated on first received RC
-  CHECK(stats.value().numDistinctRCsReceived == 1);
-  CHECK(stats.value().lastRCUpdated == 10000ms);
+  CHECK(stats->leastRCRemainingLifetime == 0ms);  // not calculated on first received RC
+  CHECK(stats->numDistinctRCsReceived == 1);
+  CHECK(stats->lastRCUpdated == 10000ms);
 
   now = 9s;
   db.handleGossipedRC(rc, now);
   stats = db.getCurrentPeerStats(id);
   CHECK(stats.has_value());
   // these values should remain unchanged, this is not a new RC
-  CHECK(stats.value().leastRCRemainingLifetime == 0ms);
-  CHECK(stats.value().numDistinctRCsReceived == 1);
-  CHECK(stats.value().lastRCUpdated == 10000ms);
+  CHECK(stats->leastRCRemainingLifetime == 0ms);
+  CHECK(stats->numDistinctRCsReceived == 1);
+  CHECK(stats->lastRCUpdated == 10000ms);
 
   rc.last_updated = 11s;
 
   db.handleGossipedRC(rc, now);
   stats = db.getCurrentPeerStats(id);
   // should be (previous expiration time - new received time)
-  CHECK(stats.value().leastRCRemainingLifetime == ((10s + rcLifetime) - now));
-  CHECK(stats.value().numDistinctRCsReceived == 2);
-  CHECK(stats.value().lastRCUpdated == 11000ms);
+  CHECK(stats->leastRCRemainingLifetime == ((10s + rcLifetime) - now));
+  CHECK(stats->numDistinctRCsReceived == 2);
+  CHECK(stats->lastRCUpdated == 11000ms);
 }
 
 TEST_CASE("Test PeerDb handleGossipedRC expiry calcs", "[PeerDb]")
@@ -193,25 +193,25 @@ TEST_CASE("Test PeerDb handleGossipedRC expiry calcs", "[PeerDb]")
   db.handleGossipedRC(rc1, r1);
   auto stats1 = db.getCurrentPeerStats(id);
   CHECK(stats1.has_value());
-  CHECK(stats1.value().leastRCRemainingLifetime == 0ms);
-  CHECK(stats1.value().numDistinctRCsReceived == 1);
-  CHECK(stats1.value().lastRCUpdated == s1);
+  CHECK(stats1->leastRCRemainingLifetime == 0ms);
+  CHECK(stats1->numDistinctRCsReceived == 1);
+  CHECK(stats1->lastRCUpdated == s1);
 
   db.handleGossipedRC(rc2, r2);
   auto stats2 = db.getCurrentPeerStats(id);
   CHECK(stats2.has_value());
-  CHECK(stats2.value().leastRCRemainingLifetime == (e1 - r2));
-  CHECK(stats2.value().leastRCRemainingLifetime > 0ms);  // ensure positive indicates healthy
-  CHECK(stats2.value().numDistinctRCsReceived == 2);
-  CHECK(stats2.value().lastRCUpdated == s2);
+  CHECK(stats2->leastRCRemainingLifetime == (e1 - r2));
+  CHECK(stats2->leastRCRemainingLifetime > 0ms);  // ensure positive indicates healthy
+  CHECK(stats2->numDistinctRCsReceived == 2);
+  CHECK(stats2->lastRCUpdated == s2);
 
   db.handleGossipedRC(rc3, r3);
   auto stats3 = db.getCurrentPeerStats(id);
   CHECK(stats3.has_value());
-  CHECK(stats3.value().leastRCRemainingLifetime == (e2 - r3));
+  CHECK(stats3->leastRCRemainingLifetime == (e2 - r3));
   CHECK(
-      stats3.value().leastRCRemainingLifetime
+      stats3->leastRCRemainingLifetime
       < 0ms);  // ensure negative indicates unhealthy and we use min()
-  CHECK(stats3.value().numDistinctRCsReceived == 3);
-  CHECK(stats3.value().lastRCUpdated == s3);
+  CHECK(stats3->numDistinctRCsReceived == 3);
+  CHECK(stats3->lastRCUpdated == s3);
 }
