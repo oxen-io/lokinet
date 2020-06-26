@@ -43,9 +43,9 @@ ExternalProject_Add(libsodium_external
     BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a ${LIBSODIUM_PREFIX}/include
     )
 
-add_library(sodium STATIC IMPORTED GLOBAL)
-add_dependencies(sodium libsodium_external)
-set_target_properties(sodium PROPERTIES
+add_library(sodium_vendor STATIC IMPORTED GLOBAL)
+add_dependencies(sodium_vendor libsodium_external)
+set_target_properties(sodium_vendor PROPERTIES
     IMPORTED_LOCATION ${LIBSODIUM_PREFIX}/lib/libsodium.a
     INTERFACE_INCLUDE_DIRECTORIES ${LIBSODIUM_PREFIX}/include
     )
