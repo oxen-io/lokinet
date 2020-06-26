@@ -201,7 +201,7 @@ build_external(sodium)
 add_static_target(sodium sodium_external libsodium.a)
 
 build_external(sqlite3)
-add_static_target(sqlite3 sqlite_external libsqlite3.a)
+add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
 if(ZMQ_VERSION VERSION_LESS 4.3.3 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
