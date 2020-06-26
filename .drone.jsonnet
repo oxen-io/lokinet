@@ -20,6 +20,7 @@ local debian_pipeline(name, image,
         werror=true,
         cmake_extra='',
         extra_cmds=[],
+        imaginary_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
@@ -38,6 +39,13 @@ local debian_pipeline(name, image,
                 'apt-get update',
                 'apt-get install -y eatmydata',
                 'eatmydata apt-get dist-upgrade -y',
+                ] + (if imaginary_repo then [
+                    'eatmydata apt-get install -y gpg curl lsb-release',
+                    'echo deb https://deb.imaginary.stream $$(lsb_release -sc) main >/etc/apt/sources.list.d/imaginary.stream.list',
+                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
+                    'eatmydata apt-get update'
+                    ] else []
+                ) + [
                 'eatmydata apt-get install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
@@ -191,8 +199,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
 
     // ARM builds (ARM64 and armhf)
-    debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
+    debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_nocxx,
+                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', imaginary_repo=true),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     
