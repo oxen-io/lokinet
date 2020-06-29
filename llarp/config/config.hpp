@@ -226,12 +226,4 @@ namespace llarp
 
 }  // namespace llarp
 
-struct llarp_config
-{
-  llarp::Config impl;
-  llarp_config() = default;
-
-  explicit llarp_config(const llarp_config* other);
-};
-
 #endif

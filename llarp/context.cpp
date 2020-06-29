@@ -219,28 +219,6 @@ namespace llarp
 #endif
 }  // namespace llarp
 
-struct llarp_main
-{
-  llarp_main(llarp_config* conf);
-  ~llarp_main() = default;
-  std::shared_ptr<llarp::Context> ctx;
-};
-
-llarp_config::llarp_config(const llarp_config* other) : impl(other->impl)
-{
-}
-
-namespace llarp
-{
-  llarp_config*
-  Config::Copy() const
-  {
-    llarp_config* ptr = new llarp_config();
-    ptr->impl = *this;
-    return ptr;
-  }
-}  // namespace llarp
-
 extern "C"
 {
   ssize_t
@@ -275,16 +253,16 @@ extern "C"
 
   bool
   llarp_main_inject_vpn_by_name(
-      struct llarp_main* ptr,
+      llarp::Context* ctx,
       const char* name,
       struct llarp_vpn_io* io,
       struct llarp_vpn_ifaddr_info info)
   {
     if (name == nullptr || io == nullptr)
       return false;
-    if (ptr == nullptr || ptr->ctx == nullptr || ptr->ctx->router == nullptr)
+    if (ctx == nullptr || ctx->router == nullptr)
       return false;
-    auto ep = ptr->ctx->router->hiddenServiceContext().GetEndpointByName(name);
+    auto ep = ctx->router->hiddenServiceContext().GetEndpointByName(name);
     return ep && ep->InjectVPN(io, info);
   }
 
