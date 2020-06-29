@@ -239,14 +239,14 @@ TEST_CASE("IWP handshake reverse", "[iwp]")
 /// ensure iwp can send messages between sessions
 TEST_CASE("IWP send messages", "[iwp]")
 {
-  RunIWPTest([](std::function<Logic_ptr(void)> start,
+  int aliceNumSent = 0;
+  int bobNumSent = 0;
+  RunIWPTest([&aliceNumSent, &bobNumSent](std::function<Logic_ptr(void)> start,
                 std::function<void(void)> endIfDone,
                 std::function<void(void)> endTestNow,
                 Context_ptr alice,
                 Context_ptr bob) {
     constexpr int numSend = 128;
-    int aliceNumSent = 0;
-    int bobNumSent = 0;
     // when alice makes a session to bob send `aliceNumSend` messages to him
     alice->InitLink<false>([endIfDone, alice, &aliceNumSent](auto session) {
       for (auto index = 0; index < numSend; index++)
