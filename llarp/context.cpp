@@ -297,11 +297,11 @@ extern "C"
   }
 
   bool
-  llarp_vpn_io_init(struct llarp_main* ptr, struct llarp_vpn_io* io)
+  llarp_vpn_io_init(llarp::Context* ctx, struct llarp_vpn_io* io)
   {
-    if (io == nullptr || ptr == nullptr)
+    if (io == nullptr || ctx == nullptr)
       return false;
-    llarp_vpn_io_impl* impl = new llarp_vpn_io_impl(ptr, io);
+    llarp_vpn_io_impl* impl = new llarp_vpn_io_impl(ctx, io);
     io->impl = impl;
     return true;
   }

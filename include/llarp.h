@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
+namespace llarp
+{
+  struct Context;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -48,7 +53,7 @@ extern "C"
   /// initialize llarp_vpn_io private implementation
   /// returns false if either parameter is nullptr
   bool
-  llarp_vpn_io_init(struct llarp_main* m, struct llarp_vpn_io* io);
+  llarp_vpn_io_init(llarp::Context* ctx, struct llarp_vpn_io* io);
 
   /// get the packet pipe for writing IP packets to lokinet internals
   /// returns nullptr if llarp_vpn_io is nullptr or not initialized

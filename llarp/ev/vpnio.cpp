@@ -10,7 +10,10 @@ llarp_vpn_io_impl::AsyncClose()
   writer.queue.disable();
 
   // TODO: call asynchronously
-  Expunge();
+  if (ctx)
+    ctx->CallSafe([this]() { Expunge(); });
+  else
+    Expunge();
 }
 
 void
