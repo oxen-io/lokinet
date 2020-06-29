@@ -34,7 +34,6 @@ namespace llarp
     class ThreadPool;
   }
 
-  // TODO: replace llarp_main_runtime_opts here
   struct RuntimeOptions
   {
     bool background = false;
