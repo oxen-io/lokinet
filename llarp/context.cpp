@@ -13,6 +13,7 @@
 
 #include <cxxopts.hpp>
 #include <csignal>
+#include <stdexcept>
 
 #if (__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -29,6 +30,11 @@ namespace llarp
   bool
   Context::Configure(bool isRelay, std::optional<fs::path> dataDir)
   {
+    if (config)
+      throw std::runtime_error("Re-configure not supported");
+
+    config = std::make_unique<Config>();
+
     fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
 
     if (configfile.size())
@@ -71,7 +77,7 @@ namespace llarp
     return 1;
   }
 
-  int
+  void
   Context::Setup(bool isRelay)
   {
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
@@ -93,22 +99,17 @@ namespace llarp
     nodedb = std::make_unique<llarp_nodedb>(router->diskworker(), nodedb_dir);
 
     if (!router->Configure(config.get(), isRelay, nodedb.get()))
-    {
-      llarp::LogError("Failed to configure router");
-      return 1;
-    }
+      throw std::runtime_error("Failed to configure router");
 
     // must be done after router is made so we can use its disk io worker
     // must also be done after configure so that netid is properly set if it
     // is provided by config
     if (!this->LoadDatabase())
-      return 2;
-
-    return 0;
+      throw std::runtime_error("Config::Setup() failed to load database");
   }
 
   int
-  Context::Run(llarp_main_runtime_opts opts)
+  Context::Run(const RuntimeOptions& opts)
   {
     if (router == nullptr)
     {
@@ -209,15 +210,6 @@ namespace llarp
     logic.reset();
   }
 
-  bool
-  Context::LoadConfig(const std::string& fname, bool isRelay)
-  {
-    config = std::make_unique<Config>();
-    configfile = fname;
-    const fs::path filepath(fname);
-    return Configure(isRelay, filepath.parent_path());
-  }
-
 #ifdef LOKINET_HIVE
   void
   Context::InjectHive(tooling::RouterHive* hive)
@@ -251,89 +243,6 @@ namespace llarp
 
 extern "C"
 {
-  size_t
-  llarp_main_size()
-  {
-    return sizeof(llarp_main);
-  }
-
-  size_t
-  llarp_config_size()
-  {
-    return sizeof(llarp_config);
-  }
-
-  struct llarp_config*
-  llarp_default_config()
-  {
-    llarp_config* conf = new llarp_config();
-#ifdef ANDROID
-    // put andrid config overrides here
-#endif
-#ifdef IOS
-    // put IOS config overrides here
-#endif
-    return conf;
-  }
-
-  void
-  llarp_config_free(struct llarp_config* conf)
-  {
-    if (conf)
-      delete conf;
-  }
-
-  struct llarp_main*
-  llarp_main_init_from_config(struct llarp_config* conf, bool isRelay)
-  {
-    if (conf == nullptr)
-      return nullptr;
-    llarp_main* m = new llarp_main(conf);
-    if (m->ctx->Configure(isRelay, {}))
-      return m;
-    delete m;
-    return nullptr;
-  }
-
-  bool
-  llarp_config_load_file(const char* fname, struct llarp_config** conf, bool isRelay)
-  {
-    llarp_config* c = new llarp_config();
-    const fs::path filepath(fname);
-    if (c->impl.Load(fname, isRelay, filepath.parent_path()))
-    {
-      *conf = c;
-      return true;
-    }
-    delete c;
-    *conf = nullptr;
-    return false;
-  }
-
-  void
-  llarp_main_signal(struct llarp_main* ptr, int sig)
-  {
-    LogicCall(ptr->ctx->logic, std::bind(&llarp::Context::HandleSignal, ptr->ctx.get(), sig));
-  }
-
-  int
-  llarp_main_setup(struct llarp_main* ptr, bool isRelay)
-  {
-    return ptr->ctx->Setup(isRelay);
-  }
-
-  int
-  llarp_main_run(struct llarp_main* ptr, struct llarp_main_runtime_opts opts)
-  {
-    return ptr->ctx->Run(opts);
-  }
-
-  const char*
-  llarp_version()
-  {
-    return llarp::VERSION_FULL;
-  }
-
   ssize_t
   llarp_vpn_io_readpkt(struct llarp_vpn_pkt_reader* r, unsigned char* dst, size_t dstlen)
   {
@@ -414,59 +323,4 @@ extern "C"
     llarp_vpn_io_impl* vpn = static_cast<llarp_vpn_io_impl*>(io->impl);
     return &vpn->reader;
   }
-
-  void
-  llarp_main_free(struct llarp_main* ptr)
-  {
-    delete ptr;
-  }
-
-  const char*
-  llarp_main_get_default_endpoint_name(struct llarp_main*)
-  {
-    return "default";
-  }
-
-  void
-  llarp_main_stop(struct llarp_main* ptr)
-  {
-    if (ptr == nullptr)
-      return;
-    ptr->ctx->CloseAsync();
-    ptr->ctx->Wait();
-  }
-
-  bool
-  llarp_main_configure(struct llarp_main* ptr, struct llarp_config* conf, bool isRelay)
-  {
-    if (ptr == nullptr || conf == nullptr)
-      return false;
-    // give new config
-    ptr->ctx->config.reset(new llarp::Config(conf->impl));
-    return ptr->ctx->Configure(isRelay, {});
-  }
-
-  bool
-  llarp_main_is_running(struct llarp_main* ptr)
-  {
-    return ptr && ptr->ctx->router && ptr->ctx->router->IsRunning();
-  }
 }
-
-llarp_main::llarp_main(llarp_config* conf)
-
-    : ctx(new llarp::Context())
-{
-  ctx->config.reset(new llarp::Config(conf->impl));
-}
-
-namespace llarp
-{
-  std::shared_ptr<Context>
-  Context::Get(llarp_main* m)
-  {
-    if (m == nullptr || m->ctx == nullptr)
-      return nullptr;
-    return m->ctx;
-  }
-}  // namespace llarp

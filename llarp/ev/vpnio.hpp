@@ -42,9 +42,6 @@ struct llarp_vpn_io_impl
 
  private:
   void
-  CallSafe(std::function<void(void)> f);
-
-  void
   Expunge();
 };
 

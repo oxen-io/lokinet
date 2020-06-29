@@ -4,6 +4,7 @@
 #include <util/fs.hpp>
 #include <util/types.hpp>
 #include <ev/ev.hpp>
+#include <nodedb.hpp>
 
 #include <iostream>
 #include <map>
@@ -12,9 +13,6 @@
 #include <vector>
 
 struct llarp_ev_loop;
-struct llarp_nodedb;
-struct llarp_nodedb_iter;
-struct llarp_main;
 
 #ifdef LOKINET_HIVE
 namespace tooling
@@ -36,14 +34,16 @@ namespace llarp
     class ThreadPool;
   }
 
+  // TODO: replace llarp_main_runtime_opts here
+  struct RuntimeOptions
+  {
+    bool background = false;
+    bool debug = false;
+    bool isRouter = false;
+  };
+
   struct Context
   {
-    /// get context from main pointer
-    static std::shared_ptr<Context>
-    Get(llarp_main*);
-
-    Context() = default;
-
     std::unique_ptr<Crypto> crypto;
     std::unique_ptr<CryptoManager> cryptoManager;
     std::unique_ptr<AbstractRouter> router;
@@ -54,20 +54,17 @@ namespace llarp
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
-    bool
-    LoadConfig(const std::string& fname, bool isRelay);
-
     void
     Close();
 
     int
     LoadDatabase();
 
-    int
+    void
     Setup(bool isRelay);
 
     int
-    Run(llarp_main_runtime_opts opts);
+    Run(const RuntimeOptions& opts);
 
     void
     HandleSignal(int sig);

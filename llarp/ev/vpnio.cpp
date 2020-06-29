@@ -8,17 +8,9 @@ llarp_vpn_io_impl::AsyncClose()
 {
   reader.queue.disable();
   writer.queue.disable();
-  CallSafe(std::bind(&llarp_vpn_io_impl::Expunge, this));
-}
 
-void
-llarp_vpn_io_impl::CallSafe(std::function<void(void)> f)
-{
-  auto ctx = llarp::Context::Get(ptr);
-  if (ctx && ctx->CallSafe(f))
-    return;
-  else if (ctx == nullptr || ctx->logic == nullptr)
-    f();
+  // TODO: call asynchronously
+  Expunge();
 }
 
 void
