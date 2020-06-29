@@ -6,6 +6,7 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 #include <util/str.hpp>
+#include <util/thread/logic.hpp>
 
 #include <csignal>
 
@@ -53,10 +54,10 @@ std::promise<int> exit_code;
 void
 handle_signal(int sig)
 {
-  // TODO: handle this without C API
-  (void)sig;
-  LogError("FIXME: handle signal");
-  abort();
+  if (ctx)
+    LogicCall(ctx->logic, std::bind(&llarp::Context::HandleSignal, ctx.get(), sig));
+  else
+    std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }
 
 #ifdef _WIN32
