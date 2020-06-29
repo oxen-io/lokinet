@@ -41,7 +41,6 @@ add_executable(testAll
     util/meta/test_llarp_util_traits.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
-    util/test_llarp_util_encode.cpp
     util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp

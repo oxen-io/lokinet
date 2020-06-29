@@ -34,7 +34,7 @@ namespace llarp
     ShortString() const;
 
     bool
-    FromString(const std::string& str);
+    FromString(std::string_view str);
 
     RouterID&
     operator=(const byte_t* ptr)

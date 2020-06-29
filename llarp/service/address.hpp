@@ -8,6 +8,7 @@
 #include <functional>
 #include <numeric>
 #include <string>
+#include <string_view>
 #include <set>
 
 namespace llarp
@@ -33,7 +34,7 @@ namespace llarp
       ToString(const char* tld = ".loki") const;
 
       bool
-      FromString(const std::string& str, const char* tld = ".loki");
+      FromString(std::string_view str, const char* tld = ".loki");
 
       Address() : AlignedBuffer<32>()
       {

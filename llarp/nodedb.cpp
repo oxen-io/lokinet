@@ -4,7 +4,6 @@
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
-#include <util/encode.hpp>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
@@ -144,9 +143,7 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t& location, uint32_t numRoute
 std::string
 llarp_nodedb::getRCFilePath(const llarp::RouterID& pubkey) const
 {
-  char ftmp[68] = {0};
-  const char* hexname = llarp::HexEncode<llarp::AlignedBuffer<32>, decltype(ftmp)>(pubkey, ftmp);
-  std::string hexString(hexname);
+  std::string hexString = lokimq::to_hex(pubkey.begin(), pubkey.end());
   std::string skiplistDir;
 
   llarp::RouterID r(pubkey);

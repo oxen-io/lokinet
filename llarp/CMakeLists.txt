@@ -4,7 +4,6 @@ add_library(lokinet-util
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
-  util/encode.cpp
   util/fs.cpp
   util/json.cpp
   util/logging/android_logger.cpp
@@ -34,6 +33,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
+  lokimq
 )
 
 if(ANDROID)
@@ -222,7 +222,7 @@ if(WITH_HIVE)
   target_sources(liblokinet PRIVATE tooling/router_hive.cpp)
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography lokimq)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)
 target_link_libraries(liblokinet PRIVATE libunbound)
 
 

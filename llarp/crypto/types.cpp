@@ -7,6 +7,8 @@
 
 #include <iterator>
 
+#include <lokimq/hex.h>
+
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_sign_ed25519.h>
 #include <sodium/crypto_scalarmult_ed25519.h>
@@ -16,14 +18,16 @@ namespace llarp
   bool
   PubKey::FromString(const std::string& str)
   {
-    return HexDecode(str.c_str(), begin(), size());
+    if (str.size() != 2 * size())
+      return false;
+    lokimq::from_hex(str.begin(), str.end(), begin());
+    return true;
   }
 
   std::string
   PubKey::ToString() const
   {
-    char buf[(PUBKEYSIZE + 1) * 2] = {0};
-    return HexEncode(*this, buf);
+    return lokimq::to_hex(begin(), end());
   }
 
   bool

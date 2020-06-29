@@ -14,7 +14,6 @@
 #include <net/net.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
-#include <util/encode.hpp>
 #include <util/logging/file_logger.hpp>
 #include <util/logging/json_logger.hpp>
 #include <util/logging/logger_syslog.hpp>
