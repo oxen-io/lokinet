@@ -227,7 +227,11 @@ if(TESTNET)
 endif()
 
 if(WITH_HIVE)
-  target_sources(liblokinet PRIVATE tooling/router_hive.cpp)
+  target_sources(liblokinet PRIVATE
+    tooling/router_hive.cpp
+    tooling/hive_router.cpp
+    tooling/hive_context.cpp
+  )
 endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)

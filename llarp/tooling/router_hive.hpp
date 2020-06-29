@@ -21,6 +21,8 @@ namespace llarp
 
 namespace tooling
 {
+  struct HiveRouter;  // Hive's version of Router
+
   struct RouterHive
   {
     using Context_ptr = std::shared_ptr<llarp::Context>;

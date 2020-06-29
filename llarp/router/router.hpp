@@ -49,7 +49,7 @@
 
 namespace llarp
 {
-  struct Router final : public AbstractRouter
+  struct Router : public AbstractRouter
   {
     llarp_time_t _lastPump = 0s;
     bool ready;
@@ -318,7 +318,7 @@ namespace llarp
 
     explicit Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
-    ~Router() override;
+    virtual ~Router() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;

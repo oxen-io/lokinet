@@ -90,7 +90,7 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
-    router = std::make_unique<Router>(mainloop, logic);
+    router = makeRouter(worker, mainloop, logic);
 
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
@@ -103,6 +103,15 @@ namespace llarp
     // is provided by config
     if (!this->LoadDatabase())
       throw std::runtime_error("Config::Setup() failed to load database");
+  }
+
+  std::unique_ptr<AbstractRouter>
+  Context::makeRouter(
+      std::shared_ptr<llarp::thread::ThreadPool> worker,
+      llarp_ev_loop_ptr netloop,
+      std::shared_ptr<Logic> logic)
+  {
+    return std::make_unique<Router>(worker, netloop, logic);
   }
 
   int
