@@ -448,4 +448,14 @@ namespace llarp
     return [&](T arg) mutable { ref = std::move(arg); };
   }
 
+  /// A wrapper that throws an invalid argument exception if the argument is provided in config
+  /// the invalid_arugment exception is constructed using a string that holds the exception's
+  /// message
+  template <typename T>
+  std::function<void(T)>
+  InvalidOption(std::string msg)
+  {
+    return [msg](T) mutable { throw std::invalid_argument(msg); };
+  }
+
 }  // namespace llarp

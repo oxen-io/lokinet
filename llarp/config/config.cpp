@@ -431,11 +431,19 @@ namespace llarp
     conf.defineOption<bool>(
         "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
 
-    auto setRPC = [this](std::string arg) { lokidRPCAddr = lokimq::address(arg); };
+    conf.defineOption<std::string>(
+        "lokid",
+        "jsonrpc",
+        false,
+        "",
+        InvalidOption<std::string>("the [lokid]::jsonrpc option is deprecated please use the "
+                                   "[lokid]::rpc "
+                                   "config option instead"));
 
-    conf.defineOption<std::string>("lokid", "jsonrpc", false, DefaultLokidRPCAddr, setRPC);
-
-    conf.defineOption<std::string>("lokid", "rpc", false, DefaultLokidRPCAddr, setRPC);
+    conf.defineOption<std::string>(
+        "lokid", "rpc", false, DefaultLokidRPCAddr, [this](std::string arg) {
+          lokidRPCAddr = lokimq::address(arg);
+        });
   }
 
   void
