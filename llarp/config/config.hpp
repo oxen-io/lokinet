@@ -13,6 +13,7 @@
 #include <net/net_int.hpp>
 #include <net/ip_range_map.hpp>
 #include <service/address.hpp>
+#include <service/auth.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -83,7 +84,7 @@ namespace llarp
     net::IPRangeMap<service::Address> m_ExitMap;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
-    bool m_AuthEnabled = false;
+    service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
     std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;

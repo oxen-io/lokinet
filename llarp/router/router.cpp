@@ -212,9 +212,7 @@ namespace llarp
       return false;
 #endif
 #endif
-      const auto maybe = RpcClient()->ObtainIdentityKey();
-      if (maybe.has_value())
-        _identity = *maybe;
+      _identity = RpcClient()->ObtainIdentityKey();
     }
     else
     {
@@ -287,7 +285,7 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    QueueDiskIO(std::bind(&Router::HandleSaveRC, this));
+    QueueDiskIO([&]() { HandleSaveRC(); });
     return true;
   }
 

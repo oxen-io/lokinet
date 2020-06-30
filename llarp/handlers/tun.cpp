@@ -117,14 +117,16 @@ namespace llarp
         LogInfo(Name(), " setting to be not reachable by default");
       }
 
-      if (conf.m_AuthUrl.has_value() and conf.m_AuthMethod.has_value())
+      if (conf.m_AuthType != service::AuthType::eAuthTypeNone)
       {
+        std::string url, method;
+        if (conf.m_AuthUrl.has_value() and conf.m_AuthMethod.has_value())
+        {
+          url = *conf.m_AuthUrl;
+          method = *conf.m_AuthMethod;
+        }
         auto auth = std::make_shared<rpc::EndpointAuthRPC>(
-            *conf.m_AuthUrl,
-            *conf.m_AuthMethod,
-            conf.m_AuthWhitelist,
-            Router()->lmq(),
-            shared_from_this());
+            url, method, conf.m_AuthWhitelist, Router()->lmq(), shared_from_this());
         auth->Start();
         m_AuthPolicy = std::move(auth);
       }

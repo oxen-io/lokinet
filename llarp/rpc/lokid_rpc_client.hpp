@@ -26,7 +26,8 @@ namespace llarp
       ConnectAsync(lokimq::address url);
 
       /// blocking request identity key from lokid
-      std::optional<SecretKey>
+      /// throws on failure
+      SecretKey
       ObtainIdentityKey();
 
      private:

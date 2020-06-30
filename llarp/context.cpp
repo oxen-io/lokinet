@@ -93,8 +93,7 @@ namespace llarp
     router = std::make_unique<Router>(mainloop, logic);
 
     nodedb = std::make_unique<llarp_nodedb>(
-        nodedb_dir,
-        [r = router.get()](std::function<void(void)> call) { r->QueueDiskIO(std::move(call)); });
+        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
     if (!router->Configure(config.get(), opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");

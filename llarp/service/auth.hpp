@@ -45,4 +45,20 @@ namespace llarp::service
     std::string token;
   };
 
+  /// what kind of backend to use for auth
+  enum class AuthType
+  {
+    /// no authentication
+    eAuthTypeNone,
+    /// manual whitelist
+    eAuthTypeWhitelist,
+    /// LMQ server
+    eAuthTypeLMQ
+  };
+
+  /// get an auth type from a string
+  /// throws std::invalid_argument if arg is invalid
+  AuthType
+  ParseAuthType(std::string arg);
+
 }  // namespace llarp::service

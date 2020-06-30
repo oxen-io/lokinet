@@ -158,44 +158,42 @@ namespace llarp
       LogicCall(m_Router->logic(), [r = m_Router, nodeList]() { r->SetRouterWhitelist(nodeList); });
     }
 
-    std::optional<SecretKey>
+    SecretKey
     LokidRpcClient::ObtainIdentityKey()
     {
-      std::promise<std::optional<SecretKey>> promise;
-
+      std::promise<SecretKey> promise;
       Request(
           "admin.get_service_privkeys",
           [self = shared_from_this(), &promise](bool success, std::vector<std::string> data) {
-            if (not success)
-            {
-              LogError("failed to get private key");
-              promise.set_value(std::nullopt);
-              return;
-            }
-            if (data.empty())
-            {
-              LogError("failed to get private key, no response");
-              promise.set_value(std::nullopt);
-              return;
-            }
             try
             {
-              auto j = nlohmann::json::parse(data[0]);
+              if (not success)
+              {
+                throw std::runtime_error(
+                    "failed to get private key request "
+                    "failed");
+              }
+              if (data.empty())
+              {
+                throw std::runtime_error(
+                    "failed to get private key request "
+                    "data empty");
+              }
+              const auto j = nlohmann::json::parse(data[0]);
               SecretKey k;
               if (not k.FromHex(j.at("service_node_ed25519_privkey").get<std::string>()))
               {
-                promise.set_value(std::nullopt);
-                return;
+                throw std::runtime_error("failed to parse private key");
               }
               promise.set_value(k);
             }
-            catch (std::exception& ex)
+            catch (...)
             {
-              LogError("failed to get private key: ", ex.what());
-              promise.set_value(std::nullopt);
+              promise.set_exception(std::current_exception());
             }
           });
-      return promise.get_future().get();
+      auto ftr = promise.get_future();
+      return ftr.get();
     }
 
   }  // namespace rpc

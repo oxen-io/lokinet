@@ -165,12 +165,16 @@ namespace llarp
 
     conf.defineOption<std::string>("network", "keyfile", false, "", AssignmentAcceptor(m_keyfile));
 
-    conf.defineOption<bool>("network", "auth", false, false, AssignmentAcceptor(m_AuthEnabled));
+    conf.defineOption<std::string>("network", "auth", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      m_AuthType = service::ParseAuthType(arg);
+    });
 
-    conf.defineOption<std::string>("network", "auth-url", false, "", AssignmentAcceptor(m_AuthUrl));
+    conf.defineOption<std::string>("network", "auth-lmq", false, "", AssignmentAcceptor(m_AuthUrl));
 
     conf.defineOption<std::string>(
-        "network", "auth-method", false, "llarp.auth", [this](std::string arg) {
+        "network", "auth-lmq-method", false, "llarp.auth", [this](std::string arg) {
           if (arg.empty())
             return;
           m_AuthMethod = std::move(arg);
@@ -877,7 +881,10 @@ namespace llarp
         "network",
         "exit-node",
         {
-            "Specify a `.loki` address to use as an exit broker.",
+            "Specify a `.loki` address and an optional ip range to use as an exit broker.",
+            "Example:",
+            "exit-node=whatever.loki # maps all exit traffic to whatever.loki",
+            "exit-node=stuff.loki:100.0.0.0/24 # maps 100.0.0.0/24 to stuff.loki",
         });
 
     def.addOptionComments(
@@ -901,21 +908,22 @@ namespace llarp
         "network",
         "auth",
         {
-            "authenticate remote sessions against a whitelist or an external lmq server",
-            "true/false",
+            "Set the endpoint authentication mechanism.",
+            "none/whitelist/lmq",
         });
 
     def.addOptionComments(
         "network",
-        "auth-url",
+        "auth-lmq",
         {
             "lmq endpoint to talk to for authenticating new sessions",
             "ipc:///var/lib/lokinet/auth.socket",
+            "tcp://127.0.0.1:5555",
         });
 
     def.addOptionComments(
         "network",
-        "auth-method",
+        "auth-lmq-method",
         {
             "lmq function to call for authenticating new sessions",
             "llarp.auth",
