@@ -18,24 +18,15 @@ namespace tooling
   {
     auto& container = (isRelay ? relays : clients);
 
-    llarp_main* ctx = llarp_main_init_from_config(config->Copy(), isRelay);
-    auto result = llarp_main_setup(ctx, isRelay);
-    if (result == 0)
-    {
-      auto context = llarp::Context::Get(ctx);
-      auto routerId = llarp::RouterID(context->router->pubkey());
-      context->InjectHive(this);
-      container[routerId] = ctx;
-      std::cout << "Generated router with ID " << routerId << std::endl;
-    }
-    else
-    {
-      throw std::runtime_error(llarp::stringify(
-          "Failed to add RouterHive ",
-          (isRelay ? "relay" : "client"),
-          ", llarp_main_setup() returned ",
-          result));
-    }
+    Context_ptr context = std::make_shared<llarp::Context>();
+    context->config = std::make_unique<llarp::Config>(*config.get());
+    context->Configure(isRelay, {});
+    context->Setup(isRelay);
+
+    auto routerId = llarp::RouterID(context->router->pubkey());
+    context->InjectHive(this);
+    container[routerId] = context;
+    std::cout << "Generated router with ID " << routerId << std::endl;
   }
 
   void
@@ -58,7 +49,7 @@ namespace tooling
     for (auto [routerId, ctx] : container)
     {
       routerMainThreads.emplace_back([=]() {
-        llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false, isRelay});
+        ctx->Run(llarp::RuntimeOptions{false, false, isRelay});
       });
       std::this_thread::sleep_for(2ms);
     }
@@ -82,24 +73,24 @@ namespace tooling
     llarp::LogInfo("Signalling all routers to stop");
     for (auto [routerId, ctx] : relays)
     {
-      llarp_main_signal(ctx, 2 /* SIGINT */);
+      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
     }
     for (auto [routerId, ctx] : clients)
     {
-      llarp_main_signal(ctx, 2 /* SIGINT */);
+      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
     }
 
     llarp::LogInfo("Waiting on routers to be stopped");
     for (auto [routerId, ctx] : relays)
     {
-      while (llarp_main_is_running(ctx))
+      while (ctx->IsUp())
       {
         std::this_thread::sleep_for(10ms);
       }
     }
     for (auto [routerId, ctx] : clients)
     {
-      while (llarp_main_is_running(ctx))
+      while (ctx->IsUp())
       {
         std::this_thread::sleep_for(10ms);
       }
@@ -154,9 +145,8 @@ namespace tooling
   }
 
   void
-  RouterHive::VisitRouter(llarp_main* router, std::function<void(Context_ptr)> visit)
+  RouterHive::VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit)
   {
-    auto ctx = llarp::Context::Get(router);
     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
   }
 
@@ -170,7 +160,7 @@ namespace tooling
     if (itr == relays.end())
       return nullptr;
 
-    auto ctx = llarp::Context::Get(itr->second);
+    auto ctx = itr->second;
     return ctx->router.get();
   }
 
@@ -186,9 +176,8 @@ namespace tooling
     size_t done_count = 0;
     for (auto [routerId, ctx] : relays)
     {
-      auto context = llarp::Context::Get(ctx);
-      LogicCall(context->logic, [&, i, context]() {
-        size_t count = context->router->NumberOfConnectedRouters();
+      LogicCall(ctx->logic, [&, i, ctx]() {
+        size_t count = ctx->router->NumberOfConnectedRouters();
         std::lock_guard<std::mutex> guard{results_lock};
         results[i] = count;
         done_count++;
@@ -222,8 +211,7 @@ namespace tooling
     size_t i = 0;
     for (auto [routerId, ctx] : relays)
     {
-      auto context = llarp::Context::Get(ctx);
-      results[i] = context->router->rc();
+      results[i] = ctx->router->rc();
       i++;
     }
     return results;

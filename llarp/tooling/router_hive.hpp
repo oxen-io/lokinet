@@ -34,9 +34,9 @@ namespace tooling
     void
     AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRelay);
 
-    /// safely visit router
+    /// safely visit router (asynchronously)
     void
-    VisitRouter(llarp_main* router, std::function<void(Context_ptr)> visit);
+    VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit);
 
    public:
     RouterHive() = default;
@@ -90,8 +90,8 @@ namespace tooling
     GetRelayRCs();
 
     std::mutex routerMutex;
-    std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> relays;
-    std::unordered_map<llarp::RouterID, llarp_main*, llarp::RouterID::Hash> clients;
+    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> relays;
+    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> clients;
 
     std::vector<std::thread> routerMainThreads;
 

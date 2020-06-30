@@ -9,10 +9,8 @@ namespace llarp
   {
     using Context_ptr = std::shared_ptr<Context>;
     py::class_<Context, Context_ptr>(mod, "Context")
-        .def(
-            "Setup",
-            [](Context_ptr self, bool isRelay) -> bool { return self->Setup(isRelay) == 0; })
-        .def("Run", [](Context_ptr self) -> int { return self->Run(llarp_main_runtime_opts{}); })
+        .def("Setup", [](Context_ptr self, bool isRelay) { self->Setup(isRelay); })
+        .def("Run", [](Context_ptr self) -> int { return self->Run(RuntimeOptions{}); })
         .def("Stop", [](Context_ptr self) { self->CloseAsync(); })
         .def("IsUp", &Context::IsUp)
         .def("IsRelay", [](Context_ptr self) -> bool { return self->router->IsServiceNode(); })

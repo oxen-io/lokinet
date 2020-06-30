@@ -5,6 +5,7 @@
 #include <util/types.hpp>
 #include <ev/ev.hpp>
 #include <nodedb.hpp>
+#include <crypto/crypto.hpp>
 
 #include <iostream>
 #include <map>
@@ -26,8 +27,6 @@ namespace llarp
   class Logic;
   struct AbstractRouter;
   struct Config;
-  struct Crypto;
-  struct CryptoManager;
   struct RouterContact;
   namespace thread
   {
