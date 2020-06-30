@@ -431,14 +431,11 @@ namespace llarp
     conf.defineOption<bool>(
         "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
 
-    conf.defineOption<std::string>(
-        "lokid", "jsonrpc", false, DefaultLokidRPCAddr, AssignmentAcceptor(lokidRPCAddr));
+    auto setRPC = [this](std::string arg) { lokidRPCAddr = lokimq::address(arg); };
 
-    conf.defineOption<std::string>(
-        "lokid", "username", false, "", AssignmentAcceptor(lokidRPCUser));
+    conf.defineOption<std::string>("lokid", "jsonrpc", false, DefaultLokidRPCAddr, setRPC);
 
-    conf.defineOption<std::string>(
-        "lokid", "password", false, "", AssignmentAcceptor(lokidRPCPassword));
+    conf.defineOption<std::string>("lokid", "rpc", false, DefaultLokidRPCAddr, setRPC);
   }
 
   void
@@ -597,6 +594,9 @@ namespace llarp
     addIgnoreOption("metrics", "json-metrics-path");
 
     addIgnoreOption("network", "enabled");
+
+    addIgnoreOption("lokid", "username");
+    addIgnoreOption("lokid", "password");
   }
 
   void
@@ -966,9 +966,9 @@ namespace llarp
 
     def.addOptionComments(
         "lokid",
-        "jsonrpc",
+        "rpc",
         {
-            "Host and port of running lokid that we should talk to.",
+            "Host and port of running lokid's rpc that we should talk to.",
         });
 
     // TODO: doesn't appear to be used in the codebase

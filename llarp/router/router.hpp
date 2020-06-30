@@ -267,8 +267,6 @@ namespace llarp
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
     lokimq::address lokidRPCAddr;
-    std::string lokidRPCUser;
-    std::string lokidRPCPassword;
 
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";

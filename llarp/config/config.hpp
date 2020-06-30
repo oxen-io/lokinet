@@ -22,6 +22,8 @@
 #include <vector>
 #include <unordered_set>
 
+#include <lokimq/address.h>
+
 struct llarp_config;
 
 namespace llarp
@@ -149,9 +151,7 @@ namespace llarp
     bool usingSNSeed = false;
     bool whitelistRouters = false;
     fs::path ident_keyfile;
-    std::string lokidRPCAddr;
-    std::string lokidRPCUser;
-    std::string lokidRPCPassword;
+    lokimq::address lokidRPCAddr;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

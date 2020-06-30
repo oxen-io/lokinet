@@ -43,7 +43,7 @@ namespace llarp
     {
       LogInfo("connecting to lokid via LMQ at ", url);
       m_lokiMQ->connect_remote(
-          url.zmq_address(),
+          url,
           [self = shared_from_this()](lokimq::ConnectionID c) {
             self->m_Connection = std::move(c);
             self->Connected();
