@@ -6,6 +6,7 @@
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
 #include <util/str.hpp>
+#include <util/thread/logic.hpp>
 
 #include <csignal>
 
@@ -47,16 +48,16 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 #endif
 
-struct llarp_main* ctx = 0;
+std::shared_ptr<llarp::Context> ctx;
 std::promise<int> exit_code;
 
 void
 handle_signal(int sig)
 {
   if (ctx)
-  {
-    llarp_main_signal(ctx, sig);
-  }
+    LogicCall(ctx->logic, std::bind(&llarp::Context::HandleSignal, ctx.get(), sig));
+  else
+    std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }
 
 #ifdef _WIN32
@@ -86,26 +87,43 @@ handle_signal_win32(DWORD fdwCtrlType)
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(std::string conffname, llarp_main_runtime_opts opts)
+run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 {
-  // this is important, can downgrade from Info though
-  llarp::LogDebug("Running from: ", fs::current_path().string());
-  llarp::LogInfo("Using config file: ", conffname);
-  ctx = llarp_main_init(conffname.c_str(), opts.isRelay);
-  int code = 1;
-  if (ctx)
+  try
   {
+    // this is important, can downgrade from Info though
+    llarp::LogDebug("Running from: ", fs::current_path().string());
+    llarp::LogInfo("Using config file: ", confFile);
+
+    llarp::Config conf;
+    conf.Load(confFile, opts.isRouter, confFile.parent_path());
+
+    ctx = std::shared_ptr<llarp::Context>();
+    ctx->Configure(opts, {});
+
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_setup(ctx, opts.isRelay);
+
+    ctx->Setup(opts);
+
     llarp::util::SetThreadName("llarp-mainloop");
-    if (code == 0)
-      code = llarp_main_run(ctx, opts);
+
+    auto result = ctx->Run(opts);
+    exit_code.set_value(result);
   }
-  exit_code.set_value(code);
+  catch (std::exception& e)
+  {
+    llarp::LogError("Fatal: caught exception while running: ", e.what());
+    exit_code.set_exception(std::current_exception());
+  }
+  catch (...)
+  {
+    llarp::LogError("Fatal: caught non-standard exception while running");
+    exit_code.set_exception(std::current_exception());
+  }
 }
 
 int
@@ -116,12 +134,7 @@ main(int argc, char* argv[])
   {
     return result;
   }
-  llarp_main_runtime_opts opts;
-  const char* singleThreadVar = getenv("LLARP_SHADOW");
-  if (singleThreadVar && std::string(singleThreadVar) == "1")
-  {
-    opts.singleThreaded = true;
-  }
+  llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
   if (startWinsock())
@@ -149,7 +162,7 @@ main(int argc, char* argv[])
 
   bool genconfigOnly = false;
   bool overwrite = false;
-  std::string conffname;
+  fs::path configFile;
   try
   {
     auto result = options.parse(argc, argv);
@@ -174,7 +187,7 @@ main(int argc, char* argv[])
 
     if (result.count("version"))
     {
-      std::cout << llarp_version() << std::endl;
+      std::cout << llarp::VERSION_FULL << std::endl;
       return 0;
     }
 
@@ -188,9 +201,9 @@ main(int argc, char* argv[])
       opts.background = true;
     }
 
-    if (result.count("relay") > 0)
+    if (result.count("router") > 0)
     {
-      opts.isRelay = true;
+      opts.isRouter = true;
     }
 
     if (result.count("force") > 0)
@@ -203,7 +216,7 @@ main(int argc, char* argv[])
       auto arg = result["config"].as<std::string>();
       if (!arg.empty())
       {
-        conffname = arg;
+        configFile = arg;
       }
     }
   }
@@ -214,22 +227,21 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  if (!conffname.empty())
+  if (!configFile.empty())
   {
     // when we have an explicit filepath
-    fs::path fname = fs::path(conffname);
-    fs::path basedir = fname.parent_path();
+    fs::path basedir = configFile.parent_path();
 
     if (genconfigOnly)
     {
-      llarp::ensureConfig(basedir, fname, overwrite, opts.isRelay);
+      llarp::ensureConfig(basedir, configFile, overwrite, opts.isRouter);
     }
     else
     {
       std::error_code ec;
-      if (!fs::exists(fname, ec))
+      if (!fs::exists(configFile, ec))
       {
-        llarp::LogError("Config file not found ", conffname);
+        llarp::LogError("Config file not found ", configFile);
         return 1;
       }
 
@@ -240,8 +252,8 @@ main(int argc, char* argv[])
   else
   {
     llarp::ensureConfig(
-        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRelay);
-    conffname = llarp::GetDefaultConfigPath().string();
+        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    configFile = llarp::GetDefaultConfigPath();
   }
 
   if (genconfigOnly)
@@ -249,45 +261,38 @@ main(int argc, char* argv[])
     return 0;
   }
 
-  std::thread main_thread{std::bind(&run_main_context, conffname, opts)};
+  std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
   do
   {
     // do periodic non lokinet related tasks here
-    if (ctx != nullptr)
+    if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
-      auto ctx_pp = llarp::Context::Get(ctx);
-      if (ctx_pp != nullptr)
+      for (const auto& wtf : {"you have been visited by the mascott of the "
+                              "deadlocked router.",
+                              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
+                              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
+                              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
+                              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
+                              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
+                              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
+                              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
+                              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
+                              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
+                              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
+                              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "file a bug report now or be cursed with this "
+                              "annoying image in your syslog for all time."})
       {
-        if (ctx_pp->IsUp() and not ctx_pp->LooksAlive())
-        {
-          for (const auto& wtf : {"you have been visited by the mascott of the "
-                                  "deadlocked router.",
-                                  "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-                                  "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-                                  "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-                                  "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-                                  "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-                                  "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-                                  "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-                                  "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-                                  "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-                                  "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-                                  "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-                                  "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-                                  "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-                                  "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                                  "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                                  "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-                                  "file a bug report now or be cursed with this "
-                                  "annoying image in your syslog for all time."})
-          {
-            LogError(wtf);
-            llarp::LogContext::Instance().ImmediateFlush();
-          }
-          std::abort();
-        }
+        LogError(wtf);
+        llarp::LogContext::Instance().ImmediateFlush();
       }
+      std::abort();
     }
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
@@ -300,7 +305,7 @@ main(int argc, char* argv[])
 #endif
   if (ctx)
   {
-    llarp_main_free(ctx);
+    ctx.reset();
   }
   return code;
 }

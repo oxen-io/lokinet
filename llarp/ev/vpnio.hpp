@@ -2,6 +2,7 @@
 #define LLARP_EV_VPNIO_HPP
 #include <net/ip_packet.hpp>
 #include <util/thread/queue.hpp>
+#include <llarp.hpp>
 #include <functional>
 
 struct llarp_main;
@@ -26,12 +27,12 @@ struct llarp_vpn_pkt_reader : public llarp_vpn_pkt_queue
 
 struct llarp_vpn_io_impl
 {
-  llarp_vpn_io_impl(llarp_main* p, llarp_vpn_io* io) : ptr(p), parent(io)
+  llarp_vpn_io_impl(llarp::Context* c, llarp_vpn_io* io) : ctx(c), parent(io)
   {
   }
   ~llarp_vpn_io_impl() = default;
 
-  llarp_main* ptr;
+  llarp::Context* ctx;
   llarp_vpn_io* parent;
 
   llarp_vpn_pkt_writer writer;
@@ -41,9 +42,6 @@ struct llarp_vpn_io_impl
   AsyncClose();
 
  private:
-  void
-  CallSafe(std::function<void(void)> f);
-
   void
   Expunge();
 };
