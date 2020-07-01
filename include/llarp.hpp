@@ -15,13 +15,6 @@
 
 struct llarp_ev_loop;
 
-#ifdef LOKINET_HIVE
-namespace tooling
-{
-  struct RouterHive;
-}  // namespace tooling
-#endif
-
 namespace llarp
 {
   class Logic;
@@ -96,11 +89,6 @@ namespace llarp
         std::shared_ptr<llarp::thread::ThreadPool> worker,
         llarp_ev_loop_ptr __netloop,
         std::shared_ptr<Logic> logic);
-
-#ifdef LOKINET_HIVE
-    void
-    InjectHive(tooling::RouterHive* hive);
-#endif
 
    private:
     void

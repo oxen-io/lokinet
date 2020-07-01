@@ -87,7 +87,7 @@ def tally_rc_received_for_peer(hive, routerId):
 
     numFound += stats.numDistinctRCsReceived
 
-  hive.ForEachRelayRouter(visit)
+  hive.ForEachRelay(visit)
 
   return numFound;
 

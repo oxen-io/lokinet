@@ -1,12 +1,15 @@
 #include <tooling/hive_router.hpp>
 
+#include <tooling/router_hive.hpp>
+
 namespace tooling
 {
   HiveRouter::HiveRouter(
       std::shared_ptr<llarp::thread::ThreadPool> worker,
       llarp_ev_loop_ptr netloop,
-      std::shared_ptr<llarp::Logic> logic)
-      : Router(worker, netloop, logic)
+      std::shared_ptr<llarp::Logic> logic,
+      RouterHive* hive)
+      : Router(worker, netloop, logic), m_hive(hive)
   {
   }
 
@@ -26,6 +29,12 @@ namespace tooling
   HiveRouter::enableGossiping()
   {
     m_disableGossiping = true;
+  }
+
+  void
+  HiveRouter::HandleRouterEvent(RouterEventPtr event) const
+  {
+    m_hive->NotifyEvent(std::move(event));
   }
 
 }  // namespace tooling

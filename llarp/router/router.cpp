@@ -1240,4 +1240,11 @@ namespace llarp
       LogDebug("Message failed sending to ", remote);
     }
   }
+
+  void
+  Router::HandleRouterEvent(tooling::RouterEventPtr event) const
+  {
+    LogDebug(event->ToString());
+  }
+
 }  // namespace llarp

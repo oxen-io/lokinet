@@ -14,7 +14,7 @@
 #include <peerstats/peer_db.hpp>
 
 #ifdef LOKINET_HIVE
-#include "tooling/router_hive.hpp"
+#include "tooling/router_event.hpp"
 #endif
 
 struct llarp_buffer_t;
@@ -292,14 +292,23 @@ namespace llarp
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
+    /// Templated convenience function to generate a RouterHive event and
+    /// delegate to non-templated (and overridable) function for handling.
     template <class EventType, class... Params>
     void
     NotifyRouterEvent([[maybe_unused]] Params&&... args) const
     {
-#ifdef LOKINET_HIVE
-      hive->NotifyEvent(std::make_unique<EventType>(std::forward<Params>(args)...));
-#endif
+      // TODO: no-op when appropriate
+      auto event = std::make_unique<EventType>(args...);
+      HandleRouterEvent(std::move(event));
     }
+
+   protected:
+    /// Virtual function to handle RouterEvent. HiveRouter overrides this in
+    /// order to inject the event. The default implementation in Router simply
+    /// logs it.
+    virtual void
+    HandleRouterEvent(tooling::RouterEventPtr event) const = 0;
   };
 }  // namespace llarp
 

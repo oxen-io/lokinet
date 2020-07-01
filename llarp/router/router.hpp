@@ -530,6 +530,9 @@ namespace llarp
     MessageSent(const RouterID& remote, SendStatus status);
 
    protected:
+    virtual void
+    HandleRouterEvent(tooling::RouterEventPtr event) const override;
+
     virtual bool
     disableGossipingRC_TestingOnly()
     {

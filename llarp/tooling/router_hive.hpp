@@ -4,6 +4,7 @@
 
 #include <llarp.h>
 #include <config/config.hpp>
+#include <tooling/hive_context.hpp>
 
 #include <vector>
 #include <deque>
@@ -16,7 +17,6 @@ struct llarp_main;
 namespace llarp
 {
   struct Context;
-  struct AbstractRouter;
 }  // namespace llarp
 
 namespace tooling
@@ -25,7 +25,7 @@ namespace tooling
 
   struct RouterHive
   {
-    using Context_ptr = std::shared_ptr<llarp::Context>;
+    using Context_ptr = std::shared_ptr<HiveContext>;
 
    private:
     void
@@ -65,22 +65,15 @@ namespace tooling
     std::deque<RouterEventPtr>
     GetAllEvents();
 
-    // functions to safely visit each relay and/or client's AbstractRouter or Context
+    // functions to safely visit each relay and/or client's HiveContext
     void
-    ForEachRelayRouter(std::function<void(llarp::AbstractRouter*)> visit);
+    ForEachRelay(std::function<void(Context_ptr)> visit);
     void
-    ForEachClientRouter(std::function<void(llarp::AbstractRouter*)> visit);
+    ForEachClient(std::function<void(Context_ptr)> visit);
     void
-    ForEachRouterRouter(std::function<void(llarp::AbstractRouter*)> visit);
+    ForEachRouter(std::function<void(Context_ptr)> visit);
 
-    void
-    ForEachRelayContext(std::function<void(Context_ptr)> visit);
-    void
-    ForEachClientContext(std::function<void(Context_ptr)> visit);
-    void
-    ForEachRouterContext(std::function<void(Context_ptr)> visit);
-
-    llarp::AbstractRouter*
+    HiveRouter*
     GetRelay(const llarp::RouterID& id, bool needMutexLock = true);
 
     std::vector<size_t>

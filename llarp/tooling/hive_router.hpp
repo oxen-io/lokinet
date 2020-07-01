@@ -13,7 +13,8 @@ namespace tooling
     HiveRouter(
         std::shared_ptr<llarp::thread::ThreadPool> worker,
         llarp_ev_loop_ptr netloop,
-        std::shared_ptr<llarp::Logic> logic);
+        std::shared_ptr<llarp::Logic> logic,
+        RouterHive* hive);
 
     virtual ~HiveRouter() = default;
 
@@ -29,6 +30,10 @@ namespace tooling
 
    protected:
     bool m_disableGossiping = false;
+    RouterHive* m_hive = nullptr;
+
+    virtual void
+    HandleRouterEvent(RouterEventPtr event) const override;
   };
 
 }  // namespace tooling

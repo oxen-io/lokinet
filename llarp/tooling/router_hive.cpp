@@ -14,17 +14,19 @@ using namespace std::chrono_literals;
 namespace tooling
 {
   void
-  RouterHive::AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRelay)
+  RouterHive::AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRouter)
   {
-    auto& container = (isRelay ? relays : clients);
+    auto& container = (isRouter ? relays : clients);
 
-    Context_ptr context = std::make_shared<llarp::Context>();
+    llarp::RuntimeOptions opts;
+    opts.isRouter = isRouter;
+
+    Context_ptr context = std::make_shared<HiveContext>(this);
     context->config = std::make_unique<llarp::Config>(*config.get());
-    context->Configure(isRelay, {});
-    context->Setup(isRelay);
+    context->Configure(opts, {});
+    context->Setup(opts);
 
     auto routerId = llarp::RouterID(context->router->pubkey());
-    context->InjectHive(this);
     container[routerId] = context;
     std::cout << "Generated router with ID " << routerId << std::endl;
   }
@@ -150,7 +152,7 @@ namespace tooling
     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
   }
 
-  llarp::AbstractRouter*
+  HiveRouter*
   RouterHive::GetRelay(const llarp::RouterID& id, bool needMutexLock)
   {
     auto guard =
@@ -161,7 +163,7 @@ namespace tooling
       return nullptr;
 
     auto ctx = itr->second;
-    return ctx->router.get();
+    return ctx->getRouterAsHiveRouter();
   }
 
   std::vector<size_t>
@@ -218,34 +220,7 @@ namespace tooling
   }
 
   void
-  RouterHive::ForEachRelayRouter(std::function<void(llarp::AbstractRouter*)> visit)
-  {
-    std::lock_guard<std::mutex> guard{routerMutex};
-    for (auto [routerId, ctx] : relays)
-    {
-      visit(GetRelay(routerId, false));
-    }
-  }
-
-  void
-  RouterHive::ForEachClientRouter(std::function<void(llarp::AbstractRouter*)> visit)
-  {
-    std::lock_guard<std::mutex> guard{routerMutex};
-    for (auto [routerId, ctx] : clients)
-    {
-      visit(GetRelay(routerId, false));
-    }
-  }
-
-  void
-  RouterHive::ForEachRouterRouter(std::function<void(llarp::AbstractRouter*)> visit)
-  {
-    ForEachRelayRouter(visit);
-    ForEachClientRouter(visit);
-  }
-
-  void
-  RouterHive::ForEachRelayContext(std::function<void(Context_ptr)> visit)
+  RouterHive::ForEachRelay(std::function<void(Context_ptr)> visit)
   {
     for (auto [routerId, ctx] : relays)
     {
@@ -254,7 +229,7 @@ namespace tooling
   }
 
   void
-  RouterHive::ForEachClientContext(std::function<void(Context_ptr)> visit)
+  RouterHive::ForEachClient(std::function<void(Context_ptr)> visit)
   {
     for (auto [routerId, ctx] : clients)
     {
@@ -264,10 +239,10 @@ namespace tooling
 
   /// safely visit every router context
   void
-  RouterHive::ForEachRouterContext(std::function<void(Context_ptr)> visit)
+  RouterHive::ForEachRouter(std::function<void(Context_ptr)> visit)
   {
-    ForEachRelayContext(visit);
-    ForEachClientContext(visit);
+    ForEachRelay(visit);
+    ForEachClient(visit);
   }
 
 }  // namespace tooling

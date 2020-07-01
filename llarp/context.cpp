@@ -204,14 +204,6 @@ namespace llarp
     llarp::LogDebug("free logic");
     logic.reset();
   }
-
-#ifdef LOKINET_HIVE
-  void
-  Context::InjectHive(tooling::RouterHive* hive)
-  {
-    router->hive = hive;
-  }
-#endif
 }  // namespace llarp
 
 extern "C"
