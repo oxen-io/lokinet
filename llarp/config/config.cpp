@@ -431,14 +431,14 @@ namespace llarp
     conf.defineOption<bool>(
         "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
 
-    conf.defineOption<std::string>(
-        "lokid",
-        "jsonrpc",
-        false,
-        "",
-        InvalidOption<std::string>("the [lokid]::jsonrpc option is deprecated please use the "
-                                   "[lokid]::rpc "
-                                   "config option instead"));
+    conf.defineOption<std::string>("lokid", "jsonrpc", false, "", [](std::string arg) {
+      if (arg.empty())
+        return;
+      throw std::invalid_argument(
+          "the [lokid]::jsonrpc option is deprecated please use the "
+          "[lokid]::rpc "
+          "config option instead");
+    });
 
     conf.defineOption<std::string>(
         "lokid", "rpc", false, DefaultLokidRPCAddr, [this](std::string arg) {
