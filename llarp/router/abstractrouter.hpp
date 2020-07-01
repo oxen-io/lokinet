@@ -293,7 +293,7 @@ namespace llarp
     NotifyRouterEvent([[maybe_unused]] Params&&... args) const
     {
 #ifdef LOKINET_HIVE
-      hive->NotifyEvent(std::make_unique<EventType>(args...));
+      hive->NotifyEvent(std::make_unique<EventType>(std::forward<Params>(args)...));
 #endif
     }
   };

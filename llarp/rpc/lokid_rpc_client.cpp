@@ -155,7 +155,9 @@ namespace llarp
         return;
       }
       // inform router about the new list
-      LogicCall(m_Router->logic(), [r = m_Router, nodeList]() { r->SetRouterWhitelist(nodeList); });
+      LogicCall(m_Router->logic(), [r = m_Router, nodeList = std::move(nodeList)]() mutable {
+        r->SetRouterWhitelist(std::move(nodeList));
+      });
     }
 
     SecretKey

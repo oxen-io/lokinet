@@ -53,8 +53,8 @@ namespace llarp
       void
       ForEachEntry(Visit_t visit) const
       {
-        for (const auto& entry : m_Entries)
-          visit(entry.first, entry.second);
+        for (const auto& [range, value] : m_Entries)
+          visit(range, value);
       }
 
       /// convert all values into type T using a transformer

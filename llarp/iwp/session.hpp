@@ -26,7 +26,7 @@ namespace llarp
     /// How long to keep a replay window for
     static constexpr auto ReplayWindow = (ReceivalTimeout * 3) / 2;
     /// How often to acks RX messages
-    static constexpr auto ACKResendInterval = DeliveryTimeout / 4;
+    static constexpr auto ACKResendInterval = DeliveryTimeout / 2;
     /// How often to retransmit TX fragments
     static constexpr auto TXFlushInterval = (DeliveryTimeout / 5) * 4;
     /// How often we send a keepalive

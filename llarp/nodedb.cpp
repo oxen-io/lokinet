@@ -58,13 +58,6 @@ llarp_nodedb::Get(const llarp::RouterID& pk, llarp::RouterContact& result)
 }
 
 void
-KillRCJobs(const std::set<std::string>& files)
-{
-  for (const auto& file : files)
-    fs::remove(file);
-}
-
-void
 llarp_nodedb::RemoveIf(std::function<bool(const llarp::RouterContact& rc)> filter)
 {
   std::set<std::string> files;
@@ -82,7 +75,10 @@ llarp_nodedb::RemoveIf(std::function<bool(const llarp::RouterContact& rc)> filte
         ++itr;
     }
   }
-  disk(std::bind(&KillRCJobs, files));
+  disk([files = std::move(files)]() {
+    for (const auto& file : files)
+      fs::remove(file);
+  });
 }
 
 bool
@@ -272,7 +268,7 @@ llarp_nodedb::ShouldSaveToDisk(llarp_time_t now) const
 void
 llarp_nodedb::AsyncFlushToDisk()
 {
-  disk(std::bind(&llarp_nodedb::SaveAll, this));
+  disk([this]() { SaveAll(); });
   m_NextSaveToDisk = llarp::time_now_ms() + m_SaveInterval;
 }
 

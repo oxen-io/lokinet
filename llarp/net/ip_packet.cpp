@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <map>
 
-constexpr uint32_t ipv6_flowlabel_mask = 0b00000000000011111111111111111111;
+constexpr uint32_t ipv6_flowlabel_mask = 0b0000'0000'0000'1111'1111'1111'1111'1111;
 
 void
 ipv6_header::FlowLabel(llarp::nuint32_t label)

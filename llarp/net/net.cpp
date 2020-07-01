@@ -505,6 +505,10 @@ namespace llarp
     };
     // generate possible ranges to in order of attempts
     std::list<IPRange> possibleRanges;
+    for (byte_t oct = 16; oct < 32; ++oct)
+    {
+      possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
+    }
     for (byte_t oct = 0; oct < 255; ++oct)
     {
       possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
@@ -512,10 +516,6 @@ namespace llarp
     for (byte_t oct = 0; oct < 255; ++oct)
     {
       possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
-    }
-    for (byte_t oct = 0; oct < 255; ++oct)
-    {
-      possibleRanges.emplace_back(IPRange::FromIPv4(172, 16, oct, 1, 24));
     }
     // for each possible range pick the first one we don't own
     for (const auto& range : possibleRanges)
