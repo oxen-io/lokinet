@@ -87,7 +87,7 @@ handle_signal_win32(DWORD fdwCtrlType)
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(const fs::path confFile, const llarp::RuntimeOptions& opts)
+run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 {
   try
   {
