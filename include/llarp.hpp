@@ -60,7 +60,8 @@ namespace llarp
     HandleSignal(int sig);
 
     bool
-    Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir);
+    Configure(
+        const RuntimeOptions& opts, std::optional<fs::path> dataDir, const fs::path& configfile);
 
     bool
     IsUp() const;
@@ -94,7 +95,6 @@ namespace llarp
     void
     SigINT();
 
-    std::string configfile;
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
 

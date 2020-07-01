@@ -28,14 +28,17 @@ namespace llarp
   }
 
   bool
-  Context::Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir)
+  Context::Configure(
+      const RuntimeOptions& opts, std::optional<fs::path> dataDir, const fs::path& configfile)
   {
+    LogWarn("Context::Configure()");
+
     if (nullptr == config.get())
       config = std::make_unique<Config>();
 
     fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
 
-    if (configfile.size())
+    if (not configfile.empty())
     {
       if (!config->Load(configfile.c_str(), opts.isRouter, defaultDataDir))
       {

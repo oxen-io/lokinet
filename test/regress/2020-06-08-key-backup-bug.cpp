@@ -12,7 +12,7 @@ static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {
   auto context = std::make_shared<llarp::Context>();
-  context->Configure(opts, {});
+  context->Configure(opts, {}, {});
 
   context->config->network.m_endpointType = "null";
   context->config->network.m_keyfile = keyfile;

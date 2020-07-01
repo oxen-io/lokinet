@@ -99,7 +99,7 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     conf.Load(confFile, opts.isRouter, confFile.parent_path());
 
     ctx = std::make_shared<llarp::Context>();
-    ctx->Configure(opts, {});
+    ctx->Configure(opts, {}, confFile);
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
