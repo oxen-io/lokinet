@@ -60,7 +60,7 @@ namespace llarp
     LoadDatabase();
 
     void
-    Setup(bool isRelay);
+    Setup(const RuntimeOptions& opts);
 
     int
     Run(const RuntimeOptions& opts);
@@ -69,7 +69,7 @@ namespace llarp
     HandleSignal(int sig);
 
     bool
-    Configure(bool isRelay, std::optional<fs::path> dataDir);
+    Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir);
 
     bool
     IsUp() const;

@@ -28,7 +28,7 @@ namespace llarp
   }
 
   bool
-  Context::Configure(bool isRelay, std::optional<fs::path> dataDir)
+  Context::Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir)
   {
     if (config)
       throw std::runtime_error("Re-configure not supported");
@@ -39,7 +39,7 @@ namespace llarp
 
     if (configfile.size())
     {
-      if (!config->Load(configfile.c_str(), isRelay, defaultDataDir))
+      if (!config->Load(configfile.c_str(), opts.isRouter, defaultDataDir))
       {
         config.release();
         llarp::LogError("failed to load config file ", configfile);
@@ -78,7 +78,7 @@ namespace llarp
   }
 
   void
-  Context::Setup(bool isRelay)
+  Context::Setup(const RuntimeOptions& opts)
   {
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
@@ -98,7 +98,7 @@ namespace llarp
 
     nodedb = std::make_unique<llarp_nodedb>(router->diskworker(), nodedb_dir);
 
-    if (!router->Configure(config.get(), isRelay, nodedb.get()))
+    if (!router->Configure(config.get(), opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
 
     // must be done after router is made so we can use its disk io worker

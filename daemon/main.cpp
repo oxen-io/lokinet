@@ -99,7 +99,7 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     conf.Load(confFile, opts.isRouter, confFile.parent_path());
 
     ctx = std::shared_ptr<llarp::Context>();
-    ctx->Configure(opts.isRouter, {});
+    ctx->Configure(opts, {});
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -107,7 +107,7 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     signal(SIGHUP, handle_signal);
 #endif
 
-    ctx->Setup(opts.isRouter);
+    ctx->Setup(opts);
 
     llarp::util::SetThreadName("llarp-mainloop");
 
