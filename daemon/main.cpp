@@ -117,12 +117,12 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
   catch (std::exception& e)
   {
     llarp::LogError("Fatal: caught exception while running: ", e.what());
-    exit_code.set_exception(e);
+    exit_code.set_exception(std::current_exception());
   }
   catch (...)
   {
     llarp::LogError("Fatal: caught non-standard exception while running");
-    exit_code.set_exception(std::runtime_error("Non-standard exception caught while running");
+    exit_code.set_exception(std::current_exception());
   }
 }
 
