@@ -38,7 +38,17 @@ namespace llarp
 
     fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
 
-    if (not configfile.empty())
+    // TODO: DRY / refactor to use exceptions
+    if (configfile.empty())
+    {
+      if (not config->LoadDefault(opts.isRouter, defaultDataDir))
+      {
+        config.release();
+        llarp::LogError("failed to load default config");
+        return false;
+      }
+    }
+    else
     {
       if (!config->Load(configfile.c_str(), opts.isRouter, defaultDataDir))
       {

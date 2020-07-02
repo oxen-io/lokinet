@@ -243,10 +243,12 @@ namespace llarp
     // we need this first so we can start lmq to fetch keys
     if (conf)
     {
+      whitelistRouters = conf->lokid.whitelistRouters;
+      if (whitelistRouters)
+        lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
+
       enableRPCServer = conf->api.m_enableRPCServer;
       rpcBindAddr = lokimq::address(conf->api.m_rpcBindAddr);
-      whitelistRouters = conf->lokid.whitelistRouters;
-      lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
     }
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");

@@ -12,7 +12,7 @@ std::shared_ptr<llarp::Context>
 make_context()
 {
   auto context = std::make_shared<llarp::Context>();
-  context->Configure(opts, {}, {});
+  REQUIRE(context->Configure(opts, {}, {}) == true);
   REQUIRE(context->config != nullptr);
   REQUIRE(context->config->LoadDefault(true, fs::current_path()));
 
