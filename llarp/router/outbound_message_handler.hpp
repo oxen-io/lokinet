@@ -5,13 +5,13 @@
 
 #include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
-#include <util/thread/threading.hpp>
 #include <path/path_types.hpp>
 #include <router_id.hpp>
 
 #include <list>
 #include <unordered_map>
 #include <utility>
+#include <queue>
 
 struct llarp_buffer_t;
 

@@ -197,7 +197,7 @@ namespace llarp
     Session::SendMACK()
     {
       // send multi acks
-      while (m_SendMACKs.size() > 0)
+      while (not m_SendMACKs.empty())
       {
         const auto sz = m_SendMACKs.size();
         const auto max = Session::MaxACKSInMACK;
@@ -206,11 +206,11 @@ namespace llarp
         mack[PacketOverhead + CommandOverhead] = byte_t{static_cast<byte_t>(numAcks)};
         byte_t* ptr = mack.data() + 3 + PacketOverhead;
         LogDebug("send ", numAcks, " macks to ", m_RemoteAddr);
-        auto itr = m_SendMACKs.begin();
+        const auto& itr = m_SendMACKs.top();
         while (numAcks > 0)
         {
-          htobe64buf(ptr, *itr);
-          itr = m_SendMACKs.erase(itr);
+          htobe64buf(ptr, itr);
+          m_SendMACKs.pop();
           numAcks--;
           ptr += sizeof(uint64_t);
         }

@@ -22,7 +22,8 @@ namespace llarp
       SessionRenegotiateHandler reneg,
       TimeoutHandler timeout,
       SessionClosedHandler closed,
-      PumpDoneHandler pumpDone)
+      PumpDoneHandler pumpDone,
+      WorkerFunc_t work)
       : HandleMessage(std::move(handler))
       , HandleTimeout(std::move(timeout))
       , Sign(std::move(signbuf))
@@ -31,6 +32,7 @@ namespace llarp
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
       , PumpDone(std::move(pumpDone))
+      , QueueWork(std::move(work))
       , m_RouterEncSecret(keyManager->encryptionKey)
       , m_SecretKey(keyManager->transportKey)
   {
@@ -318,9 +320,8 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(std::shared_ptr<Logic> l, std::shared_ptr<thread::ThreadPool> worker)
+  ILinkLayer::Start(std::shared_ptr<Logic> l)
   {
-    m_Worker = worker;
     m_Logic = l;
     ScheduleTick(LINK_LAYER_TICK_INTERVAL);
     return true;

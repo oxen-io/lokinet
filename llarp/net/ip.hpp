@@ -1,6 +1,5 @@
 #pragma once
 #include <net/net_int.hpp>
-#include <net/net.hpp>
 #include <cstdint>
 
 namespace llarp::net
@@ -14,7 +13,7 @@ namespace llarp::net
   constexpr huint128_t
   ExpandV4(huint32_t x)
   {
-    return huint128_t{0xffff'0000'0000UL} | huint128_t{x.h};
+    return huint128_t{0x0000'ffff'0000'0000UL} | huint128_t{x.h};
   }
 
   constexpr huint32_t

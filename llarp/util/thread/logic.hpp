@@ -3,8 +3,6 @@
 
 #include <ev/ev.hpp>
 #include <util/mem.h>
-#include <util/thread/threadpool.h>
-#include <optional>
 
 namespace llarp
 {
@@ -14,9 +12,6 @@ namespace llarp
     /// stop all operation and wait for that to die
     void
     stop();
-
-    bool
-    queue_job(struct llarp_thread_job job);
 
     void
     Call(std::function<void(void)> func);
@@ -30,9 +25,6 @@ namespace llarp
     void
     remove_call(uint32_t id);
 
-    bool
-    can_flush() const;
-
     void
     SetQueuer(std::function<void(std::function<void(void)>)> q);
 
@@ -43,9 +35,7 @@ namespace llarp
     clear_event_loop();
 
    private:
-    using ID_t = std::thread::id;
     llarp_ev_loop* m_Loop = nullptr;
-    std::optional<ID_t> m_ID;
     std::function<void(std::function<void(void)>)> m_Queue;
   };
 }  // namespace llarp

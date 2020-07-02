@@ -368,7 +368,9 @@ namespace libuv
     OnTick(uv_check_t* t)
     {
       ticker_glue* ticker = static_cast<ticker_glue*>(t->data);
-      LoopCall(t, ticker->func);
+      ticker->func();
+      Loop* loop = static_cast<Loop*>(t->loop->data);
+      loop->FlushLogic();
     }
 
     bool
@@ -461,7 +463,7 @@ namespace libuv
       auto* self = static_cast<udp_glue*>(udp->impl);
       if (self == nullptr)
         return -1;
-      uv_buf_t buf = uv_buf_init((char*)ptr, sz);
+      auto buf = uv_buf_init((char*)ptr, sz);
       return uv_udp_try_send(&self->m_Handle, &buf, 1, to);
     }
 
@@ -821,11 +823,7 @@ namespace libuv
   int
   Loop::run()
   {
-    uv_timer_start(
-        m_TickTimer,
-        [](uv_timer_t* t) { static_cast<Loop*>(t->loop->data)->FlushLogic(); },
-        1000,
-        1000);
+    m_EventLoopThreadID = std::this_thread::get_id();
     return uv_run(&m_Impl, UV_RUN_DEFAULT);
   }
 
@@ -959,7 +957,9 @@ namespace libuv
             return;
           if (h->data && uv_is_active(h) && h->type != UV_TIMER && h->type != UV_POLL)
           {
-            static_cast<glue*>(h->data)->Close();
+            auto glue = reinterpret_cast<libuv::glue*>(h->data);
+            if (glue)
+              glue->Close();
           }
         },
         nullptr);
@@ -968,7 +968,6 @@ namespace libuv
   void
   Loop::stopped()
   {
-    tick(50);
     llarp::LogInfo("we have stopped");
   }
 
@@ -1052,7 +1051,27 @@ namespace libuv
   void
   Loop::call_soon(std::function<void(void)> f)
   {
-    m_LogicCalls.tryPushBack(f);
+    if (not m_EventLoopThreadID.has_value())
+    {
+      m_LogicCalls.tryPushBack(f);
+      uv_async_send(&m_WakeUp);
+      return;
+    }
+    const auto inEventLoop = *m_EventLoopThreadID == std::this_thread::get_id();
+
+    while (m_LogicCalls.full() and inEventLoop)
+    {
+      FlushLogic();
+    }
+    if (inEventLoop)
+    {
+      if (m_LogicCalls.tryPushBack(f) != llarp::thread::QueueReturn::Success)
+      {
+        LogError("logic job queue is full");
+      }
+    }
+    else
+      m_LogicCalls.pushBack(f);
     uv_async_send(&m_WakeUp);
   }
 

@@ -18,7 +18,6 @@ namespace llarp
   /// In addition, the KeyManager detects when the keys obsolete (e.g. as a
   /// result of a software upgrade) and backs up existing keys before writing
   /// out new ones.
-
   struct KeyManager
   {
     /// Utility function to backup a file by moving it. Attempts to find a new
@@ -34,8 +33,7 @@ namespace llarp
     /// Constructor
     KeyManager();
 
-    /// Initializes keys using the provided config, loading from disk and/or
-    /// lokid via HTTP request.
+    /// Initializes keys using the provided config, loading from disk
     ///
     /// NOTE: Must be called prior to obtaining any keys.
     /// NOTE: blocks on I/O
@@ -75,11 +73,6 @@ namespace llarp
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
 
-    bool m_usingLokid = false;
-    std::string m_lokidRPCAddr = "127.0.0.1:22023";
-    std::string m_lokidRPCUser;
-    std::string m_lokidRPCPassword;
-
     /// Backup each key file (by copying, e.g. foo -> foo.bak)
     bool
     backupKeyFilesByMoving() const;
@@ -92,10 +85,6 @@ namespace llarp
         const fs::path& filepath,
         llarp::SecretKey& key,
         std::function<void(llarp::SecretKey& key)> keygen);
-
-    /// Requests the identity key from lokid via HTTP (curl)
-    bool
-    loadIdentityFromLokid();
   };
 
 }  // namespace llarp

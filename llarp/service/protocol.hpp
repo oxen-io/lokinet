@@ -30,6 +30,8 @@ namespace llarp
 
   namespace service
   {
+    struct Endpoint;
+
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
     /// inner message
@@ -43,10 +45,14 @@ namespace llarp
       std::vector<byte_t> payload;
       Introduction introReply;
       ServiceInfo sender;
-      IDataHandler* handler = nullptr;
+      Endpoint* handler = nullptr;
       ConvoTag tag;
       uint64_t seqno = 0;
       uint64_t version = LLARP_PROTO_VERSION;
+
+      /// encode metainfo for lmq endpoint auth
+      std::vector<char>
+      EncodeAuthInfo() const;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val);
@@ -123,9 +129,8 @@ namespace llarp
       AsyncDecryptAndVerify(
           std::shared_ptr<Logic> logic,
           path::Path_ptr fromPath,
-          const std::shared_ptr<llarp::thread::ThreadPool>& worker,
           const Identity& localIdent,
-          IDataHandler* handler) const;
+          Endpoint* handler) const;
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey, ProtocolMessage& into) const;

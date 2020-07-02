@@ -12,10 +12,8 @@
 #include <link/server.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
-#include <rpc/rpc.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
-#include <util/encode.hpp>
 #include <util/logging/file_logger.hpp>
 #include <util/logging/json_logger.hpp>
 #include <util/logging/logger_syslog.hpp>
@@ -39,29 +37,30 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#include <lokimq/lokimq.h>
+
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(
-      std::shared_ptr<llarp::thread::ThreadPool> _tp,
-      llarp_ev_loop_ptr __netloop,
-      std::shared_ptr<Logic> l)
+  Router::Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> l)
       : ready(false)
+      , m_lmq(std::make_shared<lokimq::LokiMQ>())
       , _netloop(std::move(__netloop))
-      , cryptoworker(std::move(_tp))
       , _logic(std::move(l))
       , paths(this)
       , _exitContext(this)
-      , disk(std::make_shared<llarp::thread::ThreadPool>(1, 1000, "diskworker"))
       , _dht(llarp_dht_context_new(this))
+      , m_DiskThread(m_lmq->add_tagged_thread("disk"))
       , inbound_link_msg_parser(this)
       , _hiddenServiceContext(this)
+      , m_RPCServer(new rpc::RpcServer(m_lmq, this))
 #ifdef LOKINET_HIVE
       , _randomStartDelay(std::chrono::milliseconds((llarp::randint() % 1250) + 2000))
 #else
       , _randomStartDelay(std::chrono::seconds((llarp::randint() % 30) + 10))
 #endif
+      , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
 
@@ -200,6 +199,8 @@ namespace llarp
   bool
   Router::EnsureIdentity()
   {
+    _encryption = m_keyManager->encryptionKey;
+
     if (whitelistRouters)
     {
 #if defined(ANDROID) || defined(IOS)
@@ -211,10 +212,12 @@ namespace llarp
       return false;
 #endif
 #endif
+      _identity = RpcClient()->ObtainIdentityKey();
     }
-
-    _identity = m_keyManager->identityKey;
-    _encryption = m_keyManager->encryptionKey;
+    else
+    {
+      _identity = m_keyManager->identityKey;
+    }
 
     if (_identity.IsZero())
       return false;
@@ -227,18 +230,34 @@ namespace llarp
   bool
   Router::Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb)
   {
-    if (nodedb == nullptr)
+    // we need this first so we can start lmq to fetch keys
+    if (conf)
     {
-      throw std::invalid_argument("nodedb cannot be null");
+      enableRPCServer = conf->api.m_enableRPCServer;
+      rpcBindAddr = lokimq::address(conf->api.m_rpcBindAddr);
+      whitelistRouters = conf->lokid.whitelistRouters;
+      lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
     }
+    if (not StartRpcServer())
+      throw std::runtime_error("Failed to start rpc server");
+
+    m_lmq->start();
+
     _nodedb = nodedb;
 
-    if (not m_keyManager->initialize(*conf, true, isRouter))
-      throw std::runtime_error("KeyManager failed to initialize");
+    if (whitelistRouters)
+    {
+      m_lokidRpcClient->ConnectAsync(lokidRPCAddr);
+    }
 
-    if (!FromConfig(conf))
-      throw std::runtime_error("FromConfig() failed");
-
+    // fetch keys
+    if (conf)
+    {
+      if (not m_keyManager->initialize(*conf, true, isRouter))
+        throw std::runtime_error("KeyManager failed to initialize");
+      if (!FromConfig(conf))
+        throw std::runtime_error("FromConfig() failed");
+    }
     if (!InitOutboundLinks())
       throw std::runtime_error("InitOutboundLinks() failed");
 
@@ -266,7 +285,7 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    diskworker()->addJob(std::bind(&Router::HandleSaveRC, this));
+    QueueDiskIO([&]() { HandleSaveRC(); });
     return true;
   }
 
@@ -281,8 +300,6 @@ namespace llarp
   {
     LogInfo("closing router");
     llarp_ev_loop_stop(_netloop);
-    disk->stop();
-    disk->shutdown();
     _running.store(false);
   }
 
@@ -395,9 +412,7 @@ namespace llarp
     // Lokid Config
     usingSNSeed = conf->lokid.usingSNSeed;
     whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = IpAddress(conf->lokid.lokidRPCAddr);  // TODO: make config's option an IpAddress
-    lokidRPCUser = conf->lokid.lokidRPCUser;
-    lokidRPCPassword = conf->lokid.lokidRPCPassword;
+    lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
 
     if (usingSNSeed)
       ident_keyfile = conf->lokid.ident_keyfile;
@@ -500,12 +515,17 @@ namespace llarp
     // Init components after relevant config settings loaded
     _outboundMessageHandler.Init(&_linkManager, _logic);
     _outboundSessionMaker.Init(
-        &_linkManager, &_rcLookupHandler, &_routerProfiling, _logic, _nodedb, threadpool());
+        &_linkManager,
+        &_rcLookupHandler,
+        &_routerProfiling,
+        _logic,
+        _nodedb,
+        util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
-        threadpool(),
+        util::memFn(&AbstractRouter::QueueWork, this),
         &_linkManager,
         &_hiddenServiceContext,
         strictConnectPubkeys,
@@ -525,7 +545,8 @@ namespace llarp
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
           util::memFn(&AbstractRouter::SessionClosed, this),
-          util::memFn(&AbstractRouter::PumpLL, this));
+          util::memFn(&AbstractRouter::PumpLL, this),
+          util::memFn(&AbstractRouter::QueueWork, this));
 
       const std::string& key = serverConfig.interface;
       int af = serverConfig.addressFamily;
@@ -552,8 +573,6 @@ namespace llarp
     }
 
     // API config
-    enableRPCServer = conf->api.m_enableRPCServer;
-    rpcBindAddr = IpAddress(conf->api.m_rpcBindAddr);  // TODO: make this an IpAddress in config
     if (not IsServiceNode())
     {
       hiddenServiceContext().AddEndpoint(*conf);
@@ -565,7 +584,7 @@ namespace llarp
         conf->logging.m_logType,
         conf->logging.m_logFile,
         conf->router.m_nickname,
-        diskworker());
+        util::memFn(&AbstractRouter::QueueDiskIO, this));
 
     return true;
   }
@@ -725,19 +744,16 @@ namespace llarp
     _hiddenServiceContext.Tick(now);
     _exitContext.Tick(now);
 
-    if (rpcCaller)
-      rpcCaller->Tick(now);
     // save profiles
     if (routerProfiling().ShouldSave(now))
     {
-      diskworker()->addJob([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+      QueueDiskIO([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
     }
     // save nodedb
     if (nodedb()->ShouldSaveToDisk(now))
     {
       nodedb()->AsyncFlushToDisk();
     }
-
     // get connected peers
     std::set<dht::Key_t> peersWeHave;
     _linkManager.ForEachPeer([&peersWeHave](ILinkSession* s) {
@@ -811,29 +827,17 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector<RouterID>& routers)
+  Router::SetRouterWhitelist(const std::vector<RouterID> routers)
   {
     _rcLookupHandler.SetRouterWhitelist(routers);
   }
 
   bool
-  Router::StartJsonRpc()
+  Router::StartRpcServer()
   {
-    if (_running || _stopping)
-      return false;
-
     if (enableRPCServer)
     {
-      if (rpcBindAddr.isEmpty())
-      {
-        rpcBindAddr = DefaultRPCBindAddr;
-      }
-      rpcServer = std::make_unique<rpc::Server>(this);
-      if (not rpcServer->Start(rpcBindAddr))
-      {
-        LogError("failed to bind jsonrpc to ", rpcBindAddr);
-        return false;
-      }
+      m_RPCServer->AsyncServeRPC(rpcBindAddr);
       LogInfo("Bound RPC server to ", rpcBindAddr);
     }
 
@@ -845,30 +849,6 @@ namespace llarp
   {
     if (_running || _stopping)
       return false;
-
-    if (whitelistRouters)
-    {
-      rpcCaller = std::make_unique<rpc::Caller>(this);
-      rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
-      if (not rpcCaller->Start(lokidRPCAddr))
-      {
-        LogError("RPC Caller to ", lokidRPCAddr, " failed to start");
-        return false;
-      }
-      LogInfo("RPC Caller to ", lokidRPCAddr, " started");
-    }
-
-    if (!cryptoworker->start())
-    {
-      LogError("crypto worker failed to start");
-      return false;
-    }
-
-    if (!disk->start())
-    {
-      LogError("disk worker failed to start");
-      return false;
-    }
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
@@ -921,7 +901,7 @@ namespace llarp
       }
     }
     _outboundSessionMaker.SetOurRouter(pubkey());
-    if (!_linkManager.StartLinks(_logic, cryptoworker))
+    if (!_linkManager.StartLinks(_logic))
     {
       LogWarn("One or more links failed to start.");
       return false;
@@ -1039,6 +1019,26 @@ namespace llarp
   }
 
   void
+  Router::Die()
+  {
+    if (!_running)
+      return;
+    if (_stopping)
+      return;
+
+    _stopping.store(true);
+    LogContext::Instance().RevertRuntimeLevel();
+    LogWarn("stopping router hard");
+#if defined(WITH_SYSTEMD)
+    sd_notify(0, "STOPPING=1\nSTATUS=Shutting down HARD");
+#endif
+    hiddenServiceContext().StopAll();
+    _exitContext.Stop();
+    StopLinks();
+    Close();
+  }
+
+  void
   Router::Stop()
   {
     if (!_running)
@@ -1054,8 +1054,6 @@ namespace llarp
 #endif
     hiddenServiceContext().StopAll();
     _exitContext.Stop();
-    if (rpcServer)
-      rpcServer->Stop();
     paths.PumpUpstream();
     _linkManager.PumpLinks();
     _logic->call_later(200ms, std::bind(&Router::AfterStopIssued, this));
@@ -1148,7 +1146,8 @@ namespace llarp
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
         util::memFn(&IOutboundSessionMaker::OnConnectTimeout, &_outboundSessionMaker),
         util::memFn(&AbstractRouter::SessionClosed, this),
-        util::memFn(&AbstractRouter::PumpLL, this));
+        util::memFn(&AbstractRouter::PumpLL, this),
+        util::memFn(&AbstractRouter::QueueWork, this));
 
     if (!link)
       throw std::runtime_error("NewOutboundLink() failed to provide a link");

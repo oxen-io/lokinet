@@ -3,7 +3,6 @@
 
 #include <util/logging/logstream.hpp>
 
-#include <util/thread/thread_pool.hpp>
 #include <util/thread/queue.hpp>
 #include <util/time.hpp>
 
@@ -14,11 +13,10 @@ namespace llarp
   /// flushable file based log stream
   struct FileLogStream : public ILogStream
   {
+    using Work_t = std::function<void(void)>;
+
     FileLogStream(
-        std::shared_ptr<thread::ThreadPool> disk,
-        FILE* f,
-        llarp_time_t flushInterval,
-        bool closefile = true);
+        std::function<void(Work_t)> io, FILE* f, llarp_time_t flushInterval, bool closefile = true);
 
     ~FileLogStream() override;
 
@@ -65,7 +63,7 @@ namespace llarp
     void
     FlushLinesToDisk(llarp_time_t now);
 
-    std::shared_ptr<thread::ThreadPool> m_Disk;
+    const std::function<void(Work_t)> m_Disk;
     FILE* const m_File;
     const llarp_time_t m_FlushInterval;
     llarp_time_t m_LastFlush = 0s;

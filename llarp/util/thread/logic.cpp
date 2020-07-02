@@ -6,17 +6,6 @@
 
 namespace llarp
 {
-  bool
-  Logic::queue_job(struct llarp_thread_job job)
-  {
-    if (job.user && job.work)
-    {
-      LogicCall(this, std::bind(job.work, job.user));
-      return true;
-    }
-    return false;
-  }
-
   void
   Logic::stop()
   {
@@ -26,21 +15,13 @@ namespace llarp
   void
   Logic::Call(std::function<void(void)> func)
   {
-    if (can_flush())
-    {
-      func();
-    }
-    else
-    {
-      m_Queue(std::move(func));
-    }
+    m_Queue(std::move(func));
   }
 
   void
   Logic::SetQueuer(std::function<void(std::function<void(void)>)> q)
   {
     m_Queue = std::move(q);
-    m_Queue([self = this]() { self->m_ID = std::this_thread::get_id(); });
   }
 
   uint32_t
@@ -74,16 +55,11 @@ namespace llarp
     }
   }
 
-  bool
-  Logic::can_flush() const
-  {
-    return *m_ID == std::this_thread::get_id();
-  }
-
   void
   Logic::set_event_loop(llarp_ev_loop* loop)
   {
     m_Loop = loop;
+    SetQueuer([loop](std::function<void(void)> work) { loop->call_soon(work); });
   }
 
   void

@@ -11,7 +11,9 @@
 #include <constants/files.hpp>
 #include <net/ip_address.hpp>
 #include <net/net_int.hpp>
+#include <net/ip_range_map.hpp>
 #include <service/address.hpp>
+#include <service/auth.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -19,6 +21,8 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
+
+#include <lokimq/address.h>
 
 struct llarp_config;
 
@@ -70,7 +74,7 @@ namespace llarp
     std::string m_routerProfilesFile;
     std::string m_strictConnect;
     std::string m_ifname;
-    std::string m_ifaddr;
+    IPRange m_ifaddr;
 
     std::optional<fs::path> m_keyfile;
     std::string m_endpointType;
@@ -79,8 +83,13 @@ namespace llarp
     std::optional<int> m_Paths;
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
-    std::optional<service::Address> m_exitNode;
+    net::IPRangeMap<service::Address> m_ExitMap;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
+
+    service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
+    std::optional<std::string> m_AuthUrl;
+    std::optional<std::string> m_AuthMethod;
+    std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
 
     // TODO:
     // on-up
@@ -142,9 +151,7 @@ namespace llarp
     bool usingSNSeed = false;
     bool whitelistRouters = false;
     fs::path ident_keyfile;
-    std::string lokidRPCAddr;
-    std::string lokidRPCUser;
-    std::string lokidRPCPassword;
+    lokimq::address lokidRPCAddr;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

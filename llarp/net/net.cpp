@@ -20,6 +20,7 @@
 #include <util/str.hpp>
 
 #include <cstdio>
+#include <list>
 
 bool
 operator==(const sockaddr& a, const sockaddr& b)
@@ -417,6 +418,31 @@ namespace llarp
     if (ifa)
       freeifaddrs(ifa);
   }
+  namespace net
+  {
+    std::string
+    LoopbackInterfaceName()
+    {
+      const auto loopback = IPRange::FromIPv4(127, 0, 0, 0, 8);
+      std::string ifname;
+      IterAllNetworkInterfaces([&ifname, loopback](ifaddrs* const i) {
+        if (i->ifa_addr and i->ifa_addr->sa_family == AF_INET)
+        {
+          llarp::nuint32_t addr{((sockaddr_in*)i->ifa_addr)->sin_addr.s_addr};
+          if (loopback.Contains(xntohl(addr)))
+          {
+            ifname = i->ifa_name;
+          }
+        }
+      });
+      if (ifname.empty())
+      {
+        throw std::runtime_error(
+            "we have no ipv4 loopback interface for some ungodly reason, yeah idk fam");
+      }
+      return ifname;
+    }
+  }  // namespace net
 
   bool
   GetBestNetIF(std::string& ifname, int af)
@@ -444,10 +470,10 @@ namespace llarp
   }
 
   // TODO: ipv6?
-  std::optional<std::string>
+  std::optional<IPRange>
   FindFreeRange()
   {
-    std::vector<IPRange> currentRanges;
+    std::list<IPRange> currentRanges;
     IterAllNetworkInterfaces([&](ifaddrs* i) {
       if (i && i->ifa_addr)
       {
@@ -469,49 +495,33 @@ namespace llarp
               IPRange{net::ExpandV4(xntohl(ifaddr)), net::ExpandV4(xntohl(ifmask))});
       }
     });
-    // try 10.x.0.0/16
-    byte_t oct = 0;
-    while (oct < 255)
-    {
-      const huint32_t loaddr = ipaddr_ipv4_bits(10, oct, 0, 1);
-      const huint32_t hiaddr = ipaddr_ipv4_bits(10, oct, 255, 255);
-      bool hit = false;
-      for (const auto& range : currentRanges)
+    auto ownsRange = [&currentRanges](IPRange range) -> bool {
+      for (const auto& ownRange : currentRanges)
       {
-        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
+        if (ownRange.Contains(range))
+          return true;
       }
-      if (!hit)
-        return loaddr.ToString() + "/16";
-      ++oct;
+      return false;
+    };
+    // generate possible ranges to in order of attempts
+    std::list<IPRange> possibleRanges;
+    for (byte_t oct = 16; oct < 32; ++oct)
+    {
+      possibleRanges.emplace_back(IPRange::FromIPv4(172, oct, 0, 1, 16));
     }
-    // try 192.168.x.0/24
-    oct = 0;
-    while (oct < 255)
+    for (byte_t oct = 0; oct < 255; ++oct)
     {
-      const huint32_t loaddr = ipaddr_ipv4_bits(192, 168, oct, 1);
-      const huint32_t hiaddr = ipaddr_ipv4_bits(192, 168, oct, 255);
-      bool hit = false;
-      for (const auto& range : currentRanges)
-      {
-        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
-      }
-      if (!hit)
-        return loaddr.ToString() + "/24";
+      possibleRanges.emplace_back(IPRange::FromIPv4(10, oct, 0, 1, 16));
     }
-    // try 172.16.x.0/24
-    oct = 0;
-    while (oct < 255)
+    for (byte_t oct = 0; oct < 255; ++oct)
     {
-      const huint32_t loaddr = ipaddr_ipv4_bits(172, 16, oct, 1);
-      const huint32_t hiaddr = ipaddr_ipv4_bits(172, 16, oct, 255);
-      bool hit = false;
-      for (const auto& range : currentRanges)
-      {
-        hit = hit || range.ContainsV4(loaddr) || range.ContainsV4(hiaddr);
-      }
-      if (!hit)
-        return loaddr.ToString() + "/24";
-      ++oct;
+      possibleRanges.emplace_back(IPRange::FromIPv4(192, 168, oct, 1, 24));
+    }
+    // for each possible range pick the first one we don't own
+    for (const auto& range : possibleRanges)
+    {
+      if (not ownsRange(range))
+        return range;
     }
     return std::nullopt;
   }
@@ -635,7 +645,7 @@ namespace llarp
   {
     for (const auto& bogon : bogonRanges)
     {
-      if (bogon.ContainsV4(addr))
+      if (bogon.Contains(addr))
       {
         return true;
       }

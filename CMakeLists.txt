@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
 # Has to be set before `project()`, and ignored on non-macos:
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13 CACHE STRING "macOS deployment target (Apple clang only)")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -121,6 +121,42 @@ if(NOT WIN32)
     endif()
   endif()
 endif()
+
+if(NOT TARGET sodium)
+# Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
+  option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
+  if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SODIUM libsodium>=1.0.18 IMPORTED_TARGET)
+  endif()
+
+  add_library(sodium INTERFACE)
+  if(SODIUM_FOUND AND NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
+    target_link_libraries(sodium INTERFACE PkgConfig::SODIUM)
+  else()
+    if(NOT DOWNLOAD_SODIUM AND NOT BUILD_STATIC_DEPS)
+      message(FATAL_ERROR "Could not find libsodium >= 1.0.18; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
+    endif()
+    message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")
+    include(DownloadLibSodium)
+    target_link_libraries(sodium INTERFACE sodium_vendor)
+  endif()
+
+  # Need this target export so that loki-mq properly picks up sodium
+  export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
+endif()
+
+option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
+if(NOT FORCE_LOKIMQ_SUBMODULE)
+  find_package(LokiMQ 1.2)
+endif()
+if(LokiMQ_FOUND)
+  message(STATUS "using system lokimq")
+else()
+  message(STATUS "using lokimq submodule")
+  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq EXCLUDE_FROM_ALL)
+endif()
+
 
 # this is messing with release builds
 add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
@@ -272,20 +308,13 @@ if(SUBMODULE_CHECK)
     if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
       check_submodule(external/libuv)
     endif()
+    check_submodule(external/loki-mq)
   endif()
 endif()
 
-# We only actually need pybind11 with WITH_HIVE, but if we don't load it here then something further
-# down loads a broken PythonInterp that loads Python2, but Python2 headers are not C++17 compatible.
-# So load this here universally so that pybind's more intelligent python finder finds python3.x
-# (which the crappier loader invoked below then respects).
-# however! travis is FUBAR right now so disable it in travis builds
-if(TRAVIS_CI_SUCKS OR NOT WITH_HIVE)
-  message(WARNING "you're on travis (which is broken garbage) or are compiling without routerhive, we have disabled pybind11, THANKS!")
-else()
+if(WITH_HIVE)
   add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
 endif()
-
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
@@ -314,7 +343,6 @@ endif()
 
 add_subdirectory(crypto)
 add_subdirectory(llarp)
-add_subdirectory(libabyss)
 add_subdirectory(daemon)
 if(WITH_HIVE)
   add_subdirectory(pybind)

@@ -13,8 +13,8 @@
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <net/net_if.hpp>
 #endif
+#include <net/net_if.hpp>
 
 #include <memory>
 

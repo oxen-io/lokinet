@@ -17,24 +17,20 @@
  *
  * persistent storage API for router contacts
  */
-
-struct llarp_threadpool;
-
 namespace llarp
 {
   class Logic;
-
-  namespace thread
-  {
-    class ThreadPool;
-  }
 }  // namespace llarp
 
 struct llarp_nodedb
 {
-  explicit llarp_nodedb(
-      std::shared_ptr<llarp::thread::ThreadPool> diskworker, const std::string rootdir)
-      : disk(std::move(diskworker)), nodePath(rootdir)
+  using DiskJob_t = std::function<void(void)>;
+  using DiskCaller_t = std::function<void(DiskJob_t)>;
+  using WorkJob_t = std::function<void(void)>;
+  using WorkCaller_t = std::function<void(WorkJob_t)>;
+
+  explicit llarp_nodedb(const std::string rootdir, DiskCaller_t diskCaller)
+      : disk(std::move(diskCaller)), nodePath(rootdir)
 
   {
   }
@@ -44,7 +40,7 @@ struct llarp_nodedb
     Clear();
   }
 
-  std::shared_ptr<llarp::thread::ThreadPool> disk;
+  const DiskCaller_t disk;
   mutable llarp::util::Mutex access;  // protects entries
   /// time for next save to disk event, 0 if never happened
   llarp_time_t m_NextSaveToDisk = 0s;
@@ -182,8 +178,8 @@ struct llarp_async_verify_rc
   llarp_nodedb* nodedb;
   // llarp::Logic for queue_job
   std::shared_ptr<llarp::Logic> logic;
-  std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;
-  std::shared_ptr<llarp::thread::ThreadPool> diskworker;
+  llarp_nodedb::WorkCaller_t worker;
+  llarp_nodedb::DiskCaller_t disk;
 
   /// router contact
   llarp::RouterContact rc;
@@ -215,7 +211,7 @@ struct llarp_async_load_rc
   /// llarp::Logic for calling hook
   llarp::Logic* logic;
   /// disk worker threadpool
-  llarp::thread::ThreadPool* diskworker;
+  llarp_nodedb::DiskCaller_t disk;
   /// target pubkey
   llarp::PubKey pubkey;
   /// router contact result

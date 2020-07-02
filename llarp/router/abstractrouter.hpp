@@ -21,6 +21,11 @@ struct llarp_dht_context;
 struct llarp_nodedb;
 struct llarp_threadpool;
 
+namespace lokimq
+{
+  class LokiMQ;
+}
+
 namespace llarp
 {
   class Logic;
@@ -40,6 +45,11 @@ namespace llarp
   namespace exit
   {
     struct Context;
+  }
+
+  namespace rpc
+  {
+    struct LokidRpcClient;
   }
 
   namespace path
@@ -62,16 +72,24 @@ namespace llarp
     class ThreadPool;
   }
 
+  using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+
   struct AbstractRouter
   {
 #ifdef LOKINET_HIVE
-    tooling::RouterHive* hive;
+    tooling::RouterHive* hive = nullptr;
 #endif
 
     virtual ~AbstractRouter() = default;
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) = 0;
+
+    virtual LMQ_ptr
+    lmq() const = 0;
+
+    virtual std::shared_ptr<rpc::LokidRpcClient>
+    RpcClient() const = 0;
 
     virtual std::shared_ptr<Logic>
     logic() const = 0;
@@ -109,11 +127,11 @@ namespace llarp
     virtual llarp_ev_loop_ptr
     netloop() const = 0;
 
-    virtual std::shared_ptr<thread::ThreadPool>
-    threadpool() = 0;
+    /// call function in crypto worker
+    virtual void QueueWork(std::function<void(void)>) = 0;
 
-    virtual std::shared_ptr<thread::ThreadPool>
-    diskworker() = 0;
+    /// call function in disk io thread
+    virtual void QueueDiskIO(std::function<void(void)>) = 0;
 
     virtual service::Context&
     hiddenServiceContext() = 0;
@@ -143,7 +161,7 @@ namespace llarp
     IsServiceNode() const = 0;
 
     virtual bool
-    StartJsonRpc() = 0;
+    StartRpcServer() = 0;
 
     virtual bool
     Run() = 0;
@@ -157,6 +175,10 @@ namespace llarp
     /// stop running the router logic gracefully
     virtual void
     Stop() = 0;
+
+    /// non gracefully stop the router
+    virtual void
+    Die() = 0;
 
     /// pump low level links
     virtual void
@@ -239,7 +261,7 @@ namespace llarp
 
     /// set router's service node whitelist
     virtual void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) = 0;
+    SetRouterWhitelist(const std::vector<RouterID> routers) = 0;
 
     /// visit each connected link session
     virtual void
@@ -268,14 +290,10 @@ namespace llarp
 
     template <class EventType, class... Params>
     void
-    NotifyRouterEvent(Params&&... args) const
+    NotifyRouterEvent([[maybe_unused]] Params&&... args) const
     {
-      // TODO: no-op when appropriate
-      auto event = std::make_unique<EventType>(args...);
 #ifdef LOKINET_HIVE
-      hive->NotifyEvent(std::move(event));
-#elif LOKINET_DEBUG
-      LogDebug(event->ToString());
+      hive->NotifyEvent(std::make_unique<EventType>(std::forward<Params>(args)...));
 #endif
     }
   };

@@ -28,8 +28,6 @@ add_executable(testAll
     dht/test_llarp_dht_tx.cpp
     dht/test_llarp_dht_txowner.cpp
     dns/test_llarp_dns_dns.cpp
-    exit/test_llarp_exit_context.cpp
-    link/test_llarp_link.cpp
     llarp_test.cpp
     net/test_llarp_net.cpp
     router/test_llarp_router_version.cpp
@@ -37,19 +35,15 @@ add_executable(testAll
     routing/test_llarp_routing_obtainexitmessage.cpp
     service/test_llarp_service_address.cpp
     service/test_llarp_service_identity.cpp
-    test_libabyss.cpp
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
-    test_md5.cpp
     util/meta/test_llarp_util_memfn.cpp
     util/meta/test_llarp_util_traits.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
-    util/test_llarp_util_encode.cpp
     util/test_llarp_util_log_level.cpp
     util/thread/test_llarp_util_queue_manager.cpp
     util/thread/test_llarp_util_queue.cpp
-    util/thread/test_llarp_util_thread_pool.cpp
 )
 
 target_link_libraries(testAll PUBLIC gmock gtest liblokinet)
@@ -78,6 +72,8 @@ add_executable(catchAll
   config/test_llarp_config_output.cpp
   net/test_ip_address.cpp
   net/test_sock_addr.cpp
+  exit/test_llarp_exit_context.cpp
+  iwp/test_iwp_session.cpp
   check_main.cpp)
 
 target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)

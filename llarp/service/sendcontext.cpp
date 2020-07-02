@@ -98,7 +98,7 @@ namespace llarp
       m->tag = f->T;
       m->PutBuffer(payload);
       auto self = this;
-      m_Endpoint->CryptoWorker()->addJob([f, m, shared, path, self]() {
+      m_Endpoint->Router()->QueueWork([f, m, shared, path, self]() {
         if (not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
         {
           LogError(self->m_Endpoint->Name(), " failed to sign message");
@@ -114,6 +114,14 @@ namespace llarp
       if (lastGoodSend != 0s)
       {
         EncryptAndSendTo(data, protocol);
+        return;
+      }
+      const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
+      if (maybe.has_value())
+      {
+        // send auth message
+        const llarp_buffer_t authdata(maybe->token);
+        AsyncGenIntro(authdata, eProtocolAuth);
       }
       else
       {

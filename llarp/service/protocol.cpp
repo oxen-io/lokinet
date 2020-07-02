@@ -5,7 +5,8 @@
 #include <util/mem.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
-
+#include <service/endpoint.hpp>
+#include <router/abstractrouter.hpp>
 #include <utility>
 
 namespace llarp
@@ -72,10 +73,13 @@ namespace llarp
         return false;
       if (!BEncodeWriteDictInt("a", proto, buf))
         return false;
-      if (!bencode_write_bytestring(buf, "d", 1))
-        return false;
-      if (!bencode_write_bytestring(buf, payload.data(), payload.size()))
-        return false;
+      if (not payload.empty())
+      {
+        if (!bencode_write_bytestring(buf, "d", 1))
+          return false;
+        if (!bencode_write_bytestring(buf, payload.data(), payload.size()))
+          return false;
+      }
       if (!BEncodeWriteDictEntry("i", introReply, buf))
         return false;
       if (!BEncodeWriteDictInt("n", seqno, buf))
@@ -90,6 +94,32 @@ namespace llarp
       if (!BEncodeWriteDictInt("v", version, buf))
         return false;
       return bencode_end(buf);
+    }
+
+    std::vector<char>
+    ProtocolMessage::EncodeAuthInfo() const
+    {
+      std::array<byte_t, 1024> info;
+      llarp_buffer_t buf{info};
+      if (not bencode_start_dict(&buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not BEncodeWriteDictInt("a", proto, &buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not BEncodeWriteDictEntry("i", introReply, &buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not BEncodeWriteDictEntry("s", sender, &buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not BEncodeWriteDictEntry("t", tag, &buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not BEncodeWriteDictInt("v", version, &buf))
+        throw std::runtime_error("impossibly small buffer");
+      if (not bencode_end(&buf))
+        throw std::runtime_error("impossibly small buffer");
+      const std::size_t encodedSize = buf.cur - buf.base;
+      std::vector<char> data;
+      data.resize(encodedSize);
+      std::copy_n(buf.base, encodedSize, data.data());
+      return data;
     }
 
     ProtocolFrame::~ProtocolFrame() = default;
@@ -245,14 +275,14 @@ namespace llarp
       std::shared_ptr<Logic> logic;
       std::shared_ptr<ProtocolMessage> msg;
       const Identity& m_LocalIdentity;
-      IDataHandler* handler;
+      Endpoint* handler;
       const ProtocolFrame frame;
       const Introduction fromIntro;
 
       AsyncFrameDecrypt(
           std::shared_ptr<Logic> l,
           const Identity& localIdent,
-          IDataHandler* h,
+          Endpoint* h,
           std::shared_ptr<ProtocolMessage> m,
           const ProtocolFrame& f,
           const Introduction& recvIntro)
@@ -266,9 +296,8 @@ namespace llarp
       }
 
       static void
-      Work(void* user)
+      Work(std::shared_ptr<AsyncFrameDecrypt> self)
       {
-        auto* self = static_cast<AsyncFrameDecrypt*>(user);
         auto crypto = CryptoManager::instance();
         SharedSecret K;
         SharedSecret sharedKey;
@@ -278,7 +307,6 @@ namespace llarp
         {
           LogError("pqke failed C=", self->frame.C);
           self->msg.reset();
-          delete self;
           return;
         }
         // decrypt
@@ -289,7 +317,6 @@ namespace llarp
           LogError("failed to decode inner protocol message");
           DumpBuffer(*buf);
           self->msg.reset();
-          delete self;
           return;
         }
         // verify signature of outer message after we parsed the inner message
@@ -303,7 +330,6 @@ namespace llarp
           Dump<MAX_PROTOCOL_MESSAGE_SIZE>(self->frame);
           Dump<MAX_PROTOCOL_MESSAGE_SIZE>(*self->msg);
           self->msg.reset();
-          delete self;
           return;
         }
 
@@ -312,7 +338,6 @@ namespace llarp
           LogError("dropping duplicate convo tag T=", self->msg->tag);
           // TODO: send convotag reset
           self->msg.reset();
-          delete self;
           return;
         }
 
@@ -326,7 +351,6 @@ namespace llarp
           LogError("x25519 key exchange failed");
           Dump<MAX_PROTOCOL_MESSAGE_SIZE>(self->frame);
           self->msg.reset();
-          delete self;
           return;
         }
         std::array<byte_t, 64> tmp;
@@ -336,17 +360,29 @@ namespace llarp
         std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
         crypto->shorthash(sharedKey, llarp_buffer_t(tmp));
 
-        self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
-        self->handler->PutReplyIntroFor(self->msg->tag, self->fromIntro);
-        self->handler->PutSenderFor(self->msg->tag, self->msg->sender, true);
-        self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
-
-        self->msg->handler = self->handler;
         std::shared_ptr<ProtocolMessage> msg = std::move(self->msg);
         path::Path_ptr path = std::move(self->path);
         const PathID_t from = self->frame.F;
-        LogicCall(self->logic, [=]() { ProtocolMessage::ProcessAsync(path, from, msg); });
-        delete self;
+        msg->handler = self->handler;
+        self->handler->AsyncProcessAuthMessage(
+            msg,
+            [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
+                AuthResult result) {
+              if (result == AuthResult::eAuthAccepted)
+              {
+                LogInfo("Accepted Convo T=", msg->tag);
+                handler->PutIntroFor(msg->tag, msg->introReply);
+                handler->PutReplyIntroFor(msg->tag, fromIntro);
+                handler->PutSenderFor(msg->tag, msg->sender, true);
+                handler->PutCachedSessionKeyFor(msg->tag, sharedKey);
+                ProtocolMessage::ProcessAsync(path, from, msg);
+              }
+              else
+              {
+                LogInfo("Rejected Convo T=", msg->tag);
+                handler->SendAuthReject(path, from, msg->tag, result);
+              }
+            });
       }
     };
 
@@ -376,9 +412,8 @@ namespace llarp
     ProtocolFrame::AsyncDecryptAndVerify(
         std::shared_ptr<Logic> logic,
         path::Path_ptr recvPath,
-        const std::shared_ptr<llarp::thread::ThreadPool>& worker,
         const Identity& localIdent,
-        IDataHandler* handler) const
+        Endpoint* handler) const
     {
       auto msg = std::make_shared<ProtocolMessage>();
       msg->handler = handler;
@@ -386,38 +421,36 @@ namespace llarp
       {
         LogInfo("Got protocol frame with new convo");
         // we need to dh
-        auto dh = new AsyncFrameDecrypt(logic, localIdent, handler, msg, *this, recvPath->intro);
+        auto dh = std::make_shared<AsyncFrameDecrypt>(
+            logic, localIdent, handler, msg, *this, recvPath->intro);
         dh->path = recvPath;
-        return worker->addJob(std::bind(&AsyncFrameDecrypt::Work, dh));
+        handler->Router()->QueueWork(std::bind(&AsyncFrameDecrypt::Work, dh));
+        return true;
       }
 
-      auto v = new AsyncDecrypt();
+      auto v = std::make_shared<AsyncDecrypt>();
 
       if (!handler->GetCachedSessionKeyFor(T, v->shared))
       {
         LogError("No cached session for T=", T);
-        delete v;
-        return false;
+        return true;
       }
 
       if (!handler->GetSenderFor(T, v->si))
       {
         LogError("No sender for T=", T);
-        delete v;
         return false;
       }
       v->frame = *this;
-      return worker->addJob([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
+      handler->Router()->QueueWork([v, msg = std::move(msg), recvPath = std::move(recvPath)]() {
         if (not v->frame.Verify(v->si))
         {
           LogError("Signature failure from ", v->si.Addr());
-          delete v;
           return;
         }
         if (not v->frame.DecryptPayloadInto(v->shared, *msg))
         {
           LogError("failed to decrypt message");
-          delete v;
           return;
         }
         RecvDataEvent ev;
@@ -425,8 +458,8 @@ namespace llarp
         ev.pathid = v->frame.F;
         ev.msg = std::move(msg);
         msg->handler->QueueRecvData(std::move(ev));
-        delete v;
       });
+      return true;
     }
 
     bool

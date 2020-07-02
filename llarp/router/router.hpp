@@ -24,7 +24,8 @@
 #include <router/rc_lookup_handler.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
-#include <rpc/rpc.hpp>
+#include <rpc/lokid_rpc_client.hpp>
+#include <rpc/rpc_server.hpp>
 #include <service/context.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
@@ -33,7 +34,6 @@
 #include <util/status.hpp>
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
-#include <util/thread/threadpool.h>
 #include <util/time.hpp>
 
 #include <functional>
@@ -43,6 +43,8 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+
+#include <lokimq/address.h>
 
 namespace llarp
 {
@@ -72,6 +74,20 @@ namespace llarp
 
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
+
+    LMQ_ptr m_lmq;
+
+    LMQ_ptr
+    lmq() const override
+    {
+      return m_lmq;
+    }
+
+    std::shared_ptr<rpc::LokidRpcClient>
+    RpcClient() const override
+    {
+      return m_lokidRpcClient;
+    }
 
     std::shared_ptr<Logic>
     logic() const override
@@ -113,7 +129,7 @@ namespace llarp
     }
 
     void
-    SetRouterWhitelist(const std::vector<RouterID>& routers) override;
+    SetRouterWhitelist(const std::vector<RouterID> routers) override;
 
     exit::Context&
     exitContext() override
@@ -151,31 +167,30 @@ namespace llarp
       return _netloop;
     }
 
-    std::shared_ptr<llarp::thread::ThreadPool>
-    threadpool() override
+    void
+    QueueWork(std::function<void(void)> func) override
     {
-      return cryptoworker;
+      m_lmq->job(std::move(func));
     }
 
-    std::shared_ptr<llarp::thread::ThreadPool>
-    diskworker() override
+    void
+    QueueDiskIO(std::function<void(void)> func) override
     {
-      return disk;
+      m_lmq->job(std::move(func), m_DiskThread);
     }
 
     IpAddress _ourAddress;
 
     llarp_ev_loop_ptr _netloop;
-    std::shared_ptr<llarp::thread::ThreadPool> cryptoworker;
     std::shared_ptr<Logic> _logic;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
-    std::shared_ptr<thread::ThreadPool> disk;
     llarp_dht_context* _dht = nullptr;
     llarp_nodedb* _nodedb;
     llarp_time_t _startedAt;
+    const lokimq::TaggedThreadID m_DiskThread;
 
     llarp_time_t
     Uptime() const override;
@@ -242,17 +257,16 @@ namespace llarp
     NetworkConfig networkConfig;
     DnsConfig dnsConfig;
 
-    const IpAddress DefaultRPCBindAddr = IpAddress("127.0.0.1:1190");
+    const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
-    std::unique_ptr<rpc::Server> rpcServer;
-    IpAddress rpcBindAddr = DefaultRPCBindAddr;
+    lokimq::address rpcBindAddr = DefaultRPCBindAddr;
+    std::unique_ptr<rpc::RpcServer> m_RPCServer;
+
     const llarp_time_t _randomStartDelay;
 
-    /// lokid caller
-    std::unique_ptr<rpc::Caller> rpcCaller;
-    IpAddress lokidRPCAddr = IpAddress("127.0.0.1:22023");
-    std::string lokidRPCUser;
-    std::string lokidRPCPassword;
+    std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
+
+    lokimq::address lokidRPCAddr;
 
     Profiling _routerProfiling;
     std::string routerProfilesFile = "profiles.dat";
@@ -295,10 +309,7 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    Router(
-        std::shared_ptr<llarp::thread::ThreadPool> worker,
-        llarp_ev_loop_ptr __netloop,
-        std::shared_ptr<Logic> logic);
+    explicit Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
     ~Router() override;
 
@@ -330,7 +341,7 @@ namespace llarp
     Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
-    StartJsonRpc() override;
+    StartRpcServer() override;
 
     bool
     Run() override;
@@ -338,6 +349,10 @@ namespace llarp
     /// stop running the router logic gracefully
     void
     Stop() override;
+
+    /// non graceful stop router
+    void
+    Die() override;
 
     /// close all sessions and shutdown all links
     void

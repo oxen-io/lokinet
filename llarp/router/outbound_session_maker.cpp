@@ -46,7 +46,7 @@ namespace llarp
     }
 
     auto func = std::bind(&OutboundSessionMaker::VerifyRC, this, session->GetRemoteRC());
-    _threadpool->addJob(func);
+    work(func);
 
     return true;
   }
@@ -157,14 +157,14 @@ namespace llarp
       Profiling* profiler,
       std::shared_ptr<Logic> logic,
       llarp_nodedb* nodedb,
-      std::shared_ptr<llarp::thread::ThreadPool> threadpool)
+      WorkerFunc_t dowork)
   {
     _linkManager = linkManager;
     _rcLookup = rcLookup;
     _logic = logic;
     _nodedb = nodedb;
-    _threadpool = threadpool;
     _profiler = profiler;
+    work = dowork;
   }
 
   void

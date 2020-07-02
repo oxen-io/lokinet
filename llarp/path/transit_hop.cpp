@@ -248,9 +248,9 @@ namespace llarp
     {
       if (m_UpstreamQueue && not m_UpstreamQueue->empty())
       {
-        r->threadpool()->addJob([self = shared_from_this(),
-                                 data = std::move(m_UpstreamQueue),
-                                 r]() { self->UpstreamWork(data, r); });
+        r->QueueWork([self = shared_from_this(), data = std::move(m_UpstreamQueue), r]() mutable {
+          self->UpstreamWork(std::move(data), r);
+        });
       }
       m_UpstreamQueue = nullptr;
     }
@@ -260,9 +260,9 @@ namespace llarp
     {
       if (m_DownstreamQueue && not m_DownstreamQueue->empty())
       {
-        r->threadpool()->addJob([self = shared_from_this(),
-                                 data = std::move(m_DownstreamQueue),
-                                 r]() { self->DownstreamWork(data, r); });
+        r->QueueWork([self = shared_from_this(), data = std::move(m_DownstreamQueue), r]() mutable {
+          self->DownstreamWork(std::move(data), r);
+        });
       }
       m_DownstreamQueue = nullptr;
     }

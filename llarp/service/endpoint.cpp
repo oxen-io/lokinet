@@ -51,6 +51,9 @@ namespace llarp
       if (conf.m_Hops.has_value())
         numHops = *conf.m_Hops;
 
+      conf.m_ExitMap.ForEachEntry(
+          [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
+
       return m_state->Configure(conf);
     }
 
@@ -689,8 +692,8 @@ namespace llarp
         {
           llarp_async_verify_rc* job = new llarp_async_verify_rc();
           job->nodedb = Router()->nodedb();
-          job->cryptoworker = Router()->threadpool();
-          job->diskworker = Router()->diskworker();
+          job->worker = util::memFn(&AbstractRouter::QueueWork, Router());
+          job->disk = util::memFn(&AbstractRouter::QueueDiskIO, Router());
           job->logic = Router()->logic();
           job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg, std::placeholders::_1);
           job->rc = rc;
@@ -837,7 +840,7 @@ namespace llarp
     Endpoint::ProcessDataMessage(std::shared_ptr<ProtocolMessage> msg)
     {
       if ((msg->proto == eProtocolExit
-           && (m_state->m_ExitEnabled || msg->sender.Addr() == m_state->m_ExitNode))
+           && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
           || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
         util::Lock l(m_state->m_InboundTrafficQueueMutex);
@@ -851,6 +854,39 @@ namespace llarp
         return true;
       }
       return false;
+    }
+
+    void
+    Endpoint::AsyncProcessAuthMessage(
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook)
+    {
+      if (m_AuthPolicy)
+      {
+        m_AuthPolicy->AuthenticateAsync(std::move(msg), std::move(hook));
+      }
+      else
+      {
+        RouterLogic()->Call([hook]() { hook(AuthResult::eAuthAccepted); });
+      }
+    }
+
+    void
+    Endpoint::SendAuthReject(
+        path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
+    {
+      if (result == AuthResult::eAuthAccepted)
+        return;
+      ProtocolFrame f;
+      f.R = result;
+      f.T = tag;
+      f.F = path->intro.pathID;
+
+      if (f.Sign(m_Identity))
+      {
+        util::Lock lock(m_state->m_SendQueueMutex);
+        m_state->m_SendQueue.emplace_back(
+            std::make_shared<const routing::PathTransferMessage>(f, replyPath), path);
+      }
     }
 
     void
@@ -876,8 +912,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (!frame.AsyncDecryptAndVerify(
-              EndpointLogic(), p, CryptoWorker(), m_Identity, m_DataHandler))
+      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
       {
         // send discard
         ProtocolFrame f;
@@ -1209,7 +1244,7 @@ namespace llarp
             f.F = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
             auto self = this;
-            return CryptoWorker()->addJob([transfer, p, m, K, self]() {
+            Router()->QueueWork([transfer, p, m, K, self]() {
               if (not transfer->T.EncryptAndSign(*m, K, self->m_Identity))
               {
                 LogError("failed to encrypt and sign");
@@ -1219,6 +1254,7 @@ namespace llarp
               util::Lock lock(self->m_state->m_SendQueueMutex);
               self->m_state->m_SendQueue.emplace_back(transfer, p);
             });
+            return true;
           }
         }
       }
@@ -1302,12 +1338,6 @@ namespace llarp
       return m_state->m_IsolatedLogic ? m_state->m_IsolatedLogic : Router()->logic();
     }
 
-    std::shared_ptr<llarp::thread::ThreadPool>
-    Endpoint::CryptoWorker()
-    {
-      return Router()->threadpool();
-    }
-
     AbstractRouter*
     Endpoint::Router()
     {
@@ -1349,5 +1379,40 @@ namespace llarp
     {
       return m_state->m_Sessions;
     }
+
+    void
+    Endpoint::SetAuthInfoForEndpoint(Address addr, AuthInfo info)
+    {
+      m_RemoteAuthInfos[addr] = std::move(info);
+    }
+
+    void
+    Endpoint::MapExitRange(IPRange range, Address exit)
+    {
+      LogInfo(Name(), " map ", range, " to exit at ", exit);
+      m_ExitMap.Insert(range, exit);
+    }
+
+    void
+    Endpoint::UnmapExitRange(IPRange range)
+    {
+      // unmap all ranges that fit in the range we gave
+      m_ExitMap.RemoveIf([&](const auto& item) -> bool {
+        if (not range.Contains(item.first))
+          return false;
+        LogInfo(Name(), " unmap ", item.first, " from exit at ", item.second);
+        return true;
+      });
+    }
+
+    std::optional<AuthInfo>
+    Endpoint::MaybeGetAuthInfoForEndpoint(Address remote)
+    {
+      const auto itr = m_RemoteAuthInfos.find(remote);
+      if (itr == m_RemoteAuthInfos.end())
+        return std::nullopt;
+      return itr->second;
+    }
+
   }  // namespace service
 }  // namespace llarp

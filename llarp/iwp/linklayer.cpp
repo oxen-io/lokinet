@@ -18,8 +18,9 @@ namespace llarp
         TimeoutHandler timeout,
         SessionClosedHandler closed,
         PumpDoneHandler pumpDone,
+        WorkerFunc_t worker,
         bool allowInbound)
-        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone)
+        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, worker)
         , permitInbound{allowInbound}
     {
     }
@@ -36,12 +37,6 @@ namespace llarp
     LinkLayer::Rank() const
     {
       return 2;
-    }
-
-    void
-    LinkLayer::QueueWork(std::function<void(void)> func)
-    {
-      m_Worker->addJob(func);
     }
 
     void

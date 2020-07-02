@@ -8,11 +8,11 @@ namespace llarp
   struct JSONLogStream : public FileLogStream
   {
     JSONLogStream(
-        std::shared_ptr<thread::ThreadPool> disk,
+        std::function<void(FileLogStream::Work_t)> disk,
         FILE* f,
         llarp_time_t flushInterval,
         bool closeFile)
-        : FileLogStream(disk, f, flushInterval, closeFile)
+        : FileLogStream(std::move(disk), f, flushInterval, closeFile)
     {
     }
 

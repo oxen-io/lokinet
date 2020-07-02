@@ -2,10 +2,11 @@
 #define LLARP_ALIGNED_HPP
 
 #include <util/bencode.h>
-#include <util/encode.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/traits.hpp>
 #include <util/printer.hpp>
+
+#include <lokimq/hex.h>
 
 #include <array>
 #include <cstddef>
@@ -70,8 +71,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      char tmp[(sz * 2) + 1] = {0};
-      return out << HexEncode(self, tmp);
+      return out << lokimq::to_hex(self.begin(), self.end());
     }
 
     /// bitwise NOT
@@ -255,14 +255,22 @@ namespace llarp
     std::string
     ToHex() const
     {
-      char strbuf[(1 + sz) * 2] = {0};
-      return std::string(HexEncode(*this, strbuf));
+      return lokimq::to_hex(begin(), end());
     }
 
     std::string
     ShortHex() const
     {
-      return ToHex().substr(0, 8);
+      return lokimq::to_hex(begin(), begin() + 4);
+    }
+
+    bool
+    FromHex(std::string_view str)
+    {
+      if (str.size() != 2 * size() || !lokimq::is_hex(str))
+        return false;
+      lokimq::from_hex(str.begin(), str.end(), begin());
+      return true;
     }
 
     std::ostream&

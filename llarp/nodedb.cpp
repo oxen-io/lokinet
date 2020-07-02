@@ -4,12 +4,10 @@
 #include <crypto/types.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
-#include <util/encode.hpp>
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/mem.hpp>
 #include <util/thread/logic.hpp>
-#include <util/thread/thread_pool.hpp>
 #include <util/str.hpp>
 #include <dht/kademlia.hpp>
 
@@ -60,13 +58,6 @@ llarp_nodedb::Get(const llarp::RouterID& pk, llarp::RouterContact& result)
 }
 
 void
-KillRCJobs(const std::set<std::string>& files)
-{
-  for (const auto& file : files)
-    fs::remove(file);
-}
-
-void
 llarp_nodedb::RemoveIf(std::function<bool(const llarp::RouterContact& rc)> filter)
 {
   std::set<std::string> files;
@@ -84,8 +75,10 @@ llarp_nodedb::RemoveIf(std::function<bool(const llarp::RouterContact& rc)> filte
         ++itr;
     }
   }
-
-  disk->addJob(std::bind(&KillRCJobs, files));
+  disk([files = std::move(files)]() {
+    for (const auto& file : files)
+      fs::remove(file);
+  });
 }
 
 bool
@@ -146,9 +139,7 @@ llarp_nodedb::FindClosestTo(const llarp::dht::Key_t& location, uint32_t numRoute
 std::string
 llarp_nodedb::getRCFilePath(const llarp::RouterID& pubkey) const
 {
-  char ftmp[68] = {0};
-  const char* hexname = llarp::HexEncode<llarp::AlignedBuffer<32>, decltype(ftmp)>(pubkey, ftmp);
-  std::string hexString(hexname);
+  std::string hexString = lokimq::to_hex(pubkey.begin(), pubkey.end());
   std::string skiplistDir;
 
   llarp::RouterID r(pubkey);
@@ -166,7 +157,7 @@ llarp_nodedb::InsertAsync(
     std::shared_ptr<llarp::Logic> logic,
     std::function<void(void)> completionHandler)
 {
-  disk->addJob([this, rc, logic, completionHandler]() {
+  disk([this, rc, logic, completionHandler]() {
     this->Insert(rc);
     if (logic && completionHandler)
     {
@@ -277,7 +268,7 @@ llarp_nodedb::ShouldSaveToDisk(llarp_time_t now) const
 void
 llarp_nodedb::AsyncFlushToDisk()
 {
-  disk->addJob(std::bind(&llarp_nodedb::SaveAll, this));
+  disk([this]() { SaveAll(); });
   m_NextSaveToDisk = llarp::time_now_ms() + m_SaveInterval;
 }
 
@@ -362,86 +353,47 @@ llarp_nodedb::RemoveStaleRCs(const std::set<llarp::RouterID>& keep, llarp_time_t
   });
 }
 
-/*
-bool
-llarp_nodedb::Save()
-{
-  auto itr = entries.begin();
-  while(itr != entries.end())
-  {
-    llarp::pubkey pk = itr->first;
-    llarp_rc *rc= itr->second;
-
-    itr++; // advance
-  }
-  return true;
-}
-*/
-
-// call request hook
-void
-logic_threadworker_callback(void* user)
-{
-  auto* verify_request = static_cast<llarp_async_verify_rc*>(user);
-  if (verify_request->hook)
-    verify_request->hook(verify_request);
-}
-
 // write it to disk
 void
 disk_threadworker_setRC(llarp_async_verify_rc* verify_request)
 {
   verify_request->valid = verify_request->nodedb->Insert(verify_request->rc);
   if (verify_request->logic)
-    verify_request->logic->queue_job({verify_request, &logic_threadworker_callback});
+  {
+    LogicCall(verify_request->logic, [verify_request]() {
+      if (verify_request->hook)
+        verify_request->hook(verify_request);
+    });
+  }
 }
 
 // we run the crypto verify in the crypto threadpool worker
 void
-crypto_threadworker_verifyrc(void* user)
+crypto_threadworker_verifyrc(llarp_async_verify_rc* verify_request)
 {
-  auto* verify_request = static_cast<llarp_async_verify_rc*>(user);
   llarp::RouterContact rc = verify_request->rc;
   verify_request->valid = rc.Verify(llarp::time_now_ms());
   // if it's valid we need to set it
   if (verify_request->valid && rc.IsPublicRouter())
   {
-    if (verify_request->diskworker)
+    if (verify_request->disk)
     {
       llarp::LogDebug("RC is valid, saving to disk");
-      verify_request->diskworker->addJob(std::bind(&disk_threadworker_setRC, verify_request));
+      verify_request->disk(std::bind(&disk_threadworker_setRC, verify_request));
       return;
     }
   }
   // callback to logic thread
-  verify_request->logic->queue_job({verify_request, &logic_threadworker_callback});
-}
-
-void
-nodedb_inform_load_rc(void* user)
-{
-  auto* job = static_cast<llarp_async_load_rc*>(user);
-  job->hook(job);
+  LogicCall(verify_request->logic, [verify_request]() {
+    if (verify_request->hook)
+      verify_request->hook(verify_request);
+  });
 }
 
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc* job)
 {
-  job->cryptoworker->addJob(std::bind(&crypto_threadworker_verifyrc, job));
-}
-
-void
-nodedb_async_load_rc(void* user)
-{
-  auto* job = static_cast<llarp_async_load_rc*>(user);
-
-  auto fpath = job->nodedb->getRCFilePath(job->pubkey);
-  job->loaded = job->nodedb->loadfile(fpath);
-  if (job->loaded)
-  {
-    job->nodedb->Get(job->pubkey, job->result);
-  }
-  job->logic->queue_job({job, &nodedb_inform_load_rc});
+  job->worker(std::bind(&crypto_threadworker_verifyrc, job));
 }
 
 void

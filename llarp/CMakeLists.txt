@@ -4,7 +4,6 @@ add_library(lokinet-util
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
-  util/encode.cpp
   util/fs.cpp
   util/json.cpp
   util/logging/android_logger.cpp
@@ -22,9 +21,7 @@ add_library(lokinet-util
   util/str.cpp
   util/thread/logic.cpp
   util/thread/queue_manager.cpp
-  util/thread/thread_pool.cpp
   util/thread/threading.cpp
-  util/thread/threadpool.cpp
   util/time.cpp
 )
 add_dependencies(lokinet-util genversion)
@@ -36,6 +33,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
+  lokimq
 )
 
 if(ANDROID)
@@ -174,9 +172,12 @@ add_library(liblokinet
   routing/path_latency_message.cpp
   routing/path_transfer_message.cpp
   routing/transfer_traffic_message.cpp
-  rpc/rpc.cpp
+  rpc/lokid_rpc_client.cpp
+  rpc/rpc_server.cpp
+  rpc/endpoint_rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp
+  service/auth.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
@@ -221,9 +222,9 @@ if(WITH_HIVE)
   target_sources(liblokinet PRIVATE tooling/router_hive.cpp)
 endif()
 
-target_link_libraries(liblokinet PUBLIC cxxopts abyss lokinet-platform lokinet-util lokinet-cryptography)
-
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)
 target_link_libraries(liblokinet PRIVATE libunbound)
+
 
 if(BUILD_SHARED_LIBS)
   install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION lib)

@@ -20,6 +20,8 @@
 #include <util/compare_ptr.hpp>
 #include <util/thread/logic.hpp>
 
+#include <service/auth.hpp>
+
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL 5s
@@ -87,7 +89,7 @@ namespace llarp
       virtual std::unordered_map<std::string, std::string>
       NotifyParams() const;
 
-      util::StatusObject
+      virtual util::StatusObject
       ExtractStatus() const;
 
       void
@@ -139,10 +141,6 @@ namespace llarp
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
-      /// crypto worker threadpool
-      std::shared_ptr<llarp::thread::ThreadPool>
-      CryptoWorker();
-
       AbstractRouter*
       Router();
 
@@ -176,6 +174,13 @@ namespace llarp
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrame& msg);
+
+      void
+      SetEndpointAuth(std::shared_ptr<IAuthPolicy> policy);
+
+      /// sets how we authenticate with remote address
+      void
+      SetAuthInfoForEndpoint(Address remote, AuthInfo info);
 
       // virtual huint128_t
       // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
@@ -224,6 +229,12 @@ namespace llarp
       {
         return m_Identity;
       }
+
+      void
+      MapExitRange(IPRange range, service::Address exit);
+
+      void
+      UnmapExitRange(IPRange range);
 
       void
       PutLookup(IServiceLookup* lookup, uint64_t txid) override;
@@ -353,6 +364,13 @@ namespace llarp
       virtual void
       IntroSetPublished();
 
+      void
+      AsyncProcessAuthMessage(
+          std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
+
+      void
+      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+
       uint64_t
       GenTXID();
 
@@ -364,6 +382,9 @@ namespace llarp
           const service::Address& addr, const llarp_buffer_t& payload, ProtocolType t);
       bool
       SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
+
+      std::optional<AuthInfo>
+      MaybeGetAuthInfoForEndpoint(service::Address addr);
 
      protected:
       /// parent context that owns this endpoint
@@ -424,12 +445,14 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      net::IPRangeMap<path::PathSet_ptr> m_ExitMap;
+      net::IPRangeMap<service::Address> m_ExitMap;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
       bool m_PublishIntroSet = true;
       std::unique_ptr<EndpointState> m_state;
+      std::shared_ptr<IAuthPolicy> m_AuthPolicy;
+      std::unordered_map<Address, AuthInfo, Address::Hash> m_RemoteAuthInfos;
 
      private:
       void

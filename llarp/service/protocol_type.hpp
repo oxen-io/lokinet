@@ -10,4 +10,5 @@ namespace llarp::service
   constexpr ProtocolType eProtocolTrafficV4 = 1UL;
   constexpr ProtocolType eProtocolTrafficV6 = 2UL;
   constexpr ProtocolType eProtocolExit = 3UL;
+  constexpr ProtocolType eProtocolAuth = 4UL;
 }  // namespace llarp::service

@@ -16,6 +16,8 @@ namespace llarp
 {
   struct AsyncPathKeyExchangeContext : std::enable_shared_from_this<AsyncPathKeyExchangeContext>
   {
+    using WorkFunc_t = std::function<void(void)>;
+    using WorkerFunc_t = std::function<void(WorkFunc_t)>;
     using Path_t = path::Path_ptr;
     using PathSet_t = path::PathSet_ptr;
     PathSet_t pathset = nullptr;
@@ -25,7 +27,7 @@ namespace llarp
     Handler result;
     size_t idx = 0;
     AbstractRouter* router = nullptr;
-    std::shared_ptr<thread::ThreadPool> worker;
+    WorkerFunc_t work;
     std::shared_ptr<Logic> logic;
     LR_CommitMessage LRCM;
 
@@ -100,26 +102,24 @@ namespace llarp
       else
       {
         // next hop
-        worker->addJob(
-            std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
+        work(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
       }
     }
 
     /// Generate all keys asynchronously and call handler when done
     void
-    AsyncGenerateKeys(
-        Path_t p, std::shared_ptr<Logic> l, std::shared_ptr<thread::ThreadPool> pool, Handler func)
+    AsyncGenerateKeys(Path_t p, std::shared_ptr<Logic> l, WorkerFunc_t worker, Handler func)
     {
       path = p;
       logic = l;
       result = func;
-      worker = pool;
+      work = worker;
 
       for (size_t i = 0; i < path::max_len; ++i)
       {
         LRCM.frames[i].Randomize();
       }
-      pool->addJob(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
+      work(std::bind(&AsyncPathKeyExchangeContext::GenerateNextKey, shared_from_this()));
     }
   };
 
@@ -214,8 +214,6 @@ namespace llarp
       {
         if (m_router->NumberOfConnectedRouters() == 0)
         {
-          // persist connection
-          m_router->ConnectToRandomRouters(1);
           return false;
         }
         bool got = false;
@@ -442,7 +440,10 @@ namespace llarp
 
       path->SetBuildResultHook([self](Path_ptr p) { self->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(
-          path, m_router->logic(), m_router->threadpool(), &PathBuilderKeysGenerated);
+          path,
+          m_router->logic(),
+          [r = m_router](auto func) { r->QueueWork(std::move(func)); },
+          &PathBuilderKeysGenerated);
     }
 
     void

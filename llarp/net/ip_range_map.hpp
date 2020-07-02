@@ -2,6 +2,7 @@
 #define LLARP_NET_IP_RANGE_MAP_HPP
 
 #include <net/ip_range.hpp>
+#include <list>
 
 namespace llarp
 {
@@ -18,7 +19,7 @@ namespace llarp
       using IP_t = Range_t::Addr_t;
 
       using Entry_t = std::pair<Range_t, Value_t>;
-      using Container_t = std::forward_list<Entry_t>;
+      using Container_t = std::list<Entry_t>;
 
       /// get a set of all values
       std::set<Value_t>
@@ -30,11 +31,30 @@ namespace llarp
         return all;
       }
 
+      bool
+      ContainsValue(const Value_t& val) const
+      {
+        for (const auto& entry : m_Entries)
+        {
+          if (entry.second == val)
+            return true;
+        }
+        return false;
+      }
+
       void
       ForEachValue(std::function<void(const Value_t&)> functor) const
       {
         for (const auto& entry : m_Entries)
           functor(entry.second);
+      }
+
+      template <typename Visit_t>
+      void
+      ForEachEntry(Visit_t visit) const
+      {
+        for (const auto& [range, value] : m_Entries)
+          visit(range, value);
       }
 
       /// convert all values into type T using a transformer
@@ -78,6 +98,20 @@ namespace llarp
       {
         m_Entries.emplace_front(addr, val);
         m_Entries.sort(CompareEntry{});
+      }
+
+      template <typename Visit_t>
+      void
+      RemoveIf(Visit_t visit)
+      {
+        auto itr = m_Entries.begin();
+        while (itr != m_Entries.end())
+        {
+          if (visit(*itr))
+            itr = m_Entries.erase(itr);
+          else
+            ++itr;
+        }
       }
 
      private:

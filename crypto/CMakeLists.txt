@@ -66,21 +66,5 @@ if (WARNINGS_AS_ERRORS)
   target_compile_options(lokinet-cryptography PUBLIC -Wall -Wextra -Werror)
 endif()
 
-
-option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
-
-# Allow -DDOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
-if((NOT BUILD_STATIC_DEPS) AND (NOT DOWNLOAD_SODIUM STREQUAL "FORCE"))
-  find_package(Sodium 1.0.18)
-endif()
-
-if(sodium_FOUND OR BUILD_STATIC_DEPS)
-  target_link_libraries(lokinet-cryptography PUBLIC sodium)
-elseif(DOWNLOAD_SODIUM)
-  message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")
-  include(DownloadLibSodium)
-  target_link_libraries(lokinet-cryptography PUBLIC sodium_vendor)
-else()
-  message(FATAL_ERROR "Could not find libsodium >= 1.0.18; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
-endif()
+target_link_libraries(lokinet-cryptography PUBLIC sodium)
 

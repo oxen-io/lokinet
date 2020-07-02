@@ -9,7 +9,7 @@
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <service/context.hpp>
-#include <util/logging/logger.h>
+#include <util/logging/logger.hpp>
 
 #include <cxxopts.hpp>
 #include <csignal>
@@ -47,10 +47,6 @@ namespace llarp
       }
     }
 
-    auto threads = config->router.m_workerThreads;
-    if (threads <= 0)
-      threads = 1;
-    worker = std::make_shared<llarp::thread::ThreadPool>(threads, 1024, "llarp-worker");
     logic = std::make_shared<Logic>();
 
     nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
@@ -94,9 +90,10 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
-    router = std::make_unique<Router>(worker, mainloop, logic);
+    router = std::make_unique<Router>(mainloop, logic);
 
-    nodedb = std::make_unique<llarp_nodedb>(router->diskworker(), nodedb_dir);
+    nodedb = std::make_unique<llarp_nodedb>(
+        nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
     if (!router->Configure(config.get(), opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
@@ -117,9 +114,6 @@ namespace llarp
       llarp::LogError("cannot run non configured context");
       return 1;
     }
-    // run
-    if (!router->StartJsonRpc())
-      return 1;
 
     if (!opts.background)
     {
@@ -145,6 +139,7 @@ namespace llarp
     /// already closing
     if (closeWaiter)
       return;
+
     if (CallSafe(std::bind(&Context::HandleSignal, this, SIGTERM)))
       closeWaiter = std::make_unique<std::promise<void>>();
   }
@@ -190,15 +185,8 @@ namespace llarp
   void
   Context::Close()
   {
-    llarp::LogDebug("stop workers");
-    if (worker)
-      worker->stop();
-
     llarp::LogDebug("free config");
     config.release();
-
-    llarp::LogDebug("free workers");
-    worker.reset();
 
     llarp::LogDebug("free nodedb");
     nodedb.release();

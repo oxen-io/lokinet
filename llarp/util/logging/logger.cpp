@@ -1,5 +1,4 @@
 #include <util/logging/logger.hpp>
-#include <util/logging/logger.h>
 #include <util/logging/ostream_logger.hpp>
 #include <util/logging/logger_syslog.hpp>
 #include <util/logging/file_logger.hpp>
@@ -108,7 +107,7 @@ namespace llarp
       LogType type,
       const std::string& file,
       const std::string& nickname,
-      std::shared_ptr<thread::ThreadPool> threadpool)
+      std::function<void(IOFunc_t)> io)
   {
     SetLogLevel(level);
     nodeName = nickname;
@@ -140,7 +139,7 @@ namespace llarp
           std::cout << std::flush;
 
           LogContext::Instance().logStream =
-              std::make_unique<FileLogStream>(threadpool, logfile, 100ms, true);
+              std::make_unique<FileLogStream>(io, logfile, 100ms, true);
         }
         else
         {
@@ -153,7 +152,7 @@ namespace llarp
         std::cout << std::flush;
 
         LogContext::Instance().logStream =
-            std::make_unique<JSONLogStream>(threadpool, logfile, 100ms, logfile != stdout);
+            std::make_unique<JSONLogStream>(io, logfile, 100ms, logfile != stdout);
         break;
       case LogType::Syslog:
         if (logfile)
@@ -188,18 +187,3 @@ namespace llarp
   }
 
 }  // namespace llarp
-
-extern "C"
-{
-  void
-  cSetLogLevel(LogLevel lvl)
-  {
-    llarp::SetLogLevel((llarp::LogLevel)lvl);
-  }
-
-  void
-  cSetLogNodeName(const char* name)
-  {
-    llarp::LogContext::Instance().nodeName = name;
-  }
-}

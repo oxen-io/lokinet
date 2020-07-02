@@ -6,10 +6,10 @@
 
 TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
 {
-  llarp_nodedb nodeDB(nullptr, "");
+  llarp_nodedb nodeDB("", nullptr);
 
   constexpr uint64_t numRCs = 3;
-  for(uint64_t i = 0; i < numRCs; ++i)
+  for (uint64_t i = 0; i < numRCs; ++i)
   {
     llarp::RouterContact rc;
     rc.pubkey[0] = i;
@@ -20,7 +20,7 @@ TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
 
   llarp::dht::Key_t key;
 
-  std::vector< llarp::RouterContact > results = nodeDB.FindClosestTo(key, 4);
+  std::vector<llarp::RouterContact> results = nodeDB.FindClosestTo(key, 4);
 
   // we asked for more entries than nodedb had
   REQUIRE(numRCs == results.size());
@@ -28,7 +28,7 @@ TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
 
 TEST_CASE("FindClosestTo returns properly ordered set", "[nodedb][dht]")
 {
-  llarp_nodedb nodeDB(nullptr, "");
+  llarp_nodedb nodeDB("", nullptr);
 
   // insert some RCs: a < b < c
   llarp::RouterContact a;
@@ -47,7 +47,7 @@ TEST_CASE("FindClosestTo returns properly ordered set", "[nodedb][dht]")
 
   llarp::dht::Key_t key;
 
-  std::vector< llarp::RouterContact > results = nodeDB.FindClosestTo(key, 2);
+  std::vector<llarp::RouterContact> results = nodeDB.FindClosestTo(key, 2);
   REQUIRE(2 == results.size());
 
   // we xor'ed with 0x0, so order should be a,b,c

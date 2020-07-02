@@ -6,7 +6,6 @@
 #include <router/i_rc_lookup_handler.hpp>
 #include <util/thread/logic.hpp>
 #include <util/thread/threading.hpp>
-#include <util/thread/thread_pool.hpp>
 
 #include <profiling.hpp>
 
@@ -25,6 +24,9 @@ namespace llarp
 
   struct OutboundSessionMaker final : public IOutboundSessionMaker
   {
+    using Work_t = std::function<void(void)>;
+    using WorkerFunc_t = std::function<void(Work_t)>;
+
     using CallbacksQueue = std::list<RouterCallback>;
 
    public:
@@ -61,7 +63,7 @@ namespace llarp
         Profiling* profiler,
         std::shared_ptr<Logic> logic,
         llarp_nodedb* nodedb,
-        std::shared_ptr<llarp::thread::ThreadPool> threadpool);
+        WorkerFunc_t work);
 
     void
     SetOurRouter(RouterID r)
@@ -113,7 +115,7 @@ namespace llarp
     Profiling* _profiler = nullptr;
     llarp_nodedb* _nodedb = nullptr;
     std::shared_ptr<Logic> _logic;
-    std::shared_ptr<llarp::thread::ThreadPool> _threadpool;
+    WorkerFunc_t work;
     RouterID us;
   };
 

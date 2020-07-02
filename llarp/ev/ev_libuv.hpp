@@ -154,6 +154,7 @@ namespace libuv
 
     llarp::thread::Queue<PendingTimer> m_timerQueue;
     llarp::thread::Queue<uint32_t> m_timerCancelQueue;
+    std::optional<std::thread::id> m_EventLoopThreadID;
   };
 
 }  // namespace libuv

@@ -101,9 +101,7 @@ namespace llarp
         .def_readwrite("usingSNSeed", &LokidConfig::usingSNSeed)
         .def_readwrite("whitelistRouters", &LokidConfig::whitelistRouters)
         .def_readwrite("ident_keyfile", &LokidConfig::ident_keyfile)
-        .def_readwrite("lokidRPCAddr", &LokidConfig::lokidRPCAddr)
-        .def_readwrite("lokidRPCUser", &LokidConfig::lokidRPCUser)
-        .def_readwrite("lokidRPCPassword", &LokidConfig::lokidRPCPassword);
+        .def_readwrite("lokidRPCAddr", &LokidConfig::lokidRPCAddr);
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())

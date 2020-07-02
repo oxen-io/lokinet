@@ -17,6 +17,7 @@ make_context(std::optional<fs::path> keyfile)
   context->config->network.m_endpointType = "null";
   context->config->network.m_keyfile = keyfile;
   context->config->bootstrap.skipBootstrap = true;
+  context->config->api.m_enableRPCServer = false;
 
   return context;
 }
@@ -63,8 +64,8 @@ TEST_CASE("key backup bug regression test", "[regress]")
             REQUIRE(endpointAddress != ep->GetIdentity().pub.Addr());
           }
         }
-        // close the router "later" so llarp_main_run exits
-        ctx->CloseAsync();
+        // close the router right away
+        ctx->router->Die();
       });
       REQUIRE(ctx->Run({}) == 0);
       ctx.reset();

@@ -165,6 +165,29 @@ namespace llarp
 
     conf.defineOption<std::string>("network", "keyfile", false, "", AssignmentAcceptor(m_keyfile));
 
+    conf.defineOption<std::string>("network", "auth", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      m_AuthType = service::ParseAuthType(arg);
+    });
+
+    conf.defineOption<std::string>("network", "auth-lmq", false, "", AssignmentAcceptor(m_AuthUrl));
+
+    conf.defineOption<std::string>(
+        "network", "auth-lmq-method", false, "llarp.auth", [this](std::string arg) {
+          if (arg.empty())
+            return;
+          m_AuthMethod = std::move(arg);
+        });
+
+    conf.defineOption<std::string>(
+        "network", "auth-whitelist", false, true, "", [this](std::string arg) {
+          service::Address addr;
+          if (not addr.FromString(arg))
+            throw std::invalid_argument(stringify("bad loki address: ", arg));
+          m_AuthWhitelist.emplace(std::move(addr));
+        });
+
     conf.defineOption<bool>(
         "network", "reachable", false, ReachableDefault, AssignmentAcceptor(m_reachable));
 
@@ -175,8 +198,8 @@ namespace llarp
     });
 
     conf.defineOption<int>("network", "paths", false, PathsDefault, [this](int arg) {
-      if (arg < 1 or arg > 8)
-        throw std::invalid_argument("[endpoint]:paths must be >= 1 and <= 8");
+      if (arg < 2 or arg > 8)
+        throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
       m_Paths = arg;
     });
 
@@ -184,14 +207,28 @@ namespace llarp
       if (arg.empty())
         return;
       service::Address exit;
+      IPRange range;
+      const auto pos = arg.find(":");
+      if (pos == std::string::npos)
+      {
+        range.FromString("0.0.0.0/0");
+      }
+      else if (not range.FromString(arg.substr(pos + 1)))
+      {
+        throw std::invalid_argument("[network]:exit-node invalid ip range for exit provided");
+      }
+      if (pos != std::string::npos)
+      {
+        arg = arg.substr(0, pos);
+      }
       if (not exit.FromString(arg))
       {
-        throw std::invalid_argument(stringify("[endpoint]:exit-node bad address: ", arg));
+        throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
       }
-      m_exitNode = exit;
+      m_ExitMap.Insert(range, exit);
     });
 
-    conf.defineOption<std::string>("network", "mapaddr", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>("network", "mapaddr", false, true, "", [this](std::string arg) {
       if (arg.empty())
         return;
       huint128_t ip;
@@ -229,9 +266,13 @@ namespace llarp
         const auto maybe = llarp::FindFreeRange();
         if (not maybe)
           throw std::invalid_argument("cannot determine free ip range");
-        arg = *maybe;
+        m_ifaddr = *maybe;
+        return;
       }
-      m_ifaddr = arg;
+      if (not m_ifaddr.FromString(arg))
+      {
+        throw std::invalid_argument(stringify("[network]:ifaddr invalid value: ", arg));
+      }
     });
 
     conf.defineOption<std::string>("network", "ifname", false, "", [this](std::string arg) {
@@ -358,7 +399,7 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultRPCEnabled = true;
-    constexpr auto DefaultRPCBindAddr = "127.0.0.1:1190";
+    constexpr auto DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
 
     conf.defineOption<bool>(
         "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
@@ -376,7 +417,7 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultWhitelistRouters = false;
-    constexpr auto DefaultLokidRPCAddr = "127.0.0.1:22023";
+    constexpr auto DefaultLokidRPCAddr = "tcp://127.0.0.1:22023";
 
     conf.defineOption<std::string>(
         "lokid", "service-node-seed", false, our_identity_filename, [this](std::string arg) {
@@ -390,14 +431,19 @@ namespace llarp
     conf.defineOption<bool>(
         "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
 
-    conf.defineOption<std::string>(
-        "lokid", "jsonrpc", false, DefaultLokidRPCAddr, AssignmentAcceptor(lokidRPCAddr));
+    conf.defineOption<std::string>("lokid", "jsonrpc", false, "", [](std::string arg) {
+      if (arg.empty())
+        return;
+      throw std::invalid_argument(
+          "the [lokid]::jsonrpc option is deprecated please use the "
+          "[lokid]::rpc "
+          "config option instead");
+    });
 
     conf.defineOption<std::string>(
-        "lokid", "username", false, "", AssignmentAcceptor(lokidRPCUser));
-
-    conf.defineOption<std::string>(
-        "lokid", "password", false, "", AssignmentAcceptor(lokidRPCPassword));
+        "lokid", "rpc", false, DefaultLokidRPCAddr, [this](std::string arg) {
+          lokidRPCAddr = lokimq::address(arg);
+        });
   }
 
   void
@@ -556,6 +602,9 @@ namespace llarp
     addIgnoreOption("metrics", "json-metrics-path");
 
     addIgnoreOption("network", "enabled");
+
+    addIgnoreOption("lokid", "username");
+    addIgnoreOption("lokid", "password");
   }
 
   void
@@ -596,8 +645,6 @@ namespace llarp
     auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
     if (not stream or not stream->is_open())
       throw std::runtime_error(stringify("Failed to open file ", confFile, " for writing"));
-
-    llarp::LogInfo("confStr: ", confStr);
 
     *stream << confStr;
     stream->flush();
@@ -842,7 +889,10 @@ namespace llarp
         "network",
         "exit-node",
         {
-            "Specify a `.loki` address to use as an exit broker.",
+            "Specify a `.loki` address and an optional ip range to use as an exit broker.",
+            "Example:",
+            "exit-node=whatever.loki # maps all exit traffic to whatever.loki",
+            "exit-node=stuff.loki:100.0.0.0/24 # maps 100.0.0.0/24 to stuff.loki",
         });
 
     def.addOptionComments(
@@ -851,6 +901,47 @@ namespace llarp
         {
             "Permanently map a `.loki` address to an IP owned by the snapp. Example:",
             "mapaddr=whatever.loki:10.0.10.10 # maps `whatever.loki` to `10.0.10.10`.",
+        });
+    // extra [network] options
+    // TODO: probably better to create an [exit] section and only allow it for routers
+    def.addOptionComments(
+        "network",
+        "exit",
+        {
+            "Whether or not we should act as an exit node. Beware that this increases demand",
+            "on the server and may pose liability concerns. Enable at your own risk.",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth",
+        {
+            "Set the endpoint authentication mechanism.",
+            "none/whitelist/lmq",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-lmq",
+        {
+            "lmq endpoint to talk to for authenticating new sessions",
+            "ipc:///var/lib/lokinet/auth.socket",
+            "tcp://127.0.0.1:5555",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-lmq-method",
+        {
+            "lmq function to call for authenticating new sessions",
+            "llarp.auth",
+        });
+
+    def.addOptionComments(
+        "network",
+        "auth-whitelist",
+        {
+            "manually add a remote endpoint by .loki address to the access whitelist",
         });
 
     return def.generateINIConfig(true);
@@ -883,9 +974,9 @@ namespace llarp
 
     def.addOptionComments(
         "lokid",
-        "jsonrpc",
+        "rpc",
         {
-            "Host and port of running lokid that we should talk to.",
+            "Host and port of running lokid's rpc that we should talk to.",
         });
 
     // TODO: doesn't appear to be used in the codebase
@@ -894,33 +985,6 @@ namespace llarp
         "service-node-seed",
         {
             "File containing service node's seed.",
-        });
-
-    // extra [network] options
-    // TODO: probably better to create an [exit] section and only allow it for routers
-    def.addOptionComments(
-        "network",
-        "exit",
-        {
-            "Whether or not we should act as an exit node. Beware that this increases demand",
-            "on the server and may pose liability concerns. Enable at your own risk.",
-        });
-
-    // TODO: define the order of precedence (e.g. is whitelist applied before blacklist?)
-    //       additionally, what's default? What if I don't whitelist anything?
-    def.addOptionComments(
-        "network",
-        "exit-whitelist",
-        {
-            "List of destination protocol:port pairs to whitelist, example: udp:*",
-            "or tcp:80. Multiple values supported.",
-        });
-
-    def.addOptionComments(
-        "network",
-        "exit-blacklist",
-        {
-            "Blacklist of destinations (same format as whitelist).",
         });
 
     return def.generateINIConfig(true);

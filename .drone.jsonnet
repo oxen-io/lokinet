@@ -20,6 +20,7 @@ local debian_pipeline(name, image,
         werror=true,
         cmake_extra='',
         extra_cmds=[],
+        imaginary_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
@@ -38,16 +39,23 @@ local debian_pipeline(name, image,
                 'apt-get update',
                 'apt-get install -y eatmydata',
                 'eatmydata apt-get dist-upgrade -y',
-                'eatmydata apt-get install -y cmake git ninja-build pkg-config ccache ' + deps,
+                ] + (if imaginary_repo then [
+                    'eatmydata apt-get install -y gpg curl lsb-release',
+                    'echo deb https://deb.imaginary.stream $$(lsb_release -sc) main >/etc/apt/sources.list.d/imaginary.stream.list',
+                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
+                    'eatmydata apt-get update'
+                    ] else []
+                ) + [
+                'eatmydata apt-get install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
-                    cmake_extra,
+                cmake_extra,
                 'ninja -v',
-                './test/testAll --gtest_color=yes',
-                './test/catchAll --use-colour yes',
+                '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
+                '../contrib/ci/drone-gdb.sh ./test/catchAll --use-colour yes',
             ] + extra_cmds,
         }
     ],
@@ -85,7 +93,7 @@ local windows_cross_pipeline(name, image,
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
-                    cmake_extra,
+                cmake_extra,
                 'ninja -v',
             ] + extra_cmds,
         }
@@ -156,8 +164,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
-                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
-                    cmake_extra,
+                    (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') + cmake_extra,
                 'ninja -v',
                 './test/testAll --gtest_color=yes',
                 './test/catchAll --use-colour yes',
@@ -176,8 +183,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
             name: 'build', image: 'debian:sid',
             commands: [
                 'apt-get update', 'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y make git clang-format-9',
-                'make format-verify']
+                'eatmydata apt-get install -y git clang-format-9',
+                './contrib/ci/drone-format-verify.sh']
         }]
     },
 
@@ -192,8 +199,8 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
 
     // ARM builds (ARM64 and armhf)
-    debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_base,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DDOWNLOAD_SODIUM=ON'),
+    debian_pipeline("Ubuntu bionic (ARM64)", "ubuntu:bionic", arch="arm64", deps='g++-8 ' + default_deps_nocxx,
+                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', imaginary_repo=true),
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     

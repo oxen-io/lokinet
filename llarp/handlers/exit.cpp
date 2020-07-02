@@ -550,23 +550,11 @@ namespace llarp
       m_LocalResolverAddr = dnsConfig.m_bind;
       m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
 
-      if (!m_OurRange.FromString(networkConfig.m_ifaddr))
-      {
-        throw std::invalid_argument(
-            stringify(Name(), " has invalid address range: ", networkConfig.m_ifaddr));
-      }
-      // TODO: clean this up (make a util function for handling CIDR, etc.)
-      auto pos = networkConfig.m_ifaddr.find("/");
-      if (pos == std::string::npos)
-      {
-        throw std::invalid_argument(
-            stringify(Name(), " ifaddr is not a cidr: ", networkConfig.m_ifaddr));
-      }
-      std::string nmask_str = networkConfig.m_ifaddr.substr(1 + pos);
-      std::string host_str = networkConfig.m_ifaddr.substr(0, pos);
+      m_OurRange = networkConfig.m_ifaddr;
+      const auto host_str = m_OurRange.BaseAddressString();
       // string, or just a plain char array?
       strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
-      m_Tun.netmask = std::atoi(nmask_str.c_str());
+      m_Tun.netmask = m_OurRange.HostmaskBits();
       m_IfAddr = m_OurRange.addr;
       m_NextAddr = m_IfAddr;
       m_HigestAddr = m_OurRange.HighestAddr();
@@ -580,7 +568,7 @@ namespace llarp
           m_IfAddr,
           " hi=",
           m_HigestAddr);
-      m_UseV6 = false;
+      m_UseV6 = not m_OurRange.IsV4();
 
       if (networkConfig.m_ifname.length() >= sizeof(m_Tun.ifname))
       {
