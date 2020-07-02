@@ -30,7 +30,7 @@ namespace llarp
   bool
   Context::Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir)
   {
-    if (not config)
+    if (nullptr == config.get())
       config = std::make_unique<Config>();
 
     fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
