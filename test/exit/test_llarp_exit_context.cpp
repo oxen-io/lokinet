@@ -6,39 +6,38 @@
 #include <llarp.hpp>
 #include <catch2/catch.hpp>
 
-llarp_main*
+static const llarp::RuntimeOptions opts = {.background = false, .debug = false, .isRouter = true};
+
+std::shared_ptr<llarp::Context>
 make_context()
 {
-  // make config
-  auto config = new llarp_config();
-  REQUIRE(config != nullptr);
-  REQUIRE(config->impl.LoadDefault(true, fs::current_path()));
+  auto context = std::make_shared<llarp::Context>();
+  context->Configure(opts, {}, {});
+  REQUIRE(context->config != nullptr);
+  REQUIRE(context->config->LoadDefault(true, fs::current_path()));
+
   // set testing defaults
-  config->impl.network.m_endpointType = "null";
-  config->impl.bootstrap.skipBootstrap = true;
-  config->impl.api.m_enableRPCServer = false;
+  context->config->network.m_endpointType = "null";
+  context->config->bootstrap.skipBootstrap = true;
+  context->config->api.m_enableRPCServer = false;
   // make a fake inbound link
-  config->impl.links.m_InboundLinks.emplace_back();
-  auto& link = config->impl.links.m_InboundLinks.back();
+  context->config->links.m_InboundLinks.emplace_back();
+  auto& link = context->config->links.m_InboundLinks.back();
   link.interface = llarp::net::LoopbackInterfaceName();
   link.addressFamily = AF_INET;
   link.port = 0;
   // configure
-  auto ptr = llarp_main_init_from_config(config, true);
-  REQUIRE(ptr != nullptr);
-  llarp_config_free(config);
-  return ptr;
+  return context;
 }
 
 TEST_CASE("ensure snode address allocation", "[snode]")
 {
   llarp::LogSilencer shutup;
   auto ctx = make_context();
-  REQUIRE(llarp_main_setup(ctx, true) == 0);
-  auto ctx_pp = llarp::Context::Get(ctx);
-  ctx_pp->CallSafe([ctx_pp]() {
-    REQUIRE(ctx_pp->router->IsServiceNode());
-    auto& context = ctx_pp->router->exitContext();
+  REQUIRE_NOTHROW(ctx->Setup(opts));
+  ctx->CallSafe([ctx]() {
+    REQUIRE(ctx->router->IsServiceNode());
+    auto& context = ctx->router->exitContext();
     llarp::PubKey pk;
     pk.Randomize();
 
@@ -51,8 +50,9 @@ TEST_CASE("ensure snode address allocation", "[snode]")
     REQUIRE(
         context.FindEndpointForPath(firstPath)->LocalIP()
         == context.FindEndpointForPath(secondPath)->LocalIP());
-    ctx_pp->CloseAsync();
+    ctx->CloseAsync();
   });
-  REQUIRE(llarp_main_run(ctx, llarp_main_runtime_opts{.isRelay = true}) == 0);
-  llarp_main_free(ctx);
+  REQUIRE(ctx->Run(opts) == 0);
+
+  ctx.reset();
 }
