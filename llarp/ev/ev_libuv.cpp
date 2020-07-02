@@ -1067,7 +1067,7 @@ namespace libuv
     {
       if (m_LogicCalls.tryPushBack(f) != llarp::thread::QueueReturn::Success)
       {
-        f();
+        LogError("logic job queue is full");
       }
     }
     else
