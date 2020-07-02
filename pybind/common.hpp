@@ -74,4 +74,10 @@ namespace tooling
 
   void
   RouterEvent_Init(py::module& mod);
+
+  void
+  HiveContext_Init(py::module& mod);
+
+  void
+  HiveRouter_Init(py::module& mod);
 }  // namespace tooling

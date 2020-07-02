@@ -21,7 +21,7 @@ namespace tooling
   void
   HiveRouter_Init(py::module& mod)
   {
-    py::class_<HiveRouter>(mod, "HiveRouter")
+    py::class_<HiveRouter, llarp::AbstractRouter>(mod, "HiveRouter")
         .def("disableGossiping", &HiveRouter::disableGossiping)
         .def("enableGossiping", &HiveRouter::enableGossiping);
   }

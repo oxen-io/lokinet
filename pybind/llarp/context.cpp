@@ -37,4 +37,15 @@ namespace llarp
             })
         .def("CallSafe", &Context::CallSafe);
   }
+
 }  // namespace llarp
+
+namespace tooling
+{
+  void
+  HiveContext_Init(py::module& mod)
+  {
+    py::class_<tooling::HiveContext>(mod, "HiveContext")
+        .def("getRouterAsHiveRouter", &tooling::HiveContext::getRouterAsHiveRouter);
+  }
+}  // namespace tooling

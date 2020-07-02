@@ -77,10 +77,10 @@ def tally_rc_received_for_peer(hive, routerId):
 
   numFound = 0
 
-  def visit(relay):
+  def visit(context):
     nonlocal numFound
 
-    peerDb = relay.peerDb()
+    peerDb = context.getRouterAsHiveRouter().peerDb()
     stats = peerDb.getCurrentPeerStats(routerId);
 
     assert(stats.routerId == routerId)
