@@ -98,7 +98,7 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     llarp::Config conf;
     conf.Load(confFile, opts.isRouter, confFile.parent_path());
 
-    ctx = std::shared_ptr<llarp::Context>();
+    ctx = std::make_shared<llarp::Context>();
     ctx->Configure(opts, {});
 
     signal(SIGINT, handle_signal);
@@ -297,7 +297,23 @@ main(int argc, char* argv[])
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
   main_thread.join();
-  const auto code = ftr.get();
+
+  int code = 0;
+
+  try
+  {
+    code = ftr.get();
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << "main thread threw exception: " << e.what() << std::endl;
+    code = 1;
+  }
+  catch (...)
+  {
+    std::cerr << "main thread threw non-standard exception" << std::endl;
+    code = 2;
+  }
 
   llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32

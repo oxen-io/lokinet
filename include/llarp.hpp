@@ -5,6 +5,8 @@
 #include <util/types.hpp>
 #include <ev/ev.hpp>
 #include <nodedb.hpp>
+#include <crypto/crypto.hpp>
+#include <router/abstractrouter.hpp>
 
 #include <iostream>
 #include <map>
@@ -24,7 +26,6 @@ namespace tooling
 namespace llarp
 {
   class Logic;
-  struct AbstractRouter;
   struct Config;
   struct Crypto;
   struct CryptoManager;
@@ -43,13 +44,13 @@ namespace llarp
 
   struct Context
   {
-    std::unique_ptr<Crypto> crypto;
-    std::unique_ptr<CryptoManager> cryptoManager;
-    std::unique_ptr<AbstractRouter> router;
-    std::shared_ptr<thread::ThreadPool> worker;
-    std::shared_ptr<Logic> logic;
-    std::unique_ptr<Config> config;
-    std::unique_ptr<llarp_nodedb> nodedb;
+    std::unique_ptr<Crypto> crypto = nullptr;
+    std::unique_ptr<CryptoManager> cryptoManager = nullptr;
+    std::unique_ptr<AbstractRouter> router = nullptr;
+    std::shared_ptr<thread::ThreadPool> worker = nullptr;
+    std::shared_ptr<Logic> logic = nullptr;
+    std::unique_ptr<Config> config = nullptr;
+    std::unique_ptr<llarp_nodedb> nodedb = nullptr;
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
