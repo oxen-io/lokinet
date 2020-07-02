@@ -87,7 +87,6 @@ namespace llarp
     /// to be created instead. Defaults to llarp::Router.
     virtual std::unique_ptr<AbstractRouter>
     makeRouter(
-        std::shared_ptr<llarp::thread::ThreadPool> worker,
         llarp_ev_loop_ptr __netloop,
         std::shared_ptr<Logic> logic);
 

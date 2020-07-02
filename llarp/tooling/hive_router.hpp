@@ -11,7 +11,6 @@ namespace tooling
   struct HiveRouter : public llarp::Router
   {
     HiveRouter(
-        std::shared_ptr<llarp::thread::ThreadPool> worker,
         llarp_ev_loop_ptr netloop,
         std::shared_ptr<llarp::Logic> logic,
         RouterHive* hive);
