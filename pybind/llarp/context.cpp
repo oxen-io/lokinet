@@ -47,6 +47,9 @@ namespace tooling
   {
     using HiveContext_ptr = std::shared_ptr<HiveContext>;
     py::class_<tooling::HiveContext, HiveContext_ptr, llarp::Context>(mod, "HiveContext")
-        .def("getRouterAsHiveRouter", &tooling::HiveContext::getRouterAsHiveRouter);
+        .def(
+            "getRouterAsHiveRouter",
+            &tooling::HiveContext::getRouterAsHiveRouter,
+            py::return_value_policy::reference);
   }
 }  // namespace tooling
