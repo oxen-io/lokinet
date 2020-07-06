@@ -11,22 +11,24 @@ static const llarp::RuntimeOptions opts = {.background = false, .debug = false, 
 std::shared_ptr<llarp::Context>
 make_context()
 {
-  auto context = std::make_shared<llarp::Context>();
-  REQUIRE(context->Configure(opts, {}, {}) == true);
-  REQUIRE(context->config != nullptr);
-  REQUIRE(context->config->LoadDefault(true, fs::current_path()));
+  llarp::Config conf;
+  conf.LoadDefault(true, fs::current_path());
 
   // set testing defaults
-  context->config->network.m_endpointType = "null";
-  context->config->bootstrap.skipBootstrap = true;
-  context->config->api.m_enableRPCServer = false;
+  conf.network.m_endpointType = "null";
+  conf.bootstrap.skipBootstrap = true;
+  conf.api.m_enableRPCServer = false;
   // make a fake inbound link
-  context->config->links.m_InboundLinks.emplace_back();
-  auto& link = context->config->links.m_InboundLinks.back();
+  conf.links.m_InboundLinks.emplace_back();
+  auto& link = conf.links.m_InboundLinks.back();
   link.interface = llarp::net::LoopbackInterfaceName();
   link.addressFamily = AF_INET;
   link.port = 0;
   // configure
+
+  auto context = std::make_shared<llarp::Context>();
+  REQUIRE_NOTHROW(context->Configure(std::move(conf)));
+
   return context;
 }
 

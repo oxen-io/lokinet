@@ -39,7 +39,6 @@ namespace llarp
     std::unique_ptr<CryptoManager> cryptoManager = nullptr;
     std::unique_ptr<AbstractRouter> router = nullptr;
     std::shared_ptr<Logic> logic = nullptr;
-    std::unique_ptr<Config> config = nullptr;
     std::unique_ptr<llarp_nodedb> nodedb = nullptr;
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
@@ -59,9 +58,11 @@ namespace llarp
     void
     HandleSignal(int sig);
 
-    bool
-    Configure(
-        const RuntimeOptions& opts, std::optional<fs::path> dataDir, const fs::path& configfile);
+    /// Configure given the specified config.
+    ///
+    /// note: consider using std::move() when passing conf in.
+    void
+    Configure(Config conf);
 
     bool
     IsUp() const;
@@ -89,6 +90,9 @@ namespace llarp
     makeRouter(
         llarp_ev_loop_ptr __netloop,
         std::shared_ptr<Logic> logic);
+
+   protected:
+    std::unique_ptr<Config> config = nullptr;
 
    private:
     void

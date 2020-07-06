@@ -11,14 +11,15 @@ llarp::RuntimeOptions opts = {false, false, false};
 static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {
-  auto context = std::make_shared<llarp::Context>();
-  REQUIRE(context->Configure(opts, {}, {}) == true);
-  REQUIRE(context->config != nullptr);
+  llarp::Config conf;
+  conf.LoadDefault(opts.isRouter, {});
+  conf.network.m_endpointType = "null";
+  conf.network.m_keyfile = keyfile;
+  conf.bootstrap.skipBootstrap = true;
+  conf.api.m_enableRPCServer = false;
 
-  context->config->network.m_endpointType = "null";
-  context->config->network.m_keyfile = keyfile;
-  context->config->bootstrap.skipBootstrap = true;
-  context->config->api.m_enableRPCServer = false;
+  auto context = std::make_shared<llarp::Context>();
+  REQUIRE_NOTHROW(context->Configure(std::move(conf)));
 
   return context;
 }

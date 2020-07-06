@@ -345,7 +345,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
+    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
     StartRpcServer() override;
@@ -392,18 +392,8 @@ namespace llarp
     void
     try_connect(fs::path rcfile);
 
-    /// inject configuration and reconfigure router
-    bool
-    Reconfigure(Config* conf) override;
-
     bool
     TryConnectAsync(RouterContact rc, uint16_t tries) override;
-
-    /// validate new configuration against old one
-    /// return true on 100% valid
-    /// return false if not 100% valid
-    bool
-    ValidateConfig(Config* conf) const override;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
@@ -524,7 +514,7 @@ namespace llarp
     UpdateOurRC(bool rotateKeys = false);
 
     bool
-    FromConfig(Config* conf);
+    FromConfig(const Config& conf);
 
     void
     MessageSent(const RouterID& remote, SendStatus status);

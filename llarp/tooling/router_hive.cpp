@@ -22,8 +22,7 @@ namespace tooling
     opts.isRouter = isRouter;
 
     Context_ptr context = std::make_shared<HiveContext>(this);
-    context->config = std::make_unique<llarp::Config>(*config.get());
-    context->Configure(opts, {}, {});
+    context->Configure(*config);
     context->Setup(opts);
 
     auto routerId = llarp::RouterID(context->router->pubkey());

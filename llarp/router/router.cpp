@@ -238,18 +238,16 @@ namespace llarp
   }
 
   bool
-  Router::Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb)
+  Router::Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb)
   {
-    // we need this first so we can start lmq to fetch keys
-    if (conf)
-    {
-      whitelistRouters = conf->lokid.whitelistRouters;
-      if (whitelistRouters)
-        lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
+    whitelistRouters = conf.lokid.whitelistRouters;
+    if (whitelistRouters)
+      lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
 
-      enableRPCServer = conf->api.m_enableRPCServer;
-      rpcBindAddr = lokimq::address(conf->api.m_rpcBindAddr);
-    }
+    enableRPCServer = conf.api.m_enableRPCServer;
+    if (enableRPCServer)
+      rpcBindAddr = lokimq::address(conf.api.m_rpcBindAddr);
+
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
@@ -263,13 +261,11 @@ namespace llarp
     }
 
     // fetch keys
-    if (conf)
-    {
-      if (not m_keyManager->initialize(*conf, true, isRouter))
-        throw std::runtime_error("KeyManager failed to initialize");
-      if (!FromConfig(conf))
-        throw std::runtime_error("FromConfig() failed");
-    }
+    if (not m_keyManager->initialize(conf, true, isRouter))
+      throw std::runtime_error("KeyManager failed to initialize");
+    if (!FromConfig(conf))
+      throw std::runtime_error("FromConfig() failed");
+
     if (!InitOutboundLinks())
       throw std::runtime_error("InitOutboundLinks() failed");
 
@@ -386,12 +382,12 @@ namespace llarp
   }
 
   bool
-  Router::FromConfig(Config* conf)
+  Router::FromConfig(const Config& conf)
   {
     // Set netid before anything else
-    if (!conf->router.m_netId.empty() && strcmp(conf->router.m_netId.c_str(), llarp::DEFAULT_NETID))
+    if (!conf.router.m_netId.empty() && strcmp(conf.router.m_netId.c_str(), llarp::DEFAULT_NETID))
     {
-      const auto& netid = conf->router.m_netId;
+      const auto& netid = conf.router.m_netId;
       llarp::LogWarn(
           "!!!! you have manually set netid to be '",
           netid,
@@ -406,36 +402,36 @@ namespace llarp
     }
 
     // IWP config
-    m_OutboundPort = conf->links.m_OutboundLink.port;
+    m_OutboundPort = conf.links.m_OutboundLink.port;
     // Router config
-    _rc.SetNick(conf->router.m_nickname);
-    _outboundSessionMaker.maxConnectedRouters = conf->router.m_maxConnectedRouters;
-    _outboundSessionMaker.minConnectedRouters = conf->router.m_minConnectedRouters;
+    _rc.SetNick(conf.router.m_nickname);
+    _outboundSessionMaker.maxConnectedRouters = conf.router.m_maxConnectedRouters;
+    _outboundSessionMaker.minConnectedRouters = conf.router.m_minConnectedRouters;
 
     encryption_keyfile = m_keyManager->m_encKeyPath;
     our_rc_file = m_keyManager->m_rcPath;
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    _ourAddress = conf->router.m_publicAddress;
+    _ourAddress = conf.router.m_publicAddress;
 
-    RouterContact::BlockBogons = conf->router.m_blockBogons;
+    RouterContact::BlockBogons = conf.router.m_blockBogons;
 
     // Lokid Config
-    usingSNSeed = conf->lokid.usingSNSeed;
-    whitelistRouters = conf->lokid.whitelistRouters;
-    lokidRPCAddr = lokimq::address(conf->lokid.lokidRPCAddr);
+    usingSNSeed = conf.lokid.usingSNSeed;
+    whitelistRouters = conf.lokid.whitelistRouters;
+    lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
 
     if (usingSNSeed)
-      ident_keyfile = conf->lokid.ident_keyfile;
+      ident_keyfile = conf.lokid.ident_keyfile;
 
     // TODO: add config flag for "is service node"
-    if (conf->links.m_InboundLinks.size())
+    if (conf.links.m_InboundLinks.size())
     {
       m_isServiceNode = true;
     }
 
-    networkConfig = conf->network;
+    networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
@@ -458,21 +454,21 @@ namespace llarp
         throw std::invalid_argument(stringify("invalid key for strict-connect: ", val));
     }
 
-    std::vector<fs::path> configRouters = conf->connect.routers;
+    std::vector<fs::path> configRouters = conf.connect.routers;
     configRouters.insert(
-        configRouters.end(), conf->bootstrap.routers.begin(), conf->bootstrap.routers.end());
+        configRouters.end(), conf.bootstrap.routers.begin(), conf.bootstrap.routers.end());
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
     if (configRouters.size() == 0 and not m_isServiceNode)
     {
       // TODO: use constant
-      fs::path defaultBootstrapFile = conf->router.m_dataDir / "bootstrap.signed";
+      fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
       if (fs::exists(defaultBootstrapFile))
       {
         configRouters.push_back(defaultBootstrapFile);
       }
-      else if (not conf->bootstrap.skipBootstrap)
+      else if (not conf.bootstrap.skipBootstrap)
       {
         LogError("No bootstrap files specified in config file, and the default");
         LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
@@ -547,7 +543,7 @@ namespace llarp
         m_isServiceNode);
 
     // create inbound links, if we are a service node
-    for (const LinksConfig::LinkInfo& serverConfig : conf->links.m_InboundLinks)
+    for (const LinksConfig::LinkInfo& serverConfig : conf.links.m_InboundLinks)
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
@@ -572,15 +568,15 @@ namespace llarp
     }
 
     // Network config
-    if (conf->network.m_enableProfiling.has_value() and not*conf->network.m_enableProfiling)
+    if (conf.network.m_enableProfiling.has_value() and not*conf.network.m_enableProfiling)
     {
       routerProfiling().Disable();
       LogWarn("router profiling explicitly disabled");
     }
 
-    if (!conf->network.m_routerProfilesFile.empty())
+    if (!conf.network.m_routerProfilesFile.empty())
     {
-      routerProfilesFile = conf->network.m_routerProfilesFile;
+      routerProfilesFile = conf.network.m_routerProfilesFile;
       routerProfiling().Load(routerProfilesFile.c_str());
       llarp::LogInfo("setting profiles to ", routerProfilesFile);
     }
@@ -588,15 +584,15 @@ namespace llarp
     // API config
     if (not IsServiceNode())
     {
-      hiddenServiceContext().AddEndpoint(*conf);
+      hiddenServiceContext().AddEndpoint(conf);
     }
 
     // peer stats
-    if (conf->router.m_enablePeerStats)
+    if (conf.router.m_enablePeerStats)
     {
       LogInfo("Initializing peerdb...");
       m_peerDb = std::make_shared<PeerDb>();
-      m_peerDb->configure(conf->router);
+      m_peerDb->configure(conf.router);
     }
     else
     {
@@ -605,10 +601,10 @@ namespace llarp
 
     // Logging config
     LogContext::Instance().Initialize(
-        conf->logging.m_logLevel,
-        conf->logging.m_logType,
-        conf->logging.m_logFile,
-        conf->router.m_nickname,
+        conf.logging.m_logLevel,
+        conf.logging.m_logType,
+        conf.logging.m_logFile,
+        conf.router.m_nickname,
         util::memFn(&AbstractRouter::QueueDiskIO, this));
 
     return true;
@@ -1162,19 +1158,6 @@ namespace llarp
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
     _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
-    return true;
-  }
-
-  bool
-  Router::ValidateConfig(Config* /*conf*/) const
-  {
-    return true;
-  }
-
-  bool
-  Router::Reconfigure(Config*)
-  {
-    // TODO: implement me
     return true;
   }
 

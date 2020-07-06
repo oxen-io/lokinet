@@ -27,42 +27,17 @@ namespace llarp
     return logic && LogicCall(logic, f);
   }
 
-  bool
-  Context::Configure(
-      const RuntimeOptions& opts, std::optional<fs::path> dataDir, const fs::path& configfile)
+  void
+  Context::Configure(Config conf)
   {
-    LogWarn("Context::Configure()");
+    if (nullptr != config.get())
+      throw std::runtime_error("Config already exists");
 
-    if (nullptr == config.get())
-      config = std::make_unique<Config>();
-
-    fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
-
-    // TODO: DRY / refactor to use exceptions
-    if (configfile.empty())
-    {
-      if (not config->LoadDefault(opts.isRouter, defaultDataDir))
-      {
-        config.release();
-        llarp::LogError("failed to load default config");
-        return false;
-      }
-    }
-    else
-    {
-      if (!config->Load(configfile.c_str(), opts.isRouter, defaultDataDir))
-      {
-        config.release();
-        llarp::LogError("failed to load config file ", configfile);
-        return false;
-      }
-    }
+    config = std::make_unique<Config>(std::move(conf));
 
     logic = std::make_shared<Logic>();
 
     nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
-
-    return true;
   }
 
   bool
@@ -87,6 +62,10 @@ namespace llarp
   void
   Context::Setup(const RuntimeOptions& opts)
   {
+    /// Call one of the Configure() methods before calling Setup()
+    if (not config)
+      throw std::runtime_error("Cannot call Setup() on context without a Config");
+
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     if (mainloop == nullptr)
@@ -106,7 +85,7 @@ namespace llarp
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
-    if (!router->Configure(config.get(), opts.isRouter, nodedb.get()))
+    if (!router->Configure(*config.get(), opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
 
     // must be done after router is made so we can use its disk io worker

@@ -159,7 +159,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb) = 0;
+    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
@@ -197,18 +197,9 @@ namespace llarp
     /// connect to N random routers
     virtual void
     ConnectToRandomRouters(int N) = 0;
-    /// inject configuration and reconfigure router
-    virtual bool
-    Reconfigure(Config* conf) = 0;
 
     virtual bool
     TryConnectAsync(RouterContact rc, uint16_t tries) = 0;
-
-    /// validate new configuration against old one
-    /// return true on 100% valid
-    /// return false if not 100% valid
-    virtual bool
-    ValidateConfig(Config* conf) const = 0;
 
     /// called by link when a remote session has no more sessions open
     virtual void
