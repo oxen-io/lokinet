@@ -45,7 +45,8 @@ namespace tooling
   void
   HiveContext_Init(py::module& mod)
   {
-    py::class_<tooling::HiveContext>(mod, "HiveContext")
+    using HiveContext_ptr = std::shared_ptr<HiveContext>;
+    py::class_<tooling::HiveContext, HiveContext_ptr, llarp::Context>(mod, "HiveContext")
         .def("getRouterAsHiveRouter", &tooling::HiveContext::getRouterAsHiveRouter);
   }
 }  // namespace tooling
