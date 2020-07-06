@@ -80,6 +80,8 @@ class RouterHive(object):
 
     config.api.enableRPCServer = False
 
+    config.lokid.whitelistRouters = False
+
     print("adding relay at index %d" % port);
     self.hive.AddRelay(config)
 
@@ -109,6 +111,8 @@ class RouterHive(object):
     config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
 
     config.api.enableRPCServer = False
+
+    config.lokid.whitelistRouters = False
 
     self.hive.AddClient(config)
 
