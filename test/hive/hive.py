@@ -65,6 +65,7 @@ class RouterHive(object):
     config.router.nickname = "Router%d" % index
     config.router.overrideAddress('127.0.0.1:{}'.format(port))
     config.router.blockBogons = False
+    config.router.enablePeerStats = True
 
     config.network.enableProfiling = False
     config.network.routerProfilesFile = "%s/profiles.dat" % dirname

@@ -19,13 +19,13 @@ namespace tooling
   void
   HiveRouter::disableGossiping()
   {
-    m_disableGossiping = false;
+    m_disableGossiping = true;
   }
 
   void
   HiveRouter::enableGossiping()
   {
-    m_disableGossiping = true;
+    m_disableGossiping = false;
   }
 
   void

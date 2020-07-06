@@ -48,7 +48,8 @@ namespace llarp
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
-        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
+        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)
+        .def_readwrite("enablePeerStats", &RouterConfig::m_enablePeerStats);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
