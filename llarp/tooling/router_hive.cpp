@@ -148,7 +148,10 @@ namespace tooling
   void
   RouterHive::VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit)
   {
-    LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
+    // TODO: this should be called from each router's appropriate Logic thread, e.g.:
+    //     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
+    // however, this causes visit calls to be deferred
+    visit(ctx);
   }
 
   HiveRouter*
