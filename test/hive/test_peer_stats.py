@@ -64,7 +64,7 @@ def test_peer_stats(HiveForPeerStats):
 
   # stop our router from gossiping
   router = hive.hive.GetRelay(someRouterId, True)
-  router.stopGossipingRC();
+  router.disableGossiping();
 
   ignore = collectStatsForAWhile(30);
 
