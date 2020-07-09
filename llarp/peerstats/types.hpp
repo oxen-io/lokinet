@@ -48,6 +48,9 @@ namespace llarp
 
     util::StatusObject
     toJson() const;
+
+    void
+    BEncode(llarp_buffer_t* buf);
   };
 
 }  // namespace llarp

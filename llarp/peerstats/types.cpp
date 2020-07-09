@@ -1,7 +1,29 @@
 #include <peerstats/types.hpp>
 
+#include <util/str.hpp>
+
+#include <stdexcept>
+
 namespace llarp
 {
+
+  constexpr auto RouterIdKey = "routerId";
+  constexpr auto NumConnectionAttemptsKey = "numConnectionAttempts";
+  constexpr auto NumConnectionSuccessesKey = "numConnectionSuccesses";
+  constexpr auto NumConnectionRejectionsKey = "numConnectionRejections";
+  constexpr auto NumConnectionTimeoutsKey = "numConnectionTimeouts";
+  constexpr auto NumPathBuildsKey = "numPathBuilds";
+  constexpr auto NumPacketsAttemptedKey = "numPacketsAttempted";
+  constexpr auto NumPacketsSentKey = "numPacketsSent";
+  constexpr auto NumPacketsDroppedKey = "numPacketsDropped";
+  constexpr auto NumPacketsResentKey = "numPacketsResent";
+  constexpr auto NumDistinctRCsReceivedKey = "numDistinctRCsReceived";
+  constexpr auto NumLateRCsKey = "numLateRCs";
+  constexpr auto PeakBandwidthBytesPerSecKey = "peakBandwidthBytesPerSec";
+  constexpr auto LongestRCReceiveIntervalKey = "longestRCReceiveInterval";
+  constexpr auto LeastRCRemainingLifetimeKey = "leastRCRemainingLifetime";
+  constexpr auto LastRCUpdatedKey = "lastRCUpdated";
+
   PeerStats::PeerStats() = default;
 
   PeerStats::PeerStats(const RouterID& routerId_) : routerId(routerId_)
@@ -59,23 +81,61 @@ namespace llarp
   PeerStats::toJson() const
   {
     return {
-        {"routerId", routerId.ToString()},
-        // {"numConnectionAttempts", numConnectionAttempts},
-        // {"numConnectionSuccesses", numConnectionSuccesses},
-        // {"numConnectionRejections", numConnectionRejections},
-        // {"numConnectionTimeouts", numConnectionTimeouts},
-        // {"numPathBuilds", numPathBuilds},
-        // {"numPacketsAttempted", numPacketsAttempted},
-        // {"numPacketsSent", numPacketsSent},
-        // {"numPacketsDropped", numPacketsDropped},
-        // {"numPacketsResent", numPacketsResent},
-        {"numDistinctRCsReceived", numDistinctRCsReceived},
-        {"numLateRCs", numLateRCs},
-        // {"peakBandwidthBytesPerSec", peakBandwidthBytesPerSec},
-        {"longestRCReceiveInterval", longestRCReceiveInterval.count()},
-        {"leastRCRemainingLifetime", leastRCRemainingLifetime.count()},
-        {"lastRCUpdated", lastRCUpdated.count()},
+        {RouterIdKey, routerId.ToString()},
+        {NumConnectionAttemptsKey, numConnectionAttempts},
+        {NumConnectionSuccessesKey, numConnectionSuccesses},
+        {NumConnectionRejectionsKey, numConnectionRejections},
+        {NumConnectionTimeoutsKey, numConnectionTimeouts},
+        {NumPathBuildsKey, numPathBuilds},
+        {NumPacketsAttemptedKey, numPacketsAttempted},
+        {NumPacketsSentKey, numPacketsSent},
+        {NumPacketsDroppedKey, numPacketsDropped},
+        {NumPacketsResentKey, numPacketsResent},
+        {NumDistinctRCsReceivedKey, numDistinctRCsReceived},
+        {NumLateRCsKey, numLateRCs},
+        {PeakBandwidthBytesPerSecKey, peakBandwidthBytesPerSec},
+        {LongestRCReceiveIntervalKey, longestRCReceiveInterval.count()},
+        {LeastRCRemainingLifetimeKey, leastRCRemainingLifetime.count()},
+        {LastRCUpdatedKey, lastRCUpdated.count()},
     };
+  }
+
+  void
+  PeerStats::BEncode(llarp_buffer_t* buf)
+  {
+    if (not buf)
+      throw std::runtime_error("PeerStats: Can't use null buf");
+
+    auto encodeUint64Entry = [&](std::string_view key, uint64_t value) {
+      if (not bencode_write_uint64_entry(buf, key.data(), key.size(), value))
+        throw std::runtime_error(stringify("PeerStats: Could not encode ", key));
+    };
+
+    if (not bencode_start_dict(buf))
+      throw std::runtime_error("PeerStats: Could not create bencode dict");
+
+    // TODO: we don't have bencode support for dict entries other than uint64...?
+
+    // encodeUint64Entry(RouterIdKey, routerId);
+    encodeUint64Entry(NumConnectionAttemptsKey, numConnectionAttempts);
+    encodeUint64Entry(NumConnectionSuccessesKey, numConnectionSuccesses);
+    encodeUint64Entry(NumConnectionRejectionsKey, numConnectionRejections);
+    encodeUint64Entry(NumConnectionTimeoutsKey, numConnectionTimeouts);
+    encodeUint64Entry(NumPathBuildsKey, numPathBuilds);
+    encodeUint64Entry(NumPacketsAttemptedKey, numPacketsAttempted);
+    encodeUint64Entry(NumPacketsSentKey, numPacketsSent);
+    encodeUint64Entry(NumPacketsDroppedKey, numPacketsDropped);
+    encodeUint64Entry(NumPacketsResentKey, numPacketsResent);
+    encodeUint64Entry(NumDistinctRCsReceivedKey, numDistinctRCsReceived);
+    encodeUint64Entry(NumLateRCsKey, numLateRCs);
+    encodeUint64Entry(PeakBandwidthBytesPerSecKey, (uint64_t)peakBandwidthBytesPerSec);
+    encodeUint64Entry(LongestRCReceiveIntervalKey, longestRCReceiveInterval.count());
+    encodeUint64Entry(LeastRCRemainingLifetimeKey, leastRCRemainingLifetime.count());
+    encodeUint64Entry(LastRCUpdatedKey, lastRCUpdated.count());
+
+    if (not bencode_end(buf))
+      throw std::runtime_error("PeerStats: Could not end bencode dict");
+
   }
 
 };  // namespace llarp
