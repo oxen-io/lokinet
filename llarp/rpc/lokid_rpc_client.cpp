@@ -100,10 +100,18 @@ namespace llarp
       constexpr auto PingInterval = 1min;
       constexpr auto NodeListUpdateInterval = 30s;
 
-      LogInfo("we connected to lokid [", *m_Connection, "]");
-      Command("admin.lokinet_ping");
-      m_lokiMQ->add_timer(
-          [self = shared_from_this()]() { self->Command("admin.lokinet_ping"); }, PingInterval);
+      auto makePingRequest = [self = shared_from_this()]() {
+        nlohmann::json payload = {{"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+        self->Request(
+            "admin.lokinet_ping",
+            [](bool success, std::vector<std::string> data) {
+              (void)data;
+              LogDebug("Received response for ping. Successful: ", success);
+            },
+            payload.dump());
+      };
+      makePingRequest();
+      m_lokiMQ->add_timer(makePingRequest, PingInterval);
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
       UpdateServiceNodeList();
