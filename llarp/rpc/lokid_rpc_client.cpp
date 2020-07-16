@@ -183,13 +183,13 @@ namespace llarp
                     "failed to get private key request "
                     "failed");
               }
-              if (data.empty())
+              if (data.empty() or data.size() < 2)
               {
                 throw std::runtime_error(
                     "failed to get private key request "
                     "data empty");
               }
-              const auto j = nlohmann::json::parse(data[0]);
+              const auto j = nlohmann::json::parse(data[1]);
               SecretKey k;
               if (not k.FromHex(j.at("service_node_ed25519_privkey").get<std::string>()))
               {
@@ -197,8 +197,14 @@ namespace llarp
               }
               promise.set_value(k);
             }
+            catch (const std::exception& e)
+            {
+              LogWarn("Caught exception while trying to request admin keys: ", e.what());
+              promise.set_exception(std::current_exception());
+            }
             catch (...)
             {
+              LogWarn("Caught non-standard exception while trying to request admin keys");
               promise.set_exception(std::current_exception());
             }
           });
