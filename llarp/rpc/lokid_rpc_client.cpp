@@ -36,6 +36,11 @@ namespace llarp
         : m_lokiMQ(std::move(lmq)), m_Router(r)
     {
       // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
+
+      // TODO: proper auth here
+      auto lokidCategory = m_lokiMQ->add_category("lokid", lokimq::Access{lokimq::AuthLevel::none});
+      lokidCategory.add_request_command(
+          "get_peer_stats", [this](lokimq::Message& m) { HandleGetPeerStats(m); });
     }
 
     void
@@ -210,6 +215,17 @@ namespace llarp
           });
       auto ftr = promise.get_future();
       return ftr.get();
+    }
+
+    void
+    LokidRpcClient::HandleGetPeerStats(lokimq::Message& msg)
+    {
+      // TODO: construct response
+      LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");
+      for (auto str : msg.data)
+      {
+        LogInfo("    :", str);
+      }
     }
 
   }  // namespace rpc
