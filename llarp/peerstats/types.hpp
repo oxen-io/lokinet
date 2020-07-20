@@ -50,7 +50,10 @@ namespace llarp
     toJson() const;
 
     void
-    BEncode(llarp_buffer_t* buf);
+    BEncode(llarp_buffer_t* buf) const;
+
+    static void
+    BEncodeList(const std::vector<PeerStats>& statsList, llarp_buffer_t* buf);
   };
 
 }  // namespace llarp

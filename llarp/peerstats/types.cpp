@@ -101,7 +101,7 @@ namespace llarp
   }
 
   void
-  PeerStats::BEncode(llarp_buffer_t* buf)
+  PeerStats::BEncode(llarp_buffer_t* buf) const
   {
     if (not buf)
       throw std::runtime_error("PeerStats: Can't use null buf");
@@ -136,6 +136,24 @@ namespace llarp
     if (not bencode_end(buf))
       throw std::runtime_error("PeerStats: Could not end bencode dict");
 
+  }
+
+  void
+  PeerStats::BEncodeList(const std::vector<PeerStats>& statsList, llarp_buffer_t* buf)
+  {
+    if (not buf)
+      throw std::runtime_error("PeerStats: Can't use null buf");
+
+    if (not bencode_start_list(buf))
+      throw std::runtime_error("PeerStats: Could not create bencode dict");
+
+    for (const auto& stats : statsList)
+    {
+      stats.BEncode(buf);
+    }
+
+    if (not bencode_end(buf))
+      throw std::runtime_error("PeerStats: Could not end bencode dict");
   }
 
 };  // namespace llarp

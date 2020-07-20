@@ -140,6 +140,22 @@ namespace llarp
       return itr->second;
   }
 
+  std::vector<PeerStats>
+  PeerDb::listAllPeerStats() const
+  {
+    std::lock_guard guard(m_statsLock);
+
+    std::vector<PeerStats> statsList;
+    statsList.reserve(m_peerStats.size());
+
+    for (const auto& [routerId, stats] : m_peerStats)
+    {
+      statsList.push_back(stats);
+    }
+
+    return statsList;
+  }
+
   /// Assume we receive an RC at some point `R` in time which was signed at some point `S` in time
   /// and expires at some point `E` in time, as depicted below:
   ///

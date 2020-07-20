@@ -82,6 +82,14 @@ namespace llarp
     std::optional<PeerStats>
     getCurrentPeerStats(const RouterID& routerId) const;
 
+    /// Lists all peer stats. This essentially dumps the database into a list of PeerStats objects.
+    ///
+    /// Note that this avoids disk I/O by copying from our cached map of peers.
+    ///
+    /// @return a list of all PeerStats we have maintained
+    std::vector<PeerStats>
+    listAllPeerStats() const;
+
     /// Handles a new gossiped RC, updating stats as needed. The database tracks the last
     /// advertised update time, so it knows whether this is a new RC or not.
     ///

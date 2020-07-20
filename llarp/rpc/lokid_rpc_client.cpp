@@ -220,11 +220,39 @@ namespace llarp
     void
     LokidRpcClient::HandleGetPeerStats(lokimq::Message& msg)
     {
-      // TODO: construct response
       LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");
       for (auto str : msg.data)
       {
         LogInfo("    :", str);
+      }
+
+      assert(m_Router != nullptr);
+
+      if (not m_Router->peerDb())
+      {
+        LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
+        throw std::runtime_error("Cannot handle get_peer_stats request when no peer db available");
+      }
+
+      try
+      {
+        // TODO: parse input, expect list of peers to query for
+
+        auto statsList = m_Router->peerDb()->listAllPeerStats();
+
+        int32_t bufSize =
+            256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
+        auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[bufSize]);
+        llarp_buffer_t llarpBuf(buf.get(), bufSize);
+
+        PeerStats::BEncodeList(statsList, &llarpBuf);
+
+        msg.send_reply(std::string_view((const char*)llarpBuf.base, llarpBuf.cur - llarpBuf.base));
+      }
+      catch (const std::exception& e)
+      {
+        LogError("Failed to handle get_peer_stats request: ", e.what());
+        // TODO: reply with explicit rejection to make lokid's life easier
       }
     }
 
