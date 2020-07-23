@@ -47,12 +47,9 @@ namespace llarp
     LokidRpcClient::ConnectAsync(lokimq::address url)
     {
       LogInfo("connecting to lokid via LMQ at ", url);
-      m_lokiMQ->connect_remote(
+      m_Connection = m_lokiMQ->connect_remote(
           url,
-          [self = shared_from_this()](lokimq::ConnectionID c) {
-            self->m_Connection = std::move(c);
-            self->Connected();
-          },
+          [self = shared_from_this()](lokimq::ConnectionID) { self->Connected(); },
           [self = shared_from_this(), url](lokimq::ConnectionID, std::string_view f) {
             llarp::LogWarn("Failed to connect to lokid: ", f);
             LogicCall(self->m_Router->logic(), [self, url]() { self->ConnectAsync(url); });
