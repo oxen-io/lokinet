@@ -222,7 +222,31 @@ namespace llarp
       return false;
 #endif
 #endif
-      _identity = RpcClient()->ObtainIdentityKey();
+      constexpr int maxTries = 5;
+      int numTries = 0;
+      while (numTries < maxTries)
+      {
+        numTries++;
+        try
+        {
+          _identity = RpcClient()->ObtainIdentityKey();
+          LogWarn("Obtained lokid identity keys");
+          break;
+        }
+        catch (const std::exception& e)
+        {
+          LogWarn(
+              "Failed attempt ",
+              numTries,
+              " of ",
+              maxTries,
+              " to get lokid identity keys because: ",
+              e.what());
+
+          if (numTries == maxTries)
+            throw;
+        }
+      }
     }
     else
     {
