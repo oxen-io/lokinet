@@ -90,6 +90,13 @@ namespace llarp
     std::vector<PeerStats>
     listAllPeerStats() const;
 
+    /// Lists specific peer stats.
+    ///
+    /// @param peers is list of RouterIDs which are desired
+    /// @return a list of the requested peers. Peers not found will be omitted.
+    std::vector<PeerStats>
+    listPeerStats(const std::vector<RouterID>& ids) const;
+
     /// Handles a new gossiped RC, updating stats as needed. The database tracks the last
     /// advertised update time, so it knows whether this is a new RC or not.
     ///

@@ -1,5 +1,6 @@
 #include <rpc/lokid_rpc_client.hpp>
 
+#include <stdexcept>
 #include <util/logging/logger.hpp>
 
 #include <router/abstractrouter.hpp>
@@ -228,14 +229,40 @@ namespace llarp
       if (not m_Router->peerDb())
       {
         LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
-        throw std::runtime_error("Cannot handle get_peer_stats request when no peer db available");
+
+        // TODO: this can sometimes occur if lokid hits our API before we're done configuring
+        //       (mostly an issue in a loopback testnet)
+        msg.send_reply("EAGAIN");
+        return;
       }
 
       try
       {
-        // TODO: parse input, expect list of peers to query for
+        // msg.data[0] is expected to contain a bt list of router ids (in our preferred string
+        // format)
+        if (msg.data.empty())
+        {
+          LogWarn("lokid requested peer stats with no request body");
+          msg.send_reply("peer stats request requires list of router IDs");
+          return;
+        }
 
-        auto statsList = m_Router->peerDb()->listAllPeerStats();
+        std::vector<std::string> routerIdStrings;
+        lokimq::bt_deserialize(msg.data[0], routerIdStrings);
+
+        std::vector<RouterID> routerIds;
+        routerIds.reserve(routerIdStrings.size());
+
+        for (const auto& routerIdString : routerIdStrings)
+        {
+          RouterID id;
+          if (not id.FromString(routerIdString))
+            throw std::invalid_argument(stringify("Invalid router id: ", routerIdString));
+
+          routerIds.push_back(std::move(id));
+        }
+
+        auto statsList = m_Router->peerDb()->listPeerStats(routerIds);
 
         int32_t bufSize =
             256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
