@@ -257,7 +257,11 @@ namespace llarp
         {
           RouterID id;
           if (not id.FromString(routerIdString))
-            throw std::invalid_argument(stringify("Invalid router id: ", routerIdString));
+          {
+            LogWarn("lokid sent us an invalid router id: ", routerIdString);
+            msg.send_reply("Invalid router id");
+            return;
+          }
 
           routerIds.push_back(std::move(id));
         }
@@ -276,7 +280,7 @@ namespace llarp
       catch (const std::exception& e)
       {
         LogError("Failed to handle get_peer_stats request: ", e.what());
-        // TODO: reply with explicit rejection to make lokid's life easier
+        msg.send_reply("server error");
       }
     }
 
