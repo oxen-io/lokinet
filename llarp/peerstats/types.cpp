@@ -1,7 +1,7 @@
 #include <peerstats/types.hpp>
 
 #include <util/str.hpp>
-
+#include <lokimq/bt_serialize.h>
 #include <stdexcept>
 
 namespace llarp
@@ -104,36 +104,26 @@ namespace llarp
   {
     if (not buf)
       throw std::runtime_error("PeerStats: Can't use null buf");
-
-    auto encodeUint64Entry = [&](std::string_view key, uint64_t value) {
-      if (not bencode_write_uint64_entry(buf, key.data(), key.size(), value))
-        throw std::runtime_error(stringify("PeerStats: Could not encode ", key));
+    const lokimq::bt_dict data = {
+        {NumConnectionAttemptsKey, numConnectionAttempts},
+        {NumConnectionSuccessesKey, numConnectionSuccesses},
+        {NumConnectionRejectionsKey, numConnectionRejections},
+        {NumConnectionTimeoutsKey, numConnectionTimeouts},
+        {NumPathBuildsKey, numPathBuilds},
+        {NumPacketsAttemptedKey, numPacketsAttempted},
+        {NumPacketsSentKey, numPacketsSent},
+        {NumPacketsDroppedKey, numPacketsDropped},
+        {NumPacketsResentKey, numPacketsResent},
+        {NumDistinctRCsReceivedKey, numDistinctRCsReceived},
+        {NumLateRCsKey, numLateRCs},
+        {PeakBandwidthBytesPerSecKey, (uint64_t)peakBandwidthBytesPerSec},
+        {LongestRCReceiveIntervalKey, longestRCReceiveInterval.count()},
+        {LeastRCRemainingLifetimeKey, leastRCRemainingLifetime.count()},
+        {LastRCUpdatedKey, lastRCUpdated.count()},
     };
-
-    if (not bencode_start_dict(buf))
-      throw std::runtime_error("PeerStats: Could not create bencode dict");
-
-    // TODO: we don't have bencode support for dict entries other than uint64...?
-
-    // encodeUint64Entry(RouterIdKey, routerId);
-    encodeUint64Entry(NumConnectionAttemptsKey, numConnectionAttempts);
-    encodeUint64Entry(NumConnectionSuccessesKey, numConnectionSuccesses);
-    encodeUint64Entry(NumConnectionRejectionsKey, numConnectionRejections);
-    encodeUint64Entry(NumConnectionTimeoutsKey, numConnectionTimeouts);
-    encodeUint64Entry(NumPathBuildsKey, numPathBuilds);
-    encodeUint64Entry(NumPacketsAttemptedKey, numPacketsAttempted);
-    encodeUint64Entry(NumPacketsSentKey, numPacketsSent);
-    encodeUint64Entry(NumPacketsDroppedKey, numPacketsDropped);
-    encodeUint64Entry(NumPacketsResentKey, numPacketsResent);
-    encodeUint64Entry(NumDistinctRCsReceivedKey, numDistinctRCsReceived);
-    encodeUint64Entry(NumLateRCsKey, numLateRCs);
-    encodeUint64Entry(PeakBandwidthBytesPerSecKey, (uint64_t)peakBandwidthBytesPerSec);
-    encodeUint64Entry(LongestRCReceiveIntervalKey, longestRCReceiveInterval.count());
-    encodeUint64Entry(LeastRCRemainingLifetimeKey, leastRCRemainingLifetime.count());
-    encodeUint64Entry(LastRCUpdatedKey, lastRCUpdated.count());
-
-    if (not bencode_end(buf))
-      throw std::runtime_error("PeerStats: Could not end bencode dict");
+    const auto serialized = lokimq::bt_serialize(data);
+    if (not buf->write(serialized.begin(), serialized.end()))
+      throw std::runtime_error("PeerStats: buffer too small");
   }
 
   void
