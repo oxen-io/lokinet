@@ -327,6 +327,55 @@ namespace llarp
     }
   }
 
+  void
+  LinkManager::updatePeerDb(std::shared_ptr<PeerDb> peerDb)
+  {
+    std::vector<std::pair<RouterID, SessionStats>> statsToUpdate;
+
+    int64_t diffTotalTX = 0;
+
+    ForEachPeer([&](ILinkSession* session) {
+      // derive RouterID
+      RouterID id = RouterID(session->GetRemoteRC().pubkey);
+
+      SessionStats sessionStats = session->GetSessionStats();
+      SessionStats diff;
+      SessionStats& lastStats = m_lastRouterStats[id];
+
+      // TODO: operator overloads / member func for diff
+      diff.currentRateRX = std::max(sessionStats.currentRateRX, lastStats.currentRateRX);
+      diff.currentRateTX = std::max(sessionStats.currentRateTX, lastStats.currentRateTX);
+      diff.totalPacketsRX = sessionStats.totalPacketsRX - lastStats.totalPacketsRX;
+      diff.totalAckedTX = sessionStats.totalAckedTX - lastStats.totalAckedTX;
+      diff.totalDroppedTX = sessionStats.totalDroppedTX - lastStats.totalDroppedTX;
+
+      diffTotalTX = diff.totalAckedTX + diff.totalDroppedTX + diff.totalInFlightTX;
+
+      lastStats = sessionStats;
+
+      // TODO: if we have both inbound and outbound session, this will overwrite
+      statsToUpdate.push_back({id, diff});
+    });
+
+    for (auto& routerStats : statsToUpdate)
+    {
+      peerDb->modifyPeerStats(routerStats.first, [&](PeerStats& stats) {
+        // TODO: store separate stats for up vs down
+        const auto& diff = routerStats.second;
+
+        // note that 'currentRateRX' and 'currentRateTX' are per-second
+        stats.peakBandwidthBytesPerSec = std::max(
+            stats.peakBandwidthBytesPerSec,
+            (double)std::max(diff.currentRateRX, diff.currentRateTX));
+        stats.numPacketsDropped += diff.totalDroppedTX;
+        stats.numPacketsSent = diff.totalAckedTX;
+        stats.numPacketsAttempted = diffTotalTX;
+
+        // TODO: others -- we have slight mismatch on what we store
+      });
+    }
+  }
+
   util::StatusObject
   LinkManager::ExtractStatus() const
   {

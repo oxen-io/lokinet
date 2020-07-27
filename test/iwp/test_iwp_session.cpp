@@ -86,8 +86,9 @@ struct IWPLinkContext
           return true;
         },
         // established handler
-        [established](llarp::ILinkSession* s) {
+        [established](llarp::ILinkSession* s, bool linkIsInbound) {
           REQUIRE(s != nullptr);
+          REQUIRE(inbound == linkIsInbound);
           established(s);
           return true;
         },

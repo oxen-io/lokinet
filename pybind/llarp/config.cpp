@@ -48,7 +48,8 @@ namespace llarp
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
-        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
+        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)
+        .def_readwrite("enablePeerStats", &RouterConfig::m_enablePeerStats);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
@@ -101,7 +102,10 @@ namespace llarp
         .def_readwrite("usingSNSeed", &LokidConfig::usingSNSeed)
         .def_readwrite("whitelistRouters", &LokidConfig::whitelistRouters)
         .def_readwrite("ident_keyfile", &LokidConfig::ident_keyfile)
-        .def_readwrite("lokidRPCAddr", &LokidConfig::lokidRPCAddr);
+        .def_property(
+            "lokidRPCAddr",
+            [](LokidConfig& self) { return self.lokidRPCAddr.full_address().c_str(); },
+            [](LokidConfig& self, std::string arg) { self.lokidRPCAddr = lokimq::address(arg); });
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())

@@ -25,6 +25,13 @@ set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
 set(UNBOUND_HASH SHA256=b73677c21a71cf92f15cc8cfe76a3d875e40f65b6150081c39620b286582d536
     CACHE STRING "unbound source hash")
 
+set(SQLITE3_VERSION 3320200 CACHE STRING "sqlite3 version")
+set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2020
+    CACHE STRING "sqlite3 download mirror(s)")
+set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
+set(SQLITE3_HASH SHA512=5b551a1366ce4fd5dfaa687e5021194d34315935b26dd7d71f8abc9935d03c3caea323263a8330fb42038c487cd399e95de68e451cc26d573f852f219c00a02f
+    CACHE STRING "sqlite3 source hash")
+
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
 set(SODIUM_MIRROR ${LOCAL_MIRROR}
   https://download.libsodium.org/libsodium/releases
@@ -192,6 +199,9 @@ endif()
 
 build_external(sodium)
 add_static_target(sodium sodium_external libsodium.a)
+
+build_external(sqlite3)
+add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
 if(ZMQ_VERSION VERSION_LESS 4.3.3 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)

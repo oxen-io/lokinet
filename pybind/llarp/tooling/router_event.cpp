@@ -5,6 +5,7 @@
 #include "tooling/dht_event.hpp"
 #include "tooling/path_event.hpp"
 #include "tooling/rc_event.hpp"
+#include "tooling/peer_stats_event.hpp"
 
 #include <messages/relay_status.hpp>
 #include <path/path.hpp>
@@ -73,6 +74,13 @@ namespace tooling
         mod, "FindRouterReceivedEvent");
 
     py::class_<FindRouterSentEvent, FindRouterEvent, RouterEvent>(mod, "FindRouterSentEvent");
+
+    py::class_<LinkSessionEstablishedEvent, RouterEvent>(mod, "LinkSessionEstablishedEvent")
+        .def_readonly("remoteId", &LinkSessionEstablishedEvent::remoteId)
+        .def_readonly("inbound", &LinkSessionEstablishedEvent::inbound);
+
+    py::class_<ConnectionAttemptEvent, RouterEvent>(mod, "ConnectionAttemptEvent")
+        .def_readonly("remoteId", &ConnectionAttemptEvent::remoteId);
   }
 
 }  // namespace tooling

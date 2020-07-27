@@ -28,18 +28,24 @@ add_dependencies(lokinet-util genversion)
 
 target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 
+if(NOT TARGET sqlite3)
+  add_library(sqlite3 INTERFACE)
+  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
+endif()
+
 target_link_libraries(lokinet-util PUBLIC
   lokinet-cryptography
   nlohmann_json::nlohmann_json
   filesystem
   date::date
   lokimq
+  sqlite3
 )
 
 if(ANDROID)
   target_link_libraries(lokinet-util PUBLIC log)
 endif()
-
 
 add_library(lokinet-platform
 # for networking
@@ -156,6 +162,8 @@ add_library(liblokinet
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
+  peerstats/peer_db.cpp
+  peerstats/types.cpp
   pow.cpp
   profiling.cpp
   router/outbound_message_handler.cpp
@@ -219,7 +227,11 @@ if(TESTNET)
 endif()
 
 if(WITH_HIVE)
-  target_sources(liblokinet PRIVATE tooling/router_hive.cpp)
+  target_sources(liblokinet PRIVATE
+    tooling/router_hive.cpp
+    tooling/hive_router.cpp
+    tooling/hive_context.cpp
+  )
 endif()
 
 target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)

@@ -115,6 +115,9 @@ namespace llarp
       bool
       ShouldPing() const override;
 
+      SessionStats
+      GetSessionStats() const override;
+
       util::StatusObject
       ExtractStatus() const override;
 
@@ -141,20 +144,7 @@ namespace llarp
       static std::string
       StateToString(State state);
       State m_State;
-
-      struct Stats
-      {
-        // rate
-        uint64_t currentRateRX = 0;
-        uint64_t currentRateTX = 0;
-
-        uint64_t totalPacketsRX = 0;
-
-        uint64_t totalAckedTX = 0;
-        uint64_t totalDroppedTX = 0;
-        uint64_t totalInFlightTX = 0;
-      };
-      Stats m_Stats;
+      SessionStats m_Stats;
 
       /// are we inbound session ?
       const bool m_Inbound;

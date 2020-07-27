@@ -16,6 +16,7 @@
 #include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
 #include <path/path_context.hpp>
+#include <peerstats/peer_db.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <router/outbound_message_handler.hpp>
@@ -48,7 +49,7 @@
 
 namespace llarp
 {
-  struct Router final : public AbstractRouter
+  struct Router : public AbstractRouter
   {
     llarp_time_t _lastPump = 0s;
     bool ready;
@@ -306,12 +307,18 @@ namespace llarp
       return _rcLookupHandler;
     }
 
+    std::shared_ptr<PeerDb>
+    peerDb() override
+    {
+      return m_peerDb;
+    }
+
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
     explicit Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
-    ~Router() override;
+    virtual ~Router() override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession* from, const llarp_buffer_t& msg) override;
@@ -338,7 +345,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
+    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
     StartRpcServer() override;
@@ -385,18 +392,8 @@ namespace llarp
     void
     try_connect(fs::path rcfile);
 
-    /// inject configuration and reconfigure router
-    bool
-    Reconfigure(Config* conf) override;
-
     bool
     TryConnectAsync(RouterContact rc, uint16_t tries) override;
-
-    /// validate new configuration against old one
-    /// return true on 100% valid
-    /// return false if not 100% valid
-    bool
-    ValidateConfig(Config* conf) const override;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
@@ -426,6 +423,14 @@ namespace llarp
     /// called by link when a remote session has no more sessions open
     void
     SessionClosed(RouterID remote) override;
+
+    /// called by link when an unestablished connection times out
+    void
+    ConnectionTimedOut(ILinkSession* session);
+
+    /// called by link when session is fully established
+    bool
+    ConnectionEstablished(ILinkSession* session, bool inbound);
 
     /// call internal router ticker
     void
@@ -495,6 +500,7 @@ namespace llarp
     llarp_time_t m_LastStatsReport = 0s;
 
     std::shared_ptr<llarp::KeyManager> m_keyManager;
+    std::shared_ptr<PeerDb> m_peerDb;
 
     uint32_t path_build_count = 0;
 
@@ -508,10 +514,20 @@ namespace llarp
     UpdateOurRC(bool rotateKeys = false);
 
     bool
-    FromConfig(Config* conf);
+    FromConfig(const Config& conf);
 
     void
     MessageSent(const RouterID& remote, SendStatus status);
+
+   protected:
+    virtual void
+    HandleRouterEvent(tooling::RouterEventPtr event) const override;
+
+    virtual bool
+    disableGossipingRC_TestingOnly()
+    {
+      return false;
+    };
   };
 
 }  // namespace llarp

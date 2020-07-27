@@ -21,6 +21,9 @@ namespace llarp
   CryptoTypes_Init(py::module& mod);
 
   void
+  AbstractRouter_Init(py::module& mod);
+
+  void
   RouterID_Init(py::module& mod);
 
   void
@@ -31,6 +34,12 @@ namespace llarp
 
   void
   PathTypes_Init(py::module& mod);
+
+  void
+  PeerDb_Init(py::module& mod);
+
+  void
+  PeerStats_Init(py::module& mod);
 
   namespace dht
   {
@@ -65,4 +74,10 @@ namespace tooling
 
   void
   RouterEvent_Init(py::module& mod);
+
+  void
+  HiveContext_Init(py::module& mod);
+
+  void
+  HiveRouter_Init(py::module& mod);
 }  // namespace tooling

@@ -59,6 +59,10 @@ namespace llarp
       void
       HandleGotServiceNodeList(std::string json);
 
+      // Handles request from lokid for peer stats on a specific peer
+      void
+      HandleGetPeerStats(lokimq::Message& msg);
+
       std::optional<lokimq::ConnectionID> m_Connection;
       LMQ_ptr m_lokiMQ;
       std::string m_CurrentBlockHash;

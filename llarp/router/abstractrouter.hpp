@@ -11,9 +11,10 @@
 #include <functional>
 #include <router_contact.hpp>
 #include <tooling/router_event.hpp>
+#include <peerstats/peer_db.hpp>
 
 #ifdef LOKINET_HIVE
-#include "tooling/router_hive.hpp"
+#include "tooling/router_event.hpp"
 #endif
 
 struct llarp_buffer_t;
@@ -151,11 +152,14 @@ namespace llarp
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;
 
+    virtual std::shared_ptr<PeerDb>
+    peerDb() = 0;
+
     virtual bool
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(Config* conf, bool isRouter, llarp_nodedb* nodedb) = 0;
+    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
@@ -193,18 +197,9 @@ namespace llarp
     /// connect to N random routers
     virtual void
     ConnectToRandomRouters(int N) = 0;
-    /// inject configuration and reconfigure router
-    virtual bool
-    Reconfigure(Config* conf) = 0;
 
     virtual bool
     TryConnectAsync(RouterContact rc, uint16_t tries) = 0;
-
-    /// validate new configuration against old one
-    /// return true on 100% valid
-    /// return false if not 100% valid
-    virtual bool
-    ValidateConfig(Config* conf) const = 0;
 
     /// called by link when a remote session has no more sessions open
     virtual void
@@ -288,14 +283,23 @@ namespace llarp
     virtual void
     GossipRCIfNeeded(const RouterContact rc) = 0;
 
+    /// Templated convenience function to generate a RouterHive event and
+    /// delegate to non-templated (and overridable) function for handling.
     template <class EventType, class... Params>
     void
     NotifyRouterEvent([[maybe_unused]] Params&&... args) const
     {
-#ifdef LOKINET_HIVE
-      hive->NotifyEvent(std::make_unique<EventType>(std::forward<Params>(args)...));
-#endif
+      // TODO: no-op when appropriate
+      auto event = std::make_unique<EventType>(args...);
+      HandleRouterEvent(std::move(event));
     }
+
+   protected:
+    /// Virtual function to handle RouterEvent. HiveRouter overrides this in
+    /// order to inject the event. The default implementation in Router simply
+    /// logs it.
+    virtual void
+    HandleRouterEvent(tooling::RouterEventPtr event) const = 0;
   };
 }  // namespace llarp
 

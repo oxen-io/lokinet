@@ -14,45 +14,43 @@ using namespace std::chrono_literals;
 namespace tooling
 {
   void
-  RouterHive::AddRouter(
-      const std::shared_ptr<llarp::Config>& config, std::vector<llarp_main*>* routers, bool isRelay)
+  RouterHive::AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRouter)
   {
-    llarp_main* ctx = llarp_main_init_from_config(config->Copy(), isRelay);
-    auto result = llarp_main_setup(ctx, isRelay);
-    if (result == 0)
-    {
-      llarp::Context::Get(ctx)->InjectHive(this);
-      routers->push_back(ctx);
-    }
-    else
-    {
-      throw std::runtime_error(llarp::stringify(
-          "Failed to add RouterHive ",
-          (isRelay ? "relay" : "client"),
-          ", llarp_main_setup() returned ",
-          result));
-    }
+    auto& container = (isRouter ? relays : clients);
+
+    llarp::RuntimeOptions opts;
+    opts.isRouter = isRouter;
+
+    Context_ptr context = std::make_shared<HiveContext>(this);
+    context->Configure(*config);
+    context->Setup(opts);
+
+    auto routerId = llarp::RouterID(context->router->pubkey());
+    container[routerId] = context;
+    std::cout << "Generated router with ID " << routerId << std::endl;
   }
 
   void
   RouterHive::AddRelay(const std::shared_ptr<llarp::Config>& config)
   {
-    AddRouter(config, &relays, true);
+    AddRouter(config, true);
   }
 
   void
   RouterHive::AddClient(const std::shared_ptr<llarp::Config>& config)
   {
-    AddRouter(config, &clients, false);
+    AddRouter(config, false);
   }
 
   void
-  RouterHive::StartRouters(std::vector<llarp_main*>* routers, bool isRelay)
+  RouterHive::StartRouters(bool isRelay)
   {
-    for (llarp_main* ctx : *routers)
+    auto& container = (isRelay ? relays : clients);
+
+    for (auto [routerId, ctx] : container)
     {
       routerMainThreads.emplace_back([=]() {
-        llarp_main_run(ctx, llarp_main_runtime_opts{false, false, false, isRelay});
+        ctx->Run(llarp::RuntimeOptions{false, false, isRelay});
       });
       std::this_thread::sleep_for(2ms);
     }
@@ -61,39 +59,39 @@ namespace tooling
   void
   RouterHive::StartRelays()
   {
-    StartRouters(&relays, true);
+    StartRouters(true);
   }
 
   void
   RouterHive::StartClients()
   {
-    StartRouters(&clients, false);
+    StartRouters(false);
   }
 
   void
   RouterHive::StopRouters()
   {
     llarp::LogInfo("Signalling all routers to stop");
-    for (llarp_main* ctx : relays)
+    for (auto [routerId, ctx] : relays)
     {
-      llarp_main_signal(ctx, 2 /* SIGINT */);
+      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
     }
-    for (llarp_main* ctx : clients)
+    for (auto [routerId, ctx] : clients)
     {
-      llarp_main_signal(ctx, 2 /* SIGINT */);
+      LogicCall(ctx->logic, [ctx]() { ctx->HandleSignal(SIGINT); });
     }
 
     llarp::LogInfo("Waiting on routers to be stopped");
-    for (llarp_main* ctx : relays)
+    for (auto [routerId, ctx] : relays)
     {
-      while (llarp_main_is_running(ctx))
+      while (ctx->IsUp())
       {
         std::this_thread::sleep_for(10ms);
       }
     }
-    for (llarp_main* ctx : clients)
+    for (auto [routerId, ctx] : clients)
     {
-      while (llarp_main_is_running(ctx))
+      while (ctx->IsUp())
       {
         std::this_thread::sleep_for(10ms);
       }
@@ -148,46 +146,40 @@ namespace tooling
   }
 
   void
-  RouterHive::VisitRouter(llarp_main* router, std::function<void(Context_ptr)> visit)
+  RouterHive::VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit)
   {
-    auto ctx = llarp::Context::Get(router);
-    LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
+    // TODO: this should be called from each router's appropriate Logic thread, e.g.:
+    //     LogicCall(ctx->logic, [visit, ctx]() { visit(ctx); });
+    // however, this causes visit calls to be deferred
+    visit(ctx);
   }
 
-  void
-  RouterHive::VisitRelay(size_t index, std::function<void(Context_ptr)> visit)
+  HiveRouter*
+  RouterHive::GetRelay(const llarp::RouterID& id, bool needMutexLock)
   {
-    if (index >= relays.size())
-    {
-      visit(nullptr);
-      return;
-    }
-    VisitRouter(relays[index], visit);
-  }
+    auto guard =
+        needMutexLock ? std::make_optional<std::lock_guard<std::mutex>>(routerMutex) : std::nullopt;
 
-  void
-  RouterHive::VisitClient(size_t index, std::function<void(Context_ptr)> visit)
-  {
-    if (index >= clients.size())
-    {
-      visit(nullptr);
-      return;
-    }
-    VisitRouter(clients[index], visit);
+    auto itr = relays.find(id);
+    if (itr == relays.end())
+      return nullptr;
+
+    auto ctx = itr->second;
+    return ctx->getRouterAsHiveRouter();
   }
 
   std::vector<size_t>
   RouterHive::RelayConnectedRelays()
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     std::vector<size_t> results;
     results.resize(relays.size());
     std::mutex results_lock;
 
     size_t i = 0;
     size_t done_count = 0;
-    for (auto relay : relays)
+    for (auto [routerId, ctx] : relays)
     {
-      auto ctx = llarp::Context::Get(relay);
       LogicCall(ctx->logic, [&, i, ctx]() {
         size_t count = ctx->router->NumberOfConnectedRouters();
         std::lock_guard<std::mutex> guard{results_lock};
@@ -216,17 +208,43 @@ namespace tooling
   std::vector<llarp::RouterContact>
   RouterHive::GetRelayRCs()
   {
+    std::lock_guard<std::mutex> guard{routerMutex};
     std::vector<llarp::RouterContact> results;
     results.resize(relays.size());
 
     size_t i = 0;
-    for (auto relay : relays)
+    for (auto [routerId, ctx] : relays)
     {
-      auto ctx = llarp::Context::Get(relay);
       results[i] = ctx->router->rc();
       i++;
     }
     return results;
+  }
+
+  void
+  RouterHive::ForEachRelay(std::function<void(Context_ptr)> visit)
+  {
+    for (auto [routerId, ctx] : relays)
+    {
+      VisitRouter(ctx, visit);
+    }
+  }
+
+  void
+  RouterHive::ForEachClient(std::function<void(Context_ptr)> visit)
+  {
+    for (auto [routerId, ctx] : clients)
+    {
+      VisitRouter(ctx, visit);
+    }
+  }
+
+  /// safely visit every router context
+  void
+  RouterHive::ForEachRouter(std::function<void(Context_ptr)> visit)
+  {
+    ForEachRelay(visit);
+    ForEachClient(visit);
   }
 
 }  // namespace tooling

@@ -24,8 +24,6 @@
 
 #include <lokimq/address.h>
 
-struct llarp_config;
-
 namespace llarp
 {
   using SectionValues_t = llarp::ConfigParser::SectionValues_t;
@@ -63,6 +61,8 @@ namespace llarp
     std::string m_encryptionKeyFile;
     std::string m_identityKeyFile;
     std::string m_transportKeyFile;
+
+    bool m_enablePeerStats = false;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -222,9 +222,6 @@ namespace llarp
 
     std::string
     generateBaseRouterConfig(fs::path defaultDataDir);
-
-    llarp_config*
-    Copy() const;
   };
 
   void

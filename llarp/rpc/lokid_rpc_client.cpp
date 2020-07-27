@@ -1,5 +1,6 @@
 #include <rpc/lokid_rpc_client.hpp>
 
+#include <stdexcept>
 #include <util/logging/logger.hpp>
 
 #include <router/abstractrouter.hpp>
@@ -36,18 +37,20 @@ namespace llarp
         : m_lokiMQ(std::move(lmq)), m_Router(r)
     {
       // m_lokiMQ->log_level(toLokiMQLogLevel(LogLevel::Instance().curLevel));
+
+      // TODO: proper auth here
+      auto lokidCategory = m_lokiMQ->add_category("lokid", lokimq::Access{lokimq::AuthLevel::none});
+      lokidCategory.add_request_command(
+          "get_peer_stats", [this](lokimq::Message& m) { HandleGetPeerStats(m); });
     }
 
     void
     LokidRpcClient::ConnectAsync(lokimq::address url)
     {
       LogInfo("connecting to lokid via LMQ at ", url);
-      m_lokiMQ->connect_remote(
+      m_Connection = m_lokiMQ->connect_remote(
           url,
-          [self = shared_from_this()](lokimq::ConnectionID c) {
-            self->m_Connection = std::move(c);
-            self->Connected();
-          },
+          [self = shared_from_this()](lokimq::ConnectionID) { self->Connected(); },
           [self = shared_from_this(), url](lokimq::ConnectionID, std::string_view f) {
             llarp::LogWarn("Failed to connect to lokid: ", f);
             LogicCall(self->m_Router->logic(), [self, url]() { self->ConnectAsync(url); });
@@ -100,10 +103,18 @@ namespace llarp
       constexpr auto PingInterval = 1min;
       constexpr auto NodeListUpdateInterval = 30s;
 
-      LogInfo("we connected to lokid [", *m_Connection, "]");
-      Command("admin.lokinet_ping");
-      m_lokiMQ->add_timer(
-          [self = shared_from_this()]() { self->Command("admin.lokinet_ping"); }, PingInterval);
+      auto makePingRequest = [self = shared_from_this()]() {
+        nlohmann::json payload = {{"version", {VERSION[0], VERSION[1], VERSION[2]}}};
+        self->Request(
+            "admin.lokinet_ping",
+            [](bool success, std::vector<std::string> data) {
+              (void)data;
+              LogDebug("Received response for ping. Successful: ", success);
+            },
+            payload.dump());
+      };
+      makePingRequest();
+      m_lokiMQ->add_timer(makePingRequest, PingInterval);
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
       UpdateServiceNodeList();
@@ -175,13 +186,13 @@ namespace llarp
                     "failed to get private key request "
                     "failed");
               }
-              if (data.empty())
+              if (data.empty() or data.size() < 2)
               {
                 throw std::runtime_error(
                     "failed to get private key request "
                     "data empty");
               }
-              const auto j = nlohmann::json::parse(data[0]);
+              const auto j = nlohmann::json::parse(data[1]);
               SecretKey k;
               if (not k.FromHex(j.at("service_node_ed25519_privkey").get<std::string>()))
               {
@@ -189,13 +200,88 @@ namespace llarp
               }
               promise.set_value(k);
             }
+            catch (const std::exception& e)
+            {
+              LogWarn("Caught exception while trying to request admin keys: ", e.what());
+              promise.set_exception(std::current_exception());
+            }
             catch (...)
             {
+              LogWarn("Caught non-standard exception while trying to request admin keys");
               promise.set_exception(std::current_exception());
             }
           });
       auto ftr = promise.get_future();
       return ftr.get();
+    }
+
+    void
+    LokidRpcClient::HandleGetPeerStats(lokimq::Message& msg)
+    {
+      LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");
+      for (auto str : msg.data)
+      {
+        LogInfo("    :", str);
+      }
+
+      assert(m_Router != nullptr);
+
+      if (not m_Router->peerDb())
+      {
+        LogWarn("HandleGetPeerStats called when router has no peerDb set up.");
+
+        // TODO: this can sometimes occur if lokid hits our API before we're done configuring
+        //       (mostly an issue in a loopback testnet)
+        msg.send_reply("EAGAIN");
+        return;
+      }
+
+      try
+      {
+        // msg.data[0] is expected to contain a bt list of router ids (in our preferred string
+        // format)
+        if (msg.data.empty())
+        {
+          LogWarn("lokid requested peer stats with no request body");
+          msg.send_reply("peer stats request requires list of router IDs");
+          return;
+        }
+
+        std::vector<std::string> routerIdStrings;
+        lokimq::bt_deserialize(msg.data[0], routerIdStrings);
+
+        std::vector<RouterID> routerIds;
+        routerIds.reserve(routerIdStrings.size());
+
+        for (const auto& routerIdString : routerIdStrings)
+        {
+          RouterID id;
+          if (not id.FromString(routerIdString))
+          {
+            LogWarn("lokid sent us an invalid router id: ", routerIdString);
+            msg.send_reply("Invalid router id");
+            return;
+          }
+
+          routerIds.push_back(std::move(id));
+        }
+
+        auto statsList = m_Router->peerDb()->listPeerStats(routerIds);
+
+        int32_t bufSize =
+            256 + (statsList.size() * 1024);  // TODO: tune this or allow to grow dynamically
+        auto buf = std::unique_ptr<uint8_t[]>(new uint8_t[bufSize]);
+        llarp_buffer_t llarpBuf(buf.get(), bufSize);
+
+        PeerStats::BEncodeList(statsList, &llarpBuf);
+
+        msg.send_reply(std::string_view((const char*)llarpBuf.base, llarpBuf.cur - llarpBuf.base));
+      }
+      catch (const std::exception& e)
+      {
+        LogError("Failed to handle get_peer_stats request: ", e.what());
+        msg.send_reply("server error");
+      }
     }
 
   }  // namespace rpc

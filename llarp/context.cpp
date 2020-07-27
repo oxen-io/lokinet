@@ -27,31 +27,17 @@ namespace llarp
     return logic && LogicCall(logic, f);
   }
 
-  bool
-  Context::Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir)
+  void
+  Context::Configure(Config conf)
   {
-    if (config)
-      throw std::runtime_error("Re-configure not supported");
+    if (nullptr != config.get())
+      throw std::runtime_error("Config already exists");
 
-    config = std::make_unique<Config>();
-
-    fs::path defaultDataDir = dataDir ? *dataDir : GetDefaultDataDir();
-
-    if (configfile.size())
-    {
-      if (!config->Load(configfile.c_str(), opts.isRouter, defaultDataDir))
-      {
-        config.release();
-        llarp::LogError("failed to load config file ", configfile);
-        return false;
-      }
-    }
+    config = std::make_unique<Config>(std::move(conf));
 
     logic = std::make_shared<Logic>();
 
     nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
-
-    return true;
   }
 
   bool
@@ -76,6 +62,10 @@ namespace llarp
   void
   Context::Setup(const RuntimeOptions& opts)
   {
+    /// Call one of the Configure() methods before calling Setup()
+    if (not config)
+      throw std::runtime_error("Cannot call Setup() on context without a Config");
+
     llarp::LogInfo(llarp::VERSION_FULL, " ", llarp::RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     if (mainloop == nullptr)
@@ -90,12 +80,12 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
-    router = std::make_unique<Router>(mainloop, logic);
+    router = makeRouter(mainloop, logic);
 
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
-    if (!router->Configure(config.get(), opts.isRouter, nodedb.get()))
+    if (!router->Configure(*config.get(), opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
 
     // must be done after router is made so we can use its disk io worker
@@ -103,6 +93,14 @@ namespace llarp
     // is provided by config
     if (!this->LoadDatabase())
       throw std::runtime_error("Config::Setup() failed to load database");
+  }
+
+  std::unique_ptr<AbstractRouter>
+  Context::makeRouter(
+      llarp_ev_loop_ptr netloop,
+      std::shared_ptr<Logic> logic)
+  {
+    return std::make_unique<Router>(netloop, logic);
   }
 
   int
@@ -197,14 +195,6 @@ namespace llarp
     llarp::LogDebug("free logic");
     logic.reset();
   }
-
-#ifdef LOKINET_HIVE
-  void
-  Context::InjectHive(tooling::RouterHive* hive)
-  {
-    router->hive = hive;
-  }
-#endif
 }  // namespace llarp
 
 extern "C"

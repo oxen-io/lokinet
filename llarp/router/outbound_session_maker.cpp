@@ -1,5 +1,7 @@
 #include <router/outbound_session_maker.hpp>
 
+#include <router/abstractrouter.hpp>
+#include <tooling/peer_stats_event.hpp>
 #include <link/server.hpp>
 #include <router_contact.hpp>
 #include <nodedb.hpp>
@@ -152,6 +154,7 @@ namespace llarp
 
   void
   OutboundSessionMaker::Init(
+      AbstractRouter* router,
       ILinkManager* linkManager,
       I_RCLookupHandler* rcLookup,
       Profiling* profiler,
@@ -159,6 +162,7 @@ namespace llarp
       llarp_nodedb* nodedb,
       WorkerFunc_t dowork)
   {
+    _router = router;
     _linkManager = linkManager;
     _rcLookup = rcLookup;
     _logic = logic;
@@ -298,8 +302,18 @@ namespace llarp
   void
   OutboundSessionMaker::CreatePendingSession(const RouterID& router)
   {
-    util::Lock l(_mutex);
-    pendingSessions.emplace(router, nullptr);
+    {
+      util::Lock l(_mutex);
+      pendingSessions.emplace(router, nullptr);
+    }
+
+    auto peerDb = _router->peerDb();
+    if (peerDb)
+    {
+      peerDb->modifyPeerStats(router, [](PeerStats& stats) { stats.numConnectionAttempts++; });
+    }
+
+    _router->NotifyRouterEvent<tooling::ConnectionAttemptEvent>(_router->pubkey(), router);
   }
 
   void

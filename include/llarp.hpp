@@ -5,6 +5,8 @@
 #include <util/types.hpp>
 #include <ev/ev.hpp>
 #include <nodedb.hpp>
+#include <crypto/crypto.hpp>
+#include <router/abstractrouter.hpp>
 
 #include <iostream>
 #include <map>
@@ -14,20 +16,10 @@
 
 struct llarp_ev_loop;
 
-#ifdef LOKINET_HIVE
-namespace tooling
-{
-  struct RouterHive;
-}  // namespace tooling
-#endif
-
 namespace llarp
 {
   class Logic;
-  struct AbstractRouter;
   struct Config;
-  struct Crypto;
-  struct CryptoManager;
   struct RouterContact;
   namespace thread
   {
@@ -43,12 +35,11 @@ namespace llarp
 
   struct Context
   {
-    std::unique_ptr<Crypto> crypto;
-    std::unique_ptr<CryptoManager> cryptoManager;
-    std::unique_ptr<AbstractRouter> router;
-    std::shared_ptr<Logic> logic;
-    std::unique_ptr<Config> config;
-    std::unique_ptr<llarp_nodedb> nodedb;
+    std::unique_ptr<Crypto> crypto = nullptr;
+    std::unique_ptr<CryptoManager> cryptoManager = nullptr;
+    std::unique_ptr<AbstractRouter> router = nullptr;
+    std::shared_ptr<Logic> logic = nullptr;
+    std::unique_ptr<llarp_nodedb> nodedb = nullptr;
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
@@ -67,8 +58,11 @@ namespace llarp
     void
     HandleSignal(int sig);
 
-    bool
-    Configure(const RuntimeOptions& opts, std::optional<fs::path> dataDir);
+    /// Configure given the specified config.
+    ///
+    /// note: consider using std::move() when passing conf in.
+    void
+    Configure(Config conf);
 
     bool
     IsUp() const;
@@ -90,16 +84,20 @@ namespace llarp
     bool
     CallSafe(std::function<void(void)> f);
 
-#ifdef LOKINET_HIVE
-    void
-    InjectHive(tooling::RouterHive* hive);
-#endif
+    /// Creates a router. Can be overridden to allow a different class of router
+    /// to be created instead. Defaults to llarp::Router.
+    virtual std::unique_ptr<AbstractRouter>
+    makeRouter(
+        llarp_ev_loop_ptr __netloop,
+        std::shared_ptr<Logic> logic);
+
+   protected:
+    std::unique_ptr<Config> config = nullptr;
 
    private:
     void
     SigINT();
 
-    std::string configfile;
     std::unique_ptr<std::promise<void>> closeWaiter;
   };
 

@@ -4,6 +4,7 @@
 
 #include <llarp.h>
 #include <config/config.hpp>
+#include <tooling/hive_context.hpp>
 
 #include <vector>
 #include <deque>
@@ -16,35 +17,26 @@ struct llarp_main;
 namespace llarp
 {
   struct Context;
-}
+}  // namespace llarp
 
 namespace tooling
 {
+  struct HiveRouter;  // Hive's version of Router
+
   struct RouterHive
   {
-    using Context_ptr = std::shared_ptr<llarp::Context>;
+    using Context_ptr = std::shared_ptr<HiveContext>;
 
    private:
     void
-    StartRouters(std::vector<llarp_main*>* routers, bool isRelay);
+    StartRouters(bool isRelay);
 
     void
-    AddRouter(
-        const std::shared_ptr<llarp::Config>& config,
-        std::vector<llarp_main*>* routers,
-        bool isRelay);
+    AddRouter(const std::shared_ptr<llarp::Config>& config, bool isRelay);
 
-    /// safely visit router
+    /// safely visit router (asynchronously)
     void
-    VisitRouter(llarp_main* router, std::function<void(Context_ptr)> visit);
-
-    /// safely visit relay at index N
-    void
-    VisitRelay(size_t index, std::function<void(Context_ptr)> visit);
-
-    /// safely visit client at index N
-    void
-    VisitClient(size_t index, std::function<void(Context_ptr)> visit);
+    VisitRouter(Context_ptr ctx, std::function<void(Context_ptr)> visit);
 
    public:
     RouterHive() = default;
@@ -73,31 +65,16 @@ namespace tooling
     std::deque<RouterEventPtr>
     GetAllEvents();
 
+    // functions to safely visit each relay and/or client's HiveContext
     void
-    ForEachRelay(std::function<void(Context_ptr)> visit)
-    {
-      for (size_t idx = 0; idx < relays.size(); ++idx)
-      {
-        VisitRelay(idx, visit);
-      }
-    }
+    ForEachRelay(std::function<void(Context_ptr)> visit);
+    void
+    ForEachClient(std::function<void(Context_ptr)> visit);
+    void
+    ForEachRouter(std::function<void(Context_ptr)> visit);
 
-    void
-    ForEachClient(std::function<void(Context_ptr)> visit)
-    {
-      for (size_t idx = 0; idx < clients.size(); ++idx)
-      {
-        VisitClient(idx, visit);
-      }
-    }
-
-    /// safely visit every router context
-    void
-    ForEachRouter(std::function<void(Context_ptr)> visit)
-    {
-      ForEachRelay(visit);
-      ForEachClient(visit);
-    }
+    HiveRouter*
+    GetRelay(const llarp::RouterID& id, bool needMutexLock = true);
 
     std::vector<size_t>
     RelayConnectedRelays();
@@ -105,8 +82,9 @@ namespace tooling
     std::vector<llarp::RouterContact>
     GetRelayRCs();
 
-    std::vector<llarp_main*> relays;
-    std::vector<llarp_main*> clients;
+    std::mutex routerMutex;
+    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> relays;
+    std::unordered_map<llarp::RouterID, Context_ptr, llarp::RouterID::Hash> clients;
 
     std::vector<std::thread> routerMainThreads;
 

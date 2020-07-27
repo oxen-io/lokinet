@@ -1,5 +1,6 @@
 #include "common.hpp"
 #include <llarp.hpp>
+#include <tooling/hive_context.hpp>
 #include <router/router.cpp>
 #include "llarp/handlers/pyhandler.hpp"
 namespace llarp
@@ -11,8 +12,10 @@ namespace llarp
     py::class_<Context, Context_ptr>(mod, "Context")
         .def(
             "Setup",
-            [](Context_ptr self, bool isRelay) -> bool { return self->Setup(isRelay) == 0; })
-        .def("Run", [](Context_ptr self) -> int { return self->Run(llarp_main_runtime_opts{}); })
+            [](Context_ptr self, bool isRouter) {
+              self->Setup({false, false, isRouter});
+            })
+        .def("Run", [](Context_ptr self) -> int { return self->Run(RuntimeOptions{}); })
         .def("Stop", [](Context_ptr self) { self->CloseAsync(); })
         .def("IsUp", &Context::IsUp)
         .def("IsRelay", [](Context_ptr self) -> bool { return self->router->IsServiceNode(); })
@@ -34,4 +37,19 @@ namespace llarp
             })
         .def("CallSafe", &Context::CallSafe);
   }
+
 }  // namespace llarp
+
+namespace tooling
+{
+  void
+  HiveContext_Init(py::module& mod)
+  {
+    using HiveContext_ptr = std::shared_ptr<HiveContext>;
+    py::class_<tooling::HiveContext, HiveContext_ptr, llarp::Context>(mod, "HiveContext")
+        .def(
+            "getRouterAsHiveRouter",
+            &tooling::HiveContext::getRouterAsHiveRouter,
+            py::return_value_policy::reference);
+  }
+}  // namespace tooling
