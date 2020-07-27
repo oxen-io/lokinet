@@ -9,9 +9,7 @@ namespace tooling
   }
 
   std::unique_ptr<llarp::AbstractRouter>
-  HiveContext::makeRouter(
-      llarp_ev_loop_ptr netloop,
-      std::shared_ptr<llarp::Logic> logic)
+  HiveContext::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<llarp::Logic> logic)
   {
     return std::make_unique<HiveRouter>(netloop, logic, m_hive);
   }

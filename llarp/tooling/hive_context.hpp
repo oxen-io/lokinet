@@ -12,9 +12,7 @@ namespace tooling
     HiveContext(RouterHive* hive);
 
     std::unique_ptr<llarp::AbstractRouter>
-    makeRouter(
-        llarp_ev_loop_ptr netloop,
-        std::shared_ptr<llarp::Logic> logic) override;
+    makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<llarp::Logic> logic) override;
 
     /// Get this context's router as a HiveRouter.
     ///

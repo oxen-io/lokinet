@@ -96,9 +96,7 @@ namespace llarp
   }
 
   std::unique_ptr<AbstractRouter>
-  Context::makeRouter(
-      llarp_ev_loop_ptr netloop,
-      std::shared_ptr<Logic> logic)
+  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
   {
     return std::make_unique<Router>(netloop, logic);
   }

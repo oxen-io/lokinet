@@ -6,7 +6,6 @@
 
 namespace llarp
 {
-
   constexpr auto RouterIdKey = "routerId";
   constexpr auto NumConnectionAttemptsKey = "numConnectionAttempts";
   constexpr auto NumConnectionSuccessesKey = "numConnectionSuccesses";
@@ -135,7 +134,6 @@ namespace llarp
 
     if (not bencode_end(buf))
       throw std::runtime_error("PeerStats: Could not end bencode dict");
-
   }
 
   void
