@@ -5,14 +5,14 @@ if(SHADOW)
     enable_lto(shadow-plugin)
 else()
     add_executable(lokinet main.cpp)
-    add_executable(lokinetctl lokinetctl.cpp)
-    enable_lto(lokinet lokinetctl)
+    add_executable(lokinet-vpn lokinet-vpn.cpp)
+    enable_lto(lokinet lokinet-vpn)
 
     if(TRACY_ROOT)
         target_sources(lokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
     endif()
 
-    foreach(exe lokinet lokinetctl)
+    foreach(exe lokinet lokinet-vpn)
         if(WIN32 AND NOT MSVC_VERSION)
             target_sources(${exe} PRIVATE ../llarp/win32/version.rc)
             target_link_libraries(${exe} PRIVATE ws2_32 iphlpapi)
@@ -38,12 +38,7 @@ else()
         install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
     endif()
 
-    if(CURL_FOUND)
-        target_include_directories(lokinetctl PRIVATE ${CURL_INCLUDE_DIRS})
-        target_link_libraries(lokinetctl PRIVATE ${CURL_LIBRARIES})
-    endif(CURL_FOUND)
 
-
-    install(PROGRAMS lokinet-vpn DESTINATION bin COMPONENT lokinet)
+    install(TARGETS lokinet-vpn RUNTIME DESTINATION bin COMPONENT lokinet)
     
 endif()
