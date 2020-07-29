@@ -205,15 +205,6 @@ add_library(liblokinet
   service/tag.cpp
 )
 
-if(TARGET curl)
-  # key_manager needs curl for now (to fetch service node keys from lokid)
-  target_link_libraries(liblokinet PUBLIC curl)
-  target_compile_definitions(liblokinet PRIVATE HAVE_CURL)
-  if(TARGET libcurl_external)
-    add_dependencies(liblokinet libcurl_external)
-  endif()
-endif()
-
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 
 enable_lto(lokinet-util lokinet-platform liblokinet)

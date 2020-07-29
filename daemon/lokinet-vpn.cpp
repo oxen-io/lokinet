@@ -1,6 +1,62 @@
 #include <lokimq/lokimq.h>
+#include <nlohmann/json.hpp>
 #include <cxxopts.hpp>
 #include <future>
+#include <vector>
+
+/// do a lokimq request on an lmq instance blocking style
+/// returns a json object parsed from the result
+std::optional<nlohmann::json>
+LMQ_Request(
+    lokimq::LokiMQ& lmq,
+    const lokimq::ConnectionID& id,
+    std::string_view method,
+    std::optional<nlohmann::json> args = std::nullopt)
+{
+  std::promise<std::optional<std::string>> result_promise;
+
+  auto handleRequest = [&result_promise](bool success, std::vector<std::string> result) {
+    if ((not success) or result.empty())
+    {
+      result_promise.set_value(std::nullopt);
+      return;
+    }
+    result_promise.set_value(result[0]);
+  };
+  if (args.has_value())
+  {
+    lmq.request(id, method, handleRequest, args->dump());
+  }
+  else
+  {
+    lmq.request(id, method, handleRequest);
+  }
+  auto ftr = result_promise.get_future();
+  const auto str = ftr.get();
+  if (str.has_value())
+    return nlohmann::json::parse(*str);
+  return std::nullopt;
+}
+
+/// get every ip address that is a gateway that isn't owned by interface with name ifname
+std::vector<std::string>
+GetGatewaysNotOnInterface(std::string ifname);
+
+/// add route to ipaddr via gateway ip
+void
+AddRoute(std::string ipaddr, std::string gateway);
+
+/// delete route to ipaddr via gateway ip
+void
+DelRoute(std::string ipaddr, std::string gateway);
+
+/// add default route via interface with name ifname
+void
+AddDefaultRouteViaInterface(std::string ifname);
+
+/// delete default route via interface with name ifname
+void
+DelDefaultRouteViaInterface(std::string ifname);
 
 int
 main(int argc, char* argv[])
@@ -11,10 +67,14 @@ main(int argc, char* argv[])
       "h,help", "help", cxxopts::value<bool>())("up", "put vpn up", cxxopts::value<bool>())(
       "down", "put vpn down", cxxopts::value<bool>())(
       "exit", "specify exit node address", cxxopts::value<std::string>())(
-      "rpc", "rpc url for lokinet", cxxopts::value<std::string>());
+      "rpc", "rpc url for lokinet", cxxopts::value<std::string>())(
+      "endpoint", "endpoint to use", cxxopts::value<std::string>())(
+      "token", "exit auth token to use", cxxopts::value<std::string>());
 
   lokimq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
+  std::string endpoint = "default";
+  std::optional<std::string> token;
   lokimq::LogLevel logLevel = lokimq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
@@ -42,11 +102,25 @@ main(int argc, char* argv[])
     }
     goUp = result.count("up") > 0;
     goDown = result.count("down") > 0;
+
+    if (result.count("endpoint") > 0)
+    {
+      endpoint = result["endpoint"].as<std::string>();
+    }
+    if (result.count("token") > 0)
+    {
+      token = result["token"].as<std::string>();
+    }
   }
   catch (const cxxopts::option_not_exists_exception& ex)
   {
     std::cerr << ex.what();
     std::cout << opts.help() << std::endl;
+    return 1;
+  }
+  catch (std::exception& ex)
+  {
+    std::cout << ex.what() << std::endl;
     return 1;
   }
   if ((not goUp) and (not goDown))
@@ -83,5 +157,176 @@ main(int argc, char* argv[])
     return 1;
   }
 
+  std::vector<std::string> firstHops;
+  std::string ifname;
+
+  const auto maybe_status = LMQ_Request(lmq, connID, "llarp.status");
+  if (not maybe_status.has_value())
+  {
+    std::cout << "call to llarp.status failed" << std::endl;
+    return 1;
+  }
+
+  try
+  {
+    // extract first hops
+    const auto& links = maybe_status->at("result")["links"]["outbound"];
+    for (const auto& link : links)
+    {
+      const auto& sessions = link["sessions"]["established"];
+      for (const auto& session : sessions)
+      {
+        std::string addr = session["remoteAddr"];
+        const auto pos = addr.find(":");
+        firstHops.push_back(addr.substr(0, pos));
+      }
+    }
+    // get interface name
+    ifname = maybe_status->at("result")["services"][endpoint]["ifname"];
+  }
+  catch (std::exception& ex)
+  {
+    std::cout << "failed to parse result: " << ex.what() << std::endl;
+    return 1;
+  }
+  if (goUp)
+  {
+    std::optional<nlohmann::json> maybe_result;
+    if (token.has_value())
+    {
+      maybe_result = LMQ_Request(
+          lmq,
+          connID,
+          "llarp.exit",
+          nlohmann::json{{"exit", exitAddress}, {"range", "0.0.0.0/0"}, {"token", *token}});
+    }
+    else
+    {
+      maybe_result = LMQ_Request(
+          lmq, connID, "llarp.exit", nlohmann::json{{"exit", exitAddress}, {"range", "0.0.0.0/0"}});
+    }
+
+    if (not maybe_result.has_value())
+    {
+      std::cout << "could not add exit" << std::endl;
+      return 1;
+    }
+
+    if (maybe_result->contains("error") and maybe_result->at("error").is_string())
+    {
+      std::cout << maybe_result->at("error").get<std::string>() << std::endl;
+      return 1;
+    }
+
+    const auto gateways = GetGatewaysNotOnInterface(ifname);
+    if (gateways.empty())
+    {
+      std::cout << "cannot determine default gateway" << std::endl;
+      return 1;
+    }
+    const auto ourGateway = gateways[0];
+    for (const auto& ip : firstHops)
+    {
+      AddRoute(ip, ourGateway);
+    }
+    AddDefaultRouteViaInterface(ifname);
+  }
+  if (goDown)
+  {
+    DelDefaultRouteViaInterface(ifname);
+    const auto gateways = GetGatewaysNotOnInterface(ifname);
+    const auto ourGateway = gateways[0];
+    for (const auto& ip : firstHops)
+    {
+      DelRoute(ip, ourGateway);
+    }
+    LMQ_Request(lmq, connID, "llarp.exit", nlohmann::json{{"range", "0.0.0.0/0"}, {"unmap", true}});
+  }
+
   return 0;
+}
+
+void
+AddRoute(std::string ip, std::string gateway)
+{
+  std::stringstream ss;
+#ifdef __linux__
+  ss << "ip route add " << ip << "/32 via " << gateway;
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
+#else
+#error unsupported platform
+#endif
+}
+
+void
+DelRoute(std::string ip, std::string gateway)
+{
+  std::stringstream ss;
+#ifdef __linux__
+  ss << "ip route del " << ip << "/32 via " << gateway;
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
+#else
+#error unsupported platform
+#endif
+}
+
+void
+AddDefaultRouteViaInterface(std::string ifname)
+{
+  std::stringstream ss;
+#ifdef __linux__
+  ss << "ip route add default dev " << ifname;
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
+#else
+#error unsupported platform
+#endif
+}
+
+void
+DelDefaultRouteViaInterface(std::string ifname)
+{
+  std::stringstream ss;
+#ifdef __linux__
+  ss << "ip route del default dev " << ifname;
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
+#else
+#error unsupported platform
+#endif
+}
+
+std::vector<std::string>
+GetGatewaysNotOnInterface(std::string ifname)
+{
+#ifdef __linux__
+  FILE* p = popen("ip route", "r");
+  if (p == nullptr)
+    return {};
+
+  std::vector<std::string> gateways;
+  char* line = nullptr;
+  size_t len = 0;
+  ssize_t read = 0;
+  while ((read = getline(&line, &len, p)) != -1)
+  {
+    std::string line_str(line, len);
+    std::vector<std::string> words;
+    std::istringstream instr(line_str);
+    for (std::string word; std::getline(instr, word, ' ');)
+    {
+      words.emplace_back(std::move(word));
+    }
+    if (words[0] == "default" and words[1] == "via" and words[3] == "dev" and words[4] != ifname)
+    {
+      gateways.emplace_back(std::move(words[2]));
+    }
+  }
+  pclose(p);
+  return gateways;
+#else
+#error unsupported platform
+#endif
 }
