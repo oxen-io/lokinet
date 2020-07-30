@@ -69,6 +69,10 @@ namespace llarp
     std::optional<uint16_t>
     getPort() const;
 
+    /// Return true if we have a port set otherwise return false
+    bool
+    hasPort() const;
+
     /// Set the port.
     ///
     /// @param port
@@ -113,6 +117,10 @@ namespace llarp
     /// @return string representation of this IpAddress
     std::string
     toString() const;
+
+    /// get ip address component
+    std::string
+    getIpAddr() const;
 
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;
