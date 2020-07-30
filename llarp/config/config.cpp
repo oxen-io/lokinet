@@ -345,16 +345,28 @@ namespace llarp
     LinkInfo info;
     info.port = 0;
     info.addressFamily = AF_INET;
-    info.interface = name;
 
-    std::vector<std::string_view> splits = split(value, ',');
-    for (std::string_view str : splits)
+    if (name == "address")
     {
-      int asNum = std::atoi(str.data());
-      if (asNum > 0)
-        info.port = asNum;
+      const IpAddress addr{value};
+      if (not addr.hasPort())
+        throw std::invalid_argument("no port provided in link address");
+      info.interface = addr.getIpAddr();
+      info.port = *addr.getPort();
+    }
+    else
+    {
+      info.interface = name;
 
-      // otherwise, ignore ("future-proofing")
+      std::vector<std::string_view> splits = split(value, ',');
+      for (std::string_view str : splits)
+      {
+        int asNum = std::atoi(str.data());
+        if (asNum > 0)
+          info.port = asNum;
+
+        // otherwise, ignore ("future-proofing")
+      }
     }
 
     return info;

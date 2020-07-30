@@ -137,6 +137,18 @@ namespace llarp
     return m_ipAddress;  // TODO: port
   }
 
+  std::string
+  IpAddress::getIpAddr() const
+  {
+    return m_ipAddress;
+  }
+
+  bool
+  IpAddress::hasPort() const
+  {
+    return m_port.has_value();
+  }
+
   bool
   IpAddress::operator<(const IpAddress& other) const
   {
