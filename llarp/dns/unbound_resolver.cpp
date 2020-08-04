@@ -27,23 +27,45 @@ namespace llarp::dns
   void
   UnboundResolver::DeregisterPollFD()
   {
+#ifdef _WIN32
+    runnerThread->join();
+#else
     eventLoop->deregister_poll_fd_readable(ub_fd(unboundContext));
+#endif
   }
 
   void
   UnboundResolver::RegisterPollFD()
   {
+#ifdef _WIN32
+    runnerThread = std::make_unique<std::thread>([self = shared_from_this()]() {
+      while (self->started)
+      {
+        ub_wait(self->unboundContext);
+      }
+    });
+#else
     eventLoop->register_poll_fd_readable(
         ub_fd(unboundContext), [=]() { ub_process(unboundContext); });
+#endif
   }
 
-  UnboundResolver::UnboundResolver(
-      llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc, FailFunction failFunc)
+  UnboundResolver::UnboundResolver(llarp_ev_loop_ptr loop, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
-      , eventLoop(eventLoop)
-      , replyFunc(replyFunc)
-      , failFunc(failFunc)
+      , eventLoop(loop)
+#ifdef _WIN32
+      // on win32 we use another thread for io because LOL windows
+      , replyFunc([loop, reply](auto source, auto buf) {
+        loop->call_soon([source, buf, reply]() { reply(source, buf); });
+      })
+      , failFunc([loop, fail](auto source, auto message) {
+        loop->call_soon([source, message, fail]() { fail(source, message); });
+      })
+#else
+      , replyFunc(reply)
+      , failFunc(fail)
+#endif
   {
   }
 
@@ -99,9 +121,8 @@ namespace llarp::dns
     {
       return false;
     }
-
+    started = true;
     RegisterPollFD();
-
     return true;
   }
 
@@ -125,8 +146,6 @@ namespace llarp::dns
       failFunc(source, std::move(msg));
       return;
     }
-
-    started = true;
 
     const auto& q = msg.questions[0];
     auto* lookup = new PendingUnboundLookup{weak_from_this(), msg, source};

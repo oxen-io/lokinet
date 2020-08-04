@@ -11,6 +11,10 @@
 
 #include <dns/message.hpp>
 
+#ifdef _WIN32
+#include <thread>
+#endif
+
 namespace llarp::dns
 {
   using ReplyFunction = std::function<void(SockAddr source, std::vector<byte_t> buf)>;
@@ -20,8 +24,12 @@ namespace llarp::dns
   {
    private:
     ub_ctx* unboundContext;
+#ifdef _WIN32
+    /// windows needs to run as blocking in another thread to work at all becuase LOL windows
+    std::unique_ptr<std::thread> runnerThread;
+#endif
 
-    bool started;
+    std::atomic<bool> started;
 
     llarp_ev_loop_ptr eventLoop;
     ReplyFunction replyFunc;
