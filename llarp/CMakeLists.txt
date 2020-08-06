@@ -106,6 +106,7 @@ add_library(liblokinet
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
+  dns/srv_data.cpp
   dns/unbound_resolver.cpp
 
   consensus/table.cpp

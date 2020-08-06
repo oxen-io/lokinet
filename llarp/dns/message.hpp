@@ -9,6 +9,8 @@ namespace llarp
 {
   namespace dns
   {
+    struct SRVData;
+
     using MsgID_t = uint16_t;
     using Fields_t = uint16_t;
     using Count_t = uint16_t;
@@ -65,6 +67,9 @@ namespace llarp
 
       void
       AddAReply(std::string name, RR_TTL_t ttl = 1);
+
+      void
+      AddSRVReply(std::vector<SRVData> records, RR_TTL_t ttl = 1);
 
       void
       AddNSReply(std::string name, RR_TTL_t ttl = 1);

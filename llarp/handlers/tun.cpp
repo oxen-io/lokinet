@@ -22,6 +22,8 @@
 
 #include <util/str.hpp>
 
+#include <dns/srv_data.hpp>
+
 namespace llarp
 {
   namespace handlers
@@ -478,6 +480,19 @@ namespace llarp
         msg.AddNXReply();
         reply(msg);
         return true;
+      }
+      //TODO: SRV Record
+      else if (msg.questions[0].qtype == dns::qTypeSRV)
+      {
+        llarp::LogWarn("SRV request for: ", qname);
+        std::vector<llarp::dns::SRVData> records;
+        records.emplace_back(llarp::dns::SRVData{"_foo._bar",42,69,1337,"garbage.loki"});
+        records.emplace_back(llarp::dns::SRVData{"_foo._bar",24,25,26,""});
+        records.emplace_back(llarp::dns::SRVData{"_foo._bar",0,0,0,"."});
+
+        msg.AddSRVReply(records);
+
+        reply(msg);
       }
       else
       {

@@ -7,6 +7,7 @@ namespace llarp
 {
   namespace dns
   {
+    constexpr uint16_t qTypeSRV = 33;
     constexpr uint16_t qTypeAAAA = 28;
     constexpr uint16_t qTypeTXT = 16;
     constexpr uint16_t qTypeMX = 15;
