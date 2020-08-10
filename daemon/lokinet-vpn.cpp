@@ -3,6 +3,7 @@
 #include <cxxopts.hpp>
 #include <future>
 #include <vector>
+#include <array>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
