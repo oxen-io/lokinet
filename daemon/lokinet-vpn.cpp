@@ -307,7 +307,7 @@ AddDefaultRouteViaInterface(std::string ifname)
 #elif _WIN32
   ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #elif __APPLE__
-  ss << "route -n add -net 0.0.0.0 " << ifname;
+  ss << "route -n add -net 0.0.0.0 " << ifname << " 0.0.0.0";
 #else
 #error unsupported platform
 #endif
@@ -324,7 +324,7 @@ DelDefaultRouteViaInterface(std::string ifname)
 #elif _WIN32
   ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #elif __APPLE__
-  ss << "route -n delete -net 0.0.0.0 " << ifname;
+  ss << "route -n delete -net 0.0.0.0 " << ifname << " 0.0.0.0";
 #else
 #error unsupported platform
 #endif
