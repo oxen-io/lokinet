@@ -395,7 +395,7 @@ GetGatewaysNotOnInterface(std::string ifname)
   while ((read = getline(&line, &len, p)) != -1)
   {
     std::string line_str(line, len);
-    if (line_str.find("default") == line_str.begin())
+    if (line_str.find("default") == 0)
     {
       line_str = line_str.substr(7);
       while (line_str[0] == ' ')
@@ -405,7 +405,9 @@ GetGatewaysNotOnInterface(std::string ifname)
       const auto pos = line_str.find(" ");
       if (pos != std::string::npos)
       {
-        gateways.emplace_back(line_str.substr(0, pos));
+        auto gateway = line_str.substr(0, pos);
+        if (gateway != interface)
+          gateways.emplace_back(std::move(gateway));
       }
     }
   }
