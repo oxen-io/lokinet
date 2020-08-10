@@ -391,8 +391,8 @@ GetGatewaysNotOnInterface(std::string ifname)
 #undef FREE
   return gateways;
 #elif __APPLE__
-  const auto maybe = llarp::GetIfAddr(ifname);
-  if(not maybe.has_value())
+  const auto maybe = llarp::GetIFAddr(ifname);
+  if (not maybe.has_value())
     return gateways;
   const auto interface = maybe->toString();
   // mac os is so godawful man
