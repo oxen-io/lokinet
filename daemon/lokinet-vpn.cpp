@@ -266,7 +266,7 @@ AddRoute(std::string ip, std::string gateway)
   ss << "ip route add " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway;
-#elif __apple__
+#elif __APPLE__
   ss << "route -n add -host " << ip << " " << gateway;
 #else
 #error unsupported platform
@@ -283,7 +283,7 @@ DelRoute(std::string ip, std::string gateway)
   ss << "ip route del " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway;
-#elif __apple__
+#elif __APPLE__
   ss << "route -n delete -host " << ip << " " << gateway;
 #else
 #error unsupported platform
@@ -300,7 +300,7 @@ AddDefaultRouteViaInterface(std::string ifname)
   ss << "ip route add default dev " << ifname;
 #elif _WIN32
   ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
-#elif __apple__
+#elif __APPLE__
   ss << "route -n add -net 0.0.0.0 " << ifname;
 #else
 #error unsupported platform
@@ -317,9 +317,8 @@ DelDefaultRouteViaInterface(std::string ifname)
   ss << "ip route del default dev " << ifname;
 #elif _WIN32
   ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
-#elif __apple__
+#elif __APPLE__
   ss << "route -n delete -net 0.0.0.0 " << ifname;
-#else
 #else
 #error unsupported platform
 #endif
@@ -385,7 +384,7 @@ GetGatewaysNotOnInterface(std::string ifname)
 #undef MALLOC
 #undef FREE
   return gateways;
-#elif __apple__
+#elif __APPLE__
   // mac os is so godawful man
   FILE* p = popen("netstat -rn -f inet", "r");
   if (p == nullptr)
