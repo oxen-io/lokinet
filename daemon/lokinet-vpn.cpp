@@ -198,7 +198,11 @@ main(int argc, char* argv[])
 #ifdef _WIN32
     // strip off the "::ffff."
     ifname = maybe_status->at("result")["services"][endpoint]["ifaddr"];
-    ifname = ifname.substr(7);
+    const auto pos = ifname.find("/");
+    if (pos != std::string::npos)
+    {
+      ifname = ifname.substr(0, pos);
+    }
 #else
     ifname = maybe_status->at("result")["services"][endpoint]["ifname"];
 #endif
