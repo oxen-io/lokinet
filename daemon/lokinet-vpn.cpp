@@ -275,20 +275,26 @@ main(int argc, char* argv[])
 }
 
 void
+Execute(std::string cmd)
+{
+  std::cout << cmd << std::endl;
+  system(cmd.c_str());
+}
+
+void
 AddRoute(std::string ip, std::string gateway)
 {
   std::stringstream ss;
 #ifdef __linux__
   ss << "ip route add " << ip << "/32 via " << gateway;
 #elif _WIN32
-  ss << "route ADD " << ip << " MASK 255.255.255.255 METRIC 2 " << gateway;
+  ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
   ss << "route -n add -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+  Execute(ss.str());
 }
 
 void
@@ -298,14 +304,13 @@ DelRoute(std::string ip, std::string gateway)
 #ifdef __linux__
   ss << "ip route del " << ip << "/32 via " << gateway;
 #elif _WIN32
-  ss << "route DELETE " << ip << " MASK 255.255.255.255 METRIC 2" << gateway;
+  ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
   ss << "route -n delete -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+  Execute(ss.str());
 }
 
 void
@@ -317,12 +322,11 @@ AddDefaultRouteViaInterface(std::string ifname)
 #elif _WIN32
   ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #elif __APPLE__
-  ss << "route -n add -net 0.0.0.0 " << ifname << " 0.0.0.0";
+  ss << "route -n add -net 0.0.0.0 -interface " << ifname;
 #else
 #error unsupported platform
 #endif
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+  Execute(ss.str());
 }
 
 void
@@ -334,12 +338,11 @@ DelDefaultRouteViaInterface(std::string ifname)
 #elif _WIN32
   ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #elif __APPLE__
-  ss << "route -n delete -net 0.0.0.0 " << ifname << " 0.0.0.0";
+  ss << "route -n delete -net 0.0.0.0 -interface " << ifname;
 #else
 #error unsupported platform
 #endif
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+  Execute(ss.str());
 }
 
 std::vector<std::string>
