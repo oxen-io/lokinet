@@ -375,24 +375,34 @@ GetGatewaysNotOnInterface(std::string ifname)
   pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
   if (pIpForwardTable == nullptr)
     return gateways;
-  if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) != NO_ERROR)
+
+  if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
   {
     FREE(pIpForwardTable);
-    return gateways;
-  }
-  for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
-  {
-    struct in_addr gateway, interface_addr;
-    gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-    interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
-    std::array<char, 128> interface_str{};
-    strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-    std::string interface_name{interface_str.data()};
-    if ((!gateway.S_un.S_addr) and interface_name != ifname)
+    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
+    if (pIpForwardTable == nullptr)
     {
-      gateways.push_back(std::move(interface_name));
+      return gateways;
     }
   }
+
+  if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
+  {
+    for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+    {
+      struct in_addr gateway, interface_addr;
+      gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
+      interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
+      std::array<char, 128> interface_str{};
+      strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      std::string interface_name{interface_str.data()};
+      if ((!gateway.S_un.S_addr) and interface_name != ifname)
+      {
+        gateways.push_back(std::move(interface_name));
+      }
+    }
+  }
+  FREE(pIpForwardTable);
 #undef MALLOC
 #undef FREE
   return gateways;
