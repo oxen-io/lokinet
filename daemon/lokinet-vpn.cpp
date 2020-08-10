@@ -281,7 +281,7 @@ AddRoute(std::string ip, std::string gateway)
 #ifdef __linux__
   ss << "ip route add " << ip << "/32 via " << gateway;
 #elif _WIN32
-  ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway;
+  ss << "route ADD " << ip << " MASK 255.255.255.255 METRIC 2 " << gateway;
 #elif __APPLE__
   ss << "route -n add -host " << ip << " " << gateway;
 #else
@@ -298,7 +298,7 @@ DelRoute(std::string ip, std::string gateway)
 #ifdef __linux__
   ss << "ip route del " << ip << "/32 via " << gateway;
 #elif _WIN32
-  ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway;
+  ss << "route DELETE " << ip << " MASK 255.255.255.255 METRIC 2" << gateway;
 #elif __APPLE__
   ss << "route -n delete -host " << ip << " " << gateway;
 #else
