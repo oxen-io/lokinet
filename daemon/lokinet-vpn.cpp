@@ -4,6 +4,17 @@
 #include <future>
 #include <vector>
 
+#ifdef _WIN32
+// add the unholy windows headers for iphlpapi
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <stdio.h>
+
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "ws2_32.lib")
+#endif
+
 /// do a lokimq request on an lmq instance blocking style
 /// returns a json object parsed from the result
 std::optional<nlohmann::json>
@@ -252,11 +263,13 @@ AddRoute(std::string ip, std::string gateway)
   std::stringstream ss;
 #ifdef __linux__
   ss << "ip route add " << ip << "/32 via " << gateway;
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+#elif _WIN32
+  ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway;
 #else
 #error unsupported platform
 #endif
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
 }
 
 void
@@ -265,11 +278,13 @@ DelRoute(std::string ip, std::string gateway)
   std::stringstream ss;
 #ifdef __linux__
   ss << "ip route del " << ip << "/32 via " << gateway;
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+#elif _WIN32
+  ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway;
 #else
 #error unsupported platform
 #endif
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
 }
 
 void
@@ -278,11 +293,13 @@ AddDefaultRouteViaInterface(std::string ifname)
   std::stringstream ss;
 #ifdef __linux__
   ss << "ip route add default dev " << ifname;
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+#elif _WIN32
+  ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #else
 #error unsupported platform
 #endif
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
 }
 
 void
@@ -291,22 +308,23 @@ DelDefaultRouteViaInterface(std::string ifname)
   std::stringstream ss;
 #ifdef __linux__
   ss << "ip route del default dev " << ifname;
-  const auto cmd_str = ss.str();
-  system(cmd_str.c_str());
+#elif _WIN32
+  ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
 #else
 #error unsupported platform
 #endif
+  const auto cmd_str = ss.str();
+  system(cmd_str.c_str());
 }
 
 std::vector<std::string>
 GetGatewaysNotOnInterface(std::string ifname)
 {
+  std::vector<std::string> gateways;
 #ifdef __linux__
   FILE* p = popen("ip route", "r");
   if (p == nullptr)
-    return {};
-
-  std::vector<std::string> gateways;
+    return gateways;
   char* line = nullptr;
   size_t len = 0;
   ssize_t read = 0;
@@ -325,6 +343,33 @@ GetGatewaysNotOnInterface(std::string ifname)
     }
   }
   pclose(p);
+  return gateways;
+#elif _WIN32
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+  PMIB_IPFORWARDTABLE pIpForwardTable;
+
+  pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
+  if (pIpForwardTable == nullptr)
+    return gateways;
+  if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) != NO_ERROR)
+  {
+    FREE(pIpForwardTable);
+    return gateways;
+  }
+  for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+  {
+    in_addr gateway;
+    gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
+    if (!gateway.S_un.S_addr)
+    {
+      std::array<char, 128> gateway_str{};
+      strcpy_s(gateway_str.data(), gateway_str.size(), inet_ntoa(gateway));
+      gateways.emplace_back(gateway_str);
+    }
+  }
+#undef MALLOC
+#undef FREE
   return gateways;
 #else
 #error unsupported platform
