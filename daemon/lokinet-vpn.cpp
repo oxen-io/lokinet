@@ -197,7 +197,8 @@ main(int argc, char* argv[])
     // get interface name
 #ifdef _WIN32
     // strip off the "::ffff."
-    ifname = maybe_status->at("result")["services"][endpoint]["ifaddr"].substr(7);
+    ifname = maybe_status->at("result")["services"][endpoint]["ifaddr"];
+    ifname = ifname.substr(7);
 #else
     ifname = maybe_status->at("result")["services"][endpoint]["ifname"];
 #endif
@@ -387,7 +388,7 @@ GetGatewaysNotOnInterface(std::string ifname)
     std::array<char, 128> interface_str{};
     strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
     std::string interface_name{interface_str.data()};
-    if ((!gateway.S_un.S_addr) and interface_addr != ifname)
+    if ((!gateway.S_un.S_addr) and interface_name != ifname)
     {
       gateways.push_back(std::move(interface_name));
     }
