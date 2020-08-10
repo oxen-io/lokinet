@@ -349,6 +349,8 @@ GetGatewaysNotOnInterface(std::string ifname)
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
   PMIB_IPFORWARDTABLE pIpForwardTable;
+  DWORD dwSize = 0;
+  DWORD dwRetVal = 0;
 
   pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
   if (pIpForwardTable == nullptr)
@@ -360,9 +362,12 @@ GetGatewaysNotOnInterface(std::string ifname)
   }
   for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
   {
-    in_addr gateway;
+    in_addr gateway, interface;
     gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-    if (!gateway.S_un.S_addr)
+    interface.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
+    std::array<char, 128> interface_str{};
+    strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface));
+    if ((!gateway.S_un.S_addr) and std::string{interface_str.data()} != interface)
     {
       std::array<char, 128> gateway_str{};
       strcpy_s(gateway_str.data(), gateway_str.size(), inet_ntoa(gateway));
