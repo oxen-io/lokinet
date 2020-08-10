@@ -367,11 +367,10 @@ GetGatewaysNotOnInterface(std::string ifname)
     interface.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
     std::array<char, 128> interface_str{};
     strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface));
-    if ((!gateway.S_un.S_addr) and std::string{interface_str.data()} != interface)
+    std::string interface_name{interface_str.data()};
+    if ((!gateway.S_un.S_addr) and interface_name != interface)
     {
-      std::array<char, 128> gateway_str{};
-      strcpy_s(gateway_str.data(), gateway_str.size(), inet_ntoa(gateway));
-      gateways.emplace_back(gateway_str.data());
+      gateways.emplace(std::move(interface_name));
     }
   }
 #undef MALLOC
