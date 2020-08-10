@@ -195,7 +195,12 @@ main(int argc, char* argv[])
       }
     }
     // get interface name
+#ifdef _WIN32
+    // strip off the "::ffff."
+    ifname = maybe_status->at("result")["services"][endpoint]["ifaddr"].substr(7);
+#else
     ifname = maybe_status->at("result")["services"][endpoint]["ifname"];
+#endif
   }
   catch (std::exception& ex)
   {
@@ -376,15 +381,15 @@ GetGatewaysNotOnInterface(std::string ifname)
   }
   for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
   {
-    in_addr gateway, interface;
+    struct in_addr gateway, interface_addr;
     gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-    interface.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
+    interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
     std::array<char, 128> interface_str{};
-    strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface));
+    strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
     std::string interface_name{interface_str.data()};
-    if ((!gateway.S_un.S_addr) and interface_name != interface)
+    if ((!gateway.S_un.S_addr) and interface_addr != ifname)
     {
-      gateways.emplace(std::move(interface_name));
+      gateways.push_back(std::move(interface_name));
     }
   }
 #undef MALLOC
