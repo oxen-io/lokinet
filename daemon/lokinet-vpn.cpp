@@ -406,7 +406,7 @@ GetGatewaysNotOnInterface(std::string ifname)
       if (pos != std::string::npos)
       {
         auto gateway = line_str.substr(0, pos);
-        if (gateway != interface)
+        if (gateway != ifname)
           gateways.emplace_back(std::move(gateway));
       }
     }
