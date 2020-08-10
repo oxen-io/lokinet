@@ -371,7 +371,7 @@ GetGatewaysNotOnInterface(std::string ifname)
     {
       std::array<char, 128> gateway_str{};
       strcpy_s(gateway_str.data(), gateway_str.size(), inet_ntoa(gateway));
-      gateways.emplace_back(gateway_str);
+      gateways.emplace_back(gateway_str.data());
     }
   }
 #undef MALLOC
