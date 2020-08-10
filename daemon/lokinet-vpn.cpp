@@ -266,6 +266,8 @@ AddRoute(std::string ip, std::string gateway)
   ss << "ip route add " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway;
+#elif __apple__
+  ss << "route -n add -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -281,6 +283,8 @@ DelRoute(std::string ip, std::string gateway)
   ss << "ip route del " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway;
+#elif __apple__
+  ss << "route -n delete -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -296,6 +300,8 @@ AddDefaultRouteViaInterface(std::string ifname)
   ss << "ip route add default dev " << ifname;
 #elif _WIN32
   ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
+#elif __apple__
+  ss << "route -n add -net 0.0.0.0 " << ifname;
 #else
 #error unsupported platform
 #endif
@@ -311,6 +317,9 @@ DelDefaultRouteViaInterface(std::string ifname)
   ss << "ip route del default dev " << ifname;
 #elif _WIN32
   ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
+#elif __apple__
+  ss << "route -n delete -net 0.0.0.0 " << ifname;
+#else
 #else
 #error unsupported platform
 #endif
@@ -375,6 +384,33 @@ GetGatewaysNotOnInterface(std::string ifname)
   }
 #undef MALLOC
 #undef FREE
+  return gateways;
+#elif __apple__
+  // mac os is so godawful man
+  FILE* p = popen("netstat -rn -f inet", "r");
+  if (p == nullptr)
+    return gateways;
+  char* line = nullptr;
+  size_t len = 0;
+  ssize_t read = 0;
+  while ((read = getline(&line, &len, p)) != -1)
+  {
+    std::string line_str(line, len);
+    if (line_str.find("default") == line_str.begin())
+    {
+      line_str = line_str.substr(7);
+      while (line_str[0] == ' ')
+      {
+        line_str = line_str.substr(1);
+      }
+      const auto pos = line_str.find(" ");
+      if (pos != std::string::npos)
+      {
+        gateways.emplace_back(line_str.substr(0, pos));
+      }
+    }
+  }
+  pclose(p);
   return gateways;
 #else
 #error unsupported platform
