@@ -4,6 +4,7 @@
 #include <future>
 #include <vector>
 #include <array>
+#include <net/net.hpp>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
@@ -247,6 +248,11 @@ main(int argc, char* argv[])
   {
     DelDefaultRouteViaInterface(ifname);
     const auto gateways = GetGatewaysNotOnInterface(ifname);
+    if (gateways.empty())
+    {
+      std::cout << "cannot determine default gateway" << std::endl;
+      return 1;
+    }
     const auto ourGateway = gateways[0];
     for (const auto& ip : firstHops)
     {
@@ -385,6 +391,10 @@ GetGatewaysNotOnInterface(std::string ifname)
 #undef FREE
   return gateways;
 #elif __APPLE__
+  const auto maybe = llarp::GetIfAddr(ifname);
+  if(not maybe.has_value())
+    return gateways;
+  const auto interface = maybe->toString();
   // mac os is so godawful man
   FILE* p = popen("netstat -rn -f inet", "r");
   if (p == nullptr)
@@ -406,7 +416,7 @@ GetGatewaysNotOnInterface(std::string ifname)
       if (pos != std::string::npos)
       {
         auto gateway = line_str.substr(0, pos);
-        if (gateway != ifname)
+        if (gateway != interface)
           gateways.emplace_back(std::move(gateway));
       }
     }
