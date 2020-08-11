@@ -316,35 +316,31 @@ DelRoute(std::string ip, std::string gateway)
 void
 AddDefaultRouteViaInterface(std::string ifname)
 {
-  std::stringstream ss;
 #ifdef __linux__
-  ss << "ip route add default dev " << ifname;
+  Execute("ip route add default dev " + ifname);
 #elif _WIN32
-  ss << "route ADD 0.0.0.0 MASK 128.0.0.0 " << ifname;
-  ss << "route ADD 128.0.0.0 MASK 128.0.0.0 " << ifname;
+  Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
+  Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-  ss << "route -n add -net 0.0.0.0 -interface " << ifname;
+  Execute("route -n add -net 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
-  Execute(ss.str());
 }
 
 void
 DelDefaultRouteViaInterface(std::string ifname)
 {
-  std::stringstream ss;
 #ifdef __linux__
-  ss << "ip route del default dev " << ifname;
+  Execute("ip route del default dev " + ifname);
 #elif _WIN32
-  ss << "route DELETE 0.0.0.0 MASK 128.0.0.0 " << ifname;
-  ss << "route DELETE 128.0.0.0 MASK 128.0.0.0 " << ifname;
+  Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
+  Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-  ss << "route -n delete -net 0.0.0.0 -interface " << ifname;
+  Execute("route -n delete -net 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
-  Execute(ss.str());
 }
 
 std::vector<std::string>
