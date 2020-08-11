@@ -11,10 +11,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
-#include <stdio.h>
-
-#pragma comment(lib, "iphlpapi.lib")
-#pragma comment(lib, "ws2_32.lib")
+#include <strsafe.h>
 #endif
 
 /// do a lokimq request on an lmq instance blocking style
@@ -319,6 +316,7 @@ AddDefaultRouteViaInterface(std::string ifname)
 #ifdef __linux__
   Execute("ip route add default dev " + ifname);
 #elif _WIN32
+  ifname.back()++;
   Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
   Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
@@ -334,6 +332,7 @@ DelDefaultRouteViaInterface(std::string ifname)
 #ifdef __linux__
   Execute("ip route del default dev " + ifname);
 #elif _WIN32
+  ifname.back()++;
   Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
   Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
@@ -399,7 +398,7 @@ GetGatewaysNotOnInterface(std::string ifname)
       gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
       interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
       std::array<char, 128> interface_str{};
-      strcpy_s(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
       std::string interface_name{interface_str.data()};
       if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
