@@ -320,7 +320,8 @@ AddDefaultRouteViaInterface(std::string ifname)
 #ifdef __linux__
   ss << "ip route add default dev " << ifname;
 #elif _WIN32
-  ss << "route ADD 0.0.0.0 MASK 0.0.0.0 " << ifname;
+  ss << "route ADD 0.0.0.0 MASK 128.0.0.0 " << ifname;
+  ss << "route ADD 128.0.0.0 MASK 128.0.0.0 " << ifname;
 #elif __APPLE__
   ss << "route -n add -net 0.0.0.0 -interface " << ifname;
 #else
@@ -336,7 +337,8 @@ DelDefaultRouteViaInterface(std::string ifname)
 #ifdef __linux__
   ss << "ip route del default dev " << ifname;
 #elif _WIN32
-  ss << "route DELETE 0.0.0.0 MASK 0.0.0.0 " << ifname;
+  ss << "route DELETE 0.0.0.0 MASK 128.0.0.0 " << ifname;
+  ss << "route DELETE 128.0.0.0 MASK 128.0.0.0 " << ifname;
 #elif __APPLE__
   ss << "route -n delete -net 0.0.0.0 -interface " << ifname;
 #else
