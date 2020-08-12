@@ -42,10 +42,13 @@ operator delete(void* ptr, size_t) noexcept
 #endif
 
 #ifdef _WIN32
-#define wmin(x, y) (((x) < (y)) ? (x) : (y))
-#define MIN wmin
+#include <setjmp.h>
+#include <tchar.h>
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
+extern "C" VOID FAR PASCAL
+win32_daemon_entry(DWORD, LPTSTR*);
+jmp_buf svc_entry;
 #endif
 
 std::shared_ptr<llarp::Context> ctx;
@@ -90,22 +93,22 @@ void install_win32_daemon()
     SC_HANDLE schService;
     TCHAR szPath[MAX_PATH];
 
-    if( !GetModuleFileName( "", szPath, MAX_PATH ) )
+    if( !GetModuleFileName( nullptr, szPath, MAX_PATH ) )
     {
-        printf("Cannot install service (%d)\n", GetLastError());
+        llarp::LogError("Cannot install service ", GetLastError());
         return;
     }
 
     // Get a handle to the SCM database. 
  
     schSCManager = OpenSCManager( 
-        NULL,                    // local computer
-        NULL,                    // ServicesActive database 
+        nullptr,                    // local computer
+        nullptr,                    // ServicesActive database 
         SC_MANAGER_ALL_ACCESS);  // full access rights 
  
-    if (NULL == schSCManager) 
+    if (nullptr == schSCManager) 
     {
-        printf("OpenSCManager failed (%d)\n", GetLastError());
+        llarp::LogError("OpenSCManager failed ", GetLastError());
         return;
     }
 
@@ -120,19 +123,19 @@ void install_win32_daemon()
         SERVICE_DEMAND_START,      // start type 
         SERVICE_ERROR_NORMAL,      // error control type 
         szPath,                    // path to service's binary 
-        NULL,                      // no load ordering group 
-        NULL,                      // no tag identifier 
-        NULL,                      // no dependencies 
-        NULL,                      // LocalSystem account 
-        NULL);                     // no password 
+        nullptr,                      // no load ordering group 
+        nullptr,                      // no tag identifier 
+        nullptr,                      // no dependencies 
+        nullptr,                      // LocalSystem account 
+        nullptr);                     // no password 
  
-    if (schService == NULL) 
+    if (schService == nullptr) 
     {
-        printf("CreateService failed (%d)\n", GetLastError()); 
+        llarp::LogError("CreateService failed ", GetLastError()); 
         CloseServiceHandle(schSCManager);
         return;
     }
-    else printf("Service installed successfully\n"); 
+    else llarp::LogInfo("Service installed successfully"); 
 
     CloseServiceHandle(schService); 
     CloseServiceHandle(schSCManager);
@@ -147,13 +150,13 @@ void uninstall_win32_daemon()
     // Get a handle to the SCM database. 
  
     schSCManager = OpenSCManager( 
-        NULL,                    // local computer
-        NULL,                    // ServicesActive database 
+        nullptr,                    // local computer
+        nullptr,                    // ServicesActive database 
         SC_MANAGER_ALL_ACCESS);  // full access rights 
  
-    if (NULL == schSCManager) 
+    if (nullptr == schSCManager) 
     {
-        printf("OpenSCManager failed (%d)\n", GetLastError());
+        llarp::LogError("OpenSCManager failed ", GetLastError());
         return;
     }
 
@@ -162,11 +165,11 @@ void uninstall_win32_daemon()
     schService = OpenService( 
         schSCManager,       // SCM database 
         "lokinet",          // name of service 
-        DELETE);            // need delete access 
+        0x10000);            // need delete access 
  
-    if (schService == NULL)
+    if (schService == nullptr)
     { 
-        printf("OpenService failed (%d)\n", GetLastError()); 
+        llarp::LogError("OpenService failed ", GetLastError()); 
         CloseServiceHandle(schSCManager);
         return;
     }
@@ -175,9 +178,9 @@ void uninstall_win32_daemon()
  
     if (! DeleteService(schService) ) 
     {
-        printf("DeleteService failed (%d)\n", GetLastError()); 
+        llarp::LogError("DeleteService failed ", GetLastError()); 
     }
-    else printf("Service deleted successfully\n"); 
+    else llarp::LogInfo("Service deleted successfully\n"); 
  
     CloseServiceHandle(schService); 
     CloseServiceHandle(schSCManager);
@@ -344,6 +347,10 @@ main(int argc, char* argv[])
     return 1;
   }
 
+#ifdef _WIN32
+  setjmp(svc_entry);
+#endif
+
   if (!configFile.empty())
   {
     // when we have an explicit filepath
@@ -442,3 +449,14 @@ main(int argc, char* argv[])
   }
   return code;
 }
+
+#ifdef _WIN32
+// The win32 daemon entry point is just a trampoline that returns control
+// to the original lokinet entry
+VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
+{
+  UNREFERENCED_PARAMETER(largc);
+  UNREFERENCED_PARAMETER(largv);
+  longjmp(svc_entry,0);
+}
+#endif
