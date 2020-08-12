@@ -83,6 +83,105 @@ handle_signal_win32(DWORD fdwCtrlType)
   handle_signal(SIGINT);
   return TRUE;  // probably unreachable
 }
+
+void install_win32_daemon()
+{
+    SC_HANDLE schSCManager;
+    SC_HANDLE schService;
+    TCHAR szPath[MAX_PATH];
+
+    if( !GetModuleFileName( "", szPath, MAX_PATH ) )
+    {
+        printf("Cannot install service (%d)\n", GetLastError());
+        return;
+    }
+
+    // Get a handle to the SCM database. 
+ 
+    schSCManager = OpenSCManager( 
+        NULL,                    // local computer
+        NULL,                    // ServicesActive database 
+        SC_MANAGER_ALL_ACCESS);  // full access rights 
+ 
+    if (NULL == schSCManager) 
+    {
+        printf("OpenSCManager failed (%d)\n", GetLastError());
+        return;
+    }
+
+    // Create the service
+
+    schService = CreateService( 
+        schSCManager,              // SCM database 
+        "lokinet",                 // name of service 
+        "Lokinet for Windows",     // service name to display 
+        SERVICE_ALL_ACCESS,        // desired access 
+        SERVICE_WIN32_OWN_PROCESS, // service type 
+        SERVICE_DEMAND_START,      // start type 
+        SERVICE_ERROR_NORMAL,      // error control type 
+        szPath,                    // path to service's binary 
+        NULL,                      // no load ordering group 
+        NULL,                      // no tag identifier 
+        NULL,                      // no dependencies 
+        NULL,                      // LocalSystem account 
+        NULL);                     // no password 
+ 
+    if (schService == NULL) 
+    {
+        printf("CreateService failed (%d)\n", GetLastError()); 
+        CloseServiceHandle(schSCManager);
+        return;
+    }
+    else printf("Service installed successfully\n"); 
+
+    CloseServiceHandle(schService); 
+    CloseServiceHandle(schSCManager);
+}
+
+void uninstall_win32_daemon()
+{
+    SC_HANDLE schSCManager;
+    SC_HANDLE schService;
+    SERVICE_STATUS ssStatus; 
+
+    // Get a handle to the SCM database. 
+ 
+    schSCManager = OpenSCManager( 
+        NULL,                    // local computer
+        NULL,                    // ServicesActive database 
+        SC_MANAGER_ALL_ACCESS);  // full access rights 
+ 
+    if (NULL == schSCManager) 
+    {
+        printf("OpenSCManager failed (%d)\n", GetLastError());
+        return;
+    }
+
+    // Get a handle to the service.
+
+    schService = OpenService( 
+        schSCManager,       // SCM database 
+        "lokinet",          // name of service 
+        DELETE);            // need delete access 
+ 
+    if (schService == NULL)
+    { 
+        printf("OpenService failed (%d)\n", GetLastError()); 
+        CloseServiceHandle(schSCManager);
+        return;
+    }
+
+    // Delete the service.
+ 
+    if (! DeleteService(schService) ) 
+    {
+        printf("DeleteService failed (%d)\n", GetLastError()); 
+    }
+    else printf("Service deleted successfully\n"); 
+ 
+    CloseServiceHandle(schService); 
+    CloseServiceHandle(schSCManager);
+}
 #endif
 
 /// this sets up, configures and runs the main context
@@ -148,8 +247,12 @@ main(int argc, char* argv[])
       "decentralized, \"market based sybil resistant\" "
       "and IP based onion routing network");
   options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
-      "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
-      "g,generate", "generate client config", cxxopts::value<bool>())(
+      "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())
+#ifdef _WIN32
+      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())
+      ("remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
+#endif
+      ("g,generate", "generate client config", cxxopts::value<bool>())(
       "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
       "f,force", "overwrite", cxxopts::value<bool>())(
       "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
@@ -190,7 +293,21 @@ main(int argc, char* argv[])
       std::cout << llarp::VERSION_FULL << std::endl;
       return 0;
     }
+#ifdef _WIN32
+    if (result.count("install"))
+    {
+      // install_win32_daemon();
+      std::cout << "windows daemon coming soon(tm)" << std::endl;
+      return 0;
+    }
 
+    if (result.count("remove"))
+    {
+      // remove_win32_daemon();
+      std::cout << "windows daemon coming soon(tm)" << std::endl;
+      return 0;
+    }
+#endif
     if (result.count("generate") > 0)
     {
       genconfigOnly = true;
