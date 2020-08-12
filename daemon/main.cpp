@@ -43,7 +43,7 @@ operator delete(void* ptr, size_t) noexcept
 
 #ifdef _WIN32
 #include <setjmp.h>
-#include <tchar.h>
+#include <strsafe.h>
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
@@ -51,7 +51,8 @@ win32_daemon_entry(DWORD, LPTSTR*);
 VOID ReportSvcStatus(DWORD,DWORD,DWORD);
 jmp_buf svc_entry;
 SERVICE_STATUS          SvcStatus; 
-SERVICE_STATUS_HANDLE   SvcStatusHandle; 
+SERVICE_STATUS_HANDLE   SvcStatusHandle;
+bool start_as_daemon = false;
 #endif
 
 std::shared_ptr<llarp::Context> ctx;
@@ -92,101 +93,96 @@ handle_signal_win32(DWORD fdwCtrlType)
 
 void install_win32_daemon()
 {
-    SC_HANDLE schSCManager;
-    SC_HANDLE schService;
-    TCHAR szPath[MAX_PATH];
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
+  std::array<char, 1024> szPath{};
 
-    if( !GetModuleFileName( nullptr, szPath, MAX_PATH ) )
-    {
-        llarp::LogError("Cannot install service ", GetLastError());
-        return;
-    }
+  if( !GetModuleFileName( nullptr, szPath.data(), MAX_PATH ) )
+  {
+    llarp::LogError("Cannot install service ", GetLastError());
+    return;
+  }
+  StringCchCat(szPath.data(), 1024, " --win32-daemon");
 
-    // Get a handle to the SCM database. 
+  // Get a handle to the SCM database. 
+  schSCManager = OpenSCManager( 
+      nullptr,                    // local computer
+      nullptr,                    // ServicesActive database 
+      SC_MANAGER_ALL_ACCESS);  // full access rights 
  
-    schSCManager = OpenSCManager( 
-        nullptr,                    // local computer
-        nullptr,                    // ServicesActive database 
-        SC_MANAGER_ALL_ACCESS);  // full access rights 
+  if (nullptr == schSCManager) 
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
+
+  // Create the service
+  schService = CreateService( 
+      schSCManager,              // SCM database 
+      "lokinet",                 // name of service 
+      "Lokinet for Windows",     // service name to display 
+      SERVICE_ALL_ACCESS,        // desired access 
+      SERVICE_WIN32_OWN_PROCESS, // service type 
+      SERVICE_DEMAND_START,      // start type 
+      SERVICE_ERROR_NORMAL,      // error control type 
+      szPath.data(),                    // path to service's binary 
+      nullptr,                      // no load ordering group 
+      nullptr,                      // no tag identifier 
+      nullptr,                      // no dependencies 
+      nullptr,                      // LocalSystem account 
+      nullptr);                     // no password 
  
-    if (nullptr == schSCManager) 
-    {
-        llarp::LogError("OpenSCManager failed ", GetLastError());
-        return;
-    }
-
-    // Create the service
-
-    schService = CreateService( 
-        schSCManager,              // SCM database 
-        "lokinet",                 // name of service 
-        "Lokinet for Windows",     // service name to display 
-        SERVICE_ALL_ACCESS,        // desired access 
-        SERVICE_WIN32_OWN_PROCESS, // service type 
-        SERVICE_DEMAND_START,      // start type 
-        SERVICE_ERROR_NORMAL,      // error control type 
-        szPath,                    // path to service's binary 
-        nullptr,                      // no load ordering group 
-        nullptr,                      // no tag identifier 
-        nullptr,                      // no dependencies 
-        nullptr,                      // LocalSystem account 
-        nullptr);                     // no password 
- 
-    if (schService == nullptr) 
-    {
-        llarp::LogError("CreateService failed ", GetLastError()); 
-        CloseServiceHandle(schSCManager);
-        return;
-    }
-    else llarp::LogInfo("Service installed successfully"); 
-
-    CloseServiceHandle(schService); 
+  if (schService == nullptr) 
+  {
+    llarp::LogError("CreateService failed ", GetLastError()); 
     CloseServiceHandle(schSCManager);
+    return;
+  }
+  else llarp::LogInfo("Service installed successfully"); 
+
+  CloseServiceHandle(schService); 
+  CloseServiceHandle(schSCManager);
 }
 
 void uninstall_win32_daemon()
 {
-    SC_HANDLE schSCManager;
-    SC_HANDLE schService;
-    SERVICE_STATUS ssStatus; 
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
 
-    // Get a handle to the SCM database. 
+  // Get a handle to the SCM database. 
+  schSCManager = OpenSCManager( 
+      nullptr,                    // local computer
+      nullptr,                    // ServicesActive database 
+      SC_MANAGER_ALL_ACCESS);  // full access rights 
  
-    schSCManager = OpenSCManager( 
-        nullptr,                    // local computer
-        nullptr,                    // ServicesActive database 
-        SC_MANAGER_ALL_ACCESS);  // full access rights 
- 
-    if (nullptr == schSCManager) 
-    {
-        llarp::LogError("OpenSCManager failed ", GetLastError());
-        return;
-    }
+  if (nullptr == schSCManager) 
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
 
-    // Get a handle to the service.
-
-    schService = OpenService( 
-        schSCManager,       // SCM database 
-        "lokinet",          // name of service 
-        0x10000);            // need delete access 
+  // Get a handle to the service.
+  schService = OpenService( 
+      schSCManager,       // SCM database 
+      "lokinet",          // name of service 
+      0x10000);            // need delete access 
  
-    if (schService == nullptr)
-    { 
-        llarp::LogError("OpenService failed ", GetLastError()); 
-        CloseServiceHandle(schSCManager);
-        return;
-    }
-
-    // Delete the service.
- 
-    if (! DeleteService(schService) ) 
-    {
-        llarp::LogError("DeleteService failed ", GetLastError()); 
-    }
-    else llarp::LogInfo("Service deleted successfully\n"); 
- 
-    CloseServiceHandle(schService); 
+  if (schService == nullptr)
+  { 
+    llarp::LogError("OpenService failed ", GetLastError()); 
     CloseServiceHandle(schSCManager);
+    return;
+  }
+
+  // Delete the service.
+  if (! DeleteService(schService) ) 
+  {
+    llarp::LogError("DeleteService failed ", GetLastError()); 
+  }
+  else llarp::LogInfo("Service deleted successfully\n"); 
+ 
+  CloseServiceHandle(schService); 
+  CloseServiceHandle(schSCManager);
 }
 #endif
 
@@ -246,6 +242,11 @@ main(int argc, char* argv[])
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
   // SetUnhandledExceptionFilter(win32_signal_handler);
+  SERVICE_TABLE_ENTRY DispatchTable[] =
+  {
+    { "lokinet", (LPSERVICE_MAIN_FUNCTION) win32_daemon_entry },
+    { NULL, NULL }
+  };
 #endif
   cxxopts::Options options(
       "lokinet",
@@ -257,6 +258,7 @@ main(int argc, char* argv[])
 #ifdef _WIN32
       ("install", "install win32 daemon to SCM", cxxopts::value<bool>())
       ("remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
+      ("win32-daemon", "do not use interactively", cxxopts::value<bool>())
 #endif
       ("g,generate", "generate client config", cxxopts::value<bool>())(
       "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
@@ -302,16 +304,18 @@ main(int argc, char* argv[])
 #ifdef _WIN32
     if (result.count("install"))
     {
-      // install_win32_daemon();
-      std::cout << "windows daemon coming soon(tm)" << std::endl;
+      install_win32_daemon();
       return 0;
     }
 
     if (result.count("remove"))
     {
-      // uninstall_win32_daemon();
-      std::cout << "windows daemon coming soon(tm)" << std::endl;
+      uninstall_win32_daemon();
       return 0;
+    }
+    if (result.count("win32-daemon"))
+    {
+      start_as_daemon = true;
     }
 #endif
     if (result.count("generate") > 0)
@@ -351,8 +355,13 @@ main(int argc, char* argv[])
   }
 
 #ifdef _WIN32
-  setjmp(svc_entry);
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+  if (start_as_daemon)
+  {
+    setjmp(svc_entry);
+    // calling this twice returns a harmless error (daemon already running)
+    StartServiceCtrlDispatcher(DispatchTable);
+    ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+  }
 #endif
 
   if (!configFile.empty())
@@ -503,6 +512,7 @@ VOID FAR PASCAL SvcCtrlHandler(DWORD dwCtrl)
 
 // The win32 daemon entry point is just a trampoline that returns control
 // to the original lokinet entry
+// and only gets called if we get --win32-daemon in the command line
 VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
 {
   UNREFERENCED_PARAMETER(largc);
