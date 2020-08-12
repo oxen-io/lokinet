@@ -48,7 +48,10 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
+VOID ReportSvcStatus(DWORD,DWORD,DWORD);
 jmp_buf svc_entry;
+SERVICE_STATUS          SvcStatus; 
+SERVICE_STATUS_HANDLE   SvcStatusHandle; 
 #endif
 
 std::shared_ptr<llarp::Context> ctx;
@@ -349,6 +352,7 @@ main(int argc, char* argv[])
 
 #ifdef _WIN32
   setjmp(svc_entry);
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
 #endif
 
   if (!configFile.empty())
@@ -451,12 +455,75 @@ main(int argc, char* argv[])
 }
 
 #ifdef _WIN32
+VOID ReportSvcStatus( DWORD dwCurrentState,
+                      DWORD dwWin32ExitCode,
+                      DWORD dwWaitHint)
+{
+  static DWORD dwCheckPoint = 1;
+
+  // Fill in the SERVICE_STATUS structure.
+  SvcStatus.dwCurrentState = dwCurrentState;
+  SvcStatus.dwWin32ExitCode = dwWin32ExitCode;
+  SvcStatus.dwWaitHint = dwWaitHint;
+
+  if (dwCurrentState == SERVICE_START_PENDING)
+      SvcStatus.dwControlsAccepted = 0;
+  else SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+
+  if ( (dwCurrentState == SERVICE_RUNNING) ||
+         (dwCurrentState == SERVICE_STOPPED) )
+      SvcStatus.dwCheckPoint = 0;
+  else SvcStatus.dwCheckPoint = dwCheckPoint++;
+
+  // Report the status of the service to the SCM.
+  SetServiceStatus( SvcStatusHandle, &SvcStatus );
+}
+
+VOID FAR PASCAL SvcCtrlHandler(DWORD dwCtrl)
+{
+ // Handle the requested control code. 
+
+ switch(dwCtrl) 
+ {  
+    case SERVICE_CONTROL_STOP: 
+     ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
+     // Signal the service to stop.
+     handle_signal(SIGINT);
+     ReportSvcStatus(SvcStatus.dwCurrentState, NO_ERROR, 0);
+     return;
+
+    case SERVICE_CONTROL_INTERROGATE: 
+       break; 
+ 
+    default: 
+       break;
+ } 
+   
+}
+
 // The win32 daemon entry point is just a trampoline that returns control
 // to the original lokinet entry
 VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
 {
   UNREFERENCED_PARAMETER(largc);
   UNREFERENCED_PARAMETER(largv);
+  // Register the handler function for the service
+  SvcStatusHandle = RegisterServiceCtrlHandler( 
+      "lokinet", 
+      SvcCtrlHandler);
+
+  if( !SvcStatusHandle )
+  { 
+    llarp::LogError("failed to register daemon control handler"); 
+    return;
+  } 
+
+  // These SERVICE_STATUS members remain as set here
+  SvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS; 
+  SvcStatus.dwServiceSpecificExitCode = 0;    
+
+  // Report initial status to the SCM
+  ReportSvcStatus( SERVICE_START_PENDING, NO_ERROR, 3000 );
   longjmp(svc_entry,0);
 }
 #endif
