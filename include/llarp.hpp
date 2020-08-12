@@ -43,7 +43,7 @@ namespace llarp
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
-    ~Context() = default;
+    virtual ~Context() = default;
 
     void
     Close();
