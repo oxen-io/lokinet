@@ -41,7 +41,8 @@ operator delete(void* ptr, size_t) noexcept
 }
 #endif
 
-int lokinet_main(int, char**);
+int
+lokinet_main(int, char**);
 
 #ifdef _WIN32
 #include <strsafe.h>
@@ -49,10 +50,11 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
-VOID ReportSvcStatus(DWORD,DWORD,DWORD);
-VOID insert_description();
-SERVICE_STATUS          SvcStatus; 
-SERVICE_STATUS_HANDLE   SvcStatusHandle;
+VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+VOID
+insert_description();
+SERVICE_STATUS SvcStatus;
+SERVICE_STATUS_HANDLE SvcStatusHandle;
 bool start_as_daemon = false;
 #endif
 
@@ -92,147 +94,154 @@ handle_signal_win32(DWORD fdwCtrlType)
   return TRUE;  // probably unreachable
 }
 
-void install_win32_daemon()
+void
+install_win32_daemon()
 {
   SC_HANDLE schSCManager;
   SC_HANDLE schService;
   std::array<char, 1024> szPath{};
 
-  if( !GetModuleFileName( nullptr, szPath.data(), MAX_PATH ) )
+  if (!GetModuleFileName(nullptr, szPath.data(), MAX_PATH))
   {
     llarp::LogError("Cannot install service ", GetLastError());
     return;
   }
   StringCchCat(szPath.data(), 1024, " --win32-daemon");
 
-  // Get a handle to the SCM database. 
-  schSCManager = OpenSCManager( 
-      nullptr,                    // local computer
-      nullptr,                    // ServicesActive database 
-      SC_MANAGER_ALL_ACCESS);  // full access rights 
- 
-  if (nullptr == schSCManager) 
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
+      nullptr,                 // local computer
+      nullptr,                 // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
   {
     llarp::LogError("OpenSCManager failed ", GetLastError());
     return;
   }
 
   // Create the service
-  schService = CreateService( 
-      schSCManager,              // SCM database 
-      "lokinet",                 // name of service 
-      "Lokinet for Windows",     // service name to display 
-      SERVICE_ALL_ACCESS,        // desired access 
-      SERVICE_WIN32_OWN_PROCESS, // service type 
-      SERVICE_DEMAND_START,      // start type 
-      SERVICE_ERROR_NORMAL,      // error control type 
-      szPath.data(),                    // path to service's binary 
-      nullptr,                      // no load ordering group 
-      nullptr,                      // no tag identifier 
-      nullptr,                      // no dependencies 
-      nullptr,                      // LocalSystem account 
-      nullptr);                     // no password 
- 
-  if (schService == nullptr) 
+  schService = CreateService(
+      schSCManager,               // SCM database
+      "lokinet",                  // name of service
+      "Lokinet for Windows",      // service name to display
+      SERVICE_ALL_ACCESS,         // desired access
+      SERVICE_WIN32_OWN_PROCESS,  // service type
+      SERVICE_DEMAND_START,       // start type
+      SERVICE_ERROR_NORMAL,       // error control type
+      szPath.data(),              // path to service's binary
+      nullptr,                    // no load ordering group
+      nullptr,                    // no tag identifier
+      nullptr,                    // no dependencies
+      nullptr,                    // LocalSystem account
+      nullptr);                   // no password
+
+  if (schService == nullptr)
   {
-    llarp::LogError("CreateService failed ", GetLastError()); 
+    llarp::LogError("CreateService failed ", GetLastError());
     CloseServiceHandle(schSCManager);
     return;
   }
-  else llarp::LogInfo("Service installed successfully"); 
+  else
+    llarp::LogInfo("Service installed successfully");
 
-  CloseServiceHandle(schService); 
+  CloseServiceHandle(schService);
   CloseServiceHandle(schSCManager);
   insert_description();
 }
 
-VOID insert_description()
+VOID
+insert_description()
 {
   SC_HANDLE schSCManager;
   SC_HANDLE schService;
   SERVICE_DESCRIPTION sd;
-  LPTSTR szDesc = "LokiNET is a free, open source, private, "
+  LPTSTR szDesc =
+      "LokiNET is a free, open source, private, "
       "decentralized, \"market based sybil resistant\" "
       "and IP based onion routing network";
-  // Get a handle to the SCM database. 
-  schSCManager = OpenSCManager( 
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
       NULL,                    // local computer
-      NULL,                    // ServicesActive database 
-      SC_MANAGER_ALL_ACCESS);  // full access rights 
- 
-  if (nullptr == schSCManager) 
+      NULL,                    // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
   {
     llarp::LogError("OpenSCManager failed ", GetLastError());
     return;
   }
 
   // Get a handle to the service.
-  schService = OpenService( 
-      schSCManager,            // SCM database 
-      "lokinet",               // name of service 
-      SERVICE_CHANGE_CONFIG);  // need change config access 
- 
+  schService = OpenService(
+      schSCManager,            // SCM database
+      "lokinet",               // name of service
+      SERVICE_CHANGE_CONFIG);  // need change config access
+
   if (schService == nullptr)
-  { 
-    llarp::LogError("OpenService failed ", GetLastError()); 
+  {
+    llarp::LogError("OpenService failed ", GetLastError());
     CloseServiceHandle(schSCManager);
     return;
-  }    
+  }
 
   // Change the service description.
   sd.lpDescription = szDesc;
 
-  if( !ChangeServiceConfig2(
-      schService,                 // handle to service
-      SERVICE_CONFIG_DESCRIPTION, // change: description
-      &sd) )                      // new description
+  if (!ChangeServiceConfig2(
+          schService,                  // handle to service
+          SERVICE_CONFIG_DESCRIPTION,  // change: description
+          &sd))                        // new description
   {
     llarp::LogError("ChangeServiceConfig2 failed");
   }
-  else llarp::LogInfo("Service description updated successfully.");
+  else
+    llarp::LogInfo("Service description updated successfully.");
 
-  CloseServiceHandle(schService); 
+  CloseServiceHandle(schService);
   CloseServiceHandle(schSCManager);
 }
 
-void uninstall_win32_daemon()
+void
+uninstall_win32_daemon()
 {
   SC_HANDLE schSCManager;
   SC_HANDLE schService;
 
-  // Get a handle to the SCM database. 
-  schSCManager = OpenSCManager( 
-      nullptr,                    // local computer
-      nullptr,                    // ServicesActive database 
-      SC_MANAGER_ALL_ACCESS);  // full access rights 
- 
-  if (nullptr == schSCManager) 
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
+      nullptr,                 // local computer
+      nullptr,                 // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
   {
     llarp::LogError("OpenSCManager failed ", GetLastError());
     return;
   }
 
   // Get a handle to the service.
-  schService = OpenService( 
-      schSCManager,       // SCM database 
-      "lokinet",          // name of service 
-      0x10000);            // need delete access 
- 
+  schService = OpenService(
+      schSCManager,  // SCM database
+      "lokinet",     // name of service
+      0x10000);      // need delete access
+
   if (schService == nullptr)
-  { 
-    llarp::LogError("OpenService failed ", GetLastError()); 
+  {
+    llarp::LogError("OpenService failed ", GetLastError());
     CloseServiceHandle(schSCManager);
     return;
   }
 
   // Delete the service.
-  if (! DeleteService(schService) ) 
+  if (!DeleteService(schService))
   {
-    llarp::LogError("DeleteService failed ", GetLastError()); 
+    llarp::LogError("DeleteService failed ", GetLastError());
   }
-  else llarp::LogInfo("Service deleted successfully\n"); 
- 
-  CloseServiceHandle(schService); 
+  else
+    llarp::LogInfo("Service deleted successfully\n");
+
+  CloseServiceHandle(schService);
   CloseServiceHandle(schSCManager);
 }
 #endif
@@ -284,17 +293,15 @@ main(int argc, char* argv[])
 #ifndef _WIN32
   return lokinet_main(argc, argv);
 #else
-  SERVICE_TABLE_ENTRY DispatchTable[] =
-  {
-    { "lokinet", (LPSERVICE_MAIN_FUNCTION) win32_daemon_entry },
-    { NULL, NULL }
-  };
-  if( lstrcmpi( argv[1], "--win32-daemon") == 0 )
+  SERVICE_TABLE_ENTRY DispatchTable[] = {
+      {"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry}, {NULL, NULL}};
+  if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
     StartServiceCtrlDispatcher(DispatchTable);
     start_as_daemon = true;
   }
-  else return lokinet_main(argc, argv);
+  else
+    return lokinet_main(argc, argv);
 #endif
 }
 
@@ -322,18 +329,18 @@ lokinet_main(int argc, char* argv[])
   options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
       "h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())
 #ifdef _WIN32
-      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())
-      ("remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
-      ("win32-daemon", "do not use interactively", cxxopts::value<bool>())
+      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())(
+          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())(
+          "win32-daemon", "do not use interactively", cxxopts::value<bool>())
 #endif
-      ("g,generate", "generate client config", cxxopts::value<bool>())(
-      "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
-      "f,force", "overwrite", cxxopts::value<bool>())(
-      "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
-      "b,background",
-      "background mode (start, but do not connect to the network)",
-      cxxopts::value<bool>())(
-      "config", "path to configuration file", cxxopts::value<std::string>());
+          ("g,generate", "generate client config", cxxopts::value<bool>())(
+              "r,relay", "run as relay instead of client", cxxopts::value<bool>())(
+              "f,force", "overwrite", cxxopts::value<bool>())(
+              "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
+              "b,background",
+              "background mode (start, but do not connect to the network)",
+              cxxopts::value<bool>())(
+              "config", "path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
 
@@ -457,26 +464,27 @@ lokinet_main(int argc, char* argv[])
     // do periodic non lokinet related tasks here
     if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
-      for (const auto& wtf : {"you have been visited by the mascott of the "
-                              "deadlocked router.",
-                              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-                              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-                              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-                              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-                              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-                              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-                              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-                              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-                              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-                              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-                              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-                              "file a bug report now or be cursed with this "
-                              "annoying image in your syslog for all time."})
+      for (const auto& wtf :
+           {"you have been visited by the mascott of the "
+            "deadlocked router.",
+            "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
+            "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
+            "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
+            "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
+            "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
+            "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
+            "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
+            "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
+            "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
+            "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
+            "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+            "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+            "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
+            "file a bug report now or be cursed with this "
+            "annoying image in your syslog for all time."})
       {
         LogError(wtf);
         llarp::LogContext::Instance().ImmediateFlush();
@@ -516,9 +524,8 @@ lokinet_main(int argc, char* argv[])
 }
 
 #ifdef _WIN32
-VOID ReportSvcStatus( DWORD dwCurrentState,
-                      DWORD dwWin32ExitCode,
-                      DWORD dwWaitHint)
+VOID
+ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
 
@@ -528,58 +535,58 @@ VOID ReportSvcStatus( DWORD dwCurrentState,
   SvcStatus.dwWaitHint = dwWaitHint;
 
   if (dwCurrentState == SERVICE_START_PENDING)
-      SvcStatus.dwControlsAccepted = 0;
-  else SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    SvcStatus.dwControlsAccepted = 0;
+  else
+    SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
 
-  if ( (dwCurrentState == SERVICE_RUNNING) ||
-         (dwCurrentState == SERVICE_STOPPED) )
-      SvcStatus.dwCheckPoint = 0;
-  else SvcStatus.dwCheckPoint = dwCheckPoint++;
+  if ((dwCurrentState == SERVICE_RUNNING) || (dwCurrentState == SERVICE_STOPPED))
+    SvcStatus.dwCheckPoint = 0;
+  else
+    SvcStatus.dwCheckPoint = dwCheckPoint++;
 
   // Report the status of the service to the SCM.
-  SetServiceStatus( SvcStatusHandle, &SvcStatus );
+  SetServiceStatus(SvcStatusHandle, &SvcStatus);
 }
 
-VOID FAR PASCAL SvcCtrlHandler(DWORD dwCtrl)
+VOID FAR PASCAL
+SvcCtrlHandler(DWORD dwCtrl)
 {
- // Handle the requested control code. 
+  // Handle the requested control code.
 
- switch(dwCtrl) 
- {  
-    case SERVICE_CONTROL_STOP: 
-     ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
-     // Signal the service to stop.
-     handle_signal(SIGINT);
-     return;
+  switch (dwCtrl)
+  {
+    case SERVICE_CONTROL_STOP:
+      ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+      // Signal the service to stop.
+      handle_signal(SIGINT);
+      return;
 
-    case SERVICE_CONTROL_INTERROGATE: 
-       break; 
- 
-    default: 
-       break;
- } 
-   
+    case SERVICE_CONTROL_INTERROGATE:
+      break;
+
+    default:
+      break;
+  }
 }
 
 // The win32 daemon entry point is just a trampoline that returns control
 // to the original lokinet entry
 // and only gets called if we get --win32-daemon in the command line
-VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
+VOID FAR PASCAL
+win32_daemon_entry(DWORD largc, LPTSTR* largv)
 {
   // Register the handler function for the service
-  SvcStatusHandle = RegisterServiceCtrlHandler( 
-      "lokinet", 
-      SvcCtrlHandler);
+  SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
 
-  if( !SvcStatusHandle )
-  { 
+  if (!SvcStatusHandle)
+  {
     llarp::LogError("failed to register daemon control handler");
     return;
-  } 
+  }
 
   // These SERVICE_STATUS members remain as set here
-  SvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS; 
-  SvcStatus.dwServiceSpecificExitCode = 0;    
+  SvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+  SvcStatus.dwServiceSpecificExitCode = 0;
 
   // Report initial status to the SCM
   ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
