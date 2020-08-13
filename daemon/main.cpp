@@ -41,6 +41,8 @@ operator delete(void* ptr, size_t) noexcept
 }
 #endif
 
+int lokinet_main(int, char**);
+
 #ifdef _WIN32
 #include <setjmp.h>
 #include <strsafe.h>
@@ -53,6 +55,7 @@ jmp_buf svc_entry;
 SERVICE_STATUS          SvcStatus; 
 SERVICE_STATUS_HANDLE   SvcStatusHandle;
 bool start_as_daemon = false;
+bool running = false;
 #endif
 
 std::shared_ptr<llarp::Context> ctx;
@@ -230,6 +233,26 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 int
 main(int argc, char* argv[])
 {
+#ifndef _WIN32
+  return lokinet_main(argc, argv);
+#else
+  SERVICE_TABLE_ENTRY DispatchTable[] =
+  {
+    { "lokinet", (LPSERVICE_MAIN_FUNCTION) win32_daemon_entry },
+    { NULL, NULL }
+  };
+  if( lstrcmpi( argv[1], "--win32-daemon") == 0 )
+  {
+    StartServiceCtrlDispatcher(DispatchTable);
+    start_as_daemon = true;
+  }
+  else return lokinet_main(argc, argv);
+#endif
+}
+
+int
+lokinet_main(int argc, char* argv[])
+{
   auto result = Lokinet_INIT();
   if (result)
   {
@@ -242,11 +265,6 @@ main(int argc, char* argv[])
     return -1;
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
   // SetUnhandledExceptionFilter(win32_signal_handler);
-  SERVICE_TABLE_ENTRY DispatchTable[] =
-  {
-    { "lokinet", (LPSERVICE_MAIN_FUNCTION) win32_daemon_entry },
-    { NULL, NULL }
-  };
 #endif
   cxxopts::Options options(
       "lokinet",
@@ -313,10 +331,6 @@ main(int argc, char* argv[])
       uninstall_win32_daemon();
       return 0;
     }
-    if (result.count("win32-daemon"))
-    {
-      start_as_daemon = true;
-    }
 #endif
     if (result.count("generate") > 0)
     {
@@ -353,16 +367,6 @@ main(int argc, char* argv[])
     std::cout << options.help() << std::endl;
     return 1;
   }
-
-#ifdef _WIN32
-  if (start_as_daemon)
-  {
-    setjmp(svc_entry);
-    // calling this twice returns a harmless error (daemon already running)
-    StartServiceCtrlDispatcher(DispatchTable);
-    ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-  }
-#endif
 
   if (!configFile.empty())
   {
@@ -495,10 +499,9 @@ VOID FAR PASCAL SvcCtrlHandler(DWORD dwCtrl)
  switch(dwCtrl) 
  {  
     case SERVICE_CONTROL_STOP: 
-     ReportSvcStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
+     ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
      // Signal the service to stop.
      handle_signal(SIGINT);
-     ReportSvcStatus(SvcStatus.dwCurrentState, NO_ERROR, 0);
      return;
 
     case SERVICE_CONTROL_INTERROGATE: 
@@ -515,8 +518,6 @@ VOID FAR PASCAL SvcCtrlHandler(DWORD dwCtrl)
 // and only gets called if we get --win32-daemon in the command line
 VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
 {
-  UNREFERENCED_PARAMETER(largc);
-  UNREFERENCED_PARAMETER(largv);
   // Register the handler function for the service
   SvcStatusHandle = RegisterServiceCtrlHandler( 
       "lokinet", 
@@ -524,7 +525,7 @@ VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
 
   if( !SvcStatusHandle )
   { 
-    llarp::LogError("failed to register daemon control handler"); 
+    llarp::LogError("failed to register daemon control handler");
     return;
   } 
 
@@ -533,7 +534,7 @@ VOID FAR PASCAL win32_daemon_entry(DWORD largc, LPTSTR* largv)
   SvcStatus.dwServiceSpecificExitCode = 0;    
 
   // Report initial status to the SCM
-  ReportSvcStatus( SERVICE_START_PENDING, NO_ERROR, 3000 );
-  longjmp(svc_entry,0);
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+  lokinet_main(largc, largv);
 }
 #endif
