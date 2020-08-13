@@ -44,18 +44,16 @@ operator delete(void* ptr, size_t) noexcept
 int lokinet_main(int, char**);
 
 #ifdef _WIN32
-#include <setjmp.h>
 #include <strsafe.h>
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
 VOID ReportSvcStatus(DWORD,DWORD,DWORD);
-jmp_buf svc_entry;
+VOID insert_description();
 SERVICE_STATUS          SvcStatus; 
 SERVICE_STATUS_HANDLE   SvcStatusHandle;
 bool start_as_daemon = false;
-bool running = false;
 #endif
 
 std::shared_ptr<llarp::Context> ctx;
@@ -142,6 +140,56 @@ void install_win32_daemon()
     return;
   }
   else llarp::LogInfo("Service installed successfully"); 
+
+  CloseServiceHandle(schService); 
+  CloseServiceHandle(schSCManager);
+  insert_description();
+}
+
+VOID insert_description()
+{
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
+  SERVICE_DESCRIPTION sd;
+  LPTSTR szDesc = "LokiNET is a free, open source, private, "
+      "decentralized, \"market based sybil resistant\" "
+      "and IP based onion routing network";
+  // Get a handle to the SCM database. 
+  schSCManager = OpenSCManager( 
+      NULL,                    // local computer
+      NULL,                    // ServicesActive database 
+      SC_MANAGER_ALL_ACCESS);  // full access rights 
+ 
+  if (nullptr == schSCManager) 
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
+
+  // Get a handle to the service.
+  schService = OpenService( 
+      schSCManager,            // SCM database 
+      "lokinet",               // name of service 
+      SERVICE_CHANGE_CONFIG);  // need change config access 
+ 
+  if (schService == nullptr)
+  { 
+    llarp::LogError("OpenService failed ", GetLastError()); 
+    CloseServiceHandle(schSCManager);
+    return;
+  }    
+
+  // Change the service description.
+  sd.lpDescription = szDesc;
+
+  if( !ChangeServiceConfig2(
+      schService,                 // handle to service
+      SERVICE_CONFIG_DESCRIPTION, // change: description
+      &sd) )                      // new description
+  {
+    llarp::LogError("ChangeServiceConfig2 failed");
+  }
+  else llarp::LogInfo("Service description updated successfully.");
 
   CloseServiceHandle(schService); 
   CloseServiceHandle(schSCManager);
