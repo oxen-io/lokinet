@@ -433,7 +433,17 @@ namespace llarp
         "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
 
     conf.defineOption<std::string>(
-        "api", "bind", false, DefaultRPCBindAddr, AssignmentAcceptor(m_rpcBindAddr));
+        "api", "bind", false, DefaultRPCBindAddr, [this](std::string arg) {
+          if (arg.empty())
+          {
+            arg = DefaultRPCBindAddr;
+          }
+          if (arg.find("://") == std::string::npos)
+          {
+            arg = "tcp://" + arg;
+          }
+          m_rpcBindAddr = std::move(arg);
+        });
 
     // TODO: this was from pre-refactor:
     // TODO: add pubkey to whitelist
