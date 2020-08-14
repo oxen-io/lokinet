@@ -63,6 +63,7 @@ namespace llarp
     std::string m_transportKeyFile;
 
     bool m_enablePeerStats = false;
+    bool m_isRelay = false;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

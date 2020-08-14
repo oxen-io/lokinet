@@ -449,11 +449,7 @@ namespace llarp
     if (usingSNSeed)
       ident_keyfile = conf.lokid.ident_keyfile;
 
-    // TODO: add config flag for "is service node"
-    if (conf.links.m_InboundLinks.size())
-    {
-      m_isServiceNode = true;
-    }
+    m_isServiceNode = conf.router.m_isRelay;
 
     networkConfig = conf.network;
 
@@ -965,6 +961,12 @@ namespace llarp
         }
       }
     });
+
+    if (IsServiceNode() and not _rc.IsPublicRouter())
+    {
+      LogError("we are configured as relay but have no reachable addresses");
+      return false;
+    }
 
     // set public encryption key
     _rc.enckey = seckey_topublic(encryption());

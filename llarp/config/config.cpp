@@ -143,6 +143,7 @@ namespace llarp
     else
     {
       m_enablePeerStats = true;
+      m_isRelay = true;
     }
   }
 
