@@ -5,6 +5,7 @@
 #include <vector>
 #include <array>
 #include <net/net.hpp>
+#include <sys/wait.h>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
@@ -275,7 +276,35 @@ void
 Execute(std::string cmd)
 {
   std::cout << cmd << std::endl;
-  system(cmd.c_str());
+  std::vector<std::string> parts_str;
+  std::vector<const char *> parts_raw;
+  std::stringstream in(cmd);
+  for(std::string part; std::getline(in, part, ' '); )
+  {
+    if(part.empty())
+      continue;
+    parts_str.push_back(part);
+  }
+  for(const auto & part : parts_str)
+  {
+    parts_raw.push_back(part.c_str());
+  }
+  parts_raw.push_back(nullptr);
+  const auto pid = fork();
+  if(pid == -1)
+  {
+    throw std::runtime_error("failed to fork");
+  }
+  else if(pid == 0)
+  {
+    char * const * args = (char * const *) &parts_raw[1];
+    exit(execv(parts_raw[0], args));
+  }
+  else
+  {
+    waitpid(pid, 0, 0);
+  }
+  
 }
 
 void
