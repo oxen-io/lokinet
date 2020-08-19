@@ -298,7 +298,16 @@ Execute(std::string cmd)
   else if(pid == 0)
   {
     char * const * args = (char * const *) &parts_raw[1];
-    exit(execv(parts_raw[0], args));
+    const auto result = execv(parts_raw[0], args);
+    if(result)
+    {
+      std::cout << "failed: " << result << std::endl;
+    }
+    else
+    {
+      std::cout << "ok" << std::endl;
+    }
+    exit(result);
   }
   else
   {
@@ -312,7 +321,7 @@ AddRoute(std::string ip, std::string gateway)
 {
   std::stringstream ss;
 #ifdef __linux__
-  ss << "ip route add " << ip << "/32 via " << gateway;
+  ss << "/sbin/ip route add " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
@@ -328,7 +337,7 @@ DelRoute(std::string ip, std::string gateway)
 {
   std::stringstream ss;
 #ifdef __linux__
-  ss << "ip route del " << ip << "/32 via " << gateway;
+  ss << "/sbin/ip route del " << ip << "/32 via " << gateway;
 #elif _WIN32
   ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
@@ -343,7 +352,7 @@ void
 AddDefaultRouteViaInterface(std::string ifname)
 {
 #ifdef __linux__
-  Execute("ip route add default dev " + ifname);
+  Execute("/sbin/ip route add default dev " + ifname);
 #elif _WIN32
   ifname.back()++;
   Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
@@ -359,7 +368,7 @@ void
 DelDefaultRouteViaInterface(std::string ifname)
 {
 #ifdef __linux__
-  Execute("ip route del default dev " + ifname);
+  Execute("/sbin/ip route del default dev " + ifname);
 #elif _WIN32
   ifname.back()++;
   Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
