@@ -953,14 +953,14 @@ namespace llarp
           return;
         LogInfo("adding address: ", ai);
         _rc.addrs.push_back(ai);
-        if (ExitEnabled())
-        {
-          const IpAddress address = ai.toIpAddress();
-          _rc.exits.emplace_back(_rc.pubkey, address);
-          LogInfo("Exit relay started, advertised as exiting at: ", address);
-        }
       }
     });
+
+    if (ExitEnabled() and IsServiceNode())
+    {
+      LogError("exit mode not supported while service node");
+      return false;
+    }
 
     if (IsServiceNode() and not _rc.IsPublicRouter())
     {

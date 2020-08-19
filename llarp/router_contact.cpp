@@ -140,12 +140,16 @@ namespace llarp
     if (!bencode_write_uint64_entry(buf, "v", 1, version))
       return false;
 
-    /* write xi if they exist */
-    if (!bencode_write_bytestring(buf, "x", 1))
-      return false;
-    if (!BEncodeWriteList(exits.begin(), exits.end(), buf))
-      return false;
-
+    if (serializeExit)
+    {
+      /* write xi if they exist */
+      if (!bencode_write_bytestring(buf, "x", 1))
+        return false;
+      /* no exits anymore in RCs */
+      const std::vector<AlignedBuffer<8>> exits{};
+      if (!BEncodeWriteList(exits.begin(), exits.end(), buf))
+        return false;
+    }
     /* write signature */
     if (!bencode_write_bytestring(buf, "z", 1))
       return false;
@@ -158,7 +162,6 @@ namespace llarp
   RouterContact::Clear()
   {
     addrs.clear();
-    exits.clear();
     signature.Zero();
     nickname.Zero();
     enckey.Zero();
@@ -171,7 +174,6 @@ namespace llarp
   RouterContact::ExtractStatus() const
   {
     util::StatusObject obj{{"lastUpdated", last_updated.count()},
-                           {"exit", IsExit()},
                            {"publicRouter", IsPublicRouter()},
                            {"identity", pubkey.ToString()},
                            {"addresses", addrs}};
@@ -234,8 +236,10 @@ namespace llarp
     if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
-    if (!BEncodeMaybeReadDictList("x", exits, read, key, buf))
-      return false;
+    if (key == "x" and serializeExit)
+    {
+      return bencode_discard(buf);
+    }
 
     if (!BEncodeMaybeReadDictEntry("z", signature, read, key, buf))
       return false;
@@ -342,16 +346,6 @@ namespace llarp
         return false;
       }
     }
-    for (const auto& exit : exits)
-    {
-      // TODO: see if exit's range overlaps with bogon...?
-      //       e.g. "IsBogonRange(address, netmask)"
-      if (exit.ipAddress.isBogon())
-      {
-        llarp::LogError("bogon exit: ", exit);
-        return false;
-      }
-    }
     if (!VerifySignature())
     {
       llarp::LogError("invalid signature: ", *this);
@@ -434,7 +428,6 @@ namespace llarp
     printer.printAttribute("netid", netID);
     printer.printAttribute("v", version);
     printer.printAttribute("ai", addrs);
-    printer.printAttribute("xi", exits);
     printer.printAttribute("e", enckey);
     printer.printAttribute("z", signature);
 
