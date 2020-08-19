@@ -18,10 +18,11 @@ make_context()
   conf.network.m_endpointType = "null";
   conf.bootstrap.skipBootstrap = true;
   conf.api.m_enableRPCServer = false;
+  conf.router.m_publicAddress = llarp::IpAddress("1.1.1.1");
   // make a fake inbound link
   conf.links.m_InboundLinks.emplace_back();
   auto& link = conf.links.m_InboundLinks.back();
-  link.interface = llarp::net::LoopbackInterfaceName();
+  link.interface = "0.0.0.0";
   link.addressFamily = AF_INET;
   link.port = 0;
   // configure
