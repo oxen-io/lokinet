@@ -85,6 +85,7 @@ local windows_cross_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
+                'apk update && apk upgrade',
                 'apk add cmake git ninja pkgconf ccache patch make ' + deps,
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
