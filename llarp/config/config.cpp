@@ -322,7 +322,7 @@ namespace llarp
             throw std::invalid_argument(stringify("Invalid RouterID: ", arg));
 
           auto itr = m_snodeBlacklist.emplace(std::move(id));
-          if (itr.second)
+          if (not itr.second)
             throw std::invalid_argument(stringify("Duplicate blacklist-snode: ", arg));
         });
   }
