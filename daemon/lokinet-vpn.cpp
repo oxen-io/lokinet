@@ -277,29 +277,29 @@ Execute(std::string cmd)
 {
   std::cout << cmd << std::endl;
   std::vector<std::string> parts_str;
-  std::vector<const char *> parts_raw;
+  std::vector<const char*> parts_raw;
   std::stringstream in(cmd);
-  for(std::string part; std::getline(in, part, ' '); )
+  for (std::string part; std::getline(in, part, ' ');)
   {
-    if(part.empty())
+    if (part.empty())
       continue;
     parts_str.push_back(part);
   }
-  for(const auto & part : parts_str)
+  for (const auto& part : parts_str)
   {
     parts_raw.push_back(part.c_str());
   }
   parts_raw.push_back(nullptr);
   const auto pid = fork();
-  if(pid == -1)
+  if (pid == -1)
   {
     throw std::runtime_error("failed to fork");
   }
-  else if(pid == 0)
+  else if (pid == 0)
   {
-    char * const * args = (char * const *) &parts_raw[1];
+    char* const* args = (char* const*)parts_raw.data();
     const auto result = execv(parts_raw[0], args);
-    if(result)
+    if (result)
     {
       std::cout << "failed: " << result << std::endl;
     }
@@ -313,7 +313,6 @@ Execute(std::string cmd)
   {
     waitpid(pid, 0, 0);
   }
-  
 }
 
 void
