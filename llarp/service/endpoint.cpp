@@ -912,7 +912,25 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      return frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this);
+      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
+      {
+        // send discard
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame.T;
+        f.F = p->intro.pathID;
+
+        if (!f.Sign(m_Identity))
+          return false;
+        {
+          LogWarn("invalidating convotag T=", frame.T);
+          util::Lock lock(m_state->m_SendQueueMutex);
+          m_state->m_SendQueue.emplace_back(
+              std::make_shared<const routing::PathTransferMessage>(f, frame.F), p);
+        }
+        return true;
+      }
+      return true;
     }
 
     void Endpoint::HandlePathDied(path::Path_ptr)
