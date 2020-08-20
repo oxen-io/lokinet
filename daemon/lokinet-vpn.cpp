@@ -5,7 +5,6 @@
 #include <vector>
 #include <array>
 #include <net/net.hpp>
-#include <sys/wait.h>
 
 #ifdef _WIN32
 // add the unholy windows headers for iphlpapi
@@ -13,6 +12,8 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <strsafe.h>
+#else
+#include <sys/wait.h>
 #endif
 
 /// do a lokimq request on an lmq instance blocking style
