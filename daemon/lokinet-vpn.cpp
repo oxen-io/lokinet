@@ -276,6 +276,9 @@ void
 Execute(std::string cmd)
 {
   std::cout << cmd << std::endl;
+#ifdef _WIN32
+  system(cmd.c_str());
+#else
   std::vector<std::string> parts_str;
   std::vector<const char*> parts_raw;
   std::stringstream in(cmd);
@@ -313,6 +316,7 @@ Execute(std::string cmd)
   {
     waitpid(pid, 0, 0);
   }
+#endif
 }
 
 void
