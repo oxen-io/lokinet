@@ -182,8 +182,8 @@ namespace llarp
       void
       SetAuthInfoForEndpoint(Address remote, AuthInfo info);
 
-      // virtual huint128_t
-      // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
+      virtual huint128_t
+      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) = 0;
 
       // virtual bool
       // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;

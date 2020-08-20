@@ -164,7 +164,7 @@ namespace llarp
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode);
+      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) override;
 
       /// flush network traffic
       void

@@ -1071,11 +1071,18 @@ namespace llarp
         // TODO: check for collision lol no we don't but maybe we will...
         // some day :DDDDD
         tag.Randomize();
+        const auto src = xhtonl(net::TruncateV6(GetIfAddr()));
+        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode, true)));
+
         auto session = std::make_shared<exit::SNodeSession>(
             snode,
-            [=](const llarp_buffer_t& pkt) -> bool {
+            [=](const llarp_buffer_t& buf) -> bool {
+              net::IPPacket pkt;
+              if (not pkt.Load(buf))
+                return false;
+              pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt, eProtocolTrafficV4);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4);
             },
             Router(),
             numPaths,
