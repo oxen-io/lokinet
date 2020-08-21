@@ -301,7 +301,7 @@ namespace llarp::net
   {
     std::vector<std::string> gateways;
 #ifdef __linux__
-    /*
+
     FILE* p = popen("ip route", "r");
     if (p == nullptr)
       return gateways;
@@ -323,7 +323,6 @@ namespace llarp::net
       }
     }
     pclose(p);
-    */
     return gateways;
 #elif _WIN32
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
