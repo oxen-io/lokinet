@@ -587,6 +587,11 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
+    if (conf.links.m_InboundLinks.empty() and m_isServiceNode)
+    {
+      throw std::runtime_error("service node enabled but have no inbound links");
+    }
+
     // Network config
     if (conf.network.m_enableProfiling.has_value() and not*conf.network.m_enableProfiling)
     {

@@ -549,6 +549,12 @@ namespace llarp
       return true;
     }
 
+    std::string
+    TunEndpoint::GetIfName() const
+    {
+      return m_IfName;
+    }
+
     bool
     TunEndpoint::Start()
     {
@@ -661,6 +667,7 @@ namespace llarp
         ifaddr = vpn.info.ifaddr;
         netmask = vpn.info.netmask;
       }
+      m_IfName = ifname;
       if (ip.FromString(ifaddr))
       {
         m_OurIP = net::ExpandV4(ip);

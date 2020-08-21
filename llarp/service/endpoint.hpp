@@ -108,6 +108,9 @@ namespace llarp
         return false;
       }
 
+      virtual std::string
+      GetIfName() const = 0;
+
       /// inject vpn io
       /// return false if not supported
       virtual bool

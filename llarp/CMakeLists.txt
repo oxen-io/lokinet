@@ -59,6 +59,7 @@ add_library(lokinet-platform
   net/ip_range.cpp
   net/net.cpp
   net/net_int.cpp
+  net/route.cpp
   net/sock_addr.cpp
   $<TARGET_OBJECTS:tuntap>
 )

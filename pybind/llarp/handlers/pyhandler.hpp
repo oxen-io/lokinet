@@ -62,6 +62,12 @@ namespace llarp
         return {0};
       }
 
+      std::string
+      GetIfName() const override
+      {
+        return "";
+      }
+
       using PacketHandler_t =
           std::function<void(service::Address, std::vector<byte_t>, service::ProtocolType)>;
 

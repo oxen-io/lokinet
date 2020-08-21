@@ -22,6 +22,12 @@ namespace llarp
         return true;
       }
 
+      std::string
+      GetIfName() const override
+      {
+        return "";
+      }
+
       path::PathSet_ptr
       GetSelf() override
       {
