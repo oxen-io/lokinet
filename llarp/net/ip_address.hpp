@@ -119,10 +119,7 @@ namespace llarp
     toString() const;
 
     std::string
-    toHost() const
-    {
-      return m_ipAddress;
-    }
+    toHost() const;
 
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;

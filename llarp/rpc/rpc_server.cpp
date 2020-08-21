@@ -189,12 +189,23 @@ namespace llarp::rpc
                         reply(CreateJSONError("could not find exit"));
                         return;
                       }
+                      std::vector<std::string> firsthops;
                       r->ForEachPeer(
-                          [gateway](const auto* link, bool) {
-                            net::AddRoute(link->GetRemoteEndpoint().toHost(), gateway);
+                          [&firsthops](const auto* link, bool) {
+                            firsthops.emplace_back(link->GetRemoteEndpoint().toHost());
                           },
                           false);
+                      for (const auto& hop : firsthops)
+                      {
+                        net::AddRoute(hop, gateway);
+                      }
                       net::AddDefaultRouteViaInterface(ep->GetIfName());
+                      r->SetDownHook([firsthops, gateway]() {
+                        for (const auto& hop : firsthops)
+                        {
+                          net::DelRoute(hop, gateway);
+                        }
+                      });
                       reply(CreateJSONResponse("OK"));
                     },
                     5s);

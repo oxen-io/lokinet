@@ -330,6 +330,8 @@ namespace llarp
   void
   Router::Close()
   {
+    if (_onDown)
+      _onDown();
     LogInfo("closing router");
     llarp_ev_loop_stop(_netloop);
     _running.store(false);

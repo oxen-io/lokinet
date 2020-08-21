@@ -228,6 +228,14 @@ namespace llarp
 
     llarp_time_t _lastTick = 0s;
 
+    std::function<void(void)> _onDown;
+
+    void
+    SetDownHook(std::function<void(void)> hook) override
+    {
+      _onDown = hook;
+    }
+
     bool
     LooksAlive() const override
     {

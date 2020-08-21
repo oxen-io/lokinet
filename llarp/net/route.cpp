@@ -8,9 +8,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
+#include <net/net.hpp>
+#include <exception>
 #endif
 
 #include <sstream>
+#include <util/logging/logger.hpp>
 
 namespace llarp::net
 {
@@ -134,10 +137,17 @@ namespace llarp::net
     nl_request.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
     nl_request.n.nlmsg_flags = NLM_F_REQUEST | flags;
     nl_request.n.nlmsg_type = cmd;
+    nl_request.n.nlmsg_pid = getpid();
     nl_request.r.rtm_family = dst->family;
     nl_request.r.rtm_table = RT_TABLE_MAIN;
-    nl_request.r.rtm_scope = RT_SCOPE_NOWHERE;
-
+    if (if_idx)
+    {
+      nl_request.r.rtm_scope = RT_SCOPE_LINK;
+    }
+    else
+    {
+      nl_request.r.rtm_scope = RT_SCOPE_NOWHERE;
+    }
     /* Set additional flags if NOT deleting route */
     if (cmd != RTM_DELROUTE)
     {
@@ -212,6 +222,7 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
+    LogInfo("add route: ", ip, " via ", gateway);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #else
     std::stringstream ss;
@@ -262,8 +273,14 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
+
+    const auto maybe = GetIFAddr(ifname);
+    if (not maybe.has_value())
+      throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
+    read_addr(maybe->toHost().c_str(), &gw_addr);
+    LogInfo("default route via ", ifname, " (", if_idx, ")");
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #elif _WIN32
     ifname.back()++;
@@ -286,8 +303,13 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
+    const auto maybe = GetIFAddr(ifname);
+
+    if (not maybe.has_value())
+      throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
+    read_addr(maybe->toHost().c_str(), &gw_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #elif _WIN32
     ifname.back()++;

@@ -241,6 +241,8 @@ namespace llarp
     virtual void
     HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results) = 0;
 
+    virtual void SetDownHook(std::function<void(void)>){};
+
     /// lookup router by pubkey
     /// if we are a service node this is done direct otherwise it's done via
     /// path
