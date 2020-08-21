@@ -204,8 +204,8 @@ namespace llarp::net
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
-    _inet_addr to_addr = {0};
-    _inet_addr gw_addr = {0};
+    _inet_addr to_addr{};
+    _inet_addr gw_addr{};
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
@@ -231,8 +231,8 @@ namespace llarp::net
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
-    _inet_addr to_addr = {0};
-    _inet_addr gw_addr = {0};
+    _inet_addr to_addr{};
+    _inet_addr gw_addr{};
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
     read_addr(gateway.c_str(), &gw_addr);
@@ -258,8 +258,8 @@ namespace llarp::net
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
-    _inet_addr to_addr = {0};
-    _inet_addr gw_addr = {0};
+    _inet_addr to_addr{};
+    _inet_addr gw_addr{};
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
@@ -282,8 +282,8 @@ namespace llarp::net
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
-    _inet_addr to_addr = {0};
-    _inet_addr gw_addr = {0};
+    _inet_addr to_addr{};
+    _inet_addr gw_addr{};
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
