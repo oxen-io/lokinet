@@ -10,6 +10,8 @@
 #include <linux/rtnetlink.h>
 #endif
 
+#include <sstream>
+
 namespace llarp::net
 {
 #ifndef __linux__
