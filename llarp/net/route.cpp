@@ -68,6 +68,8 @@ namespace llarp::net
   {
     NLSocket() : fd(socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
     {
+      if (fd == -1)
+        throw std::runtime_error("failed to make netlink socket");
     }
 
     ~NLSocket()
@@ -126,7 +128,7 @@ namespace llarp::net
       struct nlmsghdr n;
       struct rtmsg r;
       char buf[4096];
-    } nl_request;
+    } nl_request{};
 
     /* Initialize request structure */
     nl_request.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
