@@ -1179,6 +1179,7 @@ namespace llarp
       {
         auto transfer = std::make_shared<routing::PathTransferMessage>();
         ProtocolFrame& f = transfer->T;
+        f.R = 0;
         std::shared_ptr<path::Path> p;
         std::set<ConvoTag> tags;
         if (GetConvoTagsForService(remote, tags))
