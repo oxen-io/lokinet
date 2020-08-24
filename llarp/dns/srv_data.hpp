@@ -3,8 +3,12 @@
 #include <dns/name.hpp>
 #include <dns/serialize.hpp>
 
+#include <tuple>
+
 namespace llarp::dns
 {
+
+  typedef std::tuple<std::string, uint16_t, uint16_t, uint16_t, std::string> SRVTuple;
 
   struct SRVData
   {
@@ -28,6 +32,9 @@ namespace llarp::dns
     // but rather some sanity/safety checks
     bool IsValid() const;
 
+    SRVTuple toTuple() const;
+
+    static SRVData fromTuple(SRVTuple tuple);
   };
 
 } // namespace llarp::dns

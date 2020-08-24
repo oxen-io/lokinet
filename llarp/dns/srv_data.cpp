@@ -35,4 +35,18 @@ namespace llarp::dns
     return false;
   }
 
+  SRVTuple SRVData::toTuple() const
+  {
+    return std::make_tuple(service_proto, priority, weight, port, target);
+  }
+
+  SRVData SRVData::fromTuple(SRVTuple tuple)
+  {
+    SRVData s;
+
+    std::tie(s.service_proto, s.priority, s.weight, s.port, s.target) = std::move(tuple);
+
+    return s;
+  }
+
 } // namespace llarp::dns

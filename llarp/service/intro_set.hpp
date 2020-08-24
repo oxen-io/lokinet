@@ -9,6 +9,7 @@
 #include <util/bencode.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
+#include <dns/srv_data.hpp>
 
 #include <optional>
 #include <algorithm>
@@ -30,6 +31,7 @@ namespace llarp
       std::vector<Introduction> I;
       PQPubKey K;
       Tag topic;
+      std::vector<llarp::dns::SRVTuple> SRVs;
       llarp_time_t T = 0s;
       std::optional<PoW> W;
       Signature Z;
