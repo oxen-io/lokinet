@@ -344,7 +344,7 @@ namespace llarp
       const IpAddress addr{value};
       if (not addr.hasPort())
         throw std::invalid_argument("no port provided in link address");
-      info.interface = addr.getIpAddr();
+      info.interface = addr.toHost();
       info.port = *addr.getPort();
     }
     else
