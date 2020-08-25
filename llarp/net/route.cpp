@@ -87,8 +87,8 @@ namespace llarp::net
   /* Helper structure for ip address data and attributes */
   typedef struct
   {
-    char family;
-    char bitlen;
+    unsigned char family;
+    unsigned char bitlen;
     unsigned char data[sizeof(struct in6_addr)];
   } _inet_addr;
 
