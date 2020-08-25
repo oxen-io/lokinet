@@ -15,7 +15,7 @@ if(NOT MSVC_VERSION)
   add_compile_options(-fno-ident -Wa,-mbig-obj)
   link_libraries( -lws2_32 -lshlwapi -ldbghelp -luser32 -liphlpapi -lpsapi -luserenv )
   # zmq requires windows xp or higher
-  add_definitions(-DWINVER=0x0501 -D_WIN32_WINNT=0x0501)
+  add_definitions(-DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
 endif()
 
 if(EMBEDDED_CFG)
