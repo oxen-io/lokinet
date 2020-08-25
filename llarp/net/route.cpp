@@ -192,7 +192,7 @@ namespace llarp::net
   }
 
   int
-  read_addr(char* addr, _inet_addr* res)
+  read_addr(const char* addr, _inet_addr* res)
   {
     if (strchr(addr, ':'))
     {
