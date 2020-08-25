@@ -94,11 +94,11 @@ namespace llarp::net
 
   /* */
 
-#define NLMSG_TAIL(nmsg) ((struct rtattr*)(((void*)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+#define NLMSG_TAIL(nmsg) ((struct rtattr*)(((intptr_t)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
 
   /* Add new data to rtattr */
   int
-  rtattr_add(struct nlmsghdr* n, int maxlen, int type, const void* data, int alen)
+  rtattr_add(struct nlmsghdr* n, unsigned int maxlen, int type, const void* data, int alen)
   {
     int len = RTA_LENGTH(alen);
     struct rtattr* rta;
