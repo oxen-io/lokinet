@@ -20,6 +20,7 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <stdio.h>
+#include <strsafe.h>
 #endif
 
 #include <sstream>
