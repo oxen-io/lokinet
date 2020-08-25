@@ -392,7 +392,7 @@ namespace llarp::net
 #undef FREE
     return gateways;
 #elif __APPLE__
-    const auto maybe = llarp::GetIFAddr(ifname);
+    const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       return gateways;
     const auto interface = maybe->toString();
