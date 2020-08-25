@@ -11,6 +11,9 @@
 #include <net/net.hpp>
 #include <exception>
 #endif
+#ifdef __APPLE__
+#include <net/net.hpp>
+#endif
 
 #include <sstream>
 #include <util/logging/logger.hpp>
