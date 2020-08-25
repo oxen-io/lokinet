@@ -14,6 +14,13 @@
 #ifdef __APPLE__
 #include <net/net.hpp>
 #endif
+#ifdef _WIN32
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <stdio.h>
+#endif
 
 #include <sstream>
 #include <util/logging/logger.hpp>
@@ -356,7 +363,7 @@ namespace llarp::net
 #elif _WIN32
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-    PMIB_IPFORWARDTABLE pIpForwardTable;
+    MIB_IPFORWARDTABLE* pIpForwardTable;
     DWORD dwSize = 0;
     DWORD dwRetVal = 0;
 
