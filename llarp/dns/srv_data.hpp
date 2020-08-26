@@ -35,6 +35,24 @@ namespace llarp::dns
     SRVTuple toTuple() const;
 
     static SRVData fromTuple(SRVTuple tuple);
+
+    /* bind-like formatted string for SRV records in config file
+     *
+     * format:
+     *   srv="service.proto priority weight port target"
+     *
+     * exactly one space character between parts.
+     *
+     * target can be empty, which would mean the full string
+     * will end in a space.  if this is the case, the target is
+     * interpreted as the .loki or .snode of the current context.
+     *
+     * if target is not empty, it must be either
+     *  - simply a full stop (dot/period) OR
+     *  - a name within the .loki or .snode subdomains. a target
+     *    specified in this manner must not end with a full stop.
+     */
+    bool fromString(const std::string& srvString);
   };
 
 } // namespace llarp::dns

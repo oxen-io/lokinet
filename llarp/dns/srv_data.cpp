@@ -1,5 +1,7 @@
 #include <dns/srv_data.hpp>
 
+#include <limits>
+
 namespace llarp::dns
 {
 
@@ -47,6 +49,67 @@ namespace llarp::dns
     std::tie(s.service_proto, s.priority, s.weight, s.port, s.target) = std::move(tuple);
 
     return s;
+  }
+
+  bool SRVData::fromString(const std::string& srvString)
+  {
+    size_t prev = 0;
+
+    size_t pos = srvString.find(" ");
+    if (pos == std::string::npos)
+    {
+      return false;
+    }
+    service_proto = srvString.substr(prev, pos - prev);
+
+    prev = pos+1;
+    pos = srvString.find(" ", prev);
+    if (pos == std::string::npos)
+    {
+      return false;
+    }
+    unsigned long number_from_string;
+    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
+    if (number_from_string > std::numeric_limits<uint16_t>::max())
+    {
+      return false;
+    }
+    priority = number_from_string;
+
+    prev = pos+1;
+    pos = srvString.find(" ", prev);
+    if (pos == std::string::npos)
+    {
+      return false;
+    }
+    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
+    if (number_from_string > std::numeric_limits<uint16_t>::max())
+    {
+      return false;
+    }
+    weight = number_from_string;
+
+    prev = pos+1;
+    pos = srvString.find(" ", prev);
+    if (pos == std::string::npos)
+    {
+      return false;
+    }
+    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
+    if (number_from_string > std::numeric_limits<uint16_t>::max())
+    {
+      return false;
+    }
+    port = number_from_string;
+
+    // after final space, interpret rest as target
+    if (srvString.size() <= pos+1)
+    {
+      return false;
+    }
+    target = srvString.substr(pos);
+
+    return IsValid();
   }
 
 } // namespace llarp::dns

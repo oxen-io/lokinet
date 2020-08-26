@@ -14,6 +14,7 @@
 #include <net/ip_range_map.hpp>
 #include <service/address.hpp>
 #include <service/auth.hpp>
+#include <dns/srv_data.hpp>
 
 #include <cstdlib>
 #include <functional>
@@ -92,6 +93,8 @@ namespace llarp
     std::optional<std::string> m_AuthUrl;
     std::optional<std::string> m_AuthMethod;
     std::unordered_set<service::Address, service::Address::Hash> m_AuthWhitelist;
+
+    std::vector<llarp::dns::SRVData> m_SRVRecords;
 
     // TODO:
     // on-up
