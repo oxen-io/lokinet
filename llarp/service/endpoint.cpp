@@ -54,6 +54,11 @@ namespace llarp
       conf.m_ExitMap.ForEachEntry(
           [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
 
+      for (auto [exit, auth] : conf.m_ExitAuths)
+      {
+        SetAuthInfoForEndpoint(exit, auth);
+      }
+
       return m_state->Configure(conf);
     }
 

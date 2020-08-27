@@ -212,6 +212,26 @@ namespace llarp
       m_Paths = arg;
     });
 
+    conf.defineOption<std::string>("network", "exit-auth", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      service::Address exit;
+      service::AuthInfo auth;
+      const auto pos = arg.find(":");
+      if (pos == std::string::npos)
+      {
+        throw std::invalid_argument(
+            "[network]:exit-auth invalid format, expects exit-address.loki:auth-code-goes-here");
+      }
+      const auto exit_str = arg.substr(0, pos);
+      auth.token = arg.substr(pos + 1);
+      if (not exit.FromString(exit_str))
+      {
+        throw std::invalid_argument("[network]:exit-auth invalid exit address");
+      }
+      m_ExitAuths.emplace(exit, auth);
+    });
+
     conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
       if (arg.empty())
         return;

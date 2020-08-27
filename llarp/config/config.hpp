@@ -85,6 +85,7 @@ namespace llarp
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
     net::IPRangeMap<service::Address> m_ExitMap;
+    std::unordered_map<service::Address, service::AuthInfo, service::Address::Hash> m_ExitAuths;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
