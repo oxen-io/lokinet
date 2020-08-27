@@ -66,6 +66,10 @@ namespace llarp
     void
     Configure(Config conf);
 
+    /// handle SIGHUP
+    void
+    Reload();
+
     bool
     IsUp() const;
 
@@ -92,7 +96,7 @@ namespace llarp
     makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
    protected:
-    std::unique_ptr<Config> config = nullptr;
+    std::shared_ptr<Config> config = nullptr;
 
    private:
     void

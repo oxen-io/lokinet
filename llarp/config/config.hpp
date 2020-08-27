@@ -224,6 +224,15 @@ namespace llarp
 
     std::string
     generateBaseRouterConfig(fs::path defaultDataDir);
+
+    void
+    Save() const;
+
+    void
+    Override(std::string section, std::string key, std::string value);
+
+   private:
+    ConfigParser m_Parser;
   };
 
   void

@@ -40,6 +40,7 @@ namespace llarp
   void
   ConfigParser::Clear()
   {
+    m_Overrides.clear();
     m_Config.clear();
     m_Data.clear();
   }
@@ -162,4 +163,32 @@ namespace llarp
       return false;
     return visit(itr->second);
   }
+
+  void
+  ConfigParser::AddOverride(std::string section, std::string key, std::string value)
+  {
+    m_Overrides[section].emplace(key, value);
+  }
+
+  void
+  ConfigParser::Save() const
+  {
+    // if we have no overrides keep the config the same on disk
+    if (m_Overrides.empty())
+      return;
+    std::ofstream ofs(m_FileName);
+    // write existing config data
+    ofs.write(m_Data.data(), m_Data.size());
+    // write overrides
+    ofs << std::endl << std::endl << "# overrides" << std::endl;
+    for (const auto& [section, values] : m_Overrides)
+    {
+      ofs << std::endl << "[" << section << "]" << std::endl;
+      for (const auto& [key, value] : values)
+      {
+        ofs << key << "=" << value << std::endl;
+      }
+    }
+  }
+
 }  // namespace llarp

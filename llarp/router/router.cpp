@@ -262,8 +262,10 @@ namespace llarp
   }
 
   bool
-  Router::Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isRouter, llarp_nodedb* nodedb)
   {
+    m_Config = c;
+    auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
       lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);

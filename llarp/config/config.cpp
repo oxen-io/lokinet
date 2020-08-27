@@ -547,6 +547,18 @@ namespace llarp
         "logging", "file", false, DefaultLogFile, AssignmentAcceptor(m_logFile));
   }
 
+  void
+  Config::Save() const
+  {
+    m_Parser.Save();
+  }
+
+  void
+  Config::Override(std::string section, std::string key, std::string value)
+  {
+    m_Parser.AddOverride(std::move(section), std::move(key), std::move(value));
+  }
+
   bool
   Config::Load(const fs::path fname, bool isRelay, fs::path defaultDataDir)
   {
@@ -559,14 +571,13 @@ namespace llarp
       ConfigDefinition conf;
       initializeConfig(conf, params);
       addBackwardsCompatibleConfigOptions(conf);
-
-      ConfigParser parser;
-      if (!parser.LoadFile(fname))
+      m_Parser.Clear();
+      if (!m_Parser.LoadFile(fname))
       {
         return false;
       }
 
-      parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
           conf.addConfigValue(section, pair.first, pair.second);
