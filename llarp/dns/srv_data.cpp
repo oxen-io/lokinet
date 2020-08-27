@@ -1,4 +1,5 @@
 #include <dns/srv_data.hpp>
+#include <util/str.hpp>
 
 #include <limits>
 
@@ -51,63 +52,31 @@ namespace llarp::dns
     return s;
   }
 
-  bool SRVData::fromString(const std::string& srvString)
+  bool SRVData::fromString(std::string_view srvString)
   {
-    size_t prev = 0;
+    // split on spaces, discard trailing empty strings
+    auto splits = split(srvString, " ", false);
 
-    size_t pos = srvString.find(" ");
-    if (pos == std::string::npos)
+    if (splits.size() != 5 && splits.size() != 4)
     {
       return false;
     }
-    service_proto = srvString.substr(prev, pos - prev);
 
-    prev = pos+1;
-    pos = srvString.find(" ", prev);
-    if (pos == std::string::npos)
-    {
-      return false;
-    }
-    unsigned long number_from_string;
-    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
-    if (number_from_string > std::numeric_limits<uint16_t>::max())
-    {
-      return false;
-    }
-    priority = number_from_string;
+    service_proto = splits[0];
 
-    prev = pos+1;
-    pos = srvString.find(" ", prev);
-    if (pos == std::string::npos)
-    {
+    if (not parse_int(splits[1], priority))
       return false;
-    }
-    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
-    if (number_from_string > std::numeric_limits<uint16_t>::max())
-    {
-      return false;
-    }
-    weight = number_from_string;
 
-    prev = pos+1;
-    pos = srvString.find(" ", prev);
-    if (pos == std::string::npos)
-    {
+    if (not parse_int(splits[2], weight))
       return false;
-    }
-    number_from_string = std::stoul(srvString.substr(prev, pos - prev));
-    if (number_from_string > std::numeric_limits<uint16_t>::max())
-    {
-      return false;
-    }
-    port = number_from_string;
 
-    // after final space, interpret rest as target
-    if (srvString.size() <= pos+1)
-    {
+    if (not parse_int(splits[3], port))
       return false;
-    }
-    target = srvString.substr(pos);
+
+    if (splits.size() == 5)
+      target = splits[4];
+    else
+      target = "";
 
     return IsValid();
   }

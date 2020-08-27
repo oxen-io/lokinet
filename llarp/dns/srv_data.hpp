@@ -4,6 +4,7 @@
 #include <dns/serialize.hpp>
 
 #include <tuple>
+#include <string_view>
 
 namespace llarp::dns
 {
@@ -39,12 +40,12 @@ namespace llarp::dns
     /* bind-like formatted string for SRV records in config file
      *
      * format:
-     *   srv="service.proto priority weight port target"
+     *   srv=service.proto priority weight port target
      *
      * exactly one space character between parts.
      *
-     * target can be empty, which would mean the full string
-     * will end in a space.  if this is the case, the target is
+     * target can be empty, in which case the space after port should
+     * be omitted.  if this is the case, the target is
      * interpreted as the .loki or .snode of the current context.
      *
      * if target is not empty, it must be either
@@ -52,7 +53,7 @@ namespace llarp::dns
      *  - a name within the .loki or .snode subdomains. a target
      *    specified in this manner must not end with a full stop.
      */
-    bool fromString(const std::string& srvString);
+    bool fromString(std::string_view srvString);
   };
 
 } // namespace llarp::dns
