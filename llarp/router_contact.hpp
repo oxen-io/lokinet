@@ -96,8 +96,6 @@ namespace llarp
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
-    // advertised exits
-    std::vector<ExitInfo> exits;
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee
@@ -106,6 +104,8 @@ namespace llarp
     llarp_time_t last_updated = 0s;
     uint64_t version = LLARP_PROTO_VERSION;
     std::optional<RouterVersion> routerVersion;
+    /// should we serialize the exit info?
+    const static bool serializeExit = true;
 
     util::StatusObject
     ExtractStatus() const;
@@ -151,7 +151,7 @@ namespace llarp
     bool
     IsExit() const
     {
-      return !exits.empty();
+      return false;
     }
 
     bool

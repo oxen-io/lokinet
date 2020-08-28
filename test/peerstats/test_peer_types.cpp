@@ -40,38 +40,51 @@ TEST_CASE("Test PeerStats BEncode", "[PeerStats]")
   stats.numPacketsResent = 9;
   stats.numDistinctRCsReceived = 10;
   stats.numLateRCs = 11;
-  stats.peakBandwidthBytesPerSec = 12.1; // should truncate to 12
+  stats.peakBandwidthBytesPerSec = 12.1;  // should truncate to 12
   stats.longestRCReceiveInterval = 13ms;
   stats.leastRCRemainingLifetime = 14ms;
   stats.lastRCUpdated = 15ms;
 
-  constexpr int bufSize = 4096;
-  byte_t* raw = new byte_t[bufSize];
-  llarp_buffer_t buf(raw, bufSize);
+  constexpr size_t bufSize = 4096;
+  std::array<byte_t, bufSize> raw{};
+  llarp_buffer_t buf(raw);
 
   CHECK_NOTHROW(stats.BEncode(&buf));
 
-  std::string asString = (const char*)raw;
+  std::string asString = (const char*)raw.data();
   constexpr std::string_view expected =
-    "d"
-    "21:numConnectionAttempts" "i1e"
-    "22:numConnectionSuccesses" "i2e"
-    "23:numConnectionRejections" "i3e"
-    "21:numConnectionTimeouts" "i4e"
-    "13:numPathBuilds" "i5e"
-    "19:numPacketsAttempted" "i6e"
-    "14:numPacketsSent" "i7e"
-    "17:numPacketsDropped" "i8e"
-    "16:numPacketsResent" "i9e"
-    "22:numDistinctRCsReceived" "i10e"
-    "10:numLateRCs" "i11e"
-    "24:peakBandwidthBytesPerSec" "i12e"
-    "24:longestRCReceiveInterval" "i13e"
-    "24:leastRCRemainingLifetime" "i14e"
-    "13:lastRCUpdated" "i15e"
-    "e";
+      "d"
+      "13:lastRCUpdated"
+      "i15e"
+      "24:leastRCRemainingLifetime"
+      "i14e"
+      "24:longestRCReceiveInterval"
+      "i13e"
+      "21:numConnectionAttempts"
+      "i1e"
+      "23:numConnectionRejections"
+      "i3e"
+      "22:numConnectionSuccesses"
+      "i2e"
+      "21:numConnectionTimeouts"
+      "i4e"
+      "22:numDistinctRCsReceived"
+      "i10e"
+      "10:numLateRCs"
+      "i11e"
+      "19:numPacketsAttempted"
+      "i6e"
+      "17:numPacketsDropped"
+      "i8e"
+      "16:numPacketsResent"
+      "i9e"
+      "14:numPacketsSent"
+      "i7e"
+      "13:numPathBuilds"
+      "i5e"
+      "24:peakBandwidthBytesPerSec"
+      "i12e"
+      "e";
 
   CHECK(asString == expected);
-
-  delete [] raw;
 }

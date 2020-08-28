@@ -38,7 +38,6 @@ TEST_F(RCTest, TestSignVerify)
 
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
-  rc.exits.emplace_back(rc.pubkey, IpAddress("1.1.1.1"));
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == NetID::DefaultValue());
 

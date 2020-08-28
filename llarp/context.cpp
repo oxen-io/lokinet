@@ -33,7 +33,7 @@ namespace llarp
     if (nullptr != config.get())
       throw std::runtime_error("Config already exists");
 
-    config = std::make_unique<Config>(std::move(conf));
+    config = std::make_shared<Config>(std::move(conf));
 
     logic = std::make_shared<Logic>();
 
@@ -85,7 +85,7 @@ namespace llarp
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
-    if (!router->Configure(*config.get(), opts.isRouter, nodedb.get()))
+    if (!router->Configure(config, opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
 
     // must be done after router is made so we can use its disk io worker
@@ -96,9 +96,7 @@ namespace llarp
   }
 
   std::unique_ptr<AbstractRouter>
-  Context::makeRouter(
-      llarp_ev_loop_ptr netloop,
-      std::shared_ptr<Logic> logic)
+  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
   {
     return std::make_unique<Router>(netloop, logic);
   }
@@ -159,8 +157,17 @@ namespace llarp
     {
       SigINT();
     }
-    // TODO: Hot reloading would be kewl
-    //       (it used to exist here, but wasn't maintained)
+#ifndef _WIN32
+    if (sig == SIGHUP)
+    {
+      Reload();
+    }
+#endif
+  }
+
+  void
+  Context::Reload()
+  {
   }
 
   void
@@ -184,7 +191,7 @@ namespace llarp
   Context::Close()
   {
     llarp::LogDebug("free config");
-    config.release();
+    config.reset();
 
     llarp::LogDebug("free nodedb");
     nodedb.release();

@@ -108,6 +108,9 @@ namespace llarp
         return false;
       }
 
+      virtual std::string
+      GetIfName() const = 0;
+
       /// inject vpn io
       /// return false if not supported
       virtual bool
@@ -182,8 +185,8 @@ namespace llarp
       void
       SetAuthInfoForEndpoint(Address remote, AuthInfo info);
 
-      // virtual huint128_t
-      // ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
+      virtual huint128_t
+      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) = 0;
 
       // virtual bool
       // HasServiceAddress(const AlignedBuffer< 32 >& addr) const = 0;

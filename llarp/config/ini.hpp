@@ -40,12 +40,21 @@ namespace llarp
     bool
     VisitSection(const char* name, std::function<bool(const SectionValues_t&)> visit) const;
 
+    /// add a config option that is appended at the end of the config buffer with no comments
+    void
+    AddOverride(std::string section, std::string key, std::string value);
+
+    /// save config and any overrides to the file it was loaded from
+    void
+    Save() const;
+
    private:
     bool
     Parse();
 
     std::vector<char> m_Data;
     Config_impl_t m_Config;
+    Config_impl_t m_Overrides;
     fs::path m_FileName;
   };
 

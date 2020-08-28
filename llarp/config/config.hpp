@@ -63,6 +63,7 @@ namespace llarp
     std::string m_transportKeyFile;
 
     bool m_enablePeerStats = false;
+    bool m_isRelay = false;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
@@ -84,6 +85,7 @@ namespace llarp
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
     net::IPRangeMap<service::Address> m_ExitMap;
+    std::unordered_map<service::Address, service::AuthInfo, service::Address::Hash> m_ExitAuths;
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
@@ -222,6 +224,15 @@ namespace llarp
 
     std::string
     generateBaseRouterConfig(fs::path defaultDataDir);
+
+    void
+    Save() const;
+
+    void
+    Override(std::string section, std::string key, std::string value);
+
+   private:
+    ConfigParser m_Parser;
   };
 
   void

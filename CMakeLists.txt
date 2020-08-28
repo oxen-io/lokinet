@@ -154,7 +154,7 @@ if(LokiMQ_FOUND)
   message(STATUS "using system lokimq")
 else()
   message(STATUS "using lokimq submodule")
-  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq EXCLUDE_FROM_ALL)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq)
 endif()
 
 

@@ -205,8 +205,9 @@ add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
 if(ZMQ_VERSION VERSION_LESS 4.3.3 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
-  set(zmq_patch PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-pr3601-mingw-build-fix.patch
-    COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-win32-release.patch)
+  set(zmq_patch
+    #PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-pr3601-mingw-build-fix.patch)
+    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-win32-release.patch)
 endif()
 build_external(zmq
   DEPENDS sodium_external

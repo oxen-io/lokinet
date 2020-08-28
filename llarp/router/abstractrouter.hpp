@@ -1,6 +1,7 @@
 #ifndef LLARP_ABSTRACT_ROUTER_HPP
 #define LLARP_ABSTRACT_ROUTER_HPP
 
+#include <config/config.hpp>
 #include <config/key_manager.hpp>
 #include <memory>
 #include <util/types.hpp>
@@ -134,6 +135,12 @@ namespace llarp
     /// call function in disk io thread
     virtual void QueueDiskIO(std::function<void(void)>) = 0;
 
+    virtual std::shared_ptr<Config>
+    GetConfig() const
+    {
+      return nullptr;
+    }
+
     virtual service::Context&
     hiddenServiceContext() = 0;
 
@@ -159,7 +166,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb) = 0;
+    Configure(std::shared_ptr<Config> conf, bool isRouter, llarp_nodedb* nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;
@@ -240,6 +247,8 @@ namespace llarp
 
     virtual void
     HandleDHTLookupForExplore(RouterID remote, const std::vector<RouterContact>& results) = 0;
+
+    virtual void SetDownHook(std::function<void(void)>){};
 
     /// lookup router by pubkey
     /// if we are a service node this is done direct otherwise it's done via

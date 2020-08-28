@@ -262,8 +262,10 @@ namespace llarp
   }
 
   bool
-  Router::Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isRouter, llarp_nodedb* nodedb)
   {
+    m_Config = c;
+    auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
       lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
@@ -330,6 +332,8 @@ namespace llarp
   void
   Router::Close()
   {
+    if (_onDown)
+      _onDown();
     LogInfo("closing router");
     llarp_ev_loop_stop(_netloop);
     _running.store(false);
@@ -449,11 +453,7 @@ namespace llarp
     if (usingSNSeed)
       ident_keyfile = conf.lokid.ident_keyfile;
 
-    // TODO: add config flag for "is service node"
-    if (conf.links.m_InboundLinks.size())
-    {
-      m_isServiceNode = true;
-    }
+    m_isServiceNode = conf.router.m_isRelay;
 
     networkConfig = conf.network;
 
@@ -591,6 +591,11 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
+    if (conf.links.m_InboundLinks.empty() and m_isServiceNode)
+    {
+      throw std::runtime_error("service node enabled but have no inbound links");
+    }
+
     // Network config
     if (conf.network.m_enableProfiling.has_value() and not*conf.network.m_enableProfiling)
     {
@@ -618,9 +623,9 @@ namespace llarp
       m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf.router);
     }
-    else
+    else if (IsServiceNode())
     {
-      assert(not IsServiceNode());  // enable peer stats must be enabled for service nodes
+      throw std::runtime_error("peer stats must be enabled when running as relay");
     }
 
     // Logging config
@@ -957,14 +962,20 @@ namespace llarp
           return;
         LogInfo("adding address: ", ai);
         _rc.addrs.push_back(ai);
-        if (ExitEnabled())
-        {
-          const IpAddress address = ai.toIpAddress();
-          _rc.exits.emplace_back(_rc.pubkey, address);
-          LogInfo("Exit relay started, advertised as exiting at: ", address);
-        }
       }
     });
+
+    if (ExitEnabled() and IsServiceNode())
+    {
+      LogError("exit mode not supported while service node");
+      return false;
+    }
+
+    if (IsServiceNode() and not _rc.IsPublicRouter())
+    {
+      LogError("we are configured as relay but have no reachable addresses");
+      return false;
+    }
 
     // set public encryption key
     _rc.enckey = seckey_topublic(encryption());

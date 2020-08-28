@@ -130,20 +130,13 @@ namespace llarp
     conf.defineOption<std::string>(
         "router", "transport-privkey", false, "", AssignmentAcceptor(m_transportKeyFile));
 
-    if (not params.isRelay)
-    {
-      // TODO: remove this -- all service nodes should run peer db
-      conf.defineOption<bool>(
-          "router",
-          "enable-peer-stats",
-          false,
-          DefaultEnablePeerStats,
-          AssignmentAcceptor(m_enablePeerStats));
-    }
-    else
-    {
-      m_enablePeerStats = true;
-    }
+    conf.defineOption<bool>(
+        "router",
+        "enable-peer-stats",
+        false,
+        DefaultEnablePeerStats,
+        AssignmentAcceptor(m_enablePeerStats));
+    m_isRelay = params.isRelay;
   }
 
   void
@@ -217,6 +210,26 @@ namespace llarp
       if (arg < 2 or arg > 8)
         throw std::invalid_argument("[endpoint]:paths must be >= 2 and <= 8");
       m_Paths = arg;
+    });
+
+    conf.defineOption<std::string>("network", "exit-auth", false, "", [this](std::string arg) {
+      if (arg.empty())
+        return;
+      service::Address exit;
+      service::AuthInfo auth;
+      const auto pos = arg.find(":");
+      if (pos == std::string::npos)
+      {
+        throw std::invalid_argument(
+            "[network]:exit-auth invalid format, expects exit-address.loki:auth-code-goes-here");
+      }
+      const auto exit_str = arg.substr(0, pos);
+      auth.token = arg.substr(pos + 1);
+      if (not exit.FromString(exit_str))
+      {
+        throw std::invalid_argument("[network]:exit-auth invalid exit address");
+      }
+      m_ExitAuths.emplace(exit, auth);
     });
 
     conf.defineOption<std::string>("network", "exit-node", false, "", [this](std::string arg) {
@@ -351,7 +364,7 @@ namespace llarp
       const IpAddress addr{value};
       if (not addr.hasPort())
         throw std::invalid_argument("no port provided in link address");
-      info.interface = addr.getIpAddr();
+      info.interface = addr.toHost();
       info.port = *addr.getPort();
     }
     else
@@ -433,7 +446,17 @@ namespace llarp
         "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
 
     conf.defineOption<std::string>(
-        "api", "bind", false, DefaultRPCBindAddr, AssignmentAcceptor(m_rpcBindAddr));
+        "api", "bind", false, DefaultRPCBindAddr, [this](std::string arg) {
+          if (arg.empty())
+          {
+            arg = DefaultRPCBindAddr;
+          }
+          if (arg.find("://") == std::string::npos)
+          {
+            arg = "tcp://" + arg;
+          }
+          m_rpcBindAddr = std::move(arg);
+        });
 
     // TODO: this was from pre-refactor:
     // TODO: add pubkey to whitelist
@@ -524,6 +547,18 @@ namespace llarp
         "logging", "file", false, DefaultLogFile, AssignmentAcceptor(m_logFile));
   }
 
+  void
+  Config::Save() const
+  {
+    m_Parser.Save();
+  }
+
+  void
+  Config::Override(std::string section, std::string key, std::string value)
+  {
+    m_Parser.AddOverride(std::move(section), std::move(key), std::move(value));
+  }
+
   bool
   Config::Load(const fs::path fname, bool isRelay, fs::path defaultDataDir)
   {
@@ -536,14 +571,13 @@ namespace llarp
       ConfigDefinition conf;
       initializeConfig(conf, params);
       addBackwardsCompatibleConfigOptions(conf);
-
-      ConfigParser parser;
-      if (!parser.LoadFile(fname))
+      m_Parser.Clear();
+      if (!m_Parser.LoadFile(fname))
       {
         return false;
       }
 
-      parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
         {
           conf.addConfigValue(section, pair.first, pair.second);

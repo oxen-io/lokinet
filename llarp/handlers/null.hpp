@@ -22,6 +22,12 @@ namespace llarp
         return true;
       }
 
+      std::string
+      GetIfName() const override
+      {
+        return "";
+      }
+
       path::PathSet_ptr
       GetSelf() override
       {
@@ -36,6 +42,12 @@ namespace llarp
 
       void
       SendPacketToRemote(const llarp_buffer_t&) override{};
+
+      huint128_t
+      ObtainIPForAddr(const AlignedBuffer<32>&, bool) override
+      {
+        return {0};
+      }
     };
   }  // namespace handlers
 }  // namespace llarp

@@ -36,6 +36,9 @@ namespace llarp
       void
       SendPacketToRemote(const llarp_buffer_t&) override{};
 
+      std::string
+      GetIfName() const override;
+
       void
       Tick(llarp_time_t now) override;
 
@@ -164,7 +167,7 @@ namespace llarp
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode);
+      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) override;
 
       /// flush network traffic
       void
@@ -270,6 +273,7 @@ namespace llarp
         llarp_vpn_io* io;
       };
       std::promise<lazy_vpn> m_LazyVPNPromise;
+      std::string m_IfName;
 
       /// send packets on endpoint to user using send function
       /// send function returns true to indicate stop iteration and do codel

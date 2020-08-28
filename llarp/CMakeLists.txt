@@ -59,6 +59,7 @@ add_library(lokinet-platform
   net/ip_range.cpp
   net/net.cpp
   net/net_int.cpp
+  net/route.cpp
   net/sock_addr.cpp
   $<TARGET_OBJECTS:tuntap>
 )
@@ -204,15 +205,6 @@ add_library(liblokinet
   service/tag_lookup_job.cpp
   service/tag.cpp
 )
-
-if(TARGET curl)
-  # key_manager needs curl for now (to fetch service node keys from lokid)
-  target_link_libraries(liblokinet PUBLIC curl)
-  target_compile_definitions(liblokinet PRIVATE HAVE_CURL)
-  if(TARGET libcurl_external)
-    add_dependencies(liblokinet libcurl_external)
-  endif()
-endif()
 
 set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
 

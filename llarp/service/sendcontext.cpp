@@ -70,6 +70,7 @@ namespace llarp
     {
       SharedSecret shared;
       auto f = std::make_shared<ProtocolFrame>();
+      f->R = 0;
       f->N.Randomize();
       f->T = currentConvoTag;
       f->S = ++sequenceNo;

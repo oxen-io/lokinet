@@ -14,6 +14,7 @@
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
 #include <service/endpoint_state.hpp>
+#include <service/outbound_context.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
@@ -549,6 +550,12 @@ namespace llarp
       return true;
     }
 
+    std::string
+    TunEndpoint::GetIfName() const
+    {
+      return m_IfName;
+    }
+
     bool
     TunEndpoint::Start()
     {
@@ -661,6 +668,7 @@ namespace llarp
         ifaddr = vpn.info.ifaddr;
         netmask = vpn.info.netmask;
       }
+      m_IfName = ifname;
       if (ip.FromString(ifaddr))
       {
         m_OurIP = net::ExpandV4(ip);
@@ -786,7 +794,11 @@ namespace llarp
             MarkAddressOutbound(addr);
             EnsurePathToService(
                 addr,
-                [addr, pkt, self = this](service::Address, service::OutboundContext*) {
+                [addr, pkt, self = this](service::Address, service::OutboundContext* ctx) {
+                  if (ctx)
+                  {
+                    ctx->sendTimeout = 5s;
+                  }
                   self->SendToServiceOrQueue(addr, pkt.ConstBuffer(), service::eProtocolExit);
                 },
                 1s);

@@ -146,8 +146,8 @@ namespace llarp
         catch (const std::exception& e)
         {
           LogError(stringify("Could not use ifname ", ifname, " to configure ILinkLayer"));
+          throw e;
         }
-        throw;
       }
     }
     m_ourAddr.setPort(port);

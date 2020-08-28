@@ -8,9 +8,6 @@
 namespace llarp
 {
   bool
-  StrEq(const char* s1, const char* s2);
-
-  bool
   IsFalseValue(std::string_view str);
 
   struct CaselessLessThan

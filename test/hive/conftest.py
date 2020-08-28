@@ -30,8 +30,8 @@ def HiveArbitrary():
     return router_hive
 
   yield _make
-
-  router_hive.Stop()
+  if router_hive:
+    router_hive.Stop()
 
 @pytest.fixture()
 def HiveForPeerStats():
@@ -43,5 +43,5 @@ def HiveForPeerStats():
     return router_hive
 
   yield _make
-
-  router_hive.Stop()
+  if router_hive:
+    router_hive.Stop()

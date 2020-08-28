@@ -54,6 +54,11 @@ namespace llarp
       conf.m_ExitMap.ForEachEntry(
           [&](const IPRange& range, const service::Address& addr) { MapExitRange(range, addr); });
 
+      for (auto [exit, auth] : conf.m_ExitAuths)
+      {
+        SetAuthInfoForEndpoint(exit, auth);
+      }
+
       return m_state->Configure(conf);
     }
 
@@ -912,25 +917,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if (!frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this))
-      {
-        // send discard
-        ProtocolFrame f;
-        f.R = 1;
-        f.T = frame.T;
-        f.F = p->intro.pathID;
-
-        if (!f.Sign(m_Identity))
-          return false;
-        {
-          LogWarn("invalidating convotag T=", frame.T);
-          util::Lock lock(m_state->m_SendQueueMutex);
-          m_state->m_SendQueue.emplace_back(
-              std::make_shared<const routing::PathTransferMessage>(f, frame.F), p);
-        }
-        return true;
-      }
-      return true;
+      return frame.AsyncDecryptAndVerify(EndpointLogic(), p, m_Identity, this);
     }
 
     void Endpoint::HandlePathDied(path::Path_ptr)
@@ -1071,11 +1058,18 @@ namespace llarp
         // TODO: check for collision lol no we don't but maybe we will...
         // some day :DDDDD
         tag.Randomize();
+        const auto src = xhtonl(net::TruncateV6(GetIfAddr()));
+        const auto dst = xhtonl(net::TruncateV6(ObtainIPForAddr(snode, true)));
+
         auto session = std::make_shared<exit::SNodeSession>(
             snode,
-            [=](const llarp_buffer_t& pkt) -> bool {
+            [=](const llarp_buffer_t& buf) -> bool {
+              net::IPPacket pkt;
+              if (not pkt.Load(buf))
+                return false;
+              pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt, eProtocolTrafficV4);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4);
             },
             Router(),
             numPaths,
@@ -1190,6 +1184,7 @@ namespace llarp
       {
         auto transfer = std::make_shared<routing::PathTransferMessage>();
         ProtocolFrame& f = transfer->T;
+        f.R = 0;
         std::shared_ptr<path::Path> p;
         std::set<ConvoTag> tags;
         if (GetConvoTagsForService(remote, tags))

@@ -85,6 +85,7 @@ local windows_cross_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
+                'apk update && apk upgrade',
                 'apk add cmake git ninja pkgconf ccache patch make ' + deps,
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
@@ -225,7 +226,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
 
     // integration tests
     debian_pipeline("Router Hive", "ubuntu:focal", deps='python3-dev python3-pytest python3-pybind11 ' + default_deps,
-                    cmake_extra='-DWITH_HIVE=ON', extra_cmds=['../contrib/ci/drone-run-router-hive.sh']),
+                    cmake_extra='-DWITH_HIVE=ON'),
 
     // Deb builds:
     deb_builder("debian:sid", "sid", "debian/sid"),

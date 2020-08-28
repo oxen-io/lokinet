@@ -56,6 +56,18 @@ namespace llarp
         return false;
       }
 
+      llarp::huint128_t
+      ObtainIPForAddr(const llarp::AlignedBuffer<32>&, bool) override
+      {
+        return {0};
+      }
+
+      std::string
+      GetIfName() const override
+      {
+        return "";
+      }
+
       using PacketHandler_t =
           std::function<void(service::Address, std::vector<byte_t>, service::ProtocolType)>;
 

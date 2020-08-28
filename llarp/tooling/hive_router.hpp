@@ -10,10 +10,7 @@ namespace tooling
   /// code.
   struct HiveRouter : public llarp::Router
   {
-    HiveRouter(
-        llarp_ev_loop_ptr netloop,
-        std::shared_ptr<llarp::Logic> logic,
-        RouterHive* hive);
+    HiveRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<llarp::Logic> logic, RouterHive* hive);
 
     virtual ~HiveRouter() = default;
 

@@ -118,9 +118,8 @@ namespace llarp
     std::string
     toString() const;
 
-    /// get ip address component
     std::string
-    getIpAddr() const;
+    toHost() const;
 
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;

@@ -88,10 +88,9 @@ namespace llarp
 
       LogDebug("forwarding LRCM to ", nextHop);
 
-      m_Router->SendToOrQueue(nextHop, msg.get(), handler);
-
-      return true;
+      return m_Router->SendToOrQueue(nextHop, msg.get(), handler);
     }
+
     template <
         typename Lock_t,
         typename Map_t,

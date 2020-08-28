@@ -228,6 +228,14 @@ namespace llarp
 
     llarp_time_t _lastTick = 0s;
 
+    std::function<void(void)> _onDown;
+
+    void
+    SetDownHook(std::function<void(void)> hook) override
+    {
+      _onDown = hook;
+    }
+
     bool
     LooksAlive() const override
     {
@@ -345,7 +353,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(const Config& conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
+    Configure(std::shared_ptr<Config> conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
 
     bool
     StartRpcServer() override;
@@ -490,6 +498,14 @@ namespace llarp
 
     void
     AfterStopIssued();
+
+    std::shared_ptr<Config> m_Config;
+
+    std::shared_ptr<Config>
+    GetConfig() const override
+    {
+      return m_Config;
+    }
 
    private:
     std::atomic<bool> _stopping;
