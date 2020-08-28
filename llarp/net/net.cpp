@@ -365,7 +365,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
     {
       // llarp::LogInfo(__FILE__, "scanning ", i->ifa_name, " af: ",
       // std::to_string(i->ifa_addr->sa_family));
-      if (llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
+      if (std::string_view{i->ifa_name} == std::string_view{ifname} && i->ifa_addr->sa_family == af)
       {
         // can't do this here
         // llarp::Addr a(*i->ifa_addr);

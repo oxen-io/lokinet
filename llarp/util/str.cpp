@@ -46,19 +46,6 @@ namespace llarp
     return vals.count(str) > 0;
   }
 
-  bool
-  StrEq(const char* s1, const char* s2)
-  {
-    size_t sz1 = strlen(s1);
-    size_t sz2 = strlen(s2);
-    if (sz1 == sz2)
-    {
-      return strncmp(s1, s2, sz1) == 0;
-    }
-
-    return false;
-  }
-
   constexpr static char whitespace[] = " \t\n\r\f\v";
 
   std::string_view
