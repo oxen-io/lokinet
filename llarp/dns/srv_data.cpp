@@ -5,8 +5,8 @@
 
 namespace llarp::dns
 {
-
-  bool SRVData::IsValid() const
+  bool
+  SRVData::IsValid() const
   {
     // if target is of first two forms outlined above
     if (target == "." or target.size() == 0)
@@ -38,12 +38,14 @@ namespace llarp::dns
     return false;
   }
 
-  SRVTuple SRVData::toTuple() const
+  SRVTuple
+  SRVData::toTuple() const
   {
     return std::make_tuple(service_proto, priority, weight, port, target);
   }
 
-  SRVData SRVData::fromTuple(SRVTuple tuple)
+  SRVData
+  SRVData::fromTuple(SRVTuple tuple)
   {
     SRVData s;
 
@@ -52,7 +54,8 @@ namespace llarp::dns
     return s;
   }
 
-  bool SRVData::fromString(std::string_view srvString)
+  bool
+  SRVData::fromString(std::string_view srvString)
   {
     // split on spaces, discard trailing empty strings
     auto splits = split(srvString, " ", false);
@@ -81,4 +84,4 @@ namespace llarp::dns
     return IsValid();
   }
 
-} // namespace llarp::dns
+}  // namespace llarp::dns

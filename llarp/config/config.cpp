@@ -327,12 +327,12 @@ namespace llarp
         });
 
     conf.defineOption<std::string>("network", "srv", false, true, "", [this](std::string arg) {
-          llarp::dns::SRVData newSRV;
-          if (not newSRV.fromString(arg))
-            throw std::invalid_argument(stringify("Invalid SRV Record string: ", arg));
+      llarp::dns::SRVData newSRV;
+      if (not newSRV.fromString(arg))
+        throw std::invalid_argument(stringify("Invalid SRV Record string: ", arg));
 
-          m_SRVRecords.push_back(std::move(newSRV));
-        });
+      m_SRVRecords.push_back(std::move(newSRV));
+    });
   }
 
   void

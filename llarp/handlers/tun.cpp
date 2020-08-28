@@ -508,7 +508,7 @@ namespace llarp
         reply(msg);
         return true;
       }
-      //TODO: SRV Record
+      // TODO: SRV Record
       else if (msg.questions[0].qtype == dns::qTypeSRV)
       {
         llarp::service::Address addr;

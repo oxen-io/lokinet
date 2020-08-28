@@ -180,7 +180,7 @@ namespace llarp
 
         byte_t* end = buf->cur;
 
-        std::string_view srvString(reinterpret_cast<char *>(begin), end - begin);
+        std::string_view srvString(reinterpret_cast<char*>(begin), end - begin);
 
         try
         {

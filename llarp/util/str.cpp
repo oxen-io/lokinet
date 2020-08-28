@@ -98,8 +98,9 @@ namespace llarp
 
   using namespace std::literals;
 
-  std::vector<std::string_view> split(std::string_view str, const std::string_view delim, bool trim)
-  { 
+  std::vector<std::string_view>
+  split(std::string_view str, const std::string_view delim, bool trim)
+  {
     std::vector<std::string_view> results;
     // Special case for empty delimiter: splits on each character boundary:
     if (delim.empty())
@@ -124,16 +125,18 @@ namespace llarp
     return results;
   }
 
-  std::vector<std::string_view> split_any(std::string_view str, const std::string_view delims, bool trim)
+  std::vector<std::string_view>
+  split_any(std::string_view str, const std::string_view delims, bool trim)
   {
     if (delims.empty())
       return split(str, delims, trim);
     std::vector<std::string_view> results;
-    for (size_t pos = str.find_first_of(delims); pos != std::string_view::npos; pos = str.find_first_of(delims))
+    for (size_t pos = str.find_first_of(delims); pos != std::string_view::npos;
+         pos = str.find_first_of(delims))
     {
       if (!trim || !results.empty() || pos > 0)
         results.push_back(str.substr(0, pos));
-      size_t until = str.find_first_not_of(delims, pos+1);
+      size_t until = str.find_first_not_of(delims, pos + 1);
       if (until == std::string_view::npos)
         str.remove_prefix(str.size());
       else
@@ -147,11 +150,13 @@ namespace llarp
     return results;
   }
 
-  void trim(std::string_view& s)
+  void
+  trim(std::string_view& s)
   {
     constexpr auto simple_whitespace = " \t\r\n"sv;
     auto pos = s.find_first_not_of(simple_whitespace);
-    if (pos == std::string_view::npos) { // whole string is whitespace
+    if (pos == std::string_view::npos)
+    {  // whole string is whitespace
       s.remove_prefix(s.size());
       return;
     }
@@ -161,35 +166,45 @@ namespace llarp
     s.remove_suffix(s.size() - (pos + 1));
   }
 
-  std::string lowercase_ascii_string(std::string src)
+  std::string
+  lowercase_ascii_string(std::string src)
   {
-    for (char &ch : src)
-      if (ch >= 'A' && ch <= 'Z') ch = ch + ('a' - 'A');
+    for (char& ch : src)
+      if (ch >= 'A' && ch <= 'Z')
+        ch = ch + ('a' - 'A');
     return src;
   }
 
-  std::string friendly_duration(std::chrono::nanoseconds dur) {
+  std::string
+  friendly_duration(std::chrono::nanoseconds dur)
+  {
     std::ostringstream os;
     bool some = false;
-    if (dur >= 24h) {
+    if (dur >= 24h)
+    {
       os << dur / 24h << 'd';
       dur %= 24h;
       some = true;
     }
-    if (dur >= 1h || some) {
+    if (dur >= 1h || some)
+    {
       os << dur / 1h << 'h';
       dur %= 1h;
       some = true;
     }
-    if (dur >= 1min || some) {
+    if (dur >= 1min || some)
+    {
       os << dur / 1min << 'm';
       dur %= 1min;
       some = true;
     }
-    if (some) {
+    if (some)
+    {
       // If we have >= minutes then don't bother with fractional seconds
       os << dur / 1s << 's';
-    } else {
+    }
+    else
+    {
       double seconds = std::chrono::duration<double>(dur).count();
       os.precision(3);
       if (dur >= 1s)

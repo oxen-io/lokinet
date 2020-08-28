@@ -8,14 +8,13 @@
 
 namespace llarp::dns
 {
-
   typedef std::tuple<std::string, uint16_t, uint16_t, uint16_t, std::string> SRVTuple;
 
   struct SRVData
   {
     static constexpr size_t TARGET_MAX_SIZE = 200;
 
-    std::string service_proto; // service and protocol may as well be together
+    std::string service_proto;  // service and protocol may as well be together
 
     uint16_t priority;
     uint16_t weight;
@@ -31,11 +30,14 @@ namespace llarp::dns
     // do some basic validation on the target string
     // note: this is not a conclusive, regex solution,
     // but rather some sanity/safety checks
-    bool IsValid() const;
+    bool
+    IsValid() const;
 
-    SRVTuple toTuple() const;
+    SRVTuple
+    toTuple() const;
 
-    static SRVData fromTuple(SRVTuple tuple);
+    static SRVData
+    fromTuple(SRVTuple tuple);
 
     /* bind-like formatted string for SRV records in config file
      *
@@ -53,7 +55,8 @@ namespace llarp::dns
      *  - a name within the .loki or .snode subdomains. a target
      *    specified in this manner must not end with a full stop.
      */
-    bool fromString(std::string_view srvString);
+    bool
+    fromString(std::string_view srvString);
   };
 
-} // namespace llarp::dns
+}  // namespace llarp::dns

@@ -269,7 +269,8 @@ namespace llarp
       }
     }
 
-    void Message::AddSRVReply(std::vector<SRVData> records, RR_TTL_t ttl)
+    void
+    Message::AddSRVReply(std::vector<SRVData> records, RR_TTL_t ttl)
     {
       hdr_fields = reply_flags(hdr_fields);
 
