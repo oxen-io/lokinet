@@ -196,8 +196,6 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
-      m_state->m_RemoteLookupFilter.Decay(now);
-
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -414,7 +412,6 @@ namespace llarp
     bool
     Endpoint::Start()
     {
-      m_state->m_RemoteLookupFilter.DecayInterval(500ms);
       // how can I tell if a m_Identity isn't loaded?
       if (!m_DataHandler)
       {
@@ -995,18 +992,26 @@ namespace llarp
         }
       }
 
-      // filter check for address
-      if (not m_state->m_RemoteLookupFilter.Insert(remote))
-        return false;
-
       auto& lookups = m_state->m_PendingServiceLookups;
+
+      // add hook to lookup callbacks and return if a lookup
+      // is already in-progress.
+      if (lookups.count(remote) > 0)
+      {
+        lookups.emplace(remote, hook);
+        return true;
+      }
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
       using namespace std::placeholders;
-      size_t lookedUp = 0;
       const dht::Key_t location = remote.ToKey();
       uint64_t order = 0;
+
+      // flag to only add callback to list of callbacks for
+      // address once.
+      bool hookAdded = false;
+
       for (const auto& path : paths)
       {
         for (size_t count = 0; count < RequestsPerLookup; ++count)
@@ -1030,14 +1035,17 @@ namespace llarp
           order++;
           if (job->SendRequestViaPath(path, Router()))
           {
-            lookups.emplace(remote, hook);
-            lookedUp++;
+            if (not hookAdded)
+            {
+              lookups.emplace(remote, hook);
+              hookAdded = true;
+            }
           }
           else
             LogError(Name(), " send via path failed for lookup");
         }
       }
-      return lookedUp == (NumParallelLookups * RequestsPerLookup);
+      return hookAdded;
     }
 
     bool
