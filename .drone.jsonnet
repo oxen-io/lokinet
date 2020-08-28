@@ -226,7 +226,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
 
     // integration tests
     debian_pipeline("Router Hive", "ubuntu:focal", deps='python3-dev python3-pytest python3-pybind11 ' + default_deps,
-                    cmake_extra='-DWITH_HIVE=ON', extra_cmds=['../contrib/ci/drone-run-router-hive.sh']),
+                    cmake_extra='-DWITH_HIVE=ON'),
 
     // Deb builds:
     deb_builder("debian:sid", "sid", "debian/sid"),
