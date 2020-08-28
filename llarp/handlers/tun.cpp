@@ -320,6 +320,9 @@ namespace llarp
         return self->EnsurePathToService(
             addr,
             [=](const Address&, OutboundContext* ctx) {
+              if (ctx == nullptr)
+                return;
+
               const auto& introset = ctx->GetCurrentIntroSet();
               std::vector<llarp::dns::SRVData> records;
               size_t numRecords = introset.SRVs.size();

@@ -992,15 +992,17 @@ namespace llarp
         }
       }
 
-      auto& lookups = m_state->m_PendingServiceLookups;
+      // add response hook to list for address.
+      m_state->m_PendingServiceLookups.emplace(remote, hook);
 
-      // add hook to lookup callbacks and return if a lookup
-      // is already in-progress.
-      if (lookups.count(remote) > 0)
-      {
-        lookups.emplace(remote, hook);
+      auto& lookupTimes = m_state->m_LastServiceLookupTimes;
+      const auto now = Now();
+
+      // if most recent lookup was within last INTROSET_LOOKUP_RETRY_COOLDOWN
+      // just add callback to the list and return
+      if (lookupTimes.find(remote) != lookupTimes.end()
+          && now < (lookupTimes[remote] + INTROSET_LOOKUP_RETRY_COOLDOWN))
         return true;
-      }
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
@@ -1037,7 +1039,8 @@ namespace llarp
           {
             if (not hookAdded)
             {
-              lookups.emplace(remote, hook);
+              // if any of the lookups is successful, set last lookup time
+              lookupTimes[remote] = now;
               hookAdded = true;
             }
           }

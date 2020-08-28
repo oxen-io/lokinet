@@ -177,13 +177,20 @@ namespace llarp
     T
     fromString(const std::string& input)
     {
-      std::istringstream iss(input);
-      T t;
-      iss >> t;
-      if (iss.fail())
-        throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
+      if constexpr (std::is_same_v<T, std::string>)
+      {
+        return input;
+      }
       else
-        return t;
+      {
+        std::istringstream iss(input);
+        T t;
+        iss >> t;
+        if (iss.fail())
+          throw std::invalid_argument(stringify(input, " is not a valid ", typeid(T).name()));
+        else
+          return t;
+      }
     }
 
     std::string

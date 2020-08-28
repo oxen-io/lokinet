@@ -67,6 +67,8 @@ namespace llarp
 
     static constexpr auto INTROSET_PUBLISH_RETRY_INTERVAL = 5s;
 
+    static constexpr auto INTROSET_LOOKUP_RETRY_COOLDOWN = 3s;
+
     struct Endpoint : public path::Builder, public ILookupHolder, public IDataHandler
     {
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
