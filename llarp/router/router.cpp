@@ -623,9 +623,9 @@ namespace llarp
       m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf.router);
     }
-    else
+    else if(IsServiceNode())
     {
-      assert(not IsServiceNode());  // enable peer stats must be enabled for service nodes
+      throw std::runtime_error("peer stats must be enabled when running as relay");
     }
 
     // Logging config

@@ -11,13 +11,14 @@ static const llarp::RuntimeOptions opts = {.background = false, .debug = false, 
 std::shared_ptr<llarp::Context>
 make_context()
 {
-  llarp::Config conf;
+  llarp::Config conf{};
   conf.LoadDefault(true, fs::current_path());
 
   // set testing defaults
   conf.network.m_endpointType = "null";
   conf.bootstrap.skipBootstrap = true;
   conf.api.m_enableRPCServer = false;
+  conf.router.m_enablePeerStats = true;
   conf.router.m_publicAddress = llarp::IpAddress("1.1.1.1");
   // make a fake inbound link
   conf.links.m_InboundLinks.emplace_back();
