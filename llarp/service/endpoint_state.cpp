@@ -17,6 +17,12 @@ namespace llarp
         m_Keyfile = conf.m_keyfile->string();
       m_SnodeBlacklist = conf.m_snodeBlacklist;
       m_ExitEnabled = conf.m_AllowExit;
+
+      for (const auto& record : conf.m_SRVRecords)
+      {
+        m_IntroSet.SRVs.push_back(record.toTuple());
+      }
+
       // TODO:
       /*
       if (k == "on-up")

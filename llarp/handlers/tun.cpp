@@ -13,6 +13,7 @@
 #include <ev/ev.hpp>
 #include <router/abstractrouter.hpp>
 #include <service/context.hpp>
+#include <service/outbound_context.hpp>
 #include <service/endpoint_state.hpp>
 #include <service/outbound_context.hpp>
 #include <util/meta/memfn.hpp>
@@ -21,6 +22,8 @@
 #include <rpc/endpoint_rpc.hpp>
 
 #include <util/str.hpp>
+
+#include <dns/srv_data.hpp>
 
 namespace llarp
 {
@@ -308,6 +311,35 @@ namespace llarp
             },
             2s);
       };
+
+      auto ReplyToLokiSRVWhenReady = [self = this, reply = reply](
+                                         service::Address addr, auto msg) -> bool {
+        using service::Address;
+        using service::OutboundContext;
+
+        return self->EnsurePathToService(
+            addr,
+            [=](const Address&, OutboundContext* ctx) {
+              if (ctx == nullptr)
+                return;
+
+              const auto& introset = ctx->GetCurrentIntroSet();
+              std::vector<llarp::dns::SRVData> records;
+              size_t numRecords = introset.SRVs.size();
+              if (numRecords > 0)
+              {
+                records.reserve(numRecords);
+                for (const auto& record : introset.SRVs)
+                {
+                  records.push_back(std::move(llarp::dns::SRVData::fromTuple(record)));
+                }
+              }
+              msg->AddSRVReply(records);
+              reply(*msg);
+            },
+            2s);
+      };
+
       std::string qname;
       if (msg.answers.size() > 0)
       {
@@ -478,6 +510,23 @@ namespace llarp
         msg.AddNXReply();
         reply(msg);
         return true;
+      }
+      // TODO: SRV Record
+      else if (msg.questions[0].qtype == dns::qTypeSRV)
+      {
+        llarp::service::Address addr;
+
+        if (is_localhost_loki(msg))
+        {
+          msg.AddNXReply();
+          reply(msg);
+          return true;
+        }
+        else if (addr.FromString(qname, ".loki"))
+        {
+          llarp::LogWarn("SRV request for: ", qname);
+          return ReplyToLokiSRVWhenReady(addr, std::make_shared<dns::Message>(msg));
+        }
       }
       else
       {

@@ -67,6 +67,7 @@ namespace llarp
       SNodeSessions m_SNodeSessions;
 
       std::unordered_multimap<Address, PathEnsureHook, Address::Hash> m_PendingServiceLookups;
+      std::unordered_map<Address, llarp_time_t, Address::Hash> m_LastServiceLookupTimes;
 
       std::unordered_map<RouterID, uint32_t, RouterID::Hash> m_ServiceLookupFails;
 
@@ -87,8 +88,6 @@ namespace llarp
       OutboundSessions_t m_OutboundSessions;
 
       std::unordered_map<Tag, CachedTagResult, Tag::Hash> m_PrefetchedTags;
-
-      util::DecayingHashSet<Address> m_RemoteLookupFilter;
 
       bool
       Configure(const NetworkConfig& conf);

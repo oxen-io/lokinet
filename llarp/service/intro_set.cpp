@@ -2,6 +2,8 @@
 #include <crypto/crypto.hpp>
 #include <path/path.hpp>
 
+#include <lokimq/bt_serialize.h>
+
 namespace llarp
 {
   namespace service
@@ -170,6 +172,28 @@ namespace llarp
       if (!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
         return false;
 
+      if (key == "s")
+      {
+        byte_t* begin = buf->cur;
+        if (not bencode_discard(buf))
+          return false;
+
+        byte_t* end = buf->cur;
+
+        std::string_view srvString(reinterpret_cast<char*>(begin), end - begin);
+
+        try
+        {
+          lokimq::bt_deserialize(srvString, SRVs);
+        }
+        catch (const lokimq::bt_deserialize_invalid& err)
+        {
+          LogError("Error decoding SRV records from IntroSet: ", err.what());
+          return false;
+        }
+        read = true;
+      }
+
       if (!BEncodeMaybeReadDictInt("t", T, read, key, buf))
         return false;
 
@@ -215,6 +239,16 @@ namespace llarp
         if (!BEncodeWriteDictEntry("n", topic, buf))
           return false;
       }
+
+      if (SRVs.size())
+      {
+        std::string serial = lokimq::bt_serialize(SRVs);
+        if (!bencode_write_bytestring(buf, "s", 1))
+          return false;
+        if (!buf->write(serial.begin(), serial.end()))
+          return false;
+      }
+
       // Timestamp published
       if (!BEncodeWriteDictInt("t", T.count(), buf))
         return false;

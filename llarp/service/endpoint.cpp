@@ -196,8 +196,6 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
-      m_state->m_RemoteLookupFilter.Decay(now);
-
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -414,7 +412,6 @@ namespace llarp
     bool
     Endpoint::Start()
     {
-      m_state->m_RemoteLookupFilter.DecayInterval(500ms);
       // how can I tell if a m_Identity isn't loaded?
       if (!m_DataHandler)
       {
@@ -995,18 +992,28 @@ namespace llarp
         }
       }
 
-      // filter check for address
-      if (not m_state->m_RemoteLookupFilter.Insert(remote))
-        return false;
+      // add response hook to list for address.
+      m_state->m_PendingServiceLookups.emplace(remote, hook);
 
-      auto& lookups = m_state->m_PendingServiceLookups;
+      auto& lookupTimes = m_state->m_LastServiceLookupTimes;
+      const auto now = Now();
+
+      // if most recent lookup was within last INTROSET_LOOKUP_RETRY_COOLDOWN
+      // just add callback to the list and return
+      if (lookupTimes.find(remote) != lookupTimes.end()
+          && now < (lookupTimes[remote] + INTROSET_LOOKUP_RETRY_COOLDOWN))
+        return true;
 
       const auto paths = GetManyPathsWithUniqueEndpoints(this, NumParallelLookups);
 
       using namespace std::placeholders;
-      size_t lookedUp = 0;
       const dht::Key_t location = remote.ToKey();
       uint64_t order = 0;
+
+      // flag to only add callback to list of callbacks for
+      // address once.
+      bool hookAdded = false;
+
       for (const auto& path : paths)
       {
         for (size_t count = 0; count < RequestsPerLookup; ++count)
@@ -1030,14 +1037,18 @@ namespace llarp
           order++;
           if (job->SendRequestViaPath(path, Router()))
           {
-            lookups.emplace(remote, hook);
-            lookedUp++;
+            if (not hookAdded)
+            {
+              // if any of the lookups is successful, set last lookup time
+              lookupTimes[remote] = now;
+              hookAdded = true;
+            }
           }
           else
             LogError(Name(), " send via path failed for lookup");
         }
       }
-      return lookedUp == (NumParallelLookups * RequestsPerLookup);
+      return hookAdded;
     }
 
     bool

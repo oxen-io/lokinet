@@ -117,6 +117,12 @@ namespace llarp
       std::string
       Name() const override;
 
+      const IntroSet&
+      GetCurrentIntroSet() const
+      {
+        return currentIntroSet;
+      }
+
      private:
       /// swap remoteIntro with next intro
       void

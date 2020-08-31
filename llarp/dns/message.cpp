@@ -1,6 +1,7 @@
 #include <dns/message.hpp>
 
 #include <dns/dns.hpp>
+#include <dns/srv_data.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 #include <util/logging/logger.hpp>
@@ -268,10 +269,69 @@ namespace llarp
       }
     }
 
+    void
+    Message::AddSRVReply(std::vector<SRVData> records, RR_TTL_t ttl)
+    {
+      hdr_fields = reply_flags(hdr_fields);
+
+      const auto& question = questions[0];
+
+      for (const auto& srv : records)
+      {
+        if (not srv.IsValid())
+        {
+          AddNXReply();
+          return;
+        }
+
+        answers.emplace_back();
+        auto& rec = answers.back();
+        rec.rr_name = question.qname;
+        rec.rr_type = qTypeSRV;
+        rec.rr_class = qClassIN;
+        rec.ttl = ttl;
+
+        std::array<byte_t, 512> tmp = {{0}};
+        llarp_buffer_t buf(tmp);
+
+        buf.put_uint16(srv.priority);
+        buf.put_uint16(srv.weight);
+        buf.put_uint16(srv.port);
+
+        std::string target;
+        if (srv.target == "")
+        {
+          // get location of second dot (after service.proto) in qname
+          size_t pos = question.qname.find(".");
+          pos = question.qname.find(".", pos + 1);
+
+          target = question.qname.substr(pos + 1);
+        }
+        else
+        {
+          target = srv.target;
+        }
+
+        if (not EncodeName(&buf, target))
+        {
+          AddNXReply();
+          return;
+        }
+
+        buf.sz = buf.cur - buf.base;
+        rec.rData.resize(buf.sz);
+        memcpy(rec.rData.data(), buf.base, buf.sz);
+      }
+    }
+
     void Message::AddNXReply(RR_TTL_t)
     {
       if (questions.size())
       {
+        answers.clear();
+        authorities.clear();
+        additional.clear();
+
         // authorative response with recursion available
         hdr_fields = reply_flags(hdr_fields);
         // don't allow recursion on this request
