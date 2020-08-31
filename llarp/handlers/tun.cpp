@@ -524,7 +524,7 @@ namespace llarp
         }
         else if (addr.FromString(qname, ".loki"))
         {
-          llarp::LogWarn("SRV request for: ", qname);
+          llarp::LogDebug("SRV request for: ", qname);
           return ReplyToLokiSRVWhenReady(addr, std::make_shared<dns::Message>(msg));
         }
       }
