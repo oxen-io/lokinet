@@ -48,6 +48,64 @@ TEST_F(DNSLibTest, TestHasTLD)
   ASSERT_FALSE(question.HasTLD(tld));
 };
 
+TEST_F(DNSLibTest, TestIsLocalhost)
+{
+  llarp::dns::Question question;
+
+  question.qname = "localhost.loki.";
+  ASSERT_TRUE(question.IsLocalhost());
+  question.qname = "foo.localhost.loki.";
+  ASSERT_TRUE(question.IsLocalhost());
+  question.qname = "foo.bar.localhost.loki.";
+  ASSERT_TRUE(question.IsLocalhost());
+
+  question.qname = "something.loki.";
+  ASSERT_FALSE(question.IsLocalhost());
+  question.qname = "localhost.something.loki.";
+  ASSERT_FALSE(question.IsLocalhost());
+  question.qname = "notlocalhost.loki.";
+  ASSERT_FALSE(question.IsLocalhost());
+};
+
+TEST_F(DNSLibTest, TestGetSubdomains)
+{
+  llarp::dns::Question question;
+  std::string expected;
+
+  question.qname = "localhost.loki.";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = "foo.localhost.loki.";
+  expected = "foo";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = "foo.bar.localhost.loki.";
+  expected = "foo.bar";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  // not legal, but test it anyway
+  question.qname = ".localhost.loki.";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = ".loki.";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = "loki.";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = ".";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+
+  question.qname = "";
+  expected = "";
+  ASSERT_EQ(question.Subdomains(), expected);
+};
+
 TEST_F(DNSLibTest, TestPTR)
 {
   llarp::huint128_t ip = {0};

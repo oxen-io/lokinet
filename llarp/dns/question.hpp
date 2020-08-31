@@ -40,6 +40,14 @@ namespace llarp
       bool
       IsName(const std::string& other) const;
 
+      /// is the name [something.]localhost.loki. ?
+      bool
+      IsLocalhost() const;
+
+      /// get subdomain(s), if any, from qname
+      std::string
+      Subdomains() const;
+
       /// return qname with no trailing .
       std::string
       Name() const;

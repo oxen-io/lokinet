@@ -245,7 +245,7 @@ namespace llarp
     static bool
     is_localhost_loki(const dns::Message& msg)
     {
-      return msg.questions[0].IsName("localhost.loki");
+      return msg.questions[0].IsLocalhost();
     }
 
     template <>
@@ -324,17 +324,7 @@ namespace llarp
                 return;
 
               const auto& introset = ctx->GetCurrentIntroSet();
-              std::vector<llarp::dns::SRVData> records;
-              size_t numRecords = introset.SRVs.size();
-              if (numRecords > 0)
-              {
-                records.reserve(numRecords);
-                for (const auto& record : introset.SRVs)
-                {
-                  records.push_back(std::move(llarp::dns::SRVData::fromTuple(record)));
-                }
-              }
-              msg->AddSRVReply(records);
+              msg->AddSRVReply(introset.GetMatchingSRVRecords(addr.subdomain));
               reply(*msg);
             },
             2s);
@@ -511,20 +501,20 @@ namespace llarp
         reply(msg);
         return true;
       }
-      // TODO: SRV Record
       else if (msg.questions[0].qtype == dns::qTypeSRV)
       {
         llarp::service::Address addr;
 
         if (is_localhost_loki(msg))
         {
-          msg.AddNXReply();
+          msg.AddSRVReply(introSet().GetMatchingSRVRecords(msg.questions[0].Subdomains()));
           reply(msg);
           return true;
         }
         else if (addr.FromString(qname, ".loki"))
         {
-          llarp::LogWarn("SRV request for: ", qname);
+          llarp::LogDebug("SRV request for: ", qname);
+
           return ReplyToLokiSRVWhenReady(addr, std::make_shared<dns::Message>(msg));
         }
       }

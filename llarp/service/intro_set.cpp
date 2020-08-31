@@ -282,6 +282,22 @@ namespace llarp
       return GetNewestIntroExpiration() < now;
     }
 
+    std::vector<llarp::dns::SRVData>
+    IntroSet::GetMatchingSRVRecords(std::string_view service_proto) const
+    {
+      std::vector<llarp::dns::SRVData> records;
+
+      for (const auto& tuple : SRVs)
+      {
+        if (std::get<0>(tuple) == service_proto)
+        {
+          records.push_back(llarp::dns::SRVData::fromTuple(tuple));
+        }
+      }
+
+      return records;
+    }
+
     bool
     IntroSet::Verify(llarp_time_t now) const
     {
