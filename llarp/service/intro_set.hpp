@@ -58,6 +58,9 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const;
 
+      std::vector<llarp::dns::SRVData>
+      GetMatchingSRVRecords(std::string_view service_proto) const;
+
       bool
       BEncode(llarp_buffer_t* buf) const;
 

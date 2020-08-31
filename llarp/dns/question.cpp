@@ -2,6 +2,7 @@
 
 #include <util/logging/logger.hpp>
 #include <util/printer.hpp>
+#include <util/str.hpp>
 
 namespace llarp
 {
@@ -57,6 +58,31 @@ namespace llarp
         return other == qname;
       // no, add it and retry
       return IsName(other + ".");
+    }
+
+    bool
+    Question::IsLocalhost() const
+    {
+      return (qname == "localhost.loki." or llarp::ends_with(qname, ".localhost.loki."));
+    }
+
+    std::string
+    Question::Subdomains() const
+    {
+      if (qname.size() < 2)
+        return "";
+
+      size_t pos;
+
+      pos = qname.rfind('.', qname.size() - 2);
+      if (pos == std::string::npos or pos == 0)
+        return "";
+
+      pos = qname.rfind('.', pos - 1);
+      if (pos == std::string::npos or pos == 0)
+        return "";
+
+      return qname.substr(0, pos);
     }
 
     std::string

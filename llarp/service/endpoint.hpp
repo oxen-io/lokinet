@@ -459,7 +459,6 @@ namespace llarp
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
       std::unordered_map<Address, AuthInfo, Address::Hash> m_RemoteAuthInfos;
 
-     private:
       void
       FlushRecvData();
 
