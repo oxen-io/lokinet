@@ -98,7 +98,11 @@ namespace llarp::rpc
             })
         .add_request_command(
             "version",
-            [](lokimq::Message& msg) { msg.send_reply(CreateJSONResponse(llarp::VERSION_FULL)); })
+            [r = m_Router](lokimq::Message& msg) {
+              util::StatusObject result{{"version", llarp::VERSION_FULL},
+                                        {"uptime", to_json(r->Uptime())}};
+              msg.send_reply(CreateJSONResponse(result));
+            })
         .add_request_command(
             "status",
             [&](lokimq::Message& msg) {
