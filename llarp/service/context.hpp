@@ -51,10 +51,10 @@ namespace llarp
       RemoveEndpoint(const std::string& name);
 
       Endpoint_ptr
-      GetEndpointByName(const std::string& name);
+      GetEndpointByName(const std::string& name) const;
 
       Endpoint_ptr
-      GetDefault()
+      GetDefault() const
       {
         return GetEndpointByName("default");
       }

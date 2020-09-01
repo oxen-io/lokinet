@@ -13,6 +13,7 @@ namespace llarp
         GetRCFunc getrc,
         LinkMessageHandler h,
         SignBufferFunc sign,
+        BeforeConnectFunc_t before,
         SessionEstablishedHandler est,
         SessionRenegotiateHandler reneg,
         TimeoutHandler timeout,
@@ -21,7 +22,7 @@ namespace llarp
         WorkerFunc_t work)
     {
       return std::make_shared<LinkLayer>(
-          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, work, true);
+          keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, work, true);
     }
 
     LinkLayer_ptr
@@ -30,6 +31,7 @@ namespace llarp
         GetRCFunc getrc,
         LinkMessageHandler h,
         SignBufferFunc sign,
+        BeforeConnectFunc_t before,
         SessionEstablishedHandler est,
         SessionRenegotiateHandler reneg,
         TimeoutHandler timeout,
@@ -38,7 +40,7 @@ namespace llarp
         WorkerFunc_t work)
     {
       return std::make_shared<LinkLayer>(
-          keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, work, false);
+          keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, work, false);
     }
   }  // namespace iwp
 }  // namespace llarp
