@@ -340,20 +340,11 @@ namespace llarp::net
   {
     std::vector<std::string> gateways;
 #ifdef __linux__
-    // return true when it's all zeros
-    const auto is_zero = [](std::string_view str) {
-      for (const auto& ch : str)
-      {
-        if (ch != '0')
-          return false;
-      }
-      return true;
-    };
     std::ifstream inf("/proc/net/route");
     for (std::string line; std::getline(inf, line);)
     {
       const auto parts = split(line, '\t');
-      if (is_zero(parts[1]) and parts[0] != ifname)
+      if (parts[1].find_first_not_of('0') == std::string::npos and parts[0] != ifname)
       {
         const auto& ip = parts[2];
         if ((ip.size() == sizeof(uint32_t) * 2) and lokimq::is_hex(ip))
