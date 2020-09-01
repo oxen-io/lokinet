@@ -216,6 +216,36 @@ namespace llarp
     }
 
     void
+    LokidRpcClient::LookupLNSNameHash(
+        dht::Key_t namehash, std::function<void(std::optional<std::string>)> resultHandler)
+    {
+      LogDebug("Looking Up LNS NameHash ", namehash);
+      const nlohmann::json req{{"type", 2}, {"name_hashe", {namehash.ToHex()}}};
+      Request(
+          "rpc.lns_resolve",
+          [r = m_Router, resultHandler](bool success, std::vector<std::string> data) {
+            std::optional<std::string> result = std::nullopt;
+            if (success)
+            {
+              try
+              {
+                const auto j = nlohmann::json::parse(data[1]);
+                const auto itr = j.find("encrypted_value");
+                if (itr != j.end())
+                {
+                  result = lokimq::from_hex(itr->get<std::string>());
+                }
+              }
+              catch (...)
+              {
+              }
+            }
+            LogicCall(r->logic(), [resultHandler, result]() { resultHandler(result); });
+          },
+          req.dump());
+    }
+
+    void
     LokidRpcClient::HandleGetPeerStats(lokimq::Message& msg)
     {
       LogInfo("Got request for peer stats (size: ", msg.data.size(), ")");

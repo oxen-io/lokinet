@@ -7,6 +7,8 @@
 #include <dht/messages/gotintro.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
+#include <dht/messages/findname.hpp>
+#include <dht/messages/gotname.hpp>
 
 namespace llarp
 {
@@ -44,6 +46,12 @@ namespace llarp
           llarp::LogDebug("Handle DHT message ", *strbuf.base, " relayed=", relayed);
           switch (*strbuf.base)
           {
+            case 'N':
+              msg = std::make_unique<FindNameMessage>(From, Key_t{}, 0);
+              break;
+            case 'M':
+              msg = std::make_unique<GotNameMessage>(From, 0, "");
+              break;
             case 'F':
               msg = std::make_unique<FindIntroMessage>(From, relayed, 0);
               break;

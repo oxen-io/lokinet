@@ -131,6 +131,8 @@ add_library(liblokinet
   dht/messages/gotintro.cpp
   dht/messages/gotrouter.cpp
   dht/messages/pubintro.cpp
+  dht/messages/findname.cpp
+  dht/messages/gotname.cpp
   dht/publishservicejob.cpp
   dht/recursiverouterlookup.cpp
   dht/serviceaddresslookup.cpp
