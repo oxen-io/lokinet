@@ -10,6 +10,7 @@
 #include <linux/rtnetlink.h>
 #include <net/net.hpp>
 #include <exception>
+#include <charconv>
 #endif
 #ifdef __APPLE__
 #include <net/net.hpp>
@@ -25,6 +26,7 @@
 
 #include <sstream>
 #include <util/logging/logger.hpp>
+#include <util/str.hpp>
 
 namespace llarp::net
 {
@@ -338,28 +340,22 @@ namespace llarp::net
   {
     std::vector<std::string> gateways;
 #ifdef __linux__
-
-    FILE* p = popen("ip route", "r");
-    if (p == nullptr)
-      return gateways;
-    char* line = nullptr;
-    size_t len = 0;
-    ssize_t read = 0;
-    while ((read = getline(&line, &len, p)) != -1)
+    std::ifstream inf("/proc/net/route");
+    for (std::string line; std::getline(inf, line);)
     {
-      std::string line_str(line, len);
-      std::vector<std::string> words;
-      std::istringstream instr(line_str);
-      for (std::string word; std::getline(instr, word, ' ');)
+      const auto parts = split(line, '\t');
+      if (parts[1].find_first_not_of('0') == std::string::npos and parts[0] != ifname)
       {
-        words.emplace_back(std::move(word));
-      }
-      if (words[0] == "default" and words[1] == "via" and words[3] == "dev" and words[4] != ifname)
-      {
-        gateways.emplace_back(std::move(words[2]));
+        const auto& ip = parts[2];
+        if ((ip.size() == sizeof(uint32_t) * 2) and lokimq::is_hex(ip))
+        {
+          huint32_t x{};
+          lokimq::from_hex(ip.begin(), ip.end(), reinterpret_cast<char*>(&x.h));
+          gateways.emplace_back(x.ToString());
+        }
       }
     }
-    pclose(p);
+
     return gateways;
 #elif _WIN32
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))

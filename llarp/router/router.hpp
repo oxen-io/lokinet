@@ -260,6 +260,17 @@ namespace llarp
       */
     }
 
+    std::string
+    GetDefaultGateway() const;
+
+    void
+    AddRoute(std::string ip);
+
+    void
+    DelRoute(std::string ip);
+
+    std::unordered_map<std::string, std::string> m_PokedRoutes;
+
     void
     PumpLL() override;
 

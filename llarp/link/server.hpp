@@ -70,6 +70,9 @@ namespace llarp
   /// queue work to worker thread
   using WorkerFunc_t = std::function<void(Work_t)>;
 
+  /// before connection hook, called before we try connecting via outbound link
+  using BeforeConnectFunc_t = std::function<void(llarp::RouterContact)>;
+
   struct ILinkLayer
   {
     ILinkLayer(
@@ -77,6 +80,7 @@ namespace llarp
         GetRCFunc getrc,
         LinkMessageHandler handler,
         SignBufferFunc signFunc,
+        BeforeConnectFunc_t before,
         SessionEstablishedHandler sessionEstablish,
         SessionRenegotiateHandler renegotiate,
         TimeoutHandler timeout,
@@ -195,6 +199,7 @@ namespace llarp
     TimeoutHandler HandleTimeout;
     SignBufferFunc Sign;
     GetRCFunc GetOurRC;
+    BeforeConnectFunc_t BeforeConnect;
     SessionEstablishedHandler SessionEstablished;
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;

@@ -12,6 +12,7 @@
 #include <link/server.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
+#include <net/route.hpp>
 #include <stdexcept>
 #include <util/buffer.hpp>
 #include <util/logging/file_logger.hpp>
@@ -332,6 +333,10 @@ namespace llarp
   void
   Router::Close()
   {
+    for (const auto& [ip, gateway] : m_PokedRoutes)
+    {
+      net::DelRoute(ip, gateway);
+    }
     if (_onDown)
       _onDown();
     LogInfo("closing router");
@@ -574,6 +579,7 @@ namespace llarp
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
+          nullptr,
           util::memFn(&Router::ConnectionEstablished, this),
           util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
           util::memFn(&Router::ConnectionTimedOut, this),
@@ -853,6 +859,12 @@ namespace llarp
     dht()->impl->Nodes()->DelNode(k);
 
     LogInfo("Session to ", remote, " fully closed");
+    if (IsServiceNode())
+      return;
+    RouterContact rc;
+    if (not nodedb()->Get(remote, rc))
+      return;
+    DelRoute(rc.addrs[0].toIpAddress().toHost());
   }
 
   void
@@ -1216,6 +1228,34 @@ namespace llarp
     return true;
   }
 
+  std::string
+  Router::GetDefaultGateway() const
+  {
+    const auto ep = hiddenServiceContext().GetDefault();
+    const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
+    if (gateways.empty())
+      throw std::runtime_error("no gateways?");
+    return gateways[0];
+  }
+
+  void
+  Router::AddRoute(std::string ip)
+  {
+    const auto gateway = GetDefaultGateway();
+    m_PokedRoutes.emplace(ip, gateway);
+    net::AddRoute(ip, gateway);
+  }
+
+  void
+  Router::DelRoute(std::string ip)
+  {
+    const auto itr = m_PokedRoutes.find(ip);
+    if (itr == m_PokedRoutes.end())
+      return;
+    net::DelRoute(itr->first, itr->second);
+    m_PokedRoutes.erase(itr);
+  }
+
   bool
   Router::InitOutboundLinks()
   {
@@ -1224,6 +1264,11 @@ namespace llarp
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),
+        [&](llarp::RouterContact rc) {
+          if (IsServiceNode())
+            return;
+          AddRoute(rc.addrs[0].toIpAddress().toHost());
+        },
         util::memFn(&Router::ConnectionEstablished, this),
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),
         util::memFn(&Router::ConnectionTimedOut, this),

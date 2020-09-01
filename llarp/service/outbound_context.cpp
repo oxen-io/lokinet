@@ -110,7 +110,7 @@ namespace llarp
           return true;
         }
         currentIntroSet = *foundIntro;
-        ShiftIntroduction(false);
+        SwapIntros();
       }
       else
       {

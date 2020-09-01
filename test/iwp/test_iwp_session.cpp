@@ -85,6 +85,8 @@ struct IWPLinkContext
           REQUIRE(llarp::CryptoManager::instance()->sign(sig, keyManager->identityKey, buf));
           return true;
         },
+        // before connect
+        nullptr,
         // established handler
         [established](llarp::ILinkSession* s, bool linkIsInbound) {
           REQUIRE(s != nullptr);

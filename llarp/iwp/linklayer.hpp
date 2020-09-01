@@ -21,6 +21,7 @@ namespace llarp
           GetRCFunc getrc,
           LinkMessageHandler h,
           SignBufferFunc sign,
+          BeforeConnectFunc_t before,
           SessionEstablishedHandler est,
           SessionRenegotiateHandler reneg,
           TimeoutHandler timeout,

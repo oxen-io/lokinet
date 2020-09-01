@@ -18,6 +18,7 @@ namespace llarp
       GetRCFunc getrc,
       LinkMessageHandler handler,
       SignBufferFunc signbuf,
+      BeforeConnectFunc_t before,
       SessionEstablishedHandler establishedSession,
       SessionRenegotiateHandler reneg,
       TimeoutHandler timeout,
@@ -28,6 +29,7 @@ namespace llarp
       , HandleTimeout(std::move(timeout))
       , Sign(std::move(signbuf))
       , GetOurRC(std::move(getrc))
+      , BeforeConnect(std::move(before))
       , SessionEstablished(std::move(establishedSession))
       , SessionClosed(std::move(closed))
       , SessionRenegotiate(std::move(reneg))
@@ -311,6 +313,10 @@ namespace llarp
       }
     }
     std::shared_ptr<ILinkSession> s = NewOutboundSession(rc, to);
+    if (BeforeConnect)
+    {
+      BeforeConnect(std::move(rc));
+    }
     if (PutSession(s))
     {
       s->Start();

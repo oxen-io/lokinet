@@ -13,6 +13,7 @@ namespace llarp
         GetRCFunc getrc,
         LinkMessageHandler h,
         SignBufferFunc sign,
+        BeforeConnectFunc_t before,
         SessionEstablishedHandler est,
         SessionRenegotiateHandler reneg,
         TimeoutHandler timeout,
@@ -20,7 +21,8 @@ namespace llarp
         PumpDoneHandler pumpDone,
         WorkerFunc_t worker,
         bool allowInbound)
-        : ILinkLayer(keyManager, getrc, h, sign, est, reneg, timeout, closed, pumpDone, worker)
+        : ILinkLayer(
+            keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
         , permitInbound{allowInbound}
     {
     }
