@@ -413,7 +413,7 @@ namespace llarp::net
     while ((read = getline(&line, &len, p)) != -1)
     {
       std::string line_str(line, len);
-      const auto parts = split(line_str, " ");
+      const auto parts = llarp::split(line_str, sv " ");
       std::vector<std::string_view> parts_nonempty;
       for (auto part : parts)
       {
