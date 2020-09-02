@@ -176,12 +176,6 @@ namespace llarp::rpc
                   }
                   if (map and exit.has_value())
                   {
-                    const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
-                    if (gateways.empty())
-                    {
-                      reply(CreateJSONError("no gateway found"));
-                      return;
-                    }
                     ep->MapExitRange(range, *exit);
                     if (token.has_value())
                     {
@@ -189,29 +183,13 @@ namespace llarp::rpc
                     }
                     ep->EnsurePathToService(
                         *exit,
-                        [r, gateway = gateways[0], reply, ep](auto, service::OutboundContext* ctx) {
+                        [reply, ep](auto, service::OutboundContext* ctx) {
                           if (ctx == nullptr)
                           {
                             reply(CreateJSONError("could not find exit"));
                             return;
                           }
-                          std::vector<std::string> firsthops;
-                          r->ForEachPeer(
-                              [&firsthops](const auto* link, bool) {
-                                firsthops.emplace_back(link->GetRemoteEndpoint().toHost());
-                              },
-                              false);
-                          for (const auto& hop : firsthops)
-                          {
-                            net::AddRoute(hop, gateway);
-                          }
                           net::AddDefaultRouteViaInterface(ep->GetIfName());
-                          r->SetDownHook([firsthops, gateway]() {
-                            for (const auto& hop : firsthops)
-                            {
-                              net::DelRoute(hop, gateway);
-                            }
-                          });
                           reply(CreateJSONResponse("OK"));
                         },
                         5s);
@@ -224,19 +202,7 @@ namespace llarp::rpc
                   }
                   else if (not map)
                   {
-                    const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
-                    if (gateways.empty())
-                    {
-                      reply(CreateJSONError("no gateway found"));
-                      return;
-                    }
                     net::DelDefaultRouteViaInterface(ep->GetIfName());
-                    r->ForEachPeer(
-                        [gateway = gateways[0]](const auto* link, bool) {
-                          net::DelRoute(link->GetRemoteEndpoint().toHost(), gateway);
-                        },
-                        false);
-
                     ep->UnmapExitRange(range);
                   }
                   reply(CreateJSONResponse("OK"));
