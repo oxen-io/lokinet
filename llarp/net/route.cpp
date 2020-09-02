@@ -35,7 +35,6 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
-    std::cout << cmd << std::endl;
 #ifdef _WIN32
     system(cmd.c_str());
 #else
@@ -65,10 +64,6 @@ namespace llarp::net
       if (result)
       {
         std::cout << "failed: " << result << std::endl;
-      }
-      else
-      {
-        std::cout << "ok" << std::endl;
       }
       exit(result);
     }
@@ -264,6 +259,7 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
+    LogInfo("Delete route: ", ip, " via ", gateway);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #else
     std::stringstream ss;
@@ -301,7 +297,8 @@ namespace llarp::net
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route add -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n delete default");
+    Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -330,7 +327,11 @@ namespace llarp::net
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route delete -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    const auto gateways = GetGatewaysNotOnInterface(ifname);
+    if (gateways.empty())
+      return;
+    Execute("/sbin/route -n add default " + gateways[0]);
 #else
 #error unsupported platform
 #endif
