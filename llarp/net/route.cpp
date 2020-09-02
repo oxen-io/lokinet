@@ -301,7 +301,7 @@ namespace llarp::net
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route -cloning add -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route add -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -330,7 +330,7 @@ namespace llarp::net
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route -cloning delete -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route delete -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
