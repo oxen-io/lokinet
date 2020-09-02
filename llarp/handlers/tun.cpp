@@ -593,7 +593,7 @@ namespace llarp
     TunEndpoint::GetIfName() const
     {
       if (tunif)
-        return tunif->if_name;
+        return tunif->ifname;
       return m_IfName;
     }
 
