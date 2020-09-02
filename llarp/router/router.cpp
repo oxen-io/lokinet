@@ -1234,16 +1234,23 @@ namespace llarp
     const auto ep = hiddenServiceContext().GetDefault();
     const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
     if (gateways.empty())
-      throw std::runtime_error("no gateways?");
+      throw std::runtime_error("no gateways");
     return gateways[0];
   }
 
   void
   Router::AddRoute(std::string ip)
   {
-    const auto gateway = GetDefaultGateway();
-    m_PokedRoutes.emplace(ip, gateway);
-    net::AddRoute(ip, gateway);
+    try
+    {
+      const auto gateway = GetDefaultGateway();
+      m_PokedRoutes.emplace(ip, gateway);
+      net::AddRoute(ip, gateway);
+    }
+    catch (std::exception& ex)
+    {
+      LogError("failed to add route: ", ex.what());
+    }
   }
 
   void
