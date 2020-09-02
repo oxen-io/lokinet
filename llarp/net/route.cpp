@@ -413,20 +413,18 @@ namespace llarp::net
     while ((read = getline(&line, &len, p)) != -1)
     {
       std::string line_str(line, len);
-      if (line_str.find("default") == 0)
+      const auto parts = split(line_str, " ");
+      std::vector<std::string_view> parts_nonempty;
+      for (auto part : parts)
       {
-        line_str = line_str.substr(7);
-        while (line_str[0] == ' ')
+        if (not part.empty())
         {
-          line_str = line_str.substr(1);
+          parts_nonempty.emplace_back(part);
         }
-        const auto pos = line_str.find(" ");
-        if (pos != std::string::npos)
-        {
-          auto gateway = line_str.substr(0, pos);
-          if (gateway != interface)
-            gateways.emplace_back(std::move(gateway));
-        }
+      }
+      if (parts_nonempty[0] == "default" and parts_nonempty[3] != ifname)
+      {
+        gateways.emplace_back(parts_nonempty[1]);
       }
     }
     pclose(p);
