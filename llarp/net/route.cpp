@@ -221,6 +221,7 @@ namespace llarp::net
   void
   AddRoute(std::string ip, std::string gateway)
   {
+    LogInfo("Add route: ", ip, " via ", gateway);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 0;
@@ -231,7 +232,6 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    LogInfo("add route: ", ip, " via ", gateway);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #else
     std::stringstream ss;
@@ -249,6 +249,7 @@ namespace llarp::net
   void
   DelRoute(std::string ip, std::string gateway)
   {
+    LogInfo("Delete route: ", ip, " via ", gateway);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 0;
@@ -259,7 +260,6 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    LogInfo("Delete route: ", ip, " via ", gateway);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #else
     std::stringstream ss;
@@ -277,6 +277,7 @@ namespace llarp::net
   void
   AddDefaultRouteViaInterface(std::string ifname)
   {
+    LogInfo("Add default route via ", ifname);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 1;
@@ -290,7 +291,6 @@ namespace llarp::net
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
-    LogInfo("default route via ", ifname, " (", if_idx, ")");
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #elif _WIN32
     ifname.back()++;
@@ -307,8 +307,8 @@ namespace llarp::net
   void
   DelDefaultRouteViaInterface(std::string ifname)
   {
+    LogInfo("Remove default route via ", ifname);
 #ifdef __linux__
-
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
