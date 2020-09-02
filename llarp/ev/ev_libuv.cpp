@@ -694,6 +694,9 @@ namespace libuv
         llarp::LogError("failed to start up ", m_Tun->ifname);
         return false;
       }
+      // copy back
+      memcpy(m_Tun->ifname, m_Device->if_name, sizeof(m_Tun->ifname));
+
       if (tuntap_set_ip(m_Device, m_Tun->ifaddr, m_Tun->ifaddr, m_Tun->netmask) == -1)
       {
         llarp::LogError("failed to set address on ", m_Tun->ifname);
