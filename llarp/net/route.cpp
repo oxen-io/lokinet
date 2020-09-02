@@ -412,8 +412,8 @@ namespace llarp::net
     ssize_t read = 0;
     while ((read = getline(&line, &len, p)) != -1)
     {
-      std::string line_str(line, len);
-      const auto parts = llarp::split(line_str, sv " ");
+      std::string_view line_str(line, len);
+      const auto parts = llarp::split(line_str, " "sv);
       std::vector<std::string_view> parts_nonempty;
       for (auto part : parts)
       {
