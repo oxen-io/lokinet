@@ -14,6 +14,7 @@
 #endif
 #ifdef __APPLE__
 #include <net/net.hpp>
+#include <util/str.hpp>
 #endif
 #ifdef _WIN32
 #include <windows.h>
