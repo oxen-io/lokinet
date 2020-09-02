@@ -400,6 +400,7 @@ namespace llarp::net
 #undef FREE
     return gateways;
 #elif __APPLE__
+    LogDebug("get gateways not on ", ifname);
     const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       return gateways;
