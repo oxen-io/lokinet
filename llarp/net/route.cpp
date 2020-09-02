@@ -297,8 +297,8 @@ namespace llarp::net
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route -n delete default");
-    Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -327,11 +327,9 @@ namespace llarp::net
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
-    const auto gateways = GetGatewaysNotOnInterface(ifname);
-    if (gateways.empty())
-      return;
-    Execute("/sbin/route -n add default " + gateways[0]);
+    Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+    Execute(
+        "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
