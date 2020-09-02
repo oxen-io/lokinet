@@ -243,7 +243,7 @@ namespace llarp::net
 #if _WIN32
     ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
-    ss << "route -n add -host " << ip << " " << gateway;
+    ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -270,7 +270,7 @@ namespace llarp::net
 #if _WIN32
     ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
-    ss << "route -n delete -host " << ip << " " << gateway;
+    ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -301,7 +301,7 @@ namespace llarp::net
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("route -cloning add -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -cloning add -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -330,7 +330,7 @@ namespace llarp::net
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("route -cloning delete -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -cloning delete -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -405,15 +405,17 @@ namespace llarp::net
       return gateways;
     const auto interface = maybe->toString();
     // mac os is so godawful man
-    FILE* p = popen("netstat -rn -f inet", "r");
+    FILE* p = popen("/usr/sbin/netstat -rn -f inet", "r");
     if (p == nullptr)
+    {
       return gateways;
+    }
     char* line = nullptr;
     size_t len = 0;
     ssize_t read = 0;
     while ((read = getline(&line, &len, p)) != -1)
     {
-      std::string_view line_str(line, len);
+      const std::string line_str(line, len);
       const auto parts = llarp::split(line_str, " "sv);
       std::vector<std::string_view> parts_nonempty;
       for (auto part : parts)
