@@ -592,8 +592,8 @@ namespace llarp
     std::string
     TunEndpoint::GetIfName() const
     {
-      if (tun)
-        return tun->if_name;
+      if (tunif)
+        return tunif->if_name;
       return m_IfName;
     }
 
