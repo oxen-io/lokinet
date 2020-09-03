@@ -182,6 +182,7 @@ namespace llarp
     Endpoint::ExtractStatus() const
     {
       auto obj = path::Builder::ExtractStatus();
+      obj["exitMap"] = m_ExitMap.ExtractStatus();
       obj["identity"] = m_Identity.pub.Addr().ToString();
       return m_state->ExtractStatus(obj);
     }
