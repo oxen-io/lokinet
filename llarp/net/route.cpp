@@ -416,18 +416,10 @@ namespace llarp::net
     while ((read = getline(&line, &len, p)) != -1)
     {
       const std::string line_str(line, len);
-      const auto parts = llarp::split(line_str, " "sv);
-      std::vector<std::string_view> parts_nonempty;
-      for (auto part : parts)
+      const auto parts = llarp::split_any(line_str, " "sv, true);
+      if (parts[0] == "default" and parts[3] != ifname)
       {
-        if (not part.empty())
-        {
-          parts_nonempty.emplace_back(part);
-        }
-      }
-      if (parts_nonempty[0] == "default" and parts_nonempty[3] != ifname)
-      {
-        gateways.emplace_back(parts_nonempty[1]);
+        gateways.emplace_back(parts[1]);
       }
     }
     pclose(p);
