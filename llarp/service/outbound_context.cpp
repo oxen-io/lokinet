@@ -123,6 +123,8 @@ namespace llarp
     bool
     OutboundContext::ReadyToSend() const
     {
+      if (markedBad)
+        return false;
       return (!remoteIntro.router.IsZero()) && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
