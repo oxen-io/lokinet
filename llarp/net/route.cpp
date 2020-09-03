@@ -14,6 +14,7 @@
 #endif
 #ifdef __APPLE__
 #include <net/net.hpp>
+#include <util/str.hpp>
 #endif
 #ifdef _WIN32
 #include <windows.h>
@@ -34,7 +35,6 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
-    std::cout << cmd << std::endl;
 #ifdef _WIN32
     system(cmd.c_str());
 #else
@@ -64,10 +64,6 @@ namespace llarp::net
       if (result)
       {
         std::cout << "failed: " << result << std::endl;
-      }
-      else
-      {
-        std::cout << "ok" << std::endl;
       }
       exit(result);
     }
@@ -225,6 +221,7 @@ namespace llarp::net
   void
   AddRoute(std::string ip, std::string gateway)
   {
+    LogInfo("Add route: ", ip, " via ", gateway);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 0;
@@ -235,14 +232,13 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    LogInfo("add route: ", ip, " via ", gateway);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #else
     std::stringstream ss;
 #if _WIN32
     ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
-    ss << "route -n add -host " << ip << " " << gateway;
+    ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -253,6 +249,7 @@ namespace llarp::net
   void
   DelRoute(std::string ip, std::string gateway)
   {
+    LogInfo("Delete route: ", ip, " via ", gateway);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 0;
@@ -269,7 +266,7 @@ namespace llarp::net
 #if _WIN32
     ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
-    ss << "route -n delete -host " << ip << " " << gateway;
+    ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -280,6 +277,7 @@ namespace llarp::net
   void
   AddDefaultRouteViaInterface(std::string ifname)
   {
+    LogInfo("Add default route via ", ifname);
 #ifdef __linux__
     NLSocket sock;
     int default_gw = 1;
@@ -293,14 +291,14 @@ namespace llarp::net
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
-    LogInfo("default route via ", ifname, " (", if_idx, ")");
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #elif _WIN32
     ifname.back()++;
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("route -cloning add -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -309,8 +307,8 @@ namespace llarp::net
   void
   DelDefaultRouteViaInterface(std::string ifname)
   {
+    LogInfo("Remove default route via ", ifname);
 #ifdef __linux__
-
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
@@ -329,7 +327,9 @@ namespace llarp::net
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
-    Execute("route -cloning delete -net 0.0.0.0 -netmask 0.0.0.0 -interface " + ifname);
+    Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+    Execute(
+        "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -399,34 +399,27 @@ namespace llarp::net
 #undef FREE
     return gateways;
 #elif __APPLE__
+    LogDebug("get gateways not on ", ifname);
     const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       return gateways;
     const auto interface = maybe->toString();
     // mac os is so godawful man
-    FILE* p = popen("netstat -rn -f inet", "r");
+    FILE* p = popen("/usr/sbin/netstat -rn -f inet", "r");
     if (p == nullptr)
+    {
       return gateways;
+    }
     char* line = nullptr;
     size_t len = 0;
     ssize_t read = 0;
     while ((read = getline(&line, &len, p)) != -1)
     {
-      std::string line_str(line, len);
-      if (line_str.find("default") == 0)
+      const std::string line_str(line, len);
+      const auto parts = llarp::split_any(line_str, " "sv, true);
+      if (parts[0] == "default" and parts[3] != ifname)
       {
-        line_str = line_str.substr(7);
-        while (line_str[0] == ' ')
-        {
-          line_str = line_str.substr(1);
-        }
-        const auto pos = line_str.find(" ");
-        if (pos != std::string::npos)
-        {
-          auto gateway = line_str.substr(0, pos);
-          if (gateway != interface)
-            gateways.emplace_back(std::move(gateway));
-        }
+        gateways.emplace_back(parts[1]);
       }
     }
     pclose(p);

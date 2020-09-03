@@ -270,6 +270,7 @@ namespace llarp
     DelRoute(std::string ip);
 
     std::unordered_map<std::string, std::string> m_PokedRoutes;
+    std::string m_CurrentGateway;
 
     void
     PumpLL() override;

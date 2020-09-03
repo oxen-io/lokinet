@@ -59,7 +59,6 @@ namespace llarp
       obj["lastPublished"] = to_json(m_LastPublish);
       obj["lastPublishAttempt"] = to_json(m_LastPublishAttempt);
       obj["introset"] = m_IntroSet.ExtractStatus();
-
       static auto getSecond = [](const auto& item) -> auto
       {
         return item.second->ExtractStatus();

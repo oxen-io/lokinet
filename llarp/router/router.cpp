@@ -770,6 +770,47 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
+    if (not IsServiceNode())
+    {
+      const auto gateway = GetDefaultGateway();
+      if (m_CurrentGateway != gateway)
+      {
+        // changed gateways
+        if (m_CurrentGateway.empty())
+        {
+          LogInfo("found default gateway: ", gateway);
+        }
+        else if (not gateway.empty())
+        {
+          LogInfo("default gateway changed from ", m_CurrentGateway, " to ", gateway);
+        }
+        else
+        {
+          LogError("Network is down");
+        }
+        // unpoke current routes
+        std::unordered_set<std::string> holes;
+
+        for (const auto& [ip, gw] : m_PokedRoutes)
+        {
+          // save hole
+          holes.emplace(ip);
+          // unpoke route
+          net::DelRoute(ip, gw);
+        }
+        m_PokedRoutes.clear();
+
+        if (not gateway.empty())
+        {
+          m_CurrentGateway = gateway;
+          for (const auto& ip : holes)
+          {
+            AddRoute(ip);
+          }
+        }
+      }
+    }
+
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)
     {
@@ -1234,16 +1275,15 @@ namespace llarp
     const auto ep = hiddenServiceContext().GetDefault();
     const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
     if (gateways.empty())
-      throw std::runtime_error("no gateways?");
+      return "";
     return gateways[0];
   }
 
   void
   Router::AddRoute(std::string ip)
   {
-    const auto gateway = GetDefaultGateway();
-    m_PokedRoutes.emplace(ip, gateway);
-    net::AddRoute(ip, gateway);
+    m_PokedRoutes.emplace(ip, m_CurrentGateway);
+    net::AddRoute(ip, m_CurrentGateway);
   }
 
   void

@@ -2,6 +2,7 @@
 #define LLARP_NET_IP_RANGE_MAP_HPP
 
 #include <net/ip_range.hpp>
+#include <util/status.hpp>
 #include <list>
 
 namespace llarp
@@ -112,6 +113,17 @@ namespace llarp
           else
             ++itr;
         }
+      }
+
+      util::StatusObject
+      ExtractStatus() const
+      {
+        util::StatusObject obj;
+        for (const auto& [range, value] : m_Entries)
+        {
+          obj[range.ToString()] = value.ToString();
+        }
+        return obj;
       }
 
      private:

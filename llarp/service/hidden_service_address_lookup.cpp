@@ -28,7 +28,6 @@ namespace llarp
     {
       std::optional<IntroSet> found;
       const Address remote(rootkey);
-      LogInfo("found ", results.size(), " for ", remote.ToString());
       if (results.size() > 0)
       {
         EncryptedIntroSet selected;
@@ -39,7 +38,10 @@ namespace llarp
         }
         const auto maybe = selected.MaybeDecrypt(rootkey);
         if (maybe)
+        {
+          LogInfo("found result for ", remote.ToString());
           found = *maybe;
+        }
       }
       return handle(remote, found, endpoint);
     }

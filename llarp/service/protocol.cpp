@@ -433,7 +433,7 @@ namespace llarp
       if (!handler->GetCachedSessionKeyFor(T, v->shared))
       {
         LogError("No cached session for T=", T);
-        return true;
+        return false;
       }
 
       if (!handler->GetSenderFor(T, v->si))
