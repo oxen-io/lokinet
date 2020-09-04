@@ -850,9 +850,7 @@ namespace llarp
            && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
           || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
-        if (m_InboundTrafficQueue.full())
-          return false;
-        m_InboundTrafficQueue.pushBack(std::move(msg));
+        m_InboundTrafficQueue.tryPushBack(std::move(msg));
         return true;
       }
       if (msg->proto == eProtocolControl)
@@ -891,9 +889,7 @@ namespace llarp
 
       if (f.Sign(m_Identity))
       {
-        if (m_SendQueue.full())
-          return;
-        m_SendQueue.pushBack(
+        m_SendQueue.tryPushBack(
             SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, replyPath), path});
       }
     }
@@ -933,9 +929,7 @@ namespace llarp
         {
           LogWarn("invalidating convotag T=", frame.T);
           RemoveConvoTag(frame.T);
-          if (m_SendQueue.full())
-            return false;
-          m_SendQueue.pushBack(
+          m_SendQueue.tryPushBack(
               SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, frame.F), p});
         }
       }
