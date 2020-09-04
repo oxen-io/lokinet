@@ -19,6 +19,7 @@
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
 #include <util/thread/logic.hpp>
+#include <service/endpoint_types.hpp>
 
 #include <service/auth.hpp>
 
@@ -458,6 +459,9 @@ namespace llarp
       std::unique_ptr<EndpointState> m_state;
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
       std::unordered_map<Address, AuthInfo, Address::Hash> m_RemoteAuthInfos;
+
+      RecvPacketQueue_t m_InboundTrafficQueue;
+      SendMessageQueue_t m_SendQueue;
 
       void
       FlushRecvData();

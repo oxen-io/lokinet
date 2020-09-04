@@ -40,10 +40,6 @@ namespace llarp
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
 
-      util::Mutex m_InboundTrafficQueueMutex;  // protects m_InboundTrafficQueue
-      /// ordered queue for inbound hidden service traffic
-      RecvPacketQueue_t m_InboundTrafficQueue GUARDED_BY(m_InboundTrafficQueueMutex);
-
       std::set<RouterID> m_SnodeBlacklist;
 
       AbstractRouter* m_Router;
@@ -53,9 +49,6 @@ namespace llarp
       std::string m_Name;
       std::string m_NetNS;
       bool m_ExitEnabled = false;
-
-      util::Mutex m_SendQueueMutex;  // protects m_SendQueue
-      std::deque<SendEvent_t> m_SendQueue GUARDED_BY(m_SendQueueMutex);
 
       PendingTraffic m_PendingTraffic;
 

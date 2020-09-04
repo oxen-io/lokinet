@@ -34,7 +34,11 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(AbstractRouter* r, Context* parent)
-        : path::Builder(r, 3, path::default_len), context(parent), m_RecvQueue(128)
+        : path::Builder(r, 3, path::default_len)
+        , context(parent)
+        , m_InboundTrafficQueue(512)
+        , m_SendQueue(512)
+        , m_RecvQueue(512)
     {
       m_state = std::make_unique<EndpointState>();
       m_state->m_Router = r;
@@ -846,8 +850,9 @@ namespace llarp
            && (m_state->m_ExitEnabled || m_ExitMap.ContainsValue(msg->sender.Addr())))
           || msg->proto == eProtocolTrafficV4 || msg->proto == eProtocolTrafficV6)
       {
-        util::Lock l(m_state->m_InboundTrafficQueueMutex);
-        m_state->m_InboundTrafficQueue.emplace(msg);
+        if (m_InboundTrafficQueue.full())
+          return false;
+        m_InboundTrafficQueue.pushBack(std::move(msg));
         return true;
       }
       if (msg->proto == eProtocolControl)
@@ -886,9 +891,10 @@ namespace llarp
 
       if (f.Sign(m_Identity))
       {
-        util::Lock lock(m_state->m_SendQueueMutex);
-        m_state->m_SendQueue.emplace_back(
-            std::make_shared<const routing::PathTransferMessage>(f, replyPath), path);
+        if (m_SendQueue.full())
+          return;
+        m_SendQueue.pushBack(
+            SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, replyPath), path});
       }
     }
 
@@ -927,9 +933,10 @@ namespace llarp
         {
           LogWarn("invalidating convotag T=", frame.T);
           RemoveConvoTag(frame.T);
-          util::Lock lock(m_state->m_SendQueueMutex);
-          m_state->m_SendQueue.emplace_back(
-              std::make_shared<const routing::PathTransferMessage>(f, frame.F), p);
+          if (m_SendQueue.full())
+            return false;
+          m_SendQueue.pushBack(
+              SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, frame.F), p});
         }
       }
       return true;
@@ -1141,7 +1148,7 @@ namespace llarp
     void Endpoint::Pump(llarp_time_t)
     {
       const auto& sessions = m_state->m_SNodeSessions;
-      auto& queue = m_state->m_InboundTrafficQueue;
+      auto& queue = m_InboundTrafficQueue;
 
       auto epPump = [&]() {
         FlushRecvData();
@@ -1149,13 +1156,11 @@ namespace llarp
         for (const auto& item : sessions)
           item.second.first->FlushDownstream();
         // send downstream traffic to user for hidden service
-        util::Lock lock(m_state->m_InboundTrafficQueueMutex);
         while (not queue.empty())
         {
-          const auto& msg = queue.top();
+          auto msg = queue.popFront();
           const llarp_buffer_t buf(msg->payload);
           HandleInboundPacket(msg->tag, buf, msg->proto);
-          queue.pop();
         }
       };
 
@@ -1174,16 +1179,15 @@ namespace llarp
       // TODO: locking on this container
       for (const auto& item : sessions)
         item.second.first->FlushUpstream();
+
+      // send queue flush
+      while (not m_SendQueue.empty())
       {
-        util::Lock lock(m_state->m_SendQueueMutex);
-        // send outbound traffic
-        for (const auto& item : m_state->m_SendQueue)
-        {
-          item.second->SendRoutingMessage(*item.first, router);
-          MarkConvoTagActive(item.first->T.T);
-        }
-        m_state->m_SendQueue.clear();
+        auto item = m_SendQueue.popFront();
+        item.second->SendRoutingMessage(*item.first, router);
+        MarkConvoTagActive(item.first->T.T);
       }
+
       UpstreamFlush(router);
       router->linkManager().PumpLinks();
     }
@@ -1274,9 +1278,8 @@ namespace llarp
                 LogError("failed to encrypt and sign");
                 return;
               }
-
-              util::Lock lock(self->m_state->m_SendQueueMutex);
-              self->m_state->m_SendQueue.emplace_back(transfer, p);
+              self->m_SendQueue.pushBack(SendEvent_t{transfer, p});
+              ;
             });
             return true;
           }

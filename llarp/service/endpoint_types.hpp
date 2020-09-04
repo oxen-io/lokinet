@@ -5,6 +5,7 @@
 #include <service/router_lookup_job.hpp>
 #include <service/session.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/thread/queue.hpp>
 
 #include <deque>
 #include <memory>
@@ -25,15 +26,15 @@ namespace llarp
     struct OutboundContext;
 
     using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
+
     using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
+    using SendMessageQueue_t = thread::Queue<SendEvent_t>;
+
     using PendingBufferQueue = std::deque<PendingBuffer>;
     using PendingTraffic = std::unordered_map<Address, PendingBufferQueue, Address::Hash>;
 
     using ProtocolMessagePtr = std::shared_ptr<ProtocolMessage>;
-    using RecvPacketQueue_t = std::priority_queue<
-        ProtocolMessagePtr,
-        std::vector<ProtocolMessagePtr>,
-        ComparePtr<ProtocolMessagePtr>>;
+    using RecvPacketQueue_t = thread::Queue<ProtocolMessagePtr>;
 
     using PendingRouters = std::unordered_map<RouterID, RouterLookupJob, RouterID::Hash>;
 
