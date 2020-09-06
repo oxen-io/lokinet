@@ -2,6 +2,8 @@
 #include "lokinet_jni_vpnio.hpp"
 #include "lokinet_jni_common.hpp"
 #include <net/ip.hpp>
+#include <net/ip_packet.hpp>
+#include <string_view>
 
 extern "C"
 {
@@ -69,12 +71,12 @@ extern "C"
     if (vpn == nullptr)
       return;
     VisitObjectMemberStringAsStringView<bool>(
-        env, info, "ifaddr", [vpn](llarp::string_view val) -> bool {
+        env, info, "ifaddr", [vpn](std::string_view val) -> bool {
           vpn->SetIfAddr(val);
           return true;
         });
     VisitObjectMemberStringAsStringView<bool>(
-        env, info, "ifname", [vpn](llarp::string_view val) -> bool {
+        env, info, "ifname", [vpn](std::string_view val) -> bool {
           vpn->SetIfName(val);
           return true;
         });

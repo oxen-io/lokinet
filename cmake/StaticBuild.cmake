@@ -68,6 +68,7 @@ if(CMAKE_CXX_COMPILER_LAUNCHER)
   set(deps_cxx "${CMAKE_CXX_COMPILER_LAUNCHER} ${deps_cxx}")
 endif()
 
+
 function(expand_urls output source_file)
   set(expanded)
   foreach(mirror ${ARGN})
@@ -99,6 +100,26 @@ if(CMAKE_CROSSCOMPILING)
   if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
     set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
   endif()
+endif()
+if(ANDROID)
+  message(${CMAKE_ANDROID_ARCH})
+  set(android_machine aarch64)
+  if(CMAKE_ANDROID_ARCH MATCHES x86_64)
+    set(android_machine x86_64)
+  elseif(CMAKE_ANDROID_ARCH MATCHES x86)
+    set(android_machine i686)
+  elseif(CMAKE_ANDROID_ARCH MATCHES armv7)
+    set(android_machine armv7a)
+  endif()
+  set(deps_cc "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_machine}-linux-android21-clang")
+  set(deps_cxx "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_machine}-linux-android21-clang++")
+  #set(deps_ld ${CMAKE_LINKER})
+  #set(deps_ranlib ${CMAKE_RANLIB})
+  #set(deps_ar ${CMAKE_AR})
+  set(deps_ld "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_machine}-linux-android-ld")
+  set(deps_ranlib "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_machine}-linux-android-ranlib")
+  set(deps_ar "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_machine}-linux-android-ar")
+  set(cross_host "--host=${android_machine}-linux-android21")
 endif()
 
 
@@ -149,11 +170,14 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
     set(openssl_system_env SYSTEM=MINGW32 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+  elseif(ANDROID)
+    set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
+    set(openssl_extra_opts no-asm)
   endif()
 endif()
 build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
-    --prefix=${DEPS_DESTDIR} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
+    --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=-O2 ${flto}"
   INSTALL_COMMAND make install_sw
@@ -197,7 +221,8 @@ endif()
 
 
 
-build_external(sodium)
+build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
+          --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=-O2 ${flto}")
 add_static_target(sodium sodium_external libsodium.a)
 
 build_external(sqlite3)
@@ -208,6 +233,7 @@ if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATC
   set(zmq_patch
     PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-mingw-closesocket.patch)
 endif()
+
 build_external(zmq
   DEPENDS sodium_external
   ${zmq_patch}

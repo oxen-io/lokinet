@@ -1,5 +1,7 @@
-if(NOT UNIX)
-  return()
+if(NOT ANDROID)
+  if(NOT UNIX)
+    return()
+  endif()
 endif()
 
 include(CheckCXXSourceCompiles)

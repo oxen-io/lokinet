@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
 
+if(NOT ANDROID)
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
   foreach(lang C CXX)
@@ -11,6 +12,7 @@ if(CCACHE_PROGRAM)
       set(CMAKE_${lang}_COMPILER_LAUNCHER ${CCACHE_PROGRAM} CACHE STRING "")
     endif()
   endforeach()
+endif()
 endif()
 
 set(PROJECT_NAME lokinet)
@@ -274,7 +276,7 @@ pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-if(WITH_SYSTEMD)
+if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
