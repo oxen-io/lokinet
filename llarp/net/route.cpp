@@ -1,6 +1,7 @@
 #include "route.hpp"
 
 #ifdef __linux__
+#ifndef ANDROID
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -11,6 +12,7 @@
 #include <net/net.hpp>
 #include <exception>
 #include <charconv>
+#endif
 #endif
 #ifdef __APPLE__
 #include <net/net.hpp>
@@ -76,6 +78,7 @@ namespace llarp::net
 #endif
 
 #ifdef __linux__
+#ifndef ANDROID
   struct NLSocket
   {
     NLSocket() : fd(socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -217,12 +220,13 @@ namespace llarp::net
   }
 
 #endif
-
+#endif
   void
   AddRoute(std::string ip, std::string gateway)
   {
     LogInfo("Add route: ", ip, " via ", gateway);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
@@ -233,6 +237,7 @@ namespace llarp::net
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #else
     std::stringstream ss;
 #if _WIN32
@@ -251,6 +256,7 @@ namespace llarp::net
   {
     LogInfo("Delete route: ", ip, " via ", gateway);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
@@ -261,6 +267,7 @@ namespace llarp::net
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #else
     std::stringstream ss;
 #if _WIN32
@@ -279,6 +286,7 @@ namespace llarp::net
   {
     LogInfo("Add default route via ", ifname);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
@@ -292,6 +300,7 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #elif _WIN32
     ifname.back()++;
     Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
@@ -309,6 +318,7 @@ namespace llarp::net
   {
     LogInfo("Remove default route via ", ifname);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
@@ -322,6 +332,7 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #elif _WIN32
     ifname.back()++;
     Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
