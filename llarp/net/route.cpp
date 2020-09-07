@@ -1,18 +1,18 @@
 #include "route.hpp"
 
 #ifdef __linux__
-#ifndef ANDROID
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#ifndef ANDROID
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
+#endif
 #include <net/net.hpp>
 #include <exception>
 #include <charconv>
-#endif
 #endif
 #ifdef __APPLE__
 #include <net/net.hpp>
