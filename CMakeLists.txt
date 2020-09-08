@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
 
-if(NOT ANDROID)
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
   foreach(lang C CXX)
@@ -12,7 +11,6 @@ if(CCACHE_PROGRAM)
       set(CMAKE_${lang}_COMPILER_LAUNCHER ${CCACHE_PROGRAM} CACHE STRING "")
     endif()
   endforeach()
-endif()
 endif()
 
 set(PROJECT_NAME lokinet)
