@@ -359,6 +359,10 @@ endif()
 
 add_subdirectory(docs)
 
+add_custom_target(uninstall
+    "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/cmake/uninstall.cmake"
+)
+
 if(BUILD_PACKAGE)
     include(cmake/installer.cmake)
 endif()
