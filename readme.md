@@ -102,6 +102,7 @@ windows builds are cross compiled from ubuntu linux
 
 additional build requirements:
 
+* libcurl
 * nsis
 * cpack
 
