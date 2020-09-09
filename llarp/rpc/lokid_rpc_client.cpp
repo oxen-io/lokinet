@@ -220,7 +220,7 @@ namespace llarp
         dht::Key_t namehash, std::function<void(std::optional<std::string>)> resultHandler)
     {
       LogDebug("Looking Up LNS NameHash ", namehash);
-      const nlohmann::json req{{"type", 2}, {"name_hashe", {namehash.ToHex()}}};
+      const nlohmann::json req{{"type", 2}, {"name_hash", namehash.ToHex()}};
       Request(
           "rpc.lns_resolve",
           [r = m_Router, resultHandler](bool success, std::vector<std::string> data) {
