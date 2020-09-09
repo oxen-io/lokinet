@@ -18,20 +18,25 @@ See the [documentation](https://loki-project.github.io/loki-docs/Lokinet/Lokinet
 
 Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
 
+### Create default config
+
+to configure as client:
+
+    $ lokinet -g
+    $ lokinet-bootstrap
+
+to configure as relay:
+
+    $ lokinet -r -g
+    $ lokinet-bootstrap
+
+
 ## Running on Linux
 
 **DO NOT RUN AS ROOT**, run as normal user. This requires the binary to have the proper setcaps set by `make install` on the binary.
 
-to run as client:
+to run, after you create default config:
 
-    $ lokinet -g
-    $ lokinet-bootstrap
-    $ lokinet
-
-to run as relay:
-
-    $ lokinet -r -g
-    $ lokinet-bootstrap
     $ lokinet
 
 ## Running on MacOS/UNIX/BSD
@@ -40,18 +45,9 @@ to run as relay:
 
 The MacOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
 
-to run as client:
+to run, after you create default config:
 
-    $ lokinet -g
-    $ lokinet-bootstrap
     $ sudo lokinet
-
-to run as relay:
-
-    $ lokinet -r -g
-    $ lokinet-bootstrap
-    $ sudo lokinet
-
 
 ## Running on Windows
 
@@ -61,13 +57,20 @@ to run as relay:
 
 Build requirements:
 
+* Git
 * CMake
 * C++ 17 capable C++ compiler
-* gcovr (if generating test coverage with gcc)
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
+* libcurl >= 7.58.0
+* gcovr (if generating test coverage with gcc)
 
 ### Linux
+
+additional build requirements:
+
+* libcap >= 2.25 (Linux only)
+
 
 build:
 
@@ -77,7 +80,7 @@ build:
     $ mkdir build 
     $ cd build
     $ cmake .. 
-    $ make -j$(nproc)
+    $ make -j
 
 install:
 
@@ -93,7 +96,7 @@ build:
     $ mkdir build 
     $ cd build
     $ cmake .. 
-    $ make -j$(nproc)
+    $ make -j
     
 install:
 
@@ -103,14 +106,8 @@ install:
 
 windows builds are cross compiled from ubuntu linux
 
-build requirements:
+additional build requirements:
 
-* CMake
-* C++ 17 capable C++ compiler
-* gcovr (if generating test coverage with gcc)
-* libuv >= 1.27.0
-* libsodium >= 1.0.18
-* libcurl
 * nsis
 * cpack
 
@@ -140,12 +137,12 @@ build:
     $ sudo pkg install build-essential gcc8 wget tuntap cmake (optional: ninja ccache - from omnios extra) (OmniOS CE)
     $ sudo pkg install base-developer-utilities developer-gnu developer-studio-utilities gcc-7 wget cmake (Oracle Solaris, see note)
     $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
     $ cd build
     $ cmake ..
-    $ make -j8
+    $ make -j
 
 install:
 
@@ -156,7 +153,7 @@ install:
 build:
 
     $ pkg install cmake git curl libuv libsodium pkgconf
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
     $ cmake -DCMAKE_BUILD_TYPE=Release ..
