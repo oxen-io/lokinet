@@ -74,7 +74,7 @@ build:
     $ mkdir build 
     $ cd build
     $ cmake .. 
-    $ make -j
+    $ make -j$(nproc)
 
 install:
 
@@ -90,7 +90,7 @@ build:
     $ mkdir build 
     $ cd build
     $ cmake .. 
-    $ make -j
+    $ make -j$(nproc)
     
 install:
 
@@ -136,7 +136,7 @@ build:
     $ mkdir build
     $ cd build
     $ cmake ..
-    $ make -j
+    $ make -j$(nproc)
 
 install:
 
