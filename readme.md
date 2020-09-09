@@ -62,19 +62,13 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
-* libcurl >= 7.58.0
 * gcovr (if generating test coverage with gcc)
 
 ### Linux
 
-additional build requirements:
-
-* libcap >= 2.25 (Linux only)
-
-
 build:
 
-    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev libcurl4-openssl-dev pkg-config
+    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build 
