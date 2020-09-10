@@ -17,7 +17,7 @@ namespace llarp
 
     struct MessageHeader : public Serialize
     {
-      const static size_t Size = 12;
+      static constexpr size_t Size = 12;
 
       MessageHeader() = default;
 

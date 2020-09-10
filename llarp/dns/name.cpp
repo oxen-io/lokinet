@@ -2,6 +2,7 @@
 #include <dns/name.hpp>
 #include <net/net.hpp>
 #include <net/ip.hpp>
+#include <util/str.hpp>
 
 #include <algorithm>
 #include <sstream>
@@ -39,7 +40,7 @@ namespace llarp
     }
 
     bool
-    EncodeName(llarp_buffer_t* buf, const Name_t& name)
+    EncodeName(llarp_buffer_t* buf, Name_t name)
     {
       std::stringstream ss;
       if (name.size() && name[name.size() - 1] == '.')
@@ -71,7 +72,7 @@ namespace llarp
     }
 
     bool
-    DecodePTR(const Name_t& name, huint128_t& ip)
+    DecodePTR(Name_t name, huint128_t& ip)
     {
       bool isV6 = false;
       auto pos = name.find(".in-addr.arpa");
@@ -123,5 +124,17 @@ namespace llarp
       return false;
     }
 
+    bool
+    NameIsReserved(Name_t name)
+    {
+      const std::vector<std::string_view> reserved_names = {
+          "snode.loki"sv, "loki.loki"sv, "snode.loki."sv, "loki.loki."sv};
+      for (const auto& reserved : reserved_names)
+      {
+        if (ends_with(name, reserved))
+          return true;
+      }
+      return false;
+    }
   }  // namespace dns
 }  // namespace llarp

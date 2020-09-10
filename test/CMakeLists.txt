@@ -27,7 +27,6 @@ add_executable(testAll
     dht/test_llarp_dht_node.cpp
     dht/test_llarp_dht_tx.cpp
     dht/test_llarp_dht_txowner.cpp
-    dns/test_llarp_dns_dns.cpp
     llarp_test.cpp
     net/test_llarp_net.cpp
     router/test_llarp_router_version.cpp
@@ -76,6 +75,7 @@ add_executable(catchAll
   net/test_sock_addr.cpp
   exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
+  dns/test_llarp_dns_dns.cpp
   check_main.cpp)
 
 target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)
