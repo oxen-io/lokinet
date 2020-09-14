@@ -145,7 +145,7 @@ namespace llarp
     (void)params;
 
     constexpr bool DefaultProfilingValue = true;
-    static constexpr bool ReachableDefault = false;
+    static constexpr bool ReachableDefault = true;
     static constexpr int HopsDefault = 4;
     static constexpr int PathsDefault = 6;
 
