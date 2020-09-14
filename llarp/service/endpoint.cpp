@@ -5,8 +5,10 @@
 #include <dht/context.hpp>
 #include <dht/key.hpp>
 #include <dht/messages/findintro.hpp>
+#include <dht/messages/findname.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <dht/messages/gotname.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
 #include <nodedb.hpp>
@@ -201,6 +203,8 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
+      // expire snode sessions
+      EndpointUtil::ExpireLNSNameCache(now, m_state->nameCache);
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -725,8 +729,92 @@ namespace llarp
       return true;
     }
 
-    bool Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
+    struct LookupNameJob : public IServiceLookup
     {
+      std::function<void(std::optional<Address>)> handler;
+      ShortHash namehash;
+
+      LookupNameJob(
+          Endpoint* parent,
+          uint64_t id,
+          std::string lnsName,
+          std::function<void(std::optional<Address>)> resultHandler)
+          : IServiceLookup(parent, id, lnsName), handler(resultHandler)
+      {
+        CryptoManager::instance()->shorthash(
+            namehash, llarp_buffer_t(lnsName.c_str(), lnsName.size()));
+      }
+
+      std::shared_ptr<routing::IMessage>
+      BuildRequestMessage() override
+      {
+        auto msg = std::make_shared<routing::DHTMessage>();
+        msg->M.emplace_back(std::make_unique<dht::FindNameMessage>(
+            dht::Key_t{}, dht::Key_t{namehash.as_array()}, txid));
+        return msg;
+      }
+
+      bool
+      HandleNameResponse(std::optional<Address> addr) override
+      {
+        handler(addr);
+        return true;
+      }
+    };
+
+    bool
+    Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
+    {
+      auto& cache = m_state->nameCache;
+      auto itr = cache.find(name);
+      if (itr != cache.end())
+      {
+        handler(itr->second.first);
+        return true;
+      }
+      auto path = PickRandomEstablishedPath();
+      auto job = new LookupNameJob(this, GenTXID(), name, handler);
+      return job->SendRequestViaPath(path, m_router);
+    }
+
+    bool
+    Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg)
+    {
+      SymmNonce nounce{};
+      if (nounce.size() >= msg->Data.size())
+      {
+        LogError(Name(), " got lns entry that is too small");
+        return false;
+      }
+      auto& lookups = m_state->m_PendingLookups;
+      auto itr = lookups.find(msg->TxID);
+      if (itr == lookups.end())
+        return false;
+
+      const auto crypto = CryptoManager::instance();
+
+      std::vector<byte_t> ciphertext{};
+
+      const auto ciphertext_len = msg->Data.size() - nounce.size();
+
+      std::copy_n(msg->Data.c_str() + ciphertext_len, nounce.size(), nounce.data());
+      std::copy_n(msg->Data.c_str(), ciphertext_len, std::back_inserter(ciphertext));
+
+      std::optional<Address> found;
+
+      // decrypt entry
+      const auto maybe = crypto->maybe_decrypt_name(ciphertext, nounce, itr->second->name);
+
+      if (maybe.has_value())
+      {
+        // succesful decrypt
+        found = Address{*maybe};
+        // put cache entry for result
+        m_state->nameCache[itr->second->name] = std::make_pair(*found, Now() + 60min);
+      }
+      // inform result
+      itr->second->HandleNameResponse(found);
+      lookups.erase(itr);
       return true;
     }
 

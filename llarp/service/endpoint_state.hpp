@@ -80,6 +80,9 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
+      /// lns name cache, maps name to address + expire at time
+      LNSNameCache nameCache;
+
       bool
       Configure(const NetworkConfig& conf);
 

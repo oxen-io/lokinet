@@ -330,7 +330,6 @@ namespace llarp
             2s);
       };
 
-      std::string qname;
       if (msg.answers.size() > 0)
       {
         const auto& answer = msg.answers[0];
@@ -352,9 +351,11 @@ namespace llarp
           llarp_buffer_t buf(answer.rData);
           if (not dns::DecodeName(&buf, qname, true))
             return false;
+
           service::Address addr;
           if (not addr.FromString(qname))
             return false;
+
           auto replyMsg = std::make_shared<dns::Message>(clear_dns_message(msg));
           return ReplyToLokiDNSWhenReady(addr, replyMsg, false);
         }
@@ -364,7 +365,7 @@ namespace llarp
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
         return false;
       }
-      qname = msg.questions[0].Name();
+      std::string qname = msg.questions[0].Name();
 
       if (msg.questions[0].qtype == dns::qTypeMX)
       {
@@ -467,6 +468,21 @@ namespace llarp
             return ReplyToSNodeDNSWhenReady(
                 addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
           }
+        }
+        else if (ends_with(qname, ".loki"))
+        {
+          return LookupNameAsync(
+              qname,
+              [msg = std::make_shared<dns::Message>(msg), isV6, reply, ReplyToLokiDNSWhenReady](
+                  auto maybe) {
+                if (not maybe.has_value())
+                {
+                  msg->AddNXReply();
+                  reply(*msg);
+                  return;
+                }
+                ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
+              });
         }
         else
           msg.AddNXReply();

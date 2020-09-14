@@ -225,6 +225,9 @@ namespace llarp
       bool
       LookupRouterAnon(RouterID router, RouterLookupHandler handler);
 
+      bool
+      LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> resultHandler);
+
       /// called on event loop pump
       virtual void
       Pump(llarp_time_t now);

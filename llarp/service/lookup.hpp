@@ -34,7 +34,7 @@ namespace llarp
       }
 
       /// handle lookup result for introsets
-      virtual bool HandleNameResponse(std::optional<std::string>)
+      virtual bool HandleNameResponse(std::optional<Address>)
       {
         return false;
       }

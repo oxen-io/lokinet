@@ -10,6 +10,9 @@ namespace llarp
     struct EndpointUtil
     {
       static void
+      ExpireLNSNameCache(llarp_time_t now, LNSNameCache& cache);
+
+      static void
       ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions);
 
       static void

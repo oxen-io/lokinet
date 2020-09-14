@@ -54,6 +54,8 @@ namespace llarp
 
     using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
 
+    using LNSNameCache = std::unordered_map<std::string, std::pair<Address, llarp_time_t>>;
+
   }  // namespace service
 }  // namespace llarp
 
