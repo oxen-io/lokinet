@@ -30,7 +30,7 @@ namespace llarp
       ~HiddenServiceAddressLookup() override = default;
 
       bool
-      HandleResponse(const std::set<EncryptedIntroSet>& results) override;
+      HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results) override;
 
       std::shared_ptr<routing::IMessage>
       BuildRequestMessage() override;

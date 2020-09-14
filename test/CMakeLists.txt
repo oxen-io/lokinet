@@ -62,6 +62,7 @@ add_subdirectory(Catch2)
 add_executable(catchAll
   nodedb/test_nodedb.cpp
   path/test_path.cpp
+  dns/test_llarp_dns_dns.cpp
   regress/2020-06-08-key-backup-bug.cpp
   util/test_llarp_util_bits.cpp
   util/test_llarp_util_printer.cpp
@@ -73,9 +74,9 @@ add_executable(catchAll
   config/test_llarp_config_output.cpp
   net/test_ip_address.cpp
   net/test_sock_addr.cpp
+  service/test_llarp_service_name.cpp
   exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
-  dns/test_llarp_dns_dns.cpp
   check_main.cpp)
 
 target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)

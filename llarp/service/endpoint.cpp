@@ -274,7 +274,7 @@ namespace llarp
       }
       std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
       lookups.erase(itr);
-      if (not lookup->HandleResponse(remote))
+      if (not lookup->HandleIntrosetResponse(remote))
         lookups.emplace(msg->txid, std::move(lookup));
       return true;
     }
@@ -510,7 +510,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set<EncryptedIntroSet>& response) override
+      HandleIntrosetResponse(const std::set<EncryptedIntroSet>& response) override
       {
         if (not response.empty())
           m_Endpoint->IntroSetPublished();
@@ -722,6 +722,11 @@ namespace llarp
             ++itr;
         }
       }
+      return true;
+    }
+
+    bool Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
+    {
       return true;
     }
 

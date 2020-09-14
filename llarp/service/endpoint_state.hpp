@@ -80,8 +80,6 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      std::unordered_map<Tag, CachedTagResult, Tag::Hash> m_PrefetchedTags;
-
       bool
       Configure(const NetworkConfig& conf);
 

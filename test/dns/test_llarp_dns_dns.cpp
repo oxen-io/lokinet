@@ -1,5 +1,4 @@
 #include <catch2/catch.hpp>
-
 #include <dns/dns.hpp>
 #include <dns/message.hpp>
 #include <dns/name.hpp>

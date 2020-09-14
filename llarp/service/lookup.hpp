@@ -26,11 +26,23 @@ namespace llarp
       IServiceLookup() = delete;
       virtual ~IServiceLookup() = default;
 
-      /// handle lookup result
+      /// handle lookup result for introsets
       virtual bool
-      HandleResponse(const std::set<EncryptedIntroSet>&)
+      HandleIntrosetResponse(const std::set<EncryptedIntroSet>&)
       {
         return false;
+      }
+
+      /// handle lookup result for introsets
+      virtual bool HandleNameResponse(std::optional<std::string>)
+      {
+        return false;
+      }
+
+      virtual void
+      HandleTimeout()
+      {
+        HandleIntrosetResponse({});
       }
 
       /// determine if this request has timed out
