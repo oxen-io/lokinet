@@ -37,6 +37,7 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
+    LogDebug(cmd);
 #ifdef _WIN32
     system(cmd.c_str());
 #else
@@ -241,7 +242,7 @@ namespace llarp::net
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
+    ss << "\\system32\\route.exe ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #else
@@ -271,7 +272,8 @@ namespace llarp::net
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
+    ss << "\\system32\\route.exe DELETE " << ip << " MASK 255.255.255.255 " << gateway
+       << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #else
@@ -303,8 +305,8 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute("\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute("\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
@@ -335,8 +337,8 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute("\\system32\\route.exe DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute("\\system32\\route.exe DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
