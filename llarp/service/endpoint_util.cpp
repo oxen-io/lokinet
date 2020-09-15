@@ -10,21 +10,6 @@ namespace llarp
   namespace service
   {
     void
-    EndpointUtil::ExpireLNSNameCache(llarp_time_t now, LNSNameCache& cache)
-    {
-      auto itr = cache.begin();
-      while (itr != cache.end())
-      {
-        if (itr->second.second <= now)
-        {
-          itr = cache.erase(itr);
-        }
-        else
-          ++itr;
-      }
-    }
-
-    void
     EndpointUtil::ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions)
     {
       auto itr = sessions.begin();

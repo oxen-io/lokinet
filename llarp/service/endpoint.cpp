@@ -203,8 +203,8 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
-      // expire snode sessions
-      EndpointUtil::ExpireLNSNameCache(now, m_state->nameCache);
+      // expire name cache
+      m_state->nameCache.Decay(now);
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -766,10 +766,10 @@ namespace llarp
     Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
     {
       auto& cache = m_state->nameCache;
-      auto itr = cache.find(name);
-      if (itr != cache.end())
+      const auto maybe = cache.Get(name);
+      if (maybe.has_value())
       {
-        handler(itr->second.first);
+        handler(maybe);
         return true;
       }
       auto path = PickRandomEstablishedPath();
@@ -791,7 +791,7 @@ namespace llarp
       if (maybe.has_value())
       {
         // put cache entry for result
-        m_state->nameCache[itr->second->name] = std::make_pair(*maybe, Now() + 60min);
+        m_state->nameCache.Put(itr->second->name, *maybe);
       }
       // inform result
       itr->second->HandleNameResponse(maybe);

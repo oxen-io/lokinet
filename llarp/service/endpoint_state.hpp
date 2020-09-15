@@ -9,6 +9,7 @@
 #include <service/session.hpp>
 #include <service/endpoint_types.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/decaying_hashtable.hpp>
 #include <util/status.hpp>
 
 #include <memory>
@@ -79,8 +80,7 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      /// lns name cache, maps name to address + expire at time
-      LNSNameCache nameCache;
+      util::DecayingHashTable<std::string, Address, std::hash<std::string>> nameCache;
 
       bool
       Configure(const NetworkConfig& conf);
