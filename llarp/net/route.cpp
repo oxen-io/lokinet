@@ -396,7 +396,7 @@ namespace llarp::net
       for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
       {
         // exclude other vpn tunnels to disarm potential footcannons
-        if (pIpForwardTable[i].dwType == IP_TYPE_TUNNEL)
+        if (pIpForwardTable->table[i].dwType == IP_TYPE_TUNNEL)
           continue;
         struct in_addr gateway, interface_addr;
         gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
