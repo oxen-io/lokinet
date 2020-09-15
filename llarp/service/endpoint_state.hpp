@@ -7,7 +7,6 @@
 #include <service/pendingbuffer.hpp>
 #include <service/router_lookup_job.hpp>
 #include <service/session.hpp>
-#include <service/tag_lookup_job.hpp>
 #include <service/endpoint_types.hpp>
 #include <util/compare_ptr.hpp>
 #include <util/status.hpp>

@@ -206,7 +206,6 @@ add_library(liblokinet
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
-  service/tag_lookup_job.cpp
   service/tag.cpp
 )
 
