@@ -200,6 +200,7 @@ add_library(liblokinet
   service/intro_set.cpp
   service/intro.cpp
   service/lookup.cpp
+  service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
   service/router_lookup_job.cpp

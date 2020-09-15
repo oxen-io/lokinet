@@ -56,7 +56,7 @@ namespace llarp::dht
       }
       else
       {
-        msg.M.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, ""));
+        msg.M.emplace_back(new GotNameMessage(dht::Key_t{}, TxID, service::EncryptedName{}));
       }
       path->SendRoutingMessage(msg, r);
     });

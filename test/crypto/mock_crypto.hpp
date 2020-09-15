@@ -11,7 +11,7 @@ namespace llarp
   {
     struct MockCrypto final : public Crypto
     {
-      MOCK_METHOD3(maybe_decrypt_name,std::optional<AlignedBuffer<32>>(std::vector<byte_t>, llarp::SymmNonce, std::string_view));
+      MOCK_METHOD3(maybe_decrypt_name,std::optional<AlignedBuffer<32>>(std::string_view, llarp::SymmNonce, std::string_view));
     
       
       MOCK_METHOD3(xchacha20,

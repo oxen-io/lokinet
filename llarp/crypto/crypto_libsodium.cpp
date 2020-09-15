@@ -97,7 +97,7 @@ namespace llarp
 
     std::optional<AlignedBuffer<32>>
     CryptoLibSodium::maybe_decrypt_name(
-        std::vector<byte_t> ciphertext, SymmNonce nounce, std::string_view name)
+        std::string_view ciphertext, SymmNonce nounce, std::string_view name)
     {
       const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
       if (payloadsize != 32)

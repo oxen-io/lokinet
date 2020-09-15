@@ -16,7 +16,7 @@ namespace llarp
       /// decrypt cipherText given the key generated from name
       std::optional<AlignedBuffer<32>>
       maybe_decrypt_name(
-          std::vector<byte_t> ciphertext, SymmNonce nounce, std::string_view name) override;
+          std::string_view ciphertext, SymmNonce nounce, std::string_view name) override;
 
       /// xchacha symmetric cipher
       bool

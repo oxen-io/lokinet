@@ -780,40 +780,21 @@ namespace llarp
     bool
     Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg)
     {
-      SymmNonce nounce{};
-      if (nounce.size() >= msg->Data.size())
-      {
-        LogError(Name(), " got lns entry that is too small");
-        return false;
-      }
       auto& lookups = m_state->m_PendingLookups;
       auto itr = lookups.find(msg->TxID);
       if (itr == lookups.end())
         return false;
 
-      const auto crypto = CryptoManager::instance();
-
-      std::vector<byte_t> ciphertext{};
-
-      const auto ciphertext_len = msg->Data.size() - nounce.size();
-
-      std::copy_n(msg->Data.c_str() + ciphertext_len, nounce.size(), nounce.data());
-      std::copy_n(msg->Data.c_str(), ciphertext_len, std::back_inserter(ciphertext));
-
-      std::optional<Address> found;
-
       // decrypt entry
-      const auto maybe = crypto->maybe_decrypt_name(ciphertext, nounce, itr->second->name);
+      const auto maybe = msg->result.Decrypt(itr->second->name);
 
       if (maybe.has_value())
       {
-        // succesful decrypt
-        found = Address{*maybe};
         // put cache entry for result
-        m_state->nameCache[itr->second->name] = std::make_pair(*found, Now() + 60min);
+        m_state->nameCache[itr->second->name] = std::make_pair(*maybe, Now() + 60min);
       }
       // inform result
-      itr->second->HandleNameResponse(found);
+      itr->second->HandleNameResponse(maybe);
       lookups.erase(itr);
       return true;
     }

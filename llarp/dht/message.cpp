@@ -50,7 +50,7 @@ namespace llarp
               msg = std::make_unique<FindNameMessage>(From, Key_t{}, 0);
               break;
             case 'M':
-              msg = std::make_unique<GotNameMessage>(From, 0, "");
+              msg = std::make_unique<GotNameMessage>(From, 0, service::EncryptedName{});
               break;
             case 'F':
               msg = std::make_unique<FindIntroMessage>(From, relayed, 0);

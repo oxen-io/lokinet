@@ -16,7 +16,7 @@ TEST_CASE("Test LNS name decrypt", "[lns]")
   const auto len = recordbin.size() - n.size();
   std::copy_n(recordbin.cbegin() + len, n.size(), n.data());
   std::copy_n(recordbin.cbegin(), len, std::back_inserter(ciphertext));
-  const auto maybe = crypto.maybe_decrypt_name(ciphertext, n, "jason.loki");
+  const auto maybe = crypto.maybe_decrypt_name(std::string_view{ciphertext.data(), ciphertext.size()}, n, "jason.loki");
   CHECK(maybe.has_value());
   const llarp::service::Address addr{*maybe};
   CHECK(addr.ToString() == "azfoj73snr9f3neh5c6sf7rtbaeabyxhr1m4un5aydsmsrxo964o.loki");

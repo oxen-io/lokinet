@@ -1,12 +1,13 @@
 #pragma once
 
 #include <dht/message.hpp>
+#include <service/name.hpp>
 
 namespace llarp::dht
 {
   struct GotNameMessage : public IMessage
   {
-    explicit GotNameMessage(const Key_t& from, uint64_t txid, std::string data);
+    explicit GotNameMessage(const Key_t& from, uint64_t txid, service::EncryptedName data);
 
     bool
     BEncode(llarp_buffer_t* buf) const override;
@@ -17,7 +18,7 @@ namespace llarp::dht
     bool
     HandleMessage(struct llarp_dht_context* dht, std::vector<Ptr_t>& replies) const override;
 
-    std::string Data;
+    service::EncryptedName result;
     uint64_t TxID;
   };
 

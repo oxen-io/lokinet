@@ -217,30 +217,38 @@ namespace llarp
 
     void
     LokidRpcClient::LookupLNSNameHash(
-        dht::Key_t namehash, std::function<void(std::optional<std::string>)> resultHandler)
+        dht::Key_t namehash,
+        std::function<void(std::optional<service::EncryptedName>)> resultHandler)
     {
       LogDebug("Looking Up LNS NameHash ", namehash);
       const nlohmann::json req{{"type", 2}, {"name_hash", namehash.ToHex()}};
       Request(
           "rpc.lns_resolve",
           [r = m_Router, resultHandler](bool success, std::vector<std::string> data) {
-            std::optional<std::string> result = std::nullopt;
+            std::optional<service::EncryptedName> maybe = std::nullopt;
             if (success)
             {
               try
               {
+                service::EncryptedName result;
                 const auto j = nlohmann::json::parse(data[1]);
-                const auto itr = j.find("encrypted_value");
-                if (itr != j.end())
+                result.ciphertext = lokimq::from_hex(j["encrypted_value"].get<std::string>());
+                const auto nonce = lokimq::from_hex(j["nonce"].get<std::string>());
+                if (nonce.size() != result.nonce.size())
                 {
-                  result = lokimq::from_hex(itr->get<std::string>());
+                  throw std::invalid_argument(stringify(
+                      "nonce size mismatch: ", nonce.size(), " != ", result.nonce.size()));
                 }
+
+                std::copy_n(nonce.data(), nonce.size(), result.nonce.data());
+                maybe = result;
               }
-              catch (...)
+              catch (std::exception& ex)
               {
+                LogError("failed to parse response from lns lookup: ", ex.what());
               }
             }
-            LogicCall(r->logic(), [resultHandler, result]() { resultHandler(result); });
+            LogicCall(r->logic(), [resultHandler, maybe]() { resultHandler(maybe); });
           },
           req.dump());
     }
