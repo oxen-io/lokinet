@@ -19,17 +19,17 @@ set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
 set(EXPAT_HASH SHA512=e082874efcc4b00709e2c0192c88fb15dfc4f33fc3a2b09e619b010ea93baaf7e7572683f738463db0ce2350cab3de48a0c38af6b74d1c4f5a9e311f499edab0
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.10.1 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.11.0 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=b73677c21a71cf92f15cc8cfe76a3d875e40f65b6150081c39620b286582d536
+set(UNBOUND_HASH SHA256=9f2f0798f76eb8f30feaeda7e442ceed479bc54db0e3ac19c052d68685e51ef7
     CACHE STRING "unbound source hash")
 
-set(SQLITE3_VERSION 3320300 CACHE STRING "sqlite3 version")
+set(SQLITE3_VERSION 3330000 CACHE STRING "sqlite3 version")
 set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2020
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA512=add0ef47c059be0a75add7ab4fe52b2fbd4060cacbf1cbb93f1b4007cdeb8fc92256b1aadc224c4839e733fb868e56d9d73dd33c56a6f66180d1ff001d8d275e
+set(SQLITE3_HASH SHA512=c0d79d4012a01f12128ab5044b887576a130663245b85befcc0ab82ad3a315dd1e7f54b6301f842410c9c21b73237432c44a1d7c2fe0e0709435fec1f1a20a11
     CACHE STRING "sqlite3 source hash")
 
 set(SODIUM_VERSION 1.0.18 CACHE STRING "libsodium version")
@@ -41,11 +41,11 @@ set(SODIUM_SOURCE libsodium-${SODIUM_VERSION}.tar.gz)
 set(SODIUM_HASH SHA512=17e8638e46d8f6f7d024fe5559eccf2b8baf23e143fadd472a7d29d228b186d86686a5e6920385fe2020729119a5f12f989c3a782afbd05a8db4819bb18666ef
   CACHE STRING "libsodium source hash")
 
-set(ZMQ_VERSION 4.3.2 CACHE STRING "libzmq version")
+set(ZMQ_VERSION 4.3.3 CACHE STRING "libzmq version")
 set(ZMQ_MIRROR ${LOCAL_MIRROR} https://github.com/zeromq/libzmq/releases/download/v${ZMQ_VERSION}
     CACHE STRING "libzmq mirror(s)")
 set(ZMQ_SOURCE zeromq-${ZMQ_VERSION}.tar.gz)
-set(ZMQ_HASH SHA512=b6251641e884181db9e6b0b705cced7ea4038d404bdae812ff47bdd0eed12510b6af6846b85cb96898e253ccbac71eca7fe588673300ddb9c3109c973250c8e4
+set(ZMQ_HASH SHA512=4c18d784085179c5b1fcb753a93813095a12c8d34970f2e1bfca6499be6c9d67769c71c68b7ca54ff181b20390043170e89733c22f76ff1ea46494814f7095b1
     CACHE STRING "libzmq source hash")
 
 
@@ -204,10 +204,9 @@ build_external(sqlite3)
 add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
-if(ZMQ_VERSION VERSION_LESS 4.3.3 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
+if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    #PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-pr3601-mingw-build-fix.patch)
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-win32-release.patch)
+    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-mingw-closesocket.patch)
 endif()
 build_external(zmq
   DEPENDS sodium_external
