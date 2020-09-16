@@ -46,6 +46,9 @@ lokinet_main(int, char**);
 
 #ifdef _WIN32
 #include <strsafe.h>
+#ifdef DEBUG
+#include <wtsapi32.h>
+#endif
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
@@ -53,8 +56,8 @@ win32_daemon_entry(DWORD, LPTSTR*);
 VOID ReportSvcStatus(DWORD, DWORD, DWORD);
 VOID
 insert_description();
-SERVICE_STATUS SvcStatus;
-SERVICE_STATUS_HANDLE SvcStatusHandle;
+static SERVICE_STATUS SvcStatus;
+static SERVICE_STATUS_HANDLE SvcStatusHandle;
 bool start_as_daemon = false;
 #endif
 
@@ -295,13 +298,24 @@ main(int argc, char* argv[])
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {{"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry},
                                          {NULL, NULL}};
+#ifdef DEBUG
+    char title[] = "lokinet for windows daemon debug";
+    char message[] = "loki internal use only, if you are a customer please contact support, you may have the wrong build";
+    DWORD consoleSession = ::WTSGetActiveConsoleSessionId();
+    DWORD response;
+    BOOL ret = ::WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
+                                consoleSession,
+                                title, sizeof(title),
+                                message, sizeof(message),
+                                MB_OK,
+                                180,
+                                &response,
+                                TRUE);
+#endif
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
-    argv[1] = argv[2];
-    argv[2] = nullptr;
     start_as_daemon = true;
     StartServiceCtrlDispatcher(DispatchTable);
-    lokinet_main(argc, argv);
   }
   else
     return lokinet_main(argc, argv);
@@ -321,7 +335,9 @@ lokinet_main(int argc, char* argv[])
 #ifdef _WIN32
   if (startWinsock())
     return -1;
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
+
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
   cxxopts::Options options(
@@ -332,8 +348,7 @@ lokinet_main(int argc, char* argv[])
   options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())
 #ifdef _WIN32
       ("install", "install win32 daemon to SCM", cxxopts::value<bool>())(
-          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())(
-          "win32-daemon", "do not use interactively", cxxopts::value<bool>())
+          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
 #endif
           ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
               "g,generate", "generate client config", cxxopts::value<bool>())(
@@ -517,6 +532,7 @@ lokinet_main(int argc, char* argv[])
   llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32
   ::WSACleanup();
+  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
 #endif
   if (ctx)
   {
@@ -575,11 +591,8 @@ SvcCtrlHandler(DWORD dwCtrl)
 // to the original lokinet entry
 // and only gets called if we get --win32-daemon in the command line
 VOID FAR PASCAL
-win32_daemon_entry(DWORD largc, LPTSTR* largv)
+win32_daemon_entry(DWORD argc, LPTSTR* argv)
 {
-  // we branch to lokinet_main after telling SCM we're ok
-  UNREFERENCED_PARAMETER(largc);
-  UNREFERENCED_PARAMETER(largv);
   // Register the handler function for the service
   SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
 
@@ -594,6 +607,9 @@ win32_daemon_entry(DWORD largc, LPTSTR* largv)
   SvcStatus.dwServiceSpecificExitCode = 0;
 
   // Report initial status to the SCM
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+  argv[1] = argv[2];
+  argv[2] = nullptr;
+  lokinet_main(argc, argv);
 }
 #endif
