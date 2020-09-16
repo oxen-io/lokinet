@@ -380,7 +380,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   {
     uint8_t dhcp_opt;
     uint8_t length;
-    uint32_t value[2];
+    uint32_t value;
   } dns;
   struct
   {
@@ -423,15 +423,11 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
    * inline */
   dns.dhcp_opt = 6;
   dns.length   = 4;
-  if (dev->bindaddr)
+  /*if (dev->bindaddr)
     dns.value[0] = dev->bindaddr; /* apparently this doesn't show in network properties,
-                            but it works */
-  else
-    dns.value[0] = htonl(0x7f000001);
-  dns.value[1] = 0;
-
-  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
-                        sizeof(dns), &dns, sizeof(dns), &len, NULL);
+                            but it works 
+  else*/
+    dns.value = htonl(0x7f000001);
 
   /* set router address to interface address */
   gateway.dhcp_opt = 3;
@@ -441,6 +437,9 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &gateway,
                         sizeof(gateway), &gateway, sizeof(gateway), &len, NULL);
 
+  
+  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
+                        sizeof(dns), &dns, sizeof(dns), &len, NULL);
   if(!ret)
   {
     int errcode = GetLastError();

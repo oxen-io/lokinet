@@ -106,7 +106,7 @@ install_win32_daemon()
     llarp::LogError("Cannot install service ", GetLastError());
     return;
   }
-  StringCchCat(szPath.data(), 1024, " --win32-daemon");
+  StringCchCat(szPath.data(), 1024, " --win32-daemon c:/programdata/.lokinet/lokinet.ini");
 
   // Get a handle to the SCM database.
   schSCManager = OpenSCManager(
@@ -297,8 +297,10 @@ main(int argc, char* argv[])
                                          {NULL, NULL}};
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
-    StartServiceCtrlDispatcher(DispatchTable);
+    argv[1] = argv[2];
+    argv[2] = nullptr;
     start_as_daemon = true;
+    StartServiceCtrlDispatcher(DispatchTable);
   }
   else
     return lokinet_main(argc, argv);
