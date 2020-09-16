@@ -46,9 +46,6 @@ lokinet_main(int, char**);
 
 #ifdef _WIN32
 #include <strsafe.h>
-#ifdef DEBUG
-#include <wtsapi32.h>
-#endif
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
@@ -56,8 +53,8 @@ win32_daemon_entry(DWORD, LPTSTR*);
 VOID ReportSvcStatus(DWORD, DWORD, DWORD);
 VOID
 insert_description();
-static SERVICE_STATUS SvcStatus;
-static SERVICE_STATUS_HANDLE SvcStatusHandle;
+SERVICE_STATUS SvcStatus;
+SERVICE_STATUS_HANDLE SvcStatusHandle;
 bool start_as_daemon = false;
 #endif
 
@@ -109,7 +106,9 @@ install_win32_daemon()
     llarp::LogError("Cannot install service ", GetLastError());
     return;
   }
-  StringCchCat(szPath.data(), 1024, " --win32-daemon c:/programdata/.lokinet/lokinet.ini");
+  // just put the flag here. we eat it later on and specify the
+  // config path in the daemon entry point
+  StringCchCat(szPath.data(), 1024, " --win32-daemon");
 
   // Get a handle to the SCM database.
   schSCManager = OpenSCManager(
@@ -298,20 +297,6 @@ main(int argc, char* argv[])
 #else
   SERVICE_TABLE_ENTRY DispatchTable[] = {{"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry},
                                          {NULL, NULL}};
-#ifdef DEBUG
-    char title[] = "lokinet for windows daemon debug";
-    char message[] = "loki internal use only, if you are a customer please contact support, you may have the wrong build";
-    DWORD consoleSession = ::WTSGetActiveConsoleSessionId();
-    DWORD response;
-    BOOL ret = ::WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
-                                consoleSession,
-                                title, sizeof(title),
-                                message, sizeof(message),
-                                MB_OK,
-                                180,
-                                &response,
-                                TRUE);
-#endif
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
     start_as_daemon = true;
@@ -608,7 +593,9 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
 
   // Report initial status to the SCM
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
-  argv[1] = argv[2];
+  // SCM clobbers startup args, regenerate them here
+  argc = 2;
+  argv[1] = "c:/programdata/.lokinet/lokinet.ini";
   argv[2] = nullptr;
   lokinet_main(argc, argv);
 }
