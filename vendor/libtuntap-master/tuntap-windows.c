@@ -376,18 +376,12 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   IPADDR ep[4];
 #pragma pack(push)
 #pragma pack(1)
-  struct
+  struct opt
   {
     uint8_t dhcp_opt;
     uint8_t length;
     uint32_t value;
-  } dns;
-  struct
-  {
-    uint8_t dhcp_opt;
-    uint8_t length;
-    uint32_t value;
-  } gateway;
+  } dns, gateway;
 #pragma pack(pop)
 
   sock[0] = s->S_un.S_addr;
@@ -423,10 +417,10 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
    * inline */
   dns.dhcp_opt = 6;
   dns.length   = 4;
-  /*if (dev->bindaddr)
-    dns.value[0] = dev->bindaddr; /* apparently this doesn't show in network properties,
-                            but it works 
-  else*/
+  if (dev->bindaddr)
+    dns.value = dev->bindaddr; /* apparently this doesn't show in network properties,
+                            but it works */ 
+  else
     dns.value = htonl(0x7f000001);
 
   /* set router address to interface address */
@@ -436,7 +430,6 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &gateway,
                         sizeof(gateway), &gateway, sizeof(gateway), &len, NULL);
-
   
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
                         sizeof(dns), &dns, sizeof(dns), &len, NULL);
