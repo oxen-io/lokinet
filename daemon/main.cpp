@@ -301,6 +301,7 @@ main(int argc, char* argv[])
     argv[2] = nullptr;
     start_as_daemon = true;
     StartServiceCtrlDispatcher(DispatchTable);
+    lokinet_main(argc, argv);
   }
   else
     return lokinet_main(argc, argv);
@@ -576,6 +577,9 @@ SvcCtrlHandler(DWORD dwCtrl)
 VOID FAR PASCAL
 win32_daemon_entry(DWORD largc, LPTSTR* largv)
 {
+  // we branch to lokinet_main after telling SCM we're ok
+  UNREFERENCED_PARAMETER(largc);
+  UNREFERENCED_PARAMETER(largv);
   // Register the handler function for the service
   SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
 
@@ -591,6 +595,5 @@ win32_daemon_entry(DWORD largc, LPTSTR* largv)
 
   // Report initial status to the SCM
   ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-  lokinet_main(largc, largv);
 }
 #endif
