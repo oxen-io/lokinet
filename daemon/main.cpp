@@ -106,6 +106,8 @@ install_win32_daemon()
     llarp::LogError("Cannot install service ", GetLastError());
     return;
   }
+  // just put the flag here. we eat it later on and specify the
+  // config path in the daemon entry point
   StringCchCat(szPath.data(), 1024, " --win32-daemon");
 
   // Get a handle to the SCM database.
@@ -297,8 +299,8 @@ main(int argc, char* argv[])
                                          {NULL, NULL}};
   if (lstrcmpi(argv[1], "--win32-daemon") == 0)
   {
-    StartServiceCtrlDispatcher(DispatchTable);
     start_as_daemon = true;
+    StartServiceCtrlDispatcher(DispatchTable);
   }
   else
     return lokinet_main(argc, argv);
@@ -318,7 +320,9 @@ lokinet_main(int argc, char* argv[])
 #ifdef _WIN32
   if (startWinsock())
     return -1;
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
+
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
   cxxopts::Options options(
@@ -329,8 +333,7 @@ lokinet_main(int argc, char* argv[])
   options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())
 #ifdef _WIN32
       ("install", "install win32 daemon to SCM", cxxopts::value<bool>())(
-          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())(
-          "win32-daemon", "do not use interactively", cxxopts::value<bool>())
+          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
 #endif
           ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
               "g,generate", "generate client config", cxxopts::value<bool>())(
@@ -514,6 +517,7 @@ lokinet_main(int argc, char* argv[])
   llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32
   ::WSACleanup();
+  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
 #endif
   if (ctx)
   {
@@ -572,7 +576,7 @@ SvcCtrlHandler(DWORD dwCtrl)
 // to the original lokinet entry
 // and only gets called if we get --win32-daemon in the command line
 VOID FAR PASCAL
-win32_daemon_entry(DWORD largc, LPTSTR* largv)
+win32_daemon_entry(DWORD argc, LPTSTR* argv)
 {
   // Register the handler function for the service
   SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
@@ -588,7 +592,11 @@ win32_daemon_entry(DWORD largc, LPTSTR* largv)
   SvcStatus.dwServiceSpecificExitCode = 0;
 
   // Report initial status to the SCM
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
-  lokinet_main(largc, largv);
+  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+  // SCM clobbers startup args, regenerate them here
+  argc = 2;
+  argv[1] = "c:/programdata/.lokinet/lokinet.ini";
+  argv[2] = nullptr;
+  lokinet_main(argc, argv);
 }
 #endif
