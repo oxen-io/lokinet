@@ -12,4 +12,9 @@ namespace llarp::service
     std::optional<Address>
     Decrypt(std::string_view name) const;
   };
+
+  /// check if an lns name complies with the registration rules
+  bool
+  NameIsValid(std::string_view name);
+
 }  // namespace llarp::service

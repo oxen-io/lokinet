@@ -16,6 +16,7 @@
 #include <service/outbound_context.hpp>
 #include <service/endpoint_state.hpp>
 #include <service/outbound_context.hpp>
+#include <service/name.hpp>
 #include <util/meta/memfn.hpp>
 #include <util/thread/logic.hpp>
 #include <nodedb.hpp>
@@ -469,7 +470,7 @@ namespace llarp
                 addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
           }
         }
-        else if (ends_with(qname, ".loki"))
+        else if (ends_with(qname, ".loki") and service::NameIsValid(qname))
         {
           return LookupNameAsync(
               qname,
