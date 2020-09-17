@@ -760,6 +760,12 @@ namespace llarp
         handler(addr);
         return true;
       }
+
+      void
+      HandleTimeout() override
+      {
+        HandleNameResponse(std::nullopt);
+      }
     };
 
     bool
