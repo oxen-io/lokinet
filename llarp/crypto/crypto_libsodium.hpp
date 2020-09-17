@@ -13,6 +13,11 @@ namespace llarp
 
       ~CryptoLibSodium() override = default;
 
+      /// decrypt cipherText given the key generated from name
+      std::optional<AlignedBuffer<32>>
+      maybe_decrypt_name(
+          std::string_view ciphertext, SymmNonce nounce, std::string_view name) override;
+
       /// xchacha symmetric cipher
       bool
       xchacha20(const llarp_buffer_t&, const SharedSecret&, const TunnelNonce&) override;

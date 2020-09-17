@@ -24,6 +24,7 @@ namespace llarp
   {
     struct GotIntroMessage;
     struct GotRouterMessage;
+    struct GotNameMessage;
   }  // namespace dht
 
   namespace path
@@ -208,6 +209,12 @@ namespace llarp
 
       /// override me in subtype
       virtual bool HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage>)
+      {
+        return false;
+      }
+
+      /// override me in subtype
+      virtual bool HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage>)
       {
         return false;
       }

@@ -5,10 +5,12 @@
 #include <sodium/crypto_scalarmult_ed25519.h>
 #include <sodium/crypto_stream_xchacha20.h>
 #include <sodium/crypto_core_ed25519.h>
+#include <sodium/crypto_aead_xchacha20poly1305.h>
 #include <sodium/randombytes.h>
 #include <sodium/utils.h>
 #include <util/mem.hpp>
 #include <util/endian.hpp>
+#include <util/str.hpp>
 #include <cassert>
 #include <cstring>
 
@@ -91,6 +93,39 @@ namespace llarp
       int seed = 0;
       randombytes(reinterpret_cast<unsigned char*>(&seed), sizeof(seed));
       srand(seed);
+    }
+
+    std::optional<AlignedBuffer<32>>
+    CryptoLibSodium::maybe_decrypt_name(
+        std::string_view ciphertext, SymmNonce nounce, std::string_view name)
+    {
+      const auto payloadsize = ciphertext.size() - crypto_aead_xchacha20poly1305_ietf_ABYTES;
+      if (payloadsize != 32)
+        return {};
+
+      SharedSecret derivedKey{};
+      ShortHash namehash{};
+      const llarp_buffer_t namebuf(reinterpret_cast<const char*>(name.data()), name.size());
+      if (not shorthash(namehash, namebuf))
+        return {};
+      if (not hmac(derivedKey.data(), namebuf, namehash))
+        return {};
+      AlignedBuffer<32> result{};
+      if (crypto_aead_xchacha20poly1305_ietf_decrypt(
+              result.data(),
+              nullptr,
+              nullptr,
+              reinterpret_cast<const byte_t*>(ciphertext.data()),
+              ciphertext.size(),
+              nullptr,
+              0,
+              nounce.data(),
+              derivedKey.data())
+          == -1)
+      {
+        return {};
+      }
+      return result;
     }
 
     bool

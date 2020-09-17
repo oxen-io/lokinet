@@ -47,7 +47,7 @@ namespace llarp
         std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
 
         LogWarn(lookup->name, " timed out txid=", lookup->txid);
-        lookup->HandleResponse({});
+        lookup->HandleTimeout();
         itr = lookups.erase(itr);
       }
     }

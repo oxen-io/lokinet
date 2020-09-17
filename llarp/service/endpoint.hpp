@@ -15,7 +15,7 @@
 #include <service/protocol.hpp>
 #include <service/sendcontext.hpp>
 #include <service/session.hpp>
-#include <service/tag_lookup_job.hpp>
+#include <service/lookup.hpp>
 #include <hook/ihook.hpp>
 #include <util/compare_ptr.hpp>
 #include <util/thread/logic.hpp>
@@ -179,6 +179,9 @@ namespace llarp
       HandleGotRouterMessage(std::shared_ptr<const dht::GotRouterMessage> msg) override;
 
       bool
+      HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg) override;
+
+      bool
       HandleHiddenServiceFrame(path::Path_ptr p, const service::ProtocolFrame& msg);
 
       void
@@ -221,6 +224,9 @@ namespace llarp
       /// lookup a router via closest path
       bool
       LookupRouterAnon(RouterID router, RouterLookupHandler handler);
+
+      bool
+      LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> resultHandler);
 
       /// called on event loop pump
       virtual void

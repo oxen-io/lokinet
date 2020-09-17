@@ -5,8 +5,10 @@
 #include <dht/context.hpp>
 #include <dht/key.hpp>
 #include <dht/messages/findintro.hpp>
+#include <dht/messages/findname.hpp>
 #include <dht/messages/findrouter.hpp>
 #include <dht/messages/gotintro.hpp>
+#include <dht/messages/gotname.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
 #include <nodedb.hpp>
@@ -201,6 +203,8 @@ namespace llarp
         RegenAndPublishIntroSet();
       }
 
+      // expire name cache
+      m_state->nameCache.Decay(now);
       // expire snode sessions
       EndpointUtil::ExpireSNodeSessions(now, m_state->m_SNodeSessions);
       // expire pending tx
@@ -274,7 +278,7 @@ namespace llarp
       }
       std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
       lookups.erase(itr);
-      if (not lookup->HandleResponse(remote))
+      if (not lookup->HandleIntrosetResponse(remote))
         lookups.emplace(msg->txid, std::move(lookup));
       return true;
     }
@@ -510,7 +514,7 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const std::set<EncryptedIntroSet>& response) override
+      HandleIntrosetResponse(const std::set<EncryptedIntroSet>& response) override
       {
         if (not response.empty())
           m_Endpoint->IntroSetPublished();
@@ -722,6 +726,82 @@ namespace llarp
             ++itr;
         }
       }
+      return true;
+    }
+
+    struct LookupNameJob : public IServiceLookup
+    {
+      std::function<void(std::optional<Address>)> handler;
+      ShortHash namehash;
+
+      LookupNameJob(
+          Endpoint* parent,
+          uint64_t id,
+          std::string lnsName,
+          std::function<void(std::optional<Address>)> resultHandler)
+          : IServiceLookup(parent, id, lnsName), handler(resultHandler)
+      {
+        CryptoManager::instance()->shorthash(
+            namehash, llarp_buffer_t(lnsName.c_str(), lnsName.size()));
+      }
+
+      std::shared_ptr<routing::IMessage>
+      BuildRequestMessage() override
+      {
+        auto msg = std::make_shared<routing::DHTMessage>();
+        msg->M.emplace_back(std::make_unique<dht::FindNameMessage>(
+            dht::Key_t{}, dht::Key_t{namehash.as_array()}, txid));
+        return msg;
+      }
+
+      bool
+      HandleNameResponse(std::optional<Address> addr) override
+      {
+        handler(addr);
+        return true;
+      }
+
+      void
+      HandleTimeout() override
+      {
+        HandleNameResponse(std::nullopt);
+      }
+    };
+
+    bool
+    Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
+    {
+      auto& cache = m_state->nameCache;
+      const auto maybe = cache.Get(name);
+      if (maybe.has_value())
+      {
+        handler(maybe);
+        return true;
+      }
+      auto path = PickRandomEstablishedPath();
+      auto job = new LookupNameJob(this, GenTXID(), name, handler);
+      return job->SendRequestViaPath(path, m_router);
+    }
+
+    bool
+    Endpoint::HandleGotNameMessage(std::shared_ptr<const dht::GotNameMessage> msg)
+    {
+      auto& lookups = m_state->m_PendingLookups;
+      auto itr = lookups.find(msg->TxID);
+      if (itr == lookups.end())
+        return false;
+
+      // decrypt entry
+      const auto maybe = msg->result.Decrypt(itr->second->name);
+
+      if (maybe.has_value())
+      {
+        // put cache entry for result
+        m_state->nameCache.Put(itr->second->name, *maybe);
+      }
+      // inform result
+      itr->second->HandleNameResponse(maybe);
+      lookups.erase(itr);
       return true;
     }
 

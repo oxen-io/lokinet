@@ -84,8 +84,9 @@ namespace llarp
       }
 
       if (not tagName.Empty())
+      {
         return false;
-
+      }
       // bad request (request for zero-key)
       if (location.IsZero())
       {

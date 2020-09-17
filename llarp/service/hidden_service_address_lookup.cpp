@@ -24,7 +24,7 @@ namespace llarp
     }
 
     bool
-    HiddenServiceAddressLookup::HandleResponse(const std::set<EncryptedIntroSet>& results)
+    HiddenServiceAddressLookup::HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results)
     {
       std::optional<IntroSet> found;
       const Address remote(rootkey);

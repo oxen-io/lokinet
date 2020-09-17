@@ -7,9 +7,9 @@
 #include <service/pendingbuffer.hpp>
 #include <service/router_lookup_job.hpp>
 #include <service/session.hpp>
-#include <service/tag_lookup_job.hpp>
 #include <service/endpoint_types.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/decaying_hashtable.hpp>
 #include <util/status.hpp>
 
 #include <memory>
@@ -80,7 +80,7 @@ namespace llarp
 
       OutboundSessions_t m_OutboundSessions;
 
-      std::unordered_map<Tag, CachedTagResult, Tag::Hash> m_PrefetchedTags;
+      util::DecayingHashTable<std::string, Address, std::hash<std::string>> nameCache;
 
       bool
       Configure(const NetworkConfig& conf);

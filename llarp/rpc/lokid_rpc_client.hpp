@@ -5,8 +5,8 @@
 #include <lokimq/lokimq.h>
 #include <lokimq/address.h>
 #include <crypto/types.hpp>
-
-#include <crypto/types.hpp>
+#include <dht/key.hpp>
+#include <service/name.hpp>
 
 namespace llarp
 {
@@ -29,6 +29,11 @@ namespace llarp
       /// throws on failure
       SecretKey
       ObtainIdentityKey();
+
+      void
+      LookupLNSNameHash(
+          dht::Key_t namehash,
+          std::function<void(std::optional<service::EncryptedName>)> resultHandler);
 
      private:
       /// called when we have connected to lokid via lokimq
