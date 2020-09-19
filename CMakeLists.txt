@@ -123,11 +123,12 @@ if(NOT WIN32)
   endif()
 endif()
 
+find_package(PkgConfig REQUIRED)
+
 if(NOT TARGET sodium)
 # Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
   option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
   if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
-    find_package(PkgConfig REQUIRED)
     pkg_check_modules(SODIUM libsodium>=1.0.18 IMPORTED_TARGET)
   endif()
 
