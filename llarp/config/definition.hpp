@@ -231,7 +231,7 @@ namespace llarp
       {
         if (multiValued)
         {
-          for (const auto& value : parsedValues)
+          for (auto value : parsedValues)
           {
             acceptor(value);
           }

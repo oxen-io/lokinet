@@ -36,7 +36,7 @@ namespace llarp
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
-    constexpr bool DefaultEnablePeerStats = false;
+    constexpr bool DefaultEnablePeerStats = true;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
       if (arg < 1024)

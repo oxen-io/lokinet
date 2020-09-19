@@ -367,6 +367,13 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].Name();
+      const auto nameparts = split(qname, ".");
+      std::string lnsName;
+      if (nameparts.size() >= 2 and ends_with(qname, ".loki"))
+      {
+        lnsName = nameparts[nameparts.size() - 2];
+        lnsName += ".loki"sv;
+      }
 
       if (msg.questions[0].qtype == dns::qTypeMX)
       {
@@ -470,18 +477,25 @@ namespace llarp
                 addr.as_array(), std::make_shared<dns::Message>(msg), isV6);
           }
         }
-        else if (ends_with(qname, ".loki") and service::NameIsValid(qname))
+        else if (service::NameIsValid(lnsName))
         {
           return LookupNameAsync(
-              qname,
-              [msg = std::make_shared<dns::Message>(msg), isV6, reply, ReplyToLokiDNSWhenReady](
-                  auto maybe) {
+              lnsName,
+              [msg = std::make_shared<dns::Message>(msg),
+               name = Name(),
+               lnsName,
+               isV6,
+               reply,
+               ReplyToLokiDNSWhenReady](auto maybe) {
                 if (not maybe.has_value())
                 {
+                  LogWarn(name, " lns name ", lnsName, " not resolved");
                   msg->AddNXReply();
                   reply(*msg);
                   return;
                 }
+                LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
+                msg->AddCNAMEReply(maybe->ToString());
                 ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
               });
         }
