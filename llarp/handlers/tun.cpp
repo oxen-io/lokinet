@@ -474,14 +474,21 @@ namespace llarp
         {
           return LookupNameAsync(
               qname,
-              [msg = std::make_shared<dns::Message>(msg), isV6, reply, ReplyToLokiDNSWhenReady](
-                  auto maybe) {
+              [msg = std::make_shared<dns::Message>(msg),
+               name = Name(),
+               qname,
+               isV6,
+               reply,
+               ReplyToLokiDNSWhenReady](auto maybe) {
                 if (not maybe.has_value())
                 {
+                  LogWarn(name, " lns name ", qname, " not resolved");
                   msg->AddNXReply();
                   reply(*msg);
                   return;
                 }
+                LogInfo(name, " ", qname, " resolved to ", maybe->ToString());
+                msg->AddCNAMEReply(maybe->ToString());
                 ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
               });
         }

@@ -778,6 +778,7 @@ namespace llarp
         handler(maybe);
         return true;
       }
+      LogInfo(Name(), " looking up LNS name: ", name);
       auto path = PickRandomEstablishedPath();
       auto job = new LookupNameJob(this, GenTXID(), name, handler);
       return job->SendRequestViaPath(path, m_router);

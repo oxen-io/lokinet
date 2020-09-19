@@ -1,5 +1,8 @@
 #include <dht/messages/gotname.hpp>
 #include <lokimq/bt_serialize.h>
+#include <dht/context.hpp>
+#include <router/abstractrouter.hpp>
+#include <path/path_context.hpp>
 
 namespace llarp::dht
 {
@@ -47,9 +50,13 @@ namespace llarp::dht
   }
 
   bool
-  GotNameMessage::HandleMessage(struct llarp_dht_context*, std::vector<Ptr_t>&) const
+  GotNameMessage::HandleMessage(struct llarp_dht_context* ctx, std::vector<Ptr_t>&) const
   {
-    return false;
+    auto pathset = ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
+    if (pathset == nullptr)
+      return false;
+    auto copy = std::make_shared<const GotNameMessage>(*this);
+    return pathset->HandleGotNameMessage(copy);
   }
 
 }  // namespace llarp::dht
