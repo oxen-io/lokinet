@@ -830,7 +830,7 @@ namespace llarp
 
     def.addOptionComments(
         "dns",
-        "upstream-dns",
+        "upstream",
         {
             "Upstream resolver(s) to use as fallback for non-loki addresses.",
             "Multiple values accepted.",
