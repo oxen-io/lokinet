@@ -353,6 +353,9 @@ namespace llarp
     conf.defineOption<std::string>("dns", "bind", false, "127.3.2.1:53", [=](std::string arg) {
       m_bind = parseDNSAddr(std::move(arg));
     });
+
+    // Ignored option (used by the systemd service file to disable resolvconf configuration).
+    conf.defineOption<bool>("dns", "no-resolvconf", false, false);
   }
 
   LinksConfig::LinkInfo
@@ -839,6 +842,15 @@ namespace llarp
         {
             "Address to bind to for handling DNS requests.",
             "Multiple values accepted.",
+        });
+
+    def.addOptionComments(
+        "dns",
+        "no-resolvconf",
+        {
+            "Can be uncommented and set to 1 to disable resolvconf configuration of lokinet DNS.",
+            "(This is not used directly by lokinet itself, but by the lokinet init scripts",
+            "on systems which use resolveconf)",
         });
 
     // bootstrap
