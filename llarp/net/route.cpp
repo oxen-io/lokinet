@@ -25,6 +25,8 @@
 #include <iphlpapi.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <locale>
+#include <codecvt>
 #endif
 
 #include <sstream>
@@ -223,6 +225,31 @@ namespace llarp::net
 #endif
 
 #ifdef _WIN32
+
+  std::wstring
+  get_win_sys_path()
+  {
+    wchar_t win_sys_path[MAX_PATH] = {0};
+    const wchar_t* default_sys_path = L"C:\\Windows\\system32";
+
+    if (!GetSystemDirectoryW(win_sys_path, _countof(win_sys_path)))
+    {
+      wcsncpy(win_sys_path, default_sys_path, _countof(win_sys_path));
+      win_sys_path[_countof(win_sys_path) - 1] = L'\0';
+    }
+    return win_sys_path;
+  }
+
+  std::string
+  RouteCommand()
+  {
+    std::wstring wcmd = get_win_sys_path() + L"\\system32\\route.exe";
+
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wcmd);
+  }
+
   template <typename Visit>
   void
   ForEachWIN32Interface(Visit visit)
@@ -251,7 +278,7 @@ namespace llarp::net
     {
       for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
       {
-        visit(pIpForwardTable->table[i]);
+        visit(&pIpForwardTable->table[i]);
       }
     }
     FREE(pIpForwardTable);
@@ -280,7 +307,7 @@ namespace llarp::net
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "\\system32\\route.exe ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
+    ss << RouteCommand() << " ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #else
@@ -310,8 +337,7 @@ namespace llarp::net
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "\\system32\\route.exe DELETE " << ip << " MASK 255.255.255.255 " << gateway
-       << " METRIC 2";
+    ss << RouteCommand() << " DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #else
@@ -345,22 +371,22 @@ namespace llarp::net
     ifname.back()++;
     int ifindex = 0;
     // find interface index for address
-    ForEachWIN32Interface([&ifindex, ifname](auto interface) {
+    ForEachWIN32Interface([&ifindex, ifname = ifname](auto w32interface) {
       in_addr interface_addr;
-      interface_addr.S_un.S_addr = (u_long)interface.dwForwardNextHop;
+      interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
       std::array<char, 128> interface_str{};
       StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
       std::string interface_name{interface_str.data()};
       if (interface_name == ifname)
       {
-        ifindex = interface.dwForwardIfIndex;
+        ifindex = w32interface->dwForwardIfIndex;
       }
     });
     Execute(
-        "\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
         + std::to_string(ifindex));
     Execute(
-        "\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
         + std::to_string(ifindex));
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
@@ -392,8 +418,8 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    Execute("\\system32\\route.exe DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("\\system32\\route.exe DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
@@ -428,8 +454,8 @@ namespace llarp::net
 #elif _WIN32
     ForEachWIN32Interface([&](auto w32interface) {
       struct in_addr gateway, interface_addr;
-      gateway.S_un.S_addr = (u_long)w32interface.dwForwardDest;
-      interface_addr.S_un.S_addr = (u_long)w32interface.dwForwardNextHop;
+      gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
+      interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
       std::array<char, 128> interface_str{};
       StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
       std::string interface_name{interface_str.data()};
