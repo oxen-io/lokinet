@@ -37,7 +37,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const;
 
       /// @param needBackup determines whether existing keys will be cycled
-      bool
+      void
       EnsureKeys(const std::string& fpath, bool needBackup);
 
       bool

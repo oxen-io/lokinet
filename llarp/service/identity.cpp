@@ -84,19 +84,14 @@ namespace llarp
       return CryptoManager::instance()->sign(sig, signkey, buf);
     }
 
-    bool
+    void
     Identity::EnsureKeys(const std::string& fname, bool needBackup)
     {
       std::array<byte_t, 4096> tmp;
       llarp_buffer_t buf(tmp);
-      std::error_code ec;
 
-      bool exists = fs::exists(fname, ec);
-      if (ec)
-      {
-        LogError("Could not query file status for ", fname, ": ", ec.message());
-        return false;
-      }
+      // this can throw
+      bool exists = fs::exists(fname);
 
       if (exists and needBackup)
       {
@@ -110,24 +105,23 @@ namespace llarp
         // regen and encode
         RegenerateKeys();
         if (!BEncode(&buf))
-          return false;
+          throw std::length_error("failed to encode new identity");
         // rewind
         buf.sz = buf.cur - buf.base;
         buf.cur = buf.base;
         // write
         auto optional_f = util::OpenFileStream<std::ofstream>(fname, std::ios::binary);
         if (!optional_f)
-          return false;
+          throw std::runtime_error(stringify("can not open ", fname));
         auto& f = *optional_f;
         if (!f.is_open())
-          return false;
+          throw std::runtime_error(stringify("did not open ", fname));
         f.write((char*)buf.cur, buf.sz);
       }
 
-      if (!fs::is_regular_file(fname))
+      if (not fs::is_regular_file(fname))
       {
-        LogError("keyfile ", fname, " is not a regular file");
-        return false;
+        throw std::invalid_argument(stringify(fname, " is not a regular file"));
       }
 
       // read file
@@ -137,11 +131,11 @@ namespace llarp
       inf.seekg(0, std::ios::beg);
 
       if (sz > sizeof(tmp))
-        return false;
+        throw std::length_error("service identity too big");
       // decode
       inf.read((char*)buf.base, sz);
       if (!bencode_decode_dict(*this, &buf))
-        return false;
+        throw std::length_error("could not decode service identity");
 
       std::optional<VanityNonce> van;
       if (!vanity.IsZero())
@@ -149,7 +143,10 @@ namespace llarp
       // update pubkeys
       pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
       auto crypto = CryptoManager::instance();
-      return crypto->derive_subkey_private(derivedSignKey, signkey, 1);
+      if (not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
+      {
+        throw std::runtime_error("failed to derive subkey");
+      }
     }
 
     std::optional<EncryptedIntroSet>

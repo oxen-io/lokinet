@@ -8,123 +8,45 @@
 #include <service/intro_set.hpp>
 #include <util/time.hpp>
 
-#include <crypto/mock_crypto.hpp>
 #include <test_util.hpp>
-
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
+#include <catch2/catch.hpp>
 
 using namespace llarp;
-using namespace testing;
 
-struct HiddenServiceTest : public test::LlarpTest<>
+TEST_CASE("test service address from string")
 {
-  service::Identity ident;
-};
-
-TEST_F(HiddenServiceTest, TestAddressToFromString)
-{
+  
+  service::Identity ident{};
+  
   auto str = ident.pub.Addr().ToString();
   service::Address addr;
-  ASSERT_TRUE(addr.FromString(str));
-  ASSERT_TRUE(addr == ident.pub.Addr());
+  CHECK(addr.FromString(str));
+  CHECK(addr == ident.pub.Addr());
 }
 
-struct ServiceIdentityTest : public test::LlarpTest<>
-{
-  ServiceIdentityTest()
-  {
-  }
-};
-
-template < typename Arg >
-std::function< void(Arg&) >
-FillArg(byte_t val)
-{
-  return [=](Arg& arg) { arg.Fill(val); };
-}
-
-TEST_F(ServiceIdentityTest, EnsureKeys)
+TEST_CASE("test service::Identity throws on error")
 {
   fs::path p = test::randFilename();
-  ASSERT_FALSE(fs::exists(fs::status(p)));
-
-  test::FileGuard guard(p);
-
-  const SecretKey k;
-
-  EXPECT_CALL(m_crypto, derive_subkey_private(_, _, _, _))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(m_crypto, encryption_keygen(_))
-      .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x01)));
-
-  EXPECT_CALL(m_crypto, identity_keygen(_))
-      .WillOnce(WithArg< 0 >(FillArg< SecretKey >(0x02)));
-
-  EXPECT_CALL(m_crypto, pqe_keygen(_))
-      .WillOnce(WithArg< 0 >(FillArg< PQKeyPair >(0x03)));
-
-  service::Identity identity;
-  ASSERT_TRUE(identity.EnsureKeys(p.string(), false));
-  ASSERT_TRUE(fs::exists(fs::status(p)));
-
-  // Verify what is on disk is what is what was generated
-  service::Identity other;
-  // No need to set more mocks, as we shouldn't need to re-keygen
-  ASSERT_TRUE(other.EnsureKeys(p.string(), false));
-  ASSERT_EQ(identity, other);
-}
-
-TEST_F(ServiceIdentityTest, EnsureKeysDir)
-{
-  fs::path p = test::randFilename();
-  ASSERT_FALSE(fs::exists(fs::status(p)));
-
-  test::FileGuard guard(p);
-  std::error_code code;
-  ASSERT_TRUE(fs::create_directory(p, code)) << code;
-
-  service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string(), false));
-}
-
-TEST_F(ServiceIdentityTest, EnsureKeysBrokenFile)
-{
-  fs::path p = test::randFilename();
-  ASSERT_FALSE(fs::exists(fs::status(p)));
+  CHECK(not fs::exists(fs::status(p)));
 
   test::FileGuard guard(p);
   std::error_code code;
 
   std::fstream file;
   file.open(p.string(), std::ios::out);
-  ASSERT_TRUE(file.is_open()) << p;
+  CHECK(file.is_open());
+  file << p;
   file.close();
 
   service::Identity identity;
-  ASSERT_FALSE(identity.EnsureKeys(p.string(), false));
+  REQUIRE_THROWS(identity.EnsureKeys(p, false));
 }
 
-struct RealCryptographyTest : public ::testing::Test
+
+TEST_CASE("test subkey derivation", "[crypto]")
 {
-  std::unique_ptr< CryptoManager > _manager;
+  CryptoManager manager(new sodium::CryptoLibSodium());
 
-  void
-  SetUp()
-  {
-    _manager = std::make_unique< CryptoManager >(new sodium::CryptoLibSodium());
-  }
-
-  void
-  TearDown()
-  {
-    _manager.reset();
-  }
-};
-
-TEST_F(RealCryptographyTest, TestKnownDerivation)
-{
   // These values came out of a run of Tor's test code, so that we can confirm we are doing the same
   // blinding subkey crypto math as Tor.  Our hash value is generated differently so we use the hash
   // from a Tor random test suite run.
@@ -152,27 +74,29 @@ TEST_F(RealCryptographyTest, TestKnownDerivation)
   }};
 
   SecretKey root{seed};
-  ASSERT_EQ(root.toPublic(), PubKey{root_pub_data});
+  CHECK(root.toPublic() == PubKey{root_pub_data});
 
   PrivateKey root_key;
-  ASSERT_TRUE(root.toPrivate(root_key));
-  ASSERT_EQ(root_key, PrivateKey{root_key_data});
+  CHECK(root.toPrivate(root_key));
+  CHECK(root_key == PrivateKey{root_key_data});
 
   auto crypto = CryptoManager::instance();
 
   PrivateKey aprime; // a'
-  ASSERT_TRUE(crypto->derive_subkey_private(aprime, root, 0, &hash));
+  CHECK(crypto->derive_subkey_private(aprime, root, 0, &hash));
   // We use a different signing hash than Tor, so only the private key value (the first 32 bytes)
   // will match:
-  ASSERT_EQ(aprime.ToHex().substr(0, 64), PrivateKey{derived_key_data}.ToHex().substr(0, 64));
+  CHECK(aprime.ToHex().substr(0, 64) == PrivateKey{derived_key_data}.ToHex().substr(0, 64));
 
   PubKey Aprime; // A'
-  ASSERT_TRUE(crypto->derive_subkey(Aprime, root.toPublic(), 0, &hash));
-  ASSERT_EQ(Aprime, PubKey{derived_pub_data});
+  CHECK(crypto->derive_subkey(Aprime, root.toPublic(), 0, &hash));
+  CHECK(Aprime == PubKey{derived_pub_data});
 }
 
-TEST_F(RealCryptographyTest, TestRootSigning)
+TEST_CASE("test root key signing" , "[crypto]")
 {
+  CryptoManager manager(new sodium::CryptoLibSodium());
+
   auto crypto = CryptoManager::instance();
   SecretKey root_key;
   crypto->identity_keygen(root_key);
@@ -185,68 +109,72 @@ TEST_F(RealCryptographyTest, TestRootSigning)
   llarp_buffer_t nibbs_buf{nibbs.data(), nibbs.size()};
 
   Signature sig_sodium;
-  ASSERT_TRUE(crypto->sign(sig_sodium, root_key, nibbs_buf));
+  CHECK(crypto->sign(sig_sodium, root_key, nibbs_buf));
 
   PrivateKey root_privkey;
-  ASSERT_TRUE(root_key.toPrivate(root_privkey));
+  CHECK(root_key.toPrivate(root_privkey));
   Signature sig_ours;
-  ASSERT_TRUE(crypto->sign(sig_ours, root_privkey, nibbs_buf));
+  CHECK(crypto->sign(sig_ours, root_privkey, nibbs_buf));
 
-  ASSERT_EQ(sig_sodium, sig_ours);
+  CHECK(sig_sodium == sig_ours);
 }
 
-TEST_F(RealCryptographyTest, TestGenerateDeriveKey)
+TEST_CASE("Test generate derived key", "[crypto]")
 {
+  CryptoManager manager(new sodium::CryptoLibSodium());
+
   auto crypto = CryptoManager::instance();
   SecretKey root_key;
   crypto->identity_keygen(root_key);
 
   PrivateKey root_privkey;
-  ASSERT_TRUE(root_key.toPrivate(root_privkey));
+  CHECK(root_key.toPrivate(root_privkey));
 
   PrivateKey a;
   PubKey A;
-  ASSERT_TRUE(root_key.toPrivate(a));
-  ASSERT_TRUE(a.toPublic(A));
-  ASSERT_EQ(A, root_key.toPublic());
+  CHECK(root_key.toPrivate(a));
+  CHECK(a.toPublic(A));
+  CHECK(A == root_key.toPublic());
 
   {
     // paranoid check to ensure this works as expected
     PubKey aB;
     crypto_scalarmult_ed25519_base(aB.data(), a.data());
-    ASSERT_EQ(A, aB);
+    CHECK(A == aB);
   }
 
   PrivateKey aprime; // a'
-  ASSERT_TRUE(crypto->derive_subkey_private(aprime, root_key, 1));
+  CHECK(crypto->derive_subkey_private(aprime, root_key, 1));
 
   PubKey Aprime; // A'
-  ASSERT_TRUE(crypto->derive_subkey(Aprime, A, 1));
+  CHECK(crypto->derive_subkey(Aprime, A, 1));
 
   // We should also be able to derive A' via a':
   PubKey Aprime_alt;
-  ASSERT_TRUE(aprime.toPublic(Aprime_alt));
+  CHECK(aprime.toPublic(Aprime_alt));
 
-  ASSERT_EQ(Aprime, Aprime_alt);
+  CHECK(Aprime == Aprime_alt);
 
   // Generate using the same constant and make sure we get an identical privkey (including the
   // signing hash value)
   PrivateKey aprime_repeat;
-  ASSERT_TRUE(crypto->derive_subkey_private(aprime_repeat, root_key, 1));
-  ASSERT_EQ(aprime_repeat, aprime);
+  CHECK(crypto->derive_subkey_private(aprime_repeat, root_key, 1));
+  CHECK(aprime_repeat == aprime);
 
   // Generate another using a different constant and make sure we get something different
   PrivateKey a2;
   PubKey A2;
-  ASSERT_TRUE(crypto->derive_subkey_private(a2, root_key, 2));
-  ASSERT_TRUE(crypto->derive_subkey(A2, A, 2));
-  ASSERT_NE(A2, Aprime);
-  ASSERT_NE(a2.ToHex().substr(0, 64), aprime.ToHex().substr(0, 64));
-  ASSERT_NE(a2.ToHex().substr(64), aprime.ToHex().substr(64)); // The hash should be different too
+  CHECK(crypto->derive_subkey_private(a2, root_key, 2));
+  CHECK(crypto->derive_subkey(A2, A, 2));
+  CHECK(A2 != Aprime);
+  CHECK(a2.ToHex().substr(0, 64) != aprime.ToHex().substr(0, 64));
+  CHECK(a2.ToHex().substr(64) != aprime.ToHex().substr(64)); // The hash should be different too
 }
 
-TEST_F(RealCryptographyTest, TestSignUsingDerivedKey)
+TEST_CASE("Test signing with derived key", "[crypto]")
 {
+  CryptoManager manager(new sodium::CryptoLibSodium());
+
   auto crypto = CryptoManager::instance();
   SecretKey root_key;
   crypto->identity_keygen(root_key);
@@ -269,17 +197,19 @@ TEST_F(RealCryptographyTest, TestSignUsingDerivedKey)
   llarp_buffer_t buf(s.data(), s.size());
 
   Signature sig;
-  ASSERT_TRUE(crypto->sign(sig, aprime, buf));
-
-  ASSERT_TRUE(crypto->verify(Aprime, buf, sig));
+  
+  CHECK(crypto->sign(sig, aprime, buf));
+  CHECK(crypto->verify(Aprime, buf, sig));
 }
 
-TEST_F(RealCryptographyTest, TestEncryptAndSignIntroSet)
+TEST_CASE("Test sign and encrypt introset", "[crypto]")
 {
+  CryptoManager manager(new sodium::CryptoLibSodium());
+
   service::Identity ident;
   ident.RegenerateKeys();
   service::Address addr;
-  ASSERT_TRUE(ident.pub.CalculateAddress(addr.as_array()));
+  CHECK(ident.pub.CalculateAddress(addr.as_array()));
   service::IntroSet I;
   auto now = time_now_ms();
   I.T      = now;
@@ -293,10 +223,11 @@ TEST_F(RealCryptographyTest, TestEncryptAndSignIntroSet)
   }
 
   const auto maybe = ident.EncryptAndSignIntroSet(I, now);
-  ASSERT_TRUE(maybe.has_value());
-  ASSERT_TRUE(maybe->Verify(now));
+  CHECK(maybe.has_value());
+  CHECK(maybe->Verify(now));
   PubKey blind_key;
   const PubKey root_key(addr.as_array());
   auto crypto = CryptoManager::instance();
-  ASSERT_TRUE(crypto->derive_subkey(blind_key, root_key, 1));
+  CHECK(crypto->derive_subkey(blind_key, root_key, 1));
+  CHECK(blind_key == maybe->derivedSigningKey);
 }
