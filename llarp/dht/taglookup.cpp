@@ -8,35 +8,33 @@ namespace llarp
   namespace dht
   {
     bool
-    TagLookup::Validate(const service::EncryptedIntroSet &introset) const
+    TagLookup::Validate(const service::EncryptedIntroSet& introset) const
     {
-      if(!introset.Verify(parent->Now()))
+      if (!introset.Verify(parent->Now()))
       {
         llarp::LogWarn("got invalid introset from tag lookup");
         return false;
       }
-      if(not introset.topic.has_value())
+      if (not introset.topic)
         return false;
-      if(introset.topic.value() != target)
+      if (*introset.topic != target)
       {
-        llarp::LogWarn("got introset with missmatched topic in tag lookup");
+        llarp::LogWarn("got introset with mismatched topic in tag lookup");
         return false;
       }
       return true;
     }
 
     void
-    TagLookup::Start(const TXOwner &peer)
+    TagLookup::Start(const TXOwner& peer)
     {
-      parent->DHTSendTo(peer.node.as_array(),
-                        new FindIntroMessage(target, peer.txid));
+      parent->DHTSendTo(peer.node.as_array(), new FindIntroMessage(target, peer.txid));
     }
 
     void
     TagLookup::SendReply()
     {
-      parent->DHTSendTo(whoasked.node.as_array(),
-                        new GotIntroMessage({}, whoasked.txid));
+      parent->DHTSendTo(whoasked.node.as_array(), new GotIntroMessage({}, whoasked.txid));
     }
   }  // namespace dht
 }  // namespace llarp

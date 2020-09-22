@@ -13,11 +13,11 @@ namespace llarp
   {
     struct ObtainExitMessage final : public IMessage
     {
-      std::vector< llarp::exit::Policy > B;
+      std::vector<llarp::exit::Policy> B;
       uint64_t E{0};
       llarp::PubKey I;
       uint64_t T{0};
-      std::vector< llarp::exit::Policy > W;
+      std::vector<llarp::exit::Policy> W;
       uint64_t X{0};
       llarp::Signature Z;
 
@@ -58,7 +58,7 @@ namespace llarp
 
     struct GrantExitMessage final : public IMessage
     {
-      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      using Nonce_t = llarp::AlignedBuffer<16>;
 
       uint64_t T;
       Nonce_t Y;
@@ -90,9 +90,9 @@ namespace llarp
 
     struct RejectExitMessage final : public IMessage
     {
-      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      using Nonce_t = llarp::AlignedBuffer<16>;
       uint64_t B;
-      std::vector< llarp::exit::Policy > R;
+      std::vector<llarp::exit::Policy> R;
       uint64_t T;
       Nonce_t Y;
       llarp::Signature Z;
@@ -125,7 +125,7 @@ namespace llarp
 
     struct UpdateExitVerifyMessage final : public IMessage
     {
-      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      using Nonce_t = llarp::AlignedBuffer<16>;
       uint64_t T;
       Nonce_t Y;
       llarp::Signature Z;
@@ -152,7 +152,7 @@ namespace llarp
 
     struct UpdateExitMessage final : public IMessage
     {
-      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      using Nonce_t = llarp::AlignedBuffer<16>;
       llarp::PathID_t P;
       uint64_t T;
       Nonce_t Y;
@@ -185,7 +185,7 @@ namespace llarp
 
     struct CloseExitMessage final : public IMessage
     {
-      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      using Nonce_t = llarp::AlignedBuffer<16>;
 
       Nonce_t Y;
       llarp::Signature Z;

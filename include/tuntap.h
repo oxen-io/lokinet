@@ -144,9 +144,9 @@ extern "C"
   struct device
   {
     /** set me on ios and android to block on a promise for the fd */
-    int (*obtain_fd)(struct device *);
+    int (*obtain_fd)(struct device*);
     /** user data */
-    void *user;
+    void* user;
     t_tun tun_fd;
     int ctrl_sock;
     int flags; /* ifr.ifr_flags on Unix */
@@ -166,7 +166,7 @@ extern "C"
   };
 
   /* User definable log callback */
-  typedef void (*t_tuntap_log)(int, int, const char *, const char *);
+  typedef void (*t_tuntap_log)(int, int, const char*, const char*);
   TUNTAP_EXPORT t_tuntap_log __tuntap_log;
 
 #ifndef LOG_TAG
@@ -176,90 +176,89 @@ extern "C"
 #define tuntap_log(lvl, msg) __tuntap_log(lvl, __LINE__, LOG_TAG, msg)
 
   /* Portable "public" functions */
-  TUNTAP_EXPORT struct device *
+  TUNTAP_EXPORT struct device*
   tuntap_init(void);
   TUNTAP_EXPORT int
   tuntap_version(void);
   TUNTAP_EXPORT void
-  tuntap_destroy(struct device *);
+  tuntap_destroy(struct device*);
   TUNTAP_EXPORT void
-  tuntap_release(struct device *);
+  tuntap_release(struct device*);
   TUNTAP_EXPORT int
-  tuntap_start(struct device *, int, int);
-  TUNTAP_EXPORT char *
-  tuntap_get_ifname(struct device *);
+  tuntap_start(struct device*, int, int);
+  TUNTAP_EXPORT char*
+  tuntap_get_ifname(struct device*);
   TUNTAP_EXPORT int
-  tuntap_set_ifname(struct device *, const char *);
+  tuntap_set_ifname(struct device*, const char*);
 
   TUNTAP_EXPORT int
-  tuntap_set_descr(struct device *, const char *);
+  tuntap_set_descr(struct device*, const char*);
   TUNTAP_EXPORT int
-  tuntap_up(struct device *);
+  tuntap_up(struct device*);
   TUNTAP_EXPORT int
-  tuntap_down(struct device *);
+  tuntap_down(struct device*);
   TUNTAP_EXPORT int
-  tuntap_get_mtu(struct device *);
+  tuntap_get_mtu(struct device*);
   TUNTAP_EXPORT int
-  tuntap_set_mtu(struct device *, int);
+  tuntap_set_mtu(struct device*, int);
 
   /** set ip address and netmask
 
    */
   TUNTAP_EXPORT int
-  tuntap_set_ip(struct device *, const char *srcaddr, const char *dstaddr,
-                int netmask);
+  tuntap_set_ip(struct device*, const char* srcaddr, const char* dstaddr, int netmask);
   // TUNTAP_EXPORT int		 tuntap_set_ip_old(struct device *, const char
   // *, int);
   /*TUNTAP_EXPORT int		 tuntap_set_ip_old(struct device *, const char
    * *, int);*/
   TUNTAP_EXPORT int
-  tuntap_read(struct device *, void *, size_t);
+  tuntap_read(struct device*, void*, size_t);
   TUNTAP_EXPORT int
-  tuntap_write(struct device *, void *, size_t);
+  tuntap_write(struct device*, void*, size_t);
   TUNTAP_EXPORT int
-  tuntap_get_readable(struct device *);
+  tuntap_get_readable(struct device*);
   TUNTAP_EXPORT int
-  tuntap_set_nonblocking(struct device *dev, int);
+  tuntap_set_nonblocking(struct device* dev, int);
   TUNTAP_EXPORT int
-  tuntap_set_debug(struct device *dev, int);
+  tuntap_set_debug(struct device* dev, int);
 
   /* Logging functions */
   TUNTAP_EXPORT void
   tuntap_log_set_cb(t_tuntap_log cb);
   void
-  tuntap_log_default(int, int, const char *, const char *);
+  tuntap_log_default(int, int, const char*, const char*);
   void
-  tuntap_log_hexdump(void *, size_t);
+  tuntap_log_hexdump(void*, size_t);
   void
-  tuntap_log_chksum(void *, int);
+  tuntap_log_chksum(void*, int);
 
   /* OS specific functions */
   int
-  tuntap_sys_start(struct device *, int, int);
+  tuntap_sys_start(struct device*, int, int);
   void
-  tuntap_sys_destroy(struct device *);
+  tuntap_sys_destroy(struct device*);
   int
-  tuntap_sys_set_ipv4(struct device *, t_tun_in_addr *, uint32_t);
+  tuntap_sys_set_ipv4(struct device*, t_tun_in_addr*, uint32_t);
 
 #if defined(Windows)
   int
-  tuntap_sys_set_dns(struct device *dev, t_tun_in_addr *s, uint32_t mask);
+  tuntap_sys_set_dns(struct device* dev, t_tun_in_addr* s, uint32_t mask);
 #endif
 
 #if defined(FreeBSD)
   int
-  tuntap_sys_set_ipv4_tap(struct device *, t_tun_in_addr *, uint32_t);
+  tuntap_sys_set_ipv4_tap(struct device*, t_tun_in_addr*, uint32_t);
   int
-  tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
-                          t_tun_in_addr *s4dest, uint32_t bits, int netmask);
+  tuntap_sys_set_ipv4_tun(
+      struct device* dev, t_tun_in_addr* s4, t_tun_in_addr* s4dest, uint32_t bits, int netmask);
 #endif
 
   int
-  tuntap_sys_set_ipv6(struct device *, t_tun_in6_addr *, uint32_t);
+  tuntap_sys_set_ipv6(struct device*, t_tun_in6_addr*, uint32_t);
   int
-  tuntap_sys_set_ifname(struct device *, const char *, size_t);
+  tuntap_sys_set_ifname(struct device*, const char*, size_t);
   int
-  tuntap_sys_set_descr(struct device *, const char *, size_t);
+  tuntap_sys_set_descr(struct device*, const char*, size_t);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,8 @@
 #include <util/fs.hpp>
 #include <util/logging/logger.hpp>
 #include <util/logging/ostream_logger.hpp>
+#include <util/str.hpp>
+#include <util/thread/logic.hpp>
 
 #include <csignal>
 
@@ -13,23 +15,59 @@
 #include <iostream>
 #include <future>
 
-#ifdef _WIN32
-#define wmin(x, y) (((x) < (y)) ? (x) : (y))
-#define MIN wmin
-extern "C" LONG FAR PASCAL
-win32_signal_handler(EXCEPTION_POINTERS *);
+#ifdef USE_JEMALLOC
+#include <new>
+#include <jemalloc/jemalloc.h>
+
+void*
+operator new(std::size_t sz)
+{
+  void* ptr = malloc(sz);
+  if (ptr)
+    return ptr;
+  else
+    throw std::bad_alloc{};
+}
+void
+operator delete(void* ptr) noexcept
+{
+  free(ptr);
+}
+
+void
+operator delete(void* ptr, size_t) noexcept
+{
+  free(ptr);
+}
 #endif
 
-struct llarp_main *ctx = 0;
-std::promise< int > exit_code;
+int
+lokinet_main(int, char**);
+
+#ifdef _WIN32
+#include <strsafe.h>
+extern "C" LONG FAR PASCAL
+win32_signal_handler(EXCEPTION_POINTERS*);
+extern "C" VOID FAR PASCAL
+win32_daemon_entry(DWORD, LPTSTR*);
+VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+VOID
+insert_description();
+SERVICE_STATUS SvcStatus;
+SERVICE_STATUS_HANDLE SvcStatusHandle;
+bool start_as_daemon = false;
+#endif
+
+std::shared_ptr<llarp::Context> ctx;
+std::promise<int> exit_code;
 
 void
 handle_signal(int sig)
 {
-  if(ctx)
-  {
-    llarp_main_signal(ctx, sig);
-  }
+  if (ctx)
+    LogicCall(ctx->logic, std::bind(&llarp::Context::HandleSignal, ctx.get(), sig));
+  else
+    std::cerr << "Received signal " << sig << ", but have no context yet. Ignoring!" << std::endl;
 }
 
 #ifdef _WIN32
@@ -39,7 +77,7 @@ startWinsock()
   WSADATA wsockd;
   int err;
   err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
-  if(err)
+  if (err)
   {
     perror("Failed to start Windows Sockets");
     return err;
@@ -55,261 +93,510 @@ handle_signal_win32(DWORD fdwCtrlType)
   handle_signal(SIGINT);
   return TRUE;  // probably unreachable
 }
+
+void
+install_win32_daemon()
+{
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
+  std::array<char, 1024> szPath{};
+
+  if (!GetModuleFileName(nullptr, szPath.data(), MAX_PATH))
+  {
+    llarp::LogError("Cannot install service ", GetLastError());
+    return;
+  }
+  // just put the flag here. we eat it later on and specify the
+  // config path in the daemon entry point
+  StringCchCat(szPath.data(), 1024, " --win32-daemon");
+
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
+      nullptr,                 // local computer
+      nullptr,                 // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
+
+  // Create the service
+  schService = CreateService(
+      schSCManager,               // SCM database
+      "lokinet",                  // name of service
+      "Lokinet for Windows",      // service name to display
+      SERVICE_ALL_ACCESS,         // desired access
+      SERVICE_WIN32_OWN_PROCESS,  // service type
+      SERVICE_DEMAND_START,       // start type
+      SERVICE_ERROR_NORMAL,       // error control type
+      szPath.data(),              // path to service's binary
+      nullptr,                    // no load ordering group
+      nullptr,                    // no tag identifier
+      nullptr,                    // no dependencies
+      nullptr,                    // LocalSystem account
+      nullptr);                   // no password
+
+  if (schService == nullptr)
+  {
+    llarp::LogError("CreateService failed ", GetLastError());
+    CloseServiceHandle(schSCManager);
+    return;
+  }
+  else
+    llarp::LogInfo("Service installed successfully");
+
+  CloseServiceHandle(schService);
+  CloseServiceHandle(schSCManager);
+  insert_description();
+}
+
+VOID
+insert_description()
+{
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
+  SERVICE_DESCRIPTION sd;
+  LPTSTR szDesc =
+      "LokiNET is a free, open source, private, "
+      "decentralized, \"market based sybil resistant\" "
+      "and IP based onion routing network";
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
+      NULL,                    // local computer
+      NULL,                    // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
+
+  // Get a handle to the service.
+  schService = OpenService(
+      schSCManager,            // SCM database
+      "lokinet",               // name of service
+      SERVICE_CHANGE_CONFIG);  // need change config access
+
+  if (schService == nullptr)
+  {
+    llarp::LogError("OpenService failed ", GetLastError());
+    CloseServiceHandle(schSCManager);
+    return;
+  }
+
+  // Change the service description.
+  sd.lpDescription = szDesc;
+
+  if (!ChangeServiceConfig2(
+          schService,                  // handle to service
+          SERVICE_CONFIG_DESCRIPTION,  // change: description
+          &sd))                        // new description
+  {
+    llarp::LogError("ChangeServiceConfig2 failed");
+  }
+  else
+    llarp::LogInfo("Service description updated successfully.");
+
+  CloseServiceHandle(schService);
+  CloseServiceHandle(schSCManager);
+}
+
+void
+uninstall_win32_daemon()
+{
+  SC_HANDLE schSCManager;
+  SC_HANDLE schService;
+
+  // Get a handle to the SCM database.
+  schSCManager = OpenSCManager(
+      nullptr,                 // local computer
+      nullptr,                 // ServicesActive database
+      SC_MANAGER_ALL_ACCESS);  // full access rights
+
+  if (nullptr == schSCManager)
+  {
+    llarp::LogError("OpenSCManager failed ", GetLastError());
+    return;
+  }
+
+  // Get a handle to the service.
+  schService = OpenService(
+      schSCManager,  // SCM database
+      "lokinet",     // name of service
+      0x10000);      // need delete access
+
+  if (schService == nullptr)
+  {
+    llarp::LogError("OpenService failed ", GetLastError());
+    CloseServiceHandle(schSCManager);
+    return;
+  }
+
+  // Delete the service.
+  if (!DeleteService(schService))
+  {
+    llarp::LogError("DeleteService failed ", GetLastError());
+  }
+  else
+    llarp::LogInfo("Service deleted successfully\n");
+
+  CloseServiceHandle(schService);
+  CloseServiceHandle(schSCManager);
+}
 #endif
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(std::string conffname, llarp_main_runtime_opts opts)
+run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 {
-  // this is important, can downgrade from Info though
-  llarp::LogDebug("Running from: ", fs::current_path().string());
-  llarp::LogInfo("Using config file: ", conffname);
-  ctx      = llarp_main_init(conffname.c_str());
-  int code = 1;
-  if(ctx)
+  try
   {
+    // this is important, can downgrade from Info though
+    llarp::LogDebug("Running from: ", fs::current_path().string());
+    llarp::LogInfo("Using config file: ", confFile);
+
+    llarp::Config conf;
+    conf.Load(confFile, opts.isRouter, confFile.parent_path());
+
+    ctx = std::make_shared<llarp::Context>();
+    ctx->Configure(conf);
+
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_setup(ctx);
+
+    ctx->Setup(opts);
+
     llarp::util::SetThreadName("llarp-mainloop");
-    if(code == 0)
-      code = llarp_main_run(ctx, opts);
+
+    auto result = ctx->Run(opts);
+    exit_code.set_value(result);
   }
-  exit_code.set_value(code);
+  catch (std::exception& e)
+  {
+    llarp::LogError("Fatal: caught exception while running: ", e.what());
+    exit_code.set_exception(std::current_exception());
+  }
+  catch (...)
+  {
+    llarp::LogError("Fatal: caught non-standard exception while running");
+    exit_code.set_exception(std::current_exception());
+  }
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char* argv[])
+{
+#ifndef _WIN32
+  return lokinet_main(argc, argv);
+#else
+  SERVICE_TABLE_ENTRY DispatchTable[] = {{"lokinet", (LPSERVICE_MAIN_FUNCTION)win32_daemon_entry},
+                                         {NULL, NULL}};
+  if (lstrcmpi(argv[1], "--win32-daemon") == 0)
+  {
+    start_as_daemon = true;
+    StartServiceCtrlDispatcher(DispatchTable);
+  }
+  else
+    return lokinet_main(argc, argv);
+#endif
+}
+
+int
+lokinet_main(int argc, char* argv[])
 {
   auto result = Lokinet_INIT();
-  if(result)
+  if (result)
   {
     return result;
   }
-  llarp_main_runtime_opts opts;
-  const char *singleThreadVar = getenv("LLARP_SHADOW");
-  if(singleThreadVar && std::string(singleThreadVar) == "1")
-  {
-    opts.singleThreaded = true;
-  }
+  llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
-  if(startWinsock())
+  if (startWinsock())
     return -1;
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
+
   // SetUnhandledExceptionFilter(win32_signal_handler);
 #endif
-
-  cxxopts::Options options("lokinet",
-                           "LokiNET is a free, open source, private, "
-                           "decentralized, \"market based sybil resistant\" "
-                           "and IP based onion routing network");
-  options.add_options()("v,verbose", "Verbose", cxxopts::value< bool >())(
-      "h,help", "help", cxxopts::value< bool >())("version", "version",
-                                                  cxxopts::value< bool >())(
-      "g,generate", "generate client config", cxxopts::value< bool >())(
-      "r,router", "generate router config", cxxopts::value< bool >())(
-      "f,force", "overwrite", cxxopts::value< bool >())(
-      "c,colour", "colour output",
-      cxxopts::value< bool >()->default_value("true"))(
-      "b,background",
-      "background mode (start, but do not connect to the network)",
-      cxxopts::value< bool >())("config", "path to configuration file",
-                                cxxopts::value< std::string >());
+  cxxopts::Options options(
+      "lokinet",
+      "LokiNET is a free, open source, private, "
+      "decentralized, \"market based sybil resistant\" "
+      "and IP based onion routing network");
+  options.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())
+#ifdef _WIN32
+      ("install", "install win32 daemon to SCM", cxxopts::value<bool>())(
+          "remove", "remove win32 daemon from SCM", cxxopts::value<bool>())
+#endif
+          ("h,help", "help", cxxopts::value<bool>())("version", "version", cxxopts::value<bool>())(
+              "g,generate", "generate client config", cxxopts::value<bool>())(
+              "r,router", "run as router instead of client", cxxopts::value<bool>())(
+              "f,force", "overwrite", cxxopts::value<bool>())(
+              "c,colour", "colour output", cxxopts::value<bool>()->default_value("true"))(
+              "b,background",
+              "background mode (start, but do not connect to the network)",
+              cxxopts::value<bool>())(
+              "config", "path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
 
   bool genconfigOnly = false;
-  bool asRouter      = false;
-  bool overWrite     = false;
-  std::string conffname;
+  bool overwrite = false;
+  fs::path configFile;
   try
   {
     auto result = options.parse(argc, argv);
 
-    if(result.count("verbose") > 0)
+    if (result.count("verbose") > 0)
     {
       SetLogLevel(llarp::eLogDebug);
       llarp::LogDebug("debug logging activated");
     }
 
-    if(!result["colour"].as< bool >())
+    if (!result["colour"].as<bool>())
     {
       llarp::LogContext::Instance().logStream =
-          std::make_unique< llarp::OStreamLogStream >(false, std::cerr);
+          std::make_unique<llarp::OStreamLogStream>(false, std::cerr);
     }
 
-    if(result.count("help"))
+    if (result.count("help"))
     {
       std::cout << options.help() << std::endl;
       return 0;
     }
 
-    if(result.count("version"))
+    if (result.count("version"))
     {
-      std::cout << llarp_version() << std::endl;
+      std::cout << llarp::VERSION_FULL << std::endl;
+      return 0;
+    }
+#ifdef _WIN32
+    if (result.count("install"))
+    {
+      install_win32_daemon();
       return 0;
     }
 
-    if(result.count("generate") > 0)
+    if (result.count("remove"))
+    {
+      uninstall_win32_daemon();
+      return 0;
+    }
+#endif
+    if (result.count("generate") > 0)
     {
       genconfigOnly = true;
     }
 
-    if(result.count("background") > 0)
+    if (result.count("background") > 0)
     {
       opts.background = true;
     }
 
-    if(result.count("force") > 0)
+    if (result.count("router") > 0)
     {
-      overWrite = true;
+      opts.isRouter = true;
     }
 
-    if(result.count("router") > 0)
+    if (result.count("force") > 0)
     {
-      asRouter = true;
-      // we should generate and exit (docker needs this, so we don't write a
-      // config each time on startup)
-      genconfigOnly = true;
+      overwrite = true;
     }
 
-    if(result.count("config") > 0)
+    if (result.count("config") > 0)
     {
-      auto arg = result["config"].as< std::string >();
-      if(!arg.empty())
+      auto arg = result["config"].as<std::string>();
+      if (!arg.empty())
       {
-        conffname = arg;
+        configFile = arg;
       }
     }
   }
-  catch(const cxxopts::option_not_exists_exception &ex)
+  catch (const cxxopts::option_not_exists_exception& ex)
   {
     std::cerr << ex.what();
     std::cout << options.help() << std::endl;
     return 1;
   }
 
-  if(!conffname.empty())
+  if (!configFile.empty())
   {
     // when we have an explicit filepath
-    fs::path fname   = fs::path(conffname);
-    fs::path basedir = fname.parent_path();
+    fs::path basedir = configFile.parent_path();
 
-    if(!basedir.empty())
+    if (genconfigOnly)
     {
-      std::error_code ec;
-      if(!fs::create_directories(basedir, ec))
-      {
-        if(ec)
-        {
-          llarp::LogError("failed to create '", basedir.string(),
-                          "': ", ec.message());
-          return 1;
-        }
-      }
-    }
-
-    if(genconfigOnly)
-    {
-      if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
-                              overWrite, asRouter))
-        return 1;
+      llarp::ensureConfig(basedir, configFile, overwrite, opts.isRouter);
     }
     else
     {
       std::error_code ec;
-      if(!fs::exists(fname, ec))
+      if (!fs::exists(configFile, ec))
       {
-        llarp::LogError("Config file not found ", conffname);
+        llarp::LogError("Config file not found ", configFile);
         return 1;
       }
+
+      if (ec)
+        throw std::runtime_error(llarp::stringify("filesystem error: ", ec));
     }
   }
   else
   {
-    auto basepath = llarp::GetDefaultConfigDir();
-
-    llarp::LogDebug("Find or create ", basepath.string());
-    std::error_code ec;
-    // These paths are guaranteed to exist - $APPDATA or $HOME
-    // so only create .lokinet/*
-    if(!fs::create_directory(basepath, ec))
-    {
-      if(ec)
-      {
-        llarp::LogError("failed to create '", basepath.string(),
-                        "': ", ec.message());
-        return 1;
-      }
-    }
-
-    auto fpath = llarp::GetDefaultConfigPath();
-
-    // if using default INI file, we're create it even if you don't ask us too
-    if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
-                            overWrite, asRouter))
-      return 1;
-    conffname = fpath.string();
+    llarp::ensureConfig(
+        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    configFile = llarp::GetDefaultConfigPath();
   }
 
-  if(genconfigOnly)
+  if (genconfigOnly)
   {
     return 0;
   }
 
-  std::thread main_thread{std::bind(&run_main_context, conffname, opts)};
+  std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
   do
   {
     // do periodic non lokinet related tasks here
-    if(ctx != nullptr)
+    if (ctx and ctx->IsUp() and not ctx->LooksAlive())
     {
-      auto ctx_pp = llarp::Context::Get(ctx);
-      if(ctx_pp != nullptr)
+      for (const auto& wtf : {"you have been visited by the mascott of the "
+                              "deadlocked router.",
+                              "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
+                              "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
+                              "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
+                              "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
+                              "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
+                              "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
+                              "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
+                              "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
+                              "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
+                              "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
+                              "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
+                              "file a bug report now or be cursed with this "
+                              "annoying image in your syslog for all time."})
       {
-        if(ctx_pp->IsUp() and not ctx_pp->LooksAlive())
-        {
-          for(const auto &wtf : {"you have been visited by the mascott of the "
-                                 "deadlocked router.",
-                                 "⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠄⠄⠄⠄",
-                                 "⠄⠄⠄⠄⠄⢀⣀⣀⡀⠄⠄⠄⡠⢲⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠄⠄",
-                                 "⠄⠄⠄⠔⣈⣀⠄⢔⡒⠳⡴⠊⠄⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⣿⣿⣧⠄⠄",
-                                 "⠄⢜⡴⢑⠖⠊⢐⣤⠞⣩⡇⠄⠄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠄⠝⠛⠋⠐",
-                                 "⢸⠏⣷⠈⠄⣱⠃⠄⢠⠃⠐⡀⠄⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠸⠄⠄⠄⠄",
-                                 "⠈⣅⠞⢁⣿⢸⠘⡄⡆⠄⠄⠈⠢⡀⠄⠄⠄⠄⠄⠄⠉⠙⠛⠛⠛⠉⠉⡀⠄⠡⢀⠄⣀",
-                                 "⠄⠙⡎⣹⢸⠄⠆⢘⠁⠄⠄⠄⢸⠈⠢⢄⡀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠃⠄⠄⠄⠄⠄",
-                                 "⠄⠄⠑⢿⠈⢆⠘⢼⠄⠄⠄⠄⠸⢐⢾⠄⡘⡏⠲⠆⠠⣤⢤⢤⡤⠄⣖⡇⠄⠄⠄⠄⠄",
-                                 "⣴⣶⣿⣿⣣⣈⣢⣸⠄⠄⠄⠄⡾⣷⣾⣮⣤⡏⠁⠘⠊⢠⣷⣾⡛⡟⠈⠄⠄⠄⠄⠄⠄",
-                                 "⣿⣿⣿⣿⣿⠉⠒⢽⠄⠄⠄⠄⡇⣿⣟⣿⡇⠄⠄⠄⠄⢸⣻⡿⡇⡇⠄⠄⠄⠄⠄⠄⠄",
-                                 "⠻⣿⣿⣿⣿⣄⠰⢼⠄⠄⠄⡄⠁⢻⣍⣯⠃⠄⠄⠄⠄⠈⢿⣻⠃⠈⡆⡄⠄⠄⠄⠄⠄",
-                                 "⠄⠙⠿⠿⠛⣿⣶⣤⡇⠄⠄⢣⠄⠄⠈⠄⢠⠂⠄⠁⠄⡀⠄⠄⣀⠔⢁⠃⠄⠄⠄⠄⠄",
-                                 "⠄⠄⠄⠄⠄⣿⣿⣿⣿⣾⠢⣖⣶⣦⣤⣤⣬⣤⣤⣤⣴⣶⣶⡏⠠⢃⠌⠄⠄⠄⠄⠄⠄",
-                                 "⠄⠄⠄⠄⠄⠿⠿⠟⠛⡹⠉⠛⠛⠿⠿⣿⣿⣿⣿⣿⡿⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                                 "⠠⠤⠤⠄⠄⣀⠄⠄⠄⠑⠠⣤⣀⣀⣀⡘⣿⠿⠙⠻⡍⢀⡈⠂⠄⠄⠄⠄⠄⠄⠄⠄⠄",
-                                 "⠄⠄⠄⠄⠄⠄⠑⠠⣠⣴⣾⣿⣿⣿⣿⣿⣿⣇⠉⠄⠻⣿⣷⣄⡀⠄⠄⠄⠄⠄⠄⠄⠄",
-                                 "file a bug report now or be cursed with this "
-                                 "annoying image in your syslog for all time."})
-          {
-            LogError(wtf);
-          }
-          std::abort();
-        }
+        LogError(wtf);
+        llarp::LogContext::Instance().ImmediateFlush();
       }
+      std::abort();
     }
-  } while(ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
+  } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
 
   main_thread.join();
-  const auto code = ftr.get();
+
+  int code = 0;
+
+  try
+  {
+    code = ftr.get();
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << "main thread threw exception: " << e.what() << std::endl;
+    code = 1;
+  }
+  catch (...)
+  {
+    std::cerr << "main thread threw non-standard exception" << std::endl;
+    code = 2;
+  }
+
+  llarp::LogContext::Instance().ImmediateFlush();
 #ifdef _WIN32
   ::WSACleanup();
+  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
 #endif
-  if(ctx)
+  if (ctx)
   {
-    llarp_main_free(ctx);
+    ctx.reset();
   }
   return code;
 }
+
+#ifdef _WIN32
+VOID
+ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
+{
+  static DWORD dwCheckPoint = 1;
+
+  // Fill in the SERVICE_STATUS structure.
+  SvcStatus.dwCurrentState = dwCurrentState;
+  SvcStatus.dwWin32ExitCode = dwWin32ExitCode;
+  SvcStatus.dwWaitHint = dwWaitHint;
+
+  if (dwCurrentState == SERVICE_START_PENDING)
+    SvcStatus.dwControlsAccepted = 0;
+  else
+    SvcStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+
+  if ((dwCurrentState == SERVICE_RUNNING) || (dwCurrentState == SERVICE_STOPPED))
+    SvcStatus.dwCheckPoint = 0;
+  else
+    SvcStatus.dwCheckPoint = dwCheckPoint++;
+
+  // Report the status of the service to the SCM.
+  SetServiceStatus(SvcStatusHandle, &SvcStatus);
+}
+
+VOID FAR PASCAL
+SvcCtrlHandler(DWORD dwCtrl)
+{
+  // Handle the requested control code.
+
+  switch (dwCtrl)
+  {
+    case SERVICE_CONTROL_STOP:
+      ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+      // Signal the service to stop.
+      handle_signal(SIGINT);
+      return;
+
+    case SERVICE_CONTROL_INTERROGATE:
+      break;
+
+    default:
+      break;
+  }
+}
+
+// The win32 daemon entry point is just a trampoline that returns control
+// to the original lokinet entry
+// and only gets called if we get --win32-daemon in the command line
+VOID FAR PASCAL
+win32_daemon_entry(DWORD argc, LPTSTR* argv)
+{
+  // Register the handler function for the service
+  SvcStatusHandle = RegisterServiceCtrlHandler("lokinet", SvcCtrlHandler);
+
+  if (!SvcStatusHandle)
+  {
+    llarp::LogError("failed to register daemon control handler");
+    return;
+  }
+
+  // These SERVICE_STATUS members remain as set here
+  SvcStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+  SvcStatus.dwServiceSpecificExitCode = 0;
+
+  // Report initial status to the SCM
+  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+  // SCM clobbers startup args, regenerate them here
+  argc = 2;
+  argv[1] = "c:/programdata/.lokinet/lokinet.ini";
+  argv[2] = nullptr;
+  lokinet_main(argc, argv);
+}
+#endif

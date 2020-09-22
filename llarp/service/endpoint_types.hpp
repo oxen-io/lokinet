@@ -5,6 +5,7 @@
 #include <service/router_lookup_job.hpp>
 #include <service/session.hpp>
 #include <util/compare_ptr.hpp>
+#include <util/thread/queue.hpp>
 
 #include <deque>
 #include <memory>
@@ -24,40 +25,36 @@ namespace llarp
     struct IServiceLookup;
     struct OutboundContext;
 
-    using Msg_ptr     = std::shared_ptr< const routing::PathTransferMessage >;
-    using SendEvent_t = std::pair< Msg_ptr, path::Path_ptr >;
-    using PendingBufferQueue = std::deque< PendingBuffer >;
-    using PendingTraffic =
-        std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
+    using Msg_ptr = std::shared_ptr<const routing::PathTransferMessage>;
 
-    using ProtocolMessagePtr = std::shared_ptr< ProtocolMessage >;
-    using RecvPacketQueue_t =
-        std::priority_queue< ProtocolMessagePtr,
-                             std::vector< ProtocolMessagePtr >,
-                             ComparePtr< ProtocolMessagePtr > >;
+    using SendEvent_t = std::pair<Msg_ptr, path::Path_ptr>;
+    using SendMessageQueue_t = thread::Queue<SendEvent_t>;
 
-    using PendingRouters =
-        std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >;
+    using PendingBufferQueue = std::deque<PendingBuffer>;
+    using PendingTraffic = std::unordered_map<Address, PendingBufferQueue, Address::Hash>;
 
-    using PendingLookups =
-        std::unordered_map< uint64_t, std::unique_ptr< IServiceLookup > >;
+    using ProtocolMessagePtr = std::shared_ptr<ProtocolMessage>;
+    using RecvPacketQueue_t = thread::Queue<ProtocolMessagePtr>;
+
+    using PendingRouters = std::unordered_map<RouterID, RouterLookupJob, RouterID::Hash>;
+
+    using PendingLookups = std::unordered_map<uint64_t, std::unique_ptr<IServiceLookup>>;
 
     using Sessions =
-        std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
-                                 Address::Hash >;
+        std::unordered_multimap<Address, std::shared_ptr<OutboundContext>, Address::Hash>;
 
-    using SNodeSessionValue =
-        std::pair< std::shared_ptr< exit::BaseSession >, ConvoTag >;
+    using SNodeSessionValue = std::pair<std::shared_ptr<exit::BaseSession>, ConvoTag>;
 
-    using SNodeSessions =
-        std::unordered_multimap< RouterID, SNodeSessionValue, RouterID::Hash >;
+    using SNodeSessions = std::unordered_multimap<RouterID, SNodeSessionValue, RouterID::Hash>;
 
-    using ConvoMap = std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+    using ConvoMap = std::unordered_map<ConvoTag, Session, ConvoTag::Hash>;
 
     /// set of outbound addresses to maintain to
-    using OutboundSessions_t = std::unordered_set< Address, Address::Hash >;
+    using OutboundSessions_t = std::unordered_set<Address, Address::Hash>;
 
-    using PathEnsureHook = std::function< void(Address, OutboundContext*) >;
+    using PathEnsureHook = std::function<void(Address, OutboundContext*)>;
+
+    using LNSNameCache = std::unordered_map<std::string, std::pair<Address, llarp_time_t>>;
 
   }  // namespace service
 }  // namespace llarp

@@ -5,13 +5,13 @@
 
 #include <util/thread/logic.hpp>
 #include <util/thread/queue.hpp>
-#include <util/thread/threading.hpp>
 #include <path/path_types.hpp>
 #include <router_id.hpp>
 
 #include <list>
 #include <unordered_map>
 #include <utility>
+#include <queue>
 
 struct llarp_buffer_t;
 
@@ -29,23 +29,23 @@ namespace llarp
     OutboundMessageHandler(size_t maxQueueSize = MAX_OUTBOUND_QUEUE_SIZE);
 
     bool
-    QueueMessage(const RouterID &remote, const ILinkMessage *msg,
-                 SendStatusHandler callback) override EXCLUDES(_mutex);
+    QueueMessage(const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback)
+        override EXCLUDES(_mutex);
 
     void
     Tick() override;
 
     void
-    QueueRemoveEmptyPath(const PathID_t &pathid) override;
+    QueueRemoveEmptyPath(const PathID_t& pathid) override;
 
     util::StatusObject
     ExtractStatus() const override;
 
     void
-    Init(ILinkManager *linkManager, std::shared_ptr< Logic > logic);
+    Init(ILinkManager* linkManager, std::shared_ptr<Logic> logic);
 
    private:
-    using Message = std::pair< std::vector< byte_t >, SendStatusHandler >;
+    using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
 
     struct MessageQueueEntry
     {
@@ -55,7 +55,7 @@ namespace llarp
       RouterID router;
 
       bool
-      operator<(const MessageQueueEntry &other) const
+      operator<(const MessageQueueEntry& other) const
       {
         return other.priority < priority;
       }
@@ -63,53 +63,53 @@ namespace llarp
 
     struct MessageQueueStats
     {
-      uint64_t queued         = 0;
-      uint64_t dropped        = 0;
-      uint64_t sent           = 0;
+      uint64_t queued = 0;
+      uint64_t dropped = 0;
+      uint64_t sent = 0;
       uint32_t queueWatermark = 0;
 
       uint32_t perTickMax = 0;
-      uint32_t numTicks   = 0;
+      uint32_t numTicks = 0;
     };
 
-    using MessageQueue = std::priority_queue< MessageQueueEntry >;
+    using MessageQueue = std::priority_queue<MessageQueueEntry>;
 
     void
-    OnSessionEstablished(const RouterID &router);
+    OnSessionEstablished(const RouterID& router);
 
     void
-    OnConnectTimeout(const RouterID &router);
+    OnConnectTimeout(const RouterID& router);
 
     void
-    OnRouterNotFound(const RouterID &router);
+    OnRouterNotFound(const RouterID& router);
 
     void
-    OnInvalidRouter(const RouterID &router);
+    OnInvalidRouter(const RouterID& router);
 
     void
-    OnNoLink(const RouterID &router);
+    OnNoLink(const RouterID& router);
 
     void
-    OnSessionResult(const RouterID &router, const SessionResult result);
+    OnSessionResult(const RouterID& router, const SessionResult result);
 
     void
     DoCallback(SendStatusHandler callback, SendStatus status);
 
     void
-    QueueSessionCreation(const RouterID &remote);
+    QueueSessionCreation(const RouterID& remote);
 
     bool
-    EncodeBuffer(const ILinkMessage *msg, llarp_buffer_t &buf);
+    EncodeBuffer(const ILinkMessage* msg, llarp_buffer_t& buf);
 
     bool
-    Send(const RouterID &remote, const Message &msg);
+    Send(const RouterID& remote, const Message& msg);
 
     bool
-    SendIfSession(const RouterID &remote, const Message &msg);
+    SendIfSession(const RouterID& remote, const Message& msg);
 
     bool
-    QueueOutboundMessage(const RouterID &remote, Message &&msg,
-                         const PathID_t &pathid, uint16_t priority = 0);
+    QueueOutboundMessage(
+        const RouterID& remote, Message&& msg, const PathID_t& pathid, uint16_t priority = 0);
 
     void
     ProcessOutboundQueue();
@@ -121,25 +121,23 @@ namespace llarp
     SendRoundRobin();
 
     void
-    FinalizeSessionRequest(const RouterID &router, SendStatus status)
-        EXCLUDES(_mutex);
+    FinalizeSessionRequest(const RouterID& router, SendStatus status) EXCLUDES(_mutex);
 
-    llarp::thread::Queue< MessageQueueEntry > outboundQueue;
-    llarp::thread::Queue< PathID_t > removedPaths;
+    llarp::thread::Queue<MessageQueueEntry> outboundQueue;
+    llarp::thread::Queue<PathID_t> removedPaths;
     bool removedSomePaths;
 
     mutable util::Mutex _mutex;  // protects pendingSessionMessageQueues
 
-    std::unordered_map< RouterID, MessageQueue, RouterID::Hash >
-        pendingSessionMessageQueues GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, MessageQueue, RouterID::Hash> pendingSessionMessageQueues
+        GUARDED_BY(_mutex);
 
-    std::unordered_map< PathID_t, MessageQueue, PathID_t::Hash >
-        outboundMessageQueues;
+    std::unordered_map<PathID_t, MessageQueue, PathID_t::Hash> outboundMessageQueues;
 
-    std::queue< PathID_t > roundRobinOrder;
+    std::queue<PathID_t> roundRobinOrder;
 
-    ILinkManager *_linkManager;
-    std::shared_ptr< Logic > _logic;
+    ILinkManager* _linkManager;
+    std::shared_ptr<Logic> _logic;
 
     util::ContentionKiller m_Killer;
 

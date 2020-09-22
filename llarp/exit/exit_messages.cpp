@@ -10,11 +10,11 @@ namespace llarp
     bool
     ObtainExitMessage::Sign(const llarp::SecretKey& sk)
     {
-      std::array< byte_t, 1024 > tmp;
+      std::array<byte_t, 1024> tmp;
       llarp_buffer_t buf(tmp);
       I = seckey_topublic(sk);
       Z.Zero();
-      if(!BEncode(&buf))
+      if (!BEncode(&buf))
       {
         return false;
       }
@@ -25,12 +25,12 @@ namespace llarp
     bool
     ObtainExitMessage::Verify() const
     {
-      std::array< byte_t, 1024 > tmp;
+      std::array<byte_t, 1024> tmp;
       llarp_buffer_t buf(tmp);
       ObtainExitMessage copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
       {
         return false;
       }
@@ -42,27 +42,27 @@ namespace llarp
     bool
     ObtainExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "O"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "O"))
         return false;
-      if(!BEncodeWriteDictArray("B", B, buf))
+      if (!BEncodeWriteDictArray("B", B, buf))
         return false;
-      if(!BEncodeWriteDictInt("E", E, buf))
+      if (!BEncodeWriteDictInt("E", E, buf))
         return false;
-      if(!BEncodeWriteDictEntry("I", I, buf))
+      if (!BEncodeWriteDictEntry("I", I, buf))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if (!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictArray("W", W, buf))
+      if (!BEncodeWriteDictArray("W", W, buf))
         return false;
-      if(!BEncodeWriteDictInt("X", X, buf))
+      if (!BEncodeWriteDictInt("X", X, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Z", Z, buf))
+      if (!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
     }
@@ -71,30 +71,29 @@ namespace llarp
     ObtainExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictList("B", B, read, k, buf))
+      if (!BEncodeMaybeReadDictList("B", B, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("E", E, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("E", E, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("I", I, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("I", I, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictList("W", W, read, k, buf))
+      if (!BEncodeMaybeReadDictList("W", W, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("X", X, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("X", X, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
         return false;
       return read;
     }
 
     bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h,
-                                     AbstractRouter* r) const
+    ObtainExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleObtainExitMessage(*this, r);
     }
@@ -102,19 +101,19 @@ namespace llarp
     bool
     GrantExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "G"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "G"))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if (!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Y", Y, buf))
+      if (!BEncodeWriteDictEntry("Y", Y, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Z", Z, buf))
+      if (!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
     }
@@ -123,15 +122,15 @@ namespace llarp
     GrantExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
         return false;
       return read;
     }
@@ -139,12 +138,12 @@ namespace llarp
     bool
     GrantExitMessage::Verify(const llarp::PubKey& pk) const
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       GrantExitMessage copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->verify(pk, buf, Z);
@@ -153,11 +152,11 @@ namespace llarp
     bool
     GrantExitMessage::Sign(const llarp::SecretKey& sk)
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       Z.Zero();
       Y.Randomize();
-      if(!BEncode(&buf))
+      if (!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->sign(Z, sk, buf);
@@ -172,23 +171,23 @@ namespace llarp
     bool
     RejectExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "J"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "J"))
         return false;
-      if(!BEncodeWriteDictInt("B", B, buf))
+      if (!BEncodeWriteDictInt("B", B, buf))
         return false;
-      if(!BEncodeWriteDictList("R", R, buf))
+      if (!BEncodeWriteDictList("R", R, buf))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if (!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Y", Y, buf))
+      if (!BEncodeWriteDictEntry("Y", Y, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Z", Z, buf))
+      if (!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
     }
@@ -197,19 +196,19 @@ namespace llarp
     RejectExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("B", B, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("B", B, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictList("R", R, read, k, buf))
+      if (!BEncodeMaybeReadDictList("R", R, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
         return false;
       return read;
     }
@@ -217,11 +216,11 @@ namespace llarp
     bool
     RejectExitMessage::Sign(const llarp::SecretKey& sk)
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       Z.Zero();
       Y.Randomize();
-      if(!BEncode(&buf))
+      if (!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->sign(Z, sk, buf);
@@ -230,20 +229,19 @@ namespace llarp
     bool
     RejectExitMessage::Verify(const llarp::PubKey& pk) const
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       RejectExitMessage copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->verify(pk, buf, Z);
     }
 
     bool
-    RejectExitMessage::HandleMessage(IMessageHandler* h,
-                                     AbstractRouter* r) const
+    RejectExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleRejectExitMessage(*this, r);
     }
@@ -251,19 +249,19 @@ namespace llarp
     bool
     UpdateExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "V"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "V"))
         return false;
-      if(!BEncodeWriteDictEntry("P", P, buf))
+      if (!BEncodeWriteDictEntry("P", P, buf))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if (!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Z", Z, buf))
+      if (!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
     }
@@ -272,15 +270,15 @@ namespace llarp
     UpdateExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
         return false;
       return read;
     }
@@ -289,12 +287,12 @@ namespace llarp
     UpdateExitMessage::Verify(const llarp::PubKey& pk) const
 
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       UpdateExitMessage copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->verify(pk, buf, Z);
@@ -303,18 +301,17 @@ namespace llarp
     bool
     UpdateExitMessage::Sign(const llarp::SecretKey& sk)
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       Y.Randomize();
-      if(!BEncode(&buf))
+      if (!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->sign(Z, sk, buf);
     }
 
     bool
-    UpdateExitMessage::HandleMessage(IMessageHandler* h,
-                                     AbstractRouter* r) const
+    UpdateExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleUpdateExitMessage(*this, r);
     }
@@ -322,36 +319,34 @@ namespace llarp
     bool
     UpdateExitVerifyMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "V"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "V"))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("T", T, buf))
+      if (!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
       return bencode_end(buf);
     }
 
     bool
-    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t& k,
-                                       llarp_buffer_t* buf)
+    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("T", T, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
       return read;
     }
 
     bool
-    UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h,
-                                           AbstractRouter* r) const
+    UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleUpdateExitVerifyMessage(*this, r);
     }
@@ -359,17 +354,17 @@ namespace llarp
     bool
     CloseExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "C"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "C"))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", version, buf))
+      if (!BEncodeWriteDictInt("V", version, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Y", Y, buf))
+      if (!BEncodeWriteDictEntry("Y", Y, buf))
         return false;
-      if(!BEncodeWriteDictEntry("Z", Z, buf))
+      if (!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
     }
@@ -378,13 +373,13 @@ namespace llarp
     CloseExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("S", S, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+      if (!BEncodeMaybeReadDictInt("V", version, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Y", Y, read, k, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
+      if (!BEncodeMaybeReadDictEntry("Z", Z, read, k, buf))
         return false;
       return read;
     }
@@ -392,12 +387,12 @@ namespace llarp
     bool
     CloseExitMessage::Verify(const llarp::PubKey& pk) const
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       CloseExitMessage copy;
       copy = *this;
       copy.Z.Zero();
-      if(!copy.BEncode(&buf))
+      if (!copy.BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->verify(pk, buf, Z);
@@ -406,11 +401,11 @@ namespace llarp
     bool
     CloseExitMessage::Sign(const llarp::SecretKey& sk)
     {
-      std::array< byte_t, 512 > tmp;
+      std::array<byte_t, 512> tmp;
       llarp_buffer_t buf(tmp);
       Z.Zero();
       Y.Randomize();
-      if(!BEncode(&buf))
+      if (!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;
       return CryptoManager::instance()->sign(Z, sk, buf);

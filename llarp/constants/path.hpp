@@ -20,11 +20,9 @@ namespace llarp
     /// default path lifetime in ms
     constexpr std::chrono::milliseconds default_lifetime = 20min;
     /// minimum into lifetime we will advertise
-    constexpr std::chrono::milliseconds min_intro_lifetime =
-        default_lifetime / 2;
+    constexpr std::chrono::milliseconds min_intro_lifetime = default_lifetime / 2;
     /// spacing frequency at which we try to build paths for introductions
-    constexpr std::chrono::milliseconds intro_path_spread =
-        default_lifetime / 5;
+    constexpr std::chrono::milliseconds intro_path_spread = default_lifetime / 5;
     /// Minimum paths to keep around for intros; mainly used at startup (the
     /// spread, above, should be able to maintain more than this number of paths
     /// normally once things are going).
@@ -33,9 +31,13 @@ namespace llarp
     constexpr auto build_timeout = 30s;
 
     /// measure latency every this interval ms
-    constexpr auto latency_interval = 5s;
+    constexpr auto latency_interval = 20s;
     /// if a path is inactive for this amount of time it's dead
-    constexpr auto alive_timeout = 30s;
+    constexpr auto alive_timeout = latency_interval * 1.5;
+
+    /// how big transit hop traffic queues are
+    constexpr std::size_t transit_hop_queue_size = 256;
+
   }  // namespace path
 }  // namespace llarp
 

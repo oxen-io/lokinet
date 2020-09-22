@@ -9,8 +9,9 @@
 #include <util/bencode.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
+#include <dns/srv_data.hpp>
 
-#include <nonstd/optional.hpp>
+#include <optional>
 #include <algorithm>
 #include <functional>
 #include <iostream>
@@ -27,11 +28,12 @@ namespace llarp
     struct IntroSet
     {
       ServiceInfo A;
-      std::vector< Introduction > I;
+      std::vector<Introduction> I;
       PQPubKey K;
       Tag topic;
+      std::vector<llarp::dns::SRVTuple> SRVs;
       llarp_time_t T = 0s;
-      nonstd::optional< PoW > W;
+      std::optional<PoW> W;
       Signature Z;
       uint64_t version = LLARP_PROTO_VERSION;
 
@@ -55,6 +57,9 @@ namespace llarp
 
       bool
       IsExpired(llarp_time_t now) const;
+
+      std::vector<llarp::dns::SRVData>
+      GetMatchingSRVRecords(std::string_view service_proto) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;
@@ -84,10 +89,8 @@ namespace llarp
     inline bool
     operator==(const IntroSet& lhs, const IntroSet& rhs)
     {
-      return std::tie(lhs.A, lhs.I, lhs.K, lhs.T, lhs.version, lhs.topic, lhs.W,
-                      lhs.Z)
-          == std::tie(rhs.A, rhs.I, rhs.K, rhs.T, rhs.version, rhs.topic, rhs.W,
-                      rhs.Z);
+      return std::tie(lhs.A, lhs.I, lhs.K, lhs.T, lhs.version, lhs.topic, lhs.W, lhs.Z)
+          == std::tie(rhs.A, rhs.I, rhs.K, rhs.T, rhs.version, rhs.topic, rhs.W, rhs.Z);
     }
 
     inline bool
@@ -105,13 +108,13 @@ namespace llarp
     /// public version of the introset that is encrypted
     struct EncryptedIntroSet
     {
-      using Payload_t = std::vector< byte_t >;
+      using Payload_t = std::vector<byte_t>;
 
       PubKey derivedSigningKey;
       llarp_time_t signedAt = 0s;
       Payload_t introsetPayload;
       TunnelNonce nounce;
-      nonstd::optional< Tag > topic;
+      std::optional<Tag> topic;
       Signature sig;
 
       bool
@@ -145,7 +148,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
-      nonstd::optional< IntroSet >
+      std::optional<IntroSet>
       MaybeDecrypt(const PubKey& rootKey) const;
     };
 
@@ -175,9 +178,8 @@ namespace llarp
     }
 
     using EncryptedIntroSetLookupHandler =
-        std::function< void(const std::vector< EncryptedIntroSet >&) >;
-    using IntroSetLookupHandler =
-        std::function< void(const std::vector< IntroSet >&) >;
+        std::function<void(const std::vector<EncryptedIntroSet>&)>;
+    using IntroSetLookupHandler = std::function<void(const std::vector<IntroSet>&)>;
 
   }  // namespace service
 }  // namespace llarp

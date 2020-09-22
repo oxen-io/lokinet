@@ -9,13 +9,15 @@ namespace llarp
 {
   namespace dns
   {
-    using MsgID_t  = uint16_t;
+    struct SRVData;
+
+    using MsgID_t = uint16_t;
     using Fields_t = uint16_t;
-    using Count_t  = uint16_t;
+    using Count_t = uint16_t;
 
     struct MessageHeader : public Serialize
     {
-      const static size_t Size = 12;
+      static constexpr size_t Size = 12;
 
       MessageHeader() = default;
 
@@ -35,9 +37,9 @@ namespace llarp
       bool
       operator==(const MessageHeader& other) const
       {
-        return id == other.id && fields == other.fields
-            && qd_count == other.qd_count && an_count == other.an_count
-            && ns_count == other.ns_count && ar_count == other.ar_count;
+        return id == other.id && fields == other.fields && qd_count == other.qd_count
+            && an_count == other.an_count && ns_count == other.ns_count
+            && ar_count == other.ar_count;
       }
     };
 
@@ -47,9 +49,6 @@ namespace llarp
 
       Message(Message&& other);
       Message(const Message& other);
-
-      void
-      UpdateHeader();
 
       void
       AddNXReply(RR_TTL_t ttl = 1);
@@ -70,6 +69,9 @@ namespace llarp
       AddAReply(std::string name, RR_TTL_t ttl = 1);
 
       void
+      AddSRVReply(std::vector<SRVData> records, RR_TTL_t ttl = 1);
+
+      void
       AddNSReply(std::string name, RR_TTL_t ttl = 1);
 
       bool
@@ -83,10 +85,10 @@ namespace llarp
 
       MsgID_t hdr_id;
       Fields_t hdr_fields;
-      std::vector< Question > questions;
-      std::vector< ResourceRecord > answers;
-      std::vector< ResourceRecord > authorities;
-      std::vector< ResourceRecord > additional;
+      std::vector<Question> questions;
+      std::vector<ResourceRecord> answers;
+      std::vector<ResourceRecord> authorities;
+      std::vector<ResourceRecord> additional;
     };
 
     inline std::ostream&

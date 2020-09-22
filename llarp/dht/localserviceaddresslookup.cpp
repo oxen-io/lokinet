@@ -12,11 +12,13 @@ namespace llarp
   namespace dht
   {
     LocalServiceAddressLookup::LocalServiceAddressLookup(
-        const PathID_t &pathid, uint64_t txid, uint64_t relayOrder,
-        const Key_t &addr, AbstractContext *ctx,
-        __attribute__((unused)) const Key_t &askpeer)
-        : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx,
-                               relayOrder, nullptr)
+        const PathID_t& pathid,
+        uint64_t txid,
+        uint64_t relayOrder,
+        const Key_t& addr,
+        AbstractContext* ctx,
+        __attribute__((unused)) const Key_t& askpeer)
+        : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, relayOrder, nullptr)
         , localPath(pathid)
     {
     }
@@ -24,9 +26,9 @@ namespace llarp
     void
     LocalServiceAddressLookup::SendReply()
     {
-      auto path = parent->GetRouter()->pathContext().GetByUpstream(
-          parent->OurKey().as_array(), localPath);
-      if(!path)
+      auto path =
+          parent->GetRouter()->pathContext().GetByUpstream(parent->OurKey().as_array(), localPath);
+      if (!path)
       {
         llarp::LogWarn(
             "did not send reply for relayed dht request, no such local path "
@@ -35,12 +37,12 @@ namespace llarp
         return;
       }
       // pick newest if we have more than 1 result
-      if(valuesFound.size())
+      if (valuesFound.size())
       {
         service::EncryptedIntroSet found;
-        for(const auto &introset : valuesFound)
+        for (const auto& introset : valuesFound)
         {
-          if(found.OtherIsNewer(introset))
+          if (found.OtherIsNewer(introset))
             found = introset;
         }
         valuesFound.clear();
@@ -48,7 +50,7 @@ namespace llarp
       }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
-      if(!path->SendRoutingMessage(msg, parent->GetRouter()))
+      if (!path->SendRoutingMessage(msg, parent->GetRouter()))
       {
         llarp::LogWarn(
             "failed to send routing message when informing result of dht "

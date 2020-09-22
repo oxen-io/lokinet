@@ -18,7 +18,6 @@ namespace llarp
   /// In addition, the KeyManager detects when the keys obsolete (e.g. as a
   /// result of a software upgrade) and backs up existing keys before writing
   /// out new ones.
-
   struct KeyManager
   {
     /// Utility function to backup a file by moving it. Attempts to find a new
@@ -29,24 +28,23 @@ namespace llarp
     /// @param filepath is the name of the original file to backup.
     /// @return true if the file could be moved or didn't exist, false otherwise
     static bool
-    backupFileByMoving(const std::string& filepath);
+    backupFileByMoving(const fs::path& filepath);
 
     /// Constructor
     KeyManager();
 
-    /// Initializes keys using the provided config, loading from disk and/or
-    /// lokid via HTTP request.
+    /// Initializes keys using the provided config, loading from disk
     ///
     /// NOTE: Must be called prior to obtaining any keys.
     /// NOTE: blocks on I/O
     ///
     /// @param config should be a prepared config object
-    /// @param genIfAbsent determines whether or not we will create files if
-    /// they
+    /// @param genIfAbsent determines whether or not we will create files if they
     ///        do not exist.
+    /// @param isRouter
     /// @return true on success, false otherwise
     bool
-    initialize(const llarp::Config& config, bool genIfAbsent);
+    initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter);
 
     /// Obtain the self-signed RouterContact
     ///
@@ -66,18 +64,14 @@ namespace llarp
     llarp::SecretKey encryptionKey;
     llarp::SecretKey transportKey;
 
+    fs::path m_rcPath;
+    fs::path m_idKeyPath;
+    fs::path m_encKeyPath;
+    fs::path m_transportKeyPath;
+
    private:
-    std::string m_rcPath;
-    std::string m_idKeyPath;
-    std::string m_encKeyPath;
-    std::string m_transportKeyPath;
     std::atomic_bool m_initialized;
     std::atomic_bool m_needBackup;
-
-    bool m_usingLokid          = false;
-    std::string m_lokidRPCAddr = "127.0.0.1:22023";
-    std::string m_lokidRPCUser;
-    std::string m_lokidRPCPassword;
 
     /// Backup each key file (by copying, e.g. foo -> foo.bak)
     bool
@@ -87,12 +81,10 @@ namespace llarp
     ///
     /// @param keygen is a function that will generate the key if needed
     static bool
-    loadOrCreateKey(const std::string& filepath, llarp::SecretKey& key,
-                    std::function< void(llarp::SecretKey& key) > keygen);
-
-    /// Requests the identity key from lokid via HTTP (curl)
-    bool
-    loadIdentityFromLokid();
+    loadOrCreateKey(
+        const fs::path& filepath,
+        llarp::SecretKey& key,
+        std::function<void(llarp::SecretKey& key)> keygen);
   };
 
 }  // namespace llarp

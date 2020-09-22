@@ -29,21 +29,21 @@ namespace llarp
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const
     {
-      if(not EncodeName(buf, rr_name))
+      if (not EncodeName(buf, rr_name))
         return false;
-      if(!buf->put_uint16(rr_type))
+      if (!buf->put_uint16(rr_type))
       {
         return false;
       }
-      if(!buf->put_uint16(rr_class))
+      if (!buf->put_uint16(rr_class))
       {
         return false;
       }
-      if(!buf->put_uint32(ttl))
+      if (!buf->put_uint32(ttl))
       {
         return false;
       }
-      if(!EncodeRData(buf, rData))
+      if (!EncodeRData(buf, rData))
       {
         return false;
       }
@@ -54,24 +54,24 @@ namespace llarp
     ResourceRecord::Decode(llarp_buffer_t* buf)
     {
       uint16_t discard;
-      if(!buf->read_uint16(discard))
+      if (!buf->read_uint16(discard))
         return false;
-      if(!buf->read_uint16(rr_type))
+      if (!buf->read_uint16(rr_type))
       {
         llarp::LogDebug("failed to decode rr type");
         return false;
       }
-      if(!buf->read_uint16(rr_class))
+      if (!buf->read_uint16(rr_class))
       {
         llarp::LogDebug("failed to decode rr class");
         return false;
       }
-      if(!buf->read_uint32(ttl))
+      if (!buf->read_uint32(ttl))
       {
         llarp::LogDebug("failed to decode ttl");
         return false;
       }
-      if(!DecodeRData(buf, rData))
+      if (!DecodeRData(buf, rData))
       {
         llarp::LogDebug("failed to decode rr rdata ", *this);
         return false;
@@ -95,11 +95,11 @@ namespace llarp
     bool
     ResourceRecord::HasCNameForTLD(const std::string& tld) const
     {
-      if(rr_type != qTypeCNAME)
+      if (rr_type != qTypeCNAME)
         return false;
       Name_t name;
       llarp_buffer_t buf(rData);
-      if(not DecodeName(&buf, name))
+      if (not DecodeName(&buf, name))
         return false;
       return name.find(tld) != std::string::npos
           && name.rfind(tld) == (name.size() - tld.size()) - 1;

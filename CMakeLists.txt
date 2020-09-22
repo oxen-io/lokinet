@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
+# Has to be set before `project()`, and ignored on non-macos:
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
+
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+  foreach(lang C CXX)
+    if(NOT DEFINED CMAKE_${lang}_COMPILER_LAUNCHER AND NOT CMAKE_${lang}_COMPILER MATCHES ".*/ccache")
+      message(STATUS "Enabling ccache for ${lang}")
+      set(CMAKE_${lang}_COMPILER_LAUNCHER ${CCACHE_PROGRAM} CACHE STRING "")
+    endif()
+  endforeach()
 endif()
 
 set(PROJECT_NAME lokinet)
@@ -16,6 +24,12 @@ set(RELEASE_MOTTO "I'll remember that..." CACHE STRING "Release motto")
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
 add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
+if(RELEASE_MOTTO)
+  add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
+endif()
+
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 
 # Core options
@@ -23,40 +37,55 @@ option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
-if (WIN32)
-  option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads" OFF)
-else()
-  option(STATIC_LINK "link statically against dependencies" OFF)
-endif()
+option(BUILD_SHARED_LIBS "build lokinet libraries as shared libraries instead of static" ON)
 option(SHADOW "use shadow testing framework. linux only" OFF)
-option(XSAN "use sanitiser, if your system has it" OFF)
-option(JEMALLOC "use jemalloc. Not required on BSD" OFF)
-option(DEBIAN "build for debian" OFF)
+option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
+option(WITH_JEMALLOC "use jemalloc as allocator" OFF)
 option(TESTNET "testnet build" OFF)
-option(WITH_SHARED "build shared library" OFF)
 option(WITH_COVERAGE "generate coverage data" OFF)
 option(USE_SHELLHOOKS "enable shell hooks on compile time (dangerous)" OFF)
 option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 option(TRACY_ROOT "include tracy profiler source" OFF)
 option(WITH_TESTS "build unit tests" ON)
-#option(WITH_SYSTEMD ...) defined below
+option(WITH_HIVE "build simulation stubs" OFF)
 option(BUILD_PACKAGE "builds extra components for making an installer (with 'make package')" OFF)
+
+include(cmake/enable_lto.cmake)
+
+option(BUILD_STATIC_DEPS "Download, build, and statically link against core dependencies" OFF)
+option(STATIC_LINK "link statically against dependencies" ${BUILD_STATIC_DEPS})
+if(BUILD_STATIC_DEPS AND NOT STATIC_LINK)
+  message(FATAL_ERROR "Option BUILD_STATIC_DEPS requires STATIC_LINK to be enabled as well")
+endif()
+if(BUILD_STATIC_DEPS)
+  include(StaticBuild)
+endif()
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+include(CheckCXXSourceCompiles)
+include(CheckLibraryExists)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/target_link_libraries_system.cmake)
 include(cmake/add_import_library.cmake)
 include(cmake/add_log_tag.cmake)
 include(cmake/libatomic.cmake)
-
-if (STATIC_LINK AND STATIC_LINK_RUNTIME)
-  message(FATAL "Cannot set both STATIC_LINK and STATIC_LINK_RUNTIME")
-endif()
+include(cmake/link_dep_libs.cmake)
 
 if (STATIC_LINK)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
   message(STATUS "setting static library suffix search")
 endif()
 
-include(cmake/basic_definitions.cmake)
+add_definitions(-D${CMAKE_SYSTEM_NAME})
 
 if(MSVC_VERSION)
   enable_language(ASM_MASM)
@@ -64,18 +93,21 @@ if(MSVC_VERSION)
   add_definitions(-D_WIN32_WINNT=0x0600 -DNOMINMAX -DSODIUM_STATIC)
 else()
   enable_language(ASM)
-endif(MSVC_VERSION)
+endif()
 
 include(cmake/solaris.cmake)
 include(cmake/win32.cmake)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # No in-source building
 include(MacroEnsureOutOfSourceBuild)
 macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source build.  Create a build directory and run 'cmake ${CMAKE_SOURCE_DIR} [options]'.")
 
+# Always build PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 include(cmake/unix.cmake)
+include(cmake/check_for_std_optional.cmake)
+include(cmake/check_for_std_filesystem.cmake)
 
 if(NOT WIN32)
   if(IOS OR ANDROID)
@@ -91,52 +123,68 @@ if(NOT WIN32)
   endif()
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+if(NOT TARGET sodium)
+# Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
+  option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
+  if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SODIUM libsodium>=1.0.18 IMPORTED_TARGET)
+  endif()
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+  add_library(sodium INTERFACE)
+  if(SODIUM_FOUND AND NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
+    target_link_libraries(sodium INTERFACE PkgConfig::SODIUM)
+  else()
+    if(NOT DOWNLOAD_SODIUM AND NOT BUILD_STATIC_DEPS)
+      message(FATAL_ERROR "Could not find libsodium >= 1.0.18; either install it on your system or use -DDOWNLOAD_SODIUM=ON to download and build an internal copy")
+    endif()
+    message(STATUS "Sodium >= 1.0.18 not found, but DOWNLOAD_SODIUM specified, so downloading it")
+    include(DownloadLibSodium)
+    target_link_libraries(sodium INTERFACE sodium_vendor)
+  endif()
+
+  # Need this target export so that loki-mq properly picks up sodium
+  export(TARGETS sodium NAMESPACE sodium:: FILE sodium-exports.cmake)
+endif()
+
+option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
+if(NOT FORCE_LOKIMQ_SUBMODULE)
+  pkg_check_modules(LOKIMQ liblokimq>=1.2)
+endif()
+if(LOKIMQ_FOUND)
+  add_library(lokimq INTERFACE)
+  link_dep_libs(lokimq INTERFACE "${LOKIMQ_LIBRARY_DIRS}" ${LOKIMQ_LIBRARIES})
+  target_include_directories(lokimq INTERFACE ${LOKIMQ_INCLUDE_DIRS})
+  add_library(lokimq::lokimq ALIAS lokimq)
+  message(STATUS "Found system liblokimq ${LOKIMQ_VERSION}")
+else()
+  message(STATUS "using lokimq submodule")
+  add_subdirectory(${CMAKE_SOURCE_DIR}/external/loki-mq)
+endif()
+
 
 # this is messing with release builds
 add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
 
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
+if (NOT CMAKE_SYSTEM_NAME MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
-endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
-
-if(NOT DEBIAN AND NOT MSVC_VERSION)
-  set(OPTIMIZE_FLAGS -O3)
-  set(DEBUG_FLAGS -O0 -g3)
 endif()
 
 if(XSAN)
-  set(DEBUG_FLAGS ${DEBUG_FLAGS} "-fsanitize=${XSAN}" -fno-omit-frame-pointer)
-  set(OPTIMIZE_FLAGS "-O0")
+  string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=${XSAN} -fno-omit-frame-pointer -fno-sanitize-recover")
+  foreach(type EXE MODULE SHARED STATIC)
+    string(APPEND CMAKE_${type}_LINKER_FLAGS_DEBUG " -fsanitize=${XSAN} -fno-omit-frame-pointer -fno-sanitize-recover")
+  endforeach()
   message(STATUS "Doing a ${XSAN} sanitizer build")
-endif(XSAN)
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  set(OPTIMIZE_FLAGS "")
   add_definitions(-DLOKINET_DEBUG=1)
-  set(CRYPTO_FLAGS "")
-  add_compile_options( ${DEBUG_FLAGS} )
-  link_libraries( ${DEBUG_FLAGS} )
-endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-
-# Add non-386 target-specific options here
-if(NON_PC_TARGET)
-  add_definitions(-DRPI)
-  set(WITH_STATIC ON)
-endif(NON_PC_TARGET)
+endif()
 
 if(WITH_SHELLHOOKS)
   add_definitions(-DENABLE_SHELLHOOKS)
-endif(WITH_SHELLHOOKS)
-
-# Always build PIC
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 if(TRACY_ROOT)
   include_directories(${TRACY_ROOT})
@@ -156,64 +204,53 @@ if (NOT MSVC_VERSION)
 	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 endif()
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  # STREQUAL because AppleClang's libc++ doesn't yet support thread safety annotations
-  add_compile_options(-Wthread-safety)
-endif()
-
 include(cmake/coverage.cmake)
 
 # these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
   include(cmake/cross_compile.cmake)
-endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
+endif()
 
-if(DEBIAN)
-  add_definitions(-DDEBIAN)
-elseif(NATIVE_BUILD)
+if(NATIVE_BUILD)
   if(CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64le)
-    set(CRYPTO_FLAGS -mcpu=native -mtune=native)
+    add_compile_options(-mcpu=native -mtune=native)
   else()
-    set(CRYPTO_FLAGS -march=native -mtune=native)
+    add_compile_options(-march=native -mtune=native)
   endif()
 elseif(NOT NON_PC_TARGET)
   if (USE_AVX2)
-    set(CRYPTO_FLAGS -march=haswell -mtune=haswell -mfpmath=sse)
+    add_compile_options(-march=haswell -mtune=haswell -mfpmath=sse)
   else()
     # Public binary releases
-    set(CRYPTO_FLAGS -march=nocona -mtune=haswell -mfpmath=sse)
+    add_compile_options(-march=nocona -mtune=haswell -mfpmath=sse)
   endif()
 endif()
 
 if(EMBEDDED_CFG)
   message(WARNING "This configuration is optimised for older hardware and/or constrained node operation, may result in poor performance on desktop systems")
   message(WARNING "For deployment on such systems, all external code (currently, libuv) must also be compiled for the target!")
-  set(CRYPTO_FLAGS -march=i486 -mtune=i486)
+  add_compile_options(-march=i486 -mtune=i486)
 endif()
-
-add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-include(cmake/static_link.cmake)
-
 if(USE_NETNS)
   add_definitions(-DNETNS=1)
 else()
   add_definitions(-DNETNS=0)
-endif(USE_NETNS)
+endif()
 
 if(TESTNET)
   add_definitions(-DTESTNET=1)
   # 5 times slower than realtime
   add_definitions(-DTESTNET_SPEED=5)
-endif(TESTNET)
+endif()
 
 if(SHADOW)
   include(cmake/shadow.cmake)
-endif(SHADOW)
+endif()
 
 unset(GIT_VERSION)
 unset(GIT_VERSION_REAL)
@@ -221,34 +258,29 @@ unset(GIT_VERSION_REAL)
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION_UNSTRIP)
   string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
-endif(NOT GIT_VERSION)
+endif()
 
 string(REGEX REPLACE "^fatal.*$" nogit GIT_VERSION_REAL "${GIT_VERSION}")
 
-# HeapAlloc(2) on Windows was significantly revamped in 2009
-# but the old algorithm isn't too bad either
-# this is _the_ system allocator on BSD UNIX
-# openbsd replaced it with a secure/randomised malloc not too
-# long ago
-if(JEMALLOC)
-  set(MALLOC_LIB jemalloc)
-endif(JEMALLOC)
+find_package(PkgConfig REQUIRED)
 
+if (NOT BUILD_STATIC_DEPS)
+  pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
+  add_library(libunbound INTERFACE)
+  target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
+endif()
 
-find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND AND LINUX)
-    pkg_check_modules(SD libsystemd)
-    # Default WITH_SYSTEMD to true if we found it
-    option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+pkg_check_modules(SD libsystemd)
+# Default WITH_SYSTEMD to true if we found it
+option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-    if(WITH_SYSTEMD)
-      if(NOT SD_FOUND)
-        message(FATAL_ERROR "libsystemd not found")
-      endif()
-      add_definitions(-DWITH_SYSTEMD)
-      include_directories(${SD_INCLUDE_DIRS})
-      set(SD_LIBS ${SD_LDFLAGS})
-    endif()
+if(WITH_SYSTEMD)
+  if(NOT SD_FOUND)
+    message(FATAL_ERROR "libsystemd not found")
+  endif()
+  add_definitions(-DWITH_SYSTEMD)
+  include_directories(${SD_INCLUDE_DIRS})
+  set(SD_LIBS ${SD_LDFLAGS})
 endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
@@ -271,11 +303,19 @@ if(SUBMODULE_CHECK)
     check_submodule(external/googletest)
     check_submodule(external/cxxopts)
     check_submodule(external/ghc-filesystem)
-    check_submodule(external/optional-lite)
     check_submodule(external/date)
+    check_submodule(external/pybind11)
+    check_submodule(external/sqlite_orm)
+    if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
+      check_submodule(external/libuv)
+    endif()
+    check_submodule(external/loki-mq)
   endif()
 endif()
 
+if(WITH_HIVE)
+  add_subdirectory(external/pybind11 EXCLUDE_FROM_ALL)
+endif()
 if(WITH_TESTS)
   add_subdirectory(external/googletest EXCLUDE_FROM_ALL)
 endif()
@@ -283,33 +323,61 @@ endif()
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(external/nlohmann EXCLUDE_FROM_ALL)
 add_subdirectory(external/cxxopts EXCLUDE_FROM_ALL)
-add_subdirectory(external/ghc-filesystem)
-add_subdirectory(external/optional-lite EXCLUDE_FROM_ALL)
 add_subdirectory(external/date EXCLUDE_FROM_ALL)
+
+include_directories(SYSTEM external/sqlite_orm/include)
+
+add_subdirectory(vendor)
 
 if(ANDROID)
   list(APPEND LIBS log)
   add_definitions(-DANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
-endif(ANDROID)
+endif()
 
 set(LIBS ${MALLOC_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
   list(APPEND LIBS -ldl)
 endif()
 
+if(WITH_HIVE)
+  add_definitions(-DLOKINET_HIVE=1)
+endif()
+
 add_subdirectory(crypto)
 add_subdirectory(llarp)
-add_subdirectory(libabyss)
 add_subdirectory(daemon)
+if(WITH_HIVE)
+  add_subdirectory(pybind)
+endif()
+
+
 
 if (NOT SHADOW)
-  if(WITH_TESTS)
+  if(WITH_TESTS OR WITH_HIVE)
     add_subdirectory(test)
   endif()
   if(ANDROID)
     add_subdirectory(jni)
-  endif(ANDROID)
+  endif()
+endif()
+
+add_subdirectory(docs)
+
+# uninstall target
+if(NOT TARGET uninstall)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY)
+
+  add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+endif()
+
+
+if(BUILD_PACKAGE)
+    include(cmake/installer.cmake)
 endif()
 
 if(BUILD_PACKAGE)

@@ -8,22 +8,22 @@ namespace llarp
 {
   namespace dht
   {
-    struct ExploreNetworkJob : public TX< RouterID, RouterID >
+    struct ExploreNetworkJob : public TX<RouterID, RouterID>
     {
-      ExploreNetworkJob(const RouterID &peer, AbstractContext *ctx)
-          : TX< RouterID, RouterID >(TXOwner{}, peer, ctx)
+      ExploreNetworkJob(const RouterID& peer, AbstractContext* ctx)
+          : TX<RouterID, RouterID>(TXOwner{}, peer, ctx)
       {
       }
 
       bool
-      Validate(const RouterID &) const override
+      Validate(const RouterID&) const override
       {
         // TODO: check with lokid
         return true;
       }
 
       void
-      Start(const TXOwner &peer) override;
+      Start(const TXOwner& peer) override;
 
       void
       SendReply() override;

@@ -15,10 +15,9 @@
 // io packet for TUN read/write
 struct asio_evt_pkt
 {
-  OVERLAPPED pkt = {
-      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
-  bool write = false;        // true, or false if read pkt
-  size_t sz;  // should match the queued data size, if not try again?
+  OVERLAPPED pkt = {0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
+  bool write = false;                      // true, or false if read pkt
+  size_t sz;                               // should match the queued data size, if not try again?
   void* buf;  // must remain valid until we get notification; this is _supposed_
               // to be zero-copy
 };
@@ -37,16 +36,12 @@ namespace llarp
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
-    llarp_pkt_list m_RecvPackets;
 
     udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
     {
     }
-
-    bool
-    RecvMany(llarp_pkt_list*);
 
     bool
     tick();
@@ -66,7 +61,6 @@ struct win32_tun_io
 {
   llarp_tun_io* t;
   device* tunif;
-  byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
   win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init()){};
 
@@ -81,7 +75,7 @@ struct win32_tun_io
   add_ev(llarp_ev_loop* l);
 
   // places data in event queue for kernel to process
-  void
+  bool
   do_write(void* data, size_t sz);
 
   // we call this one when we get a packet in the event port
@@ -95,7 +89,7 @@ struct win32_tun_io
   ~win32_tun_io()
   {
     CancelIo(tunif->tun_fd);
-    if(tunif->tun_fd)
+    if (tunif->tun_fd)
       tuntap_destroy(tunif);
   }
 };

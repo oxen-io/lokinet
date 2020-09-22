@@ -10,19 +10,19 @@ namespace llarp
 {
   namespace routing
   {
-    constexpr size_t ExitPadSize  = 512 - 48;
-    constexpr size_t MaxExitMTU   = 1500;
+    constexpr size_t ExitPadSize = 512 - 48;
+    constexpr size_t MaxExitMTU = 1500;
     constexpr size_t ExitOverhead = sizeof(uint64_t);
     struct TransferTrafficMessage final : public IMessage
     {
-      std::vector< llarp::Encrypted< MaxExitMTU + ExitOverhead > > X;
+      std::vector<llarp::Encrypted<MaxExitMTU + ExitOverhead>> X;
       size_t _size = 0;
 
       void
       Clear() override
       {
         X.clear();
-        _size   = 0;
+        _size = 0;
         version = 0;
       }
 

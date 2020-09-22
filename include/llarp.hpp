@@ -4,6 +4,9 @@
 #include <util/fs.hpp>
 #include <util/types.hpp>
 #include <ev/ev.hpp>
+#include <nodedb.hpp>
+#include <crypto/crypto.hpp>
+#include <router/abstractrouter.hpp>
 
 #include <iostream>
 #include <map>
@@ -12,43 +15,35 @@
 #include <vector>
 
 struct llarp_ev_loop;
-struct llarp_nodedb;
-struct llarp_nodedb_iter;
-struct llarp_main;
 
 namespace llarp
 {
   class Logic;
-  struct AbstractRouter;
   struct Config;
-  struct Crypto;
-  struct CryptoManager;
   struct RouterContact;
   namespace thread
   {
     class ThreadPool;
   }
 
+  struct RuntimeOptions
+  {
+    bool background = false;
+    bool debug = false;
+    bool isRouter = false;
+  };
+
   struct Context
   {
-    /// get context from main pointer
-    static Context *
-    Get(llarp_main *);
-
-    Context() = default;
-
-    std::unique_ptr< Crypto > crypto;
-    std::unique_ptr< CryptoManager > cryptoManager;
-    std::unique_ptr< AbstractRouter > router;
-    std::shared_ptr< thread::ThreadPool > worker;
-    std::shared_ptr< Logic > logic;
-    std::unique_ptr< Config > config;
-    std::unique_ptr< llarp_nodedb > nodedb;
+    std::unique_ptr<Crypto> crypto = nullptr;
+    std::unique_ptr<CryptoManager> cryptoManager = nullptr;
+    std::unique_ptr<AbstractRouter> router = nullptr;
+    std::shared_ptr<Logic> logic = nullptr;
+    std::unique_ptr<llarp_nodedb> nodedb = nullptr;
     llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
-    bool
-    LoadConfig(const std::string &fname);
+    virtual ~Context() = default;
 
     void
     Close();
@@ -56,17 +51,24 @@ namespace llarp
     int
     LoadDatabase();
 
-    int
-    Setup();
+    void
+    Setup(const RuntimeOptions& opts);
 
     int
-    Run(llarp_main_runtime_opts opts);
+    Run(const RuntimeOptions& opts);
 
     void
     HandleSignal(int sig);
 
-    bool
-    Configure();
+    /// Configure given the specified config.
+    ///
+    /// note: consider using std::move() when passing conf in.
+    void
+    Configure(Config conf);
+
+    /// handle SIGHUP
+    void
+    Reload();
 
     bool
     IsUp() const;
@@ -86,28 +88,23 @@ namespace llarp
     /// return true if queued for calling
     /// return false if not queued for calling
     bool
-    CallSafe(std::function< void(void) > f);
+    CallSafe(std::function<void(void)> f);
+
+    /// Creates a router. Can be overridden to allow a different class of router
+    /// to be created instead. Defaults to llarp::Router.
+    virtual std::unique_ptr<AbstractRouter>
+    makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
+
+   protected:
+    std::shared_ptr<Config> config = nullptr;
 
    private:
     void
-    SetPIDFile(const std::string &fname);
-
-    bool
-    WritePIDFile() const;
-
-    void
-    RemovePIDFile() const;
-
-    void
     SigINT();
 
-    bool
-    ReloadConfig();
-
-    std::string configfile;
-    std::string pidfile;
-    std::unique_ptr< std::promise< void > > closeWaiter;
+    std::unique_ptr<std::promise<void>> closeWaiter;
   };
+
 }  // namespace llarp
 
 #endif

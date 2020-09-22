@@ -6,14 +6,22 @@
 
 #include <nodedb.hpp>
 
+#include <tooling/dht_event.hpp>
+
 namespace llarp
 {
   namespace dht
   {
     void
-    ExploreNetworkJob::Start(const TXOwner &peer)
+    ExploreNetworkJob::Start(const TXOwner& peer)
     {
-      parent->DHTSendTo(peer.node.as_array(), new FindRouterMessage(peer.txid));
+      auto msg = new FindRouterMessage(peer.txid);
+      auto router = parent->GetRouter();
+      if (router)
+      {
+        router->NotifyRouterEvent<tooling::FindRouterSentEvent>(router->pubkey(), *msg);
+      }
+      parent->DHTSendTo(peer.node.as_array(), msg);
     }
 
     void
@@ -23,15 +31,13 @@ namespace llarp
 
       auto router = parent->GetRouter();
       using std::placeholders::_1;
-      for(const auto &pk : valuesFound)
+      for (const auto& pk : valuesFound)
       {
         // lookup router
-        if(router and router->nodedb()->Has(pk))
+        if (router and router->nodedb()->Has(pk))
           continue;
         parent->LookupRouter(
-            pk,
-            std::bind(&AbstractRouter::HandleDHTLookupForExplore, router, pk,
-                      _1));
+            pk, std::bind(&AbstractRouter::HandleDHTLookupForExplore, router, pk, _1));
       }
     }
   }  // namespace dht

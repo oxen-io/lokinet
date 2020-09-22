@@ -4,11 +4,11 @@
 namespace llarp
 {
   LinkFactory::LinkType
-  LinkFactory::TypeFromName(string_view str)
+  LinkFactory::TypeFromName(std::string_view str)
   {
-    if(str == "iwp")
+    if (str == "iwp")
       return LinkType::eLinkIWP;
-    if(str == "mempipe")
+    if (str == "mempipe")
       return LinkType::eLinkMempipe;
     return LinkType::eLinkUnknown;
   }
@@ -16,7 +16,7 @@ namespace llarp
   std::string
   LinkFactory::NameFromType(LinkFactory::LinkType tp)
   {
-    switch(tp)
+    switch (tp)
     {
       case LinkType::eLinkIWP:
         return "iwp";
@@ -30,10 +30,10 @@ namespace llarp
   LinkFactory::Factory
   LinkFactory::Obtain(LinkFactory::LinkType tp, bool permitInbound)
   {
-    switch(tp)
+    switch (tp)
     {
       case LinkType::eLinkIWP:
-        if(permitInbound)
+        if (permitInbound)
           return llarp::iwp::NewInboundLink;
         return llarp::iwp::NewOutboundLink;
       default:

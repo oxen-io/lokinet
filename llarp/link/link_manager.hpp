@@ -4,7 +4,6 @@
 #include <link/i_link_manager.hpp>
 
 #include <util/compare_ptr.hpp>
-#include <util/thread/threading.hpp>
 #include <link/server.hpp>
 
 #include <unordered_map>
@@ -21,17 +20,19 @@ namespace llarp
     ~LinkManager() override = default;
 
     LinkLayer_ptr
-    GetCompatibleLink(const RouterContact &rc) const override;
+    GetCompatibleLink(const RouterContact& rc) const override;
 
-    IOutboundSessionMaker *
+    IOutboundSessionMaker*
     GetSessionMaker() const override;
 
     bool
-    SendTo(const RouterID &remote, const llarp_buffer_t &buf,
-           ILinkSession::CompletionHandler completed) override;
+    SendTo(
+        const RouterID& remote,
+        const llarp_buffer_t& buf,
+        ILinkSession::CompletionHandler completed) override;
 
     bool
-    HasSessionTo(const RouterID &remote) const override;
+    HasSessionTo(const RouterID& remote) const override;
 
     void
     PumpLinks() override;
@@ -40,25 +41,23 @@ namespace llarp
     AddLink(LinkLayer_ptr link, bool inbound = false) override;
 
     bool
-    StartLinks(Logic_ptr logic,
-               std::shared_ptr< thread::ThreadPool > worker) override;
+    StartLinks(Logic_ptr logic) override;
 
     void
     Stop() override;
 
     void
-    PersistSessionUntil(const RouterID &remote, llarp_time_t until) override;
+    PersistSessionUntil(const RouterID& remote, llarp_time_t until) override;
 
     void
-    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
-                bool randomize = false) const override;
+    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit, bool randomize = false)
+        const override;
 
     void
-    ForEachPeer(std::function< void(ILinkSession *) > visit) override;
+    ForEachPeer(std::function<void(ILinkSession*)> visit) override;
 
     void
-    ForEachInboundLink(
-        std::function< void(LinkLayer_ptr) > visit) const override;
+    ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
     size_t
     NumberOfConnectedRouters() const override;
@@ -70,34 +69,39 @@ namespace llarp
     NumberOfPendingConnections() const override;
 
     bool
-    GetRandomConnectedRouter(RouterContact &router) const override;
+    GetRandomConnectedRouter(RouterContact& router) const override;
 
     void
     CheckPersistingSessions(llarp_time_t now) override;
+
+    void
+    updatePeerDb(std::shared_ptr<PeerDb> peerDb) override;
 
     util::StatusObject
     ExtractStatus() const override;
 
     void
-    Init(IOutboundSessionMaker *sessionMaker);
+    Init(IOutboundSessionMaker* sessionMaker);
 
    private:
     LinkLayer_ptr
-    GetLinkWithSessionTo(const RouterID &remote) const;
+    GetLinkWithSessionTo(const RouterID& remote) const;
 
-    std::atomic< bool > stopping;
+    std::atomic<bool> stopping;
     mutable util::Mutex _mutex;  // protects m_PersistingSessions
 
-    using LinkSet = std::set< LinkLayer_ptr, ComparePtr< LinkLayer_ptr > >;
+    using LinkSet = std::set<LinkLayer_ptr, ComparePtr<LinkLayer_ptr>>;
 
     LinkSet outboundLinks;
     LinkSet inboundLinks;
 
     // sessions to persist -> timestamp to end persist at
-    std::unordered_map< RouterID, llarp_time_t, RouterID::Hash >
-        m_PersistingSessions GUARDED_BY(_mutex);
+    std::unordered_map<RouterID, llarp_time_t, RouterID::Hash> m_PersistingSessions
+        GUARDED_BY(_mutex);
 
-    IOutboundSessionMaker *_sessionMaker;
+    std::unordered_map<RouterID, SessionStats, RouterID::Hash> m_lastRouterStats;
+
+    IOutboundSessionMaker* _sessionMaker;
   };
 
 }  // namespace llarp

@@ -1,6 +1,8 @@
 #include <util/str.hpp>
 #include <catch2/catch.hpp>
 
+#include <vector>
+
 using namespace std::literals;
 
 TEST_CASE("TrimWhitespace -- positive tests", "[str][trim]")
@@ -11,7 +13,7 @@ TEST_CASE("TrimWhitespace -- positive tests", "[str][trim]")
   auto fo = "\fthe   "s;
   auto fum = " \t\r\n\v\f Beanstalk\n\n\n\t\r\f\v   \n\n\r\f\f\f\f\v"s;
   for (auto* s: {&fee, &fi, &fo, &fum})
-    *s = llarp::str(llarp::TrimWhitespace(*s));
+    *s = llarp::TrimWhitespace(*s);
 
   REQUIRE( fee == "J a c k" );
   REQUIRE( fi == "a\nd" );
@@ -24,7 +26,7 @@ TEST_CASE("TrimWhitespace -- negative tests", "[str][trim]")
   // Test that things that shouldn't be trimmed don't get trimmed
   auto c = GENERATE(range(std::numeric_limits<char>::min(), std::numeric_limits<char>::max()));
   std::string plant = c + "bean"s + c;
-  plant = llarp::str(llarp::TrimWhitespace(plant));
+  plant = llarp::TrimWhitespace(plant);
   if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == '\v')
     REQUIRE( plant == "bean" );
   else
@@ -90,4 +92,41 @@ TEST_CASE("neither true nor false string values", "[str][nottruefalse]") {
   auto val = GENERATE("false y", "maybe", "not on", "2", "yesno", "YESNO", "-1", "default", "OMG");
   REQUIRE( !llarp::IsTrueValue(val) );
   REQUIRE( !llarp::IsFalseValue(val) );
+}
+
+TEST_CASE("split strings with multiple matches", "[str]") {
+  auto splits = llarp::split("this is a test", ' ');
+  REQUIRE(splits.size() == 4);
+  REQUIRE(splits[0] == "this");
+  REQUIRE(splits[1] == "is");
+  REQUIRE(splits[2] == "a");
+  REQUIRE(splits[3] == "test");
+}
+
+TEST_CASE("split strings with single match", "[str]") {
+  auto splits = llarp::split("uno", ';');
+  REQUIRE(splits.size() == 1);
+  REQUIRE(splits[0] == "uno");
+}
+
+TEST_CASE("split strings with consecutive delimiters", "[str]") {
+  auto splits = llarp::split("a  o   e    u", ' ');
+  REQUIRE(splits.size() == 4);
+  REQUIRE(splits[0] == "a");
+  REQUIRE(splits[1] == "o");
+  REQUIRE(splits[2] == "e");
+  REQUIRE(splits[3] == "u");
+}
+
+TEST_CASE("split delimiter-only string", "[str]") {
+  auto splits = llarp::split("    ", ' ');
+  REQUIRE(splits.size() == 0);
+
+  splits = llarp::split(" ", ' ');
+  REQUIRE(splits.size() == 0);
+}
+
+TEST_CASE("split empty string", "[str]") {
+  auto splits = llarp::split("", ' ');
+  REQUIRE(splits.size() == 0);
 }

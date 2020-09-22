@@ -14,10 +14,13 @@
     "crypto_kem_SECRETKEYBYTES must match rq_encode_len + 2 * small_encode_len"
 #endif
 
+#ifndef __AVX2__
+#error "This file requires compilation with AVX2 support"
+#endif
+
 int
 crypto_kem_keypair_avx2(unsigned char *pk, unsigned char *sk)
 {
-#if __AVX2__
   small g[768];
   small grecip[768];
   small f[768];
@@ -39,9 +42,4 @@ crypto_kem_keypair_avx2(unsigned char *pk, unsigned char *sk)
   memcpy(sk + 2 * small_encode_len, pk, rq_encode_len);
 
   return 0;
-#else
-  (void)(pk);
-  (void)(sk);
-  return -1;
-#endif
 }

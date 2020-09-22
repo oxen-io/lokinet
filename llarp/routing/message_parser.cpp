@@ -30,36 +30,34 @@ namespace llarp
       CloseExitMessage C;
     };
 
-    InboundMessageParser::InboundMessageParser()
-        : m_Holder(std::make_unique< MessageHolder >())
+    InboundMessageParser::InboundMessageParser() : m_Holder(std::make_unique<MessageHolder>())
     {
     }
 
     InboundMessageParser::~InboundMessageParser() = default;
 
     bool
-    InboundMessageParser::operator()(llarp_buffer_t* buffer,
-                                     llarp_buffer_t* key)
+    InboundMessageParser::operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
     {
-      if(key == nullptr && firstKey)
+      if (key == nullptr && firstKey)
       {
         // empty dict
         return false;
       }
-      if(!key)
+      if (!key)
         return true;
-      if(firstKey)
+      if (firstKey)
       {
         llarp_buffer_t strbuf;
-        if(!(*key == "A"))
+        if (!(*key == "A"))
           return false;
-        if(!bencode_read_string(buffer, &strbuf))
+        if (!bencode_read_string(buffer, &strbuf))
           return false;
-        if(strbuf.sz != 1)
+        if (strbuf.sz != 1)
           return false;
         ourKey = *strbuf.cur;
         LogDebug("routing message '", key, "'");
-        switch(ourKey)
+        switch (ourKey)
         {
           case 'D':
             msg = &m_Holder->D;
@@ -100,7 +98,7 @@ namespace llarp
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
         }
-        if(msg)
+        if (msg)
           msg->version = version;
         firstKey = false;
         return msg != nullptr;
@@ -110,26 +108,24 @@ namespace llarp
     }
 
     bool
-    InboundMessageParser::ParseMessageBuffer(const llarp_buffer_t& buf,
-                                             IMessageHandler* h,
-                                             const PathID_t& from,
-                                             AbstractRouter* r)
+    InboundMessageParser::ParseMessageBuffer(
+        const llarp_buffer_t& buf, IMessageHandler* h, const PathID_t& from, AbstractRouter* r)
     {
       bool result = false;
-      msg         = nullptr;
-      firstKey    = true;
+      msg = nullptr;
+      firstKey = true;
       ManagedBuffer copiedBuf(buf);
       auto& copy = copiedBuf.underlying;
       uint64_t v = 0;
-      if(BEncodeSeekDictVersion(v, &copy, 'V'))
+      if (BEncodeSeekDictVersion(v, &copy, 'V'))
       {
         version = v;
       }
-      if(bencode_read_dict(*this, &copy))
+      if (bencode_read_dict(*this, &copy))
       {
         msg->from = from;
-        result    = msg->HandleMessage(h, r);
-        if(!result)
+        result = msg->HandleMessage(h, r);
+        if (!result)
         {
           llarp::LogWarn("Failed to handle inbound routing message ", ourKey);
         }
@@ -137,11 +133,11 @@ namespace llarp
       else
       {
         llarp::LogError("read dict failed in routing layer");
-        llarp::DumpBuffer< llarp_buffer_t, 128 >(buf);
+        llarp::DumpBuffer<llarp_buffer_t, 128>(buf);
       }
-      if(msg)
+      if (msg)
         msg->Clear();
-      msg     = nullptr;
+      msg = nullptr;
       version = 0;
       return result;
     }

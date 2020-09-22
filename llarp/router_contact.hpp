@@ -20,28 +20,28 @@
 namespace llarp
 {
   /// NetID
-  struct NetID final : public AlignedBuffer< 8 >
+  struct NetID final : public AlignedBuffer<8>
   {
-    static NetID &
+    static NetID&
     DefaultValue();
 
     NetID();
 
-    explicit NetID(const byte_t *val);
+    explicit NetID(const byte_t* val);
 
-    explicit NetID(const NetID &other) = default;
-
-    bool
-    operator==(const NetID &other) const;
+    explicit NetID(const NetID& other) = default;
 
     bool
-    operator!=(const NetID &other) const
+    operator==(const NetID& other) const;
+
+    bool
+    operator!=(const NetID& other) const
     {
       return !(*this == other);
     }
 
-    std::ostream &
-    print(std::ostream &stream, int level, int spaces) const
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const
     {
       Printer printer(stream, level, spaces);
       printer.printValue(ToString());
@@ -52,14 +52,14 @@ namespace llarp
     ToString() const;
 
     bool
-    BDecode(llarp_buffer_t *buf);
+    BDecode(llarp_buffer_t* buf);
 
     bool
-    BEncode(llarp_buffer_t *buf) const;
+    BEncode(llarp_buffer_t* buf) const;
   };
 
-  inline std::ostream &
-  operator<<(std::ostream &out, const NetID &id)
+  inline std::ostream&
+  operator<<(std::ostream& out, const NetID& id)
   {
     return id.print(out, -1, -1);
   }
@@ -82,30 +82,30 @@ namespace llarp
     struct Hash
     {
       size_t
-      operator()(const RouterContact &r) const
+      operator()(const RouterContact& r) const
       {
         return PubKey::Hash()(r.pubkey);
       }
     };
 
     // advertised addresses
-    std::vector< AddressInfo > addrs;
+    std::vector<AddressInfo> addrs;
     // network identifier
     NetID netID;
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
-    // advertised exits
-    std::vector< ExitInfo > exits;
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee
-    llarp::AlignedBuffer< NICKLEN > nickname;
+    llarp::AlignedBuffer<NICKLEN> nickname;
 
     llarp_time_t last_updated = 0s;
-    uint64_t version          = LLARP_PROTO_VERSION;
-    nonstd::optional< RouterVersion > routerVersion;
+    uint64_t version = LLARP_PROTO_VERSION;
+    std::optional<RouterVersion> routerVersion;
+    /// should we serialize the exit info?
+    const static bool serializeExit = true;
 
     util::StatusObject
     ExtractStatus() const;
@@ -116,26 +116,31 @@ namespace llarp
       return ExtractStatus();
     }
 
-    bool
-    BEncode(llarp_buffer_t *buf) const;
-
-    bool
-    operator==(const RouterContact &other) const
+    std::string
+    ToString() const
     {
-      return addrs == other.addrs && enckey == other.enckey
-          && pubkey == other.pubkey && signature == other.signature
-          && nickname == other.nickname && last_updated == other.last_updated
-          && netID == other.netID;
+      return ToJson().dump();
     }
 
     bool
-    operator<(const RouterContact &other) const
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    operator==(const RouterContact& other) const
+    {
+      return addrs == other.addrs && enckey == other.enckey && pubkey == other.pubkey
+          && signature == other.signature && nickname == other.nickname
+          && last_updated == other.last_updated && netID == other.netID;
+    }
+
+    bool
+    operator<(const RouterContact& other) const
     {
       return pubkey < other.pubkey;
     }
 
     bool
-    operator!=(const RouterContact &other) const
+    operator!=(const RouterContact& other) const
     {
       return !(*this == other);
     }
@@ -146,18 +151,18 @@ namespace llarp
     bool
     IsExit() const
     {
-      return !exits.empty();
+      return false;
     }
 
     bool
-    BDecode(llarp_buffer_t *buf)
+    BDecode(llarp_buffer_t* buf)
     {
       Clear();
       return bencode_decode_dict(*this, buf);
     }
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf);
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
 
     bool
     HasNick() const;
@@ -169,13 +174,13 @@ namespace llarp
     IsPublicRouter() const;
 
     void
-    SetNick(string_view nick);
+    SetNick(std::string_view nick);
 
     bool
     Verify(llarp_time_t now, bool allowExpired = true) const;
 
     bool
-    Sign(const llarp::SecretKey &secret);
+    Sign(const llarp::SecretKey& secret);
 
     /// does this RC expire soon? default delta is 1 minute
     bool
@@ -194,32 +199,31 @@ namespace llarp
     Age(llarp_time_t now) const;
 
     bool
-    OtherIsNewer(const RouterContact &other) const
+    OtherIsNewer(const RouterContact& other) const
     {
       return last_updated < other.last_updated;
     }
 
-    std::ostream &
-    print(std::ostream &stream, int level, int spaces) const;
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const;
 
     bool
-    Read(const char *fname);
+    Read(const fs::path& fname);
 
     bool
-    Write(const char *fname) const;
+    Write(const fs::path& fname) const;
 
     bool
     VerifySignature() const;
   };
 
-  inline std::ostream &
-  operator<<(std::ostream &out, const RouterContact &rc)
+  inline std::ostream&
+  operator<<(std::ostream& out, const RouterContact& rc)
   {
     return rc.print(out, -1, -1);
   }
 
-  using RouterLookupHandler =
-      std::function< void(const std::vector< RouterContact > &) >;
+  using RouterLookupHandler = std::function<void(const std::vector<RouterContact>&)>;
 }  // namespace llarp
 
 #endif

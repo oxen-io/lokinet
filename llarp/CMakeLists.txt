@@ -1,14 +1,9 @@
 include(Version)
 
-set(LIB_UTIL_SRC
-  config/config.cpp
-  config/ini.cpp
-  config/key_manager.cpp
-  constants/limits.cpp
+add_library(lokinet-util
   ${CMAKE_CURRENT_BINARY_DIR}/constants/version.cpp
   util/bencode.cpp
   util/buffer.cpp
-  util/encode.cpp
   util/fs.cpp
   util/json.cpp
   util/logging/android_logger.cpp
@@ -26,89 +21,98 @@ set(LIB_UTIL_SRC
   util/str.cpp
   util/thread/logic.cpp
   util/thread/queue_manager.cpp
-  util/thread/thread_pool.cpp
   util/thread/threading.cpp
-  util/thread/threadpool.cpp
   util/time.cpp
 )
+add_dependencies(lokinet-util genversion)
 
-add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+target_include_directories(lokinet-util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 
-add_dependencies(${UTIL_LIB} genversion)
+if(NOT TARGET sqlite3)
+  add_library(sqlite3 INTERFACE)
+  pkg_check_modules(SQLITE3 REQUIRED IMPORTED_TARGET sqlite3)
+  target_link_libraries(sqlite3 INTERFACE PkgConfig::SQLITE3)
+endif()
 
-target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include ${CURL_INCLUDE_DIRS})
+target_link_libraries(lokinet-util PUBLIC
+  lokinet-cryptography
+  nlohmann_json::nlohmann_json
+  filesystem
+  date::date
+  lokimq
+  sqlite3
+)
+
 if(ANDROID)
-  set(LOG_LIB log)
+  target_link_libraries(lokinet-util PUBLIC log)
 endif()
 
-target_link_libraries(${UTIL_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${LOG_LIB} ${CURL_LIBRARIES})
-target_link_libraries(${UTIL_LIB} PUBLIC
-    nlohmann_json::nlohmann_json
-    ghc_filesystem
-    optional-lite
-    date::date
-    )
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(ISOLATE_PROC_SRC linux/netns.cpp)
-endif()
-
-set(LIB_PLATFORM_SRC
+add_library(lokinet-platform
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
-  ev/vpnio.cpp
   ev/ev_libuv.cpp
+
   net/ip.cpp
+  net/ip_address.cpp
+  net/ip_packet.cpp
+  net/ip_range.cpp
   net/net.cpp
-  net/net_addr.cpp
   net/net_int.cpp
-# for android shim
-  ${ANDROID_PLATFORM_SRC}
-# process isolation implementation
-  ${ISOLATE_PROC_SRC}
-# tun
-  ${LIBTUNTAP_SRC}
-  ${EV_SRC}
+  net/route.cpp
+  net/sock_addr.cpp
+  $<TARGET_OBJECTS:tuntap>
 )
 
-if (WIN32)
-  set(LIB_PLATFORM_SRC
-    ev/ev_win32.cpp
-    ${LIB_PLATFORM_SRC}
-    win32/win32_inet.c
-    win32/win32_intrnl.c)
-endif(WIN32)
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads ${LIBS})
 
-add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} Threads::Threads ${LIBS})
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+if (ANDROID)
+  target_sources(lokinet-platform PRIVATE android/ifaddrs.c)
+endif()
+
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  target_sources(lokinet-platform PRIVATE linux/netns.cpp)
+
   if(NON_PC_TARGET)
     add_import_library(rt)
-    target_link_libraries(${PLATFORM_LIB} PUBLIC rt)
+    target_link_libraries(lokinet-platform PUBLIC rt)
   endif()
 endif()
 
-if(WIN32)
-  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
+if (WIN32)
+  target_sources(lokinet-platform PRIVATE
+    ev/ev_libuv.cpp
+    ev/ev_win32.cpp
+    win32/win32_inet.c
+    win32/win32_intrnl.c)
+
+  target_link_libraries(lokinet-platform PUBLIC iphlpapi)
 endif()
-set(DNSLIB_SRC
+
+if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+  target_include_directories(lokinet-platform SYSTEM PUBLIC /usr/local/include)
+endif()
+
+add_library(liblokinet
+  config/config.cpp
+  config/definition.cpp
+  config/ini.cpp
+  config/key_manager.cpp
+
   dns/message.cpp
   dns/name.cpp
   dns/question.cpp
   dns/rr.cpp
   dns/serialize.cpp
   dns/server.cpp
-)
+  dns/srv_data.cpp
+  dns/unbound_resolver.cpp
 
-set(CONSENSUS_SRC
   consensus/table.cpp
-)
 
-set(LIB_SRC
-  ${CONSENSUS_SRC}
-  ${DNSLIB_SRC}
+  ev/vpnio.cpp
+
   bootstrap.cpp
   context.cpp
   crypto/crypto_libsodium.cpp
@@ -127,6 +131,8 @@ set(LIB_SRC
   dht/messages/gotintro.cpp
   dht/messages/gotrouter.cpp
   dht/messages/pubintro.cpp
+  dht/messages/findname.cpp
+  dht/messages/gotname.cpp
   dht/publishservicejob.cpp
   dht/recursiverouterlookup.cpp
   dht/serviceaddresslookup.cpp
@@ -143,7 +149,6 @@ set(LIB_SRC
   iwp/linklayer.cpp
   iwp/message_buffer.cpp
   iwp/session.cpp
-  link/factory.cpp
   link/link_manager.cpp
   link/server.cpp
   messages/dht_immediate.cpp
@@ -161,6 +166,8 @@ set(LIB_SRC
   path/pathbuilder.cpp
   path/pathset.cpp
   path/transit_hop.cpp
+  peerstats/peer_db.cpp
+  peerstats/types.cpp
   pow.cpp
   profiling.cpp
   router/outbound_message_handler.cpp
@@ -177,10 +184,12 @@ set(LIB_SRC
   routing/path_latency_message.cpp
   routing/path_transfer_message.cpp
   routing/transfer_traffic_message.cpp
-  rpc/rpc.cpp
+  rpc/lokid_rpc_client.cpp
+  rpc/rpc_server.cpp
+  rpc/endpoint_rpc.cpp
   service/address.cpp
   service/async_key_exchange.cpp
-  service/config.cpp
+  service/auth.cpp
   service/context.cpp
   service/endpoint_state.cpp
   service/endpoint_util.cpp
@@ -191,49 +200,50 @@ set(LIB_SRC
   service/intro_set.cpp
   service/intro.cpp
   service/lookup.cpp
+  service/name.cpp
   service/outbound_context.cpp
   service/protocol.cpp
   service/router_lookup_job.cpp
   service/sendcontext.cpp
   service/session.cpp
-  service/tag_lookup_job.cpp
   service/tag.cpp
 )
+
+set_target_properties(liblokinet PROPERTIES OUTPUT_NAME lokinet)
+
+enable_lto(lokinet-util lokinet-platform liblokinet)
+  
 if(TRACY_ROOT)
-  set(LIB_SRC ${LIB_SRC} ${TRACY_ROOT}/TracyClient.cpp)
+  target_sources(liblokinet PRIVATE ${TRACY_ROOT}/TracyClient.cpp)
 endif()
 
 if(TESTNET)
-  set(LIB_SRC ${LIB_SRC} testnet.c)
+  target_sources(liblokinet PRIVATE testnet.c)
 endif()
 
-add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_include_directories(${STATIC_LIB} PUBLIC ${CURL_INCLUDE_DIRS})
-target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB})
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_include_directories(${PLATFORM_LIB} SYSTEM PUBLIC /usr/local/include)
-  target_include_directories(${STATIC_LIB} SYSTEM PUBLIC /usr/local/include)
+if(WITH_HIVE)
+  target_sources(liblokinet PRIVATE
+    tooling/router_hive.cpp
+    tooling/hive_router.cpp
+    tooling/hive_context.cpp
+  )
 endif()
 
-if(WITH_SHARED)
-  add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-  set(LIBS ${LIBS} Threads::Threads)
-  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
-  if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
-  else()
-    install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
+target_link_libraries(liblokinet PUBLIC cxxopts lokinet-platform lokinet-util lokinet-cryptography)
+target_link_libraries(liblokinet PRIVATE libunbound)
+
+
+if(BUILD_SHARED_LIBS)
+  install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION lib)
+  if(WIN32)
+    target_link_libraries(liblokinet PUBLIC ws2_32 iphlpapi)
   endif()
-  add_log_tag(${SHARED_LIB})
 endif()
 
-if (WARNINGS_AS_ERRORS)
-  set(WARN_FLAGS -Wall -Wextra -Werror)
-  target_compile_options(${UTIL_LIB} PUBLIC ${WARN_FLAGS})
-  target_compile_options(${PLATFORM_LIB} PUBLIC ${WARN_FLAGS})
-  target_compile_options(${STATIC_LIB} PUBLIC ${WARN_FLAGS})
-endif()
-add_log_tag(${UTIL_LIB})
-add_log_tag(${PLATFORM_LIB})
-add_log_tag(${STATIC_LIB})
+foreach(lokinet_lib liblokinet lokinet-platform lokinet-util lokinet-cryptography)
+  add_log_tag(${lokinet_lib})
+endforeach()
+
+file(GLOB_RECURSE docs_SRC */*.hpp *.hpp)
+  
+set(DOCS_SRC ${docs_SRC} PARENT_SCOPE)

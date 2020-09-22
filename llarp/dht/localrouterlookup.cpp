@@ -12,11 +12,9 @@ namespace llarp
 {
   namespace dht
   {
-    LocalRouterLookup::LocalRouterLookup(const PathID_t &path, uint64_t txid,
-                                         const RouterID &_target,
-                                         AbstractContext *ctx)
-        : RecursiveRouterLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx,
-                                nullptr)
+    LocalRouterLookup::LocalRouterLookup(
+        const PathID_t& path, uint64_t txid, const RouterID& _target, AbstractContext* ctx)
+        : RecursiveRouterLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx, nullptr)
         , localPath(path)
     {
     }
@@ -24,9 +22,9 @@ namespace llarp
     void
     LocalRouterLookup::SendReply()
     {
-      auto path = parent->GetRouter()->pathContext().GetByUpstream(
-          parent->OurKey().as_array(), localPath);
-      if(!path)
+      auto path =
+          parent->GetRouter()->pathContext().GetByUpstream(parent->OurKey().as_array(), localPath);
+      if (!path)
       {
         llarp::LogWarn(
             "did not send reply for relayed dht request, no such local path "
@@ -34,16 +32,16 @@ namespace llarp
             localPath);
         return;
       }
-      if(valuesFound.size())
+      if (valuesFound.size())
       {
         RouterContact found;
-        for(const auto &rc : valuesFound)
+        for (const auto& rc : valuesFound)
         {
-          if(rc.OtherIsNewer(found))
+          if (rc.OtherIsNewer(found))
             found = rc;
         }
         valuesFound.clear();
-        if(not found.pubkey.IsZero())
+        if (not found.pubkey.IsZero())
         {
           valuesFound.resize(1);
           valuesFound[0] = found;
@@ -54,9 +52,8 @@ namespace llarp
         }
       }
       routing::DHTMessage msg;
-      msg.M.emplace_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,
-                                              valuesFound, true));
-      if(!path->SendRoutingMessage(msg, parent->GetRouter()))
+      msg.M.emplace_back(new GotRouterMessage(parent->OurKey(), whoasked.txid, valuesFound, true));
+      if (!path->SendRoutingMessage(msg, parent->GetRouter()))
       {
         llarp::LogWarn(
             "failed to send routing message when informing result of dht "

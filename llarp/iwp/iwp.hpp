@@ -6,24 +6,36 @@
 #include <memory>
 #include <config/key_manager.hpp>
 
-namespace llarp
+namespace llarp::iwp
 {
-  namespace iwp
-  {
-    LinkLayer_ptr
-    NewInboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                   LinkMessageHandler h, SignBufferFunc sign,
-                   SessionEstablishedHandler est,
-                   SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                   SessionClosedHandler closed, PumpDoneHandler pumpDone);
-    LinkLayer_ptr
-    NewOutboundLink(std::shared_ptr< KeyManager > keyManager, GetRCFunc getrc,
-                    LinkMessageHandler h, SignBufferFunc sign,
-                    SessionEstablishedHandler est,
-                    SessionRenegotiateHandler reneg, TimeoutHandler timeout,
-                    SessionClosedHandler closed, PumpDoneHandler pumpDone);
+  LinkLayer_ptr
+  NewInboundLink(
+      std::shared_ptr<KeyManager> keyManager,
+      GetRCFunc getrc,
+      LinkMessageHandler h,
+      SignBufferFunc sign,
+      BeforeConnectFunc_t before,
+      SessionEstablishedHandler est,
+      SessionRenegotiateHandler reneg,
+      TimeoutHandler timeout,
+      SessionClosedHandler closed,
+      PumpDoneHandler pumpDone,
+      WorkerFunc_t work);
 
-  }  // namespace iwp
-}  // namespace llarp
+  LinkLayer_ptr
+  NewOutboundLink(
+      std::shared_ptr<KeyManager> keyManager,
+      GetRCFunc getrc,
+      LinkMessageHandler h,
+      SignBufferFunc sign,
+      BeforeConnectFunc_t before,
+      SessionEstablishedHandler est,
+      SessionRenegotiateHandler reneg,
+      TimeoutHandler timeout,
+      SessionClosedHandler closed,
+      PumpDoneHandler pumpDone,
+      WorkerFunc_t work);
+
+}  // namespace llarp::iwp
 
 #endif

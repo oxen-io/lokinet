@@ -4,6 +4,7 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <llarp_test.hpp>
 #include <router_contact.hpp>
+#include <net/net_int.hpp>
 
 using namespace ::llarp;
 using namespace ::testing;
@@ -12,7 +13,7 @@ static const byte_t DEF_VALUE[] = "unittest";
 
 struct RCTest : public test::LlarpTest<>
 {
-  using RC_t     = RouterContact;
+  using RC_t = RouterContact;
   using SecKey_t = SecretKey;
 
   RCTest() : oldval(NetID::DefaultValue())
@@ -37,7 +38,6 @@ TEST_F(RCTest, TestSignVerify)
 
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
-  rc.exits.emplace_back(rc.pubkey, nuint32_t{0x08080808});
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == NetID::DefaultValue());
 

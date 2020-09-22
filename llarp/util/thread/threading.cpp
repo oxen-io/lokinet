@@ -38,10 +38,10 @@ namespace llarp
 #else
 #error "unsupported platform"
 #endif
-      if(rc)
+      if (rc)
       {
-        LogError("Failed to set thread name to ", name, " errno = ", rc,
-                 " errstr = ", ::strerror(rc));
+        LogError(
+            "Failed to set thread name to ", name, " errno = ", rc, " errstr = ", ::strerror(rc));
       }
 #endif
 #elif _MSC_VER

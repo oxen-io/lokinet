@@ -14,11 +14,10 @@ namespace llarp
   {
     struct PendingBuffer
     {
-      std::vector< byte_t > payload;
+      std::vector<byte_t> payload;
       ProtocolType protocol;
 
-      PendingBuffer(const llarp_buffer_t& buf, ProtocolType t)
-          : payload(buf.sz), protocol(t)
+      PendingBuffer(const llarp_buffer_t& buf, ProtocolType t) : payload(buf.sz), protocol(t)
       {
         std::copy(buf.base, buf.base + buf.sz, std::back_inserter(payload));
       }

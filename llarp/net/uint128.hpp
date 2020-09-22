@@ -45,7 +45,7 @@ namespace llarp
     }
 
     constexpr uint128_t(const uint128_t&) = default;
-    constexpr uint128_t(uint128_t&&)      = default;
+    constexpr uint128_t(uint128_t&&) = default;
     constexpr uint128_t&
     operator=(const uint128_t&) = default;
     constexpr uint128_t&
@@ -108,21 +108,21 @@ namespace llarp
     // bool: true if any bit set
     explicit constexpr operator bool() const
     {
-      return static_cast< bool >(lower) || static_cast< bool >(upper);
+      return static_cast<bool>(lower) || static_cast<bool>(upper);
     }
 
     // Casting to basic unsigned int types: casts away upper bits
     explicit constexpr operator uint8_t() const
     {
-      return static_cast< uint8_t >(lower);
+      return static_cast<uint8_t>(lower);
     }
     explicit constexpr operator uint16_t() const
     {
-      return static_cast< uint16_t >(lower);
+      return static_cast<uint16_t>(lower);
     }
     explicit constexpr operator uint32_t() const
     {
-      return static_cast< uint32_t >(lower);
+      return static_cast<uint32_t>(lower);
     }
     explicit constexpr operator uint64_t() const
     {
@@ -168,7 +168,7 @@ namespace llarp
     constexpr uint128_t&
     operator++()
     {
-      if(++lower == 0)
+      if (++lower == 0)
         ++upper;
       return *this;
     }
@@ -185,7 +185,7 @@ namespace llarp
     operator+=(const uint128_t& b)
     {
       lower += b.lower;
-      if(lower < b.lower)
+      if (lower < b.lower)
         ++upper;
       upper += b.upper;
       return *this;
@@ -201,7 +201,7 @@ namespace llarp
     constexpr uint128_t&
     operator-=(const uint128_t& b)
     {
-      if(b.lower > lower)
+      if (b.lower > lower)
         --upper;
       lower -= b.lower;
       upper -= b.upper;
@@ -218,20 +218,20 @@ namespace llarp
     constexpr uint128_t&
     operator<<=(uint64_t shift)
     {
-      if(shift == 0)
+      if (shift == 0)
       {
       }
-      else if(shift < 64)
+      else if (shift < 64)
       {
         upper = upper << shift | (lower >> (64 - shift));
         lower <<= shift;
       }
-      else if(shift == 64)
+      else if (shift == 64)
       {
         upper = lower;
         lower = 0;
       }
-      else if(shift < 128)
+      else if (shift < 128)
       {
         upper = lower << (shift - 64);
         lower = 0;
@@ -253,20 +253,20 @@ namespace llarp
     constexpr uint128_t&
     operator>>=(uint64_t shift)
     {
-      if(shift == 0)
+      if (shift == 0)
       {
       }
-      else if(shift < 64)
+      else if (shift < 64)
       {
         lower = lower >> shift | upper << (64 - shift);
         upper >>= shift;
       }
-      else if(shift == 64)
+      else if (shift == 64)
       {
         lower = upper;
         upper = 0;
       }
-      else if(shift < 128)
+      else if (shift < 128)
       {
         lower = upper >> (shift - 64);
         upper = 0;
@@ -287,8 +287,7 @@ namespace llarp
     }
   };
 
-  static_assert(sizeof(uint128_t) == 16,
-                "uint128_t has unexpected size (padding?)");
+  static_assert(sizeof(uint128_t) == 16, "uint128_t has unexpected size (padding?)");
 
 }  // namespace llarp
 
@@ -296,13 +295,13 @@ namespace std
 {
   // Hash function for uint128_t
   template <>
-  struct hash< llarp::uint128_t >
+  struct hash<llarp::uint128_t>
   {
     size_t
     operator()(const llarp::uint128_t& i) const
     {
-      size_t h = std::hash< uint64_t >()(i.lower);
-      h ^= std::hash< uint64_t >()(i.upper) + 0x9e3779b9 + (h << 6) + (h >> 2);
+      size_t h = std::hash<uint64_t>()(i.lower);
+      h ^= std::hash<uint64_t>()(i.upper) + 0x9e3779b9 + (h << 6) + (h >> 2);
       return h;
     }
   };

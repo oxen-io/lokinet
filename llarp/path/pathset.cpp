@@ -5,6 +5,8 @@
 #include <routing/dht_message.hpp>
 #include <router/abstractrouter.hpp>
 
+#include <random>
+
 namespace llarp
 {
   namespace path
@@ -18,7 +20,7 @@ namespace llarp
     {
       (void)now;
       const auto building = NumInStatus(ePathBuilding);
-      if(building >= numPaths)
+      if (building >= numPaths)
         return false;
       const auto established = NumInStatus(ePathEstablished);
       return established < numPaths;
@@ -29,12 +31,12 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       const size_t required = MinRequiredForRoles(roles);
-      size_t has            = 0;
-      for(const auto& item : m_Paths)
+      size_t has = 0;
+      for (const auto& item : m_Paths)
       {
-        if(item.second->SupportsAnyRoles(roles))
+        if (item.second->SupportsAnyRoles(roles))
         {
-          if(!item.second->ExpiresSoon(now))
+          if (!item.second->ExpiresSoon(now))
             ++has;
         }
       }
@@ -53,9 +55,9 @@ namespace llarp
     {
       size_t num = 0;
       Lock_t l(m_PathsMutex);
-      for(const auto& item : m_Paths)
+      for (const auto& item : m_Paths)
       {
-        if(item.second->IsReady() && !item.second->Expired(futureTime))
+        if (item.second->IsReady() && !item.second->Expired(futureTime))
           ++num;
       }
       return num;
@@ -66,7 +68,7 @@ namespace llarp
     {
       const auto now = llarp::time_now_ms();
       Lock_t l(m_PathsMutex);
-      for(auto& item : m_Paths)
+      for (auto& item : m_Paths)
       {
         item.second->Tick(now, r);
       }
@@ -76,15 +78,14 @@ namespace llarp
     PathSet::ExpirePaths(llarp_time_t now, AbstractRouter* router)
     {
       Lock_t l(m_PathsMutex);
-      if(m_Paths.size() == 0)
+      if (m_Paths.size() == 0)
         return;
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->Expired(now))
+        if (itr->second->Expired(now))
         {
-          router->outboundMessageHandler().QueueRemoveEmptyPath(
-              itr->second->TXID());
+          router->outboundMessageHandler().QueueRemoveEmptyPath(itr->second->TXID());
           itr = m_Paths.erase(itr);
         }
         else
@@ -97,17 +98,17 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       Path_ptr path = nullptr;
-      AlignedBuffer< 32 > dist;
-      AlignedBuffer< 32 > to = id;
+      AlignedBuffer<32> dist;
+      AlignedBuffer<32> to = id;
       dist.Fill(0xff);
-      for(const auto& item : m_Paths)
+      for (const auto& item : m_Paths)
       {
-        if(!item.second->IsReady())
+        if (!item.second->IsReady())
           continue;
-        if(!item.second->SupportsAnyRoles(roles))
+        if (!item.second->SupportsAnyRoles(roles))
           continue;
-        AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ to;
-        if(localDist < dist)
+        AlignedBuffer<32> localDist = item.second->Endpoint() ^ to;
+        if (localDist < dist)
         {
           dist = localDist;
           path = item.second;
@@ -121,16 +122,16 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       Path_ptr chosen = nullptr;
-      auto itr        = m_Paths.begin();
-      while(itr != m_Paths.end())
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         {
-          if(itr->second->Endpoint() == id)
+          if (itr->second->Endpoint() == id)
           {
-            if(chosen == nullptr)
+            if (chosen == nullptr)
               chosen = itr->second;
-            else if(chosen->intro.expiresAt < itr->second->intro.expiresAt)
+            else if (chosen->intro.expiresAt < itr->second->intro.expiresAt)
               chosen = itr->second;
           }
         }
@@ -144,16 +145,16 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       Path_ptr chosen = nullptr;
-      auto itr        = m_Paths.begin();
-      while(itr != m_Paths.end())
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         {
-          if(itr->second->Endpoint() == id)
+          if (itr->second->Endpoint() == id)
           {
-            if(chosen == nullptr)
+            if (chosen == nullptr)
               chosen = itr->second;
-            else if(chosen->intro.latency > itr->second->intro.latency)
+            else if (chosen->intro.latency > itr->second->intro.latency)
               chosen = itr->second;
           }
         }
@@ -163,13 +164,40 @@ namespace llarp
     }
 
     Path_ptr
+    PathSet::GetRandomPathByRouter(RouterID id, PathRole roles) const
+    {
+      Lock_t l(m_PathsMutex);
+      std::vector<Path_ptr> chosen;
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
+      {
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+        {
+          if (itr->second->Endpoint() == id)
+          {
+            chosen.emplace_back(itr->second);
+          }
+        }
+        ++itr;
+      }
+      if (chosen.empty())
+        return nullptr;
+      size_t idx = 0;
+      if (chosen.size() >= 2)
+      {
+        idx = rand() % chosen.size();
+      }
+      return chosen[idx];
+    }
+
+    Path_ptr
     PathSet::GetByEndpointWithID(RouterID ep, PathID_t id) const
     {
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsEndpoint(ep, id))
+        if (itr->second->IsEndpoint(ep, id))
         {
           return itr->second;
         }
@@ -183,9 +211,9 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->RXID() == id)
+        if (itr->second->RXID() == id)
           return itr->second;
         ++itr;
       }
@@ -197,11 +225,10 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       size_t count = 0;
-      auto itr     = m_Paths.begin();
-      while(itr != m_Paths.end())
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
       {
-        if(itr->second->Status() == ePathEstablished
-           && itr->second->SupportsAnyRoles(roles))
+        if (itr->second->Status() == ePathEstablished && itr->second->SupportsAnyRoles(roles))
           ++count;
         ++itr;
       }
@@ -213,10 +240,10 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       size_t count = 0;
-      auto itr     = m_Paths.begin();
-      while(itr != m_Paths.end())
+      auto itr = m_Paths.begin();
+      while (itr != m_Paths.end())
       {
-        if(itr->second->Status() == st)
+        if (itr->second->Status() == st)
           ++count;
         ++itr;
       }
@@ -228,12 +255,15 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       const auto upstream = path->Upstream();  // RouterID
-      const auto RXID     = path->RXID();      // PathID
-      if(not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
+      const auto RXID = path->RXID();          // PathID
+      if (not m_Paths.emplace(std::make_pair(upstream, RXID), path).second)
       {
-        LogError(Name(),
-                 " failed to add own path, duplicate info wtf? upstream=",
-                 upstream, " rxid=", RXID);
+        LogError(
+            Name(),
+            " failed to add own path, duplicate info wtf? upstream=",
+            upstream,
+            " rxid=",
+            RXID);
       }
     }
 
@@ -249,23 +279,23 @@ namespace llarp
     {
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.find({remote, rxid});
-      if(itr == m_Paths.end())
+      if (itr == m_Paths.end())
         return nullptr;
       return itr->second;
     }
 
     bool
     PathSet::GetCurrentIntroductionsWithFilter(
-        std::set< service::Introduction >& intros,
-        std::function< bool(const service::Introduction&) > filter) const
+        std::set<service::Introduction>& intros,
+        std::function<bool(const service::Introduction&)> filter) const
     {
       intros.clear();
       size_t count = 0;
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && filter(itr->second->intro))
+        if (itr->second->IsReady() && filter(itr->second->intro))
         {
           intros.insert(itr->second->intro);
           ++count;
@@ -276,16 +306,15 @@ namespace llarp
     }
 
     bool
-    PathSet::GetCurrentIntroductions(
-        std::set< service::Introduction >& intros) const
+    PathSet::GetCurrentIntroductions(std::set<service::Introduction>& intros) const
     {
       intros.clear();
       size_t count = 0;
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady())
+        if (itr->second->IsReady())
         {
           intros.insert(itr->second->intro);
           ++count;
@@ -319,10 +348,8 @@ namespace llarp
     util::StatusObject
     BuildStats::ExtractStatus() const
     {
-      return util::StatusObject{{"success", success},
-                                {"attempts", attempts},
-                                {"timeouts", timeouts},
-                                {"fails", fails}};
+      return util::StatusObject{
+          {"success", success}, {"attempts", attempts}, {"timeouts", timeouts}, {"fails", fails}};
     }
 
     std::string
@@ -340,7 +367,7 @@ namespace llarp
     double
     BuildStats::SuccessRatio() const
     {
-      if(attempts)
+      if (attempts)
         return double(success) / double(attempts);
       return 0.0;
     }
@@ -352,10 +379,9 @@ namespace llarp
       bool found = false;
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady()
-           && itr->second->intro.expiresAt > intro.expiresAt)
+        if (itr->second->IsReady() && itr->second->intro.expiresAt > intro.expiresAt)
         {
           intro = itr->second->intro;
           found = true;
@@ -368,17 +394,17 @@ namespace llarp
     Path_ptr
     PathSet::PickRandomEstablishedPath(PathRole roles) const
     {
-      std::vector< Path_ptr > established;
+      std::vector<Path_ptr> established;
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
-      while(itr != m_Paths.end())
+      while (itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
+        if (itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
           established.push_back(itr->second);
         ++itr;
       }
       auto sz = established.size();
-      if(sz)
+      if (sz)
       {
         return established[randint() % sz];
       }

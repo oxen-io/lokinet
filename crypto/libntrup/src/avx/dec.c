@@ -11,11 +11,14 @@
 #include "rq.h"
 #include "r3.h"
 
+#ifndef __AVX2__
+#error "This file requires compilation with AVX2 support"
+#endif
+
 int
 crypto_kem_dec_avx2(unsigned char *k, const unsigned char *cstr,
                     const unsigned char *sk)
 {
-#if __AVX2__
   small f[768];
   modq h[768];
   small grecip[768];
@@ -67,10 +70,4 @@ crypto_kem_dec_avx2(unsigned char *k, const unsigned char *cstr,
   for(i = 0; i < 32; ++i)
     k[i] = (hash[32 + i] & ~result);
   return result;
-#else
-  (void)(k);
-  (void)(sk);
-  (void)(cstr);
-  return -1;
-#endif
 }

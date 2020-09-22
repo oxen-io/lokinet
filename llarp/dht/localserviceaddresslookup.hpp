@@ -13,10 +13,13 @@ namespace llarp
     {
       PathID_t localPath;
 
-      LocalServiceAddressLookup(const PathID_t &pathid, uint64_t txid,
-                                uint64_t relayOrder, const Key_t &addr,
-                                AbstractContext *ctx,
-                                __attribute__((unused)) const Key_t &askpeer);
+      LocalServiceAddressLookup(
+          const PathID_t& pathid,
+          uint64_t txid,
+          uint64_t relayOrder,
+          const Key_t& addr,
+          AbstractContext* ctx,
+          __attribute__((unused)) const Key_t& askpeer);
 
       void
       SendReply() override;

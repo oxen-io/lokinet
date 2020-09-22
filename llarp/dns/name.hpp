@@ -18,10 +18,13 @@ namespace llarp
 
     /// encode name to buffer
     bool
-    EncodeName(llarp_buffer_t* buf, const Name_t& name);
+    EncodeName(llarp_buffer_t* buf, Name_t name);
 
     bool
-    DecodePTR(const Name_t& name, huint128_t& ip);
+    DecodePTR(Name_t name, huint128_t& ip);
+
+    bool
+    NameIsReserved(Name_t name);
 
   }  // namespace dns
 }  // namespace llarp

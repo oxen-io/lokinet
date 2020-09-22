@@ -13,29 +13,27 @@ namespace llarp
 {
   namespace service
   {
-    using ConvoTag = AlignedBuffer< 16 >;
+    using ConvoTag = AlignedBuffer<16>;
     struct ProtocolMessage;
 
     struct RecvDataEvent
     {
       path::Path_ptr fromPath;
       PathID_t pathid;
-      std::shared_ptr< ProtocolMessage > msg;
+      std::shared_ptr<ProtocolMessage> msg;
     };
 
     struct ProtocolMessage;
     struct IDataHandler
     {
       virtual bool
-      HandleDataMessage(path::Path_ptr path, const PathID_t from,
-                        std::shared_ptr< ProtocolMessage > msg) = 0;
+      HandleDataMessage(
+          path::Path_ptr path, const PathID_t from, std::shared_ptr<ProtocolMessage> msg) = 0;
 
       virtual bool
-      GetCachedSessionKeyFor(const ConvoTag& remote,
-                             SharedSecret& secret) const = 0;
+      GetCachedSessionKeyFor(const ConvoTag& remote, SharedSecret& secret) const = 0;
       virtual void
-      PutCachedSessionKeyFor(const ConvoTag& remote,
-                             const SharedSecret& secret) = 0;
+      PutCachedSessionKeyFor(const ConvoTag& remote, const SharedSecret& secret) = 0;
 
       virtual void
       MarkConvoTagActive(const ConvoTag& tag) = 0;
@@ -47,8 +45,7 @@ namespace llarp
       HasConvoTag(const ConvoTag& remote) const = 0;
 
       virtual void
-      PutSenderFor(const ConvoTag& remote, const ServiceInfo& si,
-                   bool inbound) = 0;
+      PutSenderFor(const ConvoTag& remote, const ServiceInfo& si, bool inbound) = 0;
 
       virtual bool
       GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const = 0;
@@ -66,8 +63,7 @@ namespace llarp
       GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const = 0;
 
       virtual bool
-      GetConvoTagsForService(const Address& si,
-                             std::set< ConvoTag >& tag) const = 0;
+      GetConvoTagsForService(const Address& si, std::set<ConvoTag>& tag) const = 0;
 
       virtual bool
       HasInboundConvo(const Address& addr) const = 0;

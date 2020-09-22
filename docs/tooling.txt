@@ -1,0 +1,38 @@
+What is a RouterEvent?
+
+  A RouterEvent is a way of representing a conceptual event that took place in a "router" (relay or client).
+
+  RouterEvents are used in order to collect information about a network all in one place and preserve causality.
+
+How do I make a new RouterEvent?
+
+  Add your event following the structure in llarp/tooling/router_event.{hpp,cpp}
+
+  Add your event to pybind in pybind/llarp/tooling/router_event.cpp
+
+What if a class my event uses is missing members in pybind?
+
+  Find the relevant file pybind/whatever/class.cpp and remedy that!
+
+What if I need to refer to classes which aren't available already in pybind?
+
+  Add pybind/namespace/namespace/etc/class.cpp and pybind it!
+
+  You will need to edit the following files accordingly:
+    pybind/common.hpp
+    pybind/module.cpp
+    pybind/CMakeLists.txt
+
+How do I use a RouterEvent?
+
+  From the cpp side, find the place in the code where it makes the most logical sense
+  that the conceptual event has taken place (and you have the relevant information to
+  create the "event" instance) and create it there as follows:
+
+    #include <llarp/tooling/relevant_event_header.hpp>
+
+    where the event takes place, do the following:
+      auto event = std::make_unique<event_type_here>(constructor_args...);
+      somehow_get_a_router->NotifyRouterEvent(std::move(event));
+
+  From the Python side...it's a python object!

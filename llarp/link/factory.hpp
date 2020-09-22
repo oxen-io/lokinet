@@ -1,7 +1,7 @@
 #ifndef LLARP_LINK_FACTORY_HPP
 #define LLARP_LINK_FACTORY_HPP
-#include <util/string_view.hpp>
 #include <config/key_manager.hpp>
+#include <string_view>
 #include <functional>
 #include <memory>
 
@@ -21,15 +21,21 @@ namespace llarp
       eLinkUnknown
     };
 
-    using Factory = std::function< LinkLayer_ptr(
-        std::shared_ptr< KeyManager >, GetRCFunc, LinkMessageHandler,
-        SignBufferFunc, SessionEstablishedHandler, SessionRenegotiateHandler,
-        TimeoutHandler, SessionClosedHandler, PumpDoneHandler) >;
+    using Factory = std::function<LinkLayer_ptr(
+        std::shared_ptr<KeyManager>,
+        GetRCFunc,
+        LinkMessageHandler,
+        SignBufferFunc,
+        SessionEstablishedHandler,
+        SessionRenegotiateHandler,
+        TimeoutHandler,
+        SessionClosedHandler,
+        PumpDoneHandler)>;
 
     /// get link type by name string
     /// if invalid returns eLinkUnspec
     static LinkType
-    TypeFromName(string_view name);
+    TypeFromName(std::string_view name);
 
     /// turns a link type into a string representation
     static std::string

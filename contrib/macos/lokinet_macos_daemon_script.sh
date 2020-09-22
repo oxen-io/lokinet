@@ -39,7 +39,7 @@ fi
 
 networksetup -setdnsservers "$SERVICE_NAME" 127.0.0.1
 
-/opt/lokinet/bin/lokinet /var/lib/lokinet/lokinet.ini
+trap "networksetup -setdnsservers \"$SERVICE_NAME\" $OLD_SERVERS" INT TERM EXIT
 
-networksetup -setdnsservers "$SERVICE_NAME" $OLD_SERVERS
+/opt/lokinet/bin/lokinet /var/lib/lokinet/lokinet.ini
 

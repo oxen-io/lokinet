@@ -10,16 +10,16 @@ namespace llarp
     putSpaces(std::ostream& stream, size_t count)
     {
       // chunk n write
-      static const char spaces[]   = "                                      ";
+      static const char spaces[] = "                                      ";
       static constexpr size_t size = sizeof(spaces) - 1;
 
-      while(size < count)
+      while (size < count)
       {
         stream.write(spaces, size);
         count -= size;
       }
 
-      if(count > 0)
+      if (count > 0)
       {
         stream.write(spaces, count);
       }
@@ -33,14 +33,14 @@ namespace llarp
       , m_suppressIndent(level < 0)
       , m_spaces(spacesPerLevel)
   {
-    if(!m_suppressIndent)
+    if (!m_suppressIndent)
     {
       const int absSpaces = m_spaces < 0 ? -m_spaces : m_spaces;
       putSpaces(m_stream, absSpaces * m_level);
     }
 
     m_stream << '[';
-    if(m_spaces >= 0)
+    if (m_spaces >= 0)
     {
       m_stream << '\n';
     }
@@ -59,7 +59,7 @@ namespace llarp
   }
 
   void
-  Printer::printHexAddr(string_view name, const void* address) const
+  Printer::printHexAddr(std::string_view name, const void* address) const
   {
     printIndent();
     m_stream << name << " = ";
@@ -74,11 +74,14 @@ namespace llarp
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, char value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_fundamental >)
+  PrintHelper::printType(
+      std::ostream& stream,
+      char value,
+      int,
+      int spacesPerLevel,
+      traits::select::Case<std::is_fundamental>)
   {
-    if(std::isprint(static_cast< unsigned char >(value)))
+    if (std::isprint(static_cast<unsigned char>(value)))
     {
       stream << "'" << value << "'";
     }
@@ -89,7 +92,7 @@ namespace llarp
     stream << #x;             \
     break;
 
-      switch(value)
+      switch (value)
       {
         PRINT_CONTROL_CHAR('\n');
         PRINT_CONTROL_CHAR('\t');
@@ -99,40 +102,45 @@ namespace llarp
           // Print as hex
           FormatFlagsGuard guard(stream);
           stream << std::hex << std::showbase
-                 << static_cast< std::uintptr_t >(
-                        static_cast< unsigned char >(value));
+                 << static_cast<std::uintptr_t>(static_cast<unsigned char>(value));
         }
       }
     }
 
-    if(spacesPerLevel >= 0)
+    if (spacesPerLevel >= 0)
     {
       stream << '\n';
     }
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, bool value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_fundamental >)
+  PrintHelper::printType(
+      std::ostream& stream,
+      bool value,
+      int,
+      int spacesPerLevel,
+      traits::select::Case<std::is_fundamental>)
   {
     {
       FormatFlagsGuard guard(stream);
       stream << std::boolalpha << value;
     }
 
-    if(spacesPerLevel >= 0)
+    if (spacesPerLevel >= 0)
     {
       stream << '\n';
     }
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const char* value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_pointer >)
+  PrintHelper::printType(
+      std::ostream& stream,
+      const char* value,
+      int,
+      int spacesPerLevel,
+      traits::select::Case<std::is_pointer>)
   {
-    if(value == nullptr)
+    if (value == nullptr)
     {
       stream << "null";
     }
@@ -141,41 +149,46 @@ namespace llarp
       stream << '"' << value << '"';
     }
 
-    if(spacesPerLevel >= 0)
+    if (spacesPerLevel >= 0)
     {
       stream << '\n';
     }
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const void* value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< std::is_pointer >)
+  PrintHelper::printType(
+      std::ostream& stream,
+      const void* value,
+      int,
+      int spacesPerLevel,
+      traits::select::Case<std::is_pointer>)
   {
-    if(value == nullptr)
+    if (value == nullptr)
     {
       stream << "null";
     }
     else
     {
       FormatFlagsGuard guard(stream);
-      stream << std::hex << std::showbase
-             << reinterpret_cast< std::uintptr_t >(value);
+      stream << std::hex << std::showbase << reinterpret_cast<std::uintptr_t>(value);
     }
 
-    if(spacesPerLevel >= 0)
+    if (spacesPerLevel >= 0)
     {
       stream << '\n';
     }
   }
 
   void
-  PrintHelper::printType(std::ostream& stream, const string_view& value, int,
-                         int spacesPerLevel,
-                         traits::select::Case< traits::is_container >)
+  PrintHelper::printType(
+      std::ostream& stream,
+      const std::string_view& value,
+      int,
+      int spacesPerLevel,
+      traits::select::Case<traits::is_container>)
   {
     stream << '"' << value << '"';
-    if(spacesPerLevel >= 0)
+    if (spacesPerLevel >= 0)
     {
       stream << '\n';
     }

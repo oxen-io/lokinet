@@ -8,7 +8,7 @@ using TestString = std::string;
 struct TestParseLog
 {
   TestString input;
-  nonstd::optional< llarp::LogLevel > level;
+  std::optional< llarp::LogLevel > level;
 };
 
 struct LogLevelTest : public ::testing::TestWithParam< TestParseLog >
@@ -61,38 +61,5 @@ TEST_F(LogLevelTest, TestLogLevelToString)
   EXPECT_EQ("WRN", LogLevelToString(llarp::eLogWarn));
   EXPECT_EQ("ERR", LogLevelToString(llarp::eLogError));
   EXPECT_EQ("???", LogLevelToString(llarp::eLogNone));
-}
-
-TEST_F(LogLevelTest, TestLoggingConfigSideEffects)
-{
-  // restore original runtime level when we're done
-  llarp::LogContext& logContext = llarp::LogContext::Instance();
-  auto original = logContext.runtimeLevel;
-
-  // LoggingConfig::fromSection updates the runtime level as it reads in conf
-  // values, so feed it values and ensure that the runtime level is updated
-  // appropriately
-  llarp::LoggingConfig config;
-
-  config.fromSection("level", "Trace");
-  EXPECT_EQ(llarp::eLogTrace, logContext.runtimeLevel);
-
-  config.fromSection("level", "Debug");
-  EXPECT_EQ(llarp::eLogDebug, logContext.runtimeLevel);
-
-  config.fromSection("level", "Info");
-  EXPECT_EQ(llarp::eLogInfo, logContext.runtimeLevel);
-
-  config.fromSection("level", "Warn");
-  EXPECT_EQ(llarp::eLogWarn, logContext.runtimeLevel);
-
-  config.fromSection("level", "Error");
-  EXPECT_EQ(llarp::eLogError, logContext.runtimeLevel);
-
-  config.fromSection("level", "None");
-  EXPECT_EQ(llarp::eLogNone, logContext.runtimeLevel);
-
-
-  SetLogLevel(original);
 }
 

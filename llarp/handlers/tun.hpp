@@ -5,6 +5,7 @@
 #include <ev/ev.h>
 #include <ev/vpnio.hpp>
 #include <net/ip.hpp>
+#include <net/ip_packet.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
@@ -18,10 +19,9 @@ namespace llarp
   {
     struct TunEndpoint : public service::Endpoint,
                          public dns::IQueryHandler,
-                         public std::enable_shared_from_this< TunEndpoint >
+                         public std::enable_shared_from_this<TunEndpoint>
     {
-      TunEndpoint(const std::string& nickname, AbstractRouter* r,
-                  llarp::service::Context* parent, bool lazyVPN = false);
+      TunEndpoint(AbstractRouter* r, llarp::service::Context* parent, bool lazyVPN = false);
       ~TunEndpoint() override;
 
       path::PathSet_ptr
@@ -31,15 +31,21 @@ namespace llarp
       }
 
       bool
-      SetOption(const std::string& k, const std::string& v) override;
+      Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
+
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override{};
+
+      std::string
+      GetIfName() const override;
 
       void
       Tick(llarp_time_t now) override;
 
       util::StatusObject
-      ExtractStatus() const;
+      ExtractStatus() const override;
 
-      std::unordered_map< std::string, std::string >
+      std::unordered_map<std::string, std::string>
       NotifyParams() const override;
 
       bool
@@ -50,8 +56,7 @@ namespace llarp
 
       bool
       HandleHookedDNSMessage(
-          dns::Message query,
-          std::function< void(dns::Message) > sendreply) override;
+          dns::Message query, std::function<void(dns::Message)> sendreply) override;
 
       void
       TickTun(llarp_time_t now);
@@ -81,24 +86,12 @@ namespace llarp
 
       /// overrides Endpoint
       bool
-      HandleInboundPacket(const service::ConvoTag tag,
-                          const llarp_buffer_t& pkt,
-                          service::ProtocolType t) override
-      {
-        if(t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6)
-          return false;
-        AlignedBuffer< 32 > addr;
-        bool snode = false;
-        if(!GetEndpointWithConvoTag(tag, addr, snode))
-          return false;
-        return HandleWriteIPPacket(
-            pkt, [=]() -> huint128_t { return ObtainIPForAddr(addr, snode); });
-      }
+      HandleInboundPacket(
+          const service::ConvoTag tag, const llarp_buffer_t& pkt, service::ProtocolType t) override;
 
       /// handle inbound traffic
       bool
-      HandleWriteIPPacket(const llarp_buffer_t& buf,
-                          std::function< huint128_t(void) > getFromIP);
+      HandleWriteIPPacket(const llarp_buffer_t& buf, huint128_t src, huint128_t dst);
 
       /// queue outbound packet to the world
       bool
@@ -118,13 +111,13 @@ namespace llarp
       bool
       HasLocalIP(const huint128_t& ip) const;
 
-      std::unique_ptr< llarp_tun_io > tunif;
+      std::unique_ptr<llarp_tun_io> tunif;
       llarp_vpn_io* vpnif = nullptr;
 
       bool
       InjectVPN(llarp_vpn_io* io, llarp_vpn_ifaddr_info info) override
       {
-        if(tunif)
+        if (tunif)
           return false;
         m_LazyVPNPromise.set_value(lazy_vpn{info, io});
         return true;
@@ -148,13 +141,13 @@ namespace llarp
       handleTickTun(void* u);
 
       /// get a key for ip address
-      template < typename Addr_t >
+      template <typename Addr_t>
       Addr_t
       ObtainAddrForIP(huint128_t ip, bool isSNode)
       {
         Addr_t addr;
         auto itr = m_IPToAddr.find(ip);
-        if(itr != m_IPToAddr.end() and m_SNodes[itr->second] == isSNode)
+        if (itr != m_IPToAddr.end() and m_SNodes[itr->second] == isSNode)
         {
           addr = Addr_t(itr->second);
         }
@@ -162,19 +155,19 @@ namespace llarp
         return addr;
       }
 
-      template < typename Addr_t >
+      template <typename Addr_t>
       bool
       FindAddrForIP(Addr_t& addr, huint128_t ip);
 
       bool
-      HasAddress(const AlignedBuffer< 32 >& addr) const
+      HasAddress(const AlignedBuffer<32>& addr) const
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
       huint128_t
-      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode);
+      ObtainIPForAddr(const AlignedBuffer<32>& addr, bool serviceNode) override;
 
       /// flush network traffic
       void
@@ -188,12 +181,13 @@ namespace llarp
       ShouldFlushNow(llarp_time_t now) const;
 
       llarp_time_t m_LastFlushAt = 0s;
-      using PacketQueue_t        = llarp::util::CoDelQueue<
-          net::IPPacket, net::IPPacket::GetTime, net::IPPacket::PutTime,
-          net::IPPacket::CompareOrder, net::IPPacket::GetNow >;
+      using PacketQueue_t = llarp::util::CoDelQueue<
+          net::IPPacket,
+          net::IPPacket::GetTime,
+          net::IPPacket::PutTime,
+          net::IPPacket::CompareOrder,
+          net::IPPacket::GetNow>;
 
-      /// queue packet for send on net thread from user
-      std::vector< net::IPPacket > m_TunPkts;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network
@@ -215,67 +209,34 @@ namespace llarp
       FlushSend();
 
       /// maps ip to key (host byte order)
-      std::unordered_map< huint128_t, AlignedBuffer< 32 > > m_IPToAddr;
+      std::unordered_map<huint128_t, AlignedBuffer<32>> m_IPToAddr;
       /// maps key to ip (host byte order)
-      std::unordered_map< AlignedBuffer< 32 >, huint128_t,
-                          AlignedBuffer< 32 >::Hash >
-          m_AddrToIP;
+      std::unordered_map<AlignedBuffer<32>, huint128_t, AlignedBuffer<32>::Hash> m_AddrToIP;
 
       /// maps key to true if key is a service node, maps key to false if key is
       /// a hidden service
-      std::unordered_map< AlignedBuffer< 32 >, bool, AlignedBuffer< 32 >::Hash >
-          m_SNodes;
+      std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
 
      private:
       llarp_vpn_io_impl*
       GetVPNImpl()
       {
-        if(vpnif && vpnif->impl)
-          return static_cast< llarp_vpn_io_impl* >(vpnif->impl);
+        if (vpnif && vpnif->impl)
+          return static_cast<llarp_vpn_io_impl*>(vpnif->impl);
         return nullptr;
       }
 
-      bool
-      QueueInboundPacketForExit(const llarp_buffer_t& buf)
-      {
-        ManagedBuffer copy{buf};
-        return m_NetworkToUserPktQueue.EmplaceIf(
-            [&](llarp::net::IPPacket& pkt) -> bool {
-              if(!pkt.Load(copy.underlying))
-                return false;
-              if(SupportsV6())
-              {
-                if(pkt.IsV4())
-                {
-                  pkt.UpdateIPv6Address(net::IPPacket::ExpandV4(pkt.srcv4()),
-                                        m_OurIP);
-                }
-                else
-                {
-                  pkt.UpdateIPv6Address(pkt.srcv6(), m_OurIP);
-                }
-              }
-              else
-              {
-                if(pkt.IsV4())
-                  pkt.UpdateIPv4Address(
-                      xhtonl(pkt.srcv4()),
-                      xhtonl(net::IPPacket::TruncateV6(m_OurIP)));
-                else
-                  return false;
-              }
-              return true;
-            });
-      }
-
-      template < typename Addr_t, typename Endpoint_t >
+      template <typename Addr_t, typename Endpoint_t>
       void
-      SendDNSReply(Addr_t addr, Endpoint_t ctx,
-                   std::shared_ptr< dns::Message > query,
-                   std::function< void(dns::Message) > reply, bool snode,
-                   bool sendIPv6)
+      SendDNSReply(
+          Addr_t addr,
+          Endpoint_t ctx,
+          std::shared_ptr<dns::Message> query,
+          std::function<void(dns::Message)> reply,
+          bool snode,
+          bool sendIPv6)
       {
-        if(ctx)
+        if (ctx)
         {
           huint128_t ip = ObtainIPForAddr(addr, snode);
           query->answers.clear();
@@ -286,10 +247,10 @@ namespace llarp
         reply(*query);
       }
       /// our dns resolver
-      std::shared_ptr< dns::Proxy > m_Resolver;
+      std::shared_ptr<dns::Proxy> m_Resolver;
 
       /// maps ip address to timestamp last active
-      std::unordered_map< huint128_t, llarp_time_t > m_IPActivity;
+      std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
       /// our ip address (host byte order)
       huint128_t m_OurIP;
       /// next ip address to allocate (host byte order)
@@ -299,11 +260,11 @@ namespace llarp
       /// our ip range we are using
       llarp::IPRange m_OurRange;
       /// upstream dns resolver list
-      std::vector< llarp::Addr > m_UpstreamResolvers;
+      std::vector<IpAddress> m_UpstreamResolvers;
       /// local dns
-      llarp::Addr m_LocalResolverAddr;
+      IpAddress m_LocalResolverAddr;
       /// list of strict connect addresses for hooks
-      std::vector< llarp::Addr > m_StrictConnectAddrs;
+      std::vector<IpAddress> m_StrictConnectAddrs;
       /// use v6?
       bool m_UseV6;
       struct lazy_vpn
@@ -311,13 +272,14 @@ namespace llarp
         llarp_vpn_ifaddr_info info;
         llarp_vpn_io* io;
       };
-      std::promise< lazy_vpn > m_LazyVPNPromise;
+      std::promise<lazy_vpn> m_LazyVPNPromise;
+      std::string m_IfName;
 
       /// send packets on endpoint to user using send function
       /// send function returns true to indicate stop iteration and do codel
       /// drop
       void
-      FlushToUser(std::function< bool(net::IPPacket&) > sendfunc);
+      FlushToUser(std::function<bool(net::IPPacket&)> sendfunc);
     };
 
   }  // namespace handlers

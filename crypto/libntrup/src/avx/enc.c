@@ -9,11 +9,14 @@
 #include <sodium/crypto_hash_sha512.h>
 #include <sodium/crypto_kem.h>
 
+#ifndef __AVX2__
+#error "This file requires compilation with AVX2 support"
+#endif
+
 int
 crypto_kem_enc_avx2(unsigned char *cstr, unsigned char *k,
                     const unsigned char *pk)
 {
-#if __AVX2__
   small r[768];
   modq h[768];
   modq c[768];
@@ -46,10 +49,4 @@ crypto_kem_enc_avx2(unsigned char *cstr, unsigned char *k,
   rq_roundencode(cstr + 32, c);
 
   return 0;
-#else
-  (void)(cstr);
-  (void)(k);
-  (void)(pk);
-  return -1;
-#endif
 }

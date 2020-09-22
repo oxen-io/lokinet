@@ -3,7 +3,7 @@
 
 #include <handlers/tun.hpp>
 #include <net/net.hpp>
-#include <service/config.hpp>
+#include <config/config.hpp>
 #include <service/endpoint.hpp>
 
 #include <unordered_map>
@@ -13,9 +13,11 @@ namespace llarp
   namespace service
   {
     /// holds all the hidden service endpoints we own
+    /// TODO: this should be refactored (removed entirely...?) now that lokinet
+    ///       only supports one endpoint per instance
     struct Context
     {
-      explicit Context(AbstractRouter *r);
+      explicit Context(AbstractRouter* r);
       ~Context();
 
       void
@@ -33,35 +35,37 @@ namespace llarp
 
       /// function visitor returns false to prematurely break iteration
       void
-      ForEachService(
-          std::function< bool(const std::string &, const Endpoint_ptr &) >
-              visit) const;
-
-      /// add default endpoint with options
-      bool
-      AddDefaultEndpoint(
-          const std::unordered_multimap< std::string, std::string > &opts);
+      ForEachService(std::function<bool(const std::string&, const Endpoint_ptr&)> visit) const;
 
       /// add endpoint via config
-      bool
-      AddEndpoint(const Config::section_t &conf, bool autostart = false);
+      void
+      AddEndpoint(const Config& conf, bool autostart = false);
+
+      /// inject endpoint instance
+      void
+      InjectEndpoint(std::string name, std::shared_ptr<Endpoint> ep);
 
       /// stop and remove an endpoint by name
       /// return false if we don't have the hidden service with that name
       bool
-      RemoveEndpoint(const std::string &name);
+      RemoveEndpoint(const std::string& name);
 
       Endpoint_ptr
-      GetEndpointByName(const std::string &name);
+      GetEndpointByName(const std::string& name) const;
+
+      Endpoint_ptr
+      GetDefault() const
+      {
+        return GetEndpointByName("default");
+      }
 
       bool
       StartAll();
 
      private:
-      AbstractRouter *const m_Router;
-      std::unordered_map< std::string, std::shared_ptr< Endpoint > >
-          m_Endpoints;
-      std::list< std::shared_ptr< Endpoint > > m_Stopped;
+      AbstractRouter* const m_Router;
+      std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_Endpoints;
+      std::list<std::shared_ptr<Endpoint>> m_Stopped;
     };
   }  // namespace service
 }  // namespace llarp

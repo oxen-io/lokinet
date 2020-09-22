@@ -11,8 +11,8 @@ namespace llarp
     {
       PathID_t localPath;
 
-      LocalTagLookup(const PathID_t &path, uint64_t txid,
-                     const service::Tag &target, AbstractContext *ctx);
+      LocalTagLookup(
+          const PathID_t& path, uint64_t txid, const service::Tag& target, AbstractContext* ctx);
 
       void
       SendReply() override;

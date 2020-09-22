@@ -1,12 +1,13 @@
 #include <service/address.hpp>
 #include <crypto/crypto.hpp>
+#include <lokimq/base32z.h>
 #include <algorithm>
 
 namespace llarp
 {
   namespace service
   {
-    const std::set< std::string > Address::AllowedTLDs = {".loki", ".snode"};
+    const std::set<std::string> Address::AllowedTLDs = {".loki", ".snode"};
 
     bool
     Address::PermitTLD(const char* tld)
@@ -19,46 +20,49 @@ namespace llarp
     std::string
     Address::ToString(const char* tld) const
     {
-      if(!PermitTLD(tld))
+      if (!PermitTLD(tld))
         return "";
-      char tmp[(1 + 32) * 2] = {0};
-      std::string str        = Base32Encode(*this, tmp);
-      if(subdomain.size())
-        str = subdomain + "." + str;
-      return str + tld;
+      std::string str;
+      if (subdomain.size())
+      {
+        str = subdomain;
+        str += '.';
+      }
+      str += lokimq::to_base32z(begin(), end());
+      str += tld;
+      return str;
     }
 
     bool
-    Address::FromString(const std::string& str, const char* tld)
+    Address::FromString(std::string_view str, const char* tld)
     {
-      if(!PermitTLD(tld))
+      if (!PermitTLD(tld))
         return false;
-      static auto lowercase = [](const std::string s,
-                                 bool stripDots) -> std::string {
-        std::string ret(s.size(), ' ');
-        std::transform(s.begin(), s.end(), ret.begin(),
-                       [stripDots](const char& ch) -> char {
-                         if(ch == '.' && stripDots)
-                           return ' ';
-                         return ::tolower(ch);
-                       });
-        return ret.substr(0, ret.find_last_of(' '));
-      };
+      // Find, validate, and remove the .tld
       const auto pos = str.find_last_of('.');
-      if(pos == std::string::npos)
+      if (pos == std::string::npos)
         return false;
-      if(str.substr(pos) != tld)
+      if (str.substr(pos) != tld)
         return false;
-      auto sub = str.substr(0, pos);
-      // set subdomains if they are there
-      const auto idx = sub.find_last_of('.');
-      if(idx != std::string::npos)
+      str = str.substr(0, pos);
+
+      // copy subdomains if they are there (and strip them off)
+      const auto idx = str.find_last_of('.');
+      if (idx != std::string::npos)
       {
-        subdomain = lowercase(sub.substr(0, idx), false);
-        sub       = sub.substr(idx + 1);
+        subdomain = str.substr(0, idx);
+        str.remove_prefix(idx + 1);
       }
-      // make sure it's lowercase
-      return Base32Decode(lowercase(sub, true), *this);
+
+      // Ensure we have something valid:
+      // - must end in a 1-bit value: 'o' or 'y' (i.e. 10000 or 00000)
+      // - must have 51 preceeding base32z chars
+      // - thus we get 51*5+1 = 256 bits = 32 bytes of output
+      if (str.size() != 52 || !lokimq::is_base32z(str) || !(str.back() == 'o' || str.back() == 'y'))
+        return false;
+
+      lokimq::from_base32z(str.begin(), str.end(), begin());
+      return true;
     }
 
     dht::Key_t

@@ -6,7 +6,7 @@
 #include <util/copy_or_nullptr.hpp>
 
 #include <vector>
-#include <nonstd/optional.hpp>
+#include <optional>
 
 namespace llarp
 {
@@ -16,21 +16,18 @@ namespace llarp
     struct GotIntroMessage : public IMessage
     {
       /// the found introsets
-      std::vector< service::EncryptedIntroSet > found;
+      std::vector<service::EncryptedIntroSet> found;
       /// txid
       uint64_t txid = 0;
       /// the key of a router closer in keyspace if iterative lookup
-      nonstd::optional< Key_t > closer;
+      std::optional<Key_t> closer;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
       {
       }
 
       GotIntroMessage(const GotIntroMessage& other)
-          : IMessage(other.From)
-          , found(other.found)
-          , txid(other.txid)
-          , closer(other.closer)
+          : IMessage(other.From), found(other.found), txid(other.txid), closer(other.closer)
       {
         version = other.version;
       }
@@ -42,8 +39,7 @@ namespace llarp
       }
 
       /// for recursive reply
-      GotIntroMessage(std::vector< service::EncryptedIntroSet > results,
-                      uint64_t txid);
+      GotIntroMessage(std::vector<service::EncryptedIntroSet> results, uint64_t txid);
 
       ~GotIntroMessage() override = default;
 
@@ -54,8 +50,7 @@ namespace llarp
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage::Ptr_t >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
     };
 
     struct RelayedGotIntroMessage final : public GotIntroMessage
@@ -65,11 +60,10 @@ namespace llarp
       }
 
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage::Ptr_t >& replies) const override;
+      HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
     };
 
-    using GotIntroMessage_constptr = std::shared_ptr< const GotIntroMessage >;
+    using GotIntroMessage_constptr = std::shared_ptr<const GotIntroMessage>;
   }  // namespace dht
 }  // namespace llarp
 #endif

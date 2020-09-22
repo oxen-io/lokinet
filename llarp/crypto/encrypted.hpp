@@ -13,12 +13,12 @@
 namespace llarp
 {
   /// encrypted buffer base type
-  template < size_t bufsz = MAX_LINK_MSG_SIZE >
+  template <size_t bufsz = MAX_LINK_MSG_SIZE>
   struct Encrypted
   {
     Encrypted(Encrypted&& other)
     {
-      _sz  = std::move(other._sz);
+      _sz = std::move(other._sz);
       _buf = std::move(other._buf);
       UpdateBuffer();
     }
@@ -42,10 +42,10 @@ namespace llarp
 
     Encrypted(const byte_t* buf, size_t sz)
     {
-      if(sz <= bufsz)
+      if (sz <= bufsz)
       {
         _sz = sz;
-        if(buf)
+        if (buf)
           memcpy(_buf.data(), buf, sz);
         else
           _buf.Zero();
@@ -86,7 +86,7 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-      if(buf.sz <= _buf.size())
+      if (buf.sz <= _buf.size())
       {
         _sz = buf.sz;
         memcpy(_buf.data(), buf.base, _sz);
@@ -104,7 +104,7 @@ namespace llarp
     void
     Randomize()
     {
-      if(_sz)
+      if (_sz)
         randombytes(_buf.data(), _sz);
     }
 
@@ -112,12 +112,12 @@ namespace llarp
     BDecode(llarp_buffer_t* buf)
     {
       llarp_buffer_t strbuf;
-      if(!bencode_read_string(buf, &strbuf))
+      if (!bencode_read_string(buf, &strbuf))
         return false;
-      if(strbuf.sz > sizeof(_buf))
+      if (strbuf.sz > sizeof(_buf))
         return false;
       _sz = strbuf.sz;
-      if(_sz)
+      if (_sz)
         memcpy(_buf.data(), strbuf.base, _sz);
       UpdateBuffer();
       return true;
@@ -158,10 +158,10 @@ namespace llarp
     UpdateBuffer()
     {
       m_Buffer.base = _buf.data();
-      m_Buffer.cur  = _buf.data();
-      m_Buffer.sz   = _sz;
+      m_Buffer.cur = _buf.data();
+      m_Buffer.sz = _sz;
     }
-    AlignedBuffer< bufsz > _buf;
+    AlignedBuffer<bufsz> _buf;
     size_t _sz;
     llarp_buffer_t m_Buffer;
   };  // namespace llarp

@@ -14,7 +14,7 @@ extern "C"
    * Signature: ()Ljava/nio/Buffer;
    */
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv *, jclass);
+  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv*, jclass);
 
   /*
    * Class:     network_loki_lokinet_LokinetConfig
@@ -22,7 +22,7 @@ extern "C"
    * Signature: (Ljava/nio/Buffer;)V
    */
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Free(JNIEnv *, jclass, jobject);
+  Java_network_loki_lokinet_LokinetConfig_Free(JNIEnv*, jclass, jobject);
 
   /*
    * Class:     network_loki_lokinet_LokinetConfig
@@ -30,7 +30,7 @@ extern "C"
    * Signature: (Ljava/lang/String;)Z
    */
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv *, jobject, jstring);
+  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv*, jobject, jstring);
 
 #ifdef __cplusplus
 }

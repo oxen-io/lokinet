@@ -41,13 +41,16 @@ namespace llarp
       EnsureKeys(const std::string& fpath, bool needBackup);
 
       bool
-      KeyExchange(path_dh_func dh, SharedSecret& sharedkey,
-                  const ServiceInfo& other, const KeyExchangeNonce& N) const;
+      KeyExchange(
+          path_dh_func dh,
+          SharedSecret& sharedkey,
+          const ServiceInfo& other,
+          const KeyExchangeNonce& N) const;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf);
 
-      nonstd::optional< EncryptedIntroSet >
+      std::optional<EncryptedIntroSet>
       EncryptAndSignIntroSet(const IntroSet& i, llarp_time_t now) const;
 
       bool

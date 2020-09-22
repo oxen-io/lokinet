@@ -15,7 +15,7 @@ namespace libuv
 {
   struct Loop final : public llarp_ev_loop
   {
-    typedef std::function< void(void) > Callback;
+    typedef std::function<void(void)> Callback;
 
     struct PendingTimer
     {
@@ -24,16 +24,13 @@ namespace libuv
       Callback callback;
     };
 
-    Loop();
+    Loop(size_t queue_size);
 
     bool
     init() override;
 
     int
-    run() override
-    {
-      return -1;
-    }
+    run() override;
 
     bool
     running() const override;
@@ -43,14 +40,13 @@ namespace libuv
 
     /// return false on socket error (non blocking)
     bool
-    tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) override;
+    tcp_connect(llarp_tcp_connecter* tcp, const llarp::SockAddr& addr) override;
 
     int
     tick(int ms) override;
 
     uint32_t
-    call_after_delay(llarp_time_t delay_ms,
-                     std::function< void(void) > callback) override;
+    call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
     void
     cancel_delayed_call(uint32_t job_id) override;
@@ -74,7 +70,7 @@ namespace libuv
     CloseAll();
 
     bool
-    udp_listen(llarp_udp_io* l, const sockaddr* src) override;
+    udp_listen(llarp_udp_io* l, const llarp::SockAddr& src) override;
 
     bool
     udp_close(llarp_udp_io* l) override;
@@ -96,19 +92,19 @@ namespace libuv
     }
 
     bool
-    tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr) override;
+    tcp_listen(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr) override;
 
     bool
     add_pipe(llarp_ev_pkt_pipe* p) override;
 
     llarp::ev_io*
-    bind_tcp(llarp_tcp_acceptor*, const sockaddr*) override
+    bind_tcp(llarp_tcp_acceptor*, const llarp::SockAddr&) override
     {
       return nullptr;
     }
 
     bool
-    add_ticker(std::function< void(void) > ticker) override;
+    add_ticker(std::function<void(void)> ticker) override;
 
     /// register event listener
     bool
@@ -118,36 +114,47 @@ namespace libuv
     }
 
     void
-    set_logic(std::shared_ptr< llarp::Logic > l) override
+    set_logic(std::shared_ptr<llarp::Logic> l) override
     {
       m_Logic = l;
       m_Logic->SetQueuer(llarp::util::memFn(&Loop::call_soon, this));
     }
 
-    std::shared_ptr< llarp::Logic > m_Logic;
+    std::shared_ptr<llarp::Logic> m_Logic;
 
     void
-    call_soon(std::function< void(void) > f) override;
+    call_soon(std::function<void(void)> f) override;
+
+    void
+    register_poll_fd_readable(int fd, Callback callback) override;
+
+    void
+    deregister_poll_fd_readable(int fd) override;
+
+    void
+    FlushLogic();
 
    private:
     uv_loop_t m_Impl;
     uv_timer_t* m_TickTimer;
     uv_async_t m_WakeUp;
-    std::atomic< bool > m_Run;
-    uv_async_t m_LogicCaller;
-    using AtomicQueue_t = llarp::thread::Queue< std::function< void(void) > >;
+    std::atomic<bool> m_Run;
+    using AtomicQueue_t = llarp::thread::Queue<std::function<void(void)>>;
     AtomicQueue_t m_LogicCalls;
 
 #ifdef LOKINET_DEBUG
     uint64_t last_time;
     uint64_t loop_run_count;
 #endif
-    std::atomic< uint32_t > m_nextID;
+    std::atomic<uint32_t> m_nextID;
 
-    std::map< uint32_t, Callback > m_pendingCalls;
+    std::map<uint32_t, Callback> m_pendingCalls;
 
-    llarp::thread::Queue< PendingTimer > m_timerQueue;
-    llarp::thread::Queue< uint32_t > m_timerCancelQueue;
+    std::unordered_map<int, uv_poll_t> m_Polls;
+
+    llarp::thread::Queue<PendingTimer> m_timerQueue;
+    llarp::thread::Queue<uint32_t> m_timerCancelQueue;
+    std::optional<std::thread::id> m_EventLoopThreadID;
   };
 
 }  // namespace libuv

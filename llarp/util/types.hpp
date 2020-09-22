@@ -4,7 +4,7 @@
 #include <string>
 #include <chrono>
 
-using byte_t                = uint8_t;
+using byte_t = uint8_t;
 using llarp_proto_version_t = std::uint8_t;
 
 using llarp_time_t = std::chrono::milliseconds;

@@ -9,7 +9,7 @@ namespace llarp
   namespace consensus
   {
     /// consensus table
-    struct Table : public std::vector< RouterID >
+    struct Table : public std::vector<RouterID>
     {
       ShortHash
       CalculateHash() const;
