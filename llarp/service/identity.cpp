@@ -85,7 +85,7 @@ namespace llarp
     }
 
     void
-    Identity::EnsureKeys(const std::string& fname, bool needBackup)
+    Identity::EnsureKeys(fs::path fname, bool needBackup)
     {
       std::array<byte_t, 4096> tmp;
       llarp_buffer_t buf(tmp);
