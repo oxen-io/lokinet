@@ -305,8 +305,8 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    Execute("\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute("\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
+    Execute("\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
