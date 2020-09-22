@@ -47,4 +47,4 @@ override_dh_installsystemd:
 	dh_installsystemd --name=lokinet-testnet-router --no-enable --no-start
 
 override_dh_auto_test:
-	ninja check
+	cd obj-${DEB_HOST_GNU_TYPE} && ninja check
