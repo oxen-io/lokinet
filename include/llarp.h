@@ -85,14 +85,13 @@ extern "C"
   void
   llarp_vpn_io_close_async(struct llarp_vpn_io* io);
 
-  /*
   /// give main context a vpn io for mobile when it is reader to do io with
   /// associated info tries to give the vpn io to endpoint with name epName a
   /// deferred call to llarp_vpn_io.injected is queued unconditionally
   /// thread safe
   bool
   llarp_main_inject_vpn_by_name(
-      struct llarp_main* m,
+      struct llarp::Context* m,
       const char* epName,
       struct llarp_vpn_io* io,
       struct llarp_vpn_ifaddr_info info);
@@ -100,11 +99,10 @@ extern "C"
   /// give main context a vpn io on its default endpoint
   static bool
   llarp_main_inject_default_vpn(
-      struct llarp_main* m, struct llarp_vpn_io* io, struct llarp_vpn_ifaddr_info info)
+      struct llarp::Context* m, struct llarp_vpn_io* io, struct llarp_vpn_ifaddr_info info)
   {
-    return llarp_main_inject_vpn_by_name(m, llarp_main_get_default_endpoint_name(m), io, info);
+    return llarp_main_inject_vpn_by_name(m, "default", io, info);
   }
-  */
 
 #ifdef __cplusplus
 }

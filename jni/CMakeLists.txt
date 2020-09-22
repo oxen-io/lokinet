@@ -1,4 +1,5 @@
 add_library(lokinet-android
+    SHARED
     lokinet_config.cpp
     lokinet_daemon.cpp
     lokinet_vpn.cpp)

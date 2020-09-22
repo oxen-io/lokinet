@@ -68,6 +68,7 @@ if(CMAKE_CXX_COMPILER_LAUNCHER)
   set(deps_cxx "${CMAKE_CXX_COMPILER_LAUNCHER} ${deps_cxx}")
 endif()
 
+
 function(expand_urls output source_file)
   set(expanded)
   foreach(mirror ${ARGN})
@@ -99,6 +100,46 @@ if(CMAKE_CROSSCOMPILING)
   if (ARCH_TRIPLET MATCHES mingw AND CMAKE_RC_COMPILER)
     set(cross_rc "WINDRES=${CMAKE_RC_COMPILER}")
   endif()
+endif()
+if(ANDROID)
+  set(android_toolchain_suffix linux-android)
+  set(android_compiler_suffix linux-android23)
+  if(CMAKE_ANDROID_ARCH_ABI MATCHES x86_64)
+    set(android_machine x86_64)
+    set(cross_host "--host=x86_64-linux-android")
+    set(android_compiler_prefix x86_64)
+    set(android_compiler_suffix linux-android23)
+    set(android_toolchain_prefix x86_64)
+    set(android_toolchain_suffix linux-android)
+  elseif(CMAKE_ANDROID_ARCH_ABI MATCHES x86)
+    set(android_machine i686)
+    set(cross_host "--host=i686-linux-android")
+    set(android_compiler_prefix i686)
+    set(android_compiler_suffix linux-android23)
+    set(android_toolchain_prefix i686)
+    set(android_toolchain_suffix linux-android)
+  elseif(CMAKE_ANDROID_ARCH_ABI MATCHES armeabi-v7a)
+    set(android_machine armv7)
+    set(cross_host "--host=armv7a-linux-androideabi")
+    set(android_compiler_prefix armv7a)
+    set(android_compiler_suffix linux-androideabi23)
+    set(android_toolchain_prefix arm)
+    set(android_toolchain_suffix linux-androideabi)
+  elseif(CMAKE_ANDROID_ARCH_ABI MATCHES arm64-v8a)
+    set(android_machine aarch64)
+    set(cross_host "--host=aarch64-linux-android")
+    set(android_compiler_prefix aarch64)
+    set(android_compiler_suffix linux-android23)
+    set(android_toolchain_prefix aarch64)
+    set(android_toolchain_suffix linux-android)
+  else()
+    message(FATAL_ERROR "unknown android arch: ${CMAKE_ANDROID_ARCH_ABI}")
+  endif()
+  set(deps_cc "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_compiler_prefix}-${android_compiler_suffix}-clang")
+  set(deps_cxx "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_compiler_prefix}-${android_compiler_suffix}-clang++")
+  set(deps_ld "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_compiler_prefix}-${android_toolchain_suffix}-ld")
+  set(deps_ranlib "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_toolchain_prefix}-${android_toolchain_suffix}-ranlib")
+  set(deps_ar "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_toolchain_prefix}-${android_toolchain_suffix}-ar")
 endif()
 
 
@@ -149,11 +190,14 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env SYSTEM=MINGW64 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
   elseif(ARCH_TRIPLET STREQUAL i686-w64-mingw32)
     set(openssl_system_env SYSTEM=MINGW32 RC=${CMAKE_RC_COMPILER} AR=${ARCH_TRIPLET}-ar RANLIB=${ARCH_TRIPLET}-ranlib)
+  elseif(ANDROID)
+    set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
+    set(openssl_extra_opts no-asm)
   endif()
 endif()
 build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
-    --prefix=${DEPS_DESTDIR} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
+    --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
     no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=-O2 ${flto}"
   INSTALL_COMMAND make install_sw
@@ -197,7 +241,8 @@ endif()
 
 
 
-build_external(sodium)
+build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
+          --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=-O2 ${flto}")
 add_static_target(sodium sodium_external libsodium.a)
 
 build_external(sqlite3)
@@ -208,6 +253,7 @@ if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATC
   set(zmq_patch
     PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-mingw-closesocket.patch)
 endif()
+
 build_external(zmq
   DEPENDS sodium_external
   ${zmq_patch}

@@ -2,7 +2,7 @@
 #define LOKINET_JNI_COMMON_HPP
 
 #include <jni.h>
-#include <util/string_view.hpp>
+#include <string_view>
 #include <functional>
 
 /// visit string as native bytes
@@ -21,7 +21,7 @@ VisitStringAsStringView(JNIEnv* env, jobject str, V visit)
   const size_t length = env->GetArrayLength(stringJbytes);
   jbyte* pBytes = env->GetByteArrayElements(stringJbytes, NULL);
 
-  T result = visit(llarp::string_view((const char*)pBytes, length));
+  T result = visit(std::string_view((const char*)pBytes, length));
 
   env->ReleaseByteArrayElements(stringJbytes, pBytes, JNI_ABORT);
   env->DeleteLocalRef(stringJbytes);

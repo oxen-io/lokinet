@@ -275,7 +275,7 @@ pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-if(WITH_SYSTEMD)
+if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
