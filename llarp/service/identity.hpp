@@ -38,7 +38,7 @@ namespace llarp
 
       /// @param needBackup determines whether existing keys will be cycled
       void
-      EnsureKeys(const std::string& fpath, bool needBackup);
+      EnsureKeys(fs::path fpath, bool needBackup);
 
       bool
       KeyExchange(
