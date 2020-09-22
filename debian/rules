@@ -19,7 +19,7 @@ else
 endif
 
 %:
-	dh $@ --buildsystem=cmake --with-systemd
+	dh $@ --buildsystem=cmake+ninja --with-systemd
 
 ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
     CFLAGS += -O0
