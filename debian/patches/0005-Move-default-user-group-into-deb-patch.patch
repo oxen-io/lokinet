@@ -8,12 +8,12 @@ Rather than cramming it into CXXFLAGS in debian/rules.
  1 file changed, 3 insertions(+)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 680a1af..1826d6b 100644
+index 43cbb03..8e3e883 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -72,6 +72,9 @@ macro_ensure_out_of_source_build("${PROJECT_NAME} requires an out-of-source buil
- 
- include(cmake/unix.cmake)
+@@ -109,6 +109,9 @@ include(cmake/unix.cmake)
+ include(cmake/check_for_std_optional.cmake)
+ include(cmake/check_for_std_filesystem.cmake)
  
 +# Unique user for system lokinet; _loki group is intentionally shared with the loki-core debs.
 +add_definitions(-DDEFAULT_LOKINET_USER=\"_lokinet\" -DDEFAULT_LOKINET_GROUP=\"_loki\")
