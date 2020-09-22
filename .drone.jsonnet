@@ -34,7 +34,9 @@ local deb_pipeline(name, image, buildarch='amd64', debarch='amd64', jobs=6) = {
                 'cd debian',
                 'eatmydata mk-build-deps -i -r --tool="' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y" control',
                 'cd ..',
+                'ccache -s',
                 'eatmydata gbp buildpackage --git-no-pbuilder --git-builder=\'debuild --preserve-envvar=CCACHE_*\' --git-upstream-tag=HEAD -us -uc -j' + jobs,
+                'ccache -s',
                 './debian/ci-upload.sh ' + distro + ' ' + debarch,
             ],
         }
