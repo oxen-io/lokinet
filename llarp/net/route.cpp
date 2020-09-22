@@ -243,7 +243,7 @@ namespace llarp::net
   std::string
   RouteCommand()
   {
-    std::wstring wcmd = get_win_sys_path() + L"\\system32\\route.exe";
+    std::wstring wcmd = get_win_sys_path() + L"\\route.exe";
 
     using convert_type = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_type, wchar_t> converter;
