@@ -221,7 +221,45 @@ namespace llarp::net
   }
 
 #endif
+
+#ifdef _WIN32
+  template <typename Visit>
+  void
+  ForEachWIN32Interface(Visit visit)
+  {
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+    MIB_IPFORWARDTABLE* pIpForwardTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
+    if (pIpForwardTable == nullptr)
+      return;
+
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
+    {
+      FREE(pIpForwardTable);
+      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
+      if (pIpForwardTable == nullptr)
+      {
+        return;
+      }
+    }
+
+    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
+    {
+      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+      {
+        visit(pIpForwardTable->table[i]);
+      }
+    }
+    FREE(pIpForwardTable);
+#undef MALLOC
+#undef FREE
+  }
 #endif
+
   void
   AddRoute(std::string ip, std::string gateway)
   {
@@ -305,8 +343,25 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    Execute("\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
-    Execute("\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " METRIC 2");
+    int ifindex = 0;
+    // find interface index for address
+    ForEachWIN32Interface([&ifindex, ifname](auto interface) {
+      in_addr interface_addr;
+      interface_addr.S_un.S_addr = (u_long)interface.dwForwardNextHop;
+      std::array<char, 128> interface_str{};
+      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      std::string interface_name{interface_str.data()};
+      if (interface_name == ifname)
+      {
+        ifindex = interface.dwForwardIfIndex;
+      }
+    });
+    Execute(
+        "\\system32\\route.exe ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        + std::to_string(ifindex));
+    Execute(
+        "\\system32\\route.exe ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        + std::to_string(ifindex));
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
@@ -371,45 +426,18 @@ namespace llarp::net
 
     return gateways;
 #elif _WIN32
-#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-    MIB_IPFORWARDTABLE* pIpForwardTable;
-    DWORD dwSize = 0;
-    DWORD dwRetVal = 0;
-
-    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
-    if (pIpForwardTable == nullptr)
-      return gateways;
-
-    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
-    {
-      FREE(pIpForwardTable);
-      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
-      if (pIpForwardTable == nullptr)
+    ForEachWIN32Interface([&](auto w32interface) {
+      struct in_addr gateway, interface_addr;
+      gateway.S_un.S_addr = (u_long)w32interface.dwForwardDest;
+      interface_addr.S_un.S_addr = (u_long)w32interface.dwForwardNextHop;
+      std::array<char, 128> interface_str{};
+      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      std::string interface_name{interface_str.data()};
+      if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
-        return gateways;
+        gateways.push_back(std::move(interface_name));
       }
-    }
-
-    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
-    {
-      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
-      {
-        struct in_addr gateway, interface_addr;
-        gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-        interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
-        std::array<char, 128> interface_str{};
-        StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-        std::string interface_name{interface_str.data()};
-        if ((!gateway.S_un.S_addr) and interface_name != ifname)
-        {
-          gateways.push_back(std::move(interface_name));
-        }
-      }
-    }
-    FREE(pIpForwardTable);
-#undef MALLOC
-#undef FREE
+    });
     return gateways;
 #elif __APPLE__
     LogDebug("get gateways not on ", ifname);
