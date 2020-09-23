@@ -43,7 +43,7 @@ local deb_pipeline(name, image, buildarch='amd64', debarch='amd64', jobs=6) = {
 
 [
     deb_pipeline("Debian sid (amd64)", "debian:sid"),
-#    deb_pipeline("Debian sid (i386)", "i386/debian:sid", buildarch='amd64', debarch='i386'),
-#    deb_pipeline("Debian sid (arm64)", "arm64v8/debian:sid", buildarch='arm64', debarch="arm64", jobs=4),
-#    deb_pipeline("Debian sid (armhf)", "arm32v7/debian:sid", buildarch='arm64', debarch="armhf", jobs=4),
+    deb_pipeline("Debian sid (i386)", "i386/debian:sid", buildarch='amd64', debarch='i386'),
+    deb_pipeline("Debian sid (arm64)", "arm64v8/debian:sid", buildarch='arm64', debarch="arm64", jobs=4),
+    deb_pipeline("Debian sid (armhf)", "arm32v7/debian:sid", buildarch='arm64', debarch="armhf", jobs=4),
 ]
