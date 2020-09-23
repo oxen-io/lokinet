@@ -860,7 +860,7 @@ namespace llarp
 
       if (m_peerDb->shouldFlush(now))
       {
-        LogWarn("Queing database flush...");
+        LogDebug("Queing database flush...");
         QueueDiskIO([this]() { m_peerDb->flushDatabase(); });
       }
     }
