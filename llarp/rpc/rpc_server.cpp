@@ -167,7 +167,7 @@ namespace llarp::rpc
                 {
                   endpoint = endpoint_itr->get<std::string>();
                 }
-                LogicCall(r->logic(), [map, exit, range, token, endpoint, r, reply]() {
+                LogicCall(r->logic(), [map, exit, range, token, endpoint, r, reply]() mutable {
                   auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
                   if (ep == nullptr)
                   {
@@ -183,12 +183,18 @@ namespace llarp::rpc
                     }
                     ep->EnsurePathToService(
                         *exit,
-                        [reply, ep](auto, service::OutboundContext* ctx) {
+                        [reply, ep, r](auto, service::OutboundContext* ctx) {
                           if (ctx == nullptr)
                           {
                             reply(CreateJSONError("could not find exit"));
                             return;
                           }
+                          r->ForEachPeer(
+                              [r](auto session, auto) mutable {
+                                const auto ip = session->GetRemoteEndpoint().toIP();
+                                r->routePoker().AddRoute(ip);
+                              },
+                              false);
                           net::AddDefaultRouteViaInterface(ep->GetIfName());
                           reply(CreateJSONResponse("OK"));
                         },
@@ -203,6 +209,13 @@ namespace llarp::rpc
                   else if (not map)
                   {
                     net::DelDefaultRouteViaInterface(ep->GetIfName());
+
+                    r->ForEachPeer(
+                        [r](auto session, auto) mutable {
+                          const auto ip = session->GetRemoteEndpoint().toIP();
+                          r->routePoker().DelRoute(ip);
+                        },
+                        false);
                     ep->UnmapExitRange(range);
                   }
                   reply(CreateJSONResponse("OK"));
