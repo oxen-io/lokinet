@@ -19,7 +19,7 @@ else
 endif
 
 %:
-	dh $@ --buildsystem=cmake+ninja --with-systemd
+	dh $@ --buildsystem=cmake --with-systemd
 
 ifneq (,$(filter noopt,$(DEB_BUILD_OPTIONS)))
     CFLAGS += -O0
@@ -49,4 +49,4 @@ override_dh_installsystemd:
 
 override_dh_auto_test:
 	true
-	#cd obj-${DEB_HOST_GNU_TYPE} && ninja check
+	#cd obj-${DEB_HOST_GNU_TYPE} && make check
