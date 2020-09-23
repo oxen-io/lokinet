@@ -1,6 +1,6 @@
-local distro = "sid";
-local distro_name = 'Debian sid';
-local distro_docker = 'debian:sid';
+local distro = "bionic";
+local distro_name = 'Ubuntu 18.04';
+local distro_docker = 'ubuntu:bionic';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
