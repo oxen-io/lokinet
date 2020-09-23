@@ -223,6 +223,7 @@ namespace llarp::net
   }
 
 #endif
+#endif
 
 #ifdef _WIN32
 
