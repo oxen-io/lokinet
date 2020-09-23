@@ -26,7 +26,7 @@ local deb_pipeline(name, image, buildarch='amd64', debarch='amd64', jobs=6) = {
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
                 'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                'eatmydata ' + apt_get_quiet + ' install -y git-buildpackage devscripts equivs g++ ccache openssh-client',
+                'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git-buildpackage devscripts equivs g++ ccache openssh-client',
                 'eatmydata dpkg-reconfigure ccache',
                 'echo deb https://deb.loki.network' + repo_suffix + ' ' + distro + ' main >/etc/apt/sources.list.d/loki.list',
                 'cp debian/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
