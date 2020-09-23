@@ -42,7 +42,7 @@ public class LokiNetActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		textView = new TextView(this);
 		setContentView(textView);
-		System.loadLibrary("lokinetandroid");
+		System.loadLibrary("lokinet-android");
 	}
 
 

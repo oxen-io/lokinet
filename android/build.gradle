@@ -2,9 +2,10 @@ buildscript {
     repositories {
         mavenCentral()
         jcenter()
+        google()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.3'
+        classpath 'com.android.tools.build:gradle:4.0.1'
     }
 }
 
@@ -16,31 +17,33 @@ repositories {
     maven {
         url 'https://maven.google.com'
     }
+    google()
 }
 
 android {
     compileSdkVersion 28
-    buildToolsVersion "28.0.1"
     defaultConfig {
         applicationId "network.loki.lokinet"
         targetSdkVersion 28
         minSdkVersion 23
         versionCode 1
-        versionName "0.4.0"
-        ndk {
-            abiFilters 'armeabi'             
-        }
+        versionName '0.8.0'
         externalNativeBuild {
             cmake {
-                targets "lokinetandroid"
-                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static", "-DANDROID_ARM_NEON=TRUE", "-DLIBUV_ROOT="  + libuvsrc, "-DANDROID_TOOLCHAIN=clang", "-DANDROID_ARM_MODE=arm"
-                cppFlags "-fexceptions -std=c++14 -frtti"
+                // targets "lokinet-android"
+                arguments "-DWITH_LTO=OFF", "-DCXXOPTS_BUILD_TESTS=OFF","-DWITH_TESTS=OFF", "-DCMAKE_CROSSCOMPILING=ON", "-DNATIVE_BUILD=OFF", "-DANDROID=ON", "-DANDROID_STL=c++_static",  "-DBUILD_STATIC_DEPS=ON", "-DBUILD_SHARED_LIBS=OFF", "-DSTATIC_LINK=ON", "-DDOWNLOAD_UV=FORCE", "-DANDROID_ARM_MODE=arm"
+                cppFlags "-std=c++17"
+                abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+                // abiFilters 'armeabi-v7a'
+                // abiFilters 'arm64-v8a', 'x86_64', 'armeabi-v7a'
             }
         }
-        packagingOptions{
-            doNotStrip "*/armeabi/*.so"
-            doNotStrip "*/armeabi-v7a/*.so"
-            doNotStrip "*/x86/*.so"
+
+
+    }
+    externalNativeBuild {
+        cmake {
+            path "../CMakeLists.txt"
         }
     }
     sourceSets {
@@ -63,12 +66,15 @@ android {
             minifyEnabled true
             //signingConfig signingConfigs.jeff
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
+            debuggable false
+        }
+        debug {
+            // jniDebuggable true
         }
     }
-    externalNativeBuild {
-        cmake {
-            path lokinetCMake
-        }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 

@@ -33,7 +33,6 @@ add_executable(testAll
     routing/llarp_routing_transfer_traffic.cpp
     routing/test_llarp_routing_obtainexitmessage.cpp
     service/test_llarp_service_address.cpp
-    service/test_llarp_service_identity.cpp
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
     util/meta/test_llarp_util_memfn.cpp
@@ -77,6 +76,8 @@ add_executable(catchAll
   service/test_llarp_service_name.cpp
   exit/test_llarp_exit_context.cpp
   iwp/test_iwp_session.cpp
+  service/test_llarp_service_identity.cpp
+  test_util.cpp
   check_main.cpp)
 
 target_link_libraries(catchAll PUBLIC liblokinet Catch2::Catch2)

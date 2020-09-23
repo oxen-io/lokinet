@@ -123,11 +123,12 @@ if(NOT WIN32)
   endif()
 endif()
 
+find_package(PkgConfig REQUIRED)
+
 if(NOT TARGET sodium)
 # Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
   option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
   if(NOT DOWNLOAD_SODIUM STREQUAL "FORCE" AND NOT BUILD_STATIC_DEPS)
-    find_package(PkgConfig REQUIRED)
     pkg_check_modules(SODIUM libsodium>=1.0.18 IMPORTED_TARGET)
   endif()
 
@@ -274,7 +275,7 @@ pkg_check_modules(SD libsystemd)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
 
-if(WITH_SYSTEMD)
+if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()

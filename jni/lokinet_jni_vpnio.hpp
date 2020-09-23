@@ -4,7 +4,7 @@
 #include <llarp.h>
 #include <memory>
 #include <future>
-#include <util/string_view.hpp>
+#include <string_view>
 #include <algorithm>
 #include <jni.h>
 
@@ -56,7 +56,7 @@ namespace lokinet
     }
 
     bool
-    Init(llarp_main* ptr)
+    Init(llarp::Context* ptr)
     {
       if (Ready())
         return false;
@@ -114,14 +114,14 @@ namespace lokinet
     }
 
     void
-    SetIfName(llarp::string_view val)
+    SetIfName(std::string_view val)
     {
       const auto sz = std::min(val.size(), sizeof(info.ifname));
       std::copy_n(val.data(), sz, info.ifname);
     }
 
     void
-    SetIfAddr(llarp::string_view val)
+    SetIfAddr(std::string_view val)
     {
       const auto sz = std::min(val.size(), sizeof(info.ifaddr));
       std::copy_n(val.data(), sz, info.ifaddr);

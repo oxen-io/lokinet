@@ -6,8 +6,10 @@
 #include <unistd.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#ifndef ANDROID
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
+#endif
 #include <net/net.hpp>
 #include <exception>
 #include <charconv>
@@ -23,6 +25,8 @@
 #include <iphlpapi.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <locale>
+#include <codecvt>
 #endif
 
 #include <sstream>
@@ -35,6 +39,7 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
+    LogDebug(cmd);
 #ifdef _WIN32
     system(cmd.c_str());
 #else
@@ -76,6 +81,7 @@ namespace llarp::net
 #endif
 
 #ifdef __linux__
+#ifndef ANDROID
   struct NLSocket
   {
     NLSocket() : fd(socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -217,12 +223,77 @@ namespace llarp::net
   }
 
 #endif
+#endif
+
+#ifdef _WIN32
+
+  std::wstring
+  get_win_sys_path()
+  {
+    wchar_t win_sys_path[MAX_PATH] = {0};
+    const wchar_t* default_sys_path = L"C:\\Windows\\system32";
+
+    if (!GetSystemDirectoryW(win_sys_path, _countof(win_sys_path)))
+    {
+      wcsncpy(win_sys_path, default_sys_path, _countof(win_sys_path));
+      win_sys_path[_countof(win_sys_path) - 1] = L'\0';
+    }
+    return win_sys_path;
+  }
+
+  std::string
+  RouteCommand()
+  {
+    std::wstring wcmd = get_win_sys_path() + L"\\route.exe";
+
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wcmd);
+  }
+
+  template <typename Visit>
+  void
+  ForEachWIN32Interface(Visit visit)
+  {
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+    MIB_IPFORWARDTABLE* pIpForwardTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+
+    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
+    if (pIpForwardTable == nullptr)
+      return;
+
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
+    {
+      FREE(pIpForwardTable);
+      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
+      if (pIpForwardTable == nullptr)
+      {
+        return;
+      }
+    }
+
+    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
+    {
+      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
+      {
+        visit(&pIpForwardTable->table[i]);
+      }
+    }
+    FREE(pIpForwardTable);
+#undef MALLOC
+#undef FREE
+  }
+#endif
 
   void
   AddRoute(std::string ip, std::string gateway)
   {
     LogInfo("Add route: ", ip, " via ", gateway);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
@@ -233,10 +304,11 @@ namespace llarp::net
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "route ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
+    ss << RouteCommand() << " ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #else
@@ -251,6 +323,7 @@ namespace llarp::net
   {
     LogInfo("Delete route: ", ip, " via ", gateway);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 0;
     int if_idx = 0;
@@ -261,10 +334,11 @@ namespace llarp::net
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #else
     std::stringstream ss;
 #if _WIN32
-    ss << "route DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
+    ss << RouteCommand() << " DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #else
@@ -279,6 +353,7 @@ namespace llarp::net
   {
     LogInfo("Add default route via ", ifname);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
@@ -292,10 +367,28 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #elif _WIN32
     ifname.back()++;
-    Execute("route ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("route ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    int ifindex = 0;
+    // find interface index for address
+    ForEachWIN32Interface([&ifindex, ifname = ifname](auto w32interface) {
+      in_addr interface_addr;
+      interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
+      std::array<char, 128> interface_str{};
+      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      std::string interface_name{interface_str.data()};
+      if (interface_name == ifname)
+      {
+        ifindex = w32interface->dwForwardIfIndex;
+      }
+    });
+    Execute(
+        RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        + std::to_string(ifindex));
+    Execute(
+        RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
+        + std::to_string(ifindex));
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
@@ -309,6 +402,7 @@ namespace llarp::net
   {
     LogInfo("Remove default route via ", ifname);
 #ifdef __linux__
+#ifndef ANDROID
     NLSocket sock;
     int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
@@ -322,10 +416,11 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+#endif
 #elif _WIN32
     ifname.back()++;
-    Execute("route DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
-    Execute("route DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
@@ -358,45 +453,18 @@ namespace llarp::net
 
     return gateways;
 #elif _WIN32
-#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-    MIB_IPFORWARDTABLE* pIpForwardTable;
-    DWORD dwSize = 0;
-    DWORD dwRetVal = 0;
-
-    pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(sizeof(MIB_IPFORWARDTABLE));
-    if (pIpForwardTable == nullptr)
-      return gateways;
-
-    if (GetIpForwardTable(pIpForwardTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER)
-    {
-      FREE(pIpForwardTable);
-      pIpForwardTable = (MIB_IPFORWARDTABLE*)MALLOC(dwSize);
-      if (pIpForwardTable == nullptr)
+    ForEachWIN32Interface([&](auto w32interface) {
+      struct in_addr gateway, interface_addr;
+      gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
+      interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
+      std::array<char, 128> interface_str{};
+      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
+      std::string interface_name{interface_str.data()};
+      if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
-        return gateways;
+        gateways.push_back(std::move(interface_name));
       }
-    }
-
-    if ((dwRetVal = GetIpForwardTable(pIpForwardTable, &dwSize, 0)) == NO_ERROR)
-    {
-      for (int i = 0; i < (int)pIpForwardTable->dwNumEntries; i++)
-      {
-        struct in_addr gateway, interface_addr;
-        gateway.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardDest;
-        interface_addr.S_un.S_addr = (u_long)pIpForwardTable->table[i].dwForwardNextHop;
-        std::array<char, 128> interface_str{};
-        StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-        std::string interface_name{interface_str.data()};
-        if ((!gateway.S_un.S_addr) and interface_name != ifname)
-        {
-          gateways.push_back(std::move(interface_name));
-        }
-      }
-    }
-    FREE(pIpForwardTable);
-#undef MALLOC
-#undef FREE
+    });
     return gateways;
 #elif __APPLE__
     LogDebug("get gateways not on ", ifname);

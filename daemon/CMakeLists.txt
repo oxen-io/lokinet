@@ -35,7 +35,10 @@ else()
     endif()
 
     if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-        install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+        option(WITH_SETCAP "Enables setcap'ing the lokinet binary with the required capabilities during installation (requires root)" ON)
+        if(WITH_SETCAP)
+            install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+        endif()
     endif()
     
 endif()
