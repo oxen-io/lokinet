@@ -1,3 +1,9 @@
+lokinet (0.8.0~pre1-1~deb10) bionic; urgency=medium
+
+  * Buster deb.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 23 Sep 2020 16:51:57 -0300
+
 lokinet (0.8.0~pre1-1) unstable; urgency=medium
 
   * dev snapshot build.
