@@ -1,6 +1,6 @@
-local distro = "sid";
-local distro_name = 'Debian sid';
-local distro_docker = 'debian:sid';
+local distro = "groovy";
+local distro_name = 'Ubuntu 20.10';
+local distro_docker = 'ubuntu:groovy';
 
 local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
 
