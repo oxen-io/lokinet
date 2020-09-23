@@ -9,7 +9,7 @@ local repo_suffix = '/staging'; // can be /beta or /staging for non-primary repo
 local submodules = {
     name: 'submodules',
     image: 'drone/git',
-    commands: ['git fetch --tags', 'git submodule update --init --recursive']
+    commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1']
 };
 
 local deb_pipeline(image, buildarch='amd64', debarch='amd64', jobs=6) = {
