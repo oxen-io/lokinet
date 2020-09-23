@@ -80,7 +80,7 @@ namespace llarp
       }
     }
 
-    LogInfo("Updating ", staleStats.size(), " stats");
+    LogDebug("Updating ", staleStats.size(), " stats");
 
     {
       auto guard = m_storage->transaction_guard();
@@ -96,7 +96,7 @@ namespace llarp
     auto end = time_now_ms();
 
     auto elapsed = end - start;
-    LogInfo("PeerDb flush took about ", elapsed, " seconds");
+    LogDebug("PeerDb flush took about ", elapsed, " seconds");
 
     m_lastFlush.store(end);
   }
