@@ -765,6 +765,12 @@ namespace llarp
     };
 
     bool
+    Endpoint::HasExit() const
+    {
+      return not m_ExitMap.Empty();
+    }
+
+    bool
     Endpoint::LookupNameAsync(std::string name, std::function<void(std::optional<Address>)> handler)
     {
       auto& cache = m_state->nameCache;

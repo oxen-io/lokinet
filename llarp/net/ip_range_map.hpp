@@ -33,6 +33,12 @@ namespace llarp
       }
 
       bool
+      Empty() const
+      {
+        return m_Entries.empty();
+      }
+
+      bool
       ContainsValue(const Value_t& val) const
       {
         for (const auto& entry : m_Entries)

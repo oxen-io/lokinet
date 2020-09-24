@@ -23,6 +23,7 @@
 #include <router/outbound_session_maker.hpp>
 #include <router/rc_gossiper.hpp>
 #include <router/rc_lookup_handler.hpp>
+#include <router/route_poker.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
 #include <rpc/lokid_rpc_client.hpp>
@@ -260,17 +261,13 @@ namespace llarp
       */
     }
 
-    std::string
-    GetDefaultGateway() const;
+    RoutePoker&
+    routePoker() override
+    {
+      return m_RoutePoker;
+    }
 
-    void
-    AddRoute(std::string ip);
-
-    void
-    DelRoute(std::string ip);
-
-    std::unordered_map<std::string, std::string> m_PokedRoutes;
-    std::string m_CurrentGateway;
+    RoutePoker m_RoutePoker;
 
     void
     PumpLL() override;
@@ -402,6 +399,10 @@ namespace llarp
 
     bool
     SaveRC();
+
+    /// return true if we are a client with an exit configured
+    bool
+    HasClientExit() const;
 
     const byte_t*
     pubkey() const override
