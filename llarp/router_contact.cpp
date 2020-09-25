@@ -100,6 +100,9 @@ namespace llarp
       if (not buf->writef("e"))
         return false;
 
+      buf->sz = buf->cur - buf->base;
+      buf->cur = buf->base;
+
       return true;
     }
 
