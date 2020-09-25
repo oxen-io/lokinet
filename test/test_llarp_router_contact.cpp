@@ -53,6 +53,9 @@ TEST_CASE("RouterContact Decode Version 1", "[RC][RouterContact][V1]")
 
   rc.BEncode(&encoded_llarp);
 
+  encoded_llarp.sz = encoded_llarp.cur - encoded_llarp.base;
+  encoded_llarp.cur = encoded_llarp.base;
+
   RouterContact decoded_rc;
 
   REQUIRE(decoded_rc.BDecode(&encoded_llarp));

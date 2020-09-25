@@ -100,9 +100,6 @@ namespace llarp
       if (not buf->writef("e"))
         return false;
 
-      buf->sz = buf->cur - buf->base;
-      buf->cur = buf->base;
-
       return true;
     }
 
@@ -227,11 +224,11 @@ namespace llarp
   {
     Clear();
 
-    if ((*buf)[0] == 'd') // old format
+    if (*buf->cur == 'd') // old format
     {
       return DecodeVersion_0(buf);
     }
-    else if ((*buf)[0] != 'l') // if not dict, should be new format and start with list
+    else if (*buf->cur != 'l') // if not dict, should be new format and start with list
     {
       return false;
     }
@@ -239,14 +236,25 @@ namespace llarp
 
     try
     {
-      lokimq::bt_list_consumer btlist(std::string_view(reinterpret_cast<char*>(buf->base), buf->sz));
+      std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->sz);
+      lokimq::bt_list_consumer btlist(buf_view);
 
       uint64_t outer_version = btlist.consume_integer<uint64_t>();
 
       if (outer_version == 1)
-        return DecodeVersion_1(std::move(btlist));
+      {
+        bool decode_result = DecodeVersion_1(btlist);
+
+        // advance the llarp_buffer_t since lokimq serialization is unaware of it.
+        buf->cur += btlist.current_buffer().data() - buf_view.data() + 1;
+
+        return decode_result;
+      }
       else
+      {
         llarp::LogWarn("Received RouterContact with unkown version (", outer_version, ")");
+        return false;
+      }
     }
     catch (const std::exception& e)
     {
@@ -259,12 +267,12 @@ namespace llarp
   bool
   RouterContact::DecodeVersion_0(llarp_buffer_t* buf)
   {
-    signed_bt_dict = std::string(reinterpret_cast<char *>(buf->base), buf->sz);
+    signed_bt_dict = std::string(reinterpret_cast<char *>(buf->cur), buf->sz);
     return bencode_decode_dict(*this, buf);
   }
 
   bool
-  RouterContact::DecodeVersion_1(lokimq::bt_list_consumer btlist)
+  RouterContact::DecodeVersion_1(lokimq::bt_list_consumer& btlist)
   {
     auto signature_string = btlist.consume_string_view();
     signed_bt_dict = btlist.consume_dict_data();

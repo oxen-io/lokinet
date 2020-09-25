@@ -229,7 +229,7 @@ namespace llarp
     DecodeVersion_0(llarp_buffer_t* buf);
 
     bool
-    DecodeVersion_1(lokimq::bt_list_consumer btlist);
+    DecodeVersion_1(lokimq::bt_list_consumer& btlist);
   };
 
   inline std::ostream&
