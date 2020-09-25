@@ -192,7 +192,7 @@ namespace llarp
       obj["identity"] = m_Identity.pub.Addr().ToString();
 
       util::StatusObject authCodes;
-      for(const auto & [service, info] : m_RemoteAuthInfos)
+      for (const auto& [service, info] : m_RemoteAuthInfos)
       {
         authCodes[service.ToString()] = info.token;
       }
