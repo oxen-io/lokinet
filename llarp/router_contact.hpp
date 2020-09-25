@@ -17,6 +17,11 @@
 #define MAX_RC_SIZE (1024)
 #define NICKLEN (32)
 
+namespace lokimq
+{
+  struct bt_list_consumer;
+} // namespace lokimq (forward declarations)
+
 namespace llarp
 {
   /// NetID
@@ -107,6 +112,8 @@ namespace llarp
     /// should we serialize the exit info?
     const static bool serializeExit = true;
 
+    std::string signed_bt_dict;
+
     util::StatusObject
     ExtractStatus() const;
 
@@ -124,6 +131,9 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    BEncodeSignedSection(llarp_buffer_t* buf) const;
 
     bool
     operator==(const RouterContact& other) const
@@ -155,11 +165,7 @@ namespace llarp
     }
 
     bool
-    BDecode(llarp_buffer_t* buf)
-    {
-      Clear();
-      return bencode_decode_dict(*this, buf);
-    }
+    BDecode(llarp_buffer_t* buf);
 
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf);
@@ -215,6 +221,15 @@ namespace llarp
 
     bool
     VerifySignature() const;
+
+
+    private:
+
+    bool
+    DecodeVersion_0(llarp_buffer_t* buf);
+
+    bool
+    DecodeVersion_1(lokimq::bt_list_consumer& btlist);
   };
 
   inline std::ostream&

@@ -10,6 +10,8 @@
 #include <util/printer.hpp>
 #include <util/time.hpp>
 
+#include <lokimq/bt_serialize.h>
+
 #include <fstream>
 #include <util/fs.hpp>
 
@@ -84,6 +86,29 @@ namespace llarp
   bool
   RouterContact::BEncode(llarp_buffer_t* buf) const
   {
+    if (version == 0)
+      return BEncodeSignedSection(buf);
+    else if (version == 1)
+    {
+      //TODO: heapless serialization for this in lokimq's bt serialization.
+      if (not buf->writef("li1e%lu:", signature.size()))
+        return false;
+      if (not buf->write(signature.begin(), signature.end()))
+        return false;
+      if (not buf->write(signed_bt_dict.begin(), signed_bt_dict.end()))
+        return false;
+      if (not buf->writef("e"))
+        return false;
+
+      return true;
+    }
+
+    return false;
+  }
+
+  bool
+  RouterContact::BEncodeSignedSection(llarp_buffer_t* buf) const
+  {
     /* write dict begin */
     if (!bencode_start_dict(buf))
       return false;
@@ -150,11 +175,16 @@ namespace llarp
       if (!BEncodeWriteList(exits.begin(), exits.end(), buf))
         return false;
     }
-    /* write signature */
-    if (!bencode_write_bytestring(buf, "z", 1))
-      return false;
-    if (!signature.BEncode(buf))
-      return false;
+
+    if (version == 0)
+    {
+      /* write signature */
+      if (!bencode_write_bytestring(buf, "z", 1))
+        return false;
+      if (!signature.BEncode(buf))
+        return false;
+    }
+
     return bencode_end(buf);
   }
 
@@ -187,6 +217,81 @@ namespace llarp
       obj["routerVersion"] = routerVersion->ToString();
     }
     return obj;
+  }
+
+  bool
+  RouterContact::BDecode(llarp_buffer_t* buf)
+  {
+    Clear();
+
+    if (*buf->cur == 'd') // old format
+    {
+      return DecodeVersion_0(buf);
+    }
+    else if (*buf->cur != 'l') // if not dict, should be new format and start with list
+    {
+      return false;
+    }
+
+
+    try
+    {
+      std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->sz);
+      lokimq::bt_list_consumer btlist(buf_view);
+
+      uint64_t outer_version = btlist.consume_integer<uint64_t>();
+
+      if (outer_version == 1)
+      {
+        bool decode_result = DecodeVersion_1(btlist);
+
+        // advance the llarp_buffer_t since lokimq serialization is unaware of it.
+        buf->cur += btlist.current_buffer().data() - buf_view.data() + 1;
+
+        return decode_result;
+      }
+      else
+      {
+        llarp::LogWarn("Received RouterContact with unkown version (", outer_version, ")");
+        return false;
+      }
+    }
+    catch (const std::exception& e)
+    {
+      llarp::LogDebug("RouterContact::BDecode failed, reason: ", e.what());
+    }
+
+    return false;
+  }
+
+  bool
+  RouterContact::DecodeVersion_0(llarp_buffer_t* buf)
+  {
+    signed_bt_dict = std::string(reinterpret_cast<char *>(buf->cur), buf->sz);
+    return bencode_decode_dict(*this, buf);
+  }
+
+  bool
+  RouterContact::DecodeVersion_1(lokimq::bt_list_consumer& btlist)
+  {
+    auto signature_string = btlist.consume_string_view();
+    signed_bt_dict = btlist.consume_dict_data();
+
+    if (not btlist.is_finished())
+    {
+      llarp::LogDebug("RouterContact serialized list too long for specified version.");
+      return false;
+    }
+
+    llarp_buffer_t sigbuf(signature_string.data(), signature_string.size());
+    if (not signature.FromBytestring(&sigbuf))
+    {
+      llarp::LogDebug("RouterContact serialized signature had invalid length.");
+      return false;
+    }
+
+    llarp_buffer_t data_dict_buf(signed_bt_dict.data(), signed_bt_dict.size());
+    return bencode_decode_dict(*this, &data_dict_buf);
   }
 
   bool
@@ -311,13 +416,22 @@ namespace llarp
     llarp_buffer_t buf(tmp);
     signature.Zero();
     last_updated = time_now_ms();
-    if (!BEncode(&buf))
+
+    if (!BEncodeSignedSection(&buf))
     {
       return false;
     }
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
-    return CryptoManager::instance()->sign(signature, secretkey, buf);
+
+    signed_bt_dict = std::string(reinterpret_cast<char *>(buf.base), buf.sz);
+
+    if (version == 0 or version == 1)
+    {
+      return CryptoManager::instance()->sign(signature, secretkey, buf);
+    }
+
+    return false;
   }
 
   bool
@@ -357,19 +471,30 @@ namespace llarp
   bool
   RouterContact::VerifySignature() const
   {
-    RouterContact copy;
-    copy = *this;
-    copy.signature.Zero();
-    std::array<byte_t, MAX_RC_SIZE> tmp;
-    llarp_buffer_t buf(tmp);
-    if (!copy.BEncode(&buf))
+    if (version == 0)
     {
-      llarp::LogError("bencode failed");
-      return false;
+      RouterContact copy;
+      copy = *this;
+      copy.signature.Zero();
+      std::array<byte_t, MAX_RC_SIZE> tmp;
+      llarp_buffer_t buf(tmp);
+      if (!copy.BEncode(&buf))
+      {
+        llarp::LogError("bencode failed");
+        return false;
+      }
+      buf.sz = buf.cur - buf.base;
+      buf.cur = buf.base;
+      return CryptoManager::instance()->verify(pubkey, buf, signature);
     }
-    buf.sz = buf.cur - buf.base;
-    buf.cur = buf.base;
-    return CryptoManager::instance()->verify(pubkey, buf, signature);
+    /* else */
+    if (version == 1)
+    {
+      llarp_buffer_t buf(signed_bt_dict);
+      return CryptoManager::instance()->verify(pubkey, buf, signature);
+    }
+
+    return false;
   }
 
   bool
