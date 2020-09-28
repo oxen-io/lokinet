@@ -20,7 +20,7 @@
 namespace lokimq
 {
   struct bt_list_consumer;
-} // namespace lokimq (forward declarations)
+}  // namespace lokimq
 
 namespace llarp
 {
@@ -222,9 +222,7 @@ namespace llarp
     bool
     VerifySignature() const;
 
-
-    private:
-
+   private:
     bool
     DecodeVersion_0(llarp_buffer_t* buf);
 
