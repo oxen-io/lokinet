@@ -3,7 +3,7 @@
 requires:
 
 * python3.7 or higher
-* pysodium
+* pynacl
 
 usage:
 

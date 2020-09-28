@@ -6,7 +6,7 @@ keygen tool for lokinet
 from argparse import ArgumentParser as AP
 from base64 import b32encode
 
-import pysodium
+from nacl.signing import SigningKey
 
 def base32z(data):
     """ base32 z encode """
@@ -23,12 +23,13 @@ def main():
     argparser = AP()
     argparser.add_argument('--keyfile', type=str, required=True, help='place to put generated keys')
     args = argparser.parse_args()
-    keys = pysodium.crypto_sign_keypair()
+    secret = SigningKey.generate()
     with open(args.keyfile, 'wb') as wfile:
-        wfile.write('d1:s{}:'.format(len(keys[1])).encode('ascii'))
-        wfile.write(keys[1])
+        wfile.write(b'd1:s64:')
+        wfile.write(secret.encode())
+        wfile.write(secret.verify_key.encode())
         wfile.write(b'e')
-    print("{}.loki".format(base32z(keys[0])))
+    print("{}.loki".format(base32z(secret.verify_key.encode())))
 
 if __name__ == '__main__':
     main()
