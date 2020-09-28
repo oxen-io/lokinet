@@ -72,6 +72,9 @@ namespace llarp
       {
         AddRoute(ip);
       }
+
+      const auto ep = router.hiddenServiceContext().GetDefault();
+      net::AddDefaultRouteViaInterface(ep->GetIfName());
     }
   }
 }  // namespace llarp
