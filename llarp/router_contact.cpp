@@ -90,7 +90,7 @@ namespace llarp
       return BEncodeSignedSection(buf);
     else if (version == 1)
     {
-      //TODO: heapless serialization for this in lokimq's bt serialization.
+      // TODO: heapless serialization for this in lokimq's bt serialization.
       if (not buf->writef("li1e%lu:", signature.size()))
         return false;
       if (not buf->write(signature.begin(), signature.end()))
@@ -224,15 +224,14 @@ namespace llarp
   {
     Clear();
 
-    if (*buf->cur == 'd') // old format
+    if (*buf->cur == 'd')  // old format
     {
       return DecodeVersion_0(buf);
     }
-    else if (*buf->cur != 'l') // if not dict, should be new format and start with list
+    else if (*buf->cur != 'l')  // if not dict, should be new format and start with list
     {
       return false;
     }
-
 
     try
     {
@@ -267,7 +266,7 @@ namespace llarp
   bool
   RouterContact::DecodeVersion_0(llarp_buffer_t* buf)
   {
-    signed_bt_dict = std::string(reinterpret_cast<char *>(buf->cur), buf->sz);
+    signed_bt_dict = std::string(reinterpret_cast<char*>(buf->cur), buf->sz);
     return bencode_decode_dict(*this, buf);
   }
 
@@ -424,7 +423,7 @@ namespace llarp
     buf.sz = buf.cur - buf.base;
     buf.cur = buf.base;
 
-    signed_bt_dict = std::string(reinterpret_cast<char *>(buf.base), buf.sz);
+    signed_bt_dict = std::string(reinterpret_cast<char*>(buf.base), buf.sz);
 
     if (version == 0 or version == 1)
     {

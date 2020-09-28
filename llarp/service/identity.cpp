@@ -13,15 +13,9 @@ namespace llarp
     {
       if (!bencode_start_dict(buf))
         return false;
-      if (!BEncodeWriteDictEntry("e", enckey, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("q", pq, buf))
-        return false;
       if (!BEncodeWriteDictEntry("s", signkey, buf))
         return false;
       if (!BEncodeWriteDictInt("v", version, buf))
-        return false;
-      if (!BEncodeWriteDictEntry("x", vanity, buf))
         return false;
       return bencode_end(buf);
     }
@@ -30,28 +24,21 @@ namespace llarp
     Identity::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
-      if (!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
-        return false;
-      if (key == "q")
-      {
-        llarp_buffer_t str;
-        if (!bencode_read_string(buf, &str))
-          return false;
-        if (str.sz == 3200 || str.sz == 2818)
-        {
-          pq = str.base;
-          return true;
-        }
-
-        return false;
-      }
       if (!BEncodeMaybeReadDictEntry("s", signkey, read, key, buf))
         return false;
       if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
-      if (!BEncodeMaybeReadDictEntry("x", vanity, read, key, buf))
-        return false;
       return read;
+    }
+
+    void
+    Identity::Clear()
+    {
+      signkey.Zero();
+      enckey.Zero();
+      pq.Zero();
+      derivedSignKey.Zero();
+      vanity.Zero();
     }
 
     void
@@ -64,7 +51,7 @@ namespace llarp
       crypto->pqe_keygen(pq);
       if (not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
       {
-        LogError("failed to generate derived key");
+        throw std::runtime_error("failed to derive subkey");
       }
     }
 
@@ -87,6 +74,9 @@ namespace llarp
     void
     Identity::EnsureKeys(fs::path fname, bool needBackup)
     {
+      // make sure we are empty
+      Clear();
+
       std::array<byte_t, 4096> tmp;
       llarp_buffer_t buf(tmp);
 
@@ -137,12 +127,21 @@ namespace llarp
       if (!bencode_decode_dict(*this, &buf))
         throw std::length_error("could not decode service identity");
 
+      auto crypto = CryptoManager::instance();
+
+      // ensure that the encryption key is set
+      if (enckey.IsZero())
+        crypto->encryption_keygen(enckey);
+
+      // also ensure the ntru key is set
+      if (pq.IsZero())
+        crypto->pqe_keygen(pq);
+
       std::optional<VanityNonce> van;
       if (!vanity.IsZero())
         van = vanity;
       // update pubkeys
       pub.Update(seckey_topublic(signkey), seckey_topublic(enckey), van);
-      auto crypto = CryptoManager::instance();
       if (not crypto->derive_subkey_private(derivedSignKey, signkey, 1))
       {
         throw std::runtime_error("failed to derive subkey");
