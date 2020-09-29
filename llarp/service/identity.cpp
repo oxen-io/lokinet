@@ -28,7 +28,7 @@ namespace llarp
         return false;
       if (!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
-      if(not read)
+      if (not read)
         return bencode_discard(buf);
       return true;
     }
