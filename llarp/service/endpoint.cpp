@@ -190,6 +190,14 @@ namespace llarp
       auto obj = path::Builder::ExtractStatus();
       obj["exitMap"] = m_ExitMap.ExtractStatus();
       obj["identity"] = m_Identity.pub.Addr().ToString();
+
+      util::StatusObject authCodes;
+      for (const auto& [service, info] : m_RemoteAuthInfos)
+      {
+        authCodes[service.ToString()] = info.token;
+      }
+      obj["authCodes"] = authCodes;
+
       return m_state->ExtractStatus(obj);
     }
 

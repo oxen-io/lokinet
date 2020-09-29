@@ -19,7 +19,7 @@
 
 namespace lokimq
 {
-  struct bt_list_consumer;
+  class bt_list_consumer;
 }  // namespace lokimq
 
 namespace llarp
