@@ -91,7 +91,7 @@ namespace llarp
     else if (version == 1)
     {
       // TODO: heapless serialization for this in lokimq's bt serialization.
-      if (not buf->writef("li1e%lu:", signature.size()))
+      if (not buf->writef("li1e%zu:", signature.size()))
         return false;
       if (not buf->write(signature.begin(), signature.end()))
         return false;
