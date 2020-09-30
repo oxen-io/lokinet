@@ -154,6 +154,14 @@ namespace llarp
     return m_ipAddress;
   }
 
+  huint32_t
+  IpAddress::toIP() const
+  {
+    huint32_t ip;
+    ip.FromString(toHost());
+    return ip;
+  }
+
   bool
   IpAddress::operator<(const IpAddress& other) const
   {

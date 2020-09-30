@@ -15,11 +15,11 @@ endif()
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME}
-    VERSION 0.7.1
+    VERSION 0.8.0
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
-set(RELEASE_MOTTO "I'll remember that..." CACHE STRING "Release motto")
+set(RELEASE_MOTTO "Proof of soon" CACHE STRING "Release motto")
 
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})

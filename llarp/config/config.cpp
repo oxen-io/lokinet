@@ -559,7 +559,7 @@ namespace llarp
   }
 
   void
-  Config::Save() const
+  Config::Save()
   {
     m_Parser.Save();
   }

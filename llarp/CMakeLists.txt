@@ -175,6 +175,7 @@ add_library(liblokinet
   router/rc_lookup_handler.cpp
   router/rc_gossiper.cpp
   router/router.cpp
+  router/route_poker.cpp
   router_contact.cpp
   router_id.cpp
   router_version.cpp

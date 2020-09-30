@@ -171,7 +171,7 @@ namespace llarp
   }
 
   void
-  ConfigParser::Save() const
+  ConfigParser::Save()
   {
     // if we have no overrides keep the config the same on disk
     if (m_Overrides.empty())
@@ -189,6 +189,7 @@ namespace llarp
         ofs << key << "=" << value << std::endl;
       }
     }
+    m_Overrides.clear();
   }
 
 }  // namespace llarp
