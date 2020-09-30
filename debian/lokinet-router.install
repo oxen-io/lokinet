@@ -1,1 +1,1 @@
-debian/ufw/lokinet /etc/ufw/applications.d
+debian/ufw/lokinet-router /etc/ufw/applications.d
