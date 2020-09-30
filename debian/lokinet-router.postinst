@@ -23,12 +23,15 @@ if [ "$1" = configure ]; then
     fi
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
-    /usr/bin/lokinet -r $tmpdir/lokinet.ini
+    /usr/bin/lokinet -r -g $tmpdir/lokinet.ini
     perl -pi -e "
         s#$tmpdir#$datadir#;
-        s#$datadir/bootstrap.signed#/var/lib/lokinet/bootstrap.signed#;
+        if (/^\[bootstrap/ ... /^\[/) {
+            s{^#?add-node=.*}{add-node=/var/lib/lokinet/bootstrap.signed};
+        }
         if (/^\[lokid/ ... /^\[/) {
-            s#enabled=false#enabled=true#;
+            s{^#?enabled=.*}{enabled=1};
+            s{^#?rpc=.*}{rpc=ipc:///var/lib/loki/lokid.sock};
         }" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
@@ -36,13 +39,18 @@ if [ "$1" = configure ]; then
     ucfr lokinet /etc/loki/lokinet-router.ini
 
     tmpdir=$(mktemp --tmpdir -d lokinet.XXXXXXXXXX)
-    /usr/bin/lokinet -r $tmpdir/lokinet.ini
+    /usr/bin/lokinet -r -g $tmpdir/lokinet.ini
     perl -pi -e "
         s#$tmpdir#$tn_datadir#;
-        s#$tn_datadir/bootstrap.signed#/var/lib/lokinet/testnet/bootstrap.signed#;
+        if (/^\[bootstrap/ ... /^\[/) {
+            s{^#?add-node=.*}{add-node=/var/lib/lokinet/testnet/bootstrap.signed};
+        }
+        if (/^\[router/ ... /^\[/) {
+            s{^#?netid=.*}{netid=gamma};
+        }
         if (/^\[lokid/ ... /^\[/) {
-            s#enabled=false#enabled=true#;
-            s#jsonrpc=127\.0\.0\.1:22023#jsonrpc=127.0.0.1:38157#;
+            s{^#?enabled=.*}{enabled=1};
+            s{^#?rpc=.*}{rpc=ipc:///var/lib/loki/testnet/lokid.sock};
         }" $tmpdir/lokinet.ini
     chmod 640 $tmpdir/lokinet.ini
     chgrp _loki $tmpdir/lokinet.ini
