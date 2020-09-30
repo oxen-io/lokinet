@@ -31,10 +31,14 @@ namespace llarp
   namespace handlers
   {
     void
-    TunEndpoint::FlushToUser(std::function<bool(net::IPPacket&)> send)
+    TunEndpoint::FlushToUser(std::function<bool(const net::IPPacket&)> send)
     {
       // flush network to user
-      m_NetworkToUserPktQueue.Process(send);
+      while (not m_NetworkToUserPktQueue.empty())
+      {
+        send(m_NetworkToUserPktQueue.top().pkt);
+        m_NetworkToUserPktQueue.pop();
+      }
     }
 
     bool
@@ -54,7 +58,6 @@ namespace llarp
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent, bool lazyVPN)
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
-        , m_NetworkToUserPktQueue("endpoint_recvq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
@@ -221,13 +224,6 @@ namespace llarp
     TunEndpoint::HasLocalIP(const huint128_t& ip) const
     {
       return m_IPToAddr.find(ip) != m_IPToAddr.end();
-    }
-
-    bool
-    TunEndpoint::QueueOutboundTraffic(llarp::net::IPPacket&& pkt)
-    {
-      return m_NetworkToUserPktQueue.EmplaceIf(
-          [](llarp::net::IPPacket&) -> bool { return true; }, std::move(pkt));
     }
 
     void
@@ -669,7 +665,7 @@ namespace llarp
         llarp::LogInfo(Name(), " got vpn interface");
         auto self = shared_from_this();
         // function to queue a packet to send to vpn interface
-        auto sendpkt = [self](net::IPPacket& pkt) -> bool {
+        auto sendpkt = [self](const net::IPPacket& pkt) -> bool {
           // drop if no endpoint
           auto impl = self->GetVPNImpl();
           // drop if no vpn interface
@@ -860,7 +856,7 @@ namespace llarp
             const auto icmp = pkt.MakeICMPUnreachable();
             if (icmp.has_value())
             {
-              HandleWriteIPPacket(icmp->ConstBuffer(), dst, src);
+              HandleWriteIPPacket(icmp->ConstBuffer(), dst, src, 0);
             }
           }
           else
@@ -927,7 +923,10 @@ namespace llarp
 
     bool
     TunEndpoint::HandleInboundPacket(
-        const service::ConvoTag tag, const llarp_buffer_t& buf, service::ProtocolType t)
+        const service::ConvoTag tag,
+        const llarp_buffer_t& buf,
+        service::ProtocolType t,
+        uint64_t seqno)
     {
       if (t != service::eProtocolTrafficV4 && t != service::eProtocolTrafficV6
           && t != service::eProtocolExit)
@@ -972,28 +971,31 @@ namespace llarp
         src = ObtainIPForAddr(addr, snode);
         dst = m_OurIP;
       }
-      HandleWriteIPPacket(buf, src, dst);
+      HandleWriteIPPacket(buf, src, dst, seqno);
       return true;
     }
 
     bool
-    TunEndpoint::HandleWriteIPPacket(const llarp_buffer_t& b, huint128_t src, huint128_t dst)
+    TunEndpoint::HandleWriteIPPacket(
+        const llarp_buffer_t& b, huint128_t src, huint128_t dst, uint64_t seqno)
     {
       ManagedBuffer buf(b);
-      return m_NetworkToUserPktQueue.EmplaceIf([buf, src, dst](net::IPPacket& pkt) -> bool {
-        // load
-        if (!pkt.Load(buf))
-          return false;
-        if (pkt.IsV4())
-        {
-          pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(dst)));
-        }
-        else if (pkt.IsV6())
-        {
-          pkt.UpdateIPv6Address(src, dst);
-        }
-        return true;
-      });
+      WritePacket write;
+      write.seqno = seqno;
+      auto& pkt = write.pkt;
+      // load
+      if (!pkt.Load(buf))
+        return false;
+      if (pkt.IsV4())
+      {
+        pkt.UpdateIPv4Address(xhtonl(net::TruncateV6(src)), xhtonl(net::TruncateV6(dst)));
+      }
+      else if (pkt.IsV6())
+      {
+        pkt.UpdateIPv6Address(src, dst);
+      }
+      m_NetworkToUserPktQueue.push(std::move(write));
+      return true;
     }
 
     huint128_t
@@ -1097,8 +1099,8 @@ namespace llarp
       // called in the isolated network thread
       auto* self = static_cast<TunEndpoint*>(tun->user);
       self->Flush();
-      self->FlushToUser([self, tun](net::IPPacket& pkt) -> bool {
-        if (not llarp_ev_tun_async_write(tun, pkt.Buffer()))
+      self->FlushToUser([self, tun](const net::IPPacket& pkt) -> bool {
+        if (not llarp_ev_tun_async_write(tun, pkt.ConstBuffer()))
         {
           llarp::LogWarn(self->Name(), " packet dropped");
         }
