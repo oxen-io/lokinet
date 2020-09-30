@@ -6,6 +6,8 @@
 #include <string_view>
 #include <string>
 
+#include <net/net_int.hpp>
+
 namespace llarp
 {
   /// A struct that can represent either an IPv4 or IPv6 address. It is meant for representation
@@ -120,6 +122,9 @@ namespace llarp
 
     std::string
     toHost() const;
+
+    huint32_t
+    toIP() const;
 
     // TODO: other utility functions left over from Addr which may be useful
     // IsBogon() const;

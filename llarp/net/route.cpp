@@ -370,25 +370,8 @@ namespace llarp::net
 #endif
 #elif _WIN32
     ifname.back()++;
-    int ifindex = 0;
-    // find interface index for address
-    ForEachWIN32Interface([&ifindex, ifname = ifname](auto w32interface) {
-      in_addr interface_addr;
-      interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
-      std::array<char, 128> interface_str{};
-      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-      std::string interface_name{interface_str.data()};
-      if (interface_name == ifname)
-      {
-        ifindex = w32interface->dwForwardIfIndex;
-      }
-    });
-    Execute(
-        RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
-        + std::to_string(ifindex));
-    Execute(
-        RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname + " IF "
-        + std::to_string(ifindex));
+    Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
