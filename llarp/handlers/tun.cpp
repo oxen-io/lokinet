@@ -623,9 +623,13 @@ namespace llarp
     std::string
     TunEndpoint::GetIfName() const
     {
+#ifdef _WIN32
+      return net::TruncateV6(GetIfAddr()).ToString();
+#else
       if (tunif)
         return tunif->ifname;
       return m_IfName;
+#endif
     }
 
     bool

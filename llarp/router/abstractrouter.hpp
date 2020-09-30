@@ -43,6 +43,7 @@ namespace llarp
   struct IOutboundSessionMaker;
   struct ILinkManager;
   struct I_RCLookupHandler;
+  struct RoutePoker;
 
   namespace exit
   {
@@ -155,6 +156,9 @@ namespace llarp
 
     virtual ILinkManager&
     linkManager() = 0;
+
+    virtual RoutePoker&
+    routePoker() = 0;
 
     virtual I_RCLookupHandler&
     rcLookupHandler() = 0;

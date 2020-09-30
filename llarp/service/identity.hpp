@@ -55,6 +55,10 @@ namespace llarp
 
       bool
       Sign(Signature& sig, const llarp_buffer_t& buf) const;
+
+      /// zero out all secret key members
+      void
+      Clear();
     };
 
     inline bool

@@ -230,6 +230,18 @@ namespace llarp
     }
 
     bool
+    FromBytestring(llarp_buffer_t* buf)
+    {
+      if (buf->sz != sz)
+      {
+        llarp::LogError("bdecode buffer size mismatch ", buf->sz, "!=", sz);
+        return false;
+      }
+      memcpy(data(), buf->base, sz);
+      return true;
+    }
+
+    bool
     BEncode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, data(), sz);
@@ -243,13 +255,7 @@ namespace llarp
       {
         return false;
       }
-      if (strbuf.sz != sz)
-      {
-        llarp::LogError("bdecode buffer size mismatch ", strbuf.sz, "!=", sz);
-        return false;
-      }
-      memcpy(data(), strbuf.base, sz);
-      return true;
+      return FromBytestring(&strbuf);
     }
 
     std::string
