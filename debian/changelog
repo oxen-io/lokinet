@@ -1,3 +1,41 @@
+lokinet (0.8.0~pre2-1~ubuntu2004) focal; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove gcc-5 workaround (#1360)
+
+  [ Jeff ]
+  * resolve issue #1361 about peer stats excessive logging (#1365)
+
+  [ Jason Rhinelander ]
+  * Add libssl-dev build-dep
+  * Don't build tests
+  * Try submodules --depth=1
+  * Add lokinet-vpn binary, disable shared libs
+
+  [ Jeff ]
+  * dont poke routes if we have no exit (#1352)
+
+  [ Thomas Winget ]
+  * New RC format (#1368)
+
+  [ Jeff ]
+  * dont serialize ephemeral members of service identity (#1370)
+  * make win32 exits work again (#1367)
+
+  [ Thomas Winget ]
+  * fix format string for size_t (#1371)
+
+  [ Jeff ]
+  * serialize auth codes in rpc (#1369)
+
+  [ Jason Rhinelander ]
+  * 0.8.0 version bump (#1373)
+
+  [ Jeff Becker ]
+  * bump lokimq submodule to 1.2.0
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 30 Sep 2020 17:49:31 -0300
+
 lokinet (0.8.0~pre1-1~ubuntu2004) focal; urgency=medium
 
   * Focal deb.
