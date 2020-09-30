@@ -333,10 +333,6 @@ namespace llarp
   void
   Router::Close()
   {
-    for (const auto& [ip, gateway] : m_PokedRoutes)
-    {
-      net::DelRoute(ip, gateway);
-    }
     if (_onDown)
       _onDown();
     LogInfo("closing router");
@@ -770,45 +766,9 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
-    if (not IsServiceNode())
+    if (HasClientExit())
     {
-      const auto gateway = GetDefaultGateway();
-      if (m_CurrentGateway != gateway)
-      {
-        // changed gateways
-        if (m_CurrentGateway.empty())
-        {
-          LogInfo("found default gateway: ", gateway);
-        }
-        else if (not gateway.empty())
-        {
-          LogInfo("default gateway changed from ", m_CurrentGateway, " to ", gateway);
-        }
-        else
-        {
-          LogError("Network is down");
-        }
-        // unpoke current routes
-        std::unordered_set<std::string> holes;
-
-        for (const auto& [ip, gw] : m_PokedRoutes)
-        {
-          // save hole
-          holes.emplace(ip);
-          // unpoke route
-          net::DelRoute(ip, gw);
-        }
-        m_PokedRoutes.clear();
-
-        if (not gateway.empty())
-        {
-          m_CurrentGateway = gateway;
-          for (const auto& ip : holes)
-          {
-            AddRoute(ip);
-          }
-        }
-      }
+      m_RoutePoker.Update(*this);
     }
 
     size_t connected = NumberOfConnectedRouters();
@@ -860,7 +820,7 @@ namespace llarp
 
       if (m_peerDb->shouldFlush(now))
       {
-        LogWarn("Queing database flush...");
+        LogDebug("Queing database flush...");
         QueueDiskIO([this]() { m_peerDb->flushDatabase(); });
       }
     }
@@ -905,7 +865,7 @@ namespace llarp
     RouterContact rc;
     if (not nodedb()->Get(remote, rc))
       return;
-    DelRoute(rc.addrs[0].toIpAddress().toHost());
+    m_RoutePoker.DelRoute(rc.addrs[0].toIpAddress().toIP());
   }
 
   void
@@ -1269,31 +1229,13 @@ namespace llarp
     return true;
   }
 
-  std::string
-  Router::GetDefaultGateway() const
+  bool
+  Router::HasClientExit() const
   {
+    if (IsServiceNode())
+      return false;
     const auto ep = hiddenServiceContext().GetDefault();
-    const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
-    if (gateways.empty())
-      return "";
-    return gateways[0];
-  }
-
-  void
-  Router::AddRoute(std::string ip)
-  {
-    m_PokedRoutes.emplace(ip, m_CurrentGateway);
-    net::AddRoute(ip, m_CurrentGateway);
-  }
-
-  void
-  Router::DelRoute(std::string ip)
-  {
-    const auto itr = m_PokedRoutes.find(ip);
-    if (itr == m_PokedRoutes.end())
-      return;
-    net::DelRoute(itr->first, itr->second);
-    m_PokedRoutes.erase(itr);
+    return ep and ep->HasExit();
   }
 
   bool
@@ -1307,7 +1249,7 @@ namespace llarp
         [&](llarp::RouterContact rc) {
           if (IsServiceNode())
             return;
-          AddRoute(rc.addrs[0].toIpAddress().toHost());
+          m_RoutePoker.AddRoute(rc.addrs[0].toIpAddress().toIP());
         },
         util::memFn(&Router::ConnectionEstablished, this),
         util::memFn(&AbstractRouter::CheckRenegotiateValid, this),

@@ -361,6 +361,9 @@ namespace llarp
       GetSeqNoForConvo(const ConvoTag& tag);
 
       bool
+      HasExit() const;
+
+      bool
       SelectHop(
           llarp_nodedb* db,
           const std::set<RouterID>& prev,
