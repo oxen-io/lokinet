@@ -26,7 +26,8 @@ namespace llarp
       HandleInboundPacket(
           const service::ConvoTag tag,
           const llarp_buffer_t& pktbuf,
-          service::ProtocolType proto) override
+          service::ProtocolType proto,
+          uint64_t) override
       {
         if (handlePacket)
         {
