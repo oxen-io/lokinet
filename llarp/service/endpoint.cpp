@@ -1353,7 +1353,7 @@ namespace llarp
             PutReplyIntroFor(f.T, m->introReply);
             m->sender = m_Identity.pub;
             m->seqno = GetSeqNoForConvo(f.T);
-            f.S = 1;
+            f.S = m->seqno;
             f.F = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
             auto self = this;
