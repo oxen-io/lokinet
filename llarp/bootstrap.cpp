@@ -14,10 +14,10 @@ namespace llarp
   {
     return bencode_read_list(
         [&](llarp_buffer_t* b, bool more) -> bool {
-          if(more)
+          if (more)
           {
             RouterContact rc;
-            if(not rc.BDecode(b))
+            if (not rc.BDecode(b))
               return false;
             emplace(std::move(rc));
           }

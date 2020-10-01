@@ -15,21 +15,24 @@ namespace llarp
       const PubKey rootkey;
       uint64_t relayOrder;
       const dht::Key_t location;
-      using HandlerFunc = std::function< bool(
-          const Address&, nonstd::optional< IntroSet >, const RouterID&) >;
+      using HandlerFunc =
+          std::function<bool(const Address&, std::optional<IntroSet>, const RouterID&)>;
       HandlerFunc handle;
 
-      HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
-                                 const dht::Key_t& location,
-                                 const PubKey& rootkey, uint64_t relayOrder,
-                                 uint64_t tx);
+      HiddenServiceAddressLookup(
+          Endpoint* p,
+          HandlerFunc h,
+          const dht::Key_t& location,
+          const PubKey& rootkey,
+          uint64_t relayOrder,
+          uint64_t tx);
 
       ~HiddenServiceAddressLookup() override = default;
 
       bool
-      HandleResponse(const std::set< EncryptedIntroSet >& results) override;
+      HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results) override;
 
-      std::shared_ptr< routing::IMessage >
+      std::shared_ptr<routing::IMessage>
       BuildRequestMessage() override;
     };
   }  // namespace service

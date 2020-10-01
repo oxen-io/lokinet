@@ -11,7 +11,7 @@ namespace llarp
     /// return false if we hit a cooldown for this rc
     /// return true if we gossiped this rc to at least 1 peer
     virtual bool
-    GossipRC(const RouterContact &rc) = 0;
+    GossipRC(const RouterContact& rc) = 0;
 
     using Time_t = std::chrono::milliseconds;
 
@@ -24,7 +24,7 @@ namespace llarp
 
     /// return true if that rc is owned by us
     virtual bool
-    IsOurRC(const RouterContact &rc) const = 0;
+    IsOurRC(const RouterContact& rc) const = 0;
   };
 }  // namespace llarp
 

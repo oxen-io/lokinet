@@ -11,9 +11,14 @@ namespace llarp
   namespace service
   {
     AsyncKeyExchange::AsyncKeyExchange(
-        std::shared_ptr< Logic > l, ServiceInfo r, const Identity& localident,
-        const PQPubKey& introsetPubKey, const Introduction& remote,
-        IDataHandler* h, const ConvoTag& t, ProtocolType proto)
+        std::shared_ptr<Logic> l,
+        ServiceInfo r,
+        const Identity& localident,
+        const PQPubKey& introsetPubKey,
+        const Introduction& remote,
+        IDataHandler* h,
+        const ConvoTag& t,
+        ProtocolType proto)
         : logic(std::move(l))
         , m_remote(std::move(r))
         , m_LocalIdentity(localident)
@@ -26,8 +31,8 @@ namespace llarp
     }
 
     void
-    AsyncKeyExchange::Result(std::shared_ptr< AsyncKeyExchange > self,
-                             std::shared_ptr< ProtocolFrame > frame)
+    AsyncKeyExchange::Result(
+        std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrame> frame)
     {
       // put values
       self->handler->PutSenderFor(self->msg.tag, self->m_remote, false);
@@ -38,8 +43,8 @@ namespace llarp
     }
 
     void
-    AsyncKeyExchange::Encrypt(std::shared_ptr< AsyncKeyExchange > self,
-                              std::shared_ptr< ProtocolFrame > frame)
+    AsyncKeyExchange::Encrypt(
+        std::shared_ptr<AsyncKeyExchange> self, std::shared_ptr<ProtocolFrame> frame)
     {
       // derive ntru session key component
       SharedSecret K;
@@ -51,12 +56,11 @@ namespace llarp
       // PKE (A, B, N)
       SharedSecret sharedSecret;
       path_dh_func dh_client = util::memFn(&Crypto::dh_client, crypto);
-      if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
-                                            self->m_remote, frame->N))
+      if (!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret, self->m_remote, frame->N))
       {
         LogError("failed to derive x25519 shared key component");
       }
-      std::array< byte_t, 64 > tmp = {{0}};
+      std::array<byte_t, 64> tmp = {{0}};
       // K
       std::copy(K.begin(), K.end(), tmp.begin());
       // H (K + PKE(A, B, N))
@@ -69,9 +73,8 @@ namespace llarp
       // set version
       self->msg.version = LLARP_PROTO_VERSION;
       // encrypt and sign
-      if(frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
-        LogicCall(self->logic,
-                  std::bind(&AsyncKeyExchange::Result, self, frame));
+      if (frame->EncryptAndSign(self->msg, K, self->m_LocalIdentity))
+        LogicCall(self->logic, std::bind(&AsyncKeyExchange::Result, self, frame));
       else
       {
         LogError("failed to encrypt and sign");

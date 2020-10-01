@@ -2,10 +2,11 @@
 #define LLARP_ALIGNED_HPP
 
 #include <util/bencode.h>
-#include <util/encode.hpp>
 #include <util/logging/logger.hpp>
 #include <util/meta/traits.hpp>
 #include <util/printer.hpp>
+
+#include <lokimq/hex.h>
 
 #include <array>
 #include <cstddef>
@@ -27,22 +28,23 @@ extern "C"
 namespace llarp
 {
   /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
-  template < size_t sz >
+  template <size_t sz>
+  // Microsoft C malloc(3C) cannot return pointers aligned wider than 8 ffs
 #ifdef _WIN32
-  // We CANNOT align on a 128-bit boundary, malloc(3C) on win32
-  // only hands out 64-bit aligned pointers
   struct alignas(uint64_t) AlignedBuffer
 #else
   struct alignas(std::max_align_t) AlignedBuffer
 #endif
   {
-    static_assert(sz >= 8,
-                  "AlignedBuffer cannot be used with buffers smaller than 8 "
-                  "bytes");
+    static_assert(alignof(std::max_align_t) <= 16, "insane alignment");
+    static_assert(
+        sz >= 8,
+        "AlignedBuffer cannot be used with buffers smaller than 8 "
+        "bytes");
 
     static constexpr size_t SIZE = sz;
 
-    using Data = std::array< byte_t, SIZE >;
+    using Data = std::array<byte_t, SIZE>;
 
     AlignedBuffer()
     {
@@ -69,15 +71,14 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      char tmp[(sz * 2) + 1] = {0};
-      return out << HexEncode(self, tmp);
+      return out << lokimq::to_hex(self.begin(), self.end());
     }
 
     /// bitwise NOT
-    AlignedBuffer< sz >
+    AlignedBuffer<sz>
     operator~() const
     {
-      AlignedBuffer< sz > ret;
+      AlignedBuffer<sz> ret;
       std::transform(begin(), end(), ret.begin(), [](byte_t a) { return ~a; });
 
       return ret;
@@ -122,9 +123,8 @@ namespace llarp
     AlignedBuffer
     operator^(const AlignedBuffer& other) const
     {
-      AlignedBuffer< sz > ret;
-      std::transform(begin(), end(), other.begin(), ret.begin(),
-                     std::bit_xor< byte_t >());
+      AlignedBuffer<sz> ret;
+      std::transform(begin(), end(), other.begin(), ret.begin(), std::bit_xor<byte_t>());
       return ret;
     }
 
@@ -132,7 +132,7 @@ namespace llarp
     operator^=(const AlignedBuffer& other)
     {
       // Mutate in place instead.
-      for(size_t i = 0; i < sz; ++i)
+      for (size_t i = 0; i < sz; ++i)
       {
         m_data[i] ^= other.m_data[i];
       }
@@ -230,6 +230,18 @@ namespace llarp
     }
 
     bool
+    FromBytestring(llarp_buffer_t* buf)
+    {
+      if (buf->sz != sz)
+      {
+        llarp::LogError("bdecode buffer size mismatch ", buf->sz, "!=", sz);
+        return false;
+      }
+      memcpy(data(), buf->base, sz);
+      return true;
+    }
+
+    bool
     BEncode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, data(), sz);
@@ -239,24 +251,32 @@ namespace llarp
     BDecode(llarp_buffer_t* buf)
     {
       llarp_buffer_t strbuf;
-      if(!bencode_read_string(buf, &strbuf))
+      if (!bencode_read_string(buf, &strbuf))
       {
         return false;
       }
-      if(strbuf.sz != sz)
-      {
-        llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
-        return false;
-      }
-      memcpy(data(), strbuf.base, sz);
-      return true;
+      return FromBytestring(&strbuf);
     }
 
     std::string
     ToHex() const
     {
-      char strbuf[(1 + sz) * 2] = {0};
-      return std::string(HexEncode(*this, strbuf));
+      return lokimq::to_hex(begin(), end());
+    }
+
+    std::string
+    ShortHex() const
+    {
+      return lokimq::to_hex(begin(), begin() + 4);
+    }
+
+    bool
+    FromHex(std::string_view str)
+    {
+      if (str.size() != 2 * size() || !lokimq::is_hex(str))
+        return false;
+      lokimq::from_hex(str.begin(), str.end(), begin());
+      return true;
     }
 
     std::ostream&
@@ -270,12 +290,12 @@ namespace llarp
 
     struct Hash
     {
-      size_t
-      operator()(const AlignedBuffer& buf) const
+      std::size_t
+      operator()(const AlignedBuffer& buf) const noexcept
       {
-        size_t hash;
-        std::memcpy(&hash, buf.data(), sizeof(hash));
-        return hash;
+        std::size_t h = 0;
+        std::memcpy(&h, buf.data(), sizeof(std::size_t));
+        return h;
       }
     };
 

@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace dns
   {
-    using QType_t  = uint16_t;
+    using QType_t = uint16_t;
     using QClass_t = uint16_t;
 
     struct Question : public Serialize
@@ -29,8 +29,7 @@ namespace llarp
       bool
       operator==(const Question& other) const
       {
-        return qname == other.qname && qtype == other.qtype
-            && qclass == other.qclass;
+        return qname == other.qname && qtype == other.qtype && qclass == other.qclass;
       }
 
       Name_t qname;
@@ -40,6 +39,14 @@ namespace llarp
       /// determine if we match a name
       bool
       IsName(const std::string& other) const;
+
+      /// is the name [something.]localhost.loki. ?
+      bool
+      IsLocalhost() const;
+
+      /// get subdomain(s), if any, from qname
+      std::string
+      Subdomains() const;
 
       /// return qname with no trailing .
       std::string

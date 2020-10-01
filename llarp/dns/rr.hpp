@@ -12,10 +12,10 @@ namespace llarp
 {
   namespace dns
   {
-    using RRClass_t  = uint16_t;
-    using RRType_t   = uint16_t;
-    using RR_RData_t = std::vector< byte_t >;
-    using RR_TTL_t   = uint32_t;
+    using RRClass_t = uint16_t;
+    using RRType_t = uint16_t;
+    using RR_RData_t = std::vector<byte_t>;
+    using RR_TTL_t = uint32_t;
 
     struct ResourceRecord : public Serialize
     {

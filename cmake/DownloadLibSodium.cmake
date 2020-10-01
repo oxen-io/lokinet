@@ -12,15 +12,22 @@ file(MAKE_DIRECTORY ${LIBSODIUM_PREFIX}/include)
 
 include(ExternalProject)
 include(ProcessorCount)
-
-if (CMAKE_C_COMPILER_ARG1)
-  set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER} CPPFLAGS=${CMAKE_C_COMPILER_ARG1})
-else()
-  set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared CC=${CMAKE_C_COMPILER})
+ProcessorCount(PROCESSOR_COUNT)
+if(PROCESSOR_COUNT EQUAL 0)
+    set(PROCESSOR_COUNT 1)
 endif()
 
-if (LIBSODIUM_CROSS_TARGET)
-    set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${LIBSODIUM_CROSS_TARGET} --host=${LIBSODIUM_CROSS_TARGET})
+set(sodium_cc ${CMAKE_C_COMPILER})
+if(CCACHE_PROGRAM)
+  set(sodium_cc "${CCACHE_PROGRAM} ${sodium_cc}")
+endif()
+set(SODIUM_CONFIGURE ./configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared --with-pic --quiet CC=${sodium_cc})
+if (CMAKE_C_COMPILER_ARG1)
+  set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} CPPFLAGS=${CMAKE_C_COMPILER_ARG1})
+endif()
+
+if (CROSS_TARGET)
+    set(SODIUM_CONFIGURE ${SODIUM_CONFIGURE} --target=${CROSS_TARGET} --host=${CROSS_TARGET})
 endif()
 
 
@@ -30,6 +37,7 @@ ExternalProject_Add(libsodium_external
     URL ${LIBSODIUM_URL}
     URL_HASH ${LIBSODIUM_HASH}
     CONFIGURE_COMMAND ${SODIUM_CONFIGURE}
+    PATCH_COMMAND patch -p1 -d <SOURCE_DIR> < ${CMAKE_SOURCE_DIR}/win32-setup/libsodium-1.0.18-win32.patch
     BUILD_COMMAND make -j${PROCESSOR_COUNT}
     INSTALL_COMMAND ${MAKE}
     BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a ${LIBSODIUM_PREFIX}/include

@@ -16,9 +16,9 @@ namespace llarp
     {
       PubKey router;
       PathID_t pathID;
-      llarp_time_t latency   = 0s;
+      llarp_time_t latency = 0s;
       llarp_time_t expiresAt = 0s;
-      uint64_t version       = LLARP_PROTO_VERSION;
+      uint64_t version = LLARP_PROTO_VERSION;
 
       util::StatusObject
       ExtractStatus() const;
@@ -56,9 +56,8 @@ namespace llarp
       bool
       operator<(const Introduction& other) const
       {
-        return expiresAt < other.expiresAt || pathID < other.pathID
-            || router < other.router || version < other.version
-            || latency < other.latency;
+        return expiresAt < other.expiresAt || pathID < other.pathID || router < other.router
+            || version < other.version || latency < other.latency;
       }
 
       bool

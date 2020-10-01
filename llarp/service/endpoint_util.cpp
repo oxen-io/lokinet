@@ -13,15 +13,15 @@ namespace llarp
     EndpointUtil::ExpireSNodeSessions(llarp_time_t now, SNodeSessions& sessions)
     {
       auto itr = sessions.begin();
-      while(itr != sessions.end())
+      while (itr != sessions.end())
       {
-        if(itr->second.first->ShouldRemove() && itr->second.first->IsStopped())
+        if (itr->second.first->ShouldRemove() && itr->second.first->IsStopped())
         {
           itr = sessions.erase(itr);
           continue;
         }
         // expunge next tick
-        if(itr->second.first->IsExpired(now))
+        if (itr->second.first->IsExpired(now))
         {
           itr->second.first->Stop();
         }
@@ -37,28 +37,27 @@ namespace llarp
     void
     EndpointUtil::ExpirePendingTx(llarp_time_t now, PendingLookups& lookups)
     {
-      for(auto itr = lookups.begin(); itr != lookups.end();)
+      for (auto itr = lookups.begin(); itr != lookups.end();)
       {
-        if(!itr->second->IsTimedOut(now))
+        if (!itr->second->IsTimedOut(now))
         {
           ++itr;
           continue;
         }
-        std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
+        std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
 
         LogWarn(lookup->name, " timed out txid=", lookup->txid);
-        lookup->HandleResponse({});
+        lookup->HandleTimeout();
         itr = lookups.erase(itr);
       }
     }
 
     void
-    EndpointUtil::ExpirePendingRouterLookups(llarp_time_t now,
-                                             PendingRouters& routers)
+    EndpointUtil::ExpirePendingRouterLookups(llarp_time_t now, PendingRouters& routers)
     {
-      for(auto itr = routers.begin(); itr != routers.end();)
+      for (auto itr = routers.begin(); itr != routers.end();)
       {
-        if(!itr->second.IsExpired(now))
+        if (!itr->second.IsExpired(now))
         {
           ++itr;
           continue;
@@ -73,9 +72,9 @@ namespace llarp
     EndpointUtil::DeregisterDeadSessions(llarp_time_t now, Sessions& sessions)
     {
       auto itr = sessions.begin();
-      while(itr != sessions.end())
+      while (itr != sessions.end())
       {
-        if(itr->second->IsDone(now))
+        if (itr->second->IsDone(now))
         {
           itr = sessions.erase(itr);
         }
@@ -87,14 +86,14 @@ namespace llarp
     }
 
     void
-    EndpointUtil::TickRemoteSessions(llarp_time_t now, Sessions& remoteSessions,
-                                     Sessions& deadSessions, ConvoMap& sessions)
+    EndpointUtil::TickRemoteSessions(
+        llarp_time_t now, Sessions& remoteSessions, Sessions& deadSessions, ConvoMap& sessions)
     {
       auto itr = remoteSessions.begin();
-      while(itr != remoteSessions.end())
+      while (itr != remoteSessions.end())
       {
         itr->second->Tick(now);
-        if(itr->second->Pump(now))
+        if (itr->second->Pump(now))
         {
           LogInfo("marking session as dead T=", itr->first);
           itr->second->Stop();
@@ -113,9 +112,9 @@ namespace llarp
     EndpointUtil::ExpireConvoSessions(llarp_time_t now, ConvoMap& sessions)
     {
       auto itr = sessions.begin();
-      while(itr != sessions.end())
+      while (itr != sessions.end())
       {
-        if(itr->second.IsExpired(now))
+        if (itr->second.IsExpired(now))
         {
           LogInfo("Expire session T=", itr->first);
           itr = sessions.erase(itr);
@@ -128,7 +127,7 @@ namespace llarp
     void
     EndpointUtil::StopRemoteSessions(Sessions& remoteSessions)
     {
-      for(auto& item : remoteSessions)
+      for (auto& item : remoteSessions)
       {
         item.second->Stop();
       }
@@ -137,21 +136,20 @@ namespace llarp
     void
     EndpointUtil::StopSnodeSessions(SNodeSessions& sessions)
     {
-      for(auto& item : sessions)
+      for (auto& item : sessions)
       {
         item.second.first->Stop();
       }
     }
 
     bool
-    EndpointUtil::HasPathToService(const Address& addr,
-                                   const Sessions& remoteSessions)
+    EndpointUtil::HasPathToService(const Address& addr, const Sessions& remoteSessions)
     {
       auto range = remoteSessions.equal_range(addr);
-      auto itr   = range.first;
-      while(itr != range.second)
+      auto itr = range.first;
+      while (itr != range.second)
       {
-        if(itr->second->ReadyToSend())
+        if (itr->second->ReadyToSend())
           return true;
         ++itr;
       }
@@ -159,17 +157,16 @@ namespace llarp
     }
 
     bool
-    EndpointUtil::GetConvoTagsForService(const ConvoMap& sessions,
-                                         const Address& info,
-                                         std::set< ConvoTag >& tags)
+    EndpointUtil::GetConvoTagsForService(
+        const ConvoMap& sessions, const Address& info, std::set<ConvoTag>& tags)
     {
       bool inserted = false;
-      auto itr      = sessions.begin();
-      while(itr != sessions.end())
+      auto itr = sessions.begin();
+      while (itr != sessions.end())
       {
-        if(itr->second.remote.Addr() == info)
+        if (itr->second.remote.Addr() == info)
         {
-          if(tags.emplace(itr->first).second)
+          if (tags.emplace(itr->first).second)
           {
             inserted = true;
           }

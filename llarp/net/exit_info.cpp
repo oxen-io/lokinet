@@ -3,6 +3,7 @@
 #endif
 
 #include <net/exit_info.hpp>
+#include <net/net.hpp>
 #include <util/bencode.h>
 #include <util/bits.hpp>
 #include <util/mem.h>
@@ -15,24 +16,30 @@ namespace llarp
   bool
   ExitInfo::BEncode(llarp_buffer_t* buf) const
   {
+    SockAddr exitaddr = ipAddress.createSockAddr();
+    const sockaddr_in6* exitaddr6 = exitaddr;
+
+    SockAddr netmaskaddr = netmask.createSockAddr();
+    const sockaddr_in6* netmaskaddr6 = netmaskaddr;
+
     char tmp[128] = {0};
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
 
-    if(!inet_ntop(AF_INET6, address.s6_addr, tmp, sizeof(tmp)))
+    if (!inet_ntop(AF_INET6, &exitaddr6->sin6_addr, tmp, sizeof(tmp)))
       return false;
-    if(!BEncodeWriteDictString("a", std::string(tmp), buf))
-      return false;
-
-    if(!inet_ntop(AF_INET6, netmask.s6_addr, tmp, sizeof(tmp)))
-      return false;
-    if(!BEncodeWriteDictString("b", std::string(tmp), buf))
+    if (!BEncodeWriteDictString("a", std::string(tmp), buf))
       return false;
 
-    if(!BEncodeWriteDictEntry("k", pubkey, buf))
+    if (!inet_ntop(AF_INET6, &netmaskaddr6->sin6_addr, tmp, sizeof(tmp)))
+      return false;
+    if (!BEncodeWriteDictString("b", std::string(tmp), buf))
       return false;
 
-    if(!BEncodeWriteDictInt("v", version, buf))
+    if (!BEncodeWriteDictEntry("k", pubkey, buf))
+      return false;
+
+    if (!BEncodeWriteDictInt("v", version, buf))
       return false;
 
     return bencode_end(buf);
@@ -43,10 +50,10 @@ namespace llarp
   {
     char tmp[128] = {0};
     llarp_buffer_t strbuf;
-    if(!bencode_read_string(buf, &strbuf))
+    if (!bencode_read_string(buf, &strbuf))
       return false;
 
-    if(strbuf.sz >= sizeof(tmp))
+    if (strbuf.sz >= sizeof(tmp))
       return false;
 
     memcpy(tmp, strbuf.base, strbuf.sz);
@@ -58,38 +65,61 @@ namespace llarp
   ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    if(!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
+    if (!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if(k == "a")
-      return bdecode_ip_string(buf, address);
-    if(k == "b")
-      return bdecode_ip_string(buf, netmask);
+    if (k == "a")
+    {
+      in6_addr tmp;
+      if (not bdecode_ip_string(buf, tmp))
+        return false;
+
+      SockAddr addr(tmp);
+      ipAddress = IpAddress(addr);
+      return true;
+    }
+    if (k == "b")
+    {
+      in6_addr tmp;
+      if (not bdecode_ip_string(buf, tmp))
+        return false;
+      SockAddr addr(tmp);
+      netmask = IpAddress(addr);
+      return true;
+    }
     return read;
   }
 
   std::ostream&
-  ExitInfo::print(std::ostream& stream, int level, int spaces) const
+  ExitInfo::print(
+      std::ostream& stream, [[maybe_unused]] int level, [[maybe_unused]] int spaces) const
   {
+    /*
+    // TODO: derive these from ipAdress
+    throw std::runtime_error("FIXME: need in6_addr and netmask from IpAddress");
+    in6_addr address;
+    in6_addr netmask;
+
     Printer printer(stream, level, spaces);
 
     std::ostringstream ss;
     char tmp[128] = {0};
 
-    if(inet_ntop(AF_INET6, (void*)&address, tmp, sizeof(tmp)))
+    if (inet_ntop(AF_INET6, (void*)&address, tmp, sizeof(tmp)))
       ss << tmp;
     else
       return stream;
     ss << std::string("/");
-#if defined(ANDROID) || defined(RPI)
-    snprintf(tmp, sizeof(tmp), "%zu",
-             llarp::bits::count_array_bits(netmask.s6_addr));
+#if defined(ANDROID)
+    snprintf(tmp, sizeof(tmp), "%zu", llarp::bits::count_array_bits(netmask.s6_addr));
     ss << tmp;
 #else
     ss << std::to_string(llarp::bits::count_array_bits(netmask.s6_addr));
 #endif
     printer.printValue(ss.str());
+    */
+    stream << ipAddress.toString();
     return stream;
   }
 

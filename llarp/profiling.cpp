@@ -8,20 +8,20 @@ namespace llarp
   bool
   RouterProfile::BEncode(llarp_buffer_t* buf) const
   {
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
 
-    if(!BEncodeWriteDictInt("g", connectGoodCount, buf))
+    if (!BEncodeWriteDictInt("g", connectGoodCount, buf))
       return false;
-    if(!BEncodeWriteDictInt("p", pathSuccessCount, buf))
+    if (!BEncodeWriteDictInt("p", pathSuccessCount, buf))
       return false;
-    if(!BEncodeWriteDictInt("s", pathFailCount, buf))
+    if (!BEncodeWriteDictInt("s", pathFailCount, buf))
       return false;
-    if(!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
+    if (!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
       return false;
-    if(!BEncodeWriteDictInt("u", lastUpdated.count(), buf))
+    if (!BEncodeWriteDictInt("u", lastUpdated.count(), buf))
       return false;
-    if(!BEncodeWriteDictInt("v", version, buf))
+    if (!BEncodeWriteDictInt("v", version, buf))
       return false;
 
     return bencode_end(buf);
@@ -31,17 +31,17 @@ namespace llarp
   RouterProfile::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
-    if(!BEncodeMaybeReadDictInt("g", connectGoodCount, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("g", connectGoodCount, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("t", connectTimeoutCount, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("t", connectTimeoutCount, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("u", lastUpdated, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("u", lastUpdated, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("s", pathFailCount, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("s", pathFailCount, read, k, buf))
       return false;
-    if(!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
+    if (!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
       return false;
     return read;
   }
@@ -61,26 +61,24 @@ namespace llarp
   {
     // 15 seconds
     static constexpr auto updateInterval = 15s;
-    const auto now                       = llarp::time_now_ms();
-    if(lastDecay < now && now - lastDecay > updateInterval)
+    const auto now = llarp::time_now_ms();
+    if (lastDecay < now && now - lastDecay > updateInterval)
       Decay();
   }
 
   bool
   RouterProfile::IsGood(uint64_t chances) const
   {
-    if(connectTimeoutCount > chances)
-      return connectTimeoutCount < connectGoodCount
-          && (pathSuccessCount * chances) > pathFailCount;
+    if (connectTimeoutCount > chances)
+      return connectTimeoutCount < connectGoodCount && (pathSuccessCount * chances) > pathFailCount;
     return (pathSuccessCount * chances) > pathFailCount;
   }
 
-  static bool constexpr checkIsGood(uint64_t fails, uint64_t success,
-                                    uint64_t chances)
+  static bool constexpr checkIsGood(uint64_t fails, uint64_t success, uint64_t chances)
   {
-    if(fails > 0 && (fails + success) >= chances)
+    if (fails > 0 && (fails + success) >= chances)
       return (success / fails) > 1;
-    if(success == 0)
+    if (success == 0)
       return fails < chances;
     return true;
   }
@@ -116,11 +114,11 @@ namespace llarp
   bool
   Profiling::IsBadForConnect(const RouterID& r, uint64_t chances)
   {
-    if(m_DisableProfiling.load())
+    if (m_DisableProfiling.load())
       return false;
     util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
-    if(itr == m_Profiles.end())
+    if (itr == m_Profiles.end())
       return false;
     return !itr->second.IsGoodForConnect(chances);
   }
@@ -128,11 +126,11 @@ namespace llarp
   bool
   Profiling::IsBadForPath(const RouterID& r, uint64_t chances)
   {
-    if(m_DisableProfiling.load())
+    if (m_DisableProfiling.load())
       return false;
     util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
-    if(itr == m_Profiles.end())
+    if (itr == m_Profiles.end())
       return false;
     return !itr->second.IsGoodForPath(chances);
   }
@@ -140,11 +138,11 @@ namespace llarp
   bool
   Profiling::IsBad(const RouterID& r, uint64_t chances)
   {
-    if(m_DisableProfiling.load())
+    if (m_DisableProfiling.load())
       return false;
     util::Lock lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
-    if(itr == m_Profiles.end())
+    if (itr == m_Profiles.end())
       return false;
     return !itr->second.IsGood(chances);
   }
@@ -153,8 +151,7 @@ namespace llarp
   Profiling::Tick()
   {
     util::Lock lock(m_ProfilesMutex);
-    std::for_each(m_Profiles.begin(), m_Profiles.end(),
-                  [](auto& item) { item.second.Tick(); });
+    std::for_each(m_Profiles.begin(), m_Profiles.end(), [](auto& item) { item.second.Tick(); });
   }
 
   void
@@ -193,10 +190,10 @@ namespace llarp
   {
     util::Lock lock(m_ProfilesMutex);
     size_t idx = 0;
-    for(const auto& hop : p->hops)
+    for (const auto& hop : p->hops)
     {
       // don't mark first hop as failure because we are connected to it directly
-      if(idx)
+      if (idx)
       {
         m_Profiles[hop.rc.pubkey].pathFailCount += 1;
         m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
@@ -210,7 +207,7 @@ namespace llarp
   {
     util::Lock lock(m_ProfilesMutex);
     const auto sz = p->hops.size();
-    for(const auto& hop : p->hops)
+    for (const auto& hop : p->hops)
     {
       m_Profiles[hop.rc.pubkey].pathSuccessCount += sz;
       m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
@@ -220,22 +217,21 @@ namespace llarp
   bool
   Profiling::Save(const char* fname)
   {
-    auto lock = util::shared_lock(m_ProfilesMutex);
+    std::shared_lock lock{m_ProfilesMutex};
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
-    std::vector< byte_t > tmp(sz, 0);
+    std::vector<byte_t> tmp(sz, 0);
     llarp_buffer_t buf(tmp);
     auto res = BEncodeNoLock(&buf);
-    if(res)
+    if (res)
     {
-      buf.sz               = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       const fs::path fpath = std::string(fname);
-      auto optional_f =
-          util::OpenFileStream< std::ofstream >(fpath, std::ios::binary);
-      if(!optional_f)
+      auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+      if (!optional_f)
         return false;
-      auto& f = optional_f.value();
-      if(f.is_open())
+      auto& f = *optional_f;
+      if (f.is_open())
       {
         f.write((char*)buf.base, buf.sz);
         m_LastSave = llarp::time_now_ms();
@@ -247,22 +243,22 @@ namespace llarp
   bool
   Profiling::BEncode(llarp_buffer_t* buf) const
   {
-    auto lock = util::shared_lock(m_ProfilesMutex);
+    std::shared_lock lock{m_ProfilesMutex};
     return BEncodeNoLock(buf);
   }
 
   bool
   Profiling::BEncodeNoLock(llarp_buffer_t* buf) const
   {
-    if(!bencode_start_dict(buf))
+    if (!bencode_start_dict(buf))
       return false;
 
     auto itr = m_Profiles.begin();
-    while(itr != m_Profiles.end())
+    while (itr != m_Profiles.end())
     {
-      if(!itr->first.BEncode(buf))
+      if (!itr->first.BEncode(buf))
         return false;
-      if(!itr->second.BEncode(buf))
+      if (!itr->second.BEncode(buf))
         return false;
       ++itr;
     }
@@ -272,10 +268,10 @@ namespace llarp
   bool
   Profiling::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
-    if(k.sz != 32)
+    if (k.sz != 32)
       return false;
     RouterProfile profile;
-    if(!bencode_decode_dict(profile, buf))
+    if (!bencode_decode_dict(profile, buf))
       return false;
     RouterID pk = k.base;
     return m_Profiles.emplace(pk, profile).second;
@@ -286,7 +282,7 @@ namespace llarp
   {
     util::Lock lock(m_ProfilesMutex);
     m_Profiles.clear();
-    if(!BDecodeReadFromFile(fname, *this))
+    if (!BDecodeReadFromFile(fname, *this))
     {
       llarp::LogWarn("failed to load router profiles from ", fname);
       return false;

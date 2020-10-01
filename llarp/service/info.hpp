@@ -6,7 +6,7 @@
 #include <service/vanity.hpp>
 #include <util/bencode.hpp>
 
-#include <nonstd/optional.hpp>
+#include <optional>
 
 namespace llarp
 {
@@ -23,8 +23,6 @@ namespace llarp
       VanityNonce vanity;
       uint64_t version = LLARP_PROTO_VERSION;
 
-      using OptNonce = nonstd::optional< VanityNonce >;
-
       void
       RandomizeVanity()
       {
@@ -37,7 +35,7 @@ namespace llarp
       const PubKey&
       EncryptionPublicKey() const
       {
-        if(m_CachedAddr.IsZero())
+        if (m_CachedAddr.IsZero())
         {
           CalculateAddress(m_CachedAddr.as_array());
         }
@@ -45,14 +43,13 @@ namespace llarp
       }
 
       bool
-      Update(const byte_t* sign, const byte_t* enc,
-             const OptNonce& nonce = OptNonce());
+      Update(const byte_t* sign, const byte_t* enc, const std::optional<VanityNonce>& nonce = {});
 
       bool
       operator==(const ServiceInfo& other) const
       {
-        return enckey == other.enckey && signkey == other.signkey
-            && version == other.version && vanity == other.vanity;
+        return enckey == other.enckey && signkey == other.signkey && version == other.version
+            && vanity == other.vanity;
       }
 
       bool
@@ -80,7 +77,7 @@ namespace llarp
       const Address&
       Addr() const
       {
-        if(m_CachedAddr.IsZero())
+        if (m_CachedAddr.IsZero())
         {
           CalculateAddress(m_CachedAddr.as_array());
         }
@@ -88,12 +85,13 @@ namespace llarp
       }
 
       /// calculate our address
-      bool CalculateAddress(std::array< byte_t, 32 >& data) const;
+      bool
+      CalculateAddress(std::array<byte_t, 32>& data) const;
 
       bool
       BDecode(llarp_buffer_t* buf)
       {
-        if(not bencode_decode_dict(*this, buf))
+        if (not bencode_decode_dict(*this, buf))
           return false;
         return UpdateAddr();
       }

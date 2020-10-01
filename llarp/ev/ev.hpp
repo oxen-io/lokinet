@@ -1,7 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 
-#include <net/net_addr.hpp>
+#include <net/ip_address.hpp>
 #include <ev/ev.h>
 #include <util/buffer.hpp>
 #include <util/codel.hpp>
@@ -31,8 +31,7 @@ typedef struct sockaddr_un
 } SOCKADDR_UN, *PSOCKADDR_UN;
 #else
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
 #include <sys/event.h>
 #endif
 
@@ -54,7 +53,7 @@ struct llarp_ev_pkt_pipe;
 
 /// do io and reset errno after
 static ssize_t
-IO(std::function< ssize_t(void) > iofunc)
+IO(std::function<ssize_t(void)> iofunc)
 {
   ssize_t ret = iofunc();
 #ifndef _WIN32
@@ -80,7 +79,7 @@ namespace llarp
 
       WriteBuffer(const byte_t* ptr, size_t sz)
       {
-        if(sz <= sizeof(buf))
+        if (sz <= sizeof(buf))
         {
           bufsz = sz;
           memcpy(buf, ptr, bufsz);
@@ -135,17 +134,15 @@ namespace llarp
       };
     };
 
-    using LosslessWriteQueue_t = std::deque< WriteBuffer >;
+    using LosslessWriteQueue_t = std::deque<WriteBuffer>;
 
-    intptr_t
-        fd;  // Sockets only, fuck UNIX-style reactive IO with a rusty knife
+    intptr_t fd;  // Sockets only, fuck UNIX-style reactive IO with a rusty knife
 
     int flags = 0;
     win32_ev_io(intptr_t f) : fd(f){};
 
     /// for tcp
-    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q)
-        : fd(f), m_BlockingWriteQueue(q)
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q)
     {
     }
 
@@ -154,8 +151,7 @@ namespace llarp
     {
       char ebuf[1024];
       int err = WSAGetLastError();
-      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
-                    ebuf, 1024, nullptr);
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf, 1024, nullptr);
       llarp::LogError(ebuf);
     }
 
@@ -163,7 +159,7 @@ namespace llarp
     read(byte_t* buf, size_t sz) = 0;
 
     virtual int
-    sendto(const sockaddr* dst, const void* data, size_t sz)
+    sendto(const SockAddr& dst, const void* data, size_t sz)
     {
       UNREFERENCED_PARAMETER(dst);
       UNREFERENCED_PARAMETER(data);
@@ -188,7 +184,7 @@ namespace llarp
     bool
     queue_write(const byte_t* buf, size_t sz)
     {
-      if(m_BlockingWriteQueue)
+      if (m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
@@ -209,18 +205,18 @@ namespace llarp
     virtual void
     flush_write_buffers(size_t amount)
     {
-      if(m_BlockingWriteQueue)
+      if (m_BlockingWriteQueue)
       {
-        if(amount)
+        if (amount)
         {
-          while(amount && m_BlockingWriteQueue->size())
+          while (amount && m_BlockingWriteQueue->size())
           {
-            auto& itr      = m_BlockingWriteQueue->front();
+            auto& itr = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
-            if(result == -1)
+            if (result == -1)
               return;
             ssize_t dlt = itr.bufsz - result;
-            if(dlt > 0)
+            if (dlt > 0)
             {
               // queue remaining to front of queue
               WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
@@ -236,14 +232,14 @@ namespace llarp
         else
         {
           // write buffers
-          while(m_BlockingWriteQueue->size())
+          while (m_BlockingWriteQueue->size())
           {
-            auto& itr      = m_BlockingWriteQueue->front();
+            auto& itr = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
-            if(result == -1)
+            if (result == -1)
               return;
             ssize_t dlt = itr.bufsz - result;
-            if(dlt > 0)
+            if (dlt > 0)
             {
               // queue remaining to front of queue
               WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
@@ -254,7 +250,7 @@ namespace llarp
             }
             m_BlockingWriteQueue->pop_front();
             int wsaerr = WSAGetLastError();
-            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK)
+            if (wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK)
             {
               WSASetLastError(0);
               return;
@@ -266,7 +262,7 @@ namespace llarp
       WSASetLastError(0);
     }
 
-    std::unique_ptr< LosslessWriteQueue_t > m_BlockingWriteQueue;
+    std::unique_ptr<LosslessWriteQueue_t> m_BlockingWriteQueue;
 
     virtual ~win32_ev_io()
     {
@@ -286,7 +282,7 @@ namespace llarp
 
       WriteBuffer(const byte_t* ptr, size_t sz)
       {
-        if(sz <= sizeof(buf))
+        if (sz <= sizeof(buf))
         {
           bufsz = sz;
           memcpy(buf, ptr, bufsz);
@@ -341,18 +337,20 @@ namespace llarp
       };
     };
 
-    using LossyWriteQueue_t =
-        llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                 WriteBuffer::PutTime, WriteBuffer::Compare,
-                                 WriteBuffer::GetNow, llarp::util::NullMutex,
-                                 llarp::util::NullLock >;
+    using LossyWriteQueue_t = llarp::util::CoDelQueue<
+        WriteBuffer,
+        WriteBuffer::GetTime,
+        WriteBuffer::PutTime,
+        WriteBuffer::Compare,
+        WriteBuffer::GetNow,
+        llarp::util::NullMutex,
+        llarp::util::NullLock>;
 
-    using LosslessWriteQueue_t = std::deque< WriteBuffer >;
+    using LosslessWriteQueue_t = std::deque<WriteBuffer>;
 
     int fd;
     int flags = 0;
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
     struct kevent change;
 #endif
 
@@ -380,9 +378,10 @@ namespace llarp
     read(byte_t* buf, size_t sz) = 0;
 
     virtual int
-    sendto(__attribute__((unused)) const sockaddr* dst,
-           __attribute__((unused)) const void* data,
-           __attribute__((unused)) size_t sz)
+    sendto(
+        __attribute__((unused)) const SockAddr& dst,
+        __attribute__((unused)) const void* data,
+        __attribute__((unused)) size_t sz)
     {
       return -1;
     }
@@ -404,12 +403,12 @@ namespace llarp
     bool
     queue_write(const byte_t* buf, size_t sz)
     {
-      if(m_LossyWriteQueue)
+      if (m_LossyWriteQueue)
       {
         m_LossyWriteQueue->Emplace(buf, sz);
         return true;
       }
-      if(m_BlockingWriteQueue)
+      if (m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
@@ -436,7 +435,7 @@ namespace llarp
     flush_write_buffers(size_t amount)
     {
       before_flush_write();
-      if(m_LossyWriteQueue)
+      if (m_LossyWriteQueue)
       {
         m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
           do_write(buffer.buf, buffer.bufsz);
@@ -444,18 +443,18 @@ namespace llarp
           // discard entry
         });
       }
-      else if(m_BlockingWriteQueue)
+      else if (m_BlockingWriteQueue)
       {
-        if(amount)
+        if (amount)
         {
-          while(amount && m_BlockingWriteQueue->size())
+          while (amount && m_BlockingWriteQueue->size())
           {
-            auto& itr      = m_BlockingWriteQueue->front();
+            auto& itr = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
-            if(result <= 0)
+            if (result <= 0)
               return;
             ssize_t dlt = itr.bufsz - result;
-            if(dlt > 0)
+            if (dlt > 0)
             {
               // queue remaining to front of queue
               WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
@@ -471,17 +470,17 @@ namespace llarp
         else
         {
           // write buffers
-          while(m_BlockingWriteQueue->size())
+          while (m_BlockingWriteQueue->size())
           {
-            auto& itr      = m_BlockingWriteQueue->front();
+            auto& itr = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
-            if(result <= 0)
+            if (result <= 0)
             {
               errno = 0;
               return;
             }
             ssize_t dlt = itr.bufsz - result;
-            if(dlt > 0)
+            if (dlt > 0)
             {
               // queue remaining to front of queue
               WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
@@ -491,7 +490,7 @@ namespace llarp
               return;
             }
             m_BlockingWriteQueue->pop_front();
-            if(errno == EAGAIN || errno == EWOULDBLOCK)
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
               errno = 0;
               return;
@@ -503,8 +502,8 @@ namespace llarp
       errno = 0;
     }
 
-    std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
-    std::unique_ptr< LosslessWriteQueue_t > m_BlockingWriteQueue;
+    std::unique_ptr<LossyWriteQueue_t> m_LossyWriteQueue;
+    std::unique_ptr<LosslessWriteQueue_t> m_BlockingWriteQueue;
 
     virtual ~posix_ev_io()
     {
@@ -526,8 +525,7 @@ namespace llarp
   // on sockets
   struct tcp_conn : public ev_io
   {
-    sockaddr_storage _addr;
-    bool _shouldClose     = false;
+    bool _shouldClose = false;
     bool _calledConnected = false;
     llarp_tcp_conn tcp;
     // null if inbound otherwise outbound
@@ -536,40 +534,33 @@ namespace llarp
     static void
     DoClose(llarp_tcp_conn* conn)
     {
-      static_cast< tcp_conn* >(conn->impl)->_shouldClose = true;
+      static_cast<tcp_conn*>(conn->impl)->_shouldClose = true;
     }
 
     /// inbound
-    tcp_conn(llarp_ev_loop* loop, int _fd)
-        : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(nullptr)
+    tcp_conn(llarp_ev_loop* loop, int _fd) : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(nullptr)
     {
-      tcp.impl   = this;
-      tcp.loop   = loop;
+      tcp.impl = this;
+      tcp.loop = loop;
       tcp.closed = nullptr;
-      tcp.user   = nullptr;
-      tcp.read   = nullptr;
-      tcp.tick   = nullptr;
-      tcp.close  = &DoClose;
+      tcp.user = nullptr;
+      tcp.read = nullptr;
+      tcp.tick = nullptr;
+      tcp.close = &DoClose;
     }
 
     /// outbound
-    tcp_conn(llarp_ev_loop* loop, int _fd, const sockaddr* addr,
-             llarp_tcp_connecter* conn)
+    tcp_conn(llarp_ev_loop* loop, int _fd, const SockAddr& addr, llarp_tcp_connecter* conn)
         : ev_io(_fd, new LosslessWriteQueue_t{}), _conn(conn)
     {
-      socklen_t slen = sizeof(sockaddr_in);
-      if(addr->sa_family == AF_INET6)
-        slen = sizeof(sockaddr_in6);
-      else if(addr->sa_family == AF_UNIX)
-        slen = sizeof(sockaddr_un);
-      memcpy(&_addr, addr, slen);
-      tcp.impl   = this;
-      tcp.loop   = loop;
+      (void)addr;
+      tcp.impl = this;
+      tcp.loop = loop;
       tcp.closed = nullptr;
-      tcp.user   = nullptr;
-      tcp.read   = nullptr;
-      tcp.tick   = nullptr;
-      tcp.close  = &DoClose;
+      tcp.user = nullptr;
+      tcp.read = nullptr;
+      tcp.tick = nullptr;
+      tcp.close = &DoClose;
     }
 
     ~tcp_conn() override = default;
@@ -584,12 +575,12 @@ namespace llarp
     {
       sockaddr_storage st;
       socklen_t sl;
-      if(getpeername(fd, (sockaddr*)&st, &sl) == 0)
+      if (getpeername(fd, (sockaddr*)&st, &sl) == 0)
       {
         // we are connected yeh boi
-        if(_conn)
+        if (_conn)
         {
-          if(_conn->connected && !_calledConnected)
+          if (_conn->connected && !_calledConnected)
             _conn->connected(_conn, &tcp);
         }
         _calledConnected = true;
@@ -614,18 +605,17 @@ namespace llarp
     error() override
     {
       _shouldClose = true;
-      if(_conn)
+      if (_conn)
       {
 #ifndef _WIN32
         llarp::LogError("tcp_conn error: ", strerror(errno));
 #else
         char ebuf[1024];
         int err = WSAGetLastError();
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
-                      ebuf, 1024, nullptr);
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf, 1024, nullptr);
         llarp::LogError("tcp_conn error: ", ebuf);
 #endif
-        if(_conn->error)
+        if (_conn->error)
           _conn->error(_conn);
       }
       errno = 0;
@@ -645,8 +635,7 @@ namespace llarp
   {
     llarp_ev_loop* loop;
     llarp_tcp_acceptor* tcp;
-    tcp_serv(llarp_ev_loop* l, int _fd, llarp_tcp_acceptor* t)
-        : ev_io(_fd), loop(l), tcp(t)
+    tcp_serv(llarp_ev_loop* l, int _fd, llarp_tcp_acceptor* t) : ev_io(_fd), loop(l), tcp(t)
     {
       tcp->impl = this;
     }
@@ -654,7 +643,7 @@ namespace llarp
     bool
     tick() override
     {
-      if(tcp->tick)
+      if (tcp->tick)
         tcp->tick(tcp);
       return true;
     }
@@ -669,8 +658,7 @@ namespace llarp
 #ifdef _WIN32
 struct llarp_fd_promise
 {
-  void
-  Set(std::pair< int, int >)
+  void Set(std::pair<int, int>)
   {
   }
 
@@ -683,11 +671,11 @@ struct llarp_fd_promise
 #else
 struct llarp_fd_promise
 {
-  using promise_val_t = std::pair< int, int >;
-  llarp_fd_promise(std::promise< promise_val_t >* p) : _impl(p)
+  using promise_val_t = std::pair<int, int>;
+  llarp_fd_promise(std::promise<promise_val_t>* p) : _impl(p)
   {
   }
-  std::promise< promise_val_t >* _impl;
+  std::promise<promise_val_t>* _impl;
 
   void
   Set(promise_val_t fds)
@@ -736,26 +724,25 @@ struct llarp_ev_loop
 
   /// return false on socket error (non blocking)
   virtual bool
-  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
+  tcp_connect(llarp_tcp_connecter* tcp, const llarp::SockAddr& addr) = 0;
 
   virtual int
   tick(int ms) = 0;
 
   virtual uint32_t
-  call_after_delay(llarp_time_t delay_ms,
-                   std::function< void(void) > callback) = 0;
+  call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) = 0;
 
   virtual void
   cancel_delayed_call(uint32_t call_id) = 0;
 
   virtual bool
-  add_ticker(std::function< void(void) > ticker) = 0;
+  add_ticker(std::function<void(void)> ticker) = 0;
 
   virtual void
   stop() = 0;
 
   virtual bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src) = 0;
+  udp_listen(llarp_udp_io* l, const llarp::SockAddr& src) = 0;
 
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
@@ -766,9 +753,9 @@ struct llarp_ev_loop
   virtual bool
   tun_listen(llarp_tun_io* tun)
   {
-    auto dev  = create_tun(tun);
+    auto dev = create_tun(tun);
     tun->impl = dev;
-    if(dev)
+    if (dev)
     {
       return add_ev(dev, false);
     }
@@ -779,7 +766,7 @@ struct llarp_ev_loop
   create_tun(llarp_tun_io* tun) = 0;
 
   virtual llarp::ev_io*
-  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
+  bind_tcp(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr) = 0;
 
   virtual bool
   add_pipe(llarp_ev_pkt_pipe*)
@@ -788,14 +775,14 @@ struct llarp_ev_loop
   }
 
   /// give this event loop a logic thread for calling
-  virtual void set_logic(std::shared_ptr< llarp::Logic >) = 0;
+  virtual void set_logic(std::shared_ptr<llarp::Logic>) = 0;
 
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
 
   virtual bool
-  tcp_listen(llarp_tcp_acceptor* tcp, const sockaddr* addr)
+  tcp_listen(llarp_tcp_acceptor* tcp, const llarp::SockAddr& addr)
   {
     auto conn = bind_tcp(tcp, addr);
     return conn && add_ev(conn, true);
@@ -803,15 +790,15 @@ struct llarp_ev_loop
 
   virtual ~llarp_ev_loop() = default;
 
-  std::list< std::unique_ptr< llarp::ev_io > > handlers;
+  std::list<std::unique_ptr<llarp::ev_io>> handlers;
 
   virtual void
   tick_listeners()
   {
     auto itr = handlers.begin();
-    while(itr != handlers.end())
+    while (itr != handlers.end())
     {
-      if((*itr)->tick())
+      if ((*itr)->tick())
         ++itr;
       else
       {
@@ -822,75 +809,13 @@ struct llarp_ev_loop
   }
 
   virtual void
-  call_soon(std::function< void(void) > f) = 0;
-};
+  call_soon(std::function<void(void)> f) = 0;
 
-struct PacketBuffer
-{
-  PacketBuffer(PacketBuffer&& other)
-  {
-    _ptr       = other._ptr;
-    _sz        = other._sz;
-    other._ptr = nullptr;
-    other._sz  = 0;
-  }
+  virtual void
+  register_poll_fd_readable(int fd, std::function<void(void)> callback) = 0;
 
-  PacketBuffer(const PacketBuffer&) = delete;
-
-  PacketBuffer&
-  operator=(const PacketBuffer&) = delete;
-
-  PacketBuffer() : PacketBuffer(nullptr, 0){};
-  explicit PacketBuffer(size_t sz) : _sz{sz}
-  {
-    _ptr = new char[sz];
-  }
-  PacketBuffer(char* buf, size_t sz)
-  {
-    _ptr = buf;
-    _sz  = sz;
-  }
-  ~PacketBuffer()
-  {
-    if(_ptr)
-      delete[] _ptr;
-  }
-  byte_t*
-  data()
-  {
-    return (byte_t*)_ptr;
-  }
-  size_t
-  size()
-  {
-    return _sz;
-  }
-  byte_t& operator[](size_t sz)
-  {
-    return data()[sz];
-  }
-  void
-  reserve(size_t sz)
-  {
-    if(_ptr)
-      delete[] _ptr;
-    _ptr = new char[sz];
-    _sz  = sz;
-  }
-
- private:
-  char* _ptr = nullptr;
-  size_t _sz = 0;
-};
-
-struct PacketEvent
-{
-  llarp::Addr remote;
-  PacketBuffer pkt;
-};
-
-struct llarp_pkt_list : public std::vector< PacketEvent >
-{
+  virtual void
+  deregister_poll_fd_readable(int fd) = 0;
 };
 
 #endif

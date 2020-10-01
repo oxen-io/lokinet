@@ -18,8 +18,8 @@ namespace cpp17
   namespace filesystem
   {
 #ifdef LOKINET_USE_CPPBACKPORT
-    const fs::perms active_bits(fs::perms::all | fs::perms::set_uid
-                                | fs::perms::set_gid | fs::perms::sticky_bit);
+    const fs::perms active_bits(
+        fs::perms::all | fs::perms::set_uid | fs::perms::set_gid | fs::perms::sticky_bit);
     inline mode_t
     mode_cast(fs::perms prms)
     {
@@ -43,17 +43,15 @@ namespace cpp17
       //   "http://man7.org/linux/man-pages/man7/symlink.7.html"
       //  - See the fchmodat() Linux man page:
       //   "http://man7.org/linux/man-pages/man2/fchmodat.2.html"
-#if defined(AT_FDCWD) && defined(AT_SYMLINK_NOFOLLOW)              \
-    && !(defined(__SUNPRO_CC) || defined(__sun) || defined(sun))   \
-    && !(defined(linux) || defined(__linux) || defined(__linux__)) \
-    && !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED)                  \
-         && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000)              \
-    && !(defined(__IPHONE_OS_VERSION_MIN_REQUIRED)                 \
-         && __IPHONE_OS_VERSION_MIN_REQUIRED < 80000)              \
+#if defined(AT_FDCWD) && defined(AT_SYMLINK_NOFOLLOW)                                           \
+    && !(defined(__SUNPRO_CC) || defined(__sun) || defined(sun))                                \
+    && !(defined(linux) || defined(__linux) || defined(__linux__))                              \
+    && !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101000)  \
+    && !(defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED < 80000) \
     && !(defined(__QNX__) && (_NTO_VERSION <= 700))
-      if(::fchmodat(AT_FDCWD, p.c_str(), mode_cast(prms), 0))
+      if (::fchmodat(AT_FDCWD, p.c_str(), mode_cast(prms), 0))
 #else  // fallback if fchmodat() not supported
-      if(::chmod(p.c_str(), mode_cast(prms)))
+      if (::chmod(p.c_str(), mode_cast(prms)))
 #endif
       {
         const int err = errno;
@@ -73,49 +71,49 @@ namespace llarp
     {
       int e = errno;
       errno = 0;
-      return std::make_error_code(static_cast< std::errc >(e));
+      return std::make_error_code(static_cast<std::errc>(e));
     }
 
     error_code_t
     EnsurePrivateFile(fs::path pathname)
     {
-      errno           = 0;
+      errno = 0;
       error_code_t ec = errno_error();
-      const auto str  = pathname.string();
-      if(fs::exists(pathname, ec))  // file exists
+      const auto str = pathname.string();
+      if (fs::exists(pathname, ec))  // file exists
       {
-        auto st    = fs::status(pathname);
+        auto st = fs::status(pathname);
         auto perms = st.permissions();
-        if((perms & fs::perms::others_exec) != fs::perms::none)
+        if ((perms & fs::perms::others_exec) != fs::perms::none)
           perms = perms ^ fs::perms::others_exec;
-        if((perms & fs::perms::others_write) != fs::perms::none)
+        if ((perms & fs::perms::others_write) != fs::perms::none)
           perms = perms ^ fs::perms::others_write;
-        if((perms & fs::perms::others_write) != fs::perms::none)
+        if ((perms & fs::perms::others_write) != fs::perms::none)
           perms = perms ^ fs::perms::others_write;
-        if((perms & fs::perms::group_read) != fs::perms::none)
+        if ((perms & fs::perms::group_read) != fs::perms::none)
           perms = perms ^ fs::perms::group_read;
-        if((perms & fs::perms::others_read) != fs::perms::none)
+        if ((perms & fs::perms::others_read) != fs::perms::none)
           perms = perms ^ fs::perms::others_read;
-        if((perms & fs::perms::owner_exec) != fs::perms::none)
+        if ((perms & fs::perms::owner_exec) != fs::perms::none)
           perms = perms ^ fs::perms::owner_exec;
 
         fs::permissions(pathname, perms, ec);
-        if(ec)
+        if (ec)
           llarp::LogError("failed to set permissions on ", pathname);
       }
       else  // file is not there
       {
-        errno  = 0;
+        errno = 0;
         int fd = ::open(str.c_str(), O_RDWR | O_CREAT, 0600);
-        ec     = errno_error();
-        if(fd != -1)
+        ec = errno_error();
+        if (fd != -1)
         {
           ::close(fd);
         }
       }
 
 #ifndef WIN32
-      if(ec)
+      if (ec)
         llarp::LogError("failed to ensure ", str, ", ", ec.message());
       return ec;
 #else

@@ -7,15 +7,22 @@ namespace llarp
 {
   struct JSONLogStream : public FileLogStream
   {
-    JSONLogStream(std::shared_ptr< thread::ThreadPool > disk, FILE* f,
-                  llarp_time_t flushInterval, bool closeFile)
-        : FileLogStream(disk, f, flushInterval, closeFile)
+    JSONLogStream(
+        std::function<void(FileLogStream::Work_t)> disk,
+        FILE* f,
+        llarp_time_t flushInterval,
+        bool closeFile)
+        : FileLogStream(std::move(disk), f, flushInterval, closeFile)
     {
     }
 
     void
-    AppendLog(LogLevel lvl, const char* fname, int lineno,
-              const std::string& nodename, const std::string msg) override;
+    AppendLog(
+        LogLevel lvl,
+        const char* fname,
+        int lineno,
+        const std::string& nodename,
+        const std::string msg) override;
   };
 }  // namespace llarp
 

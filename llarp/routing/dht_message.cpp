@@ -10,17 +10,17 @@ namespace llarp
     bool
     DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
-      if(key == "M")
+      if (key == "M")
       {
         llarp::dht::Key_t fromKey;
         fromKey.Zero();
         return llarp::dht::DecodeMesssageList(fromKey, val, M, true);
       }
-      if(key == "S")
+      if (key == "S")
       {
         return bencode_read_integer(val, &S);
       }
-      if(key == "V")
+      if (key == "V")
       {
         return bencode_read_integer(val, &V);
       }
@@ -30,16 +30,16 @@ namespace llarp
     bool
     DHTMessage::BEncode(llarp_buffer_t* buf) const
     {
-      if(!bencode_start_dict(buf))
+      if (!bencode_start_dict(buf))
         return false;
 
-      if(!BEncodeWriteDictMsgType(buf, "A", "M"))
+      if (!BEncodeWriteDictMsgType(buf, "A", "M"))
         return false;
-      if(!BEncodeWriteDictBEncodeList("M", M, buf))
+      if (!BEncodeWriteDictBEncodeList("M", M, buf))
         return false;
-      if(!BEncodeWriteDictInt("S", S, buf))
+      if (!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
+      if (!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
 
       return bencode_end(buf);
@@ -55,11 +55,11 @@ namespace llarp
     {
       // set source as us
       const llarp::dht::Key_t us(r->pubkey());
-      for(const auto& msg : M)
+      for (const auto& msg : M)
       {
-        msg->From   = us;
+        msg->From = us;
         msg->pathID = from;
-        if(!h->HandleDHTMessage(*msg, r))
+        if (!h->HandleDHTMessage(*msg, r))
           return false;
       }
       return true;

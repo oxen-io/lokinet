@@ -15,13 +15,13 @@ namespace llarp
   {
     struct AbstractContext;
 
-    template < typename K, typename V >
+    template <typename K, typename V>
     struct TX
     {
       K target;
       AbstractContext* parent;
-      std::set< Key_t > peersAsked;
-      std::vector< V > valuesFound;
+      std::set<Key_t> peersAsked;
+      std::vector<V> valuesFound;
       TXOwner whoasked;
 
       TX(const TXOwner& asker, const K& k, AbstractContext* p)
@@ -39,17 +39,19 @@ namespace llarp
       {
         util::StatusObject obj{{"whoasked", whoasked.ExtractStatus()},
                                {"target", target.ExtractStatus()}};
-        std::vector< util::StatusObject > foundObjs;
-        std::transform(valuesFound.begin(), valuesFound.end(),
-                       std::back_inserter(foundObjs),
-                       [](const auto& item) -> util::StatusObject {
-                         return item.ExtractStatus();
-                       });
+        std::vector<util::StatusObject> foundObjs;
+        std::transform(
+            valuesFound.begin(),
+            valuesFound.end(),
+            std::back_inserter(foundObjs),
+            [](const auto& item) -> util::StatusObject { return item.ExtractStatus(); });
 
         obj["found"] = foundObjs;
-        std::vector< std::string > asked;
+        std::vector<std::string> asked;
         std::transform(
-            peersAsked.begin(), peersAsked.end(), std::back_inserter(asked),
+            peersAsked.begin(),
+            peersAsked.end(),
+            std::back_inserter(asked),
             [](const auto& item) -> std::string { return item.ToString(); });
         obj["asked"] = asked;
         return obj;
@@ -65,12 +67,12 @@ namespace llarp
       SendReply() = 0;
     };
 
-    template < typename K, typename V >
+    template <typename K, typename V>
     inline void
-    TX< K, V >::OnFound(const Key_t& askedPeer, const V& value)
+    TX<K, V>::OnFound(const Key_t& askedPeer, const V& value)
     {
       peersAsked.insert(askedPeer);
-      if(Validate(value))
+      if (Validate(value))
       {
         valuesFound.push_back(value);
       }

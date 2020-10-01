@@ -7,21 +7,25 @@ namespace llarp
 {
   namespace handlers
   {
-    struct NullEndpoint final
-        : public llarp::service::Endpoint,
-          public std::enable_shared_from_this< NullEndpoint >
+    struct NullEndpoint final : public llarp::service::Endpoint,
+                                public std::enable_shared_from_this<NullEndpoint>
     {
-      NullEndpoint(const std::string &name, AbstractRouter *r,
-                   llarp::service::Context *parent)
-          : llarp::service::Endpoint(name, r, parent)
+      NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
+          : llarp::service::Endpoint(r, parent)
       {
       }
 
-      bool
-      HandleInboundPacket(const service::ConvoTag, const llarp_buffer_t &,
-                          service::ProtocolType) override
+      virtual bool
+      HandleInboundPacket(
+          const service::ConvoTag, const llarp_buffer_t&, service::ProtocolType) override
       {
         return true;
+      }
+
+      std::string
+      GetIfName() const override
+      {
+        return "";
       }
 
       path::PathSet_ptr
@@ -34,6 +38,15 @@ namespace llarp
       SupportsV6() const override
       {
         return false;
+      }
+
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override{};
+
+      huint128_t
+      ObtainIPForAddr(const AlignedBuffer<32>&, bool) override
+      {
+        return {0};
       }
     };
   }  // namespace handlers

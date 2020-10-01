@@ -16,16 +16,19 @@ namespace llarp
     struct Endpoint;
 
     /// context needed to initiate an outbound hidden service session
-    struct OutboundContext
-        : public path::Builder,
-          public SendContext,
-          public std::enable_shared_from_this< OutboundContext >
+    struct OutboundContext : public path::Builder,
+                             public SendContext,
+                             public std::enable_shared_from_this<OutboundContext>
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
+
       ~OutboundContext() override;
 
       util::StatusObject
       ExtractStatus() const;
+
+      void
+      BlacklistSNode(const RouterID) override{};
 
       bool
       ShouldBundleRC() const override;
@@ -68,6 +71,10 @@ namespace llarp
       bool
       ReadyToSend() const;
 
+      /// for exits
+      void
+      SendPacketToRemote(const llarp_buffer_t&) override;
+
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
@@ -97,14 +104,24 @@ namespace llarp
       HandlePathBuildTimeout(path::Path_ptr path) override;
 
       bool
-      SelectHop(llarp_nodedb* db, const std::set< RouterID >& prev,
-                RouterContact& cur, size_t hop, path::PathRole roles) override;
+      SelectHop(
+          llarp_nodedb* db,
+          const std::set<RouterID>& prev,
+          RouterContact& cur,
+          size_t hop,
+          path::PathRole roles) override;
 
       bool
       HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);
 
       std::string
       Name() const override;
+
+      const IntroSet&
+      GetCurrentIntroSet() const
+      {
+        return currentIntroSet;
+      }
 
      private:
       /// swap remoteIntro with next intro
@@ -115,18 +132,18 @@ namespace llarp
       OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
       bool
-      OnIntroSetUpdate(const Address& addr, nonstd::optional< IntroSet > i,
-                       const RouterID& endpoint);
+      OnIntroSetUpdate(const Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);
 
       const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
       Introduction m_NextIntro;
-      std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
-          m_BadIntros;
+      std::unordered_map<Introduction, llarp_time_t, Introduction::Hash> m_BadIntros;
       llarp_time_t lastShift = 0s;
       uint16_t m_LookupFails = 0;
-      uint16_t m_BuildFails  = 0;
+      uint16_t m_BuildFails = 0;
+      llarp_time_t m_LastInboundTraffic = 0s;
+      bool m_GotInboundTraffic = false;
     };
   }  // namespace service
 

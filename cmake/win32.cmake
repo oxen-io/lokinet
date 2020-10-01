@@ -14,36 +14,36 @@ if(NOT MSVC_VERSION)
   # to .r[o]data section one after the other!
   add_compile_options(-fno-ident -Wa,-mbig-obj)
   link_libraries( -lws2_32 -lshlwapi -ldbghelp -luser32 -liphlpapi -lpsapi -luserenv )
-  if (CMAKE_C_COMPILER_AR AND STATIC_LINK_RUNTIME)
-    set(CMAKE_AR ${CMAKE_C_COMPILER_AR})
-    set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_C_ARCHIVE_FINISH "true")
-    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_CXX_ARCHIVE_FINISH "true")
-    link_libraries( -static-libstdc++ -static-libgcc -static ${CMAKE_CXX_FLAGS} ${CRYPTO_FLAGS} )
-  endif()
+  # zmq requires windows xp or higher
+  add_definitions(-DWINVER=0x0501 -D_WIN32_WINNT=0x0501)
 endif()
 
 if(EMBEDDED_CFG)
   link_libatomic()
 endif()
 
-list(APPEND LIBTUNTAP_SRC ${TT_ROOT}/tuntap-windows.c)
-get_filename_component(EV_SRC "llarp/ev/ev_libuv.cpp" ABSOLUTE)
 add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32)
-set(EXE_LIBS ${STATIC_LIB} ws2_32 iphlpapi)
 
-if(RELEASE_MOTTO)
-  add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-endif()
-
-if (NOT STATIC_LINK_RUNTIME AND NOT MSVC)
+if (NOT STATIC_LINK AND NOT MSVC)
   message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
-  message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
+  message("for release builds, turn on STATIC_LINK in cmake options")
 endif()
 
-if (STATIC_LINK_RUNTIME)
+# win32 is the last platform for which we grab libuv manually
+# if you want to use the included submodule do
+# cmake .. -G Ninja -DLIBUV_ROOT=../external/libuv.
+# otherwise grab mine (github.com/despair86/libuv.git) if you need to run on older hardware
+# and clone to win32-setup/libuv
+# then
+# cmake .. -G Ninja -DLIBUV_ROOT=../win32-setup/libuv
+# it is literally upward compatible with current windows 10
+if (STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
+  if (WOW64_CROSS_COMPILE)
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--large-address-aware,--dynamicbase,--pic-executable,-e,_mainCRTStartup,--subsystem,console:5.00 )
+  else()
+    link_libraries( -static-libstdc++ -static-libgcc -static -Wl,--image-base=0x10000,--dynamicbase,--pic-executable,-e,mainCRTStartup )
+  endif()
 endif()
 
 if(LIBUV_ROOT)

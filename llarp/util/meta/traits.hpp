@@ -10,33 +10,20 @@ namespace llarp
 {
   namespace traits
   {
-#ifdef __cpp_lib_void_t
-    using std::void_t;
-#else
-    /// C++17 void_t backport
-    template < typename... Ts >
-    struct void_t_impl
-    {
-      using type = void;
-    };
-    template < typename... Ts >
-    using void_t = typename void_t_impl< Ts... >::type;
-#endif
-
     /// Represents the empty type
     struct Bottom
     {
     };
 
     /// Int tag
-    template < size_t N >
+    template <size_t N>
     struct Tag
     {
       char arr[N + 1];
     };
 
     /// Type trait representing whether a type is pointer-like
-    template < typename T, typename _ = void >
+    template <typename T, typename _ = void>
     struct is_pointy : public std::false_type
     {
     };
@@ -45,16 +32,14 @@ namespace llarp
     // - has element_type typedef
     // - has dereference operator
     // - has arrow operator
-    template < typename T >
-    struct is_pointy<
-        T,
-        std::conditional_t< false, void_t< decltype(*std::declval< T >()) >,
-                            void > > : public std::true_type
+    template <typename T>
+    struct is_pointy<T, std::conditional_t<false, std::void_t<decltype(*std::declval<T>())>, void>>
+        : public std::true_type
     {
     };
 
     /// Type trait representing whether a type is an STL-style container
-    template < typename T, typename _ = void >
+    template <typename T, typename _ = void>
     struct is_container : public std::false_type
     {
     };
@@ -67,7 +52,7 @@ namespace llarp
         T,
         std::conditional_t<
             false,
-            void_t< typename T::value_type,
+            std::void_t< typename T::value_type,
                     typename T::size_type,
                     typename T::iterator,
                     typename T::const_iterator,
@@ -83,22 +68,22 @@ namespace llarp
 
     namespace Switch
     {
-      template < size_t Selector, typename... Types >
+      template <size_t Selector, typename... Types>
       struct Switch
       {
         using Type = Bottom;
       };
 
-      template < typename T, typename... Types >
-      struct Switch< 0u, T, Types... >
+      template <typename T, typename... Types>
+      struct Switch<0u, T, Types...>
       {
         using Type = T;
       };
 
-      template < size_t Selector, typename Tn, typename... Types >
-      struct Switch< Selector, Tn, Types... >
+      template <size_t Selector, typename Tn, typename... Types>
+      struct Switch<Selector, Tn, Types...>
       {
-        using Type = typename Switch< Selector - 1, Types... >::Type;
+        using Type = typename Switch<Selector - 1, Types...>::Type;
       };
 
     }  // namespace Switch
@@ -108,18 +93,18 @@ namespace llarp
       /// This provides a way to do a compile-type dispatch based on type traits
 
       /// meta function which always returns false
-      template < typename >
+      template <typename>
       class False : public std::false_type
       {
       };
 
       /// a case in the selection
-      template < template < typename... > class Trait = False >
+      template <template <typename...> class Trait = False>
       class Case
       {
        public:
-        template < typename Type >
-        struct Selector : public Trait< Type >::type
+        template <typename Type>
+        struct Selector : public Trait<Type>::type
         {
         };
 
@@ -211,20 +196,20 @@ namespace llarp
 
     namespace detail
     {
-      template < typename T, typename F, size_t... Is >
+      template <typename T, typename F, size_t... Is>
       void
-      for_each(T&& t, F f, std::index_sequence< Is... >)
+      for_each(T&& t, F f, std::index_sequence<Is...>)
       {
-        auto l = {(f(std::get< Is >(t)), 0)...};
+        auto l = {(f(std::get<Is>(t)), 0)...};
         (void)l;
       }
     }  // namespace detail
 
-    template < typename... Ts, typename F >
+    template <typename... Ts, typename F>
     void
-    for_each_in_tuple(std::tuple< Ts... > const& t, F f)
+    for_each_in_tuple(std::tuple<Ts...> const& t, F f)
     {
-      detail::for_each(t, f, std::make_index_sequence< sizeof...(Ts) >());
+      detail::for_each(t, f, std::make_index_sequence<sizeof...(Ts)>());
     }
 
   }  // namespace traits

@@ -7,17 +7,18 @@
 namespace llarp
 {
   void
-  AndroidLogStream::PreLog(std::stringstream& ss, LogLevel lvl,
-                           const char* fname, int lineno,
-                           const std::string&) const
+  AndroidLogStream::PreLog(
+      std::stringstream& ss, LogLevel lvl, const char* fname, int lineno, const std::string&) const
   {
-    switch(lvl)
+    switch (lvl)
     {
       case eLogNone:
         return;
       case eLogTrace:
         ss << "[TRC] ";
-        break case eLogDebug : ss << "[DBG] ";
+        break;
+      case eLogDebug:
+        ss << "[DBG] ";
         break;
       case eLogInfo:
         ss << "[NFO] ";
@@ -30,8 +31,8 @@ namespace llarp
         break;
     }
 
-    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname
-       << ":" << lineno << "\t";
+    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << fname << ":" << lineno
+       << "\t";
   }
 
   void
@@ -48,11 +49,9 @@ namespace llarp
   {
     std::string str("lokinet|");
     str += tag;
-    switch(lvl)
+    switch (lvl)
     {
       case eLogTrace:
-        __android_log_write(ANDROID_LOG_TRACE, str.c_str(), msg.c_str());
-        return;
       case eLogDebug:
         __android_log_write(ANDROID_LOG_DEBUG, str.c_str(), msg.c_str());
         return;

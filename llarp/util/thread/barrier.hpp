@@ -25,15 +25,15 @@ namespace llarp
       bool
       Block()
       {
-        std::unique_lock< std::mutex > lock{mutex};
-        if(pending == 1)
+        std::unique_lock lock{mutex};
+        if (pending == 1)
         {
           pending = 0;
           lock.unlock();
           cv.notify_all();
           return true;
         }
-        else if(pending > 1)
+        else if (pending > 1)
         {
           pending--;
         }

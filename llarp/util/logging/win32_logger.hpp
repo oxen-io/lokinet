@@ -12,8 +12,12 @@ namespace llarp
     Win32LogStream(std::ostream& out);
 
     void
-    PreLog(std::stringstream& s, LogLevel lvl, const char* fname, int lineno,
-           const std::string& nodename) const override;
+    PreLog(
+        std::stringstream& s,
+        LogLevel lvl,
+        const char* fname,
+        int lineno,
+        const std::string& nodename) const override;
 
     void
     PostLog(std::stringstream& s) const override;
@@ -26,8 +30,7 @@ namespace llarp
    private:
     std::ostream& m_Out;
 
-    bool isConsoleModern =
-        true;  // qol fix so oldfag clients don't see ugly escapes
+    bool isConsoleModern = true;  // qol fix so oldfag clients don't see ugly escapes
 
     HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
   };

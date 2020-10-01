@@ -4,8 +4,11 @@
 #include <link/session.hpp>
 #include <iwp/linklayer.hpp>
 #include <iwp/message_buffer.hpp>
+#include <net/ip_address.hpp>
+
 #include <unordered_set>
 #include <deque>
+#include <queue>
 
 namespace llarp
 {
@@ -15,8 +18,7 @@ namespace llarp
     static constexpr size_t PacketOverhead = HMACSIZE + TUNNONCESIZE;
     /// creates a packet with plaintext size + wire overhead + random pad
     ILinkSession::Packet_t
-    CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16,
-                 size_t pad_variance = 16);
+    CreatePacket(Command cmd, size_t plainsize, size_t min_pad = 16, size_t pad_variance = 16);
     /// Time how long we try delivery for
     static constexpr std::chrono::milliseconds DeliveryTimeout = 500ms;
     /// Time how long we wait to recieve a message
@@ -32,8 +34,7 @@ namespace llarp
     /// How long we wait for a session to die with no tx from them
     static constexpr auto SessionAliveTimeout = PingInterval * 5;
 
-    struct Session : public ILinkSession,
-                     public std::enable_shared_from_this< Session >
+    struct Session : public ILinkSession, public std::enable_shared_from_this<Session>
     {
       using Time_t = std::chrono::milliseconds;
 
@@ -41,18 +42,11 @@ namespace llarp
       static constexpr std::size_t MaxACKSInMACK = 1024 / sizeof(uint64_t);
 
       /// outbound session
-      Session(LinkLayer* parent, const RouterContact& rc,
-              const AddressInfo& ai);
+      Session(LinkLayer* parent, const RouterContact& rc, const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, const Addr& from);
+      Session(LinkLayer* parent, const IpAddress& from);
 
       ~Session() = default;
-
-      std::shared_ptr< ILinkSession >
-      BorrowSelf() override
-      {
-        return shared_from_this();
-      }
 
       void
       Pump() override;
@@ -61,8 +55,7 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       bool
-      SendMessageBuffer(ILinkSession::Message_t msg,
-                        CompletionHandler resultHandler) override;
+      SendMessageBuffer(ILinkSession::Message_t msg, CompletionHandler resultHandler) override;
 
       void
       Send_LL(const byte_t* buf, size_t sz);
@@ -92,7 +85,7 @@ namespace llarp
         return m_RemoteRC.pubkey;
       }
 
-      Addr
+      IpAddress
       GetRemoteEndpoint() const override
       {
         return m_RemoteAddr;
@@ -122,6 +115,9 @@ namespace llarp
       bool
       ShouldPing() const override;
 
+      SessionStats
+      GetSessionStats() const override;
+
       util::StatusObject
       ExtractStatus() const override;
 
@@ -148,27 +144,14 @@ namespace llarp
       static std::string
       StateToString(State state);
       State m_State;
-
-      struct Stats
-      {
-        // rate
-        uint64_t currentRateRX = 0;
-        uint64_t currentRateTX = 0;
-
-        uint64_t totalPacketsRX = 0;
-
-        uint64_t totalAckedTX    = 0;
-        uint64_t totalDroppedTX  = 0;
-        uint64_t totalInFlightTX = 0;
-      };
-      Stats m_Stats;
+      SessionStats m_Stats;
 
       /// are we inbound session ?
       const bool m_Inbound;
       /// parent link layer
       LinkLayer* const m_Parent;
       const llarp_time_t m_CreatedAt;
-      const Addr m_RemoteAddr;
+      const IpAddress m_RemoteAddr;
 
       AddressInfo m_ChosenAI;
       /// remote rc
@@ -176,7 +159,7 @@ namespace llarp
       /// session key
       SharedSecret m_SessionKey;
       /// session token
-      AlignedBuffer< 24 > token;
+      AlignedBuffer<24> token;
 
       PubKey m_ExpectedIdent;
       PubKey m_RemoteOnionKey;
@@ -198,16 +181,16 @@ namespace llarp
       void
       ResetRates();
 
-      std::unordered_map< uint64_t, InboundMessage > m_RXMsgs;
-      std::unordered_map< uint64_t, OutboundMessage > m_TXMsgs;
+      std::unordered_map<uint64_t, InboundMessage> m_RXMsgs;
+      std::unordered_map<uint64_t, OutboundMessage> m_TXMsgs;
 
       /// maps rxid to time recieved
-      std::unordered_map< uint64_t, llarp_time_t > m_ReplayFilter;
-      /// set of rx messages to send in next round of multiacks
-      std::unordered_set< uint64_t > m_SendMACKs;
+      std::unordered_map<uint64_t, llarp_time_t> m_ReplayFilter;
+      /// rx messages to send in next round of multiacks
+      std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> m_SendMACKs;
 
-      using CryptoQueue_t   = std::vector< Packet_t >;
-      using CryptoQueue_ptr = std::shared_ptr< CryptoQueue_t >;
+      using CryptoQueue_t = std::list<Packet_t>;
+      using CryptoQueue_ptr = std::shared_ptr<CryptoQueue_t>;
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
 

@@ -14,9 +14,9 @@ namespace llarp
       Key_t node;
       uint64_t txid = 0;
 
-      TXOwner()               = default;
+      TXOwner() = default;
       TXOwner(const TXOwner&) = default;
-      TXOwner(TXOwner&&)      = default;
+      TXOwner(TXOwner&&) = default;
 
       TXOwner&
       operator=(const TXOwner&) = default;
@@ -53,7 +53,7 @@ namespace llarp
         operator()(const TXOwner& o) const noexcept
         {
           std::size_t sz2;
-          memcpy(&sz2, &o.node[0], sizeof(std::size_t));
+          memcpy(&sz2, o.node.data(), sizeof(std::size_t));
           return o.txid ^ (sz2 << 1);
         }
       };

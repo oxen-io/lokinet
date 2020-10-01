@@ -1,6 +1,6 @@
 #include <util/thread/queue_manager.hpp>
 
-#include <nonstd/optional.hpp>
+#include <optional>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -75,7 +75,7 @@ class IntQueue
     }
   }
 
-  nonstd::optional< int >
+  std::optional< int >
   tryPopFront()
   {
     uint32_t gen   = 0;
@@ -89,7 +89,7 @@ class IntQueue
     }
     else
     {
-      return {};
+      return std::nullopt;
     }
   }
 
@@ -258,8 +258,8 @@ TEST(TestQueueManager, SimpleUsage)
 
   auto result = queue.tryPopFront();
 
-  ASSERT_TRUE(result.has_value());
-  ASSERT_EQ(1, result.value());
+  ASSERT_TRUE(result);
+  ASSERT_EQ(1, *result);
 }
 
 class BasicFunctionality : public ::testing::TestWithParam< uint32_t >

@@ -13,38 +13,27 @@ namespace llarp
   {
     struct GotRouterMessage final : public IMessage
     {
-      GotRouterMessage(const Key_t& from, bool tunneled)
-          : IMessage(from), relayed(tunneled)
+      GotRouterMessage(const Key_t& from, bool tunneled) : IMessage(from), relayed(tunneled)
       {
       }
-      GotRouterMessage(const Key_t& from, uint64_t id,
-                       const std::vector< RouterContact >& results,
-                       bool tunneled)
+      GotRouterMessage(
+          const Key_t& from, uint64_t id, const std::vector<RouterContact>& results, bool tunneled)
           : IMessage(from), foundRCs(results), txid(id), relayed(tunneled)
       {
       }
 
-      GotRouterMessage(const Key_t& from, const Key_t& closer, uint64_t id,
-                       bool tunneled)
-          : IMessage(from)
-          , closerTarget(new Key_t(closer))
-          , txid(id)
-          , relayed(tunneled)
+      GotRouterMessage(const Key_t& from, const Key_t& closer, uint64_t id, bool tunneled)
+          : IMessage(from), closerTarget(new Key_t(closer)), txid(id), relayed(tunneled)
       {
       }
 
-      GotRouterMessage(uint64_t id, std::vector< RouterID > _near,
-                       bool tunneled)
-          : IMessage({})
-          , nearKeys(std::move(_near))
-          , txid(id)
-          , relayed(tunneled)
+      GotRouterMessage(uint64_t id, std::vector<RouterID> _near, bool tunneled)
+          : IMessage({}), nearKeys(std::move(_near)), txid(id), relayed(tunneled)
       {
       }
 
       /// gossip message
-      GotRouterMessage(const RouterContact rc)
-          : IMessage({}), foundRCs({rc}), txid(0)
+      GotRouterMessage(const RouterContact rc) : IMessage({}), foundRCs({rc}), txid(0)
       {
         version = LLARP_PROTO_VERSION;
       }
@@ -70,17 +59,16 @@ namespace llarp
 
       bool
       HandleMessage(
-          llarp_dht_context* ctx,
-          std::vector< std::unique_ptr< IMessage > >& replies) const override;
+          llarp_dht_context* ctx, std::vector<std::unique_ptr<IMessage>>& replies) const override;
 
-      std::vector< RouterContact > foundRCs;
-      std::vector< RouterID > nearKeys;
-      std::unique_ptr< Key_t > closerTarget;
+      std::vector<RouterContact> foundRCs;
+      std::vector<RouterID> nearKeys;
+      std::unique_ptr<Key_t> closerTarget;
       uint64_t txid = 0;
-      bool relayed  = false;
+      bool relayed = false;
     };
 
-    using GotRouterMessage_constptr = std::shared_ptr< const GotRouterMessage >;
+    using GotRouterMessage_constptr = std::shared_ptr<const GotRouterMessage>;
   }  // namespace dht
 }  // namespace llarp
 #endif

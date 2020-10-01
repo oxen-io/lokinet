@@ -1,4 +1,4 @@
-set(CMAKE_SYSTEM_VERSION 6.0)
+set(CMAKE_SYSTEM_VERSION 5.0)
 
 # target environment on the build host system
 # second one is for non-root installs
@@ -20,7 +20,8 @@ if($ENV{COMPILER} MATCHES "clang")
 else()
     set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}-gcc${TOOLCHAIN_SUFFIX})
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++${TOOLCHAIN_SUFFIX})
-    add_compile_options("-Wa,-mbig-obj")
 endif()
 
 set(CMAKE_RC_COMPILER ${TOOLCHAIN_PREFIX}-windres)
+set(CMAKE_CROSSCOMPILE ON)
+set(ARCH_TRIPLET ${CROSS_TARGET})

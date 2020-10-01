@@ -11,10 +11,9 @@ namespace llarp
 
   namespace service
   {
-    struct AsyncKeyExchange
-        : public std::enable_shared_from_this< AsyncKeyExchange >
+    struct AsyncKeyExchange : public std::enable_shared_from_this<AsyncKeyExchange>
     {
-      std::shared_ptr< Logic > logic;
+      std::shared_ptr<Logic> logic;
       SharedSecret sharedKey;
       ServiceInfo m_remote;
       const Identity& m_LocalIdentity;
@@ -22,24 +21,26 @@ namespace llarp
       Introduction intro;
       const PQPubKey introPubKey;
       Introduction remoteIntro;
-      std::function< void(std::shared_ptr< ProtocolFrame >) > hook;
+      std::function<void(std::shared_ptr<ProtocolFrame>)> hook;
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(std::shared_ptr< Logic > l, ServiceInfo r,
-                       const Identity& localident,
-                       const PQPubKey& introsetPubKey,
-                       const Introduction& remote, IDataHandler* h,
-                       const ConvoTag& t, ProtocolType proto);
+      AsyncKeyExchange(
+          std::shared_ptr<Logic> l,
+          ServiceInfo r,
+          const Identity& localident,
+          const PQPubKey& introsetPubKey,
+          const Introduction& remote,
+          IDataHandler* h,
+          const ConvoTag& t,
+          ProtocolType proto);
 
       static void
-      Result(std::shared_ptr< AsyncKeyExchange > user,
-             std::shared_ptr< ProtocolFrame > frame);
+      Result(std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrame> frame);
 
       /// given protocol message make protocol frame
       static void
-      Encrypt(std::shared_ptr< AsyncKeyExchange > user,
-              std::shared_ptr< ProtocolFrame > frame);
+      Encrypt(std::shared_ptr<AsyncKeyExchange> user, std::shared_ptr<ProtocolFrame> frame);
     };
 
   }  // namespace service

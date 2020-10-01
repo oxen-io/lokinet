@@ -31,8 +31,7 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i);
 
 /// Write a dictionary entry with a uint64_t value
 bool
-bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz,
-                           uint64_t i);
+bencode_write_uint64_entry(llarp_buffer_t* buff, const void* name, size_t sz, uint64_t i);
 
 bool
 bencode_start_list(llarp_buffer_t* buff);
