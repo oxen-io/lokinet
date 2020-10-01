@@ -214,7 +214,6 @@ namespace llarp
         DoCallback(callback, SendStatus::Success);
       else
       {
-        LogWarn("Send outbound message handler dropped message");
         DoCallback(callback, SendStatus::Congestion);
       }
     });
