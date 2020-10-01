@@ -78,13 +78,13 @@ namespace llarp
       auto path = m_PathSet->GetRandomPathByRouter(remoteIntro.router);
       if (!path)
       {
-        LogError(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
+        LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
         return;
       }
 
       if (!m_DataHandler->GetCachedSessionKeyFor(f->T, shared))
       {
-        LogError(m_Endpoint->Name(), " has no cached session key on session T=", f->T);
+        LogWarn(m_Endpoint->Name(), " has no cached session key on session T=", f->T);
         return;
       }
 
