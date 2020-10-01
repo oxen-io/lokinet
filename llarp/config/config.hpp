@@ -229,7 +229,7 @@ namespace llarp
     generateBaseRouterConfig(fs::path defaultDataDir);
 
     void
-    Save() const;
+    Save();
 
     void
     Override(std::string section, std::string key, std::string value);

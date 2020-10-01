@@ -46,7 +46,7 @@ namespace llarp
 
     /// save config and any overrides to the file it was loaded from
     void
-    Save() const;
+    Save();
 
    private:
     bool
