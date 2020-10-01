@@ -1,3 +1,18 @@
+lokinet (0.8.0-1~ubuntu2004) focal; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Rename ufw rule to match the package name
+  * Fix ufw install rule
+  * Fix config file generation
+
+  [ Jeff ]
+  * ammend log levels for common spammy log events (#1375)
+
+  [ Jason Rhinelander ]
+  * Fix gbp config
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Oct 2020 19:47:58 -0300
+
 lokinet (0.8.0~pre2-1~ubuntu2004) focal; urgency=medium
 
   [ Jason Rhinelander ]
