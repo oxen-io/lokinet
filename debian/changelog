@@ -1,3 +1,14 @@
+lokinet (0.8.0-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix ufw install rule
+  * Fix config file generation
+
+  [ Jeff ]
+  * ammend log levels for common spammy log events (#1375)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Oct 2020 19:48:05 -0300
+
 lokinet (0.8.0~pre2-1~ubuntu1804) bionic; urgency=medium
 
   [ Jason Rhinelander ]
