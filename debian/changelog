@@ -1,3 +1,52 @@
+lokinet (0.8.0-1~ubuntu2010) groovy; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove gcc-5 workaround (#1360)
+
+  [ Jeff ]
+  * resolve issue #1361 about peer stats excessive logging (#1365)
+
+  [ Jason Rhinelander ]
+  * Kill i386
+  * Don't build tests
+  * Try submodules --depth=1
+  * Add lokinet-vpn binary, disable shared libs
+
+  [ Jeff ]
+  * dont poke routes if we have no exit (#1352)
+
+  [ Thomas Winget ]
+  * New RC format (#1368)
+
+  [ Jeff ]
+  * dont serialize ephemeral members of service identity (#1370)
+  * make win32 exits work again (#1367)
+
+  [ Thomas Winget ]
+  * fix format string for size_t (#1371)
+
+  [ Jeff ]
+  * serialize auth codes in rpc (#1369)
+
+  [ Jason Rhinelander ]
+  * 0.8.0 version bump (#1373)
+
+  [ Jeff Becker ]
+  * bump lokimq submodule to 1.2.0
+
+  [ Jason Rhinelander ]
+  * Rename ufw rule to match the package name
+  * Fix ufw install rule
+  * Fix config file generation
+
+  [ Jeff ]
+  * ammend log levels for common spammy log events (#1375)
+
+  [ Jason Rhinelander ]
+  * Fix gbp distro
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Oct 2020 19:47:02 -0300
+
 lokinet (0.8.0~pre1-1~ubuntu2010) groovy; urgency=medium
 
   * Groovy deb.
