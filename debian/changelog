@@ -1,3 +1,15 @@
+lokinet (0.8.0-1) unstable; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Rename ufw rule to match the package name
+  * Fix ufw install rule
+  * Fix config file generation
+
+  [ Jeff ]
+  * ammend log levels for common spammy log events (#1375)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Oct 2020 19:44:16 -0300
+
 lokinet (0.8.0~pre2-1) unstable; urgency=medium
 
   [ Jeff ]
