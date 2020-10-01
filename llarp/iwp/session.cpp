@@ -359,7 +359,7 @@ namespace llarp
           {
             m_Stats.totalDroppedTX++;
             m_Stats.totalInFlightTX--;
-            LogWarn("Dropped unacked packet to ", m_RemoteAddr);
+            LogDebug("Dropped unacked packet to ", m_RemoteAddr);
             itr->second.InformTimeout();
             itr = m_TXMsgs.erase(itr);
           }
