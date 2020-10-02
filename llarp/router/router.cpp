@@ -572,7 +572,14 @@ namespace llarp
 
     if (inboundLinks.empty() and m_isServiceNode)
     {
-      inboundLinks.push_back(LinksConfig::LinkInfo{"0.0.0.0", AF_INET, 1090});
+      const auto& publicAddr = conf.router.m_publicAddress;
+      if (publicAddr.isEmpty() or not publicAddr.hasPort())
+      {
+        throw std::runtime_error(
+            "service node enabled but could not find a public IP to bind to; you need to set the "
+            "public-ip= and public-port= options");
+      }
+      inboundLinks.push_back(LinksConfig::LinkInfo{"0.0.0.0", AF_INET, *publicAddr.getPort()});
     }
 
     // create inbound links, if we are a service node
