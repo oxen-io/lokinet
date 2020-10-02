@@ -1,0 +1,17 @@
+Template: lokinet-router/no-public-ip
+Type: note
+Description: No public IP detected!
+ This system does not appear to have any public IPv4 address, which Lokinet
+ service nodes require.
+ .
+ This is not necessarily an error: some VPS providers use exotic setups that
+ automatically forward your public IP traffic to your internal IP.
+ .
+ Assuming this machine is publicly reachable, Lokinet needs to be told the
+ public IP and port by updating the configuration file
+ (/etc/loki/lokinet-router.ini) to set the following [router] options:
+ .
+   public-ip=YOURPUBLICIP
+   public-port=1090
+ .
+ Until this change is made, lokinet will not properly start up.
