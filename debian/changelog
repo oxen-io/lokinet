@@ -1,3 +1,35 @@
+lokinet (0.8.0-3~deb10) bionic; urgency=medium
+
+  [ Jeff ]
+  * tweak configuration defaults
+  * un limit lmq
+  * update readme build info
+
+  [ Jeff Becker ]
+  * use size_left
+  * put pubkey_ed25519 in fields
+  * disable whitelist in unit test
+  * kill lmq before stopping links/
+  * fix decode version 0 rc when in version 1 mode
+
+  [ Thomas Winget ]
+  * remove unnecessary code
+
+  [ Jeff ]
+  * ping lokid every 30 second after starting up
+
+  [ Jason Rhinelander ]
+  * Make public-ip option work (#1380)
+  * make format (#1381)
+
+  [ Jeff ]
+  * disable rpc on relays by default (#1383)
+
+  [ Jason Rhinelander ]
+  * Add debconf warning when no public ip
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 18:05:31 -0300
+
 lokinet (0.8.0-2~deb10) bionic; urgency=medium
 
   * Fix broken motto in debs
