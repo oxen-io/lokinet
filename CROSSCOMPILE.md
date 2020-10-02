@@ -11,11 +11,12 @@ These builds are fully automated using [Drone CI](https://drone.io). Guaranteed 
 
 Tier 2:
 
-These targets have no automation available, but do not require patches to build or run.
+These targets have no build automation available, but do not require patches to build or run.
 * Mac OSX (> 10.10)
 * Android (arm/x86)
 * Apple IOS
 * Linux PPC64 (little endian)
+* FreeBSD (amd64)
 
 Tier 3:
 
