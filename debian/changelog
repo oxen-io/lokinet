@@ -1,3 +1,10 @@
+lokinet (0.8.0-2~ubuntu2010) groovy; urgency=medium
+
+  * Fix broken motto in debs
+  * Add missing router mode flag to service file
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 01:06:40 -0300
+
 lokinet (0.8.0-1~ubuntu2010) groovy; urgency=medium
 
   [ Jason Rhinelander ]
