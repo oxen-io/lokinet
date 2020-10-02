@@ -18,7 +18,7 @@ namespace llarp
     if (m_initialized)
       return false;
 
-    fs::path root = config.router.m_dataDir;
+    const fs::path root = config.router.m_dataDir;
 
     // utility function to assign a path, using the specified config parameter if present and
     // falling back to root / defaultName if not
@@ -31,7 +31,7 @@ namespace llarp
       {
         fs::path file(option);
         if (not file.is_absolute())
-          throw std::runtime_error(stringify("override for ", defaultName, " cannot be relative"));
+          file = root / file;
 
         return file;
       }
