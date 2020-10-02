@@ -95,7 +95,12 @@ namespace llarp
     conf.defineOption<std::string>("router", "public-address", false, "", [this](std::string arg) {
       if (not arg.empty())
       {
-        llarp::LogWarn("*** WARNING: The config option [router]:public-address=", arg, " is deprecated, use public-ip=", arg, " instead.");
+        llarp::LogWarn(
+            "*** WARNING: The config option [router]:public-address=",
+            arg,
+            " is deprecated, use public-ip=",
+            arg,
+            " instead.");
 
         if (arg.size() > 15)
           throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
@@ -785,7 +790,7 @@ namespace llarp
         {
             "For complex network configurations where the detected IP is incorrect or non-public",
             "this setting specifies the public IP at which this router is reachable. When",
-            "provided the public-port option must also be specified."
+            "provided the public-port option must also be specified.",
         });
 
     def.addOptionComments(
