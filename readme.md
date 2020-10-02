@@ -62,7 +62,9 @@ Build requirements:
 * C++ 17 capable C++ compiler
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
-* gcovr (if generating test coverage with gcc)
+* libunbound
+* libzmq
+* sqlite3
 
 ### Linux
 
@@ -71,9 +73,9 @@ build:
     $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ mkdir build 
+    $ mkdir build
     $ cd build
-    $ cmake .. 
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
     $ make -j$(nproc)
 
 install:
@@ -84,14 +86,14 @@ install:
 
 build:
     make sure you have cmake, libuv and xcode command line tools installed
-    
+
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ mkdir build 
+    $ mkdir build
     $ cd build
-    $ cmake .. 
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
     $ make -j$(nproc)
-    
+
 install:
 
     $ sudo make install
@@ -106,16 +108,16 @@ additional build requirements:
 * cpack
 
 setup:
- 
+
     $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis
-    
+
 building:
 
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build-windows
     $ cd build-windows
-    $ cmake -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
+    $ cmake -DBUILD_STATIC_DEPS=ON -DNATIVE_BUILD=OFF -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON -DCMAKE_TOOLCHAIN_FILE='../contrib/cross/mingw64.cmake' -DWITH_TESTS=OFF -DCMAKE_CROSSCOMPILING=ON ..
     $ cpack -D CPACK_MONOLITHIC_INSTALL=1 -G NSIS ..
 
 ### Solaris 2.10+
@@ -146,7 +148,7 @@ install:
 
 build:
 
-    $ pkg install cmake git curl libuv libsodium pkgconf
+    $ pkg install cmake git curl libuv libsodium pkgconf libunbound
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build

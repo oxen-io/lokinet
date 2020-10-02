@@ -66,7 +66,8 @@ namespace llarp
       , m_lokidRpcClient(std::make_shared<rpc::LokidRpcClient>(m_lmq, this))
   {
     m_keyManager = std::make_shared<KeyManager>();
-
+    // for lokid, so we don't close the connection when syncing the whitelist
+    m_lmq->MAX_MSG_SIZE = -1;
     _stopping.store(false);
     _running.store(false);
     _lastTick = llarp::time_now_ms();
@@ -1118,6 +1119,7 @@ namespace llarp
     StopLinks();
     nodedb()->AsyncFlushToDisk();
     _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
+    m_lmq.reset();
   }
 
   void
