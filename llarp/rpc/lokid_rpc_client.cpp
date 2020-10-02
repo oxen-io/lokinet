@@ -67,8 +67,9 @@ namespace llarp
     void
     LokidRpcClient::UpdateServiceNodeList()
     {
-      nlohmann::json request;
-      request["pubkey_ed25519"] = true;
+      nlohmann::json request, fields;
+      fields["pubkey_ed25519"] = true;
+      request["fields"] = fields;
       request["active_only"] = true;
       if (not m_CurrentBlockHash.empty())
         request["poll_block_hash"] = m_CurrentBlockHash;
