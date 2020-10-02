@@ -5,7 +5,7 @@ Currently supported targets:
 Tier 1:
 
 * Linux (arm/x86)
-* Windows (32 and 64 bit x86)
+* Windows 8+ (32 and 64 bit x86)
 * FreeBSD (amd64)
 
 Tier 2:
@@ -20,6 +20,8 @@ Tier 3:
 * Big Endian Linux
 * NetBSD
 * OpenBSD
+* Windows pre-8
+* UNIX v5 (x86 AMD64)
 
 Unsupported (feel free to support this yourself)
 
