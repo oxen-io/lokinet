@@ -35,7 +35,7 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" \
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release \
 		-DGIT_VERSION="deb$(DEB_VERSION)" \
 		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 \
