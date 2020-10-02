@@ -361,7 +361,12 @@ namespace llarp
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS);
 
     conf.defineOption<std::string>(
-        "dns", "upstream", false, true, DefaultUpstreamDNS, [=, first=true](std::string arg) mutable {
+        "dns",
+        "upstream",
+        false,
+        true,
+        DefaultUpstreamDNS,
+        [=, first = true](std::string arg) mutable {
           if (first)
           {
             m_upstreamDNS.clear();
@@ -371,8 +376,9 @@ namespace llarp
           {
             auto& addr = m_upstreamDNS.emplace_back(std::move(arg));
             if (auto p = addr.getPort(); p && *p != 53)
-              // unbound doesn't support specifying a port, so bail if the user gave a non-default port
-              throw std::invalid_argument(stringify("Invalid [dns] upstream setting: non-default DNS ports are not supported"));
+              // unbound doesn't support non-default ports so bail if the user gave one
+              throw std::invalid_argument(
+                  "Invalid [dns] upstream setting: non-default DNS ports are not supported");
             addr.setPort(std::nullopt);
           }
         });
