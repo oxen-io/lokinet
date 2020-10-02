@@ -464,13 +464,10 @@ namespace llarp
   void
   ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    (void)params;
-
-    constexpr bool DefaultRPCEnabled = true;
     constexpr auto DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
 
     conf.defineOption<bool>(
-        "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
+        "api", "enabled", false, not params.isRelay, AssignmentAcceptor(m_enableRPCServer));
 
     conf.defineOption<std::string>(
         "api", "bind", false, DefaultRPCBindAddr, [this](std::string arg) {
