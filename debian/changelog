@@ -1,3 +1,10 @@
+lokinet (0.8.0-2~deb10) bionic; urgency=medium
+
+  * Fix broken motto in debs
+  * Add missing router mode flag to service file
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 01:06:39 -0300
+
 lokinet (0.8.0-1~deb10) bionic; urgency=medium
 
   [ Jason Rhinelander ]
