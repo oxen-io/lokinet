@@ -363,7 +363,7 @@ namespace llarp
     };
 
     constexpr auto DefaultUpstreamDNS = "1.1.1.1:53";
-    
+
     conf.defineOption<std::string>(
         "dns", "upstream", false, true, DefaultUpstreamDNS, [=](std::string arg) {
           m_upstreamDNS.push_back(parseDNSAddr(std::move(arg)));
