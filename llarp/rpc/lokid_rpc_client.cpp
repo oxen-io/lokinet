@@ -67,8 +67,9 @@ namespace llarp
     void
     LokidRpcClient::UpdateServiceNodeList()
     {
-      nlohmann::json request;
-      request["pubkey_ed25519"] = true;
+      nlohmann::json request, fields;
+      fields["pubkey_ed25519"] = true;
+      request["fields"] = fields;
       request["active_only"] = true;
       if (not m_CurrentBlockHash.empty())
         request["poll_block_hash"] = m_CurrentBlockHash;
@@ -100,7 +101,7 @@ namespace llarp
     void
     LokidRpcClient::Connected()
     {
-      constexpr auto PingInterval = 1min;
+      constexpr auto PingInterval = 30s;
       constexpr auto NodeListUpdateInterval = 30s;
 
       auto makePingRequest = [self = shared_from_this()]() {
@@ -113,7 +114,6 @@ namespace llarp
             },
             payload.dump());
       };
-      makePingRequest();
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
