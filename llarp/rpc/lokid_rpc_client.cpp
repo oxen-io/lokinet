@@ -101,7 +101,7 @@ namespace llarp
     void
     LokidRpcClient::Connected()
     {
-      constexpr auto PingInterval = 1min;
+      constexpr auto PingInterval = 30s;
       constexpr auto NodeListUpdateInterval = 30s;
 
       auto makePingRequest = [self = shared_from_this()]() {
@@ -114,7 +114,6 @@ namespace llarp
             },
             payload.dump());
       };
-      makePingRequest();
       m_lokiMQ->add_timer(makePingRequest, PingInterval);
       m_lokiMQ->add_timer(
           [self = shared_from_this()]() { self->UpdateServiceNodeList(); }, NodeListUpdateInterval);
