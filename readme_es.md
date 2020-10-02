@@ -67,20 +67,25 @@ Requerimientos de compilación:
 
 * GNU Make
 * CMake
-* Compilador C++ que pueda usar C++ 17 
+* Compilador C++ que pueda usar C++ 17
 * gcovr (para generar la covertura de prueba en gcc)
 * libuv >= 1.27.0
 * libsodium >= 1.0.18
-* libcurl
+* libunbound
+* libzmq
+* sqlite3
 
 ### Linux
 
 compilando:
 
-    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev
-    $ git clone https://github.com/loki-project/loki-network
+    $ sudo apt install build-essential cmake git libcap-dev curl libuv1-dev libsodium-dev pkg-config
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make 
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
+    $ make
 
 instalando:
 
@@ -97,9 +102,12 @@ esto coloca el paquete compilado en `../`
 
 compilando:
     este seguro que usted tiene cmake y las herramientas de terminal de xcode ya instaladas
-    
+
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
+    $ mkdir build
+    $ cd build
+    $ cmake ..
     $ make -j8
 
 instalando:
@@ -159,9 +167,12 @@ PENDIENTE: agregar instrucciones para pkgsrc
 compilando:
 
     # pkg_add curl cmake git (opcional: ninja ccache)
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
+    $ make
 
 instalando (root):
 
@@ -172,9 +183,12 @@ instalando (root):
 compilando:
 
     $ pkg install cmake git curl libuv-1.27.0 libsodium
-    $ git clone https://github.com/loki-project/loki-network
+    $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
+    $ make
 
 instalando (root):
 
