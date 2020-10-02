@@ -1119,6 +1119,7 @@ namespace llarp
     StopLinks();
     nodedb()->AsyncFlushToDisk();
     _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
+    m_lmq.reset();
   }
 
   void
