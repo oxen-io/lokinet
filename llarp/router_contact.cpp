@@ -235,7 +235,7 @@ namespace llarp
 
     try
     {
-      std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->sz);
+      std::string_view buf_view(reinterpret_cast<char*>(buf->cur), buf->size_left());
       lokimq::bt_list_consumer btlist(buf_view);
 
       uint64_t outer_version = btlist.consume_integer<uint64_t>();
@@ -266,7 +266,7 @@ namespace llarp
   bool
   RouterContact::DecodeVersion_0(llarp_buffer_t* buf)
   {
-    signed_bt_dict = std::string(reinterpret_cast<char*>(buf->cur), buf->sz);
+    signed_bt_dict = std::string(reinterpret_cast<char*>(buf->cur), buf->size_left());
     return bencode_decode_dict(*this, buf);
   }
 
