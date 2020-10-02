@@ -120,7 +120,7 @@ namespace llarp
             x->remove_suffix(1);
         }
 
-        if (k.size() == 0 || v.size() == 0)
+        if (k.size() == 0)
         {
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
