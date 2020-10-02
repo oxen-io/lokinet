@@ -36,7 +36,6 @@ namespace llarp
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
-    constexpr bool DefaultEnablePeerStats = true;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
       if (arg < 1024)
@@ -81,12 +80,29 @@ namespace llarp
           m_dataDir = std::move(arg);
         });
 
-    conf.defineOption<std::string>("router", "public-address", false, "", [this](std::string arg) {
+    conf.defineOption<std::string>("router", "public-ip", false, "", [this](std::string arg) {
       if (not arg.empty())
       {
         llarp::LogInfo("public ip ", arg, " size ", arg.size());
 
-        if (arg.size() > 16)
+        if (arg.size() > 15)
+          throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
+
+        m_publicAddress.setAddress(arg);
+      }
+    });
+
+    conf.defineOption<std::string>("router", "public-address", false, "", [this](std::string arg) {
+      if (not arg.empty())
+      {
+        llarp::LogWarn(
+            "*** WARNING: The config option [router]:public-address=",
+            arg,
+            " is deprecated, use public-ip=",
+            arg,
+            " instead.");
+
+        if (arg.size() > 15)
           throw std::invalid_argument(stringify("Not a valid IPv4 addr: ", arg));
 
         m_publicAddress.setAddress(arg);
@@ -134,7 +150,7 @@ namespace llarp
         "router",
         "enable-peer-stats",
         false,
-        DefaultEnablePeerStats,
+        params.isRelay,
         AssignmentAcceptor(m_enablePeerStats));
     m_isRelay = params.isRelay;
   }
@@ -448,13 +464,10 @@ namespace llarp
   void
   ApiConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    (void)params;
-
-    constexpr bool DefaultRPCEnabled = true;
     constexpr auto DefaultRPCBindAddr = "tcp://127.0.0.1:1190";
 
     conf.defineOption<bool>(
-        "api", "enabled", false, DefaultRPCEnabled, AssignmentAcceptor(m_enableRPCServer));
+        "api", "enabled", false, not params.isRelay, AssignmentAcceptor(m_enableRPCServer));
 
     conf.defineOption<std::string>(
         "api", "bind", false, DefaultRPCBindAddr, [this](std::string arg) {
@@ -478,7 +491,6 @@ namespace llarp
   {
     (void)params;
 
-    constexpr bool DefaultWhitelistRouters = false;
     constexpr auto DefaultLokidRPCAddr = "tcp://127.0.0.1:22023";
 
     conf.defineOption<std::string>(
@@ -491,7 +503,7 @@ namespace llarp
         });
 
     conf.defineOption<bool>(
-        "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
+        "lokid", "enabled", false, params.isRelay, AssignmentAcceptor(whitelistRouters));
 
     conf.defineOption<std::string>("lokid", "jsonrpc", false, "", [](std::string arg) {
       if (arg.empty())
@@ -767,6 +779,23 @@ namespace llarp
         "max-connections",
         {
             "Maximum number (hard limit) of routers lokinet will be connected to at any time.",
+        });
+
+    def.addOptionComments(
+        "router",
+        "public-ip",
+        {
+            "For complex network configurations where the detected IP is incorrect or non-public",
+            "this setting specifies the public IP at which this router is reachable. When",
+            "provided the public-port option must also be specified.",
+        });
+
+    def.addOptionComments(
+        "router",
+        "public-port",
+        {
+            "When specifying public-ip=, this specifies the public UDP port at which this lokinet",
+            "router is reachable. Required when public-ip is used.",
         });
 
     // logging
