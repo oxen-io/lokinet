@@ -20,7 +20,7 @@ Tier 3:
 * Big Endian Linux
 * NetBSD
 * OpenBSD
-* Windows pre-8 (while this is technically possible, the requirement for cryptographically reproducible builds precludes it.)
+* Windows pre-8 (while this is technically possible, the requirement for [cryptographically reproducible builds](https://reproducible-builds.org/) precludes it.)
 * UNIX v5 (x86 AMD64)
 
 Unsupported (feel free to support this yourself)
