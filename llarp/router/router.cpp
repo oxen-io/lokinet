@@ -568,8 +568,15 @@ namespace llarp
         whitelistRouters,
         m_isServiceNode);
 
+    std::vector<LinksConfig::LinkInfo> inboundLinks = conf.links.m_InboundLinks;
+
+    if (inboundLinks.empty() and m_isServiceNode)
+    {
+      inboundLinks.push_back(LinksConfig::LinkInfo{"0.0.0.0", AF_INET, 1090});
+    }
+
     // create inbound links, if we are a service node
-    for (const LinksConfig::LinkInfo& serverConfig : conf.links.m_InboundLinks)
+    for (const LinksConfig::LinkInfo& serverConfig : inboundLinks)
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
@@ -592,11 +599,6 @@ namespace llarp
         throw std::runtime_error(stringify("failed to bind inbound link on ", key, " port ", port));
       }
       _linkManager.AddLink(std::move(server), true);
-    }
-
-    if (conf.links.m_InboundLinks.empty() and m_isServiceNode)
-    {
-      throw std::runtime_error("service node enabled but have no inbound links");
     }
 
     // Network config
