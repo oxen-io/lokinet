@@ -12,7 +12,7 @@ SyslogIdentifier=lokinet-router
 WorkingDirectory=/var/lib/lokinet/testnet-router
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
-ExecStart=/usr/bin/lokinet /var/lib/lokinet/testnet-router/lokinet.ini
+ExecStart=/usr/bin/lokinet -r /var/lib/lokinet/testnet-router/lokinet.ini
 Environment=LOKINET_NETID=gamma
 Restart=always
 RestartSec=5s
