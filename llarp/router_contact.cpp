@@ -266,12 +266,7 @@ namespace llarp
   bool
   RouterContact::DecodeVersion_0(llarp_buffer_t* buf)
   {
-    auto begin = reinterpret_cast<char*>(buf->cur);
-    if (not bencode_decode_dict(*this, buf))
-      return false;
-    auto end = reinterpret_cast<char*>(buf->cur);
-    signed_bt_dict = std::string(begin, std::distance(begin, end));
-    return true;
+    return bencode_decode_dict(*this, buf);
   }
 
   bool
