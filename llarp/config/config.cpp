@@ -36,7 +36,6 @@ namespace llarp
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
-    constexpr bool DefaultEnablePeerStats = true;
 
     conf.defineOption<int>("router", "job-queue-size", false, DefaultJobQueueSize, [this](int arg) {
       if (arg < 1024)
@@ -134,7 +133,7 @@ namespace llarp
         "router",
         "enable-peer-stats",
         false,
-        DefaultEnablePeerStats,
+        params.isRelay,
         AssignmentAcceptor(m_enablePeerStats));
     m_isRelay = params.isRelay;
   }
@@ -478,7 +477,6 @@ namespace llarp
   {
     (void)params;
 
-    constexpr bool DefaultWhitelistRouters = false;
     constexpr auto DefaultLokidRPCAddr = "tcp://127.0.0.1:22023";
 
     conf.defineOption<std::string>(
@@ -491,7 +489,7 @@ namespace llarp
         });
 
     conf.defineOption<bool>(
-        "lokid", "enabled", false, DefaultWhitelistRouters, AssignmentAcceptor(whitelistRouters));
+        "lokid", "enabled", false, params.isRelay, AssignmentAcceptor(whitelistRouters));
 
     conf.defineOption<std::string>("lokid", "jsonrpc", false, "", [](std::string arg) {
       if (arg.empty())
