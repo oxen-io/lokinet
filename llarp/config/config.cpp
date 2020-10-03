@@ -27,12 +27,13 @@ namespace llarp
   constexpr int DefaultMinConnectionsForClient = 4;
   constexpr int DefaultMaxConnectionsForClient = 6;
 
+  constexpr int DefaultPublicPort = 1090;
+
   void
   RouterConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     constexpr int DefaultJobQueueSize = 1024 * 8;
     constexpr auto DefaultNetId = "lokinet";
-    constexpr int DefaultPublicPort = 1090;
     constexpr int DefaultWorkerThreads = 1;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
@@ -443,8 +444,19 @@ namespace llarp
           m_OutboundLink = LinkInfoFromINIValues("*", arg);
         });
 
+    if (std::string best_if; GetBestNetIF(best_if))
+      m_InboundLinks.push_back(LinkInfoFromINIValues(best_if, std::to_string(DefaultPublicPort)));
+
     conf.addUndeclaredHandler(
-        "bind", [&](std::string_view, std::string_view name, std::string_view value) {
+        "bind",
+        [&, defaulted = true](
+            std::string_view, std::string_view name, std::string_view value) mutable {
+          if (defaulted)
+          {
+            m_InboundLinks.clear();  // Clear the default
+            defaulted = false;
+          }
+
           LinkInfo info = LinkInfoFromINIValues(name, value);
 
           if (info.port <= 0)
