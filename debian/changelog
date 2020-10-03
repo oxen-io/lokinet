@@ -1,3 +1,9 @@
+lokinet (0.8.0-4~ubuntu2010) groovy; urgency=medium
+
+  * Set default inbound link to best public interface
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 23:38:48 -0300
+
 lokinet (0.8.0-3~ubuntu2010) groovy; urgency=medium
 
   [ Jason Rhinelander ]
