@@ -1,5 +1,19 @@
 lokinet (0.8.0-3) unstable; urgency=medium
 
+  [ Jason Rhinelander ]
+  * Shallow clone submodules
+
+  [ Jeff ]
+  * default upstream dns to cloudflare
+  * format
+
+  [ Jason Rhinelander ]
+  * Simplify k=v parsing code
+  * Allow empty values so that upstream= can disable the default
+  * Make upstream= override work; reject non-default upstream port
+  * Fix broken unbound resolver when including upstream port
+  * Make format
+
   [ Jeff ]
   * tweak configuration defaults
   * un limit lmq
