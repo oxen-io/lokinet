@@ -8,7 +8,7 @@ local default_windows_deps='mingw-w64-binutils mingw-w64-gcc mingw-w64-crt mingw
 local submodules = {
     name: 'submodules',
     image: 'drone/git',
-    commands: ['git fetch --tags', 'git submodule update --init --recursive']
+    commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1']
 };
 
 // Regular build on a debian-like system:

@@ -108,24 +108,19 @@ namespace llarp
       else if (kvDelim != std::string_view::npos)
       {
         // key value pair
-        std::string_view::size_type k_start = 0;
-        std::string_view::size_type k_end = kvDelim;
-        std::string_view::size_type v_start = kvDelim + 1;
-        std::string_view::size_type v_end = realLine.size() - 1;
-        // clamp whitespaces
-        while (whitespace(realLine[k_start]) && k_start != kvDelim)
-          ++k_start;
-        while (whitespace(realLine[k_end - 1]) && k_end != k_start)
-          --k_end;
-        while (whitespace(realLine[v_start]) && v_start != v_end)
-          ++v_start;
-        while (whitespace(realLine[v_end]))
-          --v_end;
+        std::string_view k = realLine.substr(0, kvDelim);
+        std::string_view v = realLine.substr(kvDelim + 1);
 
-        // sect.k = v
-        std::string_view k = realLine.substr(k_start, k_end - k_start);
-        std::string_view v = realLine.substr(v_start, 1 + (v_end - v_start));
-        if (k.size() == 0 || v.size() == 0)
+        // clamp whitespaces
+        for (auto* x : {&k, &v})
+        {
+          while (!x->empty() && whitespace(x->front()))
+            x->remove_prefix(1);
+          while (!x->empty() && whitespace(x->back()))
+            x->remove_suffix(1);
+        }
+
+        if (k.size() == 0)
         {
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
