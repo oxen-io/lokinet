@@ -355,19 +355,38 @@ namespace llarp
   DnsConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
     (void)params;
-    auto parseDNSAddr = [](auto arg) {
-      IpAddress addr{arg};
-      if (not addr.getPort())
-        addr.setPort(53);
-      return addr;
-    };
+
+    // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
+    constexpr auto DefaultUpstreamDNS = "1.1.1.1";
+    m_upstreamDNS.emplace_back(DefaultUpstreamDNS);
+
     conf.defineOption<std::string>(
-        "dns", "upstream", false, true, std::nullopt, [=](std::string arg) {
-          m_upstreamDNS.push_back(parseDNSAddr(std::move(arg)));
+        "dns",
+        "upstream",
+        false,
+        true,
+        DefaultUpstreamDNS,
+        [=, first = true](std::string arg) mutable {
+          if (first)
+          {
+            m_upstreamDNS.clear();
+            first = false;
+          }
+          if (!arg.empty())
+          {
+            auto& addr = m_upstreamDNS.emplace_back(std::move(arg));
+            if (auto p = addr.getPort(); p && *p != 53)
+              // unbound doesn't support non-default ports so bail if the user gave one
+              throw std::invalid_argument(
+                  "Invalid [dns] upstream setting: non-default DNS ports are not supported");
+            addr.setPort(std::nullopt);
+          }
         });
 
     conf.defineOption<std::string>("dns", "bind", false, "127.3.2.1:53", [=](std::string arg) {
-      m_bind = parseDNSAddr(std::move(arg));
+      m_bind = IpAddress{std::move(arg)};
+      if (!m_bind.getPort())
+        m_bind.setPort(53);
     });
 
     // Ignored option (used by the systemd service file to disable resolvconf configuration).
