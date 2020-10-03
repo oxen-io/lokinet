@@ -124,9 +124,9 @@ namespace llarp
       }
       for (const auto& resolver : resolvers)
       {
-        if (not m_UnboundResolver->AddUpstreamResolver(resolver.toString()))
+        if (not m_UnboundResolver->AddUpstreamResolver(resolver.toHost()))
         {
-          llarp::LogError("Failed to add upstream DNS server: ", resolver.toString());
+          llarp::LogError("Failed to add upstream DNS server: ", resolver.toHost());
           m_UnboundResolver = nullptr;
           return false;
         }
