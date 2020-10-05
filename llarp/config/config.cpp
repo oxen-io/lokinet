@@ -34,7 +34,7 @@ namespace llarp
   {
     constexpr int DefaultJobQueueSize = 1024 * 8;
     constexpr auto DefaultNetId = "lokinet";
-    constexpr int DefaultWorkerThreads = 1;
+    constexpr int DefaultWorkerThreads = 0;
     constexpr int DefaultNetThreads = 1;
     constexpr bool DefaultBlockBogons = true;
 
