@@ -126,8 +126,8 @@ namespace llarp
         });
 
     conf.defineOption<int>("router", "net-threads", false, DefaultNetThreads, [this](int arg) {
-      if (arg <= 0)
-        throw std::invalid_argument("net-threads must be > 0");
+      if (arg < 0)
+        throw std::invalid_argument("net-threads must be >= 0");
 
       m_numNetThreads = arg;
     });
