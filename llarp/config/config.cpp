@@ -570,7 +570,16 @@ namespace llarp
 
     // TODO: support SRV records for routers, but for now client only
     conf.defineOption<std::string>(
-        "network", "srv", ClientOnly, MultiValue, [this](std::string arg) {
+        "network",
+        "srv",
+        ClientOnly,
+        MultiValue,
+        Comment{
+            "Specify SRV Records for services hosted on the SNApp",
+            "for more info see https://docs.loki.network/Lokinet/Guides/HostingSNApps/",
+            "srv=_service._protocol priority weight port target.loki",
+        },
+        [this](std::string arg) {
           llarp::dns::SRVData newSRV;
           if (not newSRV.fromString(arg))
             throw std::invalid_argument(stringify("Invalid SRV Record string: ", arg));
