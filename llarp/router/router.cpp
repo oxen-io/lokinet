@@ -1120,6 +1120,7 @@ namespace llarp
   Router::AfterStopLinks()
   {
     Close();
+    m_lmq.reset();
   }
 
   void
@@ -1128,7 +1129,6 @@ namespace llarp
     StopLinks();
     nodedb()->AsyncFlushToDisk();
     _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
-    m_lmq.reset();
   }
 
   void
@@ -1238,6 +1238,18 @@ namespace llarp
     _outboundSessionMaker.CreateSessionTo(rc, nullptr);
 
     return true;
+  }
+
+  void
+  Router::QueueWork(std::function<void(void)> func)
+  {
+    m_lmq->job(std::move(func));
+  }
+
+  void
+  Router::QueueDiskIO(std::function<void(void)> func)
+  {
+    m_lmq->job(std::move(func), m_DiskThread);
   }
 
   bool
