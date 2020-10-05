@@ -55,14 +55,20 @@ main(int argc, char* argv[])
 {
   cxxopts::Options opts("lokinet-vpn", "LokiNET vpn control utility");
 
-  opts.add_options()("v,verbose", "Verbose", cxxopts::value<bool>())(
-      "h,help", "help", cxxopts::value<bool>())("up", "put vpn up", cxxopts::value<bool>())(
-      "down", "put vpn down", cxxopts::value<bool>())(
-      "exit", "specify exit node address", cxxopts::value<std::string>())(
-      "rpc", "rpc url for lokinet", cxxopts::value<std::string>())(
-      "endpoint", "endpoint to use", cxxopts::value<std::string>())(
-      "token", "exit auth token to use", cxxopts::value<std::string>());
-
+  // clang-format off
+  opts.add_options()
+    ("v,verbose", "Verbose", cxxopts::value<bool>())
+    ("h,help", "help", cxxopts::value<bool>())
+    ("up", "put vpn up", cxxopts::value<bool>())
+    ("down", "put vpn down", cxxopts::value<bool>())
+    ("exit", "specify exit node address", cxxopts::value<std::string>())
+    ("rpc", "rpc url for lokinet", cxxopts::value<std::string>())
+    ("endpoint", "endpoint to use", cxxopts::value<std::string>())
+    ("token", "exit auth token to use", cxxopts::value<std::string>())
+    ("auth", "exit auth token to use", cxxopts::value<std::string>())
+    ("status", "print status and exit", cxxopts::value<bool>())
+    ;
+  // clang-format on
   lokimq::address rpcURL("tcp://127.0.0.1:1190");
   std::string exitAddress;
   std::string endpoint = "default";
@@ -70,6 +76,7 @@ main(int argc, char* argv[])
   lokimq::LogLevel logLevel = lokimq::LogLevel::warn;
   bool goUp = false;
   bool goDown = false;
+  bool printStatus = false;
   try
   {
     const auto result = opts.parse(argc, argv);
@@ -94,6 +101,7 @@ main(int argc, char* argv[])
     }
     goUp = result.count("up") > 0;
     goDown = result.count("down") > 0;
+    printStatus = result.count("status") > 0;
 
     if (result.count("endpoint") > 0)
     {
@@ -102,6 +110,10 @@ main(int argc, char* argv[])
     if (result.count("token") > 0)
     {
       token = result["token"].as<std::string>();
+    }
+    if (result.count("auth") > 0)
+    {
+      token = result["auth"].as<std::string>();
     }
   }
   catch (const cxxopts::option_not_exists_exception& ex)
@@ -115,7 +127,7 @@ main(int argc, char* argv[])
     std::cout << ex.what() << std::endl;
     return 1;
   }
-  if ((not goUp) and (not goDown))
+  if ((not goUp) and (not goDown) and (not printStatus))
   {
     std::cout << opts.help() << std::endl;
     return 1;
@@ -149,47 +161,37 @@ main(int argc, char* argv[])
     return 1;
   }
 
-  std::vector<std::string> firstHops;
-  std::string ifname;
-
-  const auto maybe_status = LMQ_Request(lmq, connID, "llarp.status");
-  if (not maybe_status.has_value())
+  if (printStatus)
   {
-    std::cout << "call to llarp.status failed" << std::endl;
-    return 1;
-  }
-
-  try
-  {
-    // extract first hops
-    const auto& links = maybe_status->at("result")["links"]["outbound"];
-    for (const auto& link : links)
+    const auto maybe_status = LMQ_Request(lmq, connID, "llarp.status");
+    if (not maybe_status.has_value())
     {
-      const auto& sessions = link["sessions"]["established"];
-      for (const auto& session : sessions)
+      std::cout << "call to llarp.status failed" << std::endl;
+      return 1;
+    }
+
+    try
+    {
+      const auto& ep = maybe_status->at("result").at("services").at(endpoint);
+      const auto exitMap = ep.at("exitMap");
+      if (exitMap.empty())
       {
-        std::string addr = session["remoteAddr"];
-        const auto pos = addr.find(":");
-        firstHops.push_back(addr.substr(0, pos));
+        std::cout << "no exits" << std::endl;
+      }
+      else
+      {
+        for (const auto& [range, exit] : exitMap.items())
+        {
+          std::cout << range << " via " << exit.get<std::string>() << std::endl;
+        }
       }
     }
-    // get interface name
-#ifdef _WIN32
-    // strip off the "::ffff."
-    ifname = maybe_status->at("result")["services"][endpoint]["ifaddr"];
-    const auto pos = ifname.find("/");
-    if (pos != std::string::npos)
+    catch (std::exception& ex)
     {
-      ifname = ifname.substr(0, pos);
+      std::cout << "failed to parse result: " << ex.what() << std::endl;
+      return 1;
     }
-#else
-    ifname = maybe_status->at("result")["services"][endpoint]["ifname"];
-#endif
-  }
-  catch (std::exception& ex)
-  {
-    std::cout << "failed to parse result: " << ex.what() << std::endl;
-    return 1;
+    return 0;
   }
   if (goUp)
   {
