@@ -18,7 +18,6 @@ make_context()
   conf.network.m_endpointType = "null";
   conf.bootstrap.skipBootstrap = true;
   conf.api.m_enableRPCServer = false;
-  conf.router.m_enablePeerStats = true;
   conf.lokid.whitelistRouters = false;
   conf.router.m_publicAddress = llarp::IpAddress("1.1.1.1");
   // make a fake inbound link

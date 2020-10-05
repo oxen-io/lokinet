@@ -63,7 +63,6 @@ namespace llarp
     std::string m_identityKeyFile;
     std::string m_transportKeyFile;
 
-    bool m_enablePeerStats = false;
     bool m_isRelay = false;
 
     void
@@ -73,7 +72,6 @@ namespace llarp
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
-    std::string m_routerProfilesFile;
     std::string m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;
@@ -153,7 +151,6 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool usingSNSeed = false;
     bool whitelistRouters = false;
     fs::path ident_keyfile;
     lokimq::address lokidRPCAddr;

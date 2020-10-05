@@ -1,22 +1,12 @@
 #include <config/definition.hpp>
 
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <cassert>
 
 namespace llarp
 {
-  OptionDefinitionBase::OptionDefinitionBase(
-      std::string section_, std::string name_, bool required_)
-      : section(section_), name(name_), required(required_)
-  {
-  }
-  OptionDefinitionBase::OptionDefinitionBase(
-      std::string section_, std::string name_, bool required_, bool multiValued_)
-      : section(section_), name(name_), required(required_), multiValued(multiValued_)
-  {
-  }
-
   template <>
   bool
   OptionDefinition<bool>::fromString(const std::string& input)
@@ -32,17 +22,23 @@ namespace llarp
   ConfigDefinition&
   ConfigDefinition::defineOption(OptionDefinition_ptr def)
   {
-    auto sectionItr = m_definitions.find(def->section);
-    if (sectionItr == m_definitions.end())
-      m_sectionOrdering.push_back(def->section);
+    if (relay ? def->clientOnly : def->relayOnly)
+      return *this;
 
-    auto& sectionDefinitions = m_definitions[def->section];
-    if (sectionDefinitions.find(def->name) != sectionDefinitions.end())
+    auto [sectionItr, newSect] = m_definitions.try_emplace(def->section);
+    if (newSect)
+      m_sectionOrdering.push_back(def->section);
+    auto& section = sectionItr->first;
+
+    auto [it, added] = m_definitions[section].try_emplace(std::string{def->name}, std::move(def));
+    if (!added)
       throw std::invalid_argument(
           stringify("definition for [", def->section, "]:", def->name, " already exists"));
 
-    m_definitionOrdering[def->section].push_back(def->name);
-    sectionDefinitions[def->name] = std::move(def);
+    m_definitionOrdering[section].push_back(it->first);
+
+    if (!it->second->comments.empty())
+      addOptionComments(section, it->first, std::move(it->second->comments));
 
     return *this;
   }
@@ -153,10 +149,13 @@ namespace llarp
       const std::string& section, const std::string& name, std::vector<std::string> comments)
   {
     auto& defComments = m_definitionComments[section][name];
-    for (size_t i = 0; i < comments.size(); ++i)
-    {
-      defComments.emplace_back(std::move(comments[i]));
-    }
+    if (defComments.empty())
+      defComments = std::move(comments);
+    else
+      defComments.insert(
+          defComments.end(),
+          std::make_move_iterator(comments.begin()),
+          std::make_move_iterator(comments.end()));
   }
 
   std::string
@@ -170,6 +169,8 @@ namespace llarp
       if (sectionsVisited > 0)
         oss << "\n\n";
 
+      oss << "[" << section << "]\n";
+
       // TODO: this will create empty objects as a side effect of map's operator[]
       // TODO: this also won't handle sections which have no definition
       for (const std::string& comment : m_sectionComments[section])
@@ -177,25 +178,24 @@ namespace llarp
         oss << "# " << comment << "\n";
       }
 
-      oss << "[" << section << "]\n";
-
       visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
-        oss << "\n";
-
+        bool has_comment = false;
         // TODO: as above, this will create empty objects
         // TODO: as above (but more important): this won't handle definitions with no entries
         //       (i.e. those handled by UndeclaredValueHandler's)
         for (const std::string& comment : m_definitionComments[section][name])
         {
-          oss << "# " << comment << "\n";
+          oss << "\n# " << comment;
+          has_comment = true;
         }
 
         if (useValues and def->getNumberFound() > 0)
         {
-          oss << name << "=" << def->valueAsString(false) << "\n";
+          oss << "\n" << name << "=" << def->valueAsString(false) << "\n";
         }
-        else
+        else if (not(def->hidden and not has_comment))
         {
+          oss << "\n";
           if (not def->required)
             oss << "#";
           oss << name << "=" << def->defaultValueAsString() << "\n";

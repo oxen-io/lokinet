@@ -113,7 +113,7 @@ namespace llarp
     nodeName = nickname;
 
     FILE* logfile = nullptr;
-    if (file == "stdout" or file.empty())
+    if (file == "stdout" or file == "-" or file.empty())
     {
       logfile = stdout;
     }

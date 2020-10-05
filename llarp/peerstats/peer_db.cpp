@@ -259,9 +259,6 @@ namespace llarp
   void
   PeerDb::configure(const RouterConfig& routerConfig)
   {
-    if (not routerConfig.m_enablePeerStats)
-      throw std::runtime_error("[router]:enable-peer-stats is not enabled");
-
     fs::path dbPath = routerConfig.m_dataDir / "peerstats.sqlite";
 
     loadDatabase(dbPath);
