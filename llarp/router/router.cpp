@@ -279,6 +279,8 @@ namespace llarp
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
+    m_lmq->set_general_threads(conf.router.m_workerThreads);
+
     m_lmq->start();
 
     _nodedb = nodedb;
