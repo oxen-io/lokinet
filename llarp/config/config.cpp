@@ -119,8 +119,8 @@ namespace llarp
 
     conf.defineOption<int>(
         "router", "worker-threads", false, DefaultWorkerThreads, [this](int arg) {
-          if (arg <= 0)
-            throw std::invalid_argument("worker-threads must be > 0");
+          if (arg < 0)
+            throw std::invalid_argument("worker-threads must be >= 0");
 
           m_workerThreads = arg;
         });
