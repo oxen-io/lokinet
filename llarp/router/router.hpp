@@ -170,16 +170,10 @@ namespace llarp
     }
 
     void
-    QueueWork(std::function<void(void)> func) override
-    {
-      m_lmq->job(std::move(func));
-    }
+    QueueWork(std::function<void(void)> func) override;
 
     void
-    QueueDiskIO(std::function<void(void)> func) override
-    {
-      m_lmq->job(std::move(func), m_DiskThread);
-    }
+    QueueDiskIO(std::function<void(void)> func) override;
 
     IpAddress _ourAddress;
 
