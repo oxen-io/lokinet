@@ -283,6 +283,8 @@ namespace llarp
 
     _nodedb = nodedb;
 
+    m_isServiceNode = conf.router.m_isRelay;
+
     if (whitelistRouters)
     {
       m_lokidRpcClient->ConnectAsync(lokidRPCAddr);
@@ -454,8 +456,6 @@ namespace llarp
 
     if (usingSNSeed)
       ident_keyfile = conf.lokid.ident_keyfile;
-
-    m_isServiceNode = conf.router.m_isRelay;
 
     networkConfig = conf.network;
 
