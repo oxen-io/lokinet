@@ -1,4 +1,5 @@
 #include <config/definition.hpp>
+#include <util/logging/logger.hpp>
 
 #include <iterator>
 #include <sstream>
@@ -22,8 +23,20 @@ namespace llarp
   ConfigDefinition&
   ConfigDefinition::defineOption(OptionDefinition_ptr def)
   {
-    if (relay ? def->clientOnly : def->relayOnly)
-      return *this;
+    using namespace config;
+    // If explicitly deprecated or is a {client,relay} option in a {relay,client} config then add a
+    // dummy, warning option instead of this one.
+    if (def->deprecated || (relay ? def->clientOnly : def->relayOnly))
+    {
+      return defineOption<std::string>(def->section, def->name, MultiValue, Hidden,
+          [deprecated=def->deprecated, relay=relay, opt="[" + def->section + "]:" + def->name](std::string_view) {
+        LogWarn("*** WARNING: The config option ", opt, (
+              deprecated ? " is deprecated" :
+              relay ? " is not valid in service node configuration files" :
+              " is not valid in client configuration files"),
+            " and has been ignored.");
+      });
+    }
 
     auto [sectionItr, newSect] = m_definitions.try_emplace(def->section);
     if (newSect)

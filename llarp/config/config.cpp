@@ -1036,36 +1036,29 @@ namespace llarp
   void
   Config::addBackwardsCompatibleConfigOptions(ConfigDefinition& conf)
   {
-    auto addIgnoreOption = [&](const std::string& section, const std::string& name) {
-      conf.defineOption<std::string>(section, name, MultiValue, Hidden, [=](std::string arg) {
-        (void)arg;
-        LogWarn("*** WARNING: The config option [", section, "]:", name, " is deprecated");
-      });
-    };
+    conf.defineOption<std::string>("system", "user", Deprecated);
+    conf.defineOption<std::string>("system", "group", Deprecated);
+    conf.defineOption<std::string>("system", "pidfile", Deprecated);
 
-    addIgnoreOption("system", "user");
-    addIgnoreOption("system", "group");
-    addIgnoreOption("system", "pidfile");
+    conf.defineOption<std::string>("api", "authkey", Deprecated);
 
-    addIgnoreOption("api", "authkey");
-
-    addIgnoreOption("netdb", "dir");
+    conf.defineOption<std::string>("netdb", "dir", Deprecated);
 
     // these weren't even ever used!
-    addIgnoreOption("router", "max-routers");
-    addIgnoreOption("router", "min-routers");
+    conf.defineOption<std::string>("router", "max-routers", Deprecated);
+    conf.defineOption<std::string>("router", "min-routers", Deprecated);
 
     // TODO: this may have been a synonym for [router]worker-threads
-    addIgnoreOption("router", "threads");
-    addIgnoreOption("router", "net-threads");
+    conf.defineOption<std::string>("router", "threads", Deprecated);
+    conf.defineOption<std::string>("router", "net-threads", Deprecated);
 
-    addIgnoreOption("metrics", "json-metrics-path");
+    conf.defineOption<std::string>("metrics", "json-metrics-path", Deprecated);
 
-    addIgnoreOption("network", "enabled");
+    conf.defineOption<std::string>("network", "enabled", Deprecated);
 
-    addIgnoreOption("lokid", "username");
-    addIgnoreOption("lokid", "password");
-    addIgnoreOption("lokid", "service-node-seed");
+    conf.defineOption<std::string>("lokid", "username", Deprecated);
+    conf.defineOption<std::string>("lokid", "password", Deprecated);
+    conf.defineOption<std::string>("lokid", "service-node-seed", Deprecated);
   }
 
   void

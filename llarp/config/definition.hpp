@@ -40,17 +40,27 @@ namespace llarp
     struct ClientOnly_t : option_flag
     {
     };
+    struct Deprecated_t : option_flag {};
+
     /// Value to pass for an OptionDefinition to indicate that the option is required
     inline constexpr Required_t Required{};
     /// Value to pass for an OptionDefinition to indicate that the option should be hidden from the
-    /// generate config file if it is unset (and has no comment).  Typically for deprecated options.
+    /// generate config file if it is unset (and has no comment).  Typically for deprecated, renamed
+    /// options that still do something, and for internal dev options that aren't usefully exposed.
+    /// (For do-nothing deprecated options use Deprecated instead).
     inline constexpr Hidden_t Hidden{};
     /// Value to pass for an OptionDefinition to indicate that the option takes multiple values
     inline constexpr MultiValue_t MultiValue{};
-    /// Value to pass for an option that should only be set for relay configs.
+    /// Value to pass for an option that should only be set for relay configs. If found in a client
+    /// config it be ignored (but will produce a warning).
     inline constexpr RelayOnly_t RelayOnly{};
-    /// Value to pass for an option that should only be set for client configs.
+    /// Value to pass for an option that should only be set for client configs. If found in a relay
+    /// config it will be ignored (but will produce a warning).
     inline constexpr ClientOnly_t ClientOnly{};
+    /// Value to pass for an option that is deprecated and does nothing and should be ignored (with
+    /// a deprecation warning) if specified.  Note that Deprecated implies Hidden, and that
+    /// {client,relay}-only options in a {relay,client} config are also considered Deprecated.
+    inline constexpr Deprecated_t Deprecated{};
 
     /// Wrapper to specify a default value to an OptionDefinition
     template <typename T>
@@ -113,7 +123,8 @@ namespace llarp
         , name(std::move(name_))
         , required{(std::is_same_v<T, config::Required_t> || ...)}
         , multiValued{(std::is_same_v<T, config::MultiValue_t> || ...)}
-        , hidden{(std::is_same_v<T, config::Hidden_t> || ...)}
+        , deprecated{(std::is_same_v<T, config::Deprecated_t> || ...)}
+        , hidden{deprecated || (std::is_same_v<T, config::Hidden_t> || ...)}
         , relayOnly{(std::is_same_v<T, config::RelayOnly_t> || ...)}
         , clientOnly{(std::is_same_v<T, config::ClientOnly_t> || ...)}
     {
@@ -157,6 +168,7 @@ namespace llarp
     std::string name;
     bool required = false;
     bool multiValued = false;
+    bool deprecated = false;
     bool hidden = false;
     bool relayOnly = false;
     bool clientOnly = false;
