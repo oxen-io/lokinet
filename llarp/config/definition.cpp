@@ -177,6 +177,7 @@ namespace llarp
       {
         oss << "# " << comment << "\n";
       }
+      oss << "\n";
 
       visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
         bool has_comment = false;
