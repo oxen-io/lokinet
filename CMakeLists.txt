@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
 # Has to be set before `project()`, and ignored on non-macos:
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "macOS deployment target (Apple clang only)")
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -376,10 +376,6 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-
-if(BUILD_PACKAGE)
-    include(cmake/installer.cmake)
-endif()
 
 if(BUILD_PACKAGE)
     include(cmake/installer.cmake)
