@@ -23,6 +23,7 @@ TEST_CASE("ConfigDefinition simple generate test", "[config]")
 
   CHECK(output == R"raw([foo]
 
+
 bar=1
 
 #baz=2
@@ -31,6 +32,7 @@ quux=hello
 
 
 [argle]
+
 
 bar=3
 
@@ -46,14 +48,14 @@ TEST_CASE("ConfigDefinition useValue test", "[config]")
 
   config.defineOption<int>("foo", "bar", Required, Default{1});
 
-  constexpr auto expected = "[foo]\n\nbar=1\n";
+  constexpr auto expected = "[foo]\n\n\nbar=1\n";
 
   CHECK(config.generateINIConfig(false) == expected);
   CHECK(config.generateINIConfig(true) == expected);
 
   config.addConfigValue("foo", "bar", "2");
 
-  constexpr auto expectedWhenValueProvided = "[foo]\n\nbar=2\n";
+  constexpr auto expectedWhenValueProvided = "[foo]\n\n\nbar=2\n";
 
   CHECK(config.generateINIConfig(false) == expected);
   CHECK(config.generateINIConfig(true) == expectedWhenValueProvided);
@@ -74,6 +76,7 @@ TEST_CASE("ConfigDefinition section comments test")
 # test comment
 # test comment 2
 
+
 bar=1
 )raw");
 }
@@ -92,6 +95,9 @@ TEST_CASE("ConfigDefinition option comments test")
         "___defg",
       });
 
+  config.defineOption<int>("client", "omg", ClientOnly, Default{1}, Comment{"hi"});
+  config.defineOption<int>("relay", "ftw", RelayOnly, Default{1}, Comment{"bye"});
+
   // has comment, so still gets shown.
   config.defineOption<int>("foo", "old-bar", Hidden, Default{456});
   config.addOptionComments("foo", "old-bar", {"old bar option"});
@@ -103,6 +109,7 @@ TEST_CASE("ConfigDefinition option comments test")
 
   CHECK(output == R"raw([foo]
 
+
 # test comment 1
 # test comment 2
 bar=1
@@ -113,6 +120,13 @@ bar=1
 
 # old bar option
 #old-bar=456
+
+
+[relay]
+
+
+# bye
+#ftw=1
 )raw");
 }
 
@@ -132,6 +146,7 @@ TEST_CASE("ConfigDefinition empty comments test")
   CHECK(output == R"raw([foo]
 # section comment
 # 
+
 
 # option comment
 # 
@@ -155,6 +170,7 @@ TEST_CASE("ConfigDefinition multi option comments")
 
   CHECK(output == R"raw([foo]
 # foo section comment
+
 
 # foo bar option comment
 bar=1

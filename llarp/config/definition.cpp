@@ -187,6 +187,36 @@ namespace llarp
     int sectionsVisited = 0;
 
     visitSections([&](const std::string& section, const DefinitionMap&) {
+      std::ostringstream sect_out;
+
+      visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
+        bool has_comment = false;
+        // TODO: as above, this will create empty objects
+        // TODO: as above (but more important): this won't handle definitions with no entries
+        //       (i.e. those handled by UndeclaredValueHandler's)
+        for (const std::string& comment : m_definitionComments[section][name])
+        {
+          sect_out << "\n# " << comment;
+          has_comment = true;
+        }
+
+        if (useValues and def->getNumberFound() > 0)
+        {
+          sect_out << "\n" << name << "=" << def->valueAsString(false) << "\n";
+        }
+        else if (not(def->hidden and not has_comment))
+        {
+          sect_out << "\n";
+          if (not def->required)
+            sect_out << "#";
+          sect_out << name << "=" << def->defaultValueAsString() << "\n";
+        }
+      });
+
+      auto sect_str = sect_out.str();
+      if (sect_str.empty())
+        return;  // Skip sections with no options
+
       if (sectionsVisited > 0)
         oss << "\n\n";
 
@@ -198,31 +228,7 @@ namespace llarp
       {
         oss << "# " << comment << "\n";
       }
-      oss << "\n";
-
-      visitDefinitions(section, [&](const std::string& name, const OptionDefinition_ptr& def) {
-        bool has_comment = false;
-        // TODO: as above, this will create empty objects
-        // TODO: as above (but more important): this won't handle definitions with no entries
-        //       (i.e. those handled by UndeclaredValueHandler's)
-        for (const std::string& comment : m_definitionComments[section][name])
-        {
-          oss << "\n# " << comment;
-          has_comment = true;
-        }
-
-        if (useValues and def->getNumberFound() > 0)
-        {
-          oss << "\n" << name << "=" << def->valueAsString(false) << "\n";
-        }
-        else if (not(def->hidden and not has_comment))
-        {
-          oss << "\n";
-          if (not def->required)
-            oss << "#";
-          oss << name << "=" << def->defaultValueAsString() << "\n";
-        }
-      });
+      oss << "\n" << sect_str;
 
       sectionsVisited++;
     });
