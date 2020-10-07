@@ -13,8 +13,7 @@ namespace llarp
 
     PathContext::PathContext(AbstractRouter* router)
         : m_Router(router), m_AllowTransit(false), m_PathLimits(DefaultPathBuildLimit)
-    {
-    }
+    {}
 
     void
     PathContext::AllowTransit()
@@ -358,7 +357,6 @@ namespace llarp
     }
 
     void PathContext::RemovePathSet(PathSet_ptr)
-    {
-    }
+    {}
   }  // namespace path
 }  // namespace llarp

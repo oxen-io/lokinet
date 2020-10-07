@@ -762,8 +762,7 @@ namespace libuv
 
   Loop::Loop(size_t queue_size)
       : llarp_ev_loop(), m_LogicCalls(queue_size), m_timerQueue(20), m_timerCancelQueue(20)
-  {
-  }
+  {}
 
   bool
   Loop::init()

@@ -12,8 +12,7 @@ namespace llarp
   /** internal, recursion terminator */
   constexpr void
   LogAppend(std::stringstream&) noexcept
-  {
-  }
+  {}
   /** internal */
   template <typename TArg, typename... TArgs>
   void

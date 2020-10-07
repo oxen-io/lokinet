@@ -12,8 +12,7 @@ namespace llarp
   namespace path
   {
     PathSet::PathSet(size_t num) : numPaths(num)
-    {
-    }
+    {}
 
     bool
     PathSet::ShouldBuildMore(llarp_time_t now) const

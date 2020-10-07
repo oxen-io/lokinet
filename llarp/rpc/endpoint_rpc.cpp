@@ -14,8 +14,7 @@ namespace llarp::rpc
       , m_AuthWhitelist(std::move(whitelist))
       , m_LMQ(std::move(lmq))
       , m_Endpoint(std::move(endpoint))
-  {
-  }
+  {}
 
   void
   EndpointAuthRPC::Start()

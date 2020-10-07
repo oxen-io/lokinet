@@ -8,8 +8,7 @@
 
 llarp_ev_pkt_pipe::llarp_ev_pkt_pipe(llarp_ev_loop_ptr loop)
     : llarp::ev_io(-1, new LosslessWriteQueue_t()), m_Loop(std::move(loop))
-{
-}
+{}
 
 bool
 llarp_ev_pkt_pipe::StartPipe()

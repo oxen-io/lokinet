@@ -18,8 +18,7 @@ namespace llarp
           : llarp::service::Endpoint(
               routerContext->router.get(), &routerContext->router->hiddenServiceContext())
           , OurName(std::move(name))
-      {
-      }
+      {}
       const std::string OurName;
 
       bool

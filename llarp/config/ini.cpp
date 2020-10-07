@@ -72,62 +72,44 @@ namespace llarp
 
     std::string_view sectName;
     size_t lineno = 0;
-    for (const auto& line : lines)
+    for (auto line : lines)
     {
       lineno++;
-      std::string_view realLine;
-      auto comment = line.find_first_of(';');
-      if (comment == std::string_view::npos)
-        comment = line.find_first_of('#');
-      if (comment == std::string_view::npos)
-        realLine = line;
-      else
-        realLine = line.substr(0, comment);
-      // blank or commented line?
-      if (realLine.size() == 0)
+      // Trim whitespace
+      while (!line.empty() && whitespace(line.front()))
+        line.remove_prefix(1);
+      while (!line.empty() && whitespace(line.back()))
+        line.remove_suffix(1);
+
+      // Skip blank lines and comments
+      if (line.empty() or line.front() == ';' or line.front() == '#')
         continue;
-      // find delimiters
-      auto sectOpenPos = realLine.find_first_of('[');
-      auto sectClosPos = realLine.find_first_of(']');
-      auto kvDelim = realLine.find_first_of('=');
-      if (sectOpenPos != std::string_view::npos && sectClosPos != std::string_view::npos
-          && kvDelim == std::string_view::npos)
+
+      if (line.front() == '[' && line.back() == ']')
       {
         // section header
-
-        // clamp whitespaces
-        ++sectOpenPos;
-        while (whitespace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos)
-          ++sectOpenPos;
-        --sectClosPos;
-        while (whitespace(realLine[sectClosPos]) && sectClosPos != sectOpenPos)
-          --sectClosPos;
-        // set section name
-        sectName = realLine.substr(sectOpenPos, sectClosPos);
+        line.remove_prefix(1);
+        line.remove_suffix(1);
+        sectName = line;
       }
-      else if (kvDelim != std::string_view::npos)
+      else if (auto kvDelim = line.find('='); kvDelim != std::string_view::npos)
       {
         // key value pair
-        std::string_view k = realLine.substr(0, kvDelim);
-        std::string_view v = realLine.substr(kvDelim + 1);
+        std::string_view k = line.substr(0, kvDelim);
+        std::string_view v = line.substr(kvDelim + 1);
+        // Trim inner whitespace
+        while (!k.empty() && whitespace(k.back()))
+          k.remove_suffix(1);
+        while (!v.empty() && whitespace(v.front()))
+          v.remove_prefix(1);
 
-        // clamp whitespaces
-        for (auto* x : {&k, &v})
-        {
-          while (!x->empty() && whitespace(x->front()))
-            x->remove_prefix(1);
-          while (!x->empty() && whitespace(x->back()))
-            x->remove_suffix(1);
-        }
-
-        if (k.size() == 0)
+        if (k.empty())
         {
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
         }
-        SectionValues_t& sect = m_Config[std::string{sectName}];
-        LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
-        sect.emplace(k, v);
+        LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
+        m_Config[std::string{sectName}].emplace(k, v);
       }
       else  // malformed?
       {

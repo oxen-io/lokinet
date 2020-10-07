@@ -10,14 +10,12 @@ namespace llarp
     {
       // inbound parsing
       FindRouterMessage(const Key_t& from) : IMessage(from)
-      {
-      }
+      {}
 
       // find by routerid
       FindRouterMessage(uint64_t id, const RouterID& target)
           : IMessage({}), targetKey(target), txid(id)
-      {
-      }
+      {}
 
       // exploritory
       FindRouterMessage(uint64_t id) : IMessage({}), exploritory(true), txid(id)
@@ -48,8 +46,7 @@ namespace llarp
     struct RelayedFindRouterMessage final : public FindRouterMessage
     {
       RelayedFindRouterMessage(const Key_t& from) : FindRouterMessage(from)
-      {
-      }
+      {}
 
       /// handle a relayed FindRouterMessage, do a lookup on the dht and inform
       /// the path of the result

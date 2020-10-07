@@ -259,7 +259,8 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     llarp::LogInfo("Using config file: ", confFile);
 
     llarp::Config conf;
-    conf.Load(confFile, opts.isRouter, confFile.parent_path());
+    if (!conf.Load(confFile, opts.isRouter, confFile.parent_path()))
+      throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
     ctx->Configure(conf);

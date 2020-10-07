@@ -96,8 +96,7 @@ namespace llarp
   }
 
   Profiling::Profiling() : m_DisableProfiling(false)
-  {
-  }
+  {}
 
   void
   Profiling::Disable()

@@ -12,8 +12,7 @@ namespace llarp
     {
       NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
           : llarp::service::Endpoint(r, parent)
-      {
-      }
+      {}
 
       virtual bool
       HandleInboundPacket(

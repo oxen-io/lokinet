@@ -279,6 +279,9 @@ namespace llarp
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
+    if (conf.router.m_workerThreads > 0)
+      m_lmq->set_general_threads(conf.router.m_workerThreads);
+
     m_lmq->start();
 
     _nodedb = nodedb;
@@ -450,12 +453,10 @@ namespace llarp
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
     // Lokid Config
-    usingSNSeed = conf.lokid.usingSNSeed;
     whitelistRouters = conf.lokid.whitelistRouters;
     lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
 
-    if (usingSNSeed)
-      ident_keyfile = conf.lokid.ident_keyfile;
+    m_isServiceNode = conf.router.m_isRelay;
 
     networkConfig = conf.network;
 
@@ -609,17 +610,15 @@ namespace llarp
     }
 
     // Network config
-    if (conf.network.m_enableProfiling.has_value() and not*conf.network.m_enableProfiling)
+    if (conf.network.m_enableProfiling.value_or(false))
+    {
+      LogInfo("router profiling enabled; loading from ", routerProfilesFile);
+      routerProfiling().Load(routerProfilesFile.c_str());
+    }
+    else
     {
       routerProfiling().Disable();
-      LogWarn("router profiling explicitly disabled");
-    }
-
-    if (!conf.network.m_routerProfilesFile.empty())
-    {
-      routerProfilesFile = conf.network.m_routerProfilesFile;
-      routerProfiling().Load(routerProfilesFile.c_str());
-      llarp::LogInfo("setting profiles to ", routerProfilesFile);
+      LogInfo("router profiling disabled");
     }
 
     // API config
@@ -629,15 +628,11 @@ namespace llarp
     }
 
     // peer stats
-    if (conf.router.m_enablePeerStats)
+    if (IsServiceNode())
     {
       LogInfo("Initializing peerdb...");
       m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf.router);
-    }
-    else if (IsServiceNode())
-    {
-      throw std::runtime_error("peer stats must be enabled when running as relay");
     }
 
     // Logging config

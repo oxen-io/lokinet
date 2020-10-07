@@ -37,8 +37,7 @@ namespace llarp
       , QueueWork(std::move(work))
       , m_RouterEncSecret(keyManager->encryptionKey)
       , m_SecretKey(keyManager->transportKey)
-  {
-  }
+  {}
 
   ILinkLayer::~ILinkLayer() = default;
 

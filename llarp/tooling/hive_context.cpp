@@ -5,8 +5,7 @@
 namespace tooling
 {
   HiveContext::HiveContext(RouterHive* hive) : m_hive(hive)
-  {
-  }
+  {}
 
   std::unique_ptr<llarp::AbstractRouter>
   HiveContext::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<llarp::Logic> logic)

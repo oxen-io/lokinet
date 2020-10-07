@@ -12,12 +12,10 @@ namespace llarp
         : qname(std::move(other.qname))
         , qtype(std::move(other.qtype))
         , qclass(std::move(other.qclass))
-    {
-    }
+    {}
     Question::Question(const Question& other)
         : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
-    {
-    }
+    {}
 
     bool
     Question::Encode(llarp_buffer_t* buf) const

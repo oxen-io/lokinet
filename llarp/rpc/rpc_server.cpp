@@ -11,8 +11,7 @@
 namespace llarp::rpc
 {
   RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r) : m_LMQ(std::move(lmq)), m_Router(r)
-  {
-  }
+  {}
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>

@@ -124,8 +124,7 @@ namespace llarp
       struct UpstreamBuffer
       {
         UpstreamBuffer(const llarp::net::IPPacket& p, uint64_t c) : pkt(p), counter(c)
-        {
-        }
+        {}
 
         llarp::net::IPPacket pkt;
         uint64_t counter;

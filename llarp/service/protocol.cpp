@@ -19,8 +19,7 @@ namespace llarp
     }
 
     ProtocolMessage::ProtocolMessage(const ConvoTag& t) : tag(t)
-    {
-    }
+    {}
 
     ProtocolMessage::~ProtocolMessage() = default;
 
@@ -292,8 +291,7 @@ namespace llarp
           , handler(h)
           , frame(f)
           , fromIntro(recvIntro)
-      {
-      }
+      {}
 
       static void
       Work(std::shared_ptr<AsyncFrameDecrypt> self)

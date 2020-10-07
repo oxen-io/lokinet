@@ -16,14 +16,12 @@ namespace llarp
   struct EncryptedFrame : public Encrypted<EncryptedFrameSize>
   {
     EncryptedFrame() : EncryptedFrame(EncryptedFrameBodySize)
-    {
-    }
+    {}
 
     EncryptedFrame(size_t sz)
         : Encrypted<EncryptedFrameSize>(
             std::min(sz, EncryptedFrameBodySize) + EncryptedFrameOverheadSize)
-    {
-    }
+    {}
 
     void
     Resize(size_t sz)
@@ -70,8 +68,7 @@ namespace llarp
 
     AsyncFrameDecrypter(const SecretKey& secretkey, DecryptHandler h)
         : result(std::move(h)), seckey(secretkey)
-    {
-    }
+    {}
 
     DecryptHandler result;
     const SecretKey& seckey;

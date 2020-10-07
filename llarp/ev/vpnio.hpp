@@ -18,18 +18,15 @@ struct llarp_vpn_pkt_queue
 };
 
 struct llarp_vpn_pkt_writer : public llarp_vpn_pkt_queue
-{
-};
+{};
 
 struct llarp_vpn_pkt_reader : public llarp_vpn_pkt_queue
-{
-};
+{};
 
 struct llarp_vpn_io_impl
 {
   llarp_vpn_io_impl(llarp::Context* c, llarp_vpn_io* io) : ctx(c), parent(io)
-  {
-  }
+  {}
   ~llarp_vpn_io_impl() = default;
 
   llarp::Context* ctx;

@@ -48,13 +48,11 @@ namespace llarp
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
-        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)
-        .def_readwrite("enablePeerStats", &RouterConfig::m_enablePeerStats);
+        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
         .def_readwrite("enableProfiling", &NetworkConfig::m_enableProfiling)
-        .def_readwrite("routerProfilesFile", &NetworkConfig::m_routerProfilesFile)
         .def_readwrite("endpointType", &NetworkConfig::m_endpointType)
         .def_readwrite("keyfile", &NetworkConfig::m_keyfile)
         .def_readwrite("endpointType", &NetworkConfig::m_endpointType)
@@ -99,7 +97,6 @@ namespace llarp
 
     py::class_<LokidConfig>(mod, "LokidConfig")
         .def(py::init<>())
-        .def_readwrite("usingSNSeed", &LokidConfig::usingSNSeed)
         .def_readwrite("whitelistRouters", &LokidConfig::whitelistRouters)
         .def_readwrite("ident_keyfile", &LokidConfig::ident_keyfile)
         .def_property(
