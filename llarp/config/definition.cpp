@@ -28,14 +28,22 @@ namespace llarp
     // dummy, warning option instead of this one.
     if (def->deprecated || (relay ? def->clientOnly : def->relayOnly))
     {
-      return defineOption<std::string>(def->section, def->name, MultiValue, Hidden,
-          [deprecated=def->deprecated, relay=relay, opt="[" + def->section + "]:" + def->name](std::string_view) {
-        LogWarn("*** WARNING: The config option ", opt, (
-              deprecated ? " is deprecated" :
-              relay ? " is not valid in service node configuration files" :
-              " is not valid in client configuration files"),
-            " and has been ignored.");
-      });
+      return defineOption<std::string>(
+          def->section,
+          def->name,
+          MultiValue,
+          Hidden,
+          [deprecated = def->deprecated,
+           relay = relay,
+           opt = "[" + def->section + "]:" + def->name](std::string_view) {
+            LogWarn(
+                "*** WARNING: The config option ",
+                opt,
+                (deprecated ? " is deprecated"
+                            : relay ? " is not valid in service node configuration files"
+                                    : " is not valid in client configuration files"),
+                " and has been ignored.");
+          });
     }
 
     auto [sectionItr, newSect] = m_definitions.try_emplace(def->section);

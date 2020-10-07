@@ -505,8 +505,7 @@ namespace llarp
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
-      {
-      }
+      {}
 
       std::shared_ptr<routing::IMessage>
       BuildRequestMessage() override

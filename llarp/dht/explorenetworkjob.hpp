@@ -12,8 +12,7 @@ namespace llarp
     {
       ExploreNetworkJob(const RouterID& peer, AbstractContext* ctx)
           : TX<RouterID, RouterID>(TXOwner{}, peer, ctx)
-      {
-      }
+      {}
 
       bool
       Validate(const RouterID&) const override

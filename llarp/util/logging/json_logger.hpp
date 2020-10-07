@@ -13,8 +13,7 @@ namespace llarp
         llarp_time_t flushInterval,
         bool closeFile)
         : FileLogStream(std::move(disk), f, flushInterval, closeFile)
-    {
-    }
+    {}
 
     void
     AppendLog(

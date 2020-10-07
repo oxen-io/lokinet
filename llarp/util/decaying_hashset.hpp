@@ -14,8 +14,7 @@ namespace llarp
       using Time_t = std::chrono::milliseconds;
 
       DecayingHashSet(Time_t cacheInterval = 5s) : m_CacheInterval(cacheInterval)
-      {
-      }
+      {}
       /// determine if we have v contained in our decaying hashset
       bool
       Contains(const Val_t& v) const

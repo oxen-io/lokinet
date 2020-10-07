@@ -31,8 +31,7 @@ namespace llarp
 
     void
     Proxy::Stop()
-    {
-    }
+    {}
 
     bool
     Proxy::Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers)
@@ -137,8 +136,7 @@ namespace llarp
 
     void
     Proxy::HandleTick(llarp_udp_io*)
-    {
-    }
+    {}
 
     void
     Proxy::SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf)

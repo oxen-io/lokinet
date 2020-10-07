@@ -46,8 +46,7 @@ namespace llarp
 
   LogContext::LogContext()
       : logStream(std::make_unique<Stream_t>(_LOGSTREAM_INIT)), started(llarp::time_now_ms())
-  {
-  }
+  {}
 
   LogContext&
   LogContext::Instance()
@@ -69,15 +68,13 @@ namespace llarp
   }
 
   log_timestamp::log_timestamp() : log_timestamp("%c %Z")
-  {
-  }
+  {}
 
   log_timestamp::log_timestamp(const char* fmt)
       : format(fmt)
       , now(llarp::time_now_ms())
       , delta(llarp::time_now_ms() - LogContext::Instance().started)
-  {
-  }
+  {}
 
   void
   SetLogLevel(LogLevel lvl)
@@ -174,12 +171,10 @@ namespace llarp
   }
 
   LogSilencer::LogSilencer() : LogSilencer(LogContext::Instance())
-  {
-  }
+  {}
 
   LogSilencer::LogSilencer(LogContext& ctx) : parent(ctx), stream(std::move(ctx.logStream))
-  {
-  }
+  {}
 
   LogSilencer::~LogSilencer()
   {

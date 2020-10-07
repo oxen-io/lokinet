@@ -167,8 +167,7 @@ namespace llarp
 
   void
   Context::Reload()
-  {
-  }
+  {}
 
   void
   Context::SigINT()

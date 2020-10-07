@@ -55,8 +55,7 @@ namespace llarp
         , answers(std::move(other.answers))
         , authorities(std::move(other.authorities))
         , additional(std::move(other.additional))
-    {
-    }
+    {}
 
     Message::Message(const Message& other)
         : hdr_id(other.hdr_id)
@@ -65,8 +64,7 @@ namespace llarp
         , answers(other.answers)
         , authorities(other.authorities)
         , additional(other.additional)
-    {
-    }
+    {}
 
     Message::Message(const MessageHeader& hdr) : hdr_id(hdr.id), hdr_fields(hdr.fields)
     {

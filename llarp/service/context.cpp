@@ -36,8 +36,7 @@ namespace llarp
 
     }  // namespace
     Context::Context(AbstractRouter* r) : m_Router(r)
-    {
-    }
+    {}
 
     Context::~Context() = default;
 

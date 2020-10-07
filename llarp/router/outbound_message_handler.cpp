@@ -16,8 +16,7 @@ namespace llarp
 
   OutboundMessageHandler::OutboundMessageHandler(size_t maxQueueSize)
       : outboundQueue(maxQueueSize), removedPaths(20), removedSomePaths(false)
-  {
-  }
+  {}
 
   bool
   OutboundMessageHandler::QueueMessage(

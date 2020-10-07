@@ -45,8 +45,7 @@ namespace llarp
   }
 
   NetID::NetID() : NetID(DefaultValue().data())
-  {
-  }
+  {}
 
   bool
   NetID::operator==(const NetID& other) const

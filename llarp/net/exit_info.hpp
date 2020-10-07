@@ -26,8 +26,7 @@ namespace llarp
     ExitInfo() = default;
 
     ExitInfo(const PubKey& pk, const IpAddress& address) : ipAddress(address), pubkey(pk)
-    {
-    }
+    {}
 
     bool
     BEncode(llarp_buffer_t* buf) const;

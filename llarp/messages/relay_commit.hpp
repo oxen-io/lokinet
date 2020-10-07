@@ -52,8 +52,7 @@ namespace llarp
 
     LR_CommitMessage(std::array<EncryptedFrame, 8> _frames)
         : ILinkMessage(), frames(std::move(_frames))
-    {
-    }
+    {}
 
     LR_CommitMessage() = default;
 

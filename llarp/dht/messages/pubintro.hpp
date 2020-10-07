@@ -18,8 +18,7 @@ namespace llarp
       uint64_t relayOrder = 0;
       uint64_t txID = 0;
       PublishIntroMessage(const Key_t& from, bool relayed_) : IMessage(from), relayed(relayed_)
-      {
-      }
+      {}
 
       PublishIntroMessage(
           const llarp::service::EncryptedIntroSet& introset_,
@@ -27,8 +26,7 @@ namespace llarp
           bool relayed_,
           uint64_t relayOrder_)
           : IMessage({}), introset(introset_), relayed(relayed_), relayOrder(relayOrder_), txID(tx)
-      {
-      }
+      {}
 
       ~PublishIntroMessage() override;
 

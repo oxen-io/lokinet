@@ -22,25 +22,20 @@ namespace llarp
   {
     // Base class for the following option flag types
     struct option_flag
-    {
-    };
+    {};
 
     struct Required_t : option_flag
-    {
-    };
+    {};
     struct Hidden_t : option_flag
-    {
-    };
+    {};
     struct MultiValue_t : option_flag
-    {
-    };
+    {};
     struct RelayOnly_t : option_flag
-    {
-    };
+    {};
     struct ClientOnly_t : option_flag
-    {
-    };
-    struct Deprecated_t : option_flag {};
+    {};
+    struct Deprecated_t : option_flag
+    {};
 
     /// Value to pass for an OptionDefinition to indicate that the option is required
     inline constexpr Required_t Required{};
@@ -68,8 +63,7 @@ namespace llarp
     {
       T val;
       constexpr explicit Default(T val) : val{std::move(val)}
-      {
-      }
+      {}
     };
 
     /// Adds one or more comment lines to the option definition.
@@ -77,8 +71,7 @@ namespace llarp
     {
       std::vector<std::string> comments;
       explicit Comment(std::initializer_list<std::string> comments) : comments{std::move(comments)}
-      {
-      }
+      {}
     };
 
     /// A convenience function that returns an acceptor which assigns to a reference.
@@ -127,8 +120,7 @@ namespace llarp
         , hidden{deprecated || (std::is_same_v<T, config::Hidden_t> || ...)}
         , relayOnly{(std::is_same_v<T, config::RelayOnly_t> || ...)}
         , clientOnly{(std::is_same_v<T, config::ClientOnly_t> || ...)}
-    {
-    }
+    {}
 
     virtual ~OptionDefinitionBase() = default;
 
@@ -424,8 +416,7 @@ namespace llarp
   struct ConfigDefinition
   {
     explicit ConfigDefinition(bool relay) : relay{relay}
-    {
-    }
+    {}
 
     /// Specify the parameters and type of a configuration option. The parameters are members of
     /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.

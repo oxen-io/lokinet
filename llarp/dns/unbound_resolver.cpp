@@ -66,8 +66,7 @@ namespace llarp::dns
       , replyFunc(reply)
       , failFunc(fail)
 #endif
-  {
-  }
+  {}
 
   // static callback
   void
