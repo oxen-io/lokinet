@@ -235,6 +235,16 @@ namespace llarp
             relative_to_datadir,
         });
 
+    // Deprecated options:
+
+    // these weren't even ever used!
+    conf.defineOption<std::string>("router", "max-routers", Deprecated);
+    conf.defineOption<std::string>("router", "min-routers", Deprecated);
+
+    // TODO: this may have been a synonym for [router]worker-threads
+    conf.defineOption<std::string>("router", "threads", Deprecated);
+    conf.defineOption<std::string>("router", "net-threads", Deprecated);
+
     m_isRelay = params.isRelay;
   }
 
@@ -586,6 +596,9 @@ namespace llarp
 
           m_SRVRecords.push_back(std::move(newSRV));
         });
+
+    // Deprecated options:
+    conf.defineOption<std::string>("network", "enabled", Deprecated);
   }
 
   void
@@ -814,6 +827,8 @@ namespace llarp
             "Recommend localhost-only for security purposes.",
         });
 
+    conf.defineOption<std::string>("api", "authkey", Deprecated);
+
     // TODO: this was from pre-refactor:
     // TODO: add pubkey to whitelist
   }
@@ -856,6 +871,11 @@ namespace llarp
             "    rpc=tcp://127.0.0.1:5678",
         },
         [this](std::string arg) { lokidRPCAddr = lokimq::address(arg); });
+
+    // Deprecated options:
+    conf.defineOption<std::string>("lokid", "username", Deprecated);
+    conf.defineOption<std::string>("lokid", "password", Deprecated);
+    conf.defineOption<std::string>("lokid", "service-node-seed", Deprecated);
   }
 
   void
@@ -1036,29 +1056,15 @@ namespace llarp
   void
   Config::addBackwardsCompatibleConfigOptions(ConfigDefinition& conf)
   {
+    // These config sections don't exist anymore:
+
     conf.defineOption<std::string>("system", "user", Deprecated);
     conf.defineOption<std::string>("system", "group", Deprecated);
     conf.defineOption<std::string>("system", "pidfile", Deprecated);
 
-    conf.defineOption<std::string>("api", "authkey", Deprecated);
-
     conf.defineOption<std::string>("netdb", "dir", Deprecated);
 
-    // these weren't even ever used!
-    conf.defineOption<std::string>("router", "max-routers", Deprecated);
-    conf.defineOption<std::string>("router", "min-routers", Deprecated);
-
-    // TODO: this may have been a synonym for [router]worker-threads
-    conf.defineOption<std::string>("router", "threads", Deprecated);
-    conf.defineOption<std::string>("router", "net-threads", Deprecated);
-
     conf.defineOption<std::string>("metrics", "json-metrics-path", Deprecated);
-
-    conf.defineOption<std::string>("network", "enabled", Deprecated);
-
-    conf.defineOption<std::string>("lokid", "username", Deprecated);
-    conf.defineOption<std::string>("lokid", "password", Deprecated);
-    conf.defineOption<std::string>("lokid", "service-node-seed", Deprecated);
   }
 
   void
