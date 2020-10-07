@@ -606,7 +606,15 @@ namespace llarp
   {
     (void)params;
 
+    // Most non-linux platforms have loopback as 127.0.0.1/32, but linux uses 127.0.0.1/8 so that we
+    // can bind to other 127.* IPs to avoid conflicting with something else that may be listening on
+    // 127.0.0.1:53.
+#ifdef __linux__
     constexpr Default DefaultDNSBind{"127.3.2.1:53"};
+#else
+    constexpr Default DefaultDNSBind{"127.0.0.1:53"};
+#endif
+
     // Default, but if we get any upstream (including upstream=, i.e. empty string) we clear it
     constexpr Default DefaultUpstreamDNS{"1.1.1.1"};
     m_upstreamDNS.emplace_back(DefaultUpstreamDNS.val);
