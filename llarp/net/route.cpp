@@ -1,5 +1,11 @@
 #include "route.hpp"
 
+#ifndef _WIN32
+#include <sys/param.h>
+#endif
+#ifdef BSD
+#include <sys/wait.h>
+#endif
 #ifdef __linux__
 #include <string.h>
 #include <sys/types.h>
@@ -14,7 +20,7 @@
 #include <exception>
 #include <charconv>
 #endif
-#if defined(__APPLE__) || defined(__sun)
+#if defined(__APPLE__) || defined(__sun) || defined(BSD)
 #include <net/net.hpp>
 #include <util/str.hpp>
 #endif
@@ -309,7 +315,7 @@ namespace llarp::net
     std::stringstream ss;
 #if _WIN32
     ss << RouteCommand() << " ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
-#elif __APPLE__
+#elif __APPLE__ || BSD
     ss << "/sbin/route -n add -host " << ip << " " << gateway;
 #elif __sun
     ss << "/usr/sbin/route add " << ip << " " << gateway;
@@ -341,7 +347,7 @@ namespace llarp::net
     std::stringstream ss;
 #if _WIN32
     ss << RouteCommand() << " DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
-#elif __APPLE__
+#elif __APPLE__ || BSD
     ss << "/sbin/route -n delete -host " << ip << " " << gateway;
 #elif __sun
     ss << "/usr/sbin/route delete " << ip << " " << gateway;
@@ -376,7 +382,7 @@ namespace llarp::net
     ifname.back()++;
     Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
-#elif __APPLE__
+#elif __APPLE__ || BSD
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 #elif __sun
@@ -412,7 +418,7 @@ namespace llarp::net
     ifname.back()++;
     Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
-#elif __APPLE__
+#elif __APPLE__ || BSD
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
@@ -463,7 +469,7 @@ namespace llarp::net
       }
     });
     return gateways;
-#elif __APPLE__ || __sun
+#elif __APPLE__ || __sun || BSD
     LogDebug("get gateways not on ", ifname);
     const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
