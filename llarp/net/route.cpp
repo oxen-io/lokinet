@@ -14,7 +14,7 @@
 #include <exception>
 #include <charconv>
 #endif
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__sun)
 #include <net/net.hpp>
 #include <util/str.hpp>
 #endif
@@ -311,6 +311,8 @@ namespace llarp::net
     ss << RouteCommand() << " ADD " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n add -host " << ip << " " << gateway;
+#elif __sun
+    ss << "/usr/sbin/route add " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -341,6 +343,8 @@ namespace llarp::net
     ss << RouteCommand() << " DELETE " << ip << " MASK 255.255.255.255 " << gateway << " METRIC 2";
 #elif __APPLE__
     ss << "/sbin/route -n delete -host " << ip << " " << gateway;
+#elif __sun
+    ss << "/usr/sbin/route delete " << ip << " " << gateway;
 #else
 #error unsupported platform
 #endif
@@ -375,6 +379,10 @@ namespace llarp::net
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+#elif __sun
+    const auto iface = GetIFAddr(ifname);
+    Execute("/usr/sbin/route add 0.0.0.0/1 -iface " + iface->toHost());
+    Execute("/usr/sbin/route add 128.0.0.0/1 -iface " + iface->toHost());
 #else
 #error unsupported platform
 #endif
@@ -408,6 +416,10 @@ namespace llarp::net
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+#elif __sun
+    const auto iface = GetIFAddr(ifname);
+    Execute("/usr/sbin/route delete 0.0.0.0/1 -iface " + iface->toHost());
+    Execute("/usr/sbin/route delete 128.0.0.0/1 -iface " + iface->toHost());
 #else
 #error unsupported platform
 #endif
@@ -451,14 +463,18 @@ namespace llarp::net
       }
     });
     return gateways;
-#elif __APPLE__
+#elif __APPLE__ || __sun
     LogDebug("get gateways not on ", ifname);
     const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       return gateways;
     const auto interface = maybe->toString();
     // mac os is so godawful man
+#if __APPLE__
     FILE* p = popen("/usr/sbin/netstat -rn -f inet", "r");
+#else
+    FILE* p = popen("/usr/bin/netstat -rn -f inet", "r");
+#endif
     if (p == nullptr)
     {
       return gateways;
