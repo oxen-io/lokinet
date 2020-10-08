@@ -208,7 +208,8 @@ namespace llarp
 
       /// handle packet io from service node or hidden service to frontend
       virtual bool
-      HandleInboundPacket(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t) = 0;
+      HandleInboundPacket(
+          const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t, uint64_t seqno) = 0;
 
       // virtual bool
       // HandleWriteIPPacket(const llarp_buffer_t& pkt,

@@ -1189,7 +1189,7 @@ namespace llarp
                 return false;
               pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
             },
             Router(),
             numPaths,
@@ -1244,7 +1244,7 @@ namespace llarp
         {
           auto msg = queue.popFront();
           const llarp_buffer_t buf(msg->payload);
-          HandleInboundPacket(msg->tag, buf, msg->proto);
+          HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
         }
       };
 
@@ -1352,7 +1352,7 @@ namespace llarp
             PutReplyIntroFor(f.T, m->introReply);
             m->sender = m_Identity.pub;
             m->seqno = GetSeqNoForConvo(f.T);
-            f.S = 1;
+            f.S = m->seqno;
             f.F = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
             auto self = this;
@@ -1420,7 +1420,8 @@ namespace llarp
       auto itr = Sessions().find(tag);
       if (itr == Sessions().end())
         return 0;
-      return ++(itr->second.seqno);
+      itr->second.seqno += 1;
+      return itr->second.seqno;
     }
 
     bool
