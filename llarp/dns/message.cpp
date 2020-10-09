@@ -330,8 +330,22 @@ namespace llarp
       rec.rr_class = qClassIN;
       rec.rr_type = qTypeTXT;
       rec.ttl = ttl;
-      rec.rData.resize(str.size());
-      std::copy_n(str.data(), str.size(), rec.rData.data());
+      std::array<byte_t, 1024> tmp{};
+      llarp_buffer_t buf(tmp);
+      while (not str.empty())
+      {
+        const auto left = std::min(str.size(), size_t{256});
+        const auto sub = str.substr(0, left);
+        uint8_t byte = left;
+        *buf.cur = byte;
+        buf.cur++;
+        if (not buf.write(sub.begin(), sub.end()))
+          throw std::length_error("text record too big");
+        str = str.substr(left);
+      }
+      buf.sz = buf.cur - buf.base;
+      rec.rData.resize(buf.sz);
+      std::copy_n(buf.base, buf.sz, rec.rData.data());
     }
 
     void Message::AddNXReply(RR_TTL_t)
