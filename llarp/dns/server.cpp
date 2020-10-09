@@ -49,10 +49,7 @@ namespace llarp
       LogicCall(m_ClientLogic, [=]() {
         llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
       });
-      LogicCall(m_ServerLogic, [=]() {
-        llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr());
-      });
-      return true;
+      return llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr());
     }
 
     static Proxy::Buffer_t
