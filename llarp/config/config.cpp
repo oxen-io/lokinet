@@ -480,7 +480,7 @@ namespace llarp
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
             "lokinetN, starting at 0 (e.g. lokinet0, lokinet1, ...).",
         },
-        [this](std::string arg) { m_ifname = arg; });
+        AssignmentAcceptor(m_ifname));
 
     conf.defineOption<std::string>(
         "network",
