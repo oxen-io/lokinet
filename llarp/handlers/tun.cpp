@@ -199,6 +199,13 @@ namespace llarp
       }
 
       std::string ifname = conf.m_ifname;
+      if (ifname.empty())
+      {
+        const auto maybe = llarp::FindFreeTun();
+        if (not maybe.has_value())
+          throw std::runtime_error("cannot find free interface name");
+        ifname = *maybe;
+      }
       if (tunif)
       {
         if (ifname.length() >= sizeof(tunif->ifname))
@@ -210,6 +217,16 @@ namespace llarp
         llarp::LogInfo(Name() + " setting ifname to ", tunif->ifname);
 
         m_OurRange = conf.m_ifaddr;
+        if (!m_OurRange.addr.h)
+        {
+          const auto maybe = llarp::FindFreeRange();
+          if (not maybe.has_value())
+          {
+            throw std::runtime_error("cannot find free address range");
+          }
+          m_OurRange = *maybe;
+        }
+
         m_UseV6 = not m_OurRange.IsV4();
         tunif->netmask = m_OurRange.HostmaskBits();
         const auto addr = m_OurRange.BaseAddressString();

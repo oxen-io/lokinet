@@ -480,16 +480,7 @@ namespace llarp
             "Interface name for lokinet traffic. If unset lokinet will look for a free name",
             "lokinetN, starting at 0 (e.g. lokinet0, lokinet1, ...).",
         },
-        [this](std::string arg) {
-          if (arg.empty())
-          {
-            const auto maybe = llarp::FindFreeTun();
-            if (not maybe)
-              throw std::invalid_argument("cannot determine free interface name");
-            arg = *maybe;
-          }
-          m_ifname = arg;
-        });
+        AssignmentAcceptor(m_ifname));
 
     conf.defineOption<std::string>(
         "network",
@@ -500,17 +491,9 @@ namespace llarp
             "lokinet will attempt to find an unused private range.",
         },
         [this](std::string arg) {
-          if (arg.empty())
-          {
-            const auto maybe = llarp::FindFreeRange();
-            if (not maybe)
-              throw std::invalid_argument("cannot determine free ip range");
-            m_ifaddr = *maybe;
-            return;
-          }
           if (not m_ifaddr.FromString(arg))
           {
-            throw std::invalid_argument(stringify("[network]:ifaddr invalid value: ", arg));
+            throw std::invalid_argument(stringify("[network]:ifaddr invalid value: '", arg, "'"));
           }
         });
 
