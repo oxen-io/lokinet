@@ -322,6 +322,18 @@ namespace llarp
       }
     }
 
+    void
+    Message::AddTXTReply(std::string str, RR_TTL_t ttl)
+    {
+      auto& rec = answers.emplace_back();
+      rec.rr_name = questions[0].qname;
+      rec.rr_class = qClassIN;
+      rec.rr_type = qTypeTXT;
+      rec.ttl = ttl;
+      rec.rData.resize(str.size());
+      std::copy_n(str.data(), str.size(), rec.rData.data());
+    }
+
     void Message::AddNXReply(RR_TTL_t)
     {
       if (questions.size())

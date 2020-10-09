@@ -64,6 +64,12 @@ namespace llarp
       return (qname == "localhost.loki." or llarp::ends_with(qname, ".localhost.loki."));
     }
 
+    bool
+    Question::HasSubdomains() const
+    {
+      return qname.size() >= 3;
+    }
+
     std::string
     Question::Subdomains() const
     {
