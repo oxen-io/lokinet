@@ -42,8 +42,9 @@ elseif(DOWNLOAD_UV)
     add_definitions(-D_FILE_OFFSET_BITS=64)
   endif()
 else()
-  message(FATAL_ERROR "No Libuv Found use -DDOWNLOAD_UV=FORCE to use a vendored copy")
+  message(FATAL_ERROR "libuv not found use -DDOWNLOAD_UV=FORCE to use the submodule")
 endif()
+
 include_directories(${LIBUV_INCLUDE_DIRS})
 
 if(EMBEDDED_CFG OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
