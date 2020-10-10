@@ -41,6 +41,8 @@ elseif(DOWNLOAD_UV)
     add_definitions(-D_LARGEFILE_SOURCE)
     add_definitions(-D_FILE_OFFSET_BITS=64)
   endif()
+else()
+  message(FATAL_ERROR "No Libuv Found use -DDOWNLOAD_UV=FORCE to use a vendored copy")
 endif()
 include_directories(${LIBUV_INCLUDE_DIRS})
 
