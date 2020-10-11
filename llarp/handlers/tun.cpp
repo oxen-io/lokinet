@@ -389,7 +389,26 @@ namespace llarp
       }
       if (msg.questions[0].qtype == dns::qTypeTXT)
       {
-        if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+        RouterID snode;
+        if (snode.FromString(qname))
+        {
+          m_router->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
+            if (found.empty())
+            {
+              msg.AddNXReply();
+            }
+            else
+            {
+              std::stringstream ss;
+              for (const auto& rc : found)
+                rc.ToTXTRecord(ss);
+              msg.AddTXTReply(ss.str());
+            }
+            reply(msg);
+          });
+          return true;
+        }
+        else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
         {
           const auto subdomain = msg.questions[0].Subdomains();
           if (subdomain == "exit")

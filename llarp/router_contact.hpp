@@ -135,6 +135,9 @@ namespace llarp
     bool
     BEncodeSignedSection(llarp_buffer_t* buf) const;
 
+    std::ostream&
+    ToTXTRecord(std::ostream& out) const;
+
     bool
     operator==(const RouterContact& other) const
     {
