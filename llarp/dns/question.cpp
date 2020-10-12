@@ -67,7 +67,8 @@ namespace llarp
     bool
     Question::HasSubdomains() const
     {
-      return qname.size() >= 3;
+      const auto parts = split(qname, ".", true);
+      return parts.size() >= 3;
     }
 
     std::string
