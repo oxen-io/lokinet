@@ -564,7 +564,6 @@ namespace llarp
                   return;
                 }
                 LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
-                msg->AddCNAMEReply(maybe->ToString());
                 ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
               });
         }
