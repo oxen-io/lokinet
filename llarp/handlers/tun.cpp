@@ -387,8 +387,64 @@ namespace llarp
         lnsName = nameparts[nameparts.size() - 2];
         lnsName += ".loki"sv;
       }
+      if (msg.questions[0].qtype == dns::qTypeTXT)
+      {
+        RouterID snode;
+        if (snode.FromString(qname))
+        {
+          m_router->LookupRouter(snode, [reply, msg = std::move(msg)](const auto& found) mutable {
+            if (found.empty())
+            {
+              msg.AddNXReply();
+            }
+            else
+            {
+              std::stringstream ss;
+              for (const auto& rc : found)
+                rc.ToTXTRecord(ss);
+              msg.AddTXTReply(ss.str());
+            }
+            reply(msg);
+          });
+          return true;
+        }
+        else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+        {
+          const auto subdomain = msg.questions[0].Subdomains();
+          if (subdomain == "exit")
+          {
+            if (HasExit())
+            {
+              std::stringstream ss;
+              m_ExitMap.ForEachEntry([&ss](const auto& range, const auto& exit) {
+                ss << range.ToString() << "=" << exit.ToString() << "; ";
+              });
+              msg.AddTXTReply(ss.str());
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+          }
+          else if (subdomain == "netid")
+          {
+            std::stringstream ss;
+            ss << "netid=" << m_router->rc().netID.ToString() << ";";
+            msg.AddTXTReply(ss.str());
+          }
+          else
+          {
+            msg.AddNXReply();
+          }
+        }
+        else
+        {
+          msg.AddNXReply();
+        }
 
-      if (msg.questions[0].qtype == dns::qTypeMX)
+        reply(msg);
+      }
+      else if (msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
         service::Address addr;
@@ -508,7 +564,6 @@ namespace llarp
                   return;
                 }
                 LogInfo(name, " ", lnsName, " resolved to ", maybe->ToString());
-                msg->AddCNAMEReply(maybe->ToString());
                 ReplyToLokiDNSWhenReady(*maybe, msg, isV6);
               });
         }

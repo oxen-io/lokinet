@@ -105,6 +105,21 @@ namespace llarp
     return false;
   }
 
+  std::ostream&
+  RouterContact::ToTXTRecord(std::ostream& out) const
+  {
+    for (const auto& addr : addrs)
+    {
+      out << "ai_addr=" << addr.toIpAddress() << "; ";
+      out << "ai_pk=" << addr.pubkey.ToHex() << "; ";
+    }
+    out << "updated=" << last_updated.count() << "; ";
+    out << "onion_pk=" << enckey.ToHex() << "; ";
+    if (routerVersion.has_value())
+      out << "router_version=" << routerVersion->ToString() << "; ";
+    return out;
+  }
+
   bool
   RouterContact::BEncodeSignedSection(llarp_buffer_t* buf) const
   {
