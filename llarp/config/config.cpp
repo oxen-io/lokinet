@@ -268,6 +268,8 @@ namespace llarp
         Hidden,
         AssignmentAcceptor(m_enableProfiling));
 
+    conf.defineOption<std::string>("network", "profiles", Deprecated);
+
     conf.defineOption<std::string>(
         "network",
         "strict-connect",
