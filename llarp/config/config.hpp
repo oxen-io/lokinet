@@ -236,7 +236,11 @@ namespace llarp
     Override(std::string section, std::string key, std::string value);
 
    private:
+    void
+    LoadOverrides(fs::path defaultDataDir);
+
     ConfigParser m_Parser;
+    fs::path m_overridesDir;
   };
 
   void

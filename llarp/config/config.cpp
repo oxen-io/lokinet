@@ -976,13 +976,31 @@ namespace llarp
   void
   Config::Save()
   {
+    if (not fs::exists(m_overridesDir))
+      fs::create_directory(m_overridesDir);
     m_Parser.Save();
   }
 
   void
   Config::Override(std::string section, std::string key, std::string value)
   {
-    m_Parser.AddOverride(std::move(section), std::move(key), std::move(value));
+    m_Parser.AddOverride(m_overridesDir / "overrides.ini", section, key, value);
+  }
+
+  void
+  Config::LoadOverrides(fs::path defaultDataDir)
+  {
+    m_overridesDir = defaultDataDir / "conf.d";
+    if (fs::exists(m_overridesDir))
+    {
+      util::IterDir(m_overridesDir, [&](const fs::path& overrideFile) {
+        if (overrideFile.extension() == ".ini")
+        {
+          m_Parser.LoadFile(overrideFile);
+        }
+        return true;
+      });
+    }
   }
 
   bool
@@ -1002,6 +1020,7 @@ namespace llarp
       {
         return false;
       }
+      LoadOverrides(params.defaultDataDir);
 
       m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
@@ -1011,10 +1030,6 @@ namespace llarp
       });
 
       conf.acceptAllOptions();
-
-      // TODO: better way to support inter-option constraints
-      if (router.m_maxConnectedRouters < router.m_minConnectedRouters)
-        throw std::invalid_argument("[router]:min-connections must be <= [router]:max-connections");
 
       return true;
     }
@@ -1036,6 +1051,16 @@ namespace llarp
 
       ConfigDefinition conf{isRelay};
       initializeConfig(conf, params);
+
+      m_Parser.Clear();
+      LoadOverrides(params.defaultDataDir);
+
+      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+        for (const auto& pair : values)
+        {
+          conf.addConfigValue(section, pair.first, pair.second);
+        }
+      });
 
       conf.acceptAllOptions();
 
