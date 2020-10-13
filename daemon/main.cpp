@@ -290,6 +290,26 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
   }
 }
 
+#ifdef _WIN32
+void
+TellWindowsServiceStopped()
+{
+  ::WSACleanup();
+  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+}
+
+class WindowsServiceStopped
+{
+ public:
+  WindowsServiceStopped() = default;
+
+  ~WindowsServiceStopped()
+  {
+    TellWindowsServiceStopped();
+  }
+};
+#endif
+
 int
 main(int argc, char* argv[])
 {
@@ -319,9 +339,9 @@ lokinet_main(int argc, char* argv[])
   llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
+  WindowsServiceStopped stopped_raii;
   if (startWinsock())
     return -1;
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
 
   // SetUnhandledExceptionFilter(win32_signal_handler);
@@ -463,6 +483,11 @@ lokinet_main(int argc, char* argv[])
 
   std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
+
+#ifdef _WIN32
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+#endif
+
   do
   {
     // do periodic non lokinet related tasks here
@@ -492,6 +517,9 @@ lokinet_main(int argc, char* argv[])
         LogError(wtf);
         llarp::LogContext::Instance().ImmediateFlush();
       }
+#ifdef _WIN32
+      TellWindowsServiceStopped();
+#endif
       std::abort();
     }
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
@@ -516,10 +544,6 @@ lokinet_main(int argc, char* argv[])
   }
 
   llarp::LogContext::Instance().ImmediateFlush();
-#ifdef _WIN32
-  ::WSACleanup();
-  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
-#endif
   if (ctx)
   {
     ctx.reset();
