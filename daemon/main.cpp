@@ -50,7 +50,7 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
-VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+BOOL ReportSvcStatus(DWORD, DWORD, DWORD);
 VOID
 insert_description();
 SERVICE_STATUS SvcStatus;
@@ -252,6 +252,7 @@ uninstall_win32_daemon()
 static void
 run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 {
+  llarp::LogTrace("start of run_main_context()");
   try
   {
     // this is important, can downgrade from Info though
@@ -290,6 +291,40 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
   }
 }
 
+#ifdef _WIN32
+void
+TellWindowsServiceStopped()
+{
+  ::WSACleanup();
+  if (not start_as_daemon)
+    return;
+
+  llarp::LogInfo("Telling Windows the service has stopped.");
+  if (not ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0))
+  {
+    auto error_code = GetLastError();
+    if (error_code == ERROR_INVALID_DATA)
+      llarp::LogError("SetServiceStatus failed: \"The specified service status structure is invalid.\"");
+    else if (error_code == ERROR_INVALID_HANDLE)
+      llarp::LogError("SetServiceStatus failed: \"The specified handle is invalid.\"");
+    else
+      llarp::LogError("SetServiceStatus failed with an unknown error.");
+  }
+  llarp::LogContext::Instance().ImmediateFlush();
+}
+
+class WindowsServiceStopped
+{
+ public:
+  WindowsServiceStopped() = default;
+
+  ~WindowsServiceStopped()
+  {
+    TellWindowsServiceStopped();
+  }
+};
+#endif
+
 int
 main(int argc, char* argv[])
 {
@@ -319,9 +354,9 @@ lokinet_main(int argc, char* argv[])
   llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
+  WindowsServiceStopped stopped_raii;
   if (startWinsock())
     return -1;
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
 
   // SetUnhandledExceptionFilter(win32_signal_handler);
@@ -463,6 +498,11 @@ lokinet_main(int argc, char* argv[])
 
   std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
+
+#ifdef _WIN32
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+#endif
+
   do
   {
     // do periodic non lokinet related tasks here
@@ -492,6 +532,9 @@ lokinet_main(int argc, char* argv[])
         LogError(wtf);
         llarp::LogContext::Instance().ImmediateFlush();
       }
+#ifdef _WIN32
+      TellWindowsServiceStopped();
+#endif
       std::abort();
     }
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
@@ -516,10 +559,6 @@ lokinet_main(int argc, char* argv[])
   }
 
   llarp::LogContext::Instance().ImmediateFlush();
-#ifdef _WIN32
-  ::WSACleanup();
-  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
-#endif
   if (ctx)
   {
     ctx.reset();
@@ -528,7 +567,7 @@ lokinet_main(int argc, char* argv[])
 }
 
 #ifdef _WIN32
-VOID
+BOOL
 ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
@@ -549,7 +588,7 @@ ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
     SvcStatus.dwCheckPoint = dwCheckPoint++;
 
   // Report the status of the service to the SCM.
-  SetServiceStatus(SvcStatusHandle, &SvcStatus);
+  return SetServiceStatus(SvcStatusHandle, &SvcStatus);
 }
 
 VOID FAR PASCAL
