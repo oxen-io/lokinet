@@ -593,7 +593,7 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
   SvcStatus.dwServiceSpecificExitCode = 0;
 
   // Report initial status to the SCM
-  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
+  ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 30000);
   // SCM clobbers startup args, regenerate them here
   argc = 2;
   argv[1] = "c:/programdata/.lokinet/lokinet.ini";
