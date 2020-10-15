@@ -765,6 +765,9 @@ struct llarp_ev_loop
   /// give this event loop a logic thread for calling
   virtual void set_logic(std::shared_ptr<llarp::Logic>) = 0;
 
+  virtual std::shared_ptr<llarp::Logic>
+  get_logic() const = 0;
+
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;

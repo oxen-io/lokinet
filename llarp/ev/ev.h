@@ -33,7 +33,7 @@
  * event handler (cross platform high performance event system for IO)
  */
 
-#define EV_TICK_INTERVAL 10
+#define EV_TICK_INTERVAL 100
 
 // forward declare
 struct llarp_threadpool;

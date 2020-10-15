@@ -13,8 +13,9 @@ namespace llarp
   }
 
   void
-  Logic::Call(std::function<void(void)> func)
+  Logic::Call(const char* file, int line, std::function<void(void)> func)
   {
+    llarp::LogTrace("Logic call: ", file, ":", line);
     m_Queue(std::move(func));
   }
 

@@ -962,7 +962,7 @@ namespace llarp
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook(AuthResult::eAuthAccepted); });
+        LogicCall(RouterLogic(), [hook]() { hook(AuthResult::eAuthAccepted); });
       }
     }
 

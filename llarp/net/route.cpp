@@ -445,6 +445,7 @@ namespace llarp::net
       std::string interface_name{interface_str.data()};
       if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
+llarp::LogInfo("Adding gateway (", interface_name, ") to list of gateways.");
         gateways.push_back(std::move(interface_name));
       }
     });

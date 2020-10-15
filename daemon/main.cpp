@@ -50,7 +50,7 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
-VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+BOOL ReportSvcStatus(DWORD, DWORD, DWORD);
 VOID
 insert_description();
 SERVICE_STATUS SvcStatus;
@@ -252,6 +252,7 @@ uninstall_win32_daemon()
 static void
 run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
 {
+  llarp::LogTrace("start of run_main_context()");
   try
   {
     // this is important, can downgrade from Info though
@@ -271,10 +272,12 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     signal(SIGHUP, handle_signal);
 #endif
 
+llarp::LogInfo("Context::Setup()");
     ctx->Setup(opts);
 
     llarp::util::SetThreadName("llarp-mainloop");
 
+llarp::LogInfo("Context::Run()");
     auto result = ctx->Run(opts);
     exit_code.set_value(result);
   }
@@ -288,6 +291,7 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     llarp::LogError("Fatal: caught non-standard exception while running");
     exit_code.set_exception(std::current_exception());
   }
+llarp::LogInfo("end of run_main_context()");
 }
 
 #ifdef _WIN32
@@ -295,7 +299,21 @@ void
 TellWindowsServiceStopped()
 {
   ::WSACleanup();
-  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+  if (not start_as_daemon)
+    return;
+
+  llarp::LogInfo("Telling Windows the service has stopped.");
+  if (not ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0))
+  {
+    auto error_code = GetLastError();
+    if (error_code == ERROR_INVALID_DATA)
+      llarp::LogError("SetServiceStatus failed: \"The specified service status structure is invalid.\"");
+    else if (error_code == ERROR_INVALID_HANDLE)
+      llarp::LogError("SetServiceStatus failed: \"The specified handle is invalid.\"");
+    else
+      llarp::LogError("SetServiceStatus failed with an unknown error.");
+  }
+  llarp::LogContext::Instance().ImmediateFlush();
 }
 
 class WindowsServiceStopped
@@ -552,7 +570,7 @@ lokinet_main(int argc, char* argv[])
 }
 
 #ifdef _WIN32
-VOID
+BOOL
 ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
@@ -573,7 +591,7 @@ ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
     SvcStatus.dwCheckPoint = dwCheckPoint++;
 
   // Report the status of the service to the SCM.
-  SetServiceStatus(SvcStatusHandle, &SvcStatus);
+  return SetServiceStatus(SvcStatusHandle, &SvcStatus);
 }
 
 VOID FAR PASCAL

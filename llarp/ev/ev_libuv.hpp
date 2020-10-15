@@ -120,6 +120,12 @@ namespace libuv
       m_Logic->SetQueuer(llarp::util::memFn(&Loop::call_soon, this));
     }
 
+    std::shared_ptr<llarp::Logic>
+    get_logic() const
+    {
+      return m_Logic;
+    }
+
     std::shared_ptr<llarp::Logic> m_Logic;
 
     void

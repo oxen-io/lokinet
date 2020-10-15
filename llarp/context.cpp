@@ -24,7 +24,10 @@ namespace llarp
   bool
   Context::CallSafe(std::function<void(void)> f)
   {
-    return logic && LogicCall(logic, f);
+    if (not logic)
+      return false;
+    LogicCall(logic, f);
+    return true;
   }
 
   void
@@ -80,13 +83,17 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
+llarp::LogInfo("Context::Setup makeRouter");
     router = makeRouter(mainloop, logic);
 
+llarp::LogInfo("Context::Setup create nodedb");
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
+llarp::LogInfo("Context::Setup calling Router::Configure");
     if (!router->Configure(config, opts.isRouter, nodedb.get()))
       throw std::runtime_error("Failed to configure router");
+llarp::LogInfo("Context::Setup finished Router::Configure");
 
     // must be done after router is made so we can use its disk io worker
     // must also be done after configure so that netid is properly set if it

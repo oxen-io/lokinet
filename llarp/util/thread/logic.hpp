@@ -14,7 +14,7 @@ namespace llarp
     stop();
 
     void
-    Call(std::function<void(void)> func);
+    Call(const char* file, int line, std::function<void(void)> func);
 
     uint32_t
     call_later(llarp_time_t later, std::function<void(void)> func);
@@ -40,6 +40,7 @@ namespace llarp
   };
 }  // namespace llarp
 
+/*
 /// this used to be a macro
 template <typename Logic_ptr, typename Func_t>
 static bool
@@ -48,5 +49,7 @@ LogicCall(const Logic_ptr& logic, Func_t func)
   logic->Call(std::move(func));
   return true;
 }
+*/
+#define LogicCall(logic, ...) logic->Call(__FILE__, __LINE__, __VA_ARGS__)
 
 #endif

@@ -32,8 +32,8 @@ namespace llarp
         typename PutTime,
         typename Compare,
         typename GetNow = GetNowSyscall,
-        typename Mutex_t = util::Mutex,
-        typename Lock_t = std::lock_guard<Mutex_t>,
+        typename Mutex_t = util::NullMutex,
+        typename Lock_t = util::NullLock,
         size_t MaxSize = 1024>
     struct CoDelQueue
     {

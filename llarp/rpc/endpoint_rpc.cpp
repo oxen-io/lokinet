@@ -40,7 +40,7 @@ namespace llarp::rpc
   {
     const auto from = msg->sender.Addr();
     auto reply = [logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
-      logic->Call([hook, result]() { hook(result); });
+      LogicCall(logic, [hook, result]() { hook(result); });
     };
     if (m_AuthWhitelist.count(from))
     {

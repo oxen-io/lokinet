@@ -3,6 +3,7 @@
 #ifdef _WIN32
 
 #include <util/logging/logger.hpp>
+#include <atomic>
 
 // a single event queue for the TUN interface
 static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
@@ -75,7 +76,7 @@ win32_tun_io::add_ev(llarp_ev_loop* loop)
     // let the system handle 2x the number of CPUs or hardware
     // threads
     tun_event_queue = CreateIoCompletionPort(tunif->tun_fd, nullptr, (ULONG_PTR)this, numCPU * 2);
-    begin_tun_loop(numCPU * 2, loop);
+    begin_tun_loop(1, loop);
   }
   else
     CreateIoCompletionPort(tunif->tun_fd, tun_event_queue, (ULONG_PTR)this, 0);
@@ -128,13 +129,25 @@ win32_tun_io::read(byte_t* buf, size_t sz)
 extern "C" DWORD FAR PASCAL
 tun_ev_loop(void* u)
 {
-  llarp_ev_loop* logic = static_cast<llarp_ev_loop*>(u);
+  auto loop = static_cast<llarp_ev_loop*>(u);
+  auto logic = loop->get_logic();
 
   DWORD size = 0;
   OVERLAPPED* ovl = nullptr;
   ULONG_PTR listener = 0;
   asio_evt_pkt* pkt = nullptr;
   BOOL alert;
+
+/*
+  loop->add_ticker([&tun_listeners]() {
+    for (const auto& tun : tun_listeners)
+    {
+      tun->flush_write();
+      if (tun->t->tick)
+        tun->t->tick(tun->t);
+    }
+  });
+*/
 
   while (true)
   {
@@ -147,7 +160,7 @@ tun_ev_loop(void* u)
       // of the tun logic
       for (const auto& tun : tun_listeners)
       {
-        logic->call_soon([tun]() {
+        LogicCall(logic, [tun]() {
           tun->flush_write();
           if (tun->t->tick)
             tun->t->tick(tun->t);
@@ -163,7 +176,7 @@ tun_ev_loop(void* u)
     if (!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
-      logic->call_soon([pkt, size, ev]() {
+      LogicCall(logic, [pkt, size, ev]() {
         if (ev->t->recvpkt)
           ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
         free(pkt->buf);
@@ -172,13 +185,15 @@ tun_ev_loop(void* u)
       byte_t* readbuf = (byte_t*)malloc(1500);
       ev->read(readbuf, 1500);
     }
+    /*
     else
     {
       // ok let's queue another read!
       byte_t* readbuf = (byte_t*)malloc(1500);
       ev->read(readbuf, 1500);
     }
-    logic->call_soon([ev]() {
+    */
+    LogicCall(logic, [ev]() {
       ev->flush_write();
       if (ev->t->tick)
         ev->t->tick(ev->t);

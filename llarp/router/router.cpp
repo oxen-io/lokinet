@@ -164,12 +164,14 @@ namespace llarp
   void
   Router::PumpLL()
   {
+llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
       return;
     paths.PumpDownstream();
     paths.PumpUpstream();
     _outboundMessageHandler.Tick();
     _linkManager.PumpLinks();
+llarp::LogTrace("Router::PumpLL() end");
   }
 
   bool
@@ -305,6 +307,7 @@ namespace llarp
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
 
+    m_RoutePoker.Init(this);
     return true;
   }
 
@@ -774,7 +777,7 @@ namespace llarp
 
     if (HasClientExit())
     {
-      m_RoutePoker.Update(*this);
+      m_RoutePoker.Update();
     }
 
     size_t connected = NumberOfConnectedRouters();
@@ -1268,6 +1271,7 @@ namespace llarp
         [&](llarp::RouterContact rc) {
           if (IsServiceNode())
             return;
+llarp::LogInfo("Before connect, outbound link adding route to (", rc.addrs[0].toIpAddress().toIP(), ") via gateway.");
           m_RoutePoker.AddRoute(rc.addrs[0].toIpAddress().toIP());
         },
         util::memFn(&Router::ConnectionEstablished, this),

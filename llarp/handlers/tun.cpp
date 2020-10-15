@@ -51,6 +51,7 @@ namespace llarp
     void
     TunEndpoint::tunifTick(llarp_tun_io* tun)
     {
+llarp::LogTrace("TunEndpoint::tunifTick()");
       auto* self = static_cast<TunEndpoint*>(tun->user);
       self->Flush();
     }
@@ -748,6 +749,7 @@ namespace llarp
         };
         // event loop ticker
         auto ticker = [self, sendpkt]() {
+llarp::LogTrace("TunEndpoint ticker() start");
           TunEndpoint* ep = self.get();
           const bool running = not ep->IsStopped();
           auto impl = ep->GetVPNImpl();
@@ -772,6 +774,7 @@ namespace llarp
           // if impl has a tick function call it
           if (impl && impl->parent && impl->parent->tick)
             impl->parent->tick(impl->parent);
+llarp::LogTrace("TunEndpoint ticker() end");
         };
         if (not loop->add_ticker(ticker))
         {
@@ -875,9 +878,8 @@ namespace llarp
       }
       if (!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
-        // downgrade DNS server failure to a warning
-        llarp::LogWarn(Name(), " failed to start dns server");
-        // return false;
+        llarp::LogError(Name(), " failed to start DNS server");
+        return false;
       }
       return true;
     }
