@@ -3,6 +3,7 @@
 #ifdef _WIN32
 
 #include <util/logging/logger.hpp>
+#include <atomic>
 
 // a single event queue for the TUN interface
 static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
@@ -136,6 +137,7 @@ tun_ev_loop(void* u)
   asio_evt_pkt* pkt = nullptr;
   BOOL alert;
 
+  std::atomic_flag tick_queued;
   while (true)
   {
     alert = GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, EV_TICK_INTERVAL);
@@ -145,15 +147,21 @@ tun_ev_loop(void* u)
       // tick listeners on io timeout, this is required to be done every tick
       // cycle regardless of any io being done, this manages the internal state
       // of the tun logic
-      for (const auto& tun : tun_listeners)
-      {
-        logic->call_soon([tun]() {
+
+      if (tick_queued.test_and_set()) continue; // if tick queued, don't queue another
+
+      logic->call_soon([&]() {
+        for (const auto& tun : tun_listeners)
+        {
           tun->flush_write();
           if (tun->t->tick)
             tun->t->tick(tun->t);
-        });
-      }
-      continue;  // let's go at it once more
+        }
+        tick_queued.clear();
+      });
+
+      continue;
+
     }
     if (listener == (ULONG_PTR)~0)
       break;
