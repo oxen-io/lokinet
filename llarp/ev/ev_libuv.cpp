@@ -6,7 +6,12 @@
 
 namespace libuv
 {
-#define LoopCall(h, ...) LogicCall(static_cast<Loop*>((h)->loop->data)->m_Logic, __VA_ARGS__)
+
+#define LoopCall(h, ...)    \
+  {                         \
+    auto __f = __VA_ARGS__; \
+    __f();                  \
+  }
 
   struct glue
   {
