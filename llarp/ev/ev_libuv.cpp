@@ -294,8 +294,10 @@ namespace libuv
     static void
     OnTick(uv_check_t* t)
     {
+      llarp::LogTrace("conn_glue::OnTick() start");
       conn_glue* conn = static_cast<conn_glue*>(t->data);
       conn->Tick();
+      llarp::LogTrace("conn_glue::OnTick() end");
     }
 
     void
@@ -367,10 +369,12 @@ namespace libuv
     static void
     OnTick(uv_check_t* t)
     {
+      llarp::LogTrace("ticker_glue::OnTick() start");
       ticker_glue* ticker = static_cast<ticker_glue*>(t->data);
       ticker->func();
       Loop* loop = static_cast<Loop*>(t->loop->data);
       loop->FlushLogic();
+      llarp::LogTrace("ticker_glue::OnTick() end");
     }
 
     bool
@@ -446,8 +450,10 @@ namespace libuv
     static void
     OnTick(uv_check_t* t)
     {
+      llarp::LogTrace("udp_glue::OnTick() start");
       udp_glue* udp = static_cast<udp_glue*>(t->data);
       udp->Tick();
+      llarp::LogTrace("udp_glue::OnTick() end");
     }
 
     void
@@ -570,8 +576,10 @@ namespace libuv
     static void
     OnTick(uv_check_t* h)
     {
+      llarp::LogTrace("pipe_glue::OnTick() start");
       pipe_glue* pipe = static_cast<pipe_glue*>(h->data);
       LoopCall(h, std::bind(&pipe_glue::Tick, pipe));
+      llarp::LogTrace("pipe_glue::OnTick() end");
     }
 
     bool
@@ -613,8 +621,10 @@ namespace libuv
     static void
     OnTick(uv_check_t* timer)
     {
+      llarp::LogTrace("tun_glue::OnTick() start");
       tun_glue* tun = static_cast<tun_glue*>(timer->data);
       tun->Tick();
+      llarp::LogTrace("tun_glue::OnTick() end");
     }
 
     static void
@@ -740,16 +750,19 @@ namespace libuv
   void
   Loop::FlushLogic()
   {
+    llarp::LogTrace("Loop::FlushLogic() start");
     while (not m_LogicCalls.empty())
     {
       auto f = m_LogicCalls.popFront();
       f();
     }
+    llarp::LogTrace("Loop::FlushLogic() end");
   }
 
   static void
   OnAsyncWake(uv_async_t* async_handle)
   {
+    llarp::LogTrace("OnAsyncWake, ticking event loop.");
     Loop* loop = static_cast<Loop*>(async_handle->data);
     loop->update_time();
     loop->process_timer_queue();
@@ -825,6 +838,7 @@ namespace libuv
   int
   Loop::run()
   {
+    llarp::LogTrace("Loop::run()");
     m_EventLoopThreadID = std::this_thread::get_id();
     return uv_run(&m_Impl, UV_RUN_DEFAULT);
   }
@@ -871,6 +885,7 @@ namespace libuv
   uint32_t
   Loop::call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback)
   {
+    llarp::LogTrace("Loop::call_after_delay()");
 #ifdef TESTNET_SPEED
     delay_ms *= TESTNET_SPEED;
 #endif
@@ -982,6 +997,7 @@ namespace libuv
     {
       return true;
     }
+    llarp::LogError("Loop::udp_listen failed to bind");
     delete impl;
     return false;
   }

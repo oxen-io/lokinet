@@ -80,10 +80,7 @@ namespace llarp
   SetLogLevel(LogLevel lvl)
   {
     LogContext::Instance().curLevel = lvl;
-    if (lvl == eLogDebug)
-    {
-      LogContext::Instance().runtimeLevel = lvl;
-    }
+    LogContext::Instance().runtimeLevel = lvl;
   }
 
   LogLevel
@@ -107,6 +104,9 @@ namespace llarp
       std::function<void(IOFunc_t)> io)
   {
     SetLogLevel(level);
+    if (level == eLogTrace)
+      LogTrace("Set log level to trace.");
+
     nodeName = nickname;
 
     FILE* logfile = nullptr;
