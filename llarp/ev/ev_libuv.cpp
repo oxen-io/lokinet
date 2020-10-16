@@ -6,7 +6,6 @@
 
 namespace libuv
 {
-
 #define LoopCall(h, ...)    \
   {                         \
     auto __f = __VA_ARGS__; \

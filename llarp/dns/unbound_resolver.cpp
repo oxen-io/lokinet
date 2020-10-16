@@ -41,6 +41,8 @@ namespace llarp::dns
     runnerThread = std::make_unique<std::thread>([self = shared_from_this()]() {
       while (self->started)
       {
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(20ms);
         ub_wait(self->unboundContext);
       }
     });
