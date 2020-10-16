@@ -304,7 +304,8 @@ TellWindowsServiceStopped()
   {
     auto error_code = GetLastError();
     if (error_code == ERROR_INVALID_DATA)
-      llarp::LogError("SetServiceStatus failed: \"The specified service status structure is invalid.\"");
+      llarp::LogError(
+          "SetServiceStatus failed: \"The specified service status structure is invalid.\"");
     else if (error_code == ERROR_INVALID_HANDLE)
       llarp::LogError("SetServiceStatus failed: \"The specified handle is invalid.\"");
     else

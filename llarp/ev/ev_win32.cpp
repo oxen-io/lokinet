@@ -148,7 +148,8 @@ tun_ev_loop(void* u)
       // cycle regardless of any io being done, this manages the internal state
       // of the tun logic
 
-      if (tick_queued.test_and_set()) continue; // if tick queued, don't queue another
+      if (tick_queued.test_and_set())
+        continue;  // if tick queued, don't queue another
 
       logic->call_soon([&]() {
         for (const auto& tun : tun_listeners)
@@ -161,7 +162,6 @@ tun_ev_loop(void* u)
       });
 
       continue;
-
     }
     if (listener == (ULONG_PTR)~0)
       break;
