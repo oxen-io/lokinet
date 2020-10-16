@@ -878,9 +878,8 @@ namespace llarp
       }
       if (!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
-        // downgrade DNS server failure to a warning
-        llarp::LogWarn(Name(), " failed to start dns server");
-        // return false;
+        llarp::LogError(Name(), " failed to start DNS server");
+        return false;
       }
       return true;
     }
