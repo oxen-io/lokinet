@@ -180,12 +180,7 @@ tun_ev_loop(void* u)
       byte_t* readbuf = (byte_t*)malloc(1500);
       ev->read(readbuf, 1500);
     }
-    else
-    {
-      // ok let's queue another read!
-      byte_t* readbuf = (byte_t*)malloc(1500);
-      ev->read(readbuf, 1500);
-    }
+
     logic->call_soon([ev]() {
       ev->flush_write();
       if (ev->t->tick)
