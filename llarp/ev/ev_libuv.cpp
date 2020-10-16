@@ -1077,16 +1077,9 @@ namespace libuv
     }
     const auto inEventLoop = *m_EventLoopThreadID == std::this_thread::get_id();
 
-    while (m_LogicCalls.full() and inEventLoop)
-    {
-      FlushLogic();
-    }
     if (inEventLoop)
     {
-      if (m_LogicCalls.tryPushBack(f) != llarp::thread::QueueReturn::Success)
-      {
-        LogError("logic job queue is full");
-      }
+      f();
     }
     else
       m_LogicCalls.pushBack(f);
