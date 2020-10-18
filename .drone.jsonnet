@@ -1,4 +1,4 @@
-local distro = "bionic";
+local distro = "buster";
 local distro_name = 'Debian 10';
 local distro_docker = 'debian:buster';
 

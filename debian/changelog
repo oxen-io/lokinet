@@ -1,10 +1,10 @@
-lokinet (0.8.0-4~deb10) bionic; urgency=medium
+lokinet (0.8.0-4~deb10) buster; urgency=medium
 
   * Set default inbound link to best public interface
 
  -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 23:38:43 -0300
 
-lokinet (0.8.0-3~deb10) bionic; urgency=medium
+lokinet (0.8.0-3~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
   * Shallow clone submodules
@@ -50,14 +50,14 @@ lokinet (0.8.0-3~deb10) bionic; urgency=medium
 
  -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 18:05:31 -0300
 
-lokinet (0.8.0-2~deb10) bionic; urgency=medium
+lokinet (0.8.0-2~deb10) buster; urgency=medium
 
   * Fix broken motto in debs
   * Add missing router mode flag to service file
 
  -- Jason Rhinelander <jason@imaginary.ca>  Fri, 02 Oct 2020 01:06:39 -0300
 
-lokinet (0.8.0-1~deb10) bionic; urgency=medium
+lokinet (0.8.0-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
   * Fix ufw install rule
@@ -68,7 +68,7 @@ lokinet (0.8.0-1~deb10) bionic; urgency=medium
 
  -- Jason Rhinelander <jason@imaginary.ca>  Thu, 01 Oct 2020 19:44:22 -0300
 
-lokinet (0.8.0~pre2-1~deb10) bionic; urgency=medium
+lokinet (0.8.0~pre2-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
   * Remove gcc-5 workaround (#1360)
@@ -109,7 +109,7 @@ lokinet (0.8.0~pre2-1~deb10) bionic; urgency=medium
 
  -- Jason Rhinelander <jason@imaginary.ca>  Wed, 30 Sep 2020 18:01:52 -0300
 
-lokinet (0.8.0~pre1-1~deb10) bionic; urgency=medium
+lokinet (0.8.0~pre1-1~deb10) buster; urgency=medium
 
   * Buster deb.
 
