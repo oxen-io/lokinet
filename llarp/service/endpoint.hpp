@@ -470,6 +470,10 @@ namespace llarp
       std::shared_ptr<IAuthPolicy> m_AuthPolicy;
       std::unordered_map<Address, AuthInfo, Address::Hash> m_RemoteAuthInfos;
 
+      /// (lns name, optional exit range, optional auth info) for looking up on startup
+      std::unordered_map<std::string, std::pair<std::optional<IPRange>, std::optional<AuthInfo>>>
+          m_StartupLNSMappings;
+
       RecvPacketQueue_t m_InboundTrafficQueue;
       SendMessageQueue_t m_SendQueue;
 
