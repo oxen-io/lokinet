@@ -305,6 +305,7 @@ namespace llarp
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
 
+    m_RoutePoker.Init(this);
     return true;
   }
 
@@ -774,8 +775,11 @@ namespace llarp
 
     if (HasClientExit())
     {
-      m_RoutePoker.Update(*this);
+      m_RoutePoker.Enable();
+      m_RoutePoker.Update();
     }
+    else
+      m_RoutePoker.Disable();
 
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)
