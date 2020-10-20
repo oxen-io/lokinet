@@ -240,13 +240,15 @@ namespace llarp
       {
         for (const auto& [lnsName, info] : m_StartupLNSMappings)
         {
-          LookupNameAsync(lnsName, [lnsName, info, this](auto maybe_addr) {
+          std::string name = lnsName;
+          std::pair<std::optional<IPRange>, std::optional<AuthInfo>> item = info;
+          LookupNameAsync(lnsName, [name, item, this](auto maybe_addr) {
             if (maybe_addr.has_value())
             {
-              const auto maybe_range = info.first;
-              const auto maybe_auth = info.second;
+              const auto maybe_range = item.first;
+              const auto maybe_auth = item.second;
 
-              m_StartupLNSMappings.erase(lnsName);
+              m_StartupLNSMappings.erase(name);
 
               if (maybe_range.has_value())
                 m_ExitMap.Insert(*maybe_range, *maybe_addr);
