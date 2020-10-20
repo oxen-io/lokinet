@@ -122,6 +122,11 @@ namespace llarp::dns
     {
       return false;
     }
+
+#ifdef _WIN32
+    ub_ctx_async(unboundContext, 1);
+#endif
+
     started = true;
     RegisterPollFD();
     return true;
