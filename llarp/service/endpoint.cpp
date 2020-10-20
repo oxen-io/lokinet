@@ -238,25 +238,24 @@ namespace llarp
 
       if (NumInStatus(path::ePathEstablished) > 1)
       {
-        for (const auto& [lnsName, info] : m_StartupLNSMappings)
+        for (const auto& item : m_StartupLNSMappings)
         {
-          std::string name = lnsName;
-          std::pair<std::optional<IPRange>, std::optional<AuthInfo>> item = info;
-          LookupNameAsync(lnsName, [name, item, this](auto maybe_addr) {
-            if (maybe_addr.has_value())
-            {
-              const auto maybe_range = item.first;
-              const auto maybe_auth = item.second;
+          LookupNameAsync(
+              item.first, [name = item.first, info = item.second, this](auto maybe_addr) {
+                if (maybe_addr.has_value())
+                {
+                  const auto maybe_range = info.first;
+                  const auto maybe_auth = info.second;
 
-              m_StartupLNSMappings.erase(name);
+                  m_StartupLNSMappings.erase(name);
 
-              if (maybe_range.has_value())
-                m_ExitMap.Insert(*maybe_range, *maybe_addr);
+                  if (maybe_range.has_value())
+                    m_ExitMap.Insert(*maybe_range, *maybe_addr);
 
-              if (maybe_auth.has_value())
-                SetAuthInfoForEndpoint(*maybe_addr, *maybe_auth);
-            }
-          });
+                  if (maybe_auth.has_value())
+                    SetAuthInfoForEndpoint(*maybe_addr, *maybe_auth);
+                }
+              });
         }
       }
     }
