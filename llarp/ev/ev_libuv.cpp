@@ -1081,12 +1081,11 @@ namespace libuv
     }
     const auto inEventLoop = *m_EventLoopThreadID == std::this_thread::get_id();
 
-    if (inEventLoop)
+    if (inEventLoop and m_LogicCalls.full())
     {
-      f();
+      FlushLogic();
     }
-    else
-      m_LogicCalls.pushBack(f);
+    m_LogicCalls.pushBack(f);
     uv_async_send(&m_WakeUp);
   }
 
