@@ -250,20 +250,25 @@ uninstall_win32_daemon()
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
+run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
 {
   try
   {
-    // this is important, can downgrade from Info though
-    llarp::LogDebug("Running from: ", fs::current_path().string());
-    llarp::LogInfo("Using config file: ", confFile);
-
-    llarp::Config conf;
-    if (!conf.Load(confFile, opts.isRouter, confFile.parent_path()))
+    std::unique_ptr<llarp::Config> conf;
+    if (confFile.has_value())
+    {
+      llarp::LogInfo("Using config file: ", *confFile);
+      conf = std::make_unique<llarp::Config>(confFile->parent_path());
+    }
+    else
+    {
+      conf = std::make_unique<llarp::Config>(llarp::GetDefaultDataDir());
+    }
+    if (!conf->Load(confFile, opts.isRouter))
       throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
-    ctx->Configure(conf);
+    ctx->Configure(*conf);
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -350,7 +355,7 @@ lokinet_main(int argc, char* argv[])
 
   bool genconfigOnly = false;
   bool overwrite = false;
-  fs::path configFile;
+  std::optional<fs::path> configFile;
   try
   {
     auto result = options.parse(argc, argv);
@@ -427,21 +432,21 @@ lokinet_main(int argc, char* argv[])
     return 1;
   }
 
-  if (!configFile.empty())
+  if (configFile.has_value())
   {
     // when we have an explicit filepath
-    fs::path basedir = configFile.parent_path();
+    fs::path basedir = configFile->parent_path();
 
     if (genconfigOnly)
     {
-      llarp::ensureConfig(basedir, configFile, overwrite, opts.isRouter);
+      llarp::ensureConfig(basedir, *configFile, overwrite, opts.isRouter);
     }
     else
     {
       std::error_code ec;
-      if (!fs::exists(configFile, ec))
+      if (!fs::exists(*configFile, ec))
       {
-        llarp::LogError("Config file not found ", configFile);
+        llarp::LogError("Config file not found ", *configFile);
         return 1;
       }
 

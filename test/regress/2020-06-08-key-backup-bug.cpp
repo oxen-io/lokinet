@@ -11,8 +11,8 @@ llarp::RuntimeOptions opts = {false, false, false};
 static std::shared_ptr<llarp::Context>
 make_context(std::optional<fs::path> keyfile)
 {
-  llarp::Config conf;
-  conf.LoadDefault(opts.isRouter, {});
+  llarp::Config conf{fs::current_path()};
+  conf.Load(std::nullopt, opts.isRouter);
   conf.network.m_endpointType = "null";
   conf.network.m_keyfile = keyfile;
   conf.bootstrap.skipBootstrap = true;

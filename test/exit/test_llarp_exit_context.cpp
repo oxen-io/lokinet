@@ -11,8 +11,8 @@ static const llarp::RuntimeOptions opts = {.background = false, .debug = false, 
 std::shared_ptr<llarp::Context>
 make_context()
 {
-  llarp::Config conf{};
-  conf.LoadDefault(true, fs::current_path());
+  llarp::Config conf{fs::current_path()};
+  conf.Load(std::nullopt, true);
 
   // set testing defaults
   conf.network.m_endpointType = "null";
