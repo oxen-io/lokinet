@@ -15,7 +15,7 @@ make_context(std::optional<fs::path> keyfile)
   conf.Load(std::nullopt, opts.isRouter);
   conf.network.m_endpointType = "null";
   conf.network.m_keyfile = keyfile;
-  conf.bootstrap.skipBootstrap = true;
+  conf.bootstrap.seednode = true;
   conf.api.m_enableRPCServer = false;
 
   auto context = std::make_shared<llarp::Context>();

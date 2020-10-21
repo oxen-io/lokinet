@@ -496,7 +496,7 @@ namespace llarp
       {
         configRouters.push_back(defaultBootstrapFile);
       }
-      else if (not conf.bootstrap.skipBootstrap)
+      else if (not conf.bootstrap.seednode)
       {
         LogError("No bootstrap files specified in config file, and the default");
         LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");

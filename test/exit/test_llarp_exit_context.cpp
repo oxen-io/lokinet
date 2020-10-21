@@ -16,7 +16,7 @@ make_context()
 
   // set testing defaults
   conf.network.m_endpointType = "null";
-  conf.bootstrap.skipBootstrap = true;
+  conf.bootstrap.seednode = true;
   conf.api.m_enableRPCServer = false;
   conf.lokid.whitelistRouters = false;
   conf.router.m_publicAddress = llarp::IpAddress("1.1.1.1");

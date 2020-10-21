@@ -152,7 +152,7 @@ namespace llarp
   ConfigParser::Save()
   {
     // write overrides
-    for (const auto [fname, overrides] : m_Overrides)
+    for (const auto& [fname, overrides] : m_Overrides)
     {
       std::ofstream ofs(fname);
       for (const auto& [section, values] : overrides)

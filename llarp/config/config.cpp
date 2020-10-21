@@ -892,6 +892,14 @@ namespace llarp
   {
     (void)params;
 
+    conf.defineOption<bool>(
+        "bootstrap",
+        "seed-node",
+        Default{false},
+        Comment{"Whether or not to run as a seed node. We will not have any bootstrap routers "
+                "configured."},
+        AssignmentAcceptor(seednode));
+
     conf.defineOption<std::string>(
         "bootstrap",
         "add-node",

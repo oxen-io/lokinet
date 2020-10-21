@@ -166,8 +166,7 @@ namespace llarp
   struct BootstrapConfig
   {
     std::vector<fs::path> routers;
-    /// for unit tests
-    bool skipBootstrap = false;
+    bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
