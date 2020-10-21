@@ -892,6 +892,14 @@ namespace llarp
   {
     (void)params;
 
+    conf.defineOption<bool>(
+        "bootstrap",
+        "seed-node",
+        Default{false},
+        Comment{"Whether or not to run as a seed node. We will not have any bootstrap routers "
+                "configured."},
+        AssignmentAcceptor(seednode));
+
     conf.defineOption<std::string>(
         "bootstrap",
         "add-node",
@@ -973,35 +981,62 @@ namespace llarp
         });
   }
 
+  Config::Config(fs::path datadir) : m_DataDir(std::move(datadir))
+  {}
+
+  constexpr auto GetOverridesDir = [](auto datadir) -> fs::path { return datadir / "conf.d"; };
+
   void
   Config::Save()
   {
+    const auto overridesDir = GetOverridesDir(m_DataDir);
+    if (not fs::exists(overridesDir))
+      fs::create_directory(overridesDir);
     m_Parser.Save();
   }
 
   void
   Config::Override(std::string section, std::string key, std::string value)
   {
-    m_Parser.AddOverride(std::move(section), std::move(key), std::move(value));
+    m_Parser.AddOverride(GetOverridesDir(m_DataDir) / "overrides.ini", section, key, value);
+  }
+
+  void
+  Config::LoadOverrides()
+  {
+    const auto overridesDir = GetOverridesDir(m_DataDir);
+    if (fs::exists(overridesDir))
+    {
+      util::IterDir(overridesDir, [&](const fs::path& overrideFile) {
+        if (overrideFile.extension() == ".ini")
+        {
+          m_Parser.LoadFile(overrideFile);
+        }
+        return true;
+      });
+    }
   }
 
   bool
-  Config::Load(const fs::path fname, bool isRelay, fs::path defaultDataDir)
+  Config::Load(std::optional<fs::path> fname, bool isRelay)
   {
+    if (not fname.has_value())
+      return LoadDefault(isRelay);
     try
     {
       ConfigGenParameters params;
       params.isRelay = isRelay;
-      params.defaultDataDir = std::move(defaultDataDir);
+      params.defaultDataDir = m_DataDir;
 
       ConfigDefinition conf{isRelay};
       initializeConfig(conf, params);
       addBackwardsCompatibleConfigOptions(conf);
       m_Parser.Clear();
-      if (!m_Parser.LoadFile(fname))
+      if (!m_Parser.LoadFile(*fname))
       {
         return false;
       }
+      LoadOverrides();
 
       m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
         for (const auto& pair : values)
@@ -1011,10 +1046,6 @@ namespace llarp
       });
 
       conf.acceptAllOptions();
-
-      // TODO: better way to support inter-option constraints
-      if (router.m_maxConnectedRouters < router.m_minConnectedRouters)
-        throw std::invalid_argument("[router]:min-connections must be <= [router]:max-connections");
 
       return true;
     }
@@ -1026,16 +1057,25 @@ namespace llarp
   }
 
   bool
-  Config::LoadDefault(bool isRelay, fs::path dataDir)
+  Config::LoadDefault(bool isRelay)
   {
     try
     {
       ConfigGenParameters params;
       params.isRelay = isRelay;
-      params.defaultDataDir = std::move(dataDir);
-
+      params.defaultDataDir = m_DataDir;
       ConfigDefinition conf{isRelay};
       initializeConfig(conf, params);
+
+      m_Parser.Clear();
+      LoadOverrides();
+
+      m_Parser.IterAll([&](std::string_view section, const SectionValues_t& values) {
+        for (const auto& pair : values)
+        {
+          conf.addConfigValue(section, pair.first, pair.second);
+        }
+      });
 
       conf.acceptAllOptions();
 
@@ -1103,12 +1143,12 @@ namespace llarp
 
     llarp::LogInfo("Attempting to create config file, asRouter: ", asRouter, " path: ", confFile);
 
-    llarp::Config config;
+    llarp::Config config{defaultDataDir};
     std::string confStr;
     if (asRouter)
-      confStr = config.generateBaseRouterConfig(std::move(defaultDataDir));
+      confStr = config.generateBaseRouterConfig();
     else
-      confStr = config.generateBaseClientConfig(std::move(defaultDataDir));
+      confStr = config.generateBaseClientConfig();
 
     // open a filestream
     auto stream = llarp::util::OpenFileStream<std::ofstream>(confFile.c_str(), std::ios::binary);
@@ -1168,11 +1208,11 @@ namespace llarp
   }
 
   std::string
-  Config::generateBaseClientConfig(fs::path defaultDataDir)
+  Config::generateBaseClientConfig()
   {
     ConfigGenParameters params;
     params.isRelay = false;
-    params.defaultDataDir = std::move(defaultDataDir);
+    params.defaultDataDir = m_DataDir;
 
     llarp::ConfigDefinition def{false};
     initializeConfig(def, params);
@@ -1188,11 +1228,11 @@ namespace llarp
   }
 
   std::string
-  Config::generateBaseRouterConfig(fs::path defaultDataDir)
+  Config::generateBaseRouterConfig()
   {
     ConfigGenParameters params;
     params.isRelay = true;
-    params.defaultDataDir = std::move(defaultDataDir);
+    params.defaultDataDir = m_DataDir;
 
     llarp::ConfigDefinition def{true};
     initializeConfig(def, params);

@@ -16,7 +16,7 @@ namespace llarp
   {
     using Config_ptr = std::shared_ptr<Config>;
     py::class_<Config, Config_ptr>(mod, "Config")
-        .def(py::init<>())
+        .def(py::init<std::string>())
         .def_readwrite("router", &Config::router)
         .def_readwrite("network", &Config::network)
         .def_readwrite("connect", &Config::connect)
@@ -25,10 +25,7 @@ namespace llarp
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
         .def_readwrite("logging", &Config::logging)
-        .def("LoadFile", &Config::Load)
-        .def("LoadDefault", [](Config& self, bool isRelay, std::string dir) {
-          return self.LoadDefault(isRelay, dir);
-        });
+        .def("Load", &Config::Load);
 
     py::class_<RouterConfig>(mod, "RouterConfig")
         .def(py::init<>())
@@ -106,6 +103,7 @@ namespace llarp
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())
+        .def_readwrite("seednode", &BootstrapConfig::seednode)
         .def_property(
             "routers",
             [](BootstrapConfig& self) {
