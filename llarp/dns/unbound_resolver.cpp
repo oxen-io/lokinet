@@ -41,6 +41,8 @@ namespace llarp::dns
     runnerThread = std::make_unique<std::thread>([self = shared_from_this()]() {
       while (self->started)
       {
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(20ms);
         ub_wait(self->unboundContext);
       }
     });
@@ -120,6 +122,11 @@ namespace llarp::dns
     {
       return false;
     }
+
+#ifdef _WIN32
+    ub_ctx_async(unboundContext, 1);
+#endif
+
     started = true;
     RegisterPollFD();
     return true;

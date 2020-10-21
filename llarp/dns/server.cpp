@@ -40,6 +40,7 @@ namespace llarp
       {
         if (not SetupUnboundResolver(resolvers))
         {
+          llarp::LogError("Failed to add upstream resolvers during DNS server setup.");
           return false;
         }
       }
@@ -49,7 +50,8 @@ namespace llarp
       LogicCall(m_ClientLogic, [=]() {
         llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
       });
-      return llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr());
+      return (
+          llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr()) == 0);
     }
 
     static Proxy::Buffer_t
