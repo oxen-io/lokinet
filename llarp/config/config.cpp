@@ -712,8 +712,6 @@ namespace llarp
   void
   LinksConfig::defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params)
   {
-    (void)params;
-
     constexpr Default DefaultOutboundLinkValue{"0"};
 
     conf.addSectionComments(
@@ -754,9 +752,11 @@ namespace llarp
         },
         [this](std::string arg) { m_OutboundLink = LinkInfoFromINIValues("*", arg); });
 
-    if (std::string best_if; GetBestNetIF(best_if))
-      m_InboundLinks.push_back(LinkInfoFromINIValues(best_if, std::to_string(DefaultPublicPort)));
-
+    if (params.isRelay)
+    {
+      if (std::string best_if; GetBestNetIF(best_if))
+        m_InboundLinks.push_back(LinkInfoFromINIValues(best_if, std::to_string(DefaultPublicPort)));
+    }
     conf.addUndeclaredHandler(
         "bind",
         [&, defaulted = true](
