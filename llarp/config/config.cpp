@@ -13,6 +13,8 @@
 #include <util/mem.hpp>
 #include <util/str.hpp>
 
+#include <service/name.hpp>
+
 #include <cstdlib>
 #include <fstream>
 #include <ios>
@@ -436,6 +438,13 @@ namespace llarp
           {
             arg = arg.substr(0, pos);
           }
+
+          if (service::NameIsValid(arg))
+          {
+            m_LNSExitMap.Insert(range, arg);
+            return;
+          }
+
           if (not exit.FromString(arg))
           {
             throw std::invalid_argument(stringify("[network]:exit-node bad address: ", arg));
@@ -468,6 +477,13 @@ namespace llarp
           }
           const auto exit_str = arg.substr(0, pos);
           auth.token = arg.substr(pos + 1);
+
+          if (service::NameIsValid(exit_str))
+          {
+            m_LNSExitAuths.emplace(exit_str, auth);
+            return;
+          }
+
           if (not exit.FromString(exit_str))
           {
             throw std::invalid_argument("[network]:exit-auth invalid exit address");

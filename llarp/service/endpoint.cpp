@@ -65,6 +65,14 @@ namespace llarp
         SetAuthInfoForEndpoint(exit, auth);
       }
 
+      conf.m_LNSExitMap.ForEachEntry([&](const IPRange& range, const std::string& name) {
+        std::optional<AuthInfo> auth;
+        const auto itr = conf.m_LNSExitAuths.find(name);
+        if (itr != conf.m_LNSExitAuths.end())
+          auth = itr->second;
+        m_StartupLNSMappings[name] = std::make_pair(range, auth);
+      });
+
       return m_state->Configure(conf);
     }
 
@@ -227,6 +235,29 @@ namespace llarp
           now, m_state->m_RemoteSessions, m_state->m_DeadSessions, Sessions());
       // expire convotags
       EndpointUtil::ExpireConvoSessions(now, Sessions());
+
+      if (NumInStatus(path::ePathEstablished) > 1)
+      {
+        for (const auto& item : m_StartupLNSMappings)
+        {
+          LookupNameAsync(
+              item.first, [name = item.first, info = item.second, this](auto maybe_addr) {
+                if (maybe_addr.has_value())
+                {
+                  const auto maybe_range = info.first;
+                  const auto maybe_auth = info.second;
+
+                  m_StartupLNSMappings.erase(name);
+
+                  if (maybe_range.has_value())
+                    m_ExitMap.Insert(*maybe_range, *maybe_addr);
+
+                  if (maybe_auth.has_value())
+                    SetAuthInfoForEndpoint(*maybe_addr, *maybe_auth);
+                }
+              });
+        }
+      }
     }
 
     bool
@@ -774,6 +805,12 @@ namespace llarp
     bool
     Endpoint::HasExit() const
     {
+      for (const auto& [name, info] : m_StartupLNSMappings)
+      {
+        if (info.first.has_value())
+          return true;
+      }
+
       return not m_ExitMap.Empty();
     }
 
@@ -787,8 +824,10 @@ namespace llarp
         handler(maybe);
         return true;
       }
-      LogInfo(Name(), " looking up LNS name: ", name);
       auto path = PickRandomEstablishedPath();
+      if (path == nullptr)
+        return false;
+      LogInfo(Name(), " looking up LNS name: ", name);
       auto job = new LookupNameJob(this, GenTXID(), name, handler);
       return job->SendRequestViaPath(path, m_router);
     }
