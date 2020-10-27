@@ -310,15 +310,10 @@ class Monitor:
         return y_pos
 
     def display_data(self):
-        """draw main window"""
+        """ draw main window """
         if self.data is not None:
-            data = None
-            try:
-                data = json.loads(self.rpc("llarp.version"))
-            except:
-                pass
-            else:
-                self.win.addstr(1, 1, data['result']['version'])
+            if self.version:
+                self.win.addstr(1, 1, self.version)
             services = self.data["services"] or {}
             y_pos = 3
             try:
@@ -334,6 +329,11 @@ class Monitor:
 
     def run(self):
         """ run mainloop """
+        try:
+            self.version = json.loads(self.rpc("llarp.version"))['result']['version']
+        except:
+            self.version = None
+            
         while self._run:
             if self.update_data():
                 self.win.box()
