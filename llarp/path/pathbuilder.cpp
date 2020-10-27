@@ -476,7 +476,7 @@ namespace llarp
     void
     Builder::HandlePathBuildTimeout(Path_ptr p)
     {
-      m_router->routerProfiling().MarkPathFail(p.get());
+      m_router->routerProfiling().MarkPathTimeout(p.get());
       PathSet::HandlePathBuildTimeout(p);
       DoPathBuildBackoff();
     }
