@@ -361,7 +361,7 @@ namespace llarp
     {
       if (markedBad || not path::Builder::ShouldBuildMore(now))
         return false;
-      if (NumInStatus(path::ePathBuilding) >= numPaths)
+      if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
       llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {

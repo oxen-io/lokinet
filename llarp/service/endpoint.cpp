@@ -52,7 +52,7 @@ namespace llarp
     Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
     {
       if (conf.m_Paths.has_value())
-        numPaths = *conf.m_Paths;
+        numDesiredPaths = *conf.m_Paths;
 
       if (conf.m_Hops.has_value())
         numHops = *conf.m_Hops;
@@ -1231,7 +1231,7 @@ namespace llarp
               return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
             },
             Router(),
-            numPaths,
+            numDesiredPaths,
             numHops,
             false,
             ShouldBundleRC());
