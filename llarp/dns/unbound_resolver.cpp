@@ -16,58 +16,28 @@ namespace llarp::dns
   UnboundResolver::Reset()
   {
     started = false;
+    if (runner)
+    {
+      runner->join();
+      runner.reset();
+    }
     if (unboundContext)
     {
-      DeregisterPollFD();
       ub_ctx_delete(unboundContext);
     }
     unboundContext = nullptr;
-  }
-
-  void
-  UnboundResolver::DeregisterPollFD()
-  {
-#ifdef _WIN32
-    runnerThread->join();
-#else
-    eventLoop->deregister_poll_fd_readable(ub_fd(unboundContext));
-#endif
-  }
-
-  void
-  UnboundResolver::RegisterPollFD()
-  {
-#ifdef _WIN32
-    runnerThread = std::make_unique<std::thread>([self = shared_from_this()]() {
-      while (self->started)
-      {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(20ms);
-        ub_wait(self->unboundContext);
-      }
-    });
-#else
-    eventLoop->register_poll_fd_readable(
-        ub_fd(unboundContext), [=]() { ub_process(unboundContext); });
-#endif
   }
 
   UnboundResolver::UnboundResolver(llarp_ev_loop_ptr loop, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
       , eventLoop(loop)
-#ifdef _WIN32
-      // on win32 we use another thread for io because LOL windows
       , replyFunc([loop, reply](auto source, auto buf) {
         loop->call_soon([source, buf, reply]() { reply(source, buf); });
       })
       , failFunc([loop, fail](auto source, auto message) {
         loop->call_soon([source, message, fail]() { fail(source, message); });
       })
-#else
-      , replyFunc(reply)
-      , failFunc(fail)
-#endif
   {}
 
   // static callback
@@ -88,10 +58,9 @@ namespace llarp::dns
       ub_resolve_free(result);
       return;
     }
-
-    llarp_buffer_t buf;
-    buf.base = buf.cur = static_cast<byte_t*>(result->answer_packet);
-    buf.sz = result->answer_len;
+    std::vector<byte_t> pkt(result->answer_len);
+    std::copy_n(static_cast<byte_t*>(result->answer_packet), pkt.size(), pkt.data());
+    llarp_buffer_t buf(pkt);
 
     MessageHeader hdr;
     hdr.Decode(&buf);
@@ -100,10 +69,7 @@ namespace llarp::dns
     buf.cur = buf.base;
     hdr.Encode(&buf);
 
-    std::vector<byte_t> buf_copy(buf.sz);
-    std::copy_n(buf.base, buf.sz, buf_copy.begin());
-
-    this_ptr->replyFunc(lookup->source, std::move(buf_copy));
+    this_ptr->replyFunc(lookup->source, std::move(pkt));
 
     ub_resolve_free(result);
   }
@@ -123,12 +89,16 @@ namespace llarp::dns
       return false;
     }
 
-#ifdef _WIN32
     ub_ctx_async(unboundContext, 1);
-#endif
-
+    runner = std::make_unique<std::thread>([&]() {
+      while (started)
+      {
+        if (unboundContext)
+          ub_process(unboundContext);
+        std::this_thread::sleep_for(25ms);
+      }
+    });
     started = true;
-    RegisterPollFD();
     return true;
   }
 

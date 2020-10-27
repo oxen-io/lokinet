@@ -66,11 +66,8 @@ namespace llarp
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
     {
       Buffer_t msgbuf = CopyBuffer(buf.underlying);
-      auto self = static_cast<Proxy*>(u->user)->shared_from_this();
-      // yes we use the server loop here because if the server loop is not the
-      // client loop we'll crash again
-      LogicCall(
-          self->m_ServerLogic, [self, from, msgbuf]() { self->HandlePktServer(from, msgbuf); });
+      auto self = static_cast<Proxy*>(u->user);
+      self->HandlePktServer(from, msgbuf);
     }
 
     void
@@ -140,7 +137,8 @@ namespace llarp
     void
     Proxy::SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf)
     {
-      llarp_ev_udp_sendto(&m_Server, to, buf);
+      if (llarp_ev_udp_sendto(&m_Server, to, buf) < 0)
+        llarp::LogError("dns reply failed");
     }
 
     void
@@ -244,7 +242,6 @@ namespace llarp
         return;
       }
 
-      TX tx = {hdr.id, from};
       Message msg(hdr);
       if (!msg.Decode(&pkt))
       {
