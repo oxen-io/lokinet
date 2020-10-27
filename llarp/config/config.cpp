@@ -255,7 +255,7 @@ namespace llarp
   {
     (void)params;
 
-    static constexpr Default ProfilingValueDefault{false};
+    static constexpr Default ProfilingValueDefault{true};
     static constexpr Default ReachableDefault{true};
     static constexpr Default HopsDefault{4};
     static constexpr Default PathsDefault{6};
