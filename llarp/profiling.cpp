@@ -15,6 +15,8 @@ namespace llarp
       return false;
     if (!BEncodeWriteDictInt("p", pathSuccessCount, buf))
       return false;
+    if (!BEncodeWriteDictInt("q", pathTimeoutCount, buf))
+      return false;
     if (!BEncodeWriteDictInt("s", pathFailCount, buf))
       return false;
     if (!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
@@ -43,6 +45,8 @@ namespace llarp
       return false;
     if (!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
       return false;
+    if (!BEncodeMaybeReadDictInt("q", pathTimeoutCount, read, k, buf))
+      return false;
     return read;
   }
 
@@ -53,14 +57,14 @@ namespace llarp
     connectTimeoutCount /= 2;
     pathSuccessCount /= 2;
     pathFailCount /= 2;
+    pathTimeoutCount /= 2;
     lastDecay = llarp::time_now_ms();
   }
 
   void
   RouterProfile::Tick()
   {
-    // 15 seconds
-    static constexpr auto updateInterval = 15s;
+    static constexpr auto updateInterval = 30min;
     const auto now = llarp::time_now_ms();
     if (lastDecay < now && now - lastDecay > updateInterval)
       Decay();
@@ -92,7 +96,8 @@ namespace llarp
   bool
   RouterProfile::IsGoodForPath(uint64_t chances) const
   {
-    return checkIsGood(pathFailCount, pathSuccessCount, chances);
+    return checkIsGood(pathFailCount, pathSuccessCount, chances)
+        and checkIsGood(pathTimeoutCount, pathSuccessCount, chances);
   }
 
   Profiling::Profiling() : m_DisableProfiling(false)
@@ -119,7 +124,7 @@ namespace llarp
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
-    return !itr->second.IsGoodForConnect(chances);
+    return not itr->second.IsGoodForConnect(chances);
   }
 
   bool
@@ -131,7 +136,7 @@ namespace llarp
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
-    return !itr->second.IsGoodForPath(chances);
+    return not itr->second.IsGoodForPath(chances);
   }
 
   bool
@@ -143,7 +148,7 @@ namespace llarp
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
-    return !itr->second.IsGood(chances);
+    return not itr->second.IsGood(chances);
   }
 
   void
@@ -202,12 +207,32 @@ namespace llarp
   }
 
   void
+  Profiling::MarkPathTimeout(path::Path* p)
+  {
+    util::Lock lock(m_ProfilesMutex);
+    size_t idx = 0;
+    for (const auto& hop : p->hops)
+    {
+      if (idx)
+      {
+        m_Profiles[hop.rc.pubkey].pathTimeoutCount += 1;
+        m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
+      }
+      ++idx;
+    }
+  }
+
+  void
   Profiling::MarkPathSuccess(path::Path* p)
   {
     util::Lock lock(m_ProfilesMutex);
     const auto sz = p->hops.size();
     for (const auto& hop : p->hops)
     {
+      // redeem previous fails by halfing the fail count and setting timeout to zero
+      m_Profiles[hop.rc.pubkey].pathFailCount /= 2;
+      m_Profiles[hop.rc.pubkey].pathTimeoutCount = 0;
+      // mark success at hop
       m_Profiles[hop.rc.pubkey].pathSuccessCount += sz;
       m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
     }

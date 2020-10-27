@@ -18,6 +18,7 @@ namespace llarp
     uint64_t connectGoodCount = 0;
     uint64_t pathSuccessCount = 0;
     uint64_t pathFailCount = 0;
+    uint64_t pathTimeoutCount = 0;
     llarp_time_t lastUpdated = 0s;
     llarp_time_t lastDecay = 0s;
     uint64_t version = LLARP_PROTO_VERSION;
@@ -67,6 +68,9 @@ namespace llarp
 
     void
     MarkConnectSuccess(const RouterID& r) EXCLUDES(m_ProfilesMutex);
+
+    void
+    MarkPathTimeout(path::Path* p) EXCLUDES(m_ProfilesMutex);
 
     void
     MarkPathFail(path::Path* p) EXCLUDES(m_ProfilesMutex);
