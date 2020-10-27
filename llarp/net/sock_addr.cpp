@@ -14,7 +14,7 @@ namespace llarp
 
   constexpr auto addrIsSIIT = [](const in6_addr& addr) -> bool {
     return addr.s6_addr[10] == 0xff and addr.s6_addr[11] == 0xff;
-  }
+  };
 
   void
   SockAddr::init()
