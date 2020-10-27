@@ -97,8 +97,8 @@ namespace llarp
       /// maximum number of paths a path set can maintain
       static constexpr size_t max_paths = 32;
       /// construct
-      /// @params numPaths the number of paths to maintain
-      PathSet(size_t numPaths);
+      /// @params numDesiredPaths the number of paths to maintain
+      PathSet(size_t numDesiredPaths);
 
       /// get a shared_ptr of ourself
       virtual PathSet_ptr
@@ -296,7 +296,7 @@ namespace llarp
       void
       DownstreamFlush(AbstractRouter* r);
 
-      size_t numPaths;
+      size_t numDesiredPaths;
 
      protected:
       BuildStats m_BuildStats;

@@ -359,11 +359,9 @@ namespace llarp
     bool
     OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
-      if (markedBad || path::Builder::BuildCooldownHit(now))
+      if (markedBad || not path::Builder::ShouldBuildMore(now))
         return false;
-      const bool canBuild =
-          NumInStatus(path::ePathBuilding) == 0 and path::Builder::ShouldBuildMore(now);
-      if (not canBuild)
+      if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
       llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {

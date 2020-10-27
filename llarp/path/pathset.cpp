@@ -11,7 +11,7 @@ namespace llarp
 {
   namespace path
   {
-    PathSet::PathSet(size_t num) : numPaths(num)
+    PathSet::PathSet(size_t num) : numDesiredPaths(num)
     {}
 
     bool
@@ -19,10 +19,10 @@ namespace llarp
     {
       (void)now;
       const auto building = NumInStatus(ePathBuilding);
-      if (building >= numPaths)
+      if (building >= numDesiredPaths)
         return false;
       const auto established = NumInStatus(ePathEstablished);
-      return established < numPaths;
+      return established < numDesiredPaths;
     }
 
     bool

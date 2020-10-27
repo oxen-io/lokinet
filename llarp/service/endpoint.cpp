@@ -52,7 +52,7 @@ namespace llarp
     Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
     {
       if (conf.m_Paths.has_value())
-        numPaths = *conf.m_Paths;
+        numDesiredPaths = *conf.m_Paths;
 
       if (conf.m_Hops.has_value())
         numHops = *conf.m_Hops;
@@ -1231,7 +1231,7 @@ namespace llarp
               return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
             },
             Router(),
-            numPaths,
+            numDesiredPaths,
             numHops,
             false,
             ShouldBundleRC());
@@ -1466,13 +1466,8 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      if (path::Builder::BuildCooldownHit(now))
+      if (not path::Builder::ShouldBuildMore(now))
         return false;
-
-      size_t numBuilding = NumInStatus(path::ePathBuilding);
-      if (numBuilding > 0)
-        return false;
-
       return ((now - lastBuild) > path::intro_path_spread)
           || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }
