@@ -474,8 +474,8 @@ namespace libuv
       if (self == nullptr)
         return -1;
       auto buf = uv_buf_init((char*)ptr, sz);
-      auto ret =
-          uv_udp_try_send(&self->m_Handle, &buf, 1, (sockaddr*)static_cast<const sockaddr_in*>(to));
+      auto ret = uv_udp_try_send(
+          &self->m_Handle, &buf, 1, (const sockaddr*)static_cast<const sockaddr_in*>(to));
       if (ret < 0)
       {
         llarp::LogError("udp sendto failed: ", uv_strerror(ret));
@@ -486,7 +486,8 @@ namespace libuv
     bool
     Bind()
     {
-      auto ret = uv_udp_bind(&m_Handle, (sockaddr*)static_cast<const sockaddr_in*>(m_Addr), 0);
+      auto ret =
+          uv_udp_bind(&m_Handle, (const sockaddr*)static_cast<const sockaddr_in*>(m_Addr), 0);
       if (ret)
       {
         llarp::LogError("failed to bind to ", m_Addr, " ", uv_strerror(ret));
