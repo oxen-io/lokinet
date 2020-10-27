@@ -265,9 +265,9 @@ namespace llarp
     {
       if (BuildCooldownHit(now))
         return false;
-      if (!IsReady())
-        return NumInStatus(path::ePathBuilding) < numDesiredPaths;
-      return path::Builder::UrgentBuild(now);
+      if (IsReady() and NumInStatus(path::ePathBuilding) < numDesiredPaths)
+        return path::Builder::UrgentBuild(now);
+      return false;
     }
 
     bool
