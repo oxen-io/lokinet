@@ -43,7 +43,8 @@ class Monitor:
     def update_data(self):
         """update data from lokinet"""
         try:
-            self.data = json.loads(self.rpc("llarp.status"))
+            data = json.loads(self.rpc("llarp.status"))
+            self.data = data['result']
         except:
             self.data = None
         return self.data is not None and self._run
@@ -248,7 +249,7 @@ class Monitor:
         """ display links """
         y_pos += 1
         self.win.move(y_pos, 1)
-        sessions = link["sessions"]["established"]
+        sessions = link["sessions"]["established"] or []
         for sess in sessions:
             y_pos = self.display_link_session(y_pos, sess)
         return y_pos
@@ -311,7 +312,13 @@ class Monitor:
     def display_data(self):
         """draw main window"""
         if self.data is not None:
-            self.win.addstr(1, 1, self.rpc("llarp.version"))
+            data = None
+            try:
+                data = json.loads(self.rpc("llarp.version"))
+            except:
+                pass
+            else:
+                self.win.addstr(1, 1, data['result']['version'])
             services = self.data["services"] or {}
             y_pos = 3
             try:
@@ -319,8 +326,8 @@ class Monitor:
                 for key in services:
                     y_pos = self.display_service(y_pos, key, services[key])
                 y_pos = self.display_dht(y_pos, self.data["dht"])
-            except Exception as e:
-                print(e)
+            except:
+                pass
         else:
             self.win.move(1, 1)
             self.win.addstr("lokinet offline")
