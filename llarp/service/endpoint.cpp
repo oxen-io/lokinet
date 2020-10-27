@@ -1466,13 +1466,8 @@ namespace llarp
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      if (path::Builder::BuildCooldownHit(now))
+      if (not path::Builder::ShouldBuildMore(now))
         return false;
-
-      size_t numBuilding = NumInStatus(path::ePathBuilding);
-      if (numBuilding > 0)
-        return false;
-
       return ((now - lastBuild) > path::intro_path_spread)
           || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }

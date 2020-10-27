@@ -362,7 +362,7 @@ namespace llarp
       if (markedBad || path::Builder::BuildCooldownHit(now))
         return false;
       const bool canBuild =
-          NumInStatus(path::ePathBuilding) == 0 and path::Builder::ShouldBuildMore(now);
+          NumInStatus(path::ePathBuilding) < numHops and path::Builder::ShouldBuildMore(now);
       if (not canBuild)
         return false;
       llarp_time_t t = 0s;
