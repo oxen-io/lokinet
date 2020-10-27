@@ -94,7 +94,7 @@ namespace llarp::dns
       while (started)
       {
         if (unboundContext)
-          ub_process(unboundContext);
+          ub_wait(unboundContext);
         std::this_thread::sleep_for(25ms);
       }
     });
