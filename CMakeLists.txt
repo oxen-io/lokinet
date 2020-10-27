@@ -15,7 +15,7 @@ endif()
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME}
-    VERSION 0.8.0
+    VERSION 0.8.1
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
