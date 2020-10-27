@@ -12,7 +12,7 @@ namespace llarp
   /// shared utility functions
   ///
 
-  constexpr auto addrIsSIIT = [](const in6_addr& addr) -> bool {
+  constexpr auto addrIsV4 = [](const in6_addr& addr) -> bool {
     return addr.s6_addr[10] == 0xff and addr.s6_addr[11] == 0xff;
   };
 
@@ -119,7 +119,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
-    if (addrIsSIIT(other.sin6_addr))
+    if (addrIsV4(other.sin6_addr))
       setIPv4(
           other.sin6_addr.s6_addr[12],
           other.sin6_addr.s6_addr[13],
@@ -142,7 +142,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
-    if (addrIsSIIT(other))
+    if (addrIsV4(other))
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
     m_empty = false;
 
