@@ -64,7 +64,7 @@ add_library(lokinet-platform
   $<TARGET_OBJECTS:tuntap>
 )
 
-target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads ${LIBS})
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads ${LIBS} libuv)
 
 
 if (ANDROID)
