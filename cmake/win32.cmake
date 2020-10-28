@@ -29,14 +29,6 @@ if (NOT STATIC_LINK AND NOT MSVC)
   message("for release builds, turn on STATIC_LINK in cmake options")
 endif()
 
-# win32 is the last platform for which we grab libuv manually
-# if you want to use the included submodule do
-# cmake .. -G Ninja -DLIBUV_ROOT=../external/libuv.
-# otherwise grab mine (github.com/despair86/libuv.git) if you need to run on older hardware
-# and clone to win32-setup/libuv
-# then
-# cmake .. -G Ninja -DLIBUV_ROOT=../win32-setup/libuv
-# it is literally upward compatible with current windows 10
 if (STATIC_LINK)
   set(LIBUV_USE_STATIC ON)
   if (WOW64_CROSS_COMPILE)
@@ -46,14 +38,26 @@ if (STATIC_LINK)
   endif()
 endif()
 
-if(LIBUV_ROOT)
-  add_subdirectory(${LIBUV_ROOT})
-  set(LIBUV_INCLUDE_DIRS ${LIBUV_ROOT}/include)
-  set(LIBUV_LIBRARY uv_a)
-  add_definitions(-D_LARGEFILE_SOURCE)
-  add_definitions(-D_FILE_OFFSET_BITS=64)
-elseif(NOT LIBUV_IN_SOURCE)
-  find_package(LibUV 1.28.0 REQUIRED)
+# win32 is the last platform for which we grab libuv manually.
+# If you want to run on older hardware try github.com/despair86/libuv.git and then:
+#     cmake .. -G Ninja -DLIBUV_ROOT=/path/to/libuv
+# Otherwise we'll try either a system one (if not under BUILD_STATIC_DEPS) or else use the submodule
+# in external/libuv.
+add_library(libuv INTERFACE)
+if(NOT LIBUV_ROOT AND NOT BUILD_STATIC_DEPS)
+  find_package(LibUV 1.28.0)
 endif()
 
-include_directories(${LIBUV_INCLUDE_DIRS})
+if(LibUV_FOUND)
+  message(STATUS "using system libuv")
+  target_link_libraries(libuv INTERFACE ${LIBUV_LIBRARIES})
+  target_include_directories(libuv INTERFACE ${LIBUV_INCLUDE_DIRS})
+else()
+  if(LIBUV_ROOT)
+    add_subdirectory(${LIBUV_ROOT})
+  else()
+    add_subdirectory(${PROJECT_SOURCE_DIR}/external/libuv)
+  endif()
+  target_link_libraries(libuv INTERFACE uv_a)
+  target_compile_definitions(libuv INTERFACE _LARGEFILE_SOURCE _FILE_OFFSET_BITS=64)
+endif()
