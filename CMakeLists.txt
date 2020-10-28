@@ -271,17 +271,19 @@ if (NOT BUILD_STATIC_DEPS)
   target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
 endif()
 
-pkg_check_modules(SD libsystemd)
+pkg_check_modules(SD libsystemd IMPORTED_TARGET)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+
+# Base interface target where we set up global link libraries, definitions, includes, etc.
+add_library(base_libs INTERFACE)
 
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
-  add_definitions(-DWITH_SYSTEMD)
-  include_directories(${SD_INCLUDE_DIRS})
-  set(SD_LIBS ${SD_LDFLAGS})
+  target_link_libraries(base_libs INTERFACE PkgConfig::SD)
+  target_compile_definitions(base_libs INTERFACE WITH_SYSTEMD)
 endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
@@ -331,14 +333,13 @@ include_directories(SYSTEM external/sqlite_orm/include)
 add_subdirectory(vendor)
 
 if(ANDROID)
-  list(APPEND LIBS log)
-  add_definitions(-DANDROID)
+  target_link_libraries(base_libs INTERFACE log)
+  target_compile_definitions(base_libs INTERFACE ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif()
 
-set(LIBS ${MALLOC_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
-  list(APPEND LIBS -ldl)
+  target_link_libraries(base_libs INTERFACE dl)
 endif()
 
 if(WITH_HIVE)
