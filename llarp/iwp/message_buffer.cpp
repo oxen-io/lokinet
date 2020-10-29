@@ -17,9 +17,20 @@ namespace llarp
         , m_LastFlush{now}
         , m_StartedAt{now}
     {
-      const llarp_buffer_t buf(m_Data);
-      CryptoManager::instance()->shorthash(m_Digest, buf);
+      m_Digest.Zero();
       m_Acks.set(0);
+    }
+
+    void
+    OutboundMessage::CalculateHash()
+    {
+      CryptoManager::instance()->shorthash(m_Digest, m_Data);
+    }
+
+    size_t
+    OutboundMessage::Size() const
+    {
+      return m_Data.size();
     }
 
     ILinkSession::Packet_t
@@ -61,6 +72,8 @@ namespace llarp
     OutboundMessage::FlushUnAcked(
         std::function<void(ILinkSession::Packet_t)> sendpkt, llarp_time_t now)
     {
+      if (m_Digest.IsZero())
+        return;
       /// overhead for a data packet in plaintext
       static constexpr size_t Overhead = 10;
       uint16_t idx = 0;
@@ -114,7 +127,7 @@ namespace llarp
     }
 
     InboundMessage::InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h, llarp_time_t now)
-        : m_Data(size_t{sz}), m_Digset{std::move(h)}, m_MsgID(msgid), m_LastActiveAt{now}
+        : m_Data(size_t{sz}), m_Digest{std::move(h)}, m_MsgID(msgid), m_LastActiveAt{now}
     {}
 
     void
@@ -182,9 +195,8 @@ namespace llarp
     InboundMessage::Verify() const
     {
       ShortHash gotten;
-      const llarp_buffer_t buf(m_Data);
-      CryptoManager::instance()->shorthash(gotten, buf);
-      return gotten == m_Digset;
+      CryptoManager::instance()->shorthash(gotten, m_Data);
+      return gotten == m_Digest;
     }
   }  // namespace iwp
 }  // namespace llarp

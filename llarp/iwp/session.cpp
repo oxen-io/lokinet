@@ -180,14 +180,9 @@ namespace llarp
         return false;
       const auto now = m_Parent->Now();
       const auto msgid = m_TXID++;
-      const auto bufsz = buf.size();
-      auto& msg = m_TXMsgs.emplace(msgid, OutboundMessage{msgid, std::move(buf), now, completed})
-                      .first->second;
-      EncryptAndSend(msg.XMIT());
-      if (bufsz > FragmentSize)
-      {
-        msg.FlushUnAcked(util::memFn(&Session::EncryptAndSend, this), now);
-      }
+      if (m_HasherQueue == nullptr)
+        m_HasherQueue = std::make_shared<HasherQueue_t>();
+      m_HasherQueue->emplace_back(msgid, std::move(buf), now, completed);
       m_Stats.totalInFlightTX++;
       LogDebug("send message ", msgid);
       return true;
@@ -243,17 +238,79 @@ namespace llarp
       }
       auto self = shared_from_this();
       assert(self.use_count() > 1);
+      if (m_HasherQueue && not m_HasherQueue->empty())
+      {
+        m_Parent->QueueWork(
+            [self, data = std::move(m_HasherQueue)] { self->HashMessages(std::move(data)); });
+      }
+      if (m_VerifierQueue && not m_VerifierQueue->empty())
+      {
+        m_Parent->QueueWork(
+            [self, data = std::move(m_VerifierQueue)] { self->VerifyMessages(std::move(data)); });
+      }
       if (m_EncryptNext && !m_EncryptNext->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] { self->EncryptWorker(data); });
-        m_EncryptNext = nullptr;
+        m_Parent->QueueWork(
+            [self, data = std::move(m_EncryptNext)] { self->EncryptWorker(std::move(data)); });
       }
-
       if (m_DecryptNext && !m_DecryptNext->empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] { self->DecryptWorker(data); });
-        m_DecryptNext = nullptr;
+        m_Parent->QueueWork(
+            [self, data = std::move(m_DecryptNext)] { self->DecryptWorker(std::move(data)); });
       }
+    }
+
+    void
+    Session::HashMessages(HasherQueue_ptr msgs)
+    {
+      for (auto& msg : *msgs)
+      {
+        msg.CalculateHash();
+      }
+      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = std::move(msgs)]() {
+        for (auto& m : *msgs)
+        {
+          uint64_t id = m.m_MsgID;
+          auto& msg = self->m_TXMsgs[id] = std::move(m);
+          self->EncryptAndSend(msg.XMIT());
+          if (msg.Size() > FragmentSize)
+          {
+            msg.FlushUnAcked(
+                util::memFn(&Session::EncryptAndSend, self.get()), self->m_Parent->Now());
+          }
+        }
+        self->Pump();
+      });
+    }
+
+    void
+    Session::VerifyMessages(VerifierQueue_ptr msgs)
+    {
+      auto verifiedMsgs = std::make_shared<VerifierQueue_t>();
+      while (not msgs->empty())
+      {
+        const auto& msg = msgs->top();
+        if (msg.Verify())
+        {
+          verifiedMsgs->emplace(msg);
+        }
+        else
+        {
+          LogError("Failed to verify inbound message rxid=", msg.m_MsgID, " from ", m_RemoteAddr);
+        }
+        msgs->pop();
+      }
+
+      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = std::move(verifiedMsgs)]() {
+        while (not msgs->empty())
+        {
+          const auto& msg = msgs->top();
+          const llarp_buffer_t buf(msg.m_Data);
+          self->m_Parent->HandleMessage(self.get(), buf);
+          msgs->pop();
+        }
+        self->Pump();
+      });
     }
 
     bool
@@ -621,7 +678,7 @@ namespace llarp
         recvMsgs->emplace_back(std::move(pkt));
       }
       LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = recvMsgs] {
+      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = std::move(recvMsgs)]() {
         self->HandlePlaintext(std::move(msgs));
       });
     }
@@ -751,31 +808,26 @@ namespace llarp
         auto itr = m_RXMsgs.find(rxid);
         if (itr == m_RXMsgs.end())
         {
-          itr =
-              m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, std::move(h), m_Parent->Now()}).first;
+          itr = m_RXMsgs.emplace(rxid, InboundMessage{rxid, sz, std::move(h), now}).first;
+
           sz = std::min(sz, uint16_t{FragmentSize});
           if ((data.size() - XMITOverhead) == sz)
           {
             {
               const llarp_buffer_t buf(data.data() + (data.size() - sz), sz);
               itr->second.HandleData(0, buf, now);
-              if (not itr->second.IsCompleted())
+              if (itr->second.IsCompleted())
               {
-                return;
-              }
-
-              if (not itr->second.Verify())
-              {
-                LogError("bad short xmit hash from ", m_RemoteAddr);
-                return;
+                if (m_VerifierQueue == nullptr)
+                {
+                  m_VerifierQueue = std::make_shared<VerifierQueue_t>();
+                }
+                m_VerifierQueue->emplace(std::move(itr->second));
+                if (m_ReplayFilter.emplace(rxid, now).second)
+                  m_SendMACKs.emplace(rxid);
+                m_RXMsgs.erase(rxid);
               }
             }
-            auto msg = std::move(itr->second);
-            const llarp_buffer_t buf(msg.m_Data);
-            m_Parent->HandleMessage(this, buf);
-            if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
-              m_SendMACKs.emplace(rxid);
-            m_RXMsgs.erase(rxid);
           }
         }
         else
@@ -820,18 +872,13 @@ namespace llarp
 
       if (itr->second.IsCompleted())
       {
-        if (itr->second.Verify())
+        if (m_VerifierQueue == nullptr)
         {
-          auto msg = std::move(itr->second);
-          const llarp_buffer_t buf(msg.m_Data);
-          m_Parent->HandleMessage(this, buf);
-          if (m_ReplayFilter.emplace(itr->first, m_Parent->Now()).second)
-            m_SendMACKs.emplace(itr->first);
+          m_VerifierQueue = std::make_shared<VerifierQueue_t>();
         }
-        else
-        {
-          LogError("hash mismatch for message ", itr->first);
-        }
+        m_VerifierQueue->emplace(std::move(itr->second));
+        if (m_ReplayFilter.emplace(itr->first, m_Parent->Now()).second)
+          m_SendMACKs.emplace(itr->first);
         m_RXMsgs.erase(itr);
       }
     }

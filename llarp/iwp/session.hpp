@@ -194,6 +194,20 @@ namespace llarp
       CryptoQueue_ptr m_EncryptNext;
       CryptoQueue_ptr m_DecryptNext;
 
+      using HasherQueue_t = std::vector<OutboundMessage>;
+      using VerifierQueue_t = std::priority_queue<InboundMessage>;
+      using HasherQueue_ptr = std::shared_ptr<HasherQueue_t>;
+      using VerifierQueue_ptr = std::shared_ptr<VerifierQueue_t>;
+
+      HasherQueue_ptr m_HasherQueue;
+      VerifierQueue_ptr m_VerifierQueue;
+
+      void
+      VerifyMessages(VerifierQueue_ptr msgs);
+
+      void
+      HashMessages(HasherQueue_ptr msgs);
+
       void
       EncryptWorker(CryptoQueue_ptr msgs);
 

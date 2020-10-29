@@ -449,10 +449,9 @@ namespace llarp
     {
       if (m_UpstreamQueue && not m_UpstreamQueue->empty())
       {
-        TrafficQueue_ptr data = nullptr;
-        std::swap(m_UpstreamQueue, data);
-        r->QueueWork(
-            [self = shared_from_this(), data, r]() { self->UpstreamWork(std::move(data), r); });
+        r->QueueWork([self = shared_from_this(), data = std::move(m_UpstreamQueue), r]() mutable {
+          self->UpstreamWork(std::move(data), r);
+        });
       }
     }
 
@@ -461,10 +460,9 @@ namespace llarp
     {
       if (m_DownstreamQueue && not m_DownstreamQueue->empty())
       {
-        TrafficQueue_ptr data = nullptr;
-        std::swap(m_DownstreamQueue, data);
-        r->QueueWork(
-            [self = shared_from_this(), data, r]() { self->DownstreamWork(std::move(data), r); });
+        r->QueueWork([self = shared_from_this(), data = std::move(m_DownstreamQueue), r]() mutable {
+          self->DownstreamWork(std::move(data), r);
+        });
       }
     }
 
