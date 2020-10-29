@@ -90,7 +90,8 @@ namespace llarp
 
   RoutePoker::~RoutePoker()
   {
-    DeleteAllRoutes();
+    for (const auto& [ip, gateway] : m_PokedRoutes)
+      net::DelRoute(ip.ToString(), gateway.ToString());
   }
 
   std::optional<huint32_t>
