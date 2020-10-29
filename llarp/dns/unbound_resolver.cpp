@@ -13,6 +13,12 @@ namespace llarp::dns
   };
 
   void
+  UnboundResolver::Stop()
+  {
+    Reset();
+  }
+
+  void
   UnboundResolver::Reset()
   {
     started = false;

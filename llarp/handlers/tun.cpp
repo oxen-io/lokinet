@@ -893,6 +893,8 @@ namespace llarp
     bool
     TunEndpoint::Stop()
     {
+      if (m_Resolver)
+        m_Resolver->Stop();
       return llarp::service::Endpoint::Stop();
     }
 

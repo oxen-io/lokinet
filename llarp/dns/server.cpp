@@ -31,7 +31,10 @@ namespace llarp
 
     void
     Proxy::Stop()
-    {}
+    {
+      if (m_UnboundResolver)
+        m_UnboundResolver->Stop();
+    }
 
     bool
     Proxy::Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers)

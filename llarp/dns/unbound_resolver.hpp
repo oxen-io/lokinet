@@ -41,6 +41,10 @@ namespace llarp::dns
     static void
     Callback(void* data, int err, ub_result* result);
 
+    // stop resolver thread
+    void
+    Stop();
+
     // upstream resolver IP can be IPv4 or IPv6
     bool
     Init();
