@@ -175,9 +175,7 @@ namespace llarp
 
   bool
   KeyManager::loadOrCreateKey(
-    fs::path path,
-      llarp::SecretKey& key,
-      std::function<void(llarp::SecretKey& key)> keygen)
+      fs::path path, llarp::SecretKey& key, std::function<void(llarp::SecretKey& key)> keygen)
   {
     if (not fs::exists(path))
     {
