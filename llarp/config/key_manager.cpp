@@ -175,32 +175,23 @@ namespace llarp
 
   bool
   KeyManager::loadOrCreateKey(
-      const fs::path& filepath,
+    fs::path path,
       llarp::SecretKey& key,
       std::function<void(llarp::SecretKey& key)> keygen)
   {
-    fs::path path(filepath);
-    std::error_code ec;
-    if (!fs::exists(path, ec))
+    if (not fs::exists(path))
     {
-      if (ec)
-      {
-        LogError("Error checking key", filepath, ec.message());
-        return false;
-      }
-
-      LogInfo("Generating new key", filepath);
+      LogInfo("Generating new key", path);
       keygen(key);
 
-      if (!key.SaveToFile(filepath))
+      if (!key.SaveToFile(path))
       {
         LogError("Failed to save new key");
         return false;
       }
     }
-
-    LogDebug("Loading key from file ", filepath);
-    return key.LoadFromFile(filepath);
+    LogDebug("Loading key from file ", path);
+    return key.LoadFromFile(path);
   }
 
 }  // namespace llarp
