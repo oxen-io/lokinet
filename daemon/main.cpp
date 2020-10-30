@@ -472,28 +472,47 @@ lokinet_main(int argc, char* argv[])
   {
     // when we have an explicit filepath
     fs::path basedir = configFile->parent_path();
-
     if (genconfigOnly)
     {
-      llarp::ensureConfig(basedir, *configFile, overwrite, opts.isRouter);
+      try
+      {
+        llarp::ensureConfig(basedir, *configFile, overwrite, opts.isRouter);
+      }
+      catch (std::exception& ex)
+      {
+        LogError("cannot generate config at ", *configFile, ": ", ex.what());
+        return 1;
+      }
     }
     else
     {
-      std::error_code ec;
-      if (!fs::exists(*configFile, ec))
+      try
       {
-        llarp::LogError("Config file not found ", *configFile);
+        if (!fs::exists(*configFile))
+        {
+          llarp::LogError("Config file not found ", *configFile);
+          return 1;
+        }
+      }
+      catch (std::exception& ex)
+      {
+        LogError("cannot check if ", *configFile, " exists: ", ex.what());
         return 1;
       }
-
-      if (ec)
-        throw std::runtime_error(llarp::stringify("filesystem error: ", ec));
     }
   }
   else
   {
-    llarp::ensureConfig(
-        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    try
+    {
+      llarp::ensureConfig(
+          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    }
+    catch (std::exception& ex)
+    {
+      llarp::LogError("cannot ensure config: ", ex.what());
+      return 1;
+    }
     configFile = llarp::GetDefaultConfigPath();
   }
 

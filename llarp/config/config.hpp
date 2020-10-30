@@ -247,8 +247,7 @@ namespace llarp
   };
 
   void
-  ensureConfig(
-      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter);
+  ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
 
