@@ -25,6 +25,7 @@ install(DIRECTORY ${CMAKE_BINARY_DIR}/gui DESTINATION share COMPONENT gui)
 install(PROGRAMS ${TUNTAP_EXE} DESTINATION bin)
 install(FILES ${BOOTSTRAP_FILE} DESTINATION share)
 
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed")
