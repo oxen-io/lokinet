@@ -107,6 +107,8 @@ namespace llarp
             "private keys.",
         },
         [this](fs::path arg) {
+          if (arg.empty())
+            throw std::invalid_argument("[router]:data-dir is empty");
           if (not fs::exists(arg))
             throw std::runtime_error(
                 stringify("Specified [router]:data-dir ", arg, " does not exist"));
@@ -981,7 +983,8 @@ namespace llarp
         });
   }
 
-  Config::Config(fs::path datadir) : m_DataDir(std::move(datadir))
+  Config::Config(fs::path datadir)
+      : m_DataDir(datadir.empty() ? fs::current_path() : std::move(datadir))
   {}
 
   constexpr auto GetOverridesDir = [](auto datadir) -> fs::path { return datadir / "conf.d"; };
@@ -1117,33 +1120,30 @@ namespace llarp
   }
 
   void
-  ensureConfig(
-      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter)
+  ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter)
   {
-    std::error_code ec;
-
     // fail to overwrite if not instructed to do so
-    if (fs::exists(confFile, ec) && !overwrite)
+    if (fs::exists(confFile) && !overwrite)
     {
       LogDebug("Not creating config file; it already exists.");
       return;
     }
 
-    if (ec)
-      throw std::runtime_error(stringify("filesystem error: ", ec));
+    const auto parent = confFile.parent_path();
 
     // create parent dir if it doesn't exist
-    if (not fs::exists(confFile.parent_path(), ec))
+    if ((not parent.empty()) and (not fs::exists(parent)))
     {
-      if (not fs::create_directory(confFile.parent_path()))
-        throw std::runtime_error(stringify("Failed to create parent directory for ", confFile));
+      fs::create_directory(parent);
     }
-    if (ec)
-      throw std::runtime_error(stringify("filesystem error: ", ec));
 
-    llarp::LogInfo("Attempting to create config file, asRouter: ", asRouter, " path: ", confFile);
+    llarp::LogInfo(
+        "Attempting to create config file for ",
+        (asRouter ? "router" : "client"),
+        " at ",
+        confFile);
 
-    llarp::Config config{defaultDataDir};
+    llarp::Config config{dataDir};
     std::string confStr;
     if (asRouter)
       confStr = config.generateBaseRouterConfig();
