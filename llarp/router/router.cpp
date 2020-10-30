@@ -461,7 +461,7 @@ namespace llarp
 
     m_isServiceNode = conf.router.m_isRelay;
 
-    networkConfig = conf.network;
+    auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
@@ -1218,7 +1218,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
+    _exitContext.AddExitEndpoint("default-connectivity", m_Config->network, m_Config->dns);
     return true;
   }
 

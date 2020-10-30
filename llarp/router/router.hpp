@@ -263,9 +263,6 @@ namespace llarp
     void
     PumpLL() override;
 
-    NetworkConfig networkConfig;
-    DnsConfig dnsConfig;
-
     const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
     lokimq::address rpcBindAddr = DefaultRPCBindAddr;
