@@ -521,21 +521,31 @@ namespace llarp
         }
         else if (is_localhost_loki(msg))
         {
-          size_t counter = 0;
-          context->ForEachService(
-              [&](const std::string&, const std::shared_ptr<service::Endpoint>& service) -> bool {
-                if (!service->HasIfAddr())
-                  return true;
-                huint128_t ip = service->GetIfAddr();
-                if (ip.h)
-                {
-                  msg.AddINReply(ip, isV6);
-                  ++counter;
-                }
-                return true;
-              });
-          if (counter == 0)
+          const bool lookingForExit = msg.questions[0].Subdomains() == "exit";
+          huint128_t ip = GetIfAddr();
+          if (ip.h)
+          {
+            if (lookingForExit)
+            {
+              if (not HasExit())
+              {
+                msg.AddNXReply();
+                return false;
+              }
+              m_ExitMap.ForEachEntry(
+                  [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
+              msg.AddINReply(ip, isV6);
+            }
+            else
+            {
+              msg.AddCNAMEReply(m_Identity.pub.Name(), 1);
+              msg.AddINReply(ip, isV6);
+            }
+          }
+          else
+          {
             msg.AddNXReply();
+          }
         }
         else if (addr.FromString(qname, ".loki"))
         {
