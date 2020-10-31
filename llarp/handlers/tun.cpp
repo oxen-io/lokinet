@@ -461,6 +461,26 @@ namespace llarp
           else
             msg.AddNXReply();
         }
+        else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
+        {
+          const auto subdomain = msg.questions[0].Subdomains();
+          if (subdomain == "exit")
+          {
+            if (HasExit())
+            {
+              m_ExitMap.ForEachEntry(
+                  [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString(), 1); });
+            }
+            else
+            {
+              msg.AddNXReply();
+            }
+          }
+          else
+          {
+            msg.AddNXReply();
+          }
+        }
         else if (is_localhost_loki(msg))
         {
           size_t counter = 0;
