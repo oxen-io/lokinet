@@ -527,14 +527,16 @@ namespace llarp
           {
             if (lookingForExit)
             {
-              if (not HasExit())
+              if (HasExit())
+              {
+                M_ExitMap.ForEachEntry(
+                    [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
+                msg.AddINReply(ip, isV6);
+              }
+              else
               {
                 msg.AddNXReply();
-                return false;
               }
-              m_ExitMap.ForEachEntry(
-                  [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString()); });
-              msg.AddINReply(ip, isV6);
             }
             else
             {
