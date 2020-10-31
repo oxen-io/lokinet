@@ -50,7 +50,7 @@ local debian_pipeline(name, image,
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
-                    (if lto then '' else '-DWITH_LTO=OFF ') +
+                    '-DWITH_LTO=' + (if lto then 'ON ' else 'OFF ') +
                 cmake_extra,
                 'ninja -v',
                 '../contrib/ci/drone-gdb.sh ./test/testAll --gtest_color=yes',
@@ -192,10 +192,10 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     },
 
     // Various debian builds
-    debian_pipeline("Debian sid (amd64)", "debian:sid", lto=true),
+    debian_pipeline("Debian sid (amd64)", "debian:sid"),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug', lto=true),
     debian_pipeline("Debian sid/clang-11 (amd64)", "debian:sid", deps='clang-11 '+default_deps_nocxx,
-                    cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 ', lto=true),
+                    cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 '),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
