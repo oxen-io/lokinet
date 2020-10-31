@@ -464,17 +464,10 @@ namespace llarp
         else if (msg.questions[0].IsLocalhost() and msg.questions[0].HasSubdomains())
         {
           const auto subdomain = msg.questions[0].Subdomains();
-          if (subdomain == "exit")
+          if (subdomain == "exit" and HasExit())
           {
-            if (HasExit())
-            {
-              m_ExitMap.ForEachEntry(
-                  [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString(), 1); });
-            }
-            else
-            {
-              msg.AddNXReply();
-            }
+            m_ExitMap.ForEachEntry(
+                [&msg](const auto&, const auto& exit) { msg.AddCNAMEReply(exit.ToString(), 1); });
           }
           else
           {
