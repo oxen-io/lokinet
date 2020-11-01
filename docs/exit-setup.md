@@ -1,10 +1,18 @@
 
-to configure lokinet to be an exit add into `lokinet.ini` `[network]` section the following:
+to configure lokinet to be an exit add into `lokinet.ini`:
 
+    [router]
+    min-connections=8
+    max-connections=16
+
+    [network]
     exit=true
     keyfile=/var/lib/lokinet/exit.private
     reachable=1
     ifaddr=10.0.0.1/16
+    hops=1
+    paths=8
+
 
 post setup for exit (as root) given `eth0` is used to get to the internet:
 
