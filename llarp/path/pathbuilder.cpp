@@ -136,13 +136,14 @@ namespace llarp
         if (status == SendStatus::Success)
         {
           ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
-          ctx->pathset->PathBuildStarted(ctx->path);
+          ctx->pathset->PathBuildStarted(std::move(ctx->path));
         }
         else
         {
           LogError(ctx->pathset->Name(), " failed to send LRCM to ", ctx->path->Upstream());
-          ctx->pathset->HandlePathBuildFailed(ctx->path);
+          ctx->pathset->HandlePathBuildFailed(std::move(ctx->path));
         }
+        ctx->pathset = nullptr;
       };
       if (ctx->router->SendToOrQueue(remote, msg, sentHandler))
       {
@@ -150,7 +151,10 @@ namespace llarp
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
       }
       else
+      {
         LogError(ctx->pathset->Name(), " failed to queue LRCM to ", remote);
+        sentHandler(SendStatus::NoLink);
+      }
     }
   }
 
