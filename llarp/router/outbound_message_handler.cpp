@@ -25,8 +25,8 @@ namespace llarp
   {
     if (not _lookupHandler->RemoteIsAllowed(remote))
     {
-      LogicCall(_logic, [callback]() { callback(SendStatus::InvalidRouter); });
-      return false;
+      DoCallback(callback, SendStatus::InvalidRouter);
+      return true;
     }
 
     const uint16_t priority = msg->Priority();
