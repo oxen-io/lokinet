@@ -612,11 +612,22 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
+    // profiling
+    _profilesFile = conf.router.m_dataDir / "profiles.dat";
+
     // Network config
     if (conf.network.m_enableProfiling.value_or(false))
     {
-      LogInfo("router profiling enabled; loading from ", routerProfilesFile);
-      routerProfiling().Load(routerProfilesFile.c_str());
+      LogInfo("router profiling enabled");
+      if (not fs::exists(_profilesFile))
+      {
+        LogInfo("no profiles file at ", _profilesFile, " skipping");
+      }
+      else
+      {
+        LogInfo("loading router profiles from ", _profilesFile);
+        routerProfiling().Load(_profilesFile);
+      }
     }
     else
     {
@@ -816,7 +827,7 @@ namespace llarp
     // save profiles
     if (routerProfiling().ShouldSave(now))
     {
-      QueueDiskIO([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+      QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
     // save nodedb
     if (nodedb()->ShouldSaveToDisk(now))
@@ -963,8 +974,6 @@ namespace llarp
   {
     if (_running || _stopping)
       return false;
-
-    routerProfiling().Load(routerProfilesFile.c_str());
 
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());

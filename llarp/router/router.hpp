@@ -273,10 +273,8 @@ namespace llarp
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
     lokimq::address lokidRPCAddr;
-
     Profiling _routerProfiling;
-    std::string routerProfilesFile = "profiles.dat";
-
+    fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
     OutboundSessionMaker _outboundSessionMaker;
     LinkManager _linkManager;
