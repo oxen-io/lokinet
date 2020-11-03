@@ -239,7 +239,7 @@ namespace llarp
   }
 
   bool
-  Profiling::Save(const char* fname)
+  Profiling::Save(const fs::path fpath)
   {
     std::shared_lock lock{m_ProfilesMutex};
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
@@ -250,7 +250,6 @@ namespace llarp
     if (res)
     {
       buf.sz = buf.cur - buf.base;
-      const fs::path fpath = std::string(fname);
       auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
       if (!optional_f)
         return false;
@@ -302,11 +301,17 @@ namespace llarp
   }
 
   bool
-  Profiling::Load(const char* fname)
+  Profiling::BDecode(llarp_buffer_t* buf)
+  {
+    return bencode_decode_dict(*this, buf);
+  }
+
+  bool
+  Profiling::Load(const fs::path fname)
   {
     util::Lock lock(m_ProfilesMutex);
     m_Profiles.clear();
-    if (!BDecodeReadFromFile(fname, *this))
+    if (!BDecodeReadFile(fname, *this))
     {
       llarp::LogWarn("failed to load router profiles from ", fname);
       return false;

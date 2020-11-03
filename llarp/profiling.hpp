@@ -91,14 +91,17 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const EXCLUDES(m_ProfilesMutex);
 
     bool
+    BDecode(llarp_buffer_t* buf);
+
+    bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
     // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
 
     bool
-    Load(const char* fname) EXCLUDES(m_ProfilesMutex);
+    Load(const fs::path fname) EXCLUDES(m_ProfilesMutex);
 
     bool
-    Save(const char* fname) EXCLUDES(m_ProfilesMutex);
+    Save(const fs::path fname) EXCLUDES(m_ProfilesMutex);
 
     bool
     ShouldSave(llarp_time_t now) const;
