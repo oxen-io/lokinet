@@ -317,8 +317,7 @@ namespace llarp
       }
       std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
       lookups.erase(itr);
-      if (not lookup->HandleIntrosetResponse(remote))
-        lookups.emplace(msg->txid, std::move(lookup));
+      lookup->HandleIntrosetResponse(remote);
       return true;
     }
 
@@ -1065,9 +1064,11 @@ namespace llarp
       return true;
     }
 
-    void Endpoint::HandlePathDied(path::Path_ptr)
+    void
+    Endpoint::HandlePathDied(path::Path_ptr p)
     {
       RegenAndPublishIntroSet(true);
+      path::Builder::HandlePathDied(p);
     }
 
     bool
