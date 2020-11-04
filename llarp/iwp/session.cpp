@@ -214,6 +214,18 @@ namespace llarp
     }
 
     void
+    Session::PumpEncrypt()
+    {
+      if (m_EncryptNext && not m_EncryptNext->empty())
+      {
+        m_Parent->QueueWork([self = shared_from_this(), data = std::move(m_EncryptNext)] {
+          self->EncryptWorker(data);
+        });
+        m_EncryptNext = nullptr;
+      }
+    }
+
+    void
     Session::Pump()
     {
       const auto now = m_Parent->Now();
@@ -240,23 +252,22 @@ namespace llarp
       assert(self.use_count() > 1);
       if (m_HasherQueue && not m_HasherQueue->empty())
       {
-        m_Parent->QueueWork(
-            [self, data = std::move(m_HasherQueue)] { self->HashMessages(std::move(data)); });
+        m_Parent->QueueWork([self, data = std::move(m_HasherQueue)] { self->HashMessages(data); });
+        m_HasherQueue = nullptr;
       }
       if (m_VerifierQueue && not m_VerifierQueue->empty())
       {
         m_Parent->QueueWork(
-            [self, data = std::move(m_VerifierQueue)] { self->VerifyMessages(std::move(data)); });
+            [self, data = std::move(m_VerifierQueue)] { self->VerifyMessages(data); });
+        m_VerifierQueue = nullptr;
       }
-      if (m_EncryptNext && !m_EncryptNext->empty())
+
+      PumpEncrypt();
+
+      if (m_DecryptNext && not m_DecryptNext->empty())
       {
-        m_Parent->QueueWork(
-            [self, data = std::move(m_EncryptNext)] { self->EncryptWorker(std::move(data)); });
-      }
-      if (m_DecryptNext && !m_DecryptNext->empty())
-      {
-        m_Parent->QueueWork(
-            [self, data = std::move(m_DecryptNext)] { self->DecryptWorker(std::move(data)); });
+        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] { self->DecryptWorker(data); });
+        m_DecryptNext = nullptr;
       }
     }
 
@@ -279,7 +290,8 @@ namespace llarp
                 util::memFn(&Session::EncryptAndSend, self.get()), self->m_Parent->Now());
           }
         }
-        self->Pump();
+        msgs->clear();
+        self->PumpEncrypt();
       });
     }
 
@@ -305,8 +317,7 @@ namespace llarp
         while (not msgs->empty())
         {
           const auto& msg = msgs->top();
-          const llarp_buffer_t buf(msg.m_Data);
-          self->m_Parent->HandleMessage(self.get(), buf);
+          self->m_Parent->HandleMessage(self.get(), msg.m_Data);
           msgs->pop();
         }
         self->Pump();
@@ -822,7 +833,7 @@ namespace llarp
                 {
                   m_VerifierQueue = std::make_shared<VerifierQueue_t>();
                 }
-                m_VerifierQueue->emplace(std::move(itr->second));
+                m_VerifierQueue->emplace(itr->second);
                 if (m_ReplayFilter.emplace(rxid, now).second)
                   m_SendMACKs.emplace(rxid);
                 m_RXMsgs.erase(rxid);
@@ -876,7 +887,7 @@ namespace llarp
         {
           m_VerifierQueue = std::make_shared<VerifierQueue_t>();
         }
-        m_VerifierQueue->emplace(std::move(itr->second));
+        m_VerifierQueue->emplace(itr->second);
         if (m_ReplayFilter.emplace(itr->first, m_Parent->Now()).second)
           m_SendMACKs.emplace(itr->first);
         m_RXMsgs.erase(itr);

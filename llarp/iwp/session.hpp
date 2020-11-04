@@ -203,6 +203,9 @@ namespace llarp
       VerifierQueue_ptr m_VerifierQueue;
 
       void
+      PumpEncrypt();
+
+      void
       VerifyMessages(VerifierQueue_ptr msgs);
 
       void
