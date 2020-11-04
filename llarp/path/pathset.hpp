@@ -136,7 +136,7 @@ namespace llarp
 
       /// a path died now what?
       virtual void
-      HandlePathDied(Path_ptr path) = 0;
+      HandlePathDied(Path_ptr path);
 
       bool
       GetNewestIntro(service::Introduction& intro) const;

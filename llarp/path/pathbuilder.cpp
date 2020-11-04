@@ -141,8 +141,9 @@ namespace llarp
         else
         {
           LogError(ctx->pathset->Name(), " failed to send LRCM to ", ctx->path->Upstream());
-          ctx->pathset->HandlePathBuildFailed(std::move(ctx->path));
+          ctx->path->EnterState(path::ePathFailed, ctx->router->Now());
         }
+        ctx->path = nullptr;
         ctx->pathset = nullptr;
       };
       if (ctx->router->SendToOrQueue(remote, msg, sentHandler))

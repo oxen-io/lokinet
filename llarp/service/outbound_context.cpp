@@ -154,6 +154,13 @@ namespace llarp
     }
 
     void
+    OutboundContext::HandlePathBuildFailed(path::Path_ptr p)
+    {
+      ShiftIntroRouter(p->Endpoint());
+      path::Builder::HandlePathBuildFailed(p);
+    }
+
+    void
     OutboundContext::HandlePathBuilt(path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);

@@ -338,6 +338,12 @@ namespace llarp
     }
 
     void
+    PathSet::HandlePathDied(Path_ptr p)
+    {
+      LogWarn(Name(), " path ", p->ShortName(), " died");
+    }
+
+    void
     PathSet::PathBuildStarted(Path_ptr p)
     {
       LogInfo(Name(), " path build ", p->ShortName(), " started");
