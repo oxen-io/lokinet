@@ -261,6 +261,8 @@ namespace llarp
       return false;
 
     f.write(reinterpret_cast<const char*>(buf.base), buf.sz);
+    if (not f.good())
+      return false;
     m_LastSave = llarp::time_now_ms();
     return true;
   }
