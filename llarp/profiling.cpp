@@ -120,7 +120,7 @@ namespace llarp
   {
     if (m_DisableProfiling.load())
       return false;
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
@@ -132,7 +132,7 @@ namespace llarp
   {
     if (m_DisableProfiling.load())
       return false;
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
@@ -144,7 +144,7 @@ namespace llarp
   {
     if (m_DisableProfiling.load())
       return false;
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     auto itr = m_Profiles.find(r);
     if (itr == m_Profiles.end())
       return false;
@@ -161,7 +161,7 @@ namespace llarp
   void
   Profiling::MarkConnectTimeout(const RouterID& r)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     m_Profiles[r].connectTimeoutCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -169,7 +169,7 @@ namespace llarp
   void
   Profiling::MarkConnectSuccess(const RouterID& r)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     m_Profiles[r].connectGoodCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -177,14 +177,14 @@ namespace llarp
   void
   Profiling::ClearProfile(const RouterID& r)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     m_Profiles.erase(r);
   }
 
   void
   Profiling::MarkHopFail(const RouterID& r)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     m_Profiles[r].pathFailCount += 1;
     m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
@@ -192,7 +192,7 @@ namespace llarp
   void
   Profiling::MarkPathFail(path::Path* p)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     size_t idx = 0;
     for (const auto& hop : p->hops)
     {
@@ -209,7 +209,7 @@ namespace llarp
   void
   Profiling::MarkPathTimeout(path::Path* p)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     size_t idx = 0;
     for (const auto& hop : p->hops)
     {
@@ -225,7 +225,7 @@ namespace llarp
   void
   Profiling::MarkPathSuccess(path::Path* p)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     const auto sz = p->hops.size();
     for (const auto& hop : p->hops)
     {
@@ -241,37 +241,34 @@ namespace llarp
   bool
   Profiling::Save(const fs::path fpath)
   {
-    std::shared_lock lock{m_ProfilesMutex};
-    size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
+    const size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector<byte_t> tmp(sz, 0);
     llarp_buffer_t buf(tmp);
-    auto res = BEncodeNoLock(&buf);
-    if (res)
+
     {
-      buf.sz = buf.cur - buf.base;
-      auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
-      if (!optional_f)
+      util::Lock lock{m_ProfilesMutex};
+      if (not BEncode(&buf))
         return false;
-      auto& f = *optional_f;
-      if (f.is_open())
-      {
-        f.write((char*)buf.base, buf.sz);
-        m_LastSave = llarp::time_now_ms();
-      }
     }
-    return res;
+
+    buf.sz = buf.cur - buf.base;
+    auto optional_f = util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
+    if (!optional_f)
+      return false;
+    auto& f = *optional_f;
+    if (not f.is_open())
+      return false;
+
+    f.write(reinterpret_cast<const char*>(buf.base), buf.sz);
+    if (not f.good())
+      return false;
+    m_LastSave = llarp::time_now_ms();
+    return true;
   }
 
   bool
   Profiling::BEncode(llarp_buffer_t* buf) const
-  {
-    std::shared_lock lock{m_ProfilesMutex};
-    return BEncodeNoLock(buf);
-  }
-
-  bool
-  Profiling::BEncodeNoLock(llarp_buffer_t* buf) const
   {
     if (!bencode_start_dict(buf))
       return false;
@@ -309,7 +306,7 @@ namespace llarp
   bool
   Profiling::Load(const fs::path fname)
   {
-    util::Lock lock(m_ProfilesMutex);
+    util::Lock lock{m_ProfilesMutex};
     m_Profiles.clear();
     if (!BDecodeReadFile(fname, *this))
     {

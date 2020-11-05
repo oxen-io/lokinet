@@ -88,7 +88,7 @@ namespace llarp
     Tick() EXCLUDES(m_ProfilesMutex);
 
     bool
-    BEncode(llarp_buffer_t* buf) const EXCLUDES(m_ProfilesMutex);
+    BEncode(llarp_buffer_t* buf) const;
 
     bool
     BDecode(llarp_buffer_t* buf);
@@ -113,8 +113,6 @@ namespace llarp
     Enable();
 
    private:
-    bool
-    BEncodeNoLock(llarp_buffer_t* buf) const REQUIRES_SHARED(m_ProfilesMutex);
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0s;
