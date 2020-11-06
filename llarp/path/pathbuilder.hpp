@@ -44,7 +44,7 @@ namespace llarp
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
 
       /// construct
-      Builder(AbstractRouter* p_router, size_t numPaths, size_t numHops);
+      Builder(AbstractRouter* p_router, size_t numDesiredPaths, size_t numHops);
 
       virtual ~Builder() = default;
 

@@ -22,8 +22,7 @@ namespace llarp
       operator=(const TXOwner&) = default;
 
       TXOwner(const Key_t& k, uint64_t id) : node(k), txid(id)
-      {
-      }
+      {}
 
       util::StatusObject
       ExtractStatus() const

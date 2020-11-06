@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Script to invoke resolvconf (if installed) to add/remove lokinet into/from the resolvconf DNS
+# server list.  This script does not add if any of these are true:
+#
+# - /sbin/resolvconf does not exist
+# - the systemd-resolved service is active
+# - a `no-resolvconf=1` item is present in the [dns] section of lokinet.ini
+#
+# It always attempts to remove if resolvconf is installed (so that commenting out while running,
+# then stopping still removes the added entry).
+#
+# Usage: lokinet-resolvconf {add|remove} /etc/loki/lokinet.ini
+
+set -e
+
+action="$1"
+conf="$2"
+
+if [[ ! ("$action" == "add" || "$action" == "remove") || ! -f "$conf" ]]; then
+    echo "Usage: $0 {add|remove} /path/to/lokinet.ini" >&2
+    exit 1
+fi
+
+if ! [ -x /sbin/resolvconf ]; then
+    exit 0
+fi
+
+if [ -x /bin/systemctl ] && /bin/systemctl --quiet is-active systemd-resolved.service; then
+    exit 0
+fi
+
+if [ "$action" == "add" ]; then
+    if ! [ -x /sbin/resolvconf ]; then exit 0; fi
+
+    lokinet_ns=$(perl -e '
+    $ns = "127.3.2.1"; # default if none found in .ini
+    while (<>) {
+        if ((/^\[dns\]/ ... /^\[/)) {
+            if (/^bind\s*=\s*([\d.]+)(?::53)?\s*$/) {
+                $ns=$1;
+            } elsif (/^no-resolvconf\s*=\s*1\s*/) {
+                exit;
+            }
+        }
+    }
+    print $ns' "$conf")
+
+    if [ -n "$lokinet_ns" ]; then
+        echo "nameserver $lokinet_ns" | /sbin/resolvconf -a lo.000lokinet
+    fi
+else
+    /sbin/resolvconf -d lo.000lokinet
+fi

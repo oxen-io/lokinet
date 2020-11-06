@@ -18,12 +18,10 @@ namespace llarp
     struct Tag : public AlignedBuffer<16>
     {
       Tag() : AlignedBuffer<SIZE>()
-      {
-      }
+      {}
 
       Tag(const byte_t* d) : AlignedBuffer<SIZE>(d)
-      {
-      }
+      {}
 
       Tag(const std::string& str) : Tag()
       {

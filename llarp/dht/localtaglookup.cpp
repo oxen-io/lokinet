@@ -13,8 +13,7 @@ namespace llarp
     LocalTagLookup::LocalTagLookup(
         const PathID_t& path, uint64_t txid, const service::Tag& _target, AbstractContext* ctx)
         : TagLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx, 0), localPath(path)
-    {
-    }
+    {}
 
     void
     LocalTagLookup::SendReply()

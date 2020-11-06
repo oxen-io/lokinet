@@ -40,11 +40,11 @@ namespace llarp
     bool
     VisitSection(const char* name, std::function<bool(const SectionValues_t&)> visit) const;
 
-    /// add a config option that is appended at the end of the config buffer with no comments
+    /// add a config option that is appended in another file
     void
-    AddOverride(std::string section, std::string key, std::string value);
+    AddOverride(fs::path file, std::string section, std::string key, std::string value);
 
-    /// save config and any overrides to the file it was loaded from
+    /// save config overrides
     void
     Save();
 
@@ -54,7 +54,7 @@ namespace llarp
 
     std::vector<char> m_Data;
     Config_impl_t m_Config;
-    Config_impl_t m_Overrides;
+    std::unordered_map<fs::path, Config_impl_t, util::FileHash> m_Overrides;
     fs::path m_FileName;
   };
 

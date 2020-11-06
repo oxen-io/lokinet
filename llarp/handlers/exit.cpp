@@ -551,6 +551,13 @@ namespace llarp
       m_UpstreamResolvers = dnsConfig.m_upstreamDNS;
 
       m_OurRange = networkConfig.m_ifaddr;
+      if (!m_OurRange.addr.h)
+      {
+        const auto maybe = llarp::FindFreeRange();
+        if (not maybe.has_value())
+          throw std::runtime_error("cannot find free interface range");
+        m_OurRange = *maybe;
+      }
       const auto host_str = m_OurRange.BaseAddressString();
       // string, or just a plain char array?
       strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
@@ -570,12 +577,19 @@ namespace llarp
           m_HigestAddr);
       m_UseV6 = not m_OurRange.IsV4();
 
-      if (networkConfig.m_ifname.length() >= sizeof(m_Tun.ifname))
+      std::string ifname = networkConfig.m_ifname;
+      if (ifname.empty())
       {
-        throw std::invalid_argument(
-            stringify(Name() + " ifname '", networkConfig.m_ifname, "' is too long"));
+        const auto maybe = llarp::FindFreeTun();
+        if (not maybe.has_value())
+          throw std::runtime_error("cannot find free interface name");
+        ifname = *maybe;
       }
-      strncpy(m_Tun.ifname, networkConfig.m_ifname.c_str(), sizeof(m_Tun.ifname) - 1);
+      if (ifname.length() >= sizeof(m_Tun.ifname))
+      {
+        throw std::invalid_argument(stringify(Name() + " ifname '", ifname, "' is too long"));
+      }
+      strncpy(m_Tun.ifname, ifname.c_str(), sizeof(m_Tun.ifname) - 1);
       LogInfo(Name(), " set ifname to ", m_Tun.ifname);
 
       // TODO: "exit-whitelist" and "exit-blacklist"

@@ -24,12 +24,9 @@ namespace llarp::dns
   {
    private:
     ub_ctx* unboundContext;
-#ifdef _WIN32
-    /// windows needs to run as blocking in another thread to work at all becuase LOL windows
-    std::unique_ptr<std::thread> runnerThread;
-#endif
 
     std::atomic<bool> started;
+    std::unique_ptr<std::thread> runner;
 
     llarp_ev_loop_ptr eventLoop;
     ReplyFunction replyFunc;
@@ -38,16 +35,15 @@ namespace llarp::dns
     void
     Reset();
 
-    void
-    DeregisterPollFD();
-    void
-    RegisterPollFD();
-
    public:
     UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc, FailFunction failFunc);
 
     static void
     Callback(void* data, int err, ub_result* result);
+
+    // stop resolver thread
+    void
+    Stop();
 
     // upstream resolver IP can be IPv4 or IPv6
     bool

@@ -42,8 +42,7 @@ namespace llarp
           , m_name(std::move(name))
           , _putTime(std::move(put))
           , _getNow(std::move(now))
-      {
-      }
+      {}
 
       size_t
       Size() EXCLUDES(m_QueueMutex)

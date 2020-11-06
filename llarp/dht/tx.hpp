@@ -26,8 +26,7 @@ namespace llarp
 
       TX(const TXOwner& asker, const K& k, AbstractContext* p)
           : target(k), parent(p), whoasked(asker)
-      {
-      }
+      {}
 
       virtual ~TX() = default;
 

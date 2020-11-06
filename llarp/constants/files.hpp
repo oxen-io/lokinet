@@ -22,6 +22,7 @@ namespace llarp
   {
 #ifdef _WIN32
     const fs::path homedir = getenv("APPDATA");
+    return homedir / "lokinet";
 #else
     fs::path homedir;
 
@@ -36,8 +37,8 @@ namespace llarp
       homedir = "/var/lib/lokinet";
       return homedir;
     }
-#endif
     return homedir / ".lokinet";
+#endif
   }
 
   inline fs::path

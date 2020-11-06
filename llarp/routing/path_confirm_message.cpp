@@ -10,8 +10,7 @@ namespace llarp
   {
     PathConfirmMessage::PathConfirmMessage(llarp_time_t lifetime)
         : pathLifetime(lifetime), pathCreated(time_now_ms())
-    {
-    }
+    {}
 
     bool
     PathConfirmMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)

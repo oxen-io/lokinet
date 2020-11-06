@@ -20,8 +20,7 @@ namespace llarp
       using Random_t = std::function<uint64_t()>;
 
       Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(std::move(r))
-      {
-      }
+      {}
 
       util::StatusObject
       ExtractStatus() const

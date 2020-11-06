@@ -9,8 +9,7 @@ namespace llarp::util
   struct DecayingHashTable
   {
     DecayingHashTable(std::chrono::milliseconds cacheInterval = 1h) : m_CacheInterval(cacheInterval)
-    {
-    }
+    {}
 
     void
     Decay(llarp_time_t now)

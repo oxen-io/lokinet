@@ -21,8 +21,7 @@ static const std::string RC_FILE_EXT = ".signed";
 
 llarp_nodedb::NetDBEntry::NetDBEntry(llarp::RouterContact value)
     : rc(std::move(value)), inserted(llarp::time_now_ms())
-{
-}
+{}
 
 bool
 llarp_nodedb::Remove(const llarp::RouterID& pk)
@@ -436,7 +435,7 @@ llarp_nodedb::LoadAll()
 size_t
 llarp_nodedb::num_loaded() const
 {
-  std::shared_lock l{access};
+  llarp::util::Lock l{access};
   return entries.size();
 }
 

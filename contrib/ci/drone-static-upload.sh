@@ -35,7 +35,7 @@ fi
 
 mkdir -v "$base"
 if [ -e daemon/lokinet.exe ]; then
-    cp -av daemon/lokinet.exe daemon/lokinet-vpn.exe ../lokinet-bootstrap.ps1 "$base"
+    cp -av lokinet-*.exe ../lokinet-bootstrap.ps1 "$base"
     # zipit up yo
     archive="$base.zip"
     zip -r "$archive" "$base"

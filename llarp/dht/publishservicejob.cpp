@@ -20,8 +20,7 @@ namespace llarp
         : TX<TXOwner, service::EncryptedIntroSet>(asker, asker, ctx)
         , relayOrder(relayOrder_)
         , introset(introset_)
-    {
-    }
+    {}
 
     bool
     PublishServiceJob::Validate(const service::EncryptedIntroSet& value) const
@@ -56,8 +55,7 @@ namespace llarp
         AbstractContext* ctx,
         uint64_t relayOrder)
         : PublishServiceJob(peer, introset, ctx, relayOrder), localPath(fromID), txid(_txid)
-    {
-    }
+    {}
 
     void
     LocalPublishServiceJob::SendReply()

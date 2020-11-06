@@ -10,8 +10,7 @@ namespace tooling
   {
     RCGossipReceivedEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc_)
         : RouterEvent("RCGossipReceivedEvent", routerID, true), rc(rc_)
-    {
-    }
+    {}
 
     std::string
     ToString() const override
@@ -33,8 +32,7 @@ namespace tooling
   {
     RCGossipSentEvent(const llarp::RouterID& routerID, const llarp::RouterContact& rc_)
         : RouterEvent("RCGossipSentEvent", routerID, true), rc(rc_)
-    {
-    }
+    {}
 
     std::string
     ToString() const override
