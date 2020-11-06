@@ -32,8 +32,7 @@ struct llarp_nodedb
   explicit llarp_nodedb(const std::string rootdir, DiskCaller_t diskCaller)
       : disk(std::move(diskCaller)), nodePath(rootdir)
 
-  {
-  }
+  {}
 
   ~llarp_nodedb()
   {

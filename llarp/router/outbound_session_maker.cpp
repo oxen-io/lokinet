@@ -27,8 +27,7 @@ namespace llarp
 
     PendingSession(RouterContact _rc, LinkLayer_ptr _link)
         : rc(std::move(_rc)), link(std::move(_link))
-    {
-    }
+    {}
   };
 
   bool

@@ -26,8 +26,7 @@ namespace llarp
   PeerStats::PeerStats() = default;
 
   PeerStats::PeerStats(const RouterID& routerId_) : routerId(routerId_)
-  {
-  }
+  {}
 
   PeerStats&
   PeerStats::operator+=(const PeerStats& other)

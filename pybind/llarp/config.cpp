@@ -16,7 +16,7 @@ namespace llarp
   {
     using Config_ptr = std::shared_ptr<Config>;
     py::class_<Config, Config_ptr>(mod, "Config")
-        .def(py::init<>())
+        .def(py::init<std::string>())
         .def_readwrite("router", &Config::router)
         .def_readwrite("network", &Config::network)
         .def_readwrite("connect", &Config::connect)
@@ -25,10 +25,7 @@ namespace llarp
         .def_readwrite("lokid", &Config::lokid)
         .def_readwrite("bootstrap", &Config::bootstrap)
         .def_readwrite("logging", &Config::logging)
-        .def("LoadFile", &Config::Load)
-        .def("LoadDefault", [](Config& self, bool isRelay, std::string dir) {
-          return self.LoadDefault(isRelay, dir);
-        });
+        .def("Load", &Config::Load);
 
     py::class_<RouterConfig>(mod, "RouterConfig")
         .def(py::init<>())
@@ -48,13 +45,11 @@ namespace llarp
             })
         .def_readwrite("workerThreads", &RouterConfig::m_workerThreads)
         .def_readwrite("numNetThreads", &RouterConfig::m_numNetThreads)
-        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize)
-        .def_readwrite("enablePeerStats", &RouterConfig::m_enablePeerStats);
+        .def_readwrite("JobQueueSize", &RouterConfig::m_JobQueueSize);
 
     py::class_<NetworkConfig>(mod, "NetworkConfig")
         .def(py::init<>())
         .def_readwrite("enableProfiling", &NetworkConfig::m_enableProfiling)
-        .def_readwrite("routerProfilesFile", &NetworkConfig::m_routerProfilesFile)
         .def_readwrite("endpointType", &NetworkConfig::m_endpointType)
         .def_readwrite("keyfile", &NetworkConfig::m_keyfile)
         .def_readwrite("endpointType", &NetworkConfig::m_endpointType)
@@ -99,7 +94,6 @@ namespace llarp
 
     py::class_<LokidConfig>(mod, "LokidConfig")
         .def(py::init<>())
-        .def_readwrite("usingSNSeed", &LokidConfig::usingSNSeed)
         .def_readwrite("whitelistRouters", &LokidConfig::whitelistRouters)
         .def_readwrite("ident_keyfile", &LokidConfig::ident_keyfile)
         .def_property(
@@ -109,6 +103,7 @@ namespace llarp
 
     py::class_<BootstrapConfig>(mod, "BootstrapConfig")
         .def(py::init<>())
+        .def_readwrite("seednode", &BootstrapConfig::seednode)
         .def_property(
             "routers",
             [](BootstrapConfig& self) {

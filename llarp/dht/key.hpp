@@ -13,20 +13,16 @@ namespace llarp
     struct Key_t : public AlignedBuffer<32>
     {
       explicit Key_t(const byte_t* buf) : AlignedBuffer<SIZE>(buf)
-      {
-      }
+      {}
 
       explicit Key_t(const Data& data) : AlignedBuffer<SIZE>(data)
-      {
-      }
+      {}
 
       explicit Key_t(const AlignedBuffer<SIZE>& data) : AlignedBuffer<SIZE>(data)
-      {
-      }
+      {}
 
       Key_t() : AlignedBuffer<SIZE>()
-      {
-      }
+      {}
 
       /// get snode address string
       std::string

@@ -58,8 +58,7 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
       RaiseException(EXCEPTION_SET_THREAD_NAME, 0, infosize, (DWORD*)&info);
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-    }
+    {}
   }
   /* clean up */
   if (hThread)

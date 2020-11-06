@@ -13,8 +13,7 @@ namespace llarp
 
     PathContext::PathContext(AbstractRouter* router)
         : m_Router(router), m_AllowTransit(false), m_PathLimits(DefaultPathBuildLimit)
-    {
-    }
+    {}
 
     void
     PathContext::AllowTransit()
@@ -321,6 +320,7 @@ namespace llarp
         {
           if (itr->second->Expired(now))
           {
+            itr->second->m_PathSet->RemovePath(itr->second);
             itr = map.erase(itr);
           }
           else
@@ -358,7 +358,6 @@ namespace llarp
     }
 
     void PathContext::RemovePathSet(PathSet_ptr)
-    {
-    }
+    {}
   }  // namespace path
 }  // namespace llarp

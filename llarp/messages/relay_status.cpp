@@ -38,8 +38,7 @@ namespace llarp
         , path(std::move(_path))
         , router(_router)
         , pathid(pathid)
-    {
-    }
+    {}
 
     ~LRSM_AsyncHandler() = default;
 

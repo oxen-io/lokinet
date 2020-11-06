@@ -78,6 +78,18 @@ namespace llarp
         return transformed;
       }
 
+      // get a value for this exact range
+      std::optional<Value_t>
+      GetExact(Range_t range) const
+      {
+        for (const auto& [r, value] : m_Entries)
+        {
+          if (r == range)
+            return value;
+        }
+        return std::nullopt;
+      }
+
       /// return a set of all values who's range contains this IP
       std::set<Value_t>
       FindAll(const IP_t& addr) const

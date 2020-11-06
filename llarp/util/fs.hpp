@@ -27,6 +27,16 @@ namespace llarp
 {
   namespace util
   {
+    struct FileHash
+    {
+      size_t
+      operator()(const fs::path& f) const
+      {
+        std::hash<std::string> h;
+        return h(f.string());
+      }
+    };
+
     using error_code_t = std::error_code;
 
     /// Ensure that a file exists and has correct permissions

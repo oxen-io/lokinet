@@ -22,8 +22,7 @@ namespace llarp
       llarp::Signature Z;
 
       ObtainExitMessage() : IMessage()
-      {
-      }
+      {}
 
       ~ObtainExitMessage() override = default;
 

@@ -12,8 +12,7 @@ namespace llarp
   {
     /// Represents the empty type
     struct Bottom
-    {
-    };
+    {};
 
     /// Int tag
     template <size_t N>
@@ -25,8 +24,7 @@ namespace llarp
     /// Type trait representing whether a type is pointer-like
     template <typename T, typename _ = void>
     struct is_pointy : public std::false_type
-    {
-    };
+    {};
 
     // We take the following things:
     // - has element_type typedef
@@ -35,14 +33,12 @@ namespace llarp
     template <typename T>
     struct is_pointy<T, std::conditional_t<false, std::void_t<decltype(*std::declval<T>())>, void>>
         : public std::true_type
-    {
-    };
+    {};
 
     /// Type trait representing whether a type is an STL-style container
     template <typename T, typename _ = void>
     struct is_container : public std::false_type
-    {
-    };
+    {};
 
     // We take that the container has begin, end and size methods to be a
     // container.
@@ -95,8 +91,7 @@ namespace llarp
       /// meta function which always returns false
       template <typename>
       class False : public std::false_type
-      {
-      };
+      {};
 
       /// a case in the selection
       template <template <typename...> class Trait = False>
@@ -105,8 +100,7 @@ namespace llarp
        public:
         template <typename Type>
         struct Selector : public Trait<Type>::type
-        {
-        };
+        {};
 
         using Type = Case;
       };

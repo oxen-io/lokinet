@@ -31,8 +31,7 @@ namespace llarp
     };
 
     InboundMessageParser::InboundMessageParser() : m_Holder(std::make_unique<MessageHolder>())
-    {
-    }
+    {}
 
     InboundMessageParser::~InboundMessageParser() = default;
 

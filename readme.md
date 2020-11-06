@@ -1,6 +1,6 @@
 # Lokinet
 
-[Español](readme_es.md)
+[Español](readme_es.md) [Русский](readme_ru.md)
 
 Lokinet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
 

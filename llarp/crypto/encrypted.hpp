@@ -56,8 +56,7 @@ namespace llarp
     }
 
     Encrypted(size_t sz) : Encrypted(nullptr, sz)
-    {
-    }
+    {}
 
     bool
     BEncode(llarp_buffer_t* buf) const

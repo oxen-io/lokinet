@@ -7,8 +7,7 @@ namespace llarp
   namespace exit
   {
     Context::Context(AbstractRouter* r) : m_Router(r)
-    {
-    }
+    {}
     Context::~Context() = default;
 
     void
