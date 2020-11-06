@@ -2,9 +2,11 @@
 
 #include <catch2/catch.hpp>
 
+using namespace llarp::config;
+
 TEST_CASE("OptionDefinition int parse test", "[config]")
 {
-  llarp::OptionDefinition<int> def("foo", "bar", false, 42);
+  llarp::OptionDefinition<int> def("foo", "bar", Default{42});
 
   CHECK(def.getValue() == 42);
   CHECK(def.getNumberFound() == 0);
@@ -16,11 +18,20 @@ TEST_CASE("OptionDefinition int parse test", "[config]")
   CHECK(def.getNumberFound() == 1);
 
   CHECK(def.defaultValueAsString() == "42");
+
+  constexpr Default sqrt_625{25};
+  llarp::OptionDefinition<int> def2("a", "b", sqrt_625);
+  CHECK(def2.getValue() == 25);
+  CHECK(def2.defaultValueAsString() == "25");
+
+  CHECK_NOTHROW(def2.parseValue("99"));
+  CHECK(def2.getValue() == 99);
+  CHECK(def2.getNumberFound() == 1);
 }
 
 TEST_CASE("OptionDefinition string parse test", "[config]")
 {
-  llarp::OptionDefinition<std::string> def("foo", "bar", false, "test");
+  llarp::OptionDefinition<std::string> def("foo", "bar", Default{"test"});
 
   CHECK(def.getValue() == "test");
   CHECK(def.defaultValueAsString() == "test");
@@ -33,8 +44,7 @@ TEST_CASE("OptionDefinition string parse test", "[config]")
 TEST_CASE("OptionDefinition multiple parses test", "[config]")
 {
   {
-    llarp::OptionDefinition<int> def("foo", "bar", false, 8);
-    def.multiValued = true;
+    llarp::OptionDefinition<int> def("foo", "bar", MultiValue, Default{8});
 
     CHECK_NOTHROW(def.parseValue("9"));
     CHECK(def.getValue() == 9);
@@ -48,7 +58,7 @@ TEST_CASE("OptionDefinition multiple parses test", "[config]")
   }
 
   {
-    llarp::OptionDefinition<int> def("foo", "baz", false, 4);
+    llarp::OptionDefinition<int> def("foo", "baz", Default{4});
 
     CHECK_NOTHROW(def.parseValue("3"));
     CHECK(def.getValue() == 3);
@@ -64,11 +74,14 @@ TEST_CASE("OptionDefinition multiple parses test", "[config]")
 TEST_CASE("OptionDefinition acceptor test", "[config]")
 {
   int test = -1;
-  llarp::OptionDefinition<int> def("foo", "bar", false, 42, [&](int arg) {
+  llarp::OptionDefinition<int> def("foo", "bar", Default{42}, [&](int arg) {
     test = arg;
   });
 
   CHECK_NOTHROW(def.tryAccept());
+  CHECK(def.getValue() == 42);
+  CHECK(def.defaultValue);
+  CHECK(*def.defaultValue == 42);
   CHECK(test == 42);
 
   def.parseValue("43");
@@ -78,7 +91,7 @@ TEST_CASE("OptionDefinition acceptor test", "[config]")
 
 TEST_CASE("OptionDefinition acceptor throws test", "[config]")
 {
-  llarp::OptionDefinition<int> def("foo", "bar", false, 42, [&](int arg) {
+  llarp::OptionDefinition<int> def("foo", "bar", Default{42}, [&](int arg) {
     (void)arg;
     throw std::runtime_error("FAIL");
   });
@@ -89,7 +102,7 @@ TEST_CASE("OptionDefinition acceptor throws test", "[config]")
 TEST_CASE("OptionDefinition tryAccept missing option test", "[config]")
 {
   int unset = -1;
-  llarp::OptionDefinition<int> def("foo", "bar", true, 1, [&](int arg) {
+  llarp::OptionDefinition<int> def("foo", "bar", Required, Default{1}, [&](int arg) {
     (void)arg;
     unset = 0; // should never be called
   });
@@ -100,12 +113,11 @@ TEST_CASE("OptionDefinition tryAccept missing option test", "[config]")
 
 TEST_CASE("ConfigDefinition basic add/get test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "router",
             "threads",
-            false,
-            4));
+            Default{4}));
 
   CHECK(config.getConfigValue<int>("router", "threads") == 4);
 
@@ -117,29 +129,47 @@ TEST_CASE("ConfigDefinition basic add/get test", "[config]")
   CHECK(config.getConfigValue<int>("router", "threads") == 5);
 }
 
+TEST_CASE("ConfigDefinition router/client-only tests", "[config]")
+{
+  llarp::ConfigDefinition r_config{true}, c_config{false};
+  r_config.defineOption<int>("router", "abc", Default{1}, RelayOnly);
+  r_config.defineOption<int>("router", "def", Default{1}, ClientOnly);
+  r_config.defineOption<int>("router", "ghi", Default{1});
+  c_config.defineOption<int>("router", "abc", Default{1}, RelayOnly);
+  c_config.defineOption<int>("router", "def", Default{1}, ClientOnly);
+  c_config.defineOption<int>("router", "ghi", Default{1});
+
+  CHECK_NOTHROW(r_config.getConfigValue<int>("router", "abc"));
+  CHECK_THROWS(r_config.getConfigValue<int>("router", "def"));
+  CHECK_NOTHROW(r_config.getConfigValue<int>("router", "ghi"));
+
+  CHECK_THROWS(c_config.getConfigValue<int>("router", "abc"));
+  CHECK_NOTHROW(c_config.getConfigValue<int>("router", "def"));
+  CHECK_NOTHROW(c_config.getConfigValue<int>("router", "ghi"));
+}
+
 TEST_CASE("ConfigDefinition missing def test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
   CHECK_THROWS(config.getConfigValue<int>("foo", "bar") == 5);
 
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "quux",
             "bar",
-            false,
-            4));
+            Default{4}));
 
   CHECK_THROWS(config.addConfigValue("foo", "bar", "5"));
 }
 
 TEST_CASE("ConfigDefinition required test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "router",
             "threads",
-            true,
-            1));
+            Default{1},
+            Required));
 
   CHECK_THROWS(config.validateRequiredFields());
 
@@ -150,17 +180,17 @@ TEST_CASE("ConfigDefinition required test", "[config]")
 
 TEST_CASE("ConfigDefinition section test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "foo",
             "bar",
-            true,
-            1));
+            Required,
+            Default{1}));
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
             "goo",
             "bar",
-            true,
-            1));
+            Required,
+            Default{1}));
 
   CHECK_THROWS(config.validateRequiredFields());
 
@@ -179,13 +209,13 @@ TEST_CASE("ConfigDefinition acceptAllOptions test", "[config]")
   int fooBar = -1;
   std::string fooBaz = "";
 
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
-      "foo", "bar", false, 1, [&](int arg) {
+      "foo", "bar", Default{1}, [&](int arg) {
         fooBar = arg;
       }));
   config.defineOption(std::make_unique<llarp::OptionDefinition<std::string>>(
-      "foo", "baz", false, "no", [&](std::string arg) {
+      "foo", "baz", Default{"no"}, [&](std::string arg) {
         fooBaz = arg;
       }));
 
@@ -199,9 +229,9 @@ TEST_CASE("ConfigDefinition acceptAllOptions test", "[config]")
 
 TEST_CASE("ConfigDefinition acceptAllOptions exception propagation test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
   config.defineOption(std::make_unique<llarp::OptionDefinition<int>>(
-      "foo", "bar", false, 1, [&](int arg) {
+      "foo", "bar", Default{1}, [&](int arg) {
         (void)arg;
         throw std::runtime_error("FAIL");
       }));
@@ -211,14 +241,14 @@ TEST_CASE("ConfigDefinition acceptAllOptions exception propagation test", "[conf
 
 TEST_CASE("ConfigDefinition defineOptions passthrough test", "[config]")
 {
-  llarp::ConfigDefinition config;
-  config.defineOption<int>("foo", "bar", false, 1);
+  llarp::ConfigDefinition config{true};
+  config.defineOption<int>("foo", "bar", Default{1});
   CHECK(config.getConfigValue<int>("foo", "bar") == 1);
 }
 
 TEST_CASE("ConfigDefinition undeclared definition basic test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   bool invoked = false;
 
@@ -237,7 +267,7 @@ TEST_CASE("ConfigDefinition undeclared definition basic test", "[config]")
 
 TEST_CASE("ConfigDefinition undeclared add more than once test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   std::string calledBy = "";
 
@@ -257,7 +287,7 @@ TEST_CASE("ConfigDefinition undeclared add more than once test", "[config]")
 
 TEST_CASE("ConfigDefinition undeclared add/remove test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   std::string calledBy = "";
 
@@ -289,7 +319,7 @@ TEST_CASE("ConfigDefinition undeclared add/remove test", "[config]")
 
 TEST_CASE("ConfigDefinition undeclared handler exception propagation test", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   config.addUndeclaredHandler("foo", [](std::string_view, std::string_view, std::string_view) {
       throw std::runtime_error("FAIL");
@@ -300,7 +330,7 @@ TEST_CASE("ConfigDefinition undeclared handler exception propagation test", "[co
 
 TEST_CASE("ConfigDefinition undeclared handler wrong section", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   config.addUndeclaredHandler("foo", [](std::string_view, std::string_view, std::string_view) {
       throw std::runtime_error("FAIL");
@@ -311,7 +341,7 @@ TEST_CASE("ConfigDefinition undeclared handler wrong section", "[config]")
 
 TEST_CASE("ConfigDefinition undeclared handler duplicate names", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   int count = 0;
 
@@ -328,10 +358,10 @@ TEST_CASE("ConfigDefinition undeclared handler duplicate names", "[config]")
 
 TEST_CASE("ConfigDefinition AssignmentAcceptor", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   int val = -1;
-  config.defineOption<int>("foo", "bar", false, 2, llarp::AssignmentAcceptor(val));
+  config.defineOption<int>("foo", "bar", Default{2}, AssignmentAcceptor(val));
 
   config.addConfigValue("foo", "bar", "3");
   CHECK_NOTHROW(config.acceptAllOptions());
@@ -341,10 +371,10 @@ TEST_CASE("ConfigDefinition AssignmentAcceptor", "[config]")
 
 TEST_CASE("ConfigDefinition multiple values", "[config]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   std::vector<int> values;
-  config.defineOption<int>("foo", "bar", false, true, 2, [&](int arg) {
+  config.defineOption<int>("foo", "bar", MultiValue, Default{2}, [&](int arg) {
     values.push_back(arg);
   });
 
@@ -361,14 +391,14 @@ TEST_CASE("ConfigDefinition multiple values", "[config]")
 
 TEST_CASE("ConfigDefinition [bind]iface regression", "[config regression]")
 {
-  llarp::ConfigDefinition config;
+  llarp::ConfigDefinition config{true};
 
   std::string val1;
   std::string undeclaredName;
   std::string undeclaredValue;
 
   config.defineOption<std::string>(
-      "bind", "*", false, false, "1090", [&](std::string arg) { val1 = arg; });
+      "bind", "*", Default{"1090"}, [&](std::string arg) { val1 = arg; });
 
   config.addUndeclaredHandler("bind", [&](std::string_view, std::string_view name, std::string_view value) {
     undeclaredName = std::string(name);
@@ -388,7 +418,7 @@ TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
   // truthy values
   for (auto val : {"true", "on", "yes", "1"})
   {
-    llarp::OptionDefinition<bool> def("foo", "bar", false, false);
+    llarp::OptionDefinition<bool> def("foo", "bar", Default{false});
 
     // defaults to false
     auto maybe = def.getValue();
@@ -405,7 +435,7 @@ TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
   // falsy values
   for (auto val : {"false", "off", "no", "0"})
   {
-    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+    llarp::OptionDefinition<bool> def("foo", "bar", Default{true});
 
     // defaults to true
     auto maybe = def.getValue();
@@ -422,7 +452,7 @@ TEST_CASE("ConfigDefinition truthy/falsy bool values", "[config]")
   // illegal values
   for (auto val : {"", " ", "TRUE", "argle", " false", "2"})
   {
-    llarp::OptionDefinition<bool> def("foo", "bar", false, true);
+    llarp::OptionDefinition<bool> def("foo", "bar", Default{true});
     CHECK_THROWS(def.parseValue(val));
   }
 }

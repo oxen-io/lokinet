@@ -7,12 +7,12 @@
 #include <net/route.hpp>
 #include <service/context.hpp>
 #include <service/auth.hpp>
+#include <service/name.hpp>
 
 namespace llarp::rpc
 {
   RpcServer::RpcServer(LMQ_ptr lmq, AbstractRouter* r) : m_LMQ(std::move(lmq)), m_Router(r)
-  {
-  }
+  {}
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>
@@ -124,18 +124,27 @@ namespace llarp::rpc
                   return;
                 }
                 std::optional<service::Address> exit;
+                std::optional<std::string> lnsExit;
                 IPRange range;
                 bool map = true;
                 const auto exit_itr = obj.find("exit");
                 if (exit_itr != obj.end())
                 {
                   service::Address addr;
-                  if (not addr.FromString(exit_itr->get<std::string>()))
+                  const auto exit_str = exit_itr->get<std::string>();
+                  if (service::NameIsValid(exit_str))
+                  {
+                    lnsExit = exit_str;
+                  }
+                  else if (not addr.FromString(exit_str))
                   {
                     reply(CreateJSONError("invalid exit address"));
                     return;
                   }
-                  exit = addr;
+                  else
+                  {
+                    exit = addr;
+                  }
                 }
 
                 const auto unmap_itr = obj.find("unmap");
@@ -167,59 +176,88 @@ namespace llarp::rpc
                 {
                   endpoint = endpoint_itr->get<std::string>();
                 }
-                LogicCall(r->logic(), [map, exit, range, token, endpoint, r, reply]() mutable {
-                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
-                  if (ep == nullptr)
-                  {
-                    reply(CreateJSONError("no endpoint with name " + endpoint));
-                    return;
-                  }
-                  if (map and exit.has_value())
-                  {
-                    ep->MapExitRange(range, *exit);
-                    if (token.has_value())
-                    {
-                      ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
-                    }
-                    ep->EnsurePathToService(
-                        *exit,
-                        [reply, ep, r](auto, service::OutboundContext* ctx) {
-                          if (ctx == nullptr)
+                LogicCall(
+                    r->logic(), [map, exit, lnsExit, range, token, endpoint, r, reply]() mutable {
+                      auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+                      if (ep == nullptr)
+                      {
+                        reply(CreateJSONError("no endpoint with name " + endpoint));
+                        return;
+                      }
+                      if (map and (exit.has_value() or lnsExit.has_value()))
+                      {
+                        auto mapExit = [=](service::Address addr) mutable {
+                          ep->MapExitRange(range, addr);
+                          if (token.has_value())
                           {
-                            reply(CreateJSONError("could not find exit"));
-                            return;
+                            ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                           }
-                          r->ForEachPeer(
-                              [r](auto session, auto) mutable {
-                                const auto ip = session->GetRemoteEndpoint().toIP();
-                                r->routePoker().AddRoute(ip);
+                          ep->EnsurePathToService(
+                              addr,
+                              [reply, ep, r](auto, service::OutboundContext* ctx) {
+                                if (ctx == nullptr)
+                                {
+                                  reply(CreateJSONError("could not find exit"));
+                                  return;
+                                }
+                                r->ForEachPeer(
+                                    [r](auto session, auto) mutable {
+                                      const auto ip = session->GetRemoteEndpoint().toIP();
+                                      r->routePoker().AddRoute(ip);
+                                    },
+                                    false);
+                                net::AddDefaultRouteViaInterface(ep->GetIfName());
+                                reply(CreateJSONResponse("OK"));
                               },
-                              false);
-                          net::AddDefaultRouteViaInterface(ep->GetIfName());
-                          reply(CreateJSONResponse("OK"));
-                        },
-                        5s);
-                    return;
-                  }
-                  else if (map and not exit.has_value())
-                  {
-                    reply(CreateJSONError("no exit address provided"));
-                    return;
-                  }
-                  else if (not map)
-                  {
-                    net::DelDefaultRouteViaInterface(ep->GetIfName());
+                              5s);
+                        };
+                        if (exit.has_value())
+                        {
+                          mapExit(*exit);
+                        }
+                        else if (lnsExit.has_value())
+                        {
+                          ep->LookupNameAsync(*lnsExit, [reply, mapExit](auto maybe) mutable {
+                            if (not maybe.has_value())
+                            {
+                              reply(CreateJSONError("we could not find an exit with that name"));
+                              return;
+                            }
+                            if (maybe->IsZero())
+                            {
+                              reply(CreateJSONError("lokinet exit does not exist"));
+                              return;
+                            }
+                            mapExit(*maybe);
+                          });
+                        }
+                        else
+                        {
+                          reply(
+                              CreateJSONError("WTF inconsistent request, no exit address or lns "
+                                              "name provided?"));
+                        }
+                        return;
+                      }
+                      else if (map and not exit.has_value())
+                      {
+                        reply(CreateJSONError("no exit address provided"));
+                        return;
+                      }
+                      else if (not map)
+                      {
+                        net::DelDefaultRouteViaInterface(ep->GetIfName());
 
-                    r->ForEachPeer(
-                        [r](auto session, auto) mutable {
-                          const auto ip = session->GetRemoteEndpoint().toIP();
-                          r->routePoker().DelRoute(ip);
-                        },
-                        false);
-                    ep->UnmapExitRange(range);
-                  }
-                  reply(CreateJSONResponse("OK"));
-                });
+                        r->ForEachPeer(
+                            [r](auto session, auto) mutable {
+                              const auto ip = session->GetRemoteEndpoint().toIP();
+                              r->routePoker().DelRoute(ip);
+                            },
+                            false);
+                        ep->UnmapExitRange(range);
+                      }
+                      reply(CreateJSONResponse("OK"));
+                    });
               });
             })
         .add_request_command("config", [&](lokimq::Message& msg) {

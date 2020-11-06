@@ -67,14 +67,12 @@ namespace llarp
 #else
       void
       lock() const
-      {
-      }
+      {}
 #endif
       // Does nothing; once locked the mutex belongs to that thread forever
       void
       unlock() const
-      {
-      }
+      {}
     };
 
     /// a lock that does nothing
@@ -116,8 +114,7 @@ namespace llarp
 
      public:
       Semaphore(size_t count) : m_count(count)
-      {
-      }
+      {}
 
       void
       notify() EXCLUDES(m_mutex)

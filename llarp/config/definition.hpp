@@ -1,6 +1,9 @@
 #pragma once
 
+#include <initializer_list>
+#include <type_traits>
 #include <util/str.hpp>
+#include <util/fs.hpp>
 
 #include <iostream>
 #include <memory>
@@ -15,19 +18,111 @@
 
 namespace llarp
 {
+  namespace config
+  {
+    // Base class for the following option flag types
+    struct option_flag
+    {};
+
+    struct Required_t : option_flag
+    {};
+    struct Hidden_t : option_flag
+    {};
+    struct MultiValue_t : option_flag
+    {};
+    struct RelayOnly_t : option_flag
+    {};
+    struct ClientOnly_t : option_flag
+    {};
+    struct Deprecated_t : option_flag
+    {};
+
+    /// Value to pass for an OptionDefinition to indicate that the option is required
+    inline constexpr Required_t Required{};
+    /// Value to pass for an OptionDefinition to indicate that the option should be hidden from the
+    /// generate config file if it is unset (and has no comment).  Typically for deprecated, renamed
+    /// options that still do something, and for internal dev options that aren't usefully exposed.
+    /// (For do-nothing deprecated options use Deprecated instead).
+    inline constexpr Hidden_t Hidden{};
+    /// Value to pass for an OptionDefinition to indicate that the option takes multiple values
+    inline constexpr MultiValue_t MultiValue{};
+    /// Value to pass for an option that should only be set for relay configs. If found in a client
+    /// config it be ignored (but will produce a warning).
+    inline constexpr RelayOnly_t RelayOnly{};
+    /// Value to pass for an option that should only be set for client configs. If found in a relay
+    /// config it will be ignored (but will produce a warning).
+    inline constexpr ClientOnly_t ClientOnly{};
+    /// Value to pass for an option that is deprecated and does nothing and should be ignored (with
+    /// a deprecation warning) if specified.  Note that Deprecated implies Hidden, and that
+    /// {client,relay}-only options in a {relay,client} config are also considered Deprecated.
+    inline constexpr Deprecated_t Deprecated{};
+
+    /// Wrapper to specify a default value to an OptionDefinition
+    template <typename T>
+    struct Default
+    {
+      T val;
+      constexpr explicit Default(T val) : val{std::move(val)}
+      {}
+    };
+
+    /// Adds one or more comment lines to the option definition.
+    struct Comment
+    {
+      std::vector<std::string> comments;
+      explicit Comment(std::initializer_list<std::string> comments) : comments{std::move(comments)}
+      {}
+    };
+
+    /// A convenience function that returns an acceptor which assigns to a reference.
+    ///
+    /// Note that this holds on to the reference; it must only be used when this is safe to do. In
+    /// particular, a reference to a local variable may be problematic.
+    template <typename T>
+    auto
+    AssignmentAcceptor(T& ref)
+    {
+      return [&ref](T arg) { ref = std::move(arg); };
+    }
+
+    // C++20 backport:
+    template <typename T>
+    using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
+    template <typename T>
+    constexpr bool is_default = false;
+    template <typename T>
+    constexpr bool is_default<Default<T>> = true;
+    template <typename U>
+    constexpr bool is_default<U&> = is_default<remove_cvref_t<U>>;
+
+    template <typename T, typename Option>
+    constexpr bool is_option =
+        std::is_base_of_v<
+            option_flag,
+            remove_cvref_t<
+                Option>> or std::is_same_v<Comment, Option> or is_default<Option> or std::is_invocable_v<remove_cvref_t<Option>, T>;
+  }  // namespace config
+
   /// A base class for specifying config options and their constraints. The basic to/from string
   /// type functions are provided pure-virtual. The type-aware implementations which implement these
   /// functions are templated classes. One reason for providing a non-templated base class is so
   /// that they can all be mixed into the same containers (albiet as pointers).
   struct OptionDefinitionBase
   {
-    OptionDefinitionBase(std::string section_, std::string name_, bool required_);
-    OptionDefinitionBase(
-        std::string section_, std::string name_, bool required_, bool multiValued_);
+    template <typename... T>
+    OptionDefinitionBase(std::string section_, std::string name_, const T&...)
+        : section(std::move(section_))
+        , name(std::move(name_))
+        , required{(std::is_same_v<T, config::Required_t> || ...)}
+        , multiValued{(std::is_same_v<T, config::MultiValue_t> || ...)}
+        , deprecated{(std::is_same_v<T, config::Deprecated_t> || ...)}
+        , hidden{deprecated || (std::is_same_v<T, config::Hidden_t> || ...)}
+        , relayOnly{(std::is_same_v<T, config::RelayOnly_t> || ...)}
+        , clientOnly{(std::is_same_v<T, config::ClientOnly_t> || ...)}
+    {}
 
-    virtual ~OptionDefinitionBase()
-    {
-    }
+    virtual ~OptionDefinitionBase() = default;
 
     /// Subclasses should provide their default value as a string
     ///
@@ -65,6 +160,13 @@ namespace llarp
     std::string name;
     bool required = false;
     bool multiValued = false;
+    bool deprecated = false;
+    bool hidden = false;
+    bool relayOnly = false;
+    bool clientOnly = false;
+    // Temporarily holds comments given during construction until the option is actually added to
+    // the owning ConfigDefinition.
+    std::vector<std::string> comments;
   };
 
   /// The primary type-aware implementation of OptionDefinitionBase, this templated class allows
@@ -84,33 +186,53 @@ namespace llarp
     /// 2) as the output in defaultValueAsString(), used to generate config files
     /// 3) as the output in valueAsString(), used to generate config files
     ///
-    /// @param acceptor_ is an optional function whose purpose is to both validate the parsed
-    ///        input and internalize it (e.g. copy it for runtime use). The acceptor should throw
-    ///        an exception with a useful message if it is not acceptable.
-    OptionDefinition(
-        std::string section_,
-        std::string name_,
-        bool required_,
-        std::optional<T> defaultValue_,
-        std::function<void(T)> acceptor_ = nullptr)
-        : OptionDefinitionBase(section_, name_, required_)
-        , defaultValue(defaultValue_)
-        , acceptor(acceptor_)
+    /// @param opts - 0 or more of config::Required, config::Hidden, config::Default{...}, etc.
+    /// tagged options or an invocable acceptor validate and internalize input (e.g. copy it for
+    /// runtime use). The acceptor should throw an exception with a useful message if it is not
+    /// acceptable.  Parameters may be passed in any order.
+    template <
+        typename... Options,
+        std::enable_if_t<(config::is_option<T, Options> && ...), int> = 0>
+    OptionDefinition(std::string section_, std::string name_, Options&&... opts)
+        : OptionDefinitionBase(section_, name_, opts...)
     {
+      (extractDefault(std::forward<Options>(opts)), ...);
+      (extractAcceptor(std::forward<Options>(opts)), ...);
+      (extractComments(std::forward<Options>(opts)), ...);
     }
 
-    /// As above, but also takes a bool value for multiValued.
-    OptionDefinition(
-        std::string section_,
-        std::string name_,
-        bool required_,
-        bool multiValued_,
-        std::optional<T> defaultValue_,
-        std::function<void(T)> acceptor_ = nullptr)
-        : OptionDefinitionBase(section_, name_, required_, multiValued_)
-        , defaultValue(defaultValue_)
-        , acceptor(acceptor_)
+    /// Extracts a default value from an config::Default<U>; ignores anything that isn't an
+    /// config::Default<U>.
+    template <typename U>
+    void
+    extractDefault(U&& defaultValue_)
     {
+      if constexpr (config::is_default<U>)
+      {
+        static_assert(
+            std::is_convertible_v<decltype(std::forward<U>(defaultValue_).val), T>,
+            "Cannot convert given llarp::config::Default to the required value type");
+        defaultValue = std::forward<U>(defaultValue_).val;
+      }
+    }
+
+    /// Extracts an acceptor (i.e. something callable with a `T`) from options; ignores anything
+    /// that isn't callable.
+    template <typename U>
+    void
+    extractAcceptor(U&& acceptor_)
+    {
+      if constexpr (std::is_invocable_v<U, T>)
+        acceptor = std::forward<U>(acceptor_);
+    }
+
+    /// Extracts option Comments and forwards them addOptionComments.
+    template <typename U>
+    void
+    extractComments(U&& comment)
+    {
+      if constexpr (std::is_same_v<config::remove_cvref_t<U>, config::Comment>)
+        comments = std::forward<U>(comment).comments;
     }
 
     /// Returns the first parsed value, if available. Otherwise, provides the default value if the
@@ -155,10 +277,14 @@ namespace llarp
     std::string
     defaultValueAsString() override
     {
-      std::ostringstream oss;
-      if (defaultValue)
-        oss << *defaultValue;
+      if (!defaultValue)
+        return "";
 
+      if constexpr (std::is_same_v<fs::path, T>)
+        return defaultValue->string();
+
+      std::ostringstream oss;
+      oss << *defaultValue;
       return oss.str();
     }
 
@@ -224,7 +350,7 @@ namespace llarp
       }
 
       // don't use default value if we are multi-valued and have no value
-      if (multiValued && parsedValues.size() == 0)
+      if (multiValued and parsedValues.size() == 0)
         return;
 
       if (acceptor)
@@ -289,11 +415,14 @@ namespace llarp
   /// calls to addConfigValue()).
   struct ConfigDefinition
   {
-    /// Spefify the parameters and type of a configuration option. The parameters are members of
+    explicit ConfigDefinition(bool relay) : relay{relay}
+    {}
+
+    /// Specify the parameters and type of a configuration option. The parameters are members of
     /// OptionDefinitionBase; the type is inferred from OptionDefinition's template parameter T.
     ///
     /// This function should be called for every option that this Configuration supports, and should
-    /// be done before any other interractions involving that option.
+    /// be done before any other interactions involving that option.
     ///
     /// @param def should be a unique_ptr to a valid subclass of OptionDefinitionBase
     /// @return `*this` for chaining calls
@@ -307,7 +436,7 @@ namespace llarp
     ConfigDefinition&
     defineOption(Params&&... args)
     {
-      return defineOption(std::make_unique<OptionDefinition<T>>(args...));
+      return defineOption(std::make_unique<OptionDefinition<T>>(std::forward<Params>(args)...));
     }
 
     /// Specify a config value for the given section and name. The value should be a valid string
@@ -416,6 +545,9 @@ namespace llarp
     generateINIConfig(bool useValues = false);
 
    private:
+    // If true skip client-only options; if false skip relay-only options.
+    bool relay;
+
     OptionDefinition_ptr&
     lookupDefinitionOrThrow(std::string_view section, std::string_view name);
     const OptionDefinition_ptr&
@@ -443,16 +575,5 @@ namespace llarp
     CommentsMap m_sectionComments;
     std::unordered_map<std::string, CommentsMap> m_definitionComments;
   };
-
-  /// A convenience acceptor which takes a reference and later assigns it in its acceptor call.
-  ///
-  /// Note that this holds on to a reference; it must only be used when this is safe to do. In
-  /// particular, a reference to a local variable may be problematic.
-  template <typename T>
-  std::function<void(T)>
-  AssignmentAcceptor(T& ref)
-  {
-    return [&](T arg) mutable { ref = std::move(arg); };
-  }
 
 }  // namespace llarp

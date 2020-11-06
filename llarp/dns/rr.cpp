@@ -14,8 +14,7 @@ namespace llarp
         , rr_class(other.rr_class)
         , ttl(other.ttl)
         , rData(other.rData)
-    {
-    }
+    {}
 
     ResourceRecord::ResourceRecord(ResourceRecord&& other)
         : rr_name(std::move(other.rr_name))
@@ -23,8 +22,7 @@ namespace llarp
         , rr_class(std::move(other.rr_class))
         , ttl(std::move(other.ttl))
         , rData(std::move(other.rData))
-    {
-    }
+    {}
 
     bool
     ResourceRecord::Encode(llarp_buffer_t* buf) const

@@ -74,6 +74,9 @@ namespace llarp
       void
       AddNSReply(std::string name, RR_TTL_t ttl = 1);
 
+      void
+      AddTXTReply(std::string value, RR_TTL_t ttl = 1);
+
       bool
       Encode(llarp_buffer_t* buf) const override;
 

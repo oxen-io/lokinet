@@ -127,8 +127,7 @@ namespace llarp
      public:
       QueuePushGuard(Queue<Type>& queue, uint32_t generation, uint32_t index)
           : m_queue(&queue), m_generation(generation), m_index(index)
-      {
-      }
+      {}
 
       ~QueuePushGuard();
 
@@ -150,8 +149,7 @@ namespace llarp
      public:
       QueuePopGuard(Queue<Type>& queue, uint32_t generation, uint32_t index)
           : m_queue(queue), m_generation(generation), m_index(index)
-      {
-      }
+      {}
 
       ~QueuePopGuard();
     };

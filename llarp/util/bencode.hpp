@@ -296,7 +296,7 @@ namespace llarp
   /// read entire file and decode its contents into t
   template <typename T>
   bool
-  BDecodeReadFile(const fs::path& fpath, T& t)
+  BDecodeReadFile(const fs::path fpath, T& t)
   {
     std::vector<byte_t> ptr;
     {
@@ -316,39 +316,10 @@ namespace llarp
     return t.BDecode(&buf);
   }
 
-  /// read entire file and decode its contents into t
-  template <typename T>
-  bool
-  BDecodeReadFromFile(const char* fpath, T& t)
-  {
-    std::vector<byte_t> ptr;
-    {
-      std::ifstream f;
-      f.open(fpath);
-      if (!f.is_open())
-      {
-        return false;
-      }
-      f.seekg(0, std::ios::end);
-      const std::streampos sz = f.tellg();
-      f.seekg(0, std::ios::beg);
-      ptr.resize(sz);
-      f.read((char*)ptr.data(), sz);
-    }
-    llarp_buffer_t buf(ptr);
-    auto result = bencode_decode_dict(t, &buf);
-    if (!result)
-    {
-      LogError("BDecodeReadFromFile() failed for file ", fpath, " contents:");
-      DumpBuffer(buf);
-    }
-    return result;
-  }
-
   /// bencode and write to file
   template <typename T, size_t bufsz>
   bool
-  BEncodeWriteFile(const char* fpath, const T& t)
+  BEncodeWriteFile(const fs::path fpath, const T& t)
   {
     std::array<byte_t, bufsz> tmp;
     llarp_buffer_t buf(tmp);
@@ -356,8 +327,7 @@ namespace llarp
       return false;
     buf.sz = buf.cur - buf.base;
     {
-      const fs::path path = std::string(fpath);
-      auto f = llarp::util::OpenFileStream<std::ofstream>(path, std::ios::binary);
+      auto f = llarp::util::OpenFileStream<std::ofstream>(fpath, std::ios::binary);
       if (not f or not f->is_open())
         return false;
       f->write((char*)buf.base, buf.sz);

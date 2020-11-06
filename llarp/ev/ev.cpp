@@ -37,10 +37,14 @@ int
 llarp_ev_add_udp(struct llarp_ev_loop* ev, struct llarp_udp_io* udp, const llarp::SockAddr& src)
 {
   if (ev == nullptr or udp == nullptr)
+  {
+    llarp::LogError("Attempting llarp_ev_add_udp() with null event loop or udp io struct.");
     return -1;
+  }
   udp->parent = ev;
   if (ev->udp_listen(udp, src))
     return 0;
+  llarp::LogError("llarp_ev_add_udp() call to udp_listen failed.");
   return -1;
 }
 

@@ -14,8 +14,7 @@ namespace llarp
     static constexpr size_t MaxSize = MAX_RC_SIZE + 256;
 
     LinkIntroMessage() : ILinkMessage()
-    {
-    }
+    {}
 
     RouterContact rc;
     KeyExchangeNonce N;

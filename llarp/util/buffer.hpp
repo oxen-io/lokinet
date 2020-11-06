@@ -78,22 +78,19 @@ struct llarp_buffer_t
   llarp_buffer_t() = default;
 
   llarp_buffer_t(byte_t* b, byte_t* c, size_t s) : base(b), cur(c), sz(s)
-  {
-  }
+  {}
 
   llarp_buffer_t(const ManagedBuffer&) = delete;
   llarp_buffer_t(ManagedBuffer&&) = delete;
 
   template <typename T>
   llarp_buffer_t(T* buf, size_t _sz) : base(reinterpret_cast<byte_t*>(buf)), cur(base), sz(_sz)
-  {
-  }
+  {}
 
   template <typename T>
   llarp_buffer_t(const T* buf, size_t _sz)
       : base(reinterpret_cast<byte_t*>(const_cast<T*>(buf))), cur(base), sz(_sz)
-  {
-  }
+  {}
 
   /** initialize llarp_buffer_t from container */
   template <typename T>
@@ -106,8 +103,7 @@ struct llarp_buffer_t
 
   template <typename T>
   llarp_buffer_t(const T& t) : llarp_buffer_t(t.data(), t.size())
-  {
-  }
+  {}
 
   // clang-format off
   byte_t * begin()       { return base; }
@@ -204,8 +200,7 @@ struct ManagedBuffer
   ManagedBuffer() = delete;
 
   explicit ManagedBuffer(const llarp_buffer_t& b) : underlying(b)
-  {
-  }
+  {}
 
   ManagedBuffer(ManagedBuffer&&) = default;
   ManagedBuffer(const ManagedBuffer&) = default;
