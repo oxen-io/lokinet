@@ -16,8 +16,7 @@ namespace llarp
         const PathID_t& path, uint64_t txid, const RouterID& _target, AbstractContext* ctx)
         : RecursiveRouterLookup(TXOwner{ctx->OurKey(), txid}, _target, ctx, nullptr)
         , localPath(path)
-    {
-    }
+    {}
 
     void
     LocalRouterLookup::SendReply()

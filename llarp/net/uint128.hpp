@@ -24,13 +24,11 @@ namespace llarp
 
     // Initializes with 0s
     constexpr uint128_t() : uint128_t{0, 0}
-    {
-    }
+    {}
 
     // Initializes with least-significant value
     constexpr uint128_t(uint64_t lower) : uint128_t{0, lower}
-    {
-    }
+    {}
 
     // Initializes with upper and lower values
     constexpr uint128_t(uint64_t upper, uint64_t lower)
@@ -41,8 +39,7 @@ namespace llarp
         : lower{lower}, upper{upper}
 #endif
     // clang-format on
-    {
-    }
+    {}
 
     constexpr uint128_t(const uint128_t&) = default;
     constexpr uint128_t(uint128_t&&) = default;

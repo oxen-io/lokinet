@@ -157,19 +157,21 @@ namespace llarp
       return true;
     };
 
-    std::shared_lock l{nodedb()->access};
+    util::Lock l{nodedb()->access};
     return pick_router(nodedb()->entries);
   }
 
   void
   Router::PumpLL()
   {
+    llarp::LogTrace("Router::PumpLL() start");
     if (_stopping.load())
       return;
     paths.PumpDownstream();
     paths.PumpUpstream();
     _outboundMessageHandler.Tick();
     _linkManager.PumpLinks();
+    llarp::LogTrace("Router::PumpLL() end");
   }
 
   bool
@@ -279,9 +281,14 @@ namespace llarp
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
 
+    if (conf.router.m_workerThreads > 0)
+      m_lmq->set_general_threads(conf.router.m_workerThreads);
+
     m_lmq->start();
 
     _nodedb = nodedb;
+
+    m_isServiceNode = conf.router.m_isRelay;
 
     if (whitelistRouters)
     {
@@ -300,6 +307,7 @@ namespace llarp
     if (not EnsureIdentity())
       throw std::runtime_error("EnsureIdentity() failed");
 
+    m_RoutePoker.Init(this);
     return true;
   }
 
@@ -448,16 +456,12 @@ namespace llarp
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
     // Lokid Config
-    usingSNSeed = conf.lokid.usingSNSeed;
     whitelistRouters = conf.lokid.whitelistRouters;
     lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
 
-    if (usingSNSeed)
-      ident_keyfile = conf.lokid.ident_keyfile;
-
     m_isServiceNode = conf.router.m_isRelay;
 
-    networkConfig = conf.network;
+    auto& networkConfig = conf.network;
 
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
@@ -486,7 +490,7 @@ namespace llarp
 
     // if our conf had no bootstrap files specified, try the default location of
     // <DATA_DIR>/bootstrap.signed. If this isn't present, leave a useful error message
-    if (configRouters.size() == 0 and not m_isServiceNode)
+    if (configRouters.empty())
     {
       // TODO: use constant
       fs::path defaultBootstrapFile = conf.router.m_dataDir / "bootstrap.signed";
@@ -494,7 +498,7 @@ namespace llarp
       {
         configRouters.push_back(defaultBootstrapFile);
       }
-      else if (not conf.bootstrap.skipBootstrap)
+      else if (not conf.bootstrap.seednode)
       {
         LogError("No bootstrap files specified in config file, and the default");
         LogError("bootstrap file ", defaultBootstrapFile, " does not exist.");
@@ -547,7 +551,7 @@ namespace llarp
     LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, _logic);
+    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _logic);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,
@@ -608,18 +612,27 @@ namespace llarp
       _linkManager.AddLink(std::move(server), true);
     }
 
+    // profiling
+    _profilesFile = conf.router.m_dataDir / "profiles.dat";
+
     // Network config
-    if (conf.network.m_enableProfiling.has_value() and not*conf.network.m_enableProfiling)
+    if (conf.network.m_enableProfiling.value_or(false))
+    {
+      LogInfo("router profiling enabled");
+      if (not fs::exists(_profilesFile))
+      {
+        LogInfo("no profiles file at ", _profilesFile, " skipping");
+      }
+      else
+      {
+        LogInfo("loading router profiles from ", _profilesFile);
+        routerProfiling().Load(_profilesFile);
+      }
+    }
+    else
     {
       routerProfiling().Disable();
-      LogWarn("router profiling explicitly disabled");
-    }
-
-    if (!conf.network.m_routerProfilesFile.empty())
-    {
-      routerProfilesFile = conf.network.m_routerProfilesFile;
-      routerProfiling().Load(routerProfilesFile.c_str());
-      llarp::LogInfo("setting profiles to ", routerProfilesFile);
+      LogInfo("router profiling disabled");
     }
 
     // API config
@@ -629,15 +642,11 @@ namespace llarp
     }
 
     // peer stats
-    if (conf.router.m_enablePeerStats)
+    if (IsServiceNode())
     {
       LogInfo("Initializing peerdb...");
       m_peerDb = std::make_shared<PeerDb>();
       m_peerDb->configure(conf.router);
-    }
-    else if (IsServiceNode())
-    {
-      throw std::runtime_error("peer stats must be enabled when running as relay");
     }
 
     // Logging config
@@ -687,7 +696,8 @@ namespace llarp
       LogInfo(_rc.Age(now), " since we last updated our RC");
       LogInfo(_rc.TimeUntilExpires(now), " until our RC expires");
     }
-    LogInfo(now - m_LastStatsReport, " last reported stats");
+    if (m_LastStatsReport > 0s)
+      LogInfo(now - m_LastStatsReport, " last reported stats");
     m_LastStatsReport = now;
   }
 
@@ -778,8 +788,11 @@ namespace llarp
 
     if (HasClientExit())
     {
-      m_RoutePoker.Update(*this);
+      m_RoutePoker.Enable();
+      m_RoutePoker.Update();
     }
+    else
+      m_RoutePoker.Disable();
 
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)
@@ -814,7 +827,7 @@ namespace llarp
     // save profiles
     if (routerProfiling().ShouldSave(now))
     {
-      QueueDiskIO([&]() { routerProfiling().Save(routerProfilesFile.c_str()); });
+      QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
     // save nodedb
     if (nodedb()->ShouldSaveToDisk(now))
@@ -961,8 +974,6 @@ namespace llarp
   {
     if (_running || _stopping)
       return false;
-
-    routerProfiling().Load(routerProfilesFile.c_str());
 
     // set public signing key
     _rc.pubkey = seckey_topublic(identity());
@@ -1120,6 +1131,7 @@ namespace llarp
   Router::AfterStopLinks()
   {
     Close();
+    m_lmq.reset();
   }
 
   void
@@ -1128,7 +1140,6 @@ namespace llarp
     StopLinks();
     nodedb()->AsyncFlushToDisk();
     _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
-    m_lmq.reset();
   }
 
   void
@@ -1216,7 +1227,7 @@ namespace llarp
     LogInfo("accepting transit traffic");
     paths.AllowTransit();
     llarp_dht_allow_transit(dht());
-    _exitContext.AddExitEndpoint("default-connectivity", networkConfig, dnsConfig);
+    _exitContext.AddExitEndpoint("default-connectivity", m_Config->network, m_Config->dns);
     return true;
   }
 
@@ -1240,6 +1251,18 @@ namespace llarp
     return true;
   }
 
+  void
+  Router::QueueWork(std::function<void(void)> func)
+  {
+    m_lmq->job(std::move(func));
+  }
+
+  void
+  Router::QueueDiskIO(std::function<void(void)> func)
+  {
+    m_lmq->job(std::move(func), m_DiskThread);
+  }
+
   bool
   Router::HasClientExit() const
   {
@@ -1260,6 +1283,10 @@ namespace llarp
         [&](llarp::RouterContact rc) {
           if (IsServiceNode())
             return;
+          llarp::LogTrace(
+              "Before connect, outbound link adding route to (",
+              rc.addrs[0].toIpAddress().toIP(),
+              ") via gateway.");
           m_RoutePoker.AddRoute(rc.addrs[0].toIpAddress().toIP());
         },
         util::memFn(&Router::ConnectionEstablished, this),

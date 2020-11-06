@@ -18,6 +18,7 @@ namespace llarp
     uint64_t connectGoodCount = 0;
     uint64_t pathSuccessCount = 0;
     uint64_t pathFailCount = 0;
+    uint64_t pathTimeoutCount = 0;
     llarp_time_t lastUpdated = 0s;
     llarp_time_t lastDecay = 0s;
     uint64_t version = LLARP_PROTO_VERSION;
@@ -69,6 +70,9 @@ namespace llarp
     MarkConnectSuccess(const RouterID& r) EXCLUDES(m_ProfilesMutex);
 
     void
+    MarkPathTimeout(path::Path* p) EXCLUDES(m_ProfilesMutex);
+
+    void
     MarkPathFail(path::Path* p) EXCLUDES(m_ProfilesMutex);
 
     void
@@ -84,17 +88,20 @@ namespace llarp
     Tick() EXCLUDES(m_ProfilesMutex);
 
     bool
-    BEncode(llarp_buffer_t* buf) const EXCLUDES(m_ProfilesMutex);
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    BDecode(llarp_buffer_t* buf);
 
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) NO_THREAD_SAFETY_ANALYSIS;
     // disabled because we do load -> bencode::BDecodeReadFromFile -> DecodeKey
 
     bool
-    Load(const char* fname) EXCLUDES(m_ProfilesMutex);
+    Load(const fs::path fname) EXCLUDES(m_ProfilesMutex);
 
     bool
-    Save(const char* fname) EXCLUDES(m_ProfilesMutex);
+    Save(const fs::path fname) EXCLUDES(m_ProfilesMutex);
 
     bool
     ShouldSave(llarp_time_t now) const;
@@ -106,8 +113,6 @@ namespace llarp
     Enable();
 
    private:
-    bool
-    BEncodeNoLock(llarp_buffer_t* buf) const REQUIRES_SHARED(m_ProfilesMutex);
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map<RouterID, RouterProfile> m_Profiles GUARDED_BY(m_ProfilesMutex);
     llarp_time_t m_LastSave = 0s;

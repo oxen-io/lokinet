@@ -37,8 +37,7 @@ namespace llarp
       FromString(std::string_view str, const char* tld = ".loki");
 
       Address() : AlignedBuffer<32>()
-      {
-      }
+      {}
 
       explicit Address(const std::string& str) : AlignedBuffer<32>()
       {
@@ -47,17 +46,14 @@ namespace llarp
       }
 
       explicit Address(const Data& buf) : AlignedBuffer<32>(buf)
-      {
-      }
+      {}
 
       Address(const Address& other)
           : AlignedBuffer<32>(other.as_array()), subdomain(other.subdomain)
-      {
-      }
+      {}
 
       explicit Address(const AlignedBuffer<32>& other) : AlignedBuffer<32>(other)
-      {
-      }
+      {}
 
       bool
       operator<(const Address& other) const

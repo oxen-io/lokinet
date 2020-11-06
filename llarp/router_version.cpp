@@ -9,8 +9,7 @@ namespace llarp
 {
   RouterVersion::RouterVersion(const Version_t& router, uint64_t proto)
       : m_Version(router), m_ProtoVersion(proto)
-  {
-  }
+  {}
 
   bool
   RouterVersion::IsCompatableWith(const RouterVersion& other) const

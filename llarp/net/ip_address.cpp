@@ -11,8 +11,7 @@ namespace llarp
 
   IpAddress::IpAddress(const IpAddress& other)
       : m_empty(other.m_empty), m_ipAddress(other.m_ipAddress), m_port(other.m_port)
-  {
-  }
+  {}
 
   IpAddress::IpAddress(std::string_view str, std::optional<uint16_t> port)
   {

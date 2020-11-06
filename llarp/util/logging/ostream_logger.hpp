@@ -30,8 +30,7 @@ namespace llarp
     ImmediateFlush() override;
 
     void Tick(llarp_time_t) override
-    {
-    }
+    {}
 
    private:
     bool m_withColours;

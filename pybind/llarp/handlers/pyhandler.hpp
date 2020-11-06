@@ -18,15 +18,15 @@ namespace llarp
           : llarp::service::Endpoint(
               routerContext->router.get(), &routerContext->router->hiddenServiceContext())
           , OurName(std::move(name))
-      {
-      }
+      {}
       const std::string OurName;
 
       bool
       HandleInboundPacket(
           const service::ConvoTag tag,
           const llarp_buffer_t& pktbuf,
-          service::ProtocolType proto) override
+          service::ProtocolType proto,
+          uint64_t) override
       {
         if (handlePacket)
         {

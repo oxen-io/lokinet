@@ -14,8 +14,7 @@ namespace llarp
 
   RCGossiper::RCGossiper()
       : I_RCGossiper(), m_Filter(std::chrono::duration_cast<Time_t>(RCGossipFilterDecayInterval))
-  {
-  }
+  {}
 
   void
   RCGossiper::Init(ILinkManager* l, const RouterID& ourID, AbstractRouter* router)

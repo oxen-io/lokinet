@@ -103,6 +103,9 @@ namespace llarp
       void
       HandlePathBuildTimeout(path::Path_ptr path) override;
 
+      void
+      HandlePathBuildFailed(path::Path_ptr path) override;
+
       bool
       SelectHop(
           llarp_nodedb* db,

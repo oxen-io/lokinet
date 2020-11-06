@@ -45,8 +45,7 @@ namespace llarp
 
   void
   SysLogStream::PostLog(std::stringstream&) const
-  {
-  }
+  {}
 
 }  // namespace llarp
 #endif

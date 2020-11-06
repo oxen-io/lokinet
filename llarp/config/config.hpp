@@ -63,7 +63,6 @@ namespace llarp
     std::string m_identityKeyFile;
     std::string m_transportKeyFile;
 
-    bool m_enablePeerStats = false;
     bool m_isRelay = false;
 
     void
@@ -73,7 +72,6 @@ namespace llarp
   struct NetworkConfig
   {
     std::optional<bool> m_enableProfiling;
-    std::string m_routerProfilesFile;
     std::string m_strictConnect;
     std::string m_ifname;
     IPRange m_ifaddr;
@@ -86,7 +84,11 @@ namespace llarp
     bool m_AllowExit = false;
     std::set<RouterID> m_snodeBlacklist;
     net::IPRangeMap<service::Address> m_ExitMap;
+    net::IPRangeMap<std::string> m_LNSExitMap;
+
     std::unordered_map<service::Address, service::AuthInfo, service::Address::Hash> m_ExitAuths;
+    std::unordered_map<std::string, service::AuthInfo> m_LNSExitAuths;
+
     std::unordered_map<huint128_t, service::Address> m_mapAddrs;
 
     service::AuthType m_AuthType = service::AuthType::eAuthTypeNone;
@@ -153,7 +155,6 @@ namespace llarp
 
   struct LokidConfig
   {
-    bool usingSNSeed = false;
     bool whitelistRouters = false;
     fs::path ident_keyfile;
     lokimq::address lokidRPCAddr;
@@ -165,8 +166,7 @@ namespace llarp
   struct BootstrapConfig
   {
     std::vector<fs::path> routers;
-    /// for unit tests
-    bool skipBootstrap = false;
+    bool seednode;
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
   };
@@ -183,6 +183,10 @@ namespace llarp
 
   struct Config
   {
+    explicit Config(fs::path datadir);
+
+    ~Config() = default;
+
     RouterConfig router;
     NetworkConfig network;
     ConnectConfig connect;
@@ -204,10 +208,23 @@ namespace llarp
     void
     addBackwardsCompatibleConfigOptions(ConfigDefinition& conf);
 
-    // Load a config from the given file
+    // Load a config from the given file if the config file is not provided LoadDefault is called
     bool
-    Load(const fs::path fname, bool isRelay, fs::path defaultDataDir);
+    Load(std::optional<fs::path> fname = std::nullopt, bool isRelay = false);
 
+    std::string
+    generateBaseClientConfig();
+
+    std::string
+    generateBaseRouterConfig();
+
+    void
+    Save();
+
+    void
+    Override(std::string section, std::string key, std::string value);
+
+   private:
     /// Load (initialize) a default config.
     ///
     /// This delegates to the ConfigDefinition to generate a default config,
@@ -220,27 +237,17 @@ namespace llarp
     /// @param dataDir is a path representing a directory to be used as the data dir
     /// @return true on success, false otherwise
     bool
-    LoadDefault(bool isRelay, fs::path dataDir);
-
-    std::string
-    generateBaseClientConfig(fs::path defaultDataDir);
-
-    std::string
-    generateBaseRouterConfig(fs::path defaultDataDir);
+    LoadDefault(bool isRelay);
 
     void
-    Save();
+    LoadOverrides();
 
-    void
-    Override(std::string section, std::string key, std::string value);
-
-   private:
     ConfigParser m_Parser;
+    const fs::path m_DataDir;
   };
 
   void
-  ensureConfig(
-      const fs::path& defaultDataDir, const fs::path& confFile, bool overwrite, bool asRouter);
+  ensureConfig(fs::path dataDir, fs::path confFile, bool overwrite, bool asRouter);
 
 }  // namespace llarp
 

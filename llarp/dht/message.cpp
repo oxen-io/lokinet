@@ -22,8 +22,7 @@ namespace llarp
       bool relayed = false;
 
       MessageDecoder(const Key_t& from, bool wasRelayed) : From(from), relayed(wasRelayed)
-      {
-      }
+      {}
 
       bool
       operator()(llarp_buffer_t* buffer, llarp_buffer_t* key)
@@ -105,8 +104,7 @@ namespace llarp
     {
       ListDecoder(bool hasRelayed, const Key_t& from, std::vector<IMessage::Ptr_t>& list)
           : relayed(hasRelayed), From(from), l(list)
-      {
-      }
+      {}
 
       bool relayed;
       const Key_t& From;

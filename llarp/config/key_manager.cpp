@@ -9,8 +9,7 @@
 namespace llarp
 {
   KeyManager::KeyManager() : m_initialized(false), m_needBackup(false)
-  {
-  }
+  {}
 
   bool
   KeyManager::initialize(const llarp::Config& config, bool genIfAbsent, bool isRouter)

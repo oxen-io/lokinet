@@ -50,7 +50,7 @@ extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
 extern "C" VOID FAR PASCAL
 win32_daemon_entry(DWORD, LPTSTR*);
-VOID ReportSvcStatus(DWORD, DWORD, DWORD);
+BOOL ReportSvcStatus(DWORD, DWORD, DWORD);
 VOID
 insert_description();
 SERVICE_STATUS SvcStatus;
@@ -250,19 +250,26 @@ uninstall_win32_daemon()
 
 /// this sets up, configures and runs the main context
 static void
-run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
+run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions opts)
 {
+  llarp::LogTrace("start of run_main_context()");
   try
   {
-    // this is important, can downgrade from Info though
-    llarp::LogDebug("Running from: ", fs::current_path().string());
-    llarp::LogInfo("Using config file: ", confFile);
-
-    llarp::Config conf;
-    conf.Load(confFile, opts.isRouter, confFile.parent_path());
+    std::unique_ptr<llarp::Config> conf;
+    if (confFile.has_value())
+    {
+      llarp::LogInfo("Using config file: ", *confFile);
+      conf = std::make_unique<llarp::Config>(confFile->parent_path());
+    }
+    else
+    {
+      conf = std::make_unique<llarp::Config>(llarp::GetDefaultDataDir());
+    }
+    if (!conf->Load(confFile, opts.isRouter))
+      throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
-    ctx->Configure(conf);
+    ctx->Configure(*conf);
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -288,6 +295,41 @@ run_main_context(const fs::path confFile, const llarp::RuntimeOptions opts)
     exit_code.set_exception(std::current_exception());
   }
 }
+
+#ifdef _WIN32
+void
+TellWindowsServiceStopped()
+{
+  ::WSACleanup();
+  if (not start_as_daemon)
+    return;
+
+  llarp::LogInfo("Telling Windows the service has stopped.");
+  if (not ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0))
+  {
+    auto error_code = GetLastError();
+    if (error_code == ERROR_INVALID_DATA)
+      llarp::LogError(
+          "SetServiceStatus failed: \"The specified service status structure is invalid.\"");
+    else if (error_code == ERROR_INVALID_HANDLE)
+      llarp::LogError("SetServiceStatus failed: \"The specified handle is invalid.\"");
+    else
+      llarp::LogError("SetServiceStatus failed with an unknown error.");
+  }
+  llarp::LogContext::Instance().ImmediateFlush();
+}
+
+class WindowsServiceStopped
+{
+ public:
+  WindowsServiceStopped() = default;
+
+  ~WindowsServiceStopped()
+  {
+    TellWindowsServiceStopped();
+  }
+};
+#endif
 
 int
 main(int argc, char* argv[])
@@ -318,9 +360,9 @@ lokinet_main(int argc, char* argv[])
   llarp::RuntimeOptions opts;
 
 #ifdef _WIN32
+  WindowsServiceStopped stopped_raii;
   if (startWinsock())
     return -1;
-  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
 
   // SetUnhandledExceptionFilter(win32_signal_handler);
@@ -349,7 +391,7 @@ lokinet_main(int argc, char* argv[])
 
   bool genconfigOnly = false;
   bool overwrite = false;
-  fs::path configFile;
+  std::optional<fs::path> configFile;
   try
   {
     auto result = options.parse(argc, argv);
@@ -426,32 +468,51 @@ lokinet_main(int argc, char* argv[])
     return 1;
   }
 
-  if (!configFile.empty())
+  if (configFile.has_value())
   {
     // when we have an explicit filepath
-    fs::path basedir = configFile.parent_path();
-
+    fs::path basedir = configFile->parent_path();
     if (genconfigOnly)
     {
-      llarp::ensureConfig(basedir, configFile, overwrite, opts.isRouter);
+      try
+      {
+        llarp::ensureConfig(basedir, *configFile, overwrite, opts.isRouter);
+      }
+      catch (std::exception& ex)
+      {
+        LogError("cannot generate config at ", *configFile, ": ", ex.what());
+        return 1;
+      }
     }
     else
     {
-      std::error_code ec;
-      if (!fs::exists(configFile, ec))
+      try
       {
-        llarp::LogError("Config file not found ", configFile);
+        if (!fs::exists(*configFile))
+        {
+          llarp::LogError("Config file not found ", *configFile);
+          return 1;
+        }
+      }
+      catch (std::exception& ex)
+      {
+        LogError("cannot check if ", *configFile, " exists: ", ex.what());
         return 1;
       }
-
-      if (ec)
-        throw std::runtime_error(llarp::stringify("filesystem error: ", ec));
     }
   }
   else
   {
-    llarp::ensureConfig(
-        llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    try
+    {
+      llarp::ensureConfig(
+          llarp::GetDefaultDataDir(), llarp::GetDefaultConfigPath(), overwrite, opts.isRouter);
+    }
+    catch (std::exception& ex)
+    {
+      llarp::LogError("cannot ensure config: ", ex.what());
+      return 1;
+    }
     configFile = llarp::GetDefaultConfigPath();
   }
 
@@ -462,6 +523,11 @@ lokinet_main(int argc, char* argv[])
 
   std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();
+
+#ifdef _WIN32
+  ReportSvcStatus(SERVICE_RUNNING, NO_ERROR, 0);
+#endif
+
   do
   {
     // do periodic non lokinet related tasks here
@@ -491,6 +557,9 @@ lokinet_main(int argc, char* argv[])
         LogError(wtf);
         llarp::LogContext::Instance().ImmediateFlush();
       }
+#ifdef _WIN32
+      TellWindowsServiceStopped();
+#endif
       std::abort();
     }
   } while (ftr.wait_for(std::chrono::seconds(1)) != std::future_status::ready);
@@ -515,10 +584,6 @@ lokinet_main(int argc, char* argv[])
   }
 
   llarp::LogContext::Instance().ImmediateFlush();
-#ifdef _WIN32
-  ::WSACleanup();
-  ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, code);
-#endif
   if (ctx)
   {
     ctx.reset();
@@ -527,7 +592,7 @@ lokinet_main(int argc, char* argv[])
 }
 
 #ifdef _WIN32
-VOID
+BOOL
 ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
 {
   static DWORD dwCheckPoint = 1;
@@ -548,7 +613,7 @@ ReportSvcStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwWaitHint)
     SvcStatus.dwCheckPoint = dwCheckPoint++;
 
   // Report the status of the service to the SCM.
-  SetServiceStatus(SvcStatusHandle, &SvcStatus);
+  return SetServiceStatus(SvcStatusHandle, &SvcStatus);
 }
 
 VOID FAR PASCAL
@@ -595,7 +660,7 @@ win32_daemon_entry(DWORD argc, LPTSTR* argv)
   ReportSvcStatus(SERVICE_START_PENDING, NO_ERROR, 3000);
   // SCM clobbers startup args, regenerate them here
   argc = 2;
-  argv[1] = "c:/programdata/.lokinet/lokinet.ini";
+  argv[1] = "c:/programdata/lokinet/lokinet.ini";
   argv[2] = nullptr;
   lokinet_main(argc, argv);
 }

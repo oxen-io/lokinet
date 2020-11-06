@@ -84,7 +84,8 @@ struct ipv6_header_preamble
 
 struct ipv6_header
 {
-  union {
+  union
+  {
     ipv6_header_preamble preamble;
     uint32_t flowlabel;
   } preamble;
@@ -144,8 +145,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         PutTime(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
-        {
-        }
+        {}
         void
         operator()(IPPacket& pkt) const
         {
@@ -157,8 +157,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         GetNow(llarp_ev_loop_ptr evloop) : loop(std::move(evloop))
-        {
-        }
+        {}
         llarp_time_t
         operator()() const
         {

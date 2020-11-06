@@ -9,10 +9,38 @@ namespace llarp
   void
   RoutePoker::AddRoute(huint32_t ip)
   {
-    if (m_CurrentGateway.h == 0)
-      return;
+    llarp::LogInfo(
+        "RoutePoker::AddRoute adding route to IP (",
+        ip.ToString(),
+        ") via current gateway (",
+        m_CurrentGateway.ToString(),
+        ")");
     m_PokedRoutes.emplace(ip, m_CurrentGateway);
-    net::AddRoute(ip.ToString(), m_CurrentGateway.ToString());
+    if (m_CurrentGateway.h == 0)
+    {
+      llarp::LogInfo("RoutePoker::AddRoute no current gateway, cannot enable route.");
+    }
+    else if (m_Enabled or m_Enabling)
+    {
+      llarp::LogInfo("RoutePoker::AddRoute enabled, enabling route.");
+      EnableRoute(ip, m_CurrentGateway);
+    }
+    else
+    {
+      llarp::LogInfo("RoutePoker::AddRoute disabled, not enabling route.");
+    }
+  }
+
+  void
+  RoutePoker::DisableRoute(huint32_t ip, huint32_t gateway)
+  {
+    net::DelRoute(ip.ToString(), gateway.ToString());
+  }
+
+  void
+  RoutePoker::EnableRoute(huint32_t ip, huint32_t gateway)
+  {
+    net::AddRoute(ip.ToString(), gateway.ToString());
   }
 
   void
@@ -21,8 +49,43 @@ namespace llarp
     const auto itr = m_PokedRoutes.find(ip);
     if (itr == m_PokedRoutes.end())
       return;
-    net::DelRoute(itr->first.ToString(), itr->second.ToString());
     m_PokedRoutes.erase(itr);
+
+    if (m_Enabled)
+      DisableRoute(itr->first, itr->second);
+  }
+
+  void
+  RoutePoker::Init(AbstractRouter* router, bool enable)
+  {
+    m_Router = router;
+    m_Enabled = enable;
+    m_CurrentGateway = {0};
+  }
+
+  void
+  RoutePoker::DeleteAllRoutes()
+  {
+    // DelRoute will check enabled, so no need here
+    for (const auto& [ip, gateway] : m_PokedRoutes)
+      DelRoute(ip);
+  }
+
+  void
+  RoutePoker::DisableAllRoutes()
+  {
+    for (const auto& [ip, gateway] : m_PokedRoutes)
+      DisableRoute(ip, gateway);
+  }
+
+  void
+  RoutePoker::EnableAllRoutes()
+  {
+    for (auto& [ip, gateway] : m_PokedRoutes)
+    {
+      gateway = m_CurrentGateway;
+      EnableRoute(ip, m_CurrentGateway);
+    }
   }
 
   RoutePoker::~RoutePoker()
@@ -32,9 +95,12 @@ namespace llarp
   }
 
   std::optional<huint32_t>
-  RoutePoker::GetDefaultGateway(const AbstractRouter& router) const
+  RoutePoker::GetDefaultGateway() const
   {
-    const auto ep = router.hiddenServiceContext().GetDefault();
+    if (not m_Router)
+      throw std::runtime_error("Attempting to use RoutePoker before calling Init");
+
+    const auto ep = m_Router->hiddenServiceContext().GetDefault();
     const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
     huint32_t addr{};
     if (not gateways.empty())
@@ -43,38 +109,50 @@ namespace llarp
   }
 
   void
-  RoutePoker::Update(const AbstractRouter& router)
+  RoutePoker::Update()
   {
-    const auto maybe = GetDefaultGateway(router);
+    if (not m_Router)
+      throw std::runtime_error("Attempting to use RoutePoker before calling Init");
+
+    const auto maybe = GetDefaultGateway();
     if (not maybe.has_value())
     {
       LogError("Network is down");
       return;
     }
     const huint32_t gateway = *maybe;
-    if (m_CurrentGateway != gateway)
+    if (m_CurrentGateway != gateway or m_Enabling)
     {
       LogInfo("found default gateway: ", gateway);
-      // unpoke current routes
-      std::unordered_set<huint32_t> holes;
-
-      for (const auto& [ip, gw] : m_PokedRoutes)
-      {
-        // save hole
-        holes.emplace(ip);
-        // unpoke route
-        net::DelRoute(ip.ToString(), gw.ToString());
-      }
-      m_PokedRoutes.clear();
-
       m_CurrentGateway = gateway;
-      for (const auto& ip : holes)
-      {
-        AddRoute(ip);
-      }
 
-      const auto ep = router.hiddenServiceContext().GetDefault();
+      if (not m_Enabling)  // if route was already set up
+        DisableAllRoutes();
+      EnableAllRoutes();
+
+      const auto ep = m_Router->hiddenServiceContext().GetDefault();
       net::AddDefaultRouteViaInterface(ep->GetIfName());
     }
+  }
+
+  void
+  RoutePoker::Enable()
+  {
+    if (m_Enabled)
+      return;
+
+    m_Enabling = true;
+    Update();
+    m_Enabling = false;
+    m_Enabled = true;
+  }
+
+  void
+  RoutePoker::Disable()
+  {
+    if (not m_Enabled)
+      return;
+
+    DisableAllRoutes();
   }
 }  // namespace llarp

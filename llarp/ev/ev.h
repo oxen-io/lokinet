@@ -21,10 +21,6 @@
 #include <cstdint>
 #include <cstdlib>
 
-#if !defined(WIN32)
-#include <uv.h>
-#endif
-
 #include <constants/evloop.hpp>
 
 /**

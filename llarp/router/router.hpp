@@ -71,9 +71,6 @@ namespace llarp
     // our router contact
     RouterContact _rc;
 
-    /// are we using the lokid service node seed ?
-    bool usingSNSeed = false;
-
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
@@ -170,16 +167,10 @@ namespace llarp
     }
 
     void
-    QueueWork(std::function<void(void)> func) override
-    {
-      m_lmq->job(std::move(func));
-    }
+    QueueWork(std::function<void(void)> func) override;
 
     void
-    QueueDiskIO(std::function<void(void)> func) override
-    {
-      m_lmq->job(std::move(func), m_DiskThread);
-    }
+    QueueDiskIO(std::function<void(void)> func) override;
 
     IpAddress _ourAddress;
 
@@ -272,9 +263,6 @@ namespace llarp
     void
     PumpLL() override;
 
-    NetworkConfig networkConfig;
-    DnsConfig dnsConfig;
-
     const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
     lokimq::address rpcBindAddr = DefaultRPCBindAddr;
@@ -285,10 +273,8 @@ namespace llarp
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
     lokimq::address lokidRPCAddr;
-
     Profiling _routerProfiling;
-    std::string routerProfilesFile = "profiles.dat";
-
+    fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
     OutboundSessionMaker _outboundSessionMaker;
     LinkManager _linkManager;

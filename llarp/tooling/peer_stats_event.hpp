@@ -14,8 +14,7 @@ namespace tooling
         : RouterEvent("Link: LinkSessionEstablishedEvent", ourRouterId, false)
         , remoteId(remoteId_)
         , inbound(inbound_)
-    {
-    }
+    {}
 
     std::string
     ToString() const
@@ -31,8 +30,7 @@ namespace tooling
 
     ConnectionAttemptEvent(const llarp::RouterID& ourRouterId, const llarp::RouterID& remoteId_)
         : RouterEvent("Link: ConnectionAttemptEvent", ourRouterId, false), remoteId(remoteId_)
-    {
-    }
+    {}
 
     std::string
     ToString() const

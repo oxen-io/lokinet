@@ -100,7 +100,6 @@ tuntap_start(struct device *dev, int mode, int tun)
   }
 
   dev->tun_fd = fd;
-  tuntap_set_debug(dev, 0);
   return 0;
 
 clean:
@@ -369,39 +368,4 @@ tuntap_set_nonblocking(struct device *dev, int set)
     return -1;
   }
   return 0;
-}
-
-int
-tuntap_set_debug(struct device *dev, int set)
-{
-  /* Only accept started device */
-  if(dev->tun_fd == -1)
-  {
-    tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
-    return 0;
-  }
-
-#if defined(__linux__)
-  if(ioctl(dev->tun_fd, TUNSETDEBUG, &set) == -1)
-  {
-    switch(set)
-    {
-      case 0:
-        tuntap_log(TUNTAP_LOG_WARN, "Can't unset debug");
-        break;
-      case 1:
-        tuntap_log(TUNTAP_LOG_WARN, "Can't set debug");
-        break;
-      default:
-        tuntap_log(TUNTAP_LOG_ERR, "Invalid parameter 'set'");
-    }
-    return -1;
-  }
-  return 0;
-#else
-  (void)set;
-  tuntap_log(TUNTAP_LOG_NOTICE,
-             "Your system does not support tuntap_set_debug()");
-  return -1;
-#endif
 }

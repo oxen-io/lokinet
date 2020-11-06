@@ -60,8 +60,7 @@ namespace llarp
 
     LR_StatusMessage(std::array<EncryptedFrame, 8> _frames)
         : ILinkMessage(), frames(std::move(_frames))
-    {
-    }
+    {}
 
     LR_StatusMessage() = default;
 

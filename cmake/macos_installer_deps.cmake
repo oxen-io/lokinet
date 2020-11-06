@@ -26,7 +26,7 @@ ExternalProject_Add(lokinet-gui
     GIT_REPOSITORY "${LOKINET_GUI_REPO}"
     GIT_TAG "${LOKINET_GUI_CHECKOUT}"
     CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF
     )
 
 
@@ -60,16 +60,15 @@ set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/lokinet")
 set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
 
-# The GUI is GPLv3, and so the bundled core+GUI must be as well:
-set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/contrib/gpl-3.0.txt")
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
 
 set(CPACK_PRODUCTBUILD_IDENTITY_NAME "${MACOS_SIGN_PKG}")
 
 if(MACOS_SIGN_APP)
     add_custom_target(sign ALL
-        echo "Signing lokinet and lokinetctl binaries"
-        COMMAND codesign -s "${MACOS_SIGN_APP}" --strict --options runtime --force -vvv $<TARGET_FILE:lokinet> $<TARGET_FILE:lokinetctl>
-        DEPENDS lokinet lokinetctl
+        echo "Signing lokinet and lokinet-vpn binaries"
+        COMMAND codesign -s "${MACOS_SIGN_APP}" --strict --options runtime --force -vvv $<TARGET_FILE:lokinet> $<TARGET_FILE:lokinet-vpn>
+        DEPENDS lokinet lokinet-vpn
         )
 endif()
 

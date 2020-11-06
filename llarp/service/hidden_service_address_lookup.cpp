@@ -20,8 +20,7 @@ namespace llarp
         , relayOrder(order)
         , location(l)
         , handle(std::move(h))
-    {
-    }
+    {}
 
     bool
     HiddenServiceAddressLookup::HandleIntrosetResponse(const std::set<EncryptedIntroSet>& results)

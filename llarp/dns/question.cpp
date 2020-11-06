@@ -12,12 +12,10 @@ namespace llarp
         : qname(std::move(other.qname))
         , qtype(std::move(other.qtype))
         , qclass(std::move(other.qclass))
-    {
-    }
+    {}
     Question::Question(const Question& other)
         : qname(other.qname), qtype(other.qtype), qclass(other.qclass)
-    {
-    }
+    {}
 
     bool
     Question::Encode(llarp_buffer_t* buf) const
@@ -64,6 +62,13 @@ namespace llarp
     Question::IsLocalhost() const
     {
       return (qname == "localhost.loki." or llarp::ends_with(qname, ".localhost.loki."));
+    }
+
+    bool
+    Question::HasSubdomains() const
+    {
+      const auto parts = split(qname, ".", true);
+      return parts.size() >= 3;
     }
 
     std::string
