@@ -85,8 +85,7 @@ namespace llarp
 
     TransitHopInfo::TransitHopInfo(const RouterID& down, const LR_CommitRecord& record)
         : txID(record.txid), rxID(record.rxid), upstream(record.nextHop), downstream(down)
-    {
-    }
+    {}
 
     bool
     TransitHop::SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r)

@@ -14,8 +14,7 @@ namespace tooling
         : RouterEvent("Link: LinkSessionEstablishedEvent", ourRouterId, false)
         , remoteId(remoteId_)
         , inbound(inbound_)
-    {
-    }
+    {}
 
     std::string
     ToString() const

@@ -72,62 +72,44 @@ namespace llarp
 
     std::string_view sectName;
     size_t lineno = 0;
-    for (const auto& line : lines)
+    for (auto line : lines)
     {
       lineno++;
-      std::string_view realLine;
-      auto comment = line.find_first_of(';');
-      if (comment == std::string_view::npos)
-        comment = line.find_first_of('#');
-      if (comment == std::string_view::npos)
-        realLine = line;
-      else
-        realLine = line.substr(0, comment);
-      // blank or commented line?
-      if (realLine.size() == 0)
+      // Trim whitespace
+      while (!line.empty() && whitespace(line.front()))
+        line.remove_prefix(1);
+      while (!line.empty() && whitespace(line.back()))
+        line.remove_suffix(1);
+
+      // Skip blank lines and comments
+      if (line.empty() or line.front() == ';' or line.front() == '#')
         continue;
-      // find delimiters
-      auto sectOpenPos = realLine.find_first_of('[');
-      auto sectClosPos = realLine.find_first_of(']');
-      auto kvDelim = realLine.find_first_of('=');
-      if (sectOpenPos != std::string_view::npos && sectClosPos != std::string_view::npos
-          && kvDelim == std::string_view::npos)
+
+      if (line.front() == '[' && line.back() == ']')
       {
         // section header
-
-        // clamp whitespaces
-        ++sectOpenPos;
-        while (whitespace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos)
-          ++sectOpenPos;
-        --sectClosPos;
-        while (whitespace(realLine[sectClosPos]) && sectClosPos != sectOpenPos)
-          --sectClosPos;
-        // set section name
-        sectName = realLine.substr(sectOpenPos, sectClosPos);
+        line.remove_prefix(1);
+        line.remove_suffix(1);
+        sectName = line;
       }
-      else if (kvDelim != std::string_view::npos)
+      else if (auto kvDelim = line.find('='); kvDelim != std::string_view::npos)
       {
         // key value pair
-        std::string_view k = realLine.substr(0, kvDelim);
-        std::string_view v = realLine.substr(kvDelim + 1);
+        std::string_view k = line.substr(0, kvDelim);
+        std::string_view v = line.substr(kvDelim + 1);
+        // Trim inner whitespace
+        while (!k.empty() && whitespace(k.back()))
+          k.remove_suffix(1);
+        while (!v.empty() && whitespace(v.front()))
+          v.remove_prefix(1);
 
-        // clamp whitespaces
-        for (auto* x : {&k, &v})
-        {
-          while (!x->empty() && whitespace(x->front()))
-            x->remove_prefix(1);
-          while (!x->empty() && whitespace(x->back()))
-            x->remove_suffix(1);
-        }
-
-        if (k.size() == 0)
+        if (k.empty())
         {
           LogError(m_FileName, " invalid line (", lineno, "): '", line, "'");
           return false;
         }
-        SectionValues_t& sect = m_Config[std::string{sectName}];
-        LogDebug(m_FileName, ": ", sectName, ".", k, "=", v);
-        sect.emplace(k, v);
+        LogDebug(m_FileName, ": [", sectName, "]:", k, "=", v);
+        m_Config[std::string{sectName}].emplace(k, v);
       }
       else  // malformed?
       {
@@ -160,28 +142,26 @@ namespace llarp
   }
 
   void
-  ConfigParser::AddOverride(std::string section, std::string key, std::string value)
+  ConfigParser::AddOverride(fs::path fpath, std::string section, std::string key, std::string value)
   {
-    m_Overrides[section].emplace(key, value);
+    auto& data = m_Overrides[fpath];
+    data[section].emplace(key, value);
   }
 
   void
   ConfigParser::Save()
   {
-    // if we have no overrides keep the config the same on disk
-    if (m_Overrides.empty())
-      return;
-    std::ofstream ofs(m_FileName);
-    // write existing config data
-    ofs.write(m_Data.data(), m_Data.size());
     // write overrides
-    ofs << std::endl << std::endl << "# overrides" << std::endl;
-    for (const auto& [section, values] : m_Overrides)
+    for (const auto& [fname, overrides] : m_Overrides)
     {
-      ofs << std::endl << "[" << section << "]" << std::endl;
-      for (const auto& [key, value] : values)
+      std::ofstream ofs(fname);
+      for (const auto& [section, values] : overrides)
       {
-        ofs << key << "=" << value << std::endl;
+        ofs << std::endl << "[" << section << "]" << std::endl;
+        for (const auto& [key, value] : values)
+        {
+          ofs << key << "=" << value << std::endl;
+        }
       }
     }
     m_Overrides.clear();

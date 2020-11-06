@@ -44,6 +44,10 @@ namespace llarp
       bool
       IsLocalhost() const;
 
+      /// return true if we have subdomains in ths question
+      bool
+      HasSubdomains() const;
+
       /// get subdomain(s), if any, from qname
       std::string
       Subdomains() const;

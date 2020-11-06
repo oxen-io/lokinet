@@ -20,8 +20,7 @@ namespace llarp
         __attribute__((unused)) const Key_t& askpeer)
         : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, relayOrder, nullptr)
         , localPath(pathid)
-    {
-    }
+    {}
 
     void
     LocalServiceAddressLookup::SendReply()

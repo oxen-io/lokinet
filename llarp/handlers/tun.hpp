@@ -12,6 +12,7 @@
 #include <util/thread/threading.hpp>
 
 #include <future>
+#include <queue>
 
 namespace llarp
 {
@@ -87,11 +88,15 @@ namespace llarp
       /// overrides Endpoint
       bool
       HandleInboundPacket(
-          const service::ConvoTag tag, const llarp_buffer_t& pkt, service::ProtocolType t) override;
+          const service::ConvoTag tag,
+          const llarp_buffer_t& pkt,
+          service::ProtocolType t,
+          uint64_t seqno) override;
 
       /// handle inbound traffic
       bool
-      HandleWriteIPPacket(const llarp_buffer_t& buf, huint128_t src, huint128_t dst);
+      HandleWriteIPPacket(
+          const llarp_buffer_t& buf, huint128_t src, huint128_t dst, uint64_t seqno);
 
       /// queue outbound packet to the world
       bool
@@ -190,8 +195,21 @@ namespace llarp
 
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
+
+      struct WritePacket
+      {
+        uint64_t seqno;
+        net::IPPacket pkt;
+
+        bool
+        operator<(const WritePacket& other) const
+        {
+          return other.seqno < seqno;
+        }
+      };
+
       /// queue for sending packets to user from network
-      PacketQueue_t m_NetworkToUserPktQueue;
+      std::priority_queue<WritePacket> m_NetworkToUserPktQueue;
       /// return true if we have a remote loki address for this ip address
       bool
       HasRemoteForIP(huint128_t ipv4) const;
@@ -279,7 +297,7 @@ namespace llarp
       /// send function returns true to indicate stop iteration and do codel
       /// drop
       void
-      FlushToUser(std::function<bool(net::IPPacket&)> sendfunc);
+      FlushToUser(std::function<bool(const net::IPPacket&)> sendfunc);
     };
 
   }  // namespace handlers

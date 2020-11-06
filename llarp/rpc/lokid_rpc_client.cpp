@@ -47,6 +47,10 @@ namespace llarp
     void
     LokidRpcClient::ConnectAsync(lokimq::address url)
     {
+      if (not m_Router->IsServiceNode())
+      {
+        throw std::runtime_error("we cannot talk to lokid while not a service node");
+      }
       LogInfo("connecting to lokid via LMQ at ", url);
       m_Connection = m_lokiMQ->connect_remote(
           url,

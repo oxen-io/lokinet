@@ -133,18 +133,15 @@ struct lokinet_jni_vpnio : public lokinet::VPNIO
 {
   void
   InjectSuccess() override
-  {
-  }
+  {}
 
   void
   InjectFail() override
-  {
-  }
+  {}
 
   void
   Tick() override
-  {
-  }
+  {}
 };
 
 #endif

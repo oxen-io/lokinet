@@ -101,8 +101,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         GetNow(llarp_ev_loop_ptr l) : loop(l)
-        {
-        }
+        {}
 
         llarp_time_t
         operator()() const
@@ -115,8 +114,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         PutTime(llarp_ev_loop_ptr l) : loop(l)
-        {
-        }
+        {}
         void
         operator()(WriteBuffer& buf)
         {
@@ -143,8 +141,7 @@ namespace llarp
 
     /// for tcp
     win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q)
-    {
-    }
+    {}
 
     virtual void
     error()
@@ -304,8 +301,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         GetNow(llarp_ev_loop_ptr l) : loop(std::move(l))
-        {
-        }
+        {}
 
         llarp_time_t
         operator()() const
@@ -318,8 +314,7 @@ namespace llarp
       {
         llarp_ev_loop_ptr loop;
         PutTime(llarp_ev_loop_ptr l) : loop(std::move(l))
-        {
-        }
+        {}
         void
         operator()(WriteBuffer& writebuf)
         {
@@ -355,18 +350,15 @@ namespace llarp
 #endif
 
     posix_ev_io(int f) : fd(f)
-    {
-    }
+    {}
 
     /// for tun
     posix_ev_io(int f, LossyWriteQueue_t* q) : fd(f), m_LossyWriteQueue(q)
-    {
-    }
+    {}
 
     /// for tcp
     posix_ev_io(int f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q)
-    {
-    }
+    {}
 
     virtual void
     error()
@@ -425,8 +417,7 @@ namespace llarp
 
     virtual void
     before_flush_write()
-    {
-    }
+    {}
 
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
@@ -659,8 +650,7 @@ namespace llarp
 struct llarp_fd_promise
 {
   void Set(std::pair<int, int>)
-  {
-  }
+  {}
 
   int
   Get()
@@ -673,8 +663,7 @@ struct llarp_fd_promise
 {
   using promise_val_t = std::pair<int, int>;
   llarp_fd_promise(std::promise<promise_val_t>* p) : _impl(p)
-  {
-  }
+  {}
   std::promise<promise_val_t>* _impl;
 
   void
@@ -710,8 +699,7 @@ struct llarp_ev_loop
 
   virtual void
   update_time()
-  {
-  }
+  {}
 
   virtual llarp_time_t
   time_now() const

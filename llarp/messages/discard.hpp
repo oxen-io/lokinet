@@ -11,8 +11,7 @@ namespace llarp
   struct DiscardMessage final : public ILinkMessage
   {
     DiscardMessage() : ILinkMessage()
-    {
-    }
+    {}
 
     bool
     BEncode(llarp_buffer_t* buf) const override

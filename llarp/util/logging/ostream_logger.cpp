@@ -5,8 +5,7 @@ namespace llarp
 {
   OStreamLogStream::OStreamLogStream(bool withColours, std::ostream& out)
       : m_withColours(withColours), m_Out(out)
-  {
-  }
+  {}
 
   void
   OStreamLogStream::PreLog(

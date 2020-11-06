@@ -18,8 +18,7 @@ namespace llarp
     std::ios_base::fmtflags m_flags;
 
     FormatFlagsGuard(std::ios_base& base) : m_base(base), m_flags(base.flags())
-    {
-    }
+    {}
 
     ~FormatFlagsGuard()
     {

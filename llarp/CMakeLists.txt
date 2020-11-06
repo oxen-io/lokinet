@@ -64,7 +64,7 @@ add_library(lokinet-platform
   $<TARGET_OBJECTS:tuntap>
 )
 
-target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads ${LIBS})
+target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs libuv)
 
 
 if (ANDROID)
@@ -235,7 +235,9 @@ target_link_libraries(liblokinet PRIVATE libunbound)
 
 
 if(BUILD_SHARED_LIBS)
-  install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION lib)
+  include(GNUInstallDirs)
+
+  install(TARGETS lokinet-util lokinet-platform liblokinet LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
   if(WIN32)
     target_link_libraries(liblokinet PUBLIC ws2_32 iphlpapi)
   endif()

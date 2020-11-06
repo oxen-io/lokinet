@@ -115,8 +115,7 @@ namespace llarp
 
     InboundMessage::InboundMessage(uint64_t msgid, uint16_t sz, ShortHash h, llarp_time_t now)
         : m_Data(size_t{sz}), m_Digset{std::move(h)}, m_MsgID(msgid), m_LastActiveAt{now}
-    {
-    }
+    {}
 
     void
     InboundMessage::HandleData(uint16_t idx, const llarp_buffer_t& buf, llarp_time_t now)

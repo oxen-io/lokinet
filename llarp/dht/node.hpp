@@ -21,8 +21,7 @@ namespace llarp
       }
 
       RCNode(const RouterContact& other) : rc(other), ID(other.pubkey)
-      {
-      }
+      {}
 
       util::StatusObject
       ExtractStatus() const

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)  # bionic's cmake version
 
 # Has to be set before `project()`, and ignored on non-macos:
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "macOS deployment target (Apple clang only)")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -15,7 +15,7 @@ endif()
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME}
-    VERSION 0.8.0
+    VERSION 0.8.1
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -37,7 +37,7 @@ option(USE_AVX2 "enable avx2 code" OFF)
 option(USE_NETNS "enable networking namespace support. Linux only" OFF)
 option(NATIVE_BUILD "optimise for host system and FPU" ON)
 option(EMBEDDED_CFG "optimise for older hardware or embedded systems" OFF)
-option(BUILD_SHARED_LIBS "build lokinet libraries as shared libraries instead of static" ON)
+option(BUILD_SHARED_LIBS "build lokinet libraries as shared libraries instead of static" OFF)
 option(SHADOW "use shadow testing framework. linux only" OFF)
 option(XSAN "use sanitiser, if your system has it (requires -DCMAKE_BUILD_TYPE=Debug)" OFF)
 option(WITH_JEMALLOC "use jemalloc as allocator" OFF)
@@ -271,17 +271,19 @@ if (NOT BUILD_STATIC_DEPS)
   target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
 endif()
 
-pkg_check_modules(SD libsystemd)
+pkg_check_modules(SD libsystemd IMPORTED_TARGET)
 # Default WITH_SYSTEMD to true if we found it
 option(WITH_SYSTEMD "enable systemd integration for sd_notify" ${SD_FOUND})
+
+# Base interface target where we set up global link libraries, definitions, includes, etc.
+add_library(base_libs INTERFACE)
 
 if(WITH_SYSTEMD AND (NOT ANDROID))
   if(NOT SD_FOUND)
     message(FATAL_ERROR "libsystemd not found")
   endif()
-  add_definitions(-DWITH_SYSTEMD)
-  include_directories(${SD_INCLUDE_DIRS})
-  set(SD_LIBS ${SD_LDFLAGS})
+  target_link_libraries(base_libs INTERFACE PkgConfig::SD)
+  target_compile_definitions(base_libs INTERFACE WITH_SYSTEMD)
 endif()
 
 option(SUBMODULE_CHECK "Enables checking that vendored library submodules are up to date" ON)
@@ -331,14 +333,13 @@ include_directories(SYSTEM external/sqlite_orm/include)
 add_subdirectory(vendor)
 
 if(ANDROID)
-  list(APPEND LIBS log)
-  add_definitions(-DANDROID)
+  target_link_libraries(base_libs INTERFACE log)
+  target_compile_definitions(base_libs INTERFACE ANDROID)
   set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif()
 
-set(LIBS ${MALLOC_LIB} ${LIBUV_LIBRARY} ${SD_LIBS})
 if(TRACY_ROOT)
-  list(APPEND LIBS -ldl)
+  target_link_libraries(base_libs INTERFACE dl)
 endif()
 
 if(WITH_HIVE)
@@ -376,10 +377,6 @@ if(NOT TARGET uninstall)
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
 
-
-if(BUILD_PACKAGE)
-    include(cmake/installer.cmake)
-endif()
 
 if(BUILD_PACKAGE)
     include(cmake/installer.cmake)

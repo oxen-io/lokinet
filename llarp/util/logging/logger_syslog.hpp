@@ -24,12 +24,10 @@ namespace llarp
 
     virtual void
     ImmediateFlush() override
-    {
-    }
+    {}
 
     void Tick(llarp_time_t) override
-    {
-    }
+    {}
   };
 }  // namespace llarp
 #endif

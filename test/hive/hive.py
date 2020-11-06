@@ -48,14 +48,13 @@ class RouterHive(object):
       print("not removing dir %s because it doesn't start with /tmp/" % self.tmpdir)
 
     return False
-
-
+    
   def AddRelay(self, index):
     dirname = "%s/relays/%d" % (self.tmpdir, index)
     makedirs("%s/nodedb" % dirname, exist_ok=True)
 
-    config = pyllarp.Config()
-    config.LoadDefault(True, dirname);
+    config = pyllarp.Config(dirname)
+    config.Load(None, True)
 
     port = index + 30000
     tunname = "lokihive%d" % index
@@ -65,34 +64,31 @@ class RouterHive(object):
     config.router.nickname = "Router%d" % index
     config.router.overrideAddress('127.0.0.1:{}'.format(port))
     config.router.blockBogons = False
-    config.router.enablePeerStats = True
 
     config.network.enableProfiling = False
-    config.network.routerProfilesFile = "%s/profiles.dat" % dirname
     config.network.endpointType = 'null'
 
     config.links.addInboundLink("lo", AF_INET, port);
     config.links.setOutboundLink("lo", AF_INET, port + 10000);
 
     # config.dns.options = {"local-dns": ("127.3.2.1:%d" % port)}
-
-    if index != 0:
+    if index == 0:
+      config.bootstrap.seednode = True
+    else:
       config.bootstrap.routers = ["%s/relays/0/self.signed" % self.tmpdir]
 
     config.api.enableRPCServer = False
 
     config.lokid.whitelistRouters = False
-
-    print("adding relay at index %d" % port);
+    print("adding relay at index %d" % index)
     self.hive.AddRelay(config)
-
 
   def AddClient(self, index):
     dirname = "%s/clients/%d" % (self.tmpdir, index)
     makedirs("%s/nodedb" % dirname, exist_ok=True)
 
-    config = pyllarp.Config()
-    config.LoadDefault(False, dirname);
+    config = pyllarp.Config(dirname)
+    config.Load(None, False);
 
     port = index + 50000
     tunname = "lokihive%d" % index
@@ -102,7 +98,6 @@ class RouterHive(object):
     config.router.blockBogons = False
 
     config.network.enableProfiling = False
-    config.network.routerProfilesFile = "%s/profiles.dat" % dirname
     config.network.endpointType = 'null'
 
     config.links.setOutboundLink("lo", AF_INET, port + 10000);

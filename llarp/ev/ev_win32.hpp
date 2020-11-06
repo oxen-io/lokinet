@@ -40,8 +40,7 @@ namespace llarp
     udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
-    {
-    }
+    {}
 
     bool
     tick();

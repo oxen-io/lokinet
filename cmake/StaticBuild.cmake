@@ -87,12 +87,6 @@ endfunction()
 
 
 
-if(WITH_LTO)
-  set(flto "-flto")
-else()
-  set(flto "")
-endif()
-
 set(cross_host "")
 set(cross_rc "")
 if(CMAKE_CROSSCOMPILING)
@@ -142,6 +136,18 @@ if(ANDROID)
   set(deps_ar "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${android_toolchain_prefix}-${android_toolchain_suffix}-ar")
 endif()
 
+set(deps_CFLAGS "-O2")
+set(deps_CXXFLAGS "-O2")
+
+if(WITH_LTO)
+  set(deps_CFLAGS "${deps_CFLAGS} -flto")
+endif()
+
+if(APPLE)
+  set(deps_CFLAGS "${deps_CFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+  set(deps_CXXFLAGS "${deps_CXXFLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+endif()
+
 
 # Builds a target; takes the target name (e.g. "readline") and builds it in an external project with
 # target name suffixed with `_external`.  Its upper-case value is used to get the download details
@@ -150,7 +156,7 @@ endif()
 set(build_def_DEPENDS "")
 set(build_def_PATCH_COMMAND "")
 set(build_def_CONFIGURE_COMMAND ./configure ${cross_host} --disable-shared --prefix=${DEPS_DESTDIR} --with-pic
-    "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=-O2 ${flto}" "CXXFLAGS=-O2 ${flto}" ${cross_rc})
+    "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS}" "CXXFLAGS=${deps_CXXFLAGS}" ${cross_rc})
 set(build_def_BUILD_COMMAND make)
 set(build_def_INSTALL_COMMAND make install)
 set(build_def_BUILD_BYPRODUCTS ${DEPS_DESTDIR}/lib/lib___TARGET___.a ${DEPS_DESTDIR}/include/___TARGET___.h)
@@ -199,7 +205,7 @@ build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
     --prefix=${DEPS_DESTDIR} ${openssl_extra_opts} no-shared no-capieng no-dso no-dtls1 no-ec_nistp_64_gcc_128 no-gost
     no-heartbeats no-md2 no-rc5 no-rdrand no-rfc3779 no-sctp no-ssl-trace no-ssl2 no-ssl3
-    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=-O2 ${flto}"
+    no-static-engine no-tests no-weak-ssl-ciphers no-zlib no-zlib-dynamic "CFLAGS=${deps_CFLAGS}"
   INSTALL_COMMAND make install_sw
   BUILD_BYPRODUCTS
     ${DEPS_DESTDIR}/lib/libssl.a ${DEPS_DESTDIR}/lib/libcrypto.a
@@ -219,7 +225,7 @@ set(OPENSSL_VERSION 1.1.1)
 build_external(expat
   CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static
   --disable-shared --with-pic --without-examples --without-tests --without-docbook --without-xmlwf
-  "CC=${deps_cc}" "CFLAGS=-O2 ${flto}"
+  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
 )
 add_static_target(expat expat_external libexpat.a)
 
@@ -230,7 +236,7 @@ build_external(unbound
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
   --with-libexpat=${DEPS_DESTDIR}
-  "CC=${deps_cc}" "CFLAGS=-O2 ${flto}"
+  "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}"
 )
 add_static_target(libunbound unbound_external libunbound.a)
 if(NOT WIN32)
@@ -242,7 +248,7 @@ endif()
 
 
 build_external(sodium CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
-          --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=-O2 ${flto}")
+          --enable-static --with-pic "CC=${deps_cc}" "CFLAGS=${deps_CFLAGS}")
 add_static_target(sodium sodium_external libsodium.a)
 
 build_external(sqlite3)
@@ -260,7 +266,7 @@ build_external(zmq
   CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
     --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror
-    "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=-O2 -fstack-protector ${flto}" "CXXFLAGS=-O2 -fstack-protector ${flto}"
+    "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
     "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
 )
 add_static_target(libzmq zmq_external libzmq.a)

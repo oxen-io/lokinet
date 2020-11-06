@@ -44,8 +44,7 @@ namespace sqlite_orm
   /// llarp_time_t serialization
   template <>
   struct type_printer<llarp_time_t> : public integer_printer
-  {
-  };
+  {};
 
   template <>
   struct statement_binder<llarp_time_t>
@@ -90,8 +89,7 @@ namespace sqlite_orm
   /// RouterID serialization
   template <>
   struct type_printer<llarp::RouterID> : public text_printer
-  {
-  };
+  {};
 
   template <>
   struct statement_binder<llarp::RouterID>

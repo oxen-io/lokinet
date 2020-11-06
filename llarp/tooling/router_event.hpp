@@ -29,8 +29,7 @@ namespace tooling
   {
     RouterEvent(std::string eventType, llarp::RouterID routerID, bool triggered)
         : eventType(eventType), routerID(routerID), triggered(triggered)
-    {
-    }
+    {}
 
     virtual ~RouterEvent() = default;
 

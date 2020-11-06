@@ -179,8 +179,7 @@ namespace llarp
           size_t hoplen,
           bool bundleRC)
           : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen, bundleRC)
-      {
-      }
+      {}
 
       ~ExitSession() override = default;
 

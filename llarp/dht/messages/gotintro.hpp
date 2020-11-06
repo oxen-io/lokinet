@@ -23,8 +23,7 @@ namespace llarp
       std::optional<Key_t> closer;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
-      {
-      }
+      {}
 
       GotIntroMessage(const GotIntroMessage& other)
           : IMessage(other.From), found(other.found), txid(other.txid), closer(other.closer)
@@ -35,8 +34,7 @@ namespace llarp
       /// for iterative reply
       GotIntroMessage(const Key_t& from, const Key_t& _closer, uint64_t _txid)
           : IMessage(from), txid(_txid), closer(_closer)
-      {
-      }
+      {}
 
       /// for recursive reply
       GotIntroMessage(std::vector<service::EncryptedIntroSet> results, uint64_t txid);
@@ -56,8 +54,7 @@ namespace llarp
     struct RelayedGotIntroMessage final : public GotIntroMessage
     {
       RelayedGotIntroMessage() : GotIntroMessage({})
-      {
-      }
+      {}
 
       bool
       HandleMessage(llarp_dht_context* ctx, std::vector<IMessage::Ptr_t>& replies) const override;
