@@ -32,6 +32,8 @@ namespace llarp
     void
     Proxy::Stop()
     {
+      if (m_UnboundResolver)
+        m_UnboundResolver->Stop();
     }
 
     bool
@@ -41,6 +43,7 @@ namespace llarp
       {
         if (not SetupUnboundResolver(resolvers))
         {
+          llarp::LogError("Failed to add upstream resolvers during DNS server setup.");
           return false;
         }
       }
@@ -50,10 +53,8 @@ namespace llarp
       LogicCall(m_ClientLogic, [=]() {
         llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
       });
-      LogicCall(m_ServerLogic, [=]() {
-        llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr());
-      });
-      return true;
+      return (
+          llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr()) == 0);
     }
 
     static Proxy::Buffer_t
@@ -68,11 +69,8 @@ namespace llarp
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
     {
       Buffer_t msgbuf = CopyBuffer(buf.underlying);
-      auto self = static_cast<Proxy*>(u->user)->shared_from_this();
-      // yes we use the server loop here because if the server loop is not the
-      // client loop we'll crash again
-      LogicCall(
-          self->m_ServerLogic, [self, from, msgbuf]() { self->HandlePktServer(from, msgbuf); });
+      auto self = static_cast<Proxy*>(u->user);
+      self->HandlePktServer(from, msgbuf);
     }
 
     void
@@ -137,13 +135,13 @@ namespace llarp
 
     void
     Proxy::HandleTick(llarp_udp_io*)
-    {
-    }
+    {}
 
     void
     Proxy::SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf)
     {
-      llarp_ev_udp_sendto(&m_Server, to, buf);
+      if (llarp_ev_udp_sendto(&m_Server, to, buf) < 0)
+        llarp::LogError("dns reply failed");
     }
 
     void
@@ -247,7 +245,6 @@ namespace llarp
         return;
       }
 
-      TX tx = {hdr.id, from};
       Message msg(hdr);
       if (!msg.Decode(&pkt))
       {

@@ -11,19 +11,18 @@ namespace llarp
 {
   namespace path
   {
-    PathSet::PathSet(size_t num) : numPaths(num)
-    {
-    }
+    PathSet::PathSet(size_t num) : numDesiredPaths(num)
+    {}
 
     bool
     PathSet::ShouldBuildMore(llarp_time_t now) const
     {
       (void)now;
       const auto building = NumInStatus(ePathBuilding);
-      if (building >= numPaths)
+      if (building >= numDesiredPaths)
         return false;
       const auto established = NumInStatus(ePathEstablished);
-      return established < numPaths;
+      return established < numDesiredPaths;
     }
 
     bool
@@ -336,6 +335,12 @@ namespace llarp
     {
       LogWarn(Name(), " path build ", p->ShortName(), " failed");
       m_BuildStats.fails++;
+    }
+
+    void
+    PathSet::HandlePathDied(Path_ptr p)
+    {
+      LogWarn(Name(), " path ", p->ShortName(), " died");
     }
 
     void

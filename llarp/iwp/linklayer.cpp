@@ -24,8 +24,7 @@ namespace llarp
         : ILinkLayer(
             keyManager, getrc, h, sign, before, est, reneg, timeout, closed, pumpDone, worker)
         , permitInbound{allowInbound}
-    {
-    }
+    {}
 
     LinkLayer::~LinkLayer() = default;
 

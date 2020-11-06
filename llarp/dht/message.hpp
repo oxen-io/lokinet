@@ -20,8 +20,7 @@ namespace llarp
 
       /// construct
       IMessage(const Key_t& from) : From(from)
-      {
-      }
+      {}
 
       using Ptr_t = std::unique_ptr<IMessage>;
 

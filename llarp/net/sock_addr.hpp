@@ -49,6 +49,7 @@ namespace llarp
     operator=(const in6_addr& addr);
 
     operator const sockaddr*() const;
+    operator const sockaddr_in*() const;
     operator const sockaddr_in6*() const;
 
     bool
@@ -82,6 +83,7 @@ namespace llarp
    private:
     bool m_empty = true;
     sockaddr_in6 m_addr;
+    sockaddr_in m_addr4;
 
     void
     init();

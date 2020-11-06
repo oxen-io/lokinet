@@ -11,8 +11,7 @@ namespace llarp::dht
 {
   FindNameMessage::FindNameMessage(const Key_t& from, Key_t namehash, uint64_t txid)
       : IMessage(from), NameHash(std::move(namehash)), TxID(txid)
-  {
-  }
+  {}
 
   bool
   FindNameMessage::BEncode(llarp_buffer_t* buf) const

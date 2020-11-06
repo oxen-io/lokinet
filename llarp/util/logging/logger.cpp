@@ -46,8 +46,7 @@ namespace llarp
 
   LogContext::LogContext()
       : logStream(std::make_unique<Stream_t>(_LOGSTREAM_INIT)), started(llarp::time_now_ms())
-  {
-  }
+  {}
 
   LogContext&
   LogContext::Instance()
@@ -69,24 +68,19 @@ namespace llarp
   }
 
   log_timestamp::log_timestamp() : log_timestamp("%c %Z")
-  {
-  }
+  {}
 
   log_timestamp::log_timestamp(const char* fmt)
       : format(fmt)
       , now(llarp::time_now_ms())
       , delta(llarp::time_now_ms() - LogContext::Instance().started)
-  {
-  }
+  {}
 
   void
   SetLogLevel(LogLevel lvl)
   {
     LogContext::Instance().curLevel = lvl;
-    if (lvl == eLogDebug)
-    {
-      LogContext::Instance().runtimeLevel = lvl;
-    }
+    LogContext::Instance().runtimeLevel = lvl;
   }
 
   LogLevel
@@ -110,10 +104,13 @@ namespace llarp
       std::function<void(IOFunc_t)> io)
   {
     SetLogLevel(level);
+    if (level == eLogTrace)
+      LogTrace("Set log level to trace.");
+
     nodeName = nickname;
 
     FILE* logfile = nullptr;
-    if (file == "stdout" or file.empty())
+    if (file == "stdout" or file == "-" or file.empty())
     {
       logfile = stdout;
     }
@@ -174,12 +171,10 @@ namespace llarp
   }
 
   LogSilencer::LogSilencer() : LogSilencer(LogContext::Instance())
-  {
-  }
+  {}
 
   LogSilencer::LogSilencer(LogContext& ctx) : parent(ctx), stream(std::move(ctx.logStream))
-  {
-  }
+  {}
 
   LogSilencer::~LogSilencer()
   {

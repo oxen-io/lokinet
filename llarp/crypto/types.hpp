@@ -20,16 +20,13 @@ namespace llarp
     PubKey() = default;
 
     explicit PubKey(const byte_t* ptr) : AlignedBuffer<SIZE>(ptr)
-    {
-    }
+    {}
 
     explicit PubKey(const Data& data) : AlignedBuffer<SIZE>(data)
-    {
-    }
+    {}
 
     explicit PubKey(const AlignedBuffer<SIZE>& other) : AlignedBuffer<SIZE>(other)
-    {
-    }
+    {}
 
     std::string
     ToString() const;
@@ -84,13 +81,11 @@ namespace llarp
     SecretKey() = default;
 
     explicit SecretKey(const byte_t* ptr) : AlignedBuffer<SECKEYSIZE>(ptr)
-    {
-    }
+    {}
 
     // The full data
     explicit SecretKey(const AlignedBuffer<SECKEYSIZE>& seed) : AlignedBuffer<SECKEYSIZE>(seed)
-    {
-    }
+    {}
 
     // Just the seed, we recalculate the pubkey
     explicit SecretKey(const AlignedBuffer<32>& seed)
@@ -147,12 +142,10 @@ namespace llarp
     PrivateKey() = default;
 
     explicit PrivateKey(const byte_t* ptr) : AlignedBuffer<64>(ptr)
-    {
-    }
+    {}
 
     explicit PrivateKey(const AlignedBuffer<64>& key_and_hash) : AlignedBuffer<64>(key_and_hash)
-    {
-    }
+    {}
 
     /// Returns a pointer to the beginning of the 32-byte hash which is used for
     /// pseudorandomness when signing with this private key.
@@ -195,8 +188,7 @@ namespace llarp
   struct IdentitySecret final : public AlignedBuffer<32>
   {
     IdentitySecret() : AlignedBuffer<32>()
-    {
-    }
+    {}
 
     /// no copy constructor
     explicit IdentitySecret(const IdentitySecret&) = delete;

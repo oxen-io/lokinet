@@ -15,8 +15,7 @@ namespace llarp
   {
     GotIntroMessage::GotIntroMessage(std::vector<service::EncryptedIntroSet> results, uint64_t tx)
         : IMessage({}), found(std::move(results)), txid(tx)
-    {
-    }
+    {}
 
     bool
     GotIntroMessage::HandleMessage(

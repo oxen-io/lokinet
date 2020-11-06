@@ -15,8 +15,7 @@ namespace llarp
       TagLookup(
           const TXOwner& asker, const service::Tag& tag, AbstractContext* ctx, uint64_t recursion)
           : TX<service::Tag, service::EncryptedIntroSet>(asker, tag, ctx), recursionDepth(recursion)
-      {
-      }
+      {}
 
       bool
       Validate(const service::EncryptedIntroSet& introset) const override;

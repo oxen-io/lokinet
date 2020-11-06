@@ -22,8 +22,7 @@ namespace llarp
         , m_Endpoint(ep)
         , createdAt(ep->Now())
         , m_SendQueue(SendContextQueueSize)
-    {
-    }
+    {}
 
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)

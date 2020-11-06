@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <algorithm>
+#include <csignal>
 
 using namespace std::chrono_literals;
 

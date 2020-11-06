@@ -15,8 +15,7 @@ namespace tooling
         : RouterEvent("PathAttemptEvent", routerID, false)
         , hops(path->hops)
         , pathid(path->hops[0].rxID)
-    {
-    }
+    {}
 
     std::string
     ToString() const
@@ -58,8 +57,7 @@ namespace tooling
         , txid(hop->info.txID)
         , rxid(hop->info.rxID)
         , isEndpoint(routerID == nextHop ? true : false)
-    {
-    }
+    {}
 
     std::string
     ToString() const
@@ -93,8 +91,7 @@ namespace tooling
     PathStatusReceivedEvent(
         const llarp::RouterID& routerID, const llarp::PathID_t rxid_, uint64_t status_)
         : RouterEvent("PathStatusReceivedEvent", routerID, true), rxid(rxid_), status(status_)
-    {
-    }
+    {}
 
     std::string
     ToString() const
@@ -119,8 +116,7 @@ namespace tooling
         : RouterEvent("PathBuildRejectedEvent", routerID, false)
         , rxid(rxid_)
         , rejectedBy(rejectedBy_)
-    {
-    }
+    {}
 
     std::string
     ToString() const

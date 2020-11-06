@@ -12,12 +12,11 @@ namespace llarp
     {
       NullEndpoint(AbstractRouter* r, llarp::service::Context* parent)
           : llarp::service::Endpoint(r, parent)
-      {
-      }
+      {}
 
       virtual bool
       HandleInboundPacket(
-          const service::ConvoTag, const llarp_buffer_t&, service::ProtocolType) override
+          const service::ConvoTag, const llarp_buffer_t&, service::ProtocolType, uint64_t) override
       {
         return true;
       }

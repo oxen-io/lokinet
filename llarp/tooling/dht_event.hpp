@@ -22,8 +22,7 @@ namespace tooling
         , introsetPubkey(introsetPubkey_)
         , relay(relay_)
         , relayIndex(relayIndex_)
-    {
-    }
+    {}
 
     std::string
     ToString() const
@@ -51,8 +50,7 @@ namespace tooling
         , location(location_)
         , txid(txid_)
         , relayOrder(relayOrder_)
-    {
-    }
+    {}
 
     std::string
     ToString() const override
@@ -79,8 +77,7 @@ namespace tooling
         , From(from_)
         , Introset(introset_)
         , TxID(txid_)
-    {
-    }
+    {}
 
     std::string
     ToString() const override
@@ -108,8 +105,7 @@ namespace tooling
         , exploritory(msg.exploritory)
         , txid(msg.txid)
         , version(msg.version)
-    {
-    }
+    {}
 
     std::string
     ToString() const override

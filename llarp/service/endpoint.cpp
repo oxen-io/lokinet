@@ -52,7 +52,7 @@ namespace llarp
     Endpoint::Configure(const NetworkConfig& conf, [[maybe_unused]] const DnsConfig& dnsConf)
     {
       if (conf.m_Paths.has_value())
-        numPaths = *conf.m_Paths;
+        numDesiredPaths = *conf.m_Paths;
 
       if (conf.m_Hops.has_value())
         numHops = *conf.m_Hops;
@@ -64,6 +64,14 @@ namespace llarp
       {
         SetAuthInfoForEndpoint(exit, auth);
       }
+
+      conf.m_LNSExitMap.ForEachEntry([&](const IPRange& range, const std::string& name) {
+        std::optional<AuthInfo> auth;
+        const auto itr = conf.m_LNSExitAuths.find(name);
+        if (itr != conf.m_LNSExitAuths.end())
+          auth = itr->second;
+        m_StartupLNSMappings[name] = std::make_pair(range, auth);
+      });
 
       return m_state->Configure(conf);
     }
@@ -227,6 +235,29 @@ namespace llarp
           now, m_state->m_RemoteSessions, m_state->m_DeadSessions, Sessions());
       // expire convotags
       EndpointUtil::ExpireConvoSessions(now, Sessions());
+
+      if (NumInStatus(path::ePathEstablished) > 1)
+      {
+        for (const auto& item : m_StartupLNSMappings)
+        {
+          LookupNameAsync(
+              item.first, [name = item.first, info = item.second, this](auto maybe_addr) {
+                if (maybe_addr.has_value())
+                {
+                  const auto maybe_range = info.first;
+                  const auto maybe_auth = info.second;
+
+                  m_StartupLNSMappings.erase(name);
+
+                  if (maybe_range.has_value())
+                    m_ExitMap.Insert(*maybe_range, *maybe_addr);
+
+                  if (maybe_auth.has_value())
+                    SetAuthInfoForEndpoint(*maybe_addr, *maybe_auth);
+                }
+              });
+        }
+      }
     }
 
     bool
@@ -286,8 +317,7 @@ namespace llarp
       }
       std::unique_ptr<IServiceLookup> lookup = std::move(itr->second);
       lookups.erase(itr);
-      if (not lookup->HandleIntrosetResponse(remote))
-        lookups.emplace(msg->txid, std::move(lookup));
+      lookup->HandleIntrosetResponse(remote);
       return true;
     }
 
@@ -505,8 +535,7 @@ namespace llarp
           , m_IntroSet(std::move(introset))
           , m_Endpoint(parent)
           , m_relayOrder(relayOrder)
-      {
-      }
+      {}
 
       std::shared_ptr<routing::IMessage>
       BuildRequestMessage() override
@@ -775,6 +804,12 @@ namespace llarp
     bool
     Endpoint::HasExit() const
     {
+      for (const auto& [name, info] : m_StartupLNSMappings)
+      {
+        if (info.first.has_value())
+          return true;
+      }
+
       return not m_ExitMap.Empty();
     }
 
@@ -788,8 +823,10 @@ namespace llarp
         handler(maybe);
         return true;
       }
-      LogInfo(Name(), " looking up LNS name: ", name);
       auto path = PickRandomEstablishedPath();
+      if (path == nullptr)
+        return false;
+      LogInfo(Name(), " looking up LNS name: ", name);
       auto job = new LookupNameJob(this, GenTXID(), name, handler);
       return job->SendRequestViaPath(path, m_router);
     }
@@ -1027,9 +1064,11 @@ namespace llarp
       return true;
     }
 
-    void Endpoint::HandlePathDied(path::Path_ptr)
+    void
+    Endpoint::HandlePathDied(path::Path_ptr p)
     {
       RegenAndPublishIntroSet(true);
+      path::Builder::HandlePathDied(p);
     }
 
     bool
@@ -1190,10 +1229,10 @@ namespace llarp
                 return false;
               pkt.UpdateIPv4Address(src, dst);
               /// TODO: V6
-              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4);
+              return HandleInboundPacket(tag, pkt.ConstBuffer(), eProtocolTrafficV4, 0);
             },
             Router(),
-            numPaths,
+            numDesiredPaths,
             numHops,
             false,
             ShouldBundleRC());
@@ -1245,7 +1284,7 @@ namespace llarp
         {
           auto msg = queue.popFront();
           const llarp_buffer_t buf(msg->payload);
-          HandleInboundPacket(msg->tag, buf, msg->proto);
+          HandleInboundPacket(msg->tag, buf, msg->proto, msg->seqno);
         }
       };
 
@@ -1353,7 +1392,7 @@ namespace llarp
             PutReplyIntroFor(f.T, m->introReply);
             m->sender = m_Identity.pub;
             m->seqno = GetSeqNoForConvo(f.T);
-            f.S = 1;
+            f.S = m->seqno;
             f.F = m->introReply.pathID;
             transfer->P = remoteIntro.pathID;
             auto self = this;
@@ -1421,19 +1460,15 @@ namespace llarp
       auto itr = Sessions().find(tag);
       if (itr == Sessions().end())
         return 0;
-      return ++(itr->second.seqno);
+      itr->second.seqno += 1;
+      return itr->second.seqno;
     }
 
     bool
     Endpoint::ShouldBuildMore(llarp_time_t now) const
     {
-      if (path::Builder::BuildCooldownHit(now))
+      if (not path::Builder::ShouldBuildMore(now))
         return false;
-
-      size_t numBuilding = NumInStatus(path::ePathBuilding);
-      if (numBuilding > 0)
-        return false;
-
       return ((now - lastBuild) > path::intro_path_spread)
           || NumInStatus(path::ePathEstablished) < path::min_intro_paths;
     }

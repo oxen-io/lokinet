@@ -13,8 +13,7 @@ namespace llarp
       const Key_t us;
 
       XorMetric(const Key_t& ourKey) : us(ourKey)
-      {
-      }
+      {}
 
       bool
       operator()(const Key_t& left, const Key_t& right) const

@@ -26,8 +26,7 @@ namespace llarp
 
       FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid)
           : IMessage({}), tagName(tag), txID(txid)
-      {
-      }
+      {}
 
       explicit FindIntroMessage(uint64_t txid, const Key_t& addr, uint64_t order)
           : IMessage({}), location(addr), txID(txid), relayOrder(order)

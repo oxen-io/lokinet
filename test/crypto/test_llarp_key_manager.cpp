@@ -112,8 +112,8 @@ TEST_F(KeyManagerTest, TestBackupFileByMoving_FailsIfBackupNamesAreExausted)
 
 TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
 {
-  llarp::Config conf;
-  conf.LoadDefault(false, {});
+  llarp::Config conf{fs::current_path()};
+  conf.Load();
 
   KeyManager keyManager;
   ASSERT_TRUE(keyManager.initialize(conf, true, true));
@@ -128,9 +128,9 @@ TEST_F(KeyManagerTest, TestInitialize_MakesKeyfiles)
 
 TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
 {
-  llarp::Config conf;
-  conf.LoadDefault(false, {});
-
+  llarp::Config conf{fs::current_path()};
+  conf.Load();
+  
   KeyManager keyManager;
   ASSERT_FALSE(keyManager.initialize(conf, false, true));
 
@@ -143,8 +143,9 @@ TEST_F(KeyManagerTest, TestInitialize_RespectsGenFlag)
 
 TEST_F(KeyManagerTest, TestInitialize_DetectsBadRcFile)
 {
-  llarp::Config conf;
-  conf.LoadDefault(false, {});
+  llarp::Config conf{fs::current_path()};
+  conf.Load();
+  
   conf.lokid.whitelistRouters = false;
 
   std::fstream f;

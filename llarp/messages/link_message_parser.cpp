@@ -30,8 +30,7 @@ namespace llarp
 
   LinkMessageParser::LinkMessageParser(AbstractRouter* _router)
       : router(_router), from(nullptr), msg(nullptr), holder(std::make_unique<msg_holder_t>())
-  {
-  }
+  {}
 
   LinkMessageParser::~LinkMessageParser() = default;
 
