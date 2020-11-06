@@ -1,3 +1,109 @@
+lokinet (0.8.1-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Don't use -march=native for static linux build (#1390)
+
+  [ Jeff ]
+  * add status command to lokinet-vpn (#1393)
+  * don't allow running lokid-rpc as client (#1394)
+  * dont segfault on exit (#1396)
+
+  [ Jason Rhinelander ]
+  * macos package fixes for 0.3.0
+  * Config file improvements (#1397)
+
+  [ Rick V ]
+  * move old stuff down a notch (#1377)
+
+  [ Jeff ]
+  * order packets when writing to network interface (#1372)
+  * fix empty config case (#1400)
+
+  [ Jason Rhinelander ]
+  * Don't report a huge negative elapsed time on startup (#1401)
+
+  [ Jeff ]
+  * dns features (#1404)
+  * always use data directory for bootstrap.signed (#1405)
+  * Unflaky-ify lns dns (#1406)
+
+  [ Jason Rhinelander ]
+  * Try to build for 10.14 (#1412)
+  * Reduce macOS target to 10.12, and fix target for deps (#1414)
+
+  [ Thomas Winget ]
+  * Route Poker changes (#1416)
+
+  [ Jeff ]
+  * Lns exits (#1407)
+  * add conf.d directory for config overrides (#1410)
+
+  [ Thomas Winget ]
+  * Some Windows fixes (#1415)
+
+  [ Jeff ]
+  * use correct path for windows service (#1418)
+  * make drone ci use debian testing (#1413)
+  * dont bind inbound links as client (#1419)
+  * redo cpack for win32 (#1420)
+
+  [ Jason Rhinelander ]
+  * Crank clang version to 11 (#1422)
+
+  [ Jeff ]
+  * bugfixes for lokinetmon (#1426)
+  * more aggressive path building. (#1423)
+  * bump win32 gui build\  * add hashpin for gui  * add installer icon (#1424)
+  * handle libuv case when we don't have it (#1403)
+  * enable profiling on clients by default (#1421)
+  * bump version to 0.8.1 (#1425)
+
+  [ Jason Rhinelander ]
+  * CMake fixes: libuv static build, base_libs, shared lib install dir (#1431)
+
+  [ Jeff ]
+  * fix crashes on shutdown (#1433)
+  * use same directory for windows installer, remove version. (#1435)
+  * dont do native builds in static linux ci (#1434)
+  * allow for relative file paths in config (#1432)
+
+  [ Jeff Becker ]
+  * turn building shared libraries off by default because no one uses this right now
+
+  [ Jeff ]
+  * I have no words. (#1438)
+
+  [ Jason Rhinelander ]
+  * Move resolvconf from deb branches to contrib/ (#1439)
+
+  [ Jeff ]
+  * add exit.localhost.loki cname record (#1440)
+  * deny traffic to non whitelisted routers. (#1444)
+  * try fixing memory leak in path builder (#1442)
+  * update information in exit-setup.md (#1441)
+  * Bump win32 gui version (#1446)
+
+  [ DEADBLACKCLOVER ]
+  * Adding Russian translation (#1447)
+
+  [ Jeff ]
+  * profiles.dat is always relative so if you spawn lokinet in / then it will error about permissions. (#1449)
+  * fix path reference leak (#1451)
+
+  [ Jeff Becker ]
+  * fix path in uninstall command
+
+  [ Jeff ]
+  * try fixing deadlock (#1454)
+
+  [ Jeff Becker ]
+  * bump lokinet wi32 gui build
+
+  [ Jeff ]
+  * run without highdpi scaling on windows (#1456)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 06 Nov 2020 15:12:06 -0400
+
 lokinet (0.8.0-4~deb10) buster; urgency=medium
 
   * Set default inbound link to best public interface
