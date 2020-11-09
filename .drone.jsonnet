@@ -148,7 +148,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
                 'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
                 'eatmydata mk-build-deps --install --remove --tool "' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
                 'export DEB_BUILD_OPTIONS="parallel=$$(nproc)"',
-                'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
+                #'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
                 'debuild -e CCACHE_DIR -b',
                 './contrib/ci/drone-debs-upload.sh ' + distro,
             ]
