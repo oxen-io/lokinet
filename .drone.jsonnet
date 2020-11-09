@@ -135,6 +135,11 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
                         git checkout $${distro_branch}
                     fi
                 |||,
+                # Tell the merge how to resolve conflicts in the source .drone.jsonnet (we don't
+                # care about it at all since *this* .drone.jsonnet is already loaded).
+                'git config merge.ours.driver true',
+                'echo .drone.jsonnet merge=ours >>.gitattributes',
+
                 'git merge ${DRONE_COMMIT}',
                 'export DEBEMAIL="${DRONE_COMMIT_AUTHOR_EMAIL}" DEBFULLNAME="${DRONE_COMMIT_AUTHOR_NAME}"',
                 'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
