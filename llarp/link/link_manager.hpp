@@ -38,6 +38,9 @@ namespace llarp
     SessionIsClient(RouterID remote) const override;
 
     void
+    DeregisterPeer(RouterID remote) override;
+
+    void
     PumpLinks() override;
 
     void

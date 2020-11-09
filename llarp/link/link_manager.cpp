@@ -78,6 +78,21 @@ namespace llarp
   }
 
   void
+  LinkManager::DeregisterPeer(RouterID remote)
+  {
+    m_PersistingSessions.erase(remote);
+    for (const auto& link : inboundLinks)
+    {
+      link->CloseSessionTo(remote);
+    }
+    for (const auto& link : outboundLinks)
+    {
+      link->CloseSessionTo(remote);
+    }
+    LogInfo(remote, " has been de-registered");
+  }
+
+  void
   LinkManager::PumpLinks()
   {
     for (const auto& link : inboundLinks)

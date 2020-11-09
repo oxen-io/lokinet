@@ -70,6 +70,11 @@ namespace llarp
     virtual void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
 
+    /// close all connections to this peer
+    /// remove all link layer commits
+    virtual void
+    DeregisterPeer(RouterID remote) = 0;
+
     virtual size_t
     NumberOfConnectedRouters() const = 0;
 

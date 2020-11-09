@@ -784,6 +784,25 @@ namespace llarp
       return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
     });
 
+    // find all deregistered relays
+    std::unordered_set<PubKey, PubKey::Hash> closePeers;
+
+    _linkManager.ForEachPeer([&](auto session) {
+      if (whitelistRouters and not gotWhitelist)
+        return;
+      if (not session)
+        return;
+      const auto pk = session->GetPubKey();
+      if (session->IsRelay() and not _rcLookupHandler.RemoteIsAllowed(pk))
+      {
+        closePeers.emplace(pk);
+      }
+    });
+
+    // mark peers as de-registered
+    for (auto& peer : closePeers)
+      _linkManager.DeregisterPeer(std::move(peer));
+
     _linkManager.CheckPersistingSessions(now);
 
     if (HasClientExit())
