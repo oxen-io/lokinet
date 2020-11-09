@@ -21,7 +21,7 @@ local debian_pipeline(name, image,
         werror=true,
         cmake_extra='',
         extra_cmds=[],
-        imaginary_repo=false,
+        loki_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
@@ -39,14 +39,14 @@ local debian_pipeline(name, image,
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                ] + (if imaginary_repo then [
-                    'eatmydata ' + apt_get_quiet + ' install -y gpg curl lsb-release',
-                    'echo deb https://deb.imaginary.stream $$(lsb_release -sc) main >/etc/apt/sources.list.d/imaginary.stream.list',
-                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
+                ] + (if loki_repo then [
+                    'eatmydata ' + apt_get_quiet + ' install -y lsb-release',
+                    'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
+                    'echo deb https://deb.loki.network $$(lsb_release -sc) main >/etc/apt/sources.list.d/loki.network.list',
                     'eatmydata ' + apt_get_quiet + ' update'
                     ] else []
                 ) + [
+                'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
                 'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
@@ -106,7 +106,7 @@ local windows_cross_pipeline(name, image,
 };
 
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
-local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=false) = {
+local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = {
     kind: 'pipeline',
     type: 'docker',
     name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
@@ -120,15 +120,14 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
             failure: 'ignore',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
-                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
+                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
+                ] + (if loki_repo then [
+                    'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
+                    'echo deb https://deb.loki.network $${distro} main >/etc/apt/sources.list.d/loki.network.list'
+                ] else []) + [
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y git devscripts equivs ccache git-buildpackage python3-dev' + (if imaginary_repo then ' gpg' else'')
-                ] + (if imaginary_repo then [ // Some distros need the imaginary.stream repo for backported sodium, etc.
-                    'echo deb https://deb.imaginary.stream $${distro} main >/etc/apt/sources.list.d/imaginary.stream.list',
-                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
-                    'eatmydata ' + apt_get_quiet + ' update'
-                ] else []) + [
+                'eatmydata ' + apt_get_quiet + ' install -y git devscripts equivs ccache git-buildpackage python3-dev',
                 |||
                     # Look for the debian branch in this repo first, try upstream if that fails.
                     if ! git checkout $${distro_branch}; then
@@ -200,7 +199,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', imaginary_repo=true),
+                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', loki_repo=true),
 
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
@@ -228,7 +227,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
 
     // Deb builds:
     deb_builder("debian:sid", "sid", "debian/sid"),
-    deb_builder("debian:buster", "buster", "debian/buster", imaginary_repo=true),
+    deb_builder("debian:buster", "buster", "debian/buster"),
     deb_builder("ubuntu:focal", "focal", "ubuntu/focal"),
     deb_builder("debian:sid", "sid", "debian/sid", arch='arm64'),
 
