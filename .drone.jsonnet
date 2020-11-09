@@ -10,6 +10,8 @@ local submodules = {
     commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1']
 };
 
+local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
+
 // Regular build on a debian-like system:
 local debian_pipeline(name, image,
         arch='amd64',
@@ -35,17 +37,17 @@ local debian_pipeline(name, image,
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt-get dist-upgrade -y',
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
                 ] + (if imaginary_repo then [
-                    'eatmydata apt-get install -y gpg curl lsb-release',
+                    'eatmydata ' + apt_get_quiet + ' install -y gpg curl lsb-release',
                     'echo deb https://deb.imaginary.stream $$(lsb_release -sc) main >/etc/apt/sources.list.d/imaginary.stream.list',
                     'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
-                    'eatmydata apt-get update'
+                    'eatmydata ' + apt_get_quiet + ' update'
                     ] else []
                 ) + [
-                'eatmydata apt-get install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
+                'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
@@ -84,9 +86,9 @@ local windows_cross_pipeline(name, image,
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt install -y build-essential cmake git ninja-build pkg-config ccache mingw-w64 nsis zip',
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache mingw-w64 nsis zip',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
@@ -119,13 +121,13 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y git devscripts equivs ccache git-buildpackage python3-dev' + (if imaginary_repo then ' gpg' else'')
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y git devscripts equivs ccache git-buildpackage python3-dev' + (if imaginary_repo then ' gpg' else'')
                 ] + (if imaginary_repo then [ // Some distros need the imaginary.stream repo for backported sodium, etc.
                     'echo deb https://deb.imaginary.stream $${distro} main >/etc/apt/sources.list.d/imaginary.stream.list',
                     'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
-                    'eatmydata apt-get update'
+                    'eatmydata ' + apt_get_quiet + ' update'
                 ] else []) + [
                 |||
                     # Look for the debian branch in this repo first, try upstream if that fails.
@@ -137,12 +139,10 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
                 'git merge ${DRONE_COMMIT}',
                 'export DEBEMAIL="${DRONE_COMMIT_AUTHOR_EMAIL}" DEBFULLNAME="${DRONE_COMMIT_AUTHOR_NAME}"',
                 'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
-                'eatmydata mk-build-deps --install --remove --tool "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
+                'eatmydata mk-build-deps --install --remove --tool "' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
                 'export DEB_BUILD_OPTIONS="parallel=$$(nproc)"',
                 'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
                 'debuild -e CCACHE_DIR -b',
-                'pwd',
-                'find ./contrib/ci',
                 './contrib/ci/drone-debs-upload.sh ' + distro,
             ]
         }
@@ -185,8 +185,9 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         steps: [{
             name: 'build', image: 'debian:sid',
             commands: [
-                'apt-get update', 'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y git clang-format-9',
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-9',
                 './contrib/ci/drone-format-verify.sh']
         }]
     },
