@@ -36,6 +36,7 @@ local debian_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
@@ -85,6 +86,7 @@ local windows_cross_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
@@ -120,6 +122,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
             failure: 'ignore',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
                 ] + (if loki_repo then [
                     'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
@@ -165,6 +168,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
             name: 'build',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 // If you don't do this then the C compiler doesn't have an include path containing
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
@@ -189,6 +193,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         steps: [{
             name: 'build', image: 'debian:sid',
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
                 'eatmydata ' + apt_get_quiet + ' install -y git clang-format-9',
