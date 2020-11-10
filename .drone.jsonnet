@@ -1,4 +1,4 @@
-local default_deps_base='libsystemd-dev python3-dev libcurl4-openssl-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev';
+local default_deps_base='libsystemd-dev python3-dev libuv1-dev libunbound-dev nettle-dev libssl-dev libevent-dev libsqlite3-dev';
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 local default_windows_deps='mingw-w64 zip nsis';
@@ -10,6 +10,8 @@ local submodules = {
     commands: ['git fetch --tags', 'git submodule update --init --recursive --depth=1']
 };
 
+local apt_get_quiet = 'apt-get -o=Dpkg::Use-Pty=0 -q';
+
 // Regular build on a debian-like system:
 local debian_pipeline(name, image,
         arch='amd64',
@@ -19,7 +21,7 @@ local debian_pipeline(name, image,
         werror=true,
         cmake_extra='',
         extra_cmds=[],
-        imaginary_repo=false,
+        loki_repo=false,
         allow_fail=false) = {
     kind: 'pipeline',
     type: 'docker',
@@ -34,18 +36,19 @@ local debian_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt-get dist-upgrade -y',
-                ] + (if imaginary_repo then [
-                    'eatmydata apt-get install -y gpg curl lsb-release',
-                    'echo deb https://deb.imaginary.stream $$(lsb_release -sc) main >/etc/apt/sources.list.d/imaginary.stream.list',
-                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
-                    'eatmydata apt-get update'
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                ] + (if loki_repo then [
+                    'eatmydata ' + apt_get_quiet + ' install -y lsb-release',
+                    'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
+                    'echo deb http://deb.loki.network $$(lsb_release -sc) main >/etc/apt/sources.list.d/loki.network.list',
+                    'eatmydata ' + apt_get_quiet + ' update'
                     ] else []
                 ) + [
-                'eatmydata apt-get install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
+                'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
+                'eatmydata ' + apt_get_quiet + ' install -y gdb cmake git ninja-build pkg-config ccache ' + deps,
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_BUILD_TYPE='+build_type+' ' +
@@ -83,10 +86,11 @@ local windows_cross_pipeline(name, image,
             [if allow_fail then "failure"]: "ignore",
             environment: { SSH_KEY: { from_secret: "SSH_KEY" }, WINDOWS_BUILD_NAME: toolchain+"bit" },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt install -y build-essential cmake git ninja-build pkg-config ccache mingw-w64 nsis zip',
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache mingw-w64 nsis zip',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
@@ -104,7 +108,7 @@ local windows_cross_pipeline(name, image,
 };
 
 // Builds a snapshot .deb on a debian-like system by merging into the debian/* or ubuntu/* branch
-local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=false) = {
+local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = {
     kind: 'pipeline',
     type: 'docker',
     name: 'DEB (' + distro + (if arch == 'amd64' then '' else '/' + arch) + ')',
@@ -118,15 +122,15 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
             failure: 'ignore',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
-                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                'apt-get update',
-                'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y git devscripts equivs ccache git-buildpackage python3-dev' + (if imaginary_repo then ' gpg' else'')
-                ] + (if imaginary_repo then [ // Some distros need the imaginary.stream repo for backported sodium, etc.
-                    'echo deb https://deb.imaginary.stream $${distro} main >/etc/apt/sources.list.d/imaginary.stream.list',
-                    'curl -s https://deb.imaginary.stream/public.gpg | apt-key add -',
-                    'eatmydata apt-get update'
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
+                'echo "man-db man-db/auto-update boolean false" | debconf-set-selections'
+                ] + (if loki_repo then [
+                    'cp contrib/deb.loki.network.gpg /etc/apt/trusted.gpg.d',
+                    'echo deb http://deb.loki.network $${distro} main >/etc/apt/sources.list.d/loki.network.list'
                 ] else []) + [
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y git devscripts equivs ccache git-buildpackage python3-dev',
                 |||
                     # Look for the debian branch in this repo first, try upstream if that fails.
                     if ! git checkout $${distro_branch}; then
@@ -134,15 +138,18 @@ local deb_builder(image, distro, distro_branch, arch='amd64', imaginary_repo=fal
                         git checkout $${distro_branch}
                     fi
                 |||,
+                # Tell the merge how to resolve conflicts in the source .drone.jsonnet (we don't
+                # care about it at all since *this* .drone.jsonnet is already loaded).
+                'git config merge.ours.driver true',
+                'echo .drone.jsonnet merge=ours >>.gitattributes',
+
                 'git merge ${DRONE_COMMIT}',
                 'export DEBEMAIL="${DRONE_COMMIT_AUTHOR_EMAIL}" DEBFULLNAME="${DRONE_COMMIT_AUTHOR_NAME}"',
                 'gbp dch -S -s "HEAD^" --spawn-editor=never -U low',
-                'eatmydata mk-build-deps --install --remove --tool "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
+                'eatmydata mk-build-deps --install --remove --tool "' + apt_get_quiet + ' -o Debug::pkgProblemResolver=yes --no-install-recommends -y"',
                 'export DEB_BUILD_OPTIONS="parallel=$$(nproc)"',
-                'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
+                #'grep -q lib debian/lokinet-bin.install || echo "/usr/lib/lib*.so*" >>debian/lokinet-bin.install',
                 'debuild -e CCACHE_DIR -b',
-                'pwd',
-                'find ./contrib/ci',
                 './contrib/ci/drone-debs-upload.sh ' + distro,
             ]
         }
@@ -161,6 +168,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
             name: 'build',
             environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
             commands: [
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 // If you don't do this then the C compiler doesn't have an include path containing
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
@@ -185,8 +193,10 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         steps: [{
             name: 'build', image: 'debian:sid',
             commands: [
-                'apt-get update', 'apt-get install -y eatmydata',
-                'eatmydata apt-get install -y git clang-format-9',
+                'echo "Building on ${DRONE_STAGE_MACHINE}"',
+                apt_get_quiet + ' update',
+                apt_get_quiet + ' install -y eatmydata',
+                'eatmydata ' + apt_get_quiet + ' install -y git clang-format-9',
                 './contrib/ci/drone-format-verify.sh']
         }]
     },
@@ -199,7 +209,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
     debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', imaginary_repo=true),
+                    cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', loki_repo=true),
 
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
@@ -227,7 +237,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
 
     // Deb builds:
     deb_builder("debian:sid", "sid", "debian/sid"),
-    deb_builder("debian:buster", "buster", "debian/buster", imaginary_repo=true),
+    deb_builder("debian:buster", "buster", "debian/buster"),
     deb_builder("ubuntu:focal", "focal", "ubuntu/focal"),
     deb_builder("debian:sid", "sid", "debian/sid", arch='arm64'),
 
