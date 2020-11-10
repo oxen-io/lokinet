@@ -102,6 +102,10 @@ namespace llarp
     virtual RouterContact
     GetRemoteRC() const = 0;
 
+    /// is this session a session to a relay?
+    bool
+    IsRelay() const;
+
     /// handle a valid LIM
     std::function<bool(const LinkIntroMessage* msg)> GotLIM;
 

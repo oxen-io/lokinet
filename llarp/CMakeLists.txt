@@ -150,6 +150,7 @@ add_library(liblokinet
   iwp/message_buffer.cpp
   iwp/session.cpp
   link/link_manager.cpp
+  link/session.cpp
   link/server.cpp
   messages/dht_immediate.cpp
   messages/link_intro.cpp
