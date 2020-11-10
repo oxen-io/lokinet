@@ -551,7 +551,7 @@ namespace llarp
     LogInfo("Loaded ", bootstrapRCList.size(), " bootstrap routers");
 
     // Init components after relevant config settings loaded
-    _outboundMessageHandler.Init(&_linkManager, _logic);
+    _outboundMessageHandler.Init(&_linkManager, &_rcLookupHandler, _logic);
     _outboundSessionMaker.Init(
         this,
         &_linkManager,
@@ -783,6 +783,25 @@ namespace llarp
       // in the whitelist OR if there is no whitelist don't remove
       return not _rcLookupHandler.RemoteIsAllowed(rc.pubkey);
     });
+
+    // find all deregistered relays
+    std::unordered_set<PubKey, PubKey::Hash> closePeers;
+
+    _linkManager.ForEachPeer([&](auto session) {
+      if (whitelistRouters and not gotWhitelist)
+        return;
+      if (not session)
+        return;
+      const auto pk = session->GetPubKey();
+      if (session->IsRelay() and not _rcLookupHandler.RemoteIsAllowed(pk))
+      {
+        closePeers.emplace(pk);
+      }
+    });
+
+    // mark peers as de-registered
+    for (auto& peer : closePeers)
+      _linkManager.DeregisterPeer(std::move(peer));
 
     _linkManager.CheckPersistingSessions(now);
 

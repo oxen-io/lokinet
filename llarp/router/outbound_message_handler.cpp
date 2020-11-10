@@ -2,6 +2,7 @@
 
 #include <messages/link_message.hpp>
 #include <router/i_outbound_session_maker.hpp>
+#include <router/i_rc_lookup_handler.hpp>
 #include <link/i_link_manager.hpp>
 #include <constants/link_layer.hpp>
 #include <util/meta/memfn.hpp>
@@ -22,6 +23,12 @@ namespace llarp
   OutboundMessageHandler::QueueMessage(
       const RouterID& remote, const ILinkMessage* msg, SendStatusHandler callback)
   {
+    if (not _linkManager->SessionIsClient(remote) and not _lookupHandler->RemoteIsAllowed(remote))
+    {
+      DoCallback(callback, SendStatus::InvalidRouter);
+      return true;
+    }
+
     const uint16_t priority = msg->Priority();
     std::array<byte_t, MAX_LINK_MSG_SIZE> linkmsg_buffer;
     llarp_buffer_t buf(linkmsg_buffer);
@@ -105,9 +112,11 @@ namespace llarp
   }
 
   void
-  OutboundMessageHandler::Init(ILinkManager* linkManager, std::shared_ptr<Logic> logic)
+  OutboundMessageHandler::Init(
+      ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, std::shared_ptr<Logic> logic)
   {
     _linkManager = linkManager;
+    _lookupHandler = lookupHandler;
     _logic = logic;
 
     outboundMessageQueues.emplace(zeroID, MessageQueue());
