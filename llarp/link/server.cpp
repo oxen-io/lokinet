@@ -48,6 +48,16 @@ namespace llarp
     return m_AuthedLinks.find(id) != m_AuthedLinks.end();
   }
 
+  std::shared_ptr<ILinkSession>
+  ILinkLayer::FindSessionByPubkey(RouterID id)
+  {
+    Lock_t l(m_AuthedLinksMutex);
+    auto itr = m_AuthedLinks.find(id);
+    if (itr == m_AuthedLinks.end())
+      return nullptr;
+    return itr->second;
+  }
+
   void
   ILinkLayer::ForEachSession(std::function<void(const ILinkSession*)> visit, bool randomize) const
   {

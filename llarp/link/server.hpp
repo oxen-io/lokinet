@@ -121,6 +121,10 @@ namespace llarp
     virtual std::shared_ptr<ILinkSession>
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
+    /// fetch a session by the identity pubkey it claims
+    std::shared_ptr<ILinkSession>
+    FindSessionByPubkey(RouterID pk);
+
     virtual void
     Pump();
 
