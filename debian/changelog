@@ -1,3 +1,16 @@
+lokinet (0.8.1-3~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix deb snapshot builds + misc other CI updates (#1462)
+
+  [ Jeff ]
+  * try to handle router deregistrations on the network better (#1461)
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 10 Nov 2020 13:19:13 -0400
+
 lokinet (0.8.1-2~pre1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
