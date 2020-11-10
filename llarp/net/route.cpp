@@ -382,9 +382,13 @@ namespace llarp::net
     ifname.back()++;
     Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
-#elif __APPLE__ || BSD
+#elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+#elif BSD
+    const auto iface = GetIFAddr(ifname);
+    Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + iface->toHost());
+    Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + iface->toHost());
 #elif __sun
     const auto iface = GetIFAddr(ifname);
     Execute("/usr/sbin/route add 0.0.0.0/1 -iface " + iface->toHost());
@@ -418,10 +422,15 @@ namespace llarp::net
     ifname.back()++;
     Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
-#elif __APPLE__ || BSD
+#elif __APPLE__
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+#elif BSD
+    const auto iface = GetIFAddr(ifname);
+    Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + iface->toHost());
+    Execute(
+        "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + iface->toHost());
 #elif __sun
     const auto iface = GetIFAddr(ifname);
     Execute("/usr/sbin/route delete 0.0.0.0/1 -iface " + iface->toHost());
