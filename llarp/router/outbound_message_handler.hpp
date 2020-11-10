@@ -17,7 +17,6 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  struct I_RCLookupHandler;
   struct ILinkManager;
   class Logic;
   enum class SessionResult;
@@ -43,7 +42,7 @@ namespace llarp
     ExtractStatus() const override;
 
     void
-    Init(ILinkManager* linkManager, I_RCLookupHandler* lookupHandler, std::shared_ptr<Logic> logic);
+    Init(ILinkManager* linkManager, std::shared_ptr<Logic> logic);
 
    private:
     using Message = std::pair<std::vector<byte_t>, SendStatusHandler>;
@@ -138,7 +137,6 @@ namespace llarp
     std::queue<PathID_t> roundRobinOrder;
 
     ILinkManager* _linkManager;
-    I_RCLookupHandler* _lookupHandler;
     std::shared_ptr<Logic> _logic;
 
     util::ContentionKiller m_Killer;
