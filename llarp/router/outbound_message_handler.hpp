@@ -17,8 +17,8 @@ struct llarp_buffer_t;
 
 namespace llarp
 {
-  struct I_RCLookupHandler;
   struct ILinkManager;
+  struct I_RCLookupHandler;
   class Logic;
   enum class SessionResult;
 

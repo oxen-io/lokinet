@@ -34,6 +34,12 @@ namespace llarp
     bool
     HasSessionTo(const RouterID& remote) const override;
 
+    std::optional<bool>
+    SessionIsClient(RouterID remote) const override;
+
+    void
+    DeregisterPeer(RouterID remote) override;
+
     void
     PumpLinks() override;
 

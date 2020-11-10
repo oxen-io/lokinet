@@ -60,6 +60,38 @@ namespace llarp
     return GetLinkWithSessionTo(remote) != nullptr;
   }
 
+  std::optional<bool>
+  LinkManager::SessionIsClient(RouterID remote) const
+  {
+    for (const auto& link : inboundLinks)
+    {
+      const auto session = link->FindSessionByPubkey(remote);
+      if (session)
+        return not session->IsRelay();
+    }
+    for (const auto& link : outboundLinks)
+    {
+      if (link->HasSessionTo(remote))
+        return false;
+    }
+    return std::nullopt;
+  }
+
+  void
+  LinkManager::DeregisterPeer(RouterID remote)
+  {
+    m_PersistingSessions.erase(remote);
+    for (const auto& link : inboundLinks)
+    {
+      link->CloseSessionTo(remote);
+    }
+    for (const auto& link : outboundLinks)
+    {
+      link->CloseSessionTo(remote);
+    }
+    LogInfo(remote, " has been de-registered");
+  }
+
   void
   LinkManager::PumpLinks()
   {
