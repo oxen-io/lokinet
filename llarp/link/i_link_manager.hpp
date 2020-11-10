@@ -7,6 +7,7 @@
 #include <peerstats/peer_db.hpp>
 
 #include <functional>
+#include <optional>
 
 struct llarp_buffer_t;
 
@@ -38,6 +39,12 @@ namespace llarp
     virtual bool
     HasSessionTo(const RouterID& remote) const = 0;
 
+    /// return true if the session with this pubkey is a client
+    /// return false if the session with this pubkey is a router
+    /// return std::nullopt we have no session with this pubkey
+    virtual std::optional<bool>
+    SessionIsClient(RouterID remote) const = 0;
+
     virtual void
     PumpLinks() = 0;
 
@@ -62,6 +69,11 @@ namespace llarp
 
     virtual void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const = 0;
+
+    /// close all connections to this peer
+    /// remove all link layer commits
+    virtual void
+    DeregisterPeer(RouterID remote) = 0;
 
     virtual size_t
     NumberOfConnectedRouters() const = 0;
