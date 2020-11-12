@@ -278,7 +278,7 @@ tuntap_read(struct device *dev, void *buf, size_t size)
     tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
     return 0;
   }
-#ifdef Darwin
+#if Darwin || OpenBSD
   unsigned int pktinfo       = 0;
   const struct iovec vecs[2] = {
       {.iov_base = &pktinfo, .iov_len = sizeof(unsigned int)},
@@ -308,7 +308,7 @@ tuntap_write(struct device *dev, void *buf, size_t size)
     tuntap_log(TUNTAP_LOG_NOTICE, "Device is not started");
     return 0;
   }
-#if defined(Darwin)
+#if defined(Darwin) || defined(OpenBSD)
   /** darwin has packet info so let's use writev */
   static unsigned int af4 = htonl(AF_INET);
   static unsigned int af6 = htonl(AF_INET6);
