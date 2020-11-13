@@ -1,5 +1,6 @@
 #!/bin/sh
 
+
 # this is for dns tomfoolery
 scutil_query()
 {
@@ -25,24 +26,21 @@ SERVICE_NAME=`scutil_query Setup:/Network/Service/$SERVICE_GUID \
 
 # tell dns to be "empty" so that it's reset
 networksetup -setdnsservers "$SERVICE_NAME" empty
-
- # Prevent restarting on exit
+# suspend existing lokinet if it's there
 [ -e /var/lib/lokinet ] && touch /var/lib/lokinet/suspend-launchd-service
 # kill it
 killall lokinet || true
-# Give it some time to shut down before we bring launchd into this
-sleep 2
-# make sure it's dead 
+# wait a sec
+sleep 1
+# make sure it's fucking dead
 killall -9 lokinet || true
-# if the launch daemon is there kill it
+
+# check for prexisting lokinet and kill it if it's there
 [ -e /Library/LaunchDaemons/network.loki.lokinet.daemon.plist ] && (
     launchctl stop network.loki.lokinet.daemon ;
-    launchctl unload /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
+    launchctl unload /Library/LaunchDaemons/network.loki.lokinet.daemon.plist ;
+    rm -rf /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 )
 
-rm -rf /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
-rm -rf /Applications/LokinetGUI.app
-rm -rf /var/lib/lokinet
-rm -rf /usr/local/lokinet/
+# clear out the install dir beforehand
 rm -rf /opt/lokinet
-

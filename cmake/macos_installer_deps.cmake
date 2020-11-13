@@ -58,6 +58,7 @@ set(CPACK_COMPONENT_GUI_DESCRIPTION "Small GUI which provides stats and limited 
 
 set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/lokinet")
+set(CPACK_PREFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/preinstall)
 set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
 
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
