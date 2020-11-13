@@ -20,16 +20,6 @@
 		</dict>
 	</dict>
 
-  <!-- acursed things to watch if the gui is deleted to uninstall lokinet -->
-  <key>WatchPaths</key>
-  <array>
-    <string>~/.Trash/LokinetGUI.app</string>
-  </array>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/opt/lokinet/bin/lokinet_uninstall.sh</string>
-  </array>
-
 	<key>StandardOutPath</key>
   <string>/var/lib/lokinet/stdout</string>
   
