@@ -82,6 +82,14 @@ namespace llarp::net
 
 #ifdef __linux__
 #ifndef ANDROID
+
+  enum class GatewayMode
+  {
+    eFirstHop,
+    eLowerDefault,
+    eUpperDefault
+  };
+
   struct NLSocket
   {
     NLSocket() : fd(socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -145,7 +153,7 @@ namespace llarp::net
       int flags,
       const _inet_addr* dst,
       const _inet_addr* gw,
-      int def_gw,
+      GatewayMode mode,
       int if_idx)
   {
     struct
@@ -197,16 +205,17 @@ namespace llarp::net
     }
     nl_request.r.rtm_scope = 0;
     nl_request.r.rtm_family = gw->family;
-    if (!def_gw)
+    if (mode == GatewayMode::eFirstHop)
     {
       rtattr_add(
           &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, dst->bitlen / 8);
       /* Set interface */
       rtattr_add(&nl_request.n, sizeof(nl_request), RTA_OIF, &if_idx, sizeof(int));
     }
-    if (def_gw == 2)
+    if (mode == GatewayMode::eUpperDefault)
     {
-      rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, 4);
+      rtattr_add(
+          &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, sizeof(uint32_t));
     }
     /* Send message to the netlink */
     return send(sock, &nl_request, sizeof(nl_request), 0);
@@ -301,7 +310,6 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 0;
     int if_idx = 0;
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
@@ -309,7 +317,7 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eFirstHop, if_idx);
 #endif
 #else
     std::stringstream ss;
@@ -331,7 +339,6 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 0;
     int if_idx = 0;
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
@@ -339,7 +346,7 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eFirstHop, if_idx);
 #endif
 #else
     std::stringstream ss;
@@ -371,9 +378,9 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, 1, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, 2, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
 #endif
 #elif _WIN32
     ifname.back()++;
@@ -405,9 +412,9 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(maybe->toHost().c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, 1, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, 2, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
 #endif
 #elif _WIN32
     ifname.back()++;
