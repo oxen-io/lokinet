@@ -35,8 +35,8 @@ int uninstall()
   
   status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, &authorizationRef);
   
-  char* tool = "/bin/bash";
-  char* args[] = { "-c" , "/opt/lokinet/bin/lokinet_uninstall.sh", nullptr};
+  char* tool = "/opt/lokinet/bin/lokinet_uninstall.sh";
+  char* args[] = {nullptr};
   FILE* pipe = NULL;
   
   return AuthorizationExecuteWithPrivileges(authorizationRef, tool, kAuthorizationFlagDefaults, args, &pipe);
