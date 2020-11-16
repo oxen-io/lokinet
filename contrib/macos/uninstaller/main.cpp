@@ -1,7 +1,7 @@
 
 #include <QApplication>
 #include <QMessageBox>
-#include <Foundation/Foundation.h>
+#include <Foundation.h>
 
 int uninstall();
 
