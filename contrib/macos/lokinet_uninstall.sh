@@ -41,7 +41,7 @@ killall -9 lokinet || true
 )
 
 rm -rf /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
-rm -rf /Applications/Lokinet/LokinetGUI.app
+rm -rf /Applications/Lokinet/
 rm -rf /Applications/LokinetGUI.app
 rm -rf /var/lib/lokinet
 rm -rf /usr/local/lokinet/
