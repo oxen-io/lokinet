@@ -49,7 +49,7 @@ set_target_properties(${PROJECT_NAME}
   PROPERTIES
   MACOSX_BUNDLE TRUE
   OUTPUT_NAME UninstallLokinet
-  RESOURCE "${CMAKE_CURRENT_BINARY_DIR}/lokinet-gui.icns")
+  RESOURCE "${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns")
 
 set(MACOSX_BUNDLE_BUNDLE_NAME UninstallLokinet)
 set(MACOSX_BUNDLE_GUI_IDENTIFIER org.lokinet.lokinet-uninstaller)
