@@ -26,6 +26,9 @@ SERVICE_NAME=`scutil_query Setup:/Network/Service/$SERVICE_GUID \
 # tell dns to be "empty" so that it's reset
 networksetup -setdnsservers "$SERVICE_NAME" empty
 
+# kill the gui
+killall LokinetGUI
+
  # Prevent restarting on exit
 [ -e /var/lib/lokinet ] && touch /var/lib/lokinet/suspend-launchd-service
 # kill it
