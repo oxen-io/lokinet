@@ -79,3 +79,8 @@ else()
     COMMAND "${qt_dir}/macdeployqt" UninstallLokinet.app -always-overwrite
     )
 endif()
+
+install(TARGETS lokinet-uninstaller
+    RUNTIME DESTINATION bin
+    BUNDLE DESTINATION .
+    RESOURCE DESTINATION .)
