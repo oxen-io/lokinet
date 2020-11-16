@@ -42,16 +42,16 @@ install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
         COMPONENT lokinet)
 
 install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
-        DESTINATION "../../Applications"
+        DESTINATION "../../Applications/Lokinet"
         USE_SOURCE_PERMISSIONS
         COMPONENT gui
         PATTERN "*"
         )
 
 install(DIRECTORY ${PROJECT_BINARY_DIR}/UninstallLokinet.app
-        DESTINATION "../../Applications"
+        DESTINATION "../../Applications/Lokinet"
         USE_SOURCE_PERMISSIONS
-        COMPONENT lokinet
+        COMPONENT gui
         PATTERN "*"
         )
 
