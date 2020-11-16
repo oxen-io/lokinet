@@ -70,7 +70,7 @@ if(MACOS_SIGN)
     --entitlements ${PROJECT_SOURCE_DIR}/lokinet-uninstaller-entitlements.plist --force -vvv UninstallLokinet.app
     )
 else()
-  add_custom_command(TARGET lokinet-gui
+  add_custom_command(TARGET ${PROJECT_NAME}
     POST_BUILD
     COMMAND echo "Running qt magic macos deploy script"
     COMMAND "${qt_dir}/macdeployqt" UninstallLokinet.app -always-overwrite
