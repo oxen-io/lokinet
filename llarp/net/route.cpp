@@ -82,6 +82,14 @@ namespace llarp::net
 
 #ifdef __linux__
 #ifndef ANDROID
+
+  enum class GatewayMode
+  {
+    eFirstHop,
+    eLowerDefault,
+    eUpperDefault
+  };
+
   struct NLSocket
   {
     NLSocket() : fd(socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -139,7 +147,14 @@ namespace llarp::net
   }
 
   int
-  do_route(int sock, int cmd, int flags, _inet_addr* dst, _inet_addr* gw, int def_gw, int if_idx)
+  do_route(
+      int sock,
+      int cmd,
+      int flags,
+      const _inet_addr* dst,
+      const _inet_addr* gw,
+      GatewayMode mode,
+      int if_idx)
   {
     struct
     {
@@ -187,27 +202,27 @@ namespace llarp::net
     if (gw->bitlen != 0)
     {
       rtattr_add(&nl_request.n, sizeof(nl_request), RTA_GATEWAY, &gw->data, gw->bitlen / 8);
-      nl_request.r.rtm_scope = 0;
-      nl_request.r.rtm_family = gw->family;
     }
-
-    /* Don't set destination and interface in case of default gateways */
-    if (!def_gw)
+    nl_request.r.rtm_scope = 0;
+    nl_request.r.rtm_family = gw->family;
+    if (mode == GatewayMode::eFirstHop)
     {
-      /* Set destination network */
       rtattr_add(
           &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, dst->bitlen / 8);
-
       /* Set interface */
       rtattr_add(&nl_request.n, sizeof(nl_request), RTA_OIF, &if_idx, sizeof(int));
     }
-
+    if (mode == GatewayMode::eUpperDefault)
+    {
+      rtattr_add(
+          &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, sizeof(uint32_t));
+    }
     /* Send message to the netlink */
     return send(sock, &nl_request, sizeof(nl_request), 0);
   }
 
   int
-  read_addr(const char* addr, _inet_addr* res)
+  read_addr(const char* addr, _inet_addr* res, int bitlen = 32)
   {
     if (strchr(addr, ':'))
     {
@@ -217,7 +232,7 @@ namespace llarp::net
     else
     {
       res->family = AF_INET;
-      res->bitlen = 32;
+      res->bitlen = bitlen;
     }
     return inet_pton(res->family, addr, res->data);
   }
@@ -295,7 +310,6 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 0;
     int if_idx = 0;
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
@@ -303,7 +317,7 @@ namespace llarp::net
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eFirstHop, if_idx);
 #endif
 #else
     std::stringstream ss;
@@ -325,7 +339,6 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 0;
     int if_idx = 0;
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
@@ -333,7 +346,7 @@ namespace llarp::net
     int nl_flags = 0;
     read_addr(gateway.c_str(), &gw_addr);
     read_addr(ip.c_str(), &to_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eFirstHop, if_idx);
 #endif
 #else
     std::stringstream ss;
@@ -355,18 +368,19 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-
     const auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
     read_addr(maybe->toHost().c_str(), &gw_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    read_addr("0.0.0.0", &to_addr, 1);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+    read_addr("128.0.0.0", &to_addr, 1);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
 #endif
 #elif _WIN32
     // poke hole for loopback bacause god is dead on windows
@@ -389,7 +403,6 @@ namespace llarp::net
 #ifdef __linux__
 #ifndef ANDROID
     NLSocket sock;
-    int default_gw = 1;
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
@@ -400,7 +413,10 @@ namespace llarp::net
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
     read_addr(maybe->toHost().c_str(), &gw_addr);
-    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
+    read_addr("0.0.0.0", &to_addr, 1);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+    read_addr("128.0.0.0", &to_addr, 1);
+    do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
 #endif
 #elif _WIN32
     ifname.back()++;
