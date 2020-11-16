@@ -369,6 +369,8 @@ namespace llarp::net
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, default_gw, if_idx);
 #endif
 #elif _WIN32
+    // poke hole for loopback bacause god is dead on windows
+    Execute(RouteCommand() + " ADD 127.0.0.0 MASK 255.0.0.0 0.0.0.0");
     ifname.back()++;
     Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
@@ -404,6 +406,7 @@ namespace llarp::net
     ifname.back()++;
     Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
+    Execute(RouteCommand() + " DELETE 127.0.0.0 MASK 255.0.0.0 0.0.0.0");
 #elif __APPLE__
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
