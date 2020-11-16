@@ -20,6 +20,14 @@ set(MACOS_NOTARIZE_ASC ""
 
 include(ExternalProject)
 
+message(STATUS "Building UninstallLokinet.app")
+
+ExternalProject_Add(lokinet-uninstaller
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/contrib/macos/uninstaller
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+)
+
 message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_CHECKOUT}")
 
 ExternalProject_Add(lokinet-gui
@@ -27,9 +35,7 @@ ExternalProject_Add(lokinet-gui
     GIT_TAG "${LOKINET_GUI_CHECKOUT}"
     CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF
-    )
-
-
+        )
 
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
         DESTINATION "bin/"
@@ -42,11 +48,18 @@ install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
         PATTERN "*"
         )
 
+install(DIRECTORY ${PROJECT_BINARY_DIR}/UninstallLokinet.app
+        DESTINATION "../../Applications"
+        USE_SOURCE_PERMISSIONS
+        COMPONENT lokinet
+        PATTERN "*"
+        )
+
 # copy files that will be later moved by the postinstall script to proper locations
 install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_macos_daemon_script.sh
-              ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
-        DESTINATION "extra/"
-        COMPONENT lokinet)
+  ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
+  DESTINATION "extra/"
+  COMPONENT lokinet)
 
 set(CPACK_COMPONENTS_ALL lokinet gui)
 
