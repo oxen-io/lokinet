@@ -60,6 +60,9 @@ set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_COPYRIGHT "© 2020, The Loki Project")
 
+get_target_property(uic_location Qt5::uic IMPORTED_LOCATION)
+get_filename_component(qt_dir ${uic_location} DIRECTORY)
+ 
 if(MACOS_SIGN)
   add_custom_command(TARGET ${PROJECT_NAME}
     POST_BUILD

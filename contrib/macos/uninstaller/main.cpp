@@ -1,7 +1,7 @@
 
 #include <QApplication>
 #include <QMessageBox>
-#include <Foundation.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 int uninstall();
 
@@ -20,7 +20,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-      msgBox.setText("Failed to uninstall lokinet: error code ("+std::to_string(retcode)+")");
+      msgBox.setText("Failed to uninstall lokinet");
     }
     msgBox.exec();
   }
@@ -38,6 +38,6 @@ int uninstall()
   char* args[] = { "-c" , "/opt/lokinet/bin/lokinet_uninstall.sh", nullptr};
   FILE* pipe = NULL;
   
-  return AuthorizationExecuteWithPrivileges(authorizationRef, tool, AuthorizationFlagDefaults, args, &pipe);
+  return AuthorizationExecuteWithPrivileges(authorizationRef, tool, kAuthorizationFlagDefaults, args, &pipe);
 }
 
