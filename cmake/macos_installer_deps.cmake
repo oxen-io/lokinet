@@ -30,11 +30,20 @@ ExternalProject_Add(lokinet-uninstaller
 
 message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_CHECKOUT}")
 
+if(NOT BUILD_STATIC_DEPS)
+    message(FATAL_ERROR "Building an installer on macos requires -DBUILD_STATIC_DEPS=ON")
+endif()
+
+
+
 ExternalProject_Add(lokinet-gui
+    DEPENDS lokimq::lokimq
     GIT_REPOSITORY "${LOKINET_GUI_REPO}"
     GIT_TAG "${LOKINET_GUI_CHECKOUT}"
     CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_SHARED_LIBS=OFF
+        "-DLOKIMQ_LIBRARIES=$<TARGET_FILE:lokimq::lokimq>$<SEMICOLON>$<TARGET_FILE:libzmq>$<SEMICOLON>$<TARGET_FILE:sodium>"
+        "-DLOKIMQ_INCLUDE_DIRS=$<TARGET_PROPERTY:lokimq::lokimq,INCLUDE_DIRECTORIES>"
         )
 
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
