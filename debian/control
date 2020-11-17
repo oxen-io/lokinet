@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Jeff Becker (probably not evil) <jeff@i2p.rocks>
 Build-Depends: debhelper (>= 11), g++, ninja-build, cmake (>= 3.10), pkg-config, libuv1-dev, git, libunbound-dev,
-    libsodium-dev (>= 1.0.18), libsystemd-dev, liblokimq-dev (>= 1.2.0~), libsqlite3-dev, nettle-dev, libevent-dev
+    libsodium-dev (>= 1.0.18), libsystemd-dev, liblokimq-dev (>= 1.2.2), libsqlite3-dev, nettle-dev, libevent-dev
 Standards-Version: 3.9.6
 Homepage: https://loki.network/
 Vcs-Git: git://github.com/loki-project/lokinet-builder.git
