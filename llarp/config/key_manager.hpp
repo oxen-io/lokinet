@@ -82,7 +82,7 @@ namespace llarp
     /// @param keygen is a function that will generate the key if needed
     static bool
     loadOrCreateKey(
-        const fs::path& filepath,
+        fs::path filepath,
         llarp::SecretKey& key,
         std::function<void(llarp::SecretKey& key)> keygen);
   };
