@@ -258,7 +258,7 @@ add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
 endif()
 
 build_external(zmq
