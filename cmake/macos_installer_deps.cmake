@@ -54,7 +54,7 @@ install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
 # copy files that will be later moved by the postinstall script to proper locations
 install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_macos_daemon_script.sh
   ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
-  ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet.conf
+  ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet-newsyslog.conf
   DESTINATION "extra/"
   COMPONENT lokinet)
 

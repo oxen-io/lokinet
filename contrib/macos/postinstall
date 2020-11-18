@@ -18,7 +18,7 @@ mv /opt/lokinet/extra/network.loki.lokinet.daemon.plist /Library/LaunchDaemons/
 chown $CHOWN /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 chmod 640 /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 
-mv /opt/lokinet/extra/lokinet.conf /etc/newsyslog.d/lokinet.conf
+mv /opt/lokinet/extra/lokinet-newsyslog.conf /etc/newsyslog.d/lokinet.conf
 chown $CHOWN /etc/newsyslog.d/lokinet.conf
 chmod 640 /etc/newsyslog.d/lokinet.conf
 

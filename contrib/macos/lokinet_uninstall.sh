@@ -49,4 +49,4 @@ rm -rf /Applications/LokinetGUI.app
 rm -rf /var/lib/lokinet
 rm -rf /usr/local/lokinet/
 rm -rf /opt/lokinet
-
+rm -f /etc/newsyslog.d/lokinet.conf
