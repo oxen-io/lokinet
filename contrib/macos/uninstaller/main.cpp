@@ -33,11 +33,12 @@ int uninstall()
   AuthorizationRef authorizationRef;
   OSStatus status;
   
-  status = AuthorizationCreate(NULL, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, &authorizationRef);
-  
-  char* tool = "/opt/lokinet/bin/lokinet_uninstall.sh";
-  char* args[] = {nullptr};
-  FILE* pipe = NULL;
+  status = AuthorizationCreate(nullptr, kAuthorizationEmptyEnvironment, kAuthorizationFlagDefaults, &authorizationRef);
+  if(status != 0)
+    return status;
+  char* tool = "/bin/sh";
+  char* args[] = {"/opt/lokinet/bin/lokinet_uninstall.sh", nullptr};
+  FILE* pipe = stdout;
   
   return AuthorizationExecuteWithPrivileges(authorizationRef, tool, kAuthorizationFlagDefaults, args, &pipe);
 }

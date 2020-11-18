@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+set -x
+test `whoami` == root || exit 1
 
 # this is for dns tomfoolery
 scutil_query()
@@ -26,22 +28,20 @@ SERVICE_NAME=`scutil_query Setup:/Network/Service/$SERVICE_GUID \
 # tell dns to be "empty" so that it's reset
 networksetup -setdnsservers "$SERVICE_NAME" empty
 
-# kill the gui
-killall LokinetGUI
+# shut off exit if it's up
+pgrep lokinet$ && /opt/lokinet/bin/lokinet-vpn --down
 
  # Prevent restarting on exit
-[ -e /var/lib/lokinet ] && touch /var/lib/lokinet/suspend-launchd-service
-# kill it
-killall lokinet || true
-# Give it some time to shut down before we bring launchd into this
-sleep 2
-# make sure it's dead 
-killall -9 lokinet || true
+touch /var/lib/lokinet/suspend-launchd-service
+# kill the gui and such
+killall LokinetGUI
+killall lokinet
 # if the launch daemon is there kill it
-[ -e /Library/LaunchDaemons/network.loki.lokinet.daemon.plist ] && (
-    launchctl stop network.loki.lokinet.daemon ;
-    launchctl unload /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
-)
+/bin/launchctl stop network.loki.lokinet.daemon
+/bin/launchctl unload /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
+
+# kill it and make sure it's dead 
+killall -9 lokinet
 
 rm -rf /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 rm -rf /Applications/Lokinet/
@@ -49,4 +49,4 @@ rm -rf /Applications/LokinetGUI.app
 rm -rf /var/lib/lokinet
 rm -rf /usr/local/lokinet/
 rm -rf /opt/lokinet
-
+rm -f /etc/newsyslog.d/lokinet.conf
