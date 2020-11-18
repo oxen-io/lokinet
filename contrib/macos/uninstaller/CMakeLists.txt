@@ -38,22 +38,22 @@ set_target_properties(${PROJECT_NAME}
 set(MACOS_SIGN ""
   CACHE STRING "enable codesigning -- use a 'Apple Distribution' key (or key description) from `security find-identity -v`")
 
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/mk-icns.sh ${CMAKE_CURRENT_SOURCE_DIR}/icon.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/icon.svg ${CMAKE_CURRENT_SOURCE_DIR}/mk-icns.sh)
+set(icon_resource_path ${CMAKE_CURRENT_BINARY_DIR}/UninstallLokinet.app/Contents/Resources/lokinet-uninstall.icns)
 
-target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/mk-icns.sh ${CMAKE_CURRENT_SOURCE_DIR}/icon.svg ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns ${icon_resource_path}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/icon.svg ${CMAKE_CURRENT_SOURCE_DIR}/mk-icns.sh)
 
 set_target_properties(${PROJECT_NAME}
   PROPERTIES
   MACOSX_BUNDLE TRUE
-  OUTPUT_NAME UninstallLokinet
-  RESOURCE "${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns")
+  OUTPUT_NAME UninstallLokinet)
 
 set(MACOSX_BUNDLE_BUNDLE_NAME UninstallLokinet)
 set(MACOSX_BUNDLE_GUI_IDENTIFIER org.lokinet.lokinet-uninstaller)
 set(MACOSX_BUNDLE_INFO_STRING "Lokinet uninstaller")
-set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns)
+set(MACOSX_BUNDLE_ICON_FILE lokinet-uninstall.icns)
 set(MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
