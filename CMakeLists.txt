@@ -13,9 +13,8 @@ if(CCACHE_PROGRAM)
   endforeach()
 endif()
 
-set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME}
-    VERSION 0.8.1
+project(lokinet
+    VERSION 0.8.2
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
