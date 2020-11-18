@@ -29,7 +29,7 @@ SERVICE_NAME=`scutil_query Setup:/Network/Service/$SERVICE_GUID \
 networksetup -setdnsservers "$SERVICE_NAME" empty
 
 # shut off exit if it's up
-pgrep /opt/lokinet/bin/lokinet && /opt/lokinet/bin/lokinet-vpn --down
+pgrep lokinet$ && /opt/lokinet/bin/lokinet-vpn --down
 
  # Prevent restarting on exit
 touch /var/lib/lokinet/suspend-launchd-service
