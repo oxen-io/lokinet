@@ -69,8 +69,7 @@ if(MACOS_SIGN)
     COMMAND echo "Running qt magic macos deploy script"
     COMMAND "${qt_dir}/macdeployqt" UninstallLokinet.app -always-overwrite
     COMMAND echo "Signing app bundle and everything inside it"
-    COMMAND codesign -s "${MACOS_SIGN}" --deep --strict --options runtime
-    --entitlements ${PROJECT_SOURCE_DIR}/lokinet-uninstaller-entitlements.plist --force -vvv UninstallLokinet.app
+    COMMAND codesign -s "${MACOS_SIGN}" --deep --strict --options runtime --force -vvv UninstallLokinet.app
     )
 else()
   add_custom_command(TARGET ${PROJECT_NAME}
