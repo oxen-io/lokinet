@@ -19,10 +19,10 @@ set(EXPAT_SOURCE expat-${EXPAT_VERSION}.tar.xz)
 set(EXPAT_HASH SHA512=e082874efcc4b00709e2c0192c88fb15dfc4f33fc3a2b09e619b010ea93baaf7e7572683f738463db0ce2350cab3de48a0c38af6b74d1c4f5a9e311f499edab0
     CACHE STRING "expat source hash")
 
-set(UNBOUND_VERSION 1.11.0 CACHE STRING "unbound version")
+set(UNBOUND_VERSION 1.12.0 CACHE STRING "unbound version")
 set(UNBOUND_MIRROR ${LOCAL_MIRROR} https://nlnetlabs.nl/downloads/unbound CACHE STRING "unbound download mirror(s)")
 set(UNBOUND_SOURCE unbound-${UNBOUND_VERSION}.tar.gz)
-set(UNBOUND_HASH SHA256=9f2f0798f76eb8f30feaeda7e442ceed479bc54db0e3ac19c052d68685e51ef7
+set(UNBOUND_HASH SHA256=5b9253a97812f24419bf2e6b3ad28c69287261cf8c8fa79e3e9f6d3bf7ef5835
     CACHE STRING "unbound source hash")
 
 set(SQLITE3_VERSION 3330000 CACHE STRING "sqlite3 version")
@@ -232,6 +232,7 @@ add_static_target(expat expat_external libexpat.a)
 
 build_external(unbound
   DEPENDS openssl_external expat_external
+  PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/unbound-no-apple-dontfrag.patch
   CONFIGURE_COMMAND ./configure ${cross_host} ${cross_rc} --prefix=${DEPS_DESTDIR} --disable-shared
   --enable-static --with-libunbound-only --with-pic
   --$<IF:$<BOOL:${WITH_LTO}>,enable,disable>-flto --with-ssl=${DEPS_DESTDIR}
@@ -257,7 +258,7 @@ add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/cross/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
 endif()
 
 build_external(zmq

@@ -150,7 +150,7 @@ endif()
 
 option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
 if(NOT FORCE_LOKIMQ_SUBMODULE)
-  pkg_check_modules(LOKIMQ liblokimq>=1.2)
+  pkg_check_modules(LOKIMQ liblokimq>=1.2.2)
 endif()
 if(LOKIMQ_FOUND)
   add_library(lokimq INTERFACE)
