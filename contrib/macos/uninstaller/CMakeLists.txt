@@ -13,7 +13,8 @@ if(CCACHE_PROGRAM)
   endforeach()
 endif()
 
-project(lokinet-uninstaller
+set(PROJECT_NAME lokinet-uninstaller)
+project(${PROJECT_NAME}
     VERSION 0.0.1
     DESCRIPTION "lokinet uninstaller for macos"
     LANGUAGES CXX)
@@ -53,7 +54,7 @@ set_target_properties(${PROJECT_NAME}
 set(MACOSX_BUNDLE_BUNDLE_NAME UninstallLokinet)
 set(MACOSX_BUNDLE_GUI_IDENTIFIER org.lokinet.lokinet-uninstaller)
 set(MACOSX_BUNDLE_INFO_STRING "Lokinet uninstaller")
-set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_BINARY_DIR}/lokinet-uninstall.icns)
+set(MACOSX_BUNDLE_ICON_FILE lokinet-uninstall.icns)
 set(MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION})
@@ -78,7 +79,7 @@ else()
     )
 endif()
 
-install(TARGETS ${PROJECT_NAME}
-    DESTINATION "../../Applications/Lokinet"
-    COMPONENT gui
-    )
+install(TARGETS lokinet-uninstaller
+    RUNTIME DESTINATION bin
+    BUNDLE DESTINATION .
+    RESOURCE DESTINATION .)
