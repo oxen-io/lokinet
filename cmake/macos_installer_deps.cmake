@@ -20,13 +20,7 @@ set(MACOS_NOTARIZE_ASC ""
 
 include(ExternalProject)
 
-message(STATUS "Building UninstallLokinet.app")
-
-ExternalProject_Add(lokinet-uninstaller
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/contrib/macos/uninstaller
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-)
+add_subdirectory(${PROJECT_SOURCE_DIR}/contrib/macos/uninstaller)
 
 message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_CHECKOUT}")
 
@@ -51,13 +45,6 @@ install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
         COMPONENT lokinet)
 
 install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
-        DESTINATION "../../Applications/Lokinet"
-        USE_SOURCE_PERMISSIONS
-        COMPONENT gui
-        PATTERN "*"
-        )
-
-install(DIRECTORY ${PROJECT_BINARY_DIR}/UninstallLokinet.app
         DESTINATION "../../Applications/Lokinet"
         USE_SOURCE_PERMISSIONS
         COMPONENT gui
