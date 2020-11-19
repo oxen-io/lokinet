@@ -60,7 +60,7 @@ namespace llarp
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
+              r->netloop(), r->logic(), this))
     {
       if (not lazyVPN)
       {

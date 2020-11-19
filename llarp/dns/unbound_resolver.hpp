@@ -45,10 +45,13 @@ namespace llarp::dns
     void
     Stop();
 
-    // upstream resolver IP can be IPv4 or IPv6
     bool
     Init();
 
+    /// starts resolver thread
+    void
+    Start();
+    
     bool
     AddUpstreamResolver(const std::string& upstreamResolverIP);
 

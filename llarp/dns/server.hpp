@@ -33,8 +33,6 @@ namespace llarp
       Proxy(
           llarp_ev_loop_ptr serverLoop,
           Logic_ptr serverLogic,
-          llarp_ev_loop_ptr clientLoop,
-          Logic_ptr clientLogic,
           IQueryHandler* handler);
 
       bool
@@ -47,8 +45,6 @@ namespace llarp
 
      private:
       /// low level packet handler
-      static void
-      HandleUDPRecv_client(llarp_udp_io*, const SockAddr&, ManagedBuffer);
       static void
       HandleUDPRecv_server(llarp_udp_io*, const SockAddr&, ManagedBuffer);
 
@@ -66,7 +62,7 @@ namespace llarp
       SendClientMessageTo(const SockAddr& to, Message msg);
 
       void
-      SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf);
+      SendServerMessageBufferTo(SockAddr to, std::vector<byte_t> buf);
 
       void
       SendServerMessageTo(const SockAddr& to, Message msg);
@@ -77,19 +73,13 @@ namespace llarp
       void
       HandleUpstreamFailure(const SockAddr& to, Message msg);
 
-      IpAddress
-      PickRandomResolver() const;
-
       bool
       SetupUnboundResolver(const std::vector<IpAddress>& resolvers);
 
      private:
       llarp_udp_io m_Server;
-      llarp_udp_io m_Client;
       llarp_ev_loop_ptr m_ServerLoop;
-      llarp_ev_loop_ptr m_ClientLoop;
       Logic_ptr m_ServerLogic;
-      Logic_ptr m_ClientLogic;
       IQueryHandler* m_QueryHandler;
       std::vector<IpAddress> m_Resolvers;
       std::shared_ptr<UnboundResolver> m_UnboundResolver;
@@ -114,9 +104,6 @@ namespace llarp
           }
         };
       };
-
-      // maps tx to who to send reply to
-      std::unordered_map<TX, IpAddress, TX::Hash> m_Forwarded;
     };
   }  // namespace dns
 }  // namespace llarp

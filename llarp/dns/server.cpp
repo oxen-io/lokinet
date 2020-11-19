@@ -12,20 +12,13 @@ namespace llarp
     Proxy::Proxy(
         llarp_ev_loop_ptr serverLoop,
         Logic_ptr serverLogic,
-        llarp_ev_loop_ptr clientLoop,
-        Logic_ptr clientLogic,
         IQueryHandler* h)
         : m_ServerLoop(std::move(serverLoop))
-        , m_ClientLoop(std::move(clientLoop))
         , m_ServerLogic(std::move(serverLogic))
-        , m_ClientLogic(std::move(clientLogic))
         , m_QueryHandler(h)
     {
-      m_Client.user = this;
       m_Server.user = this;
-      m_Client.tick = nullptr;
       m_Server.tick = nullptr;
-      m_Client.recvfrom = &HandleUDPRecv_client;
       m_Server.recvfrom = &HandleUDPRecv_server;
     }
 
@@ -48,13 +41,8 @@ namespace llarp
         }
       }
 
-      const IpAddress any("0.0.0.0", 0);
-      auto self = shared_from_this();
-      LogicCall(m_ClientLogic, [=]() {
-        llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
-      });
       return (
-          llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr()) == 0);
+          llarp_ev_add_udp(m_ServerLoop.get(), &m_Server, addr.createSockAddr()) == 0);
     }
 
     static Proxy::Buffer_t
@@ -73,26 +61,6 @@ namespace llarp
       self->HandlePktServer(from, msgbuf);
     }
 
-    void
-    Proxy::HandleUDPRecv_client(llarp_udp_io* u, const SockAddr& from, ManagedBuffer buf)
-    {
-      Buffer_t msgbuf = CopyBuffer(buf.underlying);
-      auto self = static_cast<Proxy*>(u->user)->shared_from_this();
-      LogicCall(
-          self->m_ServerLogic, [self, from, msgbuf]() { self->HandlePktClient(from, msgbuf); });
-    }
-
-    IpAddress
-    Proxy::PickRandomResolver() const
-    {
-      const size_t sz = m_Resolvers.size();
-      if (sz <= 1)
-        return m_Resolvers[0];
-      auto itr = m_Resolvers.begin();
-      std::advance(itr, llarp::randint() % sz);
-      return *itr;
-    }
-
     bool
     Proxy::SetupUnboundResolver(const std::vector<IpAddress>& resolvers)
     {
@@ -108,7 +76,7 @@ namespace llarp
         auto this_ptr = self.lock();
         if (this_ptr)
         {
-          this_ptr->HandleUpstreamResponse(to, std::move(buf));
+          this_ptr->SendServerMessageBufferTo(to, std::move(buf));
         }
       };
 
@@ -129,7 +97,7 @@ namespace llarp
           return false;
         }
       }
-
+      m_UnboundResolver->Start();
       return true;
     }
 
@@ -138,7 +106,7 @@ namespace llarp
     {}
 
     void
-    Proxy::SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf)
+    Proxy::SendServerMessageBufferTo(SockAddr to, std::vector<byte_t> buf)
     {
       if (llarp_ev_udp_sendto(&m_Server, to, buf) < 0)
         llarp::LogError("dns reply failed");
@@ -147,91 +115,16 @@ namespace llarp
     void
     Proxy::SendServerMessageTo(const SockAddr& to, Message msg)
     {
-      auto self = shared_from_this();
-      LogicCall(m_ServerLogic, [to, msg = std::move(msg), self]() {
-        std::array<byte_t, 1500> tmp = {{0}};
-        llarp_buffer_t buf(tmp);
-        if (msg.Encode(&buf))
-        {
-          buf.sz = buf.cur - buf.base;
-          buf.cur = buf.base;
-          self->SendServerMessageBufferTo(to, buf);
-        }
-        else
-          llarp::LogWarn("failed to encode dns message when sending");
-      });
-    }
-
-    void
-    Proxy::HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf)
-    {
-      auto self = shared_from_this();
-      LogicCall(m_ServerLogic, [to, buffer = std::move(buf), self]() {
-        llarp_buffer_t buf(buffer);
-        self->SendServerMessageBufferTo(to, buf);
-      });
-    }
-
-    void
-    Proxy::SendClientMessageTo(const SockAddr& to, Message msg)
-    {
-      auto self = shared_from_this();
-      LogicCall(m_ClientLogic, [to, msg, self]() {
-        std::array<byte_t, 1500> tmp = {{0}};
-        llarp_buffer_t buf(tmp);
-        if (msg.Encode(&buf))
-        {
-          buf.sz = buf.cur - buf.base;
-          buf.cur = buf.base;
-          llarp_ev_udp_sendto(&self->m_Client, to, buf);
-        }
-        else
-          llarp::LogWarn("failed to encode dns message when sending");
-      });
-    }
-
-    void
-    Proxy::HandlePktClient(const SockAddr& from, Buffer_t buf)
-    {
-      llarp_buffer_t pkt(buf);
-      MessageHeader hdr;
-      if (!hdr.Decode(&pkt))
+      std::vector<byte_t> tmp;
+      tmp.resize(1500);
+      llarp_buffer_t buf{tmp};
+      if (msg.Encode(&buf))
       {
-        llarp::LogWarn("failed to parse dns header from ", from);
-        return;
+        tmp.resize(buf.cur - buf.base);
+        SendServerMessageBufferTo(to, std::move(tmp));
       }
-      TX tx = {hdr.id, from};
-      auto itr = m_Forwarded.find(tx);
-      if (itr == m_Forwarded.end())
-        return;
-      const auto& requester = itr->second;
-      auto self = shared_from_this();
-      Message msg(hdr);
-      if (msg.Decode(&pkt))
-      {
-        if (m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
-        {
-          msg.hdr_id = itr->first.txid;
-          if (!m_QueryHandler->HandleHookedDNSMessage(
-                  std::move(msg),
-                  std::bind(
-                      &Proxy::SendServerMessageTo,
-                      self,
-                      requester.createSockAddr(),
-                      std::placeholders::_1)))
-          {
-            llarp::LogWarn("failed to handle hooked dns");
-          }
-          return;
-        }
-      }
-      LogicCall(m_ServerLogic, [=]() {
-        // forward reply to requester via server
-        const llarp_buffer_t tmpbuf(buf);
-        llarp_ev_udp_sendto(&self->m_Server, requester.createSockAddr(), tmpbuf);
-      });
-      // remove pending
-      m_Forwarded.erase(itr);
+      else
+        llarp::LogWarn("failed to encode dns message when sending");
     }
 
     void
@@ -269,13 +162,11 @@ namespace llarp
           return;
         }
       }
-
-      auto self = shared_from_this();
       if (m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
       {
         if (!m_QueryHandler->HandleHookedDNSMessage(
                 std::move(msg),
-                std::bind(&Proxy::SendServerMessageTo, self, from, std::placeholders::_1)))
+                std::bind(&Proxy::SendServerMessageTo, shared_from_this(), from, std::placeholders::_1)))
         {
           llarp::LogWarn("failed to handle hooked dns");
         }
