@@ -93,8 +93,8 @@ namespace llarp::rpc
                 msg.send_reply(CreateJSONError("router is not running"));
                 return;
               }
-              m_Router->Stop();
               msg.send_reply(CreateJSONResponse("OK"));
+              m_Router->Stop();
             })
         .add_request_command(
             "version",
