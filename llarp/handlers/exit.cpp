@@ -34,8 +34,7 @@ namespace llarp
 
     ExitEndpoint::ExitEndpoint(const std::string& name, AbstractRouter* r)
         : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), this))
+        , m_Resolver(std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this))
         , m_Name(name)
         , m_Tun{{0},
                 0,

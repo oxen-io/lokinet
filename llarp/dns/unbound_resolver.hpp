@@ -51,7 +51,7 @@ namespace llarp::dns
     /// starts resolver thread
     void
     Start();
-    
+
     bool
     AddUpstreamResolver(const std::string& upstreamResolverIP);
 

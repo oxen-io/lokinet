@@ -9,10 +9,7 @@ namespace llarp
 {
   namespace dns
   {
-    Proxy::Proxy(
-        llarp_ev_loop_ptr serverLoop,
-        Logic_ptr serverLogic,
-        IQueryHandler* h)
+    Proxy::Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic, IQueryHandler* h)
         : m_ServerLoop(std::move(serverLoop))
         , m_ServerLogic(std::move(serverLogic))
         , m_QueryHandler(h)
@@ -41,8 +38,7 @@ namespace llarp
         }
       }
 
-      return (
-          llarp_ev_add_udp(m_ServerLoop.get(), &m_Server, addr.createSockAddr()) == 0);
+      return (llarp_ev_add_udp(m_ServerLoop.get(), &m_Server, addr.createSockAddr()) == 0);
     }
 
     static Proxy::Buffer_t
@@ -166,7 +162,8 @@ namespace llarp
       {
         if (!m_QueryHandler->HandleHookedDNSMessage(
                 std::move(msg),
-                std::bind(&Proxy::SendServerMessageTo, shared_from_this(), from, std::placeholders::_1)))
+                std::bind(
+                    &Proxy::SendServerMessageTo, shared_from_this(), from, std::placeholders::_1)))
         {
           llarp::LogWarn("failed to handle hooked dns");
         }

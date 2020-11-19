@@ -30,10 +30,7 @@ namespace llarp
     struct Proxy : public std::enable_shared_from_this<Proxy>
     {
       using Logic_ptr = std::shared_ptr<Logic>;
-      Proxy(
-          llarp_ev_loop_ptr serverLoop,
-          Logic_ptr serverLogic,
-          IQueryHandler* handler);
+      Proxy(llarp_ev_loop_ptr serverLoop, Logic_ptr serverLogic, IQueryHandler* handler);
 
       bool
       Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers);

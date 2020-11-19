@@ -35,15 +35,15 @@ namespace llarp::dns
   }
 
   UnboundResolver::UnboundResolver(llarp_ev_loop_ptr loop, ReplyFunction reply, FailFunction fail)
-    : unboundContext{ub_ctx_create()}
-    , started{false}
-    , eventLoop{loop}
-    , replyFunc{[loop, reply](auto source, auto buf) {
+      : unboundContext{ub_ctx_create()}
+      , started{false}
+      , eventLoop{loop}
+      , replyFunc{[loop, reply](auto source, auto buf) {
         loop->call_soon([source, buf, reply]() { reply(source, buf); });
-                }}
-    , failFunc{[loop, fail](auto source, auto message) {
+      }}
+      , failFunc{[loop, fail](auto source, auto message) {
         loop->call_soon([source, message, fail]() { fail(source, message); });
-               }}
+      }}
   {}
 
   // static callback
@@ -87,8 +87,8 @@ namespace llarp::dns
     {
       Reset();
     }
-    
-    if(not unboundContext)
+
+    if (not unboundContext)
       unboundContext = ub_ctx_create();
 
     if (not unboundContext)
