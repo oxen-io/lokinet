@@ -133,11 +133,41 @@ namespace llarp
     {
       if (markedBad)
         return std::nullopt;
+
+      const auto getPath = [&](RouterID endpoint) -> path::Path_ptr {
+        path::Path_ptr path;
+        // find best path for this endpoint
+        ForEachPath([&path, endpoint](const auto p) {
+          // check for nullptr just in case, but should never happen
+          if (p == nullptr)
+            return;
+          // is this a router not on this endpoint?
+          if (p->Endpoint() != endpoint)
+            return;
+          // is this path no bueno?
+          if (not p->IsGood())
+            return;
+          // pick newest path
+          if (path == nullptr)
+          {
+            path = p;
+          }
+          else if (path->ExpireTime() < p->ExpireTime())
+          {
+            path = p;
+          }
+        });
+        return path;
+      };
+
       // do we have a cached path?
       if (ReadyToSend())
       {
-        // yeh use it bruh
-        return std::pair{remoteIntro, GetPathByRouter(remoteIntro.router)};
+        if (const auto path = getPath(remoteIntro.router); path)
+        {
+          // yeh use it bruh
+          return std::pair{remoteIntro, path};
+        }
       }
       // backup case
       const auto now = Now();
@@ -145,8 +175,7 @@ namespace llarp
       {
         if (intro.ExpiresSoon(now))
           continue;
-        const auto path = GetNewestPathByRouter(intro.router);
-        if (path and path->IsGood())
+        if (const auto path = getPath(intro.router); path)
           return std::pair{intro, path};
       }
       // we dont got it chief
