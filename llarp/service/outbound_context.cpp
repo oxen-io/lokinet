@@ -146,7 +146,7 @@ namespace llarp
         if (intro.ExpiresSoon(now))
           continue;
         const auto path = GetPathByRouter(intro.router);
-        if (path)
+        if (path and path->IsGood())
           return std::pair{intro, path};
       }
       // we dont got it chief

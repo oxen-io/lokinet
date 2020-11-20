@@ -202,6 +202,10 @@ namespace llarp
         return _status;
       }
 
+      /// return true if this path is good for sending on
+      bool
+      IsGood(llarp_time_t latencyThreshold = 500ms) const;
+
       const std::string&
       ShortName() const;
 
