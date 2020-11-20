@@ -89,14 +89,6 @@ namespace llarp
     }
 
     bool
-    Path::IsGood(llarp_time_t latencyThreshold) const
-    {
-      if (not IsReady())
-        return false;
-      return intro.latency < latencyThreshold;
-    }
-
-    bool
     Path::IsReady() const
     {
       if (Expired(llarp::time_now_ms()))

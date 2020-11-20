@@ -145,7 +145,7 @@ namespace llarp
           if (p->Endpoint() != endpoint)
             return;
           // is this path no bueno?
-          if (not p->IsGood())
+          if (not p->IsReady())
             return;
           // pick newest path
           if (path == nullptr)
