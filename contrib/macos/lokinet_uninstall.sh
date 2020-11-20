@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -x
 test `whoami` == root || exit 1
 
@@ -28,11 +28,12 @@ SERVICE_NAME=`scutil_query Setup:/Network/Service/$SERVICE_GUID \
 # tell dns to be "empty" so that it's reset
 networksetup -setdnsservers "$SERVICE_NAME" empty
 
-# shut off exit if it's up
-pgrep lokinet$ && /opt/lokinet/bin/lokinet-vpn --down
-
  # Prevent restarting on exit
 touch /var/lib/lokinet/suspend-launchd-service
+
+# shut off lokinet gracefully
+pgrep lokinet$ && /opt/lokinet/bin/lokinet-vpn --kill
+
 # kill the gui and such
 killall LokinetGUI
 killall lokinet
