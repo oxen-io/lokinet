@@ -29,7 +29,7 @@ namespace llarp
       /// queue send a fully encrypted hidden service frame
       /// via a path to a remote intro
       bool
-      Send(std::shared_ptr<ProtocolFrame> f, path::Path_ptr path, Introduction remoteIntro);
+      Send(std::shared_ptr<ProtocolFrame> f, path::Path_ptr path, PathID_t otherPathID);
 
       /// flush upstream traffic when in router thread
       void

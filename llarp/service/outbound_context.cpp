@@ -260,8 +260,8 @@ namespace llarp
           currentConvoTag,
           t);
 
-      ex->hook =
-          std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path, intro);
+      ex->hook = std::bind(
+          &OutboundContext::Send, shared_from_this(), std::placeholders::_1, path, intro.pathID);
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
