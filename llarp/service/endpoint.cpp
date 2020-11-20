@@ -1313,7 +1313,6 @@ namespace llarp
       }
 
       UpstreamFlush(router);
-      router->linkManager().PumpLinks();
     }
 
     bool

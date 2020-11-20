@@ -25,10 +25,6 @@ namespace llarp
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path, PathID_t otherPathID)
     {
-      if (m_SendQueue.empty() or m_SendQueue.full())
-      {
-        LogicCall(m_Endpoint->RouterLogic(), [self = this]() { self->FlushUpstream(); });
-      }
       return m_SendQueue.tryPushBack(std::make_pair(
                  std::make_shared<const routing::PathTransferMessage>(*msg, std::move(otherPathID)),
                  path))
