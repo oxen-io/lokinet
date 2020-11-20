@@ -103,7 +103,10 @@ namespace llarp::dns
   void
   UnboundResolver::Start()
   {
+    if (started or runner != nullptr)
+      return;
     runner = std::make_unique<std::thread>([&]() {
+      started = true;
       while (started)
       {
         if (unboundContext)
@@ -111,7 +114,6 @@ namespace llarp::dns
         std::this_thread::sleep_for(25ms);
       }
     });
-    started = true;
   }
 
   bool
