@@ -13,10 +13,8 @@ namespace llarp
   {
     static constexpr size_t SendContextQueueSize = 512;
 
-    SendContext::SendContext(
-        ServiceInfo ident, const Introduction& intro, path::PathSet* send, Endpoint* ep)
+    SendContext::SendContext(ServiceInfo ident, path::PathSet* send, Endpoint* ep)
         : remoteIdent(std::move(ident))
-        , remoteIntro(intro)
         , m_PathSet(send)
         , m_DataHandler(ep)
         , m_Endpoint(ep)
@@ -25,7 +23,8 @@ namespace llarp
     {}
 
     bool
-    SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)
+    SendContext::Send(
+        std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path, Introduction remoteIntro)
     {
       if (m_SendQueue.empty() or m_SendQueue.full())
       {
@@ -74,12 +73,14 @@ namespace llarp
       f->T = currentConvoTag;
       f->S = ++sequenceNo;
 
-      auto path = m_PathSet->GetRandomPathByRouter(remoteIntro.router);
-      if (!path)
+      const auto maybe = MaybeGetIntroAndPathForCurrentIntroset();
+      if (not maybe.has_value())
       {
-        LogWarn(m_Endpoint->Name(), " cannot encrypt and send: no path for intro ", remoteIntro);
+        LogWarn(m_Endpoint->Name(), " cannot encrypt and send: not good path yet");
         return;
       }
+      Introduction remoteIntro = maybe->first;
+      path::Path_ptr path = maybe->second;
 
       if (!m_DataHandler->GetCachedSessionKeyFor(f->T, shared))
       {
@@ -98,14 +99,15 @@ namespace llarp
       m->tag = f->T;
       m->PutBuffer(payload);
       auto self = this;
-      m_Endpoint->Router()->QueueWork([f, m, shared, path, self]() {
-        if (not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
-        {
-          LogError(self->m_Endpoint->Name(), " failed to sign message");
-          return;
-        }
-        self->Send(f, path);
-      });
+      m_Endpoint->Router()->QueueWork(
+          [f, m, shared, path, self, remoteIntro = std::move(remoteIntro)]() {
+            if (not f->EncryptAndSign(*m, shared, self->m_Endpoint->GetIdentity()))
+            {
+              LogError(self->m_Endpoint->Name(), " failed to sign message");
+              return;
+            }
+            self->Send(f, path, remoteIntro);
+          });
     }
 
     void

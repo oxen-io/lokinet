@@ -55,7 +55,7 @@ namespace llarp
 
     OutboundContext::OutboundContext(const IntroSet& introset, Endpoint* parent)
         : path::Builder(parent->Router(), 4, parent->numHops)
-        , SendContext(introset.A, {}, this, parent)
+        , SendContext(introset.A, this, parent)
         , location(introset.A.Addr().ToKey())
         , currentIntroSet(introset)
 
@@ -128,6 +128,31 @@ namespace llarp
       return (!remoteIntro.router.IsZero()) && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
+    std::optional<std::pair<Introduction, path::Path_ptr>>
+    OutboundContext::MaybeGetIntroAndPathForCurrentIntroset() const
+    {
+      if (markedBad)
+        return std::nullopt;
+      // do we have a cached path?
+      if (ReadyToSend())
+      {
+        // yeh use it bruh
+        return std::pair{remoteIntro, GetPathByRouter(remoteIntro.router)};
+      }
+      // backup case
+      const auto now = Now();
+      for (const auto& intro : currentIntroSet.I)
+      {
+        if (intro.ExpiresSoon(now))
+          continue;
+        const auto path = GetPathByRouter(intro.router);
+        if (path)
+          return std::pair{intro, path};
+      }
+      // we dont got it chief
+      return std::nullopt;
+    }
+
     void
     OutboundContext::ShiftIntroRouter(const RouterID r)
     {
@@ -186,19 +211,14 @@ namespace llarp
       if (remoteIntro.router.IsZero())
         SwapIntros();
 
-      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
-      if (path == nullptr)
+      const auto maybe = MaybeGetIntroAndPathForCurrentIntroset();
+      if (not maybe.has_value())
       {
-        // try parent as fallback
-        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
-        if (path == nullptr)
-        {
-          if (!BuildCooldownHit(Now()))
-            BuildOneAlignedTo(remoteIntro.router);
-          LogWarn(Name(), " dropping intro frame, no path to ", remoteIntro.router);
-          return;
-        }
+        LogWarn(Name(), " dropping intro frame no paths ready yet");
+        return;
       }
+      Introduction intro = maybe->first;
+      path::Path_ptr path = maybe->second;
       currentConvoTag.Randomize();
       auto frame = std::make_shared<ProtocolFrame>();
       auto ex = std::make_shared<AsyncKeyExchange>(
@@ -206,12 +226,13 @@ namespace llarp
           remoteIdent,
           m_Endpoint->GetIdentity(),
           currentIntroSet.K,
-          remoteIntro,
+          intro,
           m_DataHandler,
           currentConvoTag,
           t);
 
-      ex->hook = std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path);
+      ex->hook =
+          std::bind(&OutboundContext::Send, shared_from_this(), std::placeholders::_1, path, intro);
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
@@ -370,6 +391,10 @@ namespace llarp
         return false;
       if (NumInStatus(path::ePathBuilding) >= numDesiredPaths)
         return false;
+      if (not ReadyToSend())
+      {
+        return not BuildCooldownHit(now);
+      }
       llarp_time_t t = 0s;
       ForEachPath([&t](path::Path_ptr path) {
         if (path->IsReady())

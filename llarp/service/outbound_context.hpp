@@ -126,6 +126,9 @@ namespace llarp
         return currentIntroSet;
       }
 
+      std::optional<std::pair<Introduction, path::Path_ptr>>
+      MaybeGetIntroAndPathForCurrentIntroset() const override;
+
      private:
       /// swap remoteIntro with next intro
       void
@@ -140,6 +143,7 @@ namespace llarp
       const dht::Key_t location;
       uint64_t m_UpdateIntrosetTX = 0;
       IntroSet currentIntroSet;
+      Introduction remoteIntro;
       Introduction m_NextIntro;
       std::unordered_map<Introduction, llarp_time_t, Introduction::Hash> m_BadIntros;
       llarp_time_t lastShift = 0s;

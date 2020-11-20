@@ -21,15 +21,15 @@ namespace llarp
 
     struct SendContext
     {
-      SendContext(ServiceInfo ident, const Introduction& intro, path::PathSet* send, Endpoint* ep);
+      SendContext(ServiceInfo ident, path::PathSet* send, Endpoint* ep);
 
       void
       AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 
       /// queue send a fully encrypted hidden service frame
-      /// via a path
+      /// via a path to a remote intro
       bool
-      Send(std::shared_ptr<ProtocolFrame> f, path::Path_ptr path);
+      Send(std::shared_ptr<ProtocolFrame> f, path::Path_ptr path, Introduction remoteIntro);
 
       /// flush upstream traffic when in router thread
       void
@@ -37,7 +37,6 @@ namespace llarp
 
       SharedSecret sharedKey;
       ServiceInfo remoteIdent;
-      Introduction remoteIntro;
       ConvoTag currentConvoTag;
       path::PathSet* const m_PathSet;
       IDataHandler* const m_DataHandler;
@@ -64,6 +63,10 @@ namespace llarp
 
       virtual bool
       MarkCurrentIntroBad(llarp_time_t now) = 0;
+
+      /// get a maybe (intro, path) that works on the current introset
+      virtual std::optional<std::pair<Introduction, path::Path_ptr>>
+      MaybeGetIntroAndPathForCurrentIntroset() const = 0;
 
      private:
       void
