@@ -1,5 +1,5 @@
-set(GUI_ZIP_URL "https://builds.lokinet.dev/loki-project/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.2.zip")
-set(GUI_ZIP_HASH SHA256=136595c287f0664e02a7c62a88fd69299510545b0f25c028dba0142f62b8e189)
+set(GUI_ZIP_URL "https://builds.lokinet.dev/loki-project/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.4.zip")
+set(GUI_ZIP_HASH SHA256=a91467dc37e9f55eea81141253099579ca68749b0ca89637db619d8ab466ccfa)
 set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
 set(TUNTAP_EXE "${CMAKE_BINARY_DIR}/tuntap-install.exe")
 set(BOOTSTRAP_URL "https://seed.lokinet.org/lokinet.signed")
@@ -29,7 +29,7 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "Lokinet")
 set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/win32-setup/lokinet.ico")
 set(CPACK_NSIS_DEFINES "RequestExecutionLevel admin")
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "ExecWait '$INSTDIR\\\\bin\\\\tuntap-install.exe /S'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --install'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe -g C:\\\\ProgramData\\\\lokinet\\\\lokinet.ini'\\nCopyFiles '$INSTDIR\\\\share\\\\bootstrap.signed' C:\\\\ProgramData\\\\lokinet\\\\bootstrap.signed")
-set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "ExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --remove'\\nRMDir /r /REBOOTOK C:\\\\ProgramData\\\\lokinet")
+set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "ExecWait 'net stop lokinet'\\nExecWait 'taskkill /f /t /im lokinet-gui.exe'\\nExecWait '$INSTDIR\\\\bin\\\\lokinet.exe --remove'\\nRMDir /r /REBOOTOK C:\\\\ProgramData\\\\lokinet")
 set(CPACK_NSIS_CREATE_ICONS_EXTRA
     "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Lokinet.lnk' '$INSTDIR\\\\share\\\\gui\\\\lokinet-gui.exe'"
 )

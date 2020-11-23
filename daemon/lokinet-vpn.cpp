@@ -59,6 +59,7 @@ main(int argc, char* argv[])
   opts.add_options()
     ("v,verbose", "Verbose", cxxopts::value<bool>())
     ("h,help", "help", cxxopts::value<bool>())
+    ("kill", "kill the daemon", cxxopts::value<bool>())
     ("up", "put vpn up", cxxopts::value<bool>())
     ("down", "put vpn down", cxxopts::value<bool>())
     ("exit", "specify exit node address", cxxopts::value<std::string>())
@@ -77,6 +78,7 @@ main(int argc, char* argv[])
   bool goUp = false;
   bool goDown = false;
   bool printStatus = false;
+  bool killDaemon = false;
   try
   {
     const auto result = opts.parse(argc, argv);
@@ -102,6 +104,7 @@ main(int argc, char* argv[])
     goUp = result.count("up") > 0;
     goDown = result.count("down") > 0;
     printStatus = result.count("status") > 0;
+    killDaemon = result.count("kill") > 0;
 
     if (result.count("endpoint") > 0)
     {
@@ -127,7 +130,7 @@ main(int argc, char* argv[])
     std::cout << ex.what() << std::endl;
     return 1;
   }
-  if ((not goUp) and (not goDown) and (not printStatus))
+  if ((not goUp) and (not goDown) and (not printStatus) and (not killDaemon))
   {
     std::cout << opts.help() << std::endl;
     return 1;
@@ -159,6 +162,17 @@ main(int argc, char* argv[])
   if (not ftr.get())
   {
     return 1;
+  }
+
+  if (killDaemon)
+  {
+    const auto maybe = LMQ_Request(lmq, connID, "llarp.halt");
+    if (not maybe.has_value())
+    {
+      std::cout << "call to llarp.admin.die failed" << std::endl;
+      return 1;
+    }
+    return 0;
   }
 
   if (printStatus)
