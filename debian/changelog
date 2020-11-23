@@ -1,3 +1,76 @@
+lokinet (0.8.2-1~deb10) buster; urgency=medium
+
+  [ Jeff Becker ]
+  * key manager should throw on failures
+  * format
+
+  [ Jason Rhinelander ]
+  * Add building on message in drone build
+  * Install less stuff on windows CI
+  * Update gui win32 package url (#1466)
+  * Update gui win32 package url (#1466) (#1468)
+
+  [ Jeff ]
+  * stop lokinet before uninstalling service (#1469)
+
+  [ Jason Rhinelander ]
+  * Update win32 gui download with smaller svg icon
+  * Dev to stable (#1471)
+  * Disable LTO on sid for now (#1472)
+
+  [ Jeff ]
+  * poke route hole for loopback on windows because that OS is made by brain damaged non programmers. (#1473)
+  * do /1 route poker split on linux (#1480)
+
+  [ Jeff Becker ]
+  * fix install path for liblokinet-cryptography.so
+
+  [ Jason Rhinelander ]
+  * bump required lokimq to 1.2.2
+  * Fix the copy of lokinet-resolvconf that we install
+
+  [ Jeff Becker ]
+  * update packaging for macos add preinstall script that nukes any existing lokinet make uninstaller revert dns to "empty" make cpack use preinstall script in pkg file
+  * preflight -> preinstall
+  * try watching trash for lokinet-gui.app and delete ourself if we see it
+  * revert
+  * add initial uninstaller code that is horrible
+  * fix typo
+  * chmod +x
+  * fix header
+  * more fixes for macos
+  * security.h
+  * ugh
+  * add install target
+  * fix icon path
+  * change tool name
+  * change icon
+  * add entitlements
+  * update icon
+  * remove line from uninstaller
+  * try installing to lokinet subdirectory
+  * remove old path too
+  * delete lokinet applications directory
+  * kill the gui
+  * use /var/log/ for log files
+
+  [ Jason Rhinelander ]
+  * Upgrade libunbound to latest stable
+  * Patch to avoid IP_DONTFRAG bug in latest xcode with broken Big Sur SDK
+  * Move all patches into contrib/patches
+  * Update to lokimq 1.2.2 for segfault-at-shutdown fix
+  * macos: pass our pre-built static libs into the gui sub-build
+  * Version bump (#1483)
+  * Build mac uninstaller as subproject instead of externalproject (#1485)
+  * Revert "Build mac uninstaller as subproject instead of externalproject (#1485)"
+
+  [ Jeff ]
+  * make macos uninstaller actually kill and uninstall lokinet (#1484)
+  * * make llarp.halt rpc call actually return a reply (#1488)
+  * resolve merge conflicts for 0.8.2 (#1493)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 23 Nov 2020 19:00:33 -0400
+
 lokinet (0.8.1-3~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
