@@ -18,6 +18,10 @@ mv /opt/lokinet/extra/network.loki.lokinet.daemon.plist /Library/LaunchDaemons/
 chown $CHOWN /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 chmod 640 /Library/LaunchDaemons/network.loki.lokinet.daemon.plist
 
+mv /opt/lokinet/extra/lokinet-newsyslog.conf /etc/newsyslog.d/lokinet.conf
+chown $CHOWN /etc/newsyslog.d/lokinet.conf
+chmod 640 /etc/newsyslog.d/lokinet.conf
+
 # clean up by removing 'extra/' (so long as it's empty)
 rmdir /opt/lokinet/extra/
 

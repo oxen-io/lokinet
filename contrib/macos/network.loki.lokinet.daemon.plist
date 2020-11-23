@@ -21,10 +21,6 @@
 	</dict>
 
 	<key>StandardOutPath</key>
-    <string>/var/lib/lokinet/stdout</string>
-
-    <key>StandardErrorPath</key>
-    <string>/var/lib/lokinet/stderr</string>
-	
+  <string>/var/log/lokinet.log</string>
 </dict>
 </plist>

@@ -20,23 +20,45 @@ set(MACOS_NOTARIZE_ASC ""
 
 include(ExternalProject)
 
+message(STATUS "Building UninstallLokinet.app")
+
+ExternalProject_Add(lokinet-uninstaller
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/contrib/macos/uninstaller
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+)
+
 message(STATUS "Building LokinetGUI.app from ${LOKINET_GUI_REPO} @ ${LOKINET_GUI_CHECKOUT}")
 
+if(NOT BUILD_STATIC_DEPS)
+    message(FATAL_ERROR "Building an installer on macos requires -DBUILD_STATIC_DEPS=ON")
+endif()
+
+
+
 ExternalProject_Add(lokinet-gui
+    DEPENDS lokimq::lokimq
     GIT_REPOSITORY "${LOKINET_GUI_REPO}"
     GIT_TAG "${LOKINET_GUI_CHECKOUT}"
     CMAKE_ARGS -DMACOS_APP=ON -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR} -DMACOS_SIGN=${MACOS_SIGN_APP}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF
-    )
-
-
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} -DBUILD_SHARED_LIBS=OFF
+        "-DLOKIMQ_LIBRARIES=$<TARGET_FILE:lokimq::lokimq>$<SEMICOLON>$<TARGET_FILE:libzmq>$<SEMICOLON>$<TARGET_FILE:sodium>"
+        "-DLOKIMQ_INCLUDE_DIRS=$<TARGET_PROPERTY:lokimq::lokimq,INCLUDE_DIRECTORIES>"
+        )
 
 install(PROGRAMS ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_uninstall.sh
         DESTINATION "bin/"
         COMPONENT lokinet)
 
 install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
-        DESTINATION "../../Applications"
+        DESTINATION "../../Applications/Lokinet"
+        USE_SOURCE_PERMISSIONS
+        COMPONENT gui
+        PATTERN "*"
+        )
+
+install(DIRECTORY ${PROJECT_BINARY_DIR}/UninstallLokinet.app
+        DESTINATION "../../Applications/Lokinet"
         USE_SOURCE_PERMISSIONS
         COMPONENT gui
         PATTERN "*"
@@ -44,9 +66,10 @@ install(DIRECTORY ${PROJECT_BINARY_DIR}/LokinetGUI.app
 
 # copy files that will be later moved by the postinstall script to proper locations
 install(FILES ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet_macos_daemon_script.sh
-              ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
-        DESTINATION "extra/"
-        COMPONENT lokinet)
+  ${CMAKE_SOURCE_DIR}/contrib/macos/network.loki.lokinet.daemon.plist
+  ${CMAKE_SOURCE_DIR}/contrib/macos/lokinet-newsyslog.conf
+  DESTINATION "extra/"
+  COMPONENT lokinet)
 
 set(CPACK_COMPONENTS_ALL lokinet gui)
 
@@ -58,6 +81,7 @@ set(CPACK_COMPONENT_GUI_DESCRIPTION "Small GUI which provides stats and limited 
 
 set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/lokinet")
+set(CPACK_PREINSTALL_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/preinstall)
 set(CPACK_POSTFLIGHT_LOKINET_SCRIPT ${CMAKE_SOURCE_DIR}/contrib/macos/postinstall)
 
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")

@@ -3,7 +3,6 @@
 
 *.a
 *.o
-*.plist
 *.so
 
 build/

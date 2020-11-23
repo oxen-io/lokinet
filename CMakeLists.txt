@@ -13,9 +13,8 @@ if(CCACHE_PROGRAM)
   endforeach()
 endif()
 
-set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME}
-    VERSION 0.8.1
+project(lokinet
+    VERSION 0.8.2
     DESCRIPTION "lokinet - IP packet onion router"
     LANGUAGES C CXX)
 
@@ -150,7 +149,7 @@ endif()
 
 option(FORCE_LOKIMQ_SUBMODULE "force using lokimq submodule" OFF)
 if(NOT FORCE_LOKIMQ_SUBMODULE)
-  pkg_check_modules(LOKIMQ liblokimq>=1.2)
+  pkg_check_modules(LOKIMQ liblokimq>=1.2.2)
 endif()
 if(LOKIMQ_FOUND)
   add_library(lokimq INTERFACE)
