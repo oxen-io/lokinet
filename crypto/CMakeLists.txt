@@ -59,7 +59,7 @@ enable_lto(lokinet-cryptography)
 add_log_tag(lokinet-cryptography)
 
 if(BUILD_SHARED_LIBS)
-  install(TARGETS lokinet-cryptography LIBRARY DESTINATION lib)
+  install(TARGETS lokinet-cryptography LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 if (WARNINGS_AS_ERRORS)
