@@ -932,12 +932,7 @@ namespace llarp
     void
     Endpoint::QueueRecvData(RecvDataEvent ev)
     {
-      if (m_RecvQueue.full() || m_RecvQueue.empty())
-      {
-        auto self = this;
-        LogicCall(m_router->logic(), [self]() { self->FlushRecvData(); });
-      }
-      m_RecvQueue.pushBack(std::move(ev));
+      m_RecvQueue.tryPushBack(std::move(ev));
     }
 
     bool
@@ -1313,7 +1308,6 @@ namespace llarp
       }
 
       UpstreamFlush(router);
-      router->linkManager().PumpLinks();
     }
 
     bool

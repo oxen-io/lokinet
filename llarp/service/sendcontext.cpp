@@ -27,13 +27,10 @@ namespace llarp
     bool
     SendContext::Send(std::shared_ptr<ProtocolFrame> msg, path::Path_ptr path)
     {
-      if (m_SendQueue.empty() or m_SendQueue.full())
-      {
-        LogicCall(m_Endpoint->RouterLogic(), [self = this]() { self->FlushUpstream(); });
-      }
-      m_SendQueue.pushBack(std::make_pair(
-          std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID), path));
-      return true;
+      return m_SendQueue.tryPushBack(std::make_pair(
+                 std::make_shared<const routing::PathTransferMessage>(*msg, remoteIntro.pathID),
+                 path))
+          == thread::QueueReturn::Success;
     }
 
     void
