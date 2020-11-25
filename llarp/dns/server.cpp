@@ -47,14 +47,7 @@ namespace llarp
           return false;
         }
       }
-
-      const IpAddress any("0.0.0.0", 0);
-      auto self = shared_from_this();
-      LogicCall(m_ClientLogic, [=]() {
-        llarp_ev_add_udp(self->m_ClientLoop.get(), &self->m_Client, any.createSockAddr());
-      });
-      return (
-          llarp_ev_add_udp(self->m_ServerLoop.get(), &self->m_Server, addr.createSockAddr()) == 0);
+      return (llarp_ev_add_udp(m_ServerLoop, &m_Server, addr.createSockAddr()) == 0);
     }
 
     static Proxy::Buffer_t

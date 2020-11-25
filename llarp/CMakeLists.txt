@@ -83,7 +83,6 @@ endif()
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
     ev/ev_libuv.cpp
-    ev/ev_win32.cpp
     win32/win32_inet.c
     win32/win32_intrnl.c)
 

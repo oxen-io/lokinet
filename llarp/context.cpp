@@ -19,6 +19,19 @@
 #include <pthread_np.h>
 #endif
 
+#ifdef _WIN32
+#include <vpn/win32.hpp>
+#endif
+#ifdef ANDROID
+#include <vpn/android.hpp>
+#endif
+#ifdef __linux__
+#include <vpn/linux.hpp>
+#endif
+#ifdef __APPLE__
+#include <vpn/apple.hpp>
+#endif
+
 namespace llarp
 {
   bool
@@ -80,7 +93,7 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
-    router = makeRouter(mainloop, logic);
+    router = makeRouter(mainloop, logic, makeVPNPlatform());
 
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
@@ -96,9 +109,36 @@ namespace llarp
   }
 
   std::unique_ptr<AbstractRouter>
-  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
+  Context::makeRouter(
+      llarp_ev_loop_ptr netloop,
+      std::shared_ptr<Logic> logic,
+      std::unique_ptr<vpn::Platform> vpnPlatform) const
   {
-    return std::make_unique<Router>(netloop, logic);
+    return std::make_unique<Router>(netloop, logic, std::move(vpnPlatform));
+  }
+
+  std::unique_ptr<vpn::Platform>
+  Context::makeVPNPlatform() const
+  {
+    std::unique_ptr<vpn::Platform> plat;
+#ifdef _WIN32
+    plat = std::make_unique<vpn::Win32Platform>();
+#endif
+#ifdef ANDROID
+    plat = std::make_unique<vpn::AndroidPlatform>();
+#endif
+#ifdef __linux__
+    plat = std::make_unique<vpn::LinuxPlatform>();
+#endif
+#ifdef __APPLE__
+    plat = std::make_unique<vpn::ApplePlatform>();
+#endif
+
+    // add more here
+
+    if (plat == nullptr)
+      throw std::runtime_error("not supported vpn platform");
+    return plat;
   }
 
   int
@@ -123,9 +163,9 @@ namespace llarp
     llarp_ev_loop_run_single_process(mainloop, logic);
     if (closeWaiter)
     {
-      // inform promise if called by CloseAsync
       closeWaiter->set_value();
     }
+    Close();
     return 0;
   }
 
@@ -176,13 +216,6 @@ namespace llarp
     {
       /// async stop router on sigint
       router->Stop();
-    }
-    else
-    {
-      if (logic)
-        logic->stop();
-      llarp_ev_loop_stop(mainloop);
-      Close();
     }
   }
 

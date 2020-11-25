@@ -83,6 +83,12 @@ namespace llarp
           || this->netmask_bits < other.netmask_bits;
     }
 
+    bool
+    operator==(const IPRange& other) const
+    {
+      return addr == other.addr and netmask_bits == other.netmask_bits;
+    }
+
     std::string
     ToString() const
     {
@@ -97,3 +103,17 @@ namespace llarp
   };
 
 }  // namespace llarp
+
+namespace std
+{
+  template <>
+  struct hash<llarp::IPRange>
+  {
+    size_t
+    operator()(const llarp::IPRange& range) const
+    {
+      const auto str = range.ToString();
+      return std::hash<std::string>{}(str);
+    }
+  };
+}  // namespace std
