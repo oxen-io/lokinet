@@ -101,7 +101,7 @@ namespace llarp
 
     /// create the vpn platform for use in creating network interfaces
     std::unique_ptr<llarp::vpn::Platform>
-    makeVPNPlatform() const;
+    makeVPNPlatform();
 
    protected:
     std::shared_ptr<Config> config = nullptr;
