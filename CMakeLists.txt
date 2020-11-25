@@ -329,8 +329,6 @@ add_subdirectory(external/date EXCLUDE_FROM_ALL)
 
 include_directories(SYSTEM external/sqlite_orm/include)
 
-add_subdirectory(vendor)
-
 if(ANDROID)
   target_link_libraries(base_libs INTERFACE log)
   target_compile_definitions(base_libs INTERFACE ANDROID)

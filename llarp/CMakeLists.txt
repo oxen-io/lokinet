@@ -61,7 +61,6 @@ add_library(lokinet-platform
   net/net_int.cpp
   net/route.cpp
   net/sock_addr.cpp
-  $<TARGET_OBJECTS:tuntap>
 )
 
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs libuv)
