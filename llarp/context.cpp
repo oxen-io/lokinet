@@ -80,7 +80,7 @@ namespace llarp
     crypto = std::make_unique<sodium::CryptoLibSodium>();
     cryptoManager = std::make_unique<CryptoManager>(crypto.get());
 
-    router = makeRouter(mainloop, logic, makeVPNPlatform());
+    router = makeRouter(mainloop, logic);
 
     nodedb = std::make_unique<llarp_nodedb>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
@@ -96,12 +96,9 @@ namespace llarp
   }
 
   std::unique_ptr<AbstractRouter>
-  Context::makeRouter(
-      llarp_ev_loop_ptr netloop,
-      std::shared_ptr<Logic> logic,
-      std::unique_ptr<vpn::Platform> vpnPlatform) const
+  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
   {
-    return std::make_unique<Router>(netloop, logic, std::move(vpnPlatform));
+    return std::make_unique<Router>(netloop, logic, makeVPNPlatform());
   }
 
   std::unique_ptr<vpn::Platform>
