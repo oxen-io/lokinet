@@ -94,10 +94,7 @@ namespace llarp
     /// Creates a router. Can be overridden to allow a different class of router
     /// to be created instead. Defaults to llarp::Router.
     virtual std::unique_ptr<AbstractRouter>
-    makeRouter(
-        llarp_ev_loop_ptr __netloop,
-        std::shared_ptr<Logic> logic,
-        std::unique_ptr<llarp::vpn::Platform> vpnPlatform) const;
+    makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
     /// create the vpn platform for use in creating network interfaces
     std::unique_ptr<llarp::vpn::Platform>
