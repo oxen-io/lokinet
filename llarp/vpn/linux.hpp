@@ -80,7 +80,7 @@ namespace llarp::vpn
       const auto sz = write(m_fd, pkt.buf, pkt.sz);
       if (sz <= 0)
         return false;
-      return sz == ssize_t{pkt.sz};
+      return sz == static_cast<ssize_t>(pkt.sz);
     }
 
     bool

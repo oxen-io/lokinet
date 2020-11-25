@@ -19,19 +19,6 @@
 #include <pthread_np.h>
 #endif
 
-#ifdef _WIN32
-#include <vpn/win32.hpp>
-#endif
-#ifdef ANDROID
-#include <vpn/android.hpp>
-#endif
-#ifdef __linux__
-#include <vpn/linux.hpp>
-#endif
-#ifdef __APPLE__
-#include <vpn/apple.hpp>
-#endif
-
 namespace llarp
 {
   bool
@@ -118,26 +105,11 @@ namespace llarp
   }
 
   std::unique_ptr<vpn::Platform>
-  Context::makeVPNPlatform() const
+  Context::makeVPNPlatform()
   {
-    std::unique_ptr<vpn::Platform> plat;
-#ifdef _WIN32
-    plat = std::make_unique<vpn::Win32Platform>();
-#endif
-#ifdef ANDROID
-    plat = std::make_unique<vpn::AndroidPlatform>();
-#endif
-#ifdef __linux__
-    plat = std::make_unique<vpn::LinuxPlatform>();
-#endif
-#ifdef __APPLE__
-    plat = std::make_unique<vpn::ApplePlatform>();
-#endif
-
-    // add more here
-
+    auto plat = vpn::MakePlatform(this);
     if (plat == nullptr)
-      throw std::runtime_error("not supported vpn platform");
+      throw std::runtime_error("vpn platform not supported");
     return plat;
   }
 

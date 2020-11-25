@@ -4,6 +4,11 @@
 #include <net/ip_packet.hpp>
 #include <set>
 
+namespace llarp
+{
+  struct Context;
+}
+
 namespace llarp::vpn
 {
   struct InterfaceAddress
@@ -74,5 +79,9 @@ namespace llarp::vpn
     virtual std::shared_ptr<NetworkInterface>
     ObtainInterface(InterfaceInfo info) = 0;
   };
+
+  /// create native vpn platform
+  std::unique_ptr<Platform>
+  MakePlatform(llarp::Context* ctx);
 
 }  // namespace llarp::vpn
