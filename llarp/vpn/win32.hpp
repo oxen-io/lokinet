@@ -5,6 +5,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <util/thread/queue.hpp>
+#include <ev/vpn.hpp>
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
