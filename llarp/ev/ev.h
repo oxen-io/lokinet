@@ -4,7 +4,6 @@
 #include <net/ip_address.hpp>
 #include <util/buffer.hpp>
 #include <util/time.hpp>
-#include <tuntap.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
