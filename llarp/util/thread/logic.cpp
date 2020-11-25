@@ -56,7 +56,7 @@ namespace llarp
   }
 
   void
-  Logic::set_event_loop(llarp_ev_loop* loop)
+  Logic::set_event_loop(EventLoop* loop)
   {
     m_Loop = loop;
     SetQueuer([loop](std::function<void(void)> work) { loop->call_soon(work); });

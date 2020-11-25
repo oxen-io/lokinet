@@ -30,17 +30,6 @@ namespace llarp
 {
   namespace handlers
   {
-    void
-    TunEndpoint::FlushToUser(std::function<bool(const net::IPPacket&)> send)
-    {
-      // flush network to user
-      while (not m_NetworkToUserPktQueue.empty())
-      {
-        send(m_NetworkToUserPktQueue.top().pkt);
-        m_NetworkToUserPktQueue.pop();
-      }
-    }
-
     bool
     TunEndpoint::ShouldFlushNow(llarp_time_t now) const
     {
@@ -48,44 +37,19 @@ namespace llarp
       return now >= m_LastFlushAt + FlushInterval;
     }
 
-    void
-    TunEndpoint::tunifTick(llarp_tun_io* tun)
-    {
-      llarp::LogTrace("TunEndpoint::tunifTick()");
-      auto* self = static_cast<TunEndpoint*>(tun->user);
-      self->Flush();
-    }
-
-    TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent, bool lazyVPN)
+    TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
-    {
-      if (not lazyVPN)
-      {
-        tunif.reset(new llarp_tun_io());
-        std::fill(tunif->ifaddr, tunif->ifaddr + sizeof(tunif->ifaddr), 0);
-        std::fill(tunif->ifname, tunif->ifname + sizeof(tunif->ifname), 0);
-        tunif->netmask = 0;
-        tunif->get_fd_promise = nullptr;
-        tunif->user = this;
-        // eh this shouldn't do anything on windows anyway
-        tunif->tick = &tunifTick;
-        tunif->before_write = &tunifBeforeWrite;
-        tunif->recvpkt = &tunifRecvPkt;
-      }
-    }
+    {}
 
     util::StatusObject
     TunEndpoint::ExtractStatus() const
     {
       auto obj = service::Endpoint::ExtractStatus();
       obj["ifaddr"] = m_OurRange.ToString();
-      if (tunif)
-      {
-        obj["ifname"] = tunif->ifname;
-      }
+      obj["ifname"] = m_IfName;
       std::vector<std::string> resolvers;
       for (const auto& addr : m_UpstreamResolvers)
         resolvers.emplace_back(addr.toString());
@@ -199,42 +163,27 @@ namespace llarp
           return false;
       }
 
-      std::string ifname = conf.m_ifname;
-      if (ifname.empty())
+      m_IfName = conf.m_ifname;
+      if (m_IfName.empty())
       {
         const auto maybe = llarp::FindFreeTun();
         if (not maybe.has_value())
           throw std::runtime_error("cannot find free interface name");
-        ifname = *maybe;
+        m_IfName = *maybe;
       }
-      if (tunif)
+
+      m_OurRange = conf.m_ifaddr;
+      if (!m_OurRange.addr.h)
       {
-        if (ifname.length() >= sizeof(tunif->ifname))
+        const auto maybe = llarp::FindFreeRange();
+        if (not maybe.has_value())
         {
-          llarp::LogError(Name() + " ifname '", ifname, "' is too long");
-          return false;
+          throw std::runtime_error("cannot find free address range");
         }
-        strncpy(tunif->ifname, ifname.c_str(), sizeof(tunif->ifname) - 1);
-        llarp::LogInfo(Name() + " setting ifname to ", tunif->ifname);
-
-        m_OurRange = conf.m_ifaddr;
-        if (!m_OurRange.addr.h)
-        {
-          const auto maybe = llarp::FindFreeRange();
-          if (not maybe.has_value())
-          {
-            throw std::runtime_error("cannot find free address range");
-          }
-          m_OurRange = *maybe;
-        }
-
-        m_UseV6 = not m_OurRange.IsV4();
-        tunif->netmask = m_OurRange.HostmaskBits();
-        const auto addr = m_OurRange.BaseAddressString();
-        llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ", tunif->netmask);
-        strncpy(tunif->ifaddr, addr.c_str(), sizeof(tunif->ifaddr) - 1);
+        m_OurRange = *maybe;
       }
-
+      m_OurIP = m_OurRange.addr;
+      m_UseV6 = not m_OurRange.IsV4();
       return Endpoint::Configure(conf, dnsConf);
     }
 
@@ -249,6 +198,12 @@ namespace llarp
     {
       FlushSend();
       Pump(Now());
+      // flush network to user
+      while (not m_NetworkToUserPktQueue.empty())
+      {
+        m_NetIf->WritePacket(m_NetworkToUserPktQueue.top().pkt);
+        m_NetworkToUserPktQueue.pop();
+      }
     }
 
     static bool
@@ -713,8 +668,6 @@ namespace llarp
 #ifdef _WIN32
       return net::TruncateV6(GetIfAddr()).ToString();
 #else
-      if (tunif)
-        return tunif->ifname;
       return m_IfName;
 #endif
     }
@@ -740,122 +693,9 @@ namespace llarp
     bool
     TunEndpoint::SetupTun()
     {
-      lazy_vpn vpn;
-      huint32_t ip;
-      auto loop = EndpointNetLoop();
-      if (tunif == nullptr)
-      {
-        llarp::LogInfo(Name(), " waiting for vpn to start");
-        vpn = m_LazyVPNPromise.get_future().get();
-        vpnif = vpn.io;
-        if (vpnif == nullptr)
-        {
-          llarp::LogError(Name(), " failed to recieve vpn interface");
-          return false;
-        }
-        llarp::LogInfo(Name(), " got vpn interface");
-        auto self = shared_from_this();
-        // function to queue a packet to send to vpn interface
-        auto sendpkt = [self](const net::IPPacket& pkt) -> bool {
-          // drop if no endpoint
-          auto impl = self->GetVPNImpl();
-          // drop if no vpn interface
-          if (impl == nullptr)
-            return true;
-          // drop if queue to vpn not enabled
-          if (not impl->reader.queue.enabled())
-            return true;
-          // drop if queue to vpn full
-          if (impl->reader.queue.full())
-            return true;
-          // queue to reader
-          impl->reader.queue.pushBack(pkt);
-          return false;
-        };
-        // event loop ticker
-        auto ticker = [self, sendpkt]() {
-          llarp::LogTrace("TunEndpoint ticker() start");
-          TunEndpoint* ep = self.get();
-          const bool running = not ep->IsStopped();
-          auto impl = ep->GetVPNImpl();
-          if (impl)
-          {
-            /// get packets from vpn
-            while (not impl->writer.queue.empty())
-            {
-              // queue it to be sent over lokinet
-              auto pkt = impl->writer.queue.popFront();
-              if (running)
-                ep->m_UserToNetworkPktQueue.Emplace(pkt);
-            }
-          }
-
-          // process packets queued from vpn
-          if (running)
-          {
-            ep->Flush();
-            ep->FlushToUser(sendpkt);
-          }
-          // if impl has a tick function call it
-          if (impl && impl->parent && impl->parent->tick)
-            impl->parent->tick(impl->parent);
-          llarp::LogTrace("TunEndpoint ticker() end");
-        };
-        if (not loop->add_ticker(ticker))
-        {
-          llarp::LogError(Name(), " failed to add vpn to event loop");
-          if (vpnif->injected)
-            vpnif->injected(vpnif, false);
-          return false;
-        }
-      }
-      else
-      {
-        if (!llarp_ev_add_tun(loop.get(), tunif.get()))
-        {
-          llarp::LogError(
-              Name(), " failed to set up tun interface: ", tunif->ifaddr, " on ", tunif->ifname);
-          return false;
-        }
-      }
-      const char* ifname;
-      const char* ifaddr;
-      unsigned char netmask;
-      if (tunif)
-      {
-        ifname = tunif->ifname;
-        ifaddr = tunif->ifaddr;
-        netmask = tunif->netmask;
-      }
-      else
-      {
-        ifname = vpn.info.ifname;
-        ifaddr = vpn.info.ifaddr;
-        netmask = vpn.info.netmask;
-      }
-      m_IfName = ifname;
-      if (ip.FromString(ifaddr))
-      {
-        m_OurIP = net::ExpandV4(ip);
-        m_OurRange.netmask_bits = netmask_ipv6_bits(netmask + 96);
-      }
-      else if (m_OurIP.FromString(ifaddr))
-      {
-        m_OurRange.netmask_bits = netmask_ipv6_bits(netmask);
-        m_UseV6 = true;
-      }
-      else
-      {
-        LogError(Name(), " invalid interface address given, ifaddr=", ifaddr);
-        if (vpnif && vpnif->injected)
-          vpnif->injected(vpnif, false);
-        return false;
-      }
-
       m_NextIP = m_OurIP;
-      m_OurRange.addr = m_OurIP;
       m_MaxIP = m_OurRange.HighestAddr();
-      llarp::LogInfo(Name(), " set ", ifname, " to have address ", m_OurIP);
+      llarp::LogInfo(Name(), " set ", m_IfName, " to have address ", m_OurIP);
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ", m_OurRange);
 
       const service::Address ourAddr = m_Identity.pub.Addr();
@@ -865,15 +705,42 @@ namespace llarp
         return false;
       }
 
+      vpn::InterfaceInfo info;
+      info.addrs.emplace(m_OurRange);
+      info.ifname = m_IfName;
+      info.dnsaddr.FromString(m_LocalResolverAddr.toHost());
+
+      LogInfo(Name(), " setting up network...");
+
+      try
+      {
+        m_NetIf = Router()->GetVPNPlatform()->ObtainInterface(std::move(info));
+      }
+      catch (std::exception& ex)
+      {
+        LogError(Name(), " failed to set up network interface: ", ex.what());
+      }
+      if (not m_NetIf)
+      {
+        LogError(Name(), " failed to obtain network interface");
+        return false;
+      }
+      LogInfo(Name(), " got network interface");
+
+      auto netloop = Router()->netloop();
+      if (not netloop->add_network_interface(
+              m_NetIf, [&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }))
+      {
+        LogError(Name(), " failed to add network interface");
+        return false;
+      }
+
+      netloop->add_ticker([&]() { Flush(); });
+
       if (m_OnUp)
       {
         m_OnUp->NotifyAsync(NotifyParams());
       }
-      if (vpnif && vpnif->injected)
-      {
-        vpnif->injected(vpnif, true);
-      }
-
       return HasAddress(ourAddr);
     }
 
@@ -883,8 +750,7 @@ namespace llarp
       auto env = Endpoint::NotifyParams();
       env.emplace("IP_ADDR", m_OurIP.ToString());
       env.emplace("IF_ADDR", m_OurRange.ToString());
-      if (tunif)
-        env.emplace("IF_NAME", tunif->ifname);
+      env.emplace("IF_NAME", m_IfName);
       std::string strictConnect;
       for (const auto& addr : m_StrictConnectAddrs)
         strictConnect += addr.toString() + " ";
@@ -940,6 +806,22 @@ namespace llarp
           dst = pkt.dstv6();
           src = pkt.srcv6();
         }
+        constexpr huint128_t ipv6_multicast_all_nodes =
+            huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};
+        constexpr huint128_t ipv6_multicast_all_routers =
+            huint128_t{uint128_t{0xff01'0000'0000'0000UL, 2UL}};
+        if (dst == ipv6_multicast_all_nodes and m_state->m_ExitEnabled)
+        {
+          /// send ipv6 multicast
+          for (const auto& [ip, addr] : m_IPToAddr)
+          {
+            (void)ip;
+            SendToServiceOrQueue(
+                service::Address{addr.as_array()}, pkt.ConstBuffer(), service::eProtocolExit);
+          }
+          return;
+        }
+
         auto itr = m_IPToAddr.find(dst);
         if (itr == m_IPToAddr.end())
         {
@@ -956,7 +838,8 @@ namespace llarp
           else
           {
             const auto addr = *exits.begin();
-            pkt.ZeroSourceAddress();
+            if (pkt.IsV4())
+              pkt.ZeroSourceAddress();
             MarkAddressOutbound(addr);
             EnsurePathToService(
                 addr,
@@ -1039,18 +922,29 @@ namespace llarp
         // exit side from exit
         src = ObtainIPForAddr(addr, snode);
         if (pkt.IsV4())
-          dst = pkt.dst4to6();
+          dst = pkt.dst4to6Lan();
         else if (pkt.IsV6())
+        {
           dst = pkt.dstv6();
+          if (not m_OurRange.Contains(pkt.srcv6()))
+          {
+            src = pkt.srcv6();
+          }
+        }
       }
       else if (t == service::eProtocolExit)
       {
         // client side exit traffic from exit
         if (pkt.IsV4())
+        {
+          dst = m_OurIP;
           src = pkt.src4to6();
+        }
         else if (pkt.IsV6())
+        {
+          dst = pkt.dstv6();
           src = pkt.srcv6();
-        dst = m_OurIP;
+        }
         // find what exit we think this should be for
         const auto mapped = m_ExitMap.FindAll(src);
         if (mapped.count(service::Address{addr}) == 0 or IsBogon(src))
@@ -1182,32 +1076,9 @@ namespace llarp
     }
 
     void
-    TunEndpoint::TickTun(__attribute__((unused)) llarp_time_t now)
+    TunEndpoint::HandleGotUserPacket(net::IPPacket pkt)
     {
-      // called in the isolated thread
-    }
-
-    void
-    TunEndpoint::tunifBeforeWrite(llarp_tun_io* tun)
-    {
-      // called in the isolated network thread
-      auto* self = static_cast<TunEndpoint*>(tun->user);
-      self->Flush();
-      self->FlushToUser([self, tun](const net::IPPacket& pkt) -> bool {
-        if (not llarp_ev_tun_async_write(tun, pkt.ConstBuffer()))
-        {
-          llarp::LogWarn(self->Name(), " packet dropped");
-        }
-        return false;
-      });
-    }  // namespace handlers
-
-    void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io* tun, const llarp_buffer_t& b)
-    {
-      // called for every packet read from user in isolated network thread
-      auto* self = static_cast<TunEndpoint*>(tun->user);
-      self->m_UserToNetworkPktQueue.EmplaceIf([&](net::IPPacket& pkt) { return pkt.Load(b); });
+      m_UserToNetworkPktQueue.Emplace(std::move(pkt));
     }
 
     TunEndpoint::~TunEndpoint() = default;

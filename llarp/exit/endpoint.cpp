@@ -188,7 +188,7 @@ namespace llarp
       // flush upstream queue
       while (m_UpstreamQueue.size())
       {
-        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt.ConstBuffer());
+        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt);
         m_UpstreamQueue.pop();
       }
       // flush downstream queue

@@ -75,6 +75,11 @@ namespace llarp
     class ThreadPool;
   }
 
+  namespace vpn
+  {
+    class Platform;
+  }
+
   using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
 
   struct AbstractRouter
@@ -90,6 +95,9 @@ namespace llarp
 
     virtual LMQ_ptr
     lmq() const = 0;
+
+    virtual vpn::Platform*
+    GetVPNPlatform() const = 0;
 
     virtual std::shared_ptr<rpc::LokidRpcClient>
     RpcClient() const = 0;

@@ -46,11 +46,15 @@ static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
 namespace llarp
 {
-  Router::Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> l)
+  Router::Router(
+      llarp_ev_loop_ptr __netloop,
+      std::shared_ptr<Logic> l,
+      std::unique_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
       , m_lmq(std::make_shared<lokimq::LokiMQ>())
       , _netloop(std::move(__netloop))
       , _logic(std::move(l))
+      , _vpnPlatform(std::move(vpnPlatform))
       , paths(this)
       , _exitContext(this)
       , _dht(llarp_dht_context_new(this))

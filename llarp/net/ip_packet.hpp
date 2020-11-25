@@ -254,6 +254,12 @@ namespace llarp
       huint128_t
       dst4to6() const;
 
+      huint128_t
+      src4to6Lan() const;
+
+      huint128_t
+      dst4to6Lan() const;
+
       void
       UpdateIPv4Address(nuint32_t src, nuint32_t dst);
 

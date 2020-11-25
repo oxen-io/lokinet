@@ -29,13 +29,13 @@ namespace llarp
     SetQueuer(std::function<void(std::function<void(void)>)> q);
 
     void
-    set_event_loop(llarp_ev_loop* loop);
+    set_event_loop(EventLoop* loop);
 
     void
     clear_event_loop();
 
    private:
-    llarp_ev_loop* m_Loop = nullptr;
+    EventLoop* m_Loop = nullptr;
     std::function<void(std::function<void(void)>)> m_Queue;
   };
 }  // namespace llarp
