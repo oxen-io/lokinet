@@ -370,7 +370,7 @@ namespace llarp::vpn
         DWORD size;
         ULONG_PTR user;
         OVERLAPPED* ovl = nullptr;
-        if (not GetQueuedCompletionStatus(m_IOCP, &size, &user, &ovl, 50))
+        if (not GetQueuedCompletionStatus(m_IOCP, &size, &user, &ovl, 1000))
           continue;
         asio_evt_pkt* pkt = (asio_evt_pkt*)ovl;
         LogDebug("got iocp event size=", size, " read=", pkt->read);
