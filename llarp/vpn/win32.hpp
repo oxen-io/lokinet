@@ -128,9 +128,14 @@ namespace llarp::vpn
    public:
     Win32Interface(InterfaceInfo info) : m_ReadQueue{1024}, m_Info{std::move(info)}
     {
+      DWORD len;
+
       const auto device_id = reg_query(NETWORK_ADAPTERS);
       if (device_id == nullptr)
+      {
+        LogError("cannot query registry");
         throw std::invalid_argument{"cannot query registery"};
+      }
       std::stringstream ss;
       ss << "\\\\.\\Global\\" << device_id << ".tap";
       const auto fname = ss.str();
@@ -156,11 +161,10 @@ namespace llarp::vpn
           LogError("invalid address family");
           throw std::invalid_argument{"address family not supported"};
         }
-        DWORD len;
         IPADDR sock[3]{};
         const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
         const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
-
+        LogInfo("address ", addr, " netmask ", mask);
         sock[0] = addr.n;
         sock[1] = addr.n & mask.n;
         sock[2] = mask.n;
@@ -187,7 +191,14 @@ namespace llarp::vpn
         ep[3] = 31536000;
 
         if (not DeviceIoControl(
-                m_Device, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep), ep, sizeof(ep), &len, NULL))
+                m_Device,
+                TAP_IOCTL_CONFIG_DHCP_MASQ,
+                ep,
+                sizeof(ep),
+                ep,
+                sizeof(ep),
+                &len,
+                nullptr))
         {
           LogError("cannot set dhcp masq");
           throw std::invalid_argument{"Cannot configure tun interface dhcp"};
@@ -239,8 +250,8 @@ namespace llarp::vpn
           throw std::invalid_argument{"cannot set tun dns"};
         }
       }
+      LogInfo("putting interface up...");
       ULONG flag = 1;
-      DWORD len;
       // put the interface up
       if (not DeviceIoControl(
               m_Device,
@@ -255,8 +266,6 @@ namespace llarp::vpn
         LogError("cannot up interface up");
         throw std::invalid_argument{"cannot put interface up"};
       }
-
-      m_Run = true;
     }
 
     ~Win32Interface()
@@ -309,6 +318,7 @@ namespace llarp::vpn
     void
     Start()
     {
+      m_Run = true;
       LogInfo("starting reader thread...");
       m_IOCP = CreateIoCompletionPort(m_Device, nullptr, (ULONG_PTR)this, 2);
       m_ReadThread = CreateThread(nullptr, 0, &Loop, this, 0, nullptr);
@@ -360,21 +370,18 @@ namespace llarp::vpn
         DWORD size;
         ULONG_PTR user;
         OVERLAPPED* ovl = nullptr;
-        if (not GetQueuedCompletionStatus(m_IOCP, &size, &user, &ovl, 100))
+        if (not GetQueuedCompletionStatus(m_IOCP, &size, &user, &ovl, 50))
           continue;
         asio_evt_pkt* pkt = (asio_evt_pkt*)ovl;
         LogDebug("got iocp event size=", size, " read=", pkt->read);
         if (pkt->read)
         {
-          if (size)
-          {
-            pkt->pkt.sz = size;
-            m_ReadQueue.pushBack(pkt->pkt);
-          }
+          pkt->pkt.sz = size;
+          m_ReadQueue.pushBack(pkt->pkt);
+          pkt->Read(m_Device);
         }
-        delete pkt;
-        pkt = new asio_evt_pkt{true};
-        pkt->Read(m_Device);
+        else
+          delete pkt;
       }
     }
   };
