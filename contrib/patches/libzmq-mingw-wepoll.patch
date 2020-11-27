@@ -1,0 +1,15 @@
+--- external/wepoll/wepoll.c	2020-09-07 12:01:31.000000000 -0400
++++ external/wepoll/wepoll.c.new	2020-11-27 06:17:35.981806198 -0500
+@@ -140,9 +140,9 @@
+ #pragma warning(push, 1)
+ #endif
+ 
+-#include <WS2tcpip.h>
+-#include <WinSock2.h>
+-#include <Windows.h>
++#include <ws2tcpip.h>
++#include <winsock2.h>
++#include <windows.h>
+ 
+ #ifndef __GNUC__
+ #pragma warning(pop)
