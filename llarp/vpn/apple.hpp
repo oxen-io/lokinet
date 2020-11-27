@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/param.h>
+#include <sys/uio.h>
 
 #include <arpa/inet.h>
 #include <net/if.h>
