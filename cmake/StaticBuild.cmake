@@ -256,11 +256,14 @@ build_external(sqlite3)
 add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 
 
+if(ARCH_TRIPLET MATCHES mingw)
+  set(zmq_extra --with-poller=wepoll)
+endif()
+
 if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch && patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
 elseif(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
-  set(zmq_extra --with-poller=wepoll)
   set(zmq_patch PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
 endif()
 

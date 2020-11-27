@@ -1,5 +1,6 @@
---- external/wepoll/wepoll.c	2020-09-07 12:01:31.000000000 -0400
-+++ external/wepoll/wepoll.c.new	2020-11-27 06:17:35.981806198 -0500
+diff --git a/external/wepoll/wepoll.c b/external/wepoll/wepoll.c
+--- a/external/wepoll/wepoll.c
++++ b/external/wepoll/wepoll.c
 @@ -140,9 +140,9 @@
  #pragma warning(push, 1)
  #endif
