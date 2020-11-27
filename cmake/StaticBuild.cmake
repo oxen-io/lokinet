@@ -259,6 +259,9 @@ add_static_target(sqlite3 sqlite3_external libsqlite3.a)
 if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
     PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+elseif(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
+  set(zmq_extra --with-poller=wepoll)
+  set(zmq_patch PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
 endif()
 
 build_external(zmq
@@ -266,7 +269,7 @@ build_external(zmq
   ${zmq_patch}
   CONFIGURE_COMMAND ./configure ${cross_host} --prefix=${DEPS_DESTDIR} --enable-static --disable-shared
     --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium
-    --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror
+    --without-pgm --without-norm --without-vmci --without-docs --with-pic --disable-Werror ${zmq_extra}
     "CC=${deps_cc}" "CXX=${deps_cxx}" "CFLAGS=${deps_CFLAGS} -fstack-protector" "CXXFLAGS=${deps_CXXFLAGS} -fstack-protector"
     "sodium_CFLAGS=-I${DEPS_DESTDIR}/include" "sodium_LIBS=-L${DEPS_DESTDIR}/lib -lsodium"
 )

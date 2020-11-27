@@ -120,7 +120,8 @@ namespace llarp::vpn
   class Win32Interface : public NetworkInterface
   {
     std::atomic<bool> m_Run;
-    HANDLE m_Device, m_IOCP, m_ReadThread;
+    HANDLE m_Device, m_IOCP;
+    std::vector<HANDLE> m_Threads;
     thread::Queue<net::IPPacket> m_ReadQueue;
 
     const InterfaceInfo m_Info;
@@ -286,8 +287,9 @@ namespace llarp::vpn
       CloseHandle(m_IOCP);
       // close the handle
       CloseHandle(m_Device);
-      // close the reader thread
-      CloseHandle(m_ReadThread);
+      // close the reader threads
+      for(auto & thread : m_Threads)
+        CloseHandle(thread);
     }
 
     int
@@ -319,10 +321,10 @@ namespace llarp::vpn
     Start()
     {
       m_Run = true;
-      LogInfo("starting reader thread...");
-      m_IOCP = CreateIoCompletionPort(m_Device, nullptr, (ULONG_PTR)this, 2);
-      m_ReadThread = CreateThread(nullptr, 0, &Loop, this, 0, nullptr);
-      LogInfo("reader thread up");
+      const auto numThreads =  std::thread::hardware_concurrency();
+      m_IOCP = CreateIoCompletionPort(m_Device, nullptr, (ULONG_PTR)this, 1 + numThreads);
+      for(size_t idx = 0; idx < numThreads; ++idx)
+        m_Threads.push_back(CreateThread(nullptr, 0, &Loop, this, 0, nullptr));
     }
 
     net::IPPacket
@@ -361,10 +363,8 @@ namespace llarp::vpn
     void
     ReadLoop()
     {
-      {
-        asio_evt_pkt* ev = new asio_evt_pkt{true};
-        ev->Read(m_Device);
-      }
+      std::unique_ptr<asio_evt_pkt> ev = std::make_unique<asio_evt_pkt>(true);
+      ev->Read(m_Device);
       while (m_Run)
       {
         DWORD size;
