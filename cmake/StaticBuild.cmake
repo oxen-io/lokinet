@@ -260,11 +260,12 @@ if(ARCH_TRIPLET MATCHES mingw)
   set(zmq_extra --with-poller=wepoll)
 endif()
 
-if(ZMQ_VERSION VERSION_LESS 4.3.4 AND CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
+if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch && patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
-elseif(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
-  set(zmq_patch PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
+    PATCH_COMMAND ${CMAKE_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
+  if(ZMQ_VERSION VERSION_LESS 4.3.4)
+    set(zmq_patch ${zmq_patch} ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
+  endif()
 endif()
 
 build_external(zmq

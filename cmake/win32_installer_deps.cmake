@@ -1,5 +1,7 @@
-set(GUI_ZIP_URL "https://builds.lokinet.dev/loki-project/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.4.zip")
-set(GUI_ZIP_HASH SHA256=a91467dc37e9f55eea81141253099579ca68749b0ca89637db619d8ab466ccfa)
+if(NOT GUI_ZIP_URL)
+  set(GUI_ZIP_URL "https://builds.lokinet.dev/loki-project/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.4.zip")
+  set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=a91467dc37e9f55eea81141253099579ca68749b0ca89637db619d8ab466ccfa)
+endif()
 set(TUNTAP_URL "https://build.openvpn.net/downloads/releases/latest/tap-windows-latest-stable.exe")
 set(TUNTAP_EXE "${CMAKE_BINARY_DIR}/tuntap-install.exe")
 set(BOOTSTRAP_URL "https://seed.lokinet.org/lokinet.signed")
@@ -16,7 +18,7 @@ file(DOWNLOAD
 file(DOWNLOAD
     ${GUI_ZIP_URL}
     ${CMAKE_BINARY_DIR}/lokinet-gui.zip
-    EXPECTED_HASH ${GUI_ZIP_HASH})
+    ${GUI_ZIP_HASH_OPTS})
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_BINARY_DIR}/lokinet-gui.zip
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
