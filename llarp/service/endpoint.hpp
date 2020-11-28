@@ -269,6 +269,9 @@ namespace llarp
 
       using PendingBufferQueue = std::deque<PendingBuffer>;
 
+      size_t
+      RemoveAllConvoTagsFor(service::Address remote);
+
       bool
       WantsOutboundSession(const Address&) const override;
 

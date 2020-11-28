@@ -115,6 +115,62 @@ namespace llarp::rpc
               msg.send_reply(CreateJSONResponse(ftr.get()));
             })
         .add_request_command(
+            "endpoint",
+            [&](lokimq::Message& msg) {
+              HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
+                if (r->IsServiceNode())
+                {
+                  reply(CreateJSONError("not supported"));
+                  return;
+                }
+                std::string endpoint = "default";
+                std::unordered_set<service::Address> kills;
+                {
+                  const auto itr = obj.find("endpoint");
+                  if (itr != obj.end())
+                    endpoint = itr->get<std::string>();
+                }
+                {
+                  const auto itr = obj.find("kill");
+                  if (itr != obj.end())
+                  {
+                    if (itr->is_array())
+                    {
+                      for (auto kill_itr = itr->begin(); kill_itr != itr->end(); ++kill_itr)
+                      {
+                        if (kill_itr->is_string())
+                          kills.emplace(kill_itr->get<std::string>());
+                      }
+                    }
+                    else if (itr->is_string())
+                    {
+                      kills.emplace(itr->get<std::string>());
+                    }
+                  }
+                }
+                if (kills.empty())
+                {
+                  reply(CreateJSONError("no action taken"));
+                  return;
+                }
+                LogicCall(r->logic(), [r, endpoint, kills, reply]() {
+                  auto ep = r->hiddenServiceContext().GetEndpointByName(endpoint);
+                  if (ep == nullptr)
+                  {
+                    reply(CreateJSONError("no endpoint with name " + endpoint));
+                    return;
+                  }
+                  std::size_t removed = 0;
+                  for (auto kill : kills)
+                  {
+                    removed += ep->RemoveAllConvoTagsFor(std::move(kill));
+                  }
+                  reply(CreateJSONResponse(
+                      "removed " + std::to_string(removed) + " flow" + (removed == 1 ? "" : "s")));
+                });
+              });
+            })
+        .add_request_command(
             "exit",
             [&](lokimq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
