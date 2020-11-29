@@ -104,7 +104,7 @@ namespace llarp
   std::unique_ptr<vpn::Platform>
   Context::makeVPNPlatform()
   {
-    auto plat = vpn::MakePlatform(this);
+    auto plat = vpn::MakeNativePlatform(this);
     if (plat == nullptr)
       throw std::runtime_error("vpn platform not supported");
     return plat;

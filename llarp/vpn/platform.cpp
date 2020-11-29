@@ -15,7 +15,7 @@
 namespace llarp::vpn
 {
   std::unique_ptr<Platform>
-  MakePlatform(llarp::Context* ctx)
+  MakeNativePlatform(llarp::Context* ctx)
   {
     (void)ctx;
     std::unique_ptr<Platform> plat;
@@ -34,4 +34,5 @@ namespace llarp::vpn
 #endif
     return plat;
   }
+
 }  // namespace llarp::vpn
