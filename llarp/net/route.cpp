@@ -39,44 +39,8 @@ namespace llarp::net
   void
   Execute(std::string cmd)
   {
-    LogDebug(cmd);
-#ifdef _WIN32
+    LogInfo(cmd);
     system(cmd.c_str());
-#else
-    std::vector<std::string> parts_str;
-    std::vector<const char*> parts_raw;
-    std::stringstream in(cmd);
-    for (std::string part; std::getline(in, part, ' ');)
-    {
-      if (part.empty())
-        continue;
-      parts_str.push_back(part);
-    }
-    for (const auto& part : parts_str)
-    {
-      parts_raw.push_back(part.c_str());
-    }
-    parts_raw.push_back(nullptr);
-    const auto pid = fork();
-    if (pid == -1)
-    {
-      throw std::runtime_error("failed to fork");
-    }
-    else if (pid == 0)
-    {
-      char* const* args = (char* const*)parts_raw.data();
-      const auto result = execv(parts_raw[0], args);
-      if (result)
-      {
-        std::cout << "failed: " << result << std::endl;
-      }
-      exit(result);
-    }
-    else
-    {
-      waitpid(pid, 0, 0);
-    }
-#endif
   }
 #endif
 
