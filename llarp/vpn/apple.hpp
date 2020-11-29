@@ -85,18 +85,23 @@ namespace llarp::vpn
       m_IfName = name;
       for (const auto& ifaddr : m_Info.addrs)
       {
-        if (ifaddr.fam != AF_INET)
-          continue;
-        const huint32_t addr = net::TruncateV6(ifaddr.range.addr);
-        const huint32_t netmask = net::TruncateV6(ifaddr.range.netmask_bits);
-        const huint32_t daddr = addr & netmask;
-        Exec(
-            "/sbin/ifconfig " + m_IfName + " " + addr.ToString() + " " + daddr.ToString()
-            + " mtu 1500 netmask 255.255.255.255 up");
-        Exec(
-            "/sbin/route add " + daddr.ToString() + " -netmask " + netmask.ToString()
-            + " -interface " + m_IfName);
-        Exec("/sbin/route add " + addr.ToString() + " -interface lo0");
+        if (ifaddr.fam == AF_INET)
+        {
+          const huint32_t addr = net::TruncateV6(ifaddr.range.addr);
+          const huint32_t netmask = net::TruncateV6(ifaddr.range.netmask_bits);
+          const huint32_t daddr = addr & netmask;
+          Exec(
+              "/sbin/ifconfig " + m_IfName + " " + addr.ToString() + " " + daddr.ToString()
+              + " mtu 1500 netmask 255.255.255.255 up");
+          Exec(
+              "/sbin/route add " + daddr.ToString() + " -netmask " + netmask.ToString()
+              + " -interface " + m_IfName);
+          Exec("/sbin/route add " + addr.ToString() + " -interface lo0");
+        }
+        else if (ifaddr.fam == AF_INET6)
+        {
+          Exec("/sbin/ifconfig " + m_IfName + " inet6 " + ifaddr.range.ToString());
+        }
       }
     }
 

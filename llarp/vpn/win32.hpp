@@ -126,6 +126,37 @@ namespace llarp::vpn
 
     const InterfaceInfo m_Info;
 
+    static std::wstring
+    get_win_sys_path()
+    {
+      wchar_t win_sys_path[MAX_PATH] = {0};
+      const wchar_t* default_sys_path = L"C:\\Windows\\system32";
+
+      if (!GetSystemDirectoryW(win_sys_path, _countof(win_sys_path)))
+      {
+        wcsncpy(win_sys_path, default_sys_path, _countof(win_sys_path));
+        win_sys_path[_countof(win_sys_path) - 1] = L'\0';
+      }
+      return win_sys_path;
+    }
+
+    static std::string
+    NetSHCommand()
+    {
+      std::wstring wcmd = get_win_sys_path() + L"\\netsh.exe";
+
+      using convert_type = std::codecvt_utf8<wchar_t>;
+      std::wstring_convert<convert_type, wchar_t> converter;
+      return converter.to_bytes(wcmd);
+    }
+
+    static void
+    NetSH(std::string commands)
+    {
+      commands = NetSHCommand() + " " + commands;
+      ::system(commands.c_str());
+    }
+
    public:
     Win32Interface(InterfaceInfo info) : m_ReadQueue{1024}, m_Info{std::move(info)}
     {
@@ -154,101 +185,99 @@ namespace llarp::vpn
         throw std::invalid_argument{"cannot open " + fname};
       }
       LogInfo("setting addresses");
-      // set addresses
+      // set ipv4 addresses
       for (const auto& ifaddr : m_Info.addrs)
       {
-        if (ifaddr.fam != AF_INET)
+        if (ifaddr.fam == AF_INET)
         {
-          LogError("invalid address family");
-          throw std::invalid_argument{"address family not supported"};
-        }
-        IPADDR sock[3]{};
-        const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
-        const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
-        LogInfo("address ", addr, " netmask ", mask);
-        sock[0] = addr.n;
-        sock[1] = addr.n & mask.n;
-        sock[2] = mask.n;
+          IPADDR sock[3]{};
+          const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
+          const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
+          LogInfo("address ", addr, " netmask ", mask);
+          sock[0] = addr.n;
+          sock[1] = addr.n & mask.n;
+          sock[2] = mask.n;
 
-        if (not DeviceIoControl(
-                m_Device,
-                TAP_IOCTL_CONFIG_TUN,
-                &sock,
-                sizeof(sock),
-                &sock,
-                sizeof(sock),
-                &len,
-                nullptr))
-        {
-          LogError("cannot set address");
-          throw std::invalid_argument{"cannot configure tun interface address"};
-        }
+          if (not DeviceIoControl(
+                  m_Device,
+                  TAP_IOCTL_CONFIG_TUN,
+                  &sock,
+                  sizeof(sock),
+                  &sock,
+                  sizeof(sock),
+                  &len,
+                  nullptr))
+          {
+            LogError("cannot set address");
+            throw std::invalid_argument{"cannot configure tun interface address"};
+          }
 
-        IPADDR ep[4]{};
+          IPADDR ep[4]{};
 
-        ep[0] = addr.n;
-        ep[1] = mask.n;
-        ep[2] = (addr.n | ~mask.n) - htonl(1);
-        ep[3] = 31536000;
+          ep[0] = addr.n;
+          ep[1] = mask.n;
+          ep[2] = (addr.n | ~mask.n) - htonl(1);
+          ep[3] = 31536000;
 
-        if (not DeviceIoControl(
-                m_Device,
-                TAP_IOCTL_CONFIG_DHCP_MASQ,
-                ep,
-                sizeof(ep),
-                ep,
-                sizeof(ep),
-                &len,
-                nullptr))
-        {
-          LogError("cannot set dhcp masq");
-          throw std::invalid_argument{"Cannot configure tun interface dhcp"};
-        }
+          if (not DeviceIoControl(
+                  m_Device,
+                  TAP_IOCTL_CONFIG_DHCP_MASQ,
+                  ep,
+                  sizeof(ep),
+                  ep,
+                  sizeof(ep),
+                  &len,
+                  nullptr))
+          {
+            LogError("cannot set dhcp masq");
+            throw std::invalid_argument{"Cannot configure tun interface dhcp"};
+          }
 #pragma pack(push)
 #pragma pack(1)
-        struct opt
-        {
-          uint8_t dhcp_opt;
-          uint8_t length;
-          uint32_t value;
-        } dns, gateway;
+          struct opt
+          {
+            uint8_t dhcp_opt;
+            uint8_t length;
+            uint32_t value;
+          } dns, gateway;
 #pragma pack(pop)
 
-        const nuint32_t dnsaddr{xhtonl(m_Info.dnsaddr)};
-        dns.dhcp_opt = 6;
-        dns.length = 4;
-        dns.value = dnsaddr.n;
+          const nuint32_t dnsaddr{xhtonl(m_Info.dnsaddr)};
+          dns.dhcp_opt = 6;
+          dns.length = 4;
+          dns.value = dnsaddr.n;
 
-        gateway.dhcp_opt = 3;
-        gateway.length = 4;
-        gateway.value = addr.n + htonl(1);
+          gateway.dhcp_opt = 3;
+          gateway.length = 4;
+          gateway.value = addr.n + htonl(1);
 
-        if (not DeviceIoControl(
-                m_Device,
-                TAP_IOCTL_CONFIG_DHCP_SET_OPT,
-                &gateway,
-                sizeof(gateway),
-                &gateway,
-                sizeof(gateway),
-                &len,
-                nullptr))
-        {
-          LogError("cannot set gateway");
-          throw std::invalid_argument{"cannot set tun gateway"};
-        }
+          if (not DeviceIoControl(
+                  m_Device,
+                  TAP_IOCTL_CONFIG_DHCP_SET_OPT,
+                  &gateway,
+                  sizeof(gateway),
+                  &gateway,
+                  sizeof(gateway),
+                  &len,
+                  nullptr))
+          {
+            LogError("cannot set gateway");
+            throw std::invalid_argument{"cannot set tun gateway"};
+          }
 
-        if (not DeviceIoControl(
-                m_Device,
-                TAP_IOCTL_CONFIG_DHCP_SET_OPT,
-                &dns,
-                sizeof(dns),
-                &dns,
-                sizeof(dns),
-                &len,
-                nullptr))
-        {
-          LogError("cannot set dns");
-          throw std::invalid_argument{"cannot set tun dns"};
+          if (not DeviceIoControl(
+                  m_Device,
+                  TAP_IOCTL_CONFIG_DHCP_SET_OPT,
+                  &dns,
+                  sizeof(dns),
+                  &dns,
+                  sizeof(dns),
+                  &len,
+                  nullptr))
+          {
+            LogError("cannot set dns");
+            throw std::invalid_argument{"cannot set tun dns"};
+          }
         }
       }
       LogInfo("putting interface up...");
@@ -266,6 +295,19 @@ namespace llarp::vpn
       {
         LogError("cannot up interface up");
         throw std::invalid_argument{"cannot put interface up"};
+      }
+
+      // set ipv6 addresses
+      for (const auto& ifaddr : m_Info.addrs)
+      {
+        if (ifaddr.fam == AF_INET6)
+        {
+          IPRange range = ifaddr.range;
+          range.netmask_bits = netmask_ipv6_bits(128);
+          NetSH(
+              "interface ipv6 set address " + std::to_string(ifindex) + " " + range.ToString()
+              + " store=active");
+        }
       }
     }
 
@@ -288,7 +330,7 @@ namespace llarp::vpn
       // close the handle
       CloseHandle(m_Device);
       // close the reader threads
-      for(auto & thread : m_Threads)
+      for (auto& thread : m_Threads)
         CloseHandle(thread);
     }
 
@@ -321,9 +363,9 @@ namespace llarp::vpn
     Start()
     {
       m_Run = true;
-      const auto numThreads =  std::thread::hardware_concurrency();
+      const auto numThreads = std::thread::hardware_concurrency();
       m_IOCP = CreateIoCompletionPort(m_Device, nullptr, (ULONG_PTR)this, 1 + numThreads);
-      for(size_t idx = 0; idx < numThreads; ++idx)
+      for (size_t idx = 0; idx < numThreads; ++idx)
         m_Threads.push_back(CreateThread(nullptr, 0, &Loop, this, 0, nullptr));
     }
 

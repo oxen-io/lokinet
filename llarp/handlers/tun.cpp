@@ -806,13 +806,14 @@ namespace llarp
           dst = pkt.dstv6();
           src = pkt.srcv6();
         }
+        /*
         constexpr huint128_t ipv6_multicast_all_nodes =
             huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};
         constexpr huint128_t ipv6_multicast_all_routers =
             huint128_t{uint128_t{0xff01'0000'0000'0000UL, 2UL}};
         if (dst == ipv6_multicast_all_nodes and m_state->m_ExitEnabled)
         {
-          /// send ipv6 multicast
+          // send ipv6 multicast
           for (const auto& [ip, addr] : m_IPToAddr)
           {
             (void)ip;
@@ -821,6 +822,8 @@ namespace llarp
           }
           return;
         }
+
+        */
 
         auto itr = m_IPToAddr.find(dst);
         if (itr == m_IPToAddr.end())
@@ -917,6 +920,7 @@ namespace llarp
       net::IPPacket pkt;
       if (not pkt.Load(buf))
         return false;
+
       if (m_state->m_ExitEnabled)
       {
         // exit side from exit
@@ -924,13 +928,7 @@ namespace llarp
         if (pkt.IsV4())
           dst = pkt.dst4to6Lan();
         else if (pkt.IsV6())
-        {
           dst = pkt.dstv6();
-          if (not m_OurRange.Contains(pkt.srcv6()))
-          {
-            src = pkt.srcv6();
-          }
-        }
       }
       else if (t == service::eProtocolExit)
       {
