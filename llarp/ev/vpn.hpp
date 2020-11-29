@@ -45,9 +45,9 @@ namespace llarp::vpn
     virtual int
     PollFD() const = 0;
 
-    /// human readable name for logging
+    /// the interface's name
     virtual std::string
-    Name() const = 0;
+    IfName() const = 0;
 
     /// read next ip packet
     /// blocks until ready

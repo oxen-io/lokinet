@@ -110,7 +110,7 @@ namespace llarp::vpn
     }
 
     std::string
-    Name() const override
+    IfName() const override
     {
       return m_Info.ifname;
     }

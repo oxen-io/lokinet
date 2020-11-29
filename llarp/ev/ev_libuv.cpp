@@ -266,12 +266,12 @@ namespace libuv
       }
       if (uv_poll_init(loop, &m_Handle, m_NetIf->PollFD()) == -1)
       {
-        llarp::LogError("failed to initialize polling on ", m_NetIf->Name());
+        llarp::LogError("failed to initialize polling on ", m_NetIf->IfName());
         return false;
       }
       if (uv_poll_start(&m_Handle, UV_READABLE, &OnPoll))
       {
-        llarp::LogError("failed to start polling on ", m_NetIf->Name());
+        llarp::LogError("failed to start polling on ", m_NetIf->IfName());
         return false;
       }
       return true;

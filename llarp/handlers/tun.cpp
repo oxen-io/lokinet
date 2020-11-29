@@ -725,7 +725,8 @@ namespace llarp
         LogError(Name(), " failed to obtain network interface");
         return false;
       }
-      LogInfo(Name(), " got network interface");
+      m_IfName = m_NetIf->IfName();
+      LogInfo(Name(), " got network interface ", m_IfName);
 
       auto netloop = Router()->netloop();
       if (not netloop->add_network_interface(
