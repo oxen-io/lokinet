@@ -13,10 +13,10 @@ namespace llarp::vpn
 {
   struct InterfaceAddress
   {
-    constexpr InterfaceAddress(IPRange r) : range{std::move(r)}
+    constexpr InterfaceAddress(IPRange r, int f = AF_INET) : range{std::move(r)}, fam{f}
     {}
     IPRange range;
-    int fam = AF_INET;
+    int fam;
     bool
     operator<(const InterfaceAddress& other) const
     {

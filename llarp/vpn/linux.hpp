@@ -10,6 +10,13 @@
 
 namespace llarp::vpn
 {
+  struct in6_ifreq
+  {
+    in6_addr addr;
+    uint32_t prefixlen;
+    unsigned int ifindex;
+  };
+
   class LinuxInterface : public NetworkInterface
   {
     const int m_fd;
@@ -24,6 +31,7 @@ namespace llarp::vpn
         throw std::runtime_error("cannot open /dev/net/tun " + std::string{strerror(errno)});
 
       ifreq ifr{};
+      in6_ifreq ifr6{};
       ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
       std::copy_n(
           m_Info.ifname.c_str(),
@@ -31,24 +39,36 @@ namespace llarp::vpn
           ifr.ifr_name);
       if (::ioctl(m_fd, TUNSETIFF, &ifr) == -1)
         throw std::runtime_error("cannot set interface name: " + std::string{strerror(errno)});
-      IOCTL control{};
+      IOCTL control{AF_INET};
+
+      control.ioctl(SIOCGIFFLAGS, &ifr);
+      const int flags = ifr.ifr_flags;
+      control.ioctl(SIOCGIFINDEX, &ifr);
+      const int ifindex = ifr.ifr_index;
+
+      IOCTL control6{AF_INET6};
       for (const auto& ifaddr : m_Info.addrs)
       {
         if (ifaddr.fam == AF_INET)
         {
           ifr.ifr_addr.sa_family = AF_INET;
-          const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
+          const nuint32_t addr = ToNet(net::TruncateV6(ifaddr.range.addr));
           ((sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr = addr.n;
           control.ioctl(SIOCSIFADDR, &ifr);
 
-          const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
+          const nuint32_t mask = ToNet(net::TruncateV6(ifaddr.range.netmask_bits));
           ((sockaddr_in*)&ifr.ifr_netmask)->sin_addr.s_addr = mask.n;
           control.ioctl(SIOCSIFNETMASK, &ifr);
         }
-        // TODO: ipv6 somehow?
+        if (ifaddr.fam == AF_INET6)
+        {
+          ifr6.addr = HUIntToIn6(ifaddr.range.addr);
+          ifr6.prefixlen = llarp::bits::count_set(ifaddr.range.netmask_bits);
+          ifr6.ifindex = ifindex;
+          control6.ioctl(SIOCSIFADDR, &ifr6);
+        }
       }
-      control.ioctl(SIOCGIFFLAGS, &ifr);
-      ifr.ifr_flags |= IFF_UP | IFF_NO_PI;
+      ifr.ifr_flags = flags | IFF_UP | IFF_NO_PI;
       control.ioctl(SIOCSIFFLAGS, &ifr);
     }
 

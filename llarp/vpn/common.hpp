@@ -10,7 +10,7 @@ namespace llarp::vpn
   {
     const int _fd;
 
-    IOCTL() : _fd{::socket(AF_INET, SOCK_DGRAM, 0)}
+    explicit IOCTL(int af) : _fd{::socket(af, SOCK_DGRAM, IPPROTO_IP)}
     {
       if (_fd == -1)
         throw std::invalid_argument{strerror(errno)};
