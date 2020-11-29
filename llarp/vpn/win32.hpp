@@ -347,9 +347,9 @@ namespace llarp::vpn
     }
 
     std::string
-    Name() const override
+    IfName() const override
     {
-      return "win32 tun interface";
+      return "";
     }
 
     static DWORD FAR PASCAL
