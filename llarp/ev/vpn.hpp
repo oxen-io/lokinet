@@ -82,6 +82,6 @@ namespace llarp::vpn
 
   /// create native vpn platform
   std::unique_ptr<Platform>
-  MakePlatform(llarp::Context* ctx);
+  MakeNativePlatform(llarp::Context* ctx);
 
 }  // namespace llarp::vpn

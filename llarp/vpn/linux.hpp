@@ -44,7 +44,7 @@ namespace llarp::vpn
       control.ioctl(SIOCGIFFLAGS, &ifr);
       const int flags = ifr.ifr_flags;
       control.ioctl(SIOCGIFINDEX, &ifr);
-      const int ifindex = ifr.ifr_index;
+      const int ifindex = ifr.ifr_ifindex;
 
       IOCTL control6{AF_INET6};
       for (const auto& ifaddr : m_Info.addrs)
@@ -62,8 +62,8 @@ namespace llarp::vpn
         }
         if (ifaddr.fam == AF_INET6)
         {
-          ifr6.addr = HUIntToIn6(ifaddr.range.addr);
-          ifr6.prefixlen = llarp::bits::count_set(ifaddr.range.netmask_bits);
+          ifr6.addr = net::HUIntToIn6(ifaddr.range.addr);
+          ifr6.prefixlen = llarp::bits::count_bits(ifaddr.range.netmask_bits);
           ifr6.ifindex = ifindex;
           control6.ioctl(SIOCSIFADDR, &ifr6);
         }

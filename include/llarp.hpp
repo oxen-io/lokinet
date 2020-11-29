@@ -97,7 +97,7 @@ namespace llarp
     makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
 
     /// create the vpn platform for use in creating network interfaces
-    std::unique_ptr<llarp::vpn::Platform>
+    virtual std::unique_ptr<llarp::vpn::Platform>
     makeVPNPlatform();
 
    protected:

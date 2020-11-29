@@ -5,6 +5,13 @@
 namespace llarp
 {
   template <>
+  nuint32_t
+  ToNet(huint32_t h)
+  {
+    return xhtonl(h);
+  }
+
+  template <>
   void
   huint32_t::ToV6(V6Container& c)
   {
