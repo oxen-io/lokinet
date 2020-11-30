@@ -87,9 +87,6 @@ namespace llarp
     virtual void
     stopped(){};
 
-    virtual int
-    tick(int ms) = 0;
-
     virtual uint32_t
     call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) = 0;
 
@@ -120,6 +117,10 @@ namespace llarp
 
     virtual void
     call_soon(std::function<void(void)> f) = 0;
+
+    /// set the function that is called once per cycle the flush all the queues
+    virtual void
+    set_pump_function(std::function<void(void)> pumpll) = 0;
 
     virtual void
     register_poll_fd_readable(int fd, std::function<void(void)> callback) = 0;

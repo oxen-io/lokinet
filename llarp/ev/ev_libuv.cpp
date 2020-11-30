@@ -36,8 +36,8 @@ namespace libuv
       llarp::LogTrace("ticker_glue::OnTick() start");
       ticker_glue* ticker = static_cast<ticker_glue*>(t->data);
       ticker->func();
-      Loop* loop = static_cast<Loop*>(t->loop->data);
-      loop->FlushLogic();
+      // Loop* loop = static_cast<Loop*>(t->loop->data);
+      // loop->FlushLogic();
       llarp::LogTrace("ticker_glue::OnTick() end");
     }
 
@@ -299,13 +299,18 @@ namespace libuv
     loop->process_timer_queue();
     loop->process_cancel_queue();
     loop->FlushLogic();
+    loop->PumpLL();
     auto& log = llarp::LogContext::Instance();
     if (log.logStream)
       log.logStream->Tick(loop->time_now());
   }
 
   Loop::Loop(size_t queue_size)
-      : llarp::EventLoop(), m_LogicCalls(queue_size), m_timerQueue(20), m_timerCancelQueue(20)
+      : llarp::EventLoop{}
+      , PumpLL{[]() {}}
+      , m_LogicCalls{queue_size}
+      , m_timerQueue{20}
+      , m_timerCancelQueue{20}
   {}
 
   bool
@@ -362,18 +367,10 @@ namespace libuv
     return uv_run(&m_Impl, UV_RUN_DEFAULT);
   }
 
-  int
-  Loop::tick(int ms)
+  void
+  Loop::set_pump_function(std::function<void(void)> pump)
   {
-    if (m_Run)
-    {
-#ifdef TESTNET_SPEED
-      ms *= TESTNET_SPEED;
-#endif
-      uv_timer_start(m_TickTimer, &OnTickTimeout, ms, 0);
-      uv_run(&m_Impl, UV_RUN_ONCE);
-    }
-    return 0;
+    PumpLL = std::move(pump);
   }
 
   struct TimerData

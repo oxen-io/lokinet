@@ -12,7 +12,7 @@ namespace llarp
     m_PokedRoutes.emplace(ip, m_CurrentGateway);
     if (m_CurrentGateway.h == 0)
     {
-      llarp::LogInfo("RoutePoker::AddRoute no current gateway, cannot enable route.");
+      llarp::LogDebug("RoutePoker::AddRoute no current gateway, cannot enable route.");
     }
     else if (m_Enabled or m_Enabling)
     {
@@ -22,7 +22,7 @@ namespace llarp
     }
     else
     {
-      llarp::LogInfo("RoutePoker::AddRoute disabled, not enabling route.");
+      llarp::LogDebug("RoutePoker::AddRoute disabled, not enabling route.");
     }
   }
 

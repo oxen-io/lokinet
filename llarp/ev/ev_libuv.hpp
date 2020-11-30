@@ -37,9 +37,6 @@ namespace libuv
     void
     update_time() override;
 
-    int
-    tick(int ms) override;
-
     uint32_t
     call_after_delay(llarp_time_t delay_ms, std::function<void(void)> callback) override;
 
@@ -97,7 +94,12 @@ namespace libuv
     deregister_poll_fd_readable(int fd) override;
 
     void
+    set_pump_function(std::function<void(void)> pumpll) override;
+
+    void
     FlushLogic();
+
+    std::function<void(void)> PumpLL;
 
    private:
     uv_loop_t m_Impl;
