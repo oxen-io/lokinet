@@ -184,6 +184,24 @@ namespace llarp::vpn
         LogError("failed to open device");
         throw std::invalid_argument{"cannot open " + fname};
       }
+
+      LogInfo("putting interface up...");
+      ULONG flag = 1;
+      // put the interface up
+      if (not DeviceIoControl(
+              m_Device,
+              TAP_IOCTL_SET_MEDIA_STATUS,
+              &flag,
+              sizeof(flag),
+              &flag,
+              sizeof(flag),
+              &len,
+              nullptr))
+      {
+        LogError("cannot up interface up");
+        throw std::invalid_argument{"cannot put interface up"};
+      }
+
       LogInfo("setting addresses");
       // set ipv4 addresses
       for (const auto& ifaddr : m_Info.addrs)
@@ -280,23 +298,6 @@ namespace llarp::vpn
           }
         }
       }
-      LogInfo("putting interface up...");
-      ULONG flag = 1;
-      // put the interface up
-      if (not DeviceIoControl(
-              m_Device,
-              TAP_IOCTL_SET_MEDIA_STATUS,
-              &flag,
-              sizeof(flag),
-              &flag,
-              sizeof(flag),
-              &len,
-              nullptr))
-      {
-        LogError("cannot up interface up");
-        throw std::invalid_argument{"cannot put interface up"};
-      }
-
       // set ipv6 addresses
       /*
       for (const auto& ifaddr : m_Info.addrs)
