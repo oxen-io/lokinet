@@ -133,14 +133,9 @@ namespace libuv
       auto* self = static_cast<udp_glue*>(udp->impl);
       if (self == nullptr)
         return -1;
-      auto buf = uv_buf_init((char*)ptr, sz);
-      auto ret = uv_udp_try_send(
+      const auto buf = uv_buf_init((char*)ptr, sz);
+      return uv_udp_try_send(
           &self->m_Handle, &buf, 1, (const sockaddr*)static_cast<const sockaddr_in*>(to));
-      if (ret < 0)
-      {
-        llarp::LogError("udp sendto failed: ", uv_strerror(ret));
-      }
-      return ret;
     }
 
     bool
