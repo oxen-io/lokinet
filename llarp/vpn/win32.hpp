@@ -298,6 +298,7 @@ namespace llarp::vpn
       }
 
       // set ipv6 addresses
+      /*
       for (const auto& ifaddr : m_Info.addrs)
       {
         if (ifaddr.fam == AF_INET6)
@@ -309,6 +310,7 @@ namespace llarp::vpn
               + " store=active");
         }
       }
+      */
     }
 
     ~Win32Interface()
