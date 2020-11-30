@@ -1123,7 +1123,7 @@ namespace llarp
 
     LogInfo("have ", _nodedb->num_loaded(), " routers");
 
-    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+    _netloop->set_pump_function(std::bind(&Router::PumpLL, this));
 
     ScheduleTicker(ROUTER_TICK_INTERVAL);
     _running.store(true);
