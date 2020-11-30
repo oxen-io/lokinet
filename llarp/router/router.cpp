@@ -1123,8 +1123,12 @@ namespace llarp
 
     LogInfo("have ", _nodedb->num_loaded(), " routers");
 
+#ifdef _WIN32
+    // windows uses proactor event loop so we need to constantly pump
+    _netloop->add_ticker(std::bind(&Router::PumpLL, this));
+#else
     _netloop->set_pump_function(std::bind(&Router::PumpLL, this));
-
+#endif
     ScheduleTicker(ROUTER_TICK_INTERVAL);
     _running.store(true);
     _startedAt = Now();
