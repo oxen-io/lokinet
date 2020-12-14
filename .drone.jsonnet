@@ -108,7 +108,7 @@ local windows_cross_pipeline(name, image,
 };
 
 local win32_cross_pipeline(name, image,
-        arch='amd64
+        arch='amd64',
         build_type='Release',
         lto=false,
         werror=false,
