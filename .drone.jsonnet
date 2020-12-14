@@ -108,7 +108,7 @@ local windows_cross_pipeline(name, image,
 };
 
 local win32_cross_pipeline(name, image,
-        arch='i686',
+        arch='amd64
         build_type='Release',
         lto=false,
         werror=false,
@@ -133,7 +133,7 @@ local win32_cross_pipeline(name, image,
                 'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
                 apt_get_quiet + ' update',
                 apt_get_quiet + ' install -y eatmydata',
-                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip',
+                'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-i686-posix nsis zip',
                 'update-alternatives --set i686-w64-mingw32-gcc /usr/bin/i686-w64-mingw32-gcc-posix',
                 'update-alternatives --set i686-w64-mingw32-g++ /usr/bin/i686-w64-mingw32-g++-posix',
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
