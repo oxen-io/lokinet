@@ -107,9 +107,9 @@ local windows_cross_pipeline(name, image,
     ],
 };
 
-local win32_cross_pipeline(name, image,
+local win32_debug_pipeline(name, image,
         arch='amd64',
-        build_type='Release',
+        build_type='Debug',
         lto=false,
         werror=false,
         cmake_extra='',
@@ -263,7 +263,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         toolchain='64', extra_cmds=[
           '../contrib/ci/drone-static-upload.sh'
     ]),
-    win32_cross_pipeline("Windows (i686) TEST ONLY - DO NOT USE IN PROD - WE DO NOT SHIP 32-BIT OBJECTS", "debian:testing",
+    win32_debug_pipeline("Windows (i686) DEBUG ONLY - DO NOT USE IN PROD - WE DO NOT SHIP 32-BIT OBJECTS", "debian:testing",
         toolchain='32', extra_cmds=[
           '../contrib/ci/drone-static-upload.sh'
     ]),
