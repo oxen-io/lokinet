@@ -528,7 +528,66 @@ namespace llarp
     {
       m_LastInboundTraffic = m_Endpoint->Now();
       m_GotInboundTraffic = true;
-      return m_Endpoint->HandleHiddenServiceFrame(p, frame);
+      if (frame.R)
+      {
+        // handle discard
+        ServiceInfo si;
+        if (!m_Endpoint->GetSenderFor(frame.T, si))
+          return false;
+        // verify source
+        if (!frame.Verify(si))
+          return false;
+        // remove convotag it doesn't exist
+        LogWarn("remove convotag T=", frame.T);
+        m_Endpoint->RemoveConvoTag(frame.T);
+        if (authResultListener)
+        {
+          switch (frame.R)
+          {
+            case 1:
+              authResultListener(eAuthRejected);
+              break;
+            case 2:
+              authResultListener(eAuthFailed);
+              break;
+            case 3:
+              authResultListener(eAuthRateLimit);
+              break;
+            case 4:
+              authResultListener(eAuthPaymentRequired);
+              break;
+            default:
+              authResultListener(eAuthFailed);
+          }
+          authResultListener = nullptr;
+        }
+        return true;
+      }
+      std::function<void(std::shared_ptr<ProtocolMessage>)> hook = nullptr;
+      if (authResultListener)
+      {
+        std::function<void(AuthResult)> handler = authResultListener;
+        authResultListener = nullptr;
+        hook = [handler](std::shared_ptr<ProtocolMessage>) { handler(AuthResult::eAuthAccepted); };
+      }
+      const auto& ident = m_Endpoint->GetIdentity();
+      if (not frame.AsyncDecryptAndVerify(m_Endpoint->EndpointLogic(), p, ident, m_Endpoint, hook))
+      {
+        // send reset convo tag message
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame.T;
+        f.F = p->intro.pathID;
+
+        f.Sign(ident);
+        {
+          LogWarn("invalidating convotag T=", frame.T);
+          m_Endpoint->RemoveConvoTag(frame.T);
+          m_Endpoint->m_SendQueue.tryPushBack(
+              SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, frame.F), p});
+        }
+      }
+      return true;
     }
 
     void

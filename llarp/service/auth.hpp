@@ -23,6 +23,9 @@ namespace llarp::service
     eAuthPaymentRequired = 4
   };
 
+  std::string
+  AuthResultDescription(AuthResult result);
+
   /// maybe get auth result from string
   std::optional<AuthResult>
   ParseAuthResult(std::string data);
@@ -35,8 +38,11 @@ namespace llarp::service
     /// result later
     virtual void
     AuthenticateAsync(
-        std::shared_ptr<llarp::service::ProtocolMessage> msg,
-        std::function<void(AuthResult)> hook) = 0;
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) = 0;
+
+    /// return true if we are asynchronously processing authentication on this convotag
+    virtual bool
+    AsyncAuthPending(ConvoTag tag) const = 0;
   };
 
   /// info needed by clients in order to authenticate to a remote endpoint

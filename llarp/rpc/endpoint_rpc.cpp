@@ -33,15 +33,27 @@ namespace llarp::rpc
         });
   }
 
+  bool
+  EndpointAuthRPC::AsyncAuthPending(service::ConvoTag tag) const
+  {
+    return m_PendingAuths.count(tag) > 0;
+  }
+
   void
   EndpointAuthRPC::AuthenticateAsync(
       std::shared_ptr<llarp::service::ProtocolMessage> msg,
       std::function<void(service::AuthResult)> hook)
   {
+    service::ConvoTag tag = msg->tag;
+    m_PendingAuths.insert(tag);
     const auto from = msg->sender.Addr();
-    auto reply = [logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
-      logic->Call([hook, result]() { hook(result); });
-    };
+    auto reply =
+        [self = this, tag, logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
+          logic->Call([self, hook, result, tag]() {
+            self->m_PendingAuths.erase(tag);
+            hook(result);
+          });
+        };
     if (m_AuthWhitelist.count(from))
     {
       // explicitly whitelisted source

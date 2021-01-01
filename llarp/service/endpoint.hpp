@@ -263,7 +263,7 @@ namespace llarp
       EnsureConvo(const AlignedBuffer<32> addr, bool snode, ConvoEventListener_ptr ev);
 
       bool
-      SendTo(const ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
+      SendTo(ConvoTag tag, const llarp_buffer_t& pkt, ProtocolType t);
 
       bool
       HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
@@ -390,7 +390,7 @@ namespace llarp
           std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook);
 
       void
-      SendAuthReject(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
+      SendAuthResult(path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult st);
 
       uint64_t
       GenTXID();
@@ -480,8 +480,11 @@ namespace llarp
           m_StartupLNSMappings;
 
       RecvPacketQueue_t m_InboundTrafficQueue;
+
+     public:
       SendMessageQueue_t m_SendQueue;
 
+     protected:
       void
       FlushRecvData();
 

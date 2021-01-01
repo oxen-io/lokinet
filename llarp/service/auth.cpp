@@ -18,6 +18,24 @@ namespace llarp::service
     return itr->second;
   }
 
+  std::string
+  AuthResultDescription(AuthResult auth)
+  {
+    switch (auth)
+    {
+      case AuthResult::eAuthAccepted:
+        return "accepted";
+      case AuthResult::eAuthRejected:
+        return "rejected";
+      case AuthResult::eAuthPaymentRequired:
+        return "payment required";
+      case AuthResult::eAuthRateLimit:
+        return "rate limit hit";
+      default:
+        return "unknown";
+    }
+  }
+
   AuthType
   ParseAuthType(std::string data)
   {

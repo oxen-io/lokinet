@@ -6,6 +6,7 @@
 #include <net/ip_range.hpp>
 #include <net/route.hpp>
 #include <service/context.hpp>
+#include <service/outbound_context.hpp>
 #include <service/auth.hpp>
 #include <service/name.hpp>
 #include <router/abstractrouter.hpp>
@@ -247,20 +248,41 @@ namespace llarp::rpc
                       {
                         auto mapExit = [=](service::Address addr) mutable {
                           ep->MapExitRange(range, addr);
+                          bool shouldSendAuth = false;
                           if (token.has_value())
                           {
+                            shouldSendAuth = true;
                             ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                           }
                           ep->EnsurePathToService(
                               addr,
-                              [reply, ep, r](auto, service::OutboundContext* ctx) {
+                              [reply, ep, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
                                 if (ctx == nullptr)
                                 {
                                   reply(CreateJSONError("could not find exit"));
                                   return;
                                 }
-                                r->routePoker().Up();
-                                reply(CreateJSONResponse("OK"));
+                                auto onGoodResult = [r, ep, reply]() {
+                                  r->routePoker().Up();
+                                  reply(CreateJSONResponse("OK"));
+                                };
+                                if (not shouldSendAuth)
+                                {
+                                  onGoodResult();
+                                  return;
+                                }
+                                ctx->AsyncSendAuth(
+                                    [onGoodResult, reply](service::AuthResult result) {
+                                      if (result != service::AuthResult::eAuthAccepted)
+                                      {
+                                        reply(CreateJSONError(
+                                            "authentication failed: "
+                                            + service::AuthResultDescription(result)));
+                                        return;
+                                      }
+                                      onGoodResult();
+                                    });
+
                               },
                               5s);
                         };
