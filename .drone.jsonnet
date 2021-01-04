@@ -214,6 +214,15 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Debian sid (ARM64)", "debian:sid", arch="arm64"),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
+    // Static armhf build (gets uploaded)
+    debian_pipeline("Static (buster armhf)", "arm32v7/debian:buster", arch="arm64", deps='g++ python3-dev', lto=true,
+                    cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON ' +
+                        '-DCMAKE_CXX_FLAGS="-march=armv7-a+fp" -DCMAKE_C_FLAGS="-march=armv7-a+fp" -DNATIVE_BUILD=OFF ' +
+                        '-DWITH_SYSTEMD=OFF',
+                    extra_cmds=[
+                        '../contrib/ci/drone-check-static-libs.sh',
+                        'UPLOAD_OS=linux-armhf ../contrib/ci/drone-static-upload.sh'
+                    ]),
     
     // Windows builds (x64)
     windows_cross_pipeline("Windows (amd64)", "debian:testing",
