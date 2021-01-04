@@ -99,6 +99,20 @@ namespace llarp
     virtual std::shared_ptr<llarp::vpn::Platform>
     makeVPNPlatform();
 
+#ifdef ANDROID
+    void
+    SetAndroidFD(int fd)
+    {
+      androidFD = fd;
+    }
+
+    int
+    GetAndroidFD()
+    {
+      return androidFD;
+    }
+#endif
+
    protected:
     std::shared_ptr<Config> config = nullptr;
 
@@ -107,6 +121,10 @@ namespace llarp
     SigINT();
 
     std::unique_ptr<std::promise<void>> closeWaiter;
+
+#ifdef ANDROID
+    int androidFD = -1;
+#endif
   };
 
 }  // namespace llarp

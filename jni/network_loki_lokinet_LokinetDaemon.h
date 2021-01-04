@@ -58,11 +58,11 @@ extern "C"
 
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
-   * Method:    InjectVPN
-   * Signature: (Lnetwork/loki/lokinet/LokinetVPN;)Z
+   * Method:    InjectVPNFD
+   * Signature: (Lnetwork/loki/lokinet/LokinetVPNFD;)Z
    */
-  JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetDaemon_InjectVPN(JNIEnv*, jobject, jobject);
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv*, jobject);
 
 #ifdef __cplusplus
 }

@@ -45,7 +45,7 @@ static T*
 FromObjectMember(JNIEnv* env, jobject self, const char* membername)
 {
   jclass cl = env->GetObjectClass(self);
-  jfieldID name = env->GetFieldID(cl, membername, "Ljava/nio/Buffer;");
+  jfieldID name = env->GetFieldID(cl, membername, "Ljava/nio/ByteBuffer;");
   jobject buffer = env->GetObjectField(self, name);
   return FromBuffer<T>(env, buffer);
 }

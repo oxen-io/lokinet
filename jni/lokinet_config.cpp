@@ -5,9 +5,12 @@
 extern "C"
 {
   JNIEXPORT jobject JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass)
+  Java_network_loki_lokinet_LokinetConfig_Obtain(JNIEnv* env, jclass, jstring dataDir)
   {
-    auto conf = new llarp::Config();
+    auto conf = VisitStringAsStringView<llarp::Config*>(env, dataDir, [](std::string_view val) -> llarp::Config* {
+      return new llarp::Config{val};
+    });
+
     if (conf == nullptr)
       return nullptr;
     return env->NewDirectByteBuffer(conf, sizeof(llarp::Config));
@@ -21,15 +24,13 @@ extern "C"
   }
 
   JNIEXPORT jboolean JNICALL
-  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv* env, jobject self, jstring fname)
+  Java_network_loki_lokinet_LokinetConfig_Load(JNIEnv* env, jobject self)
   {
     auto conf = GetImpl<llarp::Config>(env, self);
     if (conf == nullptr)
       return JNI_FALSE;
-    return VisitStringAsStringView<jboolean>(env, fname, [conf](std::string_view val) -> jboolean {
-      if (conf->Load(val, false, llarp::GetDefaultDataDir()))
-        return JNI_TRUE;
-      return JNI_FALSE;
-    });
+    if (conf->Load(std::nullopt, false))
+      return JNI_TRUE;
+    return JNI_FALSE;
   }
 }

@@ -75,7 +75,7 @@ public class LokiNetActivity extends Activity {
 	public void runLokinetService()
 	{
 		startService(new Intent(LokiNetActivity.this,
-				LokinetService.class));
+				LokinetDaemon.class));
 	}
 
 	@Override
