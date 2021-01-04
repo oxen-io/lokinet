@@ -858,6 +858,7 @@ namespace llarp
           }
           return;
         }
+        bool rewriteAddrs = true;
         if (m_SNodes.at(itr->second))
         {
           sendFunc = std::bind(
@@ -866,8 +867,9 @@ namespace llarp
               itr->second.as_array(),
               std::placeholders::_1);
         }
-        else if (m_state->m_ExitEnabled)
+        else if (m_state->m_ExitEnabled and src != m_OurIP)
         {
+          rewriteAddrs = false;
           sendFunc = std::bind(
               &TunEndpoint::SendToServiceOrQueue,
               this,
@@ -886,7 +888,7 @@ namespace llarp
         }
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
-        if (not m_state->m_ExitEnabled)
+        if (rewriteAddrs)
         {
           if (pkt.IsV4())
             pkt.UpdateIPv4Address({0}, {0});
@@ -926,10 +928,18 @@ namespace llarp
       {
         // exit side from exit
         src = ObtainIPForAddr(addr, snode);
-        if (pkt.IsV4())
-          dst = pkt.dst4to6Lan();
-        else if (pkt.IsV6())
-          dst = pkt.dstv6();
+        if (t == service::eProtocolExit)
+        {
+          if (pkt.IsV4())
+            dst = pkt.dst4to6Lan();
+          else if (pkt.IsV6())
+            dst = pkt.dstv6();
+        }
+        else
+        {
+          // non exit traffic on exit
+          dst = m_OurIP;
+        }
       }
       else if (t == service::eProtocolExit)
       {
