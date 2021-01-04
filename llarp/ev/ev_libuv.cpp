@@ -245,7 +245,9 @@ namespace libuv
     Close() override
     {
       uv_check_stop(&m_Ticker);
+#ifndef _WIN32
       uv_close((uv_handle_t*)&m_Handle, &OnClosed);
+#endif
     }
 
     bool
@@ -259,6 +261,7 @@ namespace libuv
       {
         return false;
       }
+#ifndef _WIN32
       if (uv_poll_init(loop, &m_Handle, m_NetIf->PollFD()) == -1)
       {
         llarp::LogError("failed to initialize polling on ", m_NetIf->IfName());
@@ -269,6 +272,7 @@ namespace libuv
         llarp::LogError("failed to start polling on ", m_NetIf->IfName());
         return false;
       }
+#endif
       return true;
     }
   };
