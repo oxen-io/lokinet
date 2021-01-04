@@ -200,6 +200,9 @@ if(CMAKE_CROSSCOMPILING)
     set(openssl_system_env SYSTEM=Linux MACHINE=${android_machine} LD=${deps_ld} RANLIB=${deps_ranlib} AR=${deps_ar})
     set(openssl_extra_opts no-asm)
   endif()
+elseif(CMAKE_C_FLAGS MATCHES "-march=armv7")
+  # Help openssl figure out that we're building from armv7 even if on armv8 hardware:
+  set(openssl_system_env SYSTEM=Linux MACHINE=armv7)
 endif()
 build_external(openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${deps_cc} ${openssl_system_env} ./config
