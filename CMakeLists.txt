@@ -23,7 +23,7 @@ set(RELEASE_MOTTO "Proof of soon" CACHE STRING "Release motto")
 add_definitions(-DLLARP_VERSION_MAJOR=${lokinet_VERSION_MAJOR})
 add_definitions(-DLLARP_VERSION_MINOR=${lokinet_VERSION_MINOR})
 add_definitions(-DLLARP_VERSION_PATCH=${lokinet_VERSION_PATCH})
-if(RELEASE_MOTTO)
+if(RELEASE_MOTTO AND CMAKE_BUILD_TYPE MATCHES "[Rr][Ee][Ll][Ee][Aa][Ss][Ee]")
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
 
