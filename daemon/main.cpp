@@ -8,6 +8,10 @@
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
 
+#ifdef _WIN32
+#include <dbghelp.h>
+#endif
+
 #include <csignal>
 
 #include <cxxopts.hpp>
@@ -45,11 +49,6 @@ int
 lokinet_main(int, char**);
 
 #ifdef _WIN32
-
-#include <dbghelp.h>
-#include <shellapi.h>
-#include <shlobj.h>
-
 #include <strsafe.h>
 extern "C" LONG FAR PASCAL
 win32_signal_handler(EXCEPTION_POINTERS*);
@@ -337,30 +336,19 @@ class WindowsServiceStopped
 
 /// minidump generation for windows jizz
 /// will make a coredump when there is an unhandled exception
-long
+LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
-  BOOL bMiniDumpSuccessful;
-  char szFileName[MAX_PATH];
+  std::stringstream ss;
+  ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".txt";
+  const std::string fname = ss.str();
   HANDLE hDumpFile;
   SYSTEMTIME stLocalTime;
   GetLocalTime(&stLocalTime);
   MINIDUMP_EXCEPTION_INFORMATION ExpParam;
 
-  StringCchPrintf(
-      szFileName,
-      MAX_PATH,
-      "C:\\ProgramData\\lokinet\\crash-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp",
-      stLocalTime.wYear,
-      stLocalTime.wMonth,
-      stLocalTime.wDay,
-      stLocalTime.wHour,
-      stLocalTime.wMinute,
-      stLocalTime.wSecond,
-      GetCurrentProcessId(),
-      GetCurrentThreadId());
   hDumpFile = CreateFile(
-      szFileName,
+      fname.c_str(),
       GENERIC_READ | GENERIC_WRITE,
       FILE_SHARE_WRITE | FILE_SHARE_READ,
       0,
@@ -372,7 +360,7 @@ GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
   ExpParam.ExceptionPointers = pExceptionPointers;
   ExpParam.ClientPointers = TRUE;
 
-  bMiniDumpSuccessful = MiniDumpWriteDump(
+  MiniDumpWriteDump(
       GetCurrentProcess(),
       GetCurrentProcessId(),
       hDumpFile,
