@@ -340,7 +340,7 @@ LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
   std::stringstream ss;
-  ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".txt";
+  ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
   const std::string fname = ss.str();
   HANDLE hDumpFile;
   SYSTEMTIME stLocalTime;
@@ -369,7 +369,7 @@ GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
       NULL,
       NULL);
 
-  return EXCEPTION_EXECUTE_HANDLER;
+  return 1;
 }
 
 #endif
