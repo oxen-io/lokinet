@@ -31,7 +31,7 @@ namespace llarp::vpn
     std::set<InterfaceAddress> addrs;
   };
 
-  /// a vpn netwrok interface
+  /// a vpn network interface
   class NetworkInterface
   {
    public:
