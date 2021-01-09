@@ -35,11 +35,11 @@ para correr un relay:
     $ lokinet-bootstrap
     $ lokinet
 
-## Corriendo en MacOS/UNIX/BSD
+## Corriendo en macOS/UNIX/BSD
 
 **USTED TIENE QUE CORRER COMO ROOT**, correr usando sudo. Los privilegios elevados son necesarios para crear una interfaz de tunel virtual.
 
-El instalador de MAC coloca los binarios normales (`lokinet` y `lokinet-bootstrap`) en `/usr/local/bin` los que pudieran estar en ruta, asi que usted puede usar los binarios facilmente desde su terminal. El instalador tambien truena sus configuraciones y llaves previas, y descarga la semilla de arranque mas actual.
+El instalador de macOS coloca los binarios normales (`lokinet` y `lokinet-bootstrap`) en `/usr/local/bin` los que pudieran estar en ruta, asi que usted puede usar los binarios facilmente desde su terminal. El instalador tambien truena sus configuraciones y llaves previas, y descarga la semilla de arranque mas actual.
 
 para correr como cliente:
 
@@ -54,7 +54,7 @@ para correr como relay:
     $ sudo lokinet
 
 
-## Corriendo en windows:
+## Corriendo en Windows:
 
 **NO CORRER COMO USUARIO ELEVADO**, correr como un usuario normal.
 
@@ -98,17 +98,17 @@ como alternativa hacer un paquete debian con:
 
 esto coloca el paquete compilado en `../`
 
-### MacOS
+### macOS
 
 compilando:
-    este seguro que usted tiene cmake y las herramientas de terminal de xcode ya instaladas
+    este seguro que usted tiene cmake, libuv y las herramientas de terminal de xcode ya instaladas
 
-    $ git clone https://github.com/loki-project/loki-network
+     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
     $ cd build
-    $ cmake ..
-    $ make -j8
+    $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
+    $ make -j$(sysctl -n hw.ncpu)
 
 instalando:
 

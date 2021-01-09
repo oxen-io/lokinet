@@ -39,11 +39,11 @@ to run, after you create default config:
 
     $ lokinet
 
-## Running on MacOS/UNIX/BSD
+## Running on macOS/UNIX/BSD
 
 **YOU HAVE TO RUN AS ROOT**, run using sudo. Elevated privileges are needed to create the virtual tunnel interface.
 
-The MacOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
+The macOS installer places the normal binaries (`lokinet` and `lokinet-bootstrap`) in `/usr/local/bin` which should be in your path, so you can easily use the binaries from your terminal. The installer also nukes your previous config and keys and sets up a fresh config and downloads the latest bootstrap seed.
 
 to run, after you create default config:
 
@@ -82,7 +82,7 @@ install:
 
     $ sudo make install
 
-### MacOS
+### macOS
 
 build:
     make sure you have cmake, libuv and xcode command line tools installed
@@ -92,7 +92,7 @@ build:
     $ mkdir build
     $ cd build
     $ cmake .. -DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON
-    $ make -j$(nproc)
+    $ make -j$(sysctl -n hw.ncpu)
 
 install:
 
