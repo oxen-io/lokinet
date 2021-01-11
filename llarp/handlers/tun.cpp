@@ -807,6 +807,7 @@ namespace llarp
           dst = pkt.dstv6();
           src = pkt.srcv6();
         }
+        // this is for ipv6 slaac on ipv6 exits
         /*
         constexpr huint128_t ipv6_multicast_all_nodes =
             huint128_t{uint128_t{0xff01'0000'0000'0000UL, 1UL}};

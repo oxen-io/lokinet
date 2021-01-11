@@ -304,12 +304,14 @@ namespace libuv
       log.logStream->Tick(loop->time_now());
   }
 
+  constexpr size_t TimeQueueSize = 20;
+
   Loop::Loop(size_t queue_size)
       : llarp::EventLoop{}
       , PumpLL{[]() {}}
       , m_LogicCalls{queue_size}
-      , m_timerQueue{20}
-      , m_timerCancelQueue{20}
+      , m_timerQueue{TimerQueueSize}
+      , m_timerCancelQueue{TimerQueueSize}
   {}
 
   bool
@@ -535,6 +537,7 @@ namespace libuv
       std::function<void(llarp::net::IPPacket)> handler)
   {
     auto* glue = new tun_glue(netif, handler);
+    // call to Init gives ownership of glue to event loop
     if (glue->Init(&m_Impl))
       return true;
     delete glue;
