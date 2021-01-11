@@ -4,6 +4,7 @@
 #include <util/fs.hpp>
 #include <util/types.hpp>
 #include <ev/ev.hpp>
+#include <ev/vpn.hpp>
 #include <nodedb.hpp>
 #include <crypto/crypto.hpp>
 #include <router/abstractrouter.hpp>
@@ -94,6 +95,10 @@ namespace llarp
     /// to be created instead. Defaults to llarp::Router.
     virtual std::unique_ptr<AbstractRouter>
     makeRouter(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
+
+    /// create the vpn platform for use in creating network interfaces
+    virtual std::unique_ptr<llarp::vpn::Platform>
+    makeVPNPlatform();
 
    protected:
     std::shared_ptr<Config> config = nullptr;

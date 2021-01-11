@@ -52,7 +52,6 @@ add_library(lokinet-platform
   ev/ev.cpp
   ev/pipe.cpp
   ev/ev_libuv.cpp
-
   net/ip.cpp
   net/ip_address.cpp
   net/ip_packet.cpp
@@ -61,7 +60,7 @@ add_library(lokinet-platform
   net/net_int.cpp
   net/route.cpp
   net/sock_addr.cpp
-  $<TARGET_OBJECTS:tuntap>
+  vpn/platform.cpp
 )
 
 target_link_libraries(lokinet-platform PUBLIC lokinet-cryptography lokinet-util Threads::Threads base_libs libuv)
@@ -83,7 +82,6 @@ endif()
 if (WIN32)
   target_sources(lokinet-platform PRIVATE
     ev/ev_libuv.cpp
-    ev/ev_win32.cpp
     win32/win32_inet.c
     win32/win32_intrnl.c)
 

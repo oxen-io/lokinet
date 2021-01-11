@@ -8,6 +8,7 @@
 #include <service/context.hpp>
 #include <service/auth.hpp>
 #include <service/name.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp::rpc
 {

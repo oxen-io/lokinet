@@ -9,25 +9,20 @@ namespace llarp
   void
   RoutePoker::AddRoute(huint32_t ip)
   {
-    llarp::LogInfo(
-        "RoutePoker::AddRoute adding route to IP (",
-        ip.ToString(),
-        ") via current gateway (",
-        m_CurrentGateway.ToString(),
-        ")");
     m_PokedRoutes.emplace(ip, m_CurrentGateway);
     if (m_CurrentGateway.h == 0)
     {
-      llarp::LogInfo("RoutePoker::AddRoute no current gateway, cannot enable route.");
+      llarp::LogDebug("RoutePoker::AddRoute no current gateway, cannot enable route.");
     }
     else if (m_Enabled or m_Enabling)
     {
-      llarp::LogInfo("RoutePoker::AddRoute enabled, enabling route.");
+      llarp::LogInfo(
+          "RoutePoker::AddRoute enabled, enabling route to ", ip, " via ", m_CurrentGateway);
       EnableRoute(ip, m_CurrentGateway);
     }
     else
     {
-      llarp::LogInfo("RoutePoker::AddRoute disabled, not enabling route.");
+      llarp::LogDebug("RoutePoker::AddRoute disabled, not enabling route.");
     }
   }
 
@@ -91,7 +86,10 @@ namespace llarp
   RoutePoker::~RoutePoker()
   {
     for (const auto& [ip, gateway] : m_PokedRoutes)
-      net::DelRoute(ip.ToString(), gateway.ToString());
+    {
+      if (gateway.h)
+        net::DelRoute(ip.ToString(), gateway.ToString());
+    }
   }
 
   std::optional<huint32_t>
@@ -102,9 +100,12 @@ namespace llarp
 
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     const auto gateways = net::GetGatewaysNotOnInterface(ep->GetIfName());
+    if (gateways.empty())
+    {
+      return std::nullopt;
+    }
     huint32_t addr{};
-    if (not gateways.empty())
-      addr.FromString(gateways[0]);
+    addr.FromString(gateways[0]);
     return addr;
   }
 

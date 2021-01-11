@@ -8,6 +8,10 @@
 #include <util/str.hpp>
 #include <util/thread/logic.hpp>
 
+#ifdef _WIN32
+#include <dbghelp.h>
+#endif
+
 #include <csignal>
 
 #include <cxxopts.hpp>
@@ -329,6 +333,45 @@ class WindowsServiceStopped
     TellWindowsServiceStopped();
   }
 };
+
+/// minidump generation for windows jizz
+/// will make a coredump when there is an unhandled exception
+LONG
+GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
+{
+  std::stringstream ss;
+  ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
+  const std::string fname = ss.str();
+  HANDLE hDumpFile;
+  SYSTEMTIME stLocalTime;
+  GetLocalTime(&stLocalTime);
+  MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+
+  hDumpFile = CreateFile(
+      fname.c_str(),
+      GENERIC_READ | GENERIC_WRITE,
+      FILE_SHARE_WRITE | FILE_SHARE_READ,
+      0,
+      CREATE_ALWAYS,
+      0,
+      0);
+
+  ExpParam.ThreadId = GetCurrentThreadId();
+  ExpParam.ExceptionPointers = pExceptionPointers;
+  ExpParam.ClientPointers = TRUE;
+
+  MiniDumpWriteDump(
+      GetCurrentProcess(),
+      GetCurrentProcessId(),
+      hDumpFile,
+      MiniDumpWithDataSegs,
+      &ExpParam,
+      NULL,
+      NULL);
+
+  return 1;
+}
+
 #endif
 
 int
@@ -520,6 +563,10 @@ lokinet_main(int argc, char* argv[])
   {
     return 0;
   }
+
+#ifdef _WIN32
+  SetUnhandledExceptionFilter(&GenerateDump);
+#endif
 
   std::thread main_thread{std::bind(&run_main_context, configFile, opts)};
   auto ftr = exit_code.get_future();

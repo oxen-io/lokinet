@@ -166,6 +166,12 @@ namespace llarp
       return _netloop;
     }
 
+    vpn::Platform*
+    GetVPNPlatform() const override
+    {
+      return _vpnPlatform.get();
+    }
+
     void
     QueueWork(std::function<void(void)> func) override;
 
@@ -176,6 +182,7 @@ namespace llarp
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<Logic> _logic;
+    std::unique_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
@@ -319,7 +326,10 @@ namespace llarp
     void
     GossipRCIfNeeded(const RouterContact rc) override;
 
-    explicit Router(llarp_ev_loop_ptr __netloop, std::shared_ptr<Logic> logic);
+    explicit Router(
+        llarp_ev_loop_ptr __netloop,
+        std::shared_ptr<Logic> logic,
+        std::unique_ptr<vpn::Platform> vpnPlatform);
 
     virtual ~Router() override;
 

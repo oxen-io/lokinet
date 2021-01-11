@@ -17,8 +17,12 @@
 #include <set>
 #include <unordered_map>
 
-struct llarp_ev_loop;
-using llarp_ev_loop_ptr = std::shared_ptr<llarp_ev_loop>;
+namespace llarp
+{
+  struct EventLoop;
+}
+
+using llarp_ev_loop_ptr = std::shared_ptr<llarp::EventLoop>;
 
 namespace llarp
 {

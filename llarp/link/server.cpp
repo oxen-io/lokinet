@@ -162,7 +162,7 @@ namespace llarp
       }
     }
     m_ourAddr.setPort(port);
-    return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr.createSockAddr()) != -1;
+    return llarp_ev_add_udp(m_Loop, &m_udp, m_ourAddr.createSockAddr()) != -1;
   }
 
   void

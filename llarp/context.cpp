@@ -98,7 +98,16 @@ namespace llarp
   std::unique_ptr<AbstractRouter>
   Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
   {
-    return std::make_unique<Router>(netloop, logic);
+    return std::make_unique<Router>(netloop, logic, makeVPNPlatform());
+  }
+
+  std::unique_ptr<vpn::Platform>
+  Context::makeVPNPlatform()
+  {
+    auto plat = vpn::MakeNativePlatform(this);
+    if (plat == nullptr)
+      throw std::runtime_error("vpn platform not supported");
+    return plat;
   }
 
   int
@@ -123,9 +132,9 @@ namespace llarp
     llarp_ev_loop_run_single_process(mainloop, logic);
     if (closeWaiter)
     {
-      // inform promise if called by CloseAsync
       closeWaiter->set_value();
     }
+    Close();
     return 0;
   }
 
@@ -176,13 +185,6 @@ namespace llarp
     {
       /// async stop router on sigint
       router->Stop();
-    }
-    else
-    {
-      if (logic)
-        logic->stop();
-      llarp_ev_loop_stop(mainloop);
-      Close();
     }
   }
 
