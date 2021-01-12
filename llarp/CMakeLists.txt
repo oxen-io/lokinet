@@ -50,7 +50,6 @@ endif()
 add_library(lokinet-platform
 # for networking
   ev/ev.cpp
-  ev/pipe.cpp
   ev/ev_libuv.cpp
   net/ip.cpp
   net/ip_address.cpp

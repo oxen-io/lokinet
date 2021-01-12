@@ -304,7 +304,7 @@ namespace libuv
       log.logStream->Tick(loop->time_now());
   }
 
-  constexpr size_t TimeQueueSize = 20;
+  constexpr size_t TimerQueueSize = 20;
 
   Loop::Loop(size_t queue_size)
       : llarp::EventLoop{}
