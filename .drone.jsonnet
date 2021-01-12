@@ -172,6 +172,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                 // If you don't do this then the C compiler doesn't have an include path containing
                 // basic system headers.  WTF apple:
                 'export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"',
+                'ulimit -n 1024', // because macos sets ulimit to 256 for some reason yeah idk
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_CXX_FLAGS=-fcolor-diagnostics -DCMAKE_BUILD_TYPE='+build_type+' ' +
