@@ -1,0 +1,60 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Fri, 15 Jan 2021 14:39:33 -0400
+Subject: lokimq rename compatibility fix
+
+---
+ llarp/router/abstractrouter.hpp | 6 +++---
+ llarp/router_contact.hpp        | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/llarp/router/abstractrouter.hpp b/llarp/router/abstractrouter.hpp
+index ca53fc9..f4c0357 100644
+--- a/llarp/router/abstractrouter.hpp
++++ b/llarp/router/abstractrouter.hpp
+@@ -23,9 +23,9 @@ struct llarp_dht_context;
+ struct llarp_nodedb;
+ struct llarp_threadpool;
+ 
+-namespace lokimq
++namespace oxenmq
+ {
+-  class LokiMQ;
++  class OxenMQ;
+ }
+ 
+ namespace llarp
+@@ -75,7 +75,7 @@ namespace llarp
+     class ThreadPool;
+   }
+ 
+-  using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
++  using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
+ 
+   struct AbstractRouter
+   {
+diff --git a/llarp/router_contact.hpp b/llarp/router_contact.hpp
+index be29e76..2fb9cbf 100644
+--- a/llarp/router_contact.hpp
++++ b/llarp/router_contact.hpp
+@@ -17,10 +17,10 @@
+ #define MAX_RC_SIZE (1024)
+ #define NICKLEN (32)
+ 
+-namespace lokimq
++namespace oxenmq
+ {
+   class bt_list_consumer;
+-}  // namespace lokimq
++}  // namespace oxenmq
+ 
+ namespace llarp
+ {
+@@ -230,7 +230,7 @@ namespace llarp
+     DecodeVersion_0(llarp_buffer_t* buf);
+ 
+     bool
+-    DecodeVersion_1(lokimq::bt_list_consumer& btlist);
++    DecodeVersion_1(oxenmq::bt_list_consumer& btlist);
+   };
+ 
+   inline std::ostream&
