@@ -16,7 +16,7 @@ TEST_CASE("FindClosestTo returns correct number of elements", "[nodedb][dht]")
     nodeDB.Insert(rc);
   }
 
-  REQUIRE(numRCs == nodeDB.num_loaded());
+  REQUIRE(numRCs == nodeDB.num_loaded);
 
   llarp::dht::Key_t key;
 
@@ -43,7 +43,7 @@ TEST_CASE("FindClosestTo returns properly ordered set", "[nodedb][dht]")
   c.pubkey[0] = 3;
   nodeDB.Insert(c);
 
-  REQUIRE(3 == nodeDB.num_loaded());
+  REQUIRE(3 == nodeDB.num_loaded);
 
   llarp::dht::Key_t key;
 

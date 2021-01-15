@@ -11,18 +11,18 @@ static const llarp::RuntimeOptions opts = {.background = false, .debug = false, 
 std::shared_ptr<llarp::Context>
 make_context()
 {
-  llarp::Config conf{fs::current_path()};
-  conf.Load(std::nullopt, true);
+  auto conf = std::make_shared<llarp::Config>(fs::current_path());
+  conf->Load(std::nullopt, true);
 
   // set testing defaults
-  conf.network.m_endpointType = "null";
-  conf.bootstrap.seednode = true;
-  conf.api.m_enableRPCServer = false;
-  conf.lokid.whitelistRouters = false;
-  conf.router.m_publicAddress = llarp::IpAddress("1.1.1.1");
+  conf->network.m_endpointType = "null";
+  conf->bootstrap.seednode = true;
+  conf->api.m_enableRPCServer = false;
+  conf->lokid.whitelistRouters = false;
+  conf->router.m_publicAddress = llarp::IpAddress("1.1.1.1");
   // make a fake inbound link
-  conf.links.m_InboundLinks.emplace_back();
-  auto& link = conf.links.m_InboundLinks.back();
+  conf->links.m_InboundLinks.emplace_back();
+  auto& link = conf->links.m_InboundLinks.back();
   link.interface = "0.0.0.0";
   link.addressFamily = AF_INET;
   link.port = 0;

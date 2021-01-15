@@ -28,12 +28,12 @@ namespace llarp
   }
 
   void
-  Context::Configure(Config conf)
+  Context::Configure(std::shared_ptr<Config> conf)
   {
     if (nullptr != config.get())
       throw std::runtime_error("Config already exists");
 
-    config = std::make_shared<Config>(std::move(conf));
+    config = std::move(conf);
 
     logic = std::make_shared<Logic>();
 
@@ -70,8 +70,8 @@ namespace llarp
 
     mainloop->set_logic(logic);
 
-    crypto = std::make_unique<sodium::CryptoLibSodium>();
-    cryptoManager = std::make_unique<CryptoManager>(crypto.get());
+    crypto = std::make_shared<sodium::CryptoLibSodium>();
+    cryptoManager = std::make_shared<CryptoManager>(crypto.get());
 
     router = makeRouter(mainloop, logic);
 
@@ -82,13 +82,13 @@ namespace llarp
       throw std::runtime_error("Failed to configure router");
   }
 
-  std::unique_ptr<AbstractRouter>
-  Context::makeRouter(llarp_ev_loop_ptr netloop, std::shared_ptr<Logic> logic)
+  std::shared_ptr<AbstractRouter>
+  Context::makeRouter(std::shared_ptr<EventLoop> netloop, std::shared_ptr<Logic> logic)
   {
-    return std::make_unique<Router>(netloop, logic, makeVPNPlatform());
+    return std::make_shared<Router>(netloop, logic, makeVPNPlatform());
   }
 
-  std::unique_ptr<vpn::Platform>
+  std::shared_ptr<vpn::Platform>
   Context::makeVPNPlatform()
   {
     auto plat = vpn::MakeNativePlatform(this);
@@ -185,7 +185,7 @@ namespace llarp
     nodedb.reset();
 
     llarp::LogDebug("free router");
-    router.release();
+    router.reset();
 
     llarp::LogDebug("free logic");
     logic.reset();

@@ -182,7 +182,7 @@ namespace llarp
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<Logic> _logic;
-    std::unique_ptr<vpn::Platform> _vpnPlatform;
+    std::shared_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
@@ -329,7 +329,7 @@ namespace llarp
     explicit Router(
         llarp_ev_loop_ptr __netloop,
         std::shared_ptr<Logic> logic,
-        std::unique_ptr<vpn::Platform> vpnPlatform);
+        std::shared_ptr<vpn::Platform> vpnPlatform);
 
     virtual ~Router() override;
 

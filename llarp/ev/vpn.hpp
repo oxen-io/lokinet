@@ -81,7 +81,7 @@ namespace llarp::vpn
   };
 
   /// create native vpn platform
-  std::unique_ptr<Platform>
+  std::shared_ptr<Platform>
   MakeNativePlatform(llarp::Context* ctx);
 
 }  // namespace llarp::vpn

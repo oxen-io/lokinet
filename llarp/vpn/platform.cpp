@@ -14,23 +14,23 @@
 
 namespace llarp::vpn
 {
-  std::unique_ptr<Platform>
+  std::shared_ptr<Platform>
   MakeNativePlatform(llarp::Context* ctx)
   {
     (void)ctx;
-    std::unique_ptr<Platform> plat;
+    std::shared_ptr<Platform> plat;
 #ifdef _WIN32
-    plat = std::make_unique<vpn::Win32Platform>();
+    plat = std::make_shared<vpn::Win32Platform>();
 #endif
 #ifdef __linux__
 #ifdef ANDROID
-    plat = std::make_unique<vpn::AndroidPlatform>();
+    plat = std::make_shared<vpn::AndroidPlatform>();
 #else
-    plat = std::make_unique<vpn::LinuxPlatform>();
+    plat = std::make_shared<vpn::LinuxPlatform>();
 #endif
 #endif
 #ifdef __APPLE__
-    plat = std::make_unique<vpn::ApplePlatform>();
+    plat = std::make_shared<vpn::ApplePlatform>();
 #endif
     return plat;
   }
