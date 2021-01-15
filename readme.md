@@ -152,6 +152,7 @@ build:
     $ git clone --recursive https://github.com/loki-project/loki-network
     $ cd loki-network
     $ mkdir build
+    $ cd build
     $ cmake -DCMAKE_BUILD_TYPE=Release ..
     $ make
 
