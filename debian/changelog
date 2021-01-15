@@ -1,3 +1,9 @@
+lokinet (0.8.2-2~deb10) buster; urgency=medium
+
+  * Rebuild for newer deps
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 15 Jan 2021 14:28:10 -0400
+
 lokinet (0.8.2-1~deb10) buster; urgency=medium
 
   [ Jeff Becker ]
