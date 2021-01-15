@@ -37,7 +37,7 @@ Description: Lokinet anonymous, decentralized overlay network - client service
 
 Package: lokinet-router
 Architecture: all
-Depends: lokinet-bin (=${binary:Version}), adduser, ucf
+Depends: lokinet-bin (=${binary:Version}), oxend, adduser, ucf
 Description: Lokinet anonymous, decentralized overlay network - client service
  Lokinet private, decentralized, market-based, Sybil resistant overlay network
  for the internet.
