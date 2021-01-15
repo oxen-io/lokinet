@@ -1,0 +1,44 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Fri, 15 Jan 2021 14:39:33 -0400
+Subject: lokimq rename compatibility fix
+
+---
+ llarp/router/abstractrouter.hpp | 3 ++-
+ llarp/router_contact.hpp        | 5 +++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/llarp/router/abstractrouter.hpp b/llarp/router/abstractrouter.hpp
+index ca53fc9..e532812 100644
+--- a/llarp/router/abstractrouter.hpp
++++ b/llarp/router/abstractrouter.hpp
+@@ -23,10 +23,11 @@ struct llarp_dht_context;
+ struct llarp_nodedb;
+ struct llarp_threadpool;
+ 
+-namespace lokimq
++namespace oxenmq
+ {
+   class LokiMQ;
+ }
++namespace lokimq = oxenmq;
+ 
+ namespace llarp
+ {
+diff --git a/llarp/router_contact.hpp b/llarp/router_contact.hpp
+index be29e76..16ce479 100644
+--- a/llarp/router_contact.hpp
++++ b/llarp/router_contact.hpp
+@@ -17,10 +17,11 @@
+ #define MAX_RC_SIZE (1024)
+ #define NICKLEN (32)
+ 
+-namespace lokimq
++namespace oxenmq
+ {
+   class bt_list_consumer;
+-}  // namespace lokimq
++}  // namespace oxenmq
++namespace lokimq = oxenmq;
+ 
+ namespace llarp
+ {
