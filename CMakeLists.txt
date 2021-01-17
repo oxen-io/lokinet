@@ -124,6 +124,19 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 
+
+if(NOT BUILD_STATIC_DEPS)
+  pkg_check_modules(LIBUV libuv>=1.28.0 IMPORTED_TARGET)
+endif()
+if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
+  add_library(libuv INTERFACE)
+  target_link_libraries(libuv INTERFACE PkgConfig::LIBUV)
+else()
+  if(NOT BUILD_STATIC_DEPS)
+    message(FATAL_ERROR "Could not find libu >= 1.28.0; install it on your system or use -DBUILD_STATIC_DEPS=ON")
+  endif()
+endif()
+
 if(NOT TARGET sodium)
 # Allow -D DOWNLOAD_SODIUM=FORCE to download without even checking for a local libsodium
   option(DOWNLOAD_SODIUM "Allow libsodium to be downloaded and built locally if not found on the system" OFF)
@@ -226,12 +239,6 @@ elseif(NOT NON_PC_TARGET)
   endif()
 endif()
 
-if(EMBEDDED_CFG)
-  message(WARNING "This configuration is optimised for older hardware and/or constrained node operation, may result in poor performance on desktop systems")
-  message(WARNING "For deployment on such systems, all external code (currently, libuv) must also be compiled for the target!")
-  add_compile_options(-march=i486 -mtune=i486)
-endif()
-
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
@@ -308,9 +315,6 @@ if(SUBMODULE_CHECK)
     check_submodule(external/date)
     check_submodule(external/pybind11)
     check_submodule(external/sqlite_orm)
-    if (NOT WIN32) # we grab libuv for windows separately in win32-setup/libuv. see note in cmake/win32.cmake.
-      check_submodule(external/libuv)
-    endif()
     check_submodule(external/loki-mq)
   endif()
 endif()
