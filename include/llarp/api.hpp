@@ -1,6 +1,8 @@
 #pragma once
 
 #include <llarp.hpp>
+#include <functional>
+#include <optional>
 
 namespace llarp::api
 {
@@ -30,7 +32,7 @@ namespace llarp::api
 
   class UDPSocketImpl;
 
-  /// a UDPSocket for sending and recieving UDP packets across lokinet
+  /// base type for sending and recieving UDP packets across lokinet
   class UDPSocket
   {
     UDPSocketImpl* const m_Impl;
@@ -42,11 +44,12 @@ namespace llarp::api
 
     /// send packet to remote address on remote port
     bool
-    SendTo(std::shared_ptr<NetAddress> toAddr, uint16_t remotePort, std::string_view data);
+    SendTo(NetAddress toAddr, uint16_t remotePort, std::string_view data);
 
-    /// maybe read next UDP packet from the void
-    std::optional<std::tuple<std::string, std::shared_ptr<NetAddress>>>
-    RecvPacket();
+    /// handle an inbound udp packet from the void
+    /// implement in subtype
+    virtual void
+    HandlePacketFrom(NetAddress fromAddr, uint16_t fromPort, std::string_view data){};
 
     /// close the socket forever
     void
@@ -82,10 +85,10 @@ namespace llarp::api
     GetOurAddress();
 
     /// look up address on the network
-    /// blocks until completed
-    /// throws on failure
-    std::shared_ptr<NetAdress>
-    LookupAddress(std::string name);
+    /// calls resultHandler with nullptr on fail or with the found network address when found
+    void
+    LookupAddressAsync(
+        std::string name, std::function<void(std::optional<NetAddress>)> resultHandler);
   };
 
   /// make an application context that handles packets for a snapp endpoint
