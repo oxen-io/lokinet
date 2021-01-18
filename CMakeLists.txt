@@ -126,7 +126,7 @@ find_package(PkgConfig REQUIRED)
 
 
 if(NOT BUILD_STATIC_DEPS)
-  pkg_check_modules(LIBUV libuv>=1.28.0 IMPORTED_TARGET)
+  pkg_check_modules(LIBUV libuv>=1.18.0 IMPORTED_TARGET)
 endif()
 if(LIBUV_FOUND AND NOT BUILD_STATIC_DEPS)
   add_library(libuv INTERFACE)
