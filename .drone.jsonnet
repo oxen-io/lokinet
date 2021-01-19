@@ -134,7 +134,7 @@ local deb_builder(image, distro, distro_branch, arch='amd64', loki_repo=true) = 
                 |||
                     # Look for the debian branch in this repo first, try upstream if that fails.
                     if ! git checkout $${distro_branch}; then
-                        git remote add --fetch upstream https://github.com/loki-project/loki-network.git &&
+                        git remote add --fetch upstream https://github.com/oxen-io/loki-network.git &&
                         git checkout $${distro_branch}
                     fi
                 |||,
