@@ -320,7 +320,6 @@ namespace llarp
         {
           if (itr->second->Expired(now))
           {
-            itr->second->m_PathSet->RemovePath(itr->second);
             itr = map.erase(itr);
           }
           else

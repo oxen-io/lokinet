@@ -266,13 +266,6 @@ namespace llarp
       }
     }
 
-    void
-    PathSet::RemovePath(Path_ptr path)
-    {
-      Lock_t l(m_PathsMutex);
-      m_Paths.erase({path->Upstream(), path->RXID()});
-    }
-
     Path_ptr
     PathSet::GetByUpstream(RouterID remote, PathID_t rxid) const
     {
