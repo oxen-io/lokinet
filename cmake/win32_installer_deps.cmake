@@ -1,5 +1,5 @@
 if(NOT GUI_ZIP_URL)
-  set(GUI_ZIP_URL "https://oxen.rocks/loki-project/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.5.zip")
+  set(GUI_ZIP_URL "https://oxen.rocks/oxen-io/loki-network-control-panel/master/lokinet-gui-windows-32bit-v0.3.5.zip")
   set(GUI_ZIP_HASH_OPTS EXPECTED_HASH SHA256=fcb1d78f7d6eecb440d05a034dd7e60ae506275af5b0f600b416bb1a896f32aa)
 endif()
 
