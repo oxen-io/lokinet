@@ -30,6 +30,69 @@ namespace llarp::api
     }
   };
 
+  class StreamImpl;
+
+  class Stream
+  {
+    StreamImpl* const m_Impl;
+
+   public:
+    explicit Stream(StreamImpl* impl);
+    ~Stream();
+
+    NetAddress
+    RemoteAddress() const;
+
+    uint16_t
+    RemotePort() const;
+
+    NetAddress
+    LocalAddress() const;
+
+    uint16_t
+    LocalPort() const;
+
+    /// handle ordered inbound data from remote endpoint
+    virtual void OnRecv(std::string_view){};
+
+    /// send data to remote endpoint in an ordered fashion
+    /// return true if the data was queued, returns false if the data was not queued and the
+    /// operation would have blocked
+    bool
+    Send(std::string_view data);
+
+    /// make an outbound connection to a remote endpoint
+    void
+    Connect(NetAddress remoteAddr, uint16_t remotePort);
+
+    /// close the connection
+    void
+    Close();
+
+    /// return true if this connection is closed
+    bool
+    IsClosed() const;
+
+    /// called when the connection is established
+    virtual void
+    OnConnected(){};
+  };
+
+  class StreamAcceptorImpl;
+
+  /// base type for accepting inbound stream connections
+  class StreamAcceptor
+  {
+    StreamAcceptorImpl* const m_Impl;
+
+   public:
+    explicit StreamAcceptor(std::shared_ptr<Endpoint> ep, uint16_t localPort);
+    ~StreamAcceptor();
+
+    /// called when we accepted a new inbound stream from the void
+    virtual void AcceptNewStream(std::shared_ptr<Stream>){};
+  };
+
   class UDPSocketImpl;
 
   /// base type for sending and recieving UDP packets across lokinet
@@ -79,6 +142,10 @@ namespace llarp::api
 
     // intrnal implementation
     EndpointImpl* const Impl;
+
+    /// make an outbound stream ready to be connected to a remote endpoint
+    std::shared_ptr<Stream>
+    OutboundStream();
 
     /// obtain our network address
     NetAddress
