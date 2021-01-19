@@ -119,9 +119,6 @@ namespace llarp
       size_t
       NumPathsExistingAt(llarp_time_t futureTime) const;
 
-      void
-      RemovePath(Path_ptr path);
-
       virtual void
       HandlePathBuilt(Path_ptr path) = 0;
 
