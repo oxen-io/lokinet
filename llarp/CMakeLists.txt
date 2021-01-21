@@ -39,7 +39,7 @@ target_link_libraries(lokinet-util PUBLIC
   nlohmann_json::nlohmann_json
   filesystem
   date::date
-  lokimq
+  oxenmq
   sqlite3
 )
 

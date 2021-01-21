@@ -103,7 +103,7 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
-    llarp_nodedb*
+    std::shared_ptr<NodeDB>
     nodedb() const override
     {
       return _nodedb;
@@ -188,7 +188,7 @@ namespace llarp
     SecretKey _identity;
     SecretKey _encryption;
     llarp_dht_context* _dht = nullptr;
-    llarp_nodedb* _nodedb;
+    std::shared_ptr<NodeDB> _nodedb;
     llarp_time_t _startedAt;
     const lokimq::TaggedThreadID m_DiskThread;
 
@@ -358,7 +358,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
+    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) override;
 
     bool
     StartRpcServer() override;

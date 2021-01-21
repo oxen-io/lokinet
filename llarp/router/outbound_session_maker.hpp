@@ -13,8 +13,6 @@
 #include <list>
 #include <memory>
 
-struct llarp_nodedb;
-
 namespace llarp
 {
   struct PendingSession;
@@ -63,7 +61,6 @@ namespace llarp
         I_RCLookupHandler* rcLookup,
         Profiling* profiler,
         std::shared_ptr<Logic> logic,
-        llarp_nodedb* nodedb,
         WorkerFunc_t work);
 
     void
@@ -115,7 +112,7 @@ namespace llarp
     ILinkManager* _linkManager = nullptr;
     I_RCLookupHandler* _rcLookup = nullptr;
     Profiling* _profiler = nullptr;
-    llarp_nodedb* _nodedb = nullptr;
+    std::shared_ptr<NodeDB> _nodedb;
     std::shared_ptr<Logic> _logic;
     WorkerFunc_t work;
     RouterID us;

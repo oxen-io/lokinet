@@ -37,7 +37,7 @@ namespace llarp
 
     logic = std::make_shared<Logic>();
 
-    nodedb_dir = fs::path(config->router.m_dataDir / nodedb_dirname).string();
+    nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname};
   }
 
   bool
@@ -50,13 +50,6 @@ namespace llarp
   Context::LooksAlive() const
   {
     return router && router->LooksAlive();
-  }
-
-  int
-  Context::LoadDatabase()
-  {
-    llarp_nodedb::ensure_dir(nodedb_dir.c_str());
-    return 1;
   }
 
   void
@@ -82,17 +75,11 @@ namespace llarp
 
     router = makeRouter(mainloop, logic);
 
-    nodedb = std::make_unique<llarp_nodedb>(
+    nodedb = std::make_shared<NodeDB>(
         nodedb_dir, [r = router.get()](auto call) { r->QueueDiskIO(std::move(call)); });
 
-    if (!router->Configure(config, opts.isRouter, nodedb.get()))
+    if (!router->Configure(config, opts.isRouter, nodedb))
       throw std::runtime_error("Failed to configure router");
-
-    // must be done after router is made so we can use its disk io worker
-    // must also be done after configure so that netid is properly set if it
-    // is provided by config
-    if (!this->LoadDatabase())
-      throw std::runtime_error("Config::Setup() failed to load database");
   }
 
   std::unique_ptr<AbstractRouter>
@@ -195,7 +182,7 @@ namespace llarp
     config.reset();
 
     llarp::LogDebug("free nodedb");
-    nodedb.release();
+    nodedb.reset();
 
     llarp::LogDebug("free router");
     router.release();

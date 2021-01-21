@@ -6,7 +6,7 @@
 #include <util/meta/traits.hpp>
 #include <util/printer.hpp>
 
-#include <lokimq/hex.h>
+#include <oxenmq/hex.h>
 
 #include <array>
 #include <cstddef>
@@ -71,7 +71,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      return out << lokimq::to_hex(self.begin(), self.end());
+      return out << oxenmq::to_hex(self.begin(), self.end());
     }
 
     /// bitwise NOT
@@ -261,21 +261,21 @@ namespace llarp
     std::string
     ToHex() const
     {
-      return lokimq::to_hex(begin(), end());
+      return oxenmq::to_hex(begin(), end());
     }
 
     std::string
     ShortHex() const
     {
-      return lokimq::to_hex(begin(), begin() + 4);
+      return oxenmq::to_hex(begin(), begin() + 4);
     }
 
     bool
     FromHex(std::string_view str)
     {
-      if (str.size() != 2 * size() || !lokimq::is_hex(str))
+      if (str.size() != 2 * size() || !oxenmq::is_hex(str))
         return false;
-      lokimq::from_hex(str.begin(), str.end(), begin());
+      oxenmq::from_hex(str.begin(), str.end(), begin());
       return true;
     }
 

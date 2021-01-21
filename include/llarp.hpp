@@ -40,17 +40,14 @@ namespace llarp
     std::unique_ptr<CryptoManager> cryptoManager = nullptr;
     std::unique_ptr<AbstractRouter> router = nullptr;
     std::shared_ptr<Logic> logic = nullptr;
-    std::unique_ptr<llarp_nodedb> nodedb = nullptr;
+    std::shared_ptr<NodeDB> nodedb = nullptr;
     llarp_ev_loop_ptr mainloop;
-    std::string nodedb_dir;
+    fs::path nodedb_dir;
 
     virtual ~Context() = default;
 
     void
     Close();
-
-    int
-    LoadDatabase();
 
     void
     Setup(const RuntimeOptions& opts);

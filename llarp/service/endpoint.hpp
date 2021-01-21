@@ -28,8 +28,6 @@
 #define MIN_SHIFT_INTERVAL 5s
 #endif
 
-struct llarp_async_verify_rc;
-
 namespace llarp
 {
   namespace service
@@ -364,13 +362,11 @@ namespace llarp
       bool
       HasExit() const;
 
-      bool
-      SelectHop(
-          llarp_nodedb* db,
-          const std::set<RouterID>& prev,
-          RouterContact& cur,
-          size_t hop,
-          path::PathRole roles) override;
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuild() override;
+
+      std::optional<std::vector<RouterContact>>
+      GetHopsForBuildWithEndpoint(RouterID endpoint);
 
       virtual void
       PathBuildStarted(path::Path_ptr path) override;
@@ -436,7 +432,7 @@ namespace llarp
 
      private:
       void
-      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, llarp_async_verify_rc* j);
+      HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid);
 
       bool
       OnLookup(const service::Address& addr, std::optional<IntroSet> i, const RouterID& endpoint);

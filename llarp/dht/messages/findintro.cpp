@@ -106,7 +106,7 @@ namespace llarp
         }
 
         auto closestRCs =
-            dht.GetRouter()->nodedb()->FindClosestTo(location, IntroSetStorageRedundancy);
+            dht.GetRouter()->nodedb()->FindManyClosestTo(location, IntroSetStorageRedundancy);
 
         if (closestRCs.size() <= relayOrder)
         {
