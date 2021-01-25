@@ -96,7 +96,7 @@ local windows_cross_pipeline(name, image,
                 'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
                 'cd build',
-                'cmake .. -G Ninja -DCMAKE_CROSSCOMPILE=ON -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DLIBUV_ROOT=$PWD/../win32-setup/libuv -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
+                'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
                     (if werror then '-DWARNINGS_AS_ERRORS=ON ' else '') +
                     (if lto then '' else '-DWITH_LTO=OFF ') +
                     "-DBUILD_STATIC_DEPS=ON -DDOWNLOAD_SODIUM=ON -DBUILD_PACKAGE=ON -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DNATIVE_BUILD=OFF -DSTATIC_LINK=ON" +
