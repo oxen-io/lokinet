@@ -81,7 +81,7 @@ additional build requirements:
 
 setup:
 
-    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis
+    $ sudo apt install build-essential cmake git pkg-config mingw-w64 nsis ninja-build
 
 building:
 
