@@ -202,6 +202,7 @@ build_external(libuv
     ${DEPS_DESTDIR}/include/uv.h
   )
 add_static_target(libuv libuv_external libuv.a)
+target_link_libraries(libuv INTERFACE ${CMAKE_DL_LIBS})
 
   
 
