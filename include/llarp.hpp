@@ -46,7 +46,7 @@ namespace llarp
     std::shared_ptr<Logic> logic = nullptr;
     std::shared_ptr<NodeDB> nodedb = nullptr;
     std::shared_ptr<EventLoop> mainloop;
-    fs::path nodedb_dir;
+    std::string nodedb_dir;
 
     virtual ~Context() = default;
 

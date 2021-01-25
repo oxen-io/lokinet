@@ -37,7 +37,7 @@ namespace llarp
 
     logic = std::make_shared<Logic>();
 
-    nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname};
+    nodedb_dir = fs::path{config->router.m_dataDir / nodedb_dirname}.string();
   }
 
   bool
