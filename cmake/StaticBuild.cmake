@@ -283,10 +283,7 @@ endif()
 
 if(CMAKE_CROSSCOMPILING AND ARCH_TRIPLET MATCHES mingw)
   set(zmq_patch
-    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch)
-  if(ZMQ_VERSION VERSION_LESS 4.3.4)
-    set(zmq_patch ${zmq_patch} ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
-  endif()
+    PATCH_COMMAND ${PROJECT_SOURCE_DIR}/contrib/apply-patches.sh ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-wepoll.patch ${PROJECT_SOURCE_DIR}/contrib/patches/libzmq-mingw-closesocket.patch)
 endif()
 
 build_external(zmq
