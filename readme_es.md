@@ -15,7 +15,7 @@ Puede ver la documentación, en ingles, de como empezar [aqui](https://loki-proj
 
 ## Uso
 
-Vea, en ingles, [documentación](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) en como comenzar.
+Vea, en ingles, [documentación](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/) en como comenzar.
 
 También lea, en ingles, [La guia de pruebas publicas](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) para la instalación y mas información util.
 
