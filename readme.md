@@ -14,7 +14,7 @@ You can view documentation on how to get started [here](https://loki-project.git
 
 ## Usage
 
-See the [documentation](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
+See the [documentation](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
 
 Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
 

@@ -14,7 +14,7 @@ Lokinet - реализация LLARP (протокол анонимной мар
 
 ## Использование
 
-О том как начать работу см. [Документацию](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/)
+О том как начать работу см. [Документацию](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/)
 
 Также прочтите [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) для установки и другой полезной информации.
 
