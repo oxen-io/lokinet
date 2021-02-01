@@ -10,7 +10,7 @@ And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
 You can view documentation on how to get started [here](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/) .
 
-[![Build Status](https://ci.oxen.rocks/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/master)](https://drone.lokinet.dev/loki-project/loki-network)
+[![Build Status](https://ci.oxen.rocks/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/dev)](https://drone.lokinet.dev/loki-project/loki-network)
 
 ## Building
 
