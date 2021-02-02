@@ -1,11 +1,13 @@
 #include <dht/messages/findname.hpp>
-#include <lokimq/bt_serialize.h>
+#include <oxenmq/bt_serialize.h>
 #include <dht/context.hpp>
 #include <dht/messages/gotname.hpp>
 #include <router/abstractrouter.hpp>
 #include <rpc/lokid_rpc_client.hpp>
 #include <path/path_context.hpp>
 #include <routing/dht_message.hpp>
+
+namespace lokimq = oxenmq;
 
 namespace llarp::dht
 {

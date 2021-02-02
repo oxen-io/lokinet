@@ -1,17 +1,19 @@
 #pragma once
 
 #include <string_view>
-#include <lokimq/lokimq.h>
-#include <lokimq/address.h>
+#include <oxenmq/oxenmq.h>
+#include <oxenmq/address.h>
 
 namespace llarp
 {
   struct AbstractRouter;
 }
 
+namespace lokimq = oxenmq;
+
 namespace llarp::rpc
 {
-  using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+  using LMQ_ptr = std::shared_ptr<lokimq::OxenMQ>;
 
   struct RpcServer
   {

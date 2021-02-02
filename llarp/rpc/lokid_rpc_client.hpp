@@ -2,11 +2,13 @@
 
 #include <router_id.hpp>
 
-#include <lokimq/lokimq.h>
-#include <lokimq/address.h>
+#include <oxenmq/oxenmq.h>
+#include <oxenmq/address.h>
 #include <crypto/types.hpp>
 #include <dht/key.hpp>
 #include <service/name.hpp>
+
+namespace lokimq = oxenmq;
 
 namespace llarp
 {
@@ -14,7 +16,7 @@ namespace llarp
 
   namespace rpc
   {
-    using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+    using LMQ_ptr = std::shared_ptr<lokimq::OxenMQ>;
 
     /// The LokidRpcClient uses loki-mq to talk to make API requests to lokid.
     struct LokidRpcClient : public std::enable_shared_from_this<LokidRpcClient>

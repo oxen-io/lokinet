@@ -7,7 +7,9 @@
 
 #include <iterator>
 
-#include <lokimq/hex.h>
+#include <oxenmq/hex.h>
+
+namespace lokimq = oxenmq;
 
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_sign_ed25519.h>

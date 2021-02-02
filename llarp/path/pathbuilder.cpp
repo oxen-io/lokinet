@@ -205,56 +205,53 @@ namespace llarp
       return obj;
     }
 
-    bool
-    Builder::SelectHop(
-        llarp_nodedb* db,
-        const std::set<RouterID>& exclude,
-        RouterContact& cur,
-        size_t hop,
-        PathRole roles)
+    std::optional<RouterContact>
+    Builder::SelectFirstHop() const
     {
-      (void)roles;
-      size_t tries = 10;
-      if (hop == 0)
-      {
-        if (m_router->NumberOfConnectedRouters() == 0)
-        {
-          return false;
-        }
-        bool got = false;
-        m_router->ForEachPeer(
-            [&](const ILinkSession* s, bool isOutbound) {
-              if (s && s->IsEstablished() && isOutbound && !got)
-              {
-                const RouterContact rc = s->GetRemoteRC();
-#ifdef TESTNET
-                if (got || exclude.count(rc.pubkey))
-#else
-                if (got || exclude.count(rc.pubkey) || m_router->IsBootstrapNode(rc.pubkey))
+      std::optional<RouterContact> found = std::nullopt;
+      m_router->ForEachPeer(
+          [&](const ILinkSession* s, bool isOutbound) {
+            if (s && s->IsEstablished() && isOutbound && not found.has_value())
+            {
+              const RouterContact rc = s->GetRemoteRC();
+#ifndef TESTNET
+              if (m_router->IsBootstrapNode(rc.pubkey))
+                return;
 #endif
-                  return;
-                cur = rc;
-                got = true;
-              }
-            },
-            true);
-        return got;
-      }
+              found = rc;
+            }
+          },
+          true);
+      return found;
+    }
 
-      do
+    std::optional<std::vector<RouterContact>>
+    Builder::GetHopsForBuild()
+    {
+      std::vector<RouterContact> hops;
       {
-        cur.Clear();
-        --tries;
-        std::set<RouterID> excluding = exclude;
-        if (db->select_random_hop_excluding(cur, excluding))
-        {
-          excluding.insert(cur.pubkey);
-          if (!m_router->routerProfiling().IsBadForPath(cur.pubkey))
-            return true;
-        }
-      } while (tries > 0);
-
-      return false;
+        const auto maybe = SelectFirstHop();
+        if (not maybe.has_value())
+          return std::nullopt;
+        hops.emplace_back(*maybe);
+      };
+      for (size_t idx = hops.size(); idx < numHops; ++idx)
+      {
+        const auto maybe = m_router->nodedb()->GetIf([&hops, r = m_router](const auto& rc) -> bool {
+          if (r->routerProfiling().IsBadForPath(rc.pubkey))
+            return false;
+          for (const auto& hop : hops)
+          {
+            if (hop.pubkey == rc.pubkey)
+              return false;
+          }
+          return true;
+        });
+        if (not maybe.has_value())
+          return std::nullopt;
+        hops.emplace_back(*maybe);
+      }
+      return hops;
     }
 
     bool
@@ -301,9 +298,8 @@ namespace llarp
     void
     Builder::BuildOne(PathRole roles)
     {
-      std::vector<RouterContact> hops(numHops);
-      if (SelectHops(m_router->nodedb(), hops, roles))
-        Build(hops, roles);
+      if (const auto maybe = GetHopsForBuild(); maybe.has_value())
+        Build(*maybe, roles);
     }
 
     bool Builder::UrgentBuild(llarp_time_t) const
@@ -311,114 +307,60 @@ namespace llarp
       return buildIntervalLimit > MIN_PATH_BUILD_INTERVAL * 4;
     }
 
-    bool
-    Builder::DoUrgentBuildAlignedTo(const RouterID remote, std::vector<RouterContact>& hops)
+    std::optional<std::vector<RouterContact>>
+    Builder::GetHopsAlignedToForBuild(RouterID endpoint)
     {
-      const auto aligned = m_router->pathContext().FindOwnedPathsWithEndpoint(remote);
-      /// pick the lowest latency path that aligns to remote
-      /// note: peer exhaustion is made worse happen here
-      Path_ptr p;
-      llarp_time_t min = std::numeric_limits<llarp_time_t>::max();
-      for (const auto& path : aligned)
+      std::vector<RouterContact> hops;
       {
-        if (path->intro.latency < min && path->hops.size() == numHops)
-        {
-          p = path;
-          min = path->intro.latency;
-        }
-      }
-      if (p)
+        const auto maybe = SelectFirstHop();
+        if (not maybe.has_value())
+          return std::nullopt;
+        hops.emplace_back(*maybe);
+      };
+      for (size_t idx = hops.size(); idx < numHops; ++idx)
       {
-        for (const auto& hop : p->hops)
+        if (idx + 1 == numHops)
         {
-          if (hop.rc.pubkey.IsZero())
-            return false;
-          hops.emplace_back(hop.rc);
-        }
-      }
-
-      return true;
-    }
-
-    bool
-    Builder::DoBuildAlignedTo(const RouterID remote, std::vector<RouterContact>& hops)
-    {
-      std::set<RouterID> routers{remote};
-      hops.resize(numHops);
-
-      auto nodedb = m_router->nodedb();
-      for (size_t idx = 0; idx < hops.size(); idx++)
-      {
-        hops[idx].Clear();
-        if (idx == numHops - 1)
-        {
-          // last hop
-          if (!nodedb->Get(remote, hops[idx]))
+          const auto maybe = m_router->nodedb()->Get(endpoint);
+          if (maybe.has_value())
           {
-            m_router->LookupRouter(remote, nullptr);
-            return false;
+            hops.emplace_back(*maybe);
           }
+          else
+            return std::nullopt;
         }
         else
         {
-          if (!SelectHop(nodedb, routers, hops[idx], idx, path::ePathRoleAny))
-          {
-            return false;
-          }
-        }
-        if (hops[idx].pubkey.IsZero())
-          return false;
-        routers.insert(hops[idx].pubkey);
-      }
+          const auto maybe =
+              m_router->nodedb()->GetIf([&hops, r = m_router, endpoint](const auto& rc) -> bool {
+                if (r->routerProfiling().IsBadForPath(rc.pubkey))
+                  return false;
+                for (const auto& hop : hops)
+                {
+                  if (hop.pubkey == rc.pubkey)
+                    return false;
+                }
+                return rc.pubkey != endpoint;
+              });
 
-      return true;
+          if (not maybe.has_value())
+            return std::nullopt;
+          hops.emplace_back(*maybe);
+        }
+      }
+      return hops;
     }
 
     bool
     Builder::BuildOneAlignedTo(const RouterID remote)
     {
-      std::vector<RouterContact> hops;
-      /// if we really need this path build it "dangerously"
-      if (UrgentBuild(m_router->Now()))
+      if (const auto maybe = GetHopsAlignedToForBuild(remote); maybe.has_value())
       {
-        if (!DoUrgentBuildAlignedTo(remote, hops))
-        {
-          return false;
-        }
+        LogInfo(Name(), " building path to ", remote);
+        Build(*maybe);
+        return true;
       }
-
-      if (hops.empty())
-      {
-        if (!DoBuildAlignedTo(remote, hops))
-        {
-          return false;
-        }
-      }
-      LogInfo(Name(), " building path to ", remote);
-      Build(hops);
-      return true;
-    }
-
-    bool
-    Builder::SelectHops(llarp_nodedb* nodedb, std::vector<RouterContact>& hops, PathRole roles)
-    {
-      std::set<RouterID> exclude;
-      for (size_t idx = 0; idx < hops.size(); ++idx)
-      {
-        hops[idx].Clear();
-        size_t tries = 32;
-        while (tries > 0 && !SelectHop(nodedb, exclude, hops[idx], idx, roles))
-        {
-          --tries;
-        }
-        if (tries == 0 || hops[idx].pubkey.IsZero())
-        {
-          LogWarn(Name(), " failed to select hop ", idx);
-          return false;
-        }
-        exclude.emplace(hops[idx].pubkey);
-      }
-      return true;
+      return false;
     }
 
     llarp_time_t
@@ -428,7 +370,7 @@ namespace llarp
     }
 
     void
-    Builder::Build(const std::vector<RouterContact>& hops, PathRole roles)
+    Builder::Build(std::vector<RouterContact> hops, PathRole roles)
     {
       if (IsStopped())
         return;

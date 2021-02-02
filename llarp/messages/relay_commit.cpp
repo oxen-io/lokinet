@@ -305,20 +305,6 @@ namespace llarp
           self->hop->info.upstream, self->hop->ExpireTime() + 10s);
       // put hop
       self->context->PutTransitHop(self->hop);
-      // if we have an rc for this hop...
-      if (self->record.nextRC)
-      {
-        // ... and it matches the next hop ...
-        if (self->record.nextHop == self->record.nextRC->pubkey)
-        {
-          // ... and it's valid
-          const auto now = self->context->Router()->Now();
-          if (self->record.nextRC->IsPublicRouter() && self->record.nextRC->Verify(now))
-          {
-            self->context->Router()->nodedb()->UpdateAsyncIfNewer(*self->record.nextRC.get());
-          }
-        }
-      }
       // forward to next hop
       using std::placeholders::_1;
       auto func = std::bind(

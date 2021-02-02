@@ -1,8 +1,10 @@
 #include <peerstats/types.hpp>
 
 #include <util/str.hpp>
-#include <lokimq/bt_serialize.h>
+#include <oxenmq/bt_serialize.h>
 #include <stdexcept>
+
+namespace lokimq = oxenmq;
 
 namespace llarp
 {

@@ -8,221 +8,174 @@
 #include <util/thread/threading.hpp>
 #include <util/thread/annotations.hpp>
 #include <dht/key.hpp>
+#include <crypto/crypto.hpp>
 
 #include <set>
+#include <optional>
+#include <unordered_set>
+#include <unordered_map>
 #include <utility>
+#include <atomic>
 
-/**
- * nodedb.hpp
- *
- * persistent storage API for router contacts
- */
 namespace llarp
 {
   class Logic;
-}  // namespace llarp
 
-struct llarp_nodedb
-{
-  using DiskJob_t = std::function<void(void)>;
-  using DiskCaller_t = std::function<void(DiskJob_t)>;
-  using WorkJob_t = std::function<void(void)>;
-  using WorkCaller_t = std::function<void(WorkJob_t)>;
-
-  explicit llarp_nodedb(const std::string rootdir, DiskCaller_t diskCaller)
-      : disk(std::move(diskCaller)), nodePath(rootdir)
-
-  {}
-
-  ~llarp_nodedb()
+  class NodeDB
   {
-    Clear();
-  }
+    struct Entry
+    {
+      const RouterContact rc;
+      llarp_time_t insertedAt;
+      explicit Entry(RouterContact rc);
+    };
+    using NodeMap = std::unordered_map<RouterID, Entry>;
 
-  const DiskCaller_t disk;
-  mutable llarp::util::Mutex access;  // protects entries
-  /// time for next save to disk event, 0 if never happened
-  llarp_time_t m_NextSaveToDisk = 0s;
-  /// how often to save to disk
-  const llarp_time_t m_SaveInterval = 5min;
+    NodeMap m_Entries;
 
-  struct NetDBEntry
-  {
-    const llarp::RouterContact rc;
-    llarp_time_t inserted;
+    const fs::path m_Root;
 
-    NetDBEntry(llarp::RouterContact data);
+    const std::function<void(std::function<void()>)> disk;
+
+    llarp_time_t m_NextFlushAt;
+
+    mutable util::NullMutex m_Access;
+
+    /// asynchronously remove the files for a set of rcs on disk given their public ident key
+    void
+    AsyncRemoveManyFromDisk(std::unordered_set<RouterID> idents) const;
+
+    /// get filename of an RC file given its public ident key
+    fs::path
+    GetPathForPubkey(RouterID pk) const;
+
+   public:
+    explicit NodeDB(fs::path rootdir, std::function<void(std::function<void()>)> diskCaller);
+
+    /// load all entries from disk syncrhonously
+    void
+    LoadFromDisk();
+
+    /// explicit save all RCs to disk synchronously
+    void
+    SaveToDisk() const;
+
+    /// the number of RCs that are loaded from disk
+    size_t
+    NumLoaded() const;
+
+    /// do periodic tasks like flush to disk and expiration
+    void
+    Tick(llarp_time_t now);
+
+    /// find the absolute closets router to a dht location
+    RouterContact
+    FindClosestTo(dht::Key_t location) const;
+
+    /// find many routers closest to dht key
+    std::vector<RouterContact>
+    FindManyClosestTo(dht::Key_t location, uint32_t numRouters) const;
+
+    /// return true if we have an rc by its ident pubkey
+    bool
+    Has(RouterID pk) const;
+
+    /// maybe get an rc by its ident pubkey
+    std::optional<RouterContact>
+    Get(RouterID pk) const;
+
+    template <typename Filter>
+    std::optional<RouterContact>
+    GetIf(Filter visit, bool shuffle = true) const
+    {
+      util::NullLock lock{m_Access};
+      const auto sz = m_Entries.size();
+      if (sz < 3)
+        return std::nullopt;
+      auto begin = m_Entries.begin();
+      auto start = begin;
+      if (shuffle)
+      {
+        start = std::next(start, randint() % sz);
+      }
+      for (auto itr = start; itr != m_Entries.end(); ++itr)
+      {
+        if (visit(itr->second.rc))
+          return itr->second.rc;
+      }
+      if (shuffle)
+      {
+        for (auto itr = begin; begin != start; ++itr)
+        {
+          if (visit(itr->second.rc))
+            return itr->second.rc;
+        }
+      }
+      return std::nullopt;
+    }
+
+    /// visit all entries
+    template <typename Visit>
+    void
+    VisitAll(Visit visit) const
+    {
+      util::NullLock lock{m_Access};
+      for (const auto& item : m_Entries)
+      {
+        visit(item.second.rc);
+      }
+    }
+
+    /// visit all entries inserted before a timestamp
+    template <typename Visit>
+    void
+    VisitInsertedBefore(Visit visit, llarp_time_t insertedBefore)
+    {
+      util::NullLock lock{m_Access};
+      for (const auto& item : m_Entries)
+      {
+        if (item.second.insertedAt < insertedBefore)
+          visit(item.second.rc);
+      }
+    }
+
+    /// remove an entry via its ident pubkey
+    void
+    Remove(RouterID pk);
+
+    /// remove an entry given a filter that inspects the rc
+    template <typename Filter>
+    void
+    RemoveIf(Filter visit)
+    {
+      util::NullLock lock{m_Access};
+      std::unordered_set<RouterID> removed;
+      auto itr = m_Entries.begin();
+      while (itr != m_Entries.end())
+      {
+        if (visit(itr->second.rc))
+        {
+          removed.insert(itr->second.rc.pubkey);
+          itr = m_Entries.erase(itr);
+        }
+        else
+          ++itr;
+      }
+      if (not removed.empty())
+        AsyncRemoveManyFromDisk(std::move(removed));
+    }
+
+    /// remove rcs that are not in keep and have been inserted before cutoff
+    void
+    RemoveStaleRCs(std::unordered_set<RouterID> keep, llarp_time_t cutoff);
+
+    /// put this rc into the cache if it is not there or newer than the one there already
+    void
+    PutIfNewer(RouterContact rc);
+
+    /// unconditional put of rc into cache
+    void
+    Put(RouterContact rc);
   };
-
-  using NetDBMap_t = std::unordered_map<llarp::RouterID, NetDBEntry, llarp::RouterID::Hash>;
-
-  NetDBMap_t entries GUARDED_BY(access);
-  fs::path nodePath;
-
-  llarp::RouterContact
-  FindClosestTo(const llarp::dht::Key_t& location);
-
-  /// find the $numRouters closest routers to the given DHT key
-  std::vector<llarp::RouterContact>
-  FindClosestTo(const llarp::dht::Key_t& location, uint32_t numRouters);
-
-  /// return true if we should save our nodedb to disk
-  bool
-  ShouldSaveToDisk(llarp_time_t now = 0s) const;
-
-  bool
-  Remove(const llarp::RouterID& pk) EXCLUDES(access);
-
-  void
-  RemoveIf(std::function<bool(const llarp::RouterContact&)> filter) EXCLUDES(access);
-
-  void
-  Clear() EXCLUDES(access);
-
-  bool
-  Get(const llarp::RouterID& pk, llarp::RouterContact& result) EXCLUDES(access);
-
-  bool
-  Has(const llarp::RouterID& pk) EXCLUDES(access);
-
-  std::string
-  getRCFilePath(const llarp::RouterID& pubkey) const;
-
-  /// insert without writing to disk
-  bool
-  Insert(const llarp::RouterContact& rc) EXCLUDES(access);
-
-  /// invokes Insert() asynchronously with an optional completion
-  /// callback
-  void
-  InsertAsync(
-      llarp::RouterContact rc,
-      std::shared_ptr<llarp::Logic> l = nullptr,
-      std::function<void(void)> completionHandler = nullptr);
-
-  /// update rc if newer
-  /// return true if we started to put this rc in the database
-  /// retur false if not newer
-  bool
-  UpdateAsyncIfNewer(
-      llarp::RouterContact rc,
-      std::shared_ptr<llarp::Logic> l = nullptr,
-      std::function<void(void)> completionHandler = nullptr) EXCLUDES(access);
-
-  ssize_t
-  Load(const fs::path& path);
-
-  ssize_t
-  loadSubdir(const fs::path& dir);
-  /// save all entries to disk async
-  void
-  AsyncFlushToDisk();
-
-  bool
-  loadfile(const fs::path& fpath) EXCLUDES(access);
-
-  void
-  visit(std::function<bool(const llarp::RouterContact&)> visit) EXCLUDES(access);
-
-  void
-  set_dir(const char* dir);
-
-  ssize_t
-  LoadAll();
-
-  ssize_t
-  store_dir(const char* dir);
-
-  /// visit all entries inserted into nodedb cache before a timestamp
-  void
-  VisitInsertedBefore(
-      std::function<void(const llarp::RouterContact&)> visit, llarp_time_t insertedAfter)
-      EXCLUDES(access);
-
-  void
-  RemoveStaleRCs(const std::set<llarp::RouterID>& keep, llarp_time_t cutoff);
-
-  size_t
-  num_loaded() const EXCLUDES(access);
-
-  bool
-  select_random_exit(llarp::RouterContact& rc) EXCLUDES(access);
-
-  bool
-  select_random_hop_excluding(
-      llarp::RouterContact& result, const std::set<llarp::RouterID>& exclude) EXCLUDES(access);
-
-  /// Ensures that the given nodedb 'dir' exists
-  ///
-  /// @param nodedbDir should be the desired nodedb directory
-  /// @throws on any filesistem error or if `nodedbDir` exists and is not a directory
-  static void
-  ensure_dir(const fs::path& nodedbDir);
-
-  void
-  SaveAll() EXCLUDES(access);
-};
-
-/// struct for async rc verification
-struct llarp_async_verify_rc;
-
-using llarp_async_verify_rc_hook_func = std::function<void(struct llarp_async_verify_rc*)>;
-
-/// verify rc request
-struct llarp_async_verify_rc
-{
-  /// async_verify_context
-  void* user;
-  /// nodedb storage
-  llarp_nodedb* nodedb;
-  // llarp::Logic for queue_job
-  std::shared_ptr<llarp::Logic> logic;
-  llarp_nodedb::WorkCaller_t worker;
-  llarp_nodedb::DiskCaller_t disk;
-
-  /// router contact
-  llarp::RouterContact rc;
-  /// result
-  bool valid;
-  /// hook
-  llarp_async_verify_rc_hook_func hook;
-};
-
-/**
-    struct for async rc verification
-    data is loaded in disk io threadpool
-    crypto is done on the crypto worker threadpool
-    result is called on the logic thread
-*/
-void
-llarp_nodedb_async_verify(struct llarp_async_verify_rc* job);
-
-struct llarp_async_load_rc;
-
-using llarp_async_load_rc_hook_func = std::function<void(struct llarp_async_load_rc*)>;
-
-struct llarp_async_load_rc
-{
-  /// async_verify_context
-  void* user;
-  /// nodedb storage
-  llarp_nodedb* nodedb;
-  /// llarp::Logic for calling hook
-  llarp::Logic* logic;
-  /// disk worker threadpool
-  llarp_nodedb::DiskCaller_t disk;
-  /// target pubkey
-  llarp::PubKey pubkey;
-  /// router contact result
-  llarp::RouterContact result;
-  /// set to true if we loaded the rc
-  bool loaded;
-  /// hook function called in logic thread
-  llarp_async_load_rc_hook_func hook;
-};
-
-/// asynchronously load an rc from disk
-void
-llarp_nodedb_async_load_rc(struct llarp_async_load_rc* job);
-
+}  // namespace llarp
 #endif

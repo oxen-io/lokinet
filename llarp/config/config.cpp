@@ -21,6 +21,8 @@
 #include <iostream>
 #include "constants/version.hpp"
 
+namespace lokimq = oxenmq;
+
 namespace llarp
 {
   // constants for config file default values

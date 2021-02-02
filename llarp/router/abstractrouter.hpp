@@ -20,16 +20,15 @@
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
-struct llarp_nodedb;
-struct llarp_threadpool;
 
-namespace lokimq
+namespace oxenmq
 {
-  class LokiMQ;
+  class OxenMQ;
 }
 
 namespace llarp
 {
+  class NodeDB;
   class Logic;
   struct Config;
   struct RouterID;
@@ -80,7 +79,7 @@ namespace llarp
     class Platform;
   }
 
-  using LMQ_ptr = std::shared_ptr<lokimq::LokiMQ>;
+  using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
 
   struct AbstractRouter
   {
@@ -108,7 +107,7 @@ namespace llarp
     virtual llarp_dht_context*
     dht() const = 0;
 
-    virtual llarp_nodedb*
+    virtual std::shared_ptr<NodeDB>
     nodedb() const = 0;
 
     virtual const path::PathContext&
@@ -178,7 +177,7 @@ namespace llarp
     Sign(Signature& sig, const llarp_buffer_t& buf) const = 0;
 
     virtual bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, llarp_nodedb* nodedb) = 0;
+    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) = 0;
 
     virtual bool
     IsServiceNode() const = 0;

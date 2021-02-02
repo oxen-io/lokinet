@@ -14,11 +14,10 @@
 #include <map>
 #include <tuple>
 
-struct llarp_nodedb;
-
 namespace llarp
 {
   struct RouterContact;
+  class NodeDB;
 
   namespace dht
   {
@@ -109,7 +108,7 @@ namespace llarp
 
       /// manual build on these hops
       virtual void
-      Build(const std::vector<RouterContact>& hops, PathRole roles = ePathRoleAny) = 0;
+      Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) = 0;
 
       /// tick owned paths
       virtual void
@@ -262,18 +261,13 @@ namespace llarp
       ResetInternalState() = 0;
 
       virtual bool
-      SelectHop(
-          llarp_nodedb* db,
-          const std::set<RouterID>& prev,
-          RouterContact& cur,
-          size_t hop,
-          PathRole roles) = 0;
-
-      virtual bool
       BuildOneAlignedTo(const RouterID endpoint) = 0;
 
       virtual void
       SendPacketToRemote(const llarp_buffer_t& pkt) = 0;
+
+      virtual std::optional<std::vector<RouterContact>>
+      GetHopsForBuild() = 0;
 
       void
       ForEachPath(std::function<void(const Path_ptr&)> visit) const

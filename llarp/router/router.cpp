@@ -40,7 +40,7 @@
 #include <systemd/sd-daemon.h>
 #endif
 
-#include <lokimq/lokimq.h>
+#include <oxenmq/oxenmq.h>
 
 static constexpr std::chrono::milliseconds ROUTER_TICK_INTERVAL = 1s;
 
@@ -49,9 +49,9 @@ namespace llarp
   Router::Router(
       llarp_ev_loop_ptr __netloop,
       std::shared_ptr<Logic> l,
-      std::unique_ptr<vpn::Platform> vpnPlatform)
+      std::shared_ptr<vpn::Platform> vpnPlatform)
       : ready(false)
-      , m_lmq(std::make_shared<lokimq::LokiMQ>())
+      , m_lmq(std::make_shared<oxenmq::OxenMQ>())
       , _netloop(std::move(__netloop))
       , _logic(std::move(l))
       , _vpnPlatform(std::move(vpnPlatform))
@@ -93,7 +93,7 @@ namespace llarp
         peerStatsObj = m_peerDb->ExtractStatus();
 
       return util::StatusObject{{"running", true},
-                                {"numNodesKnown", _nodedb->num_loaded()},
+                                {"numNodesKnown", _nodedb->NumLoaded()},
                                 {"dht", _dht->impl->ExtractStatus()},
                                 {"services", _hiddenServiceContext.ExtractStatus()},
                                 {"exit", _exitContext.ExtractStatus()},
@@ -150,19 +150,13 @@ namespace llarp
       return _rcLookupHandler.GetRandomWhitelistRouter(router);
     }
 
-    auto pick_router = [&](auto& collection) -> bool {
-      const auto sz = collection.size();
-      auto itr = collection.begin();
-      if (sz == 0)
-        return false;
-      if (sz > 1)
-        std::advance(itr, randint() % sz);
-      router = itr->first;
+    if (const auto maybe = nodedb()->GetIf([](const auto&) -> bool { return true; }, true);
+        maybe.has_value())
+    {
+      router = maybe->pubkey;
       return true;
-    };
-
-    util::Lock l{nodedb()->access};
-    return pick_router(nodedb()->entries);
+    }
+    return false;
   }
 
   void
@@ -270,7 +264,7 @@ namespace llarp
   }
 
   bool
-  Router::Configure(std::shared_ptr<Config> c, bool isRouter, llarp_nodedb* nodedb)
+  Router::Configure(std::shared_ptr<Config> c, bool isRouter, std::shared_ptr<NodeDB> nodedb)
   {
     m_Config = c;
     auto& conf = *m_Config;
@@ -470,7 +464,7 @@ namespace llarp
     /// build a set of  strictConnectPubkeys (
     /// TODO: make this consistent with config -- do we support multiple strict connections
     //        or not?
-    std::set<RouterID> strictConnectPubkeys;
+    std::unordered_set<RouterID> strictConnectPubkeys;
     if (not networkConfig.m_strictConnect.empty())
     {
       const auto& val = networkConfig.m_strictConnect;
@@ -562,12 +556,12 @@ namespace llarp
         &_rcLookupHandler,
         &_routerProfiling,
         _logic,
-        _nodedb,
         util::memFn(&AbstractRouter::QueueWork, this));
     _linkManager.Init(&_outboundSessionMaker);
     _rcLookupHandler.Init(
         _dht,
         _nodedb,
+        _logic,
         util::memFn(&AbstractRouter::QueueWork, this),
         &_linkManager,
         &_hiddenServiceContext,
@@ -691,7 +685,7 @@ namespace llarp
   Router::ReportStats()
   {
     const auto now = Now();
-    LogInfo(nodedb()->num_loaded(), " RCs loaded");
+    LogInfo(nodedb()->NumLoaded(), " RCs loaded");
     LogInfo(bootstrapRCList.size(), " bootstrap peers");
     LogInfo(NumberOfConnectedRouters(), " router connections");
     if (IsServiceNode())
@@ -719,13 +713,13 @@ namespace llarp
       ss << "WATCHDOG=1\nSTATUS=v" << llarp::VERSION_STR;
       if (IsServiceNode())
       {
-        ss << " snode | known/svc/clients: " << nodedb()->num_loaded() << "/"
+        ss << " snode | known/svc/clients: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << "/" << NumberOfConnectedClients() << " | "
            << pathContext().CurrentTransitPaths() << " active paths";
       }
       else
       {
-        ss << " client | known/connected: " << nodedb()->num_loaded() << "/"
+        ss << " client | known/connected: " << nodedb()->NumLoaded() << "/"
            << NumberOfConnectedRouters() << " | path success: ";
         hiddenServiceContext().ForEachService([&ss](const auto& name, const auto& ep) {
           ss << " [" << name << " " << std::setprecision(4)
@@ -852,11 +846,8 @@ namespace llarp
     {
       QueueDiskIO([&]() { routerProfiling().Save(_profilesFile); });
     }
-    // save nodedb
-    if (nodedb()->ShouldSaveToDisk(now))
-    {
-      nodedb()->AsyncFlushToDisk();
-    }
+
+    _nodedb->Tick(now);
 
     if (m_peerDb)
     {
@@ -908,10 +899,11 @@ namespace llarp
     LogInfo("Session to ", remote, " fully closed");
     if (IsServiceNode())
       return;
-    RouterContact rc;
-    if (not nodedb()->Get(remote, rc))
-      return;
-    m_RoutePoker.DelRoute(rc.addrs[0].toIpAddress().toIP());
+    if (const auto maybe = nodedb()->Get(remote); maybe.has_value())
+    {
+      for (const auto& addr : maybe->addrs)
+        m_RoutePoker.DelRoute(addr.toIpAddress().toIP());
+    }
   }
 
   void
@@ -1097,31 +1089,20 @@ namespace llarp
     }
 
     {
-      ssize_t loaded = _nodedb->LoadAll();
-      llarp::LogInfo("loaded ", loaded, " RCs");
-      if (loaded < 0)
-      {
-        // shouldn't be possible
-        return false;
-      }
+      LogInfo("Loading nodedb from disk...");
+      _nodedb->LoadFromDisk();
     }
 
     llarp_dht_context_start(dht(), pubkey());
 
     for (const auto& rc : bootstrapRCList)
     {
-      if (this->nodedb()->Insert(rc))
-      {
-        LogInfo("added bootstrap node ", RouterID(rc.pubkey));
-      }
-      else
-      {
-        LogError("Failed to add bootstrap node ", RouterID(rc.pubkey));
-      }
+      nodedb()->Put(rc);
       _dht->impl->Nodes()->PutNode(rc);
+      LogInfo("added bootstrap node ", RouterID{rc.pubkey});
     }
 
-    LogInfo("have ", _nodedb->num_loaded(), " routers");
+    LogInfo("have ", _nodedb->NumLoaded(), " routers");
 
 #ifdef _WIN32
     // windows uses proactor event loop so we need to constantly pump
@@ -1165,7 +1146,7 @@ namespace llarp
   Router::AfterStopIssued()
   {
     StopLinks();
-    nodedb()->AsyncFlushToDisk();
+    nodedb()->SaveToDisk();
     _logic->call_later(200ms, std::bind(&Router::AfterStopLinks, this));
   }
 

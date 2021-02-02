@@ -1,5 +1,7 @@
 #include <router_id.hpp>
-#include <lokimq/base32z.h>
+#include <oxenmq/base32z.h>
+
+namespace lokimq = oxenmq;
 
 namespace llarp
 {

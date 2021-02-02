@@ -647,24 +647,65 @@ namespace llarp
       }
     }
 
-    bool
-    Endpoint::SelectHop(
-        llarp_nodedb* db,
-        const std::set<RouterID>& prev,
-        RouterContact& cur,
-        size_t hop,
-        path::PathRole roles)
-
+    std::optional<std::vector<RouterContact>>
+    Endpoint::GetHopsForBuild()
     {
-      std::set<RouterID> exclude = prev;
-      for (const auto& snode : SnodeBlacklist())
-        exclude.insert(snode);
-      if (hop == numHops - 1 and numHops > 1)
+      std::unordered_set<RouterID> exclude;
+      ForEachPath([&exclude](auto path) { exclude.insert(path->Endpoint()); });
+      const auto maybe = m_router->nodedb()->GetIf(
+          [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; });
+      if (not maybe.has_value())
+        return std::nullopt;
+      return GetHopsForBuildWithEndpoint(maybe->pubkey);
+    }
+
+    std::optional<std::vector<RouterContact>>
+    Endpoint::GetHopsForBuildWithEndpoint(RouterID endpoint)
+    {
+      std::vector<RouterContact> hops;
+      // get first hop
+      if (const auto maybe = SelectFirstHop(); maybe.has_value())
       {
-        // diversify endpoints
-        ForEachPath([&exclude](const path::Path_ptr& path) { exclude.insert(path->Endpoint()); });
+        hops.emplace_back(*maybe);
       }
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+      else
+        return std::nullopt;
+
+      auto filter =
+          [endpoint, &hops, blacklist = SnodeBlacklist(), r = m_router](const auto& rc) -> bool {
+        if (blacklist.count(rc.pubkey) > 0)
+          return false;
+
+        if (r->routerProfiling().IsBadForPath(rc.pubkey))
+          return false;
+
+        for (const auto& hop : hops)
+        {
+          if (hop.pubkey == rc.pubkey)
+            return false;
+        }
+        return endpoint != rc.pubkey;
+      };
+
+      for (size_t idx = hops.size(); idx < numHops; ++idx)
+      {
+        if (idx + 1 == numHops)
+        {
+          if (const auto maybe = m_router->nodedb()->Get(endpoint))
+          {
+            hops.emplace_back(*maybe);
+          }
+          else
+            return std::nullopt;
+        }
+        else if (const auto maybe = m_router->nodedb()->GetIf(filter); maybe.has_value())
+        {
+          hops.emplace_back(*maybe);
+        }
+        else
+          return std::nullopt;
+      }
+      return hops;
     }
 
     void
@@ -712,19 +753,18 @@ namespace llarp
     }
 
     void
-    Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, llarp_async_verify_rc* j)
+    Endpoint::HandleVerifyGotRouter(dht::GotRouterMessage_constptr msg, RouterID id, bool valid)
     {
       auto& pendingRouters = m_state->m_PendingRouters;
-      auto itr = pendingRouters.find(j->rc.pubkey);
+      auto itr = pendingRouters.find(id);
       if (itr != pendingRouters.end())
       {
-        if (j->valid)
+        if (valid)
           itr->second.InformResult(msg->foundRCs);
         else
           itr->second.InformResult({});
         pendingRouters.erase(itr);
       }
-      delete j;
     }
 
     bool
@@ -732,16 +772,15 @@ namespace llarp
     {
       if (not msg->foundRCs.empty())
       {
-        for (const auto& rc : msg->foundRCs)
+        for (auto rc : msg->foundRCs)
         {
-          llarp_async_verify_rc* job = new llarp_async_verify_rc();
-          job->nodedb = Router()->nodedb();
-          job->worker = util::memFn(&AbstractRouter::QueueWork, Router());
-          job->disk = util::memFn(&AbstractRouter::QueueDiskIO, Router());
-          job->logic = Router()->logic();
-          job->hook = std::bind(&Endpoint::HandleVerifyGotRouter, this, msg, std::placeholders::_1);
-          job->rc = rc;
-          llarp_nodedb_async_verify(job);
+          Router()->QueueWork([rc = std::move(rc), logic = Router()->logic(), self = this, msg]() {
+            bool valid = rc.Verify(llarp::time_now_ms());
+            LogicCall(logic, [self, valid, rc = std::move(rc), msg]() {
+              self->Router()->nodedb()->PutIfNewer(rc);
+              self->HandleVerifyGotRouter(msg, rc.pubkey, valid);
+            });
+          });
         }
       }
       else

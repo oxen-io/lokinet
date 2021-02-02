@@ -1,8 +1,10 @@
 #include <dht/messages/gotname.hpp>
-#include <lokimq/bt_serialize.h>
+#include <oxenmq/bt_serialize.h>
 #include <dht/context.hpp>
 #include <router/abstractrouter.hpp>
 #include <path/path_context.hpp>
+
+namespace lokimq = oxenmq;
 
 namespace llarp::dht
 {
