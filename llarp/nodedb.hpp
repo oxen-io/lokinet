@@ -105,7 +105,7 @@ namespace llarp
       }
       if (shuffle)
       {
-        for (auto itr = begin; begin != start; ++itr)
+        for (auto itr = begin; itr != start; ++itr)
         {
           if (visit(itr->second.rc))
             return itr->second.rc;
