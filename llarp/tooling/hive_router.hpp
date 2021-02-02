@@ -13,7 +13,7 @@ namespace tooling
     explicit HiveRouter(
         llarp_ev_loop_ptr netloop,
         std::shared_ptr<llarp::Logic> logic,
-        std::unique_ptr<llarp::vpn::Platform> vpnPlatform,
+        std::shared_ptr<llarp::vpn::Platform> vpnPlatform,
         RouterHive* hive);
 
     virtual ~HiveRouter() = default;
