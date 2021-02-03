@@ -23,7 +23,7 @@
 #include <vector>
 #include <unordered_set>
 
-#include <lokimq/address.h>
+#include <oxenmq/address.h>
 
 namespace llarp
 {
@@ -157,7 +157,7 @@ namespace llarp
   {
     bool whitelistRouters = false;
     fs::path ident_keyfile;
-    lokimq::address lokidRPCAddr;
+    oxenmq::address lokidRPCAddr;
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);

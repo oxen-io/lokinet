@@ -334,33 +334,16 @@ namespace llarp
                                : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
-    bool
-    OutboundContext::SelectHop(
-        llarp_nodedb* db,
-        const std::set<RouterID>& prev,
-        RouterContact& cur,
-        size_t hop,
-        path::PathRole roles)
+    std::optional<std::vector<RouterContact>>
+    OutboundContext::GetHopsForBuild()
     {
-      if (m_NextIntro.router.IsZero() || prev.count(m_NextIntro.router))
+      if (m_NextIntro.router.IsZero())
       {
         ShiftIntroduction(false);
       }
       if (m_NextIntro.router.IsZero())
-        return false;
-      std::set<RouterID> exclude = prev;
-      exclude.insert(m_NextIntro.router);
-      for (const auto& snode : m_Endpoint->SnodeBlacklist())
-        exclude.insert(snode);
-      if (hop == numHops - 1)
-      {
-        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-        if (db->Get(m_NextIntro.router, cur))
-          return true;
-        ++m_BuildFails;
-        return false;
-      }
-      return path::Builder::SelectHop(db, exclude, cur, hop, roles);
+        return std::nullopt;
+      return GetHopsAlignedToForBuild(m_NextIntro.router);
     }
 
     bool

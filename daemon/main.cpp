@@ -259,21 +259,21 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
   llarp::LogTrace("start of run_main_context()");
   try
   {
-    std::unique_ptr<llarp::Config> conf;
+    std::shared_ptr<llarp::Config> conf;
     if (confFile.has_value())
     {
       llarp::LogInfo("Using config file: ", *confFile);
-      conf = std::make_unique<llarp::Config>(confFile->parent_path());
+      conf = std::make_shared<llarp::Config>(confFile->parent_path());
     }
     else
     {
-      conf = std::make_unique<llarp::Config>(llarp::GetDefaultDataDir());
+      conf = std::make_shared<llarp::Config>(llarp::GetDefaultDataDir());
     }
     if (!conf->Load(confFile, opts.isRouter))
       throw std::runtime_error{"Config file parsing failed"};
 
     ctx = std::make_shared<llarp::Context>();
-    ctx->Configure(*conf);
+    ctx->Configure(std::move(conf));
 
     signal(SIGINT, handle_signal);
     signal(SIGTERM, handle_signal);
@@ -339,13 +339,16 @@ class WindowsServiceStopped
 LONG
 GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
 {
+  const DWORD flags = MiniDumpWithFullMemory | MiniDumpWithFullMemoryInfo | MiniDumpWithHandleData
+      | MiniDumpWithUnloadedModules | MiniDumpWithThreadInfo;
+
   std::stringstream ss;
   ss << "C:\\ProgramData\\lokinet\\crash-" << llarp::time_now_ms().count() << ".dmp";
   const std::string fname = ss.str();
   HANDLE hDumpFile;
   SYSTEMTIME stLocalTime;
   GetLocalTime(&stLocalTime);
-  MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+  MINIDUMP_EXCEPTION_INFORMATION ExpParam{};
 
   hDumpFile = CreateFile(
       fname.c_str(),
@@ -356,18 +359,11 @@ GenerateDump(EXCEPTION_POINTERS* pExceptionPointers)
       0,
       0);
 
-  ExpParam.ThreadId = GetCurrentThreadId();
   ExpParam.ExceptionPointers = pExceptionPointers;
   ExpParam.ClientPointers = TRUE;
 
   MiniDumpWriteDump(
-      GetCurrentProcess(),
-      GetCurrentProcessId(),
-      hDumpFile,
-      MiniDumpWithDataSegs,
-      &ExpParam,
-      NULL,
-      NULL);
+      GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, flags, &ExpParam, NULL, NULL);
 
   return 1;
 }

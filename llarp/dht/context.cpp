@@ -228,7 +228,12 @@ namespace llarp
       bool
       GetRCFromNodeDB(const Key_t& k, llarp::RouterContact& rc) const override
       {
-        return router->nodedb()->Get(k.as_array(), rc);
+        if (const auto maybe = router->nodedb()->Get(k.as_array()); maybe.has_value())
+        {
+          rc = *maybe;
+          return true;
+        }
+        return false;
       }
 
       PendingIntrosetLookups _pendingIntrosetLookups;

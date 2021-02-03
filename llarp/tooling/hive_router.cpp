@@ -7,9 +7,9 @@ namespace tooling
   HiveRouter::HiveRouter(
       llarp_ev_loop_ptr netloop,
       std::shared_ptr<llarp::Logic> logic,
-      std::unique_ptr<llarp::vpn::Platform> plat,
+      std::shared_ptr<llarp::vpn::Platform> plat,
       RouterHive* hive)
-      : Router(netloop, logic, std::move(plat)), m_hive(hive)
+      : Router(netloop, logic, plat), m_hive(hive)
   {}
 
   bool

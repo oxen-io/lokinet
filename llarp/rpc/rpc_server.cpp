@@ -17,7 +17,7 @@ namespace llarp::rpc
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>
-  MaybeParseJSON(const lokimq::Message& msg, size_t index = 0)
+  MaybeParseJSON(const oxenmq::Message& msg, size_t index = 0)
   {
     try
     {
@@ -55,7 +55,7 @@ namespace llarp::rpc
 
   void
   HandleJSONRequest(
-      lokimq::Message& msg, std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
+      oxenmq::Message& msg, std::function<void(nlohmann::json, ReplyFunction_t)> handleRequest)
   {
     const auto maybe = MaybeParseJSON(msg);
     if (not maybe.has_value())
@@ -70,10 +70,8 @@ namespace llarp::rpc
     }
     try
     {
-      std::promise<std::string> reply;
-      handleRequest(*maybe, [&reply](std::string result) { reply.set_value(result); });
-      auto ftr = reply.get_future();
-      msg.send_reply(ftr.get());
+      handleRequest(
+          *maybe, [defer = msg.send_later()](std::string result) { defer.reply(result); });
     }
     catch (std::exception& ex)
     {
@@ -82,13 +80,13 @@ namespace llarp::rpc
   }
 
   void
-  RpcServer::AsyncServeRPC(lokimq::address url)
+  RpcServer::AsyncServeRPC(oxenmq::address url)
   {
     m_LMQ->listen_plain(url.zmq_address());
-    m_LMQ->add_category("llarp", lokimq::AuthLevel::none)
+    m_LMQ->add_category("llarp", oxenmq::AuthLevel::none)
         .add_command(
             "halt",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               if (not m_Router->IsRunning())
               {
                 msg.send_reply(CreateJSONError("router is not running"));
@@ -99,25 +97,30 @@ namespace llarp::rpc
             })
         .add_request_command(
             "version",
-            [r = m_Router](lokimq::Message& msg) {
+            [r = m_Router](oxenmq::Message& msg) {
               util::StatusObject result{{"version", llarp::VERSION_FULL},
                                         {"uptime", to_json(r->Uptime())}};
               msg.send_reply(CreateJSONResponse(result));
             })
         .add_request_command(
             "status",
-            [&](lokimq::Message& msg) {
-              std::promise<util::StatusObject> result;
-              LogicCall(m_Router->logic(), [&result, r = m_Router]() {
-                const auto state = r->ExtractStatus();
-                result.set_value(state);
+            [&](oxenmq::Message& msg) {
+              LogicCall(m_Router->logic(), [defer = msg.send_later(), r = m_Router]() {
+                std::string data;
+                if (r->IsRunning())
+                {
+                  data = CreateJSONResponse(r->ExtractStatus());
+                }
+                else
+                {
+                  data = CreateJSONError("router not yet ready");
+                }
+                defer.reply(data);
               });
-              auto ftr = result.get_future();
-              msg.send_reply(CreateJSONResponse(ftr.get()));
             })
         .add_request_command(
             "exit",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
                 if (r->IsServiceNode())
                 {
@@ -261,7 +264,7 @@ namespace llarp::rpc
                     });
               });
             })
-        .add_request_command("config", [&](lokimq::Message& msg) {
+        .add_request_command("config", [&](oxenmq::Message& msg) {
           HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
             {
               const auto itr = obj.find("override");

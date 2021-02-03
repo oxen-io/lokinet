@@ -123,8 +123,14 @@ namespace llarp
     std::set<RouterID> exclude;
     do
     {
+      auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
+
       RouterContact other;
-      if (not _nodedb->select_random_hop_excluding(other, exclude))
+      if (const auto maybe = _nodedb->GetRandom(filter))
+      {
+        other = *maybe;
+      }
+      else
         break;
 
       exclude.insert(other.pubkey);
@@ -158,14 +164,13 @@ namespace llarp
       I_RCLookupHandler* rcLookup,
       Profiling* profiler,
       std::shared_ptr<Logic> logic,
-      llarp_nodedb* nodedb,
       WorkerFunc_t dowork)
   {
     _router = router;
     _linkManager = linkManager;
     _rcLookup = rcLookup;
     _logic = logic;
-    _nodedb = nodedb;
+    _nodedb = router->nodedb();
     _profiler = profiler;
     work = dowork;
   }

@@ -8,13 +8,16 @@
 
 #include <unordered_map>
 #include <set>
+#include <unordered_set>
 #include <list>
 
-struct llarp_nodedb;
 struct llarp_dht_context;
 
 namespace llarp
 {
+  class NodeDB;
+  class Logic;
+
   namespace service
   {
     struct Context;
@@ -72,11 +75,12 @@ namespace llarp
     void
     Init(
         llarp_dht_context* dht,
-        llarp_nodedb* nodedb,
+        std::shared_ptr<NodeDB> nodedb,
+        std::shared_ptr<Logic> logic,
         WorkerFunc_t dowork,
         ILinkManager* linkManager,
         service::Context* hiddenServiceContext,
-        const std::set<RouterID>& strictConnectPubkeys,
+        const std::unordered_set<RouterID>& strictConnectPubkeys,
         const std::set<RouterContact>& bootstrapRCList,
         bool useWhitelist_arg,
         bool isServiceNode_arg);
@@ -98,17 +102,18 @@ namespace llarp
     mutable util::Mutex _mutex;  // protects pendingCallbacks, whitelistRouters
 
     llarp_dht_context* _dht = nullptr;
-    llarp_nodedb* _nodedb = nullptr;
+    std::shared_ptr<NodeDB> _nodedb;
+    std::shared_ptr<Logic> _logic;
     WorkerFunc_t _work = nullptr;
     service::Context* _hiddenServiceContext = nullptr;
     ILinkManager* _linkManager = nullptr;
 
     /// explicit whitelist of routers we will connect to directly (not for
     /// service nodes)
-    std::set<RouterID> _strictConnectPubkeys;
+    std::unordered_set<RouterID> _strictConnectPubkeys;
 
     std::set<RouterContact> _bootstrapRCList;
-    std::set<RouterID> _bootstrapRouterIDList;
+    std::unordered_set<RouterID> _bootstrapRouterIDList;
 
     std::unordered_map<RouterID, CallbacksQueue, RouterID::Hash> pendingCallbacks
         GUARDED_BY(_mutex);
@@ -116,7 +121,7 @@ namespace llarp
     bool useWhitelist = false;
     bool isServiceNode = false;
 
-    std::set<RouterID> whitelistRouters GUARDED_BY(_mutex);
+    std::unordered_set<RouterID> whitelistRouters GUARDED_BY(_mutex);
 
     using TimePoint = std::chrono::steady_clock::time_point;
     std::unordered_map<RouterID, TimePoint, RouterID::Hash> _routerLookupTimes;

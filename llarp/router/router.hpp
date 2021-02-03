@@ -46,7 +46,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <lokimq/address.h>
+#include <oxenmq/address.h>
 
 namespace llarp
 {
@@ -103,7 +103,7 @@ namespace llarp
     util::StatusObject
     ExtractStatus() const override;
 
-    llarp_nodedb*
+    std::shared_ptr<NodeDB>
     nodedb() const override
     {
       return _nodedb;
@@ -182,15 +182,15 @@ namespace llarp
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<Logic> _logic;
-    std::unique_ptr<vpn::Platform> _vpnPlatform;
+    std::shared_ptr<vpn::Platform> _vpnPlatform;
     path::PathContext paths;
     exit::Context _exitContext;
     SecretKey _identity;
     SecretKey _encryption;
     llarp_dht_context* _dht = nullptr;
-    llarp_nodedb* _nodedb;
+    std::shared_ptr<NodeDB> _nodedb;
     llarp_time_t _startedAt;
-    const lokimq::TaggedThreadID m_DiskThread;
+    const oxenmq::TaggedThreadID m_DiskThread;
 
     llarp_time_t
     Uptime() const override;
@@ -270,16 +270,16 @@ namespace llarp
     void
     PumpLL() override;
 
-    const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
+    const oxenmq::address DefaultRPCBindAddr = oxenmq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
-    lokimq::address rpcBindAddr = DefaultRPCBindAddr;
+    oxenmq::address rpcBindAddr = DefaultRPCBindAddr;
     std::unique_ptr<rpc::RpcServer> m_RPCServer;
 
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
-    lokimq::address lokidRPCAddr;
+    oxenmq::address lokidRPCAddr;
     Profiling _routerProfiling;
     fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;
@@ -329,7 +329,7 @@ namespace llarp
     explicit Router(
         llarp_ev_loop_ptr __netloop,
         std::shared_ptr<Logic> logic,
-        std::unique_ptr<vpn::Platform> vpnPlatform);
+        std::shared_ptr<vpn::Platform> vpnPlatform);
 
     virtual ~Router() override;
 
@@ -358,7 +358,7 @@ namespace llarp
     Close();
 
     bool
-    Configure(std::shared_ptr<Config> conf, bool isRouter, llarp_nodedb* nodedb = nullptr) override;
+    Configure(std::shared_ptr<Config> conf, bool isRouter, std::shared_ptr<NodeDB> nodedb) override;
 
     bool
     StartRpcServer() override;

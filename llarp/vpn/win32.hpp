@@ -121,7 +121,7 @@ namespace llarp::vpn
   {
     std::atomic<bool> m_Run;
     HANDLE m_Device, m_IOCP;
-    std::vector<HANDLE> m_Threads;
+    std::vector<std::thread> m_Threads;
     thread::Queue<net::IPPacket> m_ReadQueue;
 
     const InterfaceInfo m_Info;
@@ -334,7 +334,7 @@ namespace llarp::vpn
       CloseHandle(m_Device);
       // close the reader threads
       for (auto& thread : m_Threads)
-        CloseHandle(thread);
+        thread.join();
     }
 
     int
@@ -355,21 +355,22 @@ namespace llarp::vpn
       return "";
     }
 
-    static DWORD FAR PASCAL
-    Loop(void* u)
-    {
-      static_cast<Win32Interface*>(u)->ReadLoop();
-      return 0;
-    }
-
     void
     Start()
     {
       m_Run = true;
       const auto numThreads = std::thread::hardware_concurrency();
-      m_IOCP = CreateIoCompletionPort(m_Device, nullptr, (ULONG_PTR)this, 1 + numThreads);
+      // allocate packets
       for (size_t idx = 0; idx < numThreads; ++idx)
-        m_Threads.push_back(CreateThread(nullptr, 0, &Loop, this, 0, nullptr));
+        m_Packets.emplace_back(new asio_evt_pkt{true});
+
+      // create completion port
+      m_IOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
+      // attach the handle or some shit
+      CreateIoCompletionPort(m_Device, m_IOCP, 0, 0);
+      // spawn reader threads
+      for (size_t idx = 0; idx < numThreads; ++idx)
+        m_Threads.emplace_back([this, idx]() { ReadLoop(idx); });
     }
 
     net::IPPacket
@@ -394,6 +395,8 @@ namespace llarp::vpn
       }
     };
 
+    std::vector<std::unique_ptr<asio_evt_pkt>> m_Packets;
+
     bool
     WritePacket(net::IPPacket pkt)
     {
@@ -406,9 +409,9 @@ namespace llarp::vpn
     }
 
     void
-    ReadLoop()
+    ReadLoop(size_t packetIndex)
     {
-      std::unique_ptr<asio_evt_pkt> ev = std::make_unique<asio_evt_pkt>(true);
+      auto& ev = m_Packets[packetIndex];
       ev->Read(m_Device);
       while (m_Run)
       {

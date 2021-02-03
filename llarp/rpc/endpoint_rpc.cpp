@@ -23,11 +23,11 @@ namespace llarp::rpc
       return;
     m_LMQ->connect_remote(
         m_AuthURL,
-        [self = shared_from_this()](lokimq::ConnectionID c) {
+        [self = shared_from_this()](oxenmq::ConnectionID c) {
           self->m_Conn = std::move(c);
           LogInfo("connected to endpoint auth server via ", *self->m_Conn);
         },
-        [self = shared_from_this()](lokimq::ConnectionID, std::string_view fail) {
+        [self = shared_from_this()](oxenmq::ConnectionID, std::string_view fail) {
           LogWarn("failed to connect to endpoint auth server: ", fail);
           self->m_Endpoint->RouterLogic()->call_later(1s, [self]() { self->Start(); });
         });

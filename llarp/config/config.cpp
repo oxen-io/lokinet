@@ -881,7 +881,7 @@ namespace llarp
             "but can use (non-default) TCP if lokid is configured that way:",
             "    rpc=tcp://127.0.0.1:5678",
         },
-        [this](std::string arg) { lokidRPCAddr = lokimq::address(arg); });
+        [this](std::string arg) { lokidRPCAddr = oxenmq::address(arg); });
 
     // Deprecated options:
     conf.defineOption<std::string>("lokid", "username", Deprecated);
