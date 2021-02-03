@@ -228,10 +228,10 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsForBuild()
     {
-      if (const auto maybe = m_router->nodedb()->GetIf([r = m_router](const auto& rc) -> bool {
-            return not r->routerProfiling().IsBadForPath(rc.pubkey);
-          });
-          maybe.has_value())
+      auto filter = [r = m_router](const auto& rc) -> bool {
+        return not r->routerProfiling().IsBadForPath(rc.pubkey);
+      };
+      if (const auto maybe = m_router->nodedb()->GetIf(filter))
       {
         return GetHopsAlignedToForBuild(maybe->pubkey);
       }
