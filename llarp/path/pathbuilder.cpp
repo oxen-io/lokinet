@@ -231,7 +231,7 @@ namespace llarp
       auto filter = [r = m_router](const auto& rc) -> bool {
         return not r->routerProfiling().IsBadForPath(rc.pubkey);
       };
-      if (const auto maybe = m_router->nodedb()->GetIf(filter))
+      if (const auto maybe = m_router->nodedb()->GetRandom(filter))
       {
         return GetHopsAlignedToForBuild(maybe->pubkey);
       }
@@ -315,8 +315,8 @@ namespace llarp
         }
         else
         {
-          const auto maybe =
-              m_router->nodedb()->GetIf([&hops, r = m_router, endpoint](const auto& rc) -> bool {
+          const auto maybe = m_router->nodedb()->GetRandom(
+              [&hops, r = m_router, endpoint](const auto& rc) -> bool {
                 if (r->routerProfiling().IsBadForPath(rc.pubkey))
                   return false;
                 for (const auto& hop : hops)

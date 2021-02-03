@@ -86,7 +86,7 @@ namespace llarp
 
     template <typename Filter>
     std::optional<RouterContact>
-    GetIf(Filter visit) const
+    GetRandom(Filter visit) const
     {
       util::NullLock lock{m_Access};
       const auto sz = m_Entries.size();

@@ -126,7 +126,7 @@ namespace llarp
       auto filter = [exclude](const auto& rc) -> bool { return exclude.count(rc.pubkey) == 0; };
 
       RouterContact other;
-      if (const auto maybe = _nodedb->GetIf(filter); maybe.has_value())
+      if (const auto maybe = _nodedb->GetRandom(filter))
       {
         other = *maybe;
       }

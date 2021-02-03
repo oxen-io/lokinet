@@ -150,7 +150,7 @@ namespace llarp
       return _rcLookupHandler.GetRandomWhitelistRouter(router);
     }
 
-    if (const auto maybe = nodedb()->GetIf([](const auto&) -> bool { return true; }))
+    if (const auto maybe = nodedb()->GetRandom([](const auto&) -> bool { return true; }))
     {
       router = maybe->pubkey;
       return true;
