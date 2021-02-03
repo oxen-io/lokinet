@@ -86,30 +86,24 @@ namespace llarp
 
     template <typename Filter>
     std::optional<RouterContact>
-    GetIf(Filter visit, bool shuffle = true) const
+    GetIf(Filter visit) const
     {
       util::NullLock lock{m_Access};
       const auto sz = m_Entries.size();
       if (sz < 3)
         return std::nullopt;
-      auto begin = m_Entries.begin();
-      auto start = begin;
-      if (shuffle)
-      {
-        start = std::next(start, randint() % sz);
-      }
-      for (auto itr = start; itr != m_Entries.end(); ++itr)
+      const auto begin = m_Entries.begin();
+      const auto middle = std::next(m_Entries.begin(), randint() % sz);
+
+      for (auto itr = middle; itr != m_Entries.end(); ++itr)
       {
         if (visit(itr->second.rc))
           return itr->second.rc;
       }
-      if (shuffle)
+      for (auto itr = begin; itr != middle; ++itr)
       {
-        for (auto itr = begin; itr != start; ++itr)
-        {
-          if (visit(itr->second.rc))
-            return itr->second.rc;
-        }
+        if (visit(itr->second.rc))
+          return itr->second.rc;
       }
       return std::nullopt;
     }
