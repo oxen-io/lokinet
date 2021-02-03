@@ -7,8 +7,6 @@
 #include <path/path_context.hpp>
 #include <routing/dht_message.hpp>
 
-namespace lokimq = oxenmq;
-
 namespace llarp::dht
 {
   FindNameMessage::FindNameMessage(const Key_t& from, Key_t namehash, uint64_t txid)
@@ -18,8 +16,8 @@ namespace llarp::dht
   bool
   FindNameMessage::BEncode(llarp_buffer_t* buf) const
   {
-    const auto data = lokimq::bt_serialize(
-        lokimq::bt_dict{{"A", "N"sv},
+    const auto data = oxenmq::bt_serialize(
+        oxenmq::bt_dict{{"A", "N"sv},
                         {"H", std::string_view{(char*)NameHash.data(), NameHash.size()}},
                         {"T", TxID}});
     return buf->write(data.begin(), data.end());

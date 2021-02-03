@@ -17,7 +17,7 @@ namespace llarp::rpc
 
   /// maybe parse json from message paramter at index
   std::optional<nlohmann::json>
-  MaybeParseJSON(const lokimq::Message& msg, size_t index = 0)
+  MaybeParseJSON(const oxenmq::Message& msg, size_t index = 0)
   {
     try
     {

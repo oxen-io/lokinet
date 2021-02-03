@@ -190,7 +190,7 @@ namespace llarp
     llarp_dht_context* _dht = nullptr;
     std::shared_ptr<NodeDB> _nodedb;
     llarp_time_t _startedAt;
-    const lokimq::TaggedThreadID m_DiskThread;
+    const oxenmq::TaggedThreadID m_DiskThread;
 
     llarp_time_t
     Uptime() const override;
@@ -270,16 +270,16 @@ namespace llarp
     void
     PumpLL() override;
 
-    const lokimq::address DefaultRPCBindAddr = lokimq::address::tcp("127.0.0.1", 1190);
+    const oxenmq::address DefaultRPCBindAddr = oxenmq::address::tcp("127.0.0.1", 1190);
     bool enableRPCServer = false;
-    lokimq::address rpcBindAddr = DefaultRPCBindAddr;
+    oxenmq::address rpcBindAddr = DefaultRPCBindAddr;
     std::unique_ptr<rpc::RpcServer> m_RPCServer;
 
     const llarp_time_t _randomStartDelay;
 
     std::shared_ptr<rpc::LokidRpcClient> m_lokidRpcClient;
 
-    lokimq::address lokidRPCAddr;
+    oxenmq::address lokidRPCAddr;
     Profiling _routerProfiling;
     fs::path _profilesFile;
     OutboundMessageHandler _outboundMessageHandler;

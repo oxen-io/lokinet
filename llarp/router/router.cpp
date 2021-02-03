@@ -270,11 +270,11 @@ namespace llarp
     auto& conf = *m_Config;
     whitelistRouters = conf.lokid.whitelistRouters;
     if (whitelistRouters)
-      lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
+      lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
 
     enableRPCServer = conf.api.m_enableRPCServer;
     if (enableRPCServer)
-      rpcBindAddr = lokimq::address(conf.api.m_rpcBindAddr);
+      rpcBindAddr = oxenmq::address(conf.api.m_rpcBindAddr);
 
     if (not StartRpcServer())
       throw std::runtime_error("Failed to start rpc server");
@@ -455,7 +455,7 @@ namespace llarp
 
     // Lokid Config
     whitelistRouters = conf.lokid.whitelistRouters;
-    lokidRPCAddr = lokimq::address(conf.lokid.lokidRPCAddr);
+    lokidRPCAddr = oxenmq::address(conf.lokid.lokidRPCAddr);
 
     m_isServiceNode = conf.router.m_isRelay;
 

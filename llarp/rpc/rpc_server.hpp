@@ -9,18 +9,16 @@ namespace llarp
   struct AbstractRouter;
 }
 
-namespace lokimq = oxenmq;
-
 namespace llarp::rpc
 {
-  using LMQ_ptr = std::shared_ptr<lokimq::OxenMQ>;
+  using LMQ_ptr = std::shared_ptr<oxenmq::OxenMQ>;
 
   struct RpcServer
   {
     explicit RpcServer(LMQ_ptr, AbstractRouter*);
     ~RpcServer() = default;
     void
-    AsyncServeRPC(lokimq::address addr);
+    AsyncServeRPC(oxenmq::address addr);
 
    private:
     LMQ_ptr m_LMQ;

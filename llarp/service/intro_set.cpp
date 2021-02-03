@@ -3,7 +3,6 @@
 #include <path/path.hpp>
 
 #include <oxenmq/bt_serialize.h>
-namespace lokimq = oxenmq;
 
 namespace llarp::service
 {
@@ -182,9 +181,9 @@ namespace llarp::service
 
       try
       {
-        lokimq::bt_deserialize(srvString, SRVs);
+        oxenmq::bt_deserialize(srvString, SRVs);
       }
-      catch (const lokimq::bt_deserialize_invalid& err)
+      catch (const oxenmq::bt_deserialize_invalid& err)
       {
         LogError("Error decoding SRV records from IntroSet: ", err.what());
         return false;
@@ -240,7 +239,7 @@ namespace llarp::service
 
     if (SRVs.size())
     {
-      std::string serial = lokimq::bt_serialize(SRVs);
+      std::string serial = oxenmq::bt_serialize(SRVs);
       if (!bencode_write_bytestring(buf, "s", 1))
         return false;
       if (!buf->write(serial.begin(), serial.end()))

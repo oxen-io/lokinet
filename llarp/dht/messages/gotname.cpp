@@ -4,8 +4,6 @@
 #include <router/abstractrouter.hpp>
 #include <path/path_context.hpp>
 
-namespace lokimq = oxenmq;
-
 namespace llarp::dht
 {
   constexpr size_t NameSizeLimit = 128;
@@ -21,8 +19,8 @@ namespace llarp::dht
   GotNameMessage::BEncode(llarp_buffer_t* buf) const
   {
     const std::string nonce((const char*)result.nonce.data(), result.nonce.size());
-    const auto data = lokimq::bt_serialize(
-        lokimq::bt_dict{{"A", "M"sv}, {"D", result.ciphertext}, {"N", nonce}, {"T", TxID}});
+    const auto data = oxenmq::bt_serialize(
+        oxenmq::bt_dict{{"A", "M"sv}, {"D", result.ciphertext}, {"N", nonce}, {"T", TxID}});
     return buf->write(data.begin(), data.end());
   }
 
