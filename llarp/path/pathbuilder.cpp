@@ -228,30 +228,12 @@ namespace llarp
     std::optional<std::vector<RouterContact>>
     Builder::GetHopsForBuild()
     {
-      std::vector<RouterContact> hops;
+      if (const auto maybe = m_router->nodedb()->GetIf([](const auto&) -> bool { return true; });
+          maybe.has_value())
       {
-        const auto maybe = SelectFirstHop();
-        if (not maybe.has_value())
-          return std::nullopt;
-        hops.emplace_back(*maybe);
-      };
-      for (size_t idx = hops.size(); idx < numHops; ++idx)
-      {
-        const auto maybe = m_router->nodedb()->GetIf([&hops, r = m_router](const auto& rc) -> bool {
-          if (r->routerProfiling().IsBadForPath(rc.pubkey))
-            return false;
-          for (const auto& hop : hops)
-          {
-            if (hop.pubkey == rc.pubkey)
-              return false;
-          }
-          return true;
-        });
-        if (not maybe.has_value())
-          return std::nullopt;
-        hops.emplace_back(*maybe);
+        return GetHopsAlignedToForBuild(maybe->pubkey);
       }
-      return hops;
+      return std::nullopt;
     }
 
     bool
