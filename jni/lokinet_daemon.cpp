@@ -2,6 +2,7 @@
 #include "lokinet_jni_common.hpp"
 #include "lokinet_jni_vpnio.hpp"
 #include <llarp.hpp>
+#include <config/config.hpp>
 
 extern "C"
 {
@@ -31,7 +32,9 @@ extern "C"
     try
     {
       llarp::RuntimeOptions opts{};
-      ptr->Configure(*config);
+
+      // janky make_shared deep copy because jni + shared pointer = scary
+      ptr->Configure(std::make_shared<llarp::Config>(*config));
       ptr->Setup(opts);
     }
     catch (...)

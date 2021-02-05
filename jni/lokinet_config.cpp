@@ -1,5 +1,6 @@
 #include "network_loki_lokinet_LokinetConfig.h"
 #include <llarp.hpp>
+#include <config/config.hpp>
 #include "lokinet_jni_common.hpp"
 
 extern "C"
