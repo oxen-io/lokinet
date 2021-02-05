@@ -279,6 +279,7 @@ run_main_context(std::optional<fs::path> confFile, const llarp::RuntimeOptions o
     signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
+    signal(SIGUSR1, handle_signal);
 #endif
 
     ctx->Setup(opts);

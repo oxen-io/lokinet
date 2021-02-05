@@ -76,6 +76,13 @@ namespace llarp
       return obj;
     }
 
+    void
+    TunEndpoint::Thaw()
+    {
+      if (m_Resolver)
+        m_Resolver->Restart();
+    }
+
     bool
     TunEndpoint::Configure(const NetworkConfig& conf, const DnsConfig& dnsConf)
     {

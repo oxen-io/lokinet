@@ -363,6 +363,9 @@ namespace llarp
     bool
     StartRpcServer() override;
 
+    void
+    Thaw() override;
+
     bool
     Run() override;
 

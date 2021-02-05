@@ -122,6 +122,18 @@ namespace llarp
   }
 
   void
+  Router::Thaw()
+  {
+    LogInfo("We arise from a long sleep, probably need to reset the network state");
+    hiddenServiceContext().ForEachService([](const auto& name, const auto& ep) -> bool {
+      LogInfo(name, " thawing...");
+      ep->Thaw();
+      return true;
+    });
+    LogInfo("We are ready to go bruh");
+  }
+
+  void
   Router::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);

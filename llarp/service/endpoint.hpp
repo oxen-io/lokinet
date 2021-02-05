@@ -127,6 +127,9 @@ namespace llarp
         return {0};
       }
 
+      virtual void
+      Thaw(){};
+
       void
       ResetInternalState() override;
 

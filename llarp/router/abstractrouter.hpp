@@ -198,6 +198,10 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    /// thaw from long sleep or network changed event
+    virtual void
+    Thaw() = 0;
+
     /// non gracefully stop the router
     virtual void
     Die() = 0;
