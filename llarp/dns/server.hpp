@@ -43,6 +43,9 @@ namespace llarp
       void
       Stop();
 
+      void
+      Restart();
+
       using Buffer_t = std::vector<uint8_t>;
 
      private:

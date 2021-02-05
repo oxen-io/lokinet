@@ -31,6 +31,9 @@ namespace llarp
         return shared_from_this();
       }
 
+      void
+      Thaw() override;
+
       bool
       Configure(const NetworkConfig& conf, const DnsConfig& dnsConf) override;
 

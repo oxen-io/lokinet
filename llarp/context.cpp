@@ -158,6 +158,10 @@ namespace llarp
     {
       Reload();
     }
+    if (sig == SIGUSR1 and router)
+    {
+      router->Thaw();
+    }
 #endif
   }
 
