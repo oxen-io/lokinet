@@ -233,7 +233,7 @@ namespace llarp
         reply(*query);
       }
       /// our dns resolver
-      std::shared_ptr<dns::Proxy> m_Resolver;
+      std::shared_ptr<dns::PacketHandler> m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;

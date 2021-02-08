@@ -15,8 +15,7 @@ namespace llarp
   {
     ExitEndpoint::ExitEndpoint(const std::string& name, AbstractRouter* r)
         : m_Router(r)
-        , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
+        , m_Resolver(std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this))
         , m_Name(name)
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
@@ -324,7 +323,7 @@ namespace llarp
         loop->add_ticker([&]() { Flush(); });
 
         llarp::LogInfo("Trying to start resolver ", m_LocalResolverAddr.toString());
-        return m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers);
+        return m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers);
       }
       return true;
     }

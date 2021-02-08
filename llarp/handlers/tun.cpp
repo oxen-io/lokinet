@@ -23,6 +23,7 @@
 #include <rpc/endpoint_rpc.hpp>
 
 #include <util/str.hpp>
+#include <util/endian.hpp>
 
 #include <dns/srv_data.hpp>
 
@@ -36,15 +37,73 @@ namespace llarp
       static constexpr auto FlushInterval = 25ms;
       return now >= m_LastFlushAt + FlushInterval;
     }
+    constexpr size_t udp_header_size = 8;
+
+#if ANDROID
+    struct AndroidDnsHandler : public dns::PacketHandler
+    {
+      TunEndpoint* const m_Endpoint;
+
+      explicit AndroidDnsHandler(AbstractRouter* router, TunEndpoint* ep)
+          : dns::PacketHandler{router->logic(), router->netloop(), ep}, m_Endpoint{ep} {};
+
+      void
+      SendServerMessageBufferTo(SockAddr to, std::vector<byte_t> buf) override
+      {
+        net::IPPacket pkt{};
+        auto* hdr = pkt.Header();
+
+        hdr->ihl = 5;
+        hdr->version = 4;
+        hdr->tot_len = buf.size() + udp_header_size;
+        hdr->proto = 0x11;  // udp
+        hdr->ttl = 1;
+
+        // make udp packet
+        std::vector<byte_t> udp{};
+        udp.resize(hdr->tot_len);
+        uint8_t* ptr = udp.data();
+        htobe16buf(ptr, htons(53));
+        ptr += 2;
+        htobe16buf(ptr, htons(to.getPort()));
+        ptr += 2;
+        htobe16buf(ptr, buf.size());
+        std::copy_n(buf.data(), buf.size(), udp.data() + udp_header_size);
+
+        // put udp packet
+        std::copy_n(udp.data(), udp.size(), pkt.buf + (hdr->ihl * 4));
+
+        /// queue ip packet write
+        const nuint32_t remoteIP{to.getIPv4()};
+        m_Endpoint->HandleWriteIPPacket(
+            pkt.ConstBuffer(), m_Endpoint->GetIfAddr(), net::ExpandV4(remoteIP.ToHost()));
+      }
+    };
+
+#endif
 
     TunEndpoint::TunEndpoint(AbstractRouter* r, service::Context* parent)
         : service::Endpoint(r, parent)
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
-        , m_Resolver(std::make_shared<dns::Proxy>(
-              r->netloop(), r->logic(), r->netloop(), r->logic(), this))
     {
       m_PacketRouter.reset(
           new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
+#if ANDROID
+      m_Resolver = std::make_shared<AndroidDnsHandler>(r, this);
+      m_PacketRouter->AddUDPHandler(nuint16_t{53}, [resolver = m_Resolver](net::IPPacket pkt) {
+        constexpr size_t ip_header_size = (pkt.Header()->ihl * 4);
+
+        const uint8_t* ptr = pkt.buf + ip_header_size;
+        const SockAddr raddr{pkt.src4(), nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
+
+        std::vector<byte_t> buf;
+        buf.resize(pkt.sz - (udp_header_size + ip_header_size));
+        std::copy_n(ptr + udp_header_size, buf.size(), buf.data());
+        resolver->HandlePacket(raddr, std::move(buf));
+      });
+#else
+      m_Resolver = std::make_shared<dns::Proxy>(r->netloop(), r->logic(), this);
+#endif
     }
 
     util::StatusObject
@@ -778,14 +837,11 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
-#if ANDROID
-#else
-      if (!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
+      if (!m_Resolver->Start(m_LocalResolverAddr.createSockAddr(), m_UpstreamResolvers))
       {
         llarp::LogError(Name(), " failed to start DNS server");
         return false;
       }
-#endif
       return true;
     }
 

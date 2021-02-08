@@ -34,15 +34,15 @@ namespace llarp::dns
     unboundContext = nullptr;
   }
 
-  UnboundResolver::UnboundResolver(llarp_ev_loop_ptr loop, ReplyFunction reply, FailFunction fail)
+  UnboundResolver::UnboundResolver(
+      std::shared_ptr<Logic> logic, ReplyFunction reply, FailFunction fail)
       : unboundContext(nullptr)
       , started(false)
-      , eventLoop(loop)
-      , replyFunc([loop, reply](auto source, auto buf) {
-        loop->call_soon([source, buf, reply]() { reply(source, buf); });
+      , replyFunc([logic, reply](auto source, auto buf) {
+        LogicCall(logic, [source, buf, reply]() { reply(source, buf); });
       })
-      , failFunc([loop, fail](auto source, auto message) {
-        loop->call_soon([source, message, fail]() { fail(source, message); });
+      , failFunc([logic, fail](auto source, auto message) {
+        LogicCall(logic, [source, message, fail]() { fail(source, message); });
       })
   {}
 

@@ -28,7 +28,6 @@ namespace llarp::dns
     std::atomic<bool> started;
     std::unique_ptr<std::thread> runner;
 
-    llarp_ev_loop_ptr eventLoop;
     ReplyFunction replyFunc;
     FailFunction failFunc;
 
@@ -36,7 +35,7 @@ namespace llarp::dns
     Reset();
 
    public:
-    UnboundResolver(llarp_ev_loop_ptr eventLoop, ReplyFunction replyFunc, FailFunction failFunc);
+    UnboundResolver(std::shared_ptr<Logic> logic, ReplyFunction replyFunc, FailFunction failFunc);
 
     static void
     Callback(void* data, int err, ub_result* result);

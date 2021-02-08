@@ -27,18 +27,15 @@ namespace llarp
       HandleHookedDNSMessage(Message query, std::function<void(Message)> sendReply) = 0;
     };
 
-    struct Proxy : public std::enable_shared_from_this<Proxy>
+    struct PacketHandler : public std::enable_shared_from_this<PacketHandler>
     {
       using Logic_ptr = std::shared_ptr<Logic>;
-      Proxy(
-          llarp_ev_loop_ptr serverLoop,
-          Logic_ptr serverLogic,
-          llarp_ev_loop_ptr clientLoop,
-          Logic_ptr clientLogic,
-          IQueryHandler* handler);
+      using Buffer_t = std::vector<uint8_t>;
 
-      bool
-      Start(const IpAddress& addr, const std::vector<IpAddress>& resolvers);
+      explicit PacketHandler(Logic_ptr logic, IQueryHandler* handler);
+
+      virtual bool
+      Start(SockAddr localaddr, std::vector<IpAddress> upstreamResolvers);
 
       void
       Stop();
@@ -46,80 +43,50 @@ namespace llarp
       void
       Restart();
 
-      using Buffer_t = std::vector<uint8_t>;
+      void
+      HandlePacket(SockAddr from, Buffer_t buf);
+
+     protected:
+      virtual void
+      SendServerMessageBufferTo(SockAddr to, Buffer_t buf) = 0;
 
      private:
-      /// low level packet handler
-      static void
-      HandleUDPRecv_client(llarp_udp_io*, const SockAddr&, ManagedBuffer);
-      static void
-      HandleUDPRecv_server(llarp_udp_io*, const SockAddr&, ManagedBuffer);
-
-      /// low level ticker
-      static void
-      HandleTick(llarp_udp_io*);
-
-      void
-      HandlePktClient(const SockAddr& from, Buffer_t buf);
-
-      void
-      HandlePktServer(const SockAddr& from, Buffer_t buf);
-
-      void
-      SendClientMessageTo(const SockAddr& to, Message msg);
-
-      void
-      SendServerMessageBufferTo(const SockAddr& to, const llarp_buffer_t& buf);
-
-      void
-      SendServerMessageTo(const SockAddr& to, Message msg);
-
       void
       HandleUpstreamResponse(SockAddr to, std::vector<byte_t> buf);
 
       void
-      HandleUpstreamFailure(const SockAddr& to, Message msg);
-
-      IpAddress
-      PickRandomResolver() const;
+      HandleUpstreamFailure(SockAddr to, Message msg);
 
       bool
-      SetupUnboundResolver(const std::vector<IpAddress>& resolvers);
+      SetupUnboundResolver(std::vector<IpAddress> resolvers);
+
+      IQueryHandler* const m_QueryHandler;
+      std::vector<IpAddress> m_Resolvers;
+      std::shared_ptr<UnboundResolver> m_UnboundResolver;
+      Logic_ptr m_Logic;
+    };
+
+    struct Proxy : public PacketHandler
+    {
+      using Logic_ptr = std::shared_ptr<Logic>;
+      explicit Proxy(llarp_ev_loop_ptr loop, Logic_ptr logic, IQueryHandler* handler);
+
+      bool
+      Start(SockAddr localaddr, std::vector<IpAddress> resolvers) override;
+
+      using Buffer_t = std::vector<uint8_t>;
+
+     protected:
+      void
+      SendServerMessageBufferTo(SockAddr to, Buffer_t buf) override;
+
+     private:
+      static void
+      HandleUDP(llarp_udp_io*, const SockAddr&, ManagedBuffer);
 
      private:
       llarp_udp_io m_Server;
-      llarp_udp_io m_Client;
-      llarp_ev_loop_ptr m_ServerLoop;
-      llarp_ev_loop_ptr m_ClientLoop;
-      Logic_ptr m_ServerLogic;
-      Logic_ptr m_ClientLogic;
-      IQueryHandler* m_QueryHandler;
-      std::vector<IpAddress> m_Resolvers;
-      std::shared_ptr<UnboundResolver> m_UnboundResolver;
-
-      struct TX
-      {
-        MsgID_t txid;
-        IpAddress from;
-
-        bool
-        operator==(const TX& other) const
-        {
-          return txid == other.txid && from == other.from;
-        }
-
-        struct Hash
-        {
-          size_t
-          operator()(const TX& t) const noexcept
-          {
-            return t.txid ^ IpAddress::Hash()(t.from);
-          }
-        };
-      };
-
-      // maps tx to who to send reply to
-      std::unordered_map<TX, IpAddress, TX::Hash> m_Forwarded;
+      llarp_ev_loop_ptr m_Loop;
     };
   }  // namespace dns
 }  // namespace llarp
