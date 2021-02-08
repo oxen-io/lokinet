@@ -42,7 +42,10 @@ namespace llarp
         , m_UserToNetworkPktQueue("endpoint_sendq", r->netloop(), r->netloop())
         , m_Resolver(std::make_shared<dns::Proxy>(
               r->netloop(), r->logic(), r->netloop(), r->logic(), this))
-    {}
+    {
+      m_PacketRouter.reset(
+          new vpn::PacketRouter{[&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }});
+    }
 
     util::StatusObject
     TunEndpoint::ExtractStatus() const
@@ -737,7 +740,7 @@ namespace llarp
 
       auto netloop = Router()->netloop();
       if (not netloop->add_network_interface(
-              m_NetIf, [&](net::IPPacket pkt) { HandleGotUserPacket(std::move(pkt)); }))
+              m_NetIf, [&](net::IPPacket pkt) { m_PacketRouter->HandleIPPacket(std::move(pkt)); }))
       {
         LogError(Name(), " failed to add network interface");
         return false;

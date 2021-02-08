@@ -10,6 +10,7 @@
 #include <service/endpoint.hpp>
 #include <util/codel.hpp>
 #include <util/thread/threading.hpp>
+#include <vpn/packet_router.hpp>
 
 #include <future>
 #include <queue>
@@ -255,6 +256,8 @@ namespace llarp
       std::string m_IfName;
 
       std::shared_ptr<vpn::NetworkInterface> m_NetIf;
+
+      std::unique_ptr<vpn::PacketRouter> m_PacketRouter;
     };
 
   }  // namespace handlers

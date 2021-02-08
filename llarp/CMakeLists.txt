@@ -59,6 +59,7 @@ add_library(lokinet-platform
   net/net_int.cpp
   net/route.cpp
   net/sock_addr.cpp
+  vpn/packet_router.cpp
   vpn/platform.cpp
 )
 
