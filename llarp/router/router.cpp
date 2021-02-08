@@ -125,6 +125,19 @@ namespace llarp
   Router::Thaw()
   {
     LogInfo("We arise from a long sleep, probably need to reset the network state");
+    // get pubkeys we are connected to
+    std::unordered_set<RouterID> peerPubkeys;
+    linkManager().ForEachPeer([&peerPubkeys](auto peer) {
+      if (not peer)
+        return;
+      peerPubkeys.emplace(peer->GetPubKey());
+    });
+    // close our sessions to them on link layer
+    linkManager().ForEachOutboundLink([peerPubkeys](const auto& link) {
+      for (const auto& remote : peerPubkeys)
+        link->CloseSessionTo(remote);
+    });
+    // thaw endpoints
     hiddenServiceContext().ForEachService([](const auto& name, const auto& ep) -> bool {
       LogInfo(name, " thawing...");
       ep->Thaw();
