@@ -115,24 +115,38 @@ namespace llarp
     if (not m_Router)
       throw std::runtime_error("Attempting to use RoutePoker before calling Init");
 
+    // check for network
     const auto maybe = GetDefaultGateway();
     if (not maybe.has_value())
     {
       LogError("Network is down");
+      // mark network lost
+      m_HasNetwork = false;
       return;
     }
     const huint32_t gateway = *maybe;
-    if (m_CurrentGateway != gateway or m_Enabling)
+
+    const bool gatewayChanged = m_CurrentGateway.h != 0 and m_CurrentGateway != gateway;
+
+    if (m_CurrentGateway != gateway)
     {
       LogInfo("found default gateway: ", gateway);
       m_CurrentGateway = gateway;
-
-      if (not m_Enabling)  // if route was already set up
+      if (m_Enabled)  // if route was already set up
         DisableAllRoutes();
-      EnableAllRoutes();
-
-      const auto ep = m_Router->hiddenServiceContext().GetDefault();
-      net::AddDefaultRouteViaInterface(ep->GetIfName());
+      if (m_Enabling)
+      {
+        EnableAllRoutes();
+        const auto ep = m_Router->hiddenServiceContext().GetDefault();
+        net::AddDefaultRouteViaInterface(ep->GetIfName());
+      }
+    }
+    // revive network connectitivity on gateway change or network wakeup
+    if (gatewayChanged or not m_HasNetwork)
+    {
+      LogInfo("our network changed, thawing router state");
+      m_Router->Thaw();
+      m_HasNetwork = true;
     }
   }
 
