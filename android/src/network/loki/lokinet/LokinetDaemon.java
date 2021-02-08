@@ -86,6 +86,11 @@ public class LokinetDaemon extends VpnService
       builder.setConfigureIntent(null);
 
       iface = builder.establish();
+      if (iface == null)
+      {
+        Log.e(LOG_TAG, "VPN Interface from builder.establish() came back null");
+        return START_NOT_STICKY;
+      }
 
       m_FD = iface.detachFd();
 

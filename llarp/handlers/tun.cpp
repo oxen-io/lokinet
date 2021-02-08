@@ -768,11 +768,14 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up network interface");
         return false;
       }
+#if ANDROID
+#else
       if (!m_Resolver->Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
         llarp::LogError(Name(), " failed to start DNS server");
         return false;
       }
+#endif
       return true;
     }
 
