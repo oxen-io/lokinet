@@ -124,7 +124,6 @@ namespace llarp
   void
   Router::Thaw()
   {
-    LogInfo("We arise from a long sleep, probably need to reset the network state");
     // get pubkeys we are connected to
     std::unordered_set<RouterID> peerPubkeys;
     linkManager().ForEachPeer([&peerPubkeys](auto peer) {
@@ -143,7 +142,7 @@ namespace llarp
       ep->Thaw();
       return true;
     });
-    LogInfo("We are ready to go bruh");
+    LogInfo("We are ready to go bruh...  probably");
   }
 
   void
@@ -827,13 +826,18 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
-    if (HasClientExit())
+    if (not isSvcNode)
     {
-      m_RoutePoker.Enable();
+      if (HasClientExit())
+      {
+        m_RoutePoker.Enable();
+      }
+      else
+      {
+        m_RoutePoker.Disable();
+      }
       m_RoutePoker.Update();
     }
-    else
-      m_RoutePoker.Disable();
 
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)
