@@ -65,6 +65,9 @@ namespace llarp
     void
     ForEachInboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
 
+    void
+    ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const override;
+
     size_t
     NumberOfConnectedRouters() const override;
 
