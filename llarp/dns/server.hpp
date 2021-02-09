@@ -34,6 +34,8 @@ namespace llarp
 
       explicit PacketHandler(Logic_ptr logic, IQueryHandler* handler);
 
+      virtual ~PacketHandler() = default;
+
       virtual bool
       Start(SockAddr localaddr, std::vector<IpAddress> upstreamResolvers);
 
