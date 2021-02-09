@@ -8,9 +8,9 @@ You can learn more about the high level design of LLARP [here](docs/high-level.t
 
 And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
-You can view documentation on how to get started [here](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/) .
+You can view documentation on how to get started [here](https://docs.oxen.io/products-built-on-oxen/lokinet) .
 
-[![Build Status](https://ci.oxen.rocks/api/badges/loki-project/loki-network/status.svg?ref=refs/heads/dev)](https://drone.lokinet.dev/loki-project/loki-network)
+[![Build Status](https://ci.oxen.rocks/api/badges/oxen-io/loki-network/status.svg?ref=refs/heads/dev)](https://ci.oxen.rocks/oxen-io/loki-network)
 
 ## Building
 
@@ -130,10 +130,6 @@ install (root):
     # make install
 
 ## Usage
-
-See the [documentation](https://oxen-io.github.io/loki-docs/Lokinet/LokinetOverview/) on how to get started.
-
-Also read the [Public Testing Guide](https://lokidocs.com/Lokinet/Guides/PublicTestingGuide/#1-lokinet-installation) for installation and other helpful information.
 
 ### Debian / Ubuntu packages
 
