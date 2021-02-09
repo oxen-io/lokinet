@@ -37,9 +37,9 @@ namespace llarp
       static constexpr auto FlushInterval = 25ms;
       return now >= m_LastFlushAt + FlushInterval;
     }
+#if ANDROID
     constexpr size_t udp_header_size = 8;
 
-#if ANDROID
     struct AndroidDnsHandler : public dns::PacketHandler
     {
       TunEndpoint* const m_Endpoint;
