@@ -31,7 +31,9 @@ extern "C"
     if (conf == nullptr)
       return JNI_FALSE;
     if (conf->Load(std::nullopt, false))
+    {
       return JNI_TRUE;
+    }
     return JNI_FALSE;
   }
 }

@@ -1080,6 +1080,11 @@ namespace llarp
         }
       });
 
+// temporary hard-coded exit for android testing
+#if defined(ANDROID)
+      conf.addConfigValue("network", "exit-node", "exit.loki");
+#endif
+
       conf.acceptAllOptions();
 
       return true;

@@ -111,6 +111,9 @@ namespace llarp
     {
       return androidFD;
     }
+
+    int
+    GetUDPSocket();
 #endif
 
    protected:

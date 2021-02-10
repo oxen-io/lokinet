@@ -22,6 +22,7 @@ public class LokinetDaemon extends VpnService
   public native boolean IsRunning();
   public native boolean Stop();
   public native void InjectVPNFD();
+  public native int GetUDPSocket();
 
   public static final String LOG_TAG = "LokinetDaemon";
 
@@ -29,6 +30,7 @@ public class LokinetDaemon extends VpnService
   LokinetConfig config = new LokinetConfig();
   ParcelFileDescriptor iface;
   int m_FD = -1;
+  int m_UDPSocket = -1;
 
   @Override
     public void onCreate()
@@ -102,6 +104,16 @@ public class LokinetDaemon extends VpnService
         Log.e(LOG_TAG, "failed to configure daemon");
         return START_NOT_STICKY;
       }
+
+      m_UDPSocket = GetUDPSocket();
+
+      if (m_UDPSocket <= 0)
+      {
+        Log.e(LOG_TAG, "failed to get proper UDP handle from daemon, aborting.");
+        return START_NOT_STICKY;
+      }
+
+      protect(m_UDPSocket);
 
       new Thread(() -> {
           Mainloop();

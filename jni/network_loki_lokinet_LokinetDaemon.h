@@ -59,10 +59,18 @@ extern "C"
   /*
    * Class:     network_loki_lokinet_LokinetDaemon
    * Method:    InjectVPNFD
-   * Signature: (Lnetwork/loki/lokinet/LokinetVPNFD;)Z
+   * Signature: ()Z
    */
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_LokinetDaemon_InjectVPNFD(JNIEnv*, jobject);
+
+  /*
+   * Class:     network_loki_lokinet_LokinetDaemon
+   * Method:    GetUDPSocket
+   * Signature: ()Z
+   */
+  JNIEXPORT jint JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self);
 
 #ifdef __cplusplus
 }

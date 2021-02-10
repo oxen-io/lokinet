@@ -1313,6 +1313,9 @@ namespace llarp
       if (not link->Configure(netloop(), "*", af, m_OutboundPort))
         continue;
 
+#if defined(ANDROID)
+      m_OutboundUDPSocket = link->GetUDPSocket();
+#endif
       _linkManager.AddLink(std::move(link), false);
       return true;
     }

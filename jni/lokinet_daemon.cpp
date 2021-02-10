@@ -83,4 +83,12 @@ extern "C"
 
     ptr->SetAndroidFD(fd);
   }
+
+  JNIEXPORT jint JNICALL
+  Java_network_loki_lokinet_LokinetDaemon_GetUDPSocket(JNIEnv* env, jobject self)
+  {
+    auto ptr = GetImpl<llarp::Context>(env, self);
+
+    return ptr->GetUDPSocket();
+  }
 }
