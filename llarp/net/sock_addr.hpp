@@ -76,6 +76,9 @@ namespace llarp
     setIPv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
     void
+    setIPv4(uint32_t ip);
+
+    void
     setPort(uint16_t port);
 
     /// in network order

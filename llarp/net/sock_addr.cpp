@@ -51,6 +51,13 @@ namespace llarp
     setPort(port);
   }
 
+  SockAddr::SockAddr(uint32_t ip, uint16_t port)
+  {
+    init();
+    setIPv4(ip);
+    setPort(ntohs(port));
+  }
+
   SockAddr::SockAddr(std::string_view addr)
   {
     init();
@@ -288,6 +295,21 @@ namespace llarp
   SockAddr::isEmpty() const
   {
     return m_empty;
+  }
+
+  void
+  SockAddr::setIPv4(uint32_t ip)
+  {
+    m_addr.sin6_family = AF_INET;
+
+    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
+    llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
+
+    applySIITBytes();
+    std::memcpy(ip6 + 12, &ip, 4);
+    m_addr4.sin_addr.s_addr = ip;
+    m_addr4.sin_family = AF_INET;
+    m_empty = false;
   }
 
   void

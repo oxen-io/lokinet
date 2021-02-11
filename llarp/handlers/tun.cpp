@@ -45,7 +45,7 @@ namespace llarp
       TunEndpoint* const m_Endpoint;
 
       explicit AndroidDnsHandler(AbstractRouter* router, TunEndpoint* ep)
-          : dns::PacketHandler{router->logic(), router->netloop(), ep}, m_Endpoint{ep} {};
+          : dns::PacketHandler{router->logic(), ep}, m_Endpoint{ep} {};
 
       void
       SendServerMessageBufferTo(SockAddr to, std::vector<byte_t> buf) override
@@ -56,7 +56,7 @@ namespace llarp
         hdr->ihl = 5;
         hdr->version = 4;
         hdr->tot_len = buf.size() + udp_header_size;
-        hdr->proto = 0x11;  // udp
+        hdr->protocol = 0x11;  // udp
         hdr->ttl = 1;
 
         // make udp packet
@@ -74,9 +74,9 @@ namespace llarp
         std::copy_n(udp.data(), udp.size(), pkt.buf + (hdr->ihl * 4));
 
         /// queue ip packet write
-        const nuint32_t remoteIP{to.getIPv4()};
+        const IpAddress remoteIP{to};
         m_Endpoint->HandleWriteIPPacket(
-            pkt.ConstBuffer(), m_Endpoint->GetIfAddr(), net::ExpandV4(remoteIP.ToHost()));
+            pkt.ConstBuffer(), m_Endpoint->GetIfAddr(), net::ExpandV4(remoteIP.toIP()), 0);
       }
     };
 
@@ -91,10 +91,11 @@ namespace llarp
 #if ANDROID
       m_Resolver = std::make_shared<AndroidDnsHandler>(r, this);
       m_PacketRouter->AddUDPHandler(nuint16_t{53}, [resolver = m_Resolver](net::IPPacket pkt) {
-        constexpr size_t ip_header_size = (pkt.Header()->ihl * 4);
+        const size_t ip_header_size = (pkt.Header()->ihl * 4);
 
         const uint8_t* ptr = pkt.buf + ip_header_size;
-        const SockAddr raddr{pkt.src4(), nuint16_t{*reinterpret_cast<const uint16_t*>(ptr)}};
+        const auto src = ToNet(pkt.srcv4());
+        const SockAddr raddr{src.n, *reinterpret_cast<const uint16_t*>(ptr)};
 
         std::vector<byte_t> buf;
         buf.resize(pkt.sz - (udp_header_size + ip_header_size));
