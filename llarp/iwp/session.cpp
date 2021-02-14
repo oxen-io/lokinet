@@ -840,8 +840,7 @@ namespace llarp
       const auto rxid = msg.m_MsgID;
       if (m_ReplayFilter.emplace(rxid, m_Parent->Now()).second)
       {
-        const llarp_buffer_t buf(msg.m_Data);
-        m_Parent->HandleMessage(this, buf);
+        m_Parent->HandleMessage(this, msg.m_Data);
         if (UseMACK)
           m_SendMACKs.emplace(rxid);
         else
