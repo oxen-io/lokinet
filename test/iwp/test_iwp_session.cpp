@@ -252,7 +252,7 @@ TEST_CASE("IWP send messages", "[iwp]")
                 std::function<void(void)> endTestNow,
                 Context_ptr alice,
                 Context_ptr bob) {
-    constexpr int numSend = 128;
+    constexpr int numSend = 64;
     // when alice makes a session to bob send `aliceNumSend` messages to him
     alice->InitLink<false>([endIfDone, alice, &aliceNumSent](auto session) {
       for (auto index = 0; index < numSend; index++)
