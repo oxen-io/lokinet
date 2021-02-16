@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <string>
+#include <memory>
 #include <net/net_int.hpp>
 
 namespace llarp
@@ -33,6 +34,14 @@ namespace llarp
     // remember the desired routes rather than setting them.
     void
     Disable();
+
+    /// explicitly put routes up
+    void
+    Up();
+
+    /// explicitly put routes down
+    void
+    Down();
 
    private:
     void

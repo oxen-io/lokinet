@@ -182,8 +182,9 @@ namespace llarp
         }
         m_OurRange = *maybe;
       }
+
       m_OurIP = m_OurRange.addr;
-      m_UseV6 = not m_OurRange.IsV4();
+      m_UseV6 = false;
       return Endpoint::Configure(conf, dnsConf);
     }
 
@@ -707,6 +708,11 @@ namespace llarp
 
       vpn::InterfaceInfo info;
       info.addrs.emplace(m_OurRange);
+      IPRange v6range = m_OurRange;
+      v6range.addr = net::ExpandV4Lan(net::TruncateV6(m_OurRange.addr));
+      LogInfo(Name(), " using v6 range: ", v6range);
+      info.addrs.emplace(v6range, AF_INET6);
+
       info.ifname = m_IfName;
       info.dnsaddr.FromString(m_LocalResolverAddr.toHost());
 
@@ -734,6 +740,13 @@ namespace llarp
       {
         LogError(Name(), " failed to add network interface");
         return false;
+      }
+
+      const auto maybe = GetInterfaceIP6(m_IfName);
+      if (maybe.has_value())
+      {
+        m_OurIP6 = *maybe;
+        LogInfo(Name(), " has ipv6 address ", m_OurIP6);
       }
 
       netloop->add_ticker([&]() { Flush(); });
@@ -826,7 +839,10 @@ namespace llarp
         }
 
         */
-
+        if (m_state->m_ExitEnabled)
+        {
+          dst = net::ExpandV4(net::TruncateV6(dst));
+        }
         auto itr = m_IPToAddr.find(dst);
         if (itr == m_IPToAddr.end())
         {
@@ -843,8 +859,7 @@ namespace llarp
           else
           {
             const auto addr = *exits.begin();
-            if (pkt.IsV4())
-              pkt.ZeroSourceAddress();
+            pkt.ZeroSourceAddress();
             MarkAddressOutbound(addr);
             EnsurePathToService(
                 addr,
@@ -934,7 +949,10 @@ namespace llarp
           if (pkt.IsV4())
             dst = pkt.dst4to6Lan();
           else if (pkt.IsV6())
+          {
             dst = pkt.dstv6();
+            src = net::ExpandV4Lan(net::TruncateV6(src));
+          }
         }
         else
         {
@@ -948,11 +966,11 @@ namespace llarp
         if (pkt.IsV4())
         {
           dst = m_OurIP;
-          src = pkt.src4to6();
+          src = pkt.src4to6Lan();
         }
         else if (pkt.IsV6())
         {
-          dst = pkt.dstv6();
+          dst = m_OurIP6;
           src = pkt.srcv6();
         }
         // find what exit we think this should be for

@@ -77,6 +77,10 @@ namespace llarp
   std::optional<IpAddress>
   GetIFAddr(const std::string& ifname, int af = AF_INET);
 
+  /// get an interface's ip6 address
+  std::optional<huint128_t>
+  GetInterfaceIP6(std::string ifname);
+
 }  // namespace llarp
 
 #endif

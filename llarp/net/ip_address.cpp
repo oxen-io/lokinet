@@ -161,6 +161,14 @@ namespace llarp
     return ip;
   }
 
+  huint128_t
+  IpAddress::toIP6() const
+  {
+    huint128_t ip;
+    ip.FromString(m_ipAddress);
+    return ip;
+  }
+
   bool
   IpAddress::operator<(const IpAddress& other) const
   {

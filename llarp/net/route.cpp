@@ -178,8 +178,19 @@ namespace llarp::net
     }
     if (mode == GatewayMode::eUpperDefault)
     {
-      rtattr_add(
-          &nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, sizeof(uint32_t));
+      if (dst->family == AF_INET)
+      {
+        rtattr_add(
+            &nl_request.n,
+            sizeof(nl_request),
+            /*RTA_NEWDST*/ RTA_DST,
+            &dst->data,
+            sizeof(uint32_t));
+      }
+      else
+      {
+        rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, 16);
+      }
     }
     /* Send message to the netlink */
     return send(sock, &nl_request, sizeof(nl_request), 0);
@@ -191,7 +202,7 @@ namespace llarp::net
     if (strchr(addr, ':'))
     {
       res->family = AF_INET6;
-      res->bitlen = 128;
+      res->bitlen = bitlen;
     }
     else
     {
@@ -335,7 +346,7 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    const auto maybe = GetIFAddr(ifname);
+    auto maybe = GetIFAddr(ifname);
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
@@ -345,6 +356,21 @@ namespace llarp::net
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    const auto maybeInt = GetInterfaceIP6(ifname);
+    if (maybeInt.has_value())
+    {
+      const auto host = maybeInt->ToString();
+      LogInfo("add v6 route via ", host);
+      read_addr(host.c_str(), &gw_addr, 128);
+      read_addr("::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+      read_addr("4000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("8000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("c000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    }
 #endif
 #elif _WIN32
     // poke hole for loopback bacause god is dead on windows
@@ -370,7 +396,7 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    const auto maybe = GetIFAddr(ifname);
+    auto maybe = GetIFAddr(ifname);
 
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
@@ -381,6 +407,22 @@ namespace llarp::net
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+
+    const auto maybeInt = GetInterfaceIP6(ifname);
+    if (maybeInt.has_value())
+    {
+      const auto host = maybeInt->ToString();
+      LogInfo("del v6 route via ", host);
+      read_addr(host.c_str(), &gw_addr, 128);
+      read_addr("::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+      read_addr("4000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("8000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+      read_addr("c000::", &to_addr, 2);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
+    }
 #endif
 #elif _WIN32
     ifname.back()++;
