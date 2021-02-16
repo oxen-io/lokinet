@@ -151,23 +151,13 @@ namespace llarp::net
 
     nl_request.r.rtm_family = dst->family;
     nl_request.r.rtm_dst_len = dst->bitlen;
-
-    /* Select scope, for simplicity we supports here only IPv6 and IPv4 */
-    if (nl_request.r.rtm_family == AF_INET6)
-    {
-      nl_request.r.rtm_scope = RT_SCOPE_UNIVERSE;
-    }
-    else
-    {
-      nl_request.r.rtm_scope = RT_SCOPE_LINK;
-    }
+    nl_request.r.rtm_scope = 0;
 
     /* Set gateway */
-    if (gw->bitlen != 0)
+    if (gw->bitlen != 0 and dst->family == AF_INET)
     {
       rtattr_add(&nl_request.n, sizeof(nl_request), RTA_GATEWAY, &gw->data, gw->bitlen / 8);
     }
-    nl_request.r.rtm_scope = 0;
     nl_request.r.rtm_family = gw->family;
     if (mode == GatewayMode::eFirstHop)
     {
@@ -189,7 +179,13 @@ namespace llarp::net
       }
       else
       {
-        rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &dst->data, 16);
+        rtattr_add(&nl_request.n, sizeof(nl_request), RTA_OIF, &if_idx, sizeof(int));
+        rtattr_add(
+            &nl_request.n,
+            sizeof(nl_request),
+            /*RTA_NEWDST*/ RTA_DST,
+            &dst->data,
+            sizeof(in6_addr));
       }
     }
     /* Send message to the netlink */
@@ -363,7 +359,7 @@ namespace llarp::net
       LogInfo("add v6 route via ", host);
       read_addr(host.c_str(), &gw_addr, 128);
       read_addr("::", &to_addr, 2);
-      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
       read_addr("4000::", &to_addr, 2);
       do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
       read_addr("8000::", &to_addr, 2);
@@ -415,7 +411,7 @@ namespace llarp::net
       LogInfo("del v6 route via ", host);
       read_addr(host.c_str(), &gw_addr, 128);
       read_addr("::", &to_addr, 2);
-      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
+      do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
       read_addr("4000::", &to_addr, 2);
       do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
       read_addr("8000::", &to_addr, 2);
