@@ -81,6 +81,14 @@ namespace llarp
   std::optional<huint128_t>
   GetInterfaceIP6(std::string ifname);
 
+#ifdef _WIN32
+  namespace net
+  {
+    std::optional<int>
+    GetIfIndex(std::string ip);
+  }
+#endif
+
 }  // namespace llarp
 
 #endif

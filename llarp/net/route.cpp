@@ -24,9 +24,11 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <stdio.h>
-#include <strsafe.h>
+#include <cstring>
 #include <locale>
 #include <codecvt>
+#include <net/net_int.hpp>
+#include <net/ip.hpp>
 #endif
 
 #include <sstream>
@@ -237,6 +239,16 @@ namespace llarp::net
     return converter.to_bytes(wcmd);
   }
 
+  std::string
+  NetshCommand()
+  {
+    std::wstring wcmd = get_win_sys_path() + L"\\netsh.exe";
+
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wcmd);
+  }
+
   template <typename Visit>
   void
   ForEachWIN32Interface(Visit visit)
@@ -272,6 +284,24 @@ namespace llarp::net
 #undef MALLOC
 #undef FREE
   }
+
+  std::optional<int>
+  GetIfIndex(std::string ip)
+  {
+    llarp::huint32_t h{};
+    h.FromString(ip);
+    std::optional<int> ret = std::nullopt;
+    ForEachWIN32Interface([&ret, n = ToNet(h)](auto* iface) {
+      if (ret.has_value())
+        return;
+      if (iface->dwForwardNextHop == n.n)
+      {
+        ret = iface->dwForwardIfIndex;
+      }
+    });
+    return ret;
+  }
+
 #endif
 
   void
@@ -371,12 +401,27 @@ namespace llarp::net
 #elif _WIN32
     // poke hole for loopback bacause god is dead on windows
     Execute(RouteCommand() + " ADD 127.0.0.0 MASK 255.0.0.0 0.0.0.0");
+
+    huint32_t ip{};
+    ip.FromString(ifname);
+    const auto ipv6 = net::ExpandV4Lan(ip);
+
+    Execute(RouteCommand() + " ADD ::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD 4000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD 8000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " ADD c000::/2 " + ipv6.ToString());
     ifname.back()++;
     Execute(RouteCommand() + " ADD 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " ADD 128.0.0.0 MASK 128.0.0.0 " + ifname);
+
 #elif __APPLE__
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+
+    Execute("/sbin/route -n add -cloning -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -cloning -net c000::/2 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -421,6 +466,14 @@ namespace llarp::net
     }
 #endif
 #elif _WIN32
+    huint32_t ip{};
+    ip.FromString(ifname);
+    const auto ipv6 = net::ExpandV4Lan(ip);
+
+    Execute(RouteCommand() + " DELETE ::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE 4000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE 8000::/2 " + ipv6.ToString());
+    Execute(RouteCommand() + " DELETE c000::/2 " + ipv6.ToString());
     ifname.back()++;
     Execute(RouteCommand() + " DELETE 0.0.0.0 MASK 128.0.0.0 " + ifname);
     Execute(RouteCommand() + " DELETE 128.0.0.0 MASK 128.0.0.0 " + ifname);
@@ -429,6 +482,12 @@ namespace llarp::net
     Execute("/sbin/route -n delete -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
+
+    Execute("/sbin/route -n add -cloning -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -cloning -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -cloning -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -cloning -net c000::/2 -interface " + ifname);
+
 #else
 #error unsupported platform
 #endif
@@ -461,9 +520,7 @@ namespace llarp::net
       struct in_addr gateway, interface_addr;
       gateway.S_un.S_addr = (u_long)w32interface->dwForwardDest;
       interface_addr.S_un.S_addr = (u_long)w32interface->dwForwardNextHop;
-      std::array<char, 128> interface_str{};
-      StringCchCopy(interface_str.data(), interface_str.size(), inet_ntoa(interface_addr));
-      std::string interface_name{interface_str.data()};
+      std::string interface_name{inet_ntoa(interface_addr)};
       if ((!gateway.S_un.S_addr) and interface_name != ifname)
       {
         llarp::LogTrace(

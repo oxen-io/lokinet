@@ -153,7 +153,8 @@ namespace llarp::vpn
     static void
     NetSH(std::string commands)
     {
-      commands = NetSHCommand() + " " + commands;
+      commands = NetSHCommand() + " interface IPv6 " + commands;
+      LogInfo(commands);
       ::system(commands.c_str());
     }
 
@@ -203,6 +204,7 @@ namespace llarp::vpn
       }
 
       LogInfo("setting addresses");
+      huint32_t ip{};
       // set ipv4 addresses
       for (const auto& ifaddr : m_Info.addrs)
       {
@@ -210,6 +212,7 @@ namespace llarp::vpn
         {
           IPADDR sock[3]{};
           const nuint32_t addr = xhtonl(net::TruncateV6(ifaddr.range.addr));
+          ip = net::TruncateV6(ifaddr.range.addr);
           const nuint32_t mask = xhtonl(net::TruncateV6(ifaddr.range.netmask_bits));
           LogInfo("address ", addr, " netmask ", mask);
           sock[0] = addr.n;
@@ -299,19 +302,18 @@ namespace llarp::vpn
         }
       }
       // set ipv6 addresses
-      /*
       for (const auto& ifaddr : m_Info.addrs)
       {
         if (ifaddr.fam == AF_INET6)
         {
-          IPRange range = ifaddr.range;
-          range.netmask_bits = netmask_ipv6_bits(128);
-          NetSH(
-              "interface ipv6 set address " + std::to_string(ifindex) + " " + range.ToString()
-              + " store=active");
+          const auto maybe = net::GetIfIndex(ip.ToString());
+          if (maybe.has_value())
+          {
+            NetSH(
+                "add address interface=" + std::to_string(*maybe) + " " + ifaddr.range.ToString());
+          }
         }
       }
-      */
     }
 
     ~Win32Interface()
