@@ -418,10 +418,10 @@ namespace llarp::net
     Execute("/sbin/route -n add -cloning -net 0.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
     Execute("/sbin/route -n add -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 
-    Execute("/sbin/route -n add -cloning -net ::/2 -interface " + ifname);
-    Execute("/sbin/route -n add -cloning -net 4000::/2 -interface " + ifname);
-    Execute("/sbin/route -n add -cloning -net 8000::/2 -interface " + ifname);
-    Execute("/sbin/route -n add -cloning -net c000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n add -inet6 -net c000::/2 -interface " + ifname);
 #else
 #error unsupported platform
 #endif
@@ -483,10 +483,10 @@ namespace llarp::net
     Execute(
         "/sbin/route -n delete -cloning -net 128.0.0.0 -netmask 128.0.0.0 -interface " + ifname);
 
-    Execute("/sbin/route -n add -cloning -net ::/2 -interface " + ifname);
-    Execute("/sbin/route -n delete -cloning -net 4000::/2 -interface " + ifname);
-    Execute("/sbin/route -n delete -cloning -net 8000::/2 -interface " + ifname);
-    Execute("/sbin/route -n delete -cloning -net c000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net ::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net 4000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net 8000::/2 -interface " + ifname);
+    Execute("/sbin/route -n delete -inet6 -net c000::/2 -interface " + ifname);
 
 #else
 #error unsupported platform
