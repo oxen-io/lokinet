@@ -112,6 +112,9 @@ namespace llarp
       virtual std::string
       GetIfName() const = 0;
 
+      std::optional<ConvoTag>
+      GetBestConvoTagForService(Address addr) const;
+
       /// inject vpn io
       /// return false if not supported
       virtual bool

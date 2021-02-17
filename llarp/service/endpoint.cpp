@@ -1367,6 +1367,23 @@ namespace llarp
       return false;
     }
 
+    std::optional<ConvoTag>
+    Endpoint::GetBestConvoTagForService(Address remote) const
+    {
+      llarp_time_t time = 0s;
+      std::optional<ConvoTag> ret = std::nullopt;
+      // get convotag with higest timestamp
+      for (const auto& [tag, session] : Sessions())
+      {
+        if (session.remote.Addr() == remote and session.lastUsed > time)
+        {
+          time = session.lastUsed;
+          ret = tag;
+        }
+      }
+      return ret;
+    }
+
     bool
     Endpoint::SendToServiceOrQueue(
         const service::Address& remote, const llarp_buffer_t& data, ProtocolType t)
@@ -1382,44 +1399,37 @@ namespace llarp
         ProtocolFrame& f = transfer->T;
         f.R = 0;
         std::shared_ptr<path::Path> p;
-        std::set<ConvoTag> tags;
-        if (GetConvoTagsForService(remote, tags))
+        if (const auto maybe = GetBestConvoTagForService(remote))
         {
           // the remote guy's intro
           Introduction remoteIntro;
           Introduction replyPath;
           SharedSecret K;
-          // pick tag
-          for (const auto& tag : tags)
-          {
-            if (tag.IsZero())
-              continue;
-            if (!GetCachedSessionKeyFor(tag, K))
-              continue;
-            if (!GetReplyIntroFor(tag, replyPath))
-              continue;
-            if (!GetIntroFor(tag, remoteIntro))
-              continue;
-            // get path for intro
-            ForEachPath([&](path::Path_ptr path) {
-              if (path->intro == replyPath)
-              {
-                p = path;
-                return;
-              }
-              if (p && p->ExpiresSoon(now) && path->IsReady()
-                  && path->intro.router == replyPath.router)
-              {
-                p = path;
-              }
-            });
-            if (p)
+          const auto tag = *maybe;
+
+          if (!GetCachedSessionKeyFor(tag, K))
+            return false;
+          if (!GetReplyIntroFor(tag, replyPath))
+            return false;
+          if (!GetIntroFor(tag, remoteIntro))
+            return false;
+          // get path for intro
+          ForEachPath([&](path::Path_ptr path) {
+            if (path->intro == replyPath)
             {
-              f.T = tag;
+              p = path;
+              return;
             }
-          }
+            if (p && p->ExpiresSoon(now) && path->IsReady()
+                && path->intro.router == replyPath.router)
+            {
+              p = path;
+            }
+          });
+
           if (p)
           {
+            f.T = tag;
             // TODO: check expiration of our end
             auto m = std::make_shared<ProtocolMessage>(f.T);
             m->PutBuffer(data);
