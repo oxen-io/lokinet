@@ -546,7 +546,7 @@ namespace llarp
   }
 
   std::optional<IpAddress>
-  GetIFAddr(const std::string& ifname, int af)
+  GetInterfaceAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
     sockaddr* sptr = (sockaddr*)&s;
@@ -558,7 +558,7 @@ namespace llarp
   }
 
   std::optional<huint128_t>
-  GetInterfaceIP6(std::string ifname)
+  GetInterfaceIPv6Address(std::string ifname)
   {
     sockaddr_storage s;
     sockaddr* sptr = (sockaddr*)&s;

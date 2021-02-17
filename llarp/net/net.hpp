@@ -75,17 +75,17 @@ namespace llarp
 
   /// get network interface address for network interface with ifname
   std::optional<IpAddress>
-  GetIFAddr(const std::string& ifname, int af = AF_INET);
+  GetInterfaceAddr(const std::string& ifname, int af = AF_INET);
 
   /// get an interface's ip6 address
   std::optional<huint128_t>
-  GetInterfaceIP6(std::string ifname);
+  GetInterfaceIPv6Address(std::string ifname);
 
 #ifdef _WIN32
   namespace net
   {
     std::optional<int>
-    GetIfIndex(std::string ip);
+    GetInterfaceIndex(huint32_t ip);
   }
 #endif
 

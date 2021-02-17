@@ -306,7 +306,7 @@ namespace llarp::vpn
       {
         if (ifaddr.fam == AF_INET6)
         {
-          const auto maybe = net::GetIfIndex(ip.ToString());
+          const auto maybe = net::GetInterfaceIndex(ip);
           if (maybe.has_value())
           {
             NetSH(

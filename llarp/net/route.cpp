@@ -286,12 +286,10 @@ namespace llarp::net
   }
 
   std::optional<int>
-  GetIfIndex(std::string ip)
+  GetInterfaceIndex(huint32_t ip)
   {
-    llarp::huint32_t h{};
-    h.FromString(ip);
     std::optional<int> ret = std::nullopt;
-    ForEachWIN32Interface([&ret, n = ToNet(h)](auto* iface) {
+    ForEachWIN32Interface([&ret, n = ToNet(ip)](auto* iface) {
       if (ret.has_value())
         return;
       if (iface->dwForwardNextHop == n.n)

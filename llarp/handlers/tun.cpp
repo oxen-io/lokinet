@@ -742,7 +742,7 @@ namespace llarp
         return false;
       }
 
-      const auto maybe = GetInterfaceIP6(m_IfName);
+      const auto maybe = GetInterfaceIPv6Address(m_IfName);
       if (maybe.has_value())
       {
         m_OurIP6 = *maybe;
