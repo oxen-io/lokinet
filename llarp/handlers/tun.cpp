@@ -745,8 +745,8 @@ namespace llarp
       const auto maybe = GetInterfaceIPv6Address(m_IfName);
       if (maybe.has_value())
       {
-        m_OurIP6 = *maybe;
-        LogInfo(Name(), " has ipv6 address ", m_OurIP6);
+        m_OurIPv6 = *maybe;
+        LogInfo(Name(), " has ipv6 address ", m_OurIPv6);
       }
 
       netloop->add_ticker([&]() { Flush(); });
@@ -970,7 +970,7 @@ namespace llarp
         }
         else if (pkt.IsV6())
         {
-          dst = m_OurIP6;
+          dst = m_OurIPv6;
           src = pkt.srcv6();
         }
         // find what exit we think this should be for
