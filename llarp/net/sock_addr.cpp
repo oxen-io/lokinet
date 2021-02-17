@@ -1,4 +1,5 @@
 #include <net/sock_addr.hpp>
+#include <net/ip.hpp>
 #include <net/net_bits.hpp>
 #include <util/str.hpp>
 #include <util/logging/logger.hpp>
@@ -187,6 +188,12 @@ namespace llarp
             sizeof(m_addr.sin6_addr.s6_addr)));
   }
 
+  huint128_t
+  SockAddr::asIPv6() const
+  {
+    return net::In6ToHUInt(m_addr.sin6_addr);
+  }
+
   void
   SockAddr::fromString(std::string_view str)
   {
@@ -204,7 +211,12 @@ namespace llarp
     // TODO: having ":port" at the end makes this ambiguous with IPv6
     //       come up with a strategy for implementing
     if (splits.size() > 2)
-      throw std::runtime_error("IPv6 not yet supported");
+    {
+      std::string data{str};
+      if (inet_pton(AF_INET6, data.c_str(), m_addr.sin6_addr.s6_addr) == -1)
+        throw std::runtime_error{"invalid ip6 address: " + data};
+      return;
+    }
 
     // split() shouldn't return an empty list if str is empty (checked above)
     assert(splits.size() > 0);

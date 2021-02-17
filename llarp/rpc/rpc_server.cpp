@@ -156,7 +156,6 @@ namespace llarp::rpc
                 {
                   map = false;
                 }
-
                 const auto range_itr = obj.find("range");
                 if (range_itr == obj.end())
                 {
@@ -204,13 +203,7 @@ namespace llarp::rpc
                                   reply(CreateJSONError("could not find exit"));
                                   return;
                                 }
-                                r->ForEachPeer(
-                                    [r](auto session, auto) mutable {
-                                      const auto ip = session->GetRemoteEndpoint().toIP();
-                                      r->routePoker().AddRoute(ip);
-                                    },
-                                    false);
-                                net::AddDefaultRouteViaInterface(ep->GetIfName());
+                                r->routePoker().Up();
                                 reply(CreateJSONResponse("OK"));
                               },
                               5s);
@@ -250,14 +243,7 @@ namespace llarp::rpc
                       }
                       else if (not map)
                       {
-                        net::DelDefaultRouteViaInterface(ep->GetIfName());
-
-                        r->ForEachPeer(
-                            [r](auto session, auto) mutable {
-                              const auto ip = session->GetRemoteEndpoint().toIP();
-                              r->routePoker().DelRoute(ip);
-                            },
-                            false);
+                        r->routePoker().Down();
                         ep->UnmapExitRange(range);
                       }
                       reply(CreateJSONResponse("OK"));

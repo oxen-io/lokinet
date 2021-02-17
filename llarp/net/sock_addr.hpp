@@ -16,6 +16,7 @@ inet_pton(int af, const char* src, void* dst);
 
 #include <string_view>
 #include <string>
+#include <net/net_int.hpp>
 
 namespace llarp
 {
@@ -79,6 +80,9 @@ namespace llarp
 
     uint16_t
     getPort() const;
+
+    huint128_t
+    asIPv6() const;
 
    private:
     bool m_empty = true;

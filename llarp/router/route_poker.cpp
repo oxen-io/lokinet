@@ -131,8 +131,7 @@ namespace llarp
         DisableAllRoutes();
       EnableAllRoutes();
 
-      const auto ep = m_Router->hiddenServiceContext().GetDefault();
-      net::AddDefaultRouteViaInterface(ep->GetIfName());
+      Up();
     }
   }
 
@@ -156,4 +155,27 @@ namespace llarp
 
     DisableAllRoutes();
   }
+
+  void
+  RoutePoker::Up()
+  {
+    // explicit route pokes for first hops
+    m_Router->ForEachPeer(
+        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().toIP()); }, false);
+    // add default route
+    const auto ep = m_Router->hiddenServiceContext().GetDefault();
+    net::AddDefaultRouteViaInterface(ep->GetIfName());
+  }
+
+  void
+  RoutePoker::Down()
+  {
+    // unpoke routes for first hops
+    m_Router->ForEachPeer(
+        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint().toIP()); }, false);
+    // remove default route
+    const auto ep = m_Router->hiddenServiceContext().GetDefault();
+    net::DelDefaultRouteViaInterface(ep->GetIfName());
+  }
+
 }  // namespace llarp

@@ -235,6 +235,9 @@ namespace llarp
       std::unordered_map<huint128_t, llarp_time_t> m_IPActivity;
       /// our ip address (host byte order)
       huint128_t m_OurIP;
+      /// our network interface's ipv6 address
+      huint128_t m_OurIPv6;
+
       /// next ip address to allocate (host byte order)
       huint128_t m_NextIP;
       /// highest ip address to allocate (host byte order)

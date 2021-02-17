@@ -144,7 +144,7 @@ namespace llarp
     }
     else
     {
-      if (const auto maybe = GetIFAddr(ifname, af))
+      if (const auto maybe = GetInterfaceAddr(ifname, af))
       {
         m_ourAddr = *maybe;
       }

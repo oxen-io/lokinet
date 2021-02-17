@@ -430,7 +430,7 @@ namespace llarp
           const auto pos = arg.find(":");
           if (pos == std::string::npos)
           {
-            range.FromString("0.0.0.0/0");
+            range.FromString("::/0");
           }
           else if (not range.FromString(arg.substr(pos + 1)))
           {

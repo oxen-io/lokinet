@@ -546,14 +546,27 @@ namespace llarp
   }
 
   std::optional<IpAddress>
-  GetIFAddr(const std::string& ifname, int af)
+  GetInterfaceAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
     sockaddr* sptr = (sockaddr*)&s;
+    sptr->sa_family = af;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    llarp::SockAddr saddr = SockAddr(*sptr);
+    llarp::SockAddr saddr = SockAddr{*sptr};
     return llarp::IpAddress(saddr);
+  }
+
+  std::optional<huint128_t>
+  GetInterfaceIPv6Address(std::string ifname)
+  {
+    sockaddr_storage s;
+    sockaddr* sptr = (sockaddr*)&s;
+    sptr->sa_family = AF_INET6;
+    if (!llarp_getifaddr(ifname.c_str(), AF_INET6, sptr))
+      return std::nullopt;
+    llarp::SockAddr addr{*sptr};
+    return addr.asIPv6();
   }
 
   bool
