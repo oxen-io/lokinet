@@ -407,17 +407,20 @@ namespace llarp
   {
     static constexpr auto CloseGraceWindow = 500ms;
     const auto now = Now();
-    Lock_t l(m_AuthedLinksMutex);
-    RouterID r = remote;
-    llarp::LogInfo("Closing all to ", r);
-    auto range = m_AuthedLinks.equal_range(r);
-    auto itr = range.first;
-    while (itr != range.second)
     {
-      itr->second->Close();
-      m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
-      itr = m_AuthedLinks.erase(itr);
+      Lock_t l(m_AuthedLinksMutex);
+      RouterID r = remote;
+      llarp::LogInfo("Closing all to ", r);
+      auto range = m_AuthedLinks.equal_range(r);
+      auto itr = range.first;
+      while (itr != range.second)
+      {
+        itr->second->Close();
+        m_RecentlyClosed.emplace(itr->second->GetRemoteEndpoint(), now + CloseGraceWindow);
+        itr = m_AuthedLinks.erase(itr);
+      }
     }
+    SessionClosed(remote);
   }
 
   void
