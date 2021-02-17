@@ -132,13 +132,10 @@ namespace llarp
     {
       LogInfo("found default gateway: ", gateway);
       m_CurrentGateway = gateway;
-      if (m_Enabled)  // if route was already set up
-      {
-        DisableAllRoutes();
-      }
       if (m_Enabling)
       {
         EnableAllRoutes();
+        Up();
       }
     }
     // revive network connectitivity on gateway change or network wakeup
