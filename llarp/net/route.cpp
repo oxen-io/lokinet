@@ -370,7 +370,7 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    auto maybe = GetIFAddr(ifname);
+    const auto maybe = GetInterfaceAddr(ifname);
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
@@ -380,7 +380,7 @@ namespace llarp::net
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
-    const auto maybeInt = GetInterfaceIP6(ifname);
+    const auto maybeInt = GetInterfaceIPv6Address(ifname);
     if (maybeInt.has_value())
     {
       const auto host = maybeInt->ToString();
@@ -435,7 +435,7 @@ namespace llarp::net
     int if_idx = if_nametoindex(ifname.c_str());
     _inet_addr to_addr{};
     _inet_addr gw_addr{};
-    auto maybe = GetIFAddr(ifname);
+    const auto maybe = GetInterfaceAddr(ifname);
 
     if (not maybe.has_value())
       throw std::runtime_error("we dont have our own net interface?");
@@ -447,7 +447,7 @@ namespace llarp::net
     read_addr("128.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eUpperDefault, if_idx);
 
-    const auto maybeInt = GetInterfaceIP6(ifname);
+    const auto maybeInt = GetInterfaceIPv6Address(ifname);
     if (maybeInt.has_value())
     {
       const auto host = maybeInt->ToString();
