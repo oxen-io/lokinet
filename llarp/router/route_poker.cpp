@@ -9,7 +9,7 @@ namespace llarp
   void
   RoutePoker::AddRoute(huint32_t ip)
   {
-    m_PokedRoutes.emplace(ip, m_CurrentGateway);
+    m_PokedRoutes[ip] = m_CurrentGateway;
     if (m_CurrentGateway.h == 0)
     {
       llarp::LogDebug("RoutePoker::AddRoute no current gateway, cannot enable route.");
@@ -44,10 +44,10 @@ namespace llarp
     const auto itr = m_PokedRoutes.find(ip);
     if (itr == m_PokedRoutes.end())
       return;
-    m_PokedRoutes.erase(itr);
 
     if (m_Enabled)
       DisableRoute(itr->first, itr->second);
+    m_PokedRoutes.erase(itr);
   }
 
   void
