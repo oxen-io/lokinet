@@ -166,6 +166,7 @@ namespace llarp
       return;
 
     DisableAllRoutes();
+    m_Enabled = false;
   }
 
   void
