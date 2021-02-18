@@ -96,7 +96,8 @@ namespace llarp
       for (const auto& entry : m_Entries)
         keys.emplace_back(entry.first);
 
-      std::shuffle(keys.begin(), keys.end(), std::mt19937{llarp::randint()});
+      std::shuffle(
+          keys.begin(), keys.end(), std::mt19937{static_cast<unsigned int>(llarp::randint())});
 
       for (const auto& key : keys)
       {
