@@ -87,7 +87,7 @@ namespace llarp
 
     /// return true if this set of router contacts is acceptable against this config
     bool
-    Acceptable(std::set<RouterContact> hops) const;
+    Acceptable(const std::set<RouterContact>& hops) const;
   };
 
   struct NetworkConfig

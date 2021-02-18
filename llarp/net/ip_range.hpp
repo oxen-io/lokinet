@@ -14,6 +14,12 @@ namespace llarp
     huint128_t addr = {0};
     huint128_t netmask_bits = {0};
 
+    constexpr IPRange()
+    {}
+    constexpr IPRange(huint128_t address, huint128_t netmask)
+        : addr{std::move(address)}, netmask_bits{std::move(netmask)}
+    {}
+
     static constexpr IPRange
     FromIPv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
     {

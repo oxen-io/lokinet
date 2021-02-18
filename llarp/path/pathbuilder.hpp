@@ -94,14 +94,14 @@ namespace llarp
       BuildOneAlignedTo(const RouterID endpoint) override;
 
       std::optional<std::vector<RouterContact>>
-      GetHopsAlignedToForBuild(RouterID endpoint, std::set<RouterID> exclude = {});
+      GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude = {});
 
       void
       Build(std::vector<RouterContact> hops, PathRole roles = ePathRoleAny) override;
 
       /// pick a first hop
       std::optional<RouterContact>
-      SelectFirstHop(std::set<RouterID> exclude = {}) const;
+      SelectFirstHop(const std::set<RouterID>& exclude = {}) const;
 
       virtual std::optional<std::vector<RouterContact>>
       GetHopsForBuild() override;

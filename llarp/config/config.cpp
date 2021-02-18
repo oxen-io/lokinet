@@ -1000,10 +1000,10 @@ namespace llarp
             throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
           m_UniqueHopsNetmaskSize = arg;
         },
-        Comment{"In path hop selection use this as the default netmkask for testing if we should "
-                "include a relay in our hop list",
-                "i.e. 32 for uniuqe ip addresses for every hop, 24 for all hops are in a different "
-                "/24, 16 for all hops are in a different /16, etc..."});
+        Comment{"Netmask for router path selection; each router must be from a distinct IP subnet "
+                "of the given size.",
+                "E.g. 16 ensures that all routers are using distinct /16 IP addresses."});
+
 #ifdef WITH_GEOIP
     conf.defineOption<std::string>(
         "paths",
@@ -1014,32 +1014,27 @@ namespace llarp
           m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
         },
         Comment{"exclude a country given its 2 letter country code from being used in path builds",
-                "i.e. exlcude-country=DE",
-                "can be listed multiple times to exlcude multiple countries"});
+                "e.g. exclude-country=DE",
+                "can be listed multiple times to exclude multiple countries"});
 #endif
   }
 
   bool
-  PeerSelectionConfig::Acceptable(std::set<RouterContact> rcs) const
+  PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
   {
     if (m_UniqueHopsNetmaskSize)
     {
-      auto makeRange =
-          [netmask = netmask_ipv6_bits(96 + *m_UniqueHopsNetmaskSize)](IpAddress addr) -> IPRange {
-        return IPRange{net::ExpandV4(addr.toIP()) & netmask, netmask};
-      };
-
+      const auto netmask = netmask_ipv6_bits(96 + *m_UniqueHopsNetmaskSize);
       std::set<IPRange> seenRanges;
       for (const auto& hop : rcs)
       {
         for (const auto& addr : hop.addrs)
         {
-          const auto range = makeRange(addr.toIpAddress());
-          if (seenRanges.count(range))
+          const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
+          if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
           {
             return false;
           }
-          seenRanges.emplace(range);
         }
       }
     }

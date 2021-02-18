@@ -206,7 +206,7 @@ namespace llarp
     }
 
     std::optional<RouterContact>
-    Builder::SelectFirstHop(std::set<RouterID> exclude) const
+    Builder::SelectFirstHop(const std::set<RouterID>& exclude) const
     {
       std::optional<RouterContact> found = std::nullopt;
       m_router->ForEachPeer(
@@ -295,7 +295,7 @@ namespace llarp
     }
 
     std::optional<std::vector<RouterContact>>
-    Builder::GetHopsAlignedToForBuild(RouterID endpoint, std::set<RouterID> exclude)
+    Builder::GetHopsAlignedToForBuild(RouterID endpoint, const std::set<RouterID>& exclude)
     {
       const auto pathConfig = m_router->GetConfig()->paths;
 
@@ -329,9 +329,8 @@ namespace llarp
               return false;
 
             std::set<RouterContact> hopsSet;
-            hopsSet.emplace(endpointRC);
-            for (const auto& hop : hops)
-              hopsSet.emplace(hop);
+            hopsSet.insert(endpointRC);
+            hopsSet.insert(hops.begin(), hops.end());
 
             if (r->routerProfiling().IsBadForPath(rc.pubkey))
               return false;
@@ -341,7 +340,7 @@ namespace llarp
                 return false;
             }
 
-            hopsSet.emplace(rc);
+            hopsSet.insert(rc);
             if (not pathConfig.Acceptable(hopsSet))
               return false;
 
