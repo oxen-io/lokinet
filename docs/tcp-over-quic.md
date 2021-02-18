@@ -84,12 +84,23 @@ same path in reverse.)
 
 Implementation library: `ngtcp2` is a robust, maintained library that fits our needs well.
 
+### Not a general QUIC server/client
+
+The QUIC tunnel described here is *only* for Lokinet TCP streams; it is not intended to be
+interoperable with general QUIC clients, which allows us some leeway to not support some aspects of
+QUIC that are of no advantage over a lokinet conversation.
+
 ### No encryption
 
 Since lokinet traffic is itself encrypted and private, the built-in TLS layers of QUIC are something
 that we don't need or want.  Thus the QUIC implementation used will simply use no-op encryption to
 pass data and avoid/ignore certificates.  (`ngtcp2`, in particular, allows pluggable authentication
 to allow this).
+
+### No address verification
+
+QUIC recommends address verification (among other things, to avoid amplification attacks).  Lokinet
+connections already provide this and so we can safely not use it.
 
 ### Stream establishing
 
