@@ -256,13 +256,13 @@ namespace llarp::rpc
                           }
                           ep->EnsurePathToService(
                               addr,
-                              [reply, ep, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
+                              [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
                                 if (ctx == nullptr)
                                 {
                                   reply(CreateJSONError("could not find exit"));
                                   return;
                                 }
-                                auto onGoodResult = [r, ep, reply]() {
+                                auto onGoodResult = [r, reply]() {
                                   r->routePoker().Up();
                                   reply(CreateJSONResponse("OK"));
                                 };
@@ -282,7 +282,6 @@ namespace llarp::rpc
                                       }
                                       onGoodResult();
                                     });
-
                               },
                               5s);
                         };
