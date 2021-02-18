@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <utility>
 #include <atomic>
+#include <random>
+#include <algorithm>
 
 namespace llarp
 {
@@ -89,22 +91,22 @@ namespace llarp
     GetRandom(Filter visit) const
     {
       util::NullLock lock{m_Access};
-      const auto sz = m_Entries.size();
-      if (sz < 3)
-        return std::nullopt;
-      const auto begin = m_Entries.begin();
-      const auto middle = std::next(m_Entries.begin(), randint() % sz);
 
-      for (auto itr = middle; itr != m_Entries.end(); ++itr)
+      std::vector<RouterID> keys;
+      for (const auto& entry : m_Entries)
+        keys.emplace_back(entry.first);
+
+      std::shuffle(keys.begin(), keys.end(), std::mt19937{llarp::randint()});
+
+      for (const auto& key : keys)
       {
-        if (visit(itr->second.rc))
-          return itr->second.rc;
+        if (auto itr = m_Entries.find(key); itr != m_Entries.end())
+        {
+          if (visit(itr->second.rc))
+            return itr->second.rc;
+        }
       }
-      for (auto itr = begin; itr != middle; ++itr)
-      {
-        if (visit(itr->second.rc))
-          return itr->second.rc;
-      }
+
       return std::nullopt;
     }
 
