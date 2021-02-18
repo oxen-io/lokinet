@@ -983,6 +983,69 @@ namespace llarp
         });
   }
 
+  void
+  PeerSelectionConfig::defineConfigOptions(
+      ConfigDefinition& conf, const ConfigGenParameters& params)
+  {
+    (void)params;
+
+    constexpr Default DefaultUniqueCIDR{32};
+    conf.defineOption<int>(
+        "paths",
+        "unique-range-size",
+        DefaultUniqueCIDR,
+        ClientOnly,
+        [=](int arg) {
+          if (arg > 32 or arg < 4)
+            throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
+          m_UniqueHopsNetmaskSize = arg;
+        },
+        Comment{"In path hop selection use this as the default netmkask for testing if we should "
+                "include a relay in our hop list",
+                "i.e. 32 for uniuqe ip addresses for every hop, 24 for all hops are in a different "
+                "/24, 16 for all hops are in a different /16, etc..."});
+#ifdef WITH_GEOIP
+    conf.defineOption<std::string>(
+        "paths",
+        "exclude-country",
+        ClientOnly,
+        MultiValue,
+        [=](std::string arg) {
+          m_ExcludeCountries.emplace(lowercase_ascii_string(std::move(arg)));
+        },
+        Comment{"exclude a country given its 2 letter country code from being used in path builds",
+                "i.e. exlcude-country=DE",
+                "can be listed multiple times to exlcude multiple countries"});
+#endif
+  }
+
+  bool
+  PeerSelectionConfig::Acceptable(std::set<RouterContact> rcs) const
+  {
+    if (m_UniqueHopsNetmaskSize)
+    {
+      auto makeRange =
+          [netmask = netmask_ipv6_bits(96 + *m_UniqueHopsNetmaskSize)](IpAddress addr) -> IPRange {
+        return IPRange{net::ExpandV4(addr.toIP()) & netmask, netmask};
+      };
+
+      std::set<IPRange> seenRanges;
+      for (const auto& hop : rcs)
+      {
+        for (const auto& addr : hop.addrs)
+        {
+          const auto range = makeRange(addr.toIpAddress());
+          if (seenRanges.count(range))
+          {
+            return false;
+          }
+          seenRanges.emplace(range);
+        }
+      }
+    }
+    return true;
+  }
+
   Config::Config(fs::path datadir)
       : m_DataDir(datadir.empty() ? fs::current_path() : std::move(datadir))
   {}
@@ -1096,6 +1159,7 @@ namespace llarp
   {
     router.defineConfigOptions(conf, params);
     network.defineConfigOptions(conf, params);
+    paths.defineConfigOptions(conf, params);
     connect.defineConfigOptions(conf, params);
     dns.defineConfigOptions(conf, params);
     links.defineConfigOptions(conf, params);
@@ -1217,6 +1281,11 @@ namespace llarp
     llarp::ConfigDefinition def{false};
     initializeConfig(def, params);
     generateCommonConfigComments(def);
+    def.addSectionComments(
+        "paths",
+        {
+            "path selection algorithm options",
+        });
 
     def.addSectionComments(
         "network",

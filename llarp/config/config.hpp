@@ -16,6 +16,8 @@
 #include <service/auth.hpp>
 #include <dns/srv_data.hpp>
 
+#include <router_contact.hpp>
+
 #include <cstdlib>
 #include <functional>
 #include <string>
@@ -67,6 +69,25 @@ namespace llarp
 
     void
     defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+  };
+
+  /// config for path hop selection
+  struct PeerSelectionConfig
+  {
+    /// in our hops what netmask will we use for unique ips for hops
+    /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
+    ///
+    std::optional<int> m_UniqueHopsNetmaskSize;
+
+    /// set of countrys to exclude from path building (2 char country code)
+    std::unordered_set<std::string> m_ExcludeCountries;
+
+    void
+    defineConfigOptions(ConfigDefinition& conf, const ConfigGenParameters& params);
+
+    /// return true if this set of router contacts is acceptable against this config
+    bool
+    Acceptable(std::set<RouterContact> hops) const;
   };
 
   struct NetworkConfig
@@ -189,6 +210,7 @@ namespace llarp
 
     RouterConfig router;
     NetworkConfig network;
+    PeerSelectionConfig paths;
     ConnectConfig connect;
     DnsConfig dns;
     LinksConfig links;
