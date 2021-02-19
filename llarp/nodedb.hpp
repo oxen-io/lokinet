@@ -92,19 +92,16 @@ namespace llarp
     {
       util::NullLock lock{m_Access};
 
-      std::vector<RouterID> keys;
+      std::vector<const decltype(m_Entries)::value_type*> entries;
       for (const auto& entry : m_Entries)
-        keys.emplace_back(entry.first);
+        entries.push_back(&entry);
 
-      std::shuffle(keys.begin(), keys.end(), std::mt19937_64{llarp::randint()});
+      std::shuffle(entries.begin(), entries.end(), std::mt19937_64{llarp::randint()});
 
-      for (const auto& key : keys)
+      for (const auto entry : entries)
       {
-        if (auto itr = m_Entries.find(key); itr != m_Entries.end())
-        {
-          if (visit(itr->second.rc))
-            return itr->second.rc;
-        }
+        if (visit(entry->second.rc))
+          return entry->second.rc;
       }
 
       return std::nullopt;
