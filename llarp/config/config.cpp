@@ -1022,19 +1022,16 @@ namespace llarp
   bool
   PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
   {
-    if (m_UniqueHopsNetmaskSize)
+    const auto netmask = netmask_ipv6_bits(96 + m_UniqueHopsNetmaskSize);
+    std::set<IPRange> seenRanges;
+    for (const auto& hop : rcs)
     {
-      const auto netmask = netmask_ipv6_bits(96 + *m_UniqueHopsNetmaskSize);
-      std::set<IPRange> seenRanges;
-      for (const auto& hop : rcs)
+      for (const auto& addr : hop.addrs)
       {
-        for (const auto& addr : hop.addrs)
+        const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
+        if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
         {
-          const auto network_addr = net::In6ToHUInt(addr.ip) & netmask;
-          if (auto [it, inserted] = seenRanges.emplace(network_addr, netmask); not inserted)
-          {
-            return false;
-          }
+          return false;
         }
       }
     }

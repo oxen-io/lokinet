@@ -77,7 +77,7 @@ namespace llarp
     /// in our hops what netmask will we use for unique ips for hops
     /// i.e. 32 for every hop unique ip, 24 unique /24 per hop, etc
     ///
-    std::optional<int> m_UniqueHopsNetmaskSize;
+    int m_UniqueHopsNetmaskSize;
 
     /// set of countrys to exclude from path building (2 char country code)
     std::unordered_set<std::string> m_ExcludeCountries;
