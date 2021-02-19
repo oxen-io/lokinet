@@ -122,6 +122,30 @@ namespace llarp
   }
 
   void
+  Router::Thaw()
+  {
+    // get pubkeys we are connected to
+    std::unordered_set<RouterID> peerPubkeys;
+    linkManager().ForEachPeer([&peerPubkeys](auto peer) {
+      if (not peer)
+        return;
+      peerPubkeys.emplace(peer->GetPubKey());
+    });
+    // close our sessions to them on link layer
+    linkManager().ForEachOutboundLink([peerPubkeys](const auto& link) {
+      for (const auto& remote : peerPubkeys)
+        link->CloseSessionTo(remote);
+    });
+    // thaw endpoints
+    hiddenServiceContext().ForEachService([](const auto& name, const auto& ep) -> bool {
+      LogInfo(name, " thawing...");
+      ep->Thaw();
+      return true;
+    });
+    LogInfo("We are ready to go bruh...  probably");
+  }
+
+  void
   Router::PersistSessionUntil(const RouterID& remote, llarp_time_t until)
   {
     _linkManager.PersistSessionUntil(remote, until);
@@ -802,13 +826,18 @@ namespace llarp
 
     _linkManager.CheckPersistingSessions(now);
 
-    if (HasClientExit())
+    if (not isSvcNode)
     {
-      m_RoutePoker.Enable();
+      if (HasClientExit())
+      {
+        m_RoutePoker.Enable();
+      }
+      else
+      {
+        m_RoutePoker.Disable();
+      }
       m_RoutePoker.Update();
     }
-    else
-      m_RoutePoker.Disable();
 
     size_t connected = NumberOfConnectedRouters();
     if (not isSvcNode)

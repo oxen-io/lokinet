@@ -225,6 +225,15 @@ namespace llarp
     }
   }
 
+  void
+  LinkManager::ForEachOutboundLink(std::function<void(LinkLayer_ptr)> visit) const
+  {
+    for (const auto& link : outboundLinks)
+    {
+      visit(link);
+    }
+  }
+
   size_t
   LinkManager::NumberOfConnectedRouters() const
   {

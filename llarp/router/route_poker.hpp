@@ -69,5 +69,7 @@ namespace llarp
     bool m_Enabling = false;
 
     AbstractRouter* m_Router = nullptr;
+
+    bool m_HasNetwork = true;
   };
 }  // namespace llarp

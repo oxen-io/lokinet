@@ -86,6 +86,16 @@ namespace llarp
       return *itr;
     }
 
+    void
+    Proxy::Restart()
+    {
+      if (m_UnboundResolver)
+      {
+        LogInfo("reset libunbound's internal stuff");
+        m_UnboundResolver->Init();
+      }
+    }
+
     bool
     Proxy::SetupUnboundResolver(const std::vector<IpAddress>& resolvers)
     {
