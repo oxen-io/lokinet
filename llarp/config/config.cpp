@@ -996,8 +996,14 @@ namespace llarp
         DefaultUniqueCIDR,
         ClientOnly,
         [=](int arg) {
-          if (arg > 32 or arg < 4)
+          if (arg == 0)
+          {
+            m_UniqueHopsNetmaskSize = arg;
+          }
+          else if (arg > 32 or arg < 4)
+          {
             throw std::invalid_argument{"[paths]:unique-range-size must be between 4 and 32"};
+          }
           m_UniqueHopsNetmaskSize = arg;
         },
         Comment{"Netmask for router path selection; each router must be from a distinct IP subnet "
@@ -1022,6 +1028,8 @@ namespace llarp
   bool
   PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
   {
+    if (m_UniqueHopsNetMask == 0)
+      return true;
     const auto netmask = netmask_ipv6_bits(96 + m_UniqueHopsNetmaskSize);
     std::set<IPRange> seenRanges;
     for (const auto& hop : rcs)
