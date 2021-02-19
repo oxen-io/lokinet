@@ -1028,7 +1028,7 @@ namespace llarp
   bool
   PeerSelectionConfig::Acceptable(const std::set<RouterContact>& rcs) const
   {
-    if (m_UniqueHopsNetMask == 0)
+    if (m_UniqueHopsNetmaskSize == 0)
       return true;
     const auto netmask = netmask_ipv6_bits(96 + m_UniqueHopsNetmaskSize);
     std::set<IPRange> seenRanges;
