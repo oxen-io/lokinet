@@ -624,7 +624,7 @@ namespace llarp
         }
         ++itr;
       }
-      m_PlaintextRecv.pushBack(std::move(msgs));
+      m_PlaintextRecv.tryPushBack(std::move(msgs));
       m_Parent->WakeupPlaintext();
     }
 
