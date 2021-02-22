@@ -20,6 +20,54 @@ namespace libuv
     Close() = 0;
   };
 
+  class UVWakeup final : public llarp::EventLoopWakeup, public glue
+  {
+    uv_async_t m_Impl;
+    const int m_Idx;
+    static void
+    OnWake(uv_async_t* self)
+    {
+      static_cast<UVWakeup*>(self->data)->callback();
+    }
+
+   public:
+    UVWakeup(uv_loop_t* loop, std::function<void()> hook, int idx)
+        : llarp::EventLoopWakeup{hook}, m_Idx{idx}
+    {
+      uv_async_init(loop, &m_Impl, OnWake);
+      m_Impl.data = this;
+    }
+
+    ~UVWakeup() = default;
+
+    void
+    Close() override
+    {
+      uv_close((uv_handle_t*)&m_Impl, [](uv_handle_t* h) {
+        auto loop = static_cast<libuv::Loop*>(h->loop->data);
+        loop->delete_waker(static_cast<UVWakeup*>(h->data)->m_Idx);
+      });
+    }
+
+    void
+    End() override
+    {
+      Close();
+    }
+
+    void
+    Wakeup() override
+    {
+      uv_async_send(&m_Impl);
+    }
+
+    bool
+    operator<(const UVWakeup& other) const
+    {
+      return m_Idx < other.m_Idx;
+    }
+  };
+
   struct ticker_glue : public glue
   {
     std::function<void(void)> func;
@@ -620,6 +668,22 @@ namespace libuv
       delete func;
       m_Polls.erase(itr);
     }
+  }
+
+  llarp::EventLoopWakeup*
+  Loop::make_event_loop_waker(std::function<void()> callback)
+  {
+    auto wake_idx = m_NumWakers++;
+    auto wake = new UVWakeup{&m_Impl, callback, wake_idx};
+    m_Wakers[wake_idx] = wake;
+    return wake;
+  }
+
+  void
+  Loop::delete_waker(int idx)
+  {
+    delete m_Wakers[idx];
+    m_Wakers.erase(idx);
   }
 
 }  // namespace libuv

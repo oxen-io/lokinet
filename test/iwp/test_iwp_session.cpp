@@ -76,6 +76,7 @@ struct IWPLinkContext
   {
     link = make_link<inbound>(
         keyManager,
+        m_Loop,
         // getrc
         [&]() -> const llarp::RouterContact& { return rc; },
         // link message handler

@@ -26,6 +26,8 @@ namespace llarp
       return pkt;
     }
 
+    constexpr size_t PlaintextQueueSize = 32;
+
     Session::Session(LinkLayer* p, const RouterContact& rc, const AddressInfo& ai)
         : m_State{State::Initial}
         , m_Inbound{false}
@@ -34,6 +36,7 @@ namespace llarp
         , m_RemoteAddr(ai.toIpAddress())
         , m_ChosenAI(ai)
         , m_RemoteRC(rc)
+        , m_PlaintextRecv{PlaintextQueueSize}
     {
       token.Zero();
       GotLIM = util::memFn(&Session::GotOutboundLIM, this);
@@ -46,6 +49,7 @@ namespace llarp
         , m_Parent(p)
         , m_CreatedAt{p->Now()}
         , m_RemoteAddr(from)
+        , m_PlaintextRecv{PlaintextQueueSize}
     {
       token.Randomize();
       GotLIM = util::memFn(&Session::GotInboundLIM, this);
@@ -130,23 +134,21 @@ namespace llarp
     void
     Session::EncryptAndSend(ILinkSession::Packet_t data)
     {
-      if (m_EncryptNext == nullptr)
-        m_EncryptNext = std::make_shared<CryptoQueue_t>();
-      m_EncryptNext->emplace_back(std::move(data));
+      m_EncryptNext.emplace_back(std::move(data));
       if (!IsEstablished())
       {
         EncryptWorker(std::move(m_EncryptNext));
-        m_EncryptNext = nullptr;
+        m_EncryptNext = CryptoQueue_t{};
       }
     }
 
     void
-    Session::EncryptWorker(CryptoQueue_ptr msgs)
+    Session::EncryptWorker(CryptoQueue_t msgs)
     {
-      LogDebug("encrypt worker ", msgs->size(), " messages");
-      for (auto& pkt : *msgs)
+      LogDebug("encrypt worker ", msgs.size(), " messages");
+      for (auto& pkt : msgs)
       {
-        llarp_buffer_t pktbuf(pkt);
+        llarp_buffer_t pktbuf{pkt};
         const TunnelNonce nonce_ptr{pkt.data() + HMACSIZE};
         pktbuf.base += PacketOverhead;
         pktbuf.cur = pktbuf.base;
@@ -243,16 +245,17 @@ namespace llarp
       }
       auto self = shared_from_this();
       assert(self.use_count() > 1);
-      if (m_EncryptNext && !m_EncryptNext->empty())
+      if (not m_EncryptNext.empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_EncryptNext)] { self->EncryptWorker(data); });
-        m_EncryptNext = nullptr;
+        m_Parent->QueueWork([self, data = m_EncryptNext] { self->EncryptWorker(data); });
+        m_EncryptNext.clear();
       }
 
-      if (m_DecryptNext && !m_DecryptNext->empty())
+      if (not m_DecryptNext.empty())
       {
-        m_Parent->QueueWork([self, data = std::move(m_DecryptNext)] { self->DecryptWorker(data); });
-        m_DecryptNext = nullptr;
+        m_Parent->AddWakeup(weak_from_this());
+        m_Parent->QueueWork([self, data = m_DecryptNext] { self->DecryptWorker(data); });
+        m_DecryptNext.clear();
       }
     }
 
@@ -596,19 +599,19 @@ namespace llarp
     void
     Session::HandleSessionData(Packet_t pkt)
     {
-      if (m_DecryptNext == nullptr)
-        m_DecryptNext = std::make_shared<CryptoQueue_t>();
-      m_DecryptNext->emplace_back(std::move(pkt));
+      m_DecryptNext.emplace_back(std::move(pkt));
     }
 
     void
-    Session::DecryptWorker(CryptoQueue_ptr msgs)
+    Session::DecryptWorker(CryptoQueue_t msgs)
     {
-      CryptoQueue_ptr recvMsgs = std::make_shared<CryptoQueue_t>();
-      for (auto& pkt : *msgs)
+      auto itr = msgs.begin();
+      while (itr != msgs.end())
       {
+        auto& pkt = *itr;
         if (not DecryptMessageInPlace(pkt))
         {
+          itr = msgs.erase(itr);
           LogError("failed to decrypt session data from ", m_RemoteAddr);
           continue;
         }
@@ -616,52 +619,54 @@ namespace llarp
         {
           LogError(
               "protocol version mismatch ", int(pkt[PacketOverhead]), " != ", LLARP_PROTO_VERSION);
+          itr = msgs.erase(itr);
           continue;
         }
-        recvMsgs->emplace_back(std::move(pkt));
+        ++itr;
       }
-      LogDebug("decrypted ", recvMsgs->size(), " packets from ", m_RemoteAddr);
-      LogicCall(m_Parent->logic(), [self = shared_from_this(), msgs = recvMsgs] {
-        self->HandlePlaintext(std::move(msgs));
-      });
+      m_PlaintextRecv.pushBack(std::move(msgs));
+      m_Parent->WakeupPlaintext();
     }
 
     void
-    Session::HandlePlaintext(CryptoQueue_ptr msgs)
+    Session::HandlePlaintext()
     {
-      for (auto& result : *msgs)
+      while (not m_PlaintextRecv.empty())
       {
-        LogDebug("Command ", int(result[PacketOverhead + 1]));
-        switch (result[PacketOverhead + 1])
+        auto queue = m_PlaintextRecv.popFront();
+        for (auto& result : queue)
         {
-          case Command::eXMIT:
-            HandleXMIT(std::move(result));
-            break;
-          case Command::eDATA:
-            HandleDATA(std::move(result));
-            break;
-          case Command::eACKS:
-            HandleACKS(std::move(result));
-            break;
-          case Command::ePING:
-            HandlePING(std::move(result));
-            break;
-          case Command::eNACK:
-            HandleNACK(std::move(result));
-            break;
-          case Command::eCLOS:
-            HandleCLOS(std::move(result));
-            break;
-          case Command::eMACK:
-            HandleMACK(std::move(result));
-            break;
-          default:
-            LogError("invalid command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
+          LogDebug("Command ", int(result[PacketOverhead + 1]));
+          switch (result[PacketOverhead + 1])
+          {
+            case Command::eXMIT:
+              HandleXMIT(std::move(result));
+              break;
+            case Command::eDATA:
+              HandleDATA(std::move(result));
+              break;
+            case Command::eACKS:
+              HandleACKS(std::move(result));
+              break;
+            case Command::ePING:
+              HandlePING(std::move(result));
+              break;
+            case Command::eNACK:
+              HandleNACK(std::move(result));
+              break;
+            case Command::eCLOS:
+              HandleCLOS(std::move(result));
+              break;
+            case Command::eMACK:
+              HandleMACK(std::move(result));
+              break;
+            default:
+              LogError("invalid command ", int(result[PacketOverhead + 1]), " from ", m_RemoteAddr);
+          }
         }
       }
       SendMACK();
       Pump();
-      m_Parent->PumpDone();
     }
 
     void

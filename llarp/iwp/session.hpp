@@ -126,6 +126,8 @@ namespace llarp
       {
         return m_Inbound;
       }
+      void
+      HandlePlaintext();
 
      private:
       enum class State
@@ -189,19 +191,18 @@ namespace llarp
       /// rx messages to send in next round of multiacks
       std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> m_SendMACKs;
 
-      using CryptoQueue_t = std::list<Packet_t>;
-      using CryptoQueue_ptr = std::shared_ptr<CryptoQueue_t>;
-      CryptoQueue_ptr m_EncryptNext;
-      CryptoQueue_ptr m_DecryptNext;
+      using CryptoQueue_t = std::vector<Packet_t>;
+
+      CryptoQueue_t m_EncryptNext;
+      CryptoQueue_t m_DecryptNext;
+
+      llarp::thread::Queue<CryptoQueue_t> m_PlaintextRecv;
 
       void
-      EncryptWorker(CryptoQueue_ptr msgs);
+      EncryptWorker(CryptoQueue_t msgs);
 
       void
-      DecryptWorker(CryptoQueue_ptr msgs);
-
-      void
-      HandlePlaintext(CryptoQueue_ptr msgs);
+      DecryptWorker(CryptoQueue_t msgs);
 
       void
       HandleGotIntro(Packet_t pkt);

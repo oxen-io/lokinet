@@ -612,6 +612,7 @@ namespace llarp
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
+          netloop(),
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
@@ -1313,6 +1314,7 @@ namespace llarp
   {
     auto link = iwp::NewOutboundLink(
         m_keyManager,
+        netloop(),
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),

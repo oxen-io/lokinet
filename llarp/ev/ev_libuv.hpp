@@ -12,6 +12,8 @@
 
 namespace libuv
 {
+  class UVWakeup;
+
   struct Loop final : public llarp::EventLoop
   {
     typedef std::function<void(void)> Callback;
@@ -96,6 +98,12 @@ namespace libuv
     void
     set_pump_function(std::function<void(void)> pumpll) override;
 
+    llarp::EventLoopWakeup*
+    make_event_loop_waker(std::function<void()> callback) override;
+
+    void
+    delete_waker(int idx);
+
     void
     FlushLogic();
 
@@ -122,6 +130,9 @@ namespace libuv
     llarp::thread::Queue<PendingTimer> m_timerQueue;
     llarp::thread::Queue<uint32_t> m_timerCancelQueue;
     std::optional<std::thread::id> m_EventLoopThreadID;
+
+    int m_NumWakers;
+    std::unordered_map<int, UVWakeup*> m_Wakers;
   };
 
 }  // namespace libuv
