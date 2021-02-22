@@ -1,4 +1,5 @@
 #include <net/sock_addr.hpp>
+#include <net/address_info.hpp>
 #include <net/ip.hpp>
 #include <net/net_bits.hpp>
 #include <util/str.hpp>
@@ -10,6 +11,11 @@
 
 namespace llarp
 {
+  bool
+  operator==(const in6_addr& lh, const in6_addr& rh)
+  {
+    return memcmp(&lh, &rh, sizeof(in6_addr)) == 0;
+  }
   /// shared utility functions
   ///
 
@@ -51,11 +57,15 @@ namespace llarp
     setIPv4(a, b, c, d);
     setPort(port);
   }
-
   SockAddr::SockAddr(std::string_view addr)
   {
     init();
     fromString(addr);
+  }
+
+  SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
+  {
+    setPort(info.port);
   }
 
   SockAddr::SockAddr(const SockAddr& other)
@@ -174,24 +184,21 @@ namespace llarp
   bool
   SockAddr::operator==(const SockAddr& other) const
   {
-    if (m_addr.sin6_family != other.m_addr.sin6_family)
-      return false;
-
-    if (getPort() != other.getPort())
-      return false;
-
-    return (
-        0
-        == memcmp(
-            m_addr.sin6_addr.s6_addr,
-            other.m_addr.sin6_addr.s6_addr,
-            sizeof(m_addr.sin6_addr.s6_addr)));
+    return m_addr.sin6_addr == other.m_addr.sin6_addr
+        and m_addr.sin6_port == other.m_addr.sin6_port;
   }
 
   huint128_t
   SockAddr::asIPv6() const
   {
     return net::In6ToHUInt(m_addr.sin6_addr);
+  }
+
+  huint32_t
+  SockAddr::asIPv4() const
+  {
+    const nuint32_t n{m_addr4.sin_addr.s_addr};
+    return ToHost(n);
   }
 
   void

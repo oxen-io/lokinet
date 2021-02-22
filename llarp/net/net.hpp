@@ -59,7 +59,7 @@ namespace llarp
   IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
   bool
-  AllInterfaces(int af, IpAddress& addr);
+  AllInterfaces(int af, SockAddr& addr);
 
   /// get first network interface with public address
   bool
@@ -74,7 +74,7 @@ namespace llarp
   FindFreeTun();
 
   /// get network interface address for network interface with ifname
-  std::optional<IpAddress>
+  std::optional<SockAddr>
   GetInterfaceAddr(const std::string& ifname, int af = AF_INET);
 
   /// get an interface's ip6 address

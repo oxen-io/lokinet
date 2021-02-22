@@ -5,6 +5,13 @@
 namespace llarp
 {
   template <>
+  huint32_t
+  ToHost(nuint32_t n)
+  {
+    return xntohl(n);
+  }
+
+  template <>
   nuint32_t
   ToNet(huint32_t h)
   {

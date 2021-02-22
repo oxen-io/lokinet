@@ -44,7 +44,7 @@ namespace llarp
       /// outbound session
       Session(LinkLayer* parent, const RouterContact& rc, const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, const IpAddress& from);
+      Session(LinkLayer* parent, const SockAddr& from);
 
       ~Session() = default;
 
@@ -85,7 +85,7 @@ namespace llarp
         return m_RemoteRC.pubkey;
       }
 
-      IpAddress
+      const SockAddr&
       GetRemoteEndpoint() const override
       {
         return m_RemoteAddr;
@@ -153,7 +153,7 @@ namespace llarp
       /// parent link layer
       LinkLayer* const m_Parent;
       const llarp_time_t m_CreatedAt;
-      const IpAddress m_RemoteAddr;
+      const SockAddr m_RemoteAddr;
 
       AddressInfo m_ChosenAI;
       /// remote rc

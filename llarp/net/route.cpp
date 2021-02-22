@@ -375,7 +375,8 @@ namespace llarp::net
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_NEWROUTE;
     int nl_flags = NLM_F_CREATE | NLM_F_EXCL;
-    read_addr(maybe->toHost().c_str(), &gw_addr);
+    const auto host = maybe->asIPv4().ToString();
+    read_addr(host.c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);
@@ -441,7 +442,8 @@ namespace llarp::net
       throw std::runtime_error("we dont have our own net interface?");
     int nl_cmd = RTM_DELROUTE;
     int nl_flags = 0;
-    read_addr(maybe->toHost().c_str(), &gw_addr);
+    const auto host = maybe->asIPv4().ToString();
+    read_addr(host.c_str(), &gw_addr);
     read_addr("0.0.0.0", &to_addr, 1);
     do_route(sock.fd, nl_cmd, nl_flags, &to_addr, &gw_addr, GatewayMode::eLowerDefault, if_idx);
     read_addr("128.0.0.0", &to_addr, 1);

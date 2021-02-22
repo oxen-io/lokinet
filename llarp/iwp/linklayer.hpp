@@ -51,7 +51,7 @@ namespace llarp::iwp
     MapAddr(const RouterID& pk, ILinkSession* s) override;
 
     void
-    UnmapAddr(const IpAddress& addr);
+    UnmapAddr(const SockAddr& addr);
 
     void
     WakeupPlaintext();
@@ -64,8 +64,8 @@ namespace llarp::iwp
     HandleWakeupPlaintext();
 
     EventLoopWakeup* const m_Wakeup;
-    llarp::thread::Queue<std::weak_ptr<Session>> m_PlaintextRecv;
-    std::unordered_map<IpAddress, RouterID, IpAddress::Hash> m_AuthedAddrs;
+    std::unordered_map<SockAddr, std::weak_ptr<Session>, SockAddr::Hash> m_PlaintextRecv;
+    std::unordered_map<SockAddr, RouterID, SockAddr::Hash> m_AuthedAddrs;
     const bool permitInbound;
   };
 

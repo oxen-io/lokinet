@@ -90,7 +90,7 @@ namespace llarp::iwp
   }
 
   void
-  LinkLayer::UnmapAddr(const IpAddress& addr)
+  LinkLayer::UnmapAddr(const SockAddr& addr)
   {
     m_AuthedAddrs.erase(addr);
   }
@@ -104,9 +104,8 @@ namespace llarp::iwp
   void
   LinkLayer::AddWakeup(std::weak_ptr<Session> session)
   {
-    if (m_PlaintextRecv.full())
-      HandleWakeupPlaintext();
-    m_PlaintextRecv.tryPushBack(session);
+    if (auto ptr = session.lock())
+      m_PlaintextRecv[ptr->GetRemoteEndpoint()] = session;
   }
 
   void
@@ -118,13 +117,13 @@ namespace llarp::iwp
   void
   LinkLayer::HandleWakeupPlaintext()
   {
-    while (not m_PlaintextRecv.empty())
+    for (const auto& [addr, session] : m_PlaintextRecv)
     {
-      auto session = m_PlaintextRecv.popFront();
       auto ptr = session.lock();
       if (ptr)
         ptr->HandlePlaintext();
     }
+    m_PlaintextRecv.clear();
     PumpDone();
   }
 

@@ -33,7 +33,7 @@ namespace llarp
         , m_Inbound{false}
         , m_Parent(p)
         , m_CreatedAt{p->Now()}
-        , m_RemoteAddr(ai.toIpAddress())
+        , m_RemoteAddr{ai}
         , m_ChosenAI(ai)
         , m_RemoteRC(rc)
         , m_PlaintextRecv{PlaintextQueueSize}
@@ -43,12 +43,12 @@ namespace llarp
       CryptoManager::instance()->shorthash(m_SessionKey, llarp_buffer_t(rc.pubkey));
     }
 
-    Session::Session(LinkLayer* p, const IpAddress& from)
+    Session::Session(LinkLayer* p, const SockAddr& from)
         : m_State{State::Initial}
         , m_Inbound{true}
         , m_Parent(p)
         , m_CreatedAt{p->Now()}
-        , m_RemoteAddr(from)
+        , m_RemoteAddr{from}
         , m_PlaintextRecv{PlaintextQueueSize}
     {
       token.Randomize();
@@ -62,7 +62,7 @@ namespace llarp
     {
       LogDebug("send ", sz, " to ", m_RemoteAddr);
       const llarp_buffer_t pkt(buf, sz);
-      m_Parent->SendTo_LL(m_RemoteAddr.createSockAddr(), pkt);
+      m_Parent->SendTo_LL(m_RemoteAddr, pkt);
       m_LastTX = time_now_ms();
       m_TXRate += sz;
     }

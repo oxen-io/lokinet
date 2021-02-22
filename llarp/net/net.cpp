@@ -545,7 +545,7 @@ namespace llarp
     return std::nullopt;
   }
 
-  std::optional<IpAddress>
+  std::optional<SockAddr>
   GetInterfaceAddr(const std::string& ifname, int af)
   {
     sockaddr_storage s;
@@ -553,8 +553,7 @@ namespace llarp
     sptr->sa_family = af;
     if (!llarp_getifaddr(ifname.c_str(), af, sptr))
       return std::nullopt;
-    llarp::SockAddr saddr = SockAddr{*sptr};
-    return llarp::IpAddress(saddr);
+    return SockAddr{*sptr};
   }
 
   std::optional<huint128_t>
@@ -570,7 +569,7 @@ namespace llarp
   }
 
   bool
-  AllInterfaces(int af, IpAddress& result)
+  AllInterfaces(int af, SockAddr& result)
   {
     if (af == AF_INET)
     {
@@ -578,25 +577,18 @@ namespace llarp
       addr.sin_family = AF_INET;
       addr.sin_addr.s_addr = htonl(INADDR_ANY);
       addr.sin_port = htons(0);
-      SockAddr saddr = SockAddr(addr);
-      result = IpAddress(saddr);
+      result = SockAddr{addr};
       return true;
     }
     if (af == AF_INET6)
     {
-      throw std::runtime_error("Fix me: IPv6 not supported yet");
-      /*
       sockaddr_in6 addr6;
       addr6.sin6_family = AF_INET6;
       addr6.sin6_port = htons(0);
       addr6.sin6_addr = IN6ADDR_ANY_INIT;
-      result = IpAddress(SockAddr(addr6));
+      result = SockAddr{addr6};
       return true;
-      */
     }
-
-    // TODO: implement sockaddr_ll
-
     return false;
   }
 
