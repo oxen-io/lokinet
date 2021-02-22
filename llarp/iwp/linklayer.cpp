@@ -104,6 +104,8 @@ namespace llarp::iwp
   void
   LinkLayer::AddWakeup(std::weak_ptr<Session> session)
   {
+    if (m_PlaintextRecv.full())
+      HandleWakeupPlaintext();
     m_PlaintextRecv.tryPushBack(session);
   }
 
