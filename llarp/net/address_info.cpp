@@ -158,13 +158,11 @@ namespace llarp
   }
 
   void
-  AddressInfo::fromIpAddress(const IpAddress& address)
+  AddressInfo::fromSockAddr(const SockAddr& addr)
   {
-    SockAddr addr = address.createSockAddr();
     const sockaddr_in6* addr6 = addr;
     memcpy(ip.s6_addr, addr6->sin6_addr.s6_addr, sizeof(ip.s6_addr));
-
-    port = address.getPort().value_or(0);
+    port = addr.getPort();
   }
 
   std::ostream&

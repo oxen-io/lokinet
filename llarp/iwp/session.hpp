@@ -10,6 +10,8 @@
 #include <deque>
 #include <queue>
 
+#include <util/thread/queue.hpp>
+
 namespace llarp
 {
   namespace iwp
@@ -44,7 +46,7 @@ namespace llarp
       /// outbound session
       Session(LinkLayer* parent, const RouterContact& rc, const AddressInfo& ai);
       /// inbound session
-      Session(LinkLayer* parent, const IpAddress& from);
+      Session(LinkLayer* parent, const SockAddr& from);
 
       ~Session() = default;
 
@@ -85,7 +87,7 @@ namespace llarp
         return m_RemoteRC.pubkey;
       }
 
-      IpAddress
+      const SockAddr&
       GetRemoteEndpoint() const override
       {
         return m_RemoteAddr;
@@ -126,6 +128,8 @@ namespace llarp
       {
         return m_Inbound;
       }
+      void
+      HandlePlaintext();
 
      private:
       enum class State
@@ -151,7 +155,7 @@ namespace llarp
       /// parent link layer
       LinkLayer* const m_Parent;
       const llarp_time_t m_CreatedAt;
-      const IpAddress m_RemoteAddr;
+      const SockAddr m_RemoteAddr;
 
       AddressInfo m_ChosenAI;
       /// remote rc
@@ -189,19 +193,18 @@ namespace llarp
       /// rx messages to send in next round of multiacks
       std::priority_queue<uint64_t, std::vector<uint64_t>, std::greater<uint64_t>> m_SendMACKs;
 
-      using CryptoQueue_t = std::list<Packet_t>;
-      using CryptoQueue_ptr = std::shared_ptr<CryptoQueue_t>;
-      CryptoQueue_ptr m_EncryptNext;
-      CryptoQueue_ptr m_DecryptNext;
+      using CryptoQueue_t = std::vector<Packet_t>;
+
+      CryptoQueue_t m_EncryptNext;
+      CryptoQueue_t m_DecryptNext;
+
+      llarp::thread::Queue<CryptoQueue_t> m_PlaintextRecv;
 
       void
-      EncryptWorker(CryptoQueue_ptr msgs);
+      EncryptWorker(CryptoQueue_t msgs);
 
       void
-      DecryptWorker(CryptoQueue_ptr msgs);
-
-      void
-      HandlePlaintext(CryptoQueue_ptr msgs);
+      DecryptWorker(CryptoQueue_t msgs);
 
       void
       HandleGotIntro(Packet_t pkt);

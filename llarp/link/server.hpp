@@ -258,20 +258,20 @@ namespace llarp
 
     std::shared_ptr<llarp::Logic> m_Logic = nullptr;
     llarp_ev_loop_ptr m_Loop;
-    IpAddress m_ourAddr;
+    SockAddr m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
 
     using AuthedLinks =
         std::unordered_multimap<RouterID, std::shared_ptr<ILinkSession>, RouterID::Hash>;
     using Pending =
-        std::unordered_multimap<IpAddress, std::shared_ptr<ILinkSession>, IpAddress::Hash>;
+        std::unordered_multimap<SockAddr, std::shared_ptr<ILinkSession>, SockAddr::Hash>;
     mutable DECLARE_LOCK(Mutex_t, m_AuthedLinksMutex, ACQUIRED_BEFORE(m_PendingMutex));
     AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     mutable DECLARE_LOCK(Mutex_t, m_PendingMutex, ACQUIRED_AFTER(m_AuthedLinksMutex));
     Pending m_Pending GUARDED_BY(m_PendingMutex);
 
-    std::unordered_map<IpAddress, llarp_time_t, IpAddress::Hash> m_RecentlyClosed;
+    std::unordered_map<SockAddr, llarp_time_t, SockAddr::Hash> m_RecentlyClosed;
   };
 
   using LinkLayer_ptr = std::shared_ptr<ILinkLayer>;

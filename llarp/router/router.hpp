@@ -178,7 +178,7 @@ namespace llarp
     void
     QueueDiskIO(std::function<void(void)> func) override;
 
-    IpAddress _ourAddress;
+    std::optional<SockAddr> _ourAddress;
 
     llarp_ev_loop_ptr _netloop;
     std::shared_ptr<Logic> _logic;

@@ -472,7 +472,7 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    _ourAddress = conf.router.m_publicAddress;
+    _ourAddress = conf.router.m_publicAddress.createSockAddr();
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
@@ -612,6 +612,7 @@ namespace llarp
     {
       auto server = iwp::NewInboundLink(
           m_keyManager,
+          netloop(),
           util::memFn(&AbstractRouter::rc, this),
           util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
           util::memFn(&AbstractRouter::Sign, this),
@@ -1031,9 +1032,9 @@ namespace llarp
       if (link->GetOurAddressInfo(ai))
       {
         // override ip and port
-        if (not _ourAddress.isEmpty())
+        if (_ourAddress)
         {
-          ai.fromIpAddress(_ourAddress);
+          ai.fromSockAddr(*_ourAddress);
         }
         if (RouterContact::BlockBogons && IsBogon(ai.ip))
           return;
@@ -1313,6 +1314,7 @@ namespace llarp
   {
     auto link = iwp::NewOutboundLink(
         m_keyManager,
+        netloop(),
         util::memFn(&AbstractRouter::rc, this),
         util::memFn(&AbstractRouter::HandleRecvLinkMessageBuffer, this),
         util::memFn(&AbstractRouter::Sign, this),

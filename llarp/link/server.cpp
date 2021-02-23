@@ -152,7 +152,7 @@ namespace llarp
       {
         try
         {
-          m_ourAddr = IpAddress(ifname);
+          m_ourAddr = SockAddr{ifname + ":0"};
         }
         catch (const std::exception& e)
         {
@@ -162,7 +162,7 @@ namespace llarp
       }
     }
     m_ourAddr.setPort(port);
-    return llarp_ev_add_udp(m_Loop, &m_udp, m_ourAddr.createSockAddr()) != -1;
+    return llarp_ev_add_udp(m_Loop, &m_udp, m_ourAddr) != -1;
   }
 
   void
@@ -233,7 +233,7 @@ namespace llarp
   {
     Lock_t l_authed(m_AuthedLinksMutex);
     Lock_t l_pending(m_PendingMutex);
-    IpAddress addr = s->GetRemoteEndpoint();
+    const auto addr = s->GetRemoteEndpoint();
     auto itr = m_Pending.find(addr);
     if (itr != m_Pending.end())
     {
@@ -307,7 +307,7 @@ namespace llarp
     llarp::AddressInfo to;
     if (!PickAddress(rc, to))
       return false;
-    const IpAddress address = to.toIpAddress();
+    const SockAddr address{to};
     {
       Lock_t l(m_PendingMutex);
       if (m_Pending.count(address) >= MaxSessionsPerKey)
@@ -471,7 +471,7 @@ namespace llarp
   bool
   ILinkLayer::GetOurAddressInfo(llarp::AddressInfo& addr) const
   {
-    addr.fromIpAddress(m_ourAddr);
+    addr.fromSockAddr(m_ourAddr);
     addr.dialect = Name();
     addr.pubkey = TransportPubKey();
     addr.rank = Rank();
@@ -495,7 +495,7 @@ namespace llarp
   {
     static constexpr size_t MaxSessionsPerEndpoint = 5;
     Lock_t lock(m_PendingMutex);
-    IpAddress address = s->GetRemoteEndpoint();
+    const auto address = s->GetRemoteEndpoint();
     if (m_Pending.count(address) >= MaxSessionsPerEndpoint)
       return false;
     m_Pending.emplace(address, s);

@@ -59,12 +59,31 @@ namespace llarp
     class NetworkInterface;
   }
 
+  /// distinct event loop waker uper
+  class EventLoopWakeup
+  {
+   protected:
+    std::function<void()> callback;
+
+   public:
+    EventLoopWakeup(std::function<void()> cb) : callback{cb}
+    {}
+
+    virtual ~EventLoopWakeup() = default;
+
+    /// async wakeup and call callback once
+    virtual void
+    Wakeup() = 0;
+
+    /// end operation
+    virtual void
+    End() = 0;
+  };
+
   // this (nearly!) abstract base class
   // is overriden for each platform
   struct EventLoop
   {
-    byte_t readbuf[EV_READ_BUF_SZ] = {0};
-
     virtual bool
     init() = 0;
 
@@ -127,6 +146,10 @@ namespace llarp
 
     virtual void
     deregister_poll_fd_readable(int fd) = 0;
+
+    /// make an event loop waker on this event loop
+    virtual EventLoopWakeup*
+    make_event_loop_waker(std::function<void()> callback) = 0;
   };
 }  // namespace llarp
 #endif

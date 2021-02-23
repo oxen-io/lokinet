@@ -174,7 +174,8 @@ namespace llarp
   {
     // explicit route pokes for first hops
     m_Router->ForEachPeer(
-        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().toIP()); }, false);
+        [&](auto session, auto) mutable { AddRoute(session->GetRemoteEndpoint().asIPv4()); },
+        false);
     // add default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     net::AddDefaultRouteViaInterface(ep->GetIfName());
@@ -185,7 +186,8 @@ namespace llarp
   {
     // unpoke routes for first hops
     m_Router->ForEachPeer(
-        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint().toIP()); }, false);
+        [&](auto session, auto) mutable { DelRoute(session->GetRemoteEndpoint().asIPv4()); },
+        false);
     // remove default route
     const auto ep = m_Router->hiddenServiceContext().GetDefault();
     net::DelDefaultRouteViaInterface(ep->GetIfName());
