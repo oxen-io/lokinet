@@ -44,7 +44,7 @@ namespace llarp
     IpAddress
     toIpAddress() const;
 
-    /// Updates our ip and port to reflact that of the given SockAddr
+    /// Updates our ip and port to reflect that of the given SockAddr
     void
     fromSockAddr(const SockAddr& address);
 

@@ -7,7 +7,7 @@
 #include <crypto/types.hpp>
 #include <link/server.hpp>
 #include <config/key_manager.hpp>
-#include <util/thread/queue.hpp>
+
 #include <memory>
 
 #include <ev/ev.hpp>
