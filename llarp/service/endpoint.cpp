@@ -345,6 +345,25 @@ namespace llarp
       itr->second.lastUsed = Now();
     }
 
+    size_t
+    Endpoint::RemoveAllConvoTagsFor(service::Address remote)
+    {
+      size_t removed = 0;
+      auto& sessions = Sessions();
+      auto itr = sessions.begin();
+      while (itr != sessions.end())
+      {
+        if (itr->second.remote.Addr() == remote)
+        {
+          itr = sessions.erase(itr);
+          removed++;
+        }
+        else
+          ++itr;
+      }
+      return removed;
+    }
+
     bool
     Endpoint::GetSenderFor(const ConvoTag& tag, ServiceInfo& si) const
     {
