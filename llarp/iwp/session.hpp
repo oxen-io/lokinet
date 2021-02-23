@@ -10,6 +10,8 @@
 #include <deque>
 #include <queue>
 
+#include <util/thread/queue.hpp>
+
 namespace llarp
 {
   namespace iwp
