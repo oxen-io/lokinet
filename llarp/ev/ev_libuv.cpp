@@ -60,12 +60,6 @@ namespace libuv
     {
       uv_async_send(&m_Impl);
     }
-
-    bool
-    operator<(const UVWakeup& other) const
-    {
-      return m_Idx < other.m_Idx;
-    }
   };
 
   struct ticker_glue : public glue
