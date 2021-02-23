@@ -472,7 +472,8 @@ namespace llarp
     transport_keyfile = m_keyManager->m_transportKeyPath;
     ident_keyfile = m_keyManager->m_idKeyPath;
 
-    _ourAddress = conf.router.m_publicAddress.createSockAddr();
+    if (not conf.router.m_publicAddress.isEmpty())
+      _ourAddress = conf.router.m_publicAddress.createSockAddr();
 
     RouterContact::BlockBogons = conf.router.m_blockBogons;
 
