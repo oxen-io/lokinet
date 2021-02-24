@@ -34,23 +34,8 @@ namespace llarp::service
   uint64_t
   AuthResultCodeAsInt(AuthResultCode code)
   {
-    switch (code)
-    {
-      case AuthResultCode::eAuthAccepted:
-        return 0;
-      case AuthResultCode::eAuthRejected:
-        return 1;
-      case AuthResultCode::eAuthFailed:
-        return 2;
-      case AuthResultCode::eAuthRateLimit:
-        return 3;
-      case AuthResultCode::eAuthPaymentRequired:
-        return 4;
-      default:
-        return -1;
-    }
+    return static_cast<std::underlying_type_t<AuthResultCode>>(code);
   }
-
   /// may turn an int into an auth result code
   std::optional<AuthResultCode>
   AuthResultCodeFromInt(uint64_t code)

@@ -9,18 +9,18 @@
 namespace llarp::service
 {
   /// authentication status code
-  enum class AuthResultCode
+  enum class AuthResultCode : uint64_t
   {
     /// explicitly accepted
-    eAuthAccepted,
+    eAuthAccepted = 0,
     /// explicitly rejected
-    eAuthRejected,
+    eAuthRejected = 1,
     /// attempt failed
-    eAuthFailed,
+    eAuthFailed = 2,
     /// attempt rate limited
-    eAuthRateLimit,
+    eAuthRateLimit = 3,
     /// need mo munny
-    eAuthPaymentRequired
+    eAuthPaymentRequired = 4
   };
 
   /// turn an auth result code into an int
