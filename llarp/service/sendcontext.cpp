@@ -109,6 +109,21 @@ namespace llarp
     }
 
     void
+    SendContext::AsyncSendAuth(std::function<void(AuthResult)> resultHandler)
+    {
+      const auto maybe = m_Endpoint->MaybeGetAuthInfoForEndpoint(remoteIdent.Addr());
+      if (maybe.has_value())
+      {
+        // send auth message
+        const llarp_buffer_t authdata{maybe->token};
+        AsyncGenIntro(authdata, eProtocolAuth);
+        authResultListener = resultHandler;
+      }
+      else
+        resultHandler({AuthResultCode::eAuthFailed, "no auth for given endpoint"});
+    }
+
+    void
     SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data, ProtocolType protocol)
     {
       if (lastGoodSend != 0s)

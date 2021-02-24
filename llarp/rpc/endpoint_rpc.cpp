@@ -33,32 +33,44 @@ namespace llarp::rpc
         });
   }
 
+  bool
+  EndpointAuthRPC::AsyncAuthPending(service::ConvoTag tag) const
+  {
+    return m_PendingAuths.count(tag) > 0;
+  }
+
   void
   EndpointAuthRPC::AuthenticateAsync(
       std::shared_ptr<llarp::service::ProtocolMessage> msg,
       std::function<void(service::AuthResult)> hook)
   {
+    service::ConvoTag tag = msg->tag;
+    m_PendingAuths.insert(tag);
     const auto from = msg->sender.Addr();
-    auto reply = [logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
-      logic->Call([hook, result]() { hook(result); });
-    };
+    auto reply =
+        [self = this, tag, logic = m_Endpoint->RouterLogic(), hook](service::AuthResult result) {
+          logic->Call([self, hook, result, tag]() {
+            self->m_PendingAuths.erase(tag);
+            hook(result);
+          });
+        };
     if (m_AuthWhitelist.count(from))
     {
       // explicitly whitelisted source
-      reply(service::AuthResult::eAuthAccepted);
+      reply({service::AuthResultCode::eAuthAccepted, "explicitly whitelisted"});
       return;
     }
     if (not m_Conn.has_value())
     {
       // we don't have a connection to the backend so it's failed
-      reply(service::AuthResult::eAuthFailed);
+      reply({service::AuthResultCode::eAuthFailed, "remote has no connection to auth backend"});
       return;
     }
 
     if (msg->proto != llarp::service::eProtocolAuth)
     {
       // not an auth message, reject
-      reply(service::AuthResult::eAuthRejected);
+      reply({service::AuthResultCode::eAuthRejected, "protocol error"});
       return;
     }
 
@@ -70,13 +82,20 @@ namespace llarp::rpc
         *m_Conn,
         m_AuthMethod,
         [self = shared_from_this(), reply](bool success, std::vector<std::string> data) {
-          service::AuthResult result = service::AuthResult::eAuthFailed;
+          service::AuthResult result{service::AuthResultCode::eAuthFailed, "no reason given"};
           if (success and not data.empty())
           {
-            const auto maybe = service::ParseAuthResult(data[0]);
-            if (maybe.has_value())
+            if (const auto maybe = service::ParseAuthResultCode(data[0]))
             {
-              result = *maybe;
+              result.code = *maybe;
+            }
+            if (result.code == service::AuthResultCode::eAuthAccepted)
+            {
+              result.reason = "OK";
+            }
+            if (data.size() > 1)
+            {
+              result.reason = data[1];
             }
           }
           reply(result);

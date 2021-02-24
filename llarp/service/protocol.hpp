@@ -130,7 +130,8 @@ namespace llarp
           std::shared_ptr<Logic> logic,
           path::Path_ptr fromPath,
           const Identity& localIdent,
-          Endpoint* handler) const;
+          Endpoint* handler,
+          std::function<void(std::shared_ptr<ProtocolMessage>)> hook = nullptr) const;
 
       bool
       DecryptPayloadInto(const SharedSecret& sharedkey, ProtocolMessage& into) const;

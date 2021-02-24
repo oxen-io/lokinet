@@ -8,8 +8,8 @@
 
 namespace llarp::service
 {
-  /// authentication status
-  enum AuthResult
+  /// authentication status code
+  enum class AuthResultCode : uint64_t
   {
     /// explicitly accepted
     eAuthAccepted = 0,
@@ -23,9 +23,24 @@ namespace llarp::service
     eAuthPaymentRequired = 4
   };
 
+  /// turn an auth result code into an int
+  uint64_t
+  AuthResultCodeAsInt(AuthResultCode code);
+
+  /// may turn an int into an auth result code
+  std::optional<AuthResultCode>
+  AuthResultCodeFromInt(uint64_t code);
+
+  /// auth result object with code and reason
+  struct AuthResult
+  {
+    AuthResultCode code;
+    std::string reason;
+  };
+
   /// maybe get auth result from string
-  std::optional<AuthResult>
-  ParseAuthResult(std::string data);
+  std::optional<AuthResultCode>
+  ParseAuthResultCode(std::string data);
 
   struct IAuthPolicy
   {
@@ -35,8 +50,11 @@ namespace llarp::service
     /// result later
     virtual void
     AuthenticateAsync(
-        std::shared_ptr<llarp::service::ProtocolMessage> msg,
-        std::function<void(AuthResult)> hook) = 0;
+        std::shared_ptr<ProtocolMessage> msg, std::function<void(AuthResult)> hook) = 0;
+
+    /// return true if we are asynchronously processing authentication on this convotag
+    virtual bool
+    AsyncAuthPending(ConvoTag tag) const = 0;
   };
 
   /// info needed by clients in order to authenticate to a remote endpoint

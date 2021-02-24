@@ -1054,30 +1054,69 @@ namespace llarp
     {
       if (m_AuthPolicy)
       {
-        m_AuthPolicy->AuthenticateAsync(std::move(msg), std::move(hook));
+        if (not m_AuthPolicy->AsyncAuthPending(msg->tag))
+        {
+          // do 1 authentication attempt and drop everything else
+          m_AuthPolicy->AuthenticateAsync(std::move(msg), std::move(hook));
+        }
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook(AuthResult::eAuthAccepted); });
+        RouterLogic()->Call([hook]() { hook({AuthResultCode::eAuthAccepted, "OK"}); });
       }
     }
 
     void
-    Endpoint::SendAuthReject(
+    Endpoint::SendAuthResult(
         path::Path_ptr path, PathID_t replyPath, ConvoTag tag, AuthResult result)
     {
-      if (result == AuthResult::eAuthAccepted)
+      // this should not run if we have no auth policy
+      if (m_AuthPolicy == nullptr)
         return;
       ProtocolFrame f;
-      f.R = result;
+      f.R = AuthResultCodeAsInt(result.code);
       f.T = tag;
       f.F = path->intro.pathID;
-
-      if (f.Sign(m_Identity))
+      if (result.code == AuthResultCode::eAuthAccepted)
       {
-        m_SendQueue.tryPushBack(
-            SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, replyPath), path});
+        ProtocolMessage msg;
+
+        std::vector<byte_t> reason{};
+        reason.resize(result.reason.size());
+        std::copy_n(result.reason.c_str(), reason.size(), reason.data());
+
+        msg.PutBuffer(reason);
+        f.N.Randomize();
+        f.C.Zero();
+        msg.proto = eProtocolAuth;
+        if (not GetReplyIntroFor(tag, msg.introReply))
+        {
+          LogError("Failed to send auth reply: no reply intro");
+          return;
+        }
+        msg.sender = m_Identity.pub;
+        SharedSecret sessionKey{};
+        if (not GetCachedSessionKeyFor(tag, sessionKey))
+        {
+          LogError("failed to send auth reply: no cached session key");
+          return;
+        }
+        if (not f.EncryptAndSign(msg, sessionKey, m_Identity))
+        {
+          LogError("Failed to encrypt and sign auth reply");
+          return;
+        }
       }
+      else
+      {
+        if (not f.Sign(m_Identity))
+        {
+          LogError("failed to sign auth reply result");
+          return;
+        }
+      }
+      m_SendQueue.tryPushBack(
+          SendEvent_t{std::make_shared<const routing::PathTransferMessage>(f, replyPath), path});
     }
 
     void

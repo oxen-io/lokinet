@@ -33,6 +33,9 @@ namespace llarp::rpc
         std::shared_ptr<llarp::service::ProtocolMessage> msg,
         std::function<void(service::AuthResult)> hook) override;
 
+    bool
+    AsyncAuthPending(service::ConvoTag tag) const override;
+
    private:
     const std::string m_AuthURL;
     const std::string m_AuthMethod;
@@ -40,5 +43,6 @@ namespace llarp::rpc
     LMQ_ptr m_LMQ;
     Endpoint_ptr m_Endpoint;
     std::optional<oxenmq::ConnectionID> m_Conn;
+    std::unordered_set<service::ConvoTag> m_PendingAuths;
   };
 }  // namespace llarp::rpc

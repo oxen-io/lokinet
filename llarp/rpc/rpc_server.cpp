@@ -6,6 +6,7 @@
 #include <net/ip_range.hpp>
 #include <net/route.hpp>
 #include <service/context.hpp>
+#include <service/outbound_context.hpp>
 #include <service/auth.hpp>
 #include <service/name.hpp>
 #include <router/abstractrouter.hpp>
@@ -120,7 +121,7 @@ namespace llarp::rpc
             })
         .add_request_command(
             "endpoint",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
                 if (r->IsServiceNode())
                 {
@@ -247,20 +248,38 @@ namespace llarp::rpc
                       {
                         auto mapExit = [=](service::Address addr) mutable {
                           ep->MapExitRange(range, addr);
+                          bool shouldSendAuth = false;
                           if (token.has_value())
                           {
+                            shouldSendAuth = true;
                             ep->SetAuthInfoForEndpoint(*exit, service::AuthInfo{*token});
                           }
                           ep->EnsurePathToService(
                               addr,
-                              [reply, ep, r](auto, service::OutboundContext* ctx) {
+                              [reply, r, shouldSendAuth](auto, service::OutboundContext* ctx) {
                                 if (ctx == nullptr)
                                 {
                                   reply(CreateJSONError("could not find exit"));
                                   return;
                                 }
-                                r->routePoker().Up();
-                                reply(CreateJSONResponse("OK"));
+                                auto onGoodResult = [r, reply](std::string reason) {
+                                  r->routePoker().Up();
+                                  reply(CreateJSONResponse(reason));
+                                };
+                                if (not shouldSendAuth)
+                                {
+                                  onGoodResult("OK");
+                                  return;
+                                }
+                                ctx->AsyncSendAuth(
+                                    [onGoodResult, reply](service::AuthResult result) {
+                                      if (result.code != service::AuthResultCode::eAuthAccepted)
+                                      {
+                                        reply(CreateJSONError(result.reason));
+                                        return;
+                                      }
+                                      onGoodResult(result.reason);
+                                    });
                               },
                               5s);
                         };
