@@ -121,7 +121,7 @@ namespace llarp::rpc
             })
         .add_request_command(
             "endpoint",
-            [&](lokimq::Message& msg) {
+            [&](oxenmq::Message& msg) {
               HandleJSONRequest(msg, [r = m_Router](nlohmann::json obj, ReplyFunction_t reply) {
                 if (r->IsServiceNode())
                 {
