@@ -599,7 +599,7 @@ namespace llarp
     (void)addr;
     return false;
 #else
-    if (!ipv6_is_siit(addr))
+    if (!ipv6_is_mapped_ipv4(addr))
     {
       static in6_addr zero = {};
       if (addr == zero)
