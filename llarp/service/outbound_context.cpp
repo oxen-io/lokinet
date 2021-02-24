@@ -539,26 +539,42 @@ namespace llarp
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);
+
+        AuthResult result{eAuthFailed, "unknown reason"};
+
+        SharedSecret sessionKey{};
+        if (m_DataHandler->GetCachedSessionKeyFor(frame.T, sessionKey))
+        {
+          ProtocolMessage msg{};
+          if (frame.DecryptPayloadInto(sessionKey, msg))
+          {
+            if (msg.proto == eProtocolAuth and not msg.payload.empty())
+            {
+              result.reason = std::string{reinterpret_cast<const char*>(msg.payload.data()),
+                                          msg.payload.size()};
+            }
+          }
+        }
+
         m_Endpoint->RemoveConvoTag(frame.T);
         if (authResultListener)
         {
           switch (frame.R)
           {
             case 1:
-              authResultListener(eAuthRejected);
-              break;
-            case 2:
-              authResultListener(eAuthFailed);
+              result.code = eAuthRejected;
               break;
             case 3:
-              authResultListener(eAuthRateLimit);
+              result.code = eAuthRateLimit;
               break;
             case 4:
-              authResultListener(eAuthPaymentRequired);
+              result.code = eAuthPaymentRequired;
               break;
             default:
-              authResultListener(eAuthFailed);
+              result.code = eAuthFailed;
+              break;
           }
+          authResultListener(result);
           authResultListener = nullptr;
         }
         return true;
@@ -568,7 +584,15 @@ namespace llarp
       {
         std::function<void(AuthResult)> handler = authResultListener;
         authResultListener = nullptr;
-        hook = [handler](std::shared_ptr<ProtocolMessage>) { handler(AuthResult::eAuthAccepted); };
+        hook = [handler](std::shared_ptr<ProtocolMessage> msg) {
+          AuthResult result{AuthResultCode::eAuthAccepted, "OK"};
+          if (msg->proto == eProtocolAuth and not msg->payload.empty())
+          {
+            result.reason = std::string{reinterpret_cast<const char*>(msg->payload.data()),
+                                        msg->payload.size()};
+          }
+          handler(result);
+        };
       }
       const auto& ident = m_Endpoint->GetIdentity();
       if (not frame.AsyncDecryptAndVerify(m_Endpoint->EndpointLogic(), p, ident, m_Endpoint, hook))

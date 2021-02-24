@@ -8,8 +8,8 @@
 
 namespace llarp::service
 {
-  /// authentication status
-  enum AuthResult
+  /// authentication status code
+  enum AuthResultCode
   {
     /// explicitly accepted
     eAuthAccepted = 0,
@@ -23,12 +23,16 @@ namespace llarp::service
     eAuthPaymentRequired = 4
   };
 
-  std::string
-  AuthResultDescription(AuthResult result);
+  /// auth result object with code and reason
+  struct AuthResult
+  {
+    AuthResultCode code;
+    std::string reason;
+  };
 
   /// maybe get auth result from string
-  std::optional<AuthResult>
-  ParseAuthResult(std::string data);
+  std::optional<AuthResultCode>
+  ParseAuthResultCode(std::string data);
 
   struct IAuthPolicy
   {

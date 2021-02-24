@@ -262,25 +262,23 @@ namespace llarp::rpc
                                   reply(CreateJSONError("could not find exit"));
                                   return;
                                 }
-                                auto onGoodResult = [r, reply]() {
+                                auto onGoodResult = [r, reply](std::string reason) {
                                   r->routePoker().Up();
-                                  reply(CreateJSONResponse("OK"));
+                                  reply(CreateJSONResponse(reason));
                                 };
                                 if (not shouldSendAuth)
                                 {
-                                  onGoodResult();
+                                  onGoodResult("OK");
                                   return;
                                 }
                                 ctx->AsyncSendAuth(
                                     [onGoodResult, reply](service::AuthResult result) {
-                                      if (result != service::AuthResult::eAuthAccepted)
+                                      if (result.code != service::AuthResultCode::eAuthAccepted)
                                       {
-                                        reply(CreateJSONError(
-                                            "authentication failed: "
-                                            + service::AuthResultDescription(result)));
+                                        reply(CreateJSONError(result.reason));
                                         return;
                                       }
-                                      onGoodResult();
+                                      onGoodResult(result.reason);
                                     });
                               },
                               5s);

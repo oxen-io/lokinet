@@ -366,7 +366,7 @@ namespace llarp
             msg,
             [path, msg, from, handler = self->handler, fromIntro = self->fromIntro, sharedKey](
                 AuthResult result) {
-              if (result == AuthResult::eAuthAccepted)
+              if (result.code == AuthResultCode::eAuthAccepted)
               {
                 handler->PutIntroFor(msg->tag, msg->introReply);
                 handler->PutReplyIntroFor(msg->tag, fromIntro);

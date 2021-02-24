@@ -115,12 +115,12 @@ namespace llarp
       if (maybe.has_value())
       {
         // send auth message
-        const llarp_buffer_t authdata(maybe->token);
+        const llarp_buffer_t authdata{maybe->token};
         AsyncGenIntro(authdata, eProtocolAuth);
         authResultListener = resultHandler;
       }
       else
-        resultHandler(AuthResult::eAuthFailed);
+        resultHandler({AuthResultCode::eAuthFailed, "no auth for given endpoint"});
     }
 
     void

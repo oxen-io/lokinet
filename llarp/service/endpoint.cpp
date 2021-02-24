@@ -1062,7 +1062,7 @@ namespace llarp
       }
       else
       {
-        RouterLogic()->Call([hook]() { hook(AuthResult::eAuthAccepted); });
+        RouterLogic()->Call([hook]() { hook({AuthResultCode::eAuthAccepted, "OK"}); });
       }
     }
 
@@ -1074,14 +1074,18 @@ namespace llarp
       if (m_AuthPolicy == nullptr)
         return;
       ProtocolFrame f;
-      f.R = result;
+      f.R = result.code;
       f.T = tag;
       f.F = path->intro.pathID;
-      if (result == AuthResult::eAuthAccepted)
+      if (result.code == AuthResultCode::eAuthAccepted)
       {
         ProtocolMessage msg;
-        std::array<byte_t, 2> tmp{'d', 'e'};
-        msg.PutBuffer(tmp);
+
+        std::vector<byte_t> reason{};
+        reason.resize(result.reason.size());
+        std::copy_n(result.reason.c_str(), reason.size(), reason.data());
+
+        msg.PutBuffer(reason);
         f.N.Randomize();
         f.C.Zero();
         msg.proto = eProtocolAuth;
