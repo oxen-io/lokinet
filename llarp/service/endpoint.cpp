@@ -1074,7 +1074,7 @@ namespace llarp
       if (m_AuthPolicy == nullptr)
         return;
       ProtocolFrame f;
-      f.R = result.code;
+      f.R = AuthResultCodeAsInt(result.code);
       f.T = tag;
       f.F = path->intro.pathID;
       if (result.code == AuthResultCode::eAuthAccepted)

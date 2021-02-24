@@ -540,8 +540,9 @@ namespace llarp
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);
 
-        AuthResult result{eAuthFailed, "unknown reason"};
-
+        AuthResult result{AuthResultCode::eAuthFailed, "unknown reason"};
+        if (const auto maybe = AuthResultCodeFromInt(frame.R))
+          result.code = *maybe;
         SharedSecret sessionKey{};
         if (m_DataHandler->GetCachedSessionKeyFor(frame.T, sessionKey))
         {
@@ -559,21 +560,6 @@ namespace llarp
         m_Endpoint->RemoveConvoTag(frame.T);
         if (authResultListener)
         {
-          switch (frame.R)
-          {
-            case 1:
-              result.code = eAuthRejected;
-              break;
-            case 3:
-              result.code = eAuthRateLimit;
-              break;
-            case 4:
-              result.code = eAuthPaymentRequired;
-              break;
-            default:
-              result.code = eAuthFailed;
-              break;
-          }
           authResultListener(result);
           authResultListener = nullptr;
         }

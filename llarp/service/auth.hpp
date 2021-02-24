@@ -9,19 +9,27 @@
 namespace llarp::service
 {
   /// authentication status code
-  enum AuthResultCode
+  enum class AuthResultCode
   {
     /// explicitly accepted
-    eAuthAccepted = 0,
+    eAuthAccepted,
     /// explicitly rejected
-    eAuthRejected = 1,
+    eAuthRejected,
     /// attempt failed
-    eAuthFailed = 2,
+    eAuthFailed,
     /// attempt rate limited
-    eAuthRateLimit = 3,
+    eAuthRateLimit,
     /// need mo munny
-    eAuthPaymentRequired = 4
+    eAuthPaymentRequired
   };
+
+  /// turn an auth result code into an int
+  uint64_t
+  AuthResultCodeAsInt(AuthResultCode code);
+
+  /// may turn an int into an auth result code
+  std::optional<AuthResultCode>
+  AuthResultCodeFromInt(uint64_t code);
 
   /// auth result object with code and reason
   struct AuthResult
