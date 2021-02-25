@@ -164,7 +164,7 @@ endif()
 
 option(FORCE_OXENMQ_SUBMODULE "force using oxenmq submodule" OFF)
 if(NOT FORCE_OXENMQ_SUBMODULE)
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.2)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.4)
 endif()
 if(OXENMQ_FOUND)
   add_library(oxenmq INTERFACE)
