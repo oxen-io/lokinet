@@ -20,12 +20,12 @@ namespace llarp
       return IPRange{net::ExpandV4(ipaddr_ipv4_bits(a, b, c, d)), netmask_ipv6_bits(mask + 96)};
     }
 
-    /// return true if this iprange is in the IPv4 mapping range for containing ipv4 addresses
+    /// return true if this iprange is in the SIIT range for containing ipv4 addresses
     constexpr bool
     IsV4() const
     {
-      constexpr auto ipv4_map = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
-      return ipv4_map.Contains(addr);
+      constexpr auto siit = IPRange{huint128_t{0x0000'ffff'0000'0000UL}, netmask_ipv6_bits(96)};
+      return siit.Contains(addr);
     }
 
     /// return the number of bits set in the hostmask

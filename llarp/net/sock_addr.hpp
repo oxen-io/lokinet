@@ -30,7 +30,6 @@ namespace llarp
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
     SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
     SockAddr(std::string_view addr);
-    SockAddr(std::string_view addr, uint16_t port);
 
     SockAddr(const AddressInfo&);
 
@@ -65,7 +64,7 @@ namespace llarp
     operator==(const SockAddr& other) const;
 
     void
-    fromString(std::string_view str, bool allow_port = true);
+    fromString(std::string_view str);
 
     std::string
     toString() const;
@@ -114,7 +113,7 @@ namespace llarp
     init();
 
     void
-    applyIPv4MapBytes();
+    applySIITBytes();
   };
 
   std::ostream&

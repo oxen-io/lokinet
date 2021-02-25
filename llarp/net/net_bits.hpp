@@ -37,15 +37,12 @@ namespace llarp
     return huint32_t{(d) | (c << 8) | (b << 16) | (a << 24)};
   }
 
-  // IPv4 mapped address live at ::ffff:0:0/96
-  constexpr std::array<uint8_t, 12> ipv4_map_prefix{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff};
-
   constexpr bool
-  ipv6_is_mapped_ipv4(const in6_addr& addr)
+  ipv6_is_siit(const in6_addr& addr)
   {
-    for (size_t i = 0; i < ipv4_map_prefix.size(); i++)
-      if (addr.s6_addr[i] != ipv4_map_prefix[i])
-        return false;
-    return true;
+    return addr.s6_addr[11] == 0xff && addr.s6_addr[10] == 0xff && addr.s6_addr[9] == 0
+        && addr.s6_addr[8] == 0 && addr.s6_addr[7] == 0 && addr.s6_addr[6] == 0
+        && addr.s6_addr[5] == 0 && addr.s6_addr[4] == 0 && addr.s6_addr[3] == 0
+        && addr.s6_addr[2] == 0 && addr.s6_addr[1] == 0 && addr.s6_addr[0] == 0;
   }
 }  // namespace llarp

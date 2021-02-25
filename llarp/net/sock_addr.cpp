@@ -19,6 +19,10 @@ namespace llarp
   /// shared utility functions
   ///
 
+  constexpr auto addrIsV4 = [](const in6_addr& addr) -> bool {
+    return addr.s6_addr[10] == 0xff and addr.s6_addr[11] == 0xff;
+  };
+
   void
   SockAddr::init()
   {
@@ -27,9 +31,13 @@ namespace llarp
   }
 
   void
-  SockAddr::applyIPv4MapBytes()
+  SockAddr::applySIITBytes()
   {
-    std::memcpy(m_addr.sin6_addr.s6_addr, ipv4_map_prefix.data(), ipv4_map_prefix.size());
+    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
+
+    // SIIT == Stateless IP/ICMP Translation (represent IPv4 with IPv6)
+    ip6[10] = 0xff;
+    ip6[11] = 0xff;
   }
 
   SockAddr::SockAddr()
@@ -44,20 +52,15 @@ namespace llarp
   }
 
   SockAddr::SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port)
-      : SockAddr{a, b, c, d}
   {
+    init();
+    setIPv4(a, b, c, d);
     setPort(port);
   }
   SockAddr::SockAddr(std::string_view addr)
   {
     init();
     fromString(addr);
-  }
-  SockAddr::SockAddr(std::string_view addr, uint16_t port)
-  {
-    init();
-    setPort(port);
-    fromString(addr, false);
   }
 
   SockAddr::SockAddr(const AddressInfo& info) : SockAddr{info.ip}
@@ -86,9 +89,9 @@ namespace llarp
   SockAddr::operator=(const sockaddr& other)
   {
     if (other.sa_family == AF_INET6)
-      *this = reinterpret_cast<const sockaddr_in6&>(other);
+      *this = (const sockaddr_in6&)other;
     else if (other.sa_family == AF_INET)
-      *this = reinterpret_cast<const sockaddr_in&>(other);
+      *this = (const sockaddr_in&)other;
     else
       throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
 
@@ -104,7 +107,7 @@ namespace llarp
   SockAddr::operator=(const sockaddr_in& other)
   {
     init();
-    applyIPv4MapBytes();
+    applySIITBytes();
 
     // avoid byte order conversion (this is NBO -> NBO)
     memcpy(m_addr.sin6_addr.s6_addr + 12, &other.sin_addr.s_addr, sizeof(in_addr));
@@ -127,7 +130,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
-    if (ipv6_is_mapped_ipv4(other.sin6_addr))
+    if (addrIsV4(other.sin6_addr))
       setIPv4(
           other.sin6_addr.s6_addr[12],
           other.sin6_addr.s6_addr[13],
@@ -150,7 +153,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
-    if (ipv6_is_mapped_ipv4(other))
+    if (addrIsV4(other))
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
     m_empty = false;
 
@@ -199,7 +202,7 @@ namespace llarp
   }
 
   void
-  SockAddr::fromString(std::string_view str, bool allow_port)
+  SockAddr::fromString(std::string_view str)
   {
     if (str.empty())
     {
@@ -230,19 +233,33 @@ namespace llarp
     if (ipSplits.size() != 4)
       throw std::invalid_argument(stringify(str, " is not a valid IPv4 address"));
 
-    std::array<uint8_t, 4> ipBytes;
+    uint8_t ipBytes[4] = {0};
+
     for (int i = 0; i < 4; ++i)
-      if (not parse_int(ipSplits[i], ipBytes[i]))
-        throw std::runtime_error(stringify(str, " contains invalid numeric value"));
+    {
+      auto byteStr = ipSplits[i];
+      auto result = std::from_chars(byteStr.data(), byteStr.data() + byteStr.size(), ipBytes[i]);
+
+      if (result.ec != std::errc())
+        throw std::runtime_error(stringify(str, " contains invalid number"));
+
+      if (result.ptr != (byteStr.data() + byteStr.size()))
+        throw std::runtime_error(stringify(str, " contains non-numeric values"));
+    }
 
     // attempt port before setting IPv4 bytes
     if (splits.size() == 2)
     {
-      if (not allow_port)
-        throw std::runtime_error{stringify("invalid ip address (port not allowed here): ", str)};
-      uint16_t port;
-      if (not parse_int(splits[1], port))
-        throw std::runtime_error{stringify(splits[1], " is not a valid port")};
+      uint16_t port = 0;
+      auto portStr = splits[1];
+      auto result = std::from_chars(portStr.data(), portStr.data() + portStr.size(), port);
+
+      if (result.ec != std::errc())
+        throw std::runtime_error(stringify(str, " contains invalid port"));
+
+      if (result.ptr != (portStr.data() + portStr.size()))
+        throw std::runtime_error(stringify(str, " contains junk after port"));
+
       setPort(port);
     }
 
@@ -261,7 +278,7 @@ namespace llarp
 
     if (ip6[10] == 0xff and ip6[11] == 0xff)
     {
-      // handle IPv4 mapped addrs
+      // treat SIIT like IPv4
       constexpr auto MaxIPv4PlusPortStringSize = 22;
       str.reserve(MaxIPv4PlusPortStringSize);
       char buf[128] = {0x0};
@@ -300,7 +317,7 @@ namespace llarp
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
 
-    applyIPv4MapBytes();
+    applySIITBytes();
 
     ip6[12] = a;
     ip6[13] = b;
