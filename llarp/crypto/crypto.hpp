@@ -151,6 +151,30 @@ namespace llarp
     }
   };
 
+  /// rng type that uses llarp::randint(), which is cryptographically secure
+  struct CSRNG
+  {
+    using result_type = uint64_t;
+
+    static constexpr uint64_t
+    min()
+    {
+      return std::numeric_limits<uint64_t>::min();
+    };
+
+    static constexpr uint64_t
+    max()
+    {
+      return std::numeric_limits<uint64_t>::max();
+    };
+
+    uint64_t
+    operator()()
+    {
+      return llarp::randint();
+    };
+  };
+
 }  // namespace llarp
 
 #endif

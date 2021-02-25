@@ -16,7 +16,6 @@
 #include <unordered_map>
 #include <utility>
 #include <atomic>
-#include <random>
 #include <algorithm>
 
 namespace llarp
@@ -96,7 +95,7 @@ namespace llarp
       for (const auto& entry : m_Entries)
         entries.push_back(&entry);
 
-      std::shuffle(entries.begin(), entries.end(), std::mt19937_64{llarp::randint()});
+      std::shuffle(entries.begin(), entries.end(), llarp::CSRNG{});
 
       for (const auto entry : entries)
       {
