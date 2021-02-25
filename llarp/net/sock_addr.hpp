@@ -113,7 +113,7 @@ namespace llarp
     init();
 
     void
-    applySIITBytes();
+    applyIPv4MapBytes();
   };
 
   std::ostream&

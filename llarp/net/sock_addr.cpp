@@ -19,10 +19,6 @@ namespace llarp
   /// shared utility functions
   ///
 
-  constexpr auto addrIsV4 = [](const in6_addr& addr) -> bool {
-    return addr.s6_addr[10] == 0xff and addr.s6_addr[11] == 0xff;
-  };
-
   void
   SockAddr::init()
   {
@@ -31,13 +27,9 @@ namespace llarp
   }
 
   void
-  SockAddr::applySIITBytes()
+  SockAddr::applyIPv4MapBytes()
   {
-    uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
-
-    // SIIT == Stateless IP/ICMP Translation (represent IPv4 with IPv6)
-    ip6[10] = 0xff;
-    ip6[11] = 0xff;
+    std::memcpy(m_addr.sin6_addr.s6_addr, ipv4_map_prefix.data(), ipv4_map_prefix.size());
   }
 
   SockAddr::SockAddr()
@@ -52,9 +44,8 @@ namespace llarp
   }
 
   SockAddr::SockAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port)
+      : SockAddr{a, b, c, d}
   {
-    init();
-    setIPv4(a, b, c, d);
     setPort(port);
   }
   SockAddr::SockAddr(std::string_view addr)
@@ -89,9 +80,9 @@ namespace llarp
   SockAddr::operator=(const sockaddr& other)
   {
     if (other.sa_family == AF_INET6)
-      *this = (const sockaddr_in6&)other;
+      *this = reinterpret_cast<const sockaddr_in6&>(other);
     else if (other.sa_family == AF_INET)
-      *this = (const sockaddr_in&)other;
+      *this = reinterpret_cast<const sockaddr_in&>(other);
     else
       throw std::invalid_argument("Invalid sockaddr (not AF_INET or AF_INET6)");
 
@@ -107,7 +98,7 @@ namespace llarp
   SockAddr::operator=(const sockaddr_in& other)
   {
     init();
-    applySIITBytes();
+    applyIPv4MapBytes();
 
     // avoid byte order conversion (this is NBO -> NBO)
     memcpy(m_addr.sin6_addr.s6_addr + 12, &other.sin_addr.s_addr, sizeof(in_addr));
@@ -130,7 +121,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr, &other, sizeof(sockaddr_in6));
-    if (addrIsV4(other.sin6_addr))
+    if (ipv6_is_mapped_ipv4(other.sin6_addr))
       setIPv4(
           other.sin6_addr.s6_addr[12],
           other.sin6_addr.s6_addr[13],
@@ -153,7 +144,7 @@ namespace llarp
     init();
 
     memcpy(&m_addr.sin6_addr.s6_addr, &other.s6_addr, sizeof(m_addr.sin6_addr.s6_addr));
-    if (addrIsV4(other))
+    if (ipv6_is_mapped_ipv4(other))
       setIPv4(other.s6_addr[12], other.s6_addr[13], other.s6_addr[14], other.s6_addr[15]);
     m_empty = false;
 
@@ -278,7 +269,7 @@ namespace llarp
 
     if (ip6[10] == 0xff and ip6[11] == 0xff)
     {
-      // treat SIIT like IPv4
+      // handle IPv4 mapped addrs
       constexpr auto MaxIPv4PlusPortStringSize = 22;
       str.reserve(MaxIPv4PlusPortStringSize);
       char buf[128] = {0x0};
@@ -317,7 +308,7 @@ namespace llarp
     uint8_t* ip6 = m_addr.sin6_addr.s6_addr;
     llarp::Zero(ip6, sizeof(m_addr.sin6_addr.s6_addr));
 
-    applySIITBytes();
+    applyIPv4MapBytes();
 
     ip6[12] = a;
     ip6[13] = b;
