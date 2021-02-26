@@ -94,8 +94,9 @@ llarp_buffer_t::read_uint64(uint64_t& i)
 }
 
 size_t
-llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
+llarp_buffer_t::read_until(char c_delim, byte_t* result, size_t resultsize)
 {
+  const auto delim = static_cast<byte_t>(c_delim);
   size_t read = 0;
 
   // do the bound check first, to avoid over running
@@ -115,8 +116,9 @@ llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
 }
 
 bool
-operator==(const llarp_buffer_t& buff, const char* str)
+operator==(const llarp_buffer_t& buff, const char* c_str)
 {
+  const auto* str = reinterpret_cast<const byte_t*>(c_str);
   ManagedBuffer copy{buff};
   while (*str && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {
