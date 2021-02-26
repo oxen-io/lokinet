@@ -2,7 +2,7 @@ local default_deps_base='libsystemd-dev python3-dev libuv1-dev libunbound-dev ne
 local default_deps_nocxx='libsodium-dev ' + default_deps_base; // libsodium-dev needs to be >= 1.0.18
 local default_deps='g++ ' + default_deps_nocxx; // g++ sometimes needs replacement
 local default_windows_deps='mingw-w64 zip nsis';
-
+local docker_base = 'registry.oxen.rocks/lokinet-ci-';
 
 local submodules = {
     name: 'submodules',
@@ -93,7 +93,6 @@ local windows_cross_pipeline(name, image,
                 'eatmydata ' + apt_get_quiet + ' install -y build-essential cmake git ninja-build pkg-config ccache g++-mingw-w64-x86-64-posix nsis zip automake libtool',
                 'update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix',
                 'update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix',
-                'git clone https://github.com/despair86/libuv.git win32-setup/libuv',
                 'mkdir build',
                 'cd build',
                 'cmake .. -G Ninja -DCMAKE_EXE_LINKER_FLAGS=-fstack-protector -DCMAKE_CXX_FLAGS=-fdiagnostics-color=always -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw'+toolchain+'.cmake -DCMAKE_BUILD_TYPE='+build_type+' ' +
@@ -192,7 +191,7 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
         kind: 'pipeline',
         type: 'docker',
         steps: [{
-            name: 'build', image: 'debian:sid',
+            name: 'build', image: 'registry.oxen.rocks/lokinet-ci-lint',
             commands: [
                 'echo "Building on ${DRONE_STAGE_MACHINE}"',
                 apt_get_quiet + ' update',
@@ -205,10 +204,10 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
     // Various debian builds
     debian_pipeline("Debian sid (amd64)", "debian:sid"),
     debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian sid/clang-11 (amd64)", "debian:sid", deps='clang-11 '+default_deps_nocxx,
+    debian_pipeline("Debian sid/clang-11 (amd64)", docker_base+'debian-sid', deps='clang-11 '+default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 '),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON'),
-    debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
+    debian_pipeline("Ubuntu focal (amd64)", docker_base+'ubuntu-focal'),
     debian_pipeline("Ubuntu bionic (amd64)", "ubuntu:bionic", deps='g++-8 ' + default_deps_nocxx,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8', loki_repo=true),
 
@@ -226,13 +225,13 @@ local mac_builder(name, build_type='Release', werror=true, cmake_extra='', extra
                     ]),
     
     // Windows builds (x64)
-    windows_cross_pipeline("Windows (amd64)", "debian:testing",
+    windows_cross_pipeline("Windows (amd64)", docker_base+'debian-win32-cross',
         toolchain='64', extra_cmds=[
           '../contrib/ci/drone-static-upload.sh'
     ]),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 python3-dev automake libtool', lto=true,
+    debian_pipeline("Static (bionic amd64)", docker_base+'ubuntu-bionic', deps='g++-8 python3-dev automake libtool', lto=true,
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DBUILD_SHARED_LIBS=OFF -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 ' +
                         '-DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=haswell" -DCMAKE_C_FLAGS="-march=x86-64 -mtune=haswell" -DNATIVE_BUILD=OFF ' +
                         '-DWITH_SYSTEMD=OFF',
