@@ -4,38 +4,42 @@
 #include <dht/mock_context.hpp>
 #include <test_util.hpp>
 
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include <catch2/catch.hpp>
 
 using namespace llarp;
 using namespace ::testing;
 
 using test::makeBuf;
 
-struct TestDhtExploreNetworkJob : public ::testing::Test
+struct TestDhtExploreNetworkJob
 {
   RouterID peer;
   test::MockContext context;
   dht::ExploreNetworkJob exploreNetworkJob;
 
-  TestDhtExploreNetworkJob()
-      : peer(makeBuf< RouterID >(0x01)), exploreNetworkJob(peer, &context)
+  TestDhtExploreNetworkJob() : peer(makeBuf<RouterID>(0x01)), exploreNetworkJob(peer, &context)
+  {}
+
+  ~TestDhtExploreNetworkJob()
   {
+    CHECK(Mock::VerifyAndClearExpectations(&context));
   }
 };
 
-TEST_F(TestDhtExploreNetworkJob, validate)
+TEST_CASE_METHOD(TestDhtExploreNetworkJob, "validate", "[dht]")
 {
-  const RouterID other = makeBuf< RouterID >(0x02);
-  ASSERT_TRUE(exploreNetworkJob.Validate(other));
+  const RouterID other = makeBuf<RouterID>(0x02);
+  REQUIRE(exploreNetworkJob.Validate(other));
 }
 
-TEST_F(TestDhtExploreNetworkJob, start)
+TEST_CASE_METHOD(TestDhtExploreNetworkJob, "start", "[dht]")
 {
   // Verify input arguments are passed correctly.
   // The actual logic is inside the `dht::AbstractContext` implementation.
 
-  const auto txKey = makeBuf< dht::Key_t >(0x02);
-  uint64_t txId    = 4;
+  const auto txKey = makeBuf<dht::Key_t>(0x02);
+  uint64_t txId = 4;
 
   dht::TXOwner txOwner(txKey, txId);
 
@@ -47,10 +51,11 @@ TEST_F(TestDhtExploreNetworkJob, start)
   ).Times(1);
   // clang-format off
 
-  ASSERT_NO_THROW(exploreNetworkJob.Start(txOwner));
+  REQUIRE_NOTHROW(exploreNetworkJob.Start(txOwner));
 }
 
-TEST_F(TestDhtExploreNetworkJob, send_reply)
+// TODO: sections?
+TEST_CASE_METHOD(TestDhtExploreNetworkJob, "send_reply", "[dht]")
 {
   // Concerns:
   // - Empty collection
@@ -62,7 +67,7 @@ TEST_F(TestDhtExploreNetworkJob, send_reply)
     EXPECT_CALL(context, LookupRouter(_, _)).Times(0);
     EXPECT_CALL(context, GetRouter()).WillOnce(Return(nullptr));
 
-    ASSERT_NO_THROW(exploreNetworkJob.SendReply());
+    REQUIRE_NOTHROW(exploreNetworkJob.SendReply());
   }
 
   {
@@ -75,7 +80,7 @@ TEST_F(TestDhtExploreNetworkJob, send_reply)
     EXPECT_CALL(context, LookupRouter(Ne(makeBuf<RouterID>(0x01)), _)).Times(2).WillRepeatedly(Return(true));
     EXPECT_CALL(context, LookupRouter(Eq(makeBuf<RouterID>(0x01)), _)).WillOnce(Return(false));
 
-    ASSERT_NO_THROW(exploreNetworkJob.SendReply());
+    REQUIRE_NOTHROW(exploreNetworkJob.SendReply());
   }
 
   {
@@ -87,6 +92,6 @@ TEST_F(TestDhtExploreNetworkJob, send_reply)
     EXPECT_CALL(context, GetRouter()).WillOnce(Return(nullptr));
     EXPECT_CALL(context, LookupRouter(_, _)).Times(3).WillRepeatedly(Return(true));
 
-    ASSERT_NO_THROW(exploreNetworkJob.SendReply());
+    REQUIRE_NOTHROW(exploreNetworkJob.SendReply());
   }
 }

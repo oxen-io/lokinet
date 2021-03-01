@@ -1,10 +1,10 @@
 #include <dht/kademlia.hpp>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 using llarp::dht::Key_t;
 
-using Array = std::array< byte_t, Key_t::SIZE >;
+using Array = std::array<byte_t, Key_t::SIZE>;
 
 struct XorMetricData
 {
@@ -15,34 +15,21 @@ struct XorMetricData
 
   XorMetricData(const Array& u, const Array& l, const Array& r, bool res)
       : us(u), left(l), right(r), result(res)
-  {
-  }
+  {}
 };
 
 std::ostream&
 operator<<(std::ostream& stream, const XorMetricData& x)
 {
-  stream << int(x.us[0]) << " " << int(x.left[0]) << " " << int(x.right[0])
-         << " " << std::boolalpha << x.result;
+  stream << int(x.us[0]) << " " << int(x.left[0]) << " " << int(x.right[0]) << " " << std::boolalpha
+         << x.result;
 
   return stream;
 }
-
-struct XorMetric : public ::testing::TestWithParam< XorMetricData >
-{
-};
-
-TEST_P(XorMetric, test)
-{
-  auto d = GetParam();
-  ASSERT_EQ(llarp::dht::XorMetric{Key_t{d.us}}(Key_t{d.left}, Key_t{d.right}),
-            d.result);
-}
-
-std::vector< XorMetricData >
+std::vector<XorMetricData>
 makeData()
 {
-  std::vector< XorMetricData > result;
+  std::vector<XorMetricData> result;
 
   Array zero;
   zero.fill(0);
@@ -84,5 +71,8 @@ makeData()
   return result;
 }
 
-INSTANTIATE_TEST_SUITE_P(TestDhtXorMetric, XorMetric,
-                         ::testing::ValuesIn(makeData()));
+TEST_CASE("XorMetric", "[dht]")
+{
+  auto d = GENERATE(from_range(makeData()));
+  REQUIRE(llarp::dht::XorMetric{Key_t{d.us}}(Key_t{d.left}, Key_t{d.right}) == d.result);
+}

@@ -1,6 +1,6 @@
 #include <dht/txowner.hpp>
 
-#include <gtest/gtest.h>
+#include <catch2/catch.hpp>
 
 namespace
 {
@@ -13,37 +13,22 @@ namespace
     uint64_t id;
     size_t expectedHash;
 
-    TxOwnerData(const Key_t& k, uint64_t i, size_t h)
-        : node(k), id(i), expectedHash(h)
-    {
-    }
+    TxOwnerData(const Key_t& k, uint64_t i, size_t h) : node(k), id(i), expectedHash(h)
+    {}
   };
 
-  struct TxOwner : public ::testing::TestWithParam< TxOwnerData >
-  {
-  };
-
-  TEST_F(TxOwner, default_construct)
+  TEST_CASE("TxOwner default construct", "[dht]")
   {
     TXOwner dc;
-    ASSERT_TRUE(dc.node.IsZero());
-    ASSERT_EQ(0u, dc.txid);
-    ASSERT_EQ(0u, TXOwner::Hash()(dc));
+    REQUIRE(dc.node.IsZero());
+    REQUIRE(0u == dc.txid);
+    REQUIRE(0u == TXOwner::Hash()(dc));
   }
 
-  TEST_P(TxOwner, hash)
-  {
-    // test single interactions (constructor and hash)
-    auto d = GetParam();
-    TXOwner constructor(d.node, d.id);
-
-    ASSERT_EQ(d.expectedHash, TXOwner::Hash()(constructor));
-  }
-
-  std::vector< TxOwnerData >
+  std::vector<TxOwnerData>
   makeData()
   {
-    std::vector< TxOwnerData > result;
+    std::vector<TxOwnerData> result;
 
     Key_t zero;
     zero.Zero();
@@ -52,7 +37,7 @@ namespace
     Key_t two;
     two.Fill(0x02);
 
-    uint64_t max = std::numeric_limits< uint64_t >::max();
+    uint64_t max = std::numeric_limits<uint64_t>::max();
 
     result.emplace_back(zero, 0, 0ull);
     result.emplace_back(zero, 1, 1ull);
@@ -67,6 +52,15 @@ namespace
     return result;
   }
 
+  TEST_CASE("TxOwner hash", "[dht]")
+  {
+    // test single interactions (constructor and hash)
+    auto d = GENERATE(from_range(makeData()));
+    TXOwner constructor(d.node, d.id);
+
+    REQUIRE(d.expectedHash == TXOwner::Hash()(constructor));
+  }
+
   struct TxOwnerCmpData
   {
     TXOwner lhs;
@@ -76,27 +70,13 @@ namespace
 
     TxOwnerCmpData(const TXOwner& l, const TXOwner& r, bool e, bool ls)
         : lhs(l), rhs(r), equal(e), less(ls)
-    {
-    }
+    {}
   };
 
-  struct TxOwnerOps : public ::testing::TestWithParam< TxOwnerCmpData >
-  {
-  };
-
-  TEST_P(TxOwnerOps, operators)
-  {
-    // test single interactions (constructor and hash)
-    auto d = GetParam();
-
-    ASSERT_EQ(d.lhs == d.rhs, d.equal);
-    ASSERT_EQ(d.lhs < d.rhs, d.less);
-  }
-
-  std::vector< TxOwnerCmpData >
+  std::vector<TxOwnerCmpData>
   makeCmpData()
   {
-    std::vector< TxOwnerCmpData > result;
+    std::vector<TxOwnerCmpData> result;
 
     Key_t zero;
     zero.Fill(0x00);
@@ -114,10 +94,13 @@ namespace
 
     return result;
   }
+
+  TEST_CASE("TxOwner ops", "[dht]")
+  {
+    // test single interactions (constructor and hash)
+    auto d = GENERATE(from_range(makeCmpData()));
+
+    REQUIRE((d.lhs == d.rhs) == d.equal);
+    REQUIRE((d.lhs < d.rhs) == d.less);
+  }
 }  // namespace
-
-INSTANTIATE_TEST_SUITE_P(TestDhtTxOwner, TxOwner,
-                        ::testing::ValuesIn(makeData()));
-
-INSTANTIATE_TEST_SUITE_P(TestDhtTxOwner, TxOwnerOps,
-                        ::testing::ValuesIn(makeCmpData()));

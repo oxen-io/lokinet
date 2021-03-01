@@ -11,4 +11,4 @@ RUN mkdir build && \
     cd build && \
     cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON -DDOWNLOAD_SODIUM=ON && \
     ninja -k0 && \
-    ./test/testAll
+    ./test/catchAll
