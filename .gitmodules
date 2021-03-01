@@ -23,10 +23,9 @@
 [submodule "external/clang-format-hooks"]
 	path = external/clang-format-hooks
 	url = https://github.com/barisione/clang-format-hooks/
-[submodule "external/loki-mq"]
-	path = external/loki-mq
-	url = https://github.com/loki-project/loki-mq
-	branch = dev
 [submodule "external/sqlite_orm"]
 	path = external/sqlite_orm
 	url = https://github.com/fnc12/sqlite_orm
+[submodule "external/oxen-mq"]
+	path = external/oxen-mq
+	url = https://github.com/oxen-io/oxen-mq
